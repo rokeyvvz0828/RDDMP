@@ -1,0 +1,2 @@
+ALTER TABLE sys_config
+    ADD COLUMN status TINYINT NOT NULL DEFAULT 1 AFTER config_type;

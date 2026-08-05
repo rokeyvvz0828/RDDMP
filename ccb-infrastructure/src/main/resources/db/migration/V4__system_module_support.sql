@@ -1,0 +1,2 @@
+-- V4 reserves the migration boundary for the system module APIs.
+-- The initial schema already contains the required tables; no destructive change is needed.
