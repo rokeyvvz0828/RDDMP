@@ -1,0 +1,65 @@
+{
+  "baseline_revision": "organization-user-avatar-v1",
+  "plant_boundary": {"inside":["sys_org and sys_user data","organization tree API","user CRUD and avatar API","MinIO adapter","frontend system views","UiUserIdentity","showcase route"],"environment":["MySQL","MinIO container","browser","Element Plus runtime","existing auth token"]},
+  "state_variables":["flyway_version","minio_reachable","org_tree_data","selected_org_id","user_profile.avatar_object_key","user_profile.avatar_url","route_menu_tree","breadcrumb_label","showcase_rendered"],
+  "causal_paths":[
+    {"requirement_id":"R1","input":"sys_org parent_id rows","transitions":["query orgs","build nested DTO","render tree","select node"],"outputs":["hierarchical organization UI"]},
+    {"requirement_id":"R2","input":"selected org id or org tree action","transitions":["load users by org","prefill org_id","create/update user"],"outputs":["user associated with organization"]},
+    {"requirement_id":"R3","input":"current route path and auth route menu tree","transitions":["match deepest route path","use menu_name","fallback to static Chinese meta"],"outputs":["Chinese breadcrumb"]},
+    {"requirement_id":"R4","input":"authenticated image multipart","transitions":["validate type and size","upload object to MinIO","persist object key","create signed URL"],"outputs":["visible avatar URL"]},
+    {"requirement_id":"R5","input":"UserProfile","transitions":["render avatar and name","hover/focus popover"],"outputs":["profile identity component"]},
+    {"requirement_id":"R6","input":"existing UI components and example data","transitions":["render showcase route"],"outputs":["component usage examples"]}
+  ],
+  "interfaces":[
+    {"name":"organization tree REST","producers":["ccb-system"],"consumers":["ccb-web"],"invariant":"tenant scoped nested nodes with stable ids"},
+    {"name":"user REST","producers":["ccb-system"],"consumers":["ccb-web","ccb-security"],"invariant":"org_id and profile fields remain compatible"},
+    {"name":"avatar multipart REST","producers":["ccb-system"],"consumers":["ccb-web"],"invariant":"credentials never returned to browser"},
+    {"name":"MinIO storage","producers":["ccb-infrastructure"],"consumers":["ccb-system"],"invariant":"object key is tenant and user scoped"},
+    {"name":"route menu tree","producers":["ccb-security"],"consumers":["ccb-web AppLayout"],"invariant":"menu_name is display label"}
+  ],
+  "sensors":[
+    {"id":"S1","target":"Flyway version","method":"backend startup log and schema history","blind_spots":["manual database edits"],"independence":"database/runtime"},
+    {"id":"S2","target":"MinIO reachability","method":"storage health/upload request","blind_spots":["credentials valid but bucket policy wrong"],"independence":"external service"},
+    {"id":"S3","target":"API contract","method":"authenticated HTTP responses","blind_spots":["browser rendering"],"independence":"HTTP client"},
+    {"id":"S4","target":"UI behavior","method":"browser DOM and screenshot","blind_spots":["unvisited viewport states"],"independence":"browser"},
+    {"id":"S5","target":"build regression","method":"npm and Maven exit codes","blind_spots":["runtime data issues"],"independence":"build process"}
+  ],
+  "actuators":[
+    {"id":"A1","target":"schema","action":"apply V10 migration","authority":"workspace database migration","impact_radius":"sys_user only","rollback":"development migration rollback/snapshot"},
+    {"id":"A2","target":"backend","action":"add API and storage adapter","authority":"workspace source","impact_radius":"system/auth modules","rollback":"revert task boundary"},
+    {"id":"A3","target":"frontend","action":"add tree, identity, breadcrumb and showcase","authority":"workspace source","impact_radius":"system layout and routes","rollback":"revert task boundary"},
+    {"id":"A4","target":"runtime","action":"configure MinIO endpoint and credentials via environment","authority":"local runtime","impact_radius":"avatar upload only","rollback":"unset storage properties"}
+  ],
+  "measurements":[
+    {"requirement_id":"R1","sensor_ids":["S1","S3","S4"],"observable":"nested organization nodes are returned and rendered"},
+    {"requirement_id":"R2","sensor_ids":["S3","S4"],"observable":"org selection and node add-user produce matching org_id"},
+    {"requirement_id":"R3","sensor_ids":["S3","S4"],"observable":"breadcrumb text equals Chinese menu_name"},
+    {"requirement_id":"R4","sensor_ids":["S2","S3","S4"],"observable":"image upload returns usable avatar URL and appears in UI"},
+    {"requirement_id":"R5","sensor_ids":["S4","S5"],"observable":"identity component renders horizontal layout and hover profile"},
+    {"requirement_id":"R6","sensor_ids":["S4","S5"],"observable":"showcase route renders component examples"}
+  ],
+  "disturbances":[
+    {"source":"MinIO container stopped","effect":"avatar upload unavailable","detectable":"yes","controllable":"yes"},
+    {"source":"missing storage credentials","effect":"backend storage initialization/upload failure","detectable":"yes","controllable":"yes"},
+    {"source":"existing generic system page coupling","effect":"org/user UI regression","detectable":"yes","controllable":"yes"},
+    {"source":"dependency download failure","effect":"build cannot resolve MinIO SDK","detectable":"yes","controllable":"partial"}
+  ],
+  "delays":[
+    {"source":"presigned URL expiry","consequence":"avatar may require refreshed profile data","sampling_rule":"check URL after profile reload"},
+    {"source":"Flyway startup","consequence":"schema/API mismatch until restart","sampling_rule":"check schema history before API smoke"},
+    {"source":"browser HMR/cache","consequence":"stale breadcrumb or component view","sampling_rule":"hard reload after build"}
+  ],
+  "assumptions":[
+    {"text":"MinIO endpoint can be configured for both backend and browser-visible signed URLs","evidence":"existing port mapping 9000","falsifier":"signed URL cannot be reached from browser"},
+    {"text":"sys_org.parent_id and sys_user.org_id are the authoritative organization relations","evidence":"existing V1 schema and generic service","falsifier":"database constraints or API consumers require different model"}
+  ],
+  "control_assessment":[
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"dedicated tree endpoint and tree component"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"org selector and node-level add-user action"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"deepest menu path resolver with Chinese fallback"},
+    {"requirement_id":"R4","observable":"partial","controllable":"yes","action":"add MinIO runtime sensor and upload smoke check"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"UiUserIdentity and showcase hover check"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"authenticated showcase route and build check"}
+  ],
+  "model_status":"ready"
+}

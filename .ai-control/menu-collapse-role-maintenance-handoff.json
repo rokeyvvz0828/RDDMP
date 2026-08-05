@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "topic": "menu-collapse-role-maintenance",
+  "handoff_status": "approved",
+  "created_at": "2026-08-05T00:00:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "menu-collapse-role-maintenance",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-05-menu-collapse-role-maintenance-design.md",
+    "objective": "Align collapsed menu icons and separate user role maintenance from profile editing.",
+    "requirements": [
+      {"id": "R1", "statement": "Collapsed menu icons are vertically aligned and centered.", "priority": "must", "source": "user-approved design", "acceptance": ["fixed item geometry", "browser DOM geometry check"]},
+      {"id": "R2", "statement": "User role maintenance is separated from the user profile drawer.", "priority": "must", "source": "user-approved design", "acceptance": ["row role action", "independent role save request"]}
+    ],
+    "constraints": ["single tenant", "Vue 3", "TypeScript", "Element Plus", "Chinese UI", "reuse existing role APIs"],
+    "non_goals": ["backend API changes", "database migration", "multi-tenancy"],
+    "selected_approach": {"name": "fixed flex geometry plus independent role dialog", "reason": "minimizes scope and preserves existing contracts"},
+    "approval": {"status": "approved", "evidence": "user confirmed design", "confirmed_at": "2026-08-05T00:00:00+08:00"}
+  },
+  "implementation_plan": {
+    "schema_version": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-05-menu-collapse-role-maintenance-implementation-plan.md",
+    "plan_status": "ready",
+    "tasks": ["T1", "T2", "T3"]
+  },
+  "control_seed": {
+    "status": "hypotheses-only",
+    "boundary": ["ccb-web/src/views/ModuleView.vue", "ccb-web/src/styles.css"],
+    "sensors": ["browser_dom", "browser_network", "npm_build", "git_diff"],
+    "actuators": ["frontend_source_edit"],
+    "rollback": "revert only scoped frontend changes"
+  }
+}

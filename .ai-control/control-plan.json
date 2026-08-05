@@ -1,0 +1,737 @@
+{
+    "baseline_revision":  "baseline-2",
+    "model_revision":  "model-1",
+    "tasks":  [
+                  {
+                      "id":  "T1",
+                      "goal":  "build skeleton and contracts",
+                      "requirement_ids":  [
+                                              "R1",
+                                              "R3",
+                                              "R8"
+                                          ],
+                      "prerequisites":  [
+
+                                        ],
+                      "input_facts":  [
+                                          "approved design and prerequisite task outputs"
+                                      ],
+                      "write_scope":  [
+                                          "pom.xml",
+                                          "ccb-boot/",
+                                          "ccb-common/",
+                                          "docs",
+                                          "contract tests"
+                                      ],
+                      "invariants":  [
+                                         "tenant_id reserved",
+                                         "BCrypt",
+                                         "backend authorization",
+                                         "shared response",
+                                         "no cross Mapper"
+                                     ],
+                      "interface_contracts":  [
+                                                  "shared response and error"
+                                              ],
+                      "non_goals":  [
+                                        "workflow",
+                                        "AI calls",
+                                        "microservices",
+                                        "complex tenancy",
+                                        "external identity"
+                                    ],
+                      "action_bounds":  [
+                                            "JDK 17 Maven MySQL 8 Vue 3 stack",
+                                            "no workflow AI or microservices",
+                                            "every must needs evidence"
+                                        ],
+                      "acceptance_checks":  [
+                                                "build passes",
+                                                "no cycle"
+                                            ],
+                      "evidence_required":  [
+                                                "version output",
+                                                "exit code 0"
+                                            ],
+                      "rollback":  "remove new paths",
+                      "stop_conditions":  [
+                                              "JDK below 17",
+                                              "dependency cycle"
+                                          ],
+                      "escalation_conditions":  [
+                                                    "dependency mirror needed"
+                                                ]
+                  },
+                  {
+                      "id":  "T2",
+                      "goal":  "database migration and infrastructure",
+                      "requirement_ids":  [
+                                              "R1",
+                                              "R2",
+                                              "R5",
+                                              "R7"
+                                          ],
+                      "prerequisites":  [
+                                            "T1"
+                                        ],
+                      "input_facts":  [
+                                          "approved design and prerequisite task outputs"
+                                      ],
+                      "write_scope":  [
+                                          "ccb-infrastructure/",
+                                          "migrations",
+                                          ".env.example",
+                                          "pom.xml",
+                                          "migration tests"
+                                      ],
+                      "invariants":  [
+                                         "tenant_id reserved",
+                                         "BCrypt",
+                                         "backend authorization",
+                                         "shared response",
+                                         "no cross Mapper"
+                                     ],
+                      "interface_contracts":  [
+                                                  "T1 contract",
+                                                  "database and audit"
+                                              ],
+                      "non_goals":  [
+                                        "workflow",
+                                        "AI calls",
+                                        "microservices",
+                                        "complex tenancy",
+                                        "external identity"
+                                    ],
+                      "action_bounds":  [
+                                            "JDK 17 Maven MySQL 8 Vue 3 stack",
+                                            "no workflow AI or microservices",
+                                            "every must needs evidence"
+                                        ],
+                      "acceptance_checks":  [
+                                                "tables tenant_id BCrypt bootstrap"
+                                            ],
+                      "evidence_required":  [
+                                                "exit code 0",
+                                                "migration output"
+                                            ],
+                      "rollback":  "repair migrations only",
+                      "stop_conditions":  [
+                                              "destructive migration",
+                                              "memory DB substitute"
+                                          ],
+                      "escalation_conditions":  [
+                                                    "MySQL credentials needed"
+                                                ]
+                  },
+                  {
+                      "id":  "T3",
+                      "goal":  "authentication and authorization",
+                      "requirement_ids":  [
+                                              "R1",
+                                              "R3",
+                                              "R7"
+                                          ],
+                      "prerequisites":  [
+                                            "T2"
+                                        ],
+                      "input_facts":  [
+                                          "approved design and prerequisite task outputs"
+                                      ],
+                      "write_scope":  [
+                                          "ccb-security/",
+                                          "ccb-boot/",
+                                          "ccb-common/",
+                                          "auth tests"
+                                      ],
+                      "invariants":  [
+                                         "tenant_id reserved",
+                                         "BCrypt",
+                                         "backend authorization",
+                                         "shared response",
+                                         "no cross Mapper"
+                                     ],
+                      "interface_contracts":  [
+                                                  "user role menu tables",
+                                                  "auth APIs"
+                                              ],
+                      "non_goals":  [
+                                        "workflow",
+                                        "AI calls",
+                                        "microservices",
+                                        "complex tenancy",
+                                        "external identity"
+                                    ],
+                      "action_bounds":  [
+                                            "JDK 17 Maven MySQL 8 Vue 3 stack",
+                                            "no workflow AI or microservices",
+                                            "every must needs evidence"
+                                        ],
+                      "acceptance_checks":  [
+                                                "login refresh disabled 403 no secrets"
+                                            ],
+                      "evidence_required":  [
+                                                "failure assertions",
+                                                "test report",
+                                                "HTTP output"
+                                            ],
+                      "rollback":  "revert security code",
+                      "stop_conditions":  [
+                                              "bypass",
+                                              "secret logged"
+                                          ],
+                      "escalation_conditions":  [
+                                                    "third-party identity"
+                                                ]
+                  },
+                  {
+                      "id":  "T4",
+                      "goal":  "system administration APIs",
+                      "requirement_ids":  [
+                                              "R2",
+                                              "R3",
+                                              "R4",
+                                              "R5",
+                                              "R7",
+                                              "R8"
+                                          ],
+                      "prerequisites":  [
+                                            "T3"
+                                        ],
+                      "input_facts":  [
+                                          "approved design and prerequisite task outputs"
+                                      ],
+                      "write_scope":  [
+                                          "ccb-system/",
+                                          "integration rules",
+                                          "ccb-boot/",
+                                          "domain tests"
+                                      ],
+                      "invariants":  [
+                                         "tenant_id reserved",
+                                         "BCrypt",
+                                         "backend authorization",
+                                         "shared response",
+                                         "no cross Mapper"
+                                     ],
+                      "interface_contracts":  [
+                                                  "T3 auth context",
+                                                  "system APIs"
+                                              ],
+                      "non_goals":  [
+                                        "workflow",
+                                        "AI calls",
+                                        "microservices",
+                                        "complex tenancy",
+                                        "external identity"
+                                    ],
+                      "action_bounds":  [
+                                            "JDK 17 Maven MySQL 8 Vue 3 stack",
+                                            "no workflow AI or microservices",
+                                            "every must needs evidence"
+                                        ],
+                      "acceptance_checks":  [
+                                                "CRUD tree routes auth audit docs"
+                                            ],
+                      "evidence_required":  [
+                                                "failure assertions",
+                                                "test report",
+                                                "HTTP and audit"
+                                            ],
+                      "rollback":  "revert module and repair by migration",
+                      "stop_conditions":  [
+                                              "cross Mapper",
+                                              "tree cycle"
+                                          ],
+                      "escalation_conditions":  [
+                                                    "data scope permission"
+                                                ]
+                  },
+                  {
+                      "id":  "T5",
+                      "goal":  "frontend shell dynamic routes and themes",
+                      "requirement_ids":  [
+                                              "R1",
+                                              "R3",
+                                              "R4",
+                                              "R6"
+                                          ],
+                      "prerequisites":  [
+                                            "T3"
+                                        ],
+                      "input_facts":  [
+                                          "approved design and prerequisite task outputs"
+                                      ],
+                      "write_scope":  [
+                                          "ccb-web/",
+                                          "route token theme tests"
+                                      ],
+                      "invariants":  [
+                                         "tenant_id reserved",
+                                         "BCrypt",
+                                         "backend authorization",
+                                         "shared response",
+                                         "no cross Mapper"
+                                     ],
+                      "interface_contracts":  [
+                                                  "T3 APIs",
+                                                  "frontend shell"
+                                              ],
+                      "non_goals":  [
+                                        "workflow",
+                                        "AI calls",
+                                        "microservices",
+                                        "complex tenancy",
+                                        "external identity"
+                                    ],
+                      "action_bounds":  [
+                                            "JDK 17 Maven MySQL 8 Vue 3 stack",
+                                            "no workflow AI or microservices",
+                                            "every must needs evidence"
+                                        ],
+                      "acceptance_checks":  [
+                                                "dynamic routes one refresh logout on refresh failure theme persists"
+                                            ],
+                      "evidence_required":  [
+                                                "build output",
+                                                "test and build output"
+                                            ],
+                      "rollback":  "remove frontend tree",
+                      "stop_conditions":  [
+                                              "token leak",
+                                              "arbitrary route"
+                                          ],
+                      "escalation_conditions":  [
+                                                    "SSR or mobile"
+                                                ]
+                  },
+                  {
+                      "id":  "T6",
+                      "goal":  "system administration pages",
+                      "requirement_ids":  [
+                                              "R2",
+                                              "R3",
+                                              "R4",
+                                              "R5",
+                                              "R6"
+                                          ],
+                      "prerequisites":  [
+                                            "T4",
+                                            "T5"
+                                        ],
+                      "input_facts":  [
+                                          "approved design and prerequisite task outputs"
+                                      ],
+                      "write_scope":  [
+                                          "ccb-web/src/views/system/",
+                                          "ccb-web/src/router/",
+                                          "ccb-web/src/stores/",
+                                          "page tests"
+                                      ],
+                      "invariants":  [
+                                         "tenant_id reserved",
+                                         "BCrypt",
+                                         "backend authorization",
+                                         "shared response",
+                                         "no cross Mapper"
+                                     ],
+                      "interface_contracts":  [
+                                                  "T4 APIs",
+                                                  "T5 shell",
+                                                  "system pages"
+                                              ],
+                      "non_goals":  [
+                                        "workflow",
+                                        "AI calls",
+                                        "microservices",
+                                        "complex tenancy",
+                                        "external identity"
+                                    ],
+                      "action_bounds":  [
+                                            "JDK 17 Maven MySQL 8 Vue 3 stack",
+                                            "no workflow AI or microservices",
+                                            "every must needs evidence"
+                                        ],
+                      "acceptance_checks":  [
+                                                "admin flow ordinary blocked errors visible theme stable"
+                                            ],
+                      "evidence_required":  [
+                                                "failure assertions",
+                                                "test build page check"
+                                            ],
+                      "rollback":  "revert pages only",
+                      "stop_conditions":  [
+                                              "overlap duplicate submit button bypass"
+                                          ],
+                      "escalation_conditions":  [
+                                                    "complex drag editor"
+                                                ]
+                  },
+                  {
+                      "id":  "T7",
+                      "goal":  "integration verification and docs",
+                      "requirement_ids":  [
+                                              "R1",
+                                              "R2",
+                                              "R3",
+                                              "R4",
+                                              "R5",
+                                              "R6",
+                                              "R7",
+                                              "R8"
+                                          ],
+                      "prerequisites":  [
+                                            "T1",
+                                            "T2",
+                                            "T3",
+                                            "T4",
+                                            "T5",
+                                            "T6"
+                                        ],
+                      "input_facts":  [
+                                          "approved design and prerequisite task outputs"
+                                      ],
+                      "write_scope":  [
+                                          "README.md",
+                                          "startup scripts",
+                                          "API docs",
+                                          ".env.example",
+                                          "full suites and integration flow"
+                                      ],
+                      "invariants":  [
+                                         "tenant_id reserved",
+                                         "BCrypt",
+                                         "backend authorization",
+                                         "shared response",
+                                         "no cross Mapper"
+                                     ],
+                      "interface_contracts":  [
+                                                  "all prior artifacts",
+                                                  "acceptance evidence"
+                                              ],
+                      "non_goals":  [
+                                        "workflow",
+                                        "AI calls",
+                                        "microservices",
+                                        "complex tenancy",
+                                        "external identity"
+                                    ],
+                      "action_bounds":  [
+                                            "JDK 17 Maven MySQL 8 Vue 3 stack",
+                                            "no workflow AI or microservices",
+                                            "every must needs evidence"
+                                        ],
+                      "acceptance_checks":  [
+                                                "all must evidence no placeholders no secrets risks recorded"
+                                            ],
+                      "evidence_required":  [
+                                                "ports health",
+                                                "API page results",
+                                                "exit codes"
+                                            ],
+                      "rollback":  "preserve evidence and revert by task boundary",
+                      "stop_conditions":  [
+                                              "missing evidence auth issue build failure"
+                                          ],
+                      "escalation_conditions":  [
+                                                    "non-equivalent environment"
+                                                ]
+                  }
+              ],
+    "dependency_edges":  [
+                             {
+                                 "from":  "T1",
+                                 "to":  "T2",
+                                 "reason":  "required contract and implementation dependency"
+                             },
+                             {
+                                 "from":  "T2",
+                                 "to":  "T3",
+                                 "reason":  "required contract and implementation dependency"
+                             },
+                             {
+                                 "from":  "T3",
+                                 "to":  "T4",
+                                 "reason":  "required contract and implementation dependency"
+                             },
+                             {
+                                 "from":  "T3",
+                                 "to":  "T5",
+                                 "reason":  "required contract and implementation dependency"
+                             },
+                             {
+                                 "from":  "T4",
+                                 "to":  "T6",
+                                 "reason":  "required contract and implementation dependency"
+                             },
+                             {
+                                 "from":  "T5",
+                                 "to":  "T6",
+                                 "reason":  "required contract and implementation dependency"
+                             },
+                             {
+                                 "from":  "T6",
+                                 "to":  "T7",
+                                 "reason":  "required contract and implementation dependency"
+                             }
+                         ],
+    "parallel_groups":  [
+                            [
+                                "T1"
+                            ],
+                            [
+                                "T2"
+                            ],
+                            [
+                                "T3"
+                            ],
+                            [
+                                "T4",
+                                "T5"
+                            ],
+                            [
+                                "T6"
+                            ],
+                            [
+                                "T7"
+                            ]
+                        ],
+    "integration_points":  [
+                               {
+                                   "after_tasks":  [
+                                                       "T1"
+                                                   ],
+                                   "checks":  [
+                                                  "mvn -DskipTests compile",
+                                                  "pass"
+                                              ]
+                               },
+                               {
+                                   "after_tasks":  [
+                                                       "T2"
+                                                   ],
+                                   "checks":  [
+                                                  "run MySQL migration twice",
+                                                  "idempotent"
+                                              ]
+                               },
+                               {
+                                   "after_tasks":  [
+                                                       "T3"
+                                                   ],
+                                   "checks":  [
+                                                  "run auth and 403 flow",
+                                                  "pass"
+                                              ]
+                               },
+                               {
+                                   "after_tasks":  [
+                                                       "T4",
+                                                       "T5",
+                                                       "T6"
+                                                   ],
+                                   "checks":  [
+                                                  "backend tests frontend tests build",
+                                                  "pass"
+                                              ]
+                               },
+                               {
+                                   "after_tasks":  [
+                                                       "T7"
+                                                   ],
+                                   "checks":  [
+                                                  "full acceptance flow",
+                                                  "R1-R8 evidence"
+                                              ]
+                               }
+                           ],
+    "sampling_plan":  [
+                          {
+                              "label":  "baseline sample",
+                              "observer":  "main agent",
+                              "sensors":  [
+                                              "S1",
+                                              "S2",
+                                              "S3",
+                                              "S4",
+                                              "S5",
+                                              "S6",
+                                              "S7",
+                                              "S8"
+                                          ],
+                              "requirement_ids":  [
+                                                      "R1",
+                                                      "R2",
+                                                      "R3",
+                                                      "R4",
+                                                      "R5",
+                                                      "R6",
+                                                      "R7",
+                                                      "R8"
+                                                  ],
+                              "trigger":  "before T1"
+                          },
+                          {
+                              "label":  "foundation sample",
+                              "observer":  "main agent",
+                              "sensors":  [
+                                              "S2",
+                                              "S7",
+                                              "S8"
+                                          ],
+                              "requirement_ids":  [
+                                                      "R2",
+                                                      "R5",
+                                                      "R7",
+                                                      "R8"
+                                                  ],
+                              "trigger":  "T1 and T2 complete"
+                          },
+                          {
+                              "label":  "auth sample",
+                              "observer":  "main agent",
+                              "sensors":  [
+                                              "S1",
+                                              "S3"
+                                          ],
+                              "requirement_ids":  [
+                                                      "R1",
+                                                      "R3"
+                                                  ],
+                              "trigger":  "T3 complete"
+                          },
+                          {
+                              "label":  "frontend sample",
+                              "observer":  "main agent",
+                              "sensors":  [
+                                              "S4",
+                                              "S6"
+                                          ],
+                              "requirement_ids":  [
+                                                      "R4",
+                                                      "R6"
+                                                  ],
+                              "trigger":  "T5 and T6 complete"
+                          },
+                          {
+                              "label":  "final integration sample",
+                              "observer":  "main agent",
+                              "sensors":  [
+                                              "S1",
+                                              "S2",
+                                              "S3",
+                                              "S4",
+                                              "S5",
+                                              "S6",
+                                              "S7",
+                                              "S8"
+                                          ],
+                              "requirement_ids":  [
+                                                      "R1",
+                                                      "R2",
+                                                      "R3",
+                                                      "R4",
+                                                      "R5",
+                                                      "R6",
+                                                      "R7",
+                                                      "R8"
+                                                  ],
+                              "trigger":  "T7 complete"
+                          }
+                      ],
+    "coverage":  [
+                     {
+                         "requirement_id":  "R1",
+                         "task_ids":  [
+                                          "T1",
+                                          "T2",
+                                          "T3",
+                                          "T7"
+                                      ],
+                         "sensor_ids":  [
+                                            "S1"
+                                        ]
+                     },
+                     {
+                         "requirement_id":  "R2",
+                         "task_ids":  [
+                                          "T2",
+                                          "T4",
+                                          "T6",
+                                          "T7"
+                                      ],
+                         "sensor_ids":  [
+                                            "S2"
+                                        ]
+                     },
+                     {
+                         "requirement_id":  "R3",
+                         "task_ids":  [
+                                          "T3",
+                                          "T4",
+                                          "T5",
+                                          "T7"
+                                      ],
+                         "sensor_ids":  [
+                                            "S3"
+                                        ]
+                     },
+                     {
+                         "requirement_id":  "R4",
+                         "task_ids":  [
+                                          "T4",
+                                          "T5",
+                                          "T6",
+                                          "T7"
+                                      ],
+                         "sensor_ids":  [
+                                            "S4"
+                                        ]
+                     },
+                     {
+                         "requirement_id":  "R5",
+                         "task_ids":  [
+                                          "T2",
+                                          "T4",
+                                          "T6",
+                                          "T7"
+                                      ],
+                         "sensor_ids":  [
+                                            "S5"
+                                        ]
+                     },
+                     {
+                         "requirement_id":  "R6",
+                         "task_ids":  [
+                                          "T5",
+                                          "T6",
+                                          "T7"
+                                      ],
+                         "sensor_ids":  [
+                                            "S6"
+                                        ]
+                     },
+                     {
+                         "requirement_id":  "R7",
+                         "task_ids":  [
+                                          "T3",
+                                          "T4",
+                                          "T7"
+                                      ],
+                         "sensor_ids":  [
+                                            "S7"
+                                        ]
+                     },
+                     {
+                         "requirement_id":  "R8",
+                         "task_ids":  [
+                                          "T1",
+                                          "T4",
+                                          "T7"
+                                      ],
+                         "sensor_ids":  [
+                                            "S8"
+                                        ]
+                     }
+                 ],
+    "plan_status":  "ready"
+}

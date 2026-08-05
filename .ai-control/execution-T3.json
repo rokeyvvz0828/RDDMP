@@ -1,0 +1,51 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "ccb-security/pom.xml", "purpose": "add Spring Security, validation, JDBC and JJWT runtime dependencies"},
+    {"path_or_resource": "ccb-security/src/main/java/com/ccb/security", "purpose": "implement BCrypt-backed login, JWT access/refresh tokens, repository, filter and auth APIs"},
+    {"path_or_resource": "ccb-boot/src/main/java/com/ccb/boot/web/GlobalExceptionHandler.java", "purpose": "map authentication and authorization failures to HTTP 401/403"},
+    {"path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V3__reset_development_admin_password.sql", "purpose": "set documented development admin password without changing applied migrations"},
+    {"path_or_resource": "ccb-boot/src/main/resources/application-local.yml", "purpose": "configure JWT secret and token TTLs"}
+  ],
+  "requirements_addressed": ["R1", "R3", "R7"],
+  "commands": [
+    {"command": "mvn -s .mvn/settings.xml clean test", "exit_code": 0, "salient_output": "6 modules; PageQueryTest 1 passed; JwtTokenServiceTest 2 passed"},
+    {"command": "mvn -s .mvn/settings.xml -DskipTests package", "exit_code": 0, "salient_output": "ccb-boot executable jar packaged"},
+    {"command": "GET /actuator/health", "exit_code": 0, "salient_output": "HTTP 200"},
+    {"command": "POST /api/auth/login with admin/admin123", "exit_code": 0, "salient_output": "HTTP 200; tokens not printed"},
+    {"command": "POST /api/auth/login with wrong password", "exit_code": 0, "salient_output": "HTTP 401"},
+    {"command": "POST /api/auth/refresh then POST /api/auth/logout and refresh again", "exit_code": 0, "salient_output": "refresh HTTP 200; logout HTTP 200; revoked refresh HTTP 401"},
+    {"command": "GET /api/auth/me and GET /api/auth/routes with access token", "exit_code": 0, "salient_output": "HTTP 200; admin returned 7 permissions; route tree returned 1 root and 6 children"},
+    {"command": "GET /api/auth/permission-check with access token", "exit_code": 0, "salient_output": "HTTP 403"},
+    {"command": "disable sys_user.status, request /api/auth/me, restore status", "exit_code": 0, "salient_output": "active 200; disabled token 401; restored 200"}
+  ],
+  "local_checks": [
+    {"check": "JWT unit tests", "result": "pass", "evidence": "access/refresh token type separation and refresh revocation tests passed", "limitations": []},
+    {"check": "HTTP authentication flow", "result": "pass", "evidence": "login, invalid credentials, me, routes, refresh and logout statuses matched contract", "limitations": ["tested with local MySQL and development admin account"]},
+    {"check": "backend authorization", "result": "pass", "evidence": "method permission check returned 403 and anonymous me returned 401", "limitations": ["system CRUD permission endpoints are implemented in T4"]},
+    {"check": "audit persistence", "result": "pass", "evidence": "sys_login_log contains both success and failure rows", "limitations": []}
+  ],
+  "diff_summary": [
+    "added database-backed AuthRepository with tenant_id filtering",
+    "added BCrypt password validation and login audit writes",
+    "added signed JWT access/refresh tokens with rotation and in-process refresh revocation",
+    "added stateless authentication filter and JSON 401/403 handlers",
+    "added auth login, refresh, logout, me and dynamic routes APIs"
+  ],
+  "invariants_checked": [
+    {"invariant": "tenant_id reserved", "result": "pass", "evidence": "repository queries require tenant_id = 1 and JWT carries tenant_id"},
+    {"invariant": "BCrypt", "result": "pass", "evidence": "BCryptPasswordEncoder matched the V3 development hash"},
+    {"invariant": "backend authorization", "result": "pass", "evidence": "permission check returned 403; disabled account token returned 401"},
+    {"invariant": "shared response", "result": "pass", "evidence": "auth and security errors use ApiResponse with traceId"},
+    {"invariant": "no secret logging", "result": "pass", "evidence": "final startup log contains no generated password; token values were not logged"}
+  ],
+  "disturbances": [
+    {"event": "initial development password assumption was wrong", "impact": "login probe returned 401; corrected with V3 and documented admin123 development credential"},
+    {"event": "changing applied V1 caused Flyway checksum mismatch", "impact": "startup blocked; restored V1 and used additive V3 migration"},
+    {"event": "method-level access denial initially reached generic exception handler", "impact": "permission endpoint returned 500; added explicit AccessDeniedException mapping and final result is 403"}
+  ],
+  "assumptions_falsified": ["the old sample BCrypt hash represented password"],
+  "unresolved_items": ["refresh revocation is in-process and should move to shared persistence for multi-instance deployment", "full system management CRUD is covered by T4"],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,18 @@
+{
+  "sample_label": "organization-user-avatar-final-acceptance",
+  "task_ids": ["T1", "T2", "T3", "T4", "T5"],
+  "baseline_revision": "organization-user-avatar-v1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S3/S4", "result": "pass", "raw_evidence": "organization page tree and showcase nested tree", "limitation": ["real database currently has one root organization"]},
+    {"requirement_id": "R2", "sensor": "S3/S4", "result": "pass", "raw_evidence": "node member count, add user action, org selector", "limitation": ["no persistent test user added"]},
+    {"requirement_id": "R3", "sensor": "S4", "result": "pass", "raw_evidence": "Chinese breadcrumb labels", "limitation": []},
+    {"requirement_id": "R4", "sensor": "S2/S3/S4", "result": "partial", "raw_evidence": "avatar component and backend API built; MinIO Exited (255)", "limitation": ["no real object upload evidence"]},
+    {"requirement_id": "R5", "sensor": "S4/source contract", "result": "pass", "raw_evidence": "horizontal identity component; Element Plus hover trigger", "limitation": ["browser probe has no hover method"]},
+    {"requirement_id": "R6", "sensor": "S4/S5", "result": "pass", "raw_evidence": "showcase route visible; npm build exit 0", "limitation": []}
+  ],
+  "feedback": [{"requirement_id": "R4", "expected": "real MinIO avatar upload", "observed": "external MinIO container stopped", "reproduction": "docker ps -a --filter name=minio", "evidence": "minio-minio-1 Exited (255)", "severity": "P1", "confidence": "high", "sensor_limit": "old container references an unavailable Docker network", "causal_hypothesis": "external storage unavailable, not compile failure", "correction_check": "rerun upload/replace/clear after MinIO recovery", "classification": "disturbance"}],
+  "disturbances": ["MinIO stopped"],
+  "coverage_gaps": ["real MinIO upload and object deletion"],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

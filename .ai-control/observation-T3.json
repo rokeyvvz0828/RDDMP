@@ -1,0 +1,15 @@
+{
+  "sample_label": "T3 authentication integration sample",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "HTTP auth flow and JWT unit tests", "result": "pass", "raw_evidence": "anonymous 401; wrong password 401; valid login 200; refresh 200; revoked refresh 401; disabled account token 401", "limitation": ["local runtime uses Java 25 while compiler target is release 17"]},
+    {"requirement_id": "R3", "sensor": "protected API and method authorization", "result": "pass", "raw_evidence": "authenticated me 200; permission-check 403; dynamic routes 200 with one root and six children", "limitation": ["system management endpoints are part of T4"]},
+    {"requirement_id": "R7", "sensor": "MySQL sys_login_log query", "result": "pass", "raw_evidence": "database contains success and failure login rows after HTTP probes", "limitation": ["operation log writes are part of T4"]}
+  ],
+  "feedback": [],
+  "disturbances": ["Flyway checksum mismatch was observed and corrected by restoring V1 and applying V3"],
+  "coverage_gaps": ["multi-instance refresh revocation persistence", "Java 17 runtime rather than Java 25"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

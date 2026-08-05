@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "topic": "workflow-visual-approval",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-05-workflow-visual-approval-design.md",
+  "objective": "将工作流从 JSON 文本维护升级为可拖拽流程图，并支持审批人配置、同意、拒绝、加签和抄送的可追踪运行闭环。",
+  "users": ["流程管理员", "业务发起人", "审批人", "被抄送人"],
+  "requirements": [
+    {"id":"R1","statement":"流程管理员可以使用流程图设计器维护开始、审批、抄送、结束节点及其连线。","acceptance":["创建、刷新后图形和配置一致","非法断链流程发布被后端拒绝"],"priority":"must","source":"用户确认采用 Vue Flow 方案","counterexample":["仍要求直接编辑 JSON","存在不可达节点仍可发布"]},
+    {"id":"R2","statement":"审批节点支持指定用户、指定角色、发起人以及任一人/全部人模式。","acceptance":["多人任一人模式一人完成后取消同组待办","全部人模式全部同意后才流转"],"priority":"must","source":"用户确认第一阶段支持审批人配置和多人审批","counterexample":["审批人为空仍生成任务","角色成员跨租户进入待办"]},
+    {"id":"R3","statement":"审批任务支持同意、拒绝、加签和抄送。","acceptance":["拒绝终止实例","加签串行阻塞原任务","抄送不改变审批状态且不可审批"],"priority":"must","source":"用户明确提出同意、拒绝、加签、抄送","counterexample":["重复提交产生两条下一节点任务","抄送人出现审批按钮"]},
+    {"id":"R4","statement":"发布版本固定，实例和任务按租户、审批人和状态安全流转。","acceptance":["草稿变化不影响运行实例","非审批人和跨租户请求失败","并发重复审批只有一个成功"],"priority":"must","source":"现有工作流版本模型和单租户约束","counterexample":["运行实例读取最新草稿","非当前审批人可以决策"]},
+    {"id":"R5","statement":"工作流提供稳定的节点/边 JSON 契约和现有接口兼容接入方式。","acceptance":["现有工作流页面完成定义、发布、发起、待办和动作闭环","业务方不直接操作工作流表"],"priority":"must","source":"框架型系统接入规范要求","counterexample":["前端与后端各自使用不同流程格式","业务模块写入工作流表"]}
+  ],
+  "invariants":["单租户数据全部带 tenant_id 条件","已发布版本不可原地修改","图必须有且只有一个开始和结束节点且所有节点可达","只有 PENDING 审批任务可执行动作","审批动作在事务内幂等处理","界面和错误提示使用中文"],
+  "constraints":["Spring Boot 3.x、JDK 17、MySQL、Flyway、Vue 3、TypeScript、Element Plus","第一阶段只实现串行有向图，不实现条件分支、并行网关、转交和退回","保留 definitionJson 字段兼容现有接口"],
+  "non_goals":["BPMN 全量规范","条件表达式和并行网关","定时任务、转交、退回、催办","跨租户流程共享"],
+  "selected_approach":{"name":"Vue Flow + 自研流程运行器","reason":"适配现有前端和后端模块，能提供真实拖拽连线并让第一阶段动作和数据契约保持可控。","alternatives":[{"name":"BPMN 编辑器 + BPMN 引擎","rejected_because":"接入和维护成本超出第一阶段范围"},{"name":"自定义纵向节点编辑器","rejected_because":"难以表达连线，后续扩展受限"}]},
+  "architecture":{"boundary":{"inside":["工作流设计器","流程定义校验与版本","实例任务运行","审批动作和抄送记录","工作流 API"],"outside":["登录和权限基础设施","用户、角色、组织维护页面","业务单据数据" ]},"components":[{"name":"WorkflowDesigner","responsibility":"维护 Vue Flow 节点、边和位置","depends_on":["Vue Flow"]},{"name":"WorkflowNodeInspector","responsibility":"维护节点名称和审批人配置","depends_on":["用户/角色/组织 API"]},{"name":"WorkflowDefinitionValidator","responsibility":"校验流程图契约和串行约束","depends_on":["Jackson"]},{"name":"WorkflowService","responsibility":"管理版本、实例、任务和动作事务","depends_on":["JdbcTemplate","MySQL"]}],"interfaces":[{"name":"工作流定义接口","producer":"WorkflowController","consumers":["WorkflowView"],"contract":"定义列表、创建、发布使用现有路径和 definitionJson 字段"},{"name":"任务动作接口","producer":"WorkflowController","consumers":["WorkflowView"],"contract":"决策 body 使用 action、comment、targetUserId、ccUserIds"}],"data_flows":[{"input":"流程图节点/边和业务单号","transitions":["前端保存草稿","后端校验并生成版本","发起实例解析审批人","动作事务更新任务和实例"],"output":"流程定义、实例、待办、抄送记录和操作日志"}]},
+  "error_handling":[{"condition":"流程 JSON 非法或图不满足串行约束","behavior":"返回 400 中文业务错误","recovery":"修正节点、审批人或连线后重新保存/发布"},{"condition":"任务已完成、非审批人或跨租户","behavior":"返回冲突/禁止错误","recovery":"刷新待办并按当前状态继续"},{"condition":"数据库事务失败","behavior":"事务回滚且不生成半成品任务","recovery":"保留日志并重试请求"}],
+  "quality_attributes":{"security":["租户条件","任务审批人校验","动作幂等"],"performance":["任务列表使用租户、审批人、状态索引","角色解析只取有效成员"],"compatibility":["保留现有工作流 API 路径","旧 steps 定义发布期兼容读取"],"operations":["Flyway 迁移失败阻止启动","动作写入审计表"]},
+  "verification_strategy":[{"requirement_ids":["R1"],"signal":"设计器保存和非法图发布结果","method":"浏览器操作和后端验证测试"},{"requirement_ids":["R2","R3"],"signal":"任务组、动作和实例状态","method":"后端单元测试、接口调用和浏览器待办验收"},{"requirement_ids":["R4","R5"],"signal":"版本、租户、并发和 API 响应","method":"数据库迁移检查、Maven 编译和 HTTP 验证"}],
+  "assumptions":[{"text":"现有系统接口可提供有效用户和角色 ID","basis":"已有 system users、roles/options 和组织树接口","falsifier":"接口不能返回租户内有效成员"},{"text":"加签采用串行阻塞语义","basis":"第一阶段范围确认","falsifier":"用户要求并行加签或动态会签规则"}],
+  "unknowns":[{"question":"后续条件分支的业务字段和表达式安全策略","impact":"影响第二阶段网关和条件节点设计","owner":"产品/业务负责人","blocking":false}],
+  "decisions":[{"id":"D1","decision":"采用 Vue Flow 作为可视化编辑器","reason":"提供真实拖拽连线且与 Vue 3 兼容","source":"用户确认"},{"id":"D2","decision":"第一阶段采用串行图和自研运行器","reason":"覆盖当前动作需求并控制实现范围","source":"用户确认"},{"id":"D3","decision":"保存接口继续使用 definitionJson 字段","reason":"减少现有接口破坏并支持内部契约升级","source":"现有代码勘察"}],
+  "risks":[{"risk":"新增 Vue Flow 依赖影响构建","impact":"前端无法构建","mitigation":"锁定版本并以 npm run build 作为门禁"},{"risk":"多人审批并发产生重复流转","impact":"实例状态或任务重复","mitigation":"任务组条件更新和事务幂等"},{"risk":"旧 steps 定义缺少节点/边信息","impact":"历史流程无法启动","mitigation":"运行期兼容读取旧定义，保存后统一新契约"}],
+  "approval":{"status":"approved","evidence":"用户确认采用 Vue Flow + 自研流程运行器，并确认第一阶段实现串行审批、多人审批、同意、拒绝、加签、抄送和审批人配置。","confirmed_at":"2026-08-05T11:18:34+08:00"}
+}

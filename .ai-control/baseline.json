@@ -1,0 +1,196 @@
+{
+    "objective":  "Build a runnable single-tenant separated admin platform foundation.",
+    "requirements":  [
+                         {
+                             "id":  "R1",
+                             "statement":  "Secure login",
+                             "acceptance":  [
+                                                "tokens",
+                                                "invalid and disabled fail",
+                                                "refresh"
+                                            ],
+                             "priority":  "must",
+                             "source":  "user-approved design",
+                             "counterexample":  [
+                                                    "frontend-only security"
+                                                ]
+                         },
+                         {
+                             "id":  "R2",
+                             "statement":  "Organization and accounts",
+                             "acceptance":  [
+                                                "tree users roles"
+                                            ],
+                             "priority":  "must",
+                             "source":  "user-approved design",
+                             "counterexample":  [
+                                                    "flat list"
+                                                ]
+                         },
+                         {
+                             "id":  "R3",
+                             "statement":  "Role permissions",
+                             "acceptance":  [
+                                                "menus buttons APIs and 403"
+                                            ],
+                             "priority":  "must",
+                             "source":  "user-approved design",
+                             "counterexample":  [
+                                                    "frontend only"
+                                                ]
+                         },
+                         {
+                             "id":  "R4",
+                             "statement":  "Dynamic menus",
+                             "acceptance":  [
+                                                "route fields and Vue routes"
+                                            ],
+                             "priority":  "must",
+                             "source":  "user-approved design",
+                             "counterexample":  [
+                                                    "hardcoded"
+                                                ]
+                         },
+                         {
+                             "id":  "R5",
+                             "statement":  "Dictionaries and configs",
+                             "acceptance":  [
+                                                "manage and query by code"
+                                            ],
+                             "priority":  "must",
+                             "source":  "user-approved design",
+                             "counterexample":  [
+                                                    "source config"
+                                                ]
+                         },
+                         {
+                             "id":  "R6",
+                             "statement":  "Three themes",
+                             "acceptance":  [
+                                                "switch and persist"
+                                            ],
+                             "priority":  "must",
+                             "source":  "user-approved design",
+                             "counterexample":  [
+                                                    "one page"
+                                                ]
+                         },
+                         {
+                             "id":  "R7",
+                             "statement":  "Audit",
+                             "acceptance":  [
+                                                "login and writes logged"
+                                            ],
+                             "priority":  "must",
+                             "source":  "user-approved design",
+                             "counterexample":  [
+                                                    "no trace"
+                                                ]
+                         },
+                         {
+                             "id":  "R8",
+                             "statement":  "Extension contract",
+                             "acceptance":  [
+                                                "shared integration rules"
+                                            ],
+                             "priority":  "must",
+                             "source":  "user-approved design",
+                             "counterexample":  [
+                                                    "core login changes"
+                                                ]
+                         }
+                     ],
+    "invariants":  [
+                       "tenant_id reserved",
+                       "BCrypt",
+                       "backend authorization",
+                       "shared response",
+                       "no cross Mapper"
+                   ],
+    "constraints":  [
+                        "Spring Boot 3.x",
+                        "JDK 17",
+                        "MyBatis-Plus",
+                        "MySQL 8",
+                        "Maven",
+                        "Vue 3",
+                        "TypeScript",
+                        "Vite",
+                        "Element Plus",
+                        "Pinia",
+                        "Vue Router"
+                    ],
+    "non_goals":  [
+                      "workflow",
+                      "AI calls",
+                      "microservices",
+                      "complex tenancy",
+                      "external identity"
+                  ],
+    "assumptions":  [
+                        {
+                            "text":  "username/password login",
+                            "basis":  "no external identity requested",
+                            "falsifier":  "IAM requirement"
+                        }
+                    ],
+    "unknowns":  [
+                     {
+                         "question":  "future AI provider and workflow DSL",
+                         "impact":  "later only",
+                         "owner":  "architect",
+                         "blocking":  false
+                     }
+                 ],
+    "decisions":  [
+                      {
+                          "id":  "D1",
+                          "decision":  "single-tenant modular monolith",
+                          "reason":  "complexity control",
+                          "source":  "user"
+                      }
+                  ],
+    "measurement_intents":  [
+                                {
+                                    "candidate_sensor":  "backend integration tests and HTTP checks",
+                                    "requirement_id":  "R1",
+                                    "observable":  "auth flow and 401/403 responses"
+                                },
+                                {
+                                    "candidate_sensor":  "database migration and API tests",
+                                    "requirement_id":  "R2",
+                                    "observable":  "org/user/role CRUD"
+                                },
+                                {
+                                    "candidate_sensor":  "permission integration flow",
+                                    "requirement_id":  "R3",
+                                    "observable":  "authorized menu and forbidden API"
+                                },
+                                {
+                                    "candidate_sensor":  "frontend route tests",
+                                    "requirement_id":  "R4",
+                                    "observable":  "dynamic route list"
+                                },
+                                {
+                                    "candidate_sensor":  "API tests",
+                                    "requirement_id":  "R5",
+                                    "observable":  "dictionary/config CRUD and lookup"
+                                },
+                                {
+                                    "candidate_sensor":  "frontend tests and browser flow",
+                                    "requirement_id":  "R6",
+                                    "observable":  "theme switch persistence"
+                                },
+                                {
+                                    "candidate_sensor":  "database assertions",
+                                    "requirement_id":  "R7",
+                                    "observable":  "login and operation audit rows"
+                                },
+                                {
+                                    "candidate_sensor":  "build and documentation check",
+                                    "requirement_id":  "R8",
+                                    "observable":  "module boundaries and docs"
+                                }
+                            ],
+    "baseline_status":  "ready"
+}

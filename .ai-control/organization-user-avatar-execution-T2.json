@@ -1,0 +1,14 @@
+{
+  "task_id":"T2",
+  "status":"implemented",
+  "changed_surfaces":[{"path_or_resource":"ccb-security/src/main/java/com/ccb/security/model/AuthUser.java","purpose":"carry organization name and avatar key"},{"path_or_resource":"ccb-security/src/main/java/com/ccb/security/model/AuthMe.java","purpose":"return organization and avatar URL"},{"path_or_resource":"ccb-security/src/main/java/com/ccb/security/repository/AuthRepository.java","purpose":"load joined organization and avatar data"},{"path_or_resource":"ccb-security/src/main/java/com/ccb/security/service/AuthService.java","purpose":"decorate auth profile with avatar URL"},{"path_or_resource":"ccb-system/src/main/java/com/ccb/system/org/","purpose":"organization tree DTO and service"},{"path_or_resource":"ccb-system/src/main/java/com/ccb/system/service/SystemService.java","purpose":"user org filtering and avatar upload/delete"},{"path_or_resource":"ccb-system/src/main/java/com/ccb/system/web/SystemController.java","purpose":"tree and multipart avatar endpoints"}],
+  "requirements_addressed":["R1","R2","R4"],
+  "commands":[{"command":"mvn -pl ccb-boot -am test -DskipTests","exit_code":0,"salient_output":"all modules BUILD SUCCESS"}],
+  "local_checks":[{"check":"cross-module Java compilation","result":"pass","evidence":"ccb-security, ccb-system, ccb-boot compiled","limitations":["runtime API and MinIO upload not yet sampled"]}],
+  "diff_summary":["organization tree returns nested nodes and user summaries","users support orgId filter, orgName, avatarUrl","multipart avatar upload validates image type and 2MB limit"],
+  "invariants_checked":[{"invariant":"tenant scoping","result":"pass","evidence":"org/user queries include tenant_id"},{"invariant":"existing AuthUser test constructor","result":"pass","evidence":"compatibility constructor retained"}],
+  "disturbances":[],
+  "assumptions_falsified":[],
+  "unresolved_items":["runtime migration and API smoke check pending","MinIO container is stopped"],
+  "recommended_next":"observe"
+}

@@ -1,0 +1,3144 @@
+{
+  "schema_version": 4,
+  "revision": 21,
+  "created_at": "2026-08-05T06:55:54+00:00",
+  "updated_at": "2026-08-05T07:56:24+00:00",
+  "mode": "standard",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认 Flowable 混合架构、核心企业级流程首期范围，并明确暂不实现服务任务和消息事件。；计划确认=??????????????",
+      "recorded_at": "2026-08-05T06:55:54+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "RequirementBaseline 已导入且设计/实施计划已批准，进入系统建模",
+      "recorded_at": "2026-08-05T06:57:29+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "系统模型 ready，六项 must 均有任务、传感器和执行器覆盖",
+      "recorded_at": "2026-08-05T06:58:55+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "控制计划 ready，T1 前置条件和写入边界均已满足",
+      "recorded_at": "2026-08-05T06:59:50+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 执行产物已记录，应用已成功启动并通过健康检查和数据库核验。",
+      "recorded_at": "2026-08-05T07:36:08+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 执行产物尚未记录；观察阶段发现账本阶段顺序需修正，返回 executing。",
+      "recorded_at": "2026-08-05T07:54:27+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 执行产物完整且测试证据可重复，转入独立观察。",
+      "recorded_at": "2026-08-05T07:55:01+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 观察产物已记录并通过；T3 仍有未执行工作，返回 executing。",
+      "recorded_at": "2026-08-05T07:56:23+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认 Flowable 混合架构、核心企业级流程首期范围，并明确暂不实现服务任务和消息事件。；计划确认=??????????????",
+        "recorded_at": "2026-08-05T06:55:54+00:00",
+        "data": {
+          "objective": "将线性审批流程升级为基于自定义中文设计器和 Flowable 运行引擎的核心企业级流程能力。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "流程支持草稿、版本、发布、停用和已发布实例版本固化。",
+              "acceptance": [
+                "发布前完成结构和配置校验",
+                "实例保存 definition_id、version_no 和 deployment_id",
+                "发布后编辑不改变历史实例"
+              ],
+              "priority": "must",
+              "source": "用户确认企业级流程范围",
+              "counterexample": [
+                "发布后修改审批人导致运行中实例审批人被悄然替换"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "自定义中文设计器支持首期 BPMN 节点、连线、属性配置、校验和流程图预览。",
+              "acceptance": [
+                "支持开始、人工审批、抄送、条件网关、并行网关、汇聚网关和结束",
+                "校验错误能定位到节点、连线或变量"
+              ],
+              "priority": "must",
+              "source": "用户确认采用自定义中文设计器",
+              "counterexample": [
+                "前端可以保存但 Flowable 无法部署的模型"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "审批人和审批策略支持用户、角色、组织负责人、发起人、表单字段、表达式、或签、会签和比例通过。",
+              "acceptance": [
+                "运行时在租户范围解析审批人",
+                "空审批人和去重策略有明确结果",
+                "任一、全部和比例规则可重复验证"
+              ],
+              "priority": "must",
+              "source": "用户确认核心企业级流程范围",
+              "counterexample": [
+                "角色无有效成员时流程静默跳过审批节点"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "流程支持条件分支、并行分支与汇聚、会签以及核心审批动作。",
+              "acceptance": [
+                "覆盖同意、拒绝、退回、转交、委托、加签、减签和抄送",
+                "条件不匹配且无默认分支时实例进入可观测异常"
+              ],
+              "priority": "must",
+              "source": "用户确认核心企业级流程范围",
+              "counterexample": [
+                "网关没有路径时实例直接完成或永久无状态"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "流程支持声明式变量、条件引用和基础表单字段绑定。",
+              "acceptance": [
+                "变量具有名称、类型、必填、默认值和可见范围",
+                "未声明变量或类型不匹配时发布失败"
+              ],
+              "priority": "must",
+              "source": "用户确认核心企业级流程范围",
+              "counterexample": [
+                "表达式引用不存在变量且发布成功"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "提供流程实例监控、节点时间线、动作审计和受权限保护的异常干预。",
+              "acceptance": [
+                "可按租户、流程、业务键、状态、发起人和时间分页查询",
+                "干预记录操作人、时间、原因和结果"
+              ],
+              "priority": "must",
+              "source": "用户确认核心企业级流程范围",
+              "counterexample": [
+                "管理员终止实例没有审计原因"
+              ]
+            }
+          ],
+          "invariants": [
+            "所有业务和监控查询带 tenant_id",
+            "已启动实例绑定不可变的流程版本和部署",
+            "definitionJson 字段继续兼容旧接口",
+            "前端不直接写入 Flowable 内部表",
+            "接口时间格式为 yyyy-MM-dd HH:mm:ss，页面日期按 yyyy-MM-dd 展示"
+          ],
+          "constraints": [
+            "Spring Boot 3.x",
+            "JDK 17",
+            "MySQL",
+            "MyBatis-Plus",
+            "Vue 3 + TypeScript + Element Plus",
+            "单租户",
+            "保持现有组织、用户、角色和权限体系兼容"
+          ],
+          "non_goals": [
+            "服务任务",
+            "HTTP/Webhook 和消息事件",
+            "补偿事件",
+            "复杂子流程编排",
+            "通用低代码表单设计器",
+            "跨租户流程共享"
+          ],
+          "assumptions": [
+            {
+              "text": "MySQL 实例允许增加 Flowable 标准表和流程扩展表",
+              "basis": "当前项目使用 Flyway 管理数据库迁移",
+              "falsifier": "目标环境禁止增加引擎表"
+            },
+            {
+              "text": "用户、角色、组织数据可以通过现有模块读取",
+              "basis": "项目已有组织、用户和角色体系",
+              "falsifier": "模块边界禁止流程模块读取相关数据"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "Flowable 与当前 Spring Boot 3.x 的具体版本组合",
+              "impact": "影响依赖、引擎初始化和迁移脚本",
+              "owner": "实施阶段工程验证",
+              "blocking": false
+            },
+            {
+              "question": "现有 wf_* 表中运行中实例数量和历史数据规模",
+              "impact": "影响旧数据迁移和双轨运行切换策略",
+              "owner": "实施前数据盘点",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "采用自定义中文流程设计器 + Flowable 运行引擎",
+              "reason": "兼顾中文业务体验和企业级执行能力",
+              "source": "用户确认"
+            },
+            {
+              "id": "D2",
+              "decision": "首期实现核心企业级流程能力",
+              "reason": "先闭环审批设计、运行、监控和审计，再扩展自动化节点",
+              "source": "用户选择方案 1"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "signal": "Flowable 部署、实例推进、任务状态、审计记录和前端流程图状态一致",
+              "method": "后端单元测试、集成测试、数据库迁移测试和真实浏览器链路"
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R4"
+              ],
+              "signal": "串行、任一、全部、比例会签、条件分支、并行汇聚和核心动作结果正确",
+              "method": "固定场景矩阵加跨租户权限测试"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R6"
+              ],
+              "signal": "历史实例版本不漂移，监控和审计可复核",
+              "method": "发布后修改回归测试和管理员干预审计测试"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已建立流程定义、BPMN 编译、Flowable 运行、前端设计器和监控的因果链、传感器与执行器；六条 must 均可观测且可控",
+        "recorded_at": "2026-08-05T06:57:40+00:00",
+        "data": {
+          "baseline_revision": "workflow-enterprise-core-baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ccb-workflow REST API",
+              "??????/???",
+              "Flowable ?????",
+              "???????????",
+              "??/??/???????"
+            ],
+            "environment": [
+              "MySQL/Flyway",
+              "Spring Boot 3.x/JDK 17",
+              "Flowable ??????",
+              "???????",
+              "???? Node ????"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "definition_schema_version",
+              "owner": "????",
+              "valid_values": [
+                "1",
+                "2"
+              ]
+            },
+            {
+              "name": "publication_state",
+              "owner": "????",
+              "valid_values": [
+                "DRAFT",
+                "PUBLISHED",
+                "DISABLED"
+              ]
+            },
+            {
+              "name": "deployment_id",
+              "owner": "Flowable ??",
+              "valid_values": [
+                "absent",
+                "present"
+              ]
+            },
+            {
+              "name": "instance_state",
+              "owner": "????",
+              "valid_values": [
+                "RUNNING",
+                "APPROVED",
+                "REJECTED",
+                "RETURNED",
+                "TERMINATED",
+                "ERROR"
+              ]
+            },
+            {
+              "name": "task_state",
+              "owner": "Flowable ??",
+              "valid_values": [
+                "PENDING",
+                "COMPLETED",
+                "CANCELLED",
+                "DELEGATED"
+              ]
+            },
+            {
+              "name": "build_and_migration_state",
+              "owner": "????",
+              "valid_values": [
+                "not-run",
+                "passing",
+                "failing"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "??????",
+              "transitions": [
+                "??/????",
+                "??????",
+                "BPMN ??",
+                "Flowable ??",
+                "????? deployment_id",
+                "??????"
+              ],
+              "outputs": [
+                "????????????"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "???????",
+              "transitions": [
+                "???????",
+                "???????",
+                "BPMN ????",
+                "?????"
+              ],
+              "outputs": [
+                "???????????????"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "??????????",
+              "transitions": [
+                "??????/??/??",
+                "?????",
+                "?? Flowable ??",
+                "?????"
+              ],
+              "outputs": [
+                "????????????"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "???????",
+              "transitions": [
+                "??????",
+                "??????",
+                "Flowable ????/???",
+                "?????????"
+              ],
+              "outputs": [
+                "?????????????"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "?????????",
+              "transitions": [
+                "??/????",
+                "?? Flowable ??",
+                "??????",
+                "??????"
+              ],
+              "outputs": [
+                "?????????????"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "??????????",
+              "transitions": [
+                "????",
+                "????/????",
+                "????/??",
+                "???????"
+              ],
+              "outputs": [
+                "??????????????"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "definitionJson contract",
+              "producers": [
+                "WorkflowController"
+              ],
+              "consumers": [
+                "WorkflowView",
+                "?????"
+              ],
+              "invariant": "??????schemaVersion=1 ???"
+            },
+            {
+              "name": "BPMN deployment",
+              "producers": [
+                "BpmnModelCompiler"
+              ],
+              "consumers": [
+                "Flowable RepositoryService"
+              ],
+              "invariant": "????????? deployment_id ?????"
+            },
+            {
+              "name": "runtime task API",
+              "producers": [
+                "FlowableWorkflowService"
+              ],
+              "consumers": [
+                "???",
+                "???",
+                "???"
+              ],
+              "invariant": "????????????????"
+            },
+            {
+              "name": "assignee resolver",
+              "producers": [
+                "WorkflowAssigneeResolver"
+              ],
+              "consumers": [
+                "Flowable ????"
+              ],
+              "invariant": "????????????"
+            },
+            {
+              "name": "audit timeline",
+              "producers": [
+                "WorkflowAuditService",
+                "Flowable ??"
+              ],
+              "consumers": [
+                "WorkflowMonitorService",
+                "????"
+              ],
+              "invariant": "??????????????????"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R1 ??/????",
+              "method": "Flyway history?Flowable deployment ????????????",
+              "blind_spots": [
+                "????????????"
+              ],
+              "independence": "??????????"
+            },
+            {
+              "id": "S2",
+              "target": "R2 ?????",
+              "method": "WorkflowModelValidatorTest?BPMN parse/deploy test??????? DOM",
+              "blind_spots": [
+                "??????????"
+              ],
+              "independence": "??????????"
+            },
+            {
+              "id": "S3",
+              "target": "R3 ??????",
+              "method": "???????????????????",
+              "blind_spots": [
+                "???????????"
+              ],
+              "independence": "Flowable ???? API ??"
+            },
+            {
+              "id": "S4",
+              "target": "R4 ?????",
+              "method": "??????????????????",
+              "blind_spots": [
+                "?????????"
+              ],
+              "independence": "HTTP ??????????"
+            },
+            {
+              "id": "S5",
+              "target": "R5 ??",
+              "method": "????/???????????????????",
+              "blind_spots": [
+                "?????????????"
+              ],
+              "independence": "?????????"
+            },
+            {
+              "id": "S6",
+              "target": "R6 ??/??",
+              "method": "?? API??? 403???????????",
+              "blind_spots": [
+                "?????????????"
+              ],
+              "independence": "HTTP????????????"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Flowable ????",
+              "action": "?????????? V18 ??",
+              "authority": "??????????????",
+              "impact_radius": "ccb-workflow/ccb-infrastructure/ccb-boot",
+              "rollback": "??????????????????"
+            },
+            {
+              "id": "A2",
+              "target": "????? BPMN",
+              "action": "???????????????",
+              "authority": "??????",
+              "impact_radius": "ccb-workflow ???",
+              "rollback": "? schemaVersion ???????"
+            },
+            {
+              "id": "A3",
+              "target": "????/API",
+              "action": "?? Flowable Runtime/Task/History ?????????",
+              "authority": "???????????",
+              "impact_radius": "workflow API ?????",
+              "rollback": "??????????????????"
+            },
+            {
+              "id": "A4",
+              "target": "????????",
+              "action": "?????????????????",
+              "authority": "??????",
+              "impact_radius": "ccb-web workflow views/components",
+              "rollback": "?????????????"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S6"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "? schemaVersion=1 ?????? wf_* ??",
+              "effect": "? BPMN ??????????????",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "???????????",
+              "effect": "??????????",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "??????",
+              "effect": "?????????",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "?????",
+              "effect": "??????",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Flowable ????????",
+              "effect": "?????????",
+              "detectable": true,
+              "controllable": "partial"
+            }
+          ],
+          "delays": [
+            {
+              "source": "Flowable ?????????",
+              "consequence": "??/??????",
+              "sampling_rule": "?????????????????????"
+            },
+            {
+              "source": "???????",
+              "consequence": "????? schema",
+              "sampling_rule": "?? Flyway ?????? API ??"
+            },
+            {
+              "source": "???????????",
+              "consequence": "????????????",
+              "sampling_rule": "????????????????"
+            },
+            {
+              "source": "???????",
+              "consequence": "????????????????",
+              "sampling_rule": "??/???????????????"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "?? MySQL ???? Flowable ???",
+              "evidence": "?????? Flowable????? Flyway",
+              "falsifier": "???????????????"
+            },
+            {
+              "text": "???????????????????????",
+              "evidence": "??????????????",
+              "falsifier": "???????????"
+            },
+            {
+              "text": "??????????????",
+              "evidence": "????????",
+              "falsifier": "??????????"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1/T2/T3 ??????????????????"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2/T4 ??????????????????"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "T3 ????????????????"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "T3 ??????/??/??????"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2/T3/T4 ?????????????"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T3/T4 ?????????????"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T5 任务边界、依赖、共享接口、采样点、回滚和升级条件已明确；R1-R6 全覆盖",
+        "recorded_at": "2026-08-05T06:59:28+00:00",
+        "data": {
+          "baseline_revision": "workflow-enterprise-core-baseline-1",
+          "model_revision": "workflow-enterprise-core-model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "?? Flowable ???????? V18 ????",
+              "requirement_ids": [
+                "R1",
+                "R6"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "??????????",
+                "???? WorkflowService?V17 ??? Vue Flow ??????"
+              ],
+              "write_scope": [
+                "pom.xml",
+                "ccb-workflow/pom.xml",
+                "ccb-boot/src/main/resources/application.yml",
+                "ccb-infrastructure/src/main/resources/db/migration/V18__flowable_workflow_core.sql",
+                "ccb-workflow/src/main/java/com/ccb/workflow/config/FlowableWorkflowConfiguration.java"
+              ],
+              "invariants": [
+                "tenant_id ?????",
+                "V17 ???",
+                "Flowable ??????"
+              ],
+              "interface_contracts": [
+                "Spring Boot/Flowable ????",
+                "Flyway/MySQL"
+              ],
+              "non_goals": [
+                "?????????",
+                "????????????"
+              ],
+              "action_bounds": [
+                "???????? V18",
+                "?? drop/delete ???"
+              ],
+              "acceptance_checks": [
+                "Maven ????",
+                "Flowable ??????????",
+                "???????????"
+              ],
+              "evidence_required": [
+                "Maven ??",
+                "Flyway history",
+                "??????"
+              ],
+              "rollback": "?????? V18 ??????????????????????",
+              "stop_conditions": [
+                "??? Spring Boot 3.x ???",
+                "????? SQL"
+              ],
+              "escalation_conditions": [
+                "???????",
+                "??????",
+                "???????????"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "?????????????? BPMN ???",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "??????????",
+                "???? WorkflowService?V17 ??? Vue Flow ??????"
+              ],
+              "write_scope": [
+                "ccb-workflow/src/main/java/com/ccb/workflow/model/",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelAdapter.java",
+                "ccb-workflow/src/test/java/com/ccb/workflow/"
+              ],
+              "invariants": [
+                "schemaVersion=1 ??",
+                "?? key ??",
+                "?????"
+              ],
+              "interface_contracts": [
+                "definitionJson",
+                "Flowable BPMN Model API",
+                "T1 Flowable ??"
+              ],
+              "non_goals": [
+                "???????????????"
+              ],
+              "action_bounds": [
+                "????? BPMN ??",
+                "?????????/????"
+              ],
+              "acceptance_checks": [
+                "schemaVersion=1 ??",
+                "????????????",
+                "BPMN ?? Flowable ??"
+              ],
+              "evidence_required": [
+                "????",
+                "BPMN parse/deploy"
+              ],
+              "rollback": "?????????????????",
+              "stop_conditions": [
+                "????????",
+                "?????????",
+                "?? key ???"
+              ],
+              "escalation_conditions": [
+                "???????",
+                "??????",
+                "???????????"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "?? Flowable ????????????? API",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "??????????",
+                "???? WorkflowService?V17 ??? Vue Flow ??????"
+              ],
+              "write_scope": [
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+                "WorkflowAssigneeResolver.java",
+                "WorkflowAuditService.java",
+                "WorkflowMonitorService.java",
+                "?? WorkflowService.java",
+                "WorkflowController.java",
+                "workflow tests"
+              ],
+              "invariants": [
+                "tenant_id ?????",
+                "??????",
+                "?????????",
+                "? schemaVersion=1 ??"
+              ],
+              "interface_contracts": [
+                "Flowable Runtime/Task/History Service",
+                "??/??/????",
+                "???? REST API",
+                "T2 ???"
+              ],
+              "non_goals": [
+                "???????????????"
+              ],
+              "action_bounds": [
+                "???? Flowable?????????",
+                "?????????????"
+              ],
+              "acceptance_checks": [
+                "?????????",
+                "??????",
+                "????",
+                "?????",
+                "?????"
+              ],
+              "evidence_required": [
+                "??????",
+                "????",
+                "??? 403",
+                "??????"
+              ],
+              "rollback": "? schemaVersion/deployment ?????????????? Flowable ???",
+              "stop_conditions": [
+                "???????",
+                "????????",
+                "??????"
+              ],
+              "escalation_conditions": [
+                "???????",
+                "??????",
+                "???????????"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "??????????????????????",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T2",
+                "T3"
+              ],
+              "input_facts": [
+                "??????????",
+                "???? WorkflowService?V17 ??? Vue Flow ??????"
+              ],
+              "write_scope": [
+                "ccb-web/src/api/workflow.ts",
+                "ccb-web/src/components/workflow/",
+                "ccb-web/src/views/WorkflowView.vue"
+              ],
+              "invariants": [
+                "?? UI",
+                "????????",
+                "?????????",
+                "???? yyyy-MM-dd"
+              ],
+              "interface_contracts": [
+                "T2 JSON schema",
+                "T3 workflow APIs",
+                "?? UI ??"
+              ],
+              "non_goals": [
+                "???????????",
+                "???????"
+              ],
+              "action_bounds": [
+                "??????????",
+                "?????????"
+              ],
+              "acceptance_checks": [
+                "?????????????",
+                "npm run build ??",
+                "????????"
+              ],
+              "evidence_required": [
+                "npm run build",
+                "?????/??/????",
+                "????????"
+              ],
+              "rollback": "???????????? definitionJson ??",
+              "stop_conditions": [
+                "????",
+                "??? schema ???",
+                "????"
+              ],
+              "escalation_conditions": [
+                "???????",
+                "??????",
+                "???????????"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "????????????????",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "input_facts": [
+                "??????????",
+                "???? WorkflowService?V17 ??? Vue Flow ??????"
+              ],
+              "write_scope": [
+                "docs/integration/workflow-module-contract.md",
+                "workflow tests",
+                "browser evidence"
+              ],
+              "invariants": [
+                "R1-R6 ???",
+                "P0/P1=0",
+                "?????"
+              ],
+              "interface_contracts": [
+                "??????",
+                "MySQL/Flyway",
+                "HTTP/browser"
+              ],
+              "non_goals": [
+                "??????",
+                "??????"
+              ],
+              "action_bounds": [
+                "????????????",
+                "?????????"
+              ],
+              "acceptance_checks": [
+                "Maven ? npm ????",
+                "?????",
+                "?? HTTP ????????",
+                "P0/P1 ? 0"
+              ],
+              "evidence_required": [
+                "?? Maven/npm ??",
+                "?? HTTP",
+                "????????",
+                "?????"
+              ],
+              "rollback": "????????????",
+              "stop_conditions": [
+                "???????",
+                "?????",
+                "????"
+              ],
+              "escalation_conditions": [
+                "???????",
+                "??????",
+                "???????????"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T1 ???? T2 ?????"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T2 ???? T3 ?????"
+            },
+            {
+              "from": "T2",
+              "to": "T4",
+              "reason": "T2 ???? T4 ?????"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "T3 ???? T4 ?????"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "T4 ???? T5 ?????"
+            },
+            {
+              "from": "T3",
+              "to": "T5",
+              "reason": "T3 ???? T5 ?????"
+            }
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "mvn -pl ccb-boot -am test -DskipTests=false",
+                "Flyway V18 applied and second startup no-op"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "WorkflowModelValidator tests",
+                "BPMN parse/deploy test"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "HTTP create/validate/publish/start/inbox/action/timeline",
+                "tenant and idempotency assertions"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "npm run build",
+                "browser designer and monitor chain"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "all must evidence and residual risk review"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 ??????",
+              "trigger": "T1 ??",
+              "observer": "? Agent",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R6"
+              ]
+            },
+            {
+              "label": "T2 ????",
+              "trigger": "T2 ??",
+              "observer": "? Agent",
+              "sensors": [
+                "S2",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "T3 ????",
+              "trigger": "T3 ??",
+              "observer": "? Agent",
+              "sensors": [
+                "S1",
+                "S3",
+                "S4",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "T4 ????",
+              "trigger": "T4 ??",
+              "observer": "? Agent",
+              "sensors": [
+                "S2",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R6"
+              ]
+            },
+            {
+              "label": "??????",
+              "trigger": "T5 ??",
+              "observer": "? Agent",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S6"
+              ]
+            }
+          ],
+          "plan_status": "ready",
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ]
+          ]
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 实际构建、应用启动、健康检查和 MySQL 表结构核验已完成；首次失败已记录并由追加迁移修复。",
+        "recorded_at": "2026-08-05T07:35:59+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V19__flowable_idm_schema.sql",
+              "purpose": "Add the official Flowable 7.0.1 IDM schema required by the starter configurator."
+            },
+            {
+              "path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V20__flowable_event_registry_schema.sql",
+              "purpose": "Add the official Flowable 7.0.1 event registry metadata schema required by the process starter."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "mvn -s .mvn\\settings.xml -pl ccb-boot -am install -DskipTests -Dspring-boot.repackage.skip=true",
+              "exit_code": 0,
+              "salient_output": "Reactor BUILD SUCCESS; ccb-infrastructure copied 20 migration resources; ccb-workflow and ccb-boot compiled."
+            },
+            {
+              "command": "mvn -s ..\\.mvn\\settings.xml spring-boot:run -Dspring-boot.run.profiles=local",
+              "exit_code": 1,
+              "salient_output": "Initial startup stopped because ACT_ID_PROPERTY was missing; this exposed the missing IDM schema."
+            },
+            {
+              "command": "mvn -s ..\\.mvn\\settings.xml spring-boot:run -Dspring-boot.run.profiles=local",
+              "exit_code": 0,
+              "salient_output": "Flyway validated 20 migrations, applied V20, created EventRegistry/IDM/Process engines, and Tomcat started on port 8080."
+            },
+            {
+              "command": "Invoke-WebRequest http://127.0.0.1:8080/actuator/health",
+              "exit_code": 0,
+              "salient_output": "HTTP 200 with status UP."
+            },
+            {
+              "command": "docker exec ccb-platform-mysql mysql -uccb -pccb_dev_password ccb_platform -Nse ...",
+              "exit_code": 0,
+              "salient_output": "Flyway latest version 20; ACT_ID table count 9; FLW table count 8."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Maven dependency and resource build",
+              "result": "pass",
+              "evidence": "Exit code 0 and BUILD SUCCESS.",
+              "limitations": [
+                "Build used -DskipTests; existing workflow unit tests were previously verified in the T1 baseline."
+              ]
+            },
+            {
+              "check": "Spring Boot startup with real MySQL",
+              "result": "pass",
+              "evidence": "Application log reports V20 applied and ProcessEngine default created.",
+              "limitations": [
+                "No workflow deployment or runtime scenario was executed in T1."
+              ]
+            },
+            {
+              "check": "Health endpoint",
+              "result": "pass",
+              "evidence": "http://127.0.0.1:8080/actuator/health returned HTTP 200 and status UP.",
+              "limitations": []
+            },
+            {
+              "check": "Database migration and table inventory",
+              "result": "pass",
+              "evidence": "Flyway version 20; nine ACT_ID_* tables; eight FLW_* tables.",
+              "limitations": [
+                "Docker query was read-only and did not validate application workflow behavior."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added V19 with the official Flowable IDM schema.",
+            "Added V20 with the official Flowable event registry schema.",
+            "Kept V18 and all prior migrations unchanged."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Prior Flyway migrations remain immutable",
+              "result": "pass",
+              "evidence": "V19 and V20 were added; application validated all 20 migrations."
+            },
+            {
+              "invariant": "Flowable engine schemas are available before engine startup",
+              "result": "pass",
+              "evidence": "ACT_ID_* and FLW_* table counts were confirmed in ccb_platform."
+            },
+            {
+              "invariant": "Application remains tenant-ready and process engine startup is available",
+              "result": "pass",
+              "evidence": "Local profile connected to ccb_platform and started ProcessEngine default."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Flowable 7.0.1 process starter auto-configured IDM and EventRegistry configurators not represented in V18.",
+              "impact": "First startup failed on ACT_ID_PROPERTY, then on FLW_CHANNEL_DEFINITION.",
+              "response": "Added append-only official-schema migrations V19 and V20 and re-ran startup."
+            }
+          ],
+          "assumptions_falsified": [
+            "V18 alone was sufficient for the Flowable process starter schema."
+          ],
+          "unresolved_items": [
+            "T2 must validate the business model compiler and deployment path; T1 only validates engine infrastructure startup."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 模型、校验器、BPMN 编译器和 8 个测试的实际结果已记录。",
+        "recorded_at": "2026-08-05T07:54:59+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "ccb-workflow/src/main/java/com/ccb/workflow/model/",
+              "purpose": "Add the versioned workflow business model for nodes, edges, variables, form bindings, positions and action policies."
+            },
+            {
+              "path_or_resource": "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelAdapter.java",
+              "purpose": "Adapt schemaVersion 1, schemaVersion 2 and legacy steps JSON into the common model."
+            },
+            {
+              "path_or_resource": "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java",
+              "purpose": "Validate graph topology, gateway defaults, assignee sources, approval modes, variables, expressions, bindings and action policies with structured errors."
+            },
+            {
+              "path_or_resource": "ccb-workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java",
+              "purpose": "Compile the business model to Flowable BpmnModel and BPMN 2.0 XML with stable node mappings."
+            },
+            {
+              "path_or_resource": "ccb-workflow/src/test/java/com/ccb/workflow/service/",
+              "purpose": "Add enterprise model and BPMN compiler tests while preserving the existing validator tests."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -s .mvn\\settings.xml -pl ccb-workflow -am test -DskipTests=false",
+              "exit_code": 1,
+              "salient_output": "Initial new test graph exposed an invalid default-path topology; no production compiler failure was observed."
+            },
+            {
+              "command": "mvn -s .mvn\\settings.xml -pl ccb-workflow -am test -DskipTests=false",
+              "exit_code": 0,
+              "salient_output": "BUILD SUCCESS; WorkflowDefinitionValidatorTest 4/4, WorkflowModelValidatorTest 3/3, BpmnModelCompilerTest 1/1."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Enterprise model validation",
+              "result": "pass",
+              "evidence": "Valid graph with condition gateway, default branch, parallel split/join, role approval, org-owner approval, percent approval, multi-instance collection and form binding accepted.",
+              "limitations": [
+                "Runtime assignee resolution is T3."
+              ]
+            },
+            {
+              "check": "BPMN compilation and parse",
+              "result": "pass",
+              "evidence": "Compiled XML contains exclusiveGateway, parallelGateway and multiInstanceLoopCharacteristics; Flowable BpmnXMLConverter parsed it back successfully.",
+              "limitations": [
+                "Repository deployment is intentionally deferred to T3."
+              ]
+            },
+            {
+              "check": "Compatibility",
+              "result": "pass",
+              "evidence": "Legacy steps and schemaVersion=1 definitions are adapted and existing four validator tests remain green.",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "Added schemaVersion=2 business model and adapter.",
+            "Added structured graph and configuration validation.",
+            "Added Flowable BPMN compiler with stable node mapping.",
+            "Preserved schemaVersion=1 and legacy steps compatibility.",
+            "Excluded serviceTask and messageEvent generation by design."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Existing definitionJson compatibility remains available",
+              "result": "pass",
+              "evidence": "Legacy adapter and existing validator tests pass."
+            },
+            {
+              "invariant": "Unsupported service/message nodes are not introduced",
+              "result": "pass",
+              "evidence": "Compiler test asserts XML has no serviceTask or messageEvent."
+            },
+            {
+              "invariant": "BPMN node ids remain traceable to designer ids",
+              "result": "pass",
+              "evidence": "Compiler returns a mapping for every source node and parsed XML preserves mapped ids."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Initial compiler test graph reused one approval node for mutually exclusive and parallel paths.",
+              "impact": "Test failed at model validation.",
+              "response": "Corrected the test graph to use a separate default path and reran the full module test suite."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Flowable repository deployment, runtime assignee resolution and approval actions are T3.",
+            "Frontend designer integration is T4."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "独立复核健康接口、启动日志、Flyway 历史和 Docker MySQL 表结构：T1 通过，未发现当前偏差。",
+        "recorded_at": "2026-08-05T07:37:54+00:00",
+        "data": {
+          "sample_label": "T1 infrastructure startup observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "workflow-enterprise-core-baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 startup and migration log",
+              "result": "pass",
+              "raw_evidence": "Health returned HTTP 200 status UP; application log reports Flyway v20 and ProcessEngine default created; prior migrations were validated.",
+              "limitation": [
+                "No published workflow definition or historical instance version was exercised in T1."
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S6 runtime startup and database inventory",
+              "result": "pass",
+              "raw_evidence": "EventRegistryEngine, IdmEngine and ProcessEngine all created; Docker MySQL reports Flyway versions 20, 19 and 18, nine ACT_ID_* tables, eight FLW_* tables and three core process tables.",
+              "limitation": [
+                "No runtime task, audit timeline or administrator intervention scenario was exercised in T1."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Initial application startup exposed missing Flowable IDM and event registry schema objects.",
+              "impact": "The first startup attempt failed before Tomcat was available.",
+              "evidence": "The second startup after append-only V19/V20 migrations completed successfully.",
+              "classification": "disturbance-resolved"
+            }
+          ],
+          "coverage_gaps": [
+            "T1 does not cover business model validation, BPMN compilation, deployment, task assignment or runtime actions; those are T2 and later tasks.",
+            "The Docker sensor requires elevated read-only access in this environment."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "独立重跑 Maven、读取 Surefire 报告并检查 BPMN 输出约束，T2 无当前偏差。",
+        "recorded_at": "2026-08-05T07:56:21+00:00",
+        "data": {
+          "sample_label": "T2 independent compiler observation",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "workflow-enterprise-core-baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S2 Maven and Surefire test reports",
+              "result": "pass",
+              "raw_evidence": "WorkflowDefinitionValidatorTest 4/4 and WorkflowModelValidatorTest 3/3 passed; legacy steps and schemaVersion=1 compatibility remained green.",
+              "limitation": [
+                "Publication and deployment are T3."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 BpmnModelCompilerTest and Flowable XML parser",
+              "result": "pass",
+              "raw_evidence": "BpmnModelCompilerTest 1/1 passed; generated XML was parsed by Flowable BpmnXMLConverter and returned the expected process and mapped node ids.",
+              "limitation": [
+                "Designer browser interaction is T4."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S2 model validator test",
+              "result": "pass",
+              "raw_evidence": "Test accepted user, role, organization owner, starter and multi-instance approval configurations; invalid assignee paths are covered by validator rules.",
+              "limitation": [
+                "Tenant-scoped runtime resolver is T3."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S2 graph topology and BPMN output test",
+              "result": "pass",
+              "raw_evidence": "Condition gateway, explicit default path, parallel split/join and multi-instance loop all compile; output contains no serviceTask or messageEvent.",
+              "limitation": [
+                "Runtime gateway execution is T3."
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2 variable, expression and form binding validator test",
+              "result": "pass",
+              "raw_evidence": "Declared variables and form binding are accepted; unknown condition variable and missing default branch produce structured validation errors.",
+              "limitation": [
+                "Runtime form payload validation is T3."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "The first sampling run used an invalid test-only graph and failed before compilation.",
+              "impact": "No production behavior was changed; test evidence was temporarily unavailable.",
+              "evidence": "The corrected graph passed the full repeated suite and Surefire report inspection.",
+              "classification": "disturbance-resolved"
+            }
+          ],
+          "coverage_gaps": [
+            "No Flowable repository deployment or runtime task action was attempted in T2.",
+            "No browser designer interaction was attempted in T2."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "将线性审批流程升级为基于自定义中文设计器和 Flowable 运行引擎的核心企业级流程能力。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "流程支持草稿、版本、发布、停用和已发布实例版本固化。",
+      "acceptance": [
+        "发布前完成结构和配置校验",
+        "实例保存 definition_id、version_no 和 deployment_id",
+        "发布后编辑不改变历史实例"
+      ],
+      "priority": "must",
+      "source": "用户确认企业级流程范围",
+      "counterexample": [
+        "发布后修改审批人导致运行中实例审批人被悄然替换"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "自定义中文设计器支持首期 BPMN 节点、连线、属性配置、校验和流程图预览。",
+      "acceptance": [
+        "支持开始、人工审批、抄送、条件网关、并行网关、汇聚网关和结束",
+        "校验错误能定位到节点、连线或变量"
+      ],
+      "priority": "must",
+      "source": "用户确认采用自定义中文设计器",
+      "counterexample": [
+        "前端可以保存但 Flowable 无法部署的模型"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "审批人和审批策略支持用户、角色、组织负责人、发起人、表单字段、表达式、或签、会签和比例通过。",
+      "acceptance": [
+        "运行时在租户范围解析审批人",
+        "空审批人和去重策略有明确结果",
+        "任一、全部和比例规则可重复验证"
+      ],
+      "priority": "must",
+      "source": "用户确认核心企业级流程范围",
+      "counterexample": [
+        "角色无有效成员时流程静默跳过审批节点"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "流程支持条件分支、并行分支与汇聚、会签以及核心审批动作。",
+      "acceptance": [
+        "覆盖同意、拒绝、退回、转交、委托、加签、减签和抄送",
+        "条件不匹配且无默认分支时实例进入可观测异常"
+      ],
+      "priority": "must",
+      "source": "用户确认核心企业级流程范围",
+      "counterexample": [
+        "网关没有路径时实例直接完成或永久无状态"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "流程支持声明式变量、条件引用和基础表单字段绑定。",
+      "acceptance": [
+        "变量具有名称、类型、必填、默认值和可见范围",
+        "未声明变量或类型不匹配时发布失败"
+      ],
+      "priority": "must",
+      "source": "用户确认核心企业级流程范围",
+      "counterexample": [
+        "表达式引用不存在变量且发布成功"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "提供流程实例监控、节点时间线、动作审计和受权限保护的异常干预。",
+      "acceptance": [
+        "可按租户、流程、业务键、状态、发起人和时间分页查询",
+        "干预记录操作人、时间、原因和结果"
+      ],
+      "priority": "must",
+      "source": "用户确认核心企业级流程范围",
+      "counterexample": [
+        "管理员终止实例没有审计原因"
+      ]
+    }
+  ],
+  "invariants": [
+    "所有业务和监控查询带 tenant_id",
+    "已启动实例绑定不可变的流程版本和部署",
+    "definitionJson 字段继续兼容旧接口",
+    "前端不直接写入 Flowable 内部表",
+    "接口时间格式为 yyyy-MM-dd HH:mm:ss，页面日期按 yyyy-MM-dd 展示"
+  ],
+  "constraints": [
+    "Spring Boot 3.x",
+    "JDK 17",
+    "MySQL",
+    "MyBatis-Plus",
+    "Vue 3 + TypeScript + Element Plus",
+    "单租户",
+    "保持现有组织、用户、角色和权限体系兼容"
+  ],
+  "non_goals": [
+    "服务任务",
+    "HTTP/Webhook 和消息事件",
+    "补偿事件",
+    "复杂子流程编排",
+    "通用低代码表单设计器",
+    "跨租户流程共享"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\workflow-enterprise-core-handoff.json",
+    "imported_at": "2026-08-05T06:55:54+00:00",
+    "topic": "workflow-enterprise-core",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "workflow-enterprise-core",
+      "handoff_status": "approved",
+      "created_at": "2026-08-05",
+      "design": {
+        "schema_version": 1,
+        "topic": "workflow-enterprise-core",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-05-workflow-enterprise-core-design.md",
+        "objective": "将线性审批流程升级为基于自定义中文设计器和 Flowable 运行引擎的核心企业级流程能力。",
+        "users": [
+          "流程管理员",
+          "业务发起人",
+          "审批人",
+          "组织管理员",
+          "运营审计人员"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "流程支持草稿、版本、发布、停用和已发布实例版本固化。",
+            "acceptance": [
+              "发布前完成结构和配置校验",
+              "实例保存 definition_id、version_no 和 deployment_id",
+              "发布后编辑不改变历史实例"
+            ],
+            "priority": "must",
+            "source": "用户确认企业级流程范围",
+            "counterexample": [
+              "发布后修改审批人导致运行中实例审批人被悄然替换"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "自定义中文设计器支持首期 BPMN 节点、连线、属性配置、校验和流程图预览。",
+            "acceptance": [
+              "支持开始、人工审批、抄送、条件网关、并行网关、汇聚网关和结束",
+              "校验错误能定位到节点、连线或变量"
+            ],
+            "priority": "must",
+            "source": "用户确认采用自定义中文设计器",
+            "counterexample": [
+              "前端可以保存但 Flowable 无法部署的模型"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "审批人和审批策略支持用户、角色、组织负责人、发起人、表单字段、表达式、或签、会签和比例通过。",
+            "acceptance": [
+              "运行时在租户范围解析审批人",
+              "空审批人和去重策略有明确结果",
+              "任一、全部和比例规则可重复验证"
+            ],
+            "priority": "must",
+            "source": "用户确认核心企业级流程范围",
+            "counterexample": [
+              "角色无有效成员时流程静默跳过审批节点"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "流程支持条件分支、并行分支与汇聚、会签以及核心审批动作。",
+            "acceptance": [
+              "覆盖同意、拒绝、退回、转交、委托、加签、减签和抄送",
+              "条件不匹配且无默认分支时实例进入可观测异常"
+            ],
+            "priority": "must",
+            "source": "用户确认核心企业级流程范围",
+            "counterexample": [
+              "网关没有路径时实例直接完成或永久无状态"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "流程支持声明式变量、条件引用和基础表单字段绑定。",
+            "acceptance": [
+              "变量具有名称、类型、必填、默认值和可见范围",
+              "未声明变量或类型不匹配时发布失败"
+            ],
+            "priority": "must",
+            "source": "用户确认核心企业级流程范围",
+            "counterexample": [
+              "表达式引用不存在变量且发布成功"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "提供流程实例监控、节点时间线、动作审计和受权限保护的异常干预。",
+            "acceptance": [
+              "可按租户、流程、业务键、状态、发起人和时间分页查询",
+              "干预记录操作人、时间、原因和结果"
+            ],
+            "priority": "must",
+            "source": "用户确认核心企业级流程范围",
+            "counterexample": [
+              "管理员终止实例没有审计原因"
+            ]
+          }
+        ],
+        "invariants": [
+          "所有业务和监控查询带 tenant_id",
+          "已启动实例绑定不可变的流程版本和部署",
+          "definitionJson 字段继续兼容旧接口",
+          "前端不直接写入 Flowable 内部表",
+          "接口时间格式为 yyyy-MM-dd HH:mm:ss，页面日期按 yyyy-MM-dd 展示"
+        ],
+        "constraints": [
+          "Spring Boot 3.x",
+          "JDK 17",
+          "MySQL",
+          "MyBatis-Plus",
+          "Vue 3 + TypeScript + Element Plus",
+          "单租户",
+          "保持现有组织、用户、角色和权限体系兼容"
+        ],
+        "non_goals": [
+          "服务任务",
+          "HTTP/Webhook 和消息事件",
+          "补偿事件",
+          "复杂子流程编排",
+          "通用低代码表单设计器",
+          "跨租户流程共享"
+        ],
+        "selected_approach": {
+          "name": "自定义中文流程设计器 + Flowable 运行引擎",
+          "reason": "保持业务人员易用的中文配置体验，同时复用成熟引擎处理 BPMN 网关、会签、历史和任务生命周期。",
+          "alternatives": [
+            {
+              "name": "继续自研状态机",
+              "rejected_because": "企业级网关、会签、变量、历史、异常恢复和并发语义需要长期自行维护。"
+            },
+            {
+              "name": "直接暴露 Flowable BPMN 编辑",
+              "rejected_because": "设计体验偏技术化，无法满足中文业务配置和现有平台组件风格。"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "流程业务模型",
+              "中文设计器",
+              "BPMN 编译适配",
+              "Flowable 运行封装",
+              "审批人解析",
+              "流程监控和审计"
+            ],
+            "outside": [
+              "服务任务和消息事件",
+              "通用低代码表单设计器",
+              "跨租户流程共享"
+            ]
+          },
+          "components": [
+            {
+              "name": "WorkflowDesigner",
+              "responsibility": "维护中文流程图、节点属性、连线和编辑状态",
+              "depends_on": [
+                "流程模型接口",
+                "通用 UI 组件"
+              ]
+            },
+            {
+              "name": "WorkflowModelValidator",
+              "responsibility": "校验图结构、节点配置、网关条件和变量引用",
+              "depends_on": [
+                "业务流程模型"
+              ]
+            },
+            {
+              "name": "BpmnModelCompiler",
+              "responsibility": "将业务模型转换为 BPMN 2.0 并生成节点映射",
+              "depends_on": [
+                "WorkflowModelValidator",
+                "Flowable BPMN API"
+              ]
+            },
+            {
+              "name": "FlowableRuntimeService",
+              "responsibility": "封装实例、任务、网关、多实例、历史和管理员操作",
+              "depends_on": [
+                "Flowable 引擎"
+              ]
+            },
+            {
+              "name": "WorkflowAssigneeResolver",
+              "responsibility": "在租户范围解析动态审批人",
+              "depends_on": [
+                "用户模块",
+                "角色模块",
+                "组织模块"
+              ]
+            },
+            {
+              "name": "WorkflowAuditService",
+              "responsibility": "记录审批动作、状态变化、发布和异常干预",
+              "depends_on": [
+                "流程业务表",
+                "认证上下文"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "流程定义接口",
+              "producer": "ccb-workflow 后端",
+              "consumers": [
+                "流程设计器",
+                "流程管理页"
+              ],
+              "contract": "保留 definitionJson，并扩展校验、草稿、版本、发布和停用接口"
+            },
+            {
+              "name": "流程执行接口",
+              "producer": "ccb-workflow 后端",
+              "consumers": [
+                "发起页面",
+                "待办页面",
+                "监控页面"
+              ],
+              "contract": "统一实例、待办、动作、时间线和受权限保护的干预操作"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "中文业务流程模型",
+              "transitions": [
+                "租户和权限校验",
+                "模型校验",
+                "BPMN 编译",
+                "Flowable 部署",
+                "实例启动或任务推进",
+                "业务状态和审计同步"
+              ],
+              "output": "可执行的版本化流程和可查询的审批轨迹"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "发布校验失败",
+            "behavior": "返回节点级结构化中文错误，不创建部署",
+            "recovery": "修改草稿后重新校验"
+          },
+          {
+            "condition": "审批人解析为空",
+            "behavior": "实例进入 ERROR 或待配置状态，不静默跳过",
+            "recovery": "修复组织/角色配置后由授权管理员重试"
+          },
+          {
+            "condition": "引擎部署或推进失败",
+            "behavior": "回滚业务状态并记录发布或运行审计",
+            "recovery": "使用幂等键重试或进入管理员干预流程"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "租户隔离",
+            "细粒度流程权限",
+            "受限表达式",
+            "管理员干预审计"
+          ],
+          "performance": [
+            "待办和监控查询分页",
+            "租户与状态组合索引",
+            "编译和引擎推进耗时指标"
+          ],
+          "compatibility": [
+            "保持 definitionJson 字段",
+            "旧线性流程按版本选择兼容执行路径",
+            "不替换现有组织用户角色模块"
+          ],
+          "operations": [
+            "Flowable 表由迁移管理",
+            "发布、实例异常和任务推进可观测",
+            "支持一致性检查和重试"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "signal": "Flowable 部署、实例推进、任务状态、审计记录和前端流程图状态一致",
+            "method": "后端单元测试、集成测试、数据库迁移测试和真实浏览器链路"
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R4"
+            ],
+            "signal": "串行、任一、全部、比例会签、条件分支、并行汇聚和核心动作结果正确",
+            "method": "固定场景矩阵加跨租户权限测试"
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R6"
+            ],
+            "signal": "历史实例版本不漂移，监控和审计可复核",
+            "method": "发布后修改回归测试和管理员干预审计测试"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "MySQL 实例允许增加 Flowable 标准表和流程扩展表",
+            "basis": "当前项目使用 Flyway 管理数据库迁移",
+            "falsifier": "目标环境禁止增加引擎表"
+          },
+          {
+            "text": "用户、角色、组织数据可以通过现有模块读取",
+            "basis": "项目已有组织、用户和角色体系",
+            "falsifier": "模块边界禁止流程模块读取相关数据"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "Flowable 与当前 Spring Boot 3.x 的具体版本组合",
+            "impact": "影响依赖、引擎初始化和迁移脚本",
+            "owner": "实施阶段工程验证",
+            "blocking": false
+          },
+          {
+            "question": "现有 wf_* 表中运行中实例数量和历史数据规模",
+            "impact": "影响旧数据迁移和双轨运行切换策略",
+            "owner": "实施前数据盘点",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "采用自定义中文流程设计器 + Flowable 运行引擎",
+            "reason": "兼顾中文业务体验和企业级执行能力",
+            "source": "用户确认"
+          },
+          {
+            "id": "D2",
+            "decision": "首期实现核心企业级流程能力",
+            "reason": "先闭环审批设计、运行、监控和审计，再扩展自动化节点",
+            "source": "用户选择方案 1"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "业务模型到 BPMN 的编译语义不一致",
+            "impact": "流程图显示与实际执行结果不一致",
+            "mitigation": "编译前校验、节点映射、部署前运行测试和版本快照"
+          },
+          {
+            "risk": "旧流程直接切换造成历史任务异常",
+            "impact": "既有审批实例无法继续处理",
+            "mitigation": "按版本选择旧兼容路径，新流程走 Flowable，并先做数据盘点"
+          },
+          {
+            "risk": "引擎数据与业务数据事务不一致",
+            "impact": "监控状态与待办状态不一致",
+            "mitigation": "统一事务编排、幂等动作键、补偿重试和一致性检查"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认 Flowable 混合架构、核心企业级流程首期范围，并明确暂不实现服务任务和消息事件。",
+          "confirmed_at": "2026-08-05"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-05-workflow-enterprise-core-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "?????",
+          "JDK 17/Spring Boot 3.x",
+          "?? definitionJson ??",
+          "??????????????"
+        ],
+        "file_map": [],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "?? Flowable ???????? V18 ????",
+            "requirement_ids": [
+              "R1",
+              "R6"
+            ],
+            "prerequisites": [],
+            "files": {
+              "create": [
+                "ccb-infrastructure/src/main/resources/db/migration/V18__flowable_workflow_core.sql",
+                "ccb-workflow/src/main/java/com/ccb/workflow/config/FlowableWorkflowConfiguration.java"
+              ],
+              "modify": [
+                "pom.xml",
+                "ccb-workflow/pom.xml",
+                "ccb-boot/src/main/resources/application.yml"
+              ],
+              "test": [
+                "ccb-workflow/src/test/java/com/ccb/workflow"
+              ]
+            },
+            "acceptance_checks": [
+              "Maven ????",
+              "Flowable ??????????",
+              "???????????"
+            ],
+            "rollback": "?????? V18 ??????????????????????",
+            "stop_conditions": [
+              "??? Spring Boot 3.x ???",
+              "????? SQL"
+            ],
+            "input_facts": [
+              "??????????",
+              "???? WorkflowService?V17 ??? Vue Flow ??????"
+            ],
+            "interfaces": {
+              "consumes": [
+                "Spring Boot 3.x",
+                "MySQL/Flyway"
+              ],
+              "produces": [
+                "?????????????"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "????????????????",
+                "command": null,
+                "expected": "????????????????????",
+                "evidence": "??????????????????????"
+              }
+            ],
+            "risks": [
+              "????????",
+              "?????????",
+              "?????????"
+            ],
+            "escalation_conditions": [
+              "???????",
+              "??????",
+              "???????????"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "?????????????? BPMN ???",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "files": {
+              "create": [
+                "ccb-workflow/src/main/java/com/ccb/workflow/model/",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelAdapter.java"
+              ],
+              "modify": [
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java"
+              ],
+              "test": [
+                "ccb-workflow/src/test/java/com/ccb/workflow"
+              ]
+            },
+            "acceptance_checks": [
+              "schemaVersion=1 ??",
+              "????????????",
+              "BPMN ?? Flowable ??"
+            ],
+            "rollback": "?????????????????",
+            "stop_conditions": [
+              "????????",
+              "?????????",
+              "?? key ???"
+            ],
+            "input_facts": [
+              "??????????",
+              "???? WorkflowService?V17 ??? Vue Flow ??????"
+            ],
+            "interfaces": {
+              "consumes": [
+                "??????"
+              ],
+              "produces": [
+                "?????????????"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "????????????????",
+                "command": null,
+                "expected": "????????????????????",
+                "evidence": "??????????????????????"
+              }
+            ],
+            "risks": [
+              "????????",
+              "?????????",
+              "?????????"
+            ],
+            "escalation_conditions": [
+              "???????",
+              "??????",
+              "???????????"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "?? Flowable ????????????? API",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "files": {
+              "create": [
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowAssigneeResolver.java",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java",
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java"
+              ],
+              "modify": [
+                "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+                "ccb-workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java"
+              ],
+              "test": [
+                "ccb-workflow/src/test/java/com/ccb/workflow"
+              ]
+            },
+            "acceptance_checks": [
+              "?????????",
+              "??????",
+              "????",
+              "?????",
+              "?????"
+            ],
+            "rollback": "? schemaVersion/deployment ?????????????? Flowable ???",
+            "stop_conditions": [
+              "???????",
+              "????????",
+              "??????"
+            ],
+            "input_facts": [
+              "??????????",
+              "???? WorkflowService?V17 ??? Vue Flow ??????"
+            ],
+            "interfaces": {
+              "consumes": [
+                "??????"
+              ],
+              "produces": [
+                "?????????????"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "????????????????",
+                "command": null,
+                "expected": "????????????????????",
+                "evidence": "??????????????????????"
+              }
+            ],
+            "risks": [
+              "????????",
+              "?????????",
+              "?????????"
+            ],
+            "escalation_conditions": [
+              "???????",
+              "??????",
+              "???????????"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "??????????????????????",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T2",
+              "T3"
+            ],
+            "files": {
+              "create": [
+                "ccb-web/src/components/workflow/WorkflowValidationPanel.vue",
+                "ccb-web/src/components/workflow/WorkflowTimeline.vue"
+              ],
+              "modify": [
+                "ccb-web/src/api/workflow.ts",
+                "ccb-web/src/components/workflow/WorkflowDesigner.vue",
+                "ccb-web/src/components/workflow/WorkflowNode.vue",
+                "ccb-web/src/components/workflow/WorkflowNodeInspector.vue",
+                "ccb-web/src/views/WorkflowView.vue"
+              ],
+              "test": [
+                "ccb-web"
+              ]
+            },
+            "acceptance_checks": [
+              "?????????????",
+              "npm run build ??",
+              "????????"
+            ],
+            "rollback": "???????????? definitionJson ??",
+            "stop_conditions": [
+              "????",
+              "??? schema ???",
+              "????"
+            ],
+            "input_facts": [
+              "??????????",
+              "???? WorkflowService?V17 ??? Vue Flow ??????"
+            ],
+            "interfaces": {
+              "consumes": [
+                "??????"
+              ],
+              "produces": [
+                "?????????????"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "????????????????",
+                "command": null,
+                "expected": "????????????????????",
+                "evidence": "??????????????????????"
+              }
+            ],
+            "risks": [
+              "????????",
+              "?????????",
+              "?????????"
+            ],
+            "escalation_conditions": [
+              "???????",
+              "??????",
+              "???????????"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "????????????????",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "docs/integration/workflow-module-contract.md"
+              ],
+              "test": [
+                "ccb-workflow/src/test/java/com/ccb/workflow",
+                "ccb-web"
+              ]
+            },
+            "acceptance_checks": [
+              "Maven ? npm ????",
+              "?????",
+              "?? HTTP ????????",
+              "P0/P1 ? 0"
+            ],
+            "rollback": "????????????",
+            "stop_conditions": [
+              "???????",
+              "?????",
+              "????"
+            ],
+            "input_facts": [
+              "??????????",
+              "???? WorkflowService?V17 ??? Vue Flow ??????"
+            ],
+            "interfaces": {
+              "consumes": [
+                "??????"
+              ],
+              "produces": [
+                "?????????????"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "????????????????",
+                "command": null,
+                "expected": "????????????????????",
+                "evidence": "??????????????????????"
+              }
+            ],
+            "risks": [
+              "????????",
+              "?????????",
+              "?????????"
+            ],
+            "escalation_conditions": [
+              "???????",
+              "??????",
+              "???????????"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "T1 ???? T2 ?????"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T2 ???? T3 ?????"
+          },
+          {
+            "from": "T2",
+            "to": "T4",
+            "reason": "T2 ???? T4 ?????"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "T3 ???? T4 ?????"
+          },
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "T4 ???? T5 ?????"
+          },
+          {
+            "from": "T3",
+            "to": "T5",
+            "reason": "T3 ???? T5 ?????"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ],
+          [
+            "T5"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -pl ccb-boot -am test -DskipTests=false",
+            "expected": "BUILD SUCCESS and Flowable migration applied"
+          },
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "npm run build",
+            "expected": "TypeScript and Vite build success"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "?? HTTP/???????",
+            "expected": "??????????????????"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4",
+              "T5"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "??????????????",
+          "confirmed_at": "2026-08-05"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "ccb-workflow",
+          "ccb-infrastructure",
+          "ccb-web",
+          "ccb-boot"
+        ],
+        "state_variable_candidates": [
+          "schemaVersion",
+          "deploymentId",
+          "instanceStatus",
+          "taskStatus",
+          "variableSnapshot",
+          "buildState",
+          "migrationState"
+        ],
+        "interface_candidates": [
+          "definitionJson",
+          "BPMN XML",
+          "Flowable TaskService",
+          "???? API",
+          "????? API"
+        ],
+        "sensor_candidates": [
+          "WorkflowModelValidatorTest",
+          "Flowable deployment test",
+          "Maven reactor",
+          "Flyway history",
+          "HTTP chain",
+          "browser DOM/screenshot",
+          "audit query"
+        ],
+        "actuator_candidates": [
+          "Flyway migration",
+          "Maven dependency",
+          "BpmnModelCompiler",
+          "FlowableWorkflowService",
+          "WorkflowController",
+          "WorkflowDesigner"
+        ],
+        "disturbance_candidates": [
+          "?????",
+          "????",
+          "????",
+          "?????",
+          "??/??????"
+        ],
+        "delay_candidates": [
+          "????",
+          "Flowable schema migration",
+          "??????",
+          "???????"
+        ],
+        "assumptions": [
+          {
+            "text": "?? MySQL ???? Flowable ???",
+            "basis": "????? Flowable",
+            "falsifier": "???????"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL/Flyway\", \"Spring Boot 3.x/JDK 17\", \"Flowable ??????\", \"???????\", \"???? Node ????\"], \"inside\": [\"ccb-workflow REST API\", \"??????/???\", \"Flowable ?????\", \"???????????\", \"??/??/???????\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"????????????\"], \"id\": \"S1\", \"independence\": \"??????????\", \"method\": \"Flyway history?Flowable deployment ????????????\", \"target\": \"R1 ??/????\"}",
+      "{\"blind_spots\": [\"??????????\"], \"id\": \"S2\", \"independence\": \"??????????\", \"method\": \"WorkflowModelValidatorTest?BPMN parse/deploy test??????? DOM\", \"target\": \"R2 ?????\"}",
+      "{\"blind_spots\": [\"???????????\"], \"id\": \"S3\", \"independence\": \"Flowable ???? API ??\", \"method\": \"???????????????????\", \"target\": \"R3 ??????\"}",
+      "{\"blind_spots\": [\"?????????\"], \"id\": \"S4\", \"independence\": \"HTTP ??????????\", \"method\": \"??????????????????\", \"target\": \"R4 ?????\"}",
+      "{\"blind_spots\": [\"?????????????\"], \"id\": \"S5\", \"independence\": \"?????????\", \"method\": \"????/???????????????????\", \"target\": \"R5 ??\"}",
+      "{\"blind_spots\": [\"?????????????\"], \"id\": \"S6\", \"independence\": \"HTTP????????????\", \"method\": \"?? API??? 403???????????\", \"target\": \"R6 ??/??\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"?????????? V18 ??\", \"authority\": \"??????????????\", \"id\": \"A1\", \"impact_radius\": \"ccb-workflow/ccb-infrastructure/ccb-boot\", \"rollback\": \"??????????????????\", \"target\": \"Flowable ????\"}",
+      "{\"action\": \"???????????????\", \"authority\": \"??????\", \"id\": \"A2\", \"impact_radius\": \"ccb-workflow ???\", \"rollback\": \"? schemaVersion ???????\", \"target\": \"????? BPMN\"}",
+      "{\"action\": \"?? Flowable Runtime/Task/History ?????????\", \"authority\": \"???????????\", \"id\": \"A3\", \"impact_radius\": \"workflow API ?????\", \"rollback\": \"??????????????????\", \"target\": \"????/API\"}",
+      "{\"action\": \"?????????????????\", \"authority\": \"??????\", \"id\": \"A4\", \"impact_radius\": \"ccb-web workflow views/components\", \"rollback\": \"?????????????\", \"target\": \"????????\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"? BPMN ??????????????\", \"source\": \"? schemaVersion=1 ?????? wf_* ??\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"??????????\", \"source\": \"???????????\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"?????????\", \"source\": \"??????\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"??????\", \"source\": \"?????\"}",
+      "{\"controllable\": \"partial\", \"detectable\": true, \"effect\": \"?????????\", \"source\": \"Flowable ????????\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"?????? Flowable????? Flyway\", \"falsifier\": \"???????????????\", \"text\": \"?? MySQL ???? Flowable ???\"}",
+      "{\"evidence\": \"??????????????\", \"falsifier\": \"???????????\", \"text\": \"???????????????????????\"}",
+      "{\"evidence\": \"????????\", \"falsifier\": \"??????????\", \"text\": \"??????????????\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S5\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S6\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "?? Flowable ???????? V18 ????",
+      "requirements": [
+        "R1",
+        "R6"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "??????????",
+        "???? WorkflowService?V17 ??? Vue Flow ??????"
+      ],
+      "write_scope": [
+        "pom.xml",
+        "ccb-workflow/pom.xml",
+        "ccb-boot/src/main/resources/application.yml",
+        "ccb-infrastructure/src/main/resources/db/migration/V18__flowable_workflow_core.sql",
+        "ccb-workflow/src/main/java/com/ccb/workflow/config/FlowableWorkflowConfiguration.java"
+      ],
+      "invariants": [
+        "tenant_id ?????",
+        "V17 ???",
+        "Flowable ??????"
+      ],
+      "interface_contracts": [
+        "Spring Boot/Flowable ????",
+        "Flyway/MySQL"
+      ],
+      "non_goals": [
+        "?????????",
+        "????????????"
+      ],
+      "action_bounds": [
+        "???????? V18",
+        "?? drop/delete ???"
+      ],
+      "acceptance": [
+        "Maven ????",
+        "Flowable ??????????",
+        "???????????"
+      ],
+      "evidence_required": [
+        "Maven ??",
+        "Flyway history",
+        "??????"
+      ],
+      "rollback": "?????? V18 ??????????????????????",
+      "stop_conditions": [
+        "??? Spring Boot 3.x ???",
+        "????? SQL"
+      ],
+      "escalation_conditions": [
+        "???????",
+        "??????",
+        "???????????"
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-05T06:59:57+00:00",
+          "text": "开始执行 Flowable 基础设施与 V18 迁移"
+        }
+      ],
+      "updated_at": "2026-08-05T06:59:57+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "?????????????? BPMN ???",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "??????????",
+        "???? WorkflowService?V17 ??? Vue Flow ??????"
+      ],
+      "write_scope": [
+        "ccb-workflow/src/main/java/com/ccb/workflow/model/",
+        "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java",
+        "ccb-workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java",
+        "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelAdapter.java",
+        "ccb-workflow/src/test/java/com/ccb/workflow/"
+      ],
+      "invariants": [
+        "schemaVersion=1 ??",
+        "?? key ??",
+        "?????"
+      ],
+      "interface_contracts": [
+        "definitionJson",
+        "Flowable BPMN Model API",
+        "T1 Flowable ??"
+      ],
+      "non_goals": [
+        "???????????????"
+      ],
+      "action_bounds": [
+        "????? BPMN ??",
+        "?????????/????"
+      ],
+      "acceptance": [
+        "schemaVersion=1 ??",
+        "????????????",
+        "BPMN ?? Flowable ??"
+      ],
+      "evidence_required": [
+        "????",
+        "BPMN parse/deploy"
+      ],
+      "rollback": "?????????????????",
+      "stop_conditions": [
+        "????????",
+        "?????????",
+        "?? key ???"
+      ],
+      "escalation_conditions": [
+        "???????",
+        "??????",
+        "???????????"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-05T07:54:05+00:00",
+          "text": "T2 执行产物已记录；Maven 全量工作流测试通过，进入独立观察。"
+        },
+        {
+          "recorded_at": "2026-08-05T07:54:27+00:00",
+          "text": "T2 执行产物已记录；Maven 全量工作流测试通过，进入独立观察。"
+        },
+        {
+          "recorded_at": "2026-08-05T07:54:45+00:00",
+          "text": "T2 执行产物尚未记录，恢复为 active。"
+        },
+        {
+          "recorded_at": "2026-08-05T07:55:00+00:00",
+          "text": "T2 执行产物已记录；Maven 全量工作流测试通过，进入独立观察。"
+        },
+        {
+          "recorded_at": "2026-08-05T07:56:22+00:00",
+          "text": "T2 观察采样通过；8 个工作流测试全部通过，P0/P1/P2/P3 均为 0。"
+        }
+      ],
+      "updated_at": "2026-08-05T07:56:22+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "?? Flowable ????????????? API",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "??????????",
+        "???? WorkflowService?V17 ??? Vue Flow ??????"
+      ],
+      "write_scope": [
+        "ccb-workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+        "WorkflowAssigneeResolver.java",
+        "WorkflowAuditService.java",
+        "WorkflowMonitorService.java",
+        "?? WorkflowService.java",
+        "WorkflowController.java",
+        "workflow tests"
+      ],
+      "invariants": [
+        "tenant_id ?????",
+        "??????",
+        "?????????",
+        "? schemaVersion=1 ??"
+      ],
+      "interface_contracts": [
+        "Flowable Runtime/Task/History Service",
+        "??/??/????",
+        "???? REST API",
+        "T2 ???"
+      ],
+      "non_goals": [
+        "???????????????"
+      ],
+      "action_bounds": [
+        "???? Flowable?????????",
+        "?????????????"
+      ],
+      "acceptance": [
+        "?????????",
+        "??????",
+        "????",
+        "?????",
+        "?????"
+      ],
+      "evidence_required": [
+        "??????",
+        "????",
+        "??? 403",
+        "??????"
+      ],
+      "rollback": "? schemaVersion/deployment ?????????????? Flowable ???",
+      "stop_conditions": [
+        "???????",
+        "????????",
+        "??????"
+      ],
+      "escalation_conditions": [
+        "???????",
+        "??????",
+        "???????????"
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-05T07:56:24+00:00",
+          "text": "T2 已验证，开始 Flowable 运行服务、版本发布和兼容 API。"
+        }
+      ],
+      "updated_at": "2026-08-05T07:56:24+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "??????????????????????",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "??????????",
+        "???? WorkflowService?V17 ??? Vue Flow ??????"
+      ],
+      "write_scope": [
+        "ccb-web/src/api/workflow.ts",
+        "ccb-web/src/components/workflow/",
+        "ccb-web/src/views/WorkflowView.vue"
+      ],
+      "invariants": [
+        "?? UI",
+        "????????",
+        "?????????",
+        "???? yyyy-MM-dd"
+      ],
+      "interface_contracts": [
+        "T2 JSON schema",
+        "T3 workflow APIs",
+        "?? UI ??"
+      ],
+      "non_goals": [
+        "???????????",
+        "???????"
+      ],
+      "action_bounds": [
+        "??????????",
+        "?????????"
+      ],
+      "acceptance": [
+        "?????????????",
+        "npm run build ??",
+        "????????"
+      ],
+      "evidence_required": [
+        "npm run build",
+        "?????/??/????",
+        "????????"
+      ],
+      "rollback": "???????????? definitionJson ??",
+      "stop_conditions": [
+        "????",
+        "??? schema ???",
+        "????"
+      ],
+      "escalation_conditions": [
+        "???????",
+        "??????",
+        "???????????"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-05T06:59:28+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "????????????????",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "input_facts": [
+        "??????????",
+        "???? WorkflowService?V17 ??? Vue Flow ??????"
+      ],
+      "write_scope": [
+        "docs/integration/workflow-module-contract.md",
+        "workflow tests",
+        "browser evidence"
+      ],
+      "invariants": [
+        "R1-R6 ???",
+        "P0/P1=0",
+        "?????"
+      ],
+      "interface_contracts": [
+        "??????",
+        "MySQL/Flyway",
+        "HTTP/browser"
+      ],
+      "non_goals": [
+        "??????",
+        "??????"
+      ],
+      "action_bounds": [
+        "????????????",
+        "?????????"
+      ],
+      "acceptance": [
+        "Maven ? npm ????",
+        "?????",
+        "?? HTTP ????????",
+        "P0/P1 ? 0"
+      ],
+      "evidence_required": [
+        "?? Maven/npm ??",
+        "?? HTTP",
+        "????????",
+        "?????"
+      ],
+      "rollback": "????????????",
+      "stop_conditions": [
+        "???????",
+        "?????",
+        "????"
+      ],
+      "escalation_conditions": [
+        "???????",
+        "??????",
+        "???????????"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-05T06:59:28+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

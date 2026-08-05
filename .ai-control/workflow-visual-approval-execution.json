@@ -1,0 +1,41 @@
+{
+  "task_id": "workflow-visual-approval-execution",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V17__workflow_visual_approval.sql", "purpose": "扩展工作流任务并增加审批动作审计表"},
+    {"path_or_resource": "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java", "purpose": "校验节点、边、串行图和旧 steps 兼容"},
+    {"path_or_resource": "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "purpose": "实现版本、实例、审批人、同意、拒绝、加签和抄送流转"},
+    {"path_or_resource": "ccb-workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java", "purpose": "提供工作流定义、实例、待办和动作接口"},
+    {"path_or_resource": "ccb-web/src/components/workflow/WorkflowDesigner.vue", "purpose": "Vue Flow 可拖拽流程图编辑器"},
+    {"path_or_resource": "ccb-web/src/components/workflow/WorkflowNode.vue", "purpose": "开始、审批、抄送、结束节点展示"},
+    {"path_or_resource": "ccb-web/src/components/workflow/WorkflowNodeInspector.vue", "purpose": "审批人来源、多人规则和抄送人配置"},
+    {"path_or_resource": "ccb-web/src/views/WorkflowView.vue", "purpose": "流程定义、发布、发起、待办和审批动作页面"},
+    {"path_or_resource": "ccb-boot/src/main/java/com/ccb/boot/web/GlobalExceptionHandler.java", "purpose": "记录未处理请求异常以支持接口诊断"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {"command": "mvn -pl ccb-boot -am clean package -DskipTests", "exit_code": 0, "salient_output": "BUILD SUCCESS; Flyway resources packaged"},
+    {"command": "npm run build", "exit_code": 0, "salient_output": "vue-tsc and vite build completed"},
+    {"command": "mvn -pl ccb-boot -am test -DskipTests=false", "exit_code": 0, "salient_output": "WorkflowDefinitionValidatorTest 4/4; reactor BUILD SUCCESS"}
+  ],
+  "local_checks": [
+    {"check": "migration version uniqueness", "result": "pass", "evidence": "V16 conflict corrected by assigning workflow migration V17"},
+    {"check": "backend compile and tests", "result": "pass", "evidence": "Maven reactor exit code 0"},
+    {"check": "frontend typecheck and bundle", "result": "pass", "evidence": "npm run build exit code 0"},
+    {"check": "scope", "result": "pass", "evidence": "Only workflow backend/frontend surfaces and diagnostic logging changed"}
+  ],
+  "diff_summary": ["新增 Vue Flow 设计器和节点配置面板", "升级工作流运行器并记录审批动作", "迁移脚本由冲突版本 V16 顺延为 V17"],
+  "invariants_checked": [
+    {"invariant": "tenant_id is present on workflow persistence and queries", "result": "pass", "evidence": "WorkflowService SQL predicates and V17 schema"},
+    {"invariant": "published versions are fixed for running instances", "result": "pass", "evidence": "start binds current published version and instance stores version_no"},
+    {"invariant": "only pending approval tasks execute decisions", "result": "pass", "evidence": "findPendingTask and decision update predicate"},
+    {"invariant": "cc tasks are not approvable", "result": "pass", "evidence": "CC task guard in WorkflowService and UI read-only row"},
+    {"invariant": "UI dates use yyyy-MM-dd", "result": "pass", "evidence": "WorkflowView uses formatDateOnly"}
+  ],
+  "disturbances": [
+    {"event": "A second migration used version 16", "impact": "fresh backend restart failed Flyway validation", "resolution": "renamed workflow migration to V17 and verified migration to schema v17"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["No production-scale concurrency load test", "No second active user was available to execute an add-sign action interactively"],
+  "recommended_next": "observe"
+}

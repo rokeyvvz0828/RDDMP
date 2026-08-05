@@ -1,0 +1,38 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql", "purpose": "create system and audit tables"},
+    {"path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V2__seed_system_menus.sql", "purpose": "seed initial menu tree"},
+    {"path_or_resource": "ccb-boot/src/main/resources/application-local.yml", "purpose": "configure MySQL and Flyway local profile"},
+    {"path_or_resource": "docker-compose.yml", "purpose": "provide MySQL 8.4 local service"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R5", "R7"],
+  "commands": [
+    {"command": "docker compose up -d", "exit_code": 124, "salient_output": "command timed out while MySQL initialization continued"},
+    {"command": "docker compose ps -a", "exit_code": 0, "salient_output": "ccb-platform-mysql Up; port 3306 published"},
+    {"command": "docker exec ccb-platform-mysql mysql -uccb -p... -D ccb_platform -e SELECT VERSION(), DATABASE()", "exit_code": 0, "salient_output": "MySQL 8.4.11; ccb_platform"},
+    {"command": "mvn -s .mvn/settings.xml -DskipTests install", "exit_code": 0, "salient_output": "all 6 reactor modules installed"},
+    {"command": "java -jar ccb-boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local", "exit_code": 0, "salient_output": "Flyway applied 2 migrations; Tomcat started on port 8080"},
+    {"command": "java -jar ccb-boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local", "exit_code": 0, "salient_output": "validated 2 migrations; schema up to date; no migration necessary"}
+  ],
+  "local_checks": [
+    {"check": "first application startup", "result": "pass", "evidence": "Spring Boot started and Flyway applied V1 and V2", "limitations": ["runtime uses installed Java 25 while compile target is release 17"]},
+    {"check": "second application startup", "result": "pass", "evidence": "Flyway reported schema version 2 and no migration necessary", "limitations": []},
+    {"check": "health endpoint", "result": "pass", "evidence": "GET /actuator/health returned HTTP 200", "limitations": ["no business API exists yet"]}
+  ],
+  "diff_summary": ["added Flyway schema and seed migrations", "added local MySQL/Flyway configuration", "added MySQL compose service"],
+  "invariants_checked": [
+    {"invariant": "tenant_id reserved", "result": "pass", "evidence": "core tables created by V1 include tenant_id"},
+    {"invariant": "BCrypt bootstrap", "result": "pending", "evidence": "password bootstrap will be exercised by T3"},
+    {"invariant": "audit persistence", "result": "pass", "evidence": "sys_login_log and sys_operation_log exist"},
+    {"invariant": "no destructive migration", "result": "pass", "evidence": "fresh schema and repeat startup performed without drop statements"}
+  ],
+  "disturbances": [
+    {"event": "Docker compose command exceeded 120 seconds during first image initialization", "impact": "none; container became healthy and subsequent checks passed"},
+    {"event": "Maven spring-boot:run was initially invoked on aggregator project", "impact": "application did not start; corrected by running packaged ccb-boot jar"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["full authentication and CRUD behavior is covered by T3-T4"],
+  "recommended_next": "observe"
+}

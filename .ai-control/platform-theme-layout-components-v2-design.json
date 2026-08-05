@@ -1,0 +1,24 @@
+{
+  "design_id": "platform-theme-layout-components-v2",
+  "version": 1,
+  "status": "awaiting-user-approval",
+  "human_document": "docs/engineering-control/designs/2026-08-04-platform-theme-layout-components-v2-design.md",
+  "objective": "Build a reusable single-tenant frontend foundation and continue system, workflow, and AI modules without duplicating visual or integration contracts.",
+  "requirements": [
+    { "id": "R9", "statement": "Theme presets change the complete visual system and persist.", "priority": "must", "acceptance": ["four palettes", "light dark system appearance", "refresh persistence"] },
+    { "id": "R10", "statement": "Side, top, and mixed navigation layouts are selectable and persist.", "priority": "must", "acceptance": ["same dynamic menu tree", "active route preserved", "no desktop overflow"] },
+    { "id": "R11", "statement": "Typed shared UI components provide consistent page, table, form, status, and empty-state presentation.", "priority": "must", "acceptance": ["component contracts", "used by two business pages"] },
+    { "id": "R12", "statement": "Dynamic menu rendering is recursive and independent of root ordering.", "priority": "must", "acceptance": ["arbitrary depth", "allowlisted components"] },
+    { "id": "R13", "statement": "System administration modules provide authenticated CRUD flows.", "priority": "must", "acceptance": ["users roles orgs menus dicts configs", "REST response contract", "permission enforcement"] },
+    { "id": "R14", "statement": "Workflow definitions and approval runtime have explicit versioned contracts.", "priority": "must", "acceptance": ["definitions", "tasks", "inbox", "approve reject"] },
+    { "id": "R15", "statement": "AI models and future module capabilities use a server-side, audited integration contract.", "priority": "must", "acceptance": ["secret redaction", "routing", "capability validation", "execution audit"] }
+  ],
+  "invariants": ["single tenant", "tenant_id retained", "backend authorization", "auth behavior unchanged", "secrets server-side", "allowlisted component paths"],
+  "non_goals": ["multi-tenant isolation in this slice", "microservices", "browser-side AI credentials", "unbounded dynamic code loading"],
+  "options": [
+    { "id": "A", "name": "CSS tokens plus preference store", "recommended": true },
+    { "id": "B", "name": "Element Plus ConfigProvider only", "recommended": false },
+    { "id": "C", "name": "Separate shells per theme and layout", "recommended": false }
+  ],
+  "approval": { "status": "awaiting-user-approval", "evidence": null }
+}

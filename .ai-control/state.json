@@ -1,0 +1,4196 @@
+{
+  "schema_version": 4,
+  "revision": 38,
+  "created_at": "2026-08-04T02:08:31+00:00",
+  "updated_at": "2026-08-04T04:00:46+00:00",
+  "mode": "standard",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=user approved design；计划确认=user approved the implementation plan and requested execution",
+      "recorded_at": "2026-08-04T02:08:31+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "baseline gate passed with R1-R8 and measurable intents",
+      "recorded_at": "2026-08-04T02:09:13+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model gate passed: every must has causal path and sensor",
+      "recorded_at": "2026-08-04T02:11:37+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "planning gate passed: all must requirements covered with executable tasks",
+      "recorded_at": "2026-08-04T02:12:12+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 execution report recorded and task output is observable",
+      "recorded_at": "2026-08-04T02:21:56+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 verified; remaining T2-T7 tasks continue within plan",
+      "recorded_at": "2026-08-04T02:24:01+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 execution report recorded and task output is observable",
+      "recorded_at": "2026-08-04T02:43:26+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 verified; remaining T3-T7 tasks continue within plan",
+      "recorded_at": "2026-08-04T02:43:28+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 execution report recorded and task output is observable",
+      "recorded_at": "2026-08-04T03:12:45+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T3 verified; remaining T4-T7 tasks continue within plan",
+      "recorded_at": "2026-08-04T03:12:47+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=user approved design；计划确认=user approved the implementation plan and requested execution",
+        "recorded_at": "2026-08-04T02:08:31+00:00",
+        "data": {
+          "objective": "Build a runnable single-tenant separated admin platform foundation.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Secure login",
+              "acceptance": [
+                "tokens",
+                "invalid and disabled fail",
+                "refresh"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "frontend-only security"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Organization and accounts",
+              "acceptance": [
+                "tree users roles"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "flat list"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Role permissions",
+              "acceptance": [
+                "menus buttons APIs and 403"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "frontend only"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Dynamic menus",
+              "acceptance": [
+                "route fields and Vue routes"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "hardcoded"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Dictionaries and configs",
+              "acceptance": [
+                "manage and query by code"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "source config"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "Three themes",
+              "acceptance": [
+                "switch and persist"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "one page"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "Audit",
+              "acceptance": [
+                "login and writes logged"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "no trace"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "Extension contract",
+              "acceptance": [
+                "shared integration rules"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "core login changes"
+              ]
+            }
+          ],
+          "invariants": [
+            "tenant_id reserved",
+            "BCrypt",
+            "backend authorization",
+            "shared response",
+            "no cross Mapper"
+          ],
+          "constraints": [
+            "Spring Boot 3.x",
+            "JDK 17",
+            "MyBatis-Plus",
+            "MySQL 8",
+            "Maven",
+            "Vue 3",
+            "TypeScript",
+            "Vite",
+            "Element Plus",
+            "Pinia",
+            "Vue Router"
+          ],
+          "non_goals": [
+            "workflow",
+            "AI calls",
+            "microservices",
+            "complex tenancy",
+            "external identity"
+          ],
+          "assumptions": [
+            {
+              "text": "username/password login",
+              "basis": "no external identity requested",
+              "falsifier": "IAM requirement"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "future AI provider and workflow DSL",
+              "impact": "later only",
+              "owner": "architect",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "single-tenant modular monolith",
+              "reason": "complexity control",
+              "source": "user"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R3"
+              ],
+              "signal": "auth flow",
+              "method": "backend tests"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5",
+                "R7"
+              ],
+              "signal": "CRUD audit",
+              "method": "domain tests"
+            },
+            {
+              "requirement_ids": [
+                "R6"
+              ],
+              "signal": "theme",
+              "method": "frontend test"
+            },
+            {
+              "requirement_ids": [
+                "R8"
+              ],
+              "signal": "contract",
+              "method": "docs review"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "approved requirements baseline recorded from handoff",
+        "recorded_at": "2026-08-04T02:09:13+00:00",
+        "data": {
+          "objective": "Build a runnable single-tenant separated admin platform foundation.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Secure login",
+              "acceptance": [
+                "tokens",
+                "invalid and disabled fail",
+                "refresh"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "frontend-only security"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Organization and accounts",
+              "acceptance": [
+                "tree users roles"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "flat list"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Role permissions",
+              "acceptance": [
+                "menus buttons APIs and 403"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "frontend only"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Dynamic menus",
+              "acceptance": [
+                "route fields and Vue routes"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "hardcoded"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Dictionaries and configs",
+              "acceptance": [
+                "manage and query by code"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "source config"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "Three themes",
+              "acceptance": [
+                "switch and persist"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "one page"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "Audit",
+              "acceptance": [
+                "login and writes logged"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "no trace"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "Extension contract",
+              "acceptance": [
+                "shared integration rules"
+              ],
+              "priority": "must",
+              "source": "user-approved design",
+              "counterexample": [
+                "core login changes"
+              ]
+            }
+          ],
+          "invariants": [
+            "tenant_id reserved",
+            "BCrypt",
+            "backend authorization",
+            "shared response",
+            "no cross Mapper"
+          ],
+          "constraints": [
+            "Spring Boot 3.x",
+            "JDK 17",
+            "MyBatis-Plus",
+            "MySQL 8",
+            "Maven",
+            "Vue 3",
+            "TypeScript",
+            "Vite",
+            "Element Plus",
+            "Pinia",
+            "Vue Router"
+          ],
+          "non_goals": [
+            "workflow",
+            "AI calls",
+            "microservices",
+            "complex tenancy",
+            "external identity"
+          ],
+          "assumptions": [
+            {
+              "text": "username/password login",
+              "basis": "no external identity requested",
+              "falsifier": "IAM requirement"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "future AI provider and workflow DSL",
+              "impact": "later only",
+              "owner": "architect",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "single-tenant modular monolith",
+              "reason": "complexity control",
+              "source": "user"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "candidate_sensor": "backend integration tests and HTTP checks",
+              "requirement_id": "R1",
+              "observable": "auth flow and 401/403 responses"
+            },
+            {
+              "candidate_sensor": "database migration and API tests",
+              "requirement_id": "R2",
+              "observable": "org/user/role CRUD"
+            },
+            {
+              "candidate_sensor": "permission integration flow",
+              "requirement_id": "R3",
+              "observable": "authorized menu and forbidden API"
+            },
+            {
+              "candidate_sensor": "frontend route tests",
+              "requirement_id": "R4",
+              "observable": "dynamic route list"
+            },
+            {
+              "candidate_sensor": "API tests",
+              "requirement_id": "R5",
+              "observable": "dictionary/config CRUD and lookup"
+            },
+            {
+              "candidate_sensor": "frontend tests and browser flow",
+              "requirement_id": "R6",
+              "observable": "theme switch persistence"
+            },
+            {
+              "candidate_sensor": "database assertions",
+              "requirement_id": "R7",
+              "observable": "login and operation audit rows"
+            },
+            {
+              "candidate_sensor": "build and documentation check",
+              "requirement_id": "R8",
+              "observable": "module boundaries and docs"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "system boundary causal paths sensors actuators disturbances and delays recorded",
+        "recorded_at": "2026-08-04T02:11:37+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "repository source",
+              "Maven modules",
+              "frontend app",
+              "MySQL migrations",
+              "test and build commands"
+            ],
+            "environment": [
+              "JDK Maven Node",
+              "MySQL",
+              "dependency registry",
+              "browser"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "module_build_state",
+              "owner": "repository",
+              "valid_values": [
+                "missing",
+                "compiling",
+                "passing",
+                "failing"
+              ]
+            },
+            {
+              "name": "migration_state",
+              "owner": "MySQL",
+              "valid_values": [
+                "unavailable",
+                "pending",
+                "applied",
+                "failing"
+              ]
+            },
+            {
+              "name": "auth_state",
+              "owner": "security",
+              "valid_values": [
+                "unauthenticated",
+                "authenticated",
+                "refreshable",
+                "forbidden"
+              ]
+            },
+            {
+              "name": "route_state",
+              "owner": "web",
+              "valid_values": [
+                "static",
+                "dynamic",
+                "blocked"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "credentials",
+              "transitions": [
+                "validate account",
+                "verify BCrypt",
+                "issue tokens",
+                "audit login"
+              ],
+              "outputs": [
+                "session or 401"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "org user role command",
+              "transitions": [
+                "validate tree",
+                "persist transaction",
+                "return entity"
+              ],
+              "outputs": [
+                "CRUD response"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "protected request",
+              "transitions": [
+                "load grants",
+                "check permission",
+                "allow or reject"
+              ],
+              "outputs": [
+                "result or 403"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "menu route config",
+              "transitions": [
+                "persist",
+                "return tree",
+                "map allowlisted component"
+              ],
+              "outputs": [
+                "dynamic route list"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "dict config command",
+              "transitions": [
+                "validate code",
+                "persist",
+                "lookup"
+              ],
+              "outputs": [
+                "config response"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "theme mode",
+              "transitions": [
+                "Pinia",
+                "CSS variables",
+                "localStorage"
+              ],
+              "outputs": [
+                "stable theme"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "login or write",
+              "transitions": [
+                "capture operator",
+                "persist audit"
+              ],
+              "outputs": [
+                "audit row"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "input": "new module",
+              "transitions": [
+                "consume common contract",
+                "use authorization",
+                "publish API docs"
+              ],
+              "outputs": [
+                "independent integration"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "REST response",
+              "producers": [
+                "security",
+                "system"
+              ],
+              "consumers": [
+                "web",
+                "future modules"
+              ],
+              "invariant": "code message data traceId stable"
+            },
+            {
+              "name": "migration",
+              "producers": [
+                "infrastructure"
+              ],
+              "consumers": [
+                "MySQL",
+                "domain modules"
+              ],
+              "invariant": "versioned non-destructive"
+            },
+            {
+              "name": "route contract",
+              "producers": [
+                "security"
+              ],
+              "consumers": [
+                "web"
+              ],
+              "invariant": "allowlisted component paths only"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R1 auth",
+              "method": "backend tests and HTTP flow",
+              "blind_spots": [
+                "external identity"
+              ],
+              "independence": "API boundary"
+            },
+            {
+              "id": "S2",
+              "target": "R2 CRUD",
+              "method": "migration and API tests",
+              "blind_spots": [
+                "production volume"
+              ],
+              "independence": "database and API"
+            },
+            {
+              "id": "S3",
+              "target": "R3 permission",
+              "method": "authorized and forbidden flow",
+              "blind_spots": [
+                "unlisted endpoint"
+              ],
+              "independence": "request result"
+            },
+            {
+              "id": "S4",
+              "target": "R4 routes",
+              "method": "route tests and browser load",
+              "blind_spots": [
+                "malformed production data"
+              ],
+              "independence": "runtime output"
+            },
+            {
+              "id": "S5",
+              "target": "R5 config",
+              "method": "CRUD and lookup tests",
+              "blind_spots": [
+                "concurrent writes"
+              ],
+              "independence": "API and row"
+            },
+            {
+              "id": "S6",
+              "target": "R6 theme",
+              "method": "store test and browser refresh",
+              "blind_spots": [
+                "non-Chromium"
+              ],
+              "independence": "rendered state"
+            },
+            {
+              "id": "S7",
+              "target": "R7 audit",
+              "method": "database assertions",
+              "blind_spots": [
+                "external shipping"
+              ],
+              "independence": "persisted row"
+            },
+            {
+              "id": "S8",
+              "target": "R8 boundary",
+              "method": "build dependency and docs check",
+              "blind_spots": [
+                "future code"
+              ],
+              "independence": "graph and docs"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "build skeleton",
+              "action": "create modules and dependencies",
+              "authority": "workspace write",
+              "impact_radius": "new source paths",
+              "rollback": "remove task paths"
+            },
+            {
+              "id": "A2",
+              "target": "database",
+              "action": "add migrations and mappings",
+              "authority": "workspace and MySQL",
+              "impact_radius": "new tables",
+              "rollback": "repair migration"
+            },
+            {
+              "id": "A3",
+              "target": "security",
+              "action": "modify auth and tests",
+              "authority": "workspace write",
+              "impact_radius": "security module",
+              "rollback": "revert task diff"
+            },
+            {
+              "id": "A4",
+              "target": "frontend",
+              "action": "modify web source and tests",
+              "authority": "workspace write",
+              "impact_radius": "web module",
+              "rollback": "revert page diff"
+            },
+            {
+              "id": "A5",
+              "target": "verification",
+              "action": "run builds tests and flows",
+              "authority": "local execution",
+              "impact_radius": "reports",
+              "rollback": "remove temp reports"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S6"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S7"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R8",
+              "sensor_ids": [
+                "S8"
+              ],
+              "observable": "partial"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "tool versions",
+              "effect": "compile or test differs",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "dependency network",
+              "effect": "resolution fails",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "MySQL unavailable",
+              "effect": "migration fails",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "port conflict",
+              "effect": "runtime flow unavailable",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "dependency download",
+              "consequence": "build feedback delayed",
+              "sampling_rule": "record output after environment check"
+            },
+            {
+              "source": "database migration",
+              "consequence": "domain tests depend on schema",
+              "sampling_rule": "sample migration first"
+            },
+            {
+              "source": "browser flow",
+              "consequence": "build alone does not prove routes",
+              "sampling_rule": "sample after frontend tasks"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "approved tools are available",
+              "evidence": "approved stack",
+              "falsifier": "version check fails"
+            },
+            {
+              "text": "MySQL is available",
+              "evidence": "approved persistence choice",
+              "falsifier": "connection check fails"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "planning"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "planning"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "planning"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "add browser check"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "planning"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "add browser persistence check"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "planning"
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "add docs check"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "controlled task plan covers R1-R8 with boundaries, evidence, dependencies, and sampling",
+        "recorded_at": "2026-08-04T02:12:12+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "build skeleton and contracts",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "approved design and prerequisite task outputs"
+              ],
+              "write_scope": [
+                "pom.xml",
+                "ccb-boot/",
+                "ccb-common/",
+                "docs",
+                "contract tests"
+              ],
+              "invariants": [
+                "tenant_id reserved",
+                "BCrypt",
+                "backend authorization",
+                "shared response",
+                "no cross Mapper"
+              ],
+              "interface_contracts": [
+                "shared response and error"
+              ],
+              "non_goals": [
+                "workflow",
+                "AI calls",
+                "microservices",
+                "complex tenancy",
+                "external identity"
+              ],
+              "action_bounds": [
+                "JDK 17 Maven MySQL 8 Vue 3 stack",
+                "no workflow AI or microservices",
+                "every must needs evidence"
+              ],
+              "acceptance_checks": [
+                "build passes",
+                "no cycle"
+              ],
+              "evidence_required": [
+                "version output",
+                "exit code 0"
+              ],
+              "rollback": "remove new paths",
+              "stop_conditions": [
+                "JDK below 17",
+                "dependency cycle"
+              ],
+              "escalation_conditions": [
+                "dependency mirror needed"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "database migration and infrastructure",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "approved design and prerequisite task outputs"
+              ],
+              "write_scope": [
+                "ccb-infrastructure/",
+                "migrations",
+                ".env.example",
+                "pom.xml",
+                "migration tests"
+              ],
+              "invariants": [
+                "tenant_id reserved",
+                "BCrypt",
+                "backend authorization",
+                "shared response",
+                "no cross Mapper"
+              ],
+              "interface_contracts": [
+                "T1 contract",
+                "database and audit"
+              ],
+              "non_goals": [
+                "workflow",
+                "AI calls",
+                "microservices",
+                "complex tenancy",
+                "external identity"
+              ],
+              "action_bounds": [
+                "JDK 17 Maven MySQL 8 Vue 3 stack",
+                "no workflow AI or microservices",
+                "every must needs evidence"
+              ],
+              "acceptance_checks": [
+                "tables tenant_id BCrypt bootstrap"
+              ],
+              "evidence_required": [
+                "exit code 0",
+                "migration output"
+              ],
+              "rollback": "repair migrations only",
+              "stop_conditions": [
+                "destructive migration",
+                "memory DB substitute"
+              ],
+              "escalation_conditions": [
+                "MySQL credentials needed"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "authentication and authorization",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R7"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "approved design and prerequisite task outputs"
+              ],
+              "write_scope": [
+                "ccb-security/",
+                "ccb-boot/",
+                "ccb-common/",
+                "auth tests"
+              ],
+              "invariants": [
+                "tenant_id reserved",
+                "BCrypt",
+                "backend authorization",
+                "shared response",
+                "no cross Mapper"
+              ],
+              "interface_contracts": [
+                "user role menu tables",
+                "auth APIs"
+              ],
+              "non_goals": [
+                "workflow",
+                "AI calls",
+                "microservices",
+                "complex tenancy",
+                "external identity"
+              ],
+              "action_bounds": [
+                "JDK 17 Maven MySQL 8 Vue 3 stack",
+                "no workflow AI or microservices",
+                "every must needs evidence"
+              ],
+              "acceptance_checks": [
+                "login refresh disabled 403 no secrets"
+              ],
+              "evidence_required": [
+                "failure assertions",
+                "test report",
+                "HTTP output"
+              ],
+              "rollback": "revert security code",
+              "stop_conditions": [
+                "bypass",
+                "secret logged"
+              ],
+              "escalation_conditions": [
+                "third-party identity"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "system administration APIs",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "approved design and prerequisite task outputs"
+              ],
+              "write_scope": [
+                "ccb-system/",
+                "integration rules",
+                "ccb-boot/",
+                "domain tests"
+              ],
+              "invariants": [
+                "tenant_id reserved",
+                "BCrypt",
+                "backend authorization",
+                "shared response",
+                "no cross Mapper"
+              ],
+              "interface_contracts": [
+                "T3 auth context",
+                "system APIs"
+              ],
+              "non_goals": [
+                "workflow",
+                "AI calls",
+                "microservices",
+                "complex tenancy",
+                "external identity"
+              ],
+              "action_bounds": [
+                "JDK 17 Maven MySQL 8 Vue 3 stack",
+                "no workflow AI or microservices",
+                "every must needs evidence"
+              ],
+              "acceptance_checks": [
+                "CRUD tree routes auth audit docs"
+              ],
+              "evidence_required": [
+                "failure assertions",
+                "test report",
+                "HTTP and audit"
+              ],
+              "rollback": "revert module and repair by migration",
+              "stop_conditions": [
+                "cross Mapper",
+                "tree cycle"
+              ],
+              "escalation_conditions": [
+                "data scope permission"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "frontend shell dynamic routes and themes",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R6"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "approved design and prerequisite task outputs"
+              ],
+              "write_scope": [
+                "ccb-web/",
+                "route token theme tests"
+              ],
+              "invariants": [
+                "tenant_id reserved",
+                "BCrypt",
+                "backend authorization",
+                "shared response",
+                "no cross Mapper"
+              ],
+              "interface_contracts": [
+                "T3 APIs",
+                "frontend shell"
+              ],
+              "non_goals": [
+                "workflow",
+                "AI calls",
+                "microservices",
+                "complex tenancy",
+                "external identity"
+              ],
+              "action_bounds": [
+                "JDK 17 Maven MySQL 8 Vue 3 stack",
+                "no workflow AI or microservices",
+                "every must needs evidence"
+              ],
+              "acceptance_checks": [
+                "dynamic routes one refresh logout on refresh failure theme persists"
+              ],
+              "evidence_required": [
+                "build output",
+                "test and build output"
+              ],
+              "rollback": "remove frontend tree",
+              "stop_conditions": [
+                "token leak",
+                "arbitrary route"
+              ],
+              "escalation_conditions": [
+                "SSR or mobile"
+              ]
+            },
+            {
+              "id": "T6",
+              "goal": "system administration pages",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T4",
+                "T5"
+              ],
+              "input_facts": [
+                "approved design and prerequisite task outputs"
+              ],
+              "write_scope": [
+                "ccb-web/src/views/system/",
+                "ccb-web/src/router/",
+                "ccb-web/src/stores/",
+                "page tests"
+              ],
+              "invariants": [
+                "tenant_id reserved",
+                "BCrypt",
+                "backend authorization",
+                "shared response",
+                "no cross Mapper"
+              ],
+              "interface_contracts": [
+                "T4 APIs",
+                "T5 shell",
+                "system pages"
+              ],
+              "non_goals": [
+                "workflow",
+                "AI calls",
+                "microservices",
+                "complex tenancy",
+                "external identity"
+              ],
+              "action_bounds": [
+                "JDK 17 Maven MySQL 8 Vue 3 stack",
+                "no workflow AI or microservices",
+                "every must needs evidence"
+              ],
+              "acceptance_checks": [
+                "admin flow ordinary blocked errors visible theme stable"
+              ],
+              "evidence_required": [
+                "failure assertions",
+                "test build page check"
+              ],
+              "rollback": "revert pages only",
+              "stop_conditions": [
+                "overlap duplicate submit button bypass"
+              ],
+              "escalation_conditions": [
+                "complex drag editor"
+              ]
+            },
+            {
+              "id": "T7",
+              "goal": "integration verification and docs",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T5",
+                "T6"
+              ],
+              "input_facts": [
+                "approved design and prerequisite task outputs"
+              ],
+              "write_scope": [
+                "README.md",
+                "startup scripts",
+                "API docs",
+                ".env.example",
+                "full suites and integration flow"
+              ],
+              "invariants": [
+                "tenant_id reserved",
+                "BCrypt",
+                "backend authorization",
+                "shared response",
+                "no cross Mapper"
+              ],
+              "interface_contracts": [
+                "all prior artifacts",
+                "acceptance evidence"
+              ],
+              "non_goals": [
+                "workflow",
+                "AI calls",
+                "microservices",
+                "complex tenancy",
+                "external identity"
+              ],
+              "action_bounds": [
+                "JDK 17 Maven MySQL 8 Vue 3 stack",
+                "no workflow AI or microservices",
+                "every must needs evidence"
+              ],
+              "acceptance_checks": [
+                "all must evidence no placeholders no secrets risks recorded"
+              ],
+              "evidence_required": [
+                "ports health",
+                "API page results",
+                "exit codes"
+              ],
+              "rollback": "preserve evidence and revert by task boundary",
+              "stop_conditions": [
+                "missing evidence auth issue build failure"
+              ],
+              "escalation_conditions": [
+                "non-equivalent environment"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "required contract and implementation dependency"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "required contract and implementation dependency"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "required contract and implementation dependency"
+            },
+            {
+              "from": "T3",
+              "to": "T5",
+              "reason": "required contract and implementation dependency"
+            },
+            {
+              "from": "T4",
+              "to": "T6",
+              "reason": "required contract and implementation dependency"
+            },
+            {
+              "from": "T5",
+              "to": "T6",
+              "reason": "required contract and implementation dependency"
+            },
+            {
+              "from": "T6",
+              "to": "T7",
+              "reason": "required contract and implementation dependency"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4",
+              "T5"
+            ],
+            [
+              "T6"
+            ],
+            [
+              "T7"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "mvn -DskipTests compile",
+                "pass"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "run MySQL migration twice",
+                "idempotent"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "run auth and 403 flow",
+                "pass"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4",
+                "T5",
+                "T6"
+              ],
+              "checks": [
+                "backend tests frontend tests build",
+                "pass"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T7"
+              ],
+              "checks": [
+                "full acceptance flow",
+                "R1-R8 evidence"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "baseline sample",
+              "observer": "main agent",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6",
+                "S7",
+                "S8"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "trigger": "before T1"
+            },
+            {
+              "label": "foundation sample",
+              "observer": "main agent",
+              "sensors": [
+                "S2",
+                "S7",
+                "S8"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R5",
+                "R7",
+                "R8"
+              ],
+              "trigger": "T1 and T2 complete"
+            },
+            {
+              "label": "auth sample",
+              "observer": "main agent",
+              "sensors": [
+                "S1",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3"
+              ],
+              "trigger": "T3 complete"
+            },
+            {
+              "label": "frontend sample",
+              "observer": "main agent",
+              "sensors": [
+                "S4",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R4",
+                "R6"
+              ],
+              "trigger": "T5 and T6 complete"
+            },
+            {
+              "label": "final integration sample",
+              "observer": "main agent",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6",
+                "S7",
+                "S8"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "trigger": "T7 complete"
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T7"
+              ],
+              "sensor_ids": [
+                "S1"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T6",
+                "T7"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T5",
+                "T7"
+              ],
+              "sensor_ids": [
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T4",
+                "T5",
+                "T6",
+                "T7"
+              ],
+              "sensor_ids": [
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T6",
+                "T7"
+              ],
+              "sensor_ids": [
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T5",
+                "T6",
+                "T7"
+              ],
+              "sensor_ids": [
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T7"
+              ],
+              "sensor_ids": [
+                "S7"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T1",
+                "T4",
+                "T7"
+              ],
+              "sensor_ids": [
+                "S8"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 compile and test execution report",
+        "recorded_at": "2026-08-04T02:21:55+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "pom.xml",
+              "purpose": "Maven reactor and dependency management"
+            },
+            {
+              "path_or_resource": "ccb-common/",
+              "purpose": "shared response exception pagination trace contract"
+            },
+            {
+              "path_or_resource": "ccb-boot/",
+              "purpose": "Spring Boot entrypoint trace filter and exception handler"
+            },
+            {
+              "path_or_resource": ".mvn/settings.xml",
+              "purpose": "workspace-local Maven repository"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "java -version; mvn -version; node --version; npm --version; mysql --version",
+              "salient_output": "Java 25.0.1, Maven 3.9.9, Node 24.18.0, npm 11.15.0; mysql command unavailable",
+              "exit_code": 1
+            },
+            {
+              "command": "mvn -s .mvn/settings.xml -DskipTests compile",
+              "salient_output": "six-module reactor BUILD SUCCESS; javac release 17",
+              "exit_code": 0
+            },
+            {
+              "command": "mvn -s .mvn/settings.xml test",
+              "salient_output": "one JUnit test passed; reactor BUILD SUCCESS",
+              "exit_code": 0
+            }
+          ],
+          "local_checks": [
+            {
+              "evidence": "six modules compiled without cycle",
+              "result": "pass",
+              "limitations": [
+                "runtime database not checked"
+              ],
+              "check": "Maven module dependency graph"
+            },
+            {
+              "evidence": "PageQueryTest 1 run 0 failures",
+              "result": "pass",
+              "limitations": [
+                "only common module test"
+              ],
+              "check": "public PageQuery contract"
+            }
+          ],
+          "diff_summary": [
+            "created Maven parent and five module poms",
+            "created common response exception pagination and trace primitives",
+            "created boot class filter handler and application config",
+            "added workspace-local Maven settings"
+          ],
+          "invariants_checked": [
+            {
+              "evidence": "compiler release 17",
+              "result": "pass",
+              "invariant": "Java release target is 17"
+            },
+            {
+              "evidence": "ApiResponse record",
+              "result": "pass",
+              "invariant": "shared response includes code message data traceId"
+            },
+            {
+              "evidence": "only skeleton and common contract files changed",
+              "result": "pass",
+              "invariant": "no business domain implementation in T1"
+            }
+          ],
+          "disturbances": [
+            {
+              "resolution": "project .mvn/settings.xml points to .m2/repository",
+              "event": "global Maven repository is not writable",
+              "impact": "first compile failed"
+            },
+            {
+              "event": "environment Java is 25 and MySQL CLI absent",
+              "impact": "T2 runtime validation remains pending"
+            }
+          ],
+          "assumptions_falsified": [
+            "none"
+          ],
+          "unresolved_items": [
+            "T2 must verify MySQL availability and migration behavior",
+            "browser and frontend sensors remain pending"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 database startup and repeat migration evidence recorded",
+        "recorded_at": "2026-08-04T02:42:56+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+              "purpose": "create system and audit tables"
+            },
+            {
+              "path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V2__seed_system_menus.sql",
+              "purpose": "seed initial menu tree"
+            },
+            {
+              "path_or_resource": "ccb-boot/src/main/resources/application-local.yml",
+              "purpose": "configure MySQL and Flyway local profile"
+            },
+            {
+              "path_or_resource": "docker-compose.yml",
+              "purpose": "provide MySQL 8.4 local service"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R5",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "docker compose up -d",
+              "exit_code": 124,
+              "salient_output": "command timed out while MySQL initialization continued"
+            },
+            {
+              "command": "docker compose ps -a",
+              "exit_code": 0,
+              "salient_output": "ccb-platform-mysql Up; port 3306 published"
+            },
+            {
+              "command": "docker exec ccb-platform-mysql mysql -uccb -p... -D ccb_platform -e SELECT VERSION(), DATABASE()",
+              "exit_code": 0,
+              "salient_output": "MySQL 8.4.11; ccb_platform"
+            },
+            {
+              "command": "mvn -s .mvn/settings.xml -DskipTests install",
+              "exit_code": 0,
+              "salient_output": "all 6 reactor modules installed"
+            },
+            {
+              "command": "java -jar ccb-boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local",
+              "exit_code": 0,
+              "salient_output": "Flyway applied 2 migrations; Tomcat started on port 8080"
+            },
+            {
+              "command": "java -jar ccb-boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local",
+              "exit_code": 0,
+              "salient_output": "validated 2 migrations; schema up to date; no migration necessary"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "first application startup",
+              "result": "pass",
+              "evidence": "Spring Boot started and Flyway applied V1 and V2",
+              "limitations": [
+                "runtime uses installed Java 25 while compile target is release 17"
+              ]
+            },
+            {
+              "check": "second application startup",
+              "result": "pass",
+              "evidence": "Flyway reported schema version 2 and no migration necessary",
+              "limitations": []
+            },
+            {
+              "check": "health endpoint",
+              "result": "pass",
+              "evidence": "GET /actuator/health returned HTTP 200",
+              "limitations": [
+                "no business API exists yet"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "added Flyway schema and seed migrations",
+            "added local MySQL/Flyway configuration",
+            "added MySQL compose service"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tenant_id reserved",
+              "result": "pass",
+              "evidence": "core tables created by V1 include tenant_id"
+            },
+            {
+              "invariant": "BCrypt bootstrap",
+              "result": "pending",
+              "evidence": "password bootstrap will be exercised by T3"
+            },
+            {
+              "invariant": "audit persistence",
+              "result": "pass",
+              "evidence": "sys_login_log and sys_operation_log exist"
+            },
+            {
+              "invariant": "no destructive migration",
+              "result": "pass",
+              "evidence": "fresh schema and repeat startup performed without drop statements"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Docker compose command exceeded 120 seconds during first image initialization",
+              "impact": "none; container became healthy and subsequent checks passed"
+            },
+            {
+              "event": "Maven spring-boot:run was initially invoked on aggregator project",
+              "impact": "application did not start; corrected by running packaged ccb-boot jar"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "full authentication and CRUD behavior is covered by T3-T4"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 authentication implementation and HTTP evidence recorded",
+        "recorded_at": "2026-08-04T03:12:43+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "ccb-security/pom.xml",
+              "purpose": "add Spring Security, validation, JDBC and JJWT runtime dependencies"
+            },
+            {
+              "path_or_resource": "ccb-security/src/main/java/com/ccb/security",
+              "purpose": "implement BCrypt-backed login, JWT access/refresh tokens, repository, filter and auth APIs"
+            },
+            {
+              "path_or_resource": "ccb-boot/src/main/java/com/ccb/boot/web/GlobalExceptionHandler.java",
+              "purpose": "map authentication and authorization failures to HTTP 401/403"
+            },
+            {
+              "path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V3__reset_development_admin_password.sql",
+              "purpose": "set documented development admin password without changing applied migrations"
+            },
+            {
+              "path_or_resource": "ccb-boot/src/main/resources/application-local.yml",
+              "purpose": "configure JWT secret and token TTLs"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "mvn -s .mvn/settings.xml clean test",
+              "exit_code": 0,
+              "salient_output": "6 modules; PageQueryTest 1 passed; JwtTokenServiceTest 2 passed"
+            },
+            {
+              "command": "mvn -s .mvn/settings.xml -DskipTests package",
+              "exit_code": 0,
+              "salient_output": "ccb-boot executable jar packaged"
+            },
+            {
+              "command": "GET /actuator/health",
+              "exit_code": 0,
+              "salient_output": "HTTP 200"
+            },
+            {
+              "command": "POST /api/auth/login with admin/admin123",
+              "exit_code": 0,
+              "salient_output": "HTTP 200; tokens not printed"
+            },
+            {
+              "command": "POST /api/auth/login with wrong password",
+              "exit_code": 0,
+              "salient_output": "HTTP 401"
+            },
+            {
+              "command": "POST /api/auth/refresh then POST /api/auth/logout and refresh again",
+              "exit_code": 0,
+              "salient_output": "refresh HTTP 200; logout HTTP 200; revoked refresh HTTP 401"
+            },
+            {
+              "command": "GET /api/auth/me and GET /api/auth/routes with access token",
+              "exit_code": 0,
+              "salient_output": "HTTP 200; admin returned 7 permissions; route tree returned 1 root and 6 children"
+            },
+            {
+              "command": "GET /api/auth/permission-check with access token",
+              "exit_code": 0,
+              "salient_output": "HTTP 403"
+            },
+            {
+              "command": "disable sys_user.status, request /api/auth/me, restore status",
+              "exit_code": 0,
+              "salient_output": "active 200; disabled token 401; restored 200"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "JWT unit tests",
+              "result": "pass",
+              "evidence": "access/refresh token type separation and refresh revocation tests passed",
+              "limitations": []
+            },
+            {
+              "check": "HTTP authentication flow",
+              "result": "pass",
+              "evidence": "login, invalid credentials, me, routes, refresh and logout statuses matched contract",
+              "limitations": [
+                "tested with local MySQL and development admin account"
+              ]
+            },
+            {
+              "check": "backend authorization",
+              "result": "pass",
+              "evidence": "method permission check returned 403 and anonymous me returned 401",
+              "limitations": [
+                "system CRUD permission endpoints are implemented in T4"
+              ]
+            },
+            {
+              "check": "audit persistence",
+              "result": "pass",
+              "evidence": "sys_login_log contains both success and failure rows",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "added database-backed AuthRepository with tenant_id filtering",
+            "added BCrypt password validation and login audit writes",
+            "added signed JWT access/refresh tokens with rotation and in-process refresh revocation",
+            "added stateless authentication filter and JSON 401/403 handlers",
+            "added auth login, refresh, logout, me and dynamic routes APIs"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tenant_id reserved",
+              "result": "pass",
+              "evidence": "repository queries require tenant_id = 1 and JWT carries tenant_id"
+            },
+            {
+              "invariant": "BCrypt",
+              "result": "pass",
+              "evidence": "BCryptPasswordEncoder matched the V3 development hash"
+            },
+            {
+              "invariant": "backend authorization",
+              "result": "pass",
+              "evidence": "permission check returned 403; disabled account token returned 401"
+            },
+            {
+              "invariant": "shared response",
+              "result": "pass",
+              "evidence": "auth and security errors use ApiResponse with traceId"
+            },
+            {
+              "invariant": "no secret logging",
+              "result": "pass",
+              "evidence": "final startup log contains no generated password; token values were not logged"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "initial development password assumption was wrong",
+              "impact": "login probe returned 401; corrected with V3 and documented admin123 development credential"
+            },
+            {
+              "event": "changing applied V1 caused Flyway checksum mismatch",
+              "impact": "startup blocked; restored V1 and used additive V3 migration"
+            },
+            {
+              "event": "method-level access denial initially reached generic exception handler",
+              "impact": "permission endpoint returned 500; added explicit AccessDeniedException mapping and final result is 403"
+            }
+          ],
+          "assumptions_falsified": [
+            "the old sample BCrypt hash represented password"
+          ],
+          "unresolved_items": [
+            "refresh revocation is in-process and should move to shared persistence for multi-instance deployment",
+            "full system management CRUD is covered by T4"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "independent T1 sample S-0001 passed with zero errors",
+        "recorded_at": "2026-08-04T02:24:01+00:00",
+        "data": {
+          "sample_label": "T1-independent-observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "limitation": [
+                "database and auth behavior not in T1"
+              ],
+              "sensor": "S1",
+              "requirement_id": "R1",
+              "raw_evidence": "mvn test reactor BUILD SUCCESS",
+              "result": "pass"
+            },
+            {
+              "limitation": [
+                "permission implementation not in T1"
+              ],
+              "sensor": "S3",
+              "requirement_id": "R3",
+              "raw_evidence": "module and contract compilation pass",
+              "result": "partial"
+            },
+            {
+              "limitation": [
+                "future module integration not yet implemented"
+              ],
+              "sensor": "S8",
+              "requirement_id": "R8",
+              "raw_evidence": "six-module dependency graph compiles",
+              "result": "partial"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "effect": "T2 runtime validation pending",
+              "source": "environment Java 25 and no MySQL CLI"
+            }
+          ],
+          "coverage_gaps": [
+            "R2 R4 R5 R6 R7 are outside T1"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "independent database and HTTP observations recorded",
+        "recorded_at": "2026-08-04T02:43:27+00:00",
+        "data": {
+          "sample_label": "T2 migration integration sample",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Spring Boot startup and schema inspection",
+              "result": "pass",
+              "raw_evidence": "V1 created sys_user and related tables; flyway_schema_history has version 1 and 2",
+              "limitation": [
+                "login behavior is not implemented until T3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "MySQL SHOW TABLES",
+              "result": "pass",
+              "raw_evidence": "sys_org, sys_user, sys_role, sys_user_role and sys_role_menu exist",
+              "limitation": [
+                "CRUD behavior is not implemented until T4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "MySQL SHOW TABLES",
+              "result": "pass",
+              "raw_evidence": "sys_dict_type, sys_dict_item and sys_config exist",
+              "limitation": [
+                "lookup and management APIs are not implemented until T4"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "MySQL SHOW TABLES",
+              "result": "pass",
+              "raw_evidence": "sys_login_log and sys_operation_log exist",
+              "limitation": [
+                "write path is not implemented until T3-T4"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "first Docker startup exceeded command timeout but container reached Up state"
+          ],
+          "coverage_gaps": [
+            "runtime used Java 25; Java 17 runtime validation remains pending",
+            "business writes and audit rows require T3-T4"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "independent HTTP, unit test and database observations recorded",
+        "recorded_at": "2026-08-04T03:12:46+00:00",
+        "data": {
+          "sample_label": "T3 authentication integration sample",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "HTTP auth flow and JWT unit tests",
+              "result": "pass",
+              "raw_evidence": "anonymous 401; wrong password 401; valid login 200; refresh 200; revoked refresh 401; disabled account token 401",
+              "limitation": [
+                "local runtime uses Java 25 while compiler target is release 17"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "protected API and method authorization",
+              "result": "pass",
+              "raw_evidence": "authenticated me 200; permission-check 403; dynamic routes 200 with one root and six children",
+              "limitation": [
+                "system management endpoints are part of T4"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "MySQL sys_login_log query",
+              "result": "pass",
+              "raw_evidence": "database contains success and failure login rows after HTTP probes",
+              "limitation": [
+                "operation log writes are part of T4"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Flyway checksum mismatch was observed and corrected by restoring V1 and applying V3"
+          ],
+          "coverage_gaps": [
+            "multi-instance refresh revocation persistence",
+            "Java 17 runtime rather than Java 25"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Build a runnable single-tenant separated admin platform foundation.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Secure login",
+      "acceptance": [
+        "tokens",
+        "invalid and disabled fail",
+        "refresh"
+      ],
+      "priority": "must",
+      "source": "user-approved design",
+      "counterexample": [
+        "frontend-only security"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Organization and accounts",
+      "acceptance": [
+        "tree users roles"
+      ],
+      "priority": "must",
+      "source": "user-approved design",
+      "counterexample": [
+        "flat list"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Role permissions",
+      "acceptance": [
+        "menus buttons APIs and 403"
+      ],
+      "priority": "must",
+      "source": "user-approved design",
+      "counterexample": [
+        "frontend only"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Dynamic menus",
+      "acceptance": [
+        "route fields and Vue routes"
+      ],
+      "priority": "must",
+      "source": "user-approved design",
+      "counterexample": [
+        "hardcoded"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Dictionaries and configs",
+      "acceptance": [
+        "manage and query by code"
+      ],
+      "priority": "must",
+      "source": "user-approved design",
+      "counterexample": [
+        "source config"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "Three themes",
+      "acceptance": [
+        "switch and persist"
+      ],
+      "priority": "must",
+      "source": "user-approved design",
+      "counterexample": [
+        "one page"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "Audit",
+      "acceptance": [
+        "login and writes logged"
+      ],
+      "priority": "must",
+      "source": "user-approved design",
+      "counterexample": [
+        "no trace"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "Extension contract",
+      "acceptance": [
+        "shared integration rules"
+      ],
+      "priority": "must",
+      "source": "user-approved design",
+      "counterexample": [
+        "core login changes"
+      ]
+    }
+  ],
+  "invariants": [
+    "tenant_id reserved",
+    "BCrypt",
+    "backend authorization",
+    "shared response",
+    "no cross Mapper"
+  ],
+  "constraints": [
+    "Spring Boot 3.x",
+    "JDK 17",
+    "MyBatis-Plus",
+    "MySQL 8",
+    "Maven",
+    "Vue 3",
+    "TypeScript",
+    "Vite",
+    "Element Plus",
+    "Pinia",
+    "Vue Router"
+  ],
+  "non_goals": [
+    "workflow",
+    "AI calls",
+    "microservices",
+    "complex tenancy",
+    "external identity"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\admin-platform-mvp-handoff.json",
+    "imported_at": "2026-08-04T02:08:31+00:00",
+    "topic": "admin-platform-mvp",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "admin-platform-mvp",
+      "handoff_status": "approved",
+      "created_at": "2026-08-04T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "admin-platform-mvp",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-04-admin-platform-mvp-design.md",
+        "objective": "Build a runnable single-tenant separated admin platform foundation.",
+        "users": [
+          "system administrator",
+          "business user",
+          "future module developer"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Secure login",
+            "acceptance": [
+              "tokens",
+              "invalid and disabled fail",
+              "refresh"
+            ],
+            "priority": "must",
+            "source": "user-approved design",
+            "counterexample": [
+              "frontend-only security"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Organization and accounts",
+            "acceptance": [
+              "tree users roles"
+            ],
+            "priority": "must",
+            "source": "user-approved design",
+            "counterexample": [
+              "flat list"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Role permissions",
+            "acceptance": [
+              "menus buttons APIs and 403"
+            ],
+            "priority": "must",
+            "source": "user-approved design",
+            "counterexample": [
+              "frontend only"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Dynamic menus",
+            "acceptance": [
+              "route fields and Vue routes"
+            ],
+            "priority": "must",
+            "source": "user-approved design",
+            "counterexample": [
+              "hardcoded"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Dictionaries and configs",
+            "acceptance": [
+              "manage and query by code"
+            ],
+            "priority": "must",
+            "source": "user-approved design",
+            "counterexample": [
+              "source config"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "Three themes",
+            "acceptance": [
+              "switch and persist"
+            ],
+            "priority": "must",
+            "source": "user-approved design",
+            "counterexample": [
+              "one page"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "Audit",
+            "acceptance": [
+              "login and writes logged"
+            ],
+            "priority": "must",
+            "source": "user-approved design",
+            "counterexample": [
+              "no trace"
+            ]
+          },
+          {
+            "id": "R8",
+            "statement": "Extension contract",
+            "acceptance": [
+              "shared integration rules"
+            ],
+            "priority": "must",
+            "source": "user-approved design",
+            "counterexample": [
+              "core login changes"
+            ]
+          }
+        ],
+        "invariants": [
+          "tenant_id reserved",
+          "BCrypt",
+          "backend authorization",
+          "shared response",
+          "no cross Mapper"
+        ],
+        "constraints": [
+          "Spring Boot 3.x",
+          "JDK 17",
+          "MyBatis-Plus",
+          "MySQL 8",
+          "Maven",
+          "Vue 3",
+          "TypeScript",
+          "Vite",
+          "Element Plus",
+          "Pinia",
+          "Vue Router"
+        ],
+        "non_goals": [
+          "workflow",
+          "AI calls",
+          "microservices",
+          "complex tenancy",
+          "external identity"
+        ],
+        "selected_approach": {
+          "name": "modular monolith",
+          "reason": "simple deployment and clear boundaries",
+          "alternatives": [
+            {
+              "name": "microservices first",
+              "rejected_because": "too much infrastructure"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "phase-one foundation"
+            ],
+            "outside": [
+              "workflow AI microservices tenancy"
+            ]
+          },
+          "components": [
+            {
+              "name": "ccb-boot",
+              "responsibility": "startup",
+              "depends_on": [
+                "ccb-common",
+                "ccb-security",
+                "ccb-system",
+                "ccb-infrastructure"
+              ]
+            },
+            {
+              "name": "ccb-common",
+              "responsibility": "contracts",
+              "depends_on": []
+            },
+            {
+              "name": "ccb-security",
+              "responsibility": "auth",
+              "depends_on": [
+                "ccb-common"
+              ]
+            },
+            {
+              "name": "ccb-system",
+              "responsibility": "system domain",
+              "depends_on": [
+                "ccb-common",
+                "ccb-security",
+                "ccb-infrastructure"
+              ]
+            },
+            {
+              "name": "ccb-infrastructure",
+              "responsibility": "database",
+              "depends_on": [
+                "ccb-common"
+              ]
+            },
+            {
+              "name": "ccb-web",
+              "responsibility": "frontend",
+              "depends_on": []
+            }
+          ]
+        },
+        "interfaces": [
+          {
+            "name": "REST API",
+            "producer": "security and system",
+            "consumers": [
+              "web and future modules"
+            ],
+            "contract": "{code,message,data,traceId}"
+          }
+        ],
+        "data_flows": [
+          {
+            "input": "credentials",
+            "transitions": [
+              "validate",
+              "hash",
+              "token",
+              "audit"
+            ],
+            "output": "session"
+          }
+        ],
+        "error_handling": [
+          {
+            "condition": "database unavailable",
+            "behavior": "fail startup",
+            "recovery": "fix environment"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "BCrypt",
+            "external secret",
+            "CORS allowlist"
+          ],
+          "performance": [
+            "pagination"
+          ],
+          "compatibility": [
+            "JDK 17",
+            "MySQL 8"
+          ],
+          "operations": [
+            "migrations",
+            "health check"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R3"
+            ],
+            "signal": "auth flow",
+            "method": "backend tests"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R4",
+              "R5",
+              "R7"
+            ],
+            "signal": "CRUD audit",
+            "method": "domain tests"
+          },
+          {
+            "requirement_ids": [
+              "R6"
+            ],
+            "signal": "theme",
+            "method": "frontend test"
+          },
+          {
+            "requirement_ids": [
+              "R8"
+            ],
+            "signal": "contract",
+            "method": "docs review"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "username/password login",
+            "basis": "no external identity requested",
+            "falsifier": "IAM requirement"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "future AI provider and workflow DSL",
+            "impact": "later only",
+            "owner": "architect",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "single-tenant modular monolith",
+            "reason": "complexity control",
+            "source": "user"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "authorization gap",
+            "impact": "security issue",
+            "mitigation": "permission tests"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "user approved design",
+          "confirmed_at": "2026-08-04T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-04-admin-platform-mvp-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "JDK 17 Maven MySQL 8 Vue 3 stack",
+          "no workflow AI or microservices",
+          "every must needs evidence"
+        ],
+        "file_map": [
+          {
+            "path": "pom.xml",
+            "status": "candidate-new",
+            "responsibility": "Maven parent",
+            "evidence": "empty repository"
+          },
+          {
+            "path": "ccb-boot/",
+            "status": "candidate-new",
+            "responsibility": "startup",
+            "evidence": "approved design"
+          },
+          {
+            "path": "ccb-common/",
+            "status": "candidate-new",
+            "responsibility": "contracts",
+            "evidence": "approved design"
+          },
+          {
+            "path": "ccb-security/",
+            "status": "candidate-new",
+            "responsibility": "auth",
+            "evidence": "approved design"
+          },
+          {
+            "path": "ccb-system/",
+            "status": "candidate-new",
+            "responsibility": "system domain",
+            "evidence": "approved design"
+          },
+          {
+            "path": "ccb-infrastructure/",
+            "status": "candidate-new",
+            "responsibility": "database",
+            "evidence": "approved design"
+          },
+          {
+            "path": "ccb-web/",
+            "status": "candidate-new",
+            "responsibility": "frontend",
+            "evidence": "approved design"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "build skeleton and contracts",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R8"
+            ],
+            "prerequisites": [],
+            "files": {
+              "create": [
+                "pom.xml",
+                "ccb-boot/",
+                "ccb-common/",
+                "docs"
+              ],
+              "modify": [],
+              "test": [
+                "contract tests"
+              ]
+            },
+            "interfaces": {
+              "consumes": [],
+              "produces": [
+                "shared response and error"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "check tools",
+                "command": "java -version; mvn -version",
+                "expected": "JDK 17 and Maven",
+                "evidence": "version output"
+              },
+              {
+                "id": "T1-S2",
+                "action": "create and compile modules",
+                "command": "mvn -DskipTests compile",
+                "expected": "pass",
+                "evidence": "exit code 0"
+              }
+            ],
+            "acceptance_checks": [
+              "build passes",
+              "no cycle"
+            ],
+            "rollback": "remove new paths",
+            "stop_conditions": [
+              "JDK below 17",
+              "dependency cycle"
+            ],
+            "escalation_conditions": [
+              "dependency mirror needed"
+            ],
+            "input_facts": [
+              "approved design and prerequisite task outputs"
+            ],
+            "risks": [
+              "environment or dependency disturbance"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "database migration and infrastructure",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R5",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "files": {
+              "create": [
+                "ccb-infrastructure/",
+                "migrations",
+                ".env.example"
+              ],
+              "modify": [
+                "pom.xml"
+              ],
+              "test": [
+                "migration tests"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 contract"
+              ],
+              "produces": [
+                "database and audit"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "create datasource entities",
+                "command": "mvn -DskipTests compile",
+                "expected": "pass",
+                "evidence": "exit code 0"
+              },
+              {
+                "id": "T2-S2",
+                "action": "run MySQL migration twice",
+                "command": "mvn test",
+                "expected": "idempotent",
+                "evidence": "migration output"
+              }
+            ],
+            "acceptance_checks": [
+              "tables tenant_id BCrypt bootstrap"
+            ],
+            "rollback": "repair migrations only",
+            "stop_conditions": [
+              "destructive migration",
+              "memory DB substitute"
+            ],
+            "escalation_conditions": [
+              "MySQL credentials needed"
+            ],
+            "input_facts": [
+              "approved design and prerequisite task outputs"
+            ],
+            "risks": [
+              "environment or dependency disturbance"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "authentication and authorization",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R7"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "files": {
+              "create": [
+                "ccb-security/"
+              ],
+              "modify": [
+                "ccb-boot/",
+                "ccb-common/"
+              ],
+              "test": [
+                "auth tests"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "user role menu tables"
+              ],
+              "produces": [
+                "auth APIs"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "write failure tests",
+                "command": "mvn test",
+                "expected": "fail before implementation",
+                "evidence": "failure assertions"
+              },
+              {
+                "id": "T3-S2",
+                "action": "implement and test",
+                "command": "mvn test",
+                "expected": "pass",
+                "evidence": "test report"
+              },
+              {
+                "id": "T3-S3",
+                "action": "run API login refresh 403",
+                "command": "start backend and run flow",
+                "expected": "200 401 403",
+                "evidence": "HTTP output"
+              }
+            ],
+            "acceptance_checks": [
+              "login refresh disabled 403 no secrets"
+            ],
+            "rollback": "revert security code",
+            "stop_conditions": [
+              "bypass",
+              "secret logged"
+            ],
+            "escalation_conditions": [
+              "third-party identity"
+            ],
+            "input_facts": [
+              "approved design and prerequisite task outputs"
+            ],
+            "risks": [
+              "environment or dependency disturbance"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "system administration APIs",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R7",
+              "R8"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "files": {
+              "create": [
+                "ccb-system/",
+                "integration rules"
+              ],
+              "modify": [
+                "ccb-boot/"
+              ],
+              "test": [
+                "domain tests"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T3 auth context"
+              ],
+              "produces": [
+                "system APIs"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "write domain tests",
+                "command": "mvn test",
+                "expected": "fail before implementation",
+                "evidence": "failure assertions"
+              },
+              {
+                "id": "T4-S2",
+                "action": "implement and test services",
+                "command": "mvn test",
+                "expected": "pass",
+                "evidence": "test report"
+              },
+              {
+                "id": "T4-S3",
+                "action": "run CRUD role flow",
+                "command": "start backend and run flow",
+                "expected": "success 403 conflicts",
+                "evidence": "HTTP and audit"
+              }
+            ],
+            "acceptance_checks": [
+              "CRUD tree routes auth audit docs"
+            ],
+            "rollback": "revert module and repair by migration",
+            "stop_conditions": [
+              "cross Mapper",
+              "tree cycle"
+            ],
+            "escalation_conditions": [
+              "data scope permission"
+            ],
+            "input_facts": [
+              "approved design and prerequisite task outputs"
+            ],
+            "risks": [
+              "environment or dependency disturbance"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "frontend shell dynamic routes and themes",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4",
+              "R6"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "files": {
+              "create": [
+                "ccb-web/"
+              ],
+              "modify": [],
+              "test": [
+                "route token theme tests"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T3 APIs"
+              ],
+              "produces": [
+                "frontend shell"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "create Vite app",
+                "command": "npm install; npm run build",
+                "expected": "pass",
+                "evidence": "build output"
+              },
+              {
+                "id": "T5-S2",
+                "action": "implement routes and themes",
+                "command": "npm test; npm run build",
+                "expected": "pass",
+                "evidence": "test and build output"
+              }
+            ],
+            "acceptance_checks": [
+              "dynamic routes one refresh logout on refresh failure theme persists"
+            ],
+            "rollback": "remove frontend tree",
+            "stop_conditions": [
+              "token leak",
+              "arbitrary route"
+            ],
+            "escalation_conditions": [
+              "SSR or mobile"
+            ],
+            "input_facts": [
+              "approved design and prerequisite task outputs"
+            ],
+            "risks": [
+              "environment or dependency disturbance"
+            ]
+          },
+          {
+            "id": "T6",
+            "goal": "system administration pages",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T4",
+              "T5"
+            ],
+            "files": {
+              "create": [
+                "ccb-web/src/views/system/"
+              ],
+              "modify": [
+                "ccb-web/src/router/",
+                "ccb-web/src/stores/"
+              ],
+              "test": [
+                "page tests"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T4 APIs",
+                "T5 shell"
+              ],
+              "produces": [
+                "system pages"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T6-S1",
+                "action": "create page tests",
+                "command": "npm test",
+                "expected": "fail before implementation",
+                "evidence": "failure assertions"
+              },
+              {
+                "id": "T6-S2",
+                "action": "implement and build pages",
+                "command": "npm test; npm run build",
+                "expected": "pass and stable layout",
+                "evidence": "test build page check"
+              }
+            ],
+            "acceptance_checks": [
+              "admin flow ordinary blocked errors visible theme stable"
+            ],
+            "rollback": "revert pages only",
+            "stop_conditions": [
+              "overlap duplicate submit button bypass"
+            ],
+            "escalation_conditions": [
+              "complex drag editor"
+            ],
+            "input_facts": [
+              "approved design and prerequisite task outputs"
+            ],
+            "risks": [
+              "environment or dependency disturbance"
+            ]
+          },
+          {
+            "id": "T7",
+            "goal": "integration verification and docs",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7",
+              "R8"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2",
+              "T3",
+              "T4",
+              "T5",
+              "T6"
+            ],
+            "files": {
+              "create": [
+                "README.md",
+                "startup scripts",
+                "API docs"
+              ],
+              "modify": [
+                ".env.example"
+              ],
+              "test": [
+                "full suites and integration flow"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "all prior artifacts"
+              ],
+              "produces": [
+                "acceptance evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T7-S1",
+                "action": "start stack and health check",
+                "command": "follow README",
+                "expected": "components available",
+                "evidence": "ports health"
+              },
+              {
+                "id": "T7-S2",
+                "action": "run full role and theme flow",
+                "command": "login -> routes -> CRUD -> 403 -> theme",
+                "expected": "R1-R8 observable",
+                "evidence": "API page results"
+              },
+              {
+                "id": "T7-S3",
+                "action": "run all builds and tests",
+                "command": "mvn test; mvn package; npm test; npm run build",
+                "expected": "pass",
+                "evidence": "exit codes"
+              }
+            ],
+            "acceptance_checks": [
+              "all must evidence no placeholders no secrets risks recorded"
+            ],
+            "rollback": "preserve evidence and revert by task boundary",
+            "stop_conditions": [
+              "missing evidence auth issue build failure"
+            ],
+            "escalation_conditions": [
+              "non-equivalent environment"
+            ],
+            "input_facts": [
+              "approved design and prerequisite task outputs"
+            ],
+            "risks": [
+              "environment or dependency disturbance"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "required contract and implementation dependency"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "required contract and implementation dependency"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "required contract and implementation dependency"
+          },
+          {
+            "from": "T3",
+            "to": "T5",
+            "reason": "required contract and implementation dependency"
+          },
+          {
+            "from": "T4",
+            "to": "T6",
+            "reason": "required contract and implementation dependency"
+          },
+          {
+            "from": "T5",
+            "to": "T6",
+            "reason": "required contract and implementation dependency"
+          },
+          {
+            "from": "T6",
+            "to": "T7",
+            "reason": "required contract and implementation dependency"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4",
+            "T5"
+          ],
+          [
+            "T6"
+          ],
+          [
+            "T7"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -DskipTests compile",
+            "expected": "pass"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "run MySQL migration twice",
+            "expected": "idempotent"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "run auth and 403 flow",
+            "expected": "pass"
+          },
+          {
+            "after_tasks": [
+              "T4",
+              "T5",
+              "T6"
+            ],
+            "command": "backend tests frontend tests build",
+            "expected": "pass"
+          },
+          {
+            "after_tasks": [
+              "T7"
+            ],
+            "command": "full acceptance flow",
+            "expected": "R1-R8 evidence"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T7"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T4",
+              "T6",
+              "T7"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T3",
+              "T4",
+              "T5",
+              "T7"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T4",
+              "T5",
+              "T6",
+              "T7"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T4",
+              "T6",
+              "T7"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T5",
+              "T6",
+              "T7"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T3",
+              "T4",
+              "T7"
+            ]
+          },
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T1",
+              "T4",
+              "T7"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "user approved the implementation plan and requested execution",
+          "confirmed_at": "2026-08-04T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "phase-one code migrations frontend build"
+        ],
+        "state_variable_candidates": [
+          "build state",
+          "migration version",
+          "auth state",
+          "authorization result",
+          "frontend build state"
+        ],
+        "interface_candidates": [
+          "REST API",
+          "database migration",
+          "frontend API client",
+          "dynamic route contract"
+        ],
+        "sensor_candidates": [
+          "build test exit codes",
+          "migration result",
+          "HTTP status",
+          "frontend build",
+          "browser flow"
+        ],
+        "actuator_candidates": [
+          "file changes",
+          "dependency config",
+          "migrations",
+          "test and startup commands"
+        ],
+        "disturbance_candidates": [
+          "tool versions",
+          "dependency network",
+          "port conflicts",
+          "missing env"
+        ],
+        "delay_candidates": [
+          "migration feedback",
+          "API mismatch",
+          "browser validation"
+        ],
+        "assumptions": [
+          {
+            "text": "required local tools are available or configurable",
+            "basis": "approved stack",
+            "falsifier": "version check fails"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"JDK Maven Node\", \"MySQL\", \"dependency registry\", \"browser\"], \"inside\": [\"repository source\", \"Maven modules\", \"frontend app\", \"MySQL migrations\", \"test and build commands\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"external identity\"], \"id\": \"S1\", \"independence\": \"API boundary\", \"method\": \"backend tests and HTTP flow\", \"target\": \"R1 auth\"}",
+      "{\"blind_spots\": [\"production volume\"], \"id\": \"S2\", \"independence\": \"database and API\", \"method\": \"migration and API tests\", \"target\": \"R2 CRUD\"}",
+      "{\"blind_spots\": [\"unlisted endpoint\"], \"id\": \"S3\", \"independence\": \"request result\", \"method\": \"authorized and forbidden flow\", \"target\": \"R3 permission\"}",
+      "{\"blind_spots\": [\"malformed production data\"], \"id\": \"S4\", \"independence\": \"runtime output\", \"method\": \"route tests and browser load\", \"target\": \"R4 routes\"}",
+      "{\"blind_spots\": [\"concurrent writes\"], \"id\": \"S5\", \"independence\": \"API and row\", \"method\": \"CRUD and lookup tests\", \"target\": \"R5 config\"}",
+      "{\"blind_spots\": [\"non-Chromium\"], \"id\": \"S6\", \"independence\": \"rendered state\", \"method\": \"store test and browser refresh\", \"target\": \"R6 theme\"}",
+      "{\"blind_spots\": [\"external shipping\"], \"id\": \"S7\", \"independence\": \"persisted row\", \"method\": \"database assertions\", \"target\": \"R7 audit\"}",
+      "{\"blind_spots\": [\"future code\"], \"id\": \"S8\", \"independence\": \"graph and docs\", \"method\": \"build dependency and docs check\", \"target\": \"R8 boundary\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"create modules and dependencies\", \"authority\": \"workspace write\", \"id\": \"A1\", \"impact_radius\": \"new source paths\", \"rollback\": \"remove task paths\", \"target\": \"build skeleton\"}",
+      "{\"action\": \"add migrations and mappings\", \"authority\": \"workspace and MySQL\", \"id\": \"A2\", \"impact_radius\": \"new tables\", \"rollback\": \"repair migration\", \"target\": \"database\"}",
+      "{\"action\": \"modify auth and tests\", \"authority\": \"workspace write\", \"id\": \"A3\", \"impact_radius\": \"security module\", \"rollback\": \"revert task diff\", \"target\": \"security\"}",
+      "{\"action\": \"modify web source and tests\", \"authority\": \"workspace write\", \"id\": \"A4\", \"impact_radius\": \"web module\", \"rollback\": \"revert page diff\", \"target\": \"frontend\"}",
+      "{\"action\": \"run builds tests and flows\", \"authority\": \"local execution\", \"id\": \"A5\", \"impact_radius\": \"reports\", \"rollback\": \"remove temp reports\", \"target\": \"verification\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"compile or test differs\", \"source\": \"tool versions\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"resolution fails\", \"source\": \"dependency network\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"migration fails\", \"source\": \"MySQL unavailable\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"runtime flow unavailable\", \"source\": \"port conflict\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"approved stack\", \"falsifier\": \"version check fails\", \"text\": \"approved tools are available\"}",
+      "{\"evidence\": \"approved persistence choice\", \"falsifier\": \"connection check fails\", \"text\": \"MySQL is available\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S5\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S6\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S7\"]"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "[\"S8\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "build skeleton and contracts",
+      "requirements": [
+        "R1",
+        "R3",
+        "R8"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "approved design and prerequisite task outputs"
+      ],
+      "write_scope": [
+        "pom.xml",
+        "ccb-boot/",
+        "ccb-common/",
+        "docs",
+        "contract tests"
+      ],
+      "invariants": [
+        "tenant_id reserved",
+        "BCrypt",
+        "backend authorization",
+        "shared response",
+        "no cross Mapper"
+      ],
+      "interface_contracts": [
+        "shared response and error"
+      ],
+      "non_goals": [
+        "workflow",
+        "AI calls",
+        "microservices",
+        "complex tenancy",
+        "external identity"
+      ],
+      "action_bounds": [
+        "JDK 17 Maven MySQL 8 Vue 3 stack",
+        "no workflow AI or microservices",
+        "every must needs evidence"
+      ],
+      "acceptance": [
+        "build passes",
+        "no cycle"
+      ],
+      "evidence_required": [
+        "version output",
+        "exit code 0"
+      ],
+      "rollback": "remove new paths",
+      "stop_conditions": [
+        "JDK below 17",
+        "dependency cycle"
+      ],
+      "escalation_conditions": [
+        "dependency mirror needed"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-04T02:12:35+00:00",
+          "text": "T1 execution started after planning gate"
+        },
+        {
+          "recorded_at": "2026-08-04T02:21:55+00:00",
+          "text": "T1 execution output recorded; independent observation required"
+        },
+        {
+          "recorded_at": "2026-08-04T02:24:01+00:00",
+          "text": "T1 independent observation passed; no open feedback"
+        }
+      ],
+      "updated_at": "2026-08-04T02:24:01+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "database migration and infrastructure",
+      "requirements": [
+        "R1",
+        "R2",
+        "R5",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "approved design and prerequisite task outputs"
+      ],
+      "write_scope": [
+        "ccb-infrastructure/",
+        "migrations",
+        ".env.example",
+        "pom.xml",
+        "migration tests"
+      ],
+      "invariants": [
+        "tenant_id reserved",
+        "BCrypt",
+        "backend authorization",
+        "shared response",
+        "no cross Mapper"
+      ],
+      "interface_contracts": [
+        "T1 contract",
+        "database and audit"
+      ],
+      "non_goals": [
+        "workflow",
+        "AI calls",
+        "microservices",
+        "complex tenancy",
+        "external identity"
+      ],
+      "action_bounds": [
+        "JDK 17 Maven MySQL 8 Vue 3 stack",
+        "no workflow AI or microservices",
+        "every must needs evidence"
+      ],
+      "acceptance": [
+        "tables tenant_id BCrypt bootstrap"
+      ],
+      "evidence_required": [
+        "exit code 0",
+        "migration output"
+      ],
+      "rollback": "repair migrations only",
+      "stop_conditions": [
+        "destructive migration",
+        "memory DB substitute"
+      ],
+      "escalation_conditions": [
+        "MySQL credentials needed"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-04T02:24:39+00:00",
+          "text": "T2 execution started after T1 verification and MySQL environment probe"
+        },
+        {
+          "recorded_at": "2026-08-04T02:42:58+00:00",
+          "text": "T2 execution report recorded; independent observation required"
+        },
+        {
+          "recorded_at": "2026-08-04T02:43:13+00:00",
+          "text": "Flyway applied and repeat startup verified; no open feedback"
+        }
+      ],
+      "updated_at": "2026-08-04T02:43:13+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "authentication and authorization",
+      "requirements": [
+        "R1",
+        "R3",
+        "R7"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "approved design and prerequisite task outputs"
+      ],
+      "write_scope": [
+        "ccb-security/",
+        "ccb-boot/",
+        "ccb-common/",
+        "auth tests"
+      ],
+      "invariants": [
+        "tenant_id reserved",
+        "BCrypt",
+        "backend authorization",
+        "shared response",
+        "no cross Mapper"
+      ],
+      "interface_contracts": [
+        "user role menu tables",
+        "auth APIs"
+      ],
+      "non_goals": [
+        "workflow",
+        "AI calls",
+        "microservices",
+        "complex tenancy",
+        "external identity"
+      ],
+      "action_bounds": [
+        "JDK 17 Maven MySQL 8 Vue 3 stack",
+        "no workflow AI or microservices",
+        "every must needs evidence"
+      ],
+      "acceptance": [
+        "login refresh disabled 403 no secrets"
+      ],
+      "evidence_required": [
+        "failure assertions",
+        "test report",
+        "HTTP output"
+      ],
+      "rollback": "revert security code",
+      "stop_conditions": [
+        "bypass",
+        "secret logged"
+      ],
+      "escalation_conditions": [
+        "third-party identity"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-04T03:12:42+00:00",
+          "text": "T3 execution started after T2 verification"
+        },
+        {
+          "recorded_at": "2026-08-04T03:12:44+00:00",
+          "text": "T3 execution report recorded; independent observation required"
+        },
+        {
+          "recorded_at": "2026-08-04T03:12:46+00:00",
+          "text": "T3 final authentication and authorization observation passed; no open feedback"
+        }
+      ],
+      "updated_at": "2026-08-04T03:12:46+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "system administration APIs",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "approved design and prerequisite task outputs"
+      ],
+      "write_scope": [
+        "ccb-system/",
+        "integration rules",
+        "ccb-boot/",
+        "domain tests"
+      ],
+      "invariants": [
+        "tenant_id reserved",
+        "BCrypt",
+        "backend authorization",
+        "shared response",
+        "no cross Mapper"
+      ],
+      "interface_contracts": [
+        "T3 auth context",
+        "system APIs"
+      ],
+      "non_goals": [
+        "workflow",
+        "AI calls",
+        "microservices",
+        "complex tenancy",
+        "external identity"
+      ],
+      "action_bounds": [
+        "JDK 17 Maven MySQL 8 Vue 3 stack",
+        "no workflow AI or microservices",
+        "every must needs evidence"
+      ],
+      "acceptance": [
+        "CRUD tree routes auth audit docs"
+      ],
+      "evidence_required": [
+        "failure assertions",
+        "test report",
+        "HTTP and audit"
+      ],
+      "rollback": "revert module and repair by migration",
+      "stop_conditions": [
+        "cross Mapper",
+        "tree cycle"
+      ],
+      "escalation_conditions": [
+        "data scope permission"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T02:12:12+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "frontend shell dynamic routes and themes",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4",
+        "R6"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "approved design and prerequisite task outputs"
+      ],
+      "write_scope": [
+        "ccb-web/",
+        "route token theme tests"
+      ],
+      "invariants": [
+        "tenant_id reserved",
+        "BCrypt",
+        "backend authorization",
+        "shared response",
+        "no cross Mapper"
+      ],
+      "interface_contracts": [
+        "T3 APIs",
+        "frontend shell"
+      ],
+      "non_goals": [
+        "workflow",
+        "AI calls",
+        "microservices",
+        "complex tenancy",
+        "external identity"
+      ],
+      "action_bounds": [
+        "JDK 17 Maven MySQL 8 Vue 3 stack",
+        "no workflow AI or microservices",
+        "every must needs evidence"
+      ],
+      "acceptance": [
+        "dynamic routes one refresh logout on refresh failure theme persists"
+      ],
+      "evidence_required": [
+        "build output",
+        "test and build output"
+      ],
+      "rollback": "remove frontend tree",
+      "stop_conditions": [
+        "token leak",
+        "arbitrary route"
+      ],
+      "escalation_conditions": [
+        "SSR or mobile"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T02:12:12+00:00"
+    },
+    {
+      "id": "T6",
+      "goal": "system administration pages",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T4",
+        "T5"
+      ],
+      "input_facts": [
+        "approved design and prerequisite task outputs"
+      ],
+      "write_scope": [
+        "ccb-web/src/views/system/",
+        "ccb-web/src/router/",
+        "ccb-web/src/stores/",
+        "page tests"
+      ],
+      "invariants": [
+        "tenant_id reserved",
+        "BCrypt",
+        "backend authorization",
+        "shared response",
+        "no cross Mapper"
+      ],
+      "interface_contracts": [
+        "T4 APIs",
+        "T5 shell",
+        "system pages"
+      ],
+      "non_goals": [
+        "workflow",
+        "AI calls",
+        "microservices",
+        "complex tenancy",
+        "external identity"
+      ],
+      "action_bounds": [
+        "JDK 17 Maven MySQL 8 Vue 3 stack",
+        "no workflow AI or microservices",
+        "every must needs evidence"
+      ],
+      "acceptance": [
+        "admin flow ordinary blocked errors visible theme stable"
+      ],
+      "evidence_required": [
+        "failure assertions",
+        "test build page check"
+      ],
+      "rollback": "revert pages only",
+      "stop_conditions": [
+        "overlap duplicate submit button bypass"
+      ],
+      "escalation_conditions": [
+        "complex drag editor"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T02:12:12+00:00"
+    },
+    {
+      "id": "T7",
+      "goal": "integration verification and docs",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6"
+      ],
+      "input_facts": [
+        "approved design and prerequisite task outputs"
+      ],
+      "write_scope": [
+        "README.md",
+        "startup scripts",
+        "API docs",
+        ".env.example",
+        "full suites and integration flow"
+      ],
+      "invariants": [
+        "tenant_id reserved",
+        "BCrypt",
+        "backend authorization",
+        "shared response",
+        "no cross Mapper"
+      ],
+      "interface_contracts": [
+        "all prior artifacts",
+        "acceptance evidence"
+      ],
+      "non_goals": [
+        "workflow",
+        "AI calls",
+        "microservices",
+        "complex tenancy",
+        "external identity"
+      ],
+      "action_bounds": [
+        "JDK 17 Maven MySQL 8 Vue 3 stack",
+        "no workflow AI or microservices",
+        "every must needs evidence"
+      ],
+      "acceptance": [
+        "all must evidence no placeholders no secrets risks recorded"
+      ],
+      "evidence_required": [
+        "ports health",
+        "API page results",
+        "exit codes"
+      ],
+      "rollback": "preserve evidence and revert by task boundary",
+      "stop_conditions": [
+        "missing evidence auth issue build failure"
+      ],
+      "escalation_conditions": [
+        "non-equivalent environment"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T02:12:12+00:00"
+    },
+    {
+      "id": "T8",
+      "goal": "Theme, layout, dynamic menu, and shared UI foundation",
+      "requirements": [
+        "R6"
+      ],
+      "acceptance": [
+        "Four palettes, three layouts, recursive menu, shared components, build and browser evidence"
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-04T04:00:46+00:00",
+          "text": "Approved v2 design and implementation plan recorded; starting frontend foundation implementation."
+        }
+      ],
+      "updated_at": "2026-08-04T04:00:46+00:00"
+    },
+    {
+      "id": "T9",
+      "goal": "System administration backend APIs and migration support",
+      "requirements": [
+        "R2"
+      ],
+      "acceptance": [
+        "Six authenticated domains with CRUD, validation, tenant scope, 401/403, audit"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T04:00:33+00:00"
+    },
+    {
+      "id": "T10",
+      "goal": "System administration frontend CRUD pages",
+      "requirements": [
+        "R2"
+      ],
+      "acceptance": [
+        "Six real pages with reusable components and loading/empty/error states"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T04:00:34+00:00"
+    },
+    {
+      "id": "T11",
+      "goal": "Workflow definition and approval runtime",
+      "requirements": [
+        "R8"
+      ],
+      "acceptance": [
+        "Versioned definitions, tasks, inbox, approve/reject idempotency, audit"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T04:00:35+00:00"
+    },
+    {
+      "id": "T12",
+      "goal": "AI model registry and capability contract",
+      "requirements": [
+        "R8"
+      ],
+      "acceptance": [
+        "Server-side secrets, routing, capability validation, execution audit"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T04:00:35+00:00"
+    },
+    {
+      "id": "T13",
+      "goal": "Integrated verification and convergence evidence",
+      "requirements": [
+        "R1"
+      ],
+      "acceptance": [
+        "Backend/frontend builds, browser flows, database assertions, no P0/P1"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T04:00:36+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1-independent-observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Independent rerun: ccb-common PageQueryTest 1 passed and Maven reactor BUILD SUCCESS",
+      "recorded_at": "2026-08-04T02:23:41+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 migration integration sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "first startup applied V1/V2; second startup reported schema version 2 and no migration necessary; health HTTP 200; SHOW TABLES listed all core tables",
+      "recorded_at": "2026-08-04T02:43:11+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T3 authentication integration sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "final HTTP flow: anonymous 401, bad login 401, login 200, me 200, routes 200, refresh 200, logout 200, revoked refresh 401, permission check 403, disabled token 401; JWT tests 2 passed",
+      "recorded_at": "2026-08-04T03:12:43+00:00"
+    }
+  ]
+}

@@ -1,0 +1,1107 @@
+{
+    "schema_version":  1,
+    "topic":  "admin-platform-mvp",
+    "handoff_status":  "approved",
+    "created_at":  "2026-08-04T00:00:00+08:00",
+    "design":  {
+                   "schema_version":  1,
+                   "topic":  "admin-platform-mvp",
+                   "design_revision":  1,
+                   "design_status":  "approved",
+                   "human_document":  "docs/engineering-control/designs/2026-08-04-admin-platform-mvp-design.md",
+                   "objective":  "Build a runnable single-tenant separated admin platform foundation.",
+                   "users":  [
+                                 "system administrator",
+                                 "business user",
+                                 "future module developer"
+                             ],
+                   "requirements":  [
+                                        {
+                                            "id":  "R1",
+                                            "statement":  "Secure login",
+                                            "acceptance":  [
+                                                               "tokens",
+                                                               "invalid and disabled fail",
+                                                               "refresh"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "user-approved design",
+                                            "counterexample":  [
+                                                                   "frontend-only security"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R2",
+                                            "statement":  "Organization and accounts",
+                                            "acceptance":  [
+                                                               "tree users roles"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "user-approved design",
+                                            "counterexample":  [
+                                                                   "flat list"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R3",
+                                            "statement":  "Role permissions",
+                                            "acceptance":  [
+                                                               "menus buttons APIs and 403"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "user-approved design",
+                                            "counterexample":  [
+                                                                   "frontend only"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R4",
+                                            "statement":  "Dynamic menus",
+                                            "acceptance":  [
+                                                               "route fields and Vue routes"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "user-approved design",
+                                            "counterexample":  [
+                                                                   "hardcoded"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R5",
+                                            "statement":  "Dictionaries and configs",
+                                            "acceptance":  [
+                                                               "manage and query by code"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "user-approved design",
+                                            "counterexample":  [
+                                                                   "source config"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R6",
+                                            "statement":  "Three themes",
+                                            "acceptance":  [
+                                                               "switch and persist"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "user-approved design",
+                                            "counterexample":  [
+                                                                   "one page"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R7",
+                                            "statement":  "Audit",
+                                            "acceptance":  [
+                                                               "login and writes logged"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "user-approved design",
+                                            "counterexample":  [
+                                                                   "no trace"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R8",
+                                            "statement":  "Extension contract",
+                                            "acceptance":  [
+                                                               "shared integration rules"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "user-approved design",
+                                            "counterexample":  [
+                                                                   "core login changes"
+                                                               ]
+                                        }
+                                    ],
+                   "invariants":  [
+                                      "tenant_id reserved",
+                                      "BCrypt",
+                                      "backend authorization",
+                                      "shared response",
+                                      "no cross Mapper"
+                                  ],
+                   "constraints":  [
+                                       "Spring Boot 3.x",
+                                       "JDK 17",
+                                       "MyBatis-Plus",
+                                       "MySQL 8",
+                                       "Maven",
+                                       "Vue 3",
+                                       "TypeScript",
+                                       "Vite",
+                                       "Element Plus",
+                                       "Pinia",
+                                       "Vue Router"
+                                   ],
+                   "non_goals":  [
+                                     "workflow",
+                                     "AI calls",
+                                     "microservices",
+                                     "complex tenancy",
+                                     "external identity"
+                                 ],
+                   "selected_approach":  {
+                                             "name":  "modular monolith",
+                                             "reason":  "simple deployment and clear boundaries",
+                                             "alternatives":  [
+                                                                  {
+                                                                      "name":  "microservices first",
+                                                                      "rejected_because":  "too much infrastructure"
+                                                                  }
+                                                              ]
+                                         },
+                   "architecture":  {
+                                        "boundary":  {
+                                                         "inside":  [
+                                                                        "phase-one foundation"
+                                                                    ],
+                                                         "outside":  [
+                                                                         "workflow AI microservices tenancy"
+                                                                     ]
+                                                     },
+                                        "components":  [
+                                                           {
+                                                               "name":  "ccb-boot",
+                                                               "responsibility":  "startup",
+                                                               "depends_on":  [
+                                                                                  "ccb-common",
+                                                                                  "ccb-security",
+                                                                                  "ccb-system",
+                                                                                  "ccb-infrastructure"
+                                                                              ]
+                                                           },
+                                                           {
+                                                               "name":  "ccb-common",
+                                                               "responsibility":  "contracts",
+                                                               "depends_on":  [
+
+                                                                              ]
+                                                           },
+                                                           {
+                                                               "name":  "ccb-security",
+                                                               "responsibility":  "auth",
+                                                               "depends_on":  [
+                                                                                  "ccb-common"
+                                                                              ]
+                                                           },
+                                                           {
+                                                               "name":  "ccb-system",
+                                                               "responsibility":  "system domain",
+                                                               "depends_on":  [
+                                                                                  "ccb-common",
+                                                                                  "ccb-security",
+                                                                                  "ccb-infrastructure"
+                                                                              ]
+                                                           },
+                                                           {
+                                                               "name":  "ccb-infrastructure",
+                                                               "responsibility":  "database",
+                                                               "depends_on":  [
+                                                                                  "ccb-common"
+                                                                              ]
+                                                           },
+                                                           {
+                                                               "name":  "ccb-web",
+                                                               "responsibility":  "frontend",
+                                                               "depends_on":  [
+
+                                                                              ]
+                                                           }
+                                                       ]
+                                    },
+                   "interfaces":  [
+                                      {
+                                          "name":  "REST API",
+                                          "producer":  "security and system",
+                                          "consumers":  [
+                                                            "web and future modules"
+                                                        ],
+                                          "contract":  "{code,message,data,traceId}"
+                                      }
+                                  ],
+                   "data_flows":  [
+                                      {
+                                          "input":  "credentials",
+                                          "transitions":  [
+                                                              "validate",
+                                                              "hash",
+                                                              "token",
+                                                              "audit"
+                                                          ],
+                                          "output":  "session"
+                                      }
+                                  ],
+                   "error_handling":  [
+                                          {
+                                              "condition":  "database unavailable",
+                                              "behavior":  "fail startup",
+                                              "recovery":  "fix environment"
+                                          }
+                                      ],
+                   "quality_attributes":  {
+                                              "security":  [
+                                                               "BCrypt",
+                                                               "external secret",
+                                                               "CORS allowlist"
+                                                           ],
+                                              "performance":  [
+                                                                  "pagination"
+                                                              ],
+                                              "compatibility":  [
+                                                                    "JDK 17",
+                                                                    "MySQL 8"
+                                                                ],
+                                              "operations":  [
+                                                                 "migrations",
+                                                                 "health check"
+                                                             ]
+                                          },
+                   "verification_strategy":  [
+                                                 {
+                                                     "requirement_ids":  [
+                                                                             "R1",
+                                                                             "R3"
+                                                                         ],
+                                                     "signal":  "auth flow",
+                                                     "method":  "backend tests"
+                                                 },
+                                                 {
+                                                     "requirement_ids":  [
+                                                                             "R2",
+                                                                             "R4",
+                                                                             "R5",
+                                                                             "R7"
+                                                                         ],
+                                                     "signal":  "CRUD audit",
+                                                     "method":  "domain tests"
+                                                 },
+                                                 {
+                                                     "requirement_ids":  [
+                                                                             "R6"
+                                                                         ],
+                                                     "signal":  "theme",
+                                                     "method":  "frontend test"
+                                                 },
+                                                 {
+                                                     "requirement_ids":  [
+                                                                             "R8"
+                                                                         ],
+                                                     "signal":  "contract",
+                                                     "method":  "docs review"
+                                                 }
+                                             ],
+                   "assumptions":  [
+                                       {
+                                           "text":  "username/password login",
+                                           "basis":  "no external identity requested",
+                                           "falsifier":  "IAM requirement"
+                                       }
+                                   ],
+                   "unknowns":  [
+                                    {
+                                        "question":  "future AI provider and workflow DSL",
+                                        "impact":  "later only",
+                                        "owner":  "architect",
+                                        "blocking":  false
+                                    }
+                                ],
+                   "decisions":  [
+                                     {
+                                         "id":  "D1",
+                                         "decision":  "single-tenant modular monolith",
+                                         "reason":  "complexity control",
+                                         "source":  "user"
+                                     }
+                                 ],
+                   "risks":  [
+                                 {
+                                     "risk":  "authorization gap",
+                                     "impact":  "security issue",
+                                     "mitigation":  "permission tests"
+                                 }
+                             ],
+                   "approval":  {
+                                    "status":  "approved",
+                                    "evidence":  "user approved design",
+                                    "confirmed_at":  "2026-08-04T00:00:00+08:00"
+                                }
+               },
+    "implementation_plan":  {
+                                "plan_revision":  1,
+                                "human_document":  "docs/engineering-control/plans/2026-08-04-admin-platform-mvp-implementation-plan.md",
+                                "plan_status":  "ready",
+                                "global_constraints":  [
+                                                           "JDK 17 Maven MySQL 8 Vue 3 stack",
+                                                           "no workflow AI or microservices",
+                                                           "every must needs evidence"
+                                                       ],
+                                "file_map":  [
+                                                 {
+                                                     "path":  "pom.xml",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "Maven parent",
+                                                     "evidence":  "empty repository"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-boot/",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "startup",
+                                                     "evidence":  "approved design"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-common/",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "contracts",
+                                                     "evidence":  "approved design"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-security/",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "auth",
+                                                     "evidence":  "approved design"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-system/",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "system domain",
+                                                     "evidence":  "approved design"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-infrastructure/",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "database",
+                                                     "evidence":  "approved design"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-web/",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "frontend",
+                                                     "evidence":  "approved design"
+                                                 }
+                                             ],
+                                "tasks":  [
+                                              {
+                                                  "id":  "T1",
+                                                  "goal":  "build skeleton and contracts",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R3",
+                                                                          "R8"
+                                                                      ],
+                                                  "prerequisites":  [
+
+                                                                    ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "pom.xml",
+                                                                               "ccb-boot/",
+                                                                               "ccb-common/",
+                                                                               "docs"
+                                                                           ],
+                                                                "modify":  [
+
+                                                                           ],
+                                                                "test":  [
+                                                                             "contract tests"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "shared response and error"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T1-S1",
+                                                                    "action":  "check tools",
+                                                                    "command":  "java -version; mvn -version",
+                                                                    "expected":  "JDK 17 and Maven",
+                                                                    "evidence":  "version output"
+                                                                },
+                                                                {
+                                                                    "id":  "T1-S2",
+                                                                    "action":  "create and compile modules",
+                                                                    "command":  "mvn -DskipTests compile",
+                                                                    "expected":  "pass",
+                                                                    "evidence":  "exit code 0"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "build passes",
+                                                                            "no cycle"
+                                                                        ],
+                                                  "rollback":  "remove new paths",
+                                                  "stop_conditions":  [
+                                                                          "JDK below 17",
+                                                                          "dependency cycle"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "dependency mirror needed"
+                                                                            ],
+                                                  "input_facts":  [
+                                                                      "approved design and prerequisite task outputs"
+                                                                  ],
+                                                  "risks":  [
+                                                                "environment or dependency disturbance"
+                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T2",
+                                                  "goal":  "database migration and infrastructure",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R2",
+                                                                          "R5",
+                                                                          "R7"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T1"
+                                                                    ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "ccb-infrastructure/",
+                                                                               "migrations",
+                                                                               ".env.example"
+                                                                           ],
+                                                                "modify":  [
+                                                                               "pom.xml"
+                                                                           ],
+                                                                "test":  [
+                                                                             "migration tests"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "T1 contract"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "database and audit"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T2-S1",
+                                                                    "action":  "create datasource entities",
+                                                                    "command":  "mvn -DskipTests compile",
+                                                                    "expected":  "pass",
+                                                                    "evidence":  "exit code 0"
+                                                                },
+                                                                {
+                                                                    "id":  "T2-S2",
+                                                                    "action":  "run MySQL migration twice",
+                                                                    "command":  "mvn test",
+                                                                    "expected":  "idempotent",
+                                                                    "evidence":  "migration output"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "tables tenant_id BCrypt bootstrap"
+                                                                        ],
+                                                  "rollback":  "repair migrations only",
+                                                  "stop_conditions":  [
+                                                                          "destructive migration",
+                                                                          "memory DB substitute"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "MySQL credentials needed"
+                                                                            ],
+                                                  "input_facts":  [
+                                                                      "approved design and prerequisite task outputs"
+                                                                  ],
+                                                  "risks":  [
+                                                                "environment or dependency disturbance"
+                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T3",
+                                                  "goal":  "authentication and authorization",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R3",
+                                                                          "R7"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T2"
+                                                                    ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "ccb-security/"
+                                                                           ],
+                                                                "modify":  [
+                                                                               "ccb-boot/",
+                                                                               "ccb-common/"
+                                                                           ],
+                                                                "test":  [
+                                                                             "auth tests"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "user role menu tables"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "auth APIs"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T3-S1",
+                                                                    "action":  "write failure tests",
+                                                                    "command":  "mvn test",
+                                                                    "expected":  "fail before implementation",
+                                                                    "evidence":  "failure assertions"
+                                                                },
+                                                                {
+                                                                    "id":  "T3-S2",
+                                                                    "action":  "implement and test",
+                                                                    "command":  "mvn test",
+                                                                    "expected":  "pass",
+                                                                    "evidence":  "test report"
+                                                                },
+                                                                {
+                                                                    "id":  "T3-S3",
+                                                                    "action":  "run API login refresh 403",
+                                                                    "command":  "start backend and run flow",
+                                                                    "expected":  "200 401 403",
+                                                                    "evidence":  "HTTP output"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "login refresh disabled 403 no secrets"
+                                                                        ],
+                                                  "rollback":  "revert security code",
+                                                  "stop_conditions":  [
+                                                                          "bypass",
+                                                                          "secret logged"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "third-party identity"
+                                                                            ],
+                                                  "input_facts":  [
+                                                                      "approved design and prerequisite task outputs"
+                                                                  ],
+                                                  "risks":  [
+                                                                "environment or dependency disturbance"
+                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T4",
+                                                  "goal":  "system administration APIs",
+                                                  "requirement_ids":  [
+                                                                          "R2",
+                                                                          "R3",
+                                                                          "R4",
+                                                                          "R5",
+                                                                          "R7",
+                                                                          "R8"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T3"
+                                                                    ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "ccb-system/",
+                                                                               "integration rules"
+                                                                           ],
+                                                                "modify":  [
+                                                                               "ccb-boot/"
+                                                                           ],
+                                                                "test":  [
+                                                                             "domain tests"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "T3 auth context"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "system APIs"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T4-S1",
+                                                                    "action":  "write domain tests",
+                                                                    "command":  "mvn test",
+                                                                    "expected":  "fail before implementation",
+                                                                    "evidence":  "failure assertions"
+                                                                },
+                                                                {
+                                                                    "id":  "T4-S2",
+                                                                    "action":  "implement and test services",
+                                                                    "command":  "mvn test",
+                                                                    "expected":  "pass",
+                                                                    "evidence":  "test report"
+                                                                },
+                                                                {
+                                                                    "id":  "T4-S3",
+                                                                    "action":  "run CRUD role flow",
+                                                                    "command":  "start backend and run flow",
+                                                                    "expected":  "success 403 conflicts",
+                                                                    "evidence":  "HTTP and audit"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "CRUD tree routes auth audit docs"
+                                                                        ],
+                                                  "rollback":  "revert module and repair by migration",
+                                                  "stop_conditions":  [
+                                                                          "cross Mapper",
+                                                                          "tree cycle"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "data scope permission"
+                                                                            ],
+                                                  "input_facts":  [
+                                                                      "approved design and prerequisite task outputs"
+                                                                  ],
+                                                  "risks":  [
+                                                                "environment or dependency disturbance"
+                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T5",
+                                                  "goal":  "frontend shell dynamic routes and themes",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R3",
+                                                                          "R4",
+                                                                          "R6"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T3"
+                                                                    ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "ccb-web/"
+                                                                           ],
+                                                                "modify":  [
+
+                                                                           ],
+                                                                "test":  [
+                                                                             "route token theme tests"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "T3 APIs"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "frontend shell"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T5-S1",
+                                                                    "action":  "create Vite app",
+                                                                    "command":  "npm install; npm run build",
+                                                                    "expected":  "pass",
+                                                                    "evidence":  "build output"
+                                                                },
+                                                                {
+                                                                    "id":  "T5-S2",
+                                                                    "action":  "implement routes and themes",
+                                                                    "command":  "npm test; npm run build",
+                                                                    "expected":  "pass",
+                                                                    "evidence":  "test and build output"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "dynamic routes one refresh logout on refresh failure theme persists"
+                                                                        ],
+                                                  "rollback":  "remove frontend tree",
+                                                  "stop_conditions":  [
+                                                                          "token leak",
+                                                                          "arbitrary route"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "SSR or mobile"
+                                                                            ],
+                                                  "input_facts":  [
+                                                                      "approved design and prerequisite task outputs"
+                                                                  ],
+                                                  "risks":  [
+                                                                "environment or dependency disturbance"
+                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T6",
+                                                  "goal":  "system administration pages",
+                                                  "requirement_ids":  [
+                                                                          "R2",
+                                                                          "R3",
+                                                                          "R4",
+                                                                          "R5",
+                                                                          "R6"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T4",
+                                                                        "T5"
+                                                                    ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "ccb-web/src/views/system/"
+                                                                           ],
+                                                                "modify":  [
+                                                                               "ccb-web/src/router/",
+                                                                               "ccb-web/src/stores/"
+                                                                           ],
+                                                                "test":  [
+                                                                             "page tests"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "T4 APIs",
+                                                                                      "T5 shell"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "system pages"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T6-S1",
+                                                                    "action":  "create page tests",
+                                                                    "command":  "npm test",
+                                                                    "expected":  "fail before implementation",
+                                                                    "evidence":  "failure assertions"
+                                                                },
+                                                                {
+                                                                    "id":  "T6-S2",
+                                                                    "action":  "implement and build pages",
+                                                                    "command":  "npm test; npm run build",
+                                                                    "expected":  "pass and stable layout",
+                                                                    "evidence":  "test build page check"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "admin flow ordinary blocked errors visible theme stable"
+                                                                        ],
+                                                  "rollback":  "revert pages only",
+                                                  "stop_conditions":  [
+                                                                          "overlap duplicate submit button bypass"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "complex drag editor"
+                                                                            ],
+                                                  "input_facts":  [
+                                                                      "approved design and prerequisite task outputs"
+                                                                  ],
+                                                  "risks":  [
+                                                                "environment or dependency disturbance"
+                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T7",
+                                                  "goal":  "integration verification and docs",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R2",
+                                                                          "R3",
+                                                                          "R4",
+                                                                          "R5",
+                                                                          "R6",
+                                                                          "R7",
+                                                                          "R8"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T1",
+                                                                        "T2",
+                                                                        "T3",
+                                                                        "T4",
+                                                                        "T5",
+                                                                        "T6"
+                                                                    ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "README.md",
+                                                                               "startup scripts",
+                                                                               "API docs"
+                                                                           ],
+                                                                "modify":  [
+                                                                               ".env.example"
+                                                                           ],
+                                                                "test":  [
+                                                                             "full suites and integration flow"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "all prior artifacts"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "acceptance evidence"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T7-S1",
+                                                                    "action":  "start stack and health check",
+                                                                    "command":  "follow README",
+                                                                    "expected":  "components available",
+                                                                    "evidence":  "ports health"
+                                                                },
+                                                                {
+                                                                    "id":  "T7-S2",
+                                                                    "action":  "run full role and theme flow",
+                                                                    "command":  "login -\u003e routes -\u003e CRUD -\u003e 403 -\u003e theme",
+                                                                    "expected":  "R1-R8 observable",
+                                                                    "evidence":  "API page results"
+                                                                },
+                                                                {
+                                                                    "id":  "T7-S3",
+                                                                    "action":  "run all builds and tests",
+                                                                    "command":  "mvn test; mvn package; npm test; npm run build",
+                                                                    "expected":  "pass",
+                                                                    "evidence":  "exit codes"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "all must evidence no placeholders no secrets risks recorded"
+                                                                        ],
+                                                  "rollback":  "preserve evidence and revert by task boundary",
+                                                  "stop_conditions":  [
+                                                                          "missing evidence auth issue build failure"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "non-equivalent environment"
+                                                                            ],
+                                                  "input_facts":  [
+                                                                      "approved design and prerequisite task outputs"
+                                                                  ],
+                                                  "risks":  [
+                                                                "environment or dependency disturbance"
+                                                            ]
+                                              }
+                                          ],
+                                "dependency_edges":  [
+                                                         {
+                                                             "from":  "T1",
+                                                             "to":  "T2",
+                                                             "reason":  "required contract and implementation dependency"
+                                                         },
+                                                         {
+                                                             "from":  "T2",
+                                                             "to":  "T3",
+                                                             "reason":  "required contract and implementation dependency"
+                                                         },
+                                                         {
+                                                             "from":  "T3",
+                                                             "to":  "T4",
+                                                             "reason":  "required contract and implementation dependency"
+                                                         },
+                                                         {
+                                                             "from":  "T3",
+                                                             "to":  "T5",
+                                                             "reason":  "required contract and implementation dependency"
+                                                         },
+                                                         {
+                                                             "from":  "T4",
+                                                             "to":  "T6",
+                                                             "reason":  "required contract and implementation dependency"
+                                                         },
+                                                         {
+                                                             "from":  "T5",
+                                                             "to":  "T6",
+                                                             "reason":  "required contract and implementation dependency"
+                                                         },
+                                                         {
+                                                             "from":  "T6",
+                                                             "to":  "T7",
+                                                             "reason":  "required contract and implementation dependency"
+                                                         }
+                                                     ],
+                                "parallel_groups":  [
+                                                        [
+                                                            "T1"
+                                                        ],
+                                                        [
+                                                            "T2"
+                                                        ],
+                                                        [
+                                                            "T3"
+                                                        ],
+                                                        [
+                                                            "T4",
+                                                            "T5"
+                                                        ],
+                                                        [
+                                                            "T6"
+                                                        ],
+                                                        [
+                                                            "T7"
+                                                        ]
+                                                    ],
+                                "integration_checks":  [
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T1"
+                                                                               ],
+                                                               "command":  "mvn -DskipTests compile",
+                                                               "expected":  "pass"
+                                                           },
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T2"
+                                                                               ],
+                                                               "command":  "run MySQL migration twice",
+                                                               "expected":  "idempotent"
+                                                           },
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T3"
+                                                                               ],
+                                                               "command":  "run auth and 403 flow",
+                                                               "expected":  "pass"
+                                                           },
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T4",
+                                                                                   "T5",
+                                                                                   "T6"
+                                                                               ],
+                                                               "command":  "backend tests frontend tests build",
+                                                               "expected":  "pass"
+                                                           },
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T7"
+                                                                               ],
+                                                               "command":  "full acceptance flow",
+                                                               "expected":  "R1-R8 evidence"
+                                                           }
+                                                       ],
+                                "coverage":  [
+                                                 {
+                                                     "requirement_id":  "R1",
+                                                     "task_ids":  [
+                                                                      "T1",
+                                                                      "T2",
+                                                                      "T3",
+                                                                      "T7"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R2",
+                                                     "task_ids":  [
+                                                                      "T2",
+                                                                      "T4",
+                                                                      "T6",
+                                                                      "T7"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R3",
+                                                     "task_ids":  [
+                                                                      "T3",
+                                                                      "T4",
+                                                                      "T5",
+                                                                      "T7"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R4",
+                                                     "task_ids":  [
+                                                                      "T4",
+                                                                      "T5",
+                                                                      "T6",
+                                                                      "T7"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R5",
+                                                     "task_ids":  [
+                                                                      "T2",
+                                                                      "T4",
+                                                                      "T6",
+                                                                      "T7"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R6",
+                                                     "task_ids":  [
+                                                                      "T5",
+                                                                      "T6",
+                                                                      "T7"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R7",
+                                                     "task_ids":  [
+                                                                      "T3",
+                                                                      "T4",
+                                                                      "T7"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R8",
+                                                     "task_ids":  [
+                                                                      "T1",
+                                                                      "T4",
+                                                                      "T7"
+                                                                  ]
+                                                 }
+                                             ],
+                                "approval":  {
+                                                 "status":  "approved",
+                                                 "evidence":  "user approved the implementation plan and requested execution",
+                                                 "confirmed_at":  "2026-08-04T00:00:00+08:00"
+                                             }
+                            },
+    "control_seed":  {
+                         "seed_status":  "hypotheses-only",
+                         "plant_boundary_candidates":  [
+                                                           "phase-one code migrations frontend build"
+                                                       ],
+                         "state_variable_candidates":  [
+                                                           "build state",
+                                                           "migration version",
+                                                           "auth state",
+                                                           "authorization result",
+                                                           "frontend build state"
+                                                       ],
+                         "interface_candidates":  [
+                                                      "REST API",
+                                                      "database migration",
+                                                      "frontend API client",
+                                                      "dynamic route contract"
+                                                  ],
+                         "sensor_candidates":  [
+                                                   "build test exit codes",
+                                                   "migration result",
+                                                   "HTTP status",
+                                                   "frontend build",
+                                                   "browser flow"
+                                               ],
+                         "actuator_candidates":  [
+                                                     "file changes",
+                                                     "dependency config",
+                                                     "migrations",
+                                                     "test and startup commands"
+                                                 ],
+                         "disturbance_candidates":  [
+                                                        "tool versions",
+                                                        "dependency network",
+                                                        "port conflicts",
+                                                        "missing env"
+                                                    ],
+                         "delay_candidates":  [
+                                                  "migration feedback",
+                                                  "API mismatch",
+                                                  "browser validation"
+                                              ],
+                         "assumptions":  [
+                                             {
+                                                 "text":  "required local tools are available or configurable",
+                                                 "basis":  "approved stack",
+                                                 "falsifier":  "version check fails"
+                                             }
+                                         ]
+                     }
+}

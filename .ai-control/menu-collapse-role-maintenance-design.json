@@ -1,0 +1,44 @@
+{
+  "topic": "menu-collapse-role-maintenance",
+  "design_status": "approved",
+  "approval": {
+    "status": "approved",
+    "approved_by": "user",
+    "approved_on": "2026-08-05",
+    "evidence": "用户确认按菜单对齐与独立角色维护弹窗方案实施"
+  },
+  "human_document": "docs/engineering-control/designs/2026-08-05-menu-collapse-role-maintenance-design.md",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Collapsed menu icons are vertically aligned and centered.",
+      "priority": "must",
+      "acceptance": ["fixed item geometry", "browser DOM geometry check"]
+    },
+    {
+      "id": "R2",
+      "statement": "User role maintenance is separated from the user profile drawer.",
+      "priority": "must",
+      "acceptance": ["row role action", "independent role save request"]
+    }
+  ],
+  "constraints": ["single tenant", "Vue 3", "TypeScript", "Element Plus", "Chinese UI", "reuse existing role APIs"],
+  "non_goals": ["backend API changes", "database migration", "multi-tenancy"],
+  "selected_approach": {
+    "name": "fixed flex geometry plus independent role dialog",
+    "reason": "minimizes scope and preserves existing frontend/backend contracts"
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1"], "signal": "collapsed menu item and icon geometry", "method": "browser DOM and npm build"},
+    {"requirement_ids": ["R2"], "signal": "role dialog and isolated save", "method": "browser flow and network request inspection"}
+  ],
+  "control_seed": {
+    "status": "hypotheses-only",
+    "controlled_boundary": ["ccb-web/src/views/ModuleView.vue", "ccb-web/src/styles.css"],
+    "states": ["menu_collapsed", "role_dialog_open", "role_save_pending", "frontend_build"],
+    "sensors": ["browser_dom", "browser_network", "npm_build", "git_diff"],
+    "actuators": ["frontend_source_edit"],
+    "disturbances": ["Element Plus default menu styles", "existing user changes"],
+    "rollback": "revert only the two scoped frontend files"
+  }
+}

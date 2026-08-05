@@ -1,0 +1,19 @@
+{
+  "sample_label": "workflow visual approval post-fix observation",
+  "task_ids": ["T1", "T3", "T4", "T5", "T6"],
+  "baseline_revision": "workflow-visual-approval-baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1/S2/S5", "result": "pass", "raw_evidence": "Browser displayed Vue Flow nodes and inspector; save and publish produced visible success alerts; validator test passed", "limitation": ["No separate browser engine comparison"]},
+    {"requirement_id": "R2", "sensor": "S2/S3/S5", "result": "pass", "raw_evidence": "Approval inspector showed user, role, starter and ANY/ALL controls; started instance created admin pending task", "limitation": ["Only one active user was available in this local tenant"]},
+    {"requirement_id": "R3", "sensor": "S3/S5", "result": "pass", "raw_evidence": "Inbox showed approve/reject/add-sign/cc actions; approve action submitted and pending list became empty; CC rows are read-only", "limitation": ["Add-sign and reject were not both executed interactively because the local tenant has one user and the tested instance was approved"]},
+    {"requirement_id": "R4", "sensor": "S3/S4", "result": "pass", "raw_evidence": "Fresh backend startup validated 17 migrations and applied V17; instance was bound to published version 1; tenant predicates are present", "limitation": ["No high-concurrency race test"]},
+    {"requirement_id": "R5", "sensor": "S2/S4/S5", "result": "pass", "raw_evidence": "Maven reactor and npm build passed; browser used existing workflow endpoints and rendered Chinese labels", "limitation": ["No external consumer module integration test"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "duplicate Flyway version 16 detected during fresh restart", "result": "corrected by renaming workflow migration to V17; restart and migration passed"}
+  ],
+  "coverage_gaps": ["No production-scale concurrency test", "No second active user for interactive add-sign/reject coverage"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

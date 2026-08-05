@@ -1,0 +1,2599 @@
+{
+  "schema_version": 4,
+  "revision": 14,
+  "created_at": "2026-08-04T07:25:52+00:00",
+  "updated_at": "2026-08-04T07:48:24+00:00",
+  "mode": "standard",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=user confirmed design；计划确认=user confirmed the design and requested implementation",
+      "recorded_at": "2026-08-04T07:25:52+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "approved baseline and handoff imported",
+      "recorded_at": "2026-08-04T07:26:11+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model revision 1 is ready and all R1-R6 have sensors and actuators",
+      "recorded_at": "2026-08-04T07:28:02+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "control plan revision 1 recorded with coverage, dependencies and rollback boundaries",
+      "recorded_at": "2026-08-04T07:28:25+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=user confirmed design；计划确认=user confirmed the design and requested implementation",
+        "recorded_at": "2026-08-04T07:25:52+00:00",
+        "data": {
+          "objective": "Add organization trees, organization-aware users, MinIO avatars, Chinese breadcrumbs, reusable user identity UI, and a component showcase.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Organizations are hierarchical trees, not flat lists.",
+              "priority": "must",
+              "source": "user-approved design",
+              "acceptance": [
+                "observable behavior",
+                "automated or browser verification"
+              ],
+              "counterexample": [
+                "flat list or route code shown to user"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Users are linked to organizations and can be added from organization nodes.",
+              "priority": "must",
+              "source": "user-approved design",
+              "acceptance": [
+                "observable behavior",
+                "automated or browser verification"
+              ],
+              "counterexample": [
+                "flat list or route code shown to user"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Breadcrumb labels use Chinese menu names.",
+              "priority": "must",
+              "source": "user-approved design",
+              "acceptance": [
+                "observable behavior",
+                "automated or browser verification"
+              ],
+              "counterexample": [
+                "flat list or route code shown to user"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Avatars are stored through MinIO.",
+              "priority": "must",
+              "source": "user-approved design",
+              "acceptance": [
+                "observable behavior",
+                "automated or browser verification"
+              ],
+              "counterexample": [
+                "flat list or route code shown to user"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "A reusable horizontal user identity component shows a hover profile.",
+              "priority": "must",
+              "source": "user-approved design",
+              "acceptance": [
+                "observable behavior",
+                "automated or browser verification"
+              ],
+              "counterexample": [
+                "flat list or route code shown to user"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "A showcase page demonstrates reusable components.",
+              "priority": "must",
+              "source": "user-approved design",
+              "acceptance": [
+                "observable behavior",
+                "automated or browser verification"
+              ],
+              "counterexample": [
+                "flat list or route code shown to user"
+              ]
+            }
+          ],
+          "invariants": [
+            "tenant_id remains enforced",
+            "storage credentials stay server-side",
+            "existing login and dynamic menu contracts remain compatible"
+          ],
+          "constraints": [
+            "single tenant",
+            "Spring Boot 3.x",
+            "JDK 17",
+            "MySQL",
+            "Vue 3",
+            "Element Plus",
+            "existing modular monolith"
+          ],
+          "non_goals": [
+            "multi-tenancy",
+            "role redesign",
+            "direct browser MinIO upload",
+            "avatar crop editor"
+          ],
+          "assumptions": [
+            {
+              "text": "MinIO will be available at a configured endpoint",
+              "basis": "existing Docker container and environment-backed config",
+              "falsifier": "health or upload check cannot connect"
+            }
+          ],
+          "unknowns": [
+            {
+              "text": "MinIO credentials are environment-specific",
+              "impact": "backend startup requires configured access",
+              "resolution": "environment-backed properties and explicit runtime check",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "decision": "backend proxy upload",
+              "reason": "avoid exposing storage credentials"
+            },
+            {
+              "decision": "persist object key",
+              "reason": "avoid stale public URL"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "organization tree and user association",
+              "method": "API and browser flow"
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "signal": "breadcrumb text",
+              "method": "browser DOM"
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "avatar upload and returned URL",
+              "method": "API and MinIO integration"
+            },
+            {
+              "requirement_ids": [
+                "R5",
+                "R6"
+              ],
+              "signal": "reusable UI rendering",
+              "method": "browser showcase route"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "system boundaries, causal paths, sensors, actuators, delays and MinIO blind spot recorded",
+        "recorded_at": "2026-08-04T07:27:02+00:00",
+        "data": {
+          "baseline_revision": "organization-user-avatar-v1",
+          "plant_boundary": {
+            "inside": [
+              "sys_org and sys_user data",
+              "organization tree API",
+              "user CRUD and avatar API",
+              "MinIO adapter",
+              "frontend system views",
+              "UiUserIdentity",
+              "showcase route"
+            ],
+            "environment": [
+              "MySQL",
+              "MinIO container",
+              "browser",
+              "Element Plus runtime",
+              "existing auth token"
+            ]
+          },
+          "state_variables": [
+            "flyway_version",
+            "minio_reachable",
+            "org_tree_data",
+            "selected_org_id",
+            "user_profile.avatar_object_key",
+            "user_profile.avatar_url",
+            "route_menu_tree",
+            "breadcrumb_label",
+            "showcase_rendered"
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "sys_org parent_id rows",
+              "transitions": [
+                "query orgs",
+                "build nested DTO",
+                "render tree",
+                "select node"
+              ],
+              "outputs": [
+                "hierarchical organization UI"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "selected org id or org tree action",
+              "transitions": [
+                "load users by org",
+                "prefill org_id",
+                "create/update user"
+              ],
+              "outputs": [
+                "user associated with organization"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "current route path and auth route menu tree",
+              "transitions": [
+                "match deepest route path",
+                "use menu_name",
+                "fallback to static Chinese meta"
+              ],
+              "outputs": [
+                "Chinese breadcrumb"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "authenticated image multipart",
+              "transitions": [
+                "validate type and size",
+                "upload object to MinIO",
+                "persist object key",
+                "create signed URL"
+              ],
+              "outputs": [
+                "visible avatar URL"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "UserProfile",
+              "transitions": [
+                "render avatar and name",
+                "hover/focus popover"
+              ],
+              "outputs": [
+                "profile identity component"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "existing UI components and example data",
+              "transitions": [
+                "render showcase route"
+              ],
+              "outputs": [
+                "component usage examples"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "organization tree REST",
+              "producers": [
+                "ccb-system"
+              ],
+              "consumers": [
+                "ccb-web"
+              ],
+              "invariant": "tenant scoped nested nodes with stable ids"
+            },
+            {
+              "name": "user REST",
+              "producers": [
+                "ccb-system"
+              ],
+              "consumers": [
+                "ccb-web",
+                "ccb-security"
+              ],
+              "invariant": "org_id and profile fields remain compatible"
+            },
+            {
+              "name": "avatar multipart REST",
+              "producers": [
+                "ccb-system"
+              ],
+              "consumers": [
+                "ccb-web"
+              ],
+              "invariant": "credentials never returned to browser"
+            },
+            {
+              "name": "MinIO storage",
+              "producers": [
+                "ccb-infrastructure"
+              ],
+              "consumers": [
+                "ccb-system"
+              ],
+              "invariant": "object key is tenant and user scoped"
+            },
+            {
+              "name": "route menu tree",
+              "producers": [
+                "ccb-security"
+              ],
+              "consumers": [
+                "ccb-web AppLayout"
+              ],
+              "invariant": "menu_name is display label"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Flyway version",
+              "method": "backend startup log and schema history",
+              "blind_spots": [
+                "manual database edits"
+              ],
+              "independence": "database/runtime"
+            },
+            {
+              "id": "S2",
+              "target": "MinIO reachability",
+              "method": "storage health/upload request",
+              "blind_spots": [
+                "credentials valid but bucket policy wrong"
+              ],
+              "independence": "external service"
+            },
+            {
+              "id": "S3",
+              "target": "API contract",
+              "method": "authenticated HTTP responses",
+              "blind_spots": [
+                "browser rendering"
+              ],
+              "independence": "HTTP client"
+            },
+            {
+              "id": "S4",
+              "target": "UI behavior",
+              "method": "browser DOM and screenshot",
+              "blind_spots": [
+                "unvisited viewport states"
+              ],
+              "independence": "browser"
+            },
+            {
+              "id": "S5",
+              "target": "build regression",
+              "method": "npm and Maven exit codes",
+              "blind_spots": [
+                "runtime data issues"
+              ],
+              "independence": "build process"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "schema",
+              "action": "apply V10 migration",
+              "authority": "workspace database migration",
+              "impact_radius": "sys_user only",
+              "rollback": "development migration rollback/snapshot"
+            },
+            {
+              "id": "A2",
+              "target": "backend",
+              "action": "add API and storage adapter",
+              "authority": "workspace source",
+              "impact_radius": "system/auth modules",
+              "rollback": "revert task boundary"
+            },
+            {
+              "id": "A3",
+              "target": "frontend",
+              "action": "add tree, identity, breadcrumb and showcase",
+              "authority": "workspace source",
+              "impact_radius": "system layout and routes",
+              "rollback": "revert task boundary"
+            },
+            {
+              "id": "A4",
+              "target": "runtime",
+              "action": "configure MinIO endpoint and credentials via environment",
+              "authority": "local runtime",
+              "impact_radius": "avatar upload only",
+              "rollback": "unset storage properties"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "nested organization nodes are returned and rendered"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "org selection and node add-user produce matching org_id"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "breadcrumb text equals Chinese menu_name"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "image upload returns usable avatar URL and appears in UI"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "identity component renders horizontal layout and hover profile"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "showcase route renders component examples"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "MinIO container stopped",
+              "effect": "avatar upload unavailable",
+              "detectable": "yes",
+              "controllable": "yes"
+            },
+            {
+              "source": "missing storage credentials",
+              "effect": "backend storage initialization/upload failure",
+              "detectable": "yes",
+              "controllable": "yes"
+            },
+            {
+              "source": "existing generic system page coupling",
+              "effect": "org/user UI regression",
+              "detectable": "yes",
+              "controllable": "yes"
+            },
+            {
+              "source": "dependency download failure",
+              "effect": "build cannot resolve MinIO SDK",
+              "detectable": "yes",
+              "controllable": "partial"
+            }
+          ],
+          "delays": [
+            {
+              "source": "presigned URL expiry",
+              "consequence": "avatar may require refreshed profile data",
+              "sampling_rule": "check URL after profile reload"
+            },
+            {
+              "source": "Flyway startup",
+              "consequence": "schema/API mismatch until restart",
+              "sampling_rule": "check schema history before API smoke"
+            },
+            {
+              "source": "browser HMR/cache",
+              "consequence": "stale breadcrumb or component view",
+              "sampling_rule": "hard reload after build"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "MinIO endpoint can be configured for both backend and browser-visible signed URLs",
+              "evidence": "existing port mapping 9000",
+              "falsifier": "signed URL cannot be reached from browser"
+            },
+            {
+              "text": "sys_org.parent_id and sys_user.org_id are the authoritative organization relations",
+              "evidence": "existing V1 schema and generic service",
+              "falsifier": "database constraints or API consumers require different model"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "dedicated tree endpoint and tree component"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "org selector and node-level add-user action"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "deepest menu path resolver with Chinese fallback"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "add MinIO runtime sensor and upload smoke check"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "UiUserIdentity and showcase hover check"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "authenticated showcase route and build check"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "five bounded tasks, dependencies, rollback and sampling points recorded",
+        "recorded_at": "2026-08-04T07:28:09+00:00",
+        "data": {
+          "baseline_revision": "organization-user-avatar-v1",
+          "model_revision": "organization-user-avatar-model-v1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "database and MinIO storage foundation",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V1 schema has sys_org.parent_id and sys_user.org_id",
+                "MinIO container exists but is stopped",
+                "approved storage boundary"
+              ],
+              "write_scope": [
+                "V10 migration",
+                "infrastructure storage adapter",
+                "MinIO properties",
+                "Maven dependencies if required"
+              ],
+              "invariants": [
+                "tenant_id remains enforced",
+                "credentials are environment-backed",
+                "object key is tenant/user scoped"
+              ],
+              "interface_contracts": [
+                "StorageService upload/presigned/delete"
+              ],
+              "non_goals": [
+                "direct browser upload",
+                "avatar crop"
+              ],
+              "action_bounds": [
+                "add nullable avatar key only",
+                "do not change existing auth schema semantics"
+              ],
+              "acceptance_checks": [
+                "V10 applies",
+                "storage service compiles",
+                "invalid media validation is explicit"
+              ],
+              "evidence_required": [
+                "Flyway info",
+                "Maven compile",
+                "storage validation result"
+              ],
+              "rollback": "revert T1 files and development migration",
+              "stop_conditions": [
+                "migration failure",
+                "secret in source",
+                "dependency conflict"
+              ],
+              "escalation_conditions": [
+                "MinIO SDK cannot resolve",
+                "runtime credentials unavailable"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "organization tree and user/avatar APIs",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "T1 storage contract",
+                "generic SystemService and AuthRepository"
+              ],
+              "write_scope": [
+                "system org tree service/controller",
+                "user profile fields",
+                "avatar endpoints",
+                "auth me extension"
+              ],
+              "invariants": [
+                "all queries tenant scoped",
+                "user org_id remains authoritative",
+                "avatar credentials never returned"
+              ],
+              "interface_contracts": [
+                "GET /api/system/orgs/tree",
+                "GET /api/system/users?orgId",
+                "POST/PUT users",
+                "POST/DELETE users/{id}/avatar",
+                "GET /api/auth/me profile fields"
+              ],
+              "non_goals": [
+                "role redesign",
+                "bulk import"
+              ],
+              "action_bounds": [
+                "preserve generic system API compatibility",
+                "return Chinese-safe error messages"
+              ],
+              "acceptance_checks": [
+                "nested tree response",
+                "org-filtered users",
+                "upload and delete",
+                "invalid type/size rejection"
+              ],
+              "evidence_required": [
+                "authenticated HTTP responses",
+                "database row check",
+                "MinIO object check"
+              ],
+              "rollback": "revert T2 files",
+              "stop_conditions": [
+                "authorization regression",
+                "cross-tenant result",
+                "storage secret in JSON"
+              ],
+              "escalation_conditions": [
+                "existing API consumer incompatibility"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "frontend organization/user flows and Chinese breadcrumb",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "org tree and profile API contracts",
+                "existing ModuleView and AppLayout"
+              ],
+              "write_scope": [
+                "system API client/types",
+                "org tree components",
+                "ModuleView org/user behavior",
+                "AppLayout title resolver"
+              ],
+              "invariants": [
+                "existing users/roles/menu/config pages remain usable",
+                "no route code displayed as label",
+                "avatar upload uses authenticated API"
+              ],
+              "interface_contracts": [
+                "frontend consumes T2 endpoints",
+                "UiOrgTree emits select/add-user actions"
+              ],
+              "non_goals": [
+                "unrelated dashboard redesign"
+              ],
+              "action_bounds": [
+                "keep current theme tokens",
+                "use existing Element Plus components"
+              ],
+              "acceptance_checks": [
+                "nested org view",
+                "node add-user",
+                "org tree selector",
+                "Chinese breadcrumb",
+                "avatar shown"
+              ],
+              "evidence_required": [
+                "npm build",
+                "browser DOM",
+                "browser network"
+              ],
+              "rollback": "revert T3 files",
+              "stop_conditions": [
+                "existing module route regression",
+                "tree cannot render empty state"
+              ],
+              "escalation_conditions": [
+                "API response shape requires redesign"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "reusable user identity and component showcase",
+              "requirement_ids": [
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "AuthMe profile shape",
+                "existing components/ui convention"
+              ],
+              "write_scope": [
+                "UiUserIdentity",
+                "showcase view",
+                "route/menu entry",
+                "header integration"
+              ],
+              "invariants": [
+                "identity has avatar fallback",
+                "hover popover is keyboard/focus safe",
+                "component styles use shared tokens"
+              ],
+              "interface_contracts": [
+                "UserProfile input model",
+                "showcase route"
+              ],
+              "non_goals": [
+                "new design system framework"
+              ],
+              "action_bounds": [
+                "compose existing Element Plus primitives",
+                "do not duplicate layout tokens"
+              ],
+              "acceptance_checks": [
+                "horizontal identity",
+                "hover profile",
+                "showcase renders all examples"
+              ],
+              "evidence_required": [
+                "npm build",
+                "browser screenshot/DOM"
+              ],
+              "rollback": "revert T4 files",
+              "stop_conditions": [
+                "header identity breaks layout",
+                "showcase route inaccessible"
+              ],
+              "escalation_conditions": [
+                "profile contract lacks required fields"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "regression and acceptance verification",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T4"
+              ],
+              "input_facts": [
+                "T1-T4 evidence"
+              ],
+              "write_scope": [
+                "tests and verification artifacts only"
+              ],
+              "invariants": [
+                "existing login/workflow/AI routes remain functional",
+                "no unintended broad file changes"
+              ],
+              "interface_contracts": [
+                "full stack runtime"
+              ],
+              "non_goals": [
+                "new scope"
+              ],
+              "action_bounds": [
+                "run builds, health, API and browser checks"
+              ],
+              "acceptance_checks": [
+                "all R1-R6 observable",
+                "residual MinIO runtime state documented"
+              ],
+              "evidence_required": [
+                "npm build",
+                "Maven package",
+                "health",
+                "browser flow"
+              ],
+              "rollback": "stop at verifying and preserve evidence",
+              "stop_conditions": [
+                "any must check fails"
+              ],
+              "escalation_conditions": [
+                "MinIO remains unavailable after safe runtime checks"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "storage/schema contract"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "API contract"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "shared UI profile contract"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "final integration"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "mvn compile",
+                "Flyway V10"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "org tree API",
+                "avatar API"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3",
+                "T4"
+              ],
+              "checks": [
+                "npm run build",
+                "browser route"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "full acceptance"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "task boundary",
+              "trigger": "after each task",
+              "observer": "main agent",
+              "sensors": [
+                "S1",
+                "S3",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "runtime integration",
+              "trigger": "after backend and frontend start",
+              "observer": "main agent",
+              "sensors": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 compile passed; runtime MinIO remains an explicit observation gap",
+        "recorded_at": "2026-08-04T07:32:06+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V10__user_avatar_support.sql",
+              "purpose": "add nullable user avatar object key"
+            },
+            {
+              "path_or_resource": "ccb-infrastructure/src/main/java/com/ccb/infrastructure/storage/MinioStorageProperties.java",
+              "purpose": "environment-backed MinIO settings"
+            },
+            {
+              "path_or_resource": "ccb-infrastructure/src/main/java/com/ccb/infrastructure/storage/MinioStorageService.java",
+              "purpose": "server-side upload, presigned URL and delete"
+            },
+            {
+              "path_or_resource": "ccb-infrastructure/pom.xml",
+              "purpose": "MinIO SDK dependency"
+            },
+            {
+              "path_or_resource": "ccb-boot/src/main/resources/application-local.yml",
+              "purpose": "local MinIO defaults and env overrides"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl ccb-boot -am test -DskipTests",
+              "exit_code": 0,
+              "salient_output": "Reactor build SUCCESS; ccb-infrastructure and ccb-boot compiled"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Java compile",
+              "result": "pass",
+              "evidence": "BUILD SUCCESS",
+              "limitations": [
+                "MinIO container is stopped, runtime upload not yet sampled"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "V10 adds sys_user.avatar_object_key",
+            "MinIO client remains lazy at upload time so backend can start without MinIO"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "storage credentials are environment-backed",
+              "result": "pass",
+              "evidence": "application-local.yml uses MINIO_* placeholders"
+            },
+            {
+              "invariant": "tenant data model is unchanged",
+              "result": "pass",
+              "evidence": "migration only adds nullable avatar key"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Maven local repository was not writable in sandbox",
+              "impact": "first compile attempt failed before dependency resolution; escalated rerun passed"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "MinIO runtime connectivity requires starting minio-minio-1 and setting valid credentials"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 cross-module compilation passed; runtime API is pending",
+        "recorded_at": "2026-08-04T07:48:23+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "ccb-security/src/main/java/com/ccb/security/model/AuthUser.java",
+              "purpose": "carry organization name and avatar key"
+            },
+            {
+              "path_or_resource": "ccb-security/src/main/java/com/ccb/security/model/AuthMe.java",
+              "purpose": "return organization and avatar URL"
+            },
+            {
+              "path_or_resource": "ccb-security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+              "purpose": "load joined organization and avatar data"
+            },
+            {
+              "path_or_resource": "ccb-security/src/main/java/com/ccb/security/service/AuthService.java",
+              "purpose": "decorate auth profile with avatar URL"
+            },
+            {
+              "path_or_resource": "ccb-system/src/main/java/com/ccb/system/org/",
+              "purpose": "organization tree DTO and service"
+            },
+            {
+              "path_or_resource": "ccb-system/src/main/java/com/ccb/system/service/SystemService.java",
+              "purpose": "user org filtering and avatar upload/delete"
+            },
+            {
+              "path_or_resource": "ccb-system/src/main/java/com/ccb/system/web/SystemController.java",
+              "purpose": "tree and multipart avatar endpoints"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl ccb-boot -am test -DskipTests",
+              "exit_code": 0,
+              "salient_output": "all modules BUILD SUCCESS"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "cross-module Java compilation",
+              "result": "pass",
+              "evidence": "ccb-security, ccb-system, ccb-boot compiled",
+              "limitations": [
+                "runtime API and MinIO upload not yet sampled"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "organization tree returns nested nodes and user summaries",
+            "users support orgId filter, orgName, avatarUrl",
+            "multipart avatar upload validates image type and 2MB limit"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tenant scoping",
+              "result": "pass",
+              "evidence": "org/user queries include tenant_id"
+            },
+            {
+              "invariant": "existing AuthUser test constructor",
+              "result": "pass",
+              "evidence": "compatibility constructor retained"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "runtime migration and API smoke check pending",
+            "MinIO container is stopped"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Add organization trees, organization-aware users, MinIO avatars, Chinese breadcrumbs, reusable user identity UI, and a component showcase.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Organizations are hierarchical trees, not flat lists.",
+      "priority": "must",
+      "source": "user-approved design",
+      "acceptance": [
+        "observable behavior",
+        "automated or browser verification"
+      ],
+      "counterexample": [
+        "flat list or route code shown to user"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Users are linked to organizations and can be added from organization nodes.",
+      "priority": "must",
+      "source": "user-approved design",
+      "acceptance": [
+        "observable behavior",
+        "automated or browser verification"
+      ],
+      "counterexample": [
+        "flat list or route code shown to user"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Breadcrumb labels use Chinese menu names.",
+      "priority": "must",
+      "source": "user-approved design",
+      "acceptance": [
+        "observable behavior",
+        "automated or browser verification"
+      ],
+      "counterexample": [
+        "flat list or route code shown to user"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Avatars are stored through MinIO.",
+      "priority": "must",
+      "source": "user-approved design",
+      "acceptance": [
+        "observable behavior",
+        "automated or browser verification"
+      ],
+      "counterexample": [
+        "flat list or route code shown to user"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "A reusable horizontal user identity component shows a hover profile.",
+      "priority": "must",
+      "source": "user-approved design",
+      "acceptance": [
+        "observable behavior",
+        "automated or browser verification"
+      ],
+      "counterexample": [
+        "flat list or route code shown to user"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "A showcase page demonstrates reusable components.",
+      "priority": "must",
+      "source": "user-approved design",
+      "acceptance": [
+        "observable behavior",
+        "automated or browser verification"
+      ],
+      "counterexample": [
+        "flat list or route code shown to user"
+      ]
+    }
+  ],
+  "invariants": [
+    "tenant_id remains enforced",
+    "storage credentials stay server-side",
+    "existing login and dynamic menu contracts remain compatible"
+  ],
+  "constraints": [
+    "single tenant",
+    "Spring Boot 3.x",
+    "JDK 17",
+    "MySQL",
+    "Vue 3",
+    "Element Plus",
+    "existing modular monolith"
+  ],
+  "non_goals": [
+    "multi-tenancy",
+    "role redesign",
+    "direct browser MinIO upload",
+    "avatar crop editor"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\organization-user-avatar-handoff.json",
+    "imported_at": "2026-08-04T07:25:52+00:00",
+    "topic": "organization-user-avatar",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "organization-user-avatar",
+      "handoff_status": "approved",
+      "created_at": "2026-08-04T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "organization-user-avatar",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-04-organization-user-avatar-design.md",
+        "objective": "Add organization trees, organization-aware users, MinIO avatars, Chinese breadcrumbs, reusable user identity UI, and a component showcase.",
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Organizations are hierarchical trees, not flat lists.",
+            "priority": "must",
+            "source": "user-approved design",
+            "acceptance": [
+              "observable behavior",
+              "automated or browser verification"
+            ],
+            "counterexample": [
+              "flat list or route code shown to user"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Users are linked to organizations and can be added from organization nodes.",
+            "priority": "must",
+            "source": "user-approved design",
+            "acceptance": [
+              "observable behavior",
+              "automated or browser verification"
+            ],
+            "counterexample": [
+              "flat list or route code shown to user"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Breadcrumb labels use Chinese menu names.",
+            "priority": "must",
+            "source": "user-approved design",
+            "acceptance": [
+              "observable behavior",
+              "automated or browser verification"
+            ],
+            "counterexample": [
+              "flat list or route code shown to user"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Avatars are stored through MinIO.",
+            "priority": "must",
+            "source": "user-approved design",
+            "acceptance": [
+              "observable behavior",
+              "automated or browser verification"
+            ],
+            "counterexample": [
+              "flat list or route code shown to user"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "A reusable horizontal user identity component shows a hover profile.",
+            "priority": "must",
+            "source": "user-approved design",
+            "acceptance": [
+              "observable behavior",
+              "automated or browser verification"
+            ],
+            "counterexample": [
+              "flat list or route code shown to user"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "A showcase page demonstrates reusable components.",
+            "priority": "must",
+            "source": "user-approved design",
+            "acceptance": [
+              "observable behavior",
+              "automated or browser verification"
+            ],
+            "counterexample": [
+              "flat list or route code shown to user"
+            ]
+          }
+        ],
+        "constraints": [
+          "single tenant",
+          "Spring Boot 3.x",
+          "JDK 17",
+          "MySQL",
+          "Vue 3",
+          "Element Plus",
+          "existing modular monolith"
+        ],
+        "non_goals": [
+          "multi-tenancy",
+          "role redesign",
+          "direct browser MinIO upload",
+          "avatar crop editor"
+        ],
+        "selected_approach": {
+          "name": "backend-proxy MinIO upload with object key persistence",
+          "reason": "keeps storage credentials out of the browser and fits the current API boundary"
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "organization tree and user association",
+            "method": "API and browser flow"
+          },
+          {
+            "requirement_ids": [
+              "R3"
+            ],
+            "signal": "breadcrumb text",
+            "method": "browser DOM"
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "avatar upload and returned URL",
+            "method": "API and MinIO integration"
+          },
+          {
+            "requirement_ids": [
+              "R5",
+              "R6"
+            ],
+            "signal": "reusable UI rendering",
+            "method": "browser showcase route"
+          }
+        ],
+        "unknowns": [
+          {
+            "text": "MinIO credentials are environment-specific",
+            "impact": "backend startup requires configured access",
+            "resolution": "environment-backed properties and explicit runtime check",
+            "blocking": false
+          }
+        ],
+        "users": [
+          "system administrator",
+          "organization administrator",
+          "future module developer"
+        ],
+        "invariants": [
+          "tenant_id remains enforced",
+          "storage credentials stay server-side",
+          "existing login and dynamic menu contracts remain compatible"
+        ],
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "system module and reusable frontend components"
+            ],
+            "outside": [
+              "multi-tenancy",
+              "role redesign"
+            ]
+          },
+          "components": [
+            {
+              "name": "ccb-infrastructure",
+              "responsibility": "database and MinIO adapter",
+              "depends_on": [
+                "ccb-common"
+              ]
+            },
+            {
+              "name": "ccb-system",
+              "responsibility": "organization and user APIs",
+              "depends_on": [
+                "ccb-infrastructure",
+                "ccb-security"
+              ]
+            },
+            {
+              "name": "ccb-web",
+              "responsibility": "organization and reusable UI",
+              "depends_on": [
+                "REST API"
+              ]
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "MinIO unavailable",
+            "behavior": "return Chinese storage error and keep existing avatar"
+          },
+          {
+            "condition": "invalid image",
+            "behavior": "reject before upload with validation message"
+          },
+          {
+            "condition": "unknown route menu",
+            "behavior": "use Chinese static fallback"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "server-side storage credentials",
+            "tenant-scoped object key",
+            "authenticated upload"
+          ],
+          "performance": [
+            "paged users",
+            "single org tree request"
+          ],
+          "compatibility": [
+            "JDK 17",
+            "Spring Boot 3",
+            "Vue 3"
+          ],
+          "operations": [
+            "Flyway migration",
+            "health check"
+          ]
+        },
+        "assumptions": [
+          {
+            "text": "MinIO will be available at a configured endpoint",
+            "basis": "existing Docker container and environment-backed config",
+            "falsifier": "health or upload check cannot connect"
+          }
+        ],
+        "decisions": [
+          {
+            "decision": "backend proxy upload",
+            "reason": "avoid exposing storage credentials"
+          },
+          {
+            "decision": "persist object key",
+            "reason": "avoid stale public URL"
+          }
+        ],
+        "risks": [
+          "existing MinIO container is currently stopped",
+          "dependency may need network access",
+          "user/org UI changes touch generic system page"
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "user confirmed design",
+          "confirmed_at": "2026-08-04T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "schema_version": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-04-organization-user-avatar-implementation-plan.md",
+        "plan_status": "ready",
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "database and storage foundation",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "prerequisites": [],
+            "files": {
+              "create": [
+                "ccb-infrastructure/src/main/resources/db/migration/V10__user_avatar_support.sql",
+                "ccb-infrastructure/src/main/java/com/ccb/infrastructure/storage/"
+              ],
+              "modify": [
+                "ccb-infrastructure/pom.xml",
+                "ccb-boot/src/main/resources/application-local.yml"
+              ],
+              "test": [
+                "storage validation test"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "approved schema and MinIO settings"
+              ],
+              "produces": [
+                "avatar storage service"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "add migration and config",
+                "command": "Flyway startup",
+                "expected": "V10 applied",
+                "evidence": "Flyway info"
+              },
+              {
+                "id": "T1-S2",
+                "action": "compile storage adapter",
+                "command": "mvn -pl ccb-boot -am test -DskipTests",
+                "expected": "pass",
+                "evidence": "exit code 0"
+              }
+            ],
+            "acceptance_checks": [
+              "nullable avatar key exists",
+              "MinIO config is environment-backed"
+            ],
+            "rollback": "remove T1 files and V10 in development database",
+            "stop_conditions": [
+              "migration failure",
+              "secret committed"
+            ],
+            "escalation_conditions": [
+              "MinIO SDK unavailable"
+            ],
+            "input_facts": [
+              "approved design"
+            ],
+            "risks": [
+              "MinIO container stopped"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "organization and user APIs",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "files": {
+              "create": [
+                "ccb-system/src/main/java/com/ccb/system/org/"
+              ],
+              "modify": [
+                "ccb-system/src/main/java/com/ccb/system/service/SystemService.java",
+                "ccb-security/src/main/java/com/ccb/security/"
+              ],
+              "test": [
+                "API smoke checks"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "storage service",
+                "sys_org/sys_user"
+              ],
+              "produces": [
+                "org tree",
+                "user profile",
+                "avatar endpoints"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "implement org tree DTO and query",
+                "command": "backend test",
+                "expected": "nested tree",
+                "evidence": "JSON response"
+              },
+              {
+                "id": "T2-S2",
+                "action": "implement avatar upload",
+                "command": "multipart request",
+                "expected": "object key and URL",
+                "evidence": "HTTP response"
+              }
+            ],
+            "acceptance_checks": [
+              "tenant scoped",
+              "invalid media rejected"
+            ],
+            "rollback": "revert T2 files",
+            "stop_conditions": [
+              "authorization regression"
+            ],
+            "escalation_conditions": [
+              "API contract conflict"
+            ],
+            "input_facts": [
+              "T1 output"
+            ],
+            "risks": [
+              "generic system service coupling"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "frontend organization and user experience",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "files": {
+              "create": [
+                "ccb-web/src/components/ui/UiOrgTree.vue",
+                "ccb-web/src/components/ui/UiOrgTreeSelect.vue"
+              ],
+              "modify": [
+                "ccb-web/src/views/ModuleView.vue",
+                "ccb-web/src/api/system.ts",
+                "ccb-web/src/types/system.ts",
+                "ccb-web/src/views/AppLayout.vue"
+              ],
+              "test": [
+                "browser flow"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "org tree API",
+                "user API",
+                "avatar API"
+              ],
+              "produces": [
+                "tree UI",
+                "org selector",
+                "Chinese breadcrumb"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "replace org list with tree",
+                "command": "npm run build",
+                "expected": "pass",
+                "evidence": "build output"
+              },
+              {
+                "id": "T3-S2",
+                "action": "wire user org and avatar",
+                "command": "browser flow",
+                "expected": "user association visible",
+                "evidence": "DOM and network"
+              }
+            ],
+            "acceptance_checks": [
+              "add user from node",
+              "edit user org",
+              "avatar visible"
+            ],
+            "rollback": "revert T3 files",
+            "stop_conditions": [
+              "existing system pages fail"
+            ],
+            "escalation_conditions": [
+              "route contract mismatch"
+            ],
+            "input_facts": [
+              "T2 output"
+            ],
+            "risks": [
+              "large ModuleView change"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "reusable user identity and showcase",
+            "requirement_ids": [
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "files": {
+              "create": [
+                "ccb-web/src/components/ui/UiUserIdentity.vue",
+                "ccb-web/src/views/ComponentShowcaseView.vue"
+              ],
+              "modify": [
+                "ccb-web/src/router/index.ts",
+                "ccb-web/src/views/AppLayout.vue"
+              ],
+              "test": [
+                "showcase browser route"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "AuthMe",
+                "UserProfile",
+                "existing UI primitives"
+              ],
+              "produces": [
+                "hover identity",
+                "showcase route"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "build identity component",
+                "command": "npm run build",
+                "expected": "pass",
+                "evidence": "build output"
+              },
+              {
+                "id": "T4-S2",
+                "action": "add showcase route",
+                "command": "browser route",
+                "expected": "all examples render",
+                "evidence": "DOM screenshot"
+              }
+            ],
+            "acceptance_checks": [
+              "horizontal avatar/name",
+              "hover profile"
+            ],
+            "rollback": "revert T4 files",
+            "stop_conditions": [
+              "component breaks header"
+            ],
+            "escalation_conditions": [
+              "missing profile data"
+            ],
+            "input_facts": [
+              "T3 output"
+            ],
+            "risks": [
+              "popover layering"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "regression verification",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T4"
+            ],
+            "files": {
+              "create": [],
+              "modify": [],
+              "test": [
+                "ccb-web build",
+                "maven package",
+                "browser acceptance"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T4 evidence"
+              ],
+              "produces": [
+                "acceptance evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "run frontend build",
+                "command": "npm run build",
+                "expected": "pass",
+                "evidence": "exit code"
+              },
+              {
+                "id": "T5-S2",
+                "action": "run backend package",
+                "command": "mvn -pl ccb-boot -am package -DskipTests",
+                "expected": "pass",
+                "evidence": "exit code"
+              },
+              {
+                "id": "T5-S3",
+                "action": "run browser flows",
+                "command": "http://127.0.0.1:5173/",
+                "expected": "R1-R6 observable",
+                "evidence": "DOM and screenshots"
+              }
+            ],
+            "acceptance_checks": [
+              "no regression",
+              "residual risks recorded"
+            ],
+            "rollback": "preserve evidence and stop at verifying",
+            "stop_conditions": [
+              "build or migration failure"
+            ],
+            "escalation_conditions": [
+              "environment unavailable"
+            ],
+            "input_facts": [
+              "T1-T4 outputs"
+            ],
+            "risks": [
+              "MinIO unavailable"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "user confirmed the design and requested implementation",
+          "confirmed_at": "2026-08-04T00:00:00+08:00"
+        },
+        "plan_revision": 1,
+        "global_constraints": [
+          "preserve existing user changes",
+          "single tenant",
+          "no direct browser MinIO upload"
+        ],
+        "file_map": [
+          {
+            "task_id": "T1",
+            "files": [
+              "ccb-infrastructure/src/main/resources/db/migration/V10__user_avatar_support.sql",
+              "ccb-infrastructure/src/main/java/com/ccb/infrastructure/storage",
+              "ccb-boot/src/main/resources/application-local.yml"
+            ],
+            "path": "ccb-infrastructure/src/main/resources/db/migration/V10__user_avatar_support.sql",
+            "status": "candidate-new",
+            "responsibility": "T1",
+            "evidence": "task verification and build output"
+          },
+          {
+            "task_id": "T2",
+            "files": [
+              "ccb-system/src/main/java/com/ccb/system",
+              "ccb-security/src/main/java/com/ccb/security"
+            ],
+            "path": "ccb-system/src/main/java/com/ccb/system",
+            "status": "candidate-new",
+            "responsibility": "T2",
+            "evidence": "task verification and build output"
+          },
+          {
+            "task_id": "T3",
+            "files": [
+              "ccb-web/src/views/ModuleView.vue",
+              "ccb-web/src/components/ui/UiOrgTree.vue",
+              "ccb-web/src/components/ui/UiOrgTreeSelect.vue"
+            ],
+            "path": "ccb-web/src/views/ModuleView.vue",
+            "status": "candidate-new",
+            "responsibility": "T3",
+            "evidence": "task verification and build output"
+          },
+          {
+            "task_id": "T4",
+            "files": [
+              "ccb-web/src/components/ui/UiUserIdentity.vue",
+              "ccb-web/src/views/ComponentShowcaseView.vue"
+            ],
+            "path": "ccb-web/src/components/ui/UiUserIdentity.vue",
+            "status": "candidate-new",
+            "responsibility": "T4",
+            "evidence": "task verification and build output"
+          },
+          {
+            "task_id": "T5",
+            "files": [
+              "ccb-web",
+              "ccb-boot"
+            ],
+            "path": "ccb-web",
+            "status": "candidate-new",
+            "responsibility": "T5",
+            "evidence": "task verification and build output"
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "schema and storage contract"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "API contract"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "shared UI integration"
+          },
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "final regression"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ],
+          [
+            "T5"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -pl ccb-boot -am test -DskipTests",
+            "expected": "compile passes"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "health and API smoke checks",
+            "expected": "organization and avatar contracts respond"
+          },
+          {
+            "after_tasks": [
+              "T3",
+              "T4"
+            ],
+            "command": "npm run build",
+            "expected": "frontend production build passes"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "browser acceptance flow",
+            "expected": "R1-R6 observable"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T4",
+              "T5"
+            ]
+          }
+        ]
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "V10 schema",
+          "MinIO adapter",
+          "system API",
+          "frontend system views",
+          "showcase route"
+        ],
+        "state_variable_candidates": [
+          "migration version",
+          "MinIO availability",
+          "org tree loaded",
+          "avatar uploaded",
+          "breadcrumb resolved",
+          "showcase rendered"
+        ],
+        "interface_candidates": [
+          "REST API",
+          "multipart avatar API",
+          "database migration",
+          "frontend API client"
+        ],
+        "sensor_candidates": [
+          "build exit codes",
+          "Flyway version",
+          "health endpoint",
+          "browser DOM",
+          "browser network"
+        ],
+        "actuator_candidates": [
+          "source edits",
+          "migration",
+          "frontend build",
+          "backend startup"
+        ],
+        "disturbance_candidates": [
+          "MinIO stopped",
+          "missing credentials",
+          "dependency download",
+          "port conflicts"
+        ],
+        "delay_candidates": [
+          "migration feedback",
+          "storage integration",
+          "browser verification"
+        ],
+        "assumptions": [
+          {
+            "text": "local runtime can reach configured MinIO endpoint",
+            "basis": "existing Docker container mapping",
+            "falsifier": "connection refused"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL\", \"MinIO container\", \"browser\", \"Element Plus runtime\", \"existing auth token\"], \"inside\": [\"sys_org and sys_user data\", \"organization tree API\", \"user CRUD and avatar API\", \"MinIO adapter\", \"frontend system views\", \"UiUserIdentity\", \"showcase route\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"manual database edits\"], \"id\": \"S1\", \"independence\": \"database/runtime\", \"method\": \"backend startup log and schema history\", \"target\": \"Flyway version\"}",
+      "{\"blind_spots\": [\"credentials valid but bucket policy wrong\"], \"id\": \"S2\", \"independence\": \"external service\", \"method\": \"storage health/upload request\", \"target\": \"MinIO reachability\"}",
+      "{\"blind_spots\": [\"browser rendering\"], \"id\": \"S3\", \"independence\": \"HTTP client\", \"method\": \"authenticated HTTP responses\", \"target\": \"API contract\"}",
+      "{\"blind_spots\": [\"unvisited viewport states\"], \"id\": \"S4\", \"independence\": \"browser\", \"method\": \"browser DOM and screenshot\", \"target\": \"UI behavior\"}",
+      "{\"blind_spots\": [\"runtime data issues\"], \"id\": \"S5\", \"independence\": \"build process\", \"method\": \"npm and Maven exit codes\", \"target\": \"build regression\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"apply V10 migration\", \"authority\": \"workspace database migration\", \"id\": \"A1\", \"impact_radius\": \"sys_user only\", \"rollback\": \"development migration rollback/snapshot\", \"target\": \"schema\"}",
+      "{\"action\": \"add API and storage adapter\", \"authority\": \"workspace source\", \"id\": \"A2\", \"impact_radius\": \"system/auth modules\", \"rollback\": \"revert task boundary\", \"target\": \"backend\"}",
+      "{\"action\": \"add tree, identity, breadcrumb and showcase\", \"authority\": \"workspace source\", \"id\": \"A3\", \"impact_radius\": \"system layout and routes\", \"rollback\": \"revert task boundary\", \"target\": \"frontend\"}",
+      "{\"action\": \"configure MinIO endpoint and credentials via environment\", \"authority\": \"local runtime\", \"id\": \"A4\", \"impact_radius\": \"avatar upload only\", \"rollback\": \"unset storage properties\", \"target\": \"runtime\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": \"yes\", \"detectable\": \"yes\", \"effect\": \"avatar upload unavailable\", \"source\": \"MinIO container stopped\"}",
+      "{\"controllable\": \"yes\", \"detectable\": \"yes\", \"effect\": \"backend storage initialization/upload failure\", \"source\": \"missing storage credentials\"}",
+      "{\"controllable\": \"yes\", \"detectable\": \"yes\", \"effect\": \"org/user UI regression\", \"source\": \"existing generic system page coupling\"}",
+      "{\"controllable\": \"partial\", \"detectable\": \"yes\", \"effect\": \"build cannot resolve MinIO SDK\", \"source\": \"dependency download failure\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"existing port mapping 9000\", \"falsifier\": \"signed URL cannot be reached from browser\", \"text\": \"MinIO endpoint can be configured for both backend and browser-visible signed URLs\"}",
+      "{\"evidence\": \"existing V1 schema and generic service\", \"falsifier\": \"database constraints or API consumers require different model\", \"text\": \"sys_org.parent_id and sys_user.org_id are the authoritative organization relations\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S2\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S4\", \"S5\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "database and MinIO storage foundation",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V1 schema has sys_org.parent_id and sys_user.org_id",
+        "MinIO container exists but is stopped",
+        "approved storage boundary"
+      ],
+      "write_scope": [
+        "V10 migration",
+        "infrastructure storage adapter",
+        "MinIO properties",
+        "Maven dependencies if required"
+      ],
+      "invariants": [
+        "tenant_id remains enforced",
+        "credentials are environment-backed",
+        "object key is tenant/user scoped"
+      ],
+      "interface_contracts": [
+        "StorageService upload/presigned/delete"
+      ],
+      "non_goals": [
+        "direct browser upload",
+        "avatar crop"
+      ],
+      "action_bounds": [
+        "add nullable avatar key only",
+        "do not change existing auth schema semantics"
+      ],
+      "acceptance": [
+        "V10 applies",
+        "storage service compiles",
+        "invalid media validation is explicit"
+      ],
+      "evidence_required": [
+        "Flyway info",
+        "Maven compile",
+        "storage validation result"
+      ],
+      "rollback": "revert T1 files and development migration",
+      "stop_conditions": [
+        "migration failure",
+        "secret in source",
+        "dependency conflict"
+      ],
+      "escalation_conditions": [
+        "MinIO SDK cannot resolve",
+        "runtime credentials unavailable"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-04T07:28:45+00:00",
+          "text": "executing T1 within approved write scope"
+        },
+        {
+          "recorded_at": "2026-08-04T07:32:14+00:00",
+          "text": "compile evidence recorded; waiting for runtime integration observation"
+        },
+        {
+          "recorded_at": "2026-08-04T07:32:23+00:00",
+          "text": "T1 bounded compile and configuration checks passed; runtime MinIO observation is carried into T5"
+        }
+      ],
+      "updated_at": "2026-08-04T07:32:23+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "organization tree and user/avatar APIs",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "T1 storage contract",
+        "generic SystemService and AuthRepository"
+      ],
+      "write_scope": [
+        "system org tree service/controller",
+        "user profile fields",
+        "avatar endpoints",
+        "auth me extension"
+      ],
+      "invariants": [
+        "all queries tenant scoped",
+        "user org_id remains authoritative",
+        "avatar credentials never returned"
+      ],
+      "interface_contracts": [
+        "GET /api/system/orgs/tree",
+        "GET /api/system/users?orgId",
+        "POST/PUT users",
+        "POST/DELETE users/{id}/avatar",
+        "GET /api/auth/me profile fields"
+      ],
+      "non_goals": [
+        "role redesign",
+        "bulk import"
+      ],
+      "action_bounds": [
+        "preserve generic system API compatibility",
+        "return Chinese-safe error messages"
+      ],
+      "acceptance": [
+        "nested tree response",
+        "org-filtered users",
+        "upload and delete",
+        "invalid type/size rejection"
+      ],
+      "evidence_required": [
+        "authenticated HTTP responses",
+        "database row check",
+        "MinIO object check"
+      ],
+      "rollback": "revert T2 files",
+      "stop_conditions": [
+        "authorization regression",
+        "cross-tenant result",
+        "storage secret in JSON"
+      ],
+      "escalation_conditions": [
+        "existing API consumer incompatibility"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-04T07:33:16+00:00",
+          "text": "T1 verified; implementing API contracts within T2 scope"
+        },
+        {
+          "recorded_at": "2026-08-04T07:48:24+00:00",
+          "text": "T2 compile contract passed; runtime checks deferred to T5"
+        }
+      ],
+      "updated_at": "2026-08-04T07:48:24+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "frontend organization/user flows and Chinese breadcrumb",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "org tree and profile API contracts",
+        "existing ModuleView and AppLayout"
+      ],
+      "write_scope": [
+        "system API client/types",
+        "org tree components",
+        "ModuleView org/user behavior",
+        "AppLayout title resolver"
+      ],
+      "invariants": [
+        "existing users/roles/menu/config pages remain usable",
+        "no route code displayed as label",
+        "avatar upload uses authenticated API"
+      ],
+      "interface_contracts": [
+        "frontend consumes T2 endpoints",
+        "UiOrgTree emits select/add-user actions"
+      ],
+      "non_goals": [
+        "unrelated dashboard redesign"
+      ],
+      "action_bounds": [
+        "keep current theme tokens",
+        "use existing Element Plus components"
+      ],
+      "acceptance": [
+        "nested org view",
+        "node add-user",
+        "org tree selector",
+        "Chinese breadcrumb",
+        "avatar shown"
+      ],
+      "evidence_required": [
+        "npm build",
+        "browser DOM",
+        "browser network"
+      ],
+      "rollback": "revert T3 files",
+      "stop_conditions": [
+        "existing module route regression",
+        "tree cannot render empty state"
+      ],
+      "escalation_conditions": [
+        "API response shape requires redesign"
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-04T07:48:24+00:00",
+          "text": "T2 verified; frontend system integration active"
+        }
+      ],
+      "updated_at": "2026-08-04T07:48:24+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "reusable user identity and component showcase",
+      "requirements": [
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "AuthMe profile shape",
+        "existing components/ui convention"
+      ],
+      "write_scope": [
+        "UiUserIdentity",
+        "showcase view",
+        "route/menu entry",
+        "header integration"
+      ],
+      "invariants": [
+        "identity has avatar fallback",
+        "hover popover is keyboard/focus safe",
+        "component styles use shared tokens"
+      ],
+      "interface_contracts": [
+        "UserProfile input model",
+        "showcase route"
+      ],
+      "non_goals": [
+        "new design system framework"
+      ],
+      "action_bounds": [
+        "compose existing Element Plus primitives",
+        "do not duplicate layout tokens"
+      ],
+      "acceptance": [
+        "horizontal identity",
+        "hover profile",
+        "showcase renders all examples"
+      ],
+      "evidence_required": [
+        "npm build",
+        "browser screenshot/DOM"
+      ],
+      "rollback": "revert T4 files",
+      "stop_conditions": [
+        "header identity breaks layout",
+        "showcase route inaccessible"
+      ],
+      "escalation_conditions": [
+        "profile contract lacks required fields"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T07:28:09+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "regression and acceptance verification",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T4"
+      ],
+      "input_facts": [
+        "T1-T4 evidence"
+      ],
+      "write_scope": [
+        "tests and verification artifacts only"
+      ],
+      "invariants": [
+        "existing login/workflow/AI routes remain functional",
+        "no unintended broad file changes"
+      ],
+      "interface_contracts": [
+        "full stack runtime"
+      ],
+      "non_goals": [
+        "new scope"
+      ],
+      "action_bounds": [
+        "run builds, health, API and browser checks"
+      ],
+      "acceptance": [
+        "all R1-R6 observable",
+        "residual MinIO runtime state documented"
+      ],
+      "evidence_required": [
+        "npm build",
+        "Maven package",
+        "health",
+        "browser flow"
+      ],
+      "rollback": "stop at verifying and preserve evidence",
+      "stop_conditions": [
+        "any must check fails"
+      ],
+      "escalation_conditions": [
+        "MinIO remains unavailable after safe runtime checks"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-04T07:28:09+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

@@ -1,0 +1,47 @@
+{
+  "sample_label": "T1 infrastructure startup observation",
+  "task_ids": [
+    "T1"
+  ],
+  "baseline_revision": "workflow-enterprise-core-baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 startup and migration log",
+      "result": "pass",
+      "raw_evidence": "Health returned HTTP 200 status UP; application log reports Flyway v20 and ProcessEngine default created; prior migrations were validated.",
+      "limitation": [
+        "No published workflow definition or historical instance version was exercised in T1."
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S6 runtime startup and database inventory",
+      "result": "pass",
+      "raw_evidence": "EventRegistryEngine, IdmEngine and ProcessEngine all created; Docker MySQL reports Flyway versions 20, 19 and 18, nine ACT_ID_* tables, eight FLW_* tables and three core process tables.",
+      "limitation": [
+        "No runtime task, audit timeline or administrator intervention scenario was exercised in T1."
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "Initial application startup exposed missing Flowable IDM and event registry schema objects.",
+      "impact": "The first startup attempt failed before Tomcat was available.",
+      "evidence": "The second startup after append-only V19/V20 migrations completed successfully.",
+      "classification": "disturbance-resolved"
+    }
+  ],
+  "coverage_gaps": [
+    "T1 does not cover business model validation, BPMN compilation, deployment, task assignment or runtime actions; those are T2 and later tasks.",
+    "The Docker sensor requires elevated read-only access in this environment."
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

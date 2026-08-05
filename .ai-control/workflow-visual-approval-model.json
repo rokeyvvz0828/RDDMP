@@ -1,0 +1,71 @@
+{
+  "baseline_revision": "workflow-visual-approval-baseline-1",
+  "plant_boundary": {
+    "inside": ["WorkflowController", "WorkflowService", "WorkflowDefinitionValidator", "wf_definition/wf_version/wf_instance/wf_task/wf_task_action", "WorkflowView and Vue Flow components"],
+    "environment": ["MySQL/Flyway", "existing system user and role APIs", "Spring Security", "browser and npm registry"]
+  },
+  "state_variables": [
+    {"name":"definition_version","owner":"WorkflowService","valid_values":["DRAFT","PUBLISHED"]},
+    {"name":"graph_validation","owner":"WorkflowDefinitionValidator","valid_values":["VALID","INVALID"]},
+    {"name":"instance_status","owner":"WorkflowService","valid_values":["RUNNING","APPROVED","REJECTED"]},
+    {"name":"task_status","owner":"wf_task","valid_values":["PENDING","APPROVED","REJECTED","CANCELLED","SENT"]},
+    {"name":"canvas_serialization","owner":"WorkflowDesigner","valid_values":["schemaVersion=1 node-edge JSON","invalid JSON"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"管理员拖拽节点和边","transitions":["WorkflowDesigner 序列化 schemaVersion=1","WorkflowDefinitionValidator 校验图","WorkflowService 保存/发布版本"],"outputs":["定义列表中的版本状态和刷新后同一画布"]},
+    {"requirement_id":"R2","input":"审批节点的用户/角色/发起人配置","transitions":["后端解析节点 config","查询当前租户有效成员","按 ANY/ALL 写入 task_group_key 任务"],"outputs":["对应用户待办和多人组状态"]},
+    {"requirement_id":"R3","input":"审批人提交 APPROVE/REJECT/ADD_SIGN/CC","transitions":["事务校验 PENDING 和 assignee","更新任务/实例","写入 wf_task_action","必要时创建子任务或抄送任务"],"outputs":["实例状态、任务状态、动作记录和刷新后的待办"]},
+    {"requirement_id":"R4","input":"发布版本和任务请求","transitions":["实例绑定 current_version","SQL 条件校验 tenant_id/assignee/status","事务提交或回滚"],"outputs":["固定版本实例和单次成功的流转结果"]},
+    {"requirement_id":"R5","input":"业务模块提供 definitionId 和 businessKey","transitions":["WorkflowController 接收稳定请求","WorkflowService 隔离工作流表细节","返回定义/实例/任务 DTO"],"outputs":["可复用 API 和不依赖工作流表的业务接入"]}
+  ],
+  "interfaces": [
+    {"name":"workflow_definition_api","producers":["WorkflowController"],"consumers":["WorkflowView"],"invariant":"definitionJson 字段承载 schemaVersion=1 节点/边契约"},
+    {"name":"workflow_task_action_api","producers":["WorkflowController"],"consumers":["WorkflowView"],"invariant":"action 和目标用户在服务端重新校验"},
+    {"name":"system_user_role_data","producers":["SystemService/sys_user_role"],"consumers":["WorkflowService"],"invariant":"查询限定当前租户且只取有效成员"},
+    {"name":"workflow_persistence","producers":["WorkflowService"],"consumers":["MySQL/Flyway"],"invariant":"状态更新、下一任务和动作记录同一事务"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"R1 流程图契约","method":"浏览器操作后读取 definitionJson 请求和刷新后的节点/边","blind_spots":["不同浏览器的拖拽手感","后端部署后未执行迁移"],"independence":"浏览器行为与后端日志独立于源代码阅读"},
+    {"id":"S2","target":"R1/R5 后端图校验","method":"WorkflowDefinitionValidatorTest 和 HTTP 发布错误响应","blind_spots":["复杂未来分支未覆盖"],"independence":"测试调用校验器和实际接口响应"},
+    {"id":"S3","target":"R2/R3/R4 任务状态","method":"MySQL wf_task、wf_instance、wf_task_action 查询加接口响应","blind_spots":["多实例高并发压力未测"],"independence":"数据库状态与页面展示相互校验"},
+    {"id":"S4","target":"R4 构建和迁移","method":"Flyway 输出与 Maven 编译退出码","blind_spots":["生产数据规模和网络故障"],"independence":"构建/迁移命令输出"},
+    {"id":"S5","target":"R1-R5 前端闭环","method":"浏览器 DOM、网络请求和截图采样","blind_spots":["未登录用户体验和极端屏幕尺寸"],"independence":"运行时页面行为"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"工作流数据库契约","action":"新增 V16 迁移和索引","authority":"工作区和 Docker MySQL 迁移权限","impact_radius":"工作流表","rollback":"恢复上一 JAR，保留或按备份回滚新增对象"},
+    {"id":"A2","target":"后端状态机","action":"修改 WorkflowService/Controller 和校验器","authority":"工作区 Java 源码写权限","impact_radius":"工作流 API 与任务流转","rollback":"恢复任务前文件版本并重新编译"},
+    {"id":"A3","target":"前端设计器","action":"安装 Vue Flow 并修改工作流组件/样式","authority":"工作区 npm 和前端源码写权限","impact_radius":"工作流页面","rollback":"恢复旧 WorkflowView、package lock 和样式"},
+    {"id":"A4","target":"验证反馈","action":"执行 Flyway、Maven、npm、HTTP 和浏览器采样","authority":"本地命令和浏览器测试权限","impact_radius":"验证证据，不改业务数据之外的环境","rollback":"停止测试服务并保留日志"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S2","S5"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S2","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S3","S5"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S3","S4"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S2","S4","S5"],"observable":"partial"}
+  ],
+  "disturbances": [
+    {"source":"旧 steps JSON 定义","effect":"新校验器可能无法解析历史流程","detectable":true,"controllable":true},
+    {"source":"并发审批请求","effect":"重复创建下一节点任务","detectable":true,"controllable":true},
+    {"source":"停用用户或角色成员变化","effect":"无法生成有效待办","detectable":true,"controllable":true},
+    {"source":"运行中的后端 JAR/数据库连接","effect":"构建或迁移验证受环境影响","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"Flyway 启动迁移","consequence":"应用启动前数据库结构可能暂不可见","sampling_rule":"等待迁移完成后再采样表结构"},
+    {"source":"事务提交和前端刷新","consequence":"页面瞬时显示旧待办","sampling_rule":"动作响应成功后重新拉取待办再判断"},
+    {"source":"npm 依赖安装","consequence":"首次构建耗时且受镜像影响","sampling_rule":"安装完成后再执行构建，不以安装过程输出替代构建结果"}
+  ],
+  "assumptions": [
+    {"text":"工作区可以安装 @vue-flow/core","evidence":"ccb-web 现有 npm 项目且计划允许新增依赖","falsifier":"npm install 或 npm run build 失败"},
+    {"text":"工作流服务可以读取当前租户系统用户和角色关联","evidence":"已有 sys_user、sys_role、sys_user_role 和 system API","falsifier":"数据库 schema 或权限隔离阻止查询"},
+    {"text":"Docker MySQL 数据库可执行 Flyway V16","evidence":"用户已启动数据库容器","falsifier":"连接或迁移失败"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"进入 planning/executing，优先验证图契约和浏览器序列化"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"实现审批人解析和任务组状态测试"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"实现事务动作并查询任务/动作状态"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"以版本、租户、状态条件和重复请求测试为门禁"},
+    {"requirement_id":"R5","observable":"partial","controllable":"yes","action":"本阶段以现有 WorkflowView 接入闭环验证，后续业务接入需单独采样"}
+  ],
+  "model_status":"ready"
+}

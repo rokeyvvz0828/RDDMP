@@ -1,0 +1,28 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowAssigneeResolver.java",
+    "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java",
+    "ccb-workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+    "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java",
+    "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+    "ccb-workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+    "ccb-infrastructure/src/main/resources/db/migration/V21__organization_leader_for_workflow.sql",
+    "ccb-infrastructure/src/main/resources/db/migration/V22__workflow_monitor_menu.sql"
+  ],
+  "requirements_addressed": ["R1", "R3", "R4", "R5", "R6"],
+  "commands": [
+    {"command":"mvn -s .mvn\\settings.xml -pl ccb-workflow -am test -DskipTests=false","exit_code":0,"salient_output":"8 workflow tests passed"},
+    {"command":"mvn -s .mvn\\settings.xml -pl ccb-boot -am install -DskipTests -Dspring-boot.repackage.skip=true","exit_code":0,"salient_output":"BUILD SUCCESS"},
+    {"command":"npm run build","exit_code":0,"salient_output":"vue-tsc and vite build passed"}
+  ],
+  "local_checks": [
+    {"check":"Flowable publish/start/sync","result":"pass","evidence":"Enterprise schemaVersion=2 definition deployed, instance started and approval task appeared in inbox."},
+    {"check":"Approval completion","result":"pass","evidence":"APPROVE changed the business instance to APPROVED and wrote TASK_APPROVE audit event."},
+    {"check":"Administrator intervention","result":"pass","evidence":"Terminate endpoint changed a running instance to TERMINATED."},
+    {"check":"Tenant isolation","result":"pass","evidence":"Business queries and mutations include tenant_id; Flowable deployment uses tenant id."}
+  ],
+  "unresolved_items": ["Service tasks, message events and complex subprocesses remain intentionally out of first release scope."],
+  "recommended_next": "observe"
+}

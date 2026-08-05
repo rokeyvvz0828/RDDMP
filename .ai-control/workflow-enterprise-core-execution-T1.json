@@ -1,0 +1,113 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V19__flowable_idm_schema.sql",
+      "purpose": "Add the official Flowable 7.0.1 IDM schema required by the starter configurator."
+    },
+    {
+      "path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V20__flowable_event_registry_schema.sql",
+      "purpose": "Add the official Flowable 7.0.1 event registry metadata schema required by the process starter."
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R6"
+  ],
+  "commands": [
+    {
+      "command": "mvn -s .mvn\\settings.xml -pl ccb-boot -am install -DskipTests -Dspring-boot.repackage.skip=true",
+      "exit_code": 0,
+      "salient_output": "Reactor BUILD SUCCESS; ccb-infrastructure copied 20 migration resources; ccb-workflow and ccb-boot compiled."
+    },
+    {
+      "command": "mvn -s ..\\.mvn\\settings.xml spring-boot:run -Dspring-boot.run.profiles=local",
+      "exit_code": 1,
+      "salient_output": "Initial startup stopped because ACT_ID_PROPERTY was missing; this exposed the missing IDM schema."
+    },
+    {
+      "command": "mvn -s ..\\.mvn\\settings.xml spring-boot:run -Dspring-boot.run.profiles=local",
+      "exit_code": 0,
+      "salient_output": "Flyway validated 20 migrations, applied V20, created EventRegistry/IDM/Process engines, and Tomcat started on port 8080."
+    },
+    {
+      "command": "Invoke-WebRequest http://127.0.0.1:8080/actuator/health",
+      "exit_code": 0,
+      "salient_output": "HTTP 200 with status UP."
+    },
+    {
+      "command": "docker exec ccb-platform-mysql mysql -uccb -pccb_dev_password ccb_platform -Nse ...",
+      "exit_code": 0,
+      "salient_output": "Flyway latest version 20; ACT_ID table count 9; FLW table count 8."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Maven dependency and resource build",
+      "result": "pass",
+      "evidence": "Exit code 0 and BUILD SUCCESS.",
+      "limitations": [
+        "Build used -DskipTests; existing workflow unit tests were previously verified in the T1 baseline."
+      ]
+    },
+    {
+      "check": "Spring Boot startup with real MySQL",
+      "result": "pass",
+      "evidence": "Application log reports V20 applied and ProcessEngine default created.",
+      "limitations": [
+        "No workflow deployment or runtime scenario was executed in T1."
+      ]
+    },
+    {
+      "check": "Health endpoint",
+      "result": "pass",
+      "evidence": "http://127.0.0.1:8080/actuator/health returned HTTP 200 and status UP.",
+      "limitations": []
+    },
+    {
+      "check": "Database migration and table inventory",
+      "result": "pass",
+      "evidence": "Flyway version 20; nine ACT_ID_* tables; eight FLW_* tables.",
+      "limitations": [
+        "Docker query was read-only and did not validate application workflow behavior."
+      ]
+    }
+  ],
+  "diff_summary": [
+    "Added V19 with the official Flowable IDM schema.",
+    "Added V20 with the official Flowable event registry schema.",
+    "Kept V18 and all prior migrations unchanged."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Prior Flyway migrations remain immutable",
+      "result": "pass",
+      "evidence": "V19 and V20 were added; application validated all 20 migrations."
+    },
+    {
+      "invariant": "Flowable engine schemas are available before engine startup",
+      "result": "pass",
+      "evidence": "ACT_ID_* and FLW_* table counts were confirmed in ccb_platform."
+    },
+    {
+      "invariant": "Application remains tenant-ready and process engine startup is available",
+      "result": "pass",
+      "evidence": "Local profile connected to ccb_platform and started ProcessEngine default."
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Flowable 7.0.1 process starter auto-configured IDM and EventRegistry configurators not represented in V18.",
+      "impact": "First startup failed on ACT_ID_PROPERTY, then on FLW_CHANNEL_DEFINITION.",
+      "response": "Added append-only official-schema migrations V19 and V20 and re-ran startup."
+    }
+  ],
+  "assumptions_falsified": [
+    "V18 alone was sufficient for the Flowable process starter schema."
+  ],
+  "unresolved_items": [
+    "T2 must validate the business model compiler and deployment path; T1 only validates engine infrastructure startup."
+  ],
+  "recommended_next": "observe"
+}

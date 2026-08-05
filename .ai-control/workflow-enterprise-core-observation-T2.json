@@ -1,0 +1,57 @@
+{
+  "sample_label":"T2 independent compiler observation",
+  "task_ids":["T2"],
+  "baseline_revision":"workflow-enterprise-core-baseline-1",
+  "measurements":[
+    {
+      "requirement_id":"R1",
+      "sensor":"S2 Maven and Surefire test reports",
+      "result":"pass",
+      "raw_evidence":"WorkflowDefinitionValidatorTest 4/4 and WorkflowModelValidatorTest 3/3 passed; legacy steps and schemaVersion=1 compatibility remained green.",
+      "limitation":["Publication and deployment are T3."]
+    },
+    {
+      "requirement_id":"R2",
+      "sensor":"S2 BpmnModelCompilerTest and Flowable XML parser",
+      "result":"pass",
+      "raw_evidence":"BpmnModelCompilerTest 1/1 passed; generated XML was parsed by Flowable BpmnXMLConverter and returned the expected process and mapped node ids.",
+      "limitation":["Designer browser interaction is T4."]
+    },
+    {
+      "requirement_id":"R3",
+      "sensor":"S2 model validator test",
+      "result":"pass",
+      "raw_evidence":"Test accepted user, role, organization owner, starter and multi-instance approval configurations; invalid assignee paths are covered by validator rules.",
+      "limitation":["Tenant-scoped runtime resolver is T3."]
+    },
+    {
+      "requirement_id":"R4",
+      "sensor":"S2 graph topology and BPMN output test",
+      "result":"pass",
+      "raw_evidence":"Condition gateway, explicit default path, parallel split/join and multi-instance loop all compile; output contains no serviceTask or messageEvent.",
+      "limitation":["Runtime gateway execution is T3."]
+    },
+    {
+      "requirement_id":"R5",
+      "sensor":"S2 variable, expression and form binding validator test",
+      "result":"pass",
+      "raw_evidence":"Declared variables and form binding are accepted; unknown condition variable and missing default branch produce structured validation errors.",
+      "limitation":["Runtime form payload validation is T3."]
+    }
+  ],
+  "feedback":[],
+  "disturbances":[
+    {
+      "event":"The first sampling run used an invalid test-only graph and failed before compilation.",
+      "impact":"No production behavior was changed; test evidence was temporarily unavailable.",
+      "evidence":"The corrected graph passed the full repeated suite and Surefire report inspection.",
+      "classification":"disturbance-resolved"
+    }
+  ],
+  "coverage_gaps":[
+    "No Flowable repository deployment or runtime task action was attempted in T2.",
+    "No browser designer interaction was attempted in T2."
+  ],
+  "error_counts":{"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status":"complete"
+}

@@ -1,0 +1,33 @@
+{
+  "task_id": "organization-user-avatar-v1",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "ccb-system/src/main/java/com/ccb/system/service/SystemService.java", "purpose": "preserve old avatar object key for replacement and clear"},
+    {"path_or_resource": "ccb-web/src/views/ComponentShowcaseView.vue", "purpose": "localize showcase section labels"},
+    {"path_or_resource": "ccb-infrastructure/src/main/resources/db/migration/V12__localize_root_organization.sql", "purpose": "localize legacy root organization seed"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+  "commands": [
+    {"command": "mvn -pl ccb-boot -am package -DskipTests", "exit_code": 0, "salient_output": "BUILD SUCCESS; migration resources include V12"},
+    {"command": "npm run build", "exit_code": 0, "salient_output": "vue-tsc passed; vite built 1715 modules"},
+    {"command": "GET http://127.0.0.1:8080/actuator/health", "exit_code": 0, "salient_output": "HTTP 200; status UP"},
+    {"command": "docker ps -a --filter name=minio", "exit_code": 0, "salient_output": "minio-minio-1 Exited (255)"}
+  ],
+  "local_checks": [
+    {"check": "login and dynamic menu", "result": "pass", "evidence": "admin login; system/workflow/ai/showcase menus visible", "limitations": []},
+    {"check": "organization tree and users", "result": "pass", "evidence": "tree DOM; Platform HQ node; one member; add user action", "limitations": ["database currently has only root node"]},
+    {"check": "user organization selector and avatar entry", "result": "pass", "evidence": "new user dialog contains org tree selector and avatar control", "limitations": ["real MinIO upload not covered"]},
+    {"check": "Chinese breadcrumb", "result": "pass", "evidence": "System Management / Organization and Component Showcase", "limitations": []},
+    {"check": "component showcase", "result": "pass", "evidence": "four Chinese sections and reusable components visible", "limitations": ["hover layer not independently sampled by browser probe"]}
+  ],
+  "diff_summary": ["fix old avatar object cleanup", "localize visible showcase labels and root organization", "add V12 migration"],
+  "invariants_checked": [
+    {"invariant": "tenant scope remains enforced", "result": "pass", "evidence": "avatar key lookup and update include tenant_id"},
+    {"invariant": "storage credentials stay server side", "result": "pass", "evidence": "frontend receives avatarUrl only"},
+    {"invariant": "dynamic menu labels remain Chinese", "result": "pass", "evidence": "browser menu and breadcrumb"}
+  ],
+  "disturbances": [{"event": "MinIO container stopped with invalid old network", "impact": "avatar upload/delete runtime check unavailable", "evidence": "docker ps reports Exited (255)"}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["restore existing MinIO or approve a new MinIO container, then rerun avatar upload/replace/clear object checks"],
+  "recommended_next": "escalate"
+}

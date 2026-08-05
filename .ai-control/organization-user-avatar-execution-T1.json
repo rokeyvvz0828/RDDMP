@@ -1,0 +1,14 @@
+{
+  "task_id":"T1",
+  "status":"implemented",
+  "changed_surfaces":[{"path_or_resource":"ccb-infrastructure/src/main/resources/db/migration/V10__user_avatar_support.sql","purpose":"add nullable user avatar object key"},{"path_or_resource":"ccb-infrastructure/src/main/java/com/ccb/infrastructure/storage/MinioStorageProperties.java","purpose":"environment-backed MinIO settings"},{"path_or_resource":"ccb-infrastructure/src/main/java/com/ccb/infrastructure/storage/MinioStorageService.java","purpose":"server-side upload, presigned URL and delete"},{"path_or_resource":"ccb-infrastructure/pom.xml","purpose":"MinIO SDK dependency"},{"path_or_resource":"ccb-boot/src/main/resources/application-local.yml","purpose":"local MinIO defaults and env overrides"}],
+  "requirements_addressed":["R1","R2","R4"],
+  "commands":[{"command":"mvn -pl ccb-boot -am test -DskipTests","exit_code":0,"salient_output":"Reactor build SUCCESS; ccb-infrastructure and ccb-boot compiled"}],
+  "local_checks":[{"check":"Java compile","result":"pass","evidence":"BUILD SUCCESS","limitations":["MinIO container is stopped, runtime upload not yet sampled"]}],
+  "diff_summary":["V10 adds sys_user.avatar_object_key","MinIO client remains lazy at upload time so backend can start without MinIO"],
+  "invariants_checked":[{"invariant":"storage credentials are environment-backed","result":"pass","evidence":"application-local.yml uses MINIO_* placeholders"},{"invariant":"tenant data model is unchanged","result":"pass","evidence":"migration only adds nullable avatar key"}],
+  "disturbances":[{"event":"Maven local repository was not writable in sandbox","impact":"first compile attempt failed before dependency resolution; escalated rerun passed"}],
+  "assumptions_falsified":[],
+  "unresolved_items":["MinIO runtime connectivity requires starting minio-minio-1 and setting valid credentials"],
+  "recommended_next":"observe"
+}

@@ -1,0 +1,16 @@
+{
+  "sample_label": "T2 migration integration sample",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "Spring Boot startup and schema inspection", "result": "pass", "raw_evidence": "V1 created sys_user and related tables; flyway_schema_history has version 1 and 2", "limitation": ["login behavior is not implemented until T3"]},
+    {"requirement_id": "R2", "sensor": "MySQL SHOW TABLES", "result": "pass", "raw_evidence": "sys_org, sys_user, sys_role, sys_user_role and sys_role_menu exist", "limitation": ["CRUD behavior is not implemented until T4"]},
+    {"requirement_id": "R5", "sensor": "MySQL SHOW TABLES", "result": "pass", "raw_evidence": "sys_dict_type, sys_dict_item and sys_config exist", "limitation": ["lookup and management APIs are not implemented until T4"]},
+    {"requirement_id": "R7", "sensor": "MySQL SHOW TABLES", "result": "pass", "raw_evidence": "sys_login_log and sys_operation_log exist", "limitation": ["write path is not implemented until T3-T4"]}
+  ],
+  "feedback": [],
+  "disturbances": ["first Docker startup exceeded command timeout but container reached Up state"],
+  "coverage_gaps": ["runtime used Java 25; Java 17 runtime validation remains pending", "business writes and audit rows require T3-T4"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

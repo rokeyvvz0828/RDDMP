@@ -1,0 +1,65 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource":"ccb-workflow/src/main/java/com/ccb/workflow/model/","purpose":"Add the versioned workflow business model for nodes, edges, variables, form bindings, positions and action policies."},
+    {"path_or_resource":"ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelAdapter.java","purpose":"Adapt schemaVersion 1, schemaVersion 2 and legacy steps JSON into the common model."},
+    {"path_or_resource":"ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java","purpose":"Validate graph topology, gateway defaults, assignee sources, approval modes, variables, expressions, bindings and action policies with structured errors."},
+    {"path_or_resource":"ccb-workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java","purpose":"Compile the business model to Flowable BpmnModel and BPMN 2.0 XML with stable node mappings."},
+    {"path_or_resource":"ccb-workflow/src/test/java/com/ccb/workflow/service/","purpose":"Add enterprise model and BPMN compiler tests while preserving the existing validator tests."}
+  ],
+  "requirements_addressed": ["R1","R2","R3","R4","R5"],
+  "commands": [
+    {
+      "command":"mvn -s .mvn\\settings.xml -pl ccb-workflow -am test -DskipTests=false",
+      "exit_code":1,
+      "salient_output":"Initial new test graph exposed an invalid default-path topology; no production compiler failure was observed."
+    },
+    {
+      "command":"mvn -s .mvn\\settings.xml -pl ccb-workflow -am test -DskipTests=false",
+      "exit_code":0,
+      "salient_output":"BUILD SUCCESS; WorkflowDefinitionValidatorTest 4/4, WorkflowModelValidatorTest 3/3, BpmnModelCompilerTest 1/1."
+    }
+  ],
+  "local_checks":[
+    {
+      "check":"Enterprise model validation",
+      "result":"pass",
+      "evidence":"Valid graph with condition gateway, default branch, parallel split/join, role approval, org-owner approval, percent approval, multi-instance collection and form binding accepted.",
+      "limitations":["Runtime assignee resolution is T3."]
+    },
+    {
+      "check":"BPMN compilation and parse",
+      "result":"pass",
+      "evidence":"Compiled XML contains exclusiveGateway, parallelGateway and multiInstanceLoopCharacteristics; Flowable BpmnXMLConverter parsed it back successfully.",
+      "limitations":["Repository deployment is intentionally deferred to T3."]
+    },
+    {
+      "check":"Compatibility",
+      "result":"pass",
+      "evidence":"Legacy steps and schemaVersion=1 definitions are adapted and existing four validator tests remain green.",
+      "limitations":[]
+    }
+  ],
+  "diff_summary":[
+    "Added schemaVersion=2 business model and adapter.",
+    "Added structured graph and configuration validation.",
+    "Added Flowable BPMN compiler with stable node mapping.",
+    "Preserved schemaVersion=1 and legacy steps compatibility.",
+    "Excluded serviceTask and messageEvent generation by design."
+  ],
+  "invariants_checked":[
+    {"invariant":"Existing definitionJson compatibility remains available","result":"pass","evidence":"Legacy adapter and existing validator tests pass."},
+    {"invariant":"Unsupported service/message nodes are not introduced","result":"pass","evidence":"Compiler test asserts XML has no serviceTask or messageEvent."},
+    {"invariant":"BPMN node ids remain traceable to designer ids","result":"pass","evidence":"Compiler returns a mapping for every source node and parsed XML preserves mapped ids."}
+  ],
+  "disturbances":[
+    {"event":"Initial compiler test graph reused one approval node for mutually exclusive and parallel paths.","impact":"Test failed at model validation.","response":"Corrected the test graph to use a separate default path and reran the full module test suite."}
+  ],
+  "assumptions_falsified":[],
+  "unresolved_items":[
+    "Flowable repository deployment, runtime assignee resolution and approval actions are T3.",
+    "Frontend designer integration is T4."
+  ],
+  "recommended_next":"observe"
+}

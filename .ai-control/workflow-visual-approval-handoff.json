@@ -1,0 +1,1038 @@
+{
+    "schema_version":  1,
+    "topic":  "workflow-visual-approval",
+    "handoff_status":  "approved",
+    "created_at":  "2026-08-05T11:18:34+08:00",
+    "design":  {
+                   "schema_version":  1,
+                   "topic":  "workflow-visual-approval",
+                   "design_revision":  1,
+                   "design_status":  "approved",
+                   "human_document":  "docs/engineering-control/designs/2026-08-05-workflow-visual-approval-design.md",
+                   "objective":  "将工作流从 JSON 文本维护升级为可拖拽流程图，并支持审批人配置、同意、拒绝、加签和抄送的可追踪运行闭环。",
+                   "users":  [
+                                 "流程管理员",
+                                 "业务发起人",
+                                 "审批人",
+                                 "被抄送人"
+                             ],
+                   "requirements":  [
+                                        {
+                                            "id":  "R1",
+                                            "statement":  "流程管理员可以使用流程图设计器维护开始、审批、抄送、结束节点及其连线。",
+                                            "acceptance":  [
+                                                               "创建、刷新后图形和配置一致",
+                                                               "非法断链流程发布被后端拒绝"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "用户确认采用 Vue Flow 方案",
+                                            "counterexample":  [
+                                                                   "仍要求直接编辑 JSON",
+                                                                   "存在不可达节点仍可发布"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R2",
+                                            "statement":  "审批节点支持指定用户、指定角色、发起人以及任一人/全部人模式。",
+                                            "acceptance":  [
+                                                               "多人任一人模式一人完成后取消同组待办",
+                                                               "全部人模式全部同意后才流转"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "用户确认第一阶段支持审批人配置和多人审批",
+                                            "counterexample":  [
+                                                                   "审批人为空仍生成任务",
+                                                                   "角色成员跨租户进入待办"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R3",
+                                            "statement":  "审批任务支持同意、拒绝、加签和抄送。",
+                                            "acceptance":  [
+                                                               "拒绝终止实例",
+                                                               "加签串行阻塞原任务",
+                                                               "抄送不改变审批状态且不可审批"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "用户明确提出同意、拒绝、加签、抄送",
+                                            "counterexample":  [
+                                                                   "重复提交产生两条下一节点任务",
+                                                                   "抄送人出现审批按钮"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R4",
+                                            "statement":  "发布版本固定，实例和任务按租户、审批人和状态安全流转。",
+                                            "acceptance":  [
+                                                               "草稿变化不影响运行实例",
+                                                               "非审批人和跨租户请求失败",
+                                                               "并发重复审批只有一个成功"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "现有工作流版本模型和单租户约束",
+                                            "counterexample":  [
+                                                                   "运行实例读取最新草稿",
+                                                                   "非当前审批人可以决策"
+                                                               ]
+                                        },
+                                        {
+                                            "id":  "R5",
+                                            "statement":  "工作流提供稳定的节点/边 JSON 契约和现有接口兼容接入方式。",
+                                            "acceptance":  [
+                                                               "现有工作流页面完成定义、发布、发起、待办和动作闭环",
+                                                               "业务方不直接操作工作流表"
+                                                           ],
+                                            "priority":  "must",
+                                            "source":  "框架型系统接入规范要求",
+                                            "counterexample":  [
+                                                                   "前端与后端各自使用不同流程格式",
+                                                                   "业务模块写入工作流表"
+                                                               ]
+                                        }
+                                    ],
+                   "invariants":  [
+                                      "单租户数据全部带 tenant_id 条件",
+                                      "已发布版本不可原地修改",
+                                      "图必须有且只有一个开始和结束节点且所有节点可达",
+                                      "只有 PENDING 审批任务可执行动作",
+                                      "审批动作在事务内幂等处理",
+                                      "界面和错误提示使用中文"
+                                  ],
+                   "constraints":  [
+                                       "Spring Boot 3.x、JDK 17、MySQL、Flyway、Vue 3、TypeScript、Element Plus",
+                                       "第一阶段只实现串行有向图，不实现条件分支、并行网关、转交和退回",
+                                       "保留 definitionJson 字段兼容现有接口"
+                                   ],
+                   "non_goals":  [
+                                     "BPMN 全量规范",
+                                     "条件表达式和并行网关",
+                                     "定时任务、转交、退回、催办",
+                                     "跨租户流程共享"
+                                 ],
+                   "selected_approach":  {
+                                             "name":  "Vue Flow + 自研流程运行器",
+                                             "reason":  "适配现有前端和后端模块，能提供真实拖拽连线并让第一阶段动作和数据契约保持可控。",
+                                             "alternatives":  [
+                                                                  {
+                                                                      "name":  "BPMN 编辑器 + BPMN 引擎",
+                                                                      "rejected_because":  "接入和维护成本超出第一阶段范围"
+                                                                  },
+                                                                  {
+                                                                      "name":  "自定义纵向节点编辑器",
+                                                                      "rejected_because":  "难以表达连线，后续扩展受限"
+                                                                  }
+                                                              ]
+                                         },
+                   "architecture":  {
+                                        "boundary":  {
+                                                         "inside":  [
+                                                                        "工作流设计器",
+                                                                        "流程定义校验与版本",
+                                                                        "实例任务运行",
+                                                                        "审批动作和抄送记录",
+                                                                        "工作流 API"
+                                                                    ],
+                                                         "outside":  [
+                                                                         "登录和权限基础设施",
+                                                                         "用户、角色、组织维护页面",
+                                                                         "业务单据数据"
+                                                                     ]
+                                                     },
+                                        "components":  [
+                                                           {
+                                                               "name":  "WorkflowDesigner",
+                                                               "responsibility":  "维护 Vue Flow 节点、边和位置",
+                                                               "depends_on":  [
+                                                                                  "Vue Flow"
+                                                                              ]
+                                                           },
+                                                           {
+                                                               "name":  "WorkflowNodeInspector",
+                                                               "responsibility":  "维护节点名称和审批人配置",
+                                                               "depends_on":  [
+                                                                                  "用户/角色/组织 API"
+                                                                              ]
+                                                           },
+                                                           {
+                                                               "name":  "WorkflowDefinitionValidator",
+                                                               "responsibility":  "校验流程图契约和串行约束",
+                                                               "depends_on":  [
+                                                                                  "Jackson"
+                                                                              ]
+                                                           },
+                                                           {
+                                                               "name":  "WorkflowService",
+                                                               "responsibility":  "管理版本、实例、任务和动作事务",
+                                                               "depends_on":  [
+                                                                                  "JdbcTemplate",
+                                                                                  "MySQL"
+                                                                              ]
+                                                           }
+                                                       ],
+                                        "interfaces":  [
+                                                           {
+                                                               "name":  "工作流定义接口",
+                                                               "producer":  "WorkflowController",
+                                                               "consumers":  [
+                                                                                 "WorkflowView"
+                                                                             ],
+                                                               "contract":  "定义列表、创建、发布使用现有路径和 definitionJson 字段"
+                                                           },
+                                                           {
+                                                               "name":  "任务动作接口",
+                                                               "producer":  "WorkflowController",
+                                                               "consumers":  [
+                                                                                 "WorkflowView"
+                                                                             ],
+                                                               "contract":  "决策 body 使用 action、comment、targetUserId、ccUserIds"
+                                                           }
+                                                       ],
+                                        "data_flows":  [
+                                                           {
+                                                               "input":  "流程图节点/边和业务单号",
+                                                               "transitions":  [
+                                                                                   "前端保存草稿",
+                                                                                   "后端校验并生成版本",
+                                                                                   "发起实例解析审批人",
+                                                                                   "动作事务更新任务和实例"
+                                                                               ],
+                                                               "output":  "流程定义、实例、待办、抄送记录和操作日志"
+                                                           }
+                                                       ]
+                                    },
+                   "error_handling":  [
+                                          {
+                                              "condition":  "流程 JSON 非法或图不满足串行约束",
+                                              "behavior":  "返回 400 中文业务错误",
+                                              "recovery":  "修正节点、审批人或连线后重新保存/发布"
+                                          },
+                                          {
+                                              "condition":  "任务已完成、非审批人或跨租户",
+                                              "behavior":  "返回冲突/禁止错误",
+                                              "recovery":  "刷新待办并按当前状态继续"
+                                          },
+                                          {
+                                              "condition":  "数据库事务失败",
+                                              "behavior":  "事务回滚且不生成半成品任务",
+                                              "recovery":  "保留日志并重试请求"
+                                          }
+                                      ],
+                   "quality_attributes":  {
+                                              "security":  [
+                                                               "租户条件",
+                                                               "任务审批人校验",
+                                                               "动作幂等"
+                                                           ],
+                                              "performance":  [
+                                                                  "任务列表使用租户、审批人、状态索引",
+                                                                  "角色解析只取有效成员"
+                                                              ],
+                                              "compatibility":  [
+                                                                    "保留现有工作流 API 路径",
+                                                                    "旧 steps 定义发布期兼容读取"
+                                                                ],
+                                              "operations":  [
+                                                                 "Flyway 迁移失败阻止启动",
+                                                                 "动作写入审计表"
+                                                             ]
+                                          },
+                   "verification_strategy":  [
+                                                 {
+                                                     "requirement_ids":  [
+                                                                             "R1"
+                                                                         ],
+                                                     "signal":  "设计器保存和非法图发布结果",
+                                                     "method":  "浏览器操作和后端验证测试"
+                                                 },
+                                                 {
+                                                     "requirement_ids":  [
+                                                                             "R2",
+                                                                             "R3"
+                                                                         ],
+                                                     "signal":  "任务组、动作和实例状态",
+                                                     "method":  "后端单元测试、接口调用和浏览器待办验收"
+                                                 },
+                                                 {
+                                                     "requirement_ids":  [
+                                                                             "R4",
+                                                                             "R5"
+                                                                         ],
+                                                     "signal":  "版本、租户、并发和 API 响应",
+                                                     "method":  "数据库迁移检查、Maven 编译和 HTTP 验证"
+                                                 }
+                                             ],
+                   "assumptions":  [
+                                       {
+                                           "text":  "现有系统接口可提供有效用户和角色 ID",
+                                           "basis":  "已有 system users、roles/options 和组织树接口",
+                                           "falsifier":  "接口不能返回租户内有效成员"
+                                       },
+                                       {
+                                           "text":  "加签采用串行阻塞语义",
+                                           "basis":  "第一阶段范围确认",
+                                           "falsifier":  "用户要求并行加签或动态会签规则"
+                                       }
+                                   ],
+                   "unknowns":  [
+                                    {
+                                        "question":  "后续条件分支的业务字段和表达式安全策略",
+                                        "impact":  "影响第二阶段网关和条件节点设计",
+                                        "owner":  "产品/业务负责人",
+                                        "blocking":  false
+                                    }
+                                ],
+                   "decisions":  [
+                                     {
+                                         "id":  "D1",
+                                         "decision":  "采用 Vue Flow 作为可视化编辑器",
+                                         "reason":  "提供真实拖拽连线且与 Vue 3 兼容",
+                                         "source":  "用户确认"
+                                     },
+                                     {
+                                         "id":  "D2",
+                                         "decision":  "第一阶段采用串行图和自研运行器",
+                                         "reason":  "覆盖当前动作需求并控制实现范围",
+                                         "source":  "用户确认"
+                                     },
+                                     {
+                                         "id":  "D3",
+                                         "decision":  "保存接口继续使用 definitionJson 字段",
+                                         "reason":  "减少现有接口破坏并支持内部契约升级",
+                                         "source":  "现有代码勘察"
+                                     }
+                                 ],
+                   "risks":  [
+                                 {
+                                     "risk":  "新增 Vue Flow 依赖影响构建",
+                                     "impact":  "前端无法构建",
+                                     "mitigation":  "锁定版本并以 npm run build 作为门禁"
+                                 },
+                                 {
+                                     "risk":  "多人审批并发产生重复流转",
+                                     "impact":  "实例状态或任务重复",
+                                     "mitigation":  "任务组条件更新和事务幂等"
+                                 },
+                                 {
+                                     "risk":  "旧 steps 定义缺少节点/边信息",
+                                     "impact":  "历史流程无法启动",
+                                     "mitigation":  "运行期兼容读取旧定义，保存后统一新契约"
+                                 }
+                             ],
+                   "approval":  {
+                                    "status":  "approved",
+                                    "evidence":  "用户确认采用 Vue Flow + 自研流程运行器，并确认第一阶段实现串行审批、多人审批、同意、拒绝、加签、抄送和审批人配置。",
+                                    "confirmed_at":  "2026-08-05T11:18:34+08:00"
+                                }
+               },
+    "implementation_plan":  {
+                                "plan_revision":  1,
+                                "human_document":  "docs/engineering-control/plans/2026-08-05-workflow-visual-approval-implementation-plan.md",
+                                "plan_status":  "ready",
+                                "global_constraints":  [
+                                                           "保持单租户和中文界面",
+                                                           "第一阶段只实现串行节点图",
+                                                           "后端所有工作流查询带 tenant_id",
+                                                           "发布版本不可原地修改",
+                                                           "不得扩大到条件分支、并行网关、转交和退回"
+                                                       ],
+                                "file_map":  [
+                                                 {
+                                                     "path":  "ccb-infrastructure/src/main/resources/db/migration/V16__workflow_visual_approval.sql",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "工作流任务字段和动作记录表",
+                                                     "evidence":  "已核对现有仓库路径，职责见实施计划。"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "节点/边 JSON 校验",
+                                                     "evidence":  "已核对现有仓库路径，职责见实施计划。"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+                                                     "status":  "existing",
+                                                     "responsibility":  "版本、实例、任务和动作运行",
+                                                     "evidence":  "已核对现有仓库路径，职责见实施计划。"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-web/src/components/workflow/WorkflowDesigner.vue",
+                                                     "status":  "candidate-new",
+                                                     "responsibility":  "Vue Flow 设计器",
+                                                     "evidence":  "已核对现有仓库路径，职责见实施计划。"
+                                                 },
+                                                 {
+                                                     "path":  "ccb-web/src/views/WorkflowView.vue",
+                                                     "status":  "existing",
+                                                     "responsibility":  "工作流页面编排",
+                                                     "evidence":  "已核对现有仓库路径，职责见实施计划。"
+                                                 }
+                                             ],
+                                "tasks":  [
+                                              {
+                                                  "id":  "T1",
+                                                  "goal":  "建立工作流任务和动作持久化契约",
+                                                  "requirement_ids":  [
+                                                                          "R3",
+                                                                          "R4",
+                                                                          "R5"
+                                                                      ],
+                                                  "prerequisites":  [
+
+                                                                    ],
+                                                  "input_facts":  [
+                                                                      "现有 V5 工作流表只有单 assignee_id",
+                                                                      "现有定义和实例接口已存在"
+                                                                  ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "ccb-infrastructure/src/main/resources/db/migration/V16__workflow_visual_approval.sql"
+                                                                           ],
+                                                                "modify":  [
+                                                                               "ccb-workflow/pom.xml"
+                                                                           ],
+                                                                "test":  [
+
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "wf_definition、wf_version、wf_instance、wf_task"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "任务扩展字段、wf_task_action、索引"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T1-S1",
+                                                                    "action":  "新增任务类型、节点、任务组、父任务和审批人来源字段",
+                                                                    "command":  null,
+                                                                    "expected":  "V16 可在现有 MySQL 执行",
+                                                                    "evidence":  "Flyway 输出和表结构"
+                                                                },
+                                                                {
+                                                                    "id":  "T1-S2",
+                                                                    "action":  "创建任务动作审计表并加入 JUnit 依赖",
+                                                                    "command":  null,
+                                                                    "expected":  "动作记录可关联任务和实例",
+                                                                    "evidence":  "SHOW CREATE TABLE 和 Maven 依赖解析"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "V16 执行成功",
+                                                                            "旧任务可读",
+                                                                            "新增表和索引存在"
+                                                                        ],
+                                                  "risks":  [
+                                                                "迁移字段默认值与旧数据不兼容"
+                                                            ],
+                                                  "rollback":  "恢复上一 JAR，保留新增对象，按备份恢复数据库",
+                                                  "stop_conditions":  [
+                                                                          "Flyway 失败",
+                                                                          "旧数据无法查询"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "需要破坏性变更已有 wf_task 字段"
+                                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T2",
+                                                  "goal":  "实现定义解析和串行图校验",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R2",
+                                                                          "R5"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T1"
+                                                                    ],
+                                                  "input_facts":  [
+                                                                      "设计契约 schemaVersion=1",
+                                                                      "开始/审批/抄送/结束四类节点"
+                                                                  ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java",
+                                                                               "ccb-workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionValidatorTest.java"
+                                                                           ],
+                                                                "modify":  [
+
+                                                                           ],
+                                                                "test":  [
+                                                                             "ccb-workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionValidatorTest.java"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "definitionJson 字符串"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "内部节点/边模型和中文校验异常"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T2-S1",
+                                                                    "action":  "解析 schemaVersion、nodes、edges 和节点配置",
+                                                                    "command":  null,
+                                                                    "expected":  "合法图得到稳定内部模型",
+                                                                    "evidence":  "单元测试断言节点和边数量"
+                                                                },
+                                                                {
+                                                                    "id":  "T2-S2",
+                                                                    "action":  "校验数量、引用、可达性、环路和审批人配置",
+                                                                    "command":  "mvn -pl ccb-workflow -am test -DskipTests=false",
+                                                                    "expected":  "合法图通过，非法图逐项失败",
+                                                                    "evidence":  "JUnit 测试结果"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "合法线性图通过",
+                                                                            "断链、环路、重复 ID、节点缺失和审批人为空被拒绝",
+                                                                            "旧 steps 可转换"
+                                                                        ],
+                                                  "risks":  [
+                                                                "旧定义没有位置和边信息"
+                                                            ],
+                                                  "rollback":  "移除校验器接入，保留测试和迁移",
+                                                  "stop_conditions":  [
+                                                                          "无法稳定判断图合法性",
+                                                                          "旧 steps 无法兼容"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "需要引入条件表达式才可完成当前需求"
+                                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T3",
+                                                  "goal":  "升级后端流程运行和动作状态机",
+                                                  "requirement_ids":  [
+                                                                          "R2",
+                                                                          "R3",
+                                                                          "R4",
+                                                                          "R5"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T1",
+                                                                        "T2"
+                                                                    ],
+                                                  "input_facts":  [
+                                                                      "已有定义、实例、待办和决策接口",
+                                                                      "新增任务组和动作表"
+                                                                  ],
+                                                  "files":  {
+                                                                "create":  [
+
+                                                                           ],
+                                                                "modify":  [
+                                                                               "ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+                                                                               "ccb-workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java"
+                                                                           ],
+                                                                "test":  [
+                                                                             "后端工作流状态和接口验证"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "节点/边模型",
+                                                                                      "用户/角色关联表",
+                                                                                      "action、comment、targetUserId、ccUserIds"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "定义发布、实例启动、任务列表和动作响应"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T3-S1",
+                                                                    "action":  "按发布版本启动实例并解析审批人",
+                                                                    "command":  null,
+                                                                    "expected":  "首个审批任务只属于有效租户成员",
+                                                                    "evidence":  "实例和任务查询"
+                                                                },
+                                                                {
+                                                                    "id":  "T3-S2",
+                                                                    "action":  "实现 APPROVE、REJECT、ADD_SIGN、CC 事务",
+                                                                    "command":  "mvn -pl ccb-boot -am compile -DskipTests",
+                                                                    "expected":  "编译通过且动作状态符合设计",
+                                                                    "evidence":  "Maven 输出和接口响应"
+                                                                },
+                                                                {
+                                                                    "id":  "T3-S3",
+                                                                    "action":  "加入任务状态、租户和并发条件校验",
+                                                                    "command":  null,
+                                                                    "expected":  "重复和越权动作被拒绝",
+                                                                    "evidence":  "HTTP 错误响应和数据库状态"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "ANY/ALL 正确流转",
+                                                                            "拒绝终止实例",
+                                                                            "加签阻塞原任务",
+                                                                            "抄送不可审批",
+                                                                            "动作可审计且幂等"
+                                                                        ],
+                                                  "risks":  [
+                                                                "并发动作重复创建下一节点"
+                                                            ],
+                                                  "rollback":  "恢复后端上一版本，保留动作记录",
+                                                  "stop_conditions":  [
+                                                                          "并发重复流转",
+                                                                          "跨租户任务泄露",
+                                                                          "旧流程不能启动"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "需要并行网关或复杂条件才能满足需求"
+                                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T4",
+                                                  "goal":  "接入 Vue Flow 设计器和节点配置组件",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R2",
+                                                                          "R5"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T2",
+                                                                        "T3"
+                                                                    ],
+                                                  "input_facts":  [
+                                                                      "前端 Vue 3/TypeScript/Element Plus",
+                                                                      "现有系统用户和角色接口"
+                                                                  ],
+                                                  "files":  {
+                                                                "create":  [
+                                                                               "ccb-web/src/components/workflow/WorkflowDesigner.vue",
+                                                                               "ccb-web/src/components/workflow/WorkflowNode.vue",
+                                                                               "ccb-web/src/components/workflow/WorkflowNodeInspector.vue"
+                                                                           ],
+                                                                "modify":  [
+                                                                               "ccb-web/package.json",
+                                                                               "ccb-web/package-lock.json",
+                                                                               "ccb-web/src/api/workflow.ts"
+                                                                           ],
+                                                                "test":  [
+
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "节点/边 JSON 契约",
+                                                                                      "用户、角色 API"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "可序列化设计器状态和配置事件"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T4-S1",
+                                                                    "action":  "安装并锁定 @vue-flow/core",
+                                                                    "command":  "npm install @vue-flow/core",
+                                                                    "expected":  "依赖锁定且可构建",
+                                                                    "evidence":  "package-lock 和 npm 输出"
+                                                                },
+                                                                {
+                                                                    "id":  "T4-S2",
+                                                                    "action":  "实现画布、节点、连线、删除和序列化",
+                                                                    "command":  "npm run build",
+                                                                    "expected":  "TypeScript/Vite 构建通过",
+                                                                    "evidence":  "构建输出"
+                                                                },
+                                                                {
+                                                                    "id":  "T4-S3",
+                                                                    "action":  "实现审批人、模式和抄送配置面板",
+                                                                    "command":  null,
+                                                                    "expected":  "配置保存到节点 config",
+                                                                    "evidence":  "浏览器 DOM 和接口 payload"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "四类节点可拖拽和连线",
+                                                                            "节点配置可保存和恢复",
+                                                                            "深浅主题可读",
+                                                                            "无 JSON 文本编辑器"
+                                                                        ],
+                                                  "risks":  [
+                                                                "新依赖或节点坐标序列化异常"
+                                                            ],
+                                                  "rollback":  "恢复旧 WorkflowView 和前端依赖",
+                                                  "stop_conditions":  [
+                                                                          "npm 构建失败",
+                                                                          "设计器生成无效图"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "需求扩大到当前阶段非目标能力时升级给主 Agent 和用户。"
+                                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T5",
+                                                  "goal":  "完成工作流页面和审批待办闭环",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R2",
+                                                                          "R3",
+                                                                          "R4"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T4"
+                                                                    ],
+                                                  "input_facts":  [
+                                                                      "后端动作 API 和设计器组件已完成"
+                                                                  ],
+                                                  "files":  {
+                                                                "create":  [
+
+                                                                           ],
+                                                                "modify":  [
+                                                                               "ccb-web/src/views/WorkflowView.vue",
+                                                                               "ccb-web/src/api/workflow.ts",
+                                                                               "ccb-web/src/styles.css"
+                                                                           ],
+                                                                "test":  [
+                                                                             "浏览器工作流闭环"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "设计器事件",
+                                                                                      "工作流 API"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "定义、发布、发起、待办和动作页面"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T5-S1",
+                                                                    "action":  "替换 JSON 抽屉为画布和配置区",
+                                                                    "command":  null,
+                                                                    "expected":  "管理员可以可视化维护流程",
+                                                                    "evidence":  "浏览器截图和交互"
+                                                                },
+                                                                {
+                                                                    "id":  "T5-S2",
+                                                                    "action":  "接入待办动作和中文状态/日期",
+                                                                    "command":  "npm run build",
+                                                                    "expected":  "页面构建通过且任务类型按钮匹配",
+                                                                    "evidence":  "构建和浏览器操作"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "设计保存发布发起闭环",
+                                                                            "同意拒绝加签抄送可操作",
+                                                                            "抄送无审批按钮",
+                                                                            "页面中文和日期正确"
+                                                                        ],
+                                                  "risks":  [
+                                                                "前后端字段不一致"
+                                                            ],
+                                                  "rollback":  "恢复旧页面并保留后端兼容接口",
+                                                  "stop_conditions":  [
+                                                                          "JSON 编辑器残留",
+                                                                          "抄送可审批",
+                                                                          "刷新丢失图形"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "需求扩大到当前阶段非目标能力时升级给主 Agent 和用户。"
+                                                                            ]
+                                              },
+                                              {
+                                                  "id":  "T6",
+                                                  "goal":  "完成集成验证和交付采样",
+                                                  "requirement_ids":  [
+                                                                          "R1",
+                                                                          "R2",
+                                                                          "R3",
+                                                                          "R4",
+                                                                          "R5"
+                                                                      ],
+                                                  "prerequisites":  [
+                                                                        "T1",
+                                                                        "T2",
+                                                                        "T3",
+                                                                        "T4",
+                                                                        "T5"
+                                                                    ],
+                                                  "input_facts":  [
+                                                                      "各任务局部验证已通过"
+                                                                  ],
+                                                  "files":  {
+                                                                "create":  [
+
+                                                                           ],
+                                                                "modify":  [
+
+                                                                           ],
+                                                                "test":  [
+                                                                             "Flyway、Maven、npm、HTTP、浏览器验收"
+                                                                         ]
+                                                            },
+                                                  "interfaces":  {
+                                                                     "consumes":  [
+                                                                                      "所有已实现工作流接口"
+                                                                                  ],
+                                                                     "produces":  [
+                                                                                      "可复现的构建和行为证据"
+                                                                                  ]
+                                                                 },
+                                                  "steps":  [
+                                                                {
+                                                                    "id":  "T6-S1",
+                                                                    "action":  "运行后端、前端和迁移门禁",
+                                                                    "command":  "mvn -pl ccb-boot -am compile -DskipTests; npm run build",
+                                                                    "expected":  "两端构建成功",
+                                                                    "evidence":  "命令输出"
+                                                                },
+                                                                {
+                                                                    "id":  "T6-S2",
+                                                                    "action":  "执行完整浏览器和数据库采样",
+                                                                    "command":  null,
+                                                                    "expected":  "R1-R5 均有证据",
+                                                                    "evidence":  "接口响应、数据库状态、浏览器行为"
+                                                                }
+                                                            ],
+                                                  "acceptance_checks":  [
+                                                                            "V16、Maven、npm 均通过",
+                                                                            "流程图和四类动作闭环",
+                                                                            "工作区 diff 只含本功能变更"
+                                                                        ],
+                                                  "risks":  [
+                                                                "运行中 JAR 或 Docker 数据库产生环境干扰"
+                                                            ],
+                                                  "rollback":  "按上一 JAR、前端旧页面和数据库备份恢复",
+                                                  "stop_conditions":  [
+                                                                          "任一关键门禁失败",
+                                                                          "关键闭环不能完成"
+                                                                      ],
+                                                  "escalation_conditions":  [
+                                                                                "需求扩大到当前阶段非目标能力时升级给主 Agent 和用户。"
+                                                                            ]
+                                              }
+                                          ],
+                                "dependency_edges":  [
+                                                         {
+                                                             "from":  "T1",
+                                                             "to":  "T2",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T1",
+                                                             "to":  "T3",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T2",
+                                                             "to":  "T3",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T2",
+                                                             "to":  "T4",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T3",
+                                                             "to":  "T4",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T4",
+                                                             "to":  "T5",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T1",
+                                                             "to":  "T6",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T2",
+                                                             "to":  "T6",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T3",
+                                                             "to":  "T6",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T4",
+                                                             "to":  "T6",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         },
+                                                         {
+                                                             "from":  "T5",
+                                                             "to":  "T6",
+                                                             "reason":  "前置任务输出是后续任务的稳定输入。"
+                                                         }
+                                                     ],
+                                "parallel_groups":  [
+                                                        [
+                                                            "T1"
+                                                        ],
+                                                        [
+                                                            "T2"
+                                                        ],
+                                                        [
+                                                            "T3"
+                                                        ],
+                                                        [
+                                                            "T4"
+                                                        ],
+                                                        [
+                                                            "T5"
+                                                        ],
+                                                        [
+                                                            "T6"
+                                                        ]
+                                                    ],
+                                "integration_checks":  [
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T1"
+                                                                               ],
+                                                               "command":  "Flyway 启动迁移检查",
+                                                               "expected":  "V16 成功且旧任务可读"
+                                                           },
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T2",
+                                                                                   "T3"
+                                                                               ],
+                                                               "command":  "mvn -pl ccb-boot -am compile -DskipTests",
+                                                               "expected":  "后端编译通过"
+                                                           },
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T4",
+                                                                                   "T5"
+                                                                               ],
+                                                               "command":  "npm run build",
+                                                               "expected":  "前端构建通过"
+                                                           },
+                                                           {
+                                                               "after_tasks":  [
+                                                                                   "T6"
+                                                                               ],
+                                                               "command":  "浏览器和 HTTP 工作流闭环",
+                                                               "expected":  "R1-R5 全部有证据"
+                                                           }
+                                                       ],
+                                "coverage":  [
+                                                 {
+                                                     "requirement_id":  "R1",
+                                                     "task_ids":  [
+                                                                      "T2",
+                                                                      "T4",
+                                                                      "T5",
+                                                                      "T6"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R2",
+                                                     "task_ids":  [
+                                                                      "T2",
+                                                                      "T3",
+                                                                      "T4",
+                                                                      "T5",
+                                                                      "T6"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R3",
+                                                     "task_ids":  [
+                                                                      "T1",
+                                                                      "T3",
+                                                                      "T5",
+                                                                      "T6"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R4",
+                                                     "task_ids":  [
+                                                                      "T1",
+                                                                      "T3",
+                                                                      "T5",
+                                                                      "T6"
+                                                                  ]
+                                                 },
+                                                 {
+                                                     "requirement_id":  "R5",
+                                                     "task_ids":  [
+                                                                      "T1",
+                                                                      "T2",
+                                                                      "T3",
+                                                                      "T4",
+                                                                      "T6"
+                                                                  ]
+                                                 }
+                                             ],
+                                "approval":  {
+                                                 "status":  "approved",
+                                                 "evidence":  "用户确认开始按实施计划执行 T1-T6。",
+                                                 "confirmed_at":  "2026-08-05T11:24:00+08:00"
+                                             }
+                            },
+    "control_seed":  {
+                         "seed_status":  "hypotheses-only",
+                         "plant_boundary_candidates":  [
+                                                           "MySQL/Flyway",
+                                                           "Spring Boot 工作流模块",
+                                                           "Vue/Element Plus 工作流页面"
+                                                       ],
+                         "state_variable_candidates":  [
+                                                           "定义版本",
+                                                           "图校验结果",
+                                                           "实例状态",
+                                                           "任务组状态",
+                                                           "待办数量",
+                                                           "画布序列化结果"
+                                                       ],
+                         "interface_candidates":  [
+                                                      "工作流定义 API",
+                                                      "实例启动 API",
+                                                      "待办 API",
+                                                      "任务决策 API"
+                                                  ],
+                         "sensor_candidates":  [
+                                                   "Flyway 输出",
+                                                   "Maven 编译",
+                                                   "npm 构建",
+                                                   "HTTP 响应",
+                                                   "浏览器 DOM/截图"
+                                               ],
+                         "actuator_candidates":  [
+                                                     "数据库迁移",
+                                                     "后端服务代码",
+                                                     "前端组件代码",
+                                                     "工作流 API 请求"
+                                                 ],
+                         "disturbance_candidates":  [
+                                                        "旧 steps JSON",
+                                                        "并发审批",
+                                                        "停用用户",
+                                                        "深色主题",
+                                                        "运行中的后端进程"
+                                                    ],
+                         "delay_candidates":  [
+                                                  "事务提交",
+                                                  "前端刷新",
+                                                  "Flyway 启动迁移",
+                                                  "浏览器 API 重试"
+                                              ],
+                         "assumptions":  [
+                                             {
+                                                 "text":  "实施阶段可以访问用户已启动的 MySQL 容器",
+                                                 "basis":  "用户已说明 Docker 启动数据库",
+                                                 "falsifier":  "数据库连接不可用"
+                                             },
+                                             {
+                                                 "text":  "@vue-flow/core 可从当前 npm 镜像安装",
+                                                 "basis":  "前端允许安装依赖",
+                                                 "falsifier":  "安装或构建失败"
+                                             }
+                                         ]
+                     }
+}
