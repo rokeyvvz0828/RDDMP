@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-010-development-entry-controls",
+  "observer": "codex-runtime-validation",
+  "independent_observer": false,
+  "result": "passed",
+  "checks": [
+    {"name": "Codex plugin list", "status": "passed", "evidence": "control-engineering@control-engineering-local version 1.0.0 installed=true enabled=true"},
+    {"name": "Development entry", "status": "passed", "command": "node scripts/check-development-entry.mjs --require-plugin", "evidence": "Development entry check passed."},
+    {"name": "Full governance", "status": "passed", "command": "node scripts/check-all-governance.mjs", "evidence": "All repository governance checks passed; 11 modules, 17 requirement directories, 112 JSON files and 27 Flyway migrations checked."},
+    {"name": "Frontend build", "status": "passed", "command": "npm --prefix web run build", "evidence": "vue-tsc and Vite production build passed; only existing dependency annotation and chunk-size warnings remain."},
+    {"name": "Whitespace validation", "status": "passed", "command": "git diff --check", "evidence": "No whitespace errors."},
+    {"name": "Java runtime", "status": "passed", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -version", "evidence": "Apache Maven reports Java 17.0.18."}
+  ],
+  "scope_note": "既有手机号、数据库迁移和界面留白变更属于用户此前任务，本需求未回退。"
+}

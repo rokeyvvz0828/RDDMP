@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 const checks = [
   'scripts/check-governance.mjs',
   'scripts/check-repo-skill.mjs',
+  'scripts/check-development-entry.mjs',
   'scripts/check-ai-control-layout.mjs',
   'scripts/check-module-boundaries.mjs',
   'scripts/check-flyway-migrations.mjs',

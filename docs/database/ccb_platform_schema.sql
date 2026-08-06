@@ -1772,7 +1772,7 @@ CREATE TABLE `sys_user` (
   `username` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '登录账号',
   `password_hash` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'BCrypt密码哈希',
   `display_name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '用户姓名',
-  `email` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '电子邮箱',
+  `mobile_phone` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '手机号',
   `org_id` bigint NOT NULL DEFAULT '0' COMMENT '所属组织ID',
   `avatar_object_key` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'MinIO头像对象键',
   `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：1启用，0停用',

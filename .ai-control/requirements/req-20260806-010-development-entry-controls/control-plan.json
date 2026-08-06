@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "requirement": "REQ-20260806-010",
+  "phase": "planning",
+  "tasks": [
+    {"id": "T1", "name": "更新研发入口和前端契约", "depends_on": [], "writable_paths": ["AGENTS.md", "README.md", "CODEX-DEVELOPMENT-GUIDE.md", "CONTRIBUTING.md", "docs/governance/PROJECT-RULES.md", "docs/integration/frontend-ui-contract.md"]},
+    {"id": "T2", "name": "增加开发入口自动检查", "depends_on": ["T1"], "writable_paths": ["scripts/check-development-entry.mjs", "scripts/check-all-governance.mjs", "scripts/check-governance.mjs"]},
+    {"id": "T3", "name": "安装插件并验证收敛", "depends_on": ["T1", "T2"], "writable_paths": [".ai-control/requirements/req-20260806-010-development-entry-controls/*.json"]}
+  ],
+  "stop_conditions": ["入口文件缺失", "插件预检失败", "治理检查失败", "发现业务代码被改动"],
+  "required_observations": ["插件 installed=true enabled=true", "开发入口脚本通过", "全量治理检查通过", "前端构建通过"],
+  "created_at": "2026-08-06T23:10:22+08:00"
+}

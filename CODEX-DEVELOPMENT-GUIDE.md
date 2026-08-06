@@ -2,6 +2,28 @@
 
 本文面向参与 RDDMP 开发的需求人员、研发人员、测试人员、模块 Owner 和 Codex，说明项目内 Codex 文件、Skill、研发规约和自动门禁各自负责什么，以及如何用它们完成一次可评审、可验证、可回退的开发任务。
 
+## 首次启动研发硬门禁
+
+首次参与 RDDMP 或重新建立研发环境时，必须按以下顺序完成，不得直接开始业务编码：
+
+1. 阅读本文件、`README.md`、根目录 `AGENTS.md`、`docs/governance/` 下正式规约和目标目录最近的 `AGENTS.md`。
+2. 确认仓库 Skill `.agents/skills/rddmp-delivery-engineer/SKILL.md` 可读。
+3. 安装并启用 [control-engineering-skills](https://github.com/wjzxc123/control-engineering-skills) 提供的 `control-engineering@control-engineering-local` 插件。安装完成后重新打开 Codex 任务，使 Skill 被重新加载。
+4. 执行 `node scripts/check-development-entry.mjs --require-plugin`，只有检查通过后才进入需求分析和编码。
+
+业务前端任务还必须先检查 `web/src/modules/delivery-showcase/`，将其作为列表、表单、流程、图表和响应式设计的首选参考。
+
+插件安装由外部 Codex 环境完成，不将插件源码复制进业务仓库。macOS/Linux 官方安装方式：
+
+```bash
+git clone https://github.com/wjzxc123/control-engineering-skills.git
+cd control-engineering-skills
+python3 scripts/install_plugin.py --dry-run
+python3 scripts/install_plugin.py
+```
+
+Windows 使用 `python` 替换 `python3`。安装脚本必须报告 `installed=true enabled=true`。
+
 ## 一、先理解六层治理关系
 
 | 层级 | 解决的问题 | 事实来源 |
@@ -91,6 +113,12 @@ Skill 规定的是工作方法，不能扩大 `codex-task-scope.yaml` 的授权�
 ```
 
 Codex 未自动发现 Skill 时，应显式读取 `.agents/skills/rddmp-delivery-engineer/SKILL.md` 并按步骤执行。
+
+### 5.3 工程控制插件
+
+`control-engineering` 是复杂业务开发的外部闭环编排器。所有业务功能、跨模块改造、数据库/权限/公共能力变更和需求存在实质歧义的任务，必须遵循其七阶段：需求定标、系统建模、任务规划、受控执行、独立观测、偏差纠正、收敛验收。对应 Skill 为 `$establish-requirement-baseline`、`$model-engineering-system`、`$plan-controlled-tasks`、`$execute-controlled-task`、`$observe-engineering-output`、`$correct-engineering-deviation` 和 `$verify-control-convergence`。
+
+简单问答或单个显然的低风险修改可由主 Agent 选择轻量模式，但仍必须遵守本项目的需求范围、AGENTS 和交付示范中心前端设计准入。外部插件不能扩大 `codex-task-scope.yaml` 授权范围。
 
 ## 六、Codex 开发入口
 
@@ -195,6 +223,8 @@ node -e "const fs=require('fs'); for (const f of process.argv.slice(1)) JSON.par
 账本统一使用 UTF-8 JSON 和 ISO 8601 时间；命令结果必须来自实际执行。不要写入密钥、Token、生产数据、完整敏感日志或大段可重新生成的构建输出。历史文件中的旧目录只能作为当时证据，新任务记录路径前必须以当前仓库为准重新确认。
 
 ## 七、标准开发操作流程
+
+开始第 1 步前，先通过 `node scripts/check-development-entry.mjs --require-plugin`；未通过时停止编码，先补齐契约阅读和插件安装。
 
 ### 第 1 步：创建并评审需求
 

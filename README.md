@@ -55,9 +55,17 @@ docs/                数据库、模块接入契约、设计和实施计划
 - Git
 - Python 3（用于安装工程控制插件）
 
+首次启动研发必须先仔细阅读 `CODEX-DEVELOPMENT-GUIDE.md`、本 `README.md`、根目录 `AGENTS.md`、`docs/governance/` 正式规约和目标目录最近的 `AGENTS.md`。完成阅读并安装工程控制插件后，执行：
+
+~~~bash
+node scripts/check-development-entry.mjs --require-plugin
+~~~
+
+检查不通过时不得开始业务功能开发。
+
 ### 项目开始时安装工程控制 Skill
 
-开始新的项目任务前，先安装 [wjzxc123/control-engineering-skills](https://github.com/wjzxc123/control-engineering-skills)。该仓库包含本项目使用的需求基线、系统建模、任务规划、受控执行、观测、纠偏和收敛验证流程。
+开始新的项目任务前，先安装 [wjzxc123/control-engineering-skills](https://github.com/wjzxc123/control-engineering-skills)。该仓库包含本项目使用的需求基线、系统建模、任务规划、受控执行、观测、纠偏和收敛验证流程。安装完成后必须重新打开 Codex 任务。
 
 ~~~powershell
 git clone https://github.com/wjzxc123/control-engineering-skills.git
@@ -178,6 +186,10 @@ $env:DB_PASSWORD = '数据库密码'
 - docs/integration/frontend-ui-contract.md
 - docs/integration/workflow-module-contract.md
 - docs/integration/ai-module-contract.md
+
+## 业务功能前端设计规则
+
+所有业务功能必须优先参考并复用 `web/src/modules/delivery-showcase/` 交付示范中心中的页面结构、列表检索、表单、分步表单、流程图、审批、弹框、图表、甘特图、响应式布局和状态反馈设计。只有示范中心无法满足目标业务形态时，才允许采用新样式；必须在需求设计或 `.ai-control` 当前任务记录中说明无法满足的原因、仍复用的公共组件、例外样式的适用边界和回归验证范围。具体组件准入见 `docs/integration/frontend-ui-contract.md`。
 
 ## 构建与测试
 

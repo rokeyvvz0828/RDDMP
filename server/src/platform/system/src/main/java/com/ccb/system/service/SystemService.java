@@ -31,7 +31,7 @@ public class SystemService {
     private final MinioStorageService storage;
 
     private final Map<String, Spec> specs = Map.of(
-            "users", new Spec("sys_user", "id, username, display_name, email, org_id, avatar_object_key, status, last_login_at, created_at", "id DESC", Set.of("username", "password", "display_name", "email", "org_id", "status"), Set.of("display_name", "email", "org_id", "status")),
+            "users", new Spec("sys_user", "id, username, display_name, mobile_phone, org_id, avatar_object_key, status, last_login_at, created_at", "id DESC", Set.of("username", "password", "display_name", "mobile_phone", "org_id", "status"), Set.of("display_name", "mobile_phone", "org_id", "status")),
             "roles", new Spec("sys_role", "id, role_code, role_name, status, created_at", "id DESC", Set.of("role_code", "role_name", "status"), Set.of("role_name", "status")),
             "orgs", new Spec("sys_org", "id, parent_id, org_code, org_name, sort_no, status, created_at", "sort_no, id", Set.of("parent_id", "org_code", "org_name", "sort_no", "status"), Set.of("parent_id", "org_name", "sort_no", "status")),
             "menus", new Spec("sys_menu", "id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, sort_no, visible, status", "parent_id, sort_no, id", Set.of("parent_id", "menu_type", "menu_name", "route_name", "route_path", "component_path", "permission_code", "icon", "sort_no", "visible", "status"), Set.of("parent_id", "menu_name", "route_name", "route_path", "component_path", "permission_code", "icon", "sort_no", "visible", "status")),

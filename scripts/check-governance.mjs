@@ -17,6 +17,7 @@ const requiredFiles = [
   'docs/requirements/codex-task-scope.template.yaml',
   'governance/dependency-review-config.yml',
   '.agents/skills/rddmp-delivery-engineer/SKILL.md',
+  'scripts/check-development-entry.mjs',
   '.github/CODEOWNERS',
   '.github/workflows/security.yml',
 ];

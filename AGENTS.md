@@ -4,6 +4,8 @@
 
 ## 编码前必读
 
+首次进入本项目或新建研发会话时，必须先完整阅读 `CODEX-DEVELOPMENT-GUIDE.md`、`README.md`、本文件和目标目录最近的 `AGENTS.md`，再开始任何需求分析或编码。首次启动研发前还必须确认 `control-engineering@control-engineering-local` 插件已安装并启用；安装状态不明时执行 `node scripts/check-development-entry.mjs --require-plugin`，按 README 中的官方安装命令补装后重新开启 Codex 任务。
+
 1. `docs/governance/PROJECT-RULES.md`
 2. `docs/governance/CODEX-CODING-RULES.md`
 3. `docs/governance/GITHUB-RULES.md`
@@ -12,7 +14,13 @@
 6. 目标目录最近的 `AGENTS.md`
 7. `.ai-control/original/state.json` 及 `.ai-control/requirements/<completion.control_prefix>/` 中的当前任务记录
 
-所有实现、修复、重构和代码评审任务必须读取并执行 `.agents/skills/rddmp-delivery-engineer/SKILL.md`。Skill 不能扩大任务权限，也不能替代需求和任务范围。
+所有实现、修复、重构和代码评审任务必须读取并执行 `.agents/skills/rddmp-delivery-engineer/SKILL.md`，业务功能、跨模块功能和复杂需求还必须遵循 `control-engineering` 插件的需求定标、系统建模、任务规划、受控执行、独立观测、偏差纠正和收敛验收闭环。Skill 不能扩大任务权限，也不能替代需求和任务范围。
+
+## 业务前端设计准入
+
+- 新增或改造业务功能时，必须先检查 `web/src/modules/delivery-showcase/` 中的页面结构、组件组合、交互状态和语义主题样式，并优先复用交付示范中心已验证的设计。
+- 只有交付示范中心无法覆盖目标业务形态时，才允许引入新样式；需求设计、前端契约或 `.ai-control` 当前任务记录必须说明不适用原因、复用的基础能力和新样式的适用范围。
+- 新样式不得绕过 `web/src/components/ui`、语义主题变量、加载/空/失败/无权限/提交中状态和桌面/移动端验收要求。
 
 ## 强制约束
 

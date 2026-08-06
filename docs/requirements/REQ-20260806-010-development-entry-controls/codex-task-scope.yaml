@@ -1,0 +1,82 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260806-010",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260806-010-development-entry-controls/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "governance",
+    "module_owner": "rokeyvvz0828",
+    "branch": "zhangwei-dev",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "github-public-read"]
+  },
+  "scope": {
+    "writable_paths": [
+      "AGENTS.md",
+      "README.md",
+      "CODEX-DEVELOPMENT-GUIDE.md",
+      "CONTRIBUTING.md",
+      "docs/governance/PROJECT-RULES.md",
+      "docs/integration/frontend-ui-contract.md",
+      "docs/requirements/REQ-20260806-010-development-entry-controls/**",
+      "scripts/check-all-governance.mjs",
+      "scripts/check-governance.mjs",
+      "scripts/check-development-entry.mjs",
+      ".ai-control/requirements/req-20260806-010-development-entry-controls/*.json"
+    ],
+    "read_only_paths": [
+      ".agents/skills/rddmp-delivery-engineer/**",
+      "web/src/modules/delivery-showcase/**",
+      "governance/modules.yaml",
+      ".ai-control/original/**"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260806-010",
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": ["node scripts/check-all-governance.mjs"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "not-applicable"
+  },
+  "external_access": {
+    "changed": true,
+    "systems": ["GitHub public repository read", "local Codex plugin registration"],
+    "data_classification": "public-source-and-local-tooling-only"
+  },
+  "required_tests": [
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "important",
+    "items": ["Codex task startup depends on external plugin installation", "UI style exceptions require human-readable audit evidence"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-010-development-entry-controls",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-010-development-entry-controls/execution-T1.json",
+      ".ai-control/requirements/req-20260806-010-development-entry-controls/observation-T1.json",
+      ".ai-control/requirements/req-20260806-010-development-entry-controls/convergence.json"
+    ],
+    "release_verification": ["新建 Codex 任务后重新执行开发入口检查"],
+    "rollback": "Revert this requirement's commits; no database rollback is required."
+  }
+}

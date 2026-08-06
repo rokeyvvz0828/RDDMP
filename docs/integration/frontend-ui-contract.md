@@ -2,6 +2,10 @@
 
 Feature modules use the shared shell and components under `web/src/components/ui`.
 
+## Delivery showcase first
+
+Business feature pages must first inspect and reuse the patterns in `web/src/modules/delivery-showcase/`, including page composition, list and form layouts, workflow presentation, charts, responsive behavior, and semantic theme usage. A new visual pattern is an exception: the requirement design or current `.ai-control` task record must state why the showcase cannot cover the business shape, which shared pieces are still reused, the limited scope of the new pattern, and its regression evidence.
+
 ## Page contract
 
 - Use `UiPageHeader` for the page title and primary action.
