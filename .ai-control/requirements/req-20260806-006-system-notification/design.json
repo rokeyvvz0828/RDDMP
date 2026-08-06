@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-006-system-notification",
+  "objective": "provide a tenant-safe reusable in-app notification capability",
+  "requirements": [
+    {"id": "R1", "statement": "publish notifications through an idempotent public platform contract", "priority": "must"},
+    {"id": "R2", "statement": "persist per-user unread state with tenant isolation", "priority": "must"},
+    {"id": "R3", "statement": "provide authenticated list, count, read and read-all APIs", "priority": "must"},
+    {"id": "R4", "statement": "provide a responsive global notification center", "priority": "must"},
+    {"id": "R5", "statement": "document business integration and security constraints", "priority": "must"}
+  ],
+  "architecture": {
+    "publisher": "com.ccb.system.notification.SystemNotificationPublisher",
+    "storage": "sys_notification plus sys_user_notification",
+    "http": "/api/notifications current authenticated user only",
+    "frontend": "UiNotificationCenter mounted in AppLayout",
+    "delivery": "poll unread count and refresh drawer on demand; realtime push is out of scope"
+  }
+}

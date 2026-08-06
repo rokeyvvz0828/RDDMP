@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-006-system-notification",
+  "task": "T1-T4",
+  "executor": "codex",
+  "result": "implemented",
+  "changes": {
+    "backend": [
+      "public SystemNotificationPublisher contract and validated publish command",
+      "tenant-safe idempotent persistence and publication audit",
+      "authenticated current-user list, unread count, read and read-all APIs"
+    ],
+    "database": ["additive V26 sys_notification and sys_user_notification tables"],
+    "frontend": ["global responsive notification bell and drawer with loading, empty, failure, unread and navigation states"],
+    "documentation": ["module ownership registration and business integration contract"]
+  },
+  "commands": [
+    {"command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-system -am test", "exit": 0, "result": "5 notification tests and dependent module tests passed"},
+    {"command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test", "exit": 0, "result": "full backend reactor passed"},
+    {"command": "npm --prefix web run build", "exit": 0, "result": "Vue type check and Vite production build passed"},
+    {"command": "node scripts/check-all-governance.mjs", "exit": 0, "result": "governance, skill, ledger layout, module boundary and 26 Flyway migration checks passed"},
+    {"command": "git diff --check", "exit": 0, "result": "no whitespace errors"},
+    {"command": "node scripts/check-codex-scope.mjs --scope ... --base HEAD --head HEAD --working-tree", "exit": 1, "result": "known branch naming deviation: user-required zhangwei-dev does not match feat/REQ-* policy"}
+  ],
+  "scope": {
+    "within_writable_paths": true,
+    "forbidden_paths_read_or_written": false,
+    "unrelated_changes_reverted": false
+  }
+}

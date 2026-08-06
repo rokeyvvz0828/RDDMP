@@ -10,7 +10,7 @@
 | 平台 | `server/src/platform/infrastructure` | MySQL/Flyway、MinIO 与基础设施适配 |
 | 平台 | `server/src/platform/file-preview` | 受控文件上传、预览源校验与 kkFileView 适配 |
 | 平台 | `server/src/platform/security` | JWT、认证、会话、RBAC 与安全过滤器 |
-| 平台 | `server/src/platform/system` | 组织、用户、角色、菜单、参数和系统管理 |
+| 平台 | `server/src/platform/system` | 组织、用户、角色、菜单、参数、站内消息通知和系统管理 |
 | 平台 | `server/src/platform/workflow` | 流程模型、BPMN 编译、运行服务与监控 |
 | 公共 | `server/src/shared/common` | 统一响应、分页、异常和 trace，不拥有业务数据 |
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
@@ -26,6 +26,7 @@
 - `web/src/modules/delivery-showcase` 是纯前端虚构交付示范模块，使用本地 mock 数据沉淀列表、表单、详情、审批和可视化样式，不拥有后端业务数据。
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
+- `com.ccb.system.notification` 与 `web/src/api/notifications.ts` 提供租户隔离的站内消息发布和当前用户消息中心契约，业务模块不得直接写通知表。
 - 其余业务页面的归属以 `modules.yaml` 中列出的精确路径为准。
 
 公共前端能力变更需要说明现有页面回归范围。后续目录重构必须独立立项，保持路由、类型、接口和业务逻辑兼容。

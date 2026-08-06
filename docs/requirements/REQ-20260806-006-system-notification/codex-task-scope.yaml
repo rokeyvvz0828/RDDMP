@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260806-006", "status": "ready", "document": "docs/requirements/REQ-20260806-006-system-notification/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "platform/system", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "docker", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260806-006-system-notification/**",
+      ".ai-control/requirements/req-20260806-006-system-notification/*.json",
+      "server/src/platform/system/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V26__system_notifications.sql",
+      "web/src/api/notifications.ts",
+      "web/src/types/notification.ts",
+      "web/src/components/ui/UiNotificationCenter.vue",
+      "web/src/views/AppLayout.vue",
+      "web/src/styles.css",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/integration/system-notification-contract.md"
+    ],
+    "read_only_paths": ["server/src/shared/**", "server/src/platform/security/**", "web/src/api/http.ts", "web/src/stores/auth.ts", "web/src/router/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260806-006", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["mvn test", "npm --prefix web run build", "node scripts/check-all-governance.mjs"]},
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V26__system_notifications.sql"], "compatibility_and_rollback": "Additive tables only; rollback application usage first and use a later compensating migration if physical removal is approved."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "local synthetic notification data only"},
+  "required_tests": [
+    {"name": "unit", "command": "mvn -pl :ccb-system -am test"},
+    {"name": "backend", "command": "mvn test"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "api", "command": "verify authenticated list, unread-count, mark-read and mark-all-read APIs"},
+    {"name": "permission", "command": "verify unauthenticated rejection and tenant/user-scoped reads and updates"},
+    {"name": "runtime", "command": "restart local backend, verify authenticated notification APIs and browser flows"}
+  ],
+  "risk": {"level": "high", "items": ["cross-tenant message disclosure", "duplicate notification publication", "unsafe external action URL", "unbounded recipient fan-out", "unread counter drift"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-006-system-notification",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-006-system-notification/execution-T1.json",
+      ".ai-control/requirements/req-20260806-006-system-notification/observation-T1.json",
+      ".ai-control/requirements/req-20260806-006-system-notification/convergence.json"
+    ],
+    "release_verification": ["verify V26 migration", "verify tenant and user isolation", "verify idempotent publication", "verify desktop and mobile notification center"],
+    "rollback": "Disable notification publishers and remove the frontend entry; retain additive tables until an approved compensating migration."
+  }
+}
