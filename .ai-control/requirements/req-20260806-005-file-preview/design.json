@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-005-file-preview",
+  "objective": "provide a reusable and controlled kkFileView-based preview capability",
+  "requirements": [
+    {"id": "R1", "statement": "run kkFileView as a pinned independent service", "priority": "must"},
+    {"id": "R2", "statement": "only preview platform-generated MinIO URLs and reject unsafe inputs", "priority": "must"},
+    {"id": "R3", "statement": "provide authenticated upload, preview and delete APIs", "priority": "must"},
+    {"id": "R4", "statement": "provide a reusable frontend preview component and interactive component showcase", "priority": "must"},
+    {"id": "R5", "statement": "keep existing startup behavior when preview is disabled", "priority": "must"}
+  ],
+  "architecture": {
+    "runtime": "independent kkFileView container",
+    "backend": "platform/file-preview adapter over platform/infrastructure MinIO",
+    "frontend": "shared UiFilePreview component used by ComponentShowcaseView",
+    "source_policy": "no arbitrary client URL; only MinIO presigned URLs created after authenticated upload"
+  }
+}

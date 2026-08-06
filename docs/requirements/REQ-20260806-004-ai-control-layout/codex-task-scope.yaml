@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260806-004", "status": "ready", "document": "docs/requirements/REQ-20260806-004-ai-control-layout/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "governance", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": [
+      ".ai-control/**",
+      ".ai-control/requirements/req-20260806-004-ai-control-layout/*.json",
+      "AGENTS.md",
+      "README.md",
+      "CODEX-DEVELOPMENT-GUIDE.md",
+      ".agents/skills/rddmp-delivery-engineer/SKILL.md",
+      "scripts/check-codex-scope.mjs",
+      "scripts/check-ai-control-layout.mjs",
+      "scripts/check-all-governance.mjs",
+      "docs/requirements/codex-task-scope.template.yaml",
+      "docs/requirements/REQ-20260806-001-delivery-showcase/codex-task-scope.yaml",
+      "docs/requirements/REQ-20260806-002-platform-module-placement/codex-task-scope.yaml",
+      "docs/requirements/REQ-20260806-003-minio-config-externalization/codex-task-scope.yaml",
+      "docs/requirements/REQ-20260806-004-ai-control-layout/**"
+    ],
+    "read_only_paths": ["server/**", "web/**", "governance/modules.yaml", "docs/engineering-control/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {"required": false, "issue": null, "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["node scripts/check-ai-control-layout.mjs", "node scripts/check-all-governance.mjs"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "not-applicable"},
+  "external_access": {"changed": false, "systems": [], "data_classification": "repository-metadata-only"},
+  "required_tests": [
+    {"name": "unit", "command": "node scripts/check-ai-control-layout.mjs"},
+    {"name": "api", "command": "not applicable: no API change"},
+    {"name": "permission", "command": "not applicable: no permission change"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"}
+  ],
+  "risk": {"level": "high", "items": ["historical evidence path compatibility", "task scope validation", "future ledger discoverability"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-004-ai-control-layout",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-004-ai-control-layout/execution-T1.json",
+      ".ai-control/requirements/req-20260806-004-ai-control-layout/observation-T1.json",
+      ".ai-control/requirements/req-20260806-004-ai-control-layout/convergence.json"
+    ],
+    "release_verification": ["verify no root JSON files", "verify every ledger JSON parses", "verify existing requirement evidence paths"],
+    "rollback": "Move ledger files back to the flat root and restore the previous script and documentation paths."
+  }
+}

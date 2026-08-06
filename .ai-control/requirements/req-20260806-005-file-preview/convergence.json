@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-005-file-preview",
+  "converged_at": "2026-08-06T15:36:00+08:00",
+  "gate": "pass-with-local-legacy-runtime-risk",
+  "requirements": {"total": 5, "passed": 5, "failed": 0},
+  "quality_gates": {
+    "backend_build_and_tests": "passed",
+    "frontend_build": "passed",
+    "security_source_restriction": "passed",
+    "compose_configuration": "passed",
+    "disabled_runtime_compatibility": "passed",
+    "browser_responsiveness": "passed",
+    "kkfileview_container_runtime": "passed locally with 4.1.0 override; repository default remains 5.0.1",
+    "real_document_preview": "passed for PNG, PDF and DOCX",
+    "preview_object_cleanup": "passed",
+    "task_scope": "branch-name-only deviation"
+  },
+  "residual_risks": [
+    {"level": "blocking-for-production", "item": "local runtime verification used kkFileView 4.1.0, which predates required SSRF and path traversal fixes", "action": "use the repository-default 5.0.1 or newer image for every shared or production environment"},
+    {"level": "high", "item": "the local Docker registry mirror still prevents pulling 5.0.1", "action": "repair or bypass the mirror and repeat the same PNG, PDF and DOCX acceptance on 5.0.1 before production rollout"},
+    {"level": "normal", "item": "zhangwei-dev does not match feat/REQ-* naming policy", "action": "retain the user-requested branch unless the owner requests a compliant branch"}
+  ],
+  "rollback": "Disable CCB_FILE_PREVIEW_ENABLED, stop the kkfileview service, remove the file-preview platform module and frontend component, and revert the associated documentation and Compose configuration."
+}

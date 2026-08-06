@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-003-minio-config-externalization",
+  "task": "T1-T2",
+  "executed_at": "2026-08-06T14:05:00+08:00",
+  "result": "implemented-and-runtime-verified",
+  "changes": [
+    "removed endpoint, bucket and expiry defaults from MinioStorageProperties",
+    "made all MinIO configuration fields externally supplied and validated",
+    "bounded presigned expiry to the MinIO-supported 1 through 604800 second range",
+    "added focused configuration validation tests"
+  ],
+  "compatibility": {"configuration_keys_changed": false, "storage_behavior_changed": false, "api_changed": false, "database_changed": false, "credentials_added_to_source": false},
+  "commands": [
+    {"command": "mvn -pl :ccb-infrastructure -am test", "result": "passed; 4 reactor tests including 3 new property tests"},
+    {"command": "mvn test", "result": "passed; 14 tests, 0 failures, 0 errors"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "passed"},
+    {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed"},
+    {"command": "restart backend with local profile and .env config import", "result": "started on port 8080 with validated external configuration"}
+  ]
+}

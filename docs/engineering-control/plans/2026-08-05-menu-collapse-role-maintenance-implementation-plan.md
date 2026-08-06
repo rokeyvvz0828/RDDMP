@@ -19,7 +19,7 @@
 **需求映射：** 菜单收缩后图标上下对齐。
 
 **文件：**
-- 修改：`ccb-web/src/styles.css`
+- 修改：`web/src/styles.css`
 
 **步骤：**
 
@@ -36,7 +36,7 @@
 **需求映射：** 用户角色维护操作简化且与资料保存解耦。
 
 **文件：**
-- 修改：`ccb-web/src/views/ModuleView.vue`
+- 修改：`web/src/views/ModuleView.vue`
 
 **步骤：**
 
@@ -56,7 +56,7 @@
 
 **命令：**
 
-- `npm run build`（工作目录：`ccb-web`）
+- `npm run build`（工作目录：`web`）
 - 浏览器打开用户管理，验证收缩菜单、角色弹窗、角色加载和保存。
 
 **停止条件：** TypeScript 编译失败、角色保存请求携带用户资料更新、菜单仍出现可复现错位。

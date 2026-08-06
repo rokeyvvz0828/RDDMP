@@ -1,0 +1,37 @@
+name: Governance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  repository-governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check governance, skill and module boundaries
+        run: node scripts/check-all-governance.mjs
+
+  codex-task-scope:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check Codex task scope
+        run: node scripts/check-codex-scope.mjs --discover --base "origin/${{ github.base_ref }}" --head HEAD
+      - name: Protect published Flyway migrations
+        run: node scripts/check-flyway-migrations.mjs --base "origin/${{ github.base_ref }}" --head HEAD

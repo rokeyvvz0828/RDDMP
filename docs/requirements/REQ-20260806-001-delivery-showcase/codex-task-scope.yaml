@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260806-001",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260806-001-delivery-showcase/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "zhangwei",
+    "module": "frontend/application",
+    "module_owner": "rokeyvvz0828",
+    "branch": "zhangwei-dev",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/ComponentShowcaseView.vue",
+      "web/src/router/index.ts",
+      "web/src/views/AppLayout.vue",
+      "web/src/components/ui/UiRouteMenuNode.vue",
+      "web/src/styles.css",
+      "web/package.json",
+      "web/package-lock.json",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V25__seed_delivery_showcase_menu.sql",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/requirements/REQ-20260806-001-delivery-showcase/**",
+      ".ai-control/requirements/req-20260806-001-delivery-showcase/*.json"
+    ],
+    "read_only_paths": ["server/src/modules/**", "server/src/platform/boot/**", "server/src/platform/security/**", "server/src/shared/**", "web/src/api/**", "web/src/components/workflow/**", "web/src/stores/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260806-001",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["npm --prefix web run build", "existing route smoke test", "desktop and mobile browser acceptance"]
+  },
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V25__seed_delivery_showcase_menu.sql"], "compatibility_and_rollback": "Preserve menu 400; add menu 500 idempotently. Roll back through a new compensating migration that disables or removes menu 500 and its role mapping."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "synthetic-test-only"},
+  "required_tests": [
+    {"name": "unit", "command": "mvn test && npm --prefix web run build"},
+    {"name": "api", "command": "not applicable: no API changes; verify no network request from mock module"},
+    {"name": "permission", "command": "browser verify the local no-permission state and preserve application route guard"},
+    {"name": "browser", "command": "desktop and mobile delivery-showcase acceptance flow"}
+  ],
+  "risk": {"level": "high", "items": ["new ECharts dependency", "shared route compatibility", "new Flyway menu migration", "dense responsive business views"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-001-delivery-showcase",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-001-delivery-showcase/execution-T1.json",
+      ".ai-control/requirements/req-20260806-001-delivery-showcase/observation-T1.json",
+      ".ai-control/requirements/req-20260806-001-delivery-showcase/execution-T2.json",
+      ".ai-control/requirements/req-20260806-001-delivery-showcase/observation-T2.json",
+      ".ai-control/requirements/req-20260806-001-delivery-showcase/convergence.json"
+    ],
+    "release_verification": ["verify /components remains unchanged", "open /delivery-showcase after login", "verify menu ID 500 in system menu routes", "exercise create, detail, chart, gantt and approval views"],
+    "rollback": "Revert the module, ECharts dependency and independent route; add a compensating migration to disable or remove menu 500 without modifying V25."
+  }
+}

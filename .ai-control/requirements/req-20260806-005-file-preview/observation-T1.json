@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-005-file-preview",
+  "observed_at": "2026-08-06T15:36:00+08:00",
+  "independence": "non-independent-same-codex-context",
+  "measurements": {
+    "backend_tests": {"total": 21, "passed": 21, "file_preview_tests": 7},
+    "frontend_build": "passed",
+    "governance": "passed",
+    "compose_config": "passed",
+    "backend_health": 200,
+    "unauthenticated_capabilities": 401,
+    "browser_viewports": ["desktop", "390x844"],
+    "browser_disabled_state": "passed",
+    "browser_enabled_state": "passed",
+    "new_console_errors_after_final_reload": 0,
+    "real_preview_file_types_verified": 3,
+    "real_preview_types": ["PNG", "PDF", "DOCX"],
+    "delete_api_results": 3,
+    "local_kkfileview_version": "4.1.0",
+    "repository_default_kkfileview_version": "5.0.1"
+  },
+  "acceptance": [
+    {"requirement": "R1", "status": "passed-local-only", "reason": "the independent service ran with a local 4.1.0 image override; 5.0.1 remains the required production default"},
+    {"requirement": "R2", "status": "passed"},
+    {"requirement": "R3", "status": "passed"},
+    {"requirement": "R4", "status": "passed"},
+    {"requirement": "R5", "status": "passed"}
+  ],
+  "blocking_defects": [],
+  "runtime_blockers": [],
+  "production_constraints": [
+    "Do not deploy kkFileView 4.1.0 because it predates the required security fixes.",
+    "Pull and verify the repository-default 5.0.1 image before production rollout."
+  ]
+}

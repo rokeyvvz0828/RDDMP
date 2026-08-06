@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-001-delivery-showcase",
+  "task": "T1-T3",
+  "executed_at": "2026-08-06T12:32:01+08:00",
+  "result": "implemented-and-verified",
+  "changes": [
+    "新增交付示范中心模块、统一 mock 数据和五个业务视图",
+    "新增标准表单、四步向导、详情抽屉、分步详情和风险弹框",
+    "新增柱状图、饼状图、折线图、甘特图和 Vue Flow 审批流程",
+    "替换 /components 组件陈列入口并兼容动态菜单展示名",
+    "手机端侧栏自动收敛为 72px 图标模式",
+    "登记模块归属并新增 ECharts 依赖"
+  ],
+  "commands": [
+    {"command": "npm install echarts@^5.6.0", "result": "passed; 3 packages added; npm reported 1 moderate vulnerability"},
+    {"command": "npm run build", "result": "passed; 2311 modules transformed; bundle size warning remains"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "passed; governance, skill, module boundary and Flyway checks passed"},
+    {"command": "node scripts/check-codex-scope.mjs --scope ... --working-tree", "result": "failed at legacy branch name zhangwei-dev; current gate requires feat/REQ-*"}
+  ],
+  "browser_execution": {
+    "url": "http://127.0.0.1:5173/components",
+    "flows": ["login", "list filter", "form validation", "wizard open", "detail drawer", "three analytics charts", "gantt", "approval submit", "desktop layout", "mobile cards", "dark theme"],
+    "side_effects": "only local in-memory mock state changed; theme was restored to light"
+  },
+  "constraints": {"backend_changed": false, "database_changed": false, "production_access": false, "synthetic_data_only": true},
+  "open_items": ["branch naming gate requires a future branch-policy decision", "main bundle remains above Vite warning threshold"]
+}

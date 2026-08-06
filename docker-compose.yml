@@ -14,5 +14,39 @@ services:
       - ccb-platform-mysql-data:/var/lib/mysql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: ccb-platform-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY must be set}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY must be set}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ccb-platform-minio-data:/data
+    command: server /data --console-address ":9001"
+
+  kkfileview:
+    image: ${KK_FILE_VIEW_IMAGE:-keking/kkfileview:5.0.1}
+    container_name: ccb-platform-kkfileview
+    restart: unless-stopped
+    environment:
+      KK_SERVER_PORT: 8012
+      KK_BASE_URL: ${KK_FILE_VIEW_BASE_URL:?KK_FILE_VIEW_BASE_URL must be set}
+      KK_TRUST_HOST: ${KK_FILE_VIEW_TRUST_HOST:?KK_FILE_VIEW_TRUST_HOST must be set}
+      KK_NOT_TRUST_HOST: ${KK_FILE_VIEW_NOT_TRUST_HOST:?KK_FILE_VIEW_NOT_TRUST_HOST must be set}
+      KK_OFFICE_PREVIEW_TYPE: pdf
+      KK_PDF_DOWNLOAD_DISABLE: "true"
+      KK_PDF_PRINT_DISABLE: "true"
+      KK_CACHE_CLEAN_ENABLED: "true"
+    ports:
+      - "${KK_FILE_VIEW_PORT:-8012}:8012"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "${KK_FILE_VIEW_HOST_ALIAS:-minio.local}:host-gateway"
+
 volumes:
   ccb-platform-mysql-data:
+  ccb-platform-minio-data:

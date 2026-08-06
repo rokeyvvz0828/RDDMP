@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260806-005", "status": "ready", "document": "docs/requirements/REQ-20260806-005-file-preview/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "platform/file-preview", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "docker", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260806-005-file-preview/**",
+      ".ai-control/requirements/req-20260806-005-file-preview/*.json",
+      "pom.xml",
+      "server/src/platform/file-preview/**",
+      "server/src/platform/boot/pom.xml",
+      "server/src/platform/boot/src/main/java/com/ccb/boot/web/GlobalExceptionHandler.java",
+      "server/src/platform/boot/src/main/resources/application.yml",
+      "server/src/platform/boot/src/main/resources/application-local.yml",
+      "web/src/api/file-preview.ts",
+      "web/src/components/ui/UiFilePreview.vue",
+      "web/src/views/ComponentShowcaseView.vue",
+      "web/src/styles.css",
+      "docker-compose.yml",
+      ".env.example",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/integration/frontend-ui-contract.md",
+      ".github/CODEOWNERS",
+      "README.md"
+    ],
+    "read_only_paths": ["server/src/shared/**", "server/src/platform/infrastructure/**", "server/src/platform/security/**", "web/src/api/http.ts", "web/src/types/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/platform/infrastructure/src/main/resources/db/migration/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260806-005", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["mvn test", "npm --prefix web run build", "node scripts/check-all-governance.mjs"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "No schema or menu change; remove preview module and temporary MinIO objects to roll back."},
+  "external_access": {"changed": true, "systems": ["self-hosted kkFileView", "local MinIO"], "data_classification": "local synthetic preview files only"},
+  "required_tests": [
+    {"name": "unit", "command": "mvn -pl :ccb-file-preview -am test"},
+    {"name": "backend", "command": "mvn test"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "runtime", "command": "docker compose config && health/API/browser checks"}
+  ],
+  "risk": {"level": "high", "items": ["SSRF through preview source URL", "untrusted file conversion", "temporary object retention", "third-party container supply chain", "cross-container source reachability"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-005-file-preview",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-005-file-preview/execution-T1.json",
+      ".ai-control/requirements/req-20260806-005-file-preview/observation-T1.json",
+      ".ai-control/requirements/req-20260806-005-file-preview/convergence.json"
+    ],
+    "release_verification": ["verify fixed kkFileView image", "verify authenticated upload and preview", "verify rejected file types and oversized files", "verify PDF, Office and image preview with synthetic files"],
+    "rollback": "Remove the file-preview module and UI integration, restore deployment/configuration manifests, and delete local MinIO file-preview test objects."
+  }
+}

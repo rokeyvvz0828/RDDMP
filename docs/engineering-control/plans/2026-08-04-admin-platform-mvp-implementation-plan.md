@@ -24,12 +24,12 @@
 | 文件/目录 | 状态 | 职责 |
 | --- | --- | --- |
 | `pom.xml` | candidate-new | Maven 父工程和版本管理 |
-| `ccb-boot/` | candidate-new | Spring Boot 启动与装配 |
-| `ccb-common/` | candidate-new | 统一响应、错误码、分页和公共注解 |
-| `ccb-security/` | candidate-new | JWT、登录、刷新 Token 和权限过滤 |
-| `ccb-system/` | candidate-new | 用户、角色、组织、菜单、字典、配置和审计 |
-| `ccb-infrastructure/` | candidate-new | MySQL、MyBatis-Plus、迁移和基础设施 |
-| `ccb-web/` | candidate-new | Vue 管理端、动态路由和系统页面 |
+| `server/src/platform/boot/` | candidate-new | Spring Boot 启动与装配 |
+| `server/src/shared/common/` | candidate-new | 统一响应、错误码、分页和公共注解 |
+| `server/src/platform/security/` | candidate-new | JWT、登录、刷新 Token 和权限过滤 |
+| `server/src/modules/system/` | candidate-new | 用户、角色、组织、菜单、字典、配置和审计 |
+| `server/src/platform/infrastructure/` | candidate-new | MySQL、MyBatis-Plus、迁移和基础设施 |
+| `web/` | candidate-new | Vue 管理端、动态路由和系统页面 |
 | `docs/` | existing-created | 设计、计划、接入说明和启动文档 |
 
 ## 任务依赖与并行策略
@@ -166,7 +166,7 @@ T1 和文档目录可先串行完成。T2 完成后才能验证 T3/T4。T5 可�
 
 **前置任务：** T3
 
-**文件范围：** 创建 `ccb-web` 的 Vite 工程、HTTP 客户端、认证 Store、权限 Store、主题 Store、静态登录路由、动态路由转换、应用布局、主题变量和基础组件。
+**文件范围：** 创建 `web` 的 Vite 工程、HTTP 客户端、认证 Store、权限 Store、主题 Store、静态登录路由、动态路由转换、应用布局、主题变量和基础组件。
 
 **接口：** 消费 `/api/auth/login`、`/api/auth/refresh`、`/api/auth/me`、`/api/auth/routes`；统一处理 401、403 和 traceId。
 

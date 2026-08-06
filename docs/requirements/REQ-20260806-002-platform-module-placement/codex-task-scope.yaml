@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260806-002",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260806-002-platform-module-placement/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "zhangwei",
+    "module": "governance",
+    "module_owner": "rokeyvvz0828",
+    "branch": "zhangwei-dev",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/system/**",
+      "server/src/modules/workflow/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "pom.xml",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/governance/PROJECT-RULES.md",
+      "docs/requirements/codex-task-scope.template.yaml",
+      "docs/requirements/REQ-20260806-002-platform-module-placement/**",
+      "README.md",
+      "CODEX-DEVELOPMENT-GUIDE.md",
+      ".github/CODEOWNERS",
+      ".github/ISSUE_TEMPLATE/feature.yml",
+      ".ai-control/requirements/req-20260806-002-platform-module-placement/*.json"
+    ],
+    "read_only_paths": ["server/src/shared/**", "server/src/platform/boot/**", "server/src/platform/infrastructure/**", "server/src/platform/security/**", "server/src/modules/ai/**", "web/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260806-002",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["mvn test", "node scripts/check-all-governance.mjs", "backend health check"]
+  },
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "No database change; restore the two directories and current path references to roll back."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "unit", "command": "mvn test"},
+    {"name": "api", "command": "no API change; verify backend health endpoint"},
+    {"name": "permission", "command": "no permission change; existing backend regression tests"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"}
+  ],
+  "risk": {"level": "high", "items": ["Maven reactor path compatibility", "module ownership classification", "IDE project reindexing"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-002-platform-module-placement",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-002-platform-module-placement/execution-T1.json",
+      ".ai-control/requirements/req-20260806-002-platform-module-placement/observation-T1.json",
+      ".ai-control/requirements/req-20260806-002-platform-module-placement/convergence.json"
+    ],
+    "release_verification": ["verify Maven reactor module paths", "verify modules directory contains only business modules", "verify backend health"],
+    "rollback": "Move system/workflow back to server/src/modules and restore Maven, governance, CODEOWNERS and documentation paths."
+  }
+}

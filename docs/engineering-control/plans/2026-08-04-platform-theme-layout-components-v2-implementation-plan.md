@@ -14,16 +14,16 @@ Deliver a reusable single-tenant platform foundation while preserving the existi
 
 ## File responsibility map
 
-- `ccb-web/src/stores/theme.ts`: persistent appearance, palette, layout, sidebar, and density state.
-- `ccb-web/src/components/ui/*`: typed visual primitives shared by business pages.
-- `ccb-web/src/views/AppLayout.vue`: shell variants and recursive navigation rendering.
-- `ccb-web/src/styles.css`: semantic design tokens and layout-specific styling.
-- `ccb-web/src/views/system/*`: real system management pages.
-- `ccb-web/src/api/*` and `ccb-web/src/types/*`: frontend API/query contracts.
-- `ccb-system/src/main/java/com/ccb/system/*`: system controllers, services, mappers, entities, DTOs, and tests.
-- `ccb-infrastructure/src/main/resources/db/migration/V4__system_module_support.sql`: schema support and seed corrections.
-- `ccb-workflow/src/main/java/com/ccb/workflow/*`: workflow definitions, versions, tasks, and approvals.
-- `ccb-ai/src/main/java/com/ccb/ai/*`: provider registry, routing, capability contracts, and audited execution.
+- `web/src/stores/theme.ts`: persistent appearance, palette, layout, sidebar, and density state.
+- `web/src/components/ui/*`: typed visual primitives shared by business pages.
+- `web/src/views/AppLayout.vue`: shell variants and recursive navigation rendering.
+- `web/src/styles.css`: semantic design tokens and layout-specific styling.
+- `web/src/views/system/*`: real system management pages.
+- `web/src/api/*` and `web/src/types/*`: frontend API/query contracts.
+- `server/src/modules/system/src/main/java/com/ccb/system/*`: system controllers, services, mappers, entities, DTOs, and tests.
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V4__system_module_support.sql`: schema support and seed corrections.
+- `server/src/modules/workflow/src/main/java/com/ccb/workflow/*`: workflow definitions, versions, tasks, and approvals.
+- `server/src/modules/ai/src/main/java/com/ccb/ai/*`: provider registry, routing, capability contracts, and audited execution.
 - `docs/integration/*`: module integration and AI capability contracts.
 
 ## Dependencies and parallel strategy
@@ -48,8 +48,8 @@ Maps R9-R12. The current store only persists `light/dark/system`; the layout is 
 
 Files:
 
-- Create `ccb-web/src/types/ui.ts`, `ccb-web/src/components/ui/UiPageHeader.vue`, `UiToolbar.vue`, `UiDataTable.vue`, `UiStatusTag.vue`, `UiFormDrawer.vue`, `UiEmptyState.vue`, `ThemeSettingsDrawer.vue`.
-- Modify `ccb-web/src/stores/theme.ts`, `ccb-web/src/views/AppLayout.vue`, `ccb-web/src/styles.css`, `ccb-web/src/types/auth.ts`, `ccb-web/src/router/index.ts`, `ccb-web/src/main.ts`.
+- Create `web/src/types/ui.ts`, `web/src/components/ui/UiPageHeader.vue`, `UiToolbar.vue`, `UiDataTable.vue`, `UiStatusTag.vue`, `UiFormDrawer.vue`, `UiEmptyState.vue`, `ThemeSettingsDrawer.vue`.
+- Modify `web/src/stores/theme.ts`, `web/src/views/AppLayout.vue`, `web/src/styles.css`, `web/src/types/auth.ts`, `web/src/router/index.ts`, `web/src/main.ts`.
 
 Steps:
 
@@ -69,8 +69,8 @@ Maps R13. `ccb-system` currently has only its Maven descriptor and no source imp
 
 Files:
 
-- Create entities, mappers, services, controllers, request/response DTOs, validation, and tests under `ccb-system/src/main/java/com/ccb/system/{model,repository,service,web}`.
-- Create `ccb-infrastructure/src/main/resources/db/migration/V4__system_module_support.sql` only for indexes, seed corrections, and fields required by implemented APIs.
+- Create entities, mappers, services, controllers, request/response DTOs, validation, and tests under `server/src/modules/system/src/main/java/com/ccb/system/{model,repository,service,web}`.
+- Create `server/src/platform/infrastructure/src/main/resources/db/migration/V4__system_module_support.sql` only for indexes, seed corrections, and fields required by implemented APIs.
 - Expose authenticated endpoints under `/api/system/users`, `/roles`, `/orgs`, `/menus`, `/dicts`, and `/configs` with the existing `ApiResponse` and `PageQuery` contract.
 
 Steps:
@@ -89,8 +89,8 @@ Maps R11 and R13. `ModuleView.vue` is a placeholder and route labels are encoded
 
 Files:
 
-- Create `ccb-web/src/api/system.ts`, `ccb-web/src/types/system.ts`, and pages under `ccb-web/src/views/system/` for users, roles, organizations, menus, dictionaries, and configs.
-- Modify `ccb-web/src/router/index.ts` and `ccb-web/src/views/AppLayout.vue` for real page registration and labels/icons.
+- Create `web/src/api/system.ts`, `web/src/types/system.ts`, and pages under `web/src/views/system/` for users, roles, organizations, menus, dictionaries, and configs.
+- Modify `web/src/router/index.ts` and `web/src/views/AppLayout.vue` for real page registration and labels/icons.
 
 Steps:
 
@@ -106,7 +106,7 @@ Acceptance: six system pages have loading, empty, error, validation, and success
 
 Maps R14. This is a new module; no workflow persistence currently exists.
 
-Files: create `ccb-workflow/pom.xml`, sources under `ccb-workflow/src/main/java/com/ccb/workflow`, migration `V5__create_workflow_schema.sql`, frontend `src/views/workflow/*`, and `docs/integration/workflow-module-contract.md`.
+Files: create `server/src/modules/workflow/pom.xml`, sources under `server/src/modules/workflow/src/main/java/com/ccb/workflow`, migration `V5__create_workflow_schema.sql`, frontend `web/src/views/workflow/*`, and `docs/integration/workflow-module-contract.md`.
 
 Steps: test definition validation and task idempotency; implement drafts, published versions, nodes, transitions, instances, tasks, inbox, approve/reject; then run an end-to-end submit/approve/reject flow.
 
@@ -116,7 +116,7 @@ Acceptance: a published definition creates an instance and a task can be approve
 
 Maps R15. No provider contract currently exists. Credentials remain server-side and capabilities are declarative and audited.
 
-Files: create `ccb-ai/pom.xml`, sources under `ccb-ai/src/main/java/com/ccb/ai`, migration `V6__create_ai_schema.sql`, frontend `src/views/ai/*`, and `docs/integration/ai-module-contract.md`.
+Files: create `server/src/modules/ai/pom.xml`, sources under `server/src/modules/ai/src/main/java/com/ccb/ai`, migration `V6__create_ai_schema.sql`, frontend `web/src/views/ai/*`, and `docs/integration/ai-module-contract.md`.
 
 Steps: test redaction, capability validation, and route selection; implement metadata, routing, masked credentials, execution boundary, and configuration pages; verify no credential appears in browser payloads, logs, or exceptions.
 

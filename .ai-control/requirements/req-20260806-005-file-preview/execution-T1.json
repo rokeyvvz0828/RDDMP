@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-005-file-preview",
+  "task": "T1-T4",
+  "executed_at": "2026-08-06T15:36:00+08:00",
+  "result": "implemented-and-verified-with-local-legacy-runtime",
+  "changes": [
+    "added the ccb-file-preview Maven module under server/src/platform/file-preview",
+    "added authenticated upload, capability and delete APIs with file validation",
+    "restricted preview sources to server-generated MinIO presigned URLs",
+    "added the reusable UiFilePreview component and component showcase integration",
+    "added pinned kkFileView 5.0.1 Docker Compose configuration and environment settings",
+    "updated architecture, integration, ownership and startup documentation",
+    "made the Compose image configurable while retaining 5.0.1 as the repository default",
+    "added a local host-gateway alias for container-to-host MinIO access",
+    "added credential-safe MinIO failure diagnostics"
+  ],
+  "security_policy": {
+    "arbitrary_client_urls": "rejected",
+    "preview_source": "same-origin MinIO presigned URL generated after authenticated upload",
+    "kkfileview_version": "5.0.1",
+    "version_reason": "first release containing the referenced SSRF and path traversal fixes"
+  },
+  "commands": [
+    {"command": "npm --prefix web run build", "result": "passed"},
+    {"command": "mvn package with JDK 17", "result": "passed; 21 tests including 7 file-preview tests"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "passed before final evidence; 12 requirement directories, 76 JSON files, 8 Maven modules and 25 Flyway migrations"},
+    {"command": "docker compose --env-file .env.example config", "result": "passed"},
+    {"command": "backend health and unauthenticated preview capability checks", "result": "200 UP and 401 Authentication required"},
+    {"command": "browser verification at desktop and 390px width", "result": "passed with no overlap or horizontal overflow; enabled state displayed after runtime startup"},
+    {"command": "docker pull keking/kkfileview:4.1.0", "result": "passed; local-only amd64 image digest sha256:88bdbfd7a8e3b76b784c4c40dd824afbd5f8f63b7e58f7a84c596089a6b48180"},
+    {"command": "authenticated PNG, PDF and DOCX upload and preview", "result": "passed; kkFileView identified PICTURE, PDF and OFFICE and returned picture/PDF preview pages"},
+    {"command": "DELETE three synthetic preview objects", "result": "passed for all objects"},
+    {"command": "mvn test with JDK 17 after runtime integration", "result": "passed; 21 tests including 7 file-preview tests"},
+    {"command": "docker pull keking/kkfileview:5.0.1", "result": "still blocked by local registry mirror layer size validation: 1389 != 1203"}
+  ]
+}

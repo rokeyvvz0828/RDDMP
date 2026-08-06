@@ -20,8 +20,8 @@
 **需求映射：** R1 参数管理，R2 用户角色权限，R4 动态会话时效。
 
 **文件：**
-- 新建 `ccb-infrastructure/src/main/resources/db/migration/V13__parameter_rbac_support.sql`
-- 参考 `ccb-infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql`
+- 新建 `server/src/platform/infrastructure/src/main/resources/db/migration/V13__parameter_rbac_support.sql`
+- 参考 `server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql`
 
 **接口：** 新增参数类别/参数关联字段、权限动作表、角色动作权限表；为已有菜单生成查看/新增/修改/删除动作；为超级管理员补齐动作权限；建立默认会话时效参数。
 
@@ -34,12 +34,12 @@
 **需求映射：** R1、R2、R4。
 
 **文件：**
-- 修改 `ccb-system/src/main/java/com/ccb/system/service/SystemService.java`
-- 修改 `ccb-system/src/main/java/com/ccb/system/web/SystemController.java`
-- 修改 `ccb-security/src/main/java/com/ccb/security/repository/AuthRepository.java`
-- 修改 `ccb-security/src/main/java/com/ccb/security/service/AuthService.java`
-- 修改 `ccb-security/src/main/java/com/ccb/security/jwt/JwtTokenService.java`
-- 修改 `ccb-security/src/main/java/com/ccb/security/web/JwtAuthenticationFilter.java`
+- 修改 `server/src/modules/system/src/main/java/com/ccb/system/service/SystemService.java`
+- 修改 `server/src/modules/system/src/main/java/com/ccb/system/web/SystemController.java`
+- 修改 `server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java`
+- 修改 `server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java`
+- 修改 `server/src/platform/security/src/main/java/com/ccb/security/jwt/JwtTokenService.java`
+- 修改 `server/src/platform/security/src/main/java/com/ccb/security/web/JwtAuthenticationFilter.java`
 - 新建必要的参数/权限服务类与模型类
 
 **接口：** 参数类别和明细 CRUD；角色权限读取/保存；用户角色读取/保存；权限动作校验；登录/刷新令牌从参数读取时效。
@@ -53,11 +53,11 @@
 **需求映射：** R1、R2。
 
 **文件：**
-- 修改 `ccb-web/src/views/ModuleView.vue`
-- 修改 `ccb-web/src/api/system.ts`
-- 修改 `ccb-web/src/types/system.ts`
-- 修改 `ccb-web/src/views/AppLayout.vue` 菜单标题映射
-- 修改 `ccb-web/src/styles.css`
+- 修改 `web/src/views/ModuleView.vue`
+- 修改 `web/src/api/system.ts`
+- 修改 `web/src/types/system.ts`
+- 修改 `web/src/views/AppLayout.vue` 菜单标题映射
+- 修改 `web/src/styles.css`
 - 必要时新增权限矩阵/参数类别 UI 组件
 
 **验收：** 菜单仅显示“参数管理”而无“字典管理/系统配置”；可新增类别和参数；用户可多选角色；角色页能按菜单树勾选四种动作并保存；相同角色权限展示为并集。
@@ -69,15 +69,15 @@
 **需求映射：** R3、R4。
 
 **文件：**
-- 修改 `ccb-web/src/types/ui.ts`
-- 修改 `ccb-web/src/stores/theme.ts`
-- 修改 `ccb-web/src/components/ui/ThemeSettingsDrawer.vue`
-- 修改 `ccb-web/src/views/AppLayout.vue`
-- 新建 `ccb-web/src/stores/tabs.ts` 与必要的页签组件
-- 修改 `ccb-web/src/api/http.ts`
-- 修改 `ccb-web/src/stores/auth.ts`
-- 修改 `ccb-web/src/router/index.ts`
-- 修改 `ccb-web/src/views/LoginView.vue`
+- 修改 `web/src/types/ui.ts`
+- 修改 `web/src/stores/theme.ts`
+- 修改 `web/src/components/ui/ThemeSettingsDrawer.vue`
+- 修改 `web/src/views/AppLayout.vue`
+- 新建 `web/src/stores/tabs.ts` 与必要的页签组件
+- 修改 `web/src/api/http.ts`
+- 修改 `web/src/stores/auth.ts`
+- 修改 `web/src/router/index.ts`
+- 修改 `web/src/views/LoginView.vue`
 
 **验收：** 页签开关可持久化；访问三个路由后可切换；关闭当前/其他/全部符合约束；模拟 401 后刷新令牌一次，刷新失败跳转登录并保留完整 query；登录成功回到原路由。
 
@@ -88,7 +88,7 @@
 **需求映射：** R1-R4。
 
 **命令：**
-- `npm run build`（工作目录 `ccb-web`）
+- `npm run build`（工作目录 `web`）
 - `mvn -pl ccb-boot -am package -DskipTests`
 - `Invoke-WebRequest http://127.0.0.1:8080/actuator/health`
 - 浏览器验收参数、角色权限、页签、401 回跳。

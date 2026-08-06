@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-001-delivery-showcase",
+  "converged_at": "2026-08-06T13:11:45+08:00",
+  "gate": "pass-with-nonblocking-governance-deviation",
+  "requirements": {"total": 6, "passed": 6, "failed": 0},
+  "quality_gates": {
+    "frontend_build": "passed",
+    "repository_governance": "passed",
+    "browser_desktop": "passed",
+    "browser_mobile": "passed",
+    "light_dark_theme": "passed",
+    "clean_console": "passed",
+    "component_showcase_regression": "passed",
+    "independent_dynamic_menu": "passed",
+    "flyway_v25": "passed",
+    "task_scope": "branch-name-only failure"
+  },
+  "scope_audit": {"backend_logic_changed": false, "database_changed": true, "database_change": "new menu 500 only", "existing_menu_400_changed": false, "external_systems_changed": false, "production_data_used": false},
+  "residual_risks": [
+    {"level": "normal", "item": "zhangwei-dev does not satisfy the newer feat/REQ-* naming gate", "action": "owner decides whether to retain the requested branch or move the uncommitted work to a compliant branch"},
+    {"level": "normal", "item": "single Vite entry remains above 500 KB", "action": "introduce route-level lazy loading and vendor chunking as a separate application optimization"},
+    {"level": "normal", "item": "npm reports one moderate dependency vulnerability", "action": "run dependency review before release; do not use npm audit fix --force without compatibility review"}
+  ],
+  "rollback": "Remove web/src/modules/delivery-showcase, ECharts dependency and independent route; add a compensating Flyway migration to disable or remove menu 500 while preserving menu 400 and immutable V25 history."
+}

@@ -21,7 +21,7 @@
 
 **文件：**
 
-- 新增 `ccb-infrastructure/src/main/resources/db/migration/V23__database_comments.sql`
+- 新增 `server/src/platform/infrastructure/src/main/resources/db/migration/V23__database_comments.sql`
 - 新增 `docs/database/export-schema.ps1`
 - 新增 `docs/database/ccb_platform_schema.sql`
 - 新增 `docs/database/README.md`
@@ -51,7 +51,7 @@
 **命令：**
 
 - `mvn -DskipTests package`
-- `npm run build`（工作目录 `ccb-web`）
+- `npm run build`（工作目录 `web`）
 - Flyway 启动/迁移检查和 schema 文件敏感内容扫描
 - `git add`、`git commit`、`git push origin main`
 

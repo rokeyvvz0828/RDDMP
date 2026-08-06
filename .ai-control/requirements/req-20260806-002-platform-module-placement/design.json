@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-002-platform-module-placement",
+  "objective": "将 system 和 workflow 归类为平台能力，同时保持构建产物、Java 包和运行行为兼容",
+  "requirements": [
+    {"id": "R1", "statement": "system 与 workflow 位于 server/src/platform", "priority": "must"},
+    {"id": "R2", "statement": "server/src/modules 不再包含 system 与 workflow", "priority": "must"},
+    {"id": "R3", "statement": "artifact、包名、依赖和业务逻辑保持不变", "priority": "must"},
+    {"id": "R4", "statement": "Maven、治理清单、Owner 和当前文档路径一致", "priority": "must"}
+  ],
+  "architecture_decision": {
+    "decision": "move ccb-system and ccb-workflow Maven roots under server/src/platform",
+    "preserved": ["ccb-system", "ccb-workflow", "com.ccb.system", "com.ccb.workflow", "API contracts", "database schema"],
+    "rejected": ["merge modules", "rename Java packages", "rewrite historical evidence"]
+  }
+}

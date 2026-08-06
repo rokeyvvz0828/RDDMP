@@ -26,21 +26,21 @@
 ## 文件职责地图
 
 - `pom.xml`：Flowable 版本属性和依赖管理。
-- `ccb-workflow/pom.xml`：Flowable Spring Boot、BPMN 模型和引擎依赖。
-- `ccb-boot/src/main/resources/application.yml`：引擎初始化、历史级别和运行配置。
-- `ccb-infrastructure/src/main/resources/db/migration/V18__flowable_workflow_core.sql`：Flowable 引擎表和业务扩展表迁移。
-- `ccb-workflow/src/main/java/com/ccb/workflow/model/`：流程业务模型、变量、动作和监控 DTO。
-- `ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java`：业务模型校验。
-- `ccb-workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java`：业务模型到 BPMN 的编译和节点映射。
-- `ccb-workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java`：Flowable 实例、任务、变量和历史封装。
-- `ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowAssigneeResolver.java`：租户范围审批人解析。
-- `ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java`：发布、实例、动作和干预审计。
-- `ccb-workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java`：兼容接口和新增版本、校验、监控接口。
-- `ccb-workflow/src/test/java/com/ccb/workflow/`：模型、编译、运行和租户隔离测试。
-- `ccb-web/src/api/workflow.ts`：流程模型和接口类型。
-- `ccb-web/src/components/workflow/WorkflowDesigner.vue`：中文设计器和节点工具栏。
-- `ccb-web/src/components/workflow/WorkflowNodeInspector.vue`：节点属性、条件和变量配置。
-- `ccb-web/src/views/WorkflowView.vue`：定义、待办、监控和流程轨迹页面。
+- `server/src/modules/workflow/pom.xml`：Flowable Spring Boot、BPMN 模型和引擎依赖。
+- `server/src/platform/boot/src/main/resources/application.yml`：引擎初始化、历史级别和运行配置。
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V18__flowable_workflow_core.sql`：Flowable 引擎表和业务扩展表迁移。
+- `server/src/modules/workflow/src/main/java/com/ccb/workflow/model/`：流程业务模型、变量、动作和监控 DTO。
+- `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java`：业务模型校验。
+- `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java`：业务模型到 BPMN 的编译和节点映射。
+- `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java`：Flowable 实例、任务、变量和历史封装。
+- `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/WorkflowAssigneeResolver.java`：租户范围审批人解析。
+- `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java`：发布、实例、动作和干预审计。
+- `server/src/modules/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java`：兼容接口和新增版本、校验、监控接口。
+- `server/src/modules/workflow/src/test/java/com/ccb/workflow/`：模型、编译、运行和租户隔离测试。
+- `web/src/api/workflow.ts`：流程模型和接口类型。
+- `web/src/components/workflow/WorkflowDesigner.vue`：中文设计器和节点工具栏。
+- `web/src/components/workflow/WorkflowNodeInspector.vue`：节点属性、条件和变量配置。
+- `web/src/views/WorkflowView.vue`：定义、待办、监控和流程轨迹页面。
 - `docs/integration/workflow-module-contract.md`：外部模块接入契约和版本兼容说明。
 
 ## 任务依赖与并行策略
@@ -67,9 +67,9 @@ R1、R6；为 R2、R3、R4、R5 提供基础设施。
 
 ### 文件与接口
 
-- 修改：`pom.xml`、`ccb-workflow/pom.xml`、`ccb-boot/src/main/resources/application.yml`。
-- 新建：`ccb-infrastructure/src/main/resources/db/migration/V18__flowable_workflow_core.sql`。
-- 新建：`ccb-workflow/src/main/java/com/ccb/workflow/config/FlowableWorkflowConfiguration.java`（若自动配置无法满足单租户关联，则显式配置）。
+- 修改：`pom.xml`、`server/src/modules/workflow/pom.xml`、`server/src/platform/boot/src/main/resources/application.yml`。
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V18__flowable_workflow_core.sql`。
+- 新建：`server/src/modules/workflow/src/main/java/com/ccb/workflow/config/FlowableWorkflowConfiguration.java`（若自动配置无法满足单租户关联，则显式配置）。
 
 ### 实施步骤与证据
 
@@ -96,8 +96,8 @@ R1、R2、R3、R4、R5。
 
 ### 文件与接口
 
-- 新建 `ccb-workflow/src/main/java/com/ccb/workflow/model/WorkflowDefinitionModel.java`、`WorkflowNodeModel.java`、`WorkflowVariableModel.java`、`WorkflowActionPolicy.java`。
-- 新建 `ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java`、`BpmnModelCompiler.java`、`WorkflowModelAdapter.java`。
+- 新建 `server/src/modules/workflow/src/main/java/com/ccb/workflow/model/WorkflowDefinitionModel.java`、`WorkflowNodeModel.java`、`WorkflowVariableModel.java`、`WorkflowActionPolicy.java`。
+- 新建 `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java`、`BpmnModelCompiler.java`、`WorkflowModelAdapter.java`。
 - 扩展 `WorkflowDefinitionValidator` 测试，旧 schemaVersion=1 继续可解析。
 
 ### 实施步骤与证据
@@ -157,8 +157,8 @@ R1、R2、R3、R4、R5、R6。
 
 ### 文件与接口
 
-- 修改：`ccb-web/src/api/workflow.ts`、`WorkflowDesigner.vue`、`WorkflowNode.vue`、`WorkflowNodeInspector.vue`、`WorkflowView.vue`。
-- 必要时新建：`ccb-web/src/components/workflow/WorkflowValidationPanel.vue`、`WorkflowTimeline.vue`、`WorkflowGatewayInspector.vue`。
+- 修改：`web/src/api/workflow.ts`、`WorkflowDesigner.vue`、`WorkflowNode.vue`、`WorkflowNodeInspector.vue`、`WorkflowView.vue`。
+- 必要时新建：`web/src/components/workflow/WorkflowValidationPanel.vue`、`WorkflowTimeline.vue`、`WorkflowGatewayInspector.vue`。
 - 复用：`UiDataTable`、`UiFormDrawer`、`UiOrgTreeSelect`、`UiUserIdentity`、`UiStatusTag`。
 
 ### 实施步骤与证据
@@ -189,7 +189,7 @@ R1-R6。
 ### 文件与接口
 
 - 修改：`docs/integration/workflow-module-contract.md`。
-- 测试：`ccb-workflow/src/test/java/com/ccb/workflow/`、后端集成测试、前端构建和浏览器链路。
+- 测试：`server/src/modules/workflow/src/test/java/com/ccb/workflow/`、后端集成测试、前端构建和浏览器链路。
 - 证据：Maven/Flyway/HTTP/浏览器截图或 DOM 结果、残余风险记录。
 
 ### 实施步骤与证据
@@ -209,7 +209,7 @@ R1-R6。
 ## 集成检查
 
 - `mvn -pl ccb-boot -am test -DskipTests=false`：预期 `BUILD SUCCESS`。
-- `npm run build`（工作目录 `ccb-web`）：预期 TypeScript 检查和 Vite 构建成功。
+- `npm run build`（工作目录 `web`）：预期 TypeScript 检查和 Vite 构建成功。
 - 应用启动两次：第一次应用 V18，第二次无重复迁移；健康检查返回 200。
 - 浏览器流程链路：配置 -> 校验 -> 发布 -> 发起 -> 待办 -> 审批 -> 监控详情。
 - 数据断言：实例版本固定、任务动作幂等、租户隔离、审计完整。

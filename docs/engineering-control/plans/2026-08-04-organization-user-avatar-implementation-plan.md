@@ -17,10 +17,10 @@ Use the existing generic system API for ordinary user CRUD, add dedicated organi
 Requirements: R1 organization tree, R2 user association, R4 avatar storage.
 
 Files:
-- Create `ccb-infrastructure/src/main/resources/db/migration/V10__user_avatar_support.sql`.
-- Modify `ccb-infrastructure/pom.xml` and `ccb-boot/pom.xml` only if dependency ownership requires it.
-- Create MinIO storage configuration/service under `ccb-infrastructure/src/main/java/com/ccb/infrastructure/storage/`.
-- Modify `ccb-boot/src/main/resources/application-local.yml` with `ccb.storage.minio.*` environment-backed settings.
+- Create `server/src/platform/infrastructure/src/main/resources/db/migration/V10__user_avatar_support.sql`.
+- Modify `server/src/platform/infrastructure/pom.xml` and `server/src/platform/boot/pom.xml` only if dependency ownership requires it.
+- Create MinIO storage configuration/service under `server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/storage/`.
+- Modify `server/src/platform/boot/src/main/resources/application-local.yml` with `ccb.storage.minio.*` environment-backed settings.
 
 Contract:
 - Add nullable `sys_user.avatar_object_key`.
@@ -36,8 +36,8 @@ Rollback: remove only V10 and storage code in a development database, or restore
 Requirements: R1, R2, R4.
 
 Files:
-- Modify `ccb-system/src/main/java/com/ccb/system/service/SystemService.java` and `SystemController.java`.
-- Create organization tree DTO/service/controller files under `ccb-system/src/main/java/com/ccb/system/`.
+- Modify `server/src/modules/system/src/main/java/com/ccb/system/service/SystemService.java` and `SystemController.java`.
+- Create organization tree DTO/service/controller files under `server/src/modules/system/src/main/java/com/ccb/system/`.
 - Modify security auth models/repository/service/controller to include organization name and avatar URL.
 
 Contract:
@@ -55,7 +55,7 @@ Verification: authenticated API smoke tests cover nested orgs, user association,
 Requirements: R1, R2, R3, R4.
 
 Files:
-- Modify `ccb-web/src/views/ModuleView.vue`, `src/api/system.ts`, `src/types/system.ts`, `src/types/auth.ts`, `src/stores/auth.ts`.
+- Modify `web/src/views/ModuleView.vue`, `src/api/system.ts`, `src/types/system.ts`, `src/types/auth.ts`, `src/stores/auth.ts`.
 - Create `src/components/ui/UiOrgTree.vue` and `src/components/ui/UiOrgTreeSelect.vue`.
 - Modify `src/views/AppLayout.vue` and add a menu-title resolver composable if needed.
 
@@ -72,9 +72,9 @@ Verification: browser checks add child org, add user from org node, select org i
 Requirements: R5, R6.
 
 Files:
-- Create `ccb-web/src/components/ui/UiUserIdentity.vue`.
-- Create `ccb-web/src/views/ComponentShowcaseView.vue`.
-- Modify `ccb-web/src/router/index.ts`, `ccb-web/src/views/AppLayout.vue`, and menu seed migration if a visible menu entry is needed.
+- Create `web/src/components/ui/UiUserIdentity.vue`.
+- Create `web/src/views/ComponentShowcaseView.vue`.
+- Modify `web/src/router/index.ts`, `web/src/views/AppLayout.vue`, and menu seed migration if a visible menu entry is needed.
 
 Behavior: horizontal avatar/name; hover/focus popover with username, organization, roles, and status; fallback initial when no image.
 
@@ -83,7 +83,7 @@ Verification: showcase route renders page header, toolbar, data table, status ta
 ### T5 - Regression verification
 
 Commands:
-- `npm run build` in `ccb-web`.
+- `npm run build` in `web`.
 - `mvn -pl ccb-boot -am package -DskipTests` from workspace root.
 - Start/restart backend with MinIO available and inspect `/actuator/health`.
 - Browser smoke test at `http://127.0.0.1:5173/`.

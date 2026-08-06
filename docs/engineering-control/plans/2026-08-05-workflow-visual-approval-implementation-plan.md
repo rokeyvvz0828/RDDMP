@@ -19,19 +19,19 @@
 
 ## 文件职责地图
 
-- 修改 `ccb-infrastructure/src/main/resources/db/migration/V16__workflow_visual_approval.sql`：扩展任务字段，增加任务动作记录表和必要索引。
-- 修改 `ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java`：接入图定义、审批人解析、节点流转、审批动作、加签和抄送。
-- 新建 `ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java`：解析和校验节点/边 JSON。
-- 修改 `ccb-workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java`：扩展定义、待办和决策请求契约。
-- 新建 `ccb-workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionValidatorTest.java`：验证合法图、断链图、重复开始节点、审批人缺失和环路。
-- 修改 `ccb-workflow/pom.xml`：加入工作流模块测试所需 JUnit 依赖。
-- 修改 `ccb-web/package.json`、`ccb-web/package-lock.json`：锁定 `@vue-flow/core` 依赖。
-- 新建 `ccb-web/src/components/workflow/WorkflowDesigner.vue`：画布、节点增删、连线和位置保存。
-- 新建 `ccb-web/src/components/workflow/WorkflowNode.vue`：开始、审批、抄送、结束节点展示。
-- 新建 `ccb-web/src/components/workflow/WorkflowNodeInspector.vue`：节点名称、审批人和抄送人配置。
-- 修改 `ccb-web/src/api/workflow.ts`：流程定义、任务动作和节点/边类型。
-- 修改 `ccb-web/src/views/WorkflowView.vue`：移除 JSON 文本编辑器，接入设计器、配置面板、审批动作和中文状态。
-- 修改 `ccb-web/src/styles.css`：工作流画布、节点和配置面板的主题变量适配。
+- 修改 `server/src/platform/infrastructure/src/main/resources/db/migration/V16__workflow_visual_approval.sql`：扩展任务字段，增加任务动作记录表和必要索引。
+- 修改 `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java`：接入图定义、审批人解析、节点流转、审批动作、加签和抄送。
+- 新建 `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java`：解析和校验节点/边 JSON。
+- 修改 `server/src/modules/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java`：扩展定义、待办和决策请求契约。
+- 新建 `server/src/modules/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionValidatorTest.java`：验证合法图、断链图、重复开始节点、审批人缺失和环路。
+- 修改 `server/src/modules/workflow/pom.xml`：加入工作流模块测试所需 JUnit 依赖。
+- 修改 `web/package.json`、`web/package-lock.json`：锁定 `@vue-flow/core` 依赖。
+- 新建 `web/src/components/workflow/WorkflowDesigner.vue`：画布、节点增删、连线和位置保存。
+- 新建 `web/src/components/workflow/WorkflowNode.vue`：开始、审批、抄送、结束节点展示。
+- 新建 `web/src/components/workflow/WorkflowNodeInspector.vue`：节点名称、审批人和抄送人配置。
+- 修改 `web/src/api/workflow.ts`：流程定义、任务动作和节点/边类型。
+- 修改 `web/src/views/WorkflowView.vue`：移除 JSON 文本编辑器，接入设计器、配置面板、审批动作和中文状态。
+- 修改 `web/src/styles.css`：工作流画布、节点和配置面板的主题变量适配。
 
 ## 任务依赖与并行策略
 
@@ -41,7 +41,7 @@
 
 **需求映射：** R3、R4、R5
 
-**文件：** 修改 `ccb-infrastructure/src/main/resources/db/migration/V16__workflow_visual_approval.sql`；修改 `ccb-workflow/pom.xml`。
+**文件：** 修改 `server/src/platform/infrastructure/src/main/resources/db/migration/V16__workflow_visual_approval.sql`；修改 `server/src/modules/workflow/pom.xml`。
 
 **步骤：**
 
@@ -59,7 +59,7 @@
 
 **需求映射：** R1、R2、R5
 
-**文件：** 新建 `ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java`；新建 `ccb-workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionValidatorTest.java`。
+**文件：** 新建 `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java`；新建 `server/src/modules/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionValidatorTest.java`。
 
 **步骤：**
 
@@ -78,7 +78,7 @@
 
 **需求映射：** R2、R3、R4、R5
 
-**文件：** 修改 `ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java`；修改 `ccb-workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java`。
+**文件：** 修改 `server/src/modules/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java`；修改 `server/src/modules/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java`。
 
 **步骤：**
 
@@ -99,7 +99,7 @@
 
 **需求映射：** R1、R2、R5
 
-**文件：** 修改 `ccb-web/package.json`、`ccb-web/package-lock.json`、`ccb-web/src/api/workflow.ts`；新建 `ccb-web/src/components/workflow/WorkflowDesigner.vue`、`WorkflowNode.vue`、`WorkflowNodeInspector.vue`。
+**文件：** 修改 `web/package.json`、`web/package-lock.json`、`web/src/api/workflow.ts`；新建 `web/src/components/workflow/WorkflowDesigner.vue`、`WorkflowNode.vue`、`WorkflowNodeInspector.vue`。
 
 **步骤：**
 
@@ -119,7 +119,7 @@
 
 **需求映射：** R1、R2、R3、R4
 
-**文件：** 修改 `ccb-web/src/views/WorkflowView.vue`、`ccb-web/src/api/workflow.ts`、`ccb-web/src/styles.css`。
+**文件：** 修改 `web/src/views/WorkflowView.vue`、`web/src/api/workflow.ts`、`web/src/styles.css`。
 
 **步骤：**
 
@@ -157,7 +157,7 @@
 ## 集成检查
 
 - `mvn -pl ccb-boot -am compile -DskipTests`：预期 Spring Boot 模块编译成功。
-- `npm run build`（工作目录 `ccb-web`）：预期 Vue/TypeScript/Vite 构建成功。
+- `npm run build`（工作目录 `web`）：预期 Vue/TypeScript/Vite 构建成功。
 - 数据库迁移：预期 V16 成功且旧 wf_definition/wf_version/wf_task 数据可读。
 - HTTP：预期定义、发布、实例、待办、决策接口返回 2xx 或明确中文业务错误。
 - 浏览器：预期流程图编辑和四类动作均可操作，深浅主题无白底遮挡或文字不可读。

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-001-delivery-showcase",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/requirements/REQ-20260806-001-delivery-showcase/requirement.md",
+  "objective": "构建可操作的交付业务示范模块，为后续业务页面提供统一前端样式和交互参考。",
+  "users": ["需求人员", "研发人员", "测试人员", "交付经理", "审批人"],
+  "requirements": [
+    {"id": "R1", "statement": "提供完整列表、检索、批量操作和分页参考", "priority": "must"},
+    {"id": "R2", "statement": "提供标准、分步和弹框表单及对应详情参考", "priority": "must"},
+    {"id": "R3", "statement": "提供流程展示、审批动作和审计时间线参考", "priority": "must"},
+    {"id": "R4", "statement": "提供柱状、饼状、折线和甘特图参考", "priority": "must"},
+    {"id": "R5", "statement": "覆盖企业前端关键状态、主题和响应式", "priority": "must"},
+    {"id": "R6", "statement": "保留原组件示例并将交付示范中心配置为独立一级动态菜单", "priority": "must"}
+  ],
+  "constraints": ["只使用虚构本地业务数据", "不修改后端业务逻辑", "原组件示例页面和菜单保持不变", "Flyway 只追加新菜单迁移", "复用现有 Element Plus、Vue Flow、公共 UI 和语义主题"],
+  "non_goals": ["真实数据持久化", "真实文件上传", "服务端权限和审批引擎"],
+  "selected_approach": {
+    "name": "独立一级菜单 + 单一交付业务场景 + 多视图工作区",
+    "reason": "让列表、表单、详情、图表和审批共享对象与状态，示例可直接迁移到真实业务，而不是形成无上下文组件陈列。"
+  },
+  "architecture": {
+    "boundary": {"inside": ["delivery-showcase module", "local mock state", "ECharts wrapper", "Vue Flow readonly approval graph"], "outside": ["backend API", "database", "real authorization"]},
+    "data_flows": [{"input": "mock projects and user actions", "transitions": ["filter", "create/edit", "approve", "aggregate"], "output": "tables, details, process state and charts"}]
+  },
+  "risks": [
+    {"risk": "示范页功能过密", "mitigation": "按工作台、项目、分析、计划、审批分为同级标签并保持单一主操作"},
+    {"risk": "图表主题或容器尺寸变化后失真", "mitigation": "ResizeObserver、主题观察和固定最小高度"},
+    {"risk": "手机端桌面表格不可用", "mitigation": "移动端切换项目卡片列表，表单和弹层使用全宽布局"}
+  ],
+  "approval": {"status": "approved", "evidence": "用户明确要求基于现有工程 Skill 实现统一业务示范模块。", "confirmed_at": "2026-08-06T10:00:00+08:00"}
+}

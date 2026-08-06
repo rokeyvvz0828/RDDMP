@@ -1,6 +1,6 @@
 # Frontend UI Integration Contract
 
-Feature modules use the shared shell and components under `ccb-web/src/components/ui`.
+Feature modules use the shared shell and components under `web/src/components/ui`.
 
 ## Page contract
 
@@ -10,6 +10,7 @@ Feature modules use the shared shell and components under `ccb-web/src/component
 - Use `UiFormDrawer` for create and edit forms.
 - Use `UiStatusTag` for lifecycle states instead of feature-specific status colors.
 - Use `UiEmptyState` when a page has no table-shaped content.
+- Use `UiFilePreview` for online document viewing. Obtain preview URLs from `api/file-preview.ts`; feature pages must not build kkFileView URLs or accept arbitrary remote source URLs.
 
 ## Theme and layout contract
 
@@ -18,3 +19,5 @@ Feature CSS consumes semantic variables such as `--page-bg`, `--panel-bg`, `--li
 ## API contract
 
 Every request uses `/api`, and every authenticated module receives the current tenant from the server-side JWT context. Frontend code must not send or persist provider secrets outside the server API boundary.
+
+File preview capability and limits come from `GET /api/file-previews/capabilities`. Uploads use authenticated multipart requests to `POST /api/file-previews`; temporary objects are removed with `DELETE /api/file-previews/{previewId}`. The backend is the only owner of MinIO object keys and kkFileView URL encoding.

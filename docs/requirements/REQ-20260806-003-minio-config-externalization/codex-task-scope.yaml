@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260806-003", "status": "ready", "document": "docs/requirements/REQ-20260806-003-minio-config-externalization/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "platform/infrastructure", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/infrastructure/pom.xml",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/storage/MinioStorageProperties.java",
+      "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/storage/MinioStoragePropertiesTest.java",
+      "docs/requirements/REQ-20260806-003-minio-config-externalization/**",
+      ".ai-control/requirements/req-20260806-003-minio-config-externalization/*.json"
+    ],
+    "read_only_paths": ["server/src/platform/boot/**", "server/src/platform/system/**", "server/src/platform/security/**", "server/src/modules/**", "web/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260806-003", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["mvn -pl :ccb-infrastructure -am test", "mvn test", "node scripts/check-all-governance.mjs"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "not-applicable"},
+  "external_access": {"changed": false, "systems": [], "data_classification": "configuration-only-no-credentials"},
+  "required_tests": [
+    {"name": "unit", "command": "mvn -pl :ccb-infrastructure -am test"},
+    {"name": "api", "command": "not applicable: no API change"},
+    {"name": "permission", "command": "not applicable: no permission change"},
+    {"name": "regression", "command": "mvn test && node scripts/check-all-governance.mjs"}
+  ],
+  "risk": {"level": "high", "items": ["platform configuration binding", "startup fail-fast behavior", "MinIO credential validation"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-003-minio-config-externalization",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-003-minio-config-externalization/execution-T1.json",
+      ".ai-control/requirements/req-20260806-003-minio-config-externalization/observation-T1.json",
+      ".ai-control/requirements/req-20260806-003-minio-config-externalization/convergence.json"
+    ],
+    "release_verification": ["verify valid external MinIO configuration binds", "verify missing configuration fails validation"],
+    "rollback": "Restore property defaults and remove validation dependency and tests."
+  }
+}

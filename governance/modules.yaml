@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.0",
+  "repository": "RDDMP",
+  "defaults": {
+    "cross_business_dependency": "forbidden",
+    "platform_codex_access": "read_only",
+    "shared_change_requires_owner": true,
+    "java_package_compatibility": "preserve-com.ccb"
+  },
+  "modules": {
+    "governance": {
+      "type": "platform",
+      "description": "研发规约、需求模板、模块清单、工程账本、自动化脚本、CI 与仓库 Skill",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["governance/**", "scripts/**", ".agents/**", ".github/**", "docs/governance/**", "docs/architecture/**", "docs/requirements/**", "AGENTS.md", "CODEX-DEVELOPMENT-GUIDE.md", "COLLABORATION.md", "CONTRIBUTING.md"],
+      "public_contracts": ["governance/modules.yaml", "docs/governance/**"],
+      "allowed_dependencies": [],
+      "codex_default_access": "read_write",
+      "risk": "high"
+    },
+    "project-control": {
+      "type": "evidence",
+      "description": "工程控制任务状态、计划、执行、观测、交接与验收证据",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": [".ai-control/**", "docs/engineering-control/**"],
+      "public_contracts": [],
+      "allowed_dependencies": [],
+      "codex_default_access": "read_write",
+      "risk": "normal"
+    },
+    "shared/common": {
+      "type": "shared",
+      "description": "统一响应、分页、异常、错误码与 trace 公共能力",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/shared/common/**"],
+      "public_contracts": ["server/src/shared/common/src/main/java/com/ccb/common/**"],
+      "allowed_dependencies": [],
+      "maven": {"artifact": "ccb-common", "pom": "server/src/shared/common/pom.xml", "java_packages": ["com.ccb.common"], "public_packages": ["com.ccb.common"]},
+      "codex_default_access": "read_write",
+      "risk": "important"
+    },
+    "platform/infrastructure": {
+      "type": "platform",
+      "description": "MySQL、Flyway、MinIO 与基础设施适配",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/platform/infrastructure/**", "docs/database/**"],
+      "public_contracts": ["server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/storage/**"],
+      "allowed_dependencies": ["shared/common"],
+      "maven": {"artifact": "ccb-infrastructure", "pom": "server/src/platform/infrastructure/pom.xml", "java_packages": ["com.ccb.infrastructure"], "public_packages": ["com.ccb.infrastructure.storage"]},
+      "codex_default_access": "read_only",
+      "risk": "high"
+    },
+    "platform/file-preview": {
+      "type": "platform",
+      "description": "受控文件上传、MinIO 预签名地址校验与 kkFileView 在线预览适配",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/platform/file-preview/**", "web/src/api/file-preview.ts"],
+      "public_contracts": ["server/src/platform/file-preview/src/main/java/com/ccb/filepreview/model/**", "web/src/api/file-preview.ts"],
+      "allowed_dependencies": ["shared/common", "platform/infrastructure"],
+      "maven": {"artifact": "ccb-file-preview", "pom": "server/src/platform/file-preview/pom.xml", "java_packages": ["com.ccb.filepreview"], "public_packages": ["com.ccb.filepreview.model"]},
+      "codex_default_access": "read_only",
+      "risk": "high"
+    },
+    "platform/security": {
+      "type": "platform",
+      "description": "JWT、认证、会话、RBAC 与安全过滤器",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/platform/security/**"],
+      "public_contracts": ["server/src/platform/security/src/main/java/com/ccb/security/model/**"],
+      "allowed_dependencies": ["shared/common", "platform/infrastructure"],
+      "maven": {"artifact": "ccb-security", "pom": "server/src/platform/security/pom.xml", "java_packages": ["com.ccb.security"], "public_packages": ["com.ccb.security.model"]},
+      "codex_default_access": "read_only",
+      "risk": "high"
+    },
+    "platform/system": {
+      "type": "platform",
+      "description": "组织、用户、角色、菜单、参数和系统管理平台能力",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/platform/system/**", "web/src/api/system.ts", "web/src/types/system.ts", "web/src/views/ParameterView.vue", "web/src/views/RolePermissionView.vue", "web/src/views/ModuleView.vue"],
+      "public_contracts": ["server/src/platform/system/src/main/java/com/ccb/system/model/**", "server/src/platform/system/src/main/java/com/ccb/system/org/**", "web/src/api/system.ts"],
+      "allowed_dependencies": ["shared/common", "platform/infrastructure", "platform/security"],
+      "maven": {"artifact": "ccb-system", "pom": "server/src/platform/system/pom.xml", "java_packages": ["com.ccb.system"], "public_packages": ["com.ccb.system.model", "com.ccb.system.org"]},
+      "codex_default_access": "read_only",
+      "risk": "important"
+    },
+    "platform/workflow": {
+      "type": "platform",
+      "description": "流程设计模型、BPMN 编译、Flowable 运行与监控平台能力",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/platform/workflow/**", "web/src/api/workflow.ts", "web/src/components/workflow/**", "web/src/views/WorkflowView.vue", "docs/integration/workflow-module-contract.md"],
+      "public_contracts": ["server/src/platform/workflow/src/main/java/com/ccb/workflow/model/**", "web/src/api/workflow.ts", "docs/integration/workflow-module-contract.md"],
+      "allowed_dependencies": ["shared/common", "platform/infrastructure", "platform/security"],
+      "maven": {"artifact": "ccb-workflow", "pom": "server/src/platform/workflow/pom.xml", "java_packages": ["com.ccb.workflow"], "public_packages": ["com.ccb.workflow.model"]},
+      "codex_default_access": "read_only",
+      "risk": "important"
+    },
+    "business/ai": {
+      "type": "business",
+      "description": "AI 模型、能力路由与执行服务",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/modules/ai/**", "web/src/api/ai.ts", "web/src/views/AiView.vue", "docs/integration/ai-module-contract.md"],
+      "public_contracts": ["web/src/api/ai.ts", "docs/integration/ai-module-contract.md"],
+      "allowed_dependencies": ["shared/common", "platform/infrastructure", "platform/security"],
+      "maven": {"artifact": "ccb-ai", "pom": "server/src/modules/ai/pom.xml", "java_packages": ["com.ccb.ai"], "public_packages": []},
+      "codex_default_access": "read_write",
+      "risk": "high"
+    },
+    "platform/boot": {
+      "type": "composition",
+      "description": "Spring Boot 启动、模块装配、统一 Web 与运行观测",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/platform/boot/**", "pom.xml", "docker-compose.yml", ".env.example"],
+      "public_contracts": ["server/src/platform/boot/src/main/resources/application.yml"],
+      "allowed_dependencies": ["shared/common", "platform/infrastructure", "platform/file-preview", "platform/security", "platform/system", "platform/workflow", "business/ai"],
+      "maven": {"artifact": "ccb-boot", "pom": "server/src/platform/boot/pom.xml", "java_packages": ["com.ccb.boot"], "public_packages": []},
+      "codex_default_access": "read_only",
+      "risk": "high"
+    },
+    "frontend/application": {
+      "type": "composition",
+      "description": "Vue 应用壳、路由、状态、HTTP、主题和共享 UI",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["web/index.html", "web/package.json", "web/package-lock.json", "web/tsconfig.json", "web/vite.config.ts", "web/src/App.vue", "web/src/main.ts", "web/src/env.d.ts", "web/src/styles.css", "web/src/api/http.ts", "web/src/api/error.ts", "web/src/components/ui/**", "web/src/router/**", "web/src/stores/**", "web/src/types/auth.ts", "web/src/types/ui.ts", "web/src/utils/**", "web/src/modules/delivery-showcase/**", "web/src/views/AppLayout.vue", "web/src/views/LoginView.vue", "web/src/views/DashboardView.vue", "web/src/views/ComponentShowcaseView.vue", "docs/integration/frontend-ui-contract.md"],
+      "public_contracts": ["web/src/components/ui/**", "web/src/api/http.ts", "docs/integration/frontend-ui-contract.md"],
+      "allowed_dependencies": ["platform/system", "platform/workflow", "platform/file-preview", "business/ai"],
+      "codex_default_access": "read_only",
+      "risk": "important"
+    }
+  }
+}

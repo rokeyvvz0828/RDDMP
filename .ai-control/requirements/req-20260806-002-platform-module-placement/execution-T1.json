@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-002-platform-module-placement",
+  "task": "T1-T2",
+  "executed_at": "2026-08-06T13:55:00+08:00",
+  "result": "implemented-and-verified",
+  "changes": [
+    "moved ccb-system from server/src/modules/system to server/src/platform/system",
+    "moved ccb-workflow from server/src/modules/workflow to server/src/platform/workflow",
+    "updated Maven reactor paths without changing artifact IDs",
+    "reclassified system and workflow as platform modules in governance",
+    "updated active architecture, ownership and developer guidance paths"
+  ],
+  "compatibility": {
+    "java_packages_changed": false,
+    "maven_artifacts_changed": false,
+    "business_logic_changed": false,
+    "api_changed": false,
+    "database_changed": false
+  },
+  "commands": [
+    {"command": "mvn -q validate", "result": "passed"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "passed for 10 governed modules, 7 Maven modules and 25 Flyway migrations"},
+    {"command": "mvn test", "result": "initial sandbox write denial; rerun with project target write permission passed, 11 tests and 0 failures"},
+    {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed and generated boot plus relocated module jars"},
+    {"command": "curl local health endpoints", "result": "backend 200, frontend 200"}
+  ]
+}

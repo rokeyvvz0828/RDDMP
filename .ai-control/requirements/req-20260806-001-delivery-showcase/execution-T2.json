@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-001-delivery-showcase",
+  "task": "T4",
+  "executed_at": "2026-08-06T13:28:00+08:00",
+  "result": "implemented-runtime-verified-and-regression-passed",
+  "changes": [
+    "恢复 ComponentShowcaseView 原始实现和组件示例菜单名称",
+    "新增 /delivery-showcase 独立前端路由",
+    "追加 V25 菜单迁移，创建一级菜单 ID 500 并授权超级管理员"
+  ],
+  "commands": [
+    {"command": "npm run build", "result": "passed"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed for 25 migrations"},
+    {"command": "mvn -pl :ccb-boot -am install -DskipTests", "result": "passed"},
+    {"command": "restart ccb-boot with local profile", "result": "started on port 8080; Flyway migrated v24 to v25"},
+    {"command": "mvn test", "result": "passed; 11 tests, 0 failures, 0 errors"},
+    {"command": "npm run build", "result": "passed; non-blocking bundle size warning retained"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "passed"}
+  ],
+  "database": {"migration": "V25", "from": 24, "to": 25, "result": "success", "existing_menu_400_changed": false, "new_menu_id": 500},
+  "open_items": []
+}

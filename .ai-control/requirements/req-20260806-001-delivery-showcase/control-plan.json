@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-001-delivery-showcase",
+  "tasks": [
+    {"id": "T1", "goal": "建立模块数据模型、视图、表单、详情和状态交互", "requirement_ids": ["R1", "R2", "R5"], "write_scope": ["web/src/modules/delivery-showcase/**", "web/src/views/ComponentShowcaseView.vue", "web/src/styles.css"], "acceptance_checks": ["list operations work", "forms validate and submit", "details retain context", "all async states render"], "rollback": "remove module and restore ComponentShowcaseView"},
+    {"id": "T2", "goal": "接入图表、甘特和审批流程", "requirement_ids": ["R3", "R4"], "prerequisites": ["T1"], "write_scope": ["web/src/modules/delivery-showcase/**", "web/package.json", "web/package-lock.json"], "acceptance_checks": ["four visualization types render", "approval action updates state", "dark/light theme readable"], "rollback": "remove visualization components and ECharts dependency"},
+    {"id": "T3", "goal": "接入路由和模块归属并完成验证", "requirement_ids": ["R1", "R2", "R3", "R4", "R5"], "prerequisites": ["T1", "T2"], "write_scope": ["web/src/router/index.ts", "web/src/views/AppLayout.vue", "web/src/components/ui/UiRouteMenuNode.vue", "governance/modules.yaml", "docs/architecture/MODULES.md"], "acceptance_checks": ["governance checks", "frontend build", "desktop browser", "mobile browser"], "rollback": "restore route/menu mapping and module manifest"}
+    ,{"id": "T4", "goal": "恢复原组件示例并新增独立一级动态菜单", "requirement_ids": ["R6"], "prerequisites": ["T3"], "write_scope": ["web/src/views/ComponentShowcaseView.vue", "web/src/router/index.ts", "web/src/views/AppLayout.vue", "web/src/components/ui/UiRouteMenuNode.vue", "server/src/platform/infrastructure/src/main/resources/db/migration/V25__seed_delivery_showcase_menu.sql"], "acceptance_checks": ["component menu and page unchanged", "delivery showcase appears as top-level menu", "menu route page shows ID 500", "Flyway reaches V25"], "rollback": "restore frontend route additions and add a compensating migration for menu 500"}
+  ],
+  "stop_conditions": ["existing application build regresses", "real backend or production data becomes required", "P0/P1 browser defect remains"],
+  "verification": ["node scripts/check-all-governance.mjs", "npm --prefix web run build", "browser acceptance"]
+}

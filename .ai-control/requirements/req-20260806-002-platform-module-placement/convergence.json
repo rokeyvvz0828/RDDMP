@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260806-002-platform-module-placement",
+  "converged_at": "2026-08-06T13:55:00+08:00",
+  "gate": "pass-with-branch-name-deviation",
+  "requirements": {"total": 4, "passed": 4, "failed": 0},
+  "quality_gates": {
+    "maven_validate": "passed",
+    "maven_test": "passed",
+    "boot_package": "passed",
+    "repository_governance": "passed",
+    "module_boundaries": "passed",
+    "runtime_health": "passed",
+    "task_scope": "branch-name-only deviation"
+  },
+  "residual_risks": [
+    {"level": "normal", "item": "IDE may retain stale source-root indexes", "action": "reload Maven project after pulling the directory move"},
+    {"level": "normal", "item": "zhangwei-dev does not match feat/REQ-* naming policy", "action": "retain the user-requested branch unless the owner explicitly requests a compliant branch"}
+  ],
+  "rollback": "Move platform/system and platform/workflow back under modules and restore Maven, governance, CODEOWNERS and active documentation paths. No database compensation is required."
+}
