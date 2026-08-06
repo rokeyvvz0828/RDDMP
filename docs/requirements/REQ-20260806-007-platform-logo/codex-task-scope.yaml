@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260806-007", "status": "ready", "document": "docs/requirements/REQ-20260806-007-platform-logo/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "web/app-shell", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260806-007-platform-logo/**",
+      ".ai-control/requirements/req-20260806-007-platform-logo/*.json",
+      "web/src/views/AppLayout.vue",
+      "web/src/styles.css"
+    ],
+    "read_only_paths": ["web/src/views/LoginView.vue", "web/src/stores/**", "web/src/router/**", "web/src/components/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260806-007", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["npm --prefix web run build", "node scripts/check-all-governance.mjs"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "Frontend shell markup and styles only."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "no data access"},
+  "required_tests": [
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "browser", "command": "verify side, collapsed, top and mobile navigation branding"}
+  ],
+  "risk": {"level": "low", "items": ["collapsed sidebar alignment", "top navigation width", "dark theme contrast"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-007-platform-logo",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-007-platform-logo/execution-T1.json",
+      ".ai-control/requirements/req-20260806-007-platform-logo/observation-T1.json",
+      ".ai-control/requirements/req-20260806-007-platform-logo/convergence.json"
+    ],
+    "release_verification": ["verify expanded and collapsed sidebar", "verify top navigation", "verify desktop and mobile contrast"],
+    "rollback": "Remove the AppLayout brand links and associated app-logo styles."
+  }
+}

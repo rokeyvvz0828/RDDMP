@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260806-008", "status": "ready", "document": "docs/requirements/REQ-20260806-008-org-tree-node/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "web/ui", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260806-008-org-tree-node/**",
+      ".ai-control/requirements/req-20260806-008-org-tree-node/*.json",
+      "web/src/components/ui/UiOrgTree.vue",
+      "web/src/styles.css"
+    ],
+    "read_only_paths": ["web/src/views/ModuleView.vue", "web/src/views/ComponentShowcaseView.vue", "web/src/types/system.ts", "web/src/api/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260806-008", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["npm --prefix web run build", "node scripts/check-all-governance.mjs"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "Shared frontend component markup and styles only."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "existing local organization data only"},
+  "required_tests": [
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "browser", "command": "verify node readability and all four action events on desktop and mobile layouts"}
+  ],
+  "risk": {"level": "low", "items": ["tree node click propagation", "dropdown action regression", "narrow sidebar overflow"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-008-org-tree-node",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-008-org-tree-node/execution-T1.json",
+      ".ai-control/requirements/req-20260806-008-org-tree-node/observation-T1.json",
+      ".ai-control/requirements/req-20260806-008-org-tree-node/convergence.json"
+    ],
+    "release_verification": ["verify organization name and metadata", "verify add organization shortcut", "verify dropdown actions", "verify responsive layout"],
+    "rollback": "Restore the previous single-line UiOrgTree node template and styles."
+  }
+}

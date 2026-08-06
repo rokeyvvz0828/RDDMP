@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260806-009", "status": "ready", "document": "docs/requirements/REQ-20260806-009-default-avatar-library/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "web/shared-ui", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260806-009-default-avatar-library/**",
+      ".ai-control/requirements/req-20260806-009-default-avatar-library/*.json",
+      "web/public/avatars/*.png",
+      "web/src/components/ui/default-avatars.ts",
+      "web/src/components/ui/UiAvatarUpload.vue",
+      "web/src/styles.css"
+    ],
+    "read_only_paths": ["server/src/platform/system/**", "web/src/api/system.ts", "web/src/views/ModuleView.vue"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/platform/infrastructure/src/main/resources/db/migration/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260806-009", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["npm --prefix web run build", "node scripts/check-all-governance.mjs"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "Frontend-only change; existing avatar upload API and database fields remain unchanged."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "local static avatar assets only"},
+  "required_tests": [
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "browser", "command": "verify default avatar gallery, selection, mobile overflow and console errors"}
+  ],
+  "risk": {"level": "low", "items": ["default asset not served", "selected file not uploaded", "avatar picker overflow on narrow screens"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260806-009-default-avatar-library",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260806-009-default-avatar-library/execution-T1.json",
+      ".ai-control/requirements/req-20260806-009-default-avatar-library/observation-T1.json",
+      ".ai-control/requirements/req-20260806-009-default-avatar-library/convergence.json"
+    ],
+    "release_verification": ["verify all eight PNG assets load", "verify default selection produces a PNG File", "verify existing upload entry remains available"],
+    "rollback": "Remove the default avatar registry, picker gallery styles and bundled PNG assets; retain the existing upload-only flow."
+  }
+}

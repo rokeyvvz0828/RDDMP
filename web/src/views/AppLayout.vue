@@ -65,6 +65,10 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
 <template>
   <div class="app-shell" :class="`layout-${theme.layout}`">
     <header v-if="topNavigationVisible" class="app-top-navigation">
+      <router-link to="/dashboard" class="app-logo" aria-label="工程交付平台工作台">
+        <span class="brand-mark" aria-hidden="true">EP</span>
+        <span class="app-logo__text"><strong>工程交付平台</strong><small>ENGINEERING DELIVERY</small></span>
+      </router-link>
       <el-menu :default-active="route.path" mode="horizontal" router class="app-top-menu">
         <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><span>工作台</span></el-menu-item>
         <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" />
@@ -73,7 +77,11 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
     </header>
 
     <el-container class="app-frame">
-        <el-aside v-if="sideNavigationVisible" :width="sidebarCollapsed ? '72px' : '248px'" class="app-aside">
+      <el-aside v-if="sideNavigationVisible" :width="sidebarCollapsed ? '72px' : '248px'" class="app-aside">
+        <router-link to="/dashboard" class="app-logo app-logo--side" aria-label="工程交付平台工作台">
+          <span class="brand-mark" aria-hidden="true">EP</span>
+          <span v-if="!sidebarCollapsed" class="app-logo__text"><strong>工程交付平台</strong><small>ENGINEERING DELIVERY</small></span>
+        </router-link>
         <el-menu :default-active="route.path" :collapse="sidebarCollapsed" router class="app-menu">
           <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item>
           <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" />
