@@ -65,7 +65,7 @@ public final class BpmnModelCompiler {
             SequenceFlow sequenceFlow = new SequenceFlow(nodeMapping.get(edge.source()), nodeMapping.get(edge.target()));
             sequenceFlow.setId(safeId(edge.id()));
             sequenceFlow.setName(edge.label());
-            if (edge.condition() != null && !edge.condition().isBlank()) sequenceFlow.setConditionExpression(edge.condition());
+            if (!edge.defaultFlow() && edge.condition() != null && !edge.condition().isBlank()) sequenceFlow.setConditionExpression(edge.condition());
             process.addFlowElement(sequenceFlow);
         }
 

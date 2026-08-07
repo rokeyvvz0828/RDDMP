@@ -64,7 +64,7 @@ public final class WorkflowDefinitionValidator {
         List<WorkflowEdge> edges = new ArrayList<>();
         for (JsonNode edge : edgesNode) {
             String id = text(edge, "id");
-            edges.add(new WorkflowEdge(id, text(edge, "source"), text(edge, "target")));
+            edges.add(new WorkflowEdge(id, text(edge, "source"), text(edge, "target"), edge.path("condition").asText(null), edge.path("default").asBoolean(false)));
         }
         WorkflowGraph graph = new WorkflowGraph(schemaVersion, nodes, edges);
         validate(graph);
@@ -177,10 +177,18 @@ public final class WorkflowDefinitionValidator {
 
     public record WorkflowGraph(int schemaVersion, List<WorkflowNode> nodes, List<WorkflowEdge> edges) {
         public WorkflowNode node(String id) { return nodes.stream().filter(item -> item.id().equals(id)).findFirst().orElse(null); }
-        public WorkflowEdge outgoing(String id) { return edges.stream().filter(item -> item.source().equals(id)).findFirst().orElse(null); }
+        public List<WorkflowEdge> outgoingEdges(String id) { return edges.stream().filter(item -> item.source().equals(id)).toList(); }
+        public WorkflowEdge outgoing(String id) {
+            List<WorkflowEdge> candidates = outgoingEdges(id);
+            String configuredDefault = node(id) == null ? "" : node(id).config().path("defaultEdgeId").asText("");
+            return candidates.stream().filter(item -> item.defaultFlow() || item.id().equals(configuredDefault)).findFirst()
+                    .orElseGet(() -> candidates.stream().findFirst().orElse(null));
+        }
     }
 
     public record WorkflowNode(String id, String type, String label, Position position, JsonNode config) {}
-    public record WorkflowEdge(String id, String source, String target) {}
+    public record WorkflowEdge(String id, String source, String target, String condition, boolean defaultFlow) {
+        public WorkflowEdge(String id, String source, String target) { this(id, source, target, null, false); }
+    }
     public record Position(double x, double y) {}
 }

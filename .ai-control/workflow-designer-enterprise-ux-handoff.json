@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "topic": "workflow-designer-enterprise-ux",
+  "handoff_status": "approved",
+  "created_at": "2026-08-06T00:00:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "workflow-designer-enterprise-ux",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-06-workflow-designer-enterprise-ux-design.md",
+    "objective": "完成流程定义生命周期、BPMN 语义节点、连线条件编辑、上下文菜单、只读流程查看和 Dagre 自动布局。",
+    "requirements": [
+      {"id":"R1","statement":"草稿流程可删除，已发布流程可只读查看且不可删除或原地修改。","priority":"must"},
+      {"id":"R2","statement":"开始、结束、审批、网关和抄送节点使用可辨识的 BPMN 语义外观。","priority":"must"},
+      {"id":"R3","statement":"节点和连线提供上下文操作，连线具有方向并可编辑名称、条件和默认分支。","priority":"must"},
+      {"id":"R4","statement":"使用 Dagre 进行横向/纵向分层布局，避免节点遮挡并保留手工位置。","priority":"must"}
+    ],
+    "invariants": [
+      "所有后端定义查询带 tenant_id 和 deleted = 0 条件",
+      "已发布流程不可删除和原地修改",
+      "边的 label、condition、default 字段端到端保持",
+      "只读画布不触发写操作",
+      "界面和错误提示使用中文"
+    ],
+    "constraints": [
+      "Spring Boot 3、JDK 17、MySQL、Flowable、Vue 3、TypeScript、Element Plus、Vue Flow",
+      "不直接操作 Flowable ACT_* 表",
+      "不实现服务任务和消息事件运行语义"
+    ],
+    "non_goals": ["BPMN 全量规范", "新的工作流运行引擎", "跨租户流程共享"]
+  },
+  "implementation_plan": {
+    "plan_status": "ready",
+    "human_document": "docs/engineering-control/plans/2026-08-06-workflow-designer-enterprise-ux-implementation-plan.md",
+    "approval": {"status":"approved","evidence":"用户确认企业级流程设计器改造方案"},
+    "tasks": [
+      {"id":"T1","title":"流程定义详情与草稿软删除","depends_on":[]},
+      {"id":"T2","title":"流程边字段完整保持与图校验回归","depends_on":["T1"]},
+      {"id":"T3","title":"BPMN 语义节点、箭头连线与上下文操作","depends_on":["T2"]},
+      {"id":"T4","title":"检查器与 Dagre 分层布局","depends_on":["T3"]},
+      {"id":"T5","title":"流程列表接入查看、删除和只读编辑器","depends_on":["T1","T4"]},
+      {"id":"T6","title":"集成验证与工程证据","depends_on":["T5"]}
+    ]
+  },
+  "control_seed": {
+    "status": "hypotheses-only",
+    "controlled_boundary": ["workflow definition API", "workflow graph JSON", "Vue Flow designer", "workflow definition page"],
+    "state_variables": ["definition status", "deleted flag", "version", "node/edge graph", "readonly mode", "layout direction", "build/test result"],
+    "inputs": ["create/save/publish/delete/view", "node and edge editing", "layout direction"],
+    "outputs": ["API response", "canvas", "Chinese error message", "Maven/npm evidence"],
+    "sensors": ["Maven tests", "npm build", "git diff check", "browser DOM and screenshot"],
+    "disturbances": ["legacy steps JSON", "published fixed version", "dark theme", "npm network", "Docker database"]
+  }
+}

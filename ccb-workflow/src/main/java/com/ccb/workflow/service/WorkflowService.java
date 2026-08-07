@@ -32,17 +32,48 @@ public class WorkflowService {
     private final WorkflowDefinitionValidator validator;
     private final FlowableWorkflowService flowableWorkflowService;
     private final WorkflowMonitorService workflowMonitorService;
+    private final WorkflowNodeLabelResolver nodeLabelResolver;
 
-    public WorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper, FlowableWorkflowService flowableWorkflowService, WorkflowMonitorService workflowMonitorService) {
+    public WorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper, FlowableWorkflowService flowableWorkflowService,
+                           WorkflowMonitorService workflowMonitorService, WorkflowNodeLabelResolver nodeLabelResolver) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.validator = new WorkflowDefinitionValidator(objectMapper);
         this.flowableWorkflowService = flowableWorkflowService;
         this.workflowMonitorService = workflowMonitorService;
+        this.nodeLabelResolver = nodeLabelResolver;
     }
 
     public List<Map<String, Object>> definitions(AuthUser user) {
-        return jdbc.queryForList("SELECT id, code, name, status, current_version, created_at FROM wf_definition WHERE tenant_id = ? AND deleted = 0 ORDER BY id DESC", user.tenantId());
+        return jdbc.queryForList("SELECT id, code, name, status, current_version, model_schema_version, created_at FROM wf_definition WHERE tenant_id = ? AND deleted = 0 ORDER BY id DESC", user.tenantId());
+    }
+
+    public Map<String, Object> definition(long definitionId, AuthUser user) {
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.code, d.name, d.status, d.current_version, d.model_schema_version, d.created_at, v.version_no, CAST(v.definition_json AS CHAR) AS definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = COALESCE(NULLIF(d.current_version, 0), (SELECT MAX(v2.version_no) FROM wf_version v2 WHERE v2.definition_id = d.id AND v2.tenant_id = d.tenant_id)) WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0", definitionId, user.tenantId());
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
+        return rows.get(0);
+    }
+
+    @Transactional
+    public void updateDefinition(long definitionId, String code, String name, String definitionJson, AuthUser user) {
+        if (enterpriseDefinition(definitionId, user.tenantId())) {
+            flowableWorkflowService.updateDefinition(definitionId, code, name, definitionJson, user);
+            return;
+        }
+        validator.parse(definitionJson);
+        Map<String, Object> definition = jdbc.queryForMap("SELECT status FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", definitionId, user.tenantId());
+        if (!"DRAFT".equals(String.valueOf(definition.get("status")))) throw new BusinessException(ErrorCode.CONFLICT, "已发布流程不能编辑，请复制后创建新版本");
+        jdbc.update("UPDATE wf_definition SET code = ?, name = ? WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 'DRAFT'", requireText(code, "流程编码"), requireText(name, "流程名称"), definitionId, user.tenantId());
+        jdbc.update("UPDATE wf_version SET definition_json = ? WHERE definition_id = ? AND tenant_id = ? AND status = 'DRAFT'", definitionJson, definitionId, user.tenantId());
+        audit(user, "workflow.definition.update");
+    }
+
+    @Transactional
+    public void deleteDefinition(long definitionId, AuthUser user) {
+        // Keep versions and instances for audit/history; only hide the definition from future configuration use.
+        int updated = jdbc.update("UPDATE wf_definition SET deleted = 1 WHERE id = ? AND tenant_id = ? AND deleted = 0", definitionId, user.tenantId());
+        if (updated == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
+        audit(user, "workflow.definition.delete");
     }
 
     @Transactional
@@ -68,9 +99,29 @@ public class WorkflowService {
     }
 
     @Transactional
+    public void unpublish(long definitionId, AuthUser user) {
+        if (enterpriseDefinition(definitionId, user.tenantId())) {
+            flowableWorkflowService.unpublish(definitionId, user);
+            return;
+        }
+        Map<String, Object> definition = jdbc.queryForMap("SELECT status, current_version, model_schema_version FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", definitionId, user.tenantId());
+        if (!"PUBLISHED".equals(String.valueOf(definition.get("status")))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "只有已发布流程才能取消发布");
+        }
+        int currentVersion = ((Number) definition.get("current_version")).intValue();
+        Map<String, Object> version = jdbc.queryForMap("SELECT definition_json, model_schema_version FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND version_no = ? AND status = 'PUBLISHED'", definitionId, user.tenantId(), currentVersion);
+        Integer nextVersion = jdbc.queryForObject("SELECT COALESCE(MAX(version_no), 0) + 1 FROM wf_version WHERE definition_id = ? AND tenant_id = ?", Integer.class, definitionId, user.tenantId());
+        int draftVersion = nextVersion == null ? currentVersion + 1 : nextVersion;
+        jdbc.update("INSERT INTO wf_version (id, tenant_id, definition_id, version_no, definition_json, model_schema_version, status) VALUES (?, ?, ?, ?, ?, ?, 'DRAFT')",
+                nextId(), user.tenantId(), definitionId, draftVersion, version.get("definition_json"), version.get("model_schema_version"));
+        jdbc.update("UPDATE wf_definition SET status = 'DRAFT', current_version = ? WHERE id = ? AND tenant_id = ? AND deleted = 0",
+                draftVersion, definitionId, user.tenantId());
+        audit(user, "workflow.definition.unpublish");
+    }
+    @Transactional
     public Map<String, Object> start(long definitionId, String businessKey, Map<String, Object> variables, AuthUser user) {
         if (enterpriseDefinition(definitionId, user.tenantId())) return flowableWorkflowService.start(definitionId, businessKey, variables, user);
-        Map<String, Object> definition = jdbc.queryForMap("SELECT d.current_version, v.definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.status = 'PUBLISHED' AND v.status = 'PUBLISHED'", definitionId, user.tenantId());
+        Map<String, Object> definition = jdbc.queryForMap("SELECT d.current_version, v.definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND v.status = 'PUBLISHED'", definitionId, user.tenantId());
         WorkflowDefinitionValidator.WorkflowGraph graph = validator.parse(String.valueOf(definition.get("definition_json")));
         long instanceId = nextId();
         jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id) VALUES (?, ?, ?, ?, ?, 'RUNNING', ?)", instanceId, user.tenantId(), definitionId, definition.get("current_version"), requireText(businessKey, "业务单号"), user.id());
@@ -91,10 +142,22 @@ public class WorkflowService {
         return workflowMonitorService.timeline(instanceId, user);
     }
 
+    public Map<String, Object> instanceDetail(long instanceId, AuthUser user) {
+        return workflowMonitorService.detail(instanceId, user);
+    }
+
+    public void deleteInstance(long instanceId, AuthUser user) {
+        workflowMonitorService.delete(instanceId, user);
+    }
+
+    public List<Map<String, Object>> done(AuthUser user) {
+        return nodeLabelResolver.decorateTasks(jdbc.queryForList("SELECT a.id, a.instance_id, a.task_id, a.action_code, a.comment, a.created_at, t.node_id, t.task_key, t.task_type, i.business_key, i.status AS instance_status, d.name AS definition_name FROM wf_task_action a JOIN wf_instance i ON i.id = a.instance_id AND i.tenant_id = a.tenant_id JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = a.tenant_id LEFT JOIN wf_task t ON t.id = a.task_id AND t.tenant_id = a.tenant_id WHERE a.tenant_id = ? AND a.operator_id = ? AND i.deleted = 0 ORDER BY a.created_at DESC, a.id DESC", user.tenantId(), user.id()), user.tenantId());
+    }
+
     public List<Map<String, Object>> inbox(AuthUser user) {
         List<Map<String, Object>> result = new ArrayList<>(flowableWorkflowService.inbox(user));
-        result.addAll(jdbc.queryForList("SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.status, COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key, i.status AS instance_status FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND t.assignee_id = ? AND t.flowable_task_id IS NULL AND t.status IN ('PENDING', 'SENT') ORDER BY t.id DESC", user.tenantId(), user.id()));
-        return result;
+        result.addAll(jdbc.queryForList("SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.status, COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key, i.status AS instance_status FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0 AND t.flowable_task_id IS NULL AND t.status IN ('PENDING', 'SENT') ORDER BY t.id DESC", user.tenantId(), user.id()));
+        return nodeLabelResolver.decorateTasks(result, user.tenantId());
     }
 
     @Transactional
@@ -160,7 +223,7 @@ public class WorkflowService {
     }
 
     private Map<String, Object> findPendingTask(long taskId, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT t.id, t.tenant_id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.parent_task_id, t.assignee_id, i.definition_id, i.version_no, i.starter_id FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.id = ? AND t.tenant_id = ? AND t.assignee_id = ? AND t.status = 'PENDING'", taskId, user.tenantId(), user.id());
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT t.id, t.tenant_id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.parent_task_id, t.assignee_id, i.definition_id, i.version_no, i.starter_id FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.id = ? AND t.tenant_id = ? AND i.deleted = 0 AND t.assignee_id = ? AND t.status = 'PENDING'", taskId, user.tenantId(), user.id());
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.CONFLICT, "任务已处理或已不属于当前账号");
         return rows.get(0);
     }

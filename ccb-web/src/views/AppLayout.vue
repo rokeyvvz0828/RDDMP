@@ -21,7 +21,7 @@ const tabsStore = useTabsStore()
 const settingsOpen = ref(false)
 const topNavigationVisible = computed(() => theme.layout === 'top' || theme.layout === 'mixed')
 const sideNavigationVisible = computed(() => theme.layout === 'side' || theme.layout === 'mixed')
-const fallbackTitles: Record<string, string> = { dashboard: '工作台', users: '用户管理', roles: '角色权限', orgs: '组织架构', menus: '菜单路由', params: '参数管理', 'role-permissions': '角色权限配置', definitions: '流程定义', inbox: '待办审批', providers: '模型服务商', models: '模型配置', routes: '能力路由', components: '组件示例' }
+const fallbackTitles: Record<string, string> = { dashboard: '工作台', users: '用户管理', roles: '角色权限', orgs: '组织架构', menus: '菜单路由', params: '参数管理', 'role-permissions': '角色权限配置', definitions: '流程定义', inbox: '待办审批', done: '流程已办', providers: '模型服务商', models: '模型配置', routes: '能力路由', components: '组件示例' }
 
 function findMenuTitle(nodes: RouteNode[], path: string): string | null {
   let matchPath = ''

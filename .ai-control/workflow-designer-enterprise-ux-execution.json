@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "topic": "workflow-designer-enterprise-ux",
+  "phase": "executing",
+  "status": "implemented",
+  "task_ids": ["T1", "T2", "T3", "T4", "T5"],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "changed_surfaces": [
+    {"path":"ccb-workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java","purpose":"新增流程详情和草稿软删除接口"},
+    {"path":"ccb-workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java","purpose":"租户隔离详情查询、草稿软删除和列表模型版本"},
+    {"path":"ccb-web/src/api/workflow.ts","purpose":"新增详情/删除 API 和完整流程边模型"},
+    {"path":"ccb-web/src/components/workflow/WorkflowDesigner.vue","purpose":"BPMN 节点、箭头、上下文菜单、边选择和 Dagre 布局"},
+    {"path":"ccb-web/src/components/workflow/WorkflowNode.vue","purpose":"节点语义形状和中文图标"},
+    {"path":"ccb-web/src/components/workflow/WorkflowNodeInspector.vue","purpose":"节点和连线配置检查器"},
+    {"path":"ccb-web/src/views/WorkflowView.vue","purpose":"流程图查看、草稿删除和只读发布版本"},
+    {"path":"ccb-web/src/styles.css","purpose":"流程画布、BPMN 节点和上下文菜单样式"},
+    {"path":"ccb-web/package.json","purpose":"加入 Dagre 依赖"},
+    {"path":"ccb-web/package-lock.json","purpose":"锁定 Dagre 2.0.4"}
+  ],
+  "commands": [
+    {"command":"npm run build","exit_code":0,"salient_output":"vue-tsc 和 Vite 构建通过"},
+    {"command":"mvn -pl ccb-workflow -am test -DskipTests=false","exit_code":0,"salient_output":"8 个测试通过"},
+    {"command":"mvn -pl ccb-boot -am compile -DskipTests","exit_code":0,"salient_output":"Spring Boot 反应堆编译通过"},
+    {"command":"git diff --check","exit_code":0,"salient_output":"无空白错误"}
+  ],
+  "browser_checks": [
+    {"check":"流程定义列表出现查看流程图、发布、发起审批和删除草稿入口","result":"pass","evidence":"本地 5173 DOM 快照"},
+    {"check":"新建流程显示 BPMN 语义节点和有向箭头","result":"pass","evidence":"本地 5173 DOM 快照和截图"},
+    {"check":"添加条件网关后节点检查器联动","result":"pass","evidence":"DOM 出现条件网关检查器"},
+    {"check":"点击连线打开连线检查器","result":"pass","evidence":"DOM 出现连线配置"},
+    {"check":"节点右键菜单包含编辑、复制、添加和删除","result":"pass","evidence":"DOM 出现上下文菜单"},
+    {"check":"已发布详情读取","result":"blocked","evidence":"当前 127.0.0.1:8080 后端未启动，API 请求失败；前端 5173 可访问"}
+  ],
+  "invariants_checked": [
+    {"invariant":"详情和删除 SQL 带 tenant_id、deleted 条件","result":"pass","evidence":"WorkflowService SQL 静态检查"},
+    {"invariant":"已发布流程删除接口拒绝","result":"pass","evidence":"状态条件和中文冲突错误"},
+    {"invariant":"只读画布不写回模型","result":"pass","evidence":"readonly 分支和构建结果"},
+    {"invariant":"边 label、condition、default 前端模型保持","result":"pass","evidence":"WorkflowEdgeModel 和 toGraph/updateEdge"}
+  ],
+  "disturbances": [
+    {"event":"Windows sandbox refused apply_patch","impact":"使用完整原文匹配的 UTF-8 无 BOM PowerShell 回退写入"},
+    {"event":"共享 .ai-control/state.json 已存在其他未收敛任务","impact":"未强制覆盖历史账本，保留本主题交接和执行证据文件"}
+  ],
+  "unresolved_items": ["启动 8080 后端后再进行真实详情/删除 API 和已发布只读流程图联调"],
+  "recommended_next": "observe"
+}

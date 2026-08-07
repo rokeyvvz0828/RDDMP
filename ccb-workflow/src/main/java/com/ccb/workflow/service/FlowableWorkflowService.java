@@ -72,10 +72,24 @@ public class FlowableWorkflowService {
     }
 
     @Transactional
+    public void updateDefinition(long definitionId, String code, String name, String definitionJson, AuthUser user) {
+        WorkflowDefinitionModel model = modelValidator.requireValid(definitionJson);
+        Map<String, Object> definition = findDefinition(definitionId, user.tenantId());
+        if (!"DRAFT".equals(String.valueOf(definition.get("status")))) throw new BusinessException(ErrorCode.CONFLICT, "已发布流程不能编辑，请复制后创建新版本");
+        Map<String, Object> version = jdbc.queryForMap("SELECT version_no FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND status = 'DRAFT' ORDER BY version_no DESC LIMIT 1", definitionId, user.tenantId());
+        jdbc.update("UPDATE wf_definition SET code = ?, name = ?, model_schema_version = ? WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 'DRAFT'", requireText(code, "流程编码"), requireText(name, "流程名称"), model.schemaVersion(), definitionId, user.tenantId());
+        jdbc.update("UPDATE wf_version SET definition_json = ?, model_schema_version = ? WHERE definition_id = ? AND tenant_id = ? AND version_no = ? AND status = 'DRAFT'", definitionJson, model.schemaVersion(), definitionId, user.tenantId(), version.get("version_no"));
+        auditService.record(user, "DEFINITION_UPDATED", definitionId, ((Number) version.get("version_no")).intValue(), null, null, null, Map.of("code", code));
+    }
+
+    @Transactional
     public void publish(long definitionId, AuthUser user) {
         Map<String, Object> definition = findDefinition(definitionId, user.tenantId());
         Map<String, Object> version = jdbc.queryForMap("SELECT version_no, definition_json FROM wf_version WHERE definition_id = ? AND tenant_id = ? ORDER BY version_no DESC LIMIT 1", definitionId, user.tenantId());
         String json = String.valueOf(version.get("definition_json"));
+        // Validate before deployment so invalid gateway models return a business error
+        // instead of being converted into a generic deployment failure.
+        modelValidator.requireValid(json);
         BpmnModelCompiler.CompiledBpmn compiled = compiler.compile(String.valueOf(definition.get("code")), json);
         Deployment deployment = repositoryService.createDeployment()
                 .name(String.valueOf(definition.get("name")))
@@ -95,6 +109,22 @@ public class FlowableWorkflowService {
     }
 
     @Transactional
+    public void unpublish(long definitionId, AuthUser user) {
+        Map<String, Object> definition = findDefinition(definitionId, user.tenantId());
+        if (!"PUBLISHED".equals(String.valueOf(definition.get("status")))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "只有已发布流程才能取消发布");
+        }
+        int currentVersion = ((Number) definition.get("current_version")).intValue();
+        Map<String, Object> version = jdbc.queryForMap("SELECT definition_json, model_schema_version FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND version_no = ? AND status = 'PUBLISHED'", definitionId, user.tenantId(), currentVersion);
+        Integer nextVersion = jdbc.queryForObject("SELECT COALESCE(MAX(version_no), 0) + 1 FROM wf_version WHERE definition_id = ? AND tenant_id = ?", Integer.class, definitionId, user.tenantId());
+        int draftVersion = nextVersion == null ? currentVersion + 1 : nextVersion;
+        jdbc.update("INSERT INTO wf_version (id, tenant_id, definition_id, version_no, definition_json, model_schema_version, status) VALUES (?, ?, ?, ?, ?, ?, 'DRAFT')",
+                nextId(), user.tenantId(), definitionId, draftVersion, version.get("definition_json"), version.get("model_schema_version"));
+        jdbc.update("UPDATE wf_definition SET status = 'DRAFT', current_version = ?, bpmn_xml = NULL, deployment_id = NULL, node_mapping_json = NULL WHERE id = ? AND tenant_id = ? AND deleted = 0",
+                draftVersion, definitionId, user.tenantId());
+        auditService.record(user, "DEFINITION_UNPUBLISHED", definitionId, draftVersion, null, null, null, Map.of("previousVersion", currentVersion));
+    }
+    @Transactional
     public Map<String, Object> start(long definitionId, String businessKey, Map<String, Object> inputVariables, AuthUser user) {
         Map<String, Object> definition = findPublishedDefinition(definitionId, user.tenantId());
         String json = String.valueOf(definition.get("definition_json"));
@@ -113,7 +143,7 @@ public class FlowableWorkflowService {
     }
 
     public List<Map<String, Object>> inbox(AuthUser user) {
-        return jdbc.queryForList("SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.status, COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key, i.status AS instance_status FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND t.assignee_id = ? AND t.flowable_task_id IS NOT NULL AND t.status IN ('PENDING', 'SENT') ORDER BY t.id DESC", user.tenantId(), user.id());
+        return jdbc.queryForList("SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.status, COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key, i.status AS instance_status FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0 AND t.flowable_task_id IS NOT NULL AND t.status IN ('PENDING', 'SENT') ORDER BY t.id DESC", user.tenantId(), user.id());
     }
 
     @Transactional
@@ -276,7 +306,7 @@ public class FlowableWorkflowService {
     private WorkflowDefinitionValidator.WorkflowGraph graph(String json) {
         WorkflowDefinitionModel model = modelAdapter.adapt(json);
         List<WorkflowDefinitionValidator.WorkflowNode> nodes = model.nodes().stream().map(node -> new WorkflowDefinitionValidator.WorkflowNode(node.id(), node.type(), node.label(), new WorkflowDefinitionValidator.Position(node.position().x(), node.position().y()), node.config())).toList();
-        List<WorkflowDefinitionValidator.WorkflowEdge> edges = model.edges().stream().map(edge -> new WorkflowDefinitionValidator.WorkflowEdge(edge.id(), edge.source(), edge.target())).toList();
+        List<WorkflowDefinitionValidator.WorkflowEdge> edges = model.edges().stream().map(edge -> new WorkflowDefinitionValidator.WorkflowEdge(edge.id(), edge.source(), edge.target(), edge.condition(), edge.defaultFlow())).toList();
         return new WorkflowDefinitionValidator.WorkflowGraph(model.schemaVersion(), nodes, edges);
     }
 

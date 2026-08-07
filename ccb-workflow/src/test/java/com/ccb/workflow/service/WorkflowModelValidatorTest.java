@@ -77,4 +77,36 @@ class WorkflowModelValidatorTest {
         assertEquals(1, result.model().schemaVersion());
         assertEquals("legacy-MANAGER", result.model().nodes().get(1).id());
     }
+    @Test
+    void rejectsConditionExpressionOnOrdinaryEdge() {
+        var result = validator.validate("""
+                {"schemaVersion":2,"variables":[{"name":"amount","type":"DECIMAL"}],"nodes":[
+                  {"id":"start","type":"START","label":"开始","config":{}},
+                  {"id":"approval","type":"APPROVAL","label":"审批","config":{"assigneeType":"STARTER","mode":"ANY"}},
+                  {"id":"end","type":"END","label":"结束","config":{}}
+                ],"edges":[
+                  {"id":"e1","source":"start","target":"approval"},
+                  {"id":"e2","source":"approval","target":"end","condition":"${amount > 100}"}
+                ]}
+                """);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(error -> error.code().equals("EDGE_CONDITION_NOT_ALLOWED")));
+    }
+    @Test
+    void reportsChineseMessageWhenApprovalAssigneeIsMissing() {
+        var result = validator.validate("""
+                {"schemaVersion":2,"variables":[],"nodes":[
+                  {"id":"start","type":"START","label":"发起","config":{}},
+                  {"id":"approval","type":"APPROVAL","label":"部门审批","config":{"assigneeType":"USER","assigneeIds":[],"mode":"ANY"}},
+                  {"id":"end","type":"END","label":"结束","config":{}}
+                ],"edges":[
+                  {"id":"e1","source":"start","target":"approval"},
+                  {"id":"e2","source":"approval","target":"end"}
+                ]}
+                """);
+
+        var error = result.errors().stream().filter(item -> item.code().equals("ASSIGNEE_MISSING")).findFirst().orElseThrow();
+        assertEquals("审批节点必须配置审批人或角色", error.message());
+    }
 }
