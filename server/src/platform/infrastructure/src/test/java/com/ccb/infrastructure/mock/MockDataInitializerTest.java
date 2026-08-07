@@ -62,4 +62,30 @@ class MockDataInitializerTest {
 
         assertThrows(IllegalStateException.class, () -> initializer.run(new DefaultApplicationArguments()));
     }
+
+    @Test
+    void upsertsBusinessFormMetadataRows() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResourceLoader resources = mock(ResourceLoader.class);
+        Resource resource = mock(Resource.class);
+        when(resources.getResource("classpath:mock/mock-data.json")).thenReturn(resource);
+        when(resource.getInputStream()).thenReturn(new ByteArrayInputStream("""
+                {
+                  "datasetKey": "test",
+                  "datasetVersion": "1",
+                  "database": [{
+                    "table": "biz_form_scope",
+                    "keyColumns": ["id"],
+                    "rows": [{"id": 910000000009001, "tenant_id": 1, "scope_key": "delivery.work-order", "scope_name": "交付工单", "module_key": "delivery", "entity_type": "work_order", "form_key": "default", "permission_prefix": "delivery:work-order", "published_revision_id": null, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1}]
+                  }]
+                }
+                """.getBytes(StandardCharsets.UTF_8)));
+        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+
+        MockDataProperties properties = new MockDataProperties();
+        properties.setResource("classpath:mock/mock-data.json");
+        new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties).run(new DefaultApplicationArguments());
+
+        verify(jdbc, atLeast(2)).update(anyString(), any(Object[].class));
+    }
 }

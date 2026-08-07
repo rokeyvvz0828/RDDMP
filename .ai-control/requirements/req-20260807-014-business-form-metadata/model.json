@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "system_boundary": {
+    "input": "registered business scope, field definitions, rules and options",
+    "controller": "future platform form metadata service",
+    "actuator": "future public API and dynamic form/list consumers",
+    "sensor": "revision status, typed value indexes, audit records and schema checks",
+    "external_boundary": "existing dictionary, organization, user, role, attachment and permission contracts"
+  },
+  "state_variables": [
+    "scope enabled and published revision",
+    "section and field visibility/layout/order",
+    "action and condition rules",
+    "typed entity field values",
+    "configuration revision status"
+  ],
+  "invariants": [
+    "tenant_id is present on every table",
+    "field_key is stable within a scope and labels are not identifiers",
+    "core business data remains in business tables",
+    "value columns match the declared value_type",
+    "client field names never become SQL identifiers",
+    "published configuration is snapshotable and rollbackable"
+  ],
+  "disturbances": [
+    "configuration load failure",
+    "status or option source drift",
+    "deleted field definition referenced by old values",
+    "high-cardinality extension-field query"
+  ],
+  "control_actions": [
+    "validate scope and field allowlist",
+    "resolve published revision",
+    "apply action/status/role rules",
+    "validate typed values server-side",
+    "query only indexed and configured fields"
+  ]
+}

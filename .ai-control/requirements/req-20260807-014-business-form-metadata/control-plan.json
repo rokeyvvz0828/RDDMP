@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260807-014-business-form-metadata",
+  "phase": "converged",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "publish business form metadata contract and schema design",
+      "write_scope": ["docs/integration/business-form-metadata-contract.md", "docs/requirements/REQ-20260807-014-business-form-metadata/**"],
+      "acceptance": ["RADAR-inspired separation of definitions and values", "status-driven rules", "typed value mapping", "mobile and query safety rules"],
+      "status": "completed"
+    },
+    {
+      "id": "T2",
+      "goal": "add additive Flyway database tables and indexes",
+      "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V32__business_form_metadata.sql"],
+      "acceptance": ["seven metadata tables", "tenant and soft-delete/version controls", "typed value indexes", "no existing migration changes"],
+      "status": "completed"
+    },
+    {
+      "id": "T3",
+      "goal": "run governance, migration and diff checks",
+      "write_scope": [".ai-control/requirements/req-20260807-014-business-form-metadata/**"],
+      "acceptance": ["governance passes", "Flyway naming passes", "git diff check passes"],
+      "status": "completed"
+    }
+  ],
+  "stop_conditions": ["existing migration modified", "SQL syntax or duplicate Flyway version", "business logic or Java package changed"],
+  "rollback": "Stop consumers of the additive metadata tables; do not hand-delete production tables."
+}
