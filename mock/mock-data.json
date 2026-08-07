@@ -1,0 +1,242 @@
+{
+  "datasetKey": "rddmp-local-platform",
+  "datasetVersion": "2026.08.07.1",
+  "description": "RDDMP 本地研发演示数据。所有数据均为虚构内容，使用高位保留 ID。",
+  "catalog": [
+    {
+      "module": "system",
+      "name": "系统管理",
+      "features": ["用户管理", "角色权限", "组织架构", "菜单路由", "参数管理"],
+      "entry": "/system",
+      "dataStrategy": "database",
+      "tables": ["sys_org", "sys_user", "sys_role", "sys_user_role", "sys_role_menu", "sys_role_permission", "sys_dict_type", "sys_dict_item", "sys_config"]
+    },
+    {
+      "module": "workflow",
+      "name": "工作流",
+      "features": ["流程定义", "审批待办", "流程已办", "流程监控", "流程审计"],
+      "entry": "/workflow",
+      "dataStrategy": "database",
+      "tables": ["wf_definition", "wf_version", "wf_instance", "wf_task", "wf_task_action", "wf_audit_event"]
+    },
+    {
+      "module": "ai",
+      "name": "智能能力",
+      "features": ["服务商配置", "模型管理", "能力路由", "执行审计"],
+      "entry": "/ai",
+      "dataStrategy": "database",
+      "tables": ["ai_provider", "ai_model", "ai_route", "ai_execution"]
+    },
+    {
+      "module": "notifications",
+      "name": "系统消息",
+      "features": ["未读数量", "消息列表", "标记已读", "全部已读"],
+      "entry": "global shell",
+      "dataStrategy": "database",
+      "tables": ["sys_notification", "sys_user_notification"]
+    },
+    {
+      "module": "file-preview",
+      "name": "文件预览",
+      "features": ["文件能力查询", "受控上传", "在线预览"],
+      "entry": "shared component",
+      "dataStrategy": "external-local-service",
+      "tables": []
+    },
+    {
+      "module": "delivery-showcase",
+      "name": "交付示范中心",
+      "features": ["列表检索", "标准表单", "分步表单", "详情抽屉", "流程审批", "柱状图", "饼图", "折线图", "甘特图"],
+      "entry": "/delivery-showcase",
+      "dataStrategy": "frontend-session-mock",
+      "source": "web/src/modules/delivery-showcase/mock.ts",
+      "tables": []
+    },
+    {
+      "module": "new-business-template",
+      "name": "后续业务模块模板",
+      "features": ["列表", "查询", "表单", "审批", "通知", "附件", "统计"],
+      "entry": "new module contract",
+      "dataStrategy": "add-database-table-and-register",
+      "tables": []
+    }
+  ],
+  "database": [
+    {
+      "table": "sys_org",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000001, "tenant_id": 1, "parent_id": 1, "org_code": "MOCK_PRODUCT", "org_name": "产品交付中心", "leader_id": 910000000000001, "sort_no": 10, "status": 1, "deleted": 0},
+        {"id": 910000000000002, "tenant_id": 1, "parent_id": 1, "org_code": "MOCK_TECH", "org_name": "研发工程中心", "leader_id": 910000000000002, "sort_no": 20, "status": 1, "deleted": 0},
+        {"id": 910000000000003, "tenant_id": 1, "parent_id": 1, "org_code": "MOCK_QUALITY", "org_name": "质量保障中心", "leader_id": 910000000000003, "sort_no": 30, "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_user",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000001, "tenant_id": 1, "username": "mock.product", "password_hash": "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", "display_name": "演示产品经理", "mobile_phone": "13800000001", "org_id": 910000000000001, "status": 1, "deleted": 0},
+        {"id": 910000000000002, "tenant_id": 1, "username": "mock.engineer", "password_hash": "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", "display_name": "演示研发工程师", "mobile_phone": "13800000002", "org_id": 910000000000002, "status": 1, "deleted": 0},
+        {"id": 910000000000003, "tenant_id": 1, "username": "mock.qa", "password_hash": "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", "display_name": "演示测试负责人", "mobile_phone": "13800000003", "org_id": 910000000000003, "status": 1, "deleted": 0},
+        {"id": 910000000000004, "tenant_id": 1, "username": "mock.release", "password_hash": "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", "display_name": "演示投产负责人", "mobile_phone": "13800000004", "org_id": 910000000000002, "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_role",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000101, "tenant_id": 1, "role_code": "MOCK_DELIVERY_OWNER", "role_name": "演示交付负责人", "status": 1, "deleted": 0},
+        {"id": 910000000000102, "tenant_id": 1, "role_code": "MOCK_ENGINEERING_MEMBER", "role_name": "演示研发成员", "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_user_role",
+      "keyColumns": ["user_id", "role_id"],
+      "rows": [
+        {"user_id": 910000000000001, "role_id": 910000000000101, "tenant_id": 1},
+        {"user_id": 910000000000002, "role_id": 910000000000102, "tenant_id": 1},
+        {"user_id": 910000000000003, "role_id": 910000000000102, "tenant_id": 1},
+        {"user_id": 910000000000004, "role_id": 910000000000102, "tenant_id": 1}
+      ]
+    },
+    {
+      "table": "sys_role_menu",
+      "keyColumns": ["role_id", "menu_id"],
+      "rows": [
+        {"role_id": 910000000000101, "menu_id": 100, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 101, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 102, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 103, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 104, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 105, "tenant_id": 1},
+        {"role_id": 910000000000101, "menu_id": 200, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 201, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 202, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 203, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 204, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 300, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 301, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 302, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 303, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 400, "tenant_id": 1}, {"role_id": 910000000000101, "menu_id": 500, "tenant_id": 1},
+        {"role_id": 910000000000102, "menu_id": 200, "tenant_id": 1}, {"role_id": 910000000000102, "menu_id": 201, "tenant_id": 1}, {"role_id": 910000000000102, "menu_id": 202, "tenant_id": 1}, {"role_id": 910000000000102, "menu_id": 203, "tenant_id": 1}, {"role_id": 910000000000102, "menu_id": 204, "tenant_id": 1}, {"role_id": 910000000000102, "menu_id": 400, "tenant_id": 1}, {"role_id": 910000000000102, "menu_id": 500, "tenant_id": 1}
+      ]
+    },
+    {
+      "table": "sys_role_permission",
+      "keyColumns": ["role_id", "permission_id"],
+      "rows": [
+        {"role_id": 910000000000101, "permission_id": 1011, "tenant_id": 1}, {"role_id": 910000000000101, "permission_id": 1021, "tenant_id": 1}, {"role_id": 910000000000101, "permission_id": 1031, "tenant_id": 1}, {"role_id": 910000000000101, "permission_id": 1041, "tenant_id": 1}, {"role_id": 910000000000101, "permission_id": 1051, "tenant_id": 1}, {"role_id": 910000000000101, "permission_id": 2001, "tenant_id": 1}, {"role_id": 910000000000101, "permission_id": 3001, "tenant_id": 1}, {"role_id": 910000000000101, "permission_id": 4001, "tenant_id": 1}, {"role_id": 910000000000101, "permission_id": 5001, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 2001, "tenant_id": 1}, {"role_id": 910000000000102, "permission_id": 4001, "tenant_id": 1}, {"role_id": 910000000000102, "permission_id": 5001, "tenant_id": 1}
+      ]
+    },
+    {
+      "table": "sys_dict_type",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000201, "tenant_id": 1, "dict_code": "MOCK_DELIVERY_STATUS", "dict_name": "演示交付状态", "status": 1, "deleted": 0},
+        {"id": 910000000000202, "tenant_id": 1, "dict_code": "MOCK_RELEASE_STAGE", "dict_name": "演示交付阶段", "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_dict_item",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000211, "tenant_id": 1, "dict_type_id": 910000000000201, "item_value": "RUNNING", "item_label": "进行中", "sort_no": 10, "status": 1, "deleted": 0},
+        {"id": 910000000000212, "tenant_id": 1, "dict_type_id": 910000000000201, "item_value": "RISK", "item_label": "有风险", "sort_no": 20, "status": 1, "deleted": 0},
+        {"id": 910000000000213, "tenant_id": 1, "dict_type_id": 910000000000201, "item_value": "DONE", "item_label": "已完成", "sort_no": 30, "status": 1, "deleted": 0},
+        {"id": 910000000000221, "tenant_id": 1, "dict_type_id": 910000000000202, "item_value": "REQUIREMENT", "item_label": "需求", "sort_no": 10, "status": 1, "deleted": 0},
+        {"id": 910000000000222, "tenant_id": 1, "dict_type_id": 910000000000202, "item_value": "DEVELOPMENT", "item_label": "研发", "sort_no": 20, "status": 1, "deleted": 0},
+        {"id": 910000000000223, "tenant_id": 1, "dict_type_id": 910000000000202, "item_value": "TEST", "item_label": "测试", "sort_no": 30, "status": 1, "deleted": 0},
+        {"id": 910000000000224, "tenant_id": 1, "dict_type_id": 910000000000202, "item_value": "RELEASE", "item_label": "投产", "sort_no": 40, "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_config",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000301, "tenant_id": 1, "category_id": 4001, "config_key": "mock.data.dataset", "config_value": "rddmp-local-platform", "config_type": "string", "status": 1, "remark": "本地 mock 数据集标识", "deleted": 0},
+        {"id": 910000000000302, "tenant_id": 1, "category_id": 4001, "config_key": "mock.data.refresh-policy", "config_value": "startup-upsert", "config_type": "string", "status": 1, "remark": "本地启动时幂等同步", "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_notification",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000401, "tenant_id": 1, "event_id": "MOCK_RELEASE_READY", "business_type": "delivery", "business_key": "DLV-MOCK-001", "title": "版本交付待审批", "content": "演示版本 v2.6.1 已完成测试，请进入流程审批查看。", "notification_level": "INFO", "source_name": "交付示范中心", "action_path": "/delivery-showcase?view=approval", "created_by": 1, "created_at": "2026-08-06 09:20:00"},
+        {"id": 910000000000402, "tenant_id": 1, "event_id": "MOCK_MIGRATION_RISK", "business_type": "delivery", "business_key": "DLV-MOCK-002", "title": "数据迁移存在风险", "content": "演示迁移任务校验吞吐低于计划，请查看风险清单。", "notification_level": "WARNING", "source_name": "交付示范中心", "action_path": "/delivery-showcase?view=projects", "created_by": 1, "created_at": "2026-08-06 10:05:00"},
+        {"id": 910000000000403, "tenant_id": 1, "event_id": "MOCK_SYSTEM_NOTICE", "business_type": "system", "business_key": "MOCK-SYSTEM-001", "title": "本地演示数据已加载", "content": "当前环境已加载统一 mock 数据，可用于功能查询和界面联调。", "notification_level": "SUCCESS", "source_name": "工程交付平台", "action_path": null, "created_by": 1, "created_at": "2026-08-06 08:00:00"}
+      ]
+    },
+    {
+      "table": "sys_user_notification",
+      "keyColumns": ["notification_id", "user_id"],
+      "rows": [
+        {"notification_id": 910000000000401, "tenant_id": 1, "user_id": 1, "is_read": 0, "created_at": "2026-08-06 09:20:00"},
+        {"notification_id": 910000000000402, "tenant_id": 1, "user_id": 1, "is_read": 0, "created_at": "2026-08-06 10:05:00"},
+        {"notification_id": 910000000000403, "tenant_id": 1, "user_id": 1, "is_read": 1, "read_at": "2026-08-06 08:10:00", "created_at": "2026-08-06 08:00:00"}
+      ]
+    },
+    {
+      "table": "ai_provider",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000501, "tenant_id": 1, "provider_code": "MOCK_LOCAL", "provider_name": "本地演示服务商", "endpoint": "http://mock.local/ai", "status": 1, "deleted": 0},
+        {"id": 910000000000502, "tenant_id": 1, "provider_code": "MOCK_ARCHIVE", "provider_name": "归档演示服务商", "endpoint": "http://mock.archive/ai", "status": 0, "deleted": 0}
+      ]
+    },
+    {
+      "table": "ai_model",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000511, "tenant_id": 1, "provider_id": 910000000000501, "model_code": "mock-delivery-assistant", "model_name": "交付分析演示模型", "capabilities": "delivery.summary,delivery.risk", "credential_secret": "[mock-only]", "status": 1, "deleted": 0},
+        {"id": 910000000000512, "tenant_id": 1, "provider_id": 910000000000501, "model_code": "mock-requirement-reviewer", "model_name": "需求评审演示模型", "capabilities": "requirement.review", "credential_secret": "[mock-only]", "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "ai_route",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000521, "tenant_id": 1, "capability": "delivery.summary", "model_id": 910000000000511, "priority": 10, "status": 1, "deleted": 0},
+        {"id": 910000000000522, "tenant_id": 1, "capability": "delivery.risk", "model_id": 910000000000511, "priority": 10, "status": 1, "deleted": 0},
+        {"id": 910000000000523, "tenant_id": 1, "capability": "requirement.review", "model_id": 910000000000512, "priority": 10, "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "wf_definition",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000601, "tenant_id": 1, "code": "MOCK_DELIVERY_RELEASE", "name": "演示版本交付审批", "status": "PUBLISHED", "current_version": 1, "deleted": 0},
+        {"id": 910000000000602, "tenant_id": 1, "code": "MOCK_DATA_MIGRATION", "name": "演示数据迁移审批", "status": "DRAFT", "current_version": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "wf_version",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000611, "tenant_id": 1, "definition_id": 910000000000601, "version_no": 1, "definition_json": {"schemaVersion": 2, "variables": [{"name": "releaseVersion", "type": "STRING", "required": true}], "formBindings": [], "nodes": [{"id": "start", "type": "START", "label": "发起", "position": {"x": 100, "y": 160}, "config": {}}, {"id": "approval-release", "type": "APPROVAL", "label": "版本交付审批", "position": {"x": 400, "y": 160}, "config": {"assigneeType": "USER", "assigneeIds": [910000000000001], "mode": "ANY", "emptyAssigneeAction": "ERROR", "actionPolicy": {"allowedActions": ["APPROVE", "REJECT", "RETURN", "ADD_SIGN", "CC"]}}}, {"id": "end", "type": "END", "label": "结束", "position": {"x": 700, "y": 160}, "config": {}}], "edges": [{"id": "mock-release-start", "source": "start", "target": "approval-release", "label": null, "condition": null, "default": false}, {"id": "mock-release-end", "source": "approval-release", "target": "end", "label": null, "condition": null, "default": false}]}, "model_schema_version": 2, "status": "PUBLISHED"},
+        {"id": 910000000000612, "tenant_id": 1, "definition_id": 910000000000602, "version_no": 1, "definition_json": {"schemaVersion": 2, "variables": [{"name": "migrationRows", "type": "NUMBER", "required": true}], "formBindings": [], "nodes": [{"id": "start", "type": "START", "label": "发起", "position": {"x": 100, "y": 160}, "config": {}}, {"id": "approval-migration", "type": "APPROVAL", "label": "迁移方案审批", "position": {"x": 400, "y": 160}, "config": {"assigneeType": "USER", "assigneeIds": [910000000000003], "mode": "ANY", "emptyAssigneeAction": "ERROR", "actionPolicy": {"allowedActions": ["APPROVE", "REJECT", "RETURN", "ADD_SIGN", "CC"]}}}, {"id": "end", "type": "END", "label": "结束", "position": {"x": 700, "y": 160}, "config": {}}], "edges": [{"id": "mock-migration-start", "source": "start", "target": "approval-migration", "label": null, "condition": null, "default": false}, {"id": "mock-migration-end", "source": "approval-migration", "target": "end", "label": null, "condition": null, "default": false}]}, "model_schema_version": 2, "status": "DRAFT"}
+      ]
+    },
+    {
+      "table": "wf_instance",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000701, "tenant_id": 1, "definition_id": 910000000000601, "version_no": 1, "business_key": "MOCK-REL-2026-001", "status": "RUNNING", "deleted": 0, "starter_id": 1, "variables_json": {"releaseVersion": "v2.6.1", "stage": "投产"}, "created_at": "2026-08-06 09:10:00"},
+        {"id": 910000000000702, "tenant_id": 1, "definition_id": 910000000000601, "version_no": 1, "business_key": "MOCK-REL-2026-002", "status": "APPROVED", "deleted": 0, "starter_id": 1, "variables_json": {"releaseVersion": "v2.6.0", "stage": "投产"}, "created_at": "2026-08-04 14:00:00"}
+      ]
+    },
+    {
+      "table": "wf_task",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000711, "tenant_id": 1, "instance_id": 910000000000701, "task_key": "approval-release", "node_id": "approval-release", "task_type": "APPROVAL", "task_group_key": "mock-rel-001", "assignee_type": "USER", "assignee_name": "演示产品经理", "assignee_id": 910000000000001, "status": "PENDING", "created_at": "2026-08-06 09:10:00"},
+        {"id": 910000000000712, "tenant_id": 1, "instance_id": 910000000000702, "task_key": "approval-release", "node_id": "approval-release", "task_type": "APPROVAL", "task_group_key": "mock-rel-002", "assignee_type": "USER", "assignee_name": "演示产品经理", "assignee_id": 910000000000001, "status": "APPROVED", "comment": "版本验证完成，同意投产。", "completed_at": "2026-08-05 16:30:00", "created_at": "2026-08-04 14:00:00"}
+      ]
+    },
+    {
+      "table": "wf_task_action",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000721, "tenant_id": 1, "instance_id": 910000000000702, "task_id": 910000000000712, "action_code": "APPROVE", "operator_id": 1, "comment": "版本验证完成，同意投产。", "payload_json": {"source": "mock"}, "created_at": "2026-08-05 16:30:00"}
+      ]
+    },
+    {
+      "table": "wf_audit_event",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000000731, "tenant_id": 1, "definition_id": 910000000000601, "version_no": 1, "instance_id": 910000000000701, "event_type": "INSTANCE_STARTED", "operator_id": 1, "reason": "本地演示流程已发起", "payload_json": {"businessKey": "MOCK-REL-2026-001"}, "created_at": "2026-08-06 09:10:00"},
+        {"id": 910000000000732, "tenant_id": 1, "definition_id": 910000000000601, "version_no": 1, "instance_id": 910000000000702, "task_id": 910000000000712, "event_type": "TASK_APPROVED", "operator_id": 1, "reason": "版本验证完成，同意投产。", "payload_json": {"action": "APPROVE"}, "created_at": "2026-08-05 16:30:00"}
+      ]
+    }
+  ],
+  "frontend": [
+    {"module": "delivery-showcase", "source": "web/src/modules/delivery-showcase/mock.ts", "sync": "frontend-session", "note": "保留组件示例中的新增、编辑、重置和图表演示状态。"}
+  ]
+}

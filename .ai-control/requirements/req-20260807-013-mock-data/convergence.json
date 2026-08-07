@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "requirement_id": "REQ-20260807-013-mock-data",
+  "control_prefix": "req-20260807-013-mock-data",
+  "phase": "converged",
+  "result": "implemented",
+  "must_acceptance": {
+    "central_dataset": "passed",
+    "local_only_idempotent_loader": "passed",
+    "current_domains_catalogued": "passed",
+    "production_disabled": "passed",
+    "build_and_governance": "passed"
+  },
+  "known_risks": ["Docker/MySQL end-to-end startup was not run in this environment", "local mock-owned rows are overwritten on enabled restart"],
+  "rollback": "set MOCK_DATA_ENABLED=false; restore local database if mock-owned rows need to be discarded",
+  "release_verification": "Before team use, start MySQL with local profile and confirm startup log plus sys_mock_dataset_state row.",
+  "recorded_at": "2026-08-07T11:10:00+08:00"
+}

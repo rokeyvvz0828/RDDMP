@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "requirement_id": "REQ-20260807-013-mock-data",
+  "objective": "建立 local profile 下可重复执行、可版本维护的统一 mock 数据源。",
+  "scope": [
+    "mock/mock-data.json",
+    "infrastructure mock loader",
+    "local startup configuration",
+    "mock dataset state migration",
+    "mock data contract documentation"
+  ],
+  "non_goals": [
+    "修改业务 API 和现有业务逻辑",
+    "写入 Flowable ACT_* 引擎表",
+    "生产环境自动灌入演示数据",
+    "将纯前端交付示范会话状态迁移到后端"
+  ],
+  "decisions": [
+    "JSON is the maintained source; loader uses a table and column allowlist.",
+    "Local-only opt-in synchronization runs after Flyway through ApplicationRunner.",
+    "Rows use deterministic high IDs and upsert semantics; no destructive cleanup is performed.",
+    "Dataset version and SHA-256 are recorded in sys_mock_dataset_state."
+  ],
+  "risks": [
+    "Local restart overwrites rows owned by the mock dataset; disable the switch before manual data exploration.",
+    "New backend tables require an allowlist entry and data contract update before they can be seeded."
+  ],
+  "status": "approved-by-user-request",
+  "created_at": "2026-08-07T00:00:00+08:00"
+}

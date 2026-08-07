@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "system_boundary": {
+    "input": "classpath mock/mock-data.json",
+    "controller": "MockDataInitializer",
+    "actuator": "JdbcTemplate upsert within local transaction",
+    "sensor": "sys_mock_dataset_state and startup logs",
+    "external_boundary": "no external network or object storage"
+  },
+  "state_variables": ["datasetVersion", "checksum", "appliedAt", "rowsByTable"],
+  "invariants": [
+    "local profile and enabled property are both required",
+    "table and column names come only from the Java allowlist",
+    "all seeded business rows are tenant scoped",
+    "mock secrets are placeholders, not usable credentials"
+  ],
+  "disturbances": ["missing database table", "invalid JSON", "schema drift", "manual edits to owned rows"],
+  "control_actions": ["validate", "upsert", "record checksum", "fail startup on unsafe input"]
+}

@@ -121,7 +121,18 @@ mvn -pl :ccb-boot -am spring-boot:run -Dspring-boot.run.profiles=local
 
 后端地址为 http://127.0.0.1:8080，健康检查地址为 http://127.0.0.1:8080/actuator/health。
 
-### 5. 启动前端
+### 5. 本地 mock 数据
+
+local profile 默认读取 `mock/mock-data.json`，在 Flyway 完成后自动幂等同步系统、工作流、AI 和消息通知示例数据。数据文件同时登记交付示范中心和后续业务模块的 mock 维护入口。重复启动不会产生重复行；数据文件更新后下次启动会按文件内容更新 mock 数据。
+
+```dotenv
+MOCK_DATA_ENABLED=true
+MOCK_DATA_RESOURCE=classpath:mock/mock-data.json
+```
+
+本地手工录入数据前可设置 `MOCK_DATA_ENABLED=false`。非 `local` profile 不会执行 mock 同步。字段白名单、数据维护规则和新增业务模块接入方式见 `docs/integration/mock-data-contract.md`。
+
+### 6. 启动前端
 
 另开终端：
 

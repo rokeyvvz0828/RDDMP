@@ -1,0 +1,30 @@
+{
+  "id": "REQ-20260807-012",
+  "status": "converged",
+  "owner": "zhangwei",
+  "module": "workflow",
+  "branch": "zhangwei-merge",
+  "worktree": "/Users/zhangwei/project/RDDMP",
+  "codex_allowed": true,
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V30__seed_workflow_demo_data.sql",
+      "docs/requirements/REQ-20260807-012-workflow-demo-data/**",
+      ".ai-control/requirements/req-20260807-012-workflow-demo-data/**"
+    ],
+    "read_only_paths": [
+      "server/src/platform/workflow/**",
+      "web/src/**"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "constraints": {
+    "database_migration": "append_only",
+    "java_version": "17",
+    "demo_id_prefix": "900000000000"
+  },
+  "required_tests": [
+    "node scripts/check-all-governance.mjs",
+    "git diff --check"
+  ]
+}

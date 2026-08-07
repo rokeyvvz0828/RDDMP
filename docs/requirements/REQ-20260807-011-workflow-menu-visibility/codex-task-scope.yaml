@@ -1,0 +1,44 @@
+{
+  "id": "REQ-20260807-011",
+  "status": "ready",
+  "owner": "rokeyvvz0828",
+  "module": "workflow",
+  "branch": "zhangwei-merge",
+  "worktree": "/Users/zhangwei/project/RDDMP",
+  "codex_allowed": true,
+  "scope": {
+    "writable_paths": [
+      "web/src/router/index.ts",
+      "web/src/api/workflow.ts",
+      "web/src/components/workflow/**",
+      "web/src/views/WorkflowView.vue",
+      "web/src/styles.css",
+      "web/package.json",
+      "web/package-lock.json",
+      "server/src/platform/workflow/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V28__promote_workflow_root_menu.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V29__workflow_monitor_done_and_instance_delete.sql",
+      "server/src/platform/workflow/src/test/**",
+      "docs/requirements/REQ-20260807-011-workflow-menu-visibility/**",
+      ".ai-control/requirements/req-20260807-011-workflow-menu-visibility/**"
+    ],
+    "read_only_paths": [
+      "web/src/modules/delivery-showcase/**",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "constraints": {
+    "database_migration": "append_only",
+    "java_version": "17",
+    "preserve_existing_workflow_logic": true,
+    "frontend_reference": "web/src/modules/delivery-showcase"
+  },
+  "required_tests": [
+    "node scripts/check-development-entry.mjs --require-plugin",
+    "node scripts/check-all-governance.mjs",
+    "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl server/src/platform/workflow -am test",
+    "npm --prefix web run build",
+    "git diff --check"
+  ]
+}

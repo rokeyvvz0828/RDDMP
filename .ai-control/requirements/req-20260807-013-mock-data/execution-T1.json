@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "completed",
+  "actual_files": [
+    "mock/mock-data.json",
+    "docs/integration/mock-data-contract.md",
+    "docs/requirements/REQ-20260807-013-mock-data/requirement.md"
+  ],
+  "commands": [
+    {"command": "node -e JSON.parse(mock/mock-data.json)", "result": "passed; 84 rows and 84 unique declared keys"},
+    {"command": "rg sensitive markers mock/mock-data.json", "result": "only fixed mock password hashes, [mock-only] placeholder and mock hosts found; no production secret"}
+  ],
+  "evidence": ["datasetVersion=2026.08.07.1", "20 database table groups", "7 feature catalog entries"],
+  "constraints": {"production_access": false, "real_data": false, "business_logic_changed": false},
+  "recorded_at": "2026-08-07T11:10:00+08:00"
+}

@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260807-013",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260807-013-mock-data/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "zhangwei",
+    "module": "platform/infrastructure + platform/boot",
+    "module_owner": "rokeyvvz0828",
+    "branch": "zhangwei-merge",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "mock/mock-data.json",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V31__mock_data_state.sql",
+      "server/src/platform/infrastructure/pom.xml",
+      "server/src/platform/boot/src/main/resources/application-local.yml",
+      ".env.example",
+      "docs/integration/mock-data-contract.md",
+      "docs/requirements/REQ-20260807-013-mock-data/**",
+      ".ai-control/requirements/req-20260807-013-mock-data/*.json"
+    ],
+    "read_only_paths": ["server/src/platform/system/**", "server/src/platform/workflow/**", "server/src/modules/ai/**", "web/src/**", "server/src/platform/infrastructure/src/main/resources/db/migration/V1__*.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V30__*.sql"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260807-013",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["loader tests", "full Maven test", "Flyway repeat check"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V31__mock_data_state.sql"],
+    "compatibility_and_rollback": "New metadata table only; disable MOCK_DATA_ENABLED to stop synchronization."
+  },
+  "required_tests": [
+    {"name": "mock-loader", "command": "mvn -pl :ccb-infrastructure -am test"},
+    {"name": "full-backend", "command": "mvn test"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"}
+  ],
+  "risk": {"level": "important", "items": ["local startup upserts rows owned by the JSON dataset"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260807-013-mock-data",
+    "control_justification": "cross-module local infrastructure capability",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260807-013-mock-data/execution-T1.json",
+      ".ai-control/requirements/req-20260807-013-mock-data/observation-T1.json",
+      ".ai-control/requirements/req-20260807-013-mock-data/convergence.json"
+    ],
+    "release_verification": [],
+    "rollback": "Disable MOCK_DATA_ENABLED and remove the new migration/loader in a controlled rollback."
+  }
+}

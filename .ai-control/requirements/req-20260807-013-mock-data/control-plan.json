@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260807-013-mock-data",
+  "phase": "converged",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "add mock data contract and dataset",
+      "write_scope": ["mock/mock-data.json", "docs/integration/mock-data-contract.md"],
+      "acceptance": ["valid JSON", "all current backend domains catalogued", "no secrets"],
+      "status": "completed"
+    },
+    {
+      "id": "T2",
+      "goal": "add local-only database synchronization",
+      "write_scope": ["server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/**", "server/src/platform/infrastructure/src/main/resources/db/migration/V31__mock_data_state.sql", "server/src/platform/infrastructure/pom.xml", "server/src/platform/boot/src/main/resources/application-local.yml", ".env.example"],
+      "acceptance": ["allowlist", "idempotent upsert", "disabled outside local", "migration repeat safe"],
+      "status": "completed"
+    },
+    {
+      "id": "T3",
+      "goal": "run independent checks and record evidence",
+      "write_scope": [".ai-control/requirements/req-20260807-013-mock-data/**"],
+      "acceptance": ["loader tests", "mvn test", "governance checks"],
+      "status": "completed"
+    }
+  ],
+  "stop_conditions": ["JDK below 17", "unsafe table or column input", "production profile writes mock data"],
+  "rollback": "disable MOCK_DATA_ENABLED and remove V31 plus loader files"
+}

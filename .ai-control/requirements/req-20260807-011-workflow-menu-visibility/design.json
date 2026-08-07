@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "requirement": "REQ-20260807-011",
+  "title": "Workflow 菜单可见性修复",
+  "control_mode": "standard",
+  "goal": "修复 workflow 顶级菜单和根路由入口，不改变 workflow 业务逻辑。",
+  "findings": [
+    "静态路由已有 workflow/:section。",
+    "本地 sys_menu.id=200 的 parent_id 为 100，未按顶级目录设计返回。",
+    "V5-V27 workflow 数据、角色绑定和后端模块均已存在。"
+  ],
+  "decisions": [
+    "通过 V28 追加迁移修复既有数据库，不能修改已发布 V7。",
+    "增加 /workflow 重定向到 /workflow/definitions。",
+    "保留当前 server/src/platform/workflow 和 web/src 目录结构。"
+  ],
+  "non_goals": ["workflow service logic", "Flowable engine behavior", "package or module relocation"],
+  "approval": {"status": "user-requested", "evidence": "用户反馈前端未看到 workflow 功能并要求定位。"}
+}

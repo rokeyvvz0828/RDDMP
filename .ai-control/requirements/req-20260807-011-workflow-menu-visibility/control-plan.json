@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "requirement": "REQ-20260807-011",
+  "phase": "planning",
+  "tasks": [
+    {"id": "T1", "name": "补齐 workflow 根路由入口", "depends_on": [], "writable_paths": ["web/src/router/index.ts"]},
+    {"id": "T2", "name": "追加菜单层级兼容迁移", "depends_on": [], "writable_paths": ["server/src/platform/infrastructure/src/main/resources/db/migration/V28__promote_workflow_root_menu.sql"]},
+    {"id": "T3", "name": "重启应用并验证菜单、测试和构建", "depends_on": ["T1", "T2"], "writable_paths": [".ai-control/requirements/req-20260807-011-workflow-menu-visibility/**"]}
+  ],
+  "stop_conditions": ["workflow 后端测试失败", "Flyway V28 迁移失败", "前端构建失败", "发现 workflow 业务代码被修改"],
+  "required_observations": ["workflow root menu parent_id=0", "workflow children visible", "GET /workflow redirects to /workflow/definitions", "health UP"]
+}

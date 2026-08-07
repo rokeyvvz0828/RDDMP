@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "status": "completed",
+  "actual_files": [
+    "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+    "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataProperties.java",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V31__mock_data_state.sql",
+    "server/src/platform/infrastructure/pom.xml",
+    "server/src/platform/boot/src/main/resources/application-local.yml",
+    ".env.example",
+    "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-infrastructure -am test", "result": "passed under JDK 17; 5 tests passed"},
+    {"command": "mvn test", "result": "passed under JDK 17; all reactor modules succeeded"},
+    {"command": "mvn -DskipTests package", "result": "passed under JDK 17; boot artifact repackaged"},
+    {"command": "jar tf ccb-infrastructure jar", "result": "mock/mock-data.json, V31 migration and MockDataInitializer.class present"}
+  ],
+  "notes": ["JDK 26 was not used for final verification because current Mockito Byte Buddy does not support it; project-required JDK 17 was used."],
+  "recorded_at": "2026-08-07T11:10:00+08:00"
+}

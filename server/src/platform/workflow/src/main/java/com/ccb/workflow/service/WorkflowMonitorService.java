@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -16,25 +17,55 @@ public class WorkflowMonitorService {
     private final JdbcTemplate jdbc;
     private final RuntimeService runtimeService;
     private final WorkflowAuditService auditService;
+    private final WorkflowNodeLabelResolver nodeLabelResolver;
 
-    public WorkflowMonitorService(JdbcTemplate jdbc, RuntimeService runtimeService, WorkflowAuditService auditService) {
+    public WorkflowMonitorService(JdbcTemplate jdbc, RuntimeService runtimeService, WorkflowAuditService auditService,
+                                  WorkflowNodeLabelResolver nodeLabelResolver) {
         this.jdbc = jdbc;
         this.runtimeService = runtimeService;
         this.auditService = auditService;
+        this.nodeLabelResolver = nodeLabelResolver;
     }
 
     public List<Map<String, Object>> instances(AuthUser user) {
-        return jdbc.queryForList("SELECT i.id, i.definition_id, d.name AS definition_name, i.version_no, i.business_key, i.status, i.starter_id, u.display_name AS starter_name, i.created_at FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id WHERE i.tenant_id = ? ORDER BY i.id DESC", user.tenantId());
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT i.id, i.definition_id, d.name AS definition_name, i.version_no, i.business_key, i.status, i.starter_id, u.display_name AS starter_name, i.created_at, COALESCE((SELECT GROUP_CONCAT(DISTINCT t.node_id ORDER BY t.id SEPARATOR ', ') FROM wf_task t WHERE t.instance_id = i.id AND t.tenant_id = i.tenant_id AND t.status = 'PENDING'), '') AS current_node FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id WHERE i.tenant_id = ? AND i.deleted = 0 ORDER BY i.id DESC", user.tenantId());
+        for (Map<String, Object> row : rows) {
+            String labels = nodeLabelResolver.labelsForInstance(((Number) row.get("id")).longValue(), user.tenantId(), String.valueOf(row.get("current_node")));
+            row.put("current_node", labels);
+        }
+        return rows;
+    }
+
+    public Map<String, Object> detail(long instanceId, AuthUser user) {
+        ensureInstance(instanceId, user.tenantId());
+        Map<String, Object> instance = jdbc.queryForMap("SELECT i.id, i.definition_id, d.name AS definition_name, d.code AS definition_code, i.version_no, i.business_key, i.status, i.starter_id, u.display_name AS starter_name, i.created_at FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id WHERE i.id = ? AND i.tenant_id = ? AND i.deleted = 0", instanceId, user.tenantId());
+        Map<String, Object> version = jdbc.queryForMap("SELECT CAST(v.definition_json AS CHAR) AS definition_json FROM wf_version v WHERE v.definition_id = ? AND v.version_no = ? AND v.tenant_id = ?", instance.get("definition_id"), instance.get("version_no"), user.tenantId());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("instance", instance);
+        result.put("definition_json", version.get("definition_json"));
+        result.put("node_states", nodeStatesInternal(instanceId, user.tenantId()));
+        result.put("timeline", timelineInternal(instanceId, user.tenantId()));
+        return result;
     }
 
     public List<Map<String, Object>> timeline(long instanceId, AuthUser user) {
         ensureInstance(instanceId, user.tenantId());
-        return jdbc.queryForList("SELECT a.id, a.event_type, a.operator_id, u.display_name AS operator_name, a.reason, a.payload_json, a.created_at FROM wf_audit_event a LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id WHERE a.instance_id = ? AND a.tenant_id = ? ORDER BY a.created_at, a.id", instanceId, user.tenantId());
+        return timelineInternal(instanceId, user.tenantId());
     }
 
     public List<Map<String, Object>> nodeStates(long instanceId, AuthUser user) {
         ensureInstance(instanceId, user.tenantId());
-        return jdbc.queryForList("SELECT t.id, t.node_id, t.task_key, t.task_type, t.assignee_name, t.status, t.comment, t.created_at, t.completed_at FROM wf_task t WHERE t.instance_id = ? AND t.tenant_id = ? ORDER BY t.created_at, t.id", instanceId, user.tenantId());
+        return nodeStatesInternal(instanceId, user.tenantId());
+    }
+
+    @Transactional
+    public void delete(long instanceId, AuthUser operator) {
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT status FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0", instanceId, operator.tenantId());
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
+        String status = String.valueOf(rows.get(0).get("status"));
+        if ("RUNNING".equals(status)) throw new BusinessException(ErrorCode.CONFLICT, "运行中的流程实例请先终止后再删除");
+        jdbc.update("UPDATE wf_instance SET deleted = 1 WHERE id = ? AND tenant_id = ? AND deleted = 0", instanceId, operator.tenantId());
+        auditService.record(operator, "INSTANCE_DELETED", null, null, instanceId, null, "删除流程实例", Map.of("administrator", operator.username()));
     }
 
     @Transactional
@@ -50,7 +81,15 @@ public class WorkflowMonitorService {
     }
 
     private void ensureInstance(long instanceId, long tenantId) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM wf_instance WHERE id = ? AND tenant_id = ?", Integer.class, instanceId, tenantId);
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0", Integer.class, instanceId, tenantId);
         if (count == null || count == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
+    }
+
+    private List<Map<String, Object>> nodeStatesInternal(long instanceId, long tenantId) {
+        return nodeLabelResolver.decorateTasks(jdbc.queryForList("SELECT t.id, t.instance_id, t.node_id, t.task_key, t.task_type, t.assignee_name, t.status, t.comment, t.created_at, t.completed_at FROM wf_task t WHERE t.instance_id = ? AND t.tenant_id = ? ORDER BY t.created_at, t.id", instanceId, tenantId), tenantId);
+    }
+
+    private List<Map<String, Object>> timelineInternal(long instanceId, long tenantId) {
+        return jdbc.queryForList("SELECT a.id, a.event_type, a.operator_id, u.display_name AS operator_name, a.reason, a.payload_json, a.created_at FROM wf_audit_event a LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id WHERE a.instance_id = ? AND a.tenant_id = ? ORDER BY a.created_at, a.id", instanceId, tenantId);
     }
 }

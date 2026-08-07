@@ -157,7 +157,7 @@ public final class WorkflowModelValidator {
         validateVariables(model.variables(), errors);
         Set<String> variableNames = model.variables().stream().map(WorkflowVariableModel::name).collect(java.util.stream.Collectors.toSet());
         validateFormBindings(model.formBindings(), nodes, variableNames, errors);
-        validateConditions(model.edges(), outgoing, variableNames, errors);
+        validateConditions(model.edges(), outgoing, nodes, variableNames, errors);
         validatePolicies(model.actionPolicies(), nodes, errors);
     }
 
@@ -184,7 +184,7 @@ public final class WorkflowModelValidator {
         if (!ASSIGNEE_TYPES.contains(assigneeType)) {
             errors.add(error(node.id(), null, "assigneeType", "ASSIGNEE_TYPE_INVALID", "瀹℃壒浜虹被鍨嬫棤鏁? " + assigneeType));
         } else if (Set.of("USER", "ROLE").contains(assigneeType) && !positiveIds(config.path("assigneeIds"))) {
-            errors.add(error(node.id(), null, "assigneeIds", "ASSIGNEE_MISSING", "瀹℃壒鑺傜偣蹇呴』閰嶇疆瀹℃壒浜烘垨瑙掕壊"));
+            errors.add(error(node.id(), null, "assigneeIds", "ASSIGNEE_MISSING", "审批节点必须配置审批人或角色"));
         } else if ("FORM_FIELD".equals(assigneeType) && config.path("fieldName").asText("").isBlank()) {
             errors.add(error(node.id(), null, "fieldName", "ASSIGNEE_FIELD_MISSING", "瀛楁瀹℃壒浜哄繀椤婚厤缃瓧娈靛悕"));
         } else if ("EXPRESSION".equals(assigneeType) && config.path("expression").asText("").isBlank()) {
@@ -221,19 +221,36 @@ public final class WorkflowModelValidator {
         }
     }
 
-    private void validateConditions(List<WorkflowEdgeModel> edges, Map<String, List<WorkflowEdgeModel>> outgoing, Set<String> variables, List<ValidationError> errors) {
+    private void validateConditions(List<WorkflowEdgeModel> edges, Map<String, List<WorkflowEdgeModel>> outgoing,
+                                    Map<String, WorkflowNodeModel> nodes, Set<String> variables, List<ValidationError> errors) {
         for (WorkflowEdgeModel edge : edges) {
+            WorkflowNodeModel source = nodes.get(edge.source());
+            boolean conditionGateway = source != null && "CONDITION".equals(source.type());
+            if (!conditionGateway && (edge.defaultFlow() || (edge.condition() != null && !edge.condition().isBlank()))) {
+                errors.add(error(null, edge.id(), "condition", "EDGE_CONDITION_NOT_ALLOWED", "普通连线不能配置条件表达式或默认分支"));
+                continue;
+            }
+            boolean configuredDefault = conditionGateway && edge.id().equals(source.config().path("defaultEdgeId").asText(""));
+            boolean effectiveDefault = edge.defaultFlow() || configuredDefault;
+            if (conditionGateway && effectiveDefault && edge.condition() != null && !edge.condition().isBlank()) {
+                errors.add(error(null, edge.id(), "condition", "DEFAULT_BRANCH_CONDITION_FORBIDDEN", "默认分支不能配置条件表达式"));
+                continue;
+            }
+            if (conditionGateway && !effectiveDefault && (edge.condition() == null || edge.condition().isBlank())) {
+                errors.add(error(null, edge.id(), "condition", "CONDITION_EXPRESSION_MISSING", "条件网关的非默认分支必须配置条件表达式"));
+                continue;
+            }
             if (edge.condition() == null || edge.condition().isBlank()) continue;
             if (!edge.condition().startsWith("${") || !edge.condition().endsWith("}")) {
-                errors.add(error(null, edge.id(), "condition", "CONDITION_EXPRESSION_INVALID", "鏉′欢琛ㄨ揪寮忓繀椤讳娇鐢?${...} 鏍煎紡"));
+                errors.add(error(null, edge.id(), "condition", "CONDITION_EXPRESSION_INVALID", "条件表达式必须使用 ${...} 格式"));
             }
             for (String reference : references(edge.condition())) {
-                if (!variables.contains(reference)) errors.add(error(null, edge.id(), "condition", "CONDITION_VARIABLE_MISSING", "鏉′欢琛ㄨ揪寮忓紩鐢ㄤ簡鏈０鏄庣殑鍙橀噺: " + reference));
+                if (!variables.contains(reference)) errors.add(error(null, edge.id(), "condition", "CONDITION_VARIABLE_MISSING", "条件表达式引用了未声明的变量: " + reference));
             }
         }
         for (Map.Entry<String, List<WorkflowEdgeModel>> entry : outgoing.entrySet()) {
             long defaults = entry.getValue().stream().filter(WorkflowEdgeModel::defaultFlow).count();
-            if (defaults > 1) errors.add(error(entry.getKey(), null, "default", "DEFAULT_BRANCH_DUPLICATE", "鍚屼竴缃戝叧鍙兘閰嶇疆涓€鏉￠粯璁ゅ垎鏀?"));
+            if (defaults > 1) errors.add(error(entry.getKey(), null, "default", "DEFAULT_BRANCH_DUPLICATE", "同一网关只能配置一条默认分支"));
         }
     }
 

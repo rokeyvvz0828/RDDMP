@@ -23,6 +23,7 @@ const router = createRouter({
         { path: 'system/params', name: 'system-params', component: ParameterView, meta: { title: '参数管理' } },
         { path: 'system/role-permissions', name: 'role-permissions', component: RolePermissionView, meta: { title: '角色权限配置' } },
         { path: 'system/:section', name: 'module', component: ModuleView, props: true },
+        { path: 'workflow', redirect: '/workflow/definitions' },
         { path: 'workflow/:section', name: 'workflow', component: WorkflowView, props: true },
         { path: 'ai/:section', name: 'ai', component: AiView, props: true },
         { path: 'components', name: 'components', component: ComponentShowcaseView, meta: { title: '组件示例' } },
