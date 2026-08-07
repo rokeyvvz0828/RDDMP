@@ -7,7 +7,7 @@ import '@vue-flow/core/dist/style.css'
 import WorkflowNode from './WorkflowNode.vue'
 import type { WorkflowEdgeModel, WorkflowGraph, WorkflowNodeConfig, WorkflowNodeModel, WorkflowNodeType } from '../../api/workflow'
 
-const props = defineProps<{ modelValue: WorkflowGraph; readonly?: boolean; nodeStatuses?: Record<string, string> }>()
+const props = defineProps<{ modelValue: WorkflowGraph; readonly?: boolean; nodeStatuses?: Record<string, string>; mobileLayout?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: WorkflowGraph]; select: [node: WorkflowNodeModel | null]; edgeSelect: [edge: WorkflowEdgeModel | null]; fullscreen: [value: boolean] }>()
 type DesignerNodeData = { node: WorkflowNodeModel; selected?: boolean; readonly?: boolean; layoutDirection?: LayoutDirection; nodeStatus?: string }
 type DesignerNode = Node<DesignerNodeData> & { data: DesignerNodeData }
@@ -17,22 +17,31 @@ const flowNodes = shallowRef<DesignerNode[]>([])
 const flowEdges = shallowRef<DesignerEdge[]>([])
 const selectedId = ref<string | null>(null)
 const selectedEdgeId = ref<string | null>(null)
-const layoutDirection = ref<LayoutDirection>('LR')
+function viewportIsMobile() { return typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches }
+const mobileViewport = ref(viewportIsMobile())
+const layoutDirection = ref<LayoutDirection>(props.mobileLayout && mobileViewport.value ? 'TB' : 'LR')
 const nodeTypes: NodeTypesObject = markRaw({ workflow: WorkflowNode as unknown as NodeComponent })
 const syncing = ref(false)
 const canvas = ref<HTMLElement | null>(null)
 const isFullscreen = ref(false)
-const { screenToFlowCoordinate } = useVueFlow()
+const { screenToFlowCoordinate, fitView } = useVueFlow()
 const contextMenu = reactive({ visible: false, kind: 'node' as 'node' | 'edge', id: '', left: 0, top: 0 })
 const contextStyle = computed(() => ({ left: `${contextMenu.left}px`, top: `${contextMenu.top}px` }))
 
 function cloneGraph(graph: WorkflowGraph): WorkflowGraph { return JSON.parse(JSON.stringify(graph)) as WorkflowGraph }
 function edgeModel(edge: DesignerEdge): WorkflowEdgeModel { return (edge.data?.model || { id: edge.id, source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle, targetHandle: edge.targetHandle }) as WorkflowEdgeModel }
+function fitResponsiveGraph() {
+  void nextTick(() => void nextTick(() => {
+    layoutGraph(false)
+    window.setTimeout(() => void fitView({ padding: 0.18 }), 80)
+  }))
+}
 function loadGraph(graph: WorkflowGraph) {
   syncing.value = true
   const cloned = cloneGraph(graph)
   flowNodes.value = cloned.nodes.map(node => ({ id: node.id, type: 'workflow', position: { ...node.position }, data: { node, selected: node.id === selectedId.value, readonly: Boolean(props.readonly), layoutDirection: layoutDirection.value, nodeStatus: props.nodeStatuses?.[node.id] } }))
   flowEdges.value = cloned.edges.map(edge => ({ id: edge.id, type: 'smoothstep', source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left'), label: edge.label || undefined, markerEnd: MarkerType.ArrowClosed, animated: edge.source.includes('parallel') || edge.target.includes('parallel'), selectable: true, data: { model: { ...edge, sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left') } } }))
+  if (props.mobileLayout && mobileViewport.value) fitResponsiveGraph()
   void nextTick(() => { syncing.value = false })
 }
 function normalizeEdge(edge: WorkflowEdgeModel): WorkflowEdgeModel {
@@ -86,6 +95,11 @@ function onConnect(connection: Connection) {
 }
 function newId(type: string) { return `${type.toLowerCase()}-${Date.now()}-${Math.floor(Math.random() * 1000)}` }
 function nodeSize(type: WorkflowNodeType) {
+  if (props.mobileLayout && mobileViewport.value) {
+    if (type === 'START' || type === 'END') return { width: 88, height: 88 }
+    if (type === 'CONDITION' || type === 'PARALLEL_SPLIT' || type === 'PARALLEL_JOIN') return { width: 104, height: 104 }
+    return { width: 200, height: 88 }
+  }
   if (type === 'START' || type === 'END') return { width: 112, height: 112 }
   if (type === 'CONDITION' || type === 'PARALLEL_SPLIT' || type === 'PARALLEL_JOIN') return { width: 136, height: 136 }
   return { width: 220, height: 104 }
@@ -135,14 +149,22 @@ function deleteSelected() {
   flowEdges.value = flowEdges.value.filter(edge => edge.source !== selectedId.value && edge.target !== selectedId.value)
   selectNode(null); syncToModel()
 }
-function layoutGraph() {
+function layoutGraph(sync = true) {
   const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
-  graph.setGraph({ rankdir: layoutDirection.value, nodesep: 55, ranksep: 110, marginx: 70, marginy: 70 })
-  flowNodes.value.forEach(node => graph.setNode(node.id, { width: 220, height: 104 }))
+  const compact = props.mobileLayout && mobileViewport.value
+  graph.setGraph({ rankdir: layoutDirection.value, nodesep: compact ? 24 : layoutDirection.value === 'TB' ? 34 : 55, ranksep: compact ? 42 : layoutDirection.value === 'TB' ? 72 : 110, marginx: compact ? 24 : 42, marginy: compact ? 24 : 42 })
+  flowNodes.value.forEach(node => {
+    const size = nodeSize(node.data.node.type)
+    graph.setNode(node.id, { width: size.width, height: size.height })
+  })
   flowEdges.value.forEach(edge => graph.setEdge(edge.source, edge.target))
   dagre.layout(graph)
-  flowNodes.value = flowNodes.value.map(node => { const position = graph.node(node.id); return position ? { ...node, position: { x: position.x - 110, y: position.y - 52 } } : node })
-  syncToModel()
+  flowNodes.value = flowNodes.value.map(node => {
+    const position = graph.node(node.id)
+    const size = nodeSize(node.data.node.type)
+    return position ? { ...node, position: { x: position.x - size.width / 2, y: position.y - size.height / 2 } } : node
+  })
+  if (sync) syncToModel()
 }
 function openContext(kind: 'node' | 'edge', id: string, event: MouseEvent) {
   if (props.readonly) return
@@ -184,8 +206,22 @@ watch(() => props.modelValue, value => loadGraph(value), { deep: true, immediate
 watch(() => props.readonly, value => { flowNodes.value = flowNodes.value.map(node => ({ ...node, data: { ...node.data, readonly: Boolean(value) } })) })
 watch(() => props.nodeStatuses, value => { flowNodes.value = flowNodes.value.map(node => ({ ...node, data: { ...node.data, nodeStatus: value?.[node.id] } })) }, { deep: true })
 watch(layoutDirection, updateNodePresentation)
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => { window.removeEventListener('keydown', onKeydown); if (isFullscreen.value) emit('fullscreen', false) })
+let viewportMedia: MediaQueryList | null = null
+function updateResponsiveLayout(event?: MediaQueryListEvent) {
+  mobileViewport.value = event?.matches ?? viewportMedia?.matches ?? viewportIsMobile()
+  if (!props.mobileLayout) return
+  const nextDirection: LayoutDirection = mobileViewport.value ? 'TB' : 'LR'
+  if (layoutDirection.value === nextDirection) return
+  layoutDirection.value = nextDirection
+  fitResponsiveGraph()
+}
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  viewportMedia = window.matchMedia('(max-width: 760px)')
+  viewportMedia.addEventListener('change', updateResponsiveLayout)
+  if (props.mobileLayout && mobileViewport.value) fitResponsiveGraph()
+})
+onBeforeUnmount(() => { window.removeEventListener('keydown', onKeydown); viewportMedia?.removeEventListener('change', updateResponsiveLayout); if (isFullscreen.value) emit('fullscreen', false) })
 defineExpose({ selectNode, layoutGraph })
 </script>
 

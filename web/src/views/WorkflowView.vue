@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, CircleCheck, Delete, Document, EditPen, Plus, Promotion, Refresh, UserFilled, View } from '@element-plus/icons-vue'
+import { Check, CircleCheck, Delete, Document, EditPen, MoreFilled, Plus, Promotion, Refresh, UserFilled, View } from '@element-plus/icons-vue'
 import UiDataTable from '../components/ui/UiDataTable.vue'
 import UiEmptyState from '../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../components/ui/UiPageHeader.vue'
@@ -66,6 +66,20 @@ const detailDialogTitle = computed(() => monitorMode.value === 'task' ? '工单�
 type WorkflowStatusTone = 'primary' | 'success' | 'warning' | 'danger' | 'info'
 function workflowStatusTone(status: string): WorkflowStatusTone {
   return ({ RUNNING: 'primary', PENDING: 'warning', APPROVED: 'success', SENT: 'info', REJECTED: 'danger', RETURNED: 'warning', TERMINATED: 'info', CANCELLED: 'info', DRAFT: 'warning', PUBLISHED: 'success' }[String(status).toUpperCase()] || 'info') as WorkflowStatusTone
+}
+function handleMobileDefinitionCommand(row: { id: number; name: string; status: string }, command: string) {
+  if (command === 'PUBLISH') return publish(row)
+  if (command === 'UNPUBLISH') return unpublish(row)
+  if (command === 'START') return start(row)
+  if (command === 'DELETE') return removeDefinition(row)
+}
+function handleMobileTaskCommand(row: WorkflowTask, command: string) {
+  if (command === 'DETAIL') return openTaskDetail(row)
+  return openAction(row, command as WorkflowTaskAction)
+}
+function handleMobileInstanceCommand(row: WorkflowInstance, command: string) {
+  if (command === 'TIMELINE') return openTimeline(row)
+  if (command === 'DELETE') return removeInstance(row)
 }
 
 async function load() {
@@ -302,24 +316,64 @@ onMounted(load)
     <UiPageHeader eyebrow="工作流" :title="pageTitle" :description="pageDescription"><template #actions><el-button v-if="!isInbox && !isMonitor && !isDone" type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建流程</el-button></template></UiPageHeader>
     <UiToolbar><div class="ui-toolbar__filters"><span class="muted">{{ isMonitor ? '实例状态和审计记录按租户隔离。' : isInbox ? '审批动作会记录操作人、意见和时间。' : isDone ? '显示当前账号已处理过的审批动作。' : '发布前校验流程拓扑、审批人和分支配置。' }}</span></div><template #actions><el-button @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template></UiToolbar>
 
-    <UiDataTable v-if="!isInbox && !isMonitor && !isDone" class="workflow-table" :data="definitions" :loading="loading" row-key="id" border>
+    <UiDataTable v-if="!isInbox && !isMonitor && !isDone" class="workflow-table workflow-table--desktop" :data="definitions" :loading="loading" row-key="id" border>
       <el-table-column prop="code" label="流程编码" min-width="160" class-name="workflow-primary-key" label-class-name="workflow-primary-key"><template #default="scope"><span class="workflow-primary-key__value">{{ scope.row.code }}</span></template></el-table-column><el-table-column prop="name" label="流程名称" min-width="180" /><el-table-column prop="current_version" label="当前版本" width="110" /><el-table-column prop="model_schema_version" label="模型版本" width="110" /><el-table-column label="状态" width="120"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ DRAFT: '草稿', PUBLISHED: '已发布' }" :tone="workflowStatusTone(scope.row.status)" /></template></el-table-column><el-table-column label="操作" width="470"><template #default="scope"><div class="workflow-table-actions workflow-table-actions--definitions"><el-button link type="primary" @click="openView(scope.row)"><el-icon><EditPen v-if="scope.row.status === 'DRAFT'" /><View v-else /></el-icon>{{ scope.row.status === 'DRAFT' ? '编辑流程图' : '查看流程图' }}</el-button><el-button link type="primary" :disabled="scope.row.status === 'PUBLISHED'" @click="publish(scope.row)"><el-icon><CircleCheck /></el-icon>发布</el-button><el-button link type="warning" :disabled="scope.row.status !== 'PUBLISHED'" @click="unpublish(scope.row)"><el-icon><Refresh /></el-icon>取消发布</el-button><el-button link type="success" :disabled="scope.row.status !== 'PUBLISHED'" @click="start(scope.row)"><el-icon><Promotion /></el-icon>发起审批</el-button><el-button link type="danger" @click="removeDefinition(scope.row)"><el-icon><Delete /></el-icon>删除流程</el-button></div></template></el-table-column>
       <template #footer><span class="muted">共 {{ definitions.length }} 个流程定义</span></template>
     </UiDataTable>
 
-    <UiDataTable v-else-if="isInbox" class="workflow-table" :data="inbox" :loading="loading" row-key="id" border>
+    <section v-if="!isInbox && !isMonitor && !isDone" class="workflow-mobile-list" v-loading="loading">
+      <article v-for="row in definitions" :key="row.id" class="workflow-mobile-card">
+        <header class="workflow-mobile-card__header"><div><span class="workflow-mobile-card__eyebrow">流程定义</span><strong>{{ row.name }}</strong></div><UiStatusTag :value="row.status" :labels="{ DRAFT: '草稿', PUBLISHED: '已发布' }" :tone="workflowStatusTone(row.status)" /></header>
+        <div class="workflow-mobile-card__facts"><div><span>流程编码</span><strong class="workflow-primary-key__value">{{ row.code }}</strong></div><div><span>版本</span><strong>V{{ row.current_version || 0 }} · 模型 {{ row.model_schema_version || '-' }}</strong></div></div>
+        <div class="workflow-mobile-card__actions"><el-button class="workflow-mobile-card__primary-action" type="primary" plain @click="openView(row)"><el-icon><EditPen v-if="row.status === 'DRAFT'" /><View v-else /></el-icon>{{ row.status === 'DRAFT' ? '编辑流程图' : '查看流程图' }}</el-button><el-dropdown trigger="click" @command="handleMobileDefinitionCommand(row, $event)"><el-button text type="primary">更多操作<el-icon><MoreFilled /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="PUBLISH" :disabled="row.status === 'PUBLISHED'"><el-icon><CircleCheck /></el-icon>发布</el-dropdown-item><el-dropdown-item command="UNPUBLISH" :disabled="row.status !== 'PUBLISHED'"><el-icon><Refresh /></el-icon>取消发布</el-dropdown-item><el-dropdown-item command="START" :disabled="row.status !== 'PUBLISHED'"><el-icon><Promotion /></el-icon>发起审批</el-dropdown-item><el-dropdown-item command="DELETE" divided><el-icon><Delete /></el-icon>删除流程</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
+      </article>
+      <UiEmptyState v-if="!loading && !definitions.length" title="暂无流程定义" />
+      <div class="workflow-mobile-list__footer muted">共 {{ definitions.length }} 个流程定义</div>
+    </section>
+
+    <UiDataTable v-if="isInbox" class="workflow-table workflow-table--desktop" :data="inbox" :loading="loading" row-key="id" border>
       <el-table-column prop="business_key" label="业务单号" min-width="180" class-name="workflow-business-key" label-class-name="workflow-business-key"><template #default="scope"><span class="workflow-business-key__value">{{ scope.row.business_key }}</span></template></el-table-column><el-table-column prop="task_type" label="任务类型" width="110"><template #default="scope"><UiStatusTag :value="scope.row.task_type" :labels="{ APPROVAL: '审批', ADD_SIGN: '加签', CC: '抄送' }" /></template></el-table-column><el-table-column label="节点" min-width="160"><template #default="scope">{{ scope.row.node_name || '未命名节点' }}</template></el-table-column><el-table-column prop="assignee_name" label="处理人" width="130" /><el-table-column prop="created_at" label="进入时间" min-width="150" class-name="workflow-date" label-class-name="workflow-date"><template #default="scope">{{ formatDateOnly(scope.row.created_at) }}</template></el-table-column><el-table-column label="状态" width="110"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ PENDING: '待处理', SENT: '已抄送', APPROVED: '已同意', REJECTED: '已拒绝', CANCELLED: '已取消' }" :tone="workflowStatusTone(scope.row.status)" /></template></el-table-column><el-table-column label="操作" width="380"><template #default="scope"><div class="workflow-table-actions workflow-table-actions--inbox"><el-button link type="primary" @click="openTaskDetail(scope.row)" title="查看工单详情"><el-icon><View /></el-icon>详情</el-button><template v-if="scope.row.task_type !== 'CC'"><el-button link type="success" @click="openAction(scope.row, 'APPROVE')"><el-icon><Check /></el-icon>同意</el-button><el-button link type="danger" @click="openAction(scope.row, 'REJECT')">拒绝</el-button><el-button link type="warning" @click="openAction(scope.row, 'RETURN')">退回</el-button><el-button link type="warning" @click="openAction(scope.row, 'ADD_SIGN')"><el-icon><UserFilled /></el-icon>加签</el-button><el-button link type="primary" @click="openAction(scope.row, 'CC')">抄送</el-button></template><span v-else class="muted">抄送记录</span></div></template></el-table-column>
       <template #footer><span class="muted">共 {{ inbox.length }} 条待办或抄送记录</span></template>
     </UiDataTable>
 
-    <UiDataTable v-else-if="isDone" class="workflow-table" :data="done" :loading="loading" row-key="id" border>
+    <section v-if="isInbox" class="workflow-mobile-list" v-loading="loading">
+      <article v-for="row in inbox" :key="row.id" class="workflow-mobile-card">
+        <header class="workflow-mobile-card__header"><div><span class="workflow-mobile-card__eyebrow">业务单号</span><strong class="workflow-business-key__value">{{ row.business_key }}</strong></div><UiStatusTag :value="row.status" :labels="{ PENDING: '待处理', SENT: '已抄送', APPROVED: '已同意', REJECTED: '已拒绝', CANCELLED: '已取消' }" :tone="workflowStatusTone(row.status)" /></header>
+        <div class="workflow-mobile-card__facts"><div><span>任务类型</span><UiStatusTag :value="row.task_type" :labels="{ APPROVAL: '审批', ADD_SIGN: '加签', CC: '抄送' }" /></div><div><span>当前节点</span><strong>{{ row.node_name || '未命名节点' }}</strong></div><div><span>处理人</span><strong>{{ row.assignee_name || '-' }}</strong></div><div><span>进入时间</span><strong>{{ formatDateOnly(row.created_at) }}</strong></div></div>
+        <div class="workflow-mobile-card__actions"><el-button class="workflow-mobile-card__primary-action" type="primary" plain @click="openTaskDetail(row)"><el-icon><View /></el-icon>查看详情</el-button><template v-if="row.task_type !== 'CC'"><el-button class="workflow-mobile-card__approve-action" type="success" plain @click="openAction(row, 'APPROVE')"><el-icon><Check /></el-icon>同意</el-button><el-dropdown trigger="click" @command="handleMobileTaskCommand(row, $event)"><el-button text type="primary">更多操作<el-icon><MoreFilled /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="REJECT"><el-icon><Delete /></el-icon>拒绝</el-dropdown-item><el-dropdown-item command="RETURN"><el-icon><Refresh /></el-icon>退回</el-dropdown-item><el-dropdown-item command="ADD_SIGN"><el-icon><UserFilled /></el-icon>加签</el-dropdown-item><el-dropdown-item command="CC"><el-icon><Document /></el-icon>抄送</el-dropdown-item></el-dropdown-menu></template></el-dropdown></template><span v-else class="muted workflow-mobile-card__cc-note">抄送记录</span></div>
+      </article>
+      <UiEmptyState v-if="!loading && !inbox.length" title="暂无待办或抄送记录" />
+      <div class="workflow-mobile-list__footer muted">共 {{ inbox.length }} 条待办或抄送记录</div>
+    </section>
+
+    <UiDataTable v-if="isDone" class="workflow-table workflow-table--desktop" :data="done" :loading="loading" row-key="id" border>
       <el-table-column prop="business_key" label="业务单号" min-width="180" class-name="workflow-business-key" label-class-name="workflow-business-key"><template #default="scope"><span class="workflow-business-key__value">{{ scope.row.business_key }}</span></template></el-table-column><el-table-column prop="definition_name" label="流程名称" min-width="170" /><el-table-column label="审批节点" min-width="150"><template #default="scope">{{ scope.row.node_name || '未命名节点' }}</template></el-table-column><el-table-column prop="action_code" label="处理动作" width="100"><template #default="scope">{{ doneActionLabel(scope.row.action_code) }}</template></el-table-column><el-table-column prop="comment" label="审批意见" min-width="220" show-overflow-tooltip /><el-table-column prop="instance_status" label="实例状态" width="110"><template #default="scope"><UiStatusTag :value="scope.row.instance_status" :labels="{ RUNNING: '进行中', APPROVED: '已通过', REJECTED: '已拒绝', RETURNED: '已退回', TERMINATED: '已终止' }" :tone="workflowStatusTone(scope.row.instance_status)" /></template></el-table-column><el-table-column prop="created_at" label="处理时间" width="150"><template #default="scope">{{ formatDateOnly(scope.row.created_at) }}</template></el-table-column>
       <template #footer><span class="muted">共 {{ done.length }} 条已办记录</span></template>
     </UiDataTable>
 
-    <UiDataTable v-else-if="isMonitor" class="workflow-table workflow-monitor-table" :data="instances" :loading="loading" row-key="id" border>
+    <section v-if="isDone" class="workflow-mobile-list" v-loading="loading">
+      <article v-for="row in done" :key="row.id" class="workflow-mobile-card">
+        <header class="workflow-mobile-card__header"><div><span class="workflow-mobile-card__eyebrow">业务单号</span><strong class="workflow-business-key__value">{{ row.business_key }}</strong></div><UiStatusTag :value="row.instance_status" :labels="{ RUNNING: '进行中', APPROVED: '已通过', REJECTED: '已拒绝', RETURNED: '已退回', TERMINATED: '已终止' }" :tone="workflowStatusTone(row.instance_status)" /></header>
+        <div class="workflow-mobile-card__facts"><div><span>流程名称</span><strong>{{ row.definition_name || '-' }}</strong></div><div><span>审批节点</span><strong>{{ row.node_name || '未命名节点' }}</strong></div><div><span>处理动作</span><strong>{{ doneActionLabel(row.action_code) }}</strong></div><div><span>处理时间</span><strong>{{ formatDateOnly(row.created_at) }}</strong></div></div>
+        <p class="workflow-mobile-card__comment">{{ row.comment || '未填写审批意见' }}</p>
+      </article>
+      <UiEmptyState v-if="!loading && !done.length" title="暂无已办记录" />
+      <div class="workflow-mobile-list__footer muted">共 {{ done.length }} 条已办记录</div>
+    </section>
+
+    <UiDataTable v-if="isMonitor" class="workflow-table workflow-table--desktop workflow-monitor-table" :data="instances" :loading="loading" row-key="id" border>
       <el-table-column label="业务单号" min-width="180" class-name="workflow-business-key" label-class-name="workflow-business-key"><template #default="scope"><span class="workflow-business-key__value">{{ scope.row.business_key }}</span></template></el-table-column><el-table-column prop="definition_name" label="流程名称" min-width="170" /><el-table-column prop="current_node" label="当前节点" min-width="150"><template #default="scope">{{ scope.row.current_node || '流程已结束' }}</template></el-table-column><el-table-column prop="version_no" label="版本" width="80" /><el-table-column prop="starter_name" label="发起人" width="120" /><el-table-column label="状态" width="110"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ RUNNING: '运行中', APPROVED: '已通过', REJECTED: '已拒绝', RETURNED: '已退回', TERMINATED: '已终止' }" :tone="workflowStatusTone(scope.row.status)" /></template></el-table-column><el-table-column prop="created_at" label="发起日期" width="150" class-name="workflow-monitor-date" label-class-name="workflow-monitor-date"><template #default="scope">{{ formatDateOnly(scope.row.created_at) }}</template></el-table-column><el-table-column label="操作" width="260" class-name="workflow-monitor-actions" label-class-name="workflow-monitor-actions"><template #default="scope"><div class="workflow-table-actions workflow-table-actions--monitor"><el-button link type="primary" @click="openMonitor(scope.row)"><el-icon><View /></el-icon>流程图</el-button><el-button link type="primary" @click="openTimeline(scope.row)"><el-icon><Document /></el-icon>时间线</el-button><el-button link type="danger" @click="removeInstance(scope.row)"><el-icon><Delete /></el-icon>删除</el-button></div></template></el-table-column>
     </UiDataTable>
+
+    <section v-if="isMonitor" class="workflow-mobile-list" v-loading="loading">
+      <article v-for="row in instances" :key="row.id" class="workflow-mobile-card">
+        <header class="workflow-mobile-card__header"><div><span class="workflow-mobile-card__eyebrow">业务单号</span><strong class="workflow-business-key__value">{{ row.business_key }}</strong></div><UiStatusTag :value="row.status" :labels="{ RUNNING: '运行中', APPROVED: '已通过', REJECTED: '已拒绝', RETURNED: '已退回', TERMINATED: '已终止' }" :tone="workflowStatusTone(row.status)" /></header>
+        <div class="workflow-mobile-card__facts"><div><span>流程名称</span><strong>{{ row.definition_name || '-' }}</strong></div><div><span>当前节点</span><strong>{{ row.current_node || '流程已结束' }}</strong></div><div><span>版本 / 发起人</span><strong>V{{ row.version_no }} · {{ row.starter_name || '-' }}</strong></div><div><span>发起日期</span><strong>{{ formatDateOnly(row.created_at) }}</strong></div></div>
+        <div class="workflow-mobile-card__actions"><el-button class="workflow-mobile-card__primary-action" type="primary" plain @click="openMonitor(row)"><el-icon><View /></el-icon>查看流程图</el-button><el-dropdown trigger="click" @command="handleMobileInstanceCommand(row, $event)"><el-button text type="primary">更多操作<el-icon><MoreFilled /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="TIMELINE"><el-icon><Document /></el-icon>查看时间线</el-dropdown-item><el-dropdown-item command="DELETE" divided><el-icon><Delete /></el-icon>删除实例</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
+      </article>
+      <UiEmptyState v-if="!loading && !instances.length" title="暂无流程实例" />
+      <div class="workflow-mobile-list__footer muted">共 {{ instances.length }} 个流程实例</div>
+    </section>
 
     <el-dialog v-model="monitorOpen" :title="detailDialogTitle" width="min(1400px, 96vw)" top="3vh" destroy-on-close :class="['workflow-monitor-dialog', { 'workflow-task-detail-dialog': monitorMode === 'task' }]">
       <div v-loading="monitorLoading">
@@ -328,7 +382,7 @@ onMounted(load)
         </div>
         <div v-if="detailTask" class="workflow-task-detail-context"><div><span>业务单号</span><strong>{{ detailTask.business_key }}</strong></div><div><span>任务类型</span><UiStatusTag :value="detailTask.task_type" :labels="{ APPROVAL: '审批', ADD_SIGN: '加签', CC: '抄送' }" /></div><div><span>处理人</span><strong>{{ detailTask.assignee_name || '-' }}</strong></div><div><span>进入时间</span><strong>{{ formatDateOnly(detailTask.created_at) }}</strong></div></div>
         <div class="workflow-monitor-legend"><span class="workflow-monitor-legend__item is-done">已完成</span><span class="workflow-monitor-legend__item is-active">进行中</span><span class="workflow-monitor-legend__item is-unreached">未到达</span><span class="workflow-monitor-legend__item is-rejected">拒绝/取消</span></div>
-        <div class="workflow-monitor-canvas"><WorkflowDesigner v-model="monitorGraph" readonly :node-statuses="monitorNodeStatuses" /></div>
+        <div class="workflow-monitor-canvas"><WorkflowDesigner v-model="monitorGraph" readonly mobile-layout :node-statuses="monitorNodeStatuses" /></div>
         <el-table :data="monitorNodeStates" size="small" border :max-height="detailTask ? 180 : 250"><el-table-column label="节点" min-width="160"><template #default="scope">{{ scope.row.node_name || '未命名节点' }}</template></el-table-column><el-table-column prop="assignee_name" label="审批人" width="130" /><el-table-column prop="status" label="节点状态" width="110"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ PENDING: '进行中', APPROVED: '已完成', REJECTED: '已拒绝', RETURNED: '已退回', CANCELLED: '已取消', SENT: '已抄送' }" :tone="workflowStatusTone(scope.row.status)" /></template></el-table-column><el-table-column prop="comment" label="审批意见" min-width="180" show-overflow-tooltip /><el-table-column prop="created_at" label="进入时间" width="145"><template #default="scope">{{ formatDateOnly(scope.row.created_at) }}</template></el-table-column><el-table-column prop="completed_at" label="完成时间" width="145"><template #default="scope">{{ formatDateOnly(scope.row.completed_at) }}</template></el-table-column></el-table>
         <section v-if="detailTask" class="workflow-detail-audit"><div class="workflow-detail-audit__heading">审批记录</div><el-timeline v-if="timeline.length"><el-timeline-item v-for="event in timeline" :key="event.id" :timestamp="formatDateOnly(event.created_at)" placement="top"><strong>{{ event.event_type }}</strong><span class="muted"> · {{ event.operator_name || '系统' }}</span><p v-if="event.reason">{{ event.reason }}</p><pre v-if="event.payload_json">{{ event.payload_json }}</pre></el-timeline-item></el-timeline><UiEmptyState v-else title="暂无审批记录" /></section>
       </div>
