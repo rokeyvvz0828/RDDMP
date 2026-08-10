@@ -355,8 +355,40 @@ public class WorkflowService {
     }
 
     private boolean enterpriseDefinition(long definitionId, long tenantId) {
-        Integer version = jdbc.queryForObject("SELECT model_schema_version FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", Integer.class, definitionId, tenantId);
-        return version != null && version == 2;
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT d.model_schema_version AS definition_schema_version,
+                       v.model_schema_version AS version_schema_version,
+                       v.definition_json
+                FROM wf_definition d
+                JOIN wf_version v ON v.definition_id = d.id
+                    AND v.tenant_id = d.tenant_id
+                    AND v.version_no = COALESCE(NULLIF(d.current_version, 0), (
+                        SELECT MAX(v2.version_no)
+                        FROM wf_version v2
+                        WHERE v2.definition_id = d.id AND v2.tenant_id = d.tenant_id
+                    ))
+                WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0
+                """, definitionId, tenantId);
+        if (rows.isEmpty()) return false;
+
+        Map<String, Object> row = rows.get(0);
+        String definitionJson = String.valueOf(row.get("definition_json"));
+        try {
+            // The JSON model is authoritative for legacy rows whose metadata defaulted to version 1.
+            return flowableWorkflowService.isEnterpriseDefinition(definitionJson);
+        } catch (RuntimeException ignored) {
+            return schemaVersion(row.get("version_schema_version")) == 2
+                    || schemaVersion(row.get("definition_schema_version")) == 2;
+        }
+    }
+
+    private int schemaVersion(Object value) {
+        if (value instanceof Number number) return number.intValue();
+        try {
+            return value == null ? 0 : Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 
     private long nextId() {

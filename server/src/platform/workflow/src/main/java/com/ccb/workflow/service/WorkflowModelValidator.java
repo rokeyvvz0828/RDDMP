@@ -20,8 +20,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class WorkflowModelValidator {
     private static final Set<String> NODE_TYPES = Set.of(
@@ -32,11 +30,8 @@ public final class WorkflowModelValidator {
     );
     private static final Set<String> APPROVAL_MODES = Set.of("ANY", "ALL", "PERCENT");
     private static final Set<String> VARIABLE_TYPES = Set.of(
-            "STRING", "INTEGER", "LONG", "DECIMAL", "BOOLEAN", "DATE", "DATETIME", "USER", "ORG", "JSON"
+            "STRING", "INTEGER", "LONG", "DECIMAL", "NUMBER", "BOOLEAN", "DATE", "DATETIME", "USER", "ORG", "JSON"
     );
-    private static final Pattern VARIABLE_REFERENCE = Pattern.compile("\\b[a-zA-Z_][a-zA-Z0-9_]*\\b");
-    private static final Set<String> EXPRESSION_WORDS = Set.of("true", "false", "and", "or", "not", "null");
-
     private final WorkflowModelAdapter adapter;
 
     public WorkflowModelValidator(ObjectMapper objectMapper) {
@@ -72,46 +67,46 @@ public final class WorkflowModelValidator {
 
     private void validateModel(WorkflowDefinitionModel model, List<ValidationError> errors) {
         if (model.schemaVersion() != 1 && model.schemaVersion() != 2) {
-            errors.add(error(null, null, "schemaVersion", "SCHEMA_VERSION_UNSUPPORTED", "涓嶆敮鎸佺殑娴佺▼瀹氫箟鐗堟湰"));
+            errors.add(error(null, null, "schemaVersion", "SCHEMA_VERSION_UNSUPPORTED", "不支持的流程定义版本: " + model.schemaVersion()));
         }
         if (model.nodes().isEmpty()) {
-            errors.add(error(null, null, "nodes", "NODES_EMPTY", "娴佺▼鑺傜偣涓嶈兘涓虹┖"));
+            errors.add(error(null, null, "nodes", "NODES_EMPTY", "流程节点不能为空"));
             return;
         }
 
         Map<String, WorkflowNodeModel> nodes = new LinkedHashMap<>();
         for (WorkflowNodeModel node : model.nodes()) {
             if (node.id() == null || node.id().isBlank()) {
-                errors.add(error(null, null, "id", "NODE_ID_EMPTY", "娴佺▼鑺傜偣缂栫爜涓嶈兘涓虹┖"));
+                errors.add(error(null, null, "id", "NODE_ID_EMPTY", "流程节点编码不能为空"));
                 continue;
             }
             if (nodes.putIfAbsent(node.id(), node) != null) {
-                errors.add(error(node.id(), null, "id", "NODE_ID_DUPLICATE", "娴佺▼鑺傜偣缂栫爜閲嶅: " + node.id()));
+                errors.add(error(node.id(), null, "id", "NODE_ID_DUPLICATE", "流程节点编码重复: " + node.id()));
             }
             if (!NODE_TYPES.contains(node.type())) {
-                errors.add(error(node.id(), null, "type", "NODE_TYPE_UNSUPPORTED", "涓嶆敮鎸佺殑娴佺▼鑺傜偣绫诲瀷: " + node.type()));
+                errors.add(error(node.id(), null, "type", "NODE_TYPE_UNSUPPORTED", "不支持的流程节点类型: " + node.type()));
             }
             if (node.label() == null || node.label().isBlank()) {
-                errors.add(error(node.id(), null, "label", "NODE_LABEL_EMPTY", "娴佺▼鑺傜偣鍚嶇О涓嶈兘涓虹┖"));
+                errors.add(error(node.id(), null, "label", "NODE_LABEL_EMPTY", "流程节点名称不能为空"));
             }
         }
 
         List<WorkflowNodeModel> starts = model.nodes().stream().filter(node -> "START".equals(node.type())).toList();
         List<WorkflowNodeModel> ends = model.nodes().stream().filter(node -> "END".equals(node.type())).toList();
-        if (starts.size() != 1) errors.add(error(null, null, "nodes", "START_COUNT_INVALID", "娴佺▼蹇呴』涓斿彧鑳芥湁涓€涓紑濮嬭妭鐐?"));
-        if (ends.size() != 1) errors.add(error(null, null, "nodes", "END_COUNT_INVALID", "娴佺▼蹇呴』涓斿彧鑳芥湁涓€涓粨鏉熻妭鐐?"));
+        if (starts.size() != 1) errors.add(error(null, null, "nodes", "START_COUNT_INVALID", "流程必须且只能有一个开始节点"));
+        if (ends.size() != 1) errors.add(error(null, null, "nodes", "END_COUNT_INVALID", "流程必须且只能有一个结束节点"));
 
         Map<String, List<WorkflowEdgeModel>> outgoing = new HashMap<>();
         Map<String, List<WorkflowEdgeModel>> incoming = new HashMap<>();
         Set<String> edgeIds = new HashSet<>();
         for (WorkflowEdgeModel edge : model.edges()) {
-            if (!edgeIds.add(edge.id())) errors.add(error(null, edge.id(), "id", "EDGE_ID_DUPLICATE", "娴佺▼杩炵嚎缂栫爜閲嶅: " + edge.id()));
+            if (!edgeIds.add(edge.id())) errors.add(error(null, edge.id(), "id", "EDGE_ID_DUPLICATE", "流程连线编码重复: " + edge.id()));
             if (!nodes.containsKey(edge.source()) || !nodes.containsKey(edge.target())) {
-                errors.add(error(null, edge.id(), "source/target", "EDGE_NODE_MISSING", "娴佺▼杩炵嚎寮曠敤浜嗕笉瀛樺湪鐨勮妭鐐?"));
+                errors.add(error(null, edge.id(), "source/target", "EDGE_NODE_MISSING", "流程连线引用了不存在的节点"));
                 continue;
             }
             if (edge.source().equals(edge.target())) {
-                errors.add(error(null, edge.id(), "source/target", "EDGE_SELF_REFERENCE", "娴佺▼杩炵嚎涓嶈兘杩炴帴鑷韩"));
+                errors.add(error(null, edge.id(), "source/target", "EDGE_SELF_REFERENCE", "流程连线不能连接自身"));
             }
             outgoing.computeIfAbsent(edge.source(), ignored -> new ArrayList<>()).add(edge);
             incoming.computeIfAbsent(edge.target(), ignored -> new ArrayList<>()).add(edge);
@@ -122,20 +117,20 @@ public final class WorkflowModelValidator {
             int out = outgoing.getOrDefault(node.id(), List.of()).size();
             switch (node.type()) {
                 case "START" -> {
-                    if (in != 0 || out != 1) errors.add(error(node.id(), null, "edges", "START_DEGREE_INVALID", "寮€濮嬭妭鐐瑰繀椤绘棤鍏ヨ竟涓斿彧鏈変竴鏉″嚭杈?"));
+                    if (in != 0 || out != 1) errors.add(error(node.id(), null, "edges", "START_DEGREE_INVALID", "开始节点必须无入边且只有一条出边"));
                 }
                 case "END" -> {
-                    if (in < 1 || out != 0) errors.add(error(node.id(), null, "edges", "END_DEGREE_INVALID", "缁撴潫鑺傜偣蹇呴』鍙湁涓€鏉″叆杈逛笖鏃犲嚭杈?"));
+                    if (in < 1 || out != 0) errors.add(error(node.id(), null, "edges", "END_DEGREE_INVALID", "结束节点必须至少有一条入边且无出边"));
                 }
                 case "CONDITION" -> validateConditionGateway(node, outgoing.getOrDefault(node.id(), List.of()), errors);
                 case "PARALLEL_SPLIT" -> {
-                    if (in != 1 || out < 2) errors.add(error(node.id(), null, "edges", "PARALLEL_SPLIT_DEGREE_INVALID", "骞惰鍒嗘敮蹇呴』涓€鍏ュ鍑?"));
+                    if (in != 1 || out < 2) errors.add(error(node.id(), null, "edges", "PARALLEL_SPLIT_DEGREE_INVALID", "并行分支网关必须一入多出"));
                 }
                 case "PARALLEL_JOIN" -> {
-                    if (in < 2 || out != 1) errors.add(error(node.id(), null, "edges", "PARALLEL_JOIN_DEGREE_INVALID", "骞惰姹囪仛蹇呴』澶氬叆涓€鍑?"));
+                    if (in < 2 || out != 1) errors.add(error(node.id(), null, "edges", "PARALLEL_JOIN_DEGREE_INVALID", "并行汇聚网关必须多入一出"));
                 }
                 case "APPROVAL", "CC" -> {
-                    if (in != 1 || out != 1) errors.add(error(node.id(), null, "edges", "TASK_DEGREE_INVALID", "瀹℃壒鎴栨妱閫佽妭鐐瑰繀椤讳竴鍏ヤ竴鍑?"));
+                    if (in != 1 || out != 1) errors.add(error(node.id(), null, "edges", "TASK_DEGREE_INVALID", "审批或抄送节点【" + node.label() + "】必须一入一出"));
                     validateTask(node, model, errors);
                 }
                 default -> {
@@ -147,22 +142,22 @@ public final class WorkflowModelValidator {
         if (starts.size() == 1) {
             Set<String> reachable = reachable(starts.get(0).id(), outgoing);
             if (reachable.size() != nodes.size()) {
-                errors.add(error(null, null, "nodes", "NODE_UNREACHABLE", "娴佺▼瀛樺湪浠庡紑濮嬭妭鐐逛笉鍙揪鐨勮妭鐐?"));
+                errors.add(error(null, null, "nodes", "NODE_UNREACHABLE", "流程存在从开始节点不可达的节点"));
             }
             if (hasCycle(nodes.keySet(), outgoing)) {
-                errors.add(error(null, null, "edges", "GRAPH_CYCLE", "娴佺▼杩炵嚎涓嶈兘褰㈡垚寰幆"));
+                errors.add(error(null, null, "edges", "GRAPH_CYCLE", "流程连线不能形成环路"));
             }
         }
 
         validateVariables(model.variables(), errors);
         Set<String> variableNames = model.variables().stream().map(WorkflowVariableModel::name).collect(java.util.stream.Collectors.toSet());
         validateFormBindings(model.formBindings(), nodes, variableNames, errors);
-        validateConditions(model.edges(), outgoing, nodes, variableNames, errors);
+        validateConditions(model.edges(), outgoing, nodes, errors);
         validatePolicies(model.actionPolicies(), nodes, errors);
     }
 
     private void validateConditionGateway(WorkflowNodeModel node, List<WorkflowEdgeModel> edges, List<ValidationError> errors) {
-        if (edges.size() < 2) errors.add(error(node.id(), null, "edges", "CONDITION_BRANCHES_TOO_FEW", "鏉′欢缃戝叧鑷冲皯闇€瑕佷袱鏉″垎鏀?"));
+        if (edges.size() < 2) errors.add(error(node.id(), null, "edges", "CONDITION_BRANCHES_TOO_FEW", "条件网关至少需要两条分支"));
         long defaults = edges.stream().filter(WorkflowEdgeModel::defaultFlow).count();
         String configuredDefault = node.config().path("defaultEdgeId").asText("");
         boolean configuredEdgeExists = edges.stream().anyMatch(edge -> edge.id().equals(configuredDefault));
@@ -177,52 +172,52 @@ public final class WorkflowModelValidator {
     private void validateTask(WorkflowNodeModel node, WorkflowDefinitionModel model, List<ValidationError> errors) {
         JsonNode config = node.config();
         if ("CC".equals(node.type())) {
-            if (!positiveIds(config.path("userIds"))) errors.add(error(node.id(), null, "userIds", "CC_RECIPIENT_MISSING", "鎶勯€佽妭鐐瑰繀椤婚厤缃妱閫佷汉鍛?"));
+            if (!positiveIds(config.path("userIds"))) errors.add(error(node.id(), null, "userIds", "CC_RECIPIENT_MISSING", "抄送节点必须配置抄送人员"));
             return;
         }
         String assigneeType = config.path("assigneeType").asText("").toUpperCase(Locale.ROOT);
         if (!ASSIGNEE_TYPES.contains(assigneeType)) {
-            errors.add(error(node.id(), null, "assigneeType", "ASSIGNEE_TYPE_INVALID", "瀹℃壒浜虹被鍨嬫棤鏁? " + assigneeType));
+            errors.add(error(node.id(), null, "assigneeType", "ASSIGNEE_TYPE_INVALID", "审批人类型无效: " + assigneeType));
         } else if (Set.of("USER", "ROLE").contains(assigneeType) && !positiveIds(config.path("assigneeIds"))) {
             errors.add(error(node.id(), null, "assigneeIds", "ASSIGNEE_MISSING", "审批节点必须配置审批人或角色"));
         } else if ("FORM_FIELD".equals(assigneeType) && config.path("fieldName").asText("").isBlank()) {
-            errors.add(error(node.id(), null, "fieldName", "ASSIGNEE_FIELD_MISSING", "瀛楁瀹℃壒浜哄繀椤婚厤缃瓧娈靛悕"));
+            errors.add(error(node.id(), null, "fieldName", "ASSIGNEE_FIELD_MISSING", "表单字段审批人必须配置字段名"));
         } else if ("EXPRESSION".equals(assigneeType) && config.path("expression").asText("").isBlank()) {
-            errors.add(error(node.id(), null, "expression", "ASSIGNEE_EXPRESSION_MISSING", "琛ㄨ揪寮忓鎵逛汉蹇呴』閰嶇疆琛ㄨ揪寮?"));
+            errors.add(error(node.id(), null, "expression", "ASSIGNEE_EXPRESSION_MISSING", "表达式审批人必须配置表达式"));
         }
         String mode = config.path("mode").asText("ANY").toUpperCase(Locale.ROOT);
-        if (!APPROVAL_MODES.contains(mode)) errors.add(error(node.id(), null, "mode", "APPROVAL_MODE_INVALID", "瀹℃壒妯″紡鏃犳晥: " + mode));
+        if (!APPROVAL_MODES.contains(mode)) errors.add(error(node.id(), null, "mode", "APPROVAL_MODE_INVALID", "审批模式无效: " + mode));
         if ("PERCENT".equals(mode) && (config.path("percentage").asInt(0) < 1 || config.path("percentage").asInt(0) > 100)) {
-            errors.add(error(node.id(), null, "percentage", "APPROVAL_PERCENT_INVALID", "姣斾緥浼氱蹇呴』閰嶇疆 1 鍒?100 鐨勯€氳繃姣斾緥"));
+            errors.add(error(node.id(), null, "percentage", "APPROVAL_PERCENT_INVALID", "比例会签必须配置 1 到 100 的通过比例"));
         }
         String emptyAction = config.path("emptyAssigneeAction").asText("ERROR").toUpperCase(Locale.ROOT);
-        if (!Set.of("ERROR", "WAIT").contains(emptyAction)) errors.add(error(node.id(), null, "emptyAssigneeAction", "EMPTY_ASSIGNEE_ACTION_INVALID", "绌哄鎵逛汉鐨勫鐞嗘柟寮忓彧鑳芥槸 ERROR 鎴?WAIT"));
+        if (!Set.of("ERROR", "WAIT").contains(emptyAction)) errors.add(error(node.id(), null, "emptyAssigneeAction", "EMPTY_ASSIGNEE_ACTION_INVALID", "空审批人的处理方式只能是 ERROR 或 WAIT"));
         JsonNode multiInstance = config.path("multiInstance");
         if (multiInstance.isBoolean() && multiInstance.asBoolean()) {
             String collectionVariable = config.path("collectionVariable").asText("");
             boolean declared = model.variables().stream().anyMatch(variable -> variable.name().equals(collectionVariable));
-            if (collectionVariable.isBlank() || !declared) errors.add(error(node.id(), null, "collectionVariable", "MULTI_INSTANCE_COLLECTION_MISSING", "浼氱闆嗗悎鍙橀噺蹇呴』宸插０鏄?"));
+            if (collectionVariable.isBlank() || !declared) errors.add(error(node.id(), null, "collectionVariable", "MULTI_INSTANCE_COLLECTION_MISSING", "会签集合变量必须已声明"));
         }
     }
 
     private void validateVariables(List<WorkflowVariableModel> variables, List<ValidationError> errors) {
         Set<String> names = new HashSet<>();
         for (WorkflowVariableModel variable : variables) {
-            if (!names.add(variable.name())) errors.add(error(null, null, "name", "VARIABLE_DUPLICATE", "娴佺▼鍙橀噺鍚嶇О閲嶅: " + variable.name()));
-            if (!VARIABLE_TYPES.contains(variable.type())) errors.add(error(null, null, "type", "VARIABLE_TYPE_INVALID", "娴佺▼鍙橀噺绫诲瀷鏃犳晥: " + variable.type()));
-            if (!Set.of("PROCESS", "TASK").contains(variable.scope())) errors.add(error(null, null, "scope", "VARIABLE_SCOPE_INVALID", "娴佺▼鍙橀噺浣滅敤鍩熸棤鏁? " + variable.scope()));
+            if (!names.add(variable.name())) errors.add(error(null, null, "name", "VARIABLE_DUPLICATE", "流程变量名称重复: " + variable.name()));
+            if (!VARIABLE_TYPES.contains(variable.type())) errors.add(error(null, null, "type", "VARIABLE_TYPE_INVALID", "流程变量类型无效: " + variable.type()));
+            if (!Set.of("PROCESS", "TASK").contains(variable.scope())) errors.add(error(null, null, "scope", "VARIABLE_SCOPE_INVALID", "流程变量作用域无效: " + variable.scope()));
         }
     }
 
     private void validateFormBindings(List<WorkflowFormBindingModel> bindings, Map<String, WorkflowNodeModel> nodes, Set<String> variables, List<ValidationError> errors) {
         for (WorkflowFormBindingModel binding : bindings) {
-            if (!nodes.containsKey(binding.nodeId())) errors.add(error(binding.nodeId(), null, "nodeId", "FORM_NODE_MISSING", "琛ㄥ崟缁戝畾寮曠敤浜嗕笉瀛樺湪鐨勮妭鐐?"));
-            if (!variables.contains(binding.variableName())) errors.add(error(binding.nodeId(), null, "variableName", "FORM_VARIABLE_MISSING", "琛ㄥ崟缁戝畾寮曠敤浜嗘湭澹版槑鐨勫彉閲? " + binding.variableName()));
+            if (!nodes.containsKey(binding.nodeId())) errors.add(error(binding.nodeId(), null, "nodeId", "FORM_NODE_MISSING", "表单绑定引用了不存在的节点"));
+            if (!variables.contains(binding.variableName())) errors.add(error(binding.nodeId(), null, "variableName", "FORM_VARIABLE_MISSING", "表单绑定引用了未声明的变量: " + binding.variableName()));
         }
     }
 
     private void validateConditions(List<WorkflowEdgeModel> edges, Map<String, List<WorkflowEdgeModel>> outgoing,
-                                    Map<String, WorkflowNodeModel> nodes, Set<String> variables, List<ValidationError> errors) {
+                                    Map<String, WorkflowNodeModel> nodes, List<ValidationError> errors) {
         for (WorkflowEdgeModel edge : edges) {
             WorkflowNodeModel source = nodes.get(edge.source());
             boolean conditionGateway = source != null && "CONDITION".equals(source.type());
@@ -244,9 +239,8 @@ public final class WorkflowModelValidator {
             if (!edge.condition().startsWith("${") || !edge.condition().endsWith("}")) {
                 errors.add(error(null, edge.id(), "condition", "CONDITION_EXPRESSION_INVALID", "条件表达式必须使用 ${...} 格式"));
             }
-            for (String reference : references(edge.condition())) {
-                if (!variables.contains(reference)) errors.add(error(null, edge.id(), "condition", "CONDITION_VARIABLE_MISSING", "条件表达式引用了未声明的变量: " + reference));
-            }
+            // Condition values are supplied at process start, so custom runtime variables
+            // do not need to be declared in the design-time variable metadata.
         }
         for (Map.Entry<String, List<WorkflowEdgeModel>> entry : outgoing.entrySet()) {
             long defaults = entry.getValue().stream().filter(WorkflowEdgeModel::defaultFlow).count();
@@ -256,9 +250,9 @@ public final class WorkflowModelValidator {
 
     private void validatePolicies(Map<String, WorkflowActionPolicy> policies, Map<String, WorkflowNodeModel> nodes, List<ValidationError> errors) {
         for (Map.Entry<String, WorkflowActionPolicy> entry : policies.entrySet()) {
-            if (!nodes.containsKey(entry.getKey())) errors.add(error(entry.getKey(), null, "actionPolicy", "POLICY_NODE_MISSING", "鍔ㄤ綔绛栫暐寮曠敤浜嗕笉瀛樺湪鐨勮妭鐐?"));
+            if (!nodes.containsKey(entry.getKey())) errors.add(error(entry.getKey(), null, "actionPolicy", "POLICY_NODE_MISSING", "动作策略引用了不存在的节点"));
             for (String action : entry.getValue().allowedActions()) {
-                if (!WorkflowActionPolicy.KNOWN_ACTIONS.contains(action)) errors.add(error(entry.getKey(), null, "allowedActions", "ACTION_INVALID", "涓嶆敮鎸佺殑瀹℃壒鍔ㄤ綔: " + action));
+                if (!WorkflowActionPolicy.KNOWN_ACTIONS.contains(action)) errors.add(error(entry.getKey(), null, "allowedActions", "ACTION_INVALID", "不支持的审批动作: " + action));
             }
         }
     }
@@ -291,16 +285,6 @@ public final class WorkflowModelValidator {
             }
         }
         return visited != nodeIds.size();
-    }
-
-    private Set<String> references(String expression) {
-        Set<String> names = new HashSet<>();
-        Matcher matcher = VARIABLE_REFERENCE.matcher(expression);
-        while (matcher.find()) {
-            String name = matcher.group();
-            if (!EXPRESSION_WORDS.contains(name.toLowerCase(Locale.ROOT)) && !name.equals("${")) names.add(name);
-        }
-        return names;
     }
 
     private boolean positiveIds(JsonNode node) {
