@@ -38,9 +38,9 @@ watch(() => props.edge, syncEdge, { deep: true, immediate: true })
     <template v-if="edge">
       <div class="workflow-inspector__heading"><span class="panel-kicker">连线配置</span><strong>{{ edgeSourceLabel }} → {{ edgeTargetLabel }}</strong><small>连线方向表示流程流转方向</small></div>
       <el-form label-position="top" size="default">
-        <el-form-item label="连线名称"><el-input v-model="edgeDraft.label" maxlength="64" show-word-limit :disabled="readonly" placeholder="例如：金额小于一万" @change="updateEdge" /></el-form-item>
+        <el-form-item label="连线名称"><el-input v-model="edgeDraft.label" maxlength="64" show-word-limit :disabled="readonly" @change="updateEdge" /></el-form-item>
         <template v-if="isConditionalEdge">
-          <el-form-item label="条件表达式"><el-input v-model="edgeDraft.condition" :disabled="readonly || Boolean(edgeDraft.default)" placeholder="例如 ${amount < 10000}" @input="updateEdge" /></el-form-item>
+          <el-form-item label="条件表达式"><el-input v-model="edgeDraft.condition" :disabled="readonly || Boolean(edgeDraft.default)" @input="updateEdge" /></el-form-item>
           <el-form-item label="分支类型"><el-switch v-model="edgeDraft.default" :disabled="readonly" active-text="默认分支" inactive-text="条件分支" @change="updateEdge" /></el-form-item>
           <el-alert v-if="edgeDraft.default" type="info" :closable="false" show-icon title="默认分支不填写条件表达式。" />
           <el-alert v-else type="warning" :closable="false" show-icon title="条件网关的非默认分支必须填写 ${...} 条件表达式。" />
@@ -49,7 +49,7 @@ watch(() => props.edge, syncEdge, { deep: true, immediate: true })
       </el-form>
     </template>
     <template v-else-if="node">
-      <div class="workflow-inspector__heading"><span class="panel-kicker">节点配置</span><strong>{{ node.type === 'APPROVAL' ? '人工审批节点' : node.type === 'CC' ? '抄送节点' : node.type === 'CONDITION' ? '条件网关' : node.type === 'PARALLEL_SPLIT' ? '并行分支网关' : node.type === 'PARALLEL_JOIN' ? '并行汇聚网关' : node.type === 'START' ? '开始事件' : '结束事件' }}</strong></div>
+      <div class="workflow-inspector__heading"><span class="panel-kicker">节点配置</span><strong>{{ node.type === 'APPROVAL' ? '用户任务' : node.type === 'CC' ? '抄送节点' : node.type === 'CONDITION' ? '条件网关' : node.type === 'PARALLEL_SPLIT' ? '并行分支网关' : node.type === 'PARALLEL_JOIN' ? '并行汇聚网关' : node.type === 'START' ? '开始事件' : '结束事件' }}</strong></div>
       <el-form label-position="top" size="default">
         <el-form-item label="节点名称" required><el-input v-model="draft.label" maxlength="64" show-word-limit :disabled="readonly || node.type === 'START' || node.type === 'END'" @change="update" /></el-form-item>
         <template v-if="node.type === 'APPROVAL'">
