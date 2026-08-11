@@ -30,6 +30,9 @@ export interface WorkflowVariableModel { name: string; type: string; required?: 
 export interface WorkflowFormBindingModel { nodeId: string; fieldName: string; variableName: string; required?: boolean }
 export interface WorkflowGraph { schemaVersion: 2; nodes: WorkflowNodeModel[]; edges: WorkflowEdgeModel[]; variables: WorkflowVariableModel[]; formBindings: WorkflowFormBindingModel[] }
 export interface WorkflowDefinition { id: number; code: string; name: string; status: string; current_version: number; model_schema_version?: number; created_at?: string }
+export interface WorkflowPage<T> { records: T[]; total: number; page: number; size: number }
+export interface WorkflowPageQuery { page: number; size: number }
+export interface WorkflowMonitorQuery extends WorkflowPageQuery { businessKey?: string; definitionKeyword?: string; status?: string; starterKeyword?: string; createdFrom?: string; createdTo?: string }
 export interface WorkflowDefinitionDetail extends WorkflowDefinition { version_no: number; definition_json: string | WorkflowGraph }
 export interface WorkflowTask { id: number; instance_id: number; task_key: string; node_id?: string; node_name?: string; task_type: 'APPROVAL' | 'ADD_SIGN' | 'CC'; task_group_key?: string; status: string; assignee_name?: string; business_key: string; instance_status?: string; created_at?: string }
 export interface WorkflowInstance { id: number; definition_id: number; definition_name?: string; version_no: number; business_key: string; status: string; starter_id: number; starter_name?: string; current_node?: string; created_at?: string }
@@ -56,7 +59,7 @@ export function defaultWorkflowGraph(): WorkflowGraph {
   }
 }
 
-export function listWorkflowDefinitions() { return http.get<ApiResponse<WorkflowDefinition[]>>('/workflows/definitions') }
+export function listWorkflowDefinitions(params: WorkflowPageQuery) { return http.get<ApiResponse<WorkflowPage<WorkflowDefinition>>>('/workflows/definitions', { params }) }
 export function getWorkflowDefinition(id: number) { return http.get<ApiResponse<WorkflowDefinitionDetail>>(`/workflows/definitions/${id}`) }
 export function createWorkflowDefinition(data: { code: string; name: string; definitionJson: string }) { return http.post<ApiResponse<WorkflowDefinition>>('/workflows/definitions', data) }
 export function updateWorkflowDefinition(id: number, data: { code: string; name: string; definitionJson: string }) { return http.put<ApiResponse<void>>('/workflows/definitions/' + id, data) }
@@ -64,10 +67,10 @@ export function deleteWorkflowDefinition(id: number) { return http.delete<ApiRes
 export function publishWorkflowDefinition(id: number) { return http.post<ApiResponse<void>>(`/workflows/definitions/${id}/publish`) }
 export function unpublishWorkflowDefinition(id: number) { return http.post<ApiResponse<void>>(`/workflows/definitions/${id}/unpublish`) }
 export function startWorkflow(definitionId: number, businessKey: string, variables: Record<string, unknown> = {}) { return http.post<ApiResponse<Record<string, unknown>>>('/workflows/instances', { definitionId, businessKey, ...variables }) }
-export function listWorkflowInstances() { return http.get<ApiResponse<WorkflowInstance[]>>('/workflows/instances') }
+export function listWorkflowInstances(params: WorkflowMonitorQuery) { return http.get<ApiResponse<WorkflowPage<WorkflowInstance>>>('/workflows/instances', { params }) }
 export function getWorkflowInstanceDetail(id: number) { return http.get<ApiResponse<WorkflowMonitorDetail>>('/workflows/instances/' + id + '/detail') }
 export function deleteWorkflowInstance(id: number) { return http.delete<ApiResponse<void>>('/workflows/instances/' + id) }
-export function listWorkflowDone() { return http.get<ApiResponse<WorkflowDoneItem[]>>('/workflows/done') }
+export function listWorkflowDone(params: WorkflowPageQuery) { return http.get<ApiResponse<WorkflowPage<WorkflowDoneItem>>>('/workflows/done', { params }) }
 export function getWorkflowTimeline(id: number) { return http.get<ApiResponse<WorkflowAuditEvent[]>>(`/workflows/instances/${id}/timeline`) }
-export function listWorkflowInbox() { return http.get<ApiResponse<WorkflowTask[]>>('/workflows/inbox') }
+export function listWorkflowInbox(params: WorkflowPageQuery) { return http.get<ApiResponse<WorkflowPage<WorkflowTask>>>('/workflows/inbox', { params }) }
 export function decideWorkflowTask(id: number, action: WorkflowTaskAction, comment: string, options?: { targetUserId?: number; ccUserIds?: number[] }) { return http.post<ApiResponse<void>>(`/workflows/tasks/${id}/decision`, { action, comment, targetUserId: options?.targetUserId, ccUserIds: options?.ccUserIds }) }

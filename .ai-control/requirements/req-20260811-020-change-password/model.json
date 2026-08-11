@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "topic": "change-password",
+  "plant": "authenticated shell to password persistence",
+  "causal_paths": [
+    {"requirement_id":"R1","input":"identity click","transitions":["open dropdown","select action"],"output":"password dialog or logout confirmation"},
+    {"requirement_id":"R2","input":"password form","transitions":["client validate","submit","server validate"],"output":"Chinese error or request"},
+    {"requirement_id":"R3","input":"authenticated request","transitions":["load current user","BCrypt match","encode","tenant-scoped update"],"output":"success or rejected request"},
+    {"requirement_id":"R4","input":"success response","transitions":["clear Pinia","remove local tokens","route login"],"output":"unauthenticated login page"}
+  ],
+  "sensors": ["security Maven tests", "frontend build", "browser DOM", "git diff check"],
+  "actuators": ["Java source", "Vue source", "local build", "browser actions"],
+  "disturbances": ["stale backend package", "expired token", "dirty workflow files"],
+  "assumptions": ["PasswordEncoder bean is BCrypt", "AuthUser principal is populated by JWT filter"]
+}

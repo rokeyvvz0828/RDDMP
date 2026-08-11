@@ -1,6 +1,8 @@
 package com.ccb.workflow.web;
 
 import com.ccb.common.api.ApiResponse;
+import com.ccb.common.api.PageQuery;
+import com.ccb.common.api.PageResult;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import com.ccb.workflow.service.WorkflowService;
@@ -23,8 +25,11 @@ public class WorkflowController {
     }
 
     @GetMapping("/definitions")
-    public ApiResponse<List<Map<String, Object>>> definitions(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.definitions(user), TraceId.getOrCreate());
+    public ApiResponse<PageResult<Map<String, Object>>> definitions(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.definitions(new PageQuery(page, size), user), TraceId.getOrCreate());
     }
 
     @GetMapping("/definitions/{id}")
@@ -68,8 +73,18 @@ public class WorkflowController {
     }
 
     @GetMapping("/instances")
-    public ApiResponse<List<Map<String, Object>>> instances(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.instances(user), TraceId.getOrCreate());
+    public ApiResponse<PageResult<Map<String, Object>>> instances(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String businessKey,
+            @RequestParam(required = false) String definitionKeyword,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String starterKeyword,
+            @RequestParam(required = false) String createdFrom,
+            @RequestParam(required = false) String createdTo,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.instances(new PageQuery(page, size), businessKey, definitionKeyword, status,
+                starterKeyword, createdFrom, createdTo, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/instances/{id}/timeline")
@@ -97,13 +112,19 @@ public class WorkflowController {
     }
 
     @GetMapping("/inbox")
-    public ApiResponse<List<Map<String, Object>>> inbox(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.inbox(user), TraceId.getOrCreate());
+    public ApiResponse<PageResult<Map<String, Object>>> inbox(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.inbox(new PageQuery(page, size), user), TraceId.getOrCreate());
     }
 
     @GetMapping("/done")
-    public ApiResponse<List<Map<String, Object>>> done(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.done(user), TraceId.getOrCreate());
+    public ApiResponse<PageResult<Map<String, Object>>> done(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.done(new PageQuery(page, size), user), TraceId.getOrCreate());
     }
 
     @PostMapping("/tasks/{id}/decision")

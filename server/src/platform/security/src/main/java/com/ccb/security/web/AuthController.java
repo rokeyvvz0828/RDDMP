@@ -4,6 +4,7 @@ import com.ccb.common.api.ApiResponse;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthMe;
 import com.ccb.security.model.AuthUser;
+import com.ccb.security.model.ChangePasswordCommand;
 import com.ccb.security.model.LoginCommand;
 import com.ccb.security.model.LogoutCommand;
 import com.ccb.security.model.RefreshCommand;
@@ -40,6 +41,13 @@ public class AuthController {
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@RequestBody(required = false) LogoutCommand command) {
         authService.logout(command == null ? null : command.refreshToken());
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(@AuthenticationPrincipal AuthUser user,
+                                            @Valid @RequestBody ChangePasswordCommand command) {
+        authService.changePassword(user, command);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 

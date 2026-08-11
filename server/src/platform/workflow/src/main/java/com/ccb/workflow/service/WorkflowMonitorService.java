@@ -1,5 +1,7 @@
 package com.ccb.workflow.service;
 
+import com.ccb.common.api.PageQuery;
+import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
@@ -27,13 +29,68 @@ public class WorkflowMonitorService {
         this.nodeLabelResolver = nodeLabelResolver;
     }
 
-    public List<Map<String, Object>> instances(AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT i.id, i.definition_id, d.name AS definition_name, i.version_no, i.business_key, i.status, i.starter_id, u.display_name AS starter_name, i.created_at, COALESCE((SELECT GROUP_CONCAT(DISTINCT t.node_id ORDER BY t.id SEPARATOR ', ') FROM wf_task t WHERE t.instance_id = i.id AND t.tenant_id = i.tenant_id AND t.status = 'PENDING'), '') AS current_node FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id WHERE i.tenant_id = ? AND i.deleted = 0 ORDER BY i.id DESC", user.tenantId());
+    public PageResult<Map<String, Object>> instances(PageQuery pageQuery, String businessKey, String definitionKeyword,
+                                                     String status, String starterKeyword, String createdFrom,
+                                                     String createdTo, AuthUser user) {
+        StringBuilder where = new StringBuilder(" WHERE i.tenant_id = ? AND i.deleted = 0");
+        List<Object> args = new java.util.ArrayList<>();
+        args.add(user.tenantId());
+        appendLike(where, args, "i.business_key", businessKey);
+        if (hasText(definitionKeyword)) {
+            where.append(" AND (d.name LIKE ? OR d.code LIKE ?)");
+            String like = like(definitionKeyword);
+            args.add(like);
+            args.add(like);
+        }
+        if (hasText(status)) {
+            where.append(" AND i.status = ?");
+            args.add(status.trim().toUpperCase(java.util.Locale.ROOT));
+        }
+        if (hasText(starterKeyword)) {
+            where.append(" AND (u.display_name LIKE ? OR u.username LIKE ?)");
+            String like = like(starterKeyword);
+            args.add(like);
+            args.add(like);
+        }
+        if (hasText(createdFrom)) {
+            where.append(" AND DATE(i.created_at) >= ?");
+            args.add(createdFrom.trim());
+        }
+        if (hasText(createdTo)) {
+            where.append(" AND DATE(i.created_at) <= ?");
+            args.add(createdTo.trim());
+        }
+        String fromAndWhere = " FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id"
+                + " LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id" + where;
+        List<Object> pageArgs = new java.util.ArrayList<>(args);
+        pageArgs.add((pageQuery.page() - 1) * pageQuery.size());
+        pageArgs.add(pageQuery.size());
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT i.id, i.definition_id, d.name AS definition_name, i.version_no, i.business_key, i.status,"
+                        + " i.starter_id, u.display_name AS starter_name, i.created_at,"
+                        + " COALESCE((SELECT GROUP_CONCAT(DISTINCT t.node_id ORDER BY t.id SEPARATOR ', ') FROM wf_task t"
+                        + " WHERE t.instance_id = i.id AND t.tenant_id = i.tenant_id AND t.status = 'PENDING'), '') AS current_node"
+                        + fromAndWhere + " ORDER BY i.id DESC LIMIT ?, ?", pageArgs.toArray());
         for (Map<String, Object> row : rows) {
             String labels = nodeLabelResolver.labelsForInstance(((Number) row.get("id")).longValue(), user.tenantId(), String.valueOf(row.get("current_node")));
             row.put("current_node", labels);
         }
-        return rows;
+        Long total = jdbc.queryForObject("SELECT COUNT(*)" + fromAndWhere, Long.class, args.toArray());
+        return new PageResult<>(rows, total == null ? 0 : total, pageQuery.page(), pageQuery.size());
+    }
+
+    private void appendLike(StringBuilder where, List<Object> args, String column, String value) {
+        if (!hasText(value)) return;
+        where.append(" AND ").append(column).append(" LIKE ?");
+        args.add(like(value));
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String like(String value) {
+        return "%" + value.trim() + "%";
     }
 
     public Map<String, Object> detail(long instanceId, AuthUser user) {
