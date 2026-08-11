@@ -10,6 +10,7 @@ import UiUserIdentity from '../components/ui/UiUserIdentity.vue'
 import UiTabs from '../components/ui/UiTabs.vue'
 import { useTabsStore } from '../stores/tabs'
 import ThemeSettingsDrawer from '../components/ui/ThemeSettingsDrawer.vue'
+import ThemeModeFan from '../components/ui/ThemeModeFan.vue'
 import UiNotificationCenter from '../components/ui/UiNotificationCenter.vue'
 import { paletteOptions } from '../types/ui'
 import type { RouteNode } from '../types/auth'
@@ -80,7 +81,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
         <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><span>工作台</span></el-menu-item>
         <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" />
       </el-menu>
-      <div class="header-actions"><UiNotificationCenter /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-button class="user-chip" text @click="logout"><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon><SwitchButton /></el-icon></el-button></div>
+      <div class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-button class="user-chip" text @click="logout"><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon><SwitchButton /></el-icon></el-button></div>
     </header>
 
     <el-container class="app-frame">
@@ -97,10 +98,10 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
       <el-container>
         <el-header class="app-header">
           <div class="header-left"><el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button><el-button v-else-if="sideNavigationVisible" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button><div class="breadcrumb"><span>控制中心</span><b>/</b><strong>{{ title }}</strong></div></div>
-          <div v-if="!topNavigationVisible" class="header-actions"><UiNotificationCenter /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-button class="user-chip" text @click="logout"><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon><SwitchButton /></el-icon></el-button></div>
+          <div v-if="!topNavigationVisible" class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-button class="user-chip" text @click="logout"><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon><SwitchButton /></el-icon></el-button></div>
         </el-header>
         <UiTabs v-if="theme.tabsEnabled" :current-path="route.fullPath" />
-        <el-main class="app-main"><router-view /></el-main>
+        <el-main class="app-main"><router-view :key="`${route.fullPath}:${tabsStore.refreshKey(route.fullPath)}`" /></el-main>
       </el-container>
     </el-container>
     <el-drawer v-if="mobileNavigationVisible" v-model="mobileMenuOpen" direction="ltr" size="280px" :with-header="false" class="mobile-menu-drawer">

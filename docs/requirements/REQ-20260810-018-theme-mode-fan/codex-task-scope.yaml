@@ -1,0 +1,66 @@
+schema_version: "1.0"
+requirement:
+  id: REQ-20260810-018
+  status: ready
+  document: docs/requirements/REQ-20260810-018-theme-mode-fan/requirement.md
+  codex_allowed: true
+assignment:
+  developer: codex
+  module: frontend/application
+  module_owner: rokeyvvz0828
+  branch: licon
+  worktree: D:/ai_project/ccb_rd
+codex:
+  production_access: false
+  contains_confidential_information: false
+  allowed_tools: [local-shell, codex]
+scope:
+  writable_paths:
+    - web/src/components/ui/ThemeModeFan.vue
+    - web/src/components/ui/ThemeSettingsDrawer.vue
+    - web/src/views/AppLayout.vue
+    - web/src/styles.css
+    - docs/requirements/REQ-20260810-018-theme-mode-fan/**
+    - docs/engineering-control/designs/2026-08-10-theme-mode-fan-design.md
+    - docs/engineering-control/plans/2026-08-10-theme-mode-fan-implementation-plan.md
+    - .ai-control/requirements/req-20260810-018-theme-mode-fan/*.json
+  read_only_paths:
+    - web/src/stores/theme.ts
+    - web/src/types/ui.ts
+    - web/src/modules/delivery-showcase/**
+    - web/src/components/ui/**
+  forbidden_paths: [.env, "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+public_capability_change:
+  required: true
+  issue: theme-mode-fan
+  owner_approved: true
+  old_behavior_preserved: true
+  regression_tests: [frontend-build, browser-theme-flow]
+database:
+  changed: false
+  migration_files: []
+  compatibility_and_rollback: not-applicable
+external_access:
+  changed: false
+  systems: []
+  data_classification: internal-test-only
+required_tests:
+  - name: frontend-build
+    command: npm --prefix web run build
+  - name: browser-theme-flow
+    command: desktop and mobile browser acceptance flow
+  - name: governance-scope
+    command: node scripts/check-all-governance.mjs
+risk:
+  level: normal
+  items: [viewport positioning, animation contrast, existing uncommitted AppLayout changes]
+completion:
+  control_mode: full
+  control_prefix: req-20260810-018-theme-mode-fan
+  control_justification: shared frontend capability and user-visible interaction change
+  acceptance_evidence:
+    - .ai-control/requirements/req-20260810-018-theme-mode-fan/execution-T1.json
+    - .ai-control/requirements/req-20260810-018-theme-mode-fan/observation-T1.json
+    - .ai-control/requirements/req-20260810-018-theme-mode-fan/convergence.json
+  release_verification: [frontend-build, browser-theme-flow]
+  rollback: revert the scoped frontend changes and retain existing preference storage
