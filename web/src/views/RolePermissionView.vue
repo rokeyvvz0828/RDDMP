@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Check, Refresh } from '@element-plus/icons-vue'
 import UiMenuIcon from '../components/ui/UiMenuIcon.vue'
-import UiPageHeader from '../components/ui/UiPageHeader.vue'
+import UiToolbar from '../components/ui/UiToolbar.vue'
 import { getPermissionCatalog, getRoleOptions, getRolePermissions, saveRolePermissions } from '../api/system'
 import type { PermissionMenu, RoleOption } from '../types/system'
 import { apiErrorMessage } from '../api/error'
@@ -96,10 +96,7 @@ onMounted(load)
 
 <template>
   <section class="role-permission-page">
-    <UiPageHeader eyebrow="系统管理" title="角色权限配置" description="按菜单配置查看、新增、修改、删除权限，多角色授权时自动取并集。">
-      <template #actions><el-button :loading="loading" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button><el-button type="primary" :loading="saving" @click="save"><el-icon><Check /></el-icon>保存权限</el-button></template>
-    </UiPageHeader>
-    <div class="role-permission-toolbar"><span>当前角色</span><el-select v-model="selectedRoleId" filterable placeholder="请选择角色" style="width:280px" @change="loadRolePermissions"><el-option v-for="role in roles" :key="role.id" :label="role.role_name" :value="role.id" /></el-select><el-tag v-if="selectedRole" type="info">{{ selectedRole.role_code }}</el-tag><small>勾选动作后保存，父级菜单会自动保留用于路由展示。</small></div>
+    <UiToolbar class="role-permission-toolbar"><div class="ui-toolbar__filters"><span>当前角色</span><el-select v-model="selectedRoleId" filterable placeholder="请选择角色" style="width:280px" @change="loadRolePermissions"><el-option v-for="role in roles" :key="role.id" :label="role.role_name" :value="role.id" /></el-select><el-tag v-if="selectedRole" type="info">{{ selectedRole.role_code }}</el-tag><small>勾选动作后保存，父级菜单会自动保留用于路由展示。</small></div><template #actions><el-button :loading="loading" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button><el-button type="primary" :loading="saving" @click="save"><el-icon><Check /></el-icon>保存权限</el-button></template></UiToolbar>
     <el-card v-loading="loading" class="permission-tree-card" shadow="never">
       <el-tree :data="menuTree" node-key="id" default-expand-all :expand-on-click-node="false" empty-text="暂无菜单权限目录">
         <template #default="{ data }">

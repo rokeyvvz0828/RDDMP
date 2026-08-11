@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
-import { useVueFlow, VueFlow, type Connection, type Edge, type Node, type NodeComponent, type NodeTypesObject, MarkerType, type EdgeMouseEvent, type NodeMouseEvent } from '@vue-flow/core'
+import { ConnectionMode, useVueFlow, VueFlow, type Connection, type Edge, type Node, type NodeComponent, type NodeTypesObject, MarkerType, type EdgeMouseEvent, type NodeMouseEvent } from '@vue-flow/core'
 import { Close, Delete, EditPen, FullScreen, Plus, Refresh, Share, Switch, TopRight } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import dagre from '@dagrejs/dagre'
 import '@vue-flow/core/dist/style.css'
 import WorkflowNode from './WorkflowNode.vue'
@@ -30,6 +31,7 @@ const contextStyle = computed(() => ({ left: `${contextMenu.left}px`, top: `${co
 
 function cloneGraph(graph: WorkflowGraph): WorkflowGraph { return JSON.parse(JSON.stringify(graph)) as WorkflowGraph }
 function edgeModel(edge: DesignerEdge): WorkflowEdgeModel { return (edge.data?.model || { id: edge.id, source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle, targetHandle: edge.targetHandle }) as WorkflowEdgeModel }
+function edgeDisplayLabel(edge: WorkflowEdgeModel): string | undefined { return edge.label?.trim() || undefined }
 function fitResponsiveGraph() {
   void nextTick(() => void nextTick(() => {
     layoutGraph(false)
@@ -40,7 +42,7 @@ function loadGraph(graph: WorkflowGraph) {
   syncing.value = true
   const cloned = cloneGraph(graph)
   flowNodes.value = cloned.nodes.map(node => ({ id: node.id, type: 'workflow', position: { ...node.position }, data: { node, selected: node.id === selectedId.value, readonly: Boolean(props.readonly), layoutDirection: layoutDirection.value, nodeStatus: props.nodeStatuses?.[node.id] } }))
-  flowEdges.value = cloned.edges.map(edge => ({ id: edge.id, type: 'smoothstep', source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left'), label: edge.label || undefined, markerEnd: MarkerType.ArrowClosed, animated: edge.source.includes('parallel') || edge.target.includes('parallel'), selectable: true, data: { model: { ...edge, sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left') } } }))
+  flowEdges.value = cloned.edges.map(edge => ({ id: edge.id, type: 'smoothstep', source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left'), label: edgeDisplayLabel(edge), markerEnd: MarkerType.ArrowClosed, animated: edge.source.includes('parallel') || edge.target.includes('parallel'), selectable: true, data: { model: { ...edge, sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left') } } }))
   if (props.mobileLayout && mobileViewport.value) fitResponsiveGraph()
   void nextTick(() => { syncing.value = false })
 }
@@ -57,7 +59,7 @@ function toGraph(): WorkflowGraph {
     variables: props.modelValue.variables || [],
     formBindings: props.modelValue.formBindings || [],
     nodes: flowNodes.value.map(flowNode => ({ ...flowNode.data.node, position: { x: flowNode.position.x, y: flowNode.position.y } })),
-    edges: flowEdges.value.map(flowEdge => { const edge = normalizeEdge(edgeModel(flowEdge)); return { ...edge, id: flowEdge.id, source: flowEdge.source, target: flowEdge.target, label: flowEdge.label ? String(flowEdge.label) : null } })
+    edges: flowEdges.value.map(flowEdge => { const edge = normalizeEdge(edgeModel(flowEdge)); return { ...edge, id: flowEdge.id, source: flowEdge.source, target: flowEdge.target, label: edge.label ? String(edge.label) : null } })
   }
 }
 function syncToModel() { if (!syncing.value && !props.readonly) emit('update:modelValue', toGraph()) }
@@ -83,12 +85,21 @@ function onNodeClick(event: NodeMouseEvent) { selectNode(event.node.id) }
 function onEdgeClick(event: EdgeMouseEvent) { selectEdge(event.edge.id) }
 function onPaneClick() { selectNode(null) }
 function onNodeDragStop(event: { node: Node }) { const node = flowNodes.value.find(item => item.id === event.node.id); if (node) { node.position = { ...event.node.position }; syncToModel() } }
+function isSingleFlowTask(type: WorkflowNodeType) { return type === 'APPROVAL' || type === 'CC' }
 function onConnect(connection: Connection) {
   if (props.readonly || !connection.source || !connection.target || connection.source === connection.target) return
   const source = flowNodes.value.find(node => node.id === connection.source)?.data.node
   const target = flowNodes.value.find(node => node.id === connection.target)?.data.node
   if (!source || !target || source.type === 'END' || target.type === 'START') return
   if (flowEdges.value.some(edge => edge.source === connection.source && edge.target === connection.target)) return
+  if (isSingleFlowTask(source.type) && flowEdges.value.some(edge => edge.source === source.id)) {
+    ElMessage.warning('审批或抄送节点只能有一条出边，请通过条件或并行网关配置分支')
+    return
+  }
+  if (isSingleFlowTask(target.type) && flowEdges.value.some(edge => edge.target === target.id)) {
+    ElMessage.warning('审批或抄送节点只能有一条入边，请通过条件或并行网关汇聚')
+    return
+  }
   const edge: WorkflowEdgeModel = { id: `edge-${Date.now()}`, source: connection.source, target: connection.target, sourceHandle: connection.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: connection.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left'), label: null, condition: null, default: false }
   flowEdges.value = [...flowEdges.value, { id: edge.id, type: 'smoothstep', source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left'), markerEnd: MarkerType.ArrowClosed, data: { model: edge } }]
   syncToModel()
@@ -113,10 +124,14 @@ function currentCanvasPosition(type: WorkflowNodeType): { x: number; y: number }
 }
 function addNode(type: WorkflowNodeType, parentId?: string) {
   if (props.readonly) return
-  const labels: Record<WorkflowNodeType, string> = { START: '发起', APPROVAL: '人工审批', CC: '抄送', CONDITION: '条件网关', PARALLEL_SPLIT: '并行分支', PARALLEL_JOIN: '并行汇聚', END: '结束' }
+  const labels: Record<WorkflowNodeType, string> = { START: '发起', APPROVAL: '用户任务', CC: '抄送', CONDITION: '条件网关', PARALLEL_SPLIT: '并行分支', PARALLEL_JOIN: '并行汇聚', END: '结束' }
   const config: WorkflowNodeConfig = type === 'APPROVAL' ? { assigneeType: 'USER', assigneeIds: [], mode: 'ANY', emptyAssigneeAction: 'ERROR', actionPolicy: { allowedActions: ['APPROVE', 'REJECT', 'ADD_SIGN', 'CC'] } } : type === 'CC' ? { userIds: [] } : {}
   const id = newId(type)
   const parent = parentId ? flowNodes.value.find(node => node.id === parentId) : undefined
+  if (parent && isSingleFlowTask(parent.data.node.type) && flowEdges.value.some(edge => edge.source === parent.id)) {
+    ElMessage.warning('当前审批或抄送节点已有出边，请先通过网关配置后续节点')
+    return
+  }
   const position = parent ? { x: parent.position.x + (layoutDirection.value === 'LR' ? 280 : 0), y: parent.position.y + (layoutDirection.value === 'TB' ? 170 : 0) } : currentCanvasPosition(type)
   const node: WorkflowNodeModel = { id, type, label: labels[type], position, config }
   flowNodes.value = [...flowNodes.value, { id, type: 'workflow', position: { ...node.position }, data: { node, selected: false, readonly: Boolean(props.readonly), layoutDirection: layoutDirection.value } }]
@@ -199,7 +214,7 @@ function onKeydown(event: KeyboardEvent) {
 }
 function updateEdge(edge: WorkflowEdgeModel) {
   const normalized = normalizeEdge(edge)
-  flowEdges.value = flowEdges.value.map(item => item.id === edge.id ? { ...item, label: normalized.label || undefined, data: { model: { ...normalized, sourceHandle: normalized.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: normalized.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left') } } } : item)
+  flowEdges.value = flowEdges.value.map(item => item.id === edge.id ? { ...item, label: edgeDisplayLabel(normalized), data: { model: { ...normalized, sourceHandle: normalized.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: normalized.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left') } } } : item)
   syncToModel()
 }
 watch(() => props.modelValue, value => loadGraph(value), { deep: true, immediate: true })
@@ -230,7 +245,7 @@ defineExpose({ selectNode, layoutGraph })
     <div class="workflow-designer__toolbar">
       <div class="workflow-designer__tools">
         <template v-if="!readonly">
-          <el-button size="small" @click="addNode('APPROVAL')"><el-icon><EditPen /></el-icon>人工审批</el-button>
+          <el-button size="small" @click="addNode('APPROVAL')"><el-icon><EditPen /></el-icon>用户任务</el-button>
           <el-button size="small" @click="addNode('CONDITION')"><el-icon><Switch /></el-icon>条件网关</el-button>
           <el-button size="small" @click="addNode('PARALLEL_SPLIT')"><el-icon><Share /></el-icon>并行分支</el-button>
           <el-button size="small" @click="addNode('PARALLEL_JOIN')"><el-icon><Share /></el-icon>并行汇聚</el-button>
@@ -246,7 +261,7 @@ defineExpose({ selectNode, layoutGraph })
       </div>
     </div>
     <div ref="canvas" class="workflow-designer__canvas">
-      <VueFlow :nodes="flowNodes" :edges="flowEdges" :node-types="nodeTypes" fit-view-on-init :min-zoom="0.35" :max-zoom="1.8" :nodes-draggable="!readonly" :nodes-connectable="!readonly" :elements-selectable="true" :default-edge-options="{ type: 'smoothstep', markerEnd: MarkerType.ArrowClosed }" @node-click="onNodeClick" @edge-click="onEdgeClick" @pane-click="onPaneClick" @node-drag-stop="onNodeDragStop" @connect="onConnect" @node-context-menu="onNodeContextMenu" @edge-context-menu="onEdgeContextMenu" />
+      <VueFlow :nodes="flowNodes" :edges="flowEdges" :node-types="nodeTypes" fit-view-on-init :min-zoom="0.35" :max-zoom="1.8" :connection-radius="34" :connection-mode="ConnectionMode.Strict" :nodes-draggable="!readonly" :nodes-connectable="!readonly" :elements-selectable="true" :default-edge-options="{ type: 'smoothstep', markerEnd: MarkerType.ArrowClosed }" @node-click="onNodeClick" @edge-click="onEdgeClick" @pane-click="onPaneClick" @node-drag-stop="onNodeDragStop" @connect="onConnect" @node-context-menu="onNodeContextMenu" @edge-context-menu="onEdgeContextMenu" />
       <div v-if="contextMenu.visible" class="workflow-context-menu" :style="contextStyle" @click.stop>
         <button type="button" @click="handleContextAction('edit')"><el-icon><EditPen /></el-icon>编辑配置</button>
         <button v-if="contextMenu.kind === 'node'" type="button" @click="handleContextAction('copy')"><el-icon><Plus /></el-icon>复制节点</button>

@@ -9,7 +9,6 @@ import UiFormDrawer from '../components/ui/UiFormDrawer.vue'
 import UiMenuIcon from '../components/ui/UiMenuIcon.vue'
 import UiOrgTree from '../components/ui/UiOrgTree.vue'
 import UiOrgTreeSelect from '../components/ui/UiOrgTreeSelect.vue'
-import UiPageHeader from '../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
 import UiToolbar from '../components/ui/UiToolbar.vue'
 import UiUserIdentity from '../components/ui/UiUserIdentity.vue'
@@ -211,12 +210,9 @@ onMounted(load)
 
 <template>
   <section class="system-resource-page">
-    <UiPageHeader eyebrow="系统管理" :title="current.title" :description="current.description">
-      <template #actions><el-button type="primary" @click="openCreate"><el-icon><Plus /></el-icon>{{ isOrgResource ? '新建组织' : '新建' }}</el-button></template>
-    </UiPageHeader>
     <UiToolbar>
       <el-input v-model="keyword" clearable placeholder="搜索名称或编码" style="width:240px" @keyup.enter="load"><template #prefix><el-icon><Search /></el-icon></template></el-input>
-      <template #actions><el-button @click="load"><el-icon><Refresh /></el-icon>刷新</el-button><el-button type="primary" @click="load"><el-icon><Search /></el-icon>查询</el-button></template>
+      <template #actions><el-button @click="load"><el-icon><Refresh /></el-icon>刷新</el-button><el-button type="primary" @click="load"><el-icon><Search /></el-icon>查询</el-button><el-button type="primary" @click="openCreate"><el-icon><Plus /></el-icon>{{ isOrgResource ? '新建组织' : '新建' }}</el-button></template>
     </UiToolbar>
 
     <div v-if="isOrgResource" class="org-management">

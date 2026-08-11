@@ -4,7 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Refresh, Upload } from '@element-plus/icons-vue'
 import UiDataTable from '../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../components/ui/UiFormDrawer.vue'
-import UiPageHeader from '../components/ui/UiPageHeader.vue'
+import UiToolbar from '../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../api/error'
 import { createFormMetadataField, createFormMetadataScope, createFormMetadataSection, deleteFormMetadataField, deleteFormMetadataSection, getFormMetadataSchema, listFormMetadataScopes, publishFormMetadata, updateFormMetadataField, updateFormMetadataScope, updateFormMetadataSection } from '../api/form-metadata'
 import type { FormMetadataField, FormMetadataOption, FormMetadataRule, FormMetadataSchema, FormMetadataScope, FormMetadataSection } from '../types/form-metadata'
@@ -214,9 +214,10 @@ onMounted(() => { void loadScopes() })
 
 <template>
   <section class="form-metadata-page">
-    <UiPageHeader eyebrow="系统管理" title="输入项配置" description="统一维护业务表单的分区、字段、规则、选项和列表展示属性。">
+    <UiToolbar>
+      <span class="muted">统一维护业务表单的分区、字段、规则、选项和列表展示属性</span>
       <template #actions><el-button type="primary" @click="openFieldCreate" :disabled="!selectedScopeId"><el-icon><Plus /></el-icon>新增输入项</el-button><el-button plain @click="openSectionCreate" :disabled="!selectedScopeId"><el-icon><Plus /></el-icon>新增分区</el-button><el-button plain @click="openScopeCreate"><el-icon><Plus /></el-icon>新增业务范围</el-button><el-button type="success" plain @click="publish" :disabled="!selectedScopeId || loadingSchema"><el-icon><Upload /></el-icon>发布配置</el-button></template>
-    </UiPageHeader>
+    </UiToolbar>
 
     <el-alert v-if="pageError" class="metadata-alert" type="error" :title="pageError" show-icon :closable="false" />
     <div class="form-metadata-layout">

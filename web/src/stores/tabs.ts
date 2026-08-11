@@ -9,6 +9,7 @@ export interface TabItem {
 
 export const useTabsStore = defineStore('tabs', () => {
   const tabs = ref<TabItem[]>([{ path: '/dashboard', title: '工作台', closable: false }])
+  const refreshVersions = ref<Record<string, number>>({})
 
   function open(tab: TabItem) {
     const existing = tabs.value.find(item => item.path === tab.path)
@@ -28,5 +29,13 @@ export const useTabsStore = defineStore('tabs', () => {
     tabs.value = tabs.value.filter(item => item.path === '/dashboard')
   }
 
-  return { tabs, open, close, closeOthers, closeAll }
+  function refresh(path: string) {
+    refreshVersions.value[path] = (refreshVersions.value[path] || 0) + 1
+  }
+
+  function refreshKey(path: string) {
+    return refreshVersions.value[path] || 0
+  }
+
+  return { tabs, open, close, closeOthers, closeAll, refresh, refreshKey }
 })
