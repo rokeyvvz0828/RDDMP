@@ -10,6 +10,7 @@ import UiMenuIcon from '../components/ui/UiMenuIcon.vue'
 import UiOrgTree from '../components/ui/UiOrgTree.vue'
 import UiOrgTreeSelect from '../components/ui/UiOrgTreeSelect.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
+import UiTreeSelect, { type UiTreeOption } from '../components/ui/UiTreeSelect.vue'
 import UiToolbar from '../components/ui/UiToolbar.vue'
 import UiUserIdentity from '../components/ui/UiUserIdentity.vue'
 import { menuIconOptions } from '../components/ui/menu-icons'
@@ -28,7 +29,7 @@ const metadata: Partial<Record<SystemResource, ResourceMeta>> = {
   users: { title: '用户管理', description: '维护平台账号、组织归属和头像信息。', columns: [{ prop: 'username', label: '账号' }, { prop: 'display_name', label: '姓名' }, { prop: 'mobile_phone', label: '手机号' }, { prop: 'org_name', label: '所属组织' }, { prop: 'status', label: '状态' }, { prop: 'last_login_at', label: '最近登录' }], fields: [{ key: 'username', label: '账号', required: true }, { key: 'password', label: '初始密码', required: true }, { key: 'display_name', label: '姓名', required: true }, { key: 'mobile_phone', label: '手机号' }, { key: 'org_id', label: '所属组织', type: 'number' }] },
   roles: { title: '角色权限', description: '维护角色编码、名称和授权边界。', columns: [{ prop: 'role_code', label: '角色编码' }, { prop: 'role_name', label: '角色名称' }, { prop: 'status', label: '状态' }, { prop: 'created_at', label: '创建时间' }], fields: [{ key: 'role_code', label: '角色编码', required: true }, { key: 'role_name', label: '角色名称', required: true }] },
   orgs: { title: '组织架构', description: '维护组织层级，并从组织节点管理所属用户。', columns: [], fields: [{ key: 'org_code', label: '组织编码', required: true }, { key: 'org_name', label: '组织名称', required: true }, { key: 'parent_id', label: '上级组织', type: 'number' }, { key: 'sort_no', label: '排序', type: 'number' }] },
-  menus: { title: '菜单路由', description: '维护菜单树、路由地址、权限编码和菜单图标。', columns: [{ prop: 'menu_name', label: '菜单名称' }, { prop: 'menu_type', label: '类型' }, { prop: 'icon', label: '图标' }, { prop: 'route_path', label: '路由地址' }, { prop: 'permission_code', label: '权限编码' }, { prop: 'sort_no', label: '排序' }, { prop: 'status', label: '状态' }], fields: [{ key: 'menu_name', label: '菜单名称', required: true }, { key: 'menu_type', label: '菜单类型', required: true }, { key: 'icon', label: '菜单图标' }, { key: 'route_path', label: '路由地址' }, { key: 'component_path', label: '组件键' }, { key: 'permission_code', label: '权限编码' }, { key: 'parent_id', label: '上级菜单 ID', type: 'number' }, { key: 'sort_no', label: '排序', type: 'number' }] },
+  menus: { title: '菜单路由', description: '维护菜单树、路由地址、权限编码和菜单图标。', columns: [{ prop: 'menu_name', label: '菜单名称' }, { prop: 'menu_type', label: '类型' }, { prop: 'icon', label: '图标' }, { prop: 'route_path', label: '路由地址' }, { prop: 'permission_code', label: '权限编码' }, { prop: 'sort_no', label: '排序' }, { prop: 'status', label: '状态' }], fields: [{ key: 'menu_name', label: '菜单名称', required: true }, { key: 'menu_type', label: '菜单类型', required: true }, { key: 'icon', label: '菜单图标' }, { key: 'route_path', label: '路由地址' }, { key: 'component_path', label: '组件键' }, { key: 'permission_code', label: '权限编码' }, { key: 'parent_id', label: '上级菜单', type: 'number' }, { key: 'sort_no', label: '排序', type: 'number' }] },
 }
 
 const current = computed(() => metadata[resource.value] || metadata.users!)
@@ -80,6 +81,32 @@ const menuTree = computed<MenuTreeRow[]>(() => {
   sortNodes(roots)
   return roots
 })
+
+const excludedMenuIds = computed<number[]>(() => {
+  if (!isMenuResource.value || !editingId.value) return []
+  const ids = new Set<number>([editingId.value])
+  const visit = (items: MenuTreeRow[]) => items.forEach(node => {
+    if (ids.has(Number(node.parent_id || 0))) ids.add(node.id)
+    visit(node.children || [])
+  })
+  visit(menuTree.value)
+  return [...ids]
+})
+
+const menuParentOptions = computed<UiTreeOption[]>(() => [{
+  value: 0,
+  label: '顶级菜单',
+  children: menuTree.value.map(mapMenuOption)
+}])
+
+function mapMenuOption(node: MenuTreeRow): UiTreeOption {
+  return {
+    value: node.id,
+    label: String(node.menu_name || ''),
+    disabled: excludedMenuIds.value.includes(node.id),
+    children: node.children.map(mapMenuOption)
+  }
+}
 
 function resetForm() {
   Object.keys(form).forEach(key => delete form[key])
@@ -160,9 +187,11 @@ async function save() {
   if (missing) { ElMessage.warning(`请填写${missing.label}`); return }
   saving.value = true
   try {
+    const payload = { ...form }
+    if (isMenuResource.value) payload.parent_id = Number(payload.parent_id || 0)
     let saved: SystemRow
-    if (editingId.value) saved = (await updateSystem(resource.value, editingId.value, { ...form })).data.data
-    else saved = (await createSystem(resource.value, { ...form, status: 1 })).data.data
+    if (editingId.value) saved = (await updateSystem(resource.value, editingId.value, payload)).data.data
+    else saved = (await createSystem(resource.value, { ...payload, status: 1 })).data.data
     if (isUserResource.value && avatarFile.value) await uploadUserAvatar(saved.id, avatarFile.value)
     ElMessage.success(editingId.value ? '更新成功' : '创建成功')
     drawerOpen.value = false
@@ -246,9 +275,10 @@ onMounted(load)
     <UiFormDrawer v-model="drawerOpen" :title="editingId ? `编辑${current.title}` : `新建${current.title}`" :loading="saving" @submit="save">
       <el-form label-position="top">
         <el-form-item v-if="isUserResource" label="头像"><UiAvatarUpload v-model="avatarFile" v-model:preview-url="avatarPreview" /></el-form-item>
-        <el-form-item v-for="field in current.fields" :key="field.key" :label="field.label" :required="field.required">
+        <el-form-item v-for="field in current.fields" :key="field.key" :label="isMenuResource && field.key === 'parent_id' ? '上级菜单' : field.label" :required="field.required">
           <UiOrgTreeSelect v-if="(isUserResource && field.key === 'org_id') || (isOrgResource && field.key === 'parent_id')" :model-value="form[field.key] ? Number(form[field.key]) : null" :nodes="orgTree" :exclude-ids="isOrgResource && editingId ? excludedOrgIds : []" :placeholder="field.label" @update:model-value="form[field.key] = $event" />
           <el-select v-else-if="isMenuResource && field.key === 'icon'" v-model="form[field.key]" clearable filterable placeholder="选择菜单图标" style="width:100%"><el-option v-for="item in menuIconOptions" :key="item.key" :label="item.label" :value="item.key"><span class="menu-icon-option"><UiMenuIcon :name="item.key" /><span>{{ item.label }}</span></span></el-option></el-select>
+          <UiTreeSelect v-else-if="isMenuResource && field.key === 'parent_id'" :model-value="form[field.key] === null ? null : Number(form[field.key] || 0)" :options="menuParentOptions" :placeholder="field.label" @update:model-value="form[field.key] = $event ?? 0" />
           <el-input v-else-if="field.type !== 'number'" v-model="form[field.key]" :type="field.key === 'password' ? 'password' : 'text'" :show-password="field.key === 'password'" />
           <el-input-number v-else v-model="form[field.key]" :min="0" style="width:100%" />
         </el-form-item>
