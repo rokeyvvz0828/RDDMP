@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "system_boundary": {"input": "administrator metadata configuration", "controller": "BusinessFormMetadataService", "actuator": "metadata tables and published revision", "sensor": "API responses, audit rows and frontend states", "external_boundary": "system RBAC, Flyway, existing UI components"},
+  "state_variables": ["selected scope", "sections and fields", "rules and options", "published revision", "loading/save/error state"],
+  "invariants": ["every write checks system form-config permission", "scope ownership is checked for section and field IDs", "field types and rule enums are server validated", "frontend does not provide SQL identifiers", "published configuration is versioned"],
+  "disturbances": ["no scopes", "stale scope selection", "invalid option/rule input", "permission denied", "migration not applied"],
+  "control_actions": ["load and select scope", "validate and save metadata", "publish snapshot", "show empty/error/forbidden states"]
+}

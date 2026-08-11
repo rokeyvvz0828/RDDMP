@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { ArrowDown, DataAnalysis, List, Plus, Promotion, Timer } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
-import UiPageHeader from '../../components/ui/UiPageHeader.vue'
+import UiToolbar from '../../components/ui/UiToolbar.vue'
 import DeliveryWorkbench from './components/DeliveryWorkbench.vue'
 import DeliveryProjectList from './components/DeliveryProjectList.vue'
 import DeliveryAnalytics from './components/DeliveryAnalytics.vue'
@@ -34,14 +34,6 @@ const views: Array<{ key: ViewKey; label: string; icon: typeof List }> = [
   { key: 'schedule', label: '计划排期', icon: Timer },
   { key: 'approval', label: '流程审批', icon: ArrowDown }
 ]
-const description = computed(() => ({
-  overview: '聚合项目进度、风险、质量和阶段分布，支持高频交付决策。',
-  projects: '检索、比较和维护交付项目，保留筛选、分页和操作上下文。',
-  analytics: '使用统一业务数据展示柱状图、饼状图和折线趋势。',
-  schedule: '按项目里程碑查看跨团队排期、进度和延期情况。',
-  approval: '查看流程图、审批上下文和审计记录，并完成审批决策。'
-}[activeView.value]))
-
 function openCreate(mode: 'standard' | 'wizard') { editingProject.value = null; if (mode === 'wizard') wizardOpen.value = true; else formOpen.value = true }
 function openDetail(project: DeliveryProject) { selectedProject.value = project; detailOpen.value = true }
 function openStepDetail(project: DeliveryProject) { selectedProject.value = project; stepDetailOpen.value = true }
@@ -64,9 +56,10 @@ async function resetDemo() { await ElMessageBox.confirm('将恢复全部初始�
 
 <template>
   <section class="delivery-showcase-page">
-    <UiPageHeader eyebrow="业务前端样式参考" title="交付示范中心" :description="description">
+    <UiToolbar>
+      <span class="muted">交付组件、列表、图表和流程交互示例</span>
       <template #actions><el-button @click="resetDemo">重置数据</el-button><el-dropdown split-button type="primary" @click="openCreate('standard')" @command="openCreate"><el-icon><Plus /></el-icon>新建项目<template #dropdown><el-dropdown-menu><el-dropdown-item command="standard">标准表单新建</el-dropdown-item><el-dropdown-item command="wizard">分步表单新建</el-dropdown-item></el-dropdown-menu></template></el-dropdown></template>
-    </UiPageHeader>
+    </UiToolbar>
 
     <nav class="delivery-module-nav" aria-label="交付示范中心视图"><button v-for="view in views" :key="view.key" type="button" :class="{ active: activeView === view.key }" @click="activeView = view.key"><el-icon><component :is="view.icon" /></el-icon><span>{{ view.label }}</span></button></nav>
 

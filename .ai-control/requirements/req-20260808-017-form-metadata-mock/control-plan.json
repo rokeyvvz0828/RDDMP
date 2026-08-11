@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260808-017-form-metadata-mock",
+  "tasks": [
+    {"id": "T1", "goal": "align contracts and add business form mock data", "write_scope": ["docs/integration/**", "mock/mock-data.json"], "acceptance": ["no contradictory draft/revision claim", "complete delivery.work-order dataset"], "status": "completed"},
+    {"id": "T2", "goal": "extend allowlist and focused test", "write_scope": ["server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/**", "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/**"], "acceptance": ["biz_form_* rows upsert", "invalid table rejection retained"], "status": "completed"},
+    {"id": "T3", "goal": "run independent checks and record evidence", "write_scope": [".ai-control/requirements/req-20260808-017-form-metadata-mock/**"], "acceptance": ["JDK17 tests", "frontend build", "governance", "Flyway", "JSON and diff checks"], "status": "completed"}
+  ],
+  "stop_conditions": ["mock data contains non-synthetic information", "contract still claims a separate draft editor", "governance or focused tests fail"],
+  "rollback": "Disable local mock synchronization and revert the task changes; do not modify published migrations."
+}

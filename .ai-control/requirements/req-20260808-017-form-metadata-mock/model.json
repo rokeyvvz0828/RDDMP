@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "requirement_id": "REQ-20260808-017-form-metadata-mock",
+  "system_boundary": {"input": "contract rules and mock dataset", "controller": "local MockDataInitializer", "actuator": "idempotent upsert into biz_form_* tables", "sensor": "unit tests, JSON validation and local API/page verification", "external_boundary": "production profiles do not execute the loader"},
+  "invariants": ["Only allowlisted tables and columns are accepted", "All mock rows are synthetic and tenant-scoped", "Published revision references the sample scope", "Repeated local startup is idempotent"],
+  "disturbances": ["A new metadata table is omitted from the allowlist", "A field or relation is missing from mock data", "Contract wording claims an unimplemented draft API"],
+  "control_actions": ["align contract ownership", "extend allowlist and test", "load scope/sections/fields/rules/options/values/revision together", "record verification evidence"]
+}

@@ -31,22 +31,28 @@ const assigneeText = computed(() => {
 <template>
   <div class="workflow-node" :class="[typeClass, nodeStatusClass, { 'is-selected': selected || data.selected, 'is-readonly': data.readonly }]">
     <template v-if="node.type !== 'START'">
-      <Handle v-for="position in handlePositions" :id="handleId('target', position)" :key="'target-' + position" type="target" :position="position"  :class="['workflow-node__handle', 'workflow-node__handle--target', 'workflow-node__handle--' + position]" />
+      <Handle v-for="position in handlePositions" :id="handleId('target', position)" :key="'target-' + position" type="target" :position="position" :connectable-start="false" :class="['workflow-node__handle', 'workflow-node__handle--target', 'workflow-node__handle--' + position]" />
     </template>
-    <div class="workflow-node__topline">
-      <span v-if="node.type === 'START' || node.type === 'END'" class="workflow-node__type-icon"><el-icon><component :is="typeIcon" /></el-icon></span>
-      <span v-else-if="!isGateway" class="workflow-node__type"><span class="workflow-node__type-icon"><el-icon><component :is="typeIcon" /></el-icon></span>{{ typeLabel }}</span>
-      <span v-else class="workflow-node__type-icon"><el-icon><component :is="typeIcon" /></el-icon></span>
+    <template v-if="isGateway">
+      <div class="workflow-node__gateway-content">
+        <span class="workflow-node__type-icon"><el-icon><component :is="typeIcon" /></el-icon></span>
+        <strong :title="node.label">{{ node.label }}</strong>
+      </div>
       <span v-if="nodeStatusLabel" class="workflow-node__status">{{ nodeStatusLabel }}</span>
-    </div>
-    <div class="workflow-node__content">
-      <strong :title="node.label">{{ node.label }}</strong>
-      <small v-if="node.type === 'APPROVAL' || node.type === 'CC'" :title="assigneeText">{{ assigneeText }}</small>
-    </div>
-    <template v-if="node.type !== 'END'">
-      <Handle v-for="position in handlePositions" :id="handleId('source', position)" :key="'source-' + position" type="source" :position="position"  :class="['workflow-node__handle', 'workflow-node__handle--source', 'workflow-node__handle--' + position]" />
     </template>
-    <span v-if="node.type === 'CONDITION'" class="workflow-node__gateway-mark">×</span>
-    <span v-else-if="node.type === 'PARALLEL_SPLIT' || node.type === 'PARALLEL_JOIN'" class="workflow-node__gateway-mark">＋</span>
+    <template v-else>
+      <div class="workflow-node__topline">
+        <span v-if="node.type === 'START' || node.type === 'END'" class="workflow-node__type-icon"><el-icon><component :is="typeIcon" /></el-icon></span>
+        <span v-else class="workflow-node__type"><span class="workflow-node__type-icon"><el-icon><component :is="typeIcon" /></el-icon></span>{{ typeLabel }}</span>
+        <span v-if="nodeStatusLabel" class="workflow-node__status">{{ nodeStatusLabel }}</span>
+      </div>
+      <div class="workflow-node__content">
+        <strong :title="node.label">{{ node.label }}</strong>
+        <small v-if="node.type === 'APPROVAL' || node.type === 'CC'" :title="assigneeText">{{ assigneeText }}</small>
+      </div>
+    </template>
+    <template v-if="node.type !== 'END'">
+      <Handle v-for="position in handlePositions" :id="handleId('source', position)" :key="'source-' + position" type="source" :position="position" :connectable-end="false" :class="['workflow-node__handle', 'workflow-node__handle--source', 'workflow-node__handle--' + position]" />
+    </template>
   </div>
 </template>

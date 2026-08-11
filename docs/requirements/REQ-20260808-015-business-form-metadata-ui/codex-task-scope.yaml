@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260808-015", "status": "ready", "document": "docs/requirements/REQ-20260808-015-business-form-metadata-ui/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "platform/system + web + infrastructure", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260808-015-business-form-metadata-ui/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V33__business_form_metadata_menu.sql",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      "web/src/views/FormMetadataView.vue",
+      "web/src/router/index.ts",
+      "web/src/views/AppLayout.vue",
+      ".ai-control/requirements/req-20260808-015-business-form-metadata-ui/*.json"
+    ],
+    "read_only_paths": ["server/src/platform/infrastructure/src/main/resources/db/migration/V1__*.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V32__*.sql", "web/src/modules/delivery-showcase/**", "web/src/components/ui/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260808-015", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["system module tests", "frontend build", "governance and Flyway checks"]},
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V33__business_form_metadata_menu.sql"], "compatibility_and_rollback": "Add the system menu and permissions only; existing form metadata tables and business tables remain compatible."},
+  "required_tests": [
+    {"name": "system-tests", "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-system -am test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"}
+  ],
+  "risk": {"level": "important", "items": ["new public configuration API and administrator write path"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260808-015-business-form-metadata-ui", "control_justification": "cross-layer public configuration capability", "acceptance_evidence": [".ai-control/requirements/req-20260808-015-business-form-metadata-ui/execution-T1.json", ".ai-control/requirements/req-20260808-015-business-form-metadata-ui/observation-T1.json", ".ai-control/requirements/req-20260808-015-business-form-metadata-ui/convergence.json"], "release_verification": [], "rollback": "Disable the new menu and stop consumers of the metadata API; retain additive schema for controlled rollback."}
+}

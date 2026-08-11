@@ -60,5 +60,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout }
+  async function changePassword(oldPassword: string, newPassword: string, confirmPassword: string) {
+    await http.post('/auth/change-password', { oldPassword, newPassword, confirmPassword })
+    clear()
+  }
+
+  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout, changePassword }
 })

@@ -9,7 +9,7 @@
 1. 从 `docs/requirements/TEMPLATE.md` 创建 `docs/requirements/REQ-YYYYMMDD-NNN/requirement.md`，经评审后将状态改为 `ready`。
 2. 从 `docs/requirements/codex-task-scope.template.yaml` 创建同目录 `codex-task-scope.yaml`，明确模块、Owner、可写/只读/禁止路径、`.ai-control` 任务前缀、风险和测试。
 3. 创建短生命周期分支：`feat|fix|hotfix|docs|chore/REQ-YYYYMMDD-NNN-short-name`。
-4. 阅读根目录及目标目录最近的 `AGENTS.md`，按 `.agents/skills/rddmp-delivery-engineer/SKILL.md` 和 `control-engineering` 插件实施；业务前端必须先参考 `web/src/modules/delivery-showcase/`。
+4. 阅读根目录及目标目录最近的 `AGENTS.md`，按 `.agents/skills/rddmp-delivery-engineer/SKILL.md` 和 `control-engineering` 插件实施；业务前端必须先参考 `web/src/modules/delivery-showcase/` 和根目录 `design-h5.md`。
 5. 运行治理检查、目标模块测试、后端测试及前端构建；只把证据写入 `.ai-control/` 当前任务前缀记录。
 6. 创建 PR，关联需求编号，说明范围、Codex 参与、权限/数据/迁移影响、测试、发布和回退。
 

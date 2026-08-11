@@ -90,6 +90,14 @@ public class AuthRepository {
                 Timestamp.from(Instant.now()), userId);
     }
 
+    public int updatePassword(long userId, long tenantId, String passwordHash) {
+        return jdbcTemplate.update("""
+                UPDATE sys_user
+                SET password_hash = ?, updated_at = ?
+                WHERE id = ? AND tenant_id = ? AND deleted = 0
+                """, passwordHash, Timestamp.from(Instant.now()), userId, tenantId);
+    }
+
     private AuthUser mapUser(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new AuthUser(rs.getLong("id"), rs.getLong("tenant_id"), rs.getString("username"),
                 rs.getString("password_hash"), rs.getString("display_name"), rs.getLong("org_id"),

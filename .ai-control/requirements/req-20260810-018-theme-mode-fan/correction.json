@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "feedback_id": "user-theme-transition-zoom-feedback",
+  "decision": "accept",
+  "decision_reason": "Browser zoom exposed a mismatch between fixed-pixel clip-path coordinates and the View Transition snapshot coordinate space; the origin and reveal radius must be expressed relative to the viewport.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {"hypothesis":"fixed-pixel clip-path coordinates are affected by browser zoom in the View Transition snapshot","supporting_evidence":"user reproduced the offset at normal zoom and reported alignment at 67% zoom; browser validation showed the button maps to 80.625% and 5.23148% of the viewport","falsifier":"a sampled transition still reports a pixel-based origin or an origin percentage different from the trigger percentage"},
+  "control_action": {"gain":"limited","target":"zoom-independent circular reveal from the mode trigger center","write_scope":["web/src/components/ui/ThemeModeFan.vue","web/src/styles.css"],"invariants":["existing theme store","reduced-motion direct switch","no backend change"],"impact_limit":"appearance animation only","rollback":"revert the correction files","correction_check":["percentage-based View Transition origin","vmax reveal radius","frontend build"],"route":"executing then observing"},
+  "resolution": "verified",
+  "residual_risk": ["older browsers without View Transitions use the clip-path fallback"]
+}

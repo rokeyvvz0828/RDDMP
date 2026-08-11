@@ -5,6 +5,7 @@
 - [Codex 协同开发文件清单与操作指引](../../CODEX-DEVELOPMENT-GUIDE.md)：研发人员如何使用 Skill、AGENTS、需求范围和项目证据参与开发。
 - [项目研发规约](PROJECT-RULES.md)：架构、模块、数据、质量与发布。
 - [Codex Coding 规约](CODEX-CODING-RULES.md)：Codex 准入、数据边界、任务范围与完成报告。
+- [移动端适配工程手册](../../design-h5.md)：移动端页面、列表、弹框、流程图、表单和图表的工程级适配规则。
 - [GitHub 协作规约](GITHUB-RULES.md)：分支、PR、审批和 CI。
 
 长期模块边界只维护在 `governance/modules.yaml`；单任务范围只维护在对应需求目录的 `codex-task-scope.yaml`；执行与验证证据维护在 `.ai-control/`。`AGENTS.md` 和仓库 Skill 只引用或摘要这些事实源，不另建一套规则。

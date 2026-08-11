@@ -5,7 +5,6 @@ import { ElMessage } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import UiDataTable from '../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../components/ui/UiFormDrawer.vue'
-import UiPageHeader from '../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
 import UiToolbar from '../components/ui/UiToolbar.vue'
 import { createAiModel, createAiProvider, createAiRoute, listAiModels, listAiProviders, listAiRoutes } from '../api/ai'
@@ -24,7 +23,6 @@ const form = reactive<Record<string, string | number>>({ providerCode: '', provi
 const isProviders = computed(() => section.value === 'providers')
 const isRoutes = computed(() => section.value === 'routes')
 const title = computed(() => isProviders.value ? '智能服务商' : isRoutes.value ? '能力路由' : '智能模型')
-const description = computed(() => isProviders.value ? '登记服务商连接信息，密钥只保留在服务端。' : isRoutes.value ? '按能力配置模型路由，业务模块只调用能力名。' : '维护模型标识和能力集合，前端永远不会读取服务商密钥。')
 
 async function load() {
   loading.value = true
@@ -56,8 +54,7 @@ onMounted(load)
 
 <template>
   <section class="ai-page">
-    <UiPageHeader eyebrow="智能能力" :title="title" :description="description"><template #actions><el-button type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新增配置</el-button></template></UiPageHeader>
-    <UiToolbar><span class="muted">服务端统一管理模型凭据和能力路由</span><template #actions><el-button @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template></UiToolbar>
+    <UiToolbar><span class="muted">服务端统一管理模型凭据和能力路由</span><template #actions><el-button @click="load"><el-icon><Refresh /></el-icon>刷新</el-button><el-button type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新增配置</el-button></template></UiToolbar>
     <UiDataTable v-if="isProviders" :data="providers" :loading="loading" row-key="id" border><el-table-column prop="provider_code" label="服务商编码" min-width="160" /><el-table-column prop="provider_name" label="服务商名称" min-width="180" /><el-table-column prop="endpoint" label="服务地址" min-width="260" /><el-table-column label="状态" width="120"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ '0': '停用', '1': '启用' }" /></template></el-table-column></UiDataTable>
     <UiDataTable v-else-if="isRoutes" :data="routes" :loading="loading" row-key="id" border><el-table-column prop="capability" label="能力名" min-width="220" /><el-table-column prop="model_id" label="模型 ID" width="140" /><el-table-column prop="priority" label="优先级" width="120" /><el-table-column label="状态" width="120"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ '0': '停用', '1': '启用' }" /></template></el-table-column></UiDataTable>
     <UiDataTable v-else :data="models" :loading="loading" row-key="id" border><el-table-column prop="model_code" label="模型编码" min-width="180" /><el-table-column prop="model_name" label="模型名称" min-width="180" /><el-table-column prop="provider_id" label="服务商 ID" width="130" /><el-table-column prop="capabilities" label="能力集合" min-width="240" /><el-table-column label="状态" width="120"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ '0': '停用', '1': '启用' }" /></template></el-table-column></UiDataTable>

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "completed_with_environment_note",
+  "changes": [
+    "added ChangePasswordCommand with Bean Validation",
+    "added POST /api/auth/change-password",
+    "added server-side BCrypt verification and tenant-scoped update",
+    "added wrong-password and successful-hash unit tests"
+  ],
+  "commands": [
+    {"command":"mvn -pl :ccb-security -am -DskipTests package","result":"passed: BUILD SUCCESS"},
+    {"command":"mvn -pl :ccb-security -am -Dtest=AuthServicePasswordTest -Dsurefire.failIfNoSpecifiedTests=false test","result":"passed: 2 tests, 0 failures"},
+    {"command":"mvn -pl :ccb-security -am test","result":"blocked before ccb-security by pre-existing ccb-infrastructure Mockito/Byte Buddy incompatibility with Java 25"}
+  ],
+  "invariants_checked": ["authenticated principal supplies user id and tenant id","password hash is BCrypt encoded","wrong old password does not update","no migration added"]
+}

@@ -249,6 +249,7 @@ public class SystemService {
             case "params", "param-categories" -> "参数管理";
             case "dicts" -> "字典管理";
             case "configs" -> "系统配置";
+            case "form-metadata" -> "输入项配置";
             default -> "该操作";
         };
     }
@@ -271,6 +272,7 @@ public class SystemService {
             case "params", "param-categories" -> "system:param:list";
             case "dicts" -> "system:dict:list";
             case "configs" -> "system:config:list";
+            case "form-metadata" -> "system:form-config:list";
             default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported system resource");
         };
     }
@@ -391,6 +393,10 @@ public class SystemService {
 
     private void audit(AuthUser user, String operation) {
         jdbc.update("INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, success) VALUES (?, ?, ?, ?, 'SYSTEM', 1)", nextId(), user.tenantId(), user.id(), operation);
+    }
+
+    public void auditOperation(AuthUser user, String operation) {
+        audit(user, operation);
     }
 
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }

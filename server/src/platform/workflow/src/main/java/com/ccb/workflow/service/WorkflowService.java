@@ -1,5 +1,7 @@
 package com.ccb.workflow.service;
 
+import com.ccb.common.api.PageQuery;
+import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
@@ -44,8 +46,14 @@ public class WorkflowService {
         this.nodeLabelResolver = nodeLabelResolver;
     }
 
-    public List<Map<String, Object>> definitions(AuthUser user) {
-        return jdbc.queryForList("SELECT id, code, name, status, current_version, model_schema_version, created_at FROM wf_definition WHERE tenant_id = ? AND deleted = 0 ORDER BY id DESC", user.tenantId());
+    public PageResult<Map<String, Object>> definitions(PageQuery pageQuery, AuthUser user) {
+        String where = " FROM wf_definition WHERE tenant_id = ? AND deleted = 0";
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id, code, name, status, current_version, model_schema_version, created_at" + where
+                        + " ORDER BY id DESC LIMIT ?, ?",
+                user.tenantId(), offset(pageQuery), pageQuery.size());
+        long total = count(where, user.tenantId());
+        return new PageResult<>(rows, total, pageQuery.page(), pageQuery.size());
     }
 
     public Map<String, Object> definition(long definitionId, AuthUser user) {
@@ -134,8 +142,11 @@ public class WorkflowService {
         workflowMonitorService.terminate(instanceId, reason, user);
     }
 
-    public List<Map<String, Object>> instances(AuthUser user) {
-        return workflowMonitorService.instances(user);
+    public PageResult<Map<String, Object>> instances(PageQuery pageQuery, String businessKey, String definitionKeyword,
+                                                     String status, String starterKeyword, String createdFrom,
+                                                     String createdTo, AuthUser user) {
+        return workflowMonitorService.instances(pageQuery, businessKey, definitionKeyword, status, starterKeyword,
+                createdFrom, createdTo, user);
     }
 
     public List<Map<String, Object>> timeline(long instanceId, AuthUser user) {
@@ -150,14 +161,40 @@ public class WorkflowService {
         workflowMonitorService.delete(instanceId, user);
     }
 
-    public List<Map<String, Object>> done(AuthUser user) {
-        return nodeLabelResolver.decorateTasks(jdbc.queryForList("SELECT a.id, a.instance_id, a.task_id, a.action_code, a.comment, a.created_at, t.node_id, t.task_key, t.task_type, i.business_key, i.status AS instance_status, d.name AS definition_name FROM wf_task_action a JOIN wf_instance i ON i.id = a.instance_id AND i.tenant_id = a.tenant_id JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = a.tenant_id LEFT JOIN wf_task t ON t.id = a.task_id AND t.tenant_id = a.tenant_id WHERE a.tenant_id = ? AND a.operator_id = ? AND i.deleted = 0 ORDER BY a.created_at DESC, a.id DESC", user.tenantId(), user.id()), user.tenantId());
+    public PageResult<Map<String, Object>> done(PageQuery pageQuery, AuthUser user) {
+        String where = " FROM wf_task_action a JOIN wf_instance i ON i.id = a.instance_id AND i.tenant_id = a.tenant_id"
+                + " JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = a.tenant_id"
+                + " LEFT JOIN wf_task t ON t.id = a.task_id AND t.tenant_id = a.tenant_id"
+                + " WHERE a.tenant_id = ? AND a.operator_id = ? AND i.deleted = 0";
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT a.id, a.instance_id, a.task_id, a.action_code, a.comment, a.created_at, t.node_id, t.task_key,"
+                        + " t.task_type, i.business_key, i.status AS instance_status, d.name AS definition_name" + where
+                        + " ORDER BY a.created_at DESC, a.id DESC LIMIT ?, ?",
+                user.tenantId(), user.id(), offset(pageQuery), pageQuery.size());
+        long total = count(where, user.tenantId(), user.id());
+        return new PageResult<>(nodeLabelResolver.decorateTasks(rows, user.tenantId()), total, pageQuery.page(), pageQuery.size());
     }
 
-    public List<Map<String, Object>> inbox(AuthUser user) {
-        List<Map<String, Object>> result = new ArrayList<>(flowableWorkflowService.inbox(user));
-        result.addAll(jdbc.queryForList("SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.status, COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key, i.status AS instance_status FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0 AND t.flowable_task_id IS NULL AND t.status IN ('PENDING', 'SENT') ORDER BY t.id DESC", user.tenantId(), user.id()));
-        return nodeLabelResolver.decorateTasks(result, user.tenantId());
+    public PageResult<Map<String, Object>> inbox(PageQuery pageQuery, AuthUser user) {
+        String where = " FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id"
+                + " LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id"
+                + " WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0 AND t.status IN ('PENDING', 'SENT')";
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.status,"
+                        + " COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key,"
+                        + " i.status AS instance_status" + where + " ORDER BY t.id DESC LIMIT ?, ?",
+                user.tenantId(), user.id(), offset(pageQuery), pageQuery.size());
+        long total = count(where, user.tenantId(), user.id());
+        return new PageResult<>(nodeLabelResolver.decorateTasks(rows, user.tenantId()), total, pageQuery.page(), pageQuery.size());
+    }
+
+    private long offset(PageQuery pageQuery) {
+        return (pageQuery.page() - 1) * pageQuery.size();
+    }
+
+    private long count(String fromAndWhere, Object... args) {
+        Long total = jdbc.queryForObject("SELECT COUNT(*)" + fromAndWhere, Long.class, args);
+        return total == null ? 0 : total;
     }
 
     @Transactional
@@ -355,8 +392,40 @@ public class WorkflowService {
     }
 
     private boolean enterpriseDefinition(long definitionId, long tenantId) {
-        Integer version = jdbc.queryForObject("SELECT model_schema_version FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", Integer.class, definitionId, tenantId);
-        return version != null && version == 2;
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT d.model_schema_version AS definition_schema_version,
+                       v.model_schema_version AS version_schema_version,
+                       v.definition_json
+                FROM wf_definition d
+                JOIN wf_version v ON v.definition_id = d.id
+                    AND v.tenant_id = d.tenant_id
+                    AND v.version_no = COALESCE(NULLIF(d.current_version, 0), (
+                        SELECT MAX(v2.version_no)
+                        FROM wf_version v2
+                        WHERE v2.definition_id = d.id AND v2.tenant_id = d.tenant_id
+                    ))
+                WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0
+                """, definitionId, tenantId);
+        if (rows.isEmpty()) return false;
+
+        Map<String, Object> row = rows.get(0);
+        String definitionJson = String.valueOf(row.get("definition_json"));
+        try {
+            // The JSON model is authoritative for legacy rows whose metadata defaulted to version 1.
+            return flowableWorkflowService.isEnterpriseDefinition(definitionJson);
+        } catch (RuntimeException ignored) {
+            return schemaVersion(row.get("version_schema_version")) == 2
+                    || schemaVersion(row.get("definition_schema_version")) == 2;
+        }
+    }
+
+    private int schemaVersion(Object value) {
+        if (value instanceof Number number) return number.intValue();
+        try {
+            return value == null ? 0 : Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 
     private long nextId() {

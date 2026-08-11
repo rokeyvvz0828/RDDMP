@@ -1,6 +1,6 @@
 {
   "datasetKey": "rddmp-local-platform",
-  "datasetVersion": "2026.08.07.1",
+  "datasetVersion": "2026.08.08.1",
   "description": "RDDMP 本地研发演示数据。所有数据均为虚构内容，使用高位保留 ID。",
   "catalog": [
     {
@@ -51,6 +51,14 @@
       "dataStrategy": "frontend-session-mock",
       "source": "web/src/modules/delivery-showcase/mock.ts",
       "tables": []
+    },
+    {
+      "module": "business-form-metadata",
+      "name": "交付工单输入项配置",
+      "features": ["业务范围", "表单分区", "字段定义", "条件规则", "静态选项", "发布快照"],
+      "entry": "/system/form-metadata",
+      "dataStrategy": "database",
+      "tables": ["biz_form_scope", "biz_form_section", "biz_form_field_definition", "biz_form_field_rule", "biz_form_field_option", "biz_form_field_value", "biz_form_config_revision"]
     },
     {
       "module": "new-business-template",
@@ -233,6 +241,83 @@
       "rows": [
         {"id": 910000000000731, "tenant_id": 1, "definition_id": 910000000000601, "version_no": 1, "instance_id": 910000000000701, "event_type": "INSTANCE_STARTED", "operator_id": 1, "reason": "本地演示流程已发起", "payload_json": {"businessKey": "MOCK-REL-2026-001"}, "created_at": "2026-08-06 09:10:00"},
         {"id": 910000000000732, "tenant_id": 1, "definition_id": 910000000000601, "version_no": 1, "instance_id": 910000000000702, "task_id": 910000000000712, "event_type": "TASK_APPROVED", "operator_id": 1, "reason": "版本验证完成，同意投产。", "payload_json": {"action": "APPROVE"}, "created_at": "2026-08-05 16:30:00"}
+      ]
+    },
+    {
+      "table": "biz_form_scope",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000001001, "tenant_id": 1, "scope_key": "delivery.work-order", "scope_name": "交付工单", "module_key": "delivery", "entity_type": "work_order", "form_key": "default", "status_field": "status", "permission_prefix": "delivery:work-order", "published_revision_id": 910000000001901, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1}
+      ]
+    },
+    {
+      "table": "biz_form_section",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000001101, "tenant_id": 1, "scope_id": 910000000001001, "section_key": "basic", "title": "基本信息", "layout_mode": "left", "show_title": 1, "collapsed": 0, "sort_no": 10, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001102, "tenant_id": 1, "scope_id": 910000000001001, "section_key": "delivery", "title": "交付计划", "layout_mode": "right", "show_title": 1, "collapsed": 0, "sort_no": 20, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001103, "tenant_id": 1, "scope_id": 910000000001001, "section_key": "quality", "title": "质量与风险", "layout_mode": "full", "show_title": 1, "collapsed": 0, "sort_no": 30, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1}
+      ]
+    },
+    {
+      "table": "biz_form_field_definition",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000001201, "tenant_id": 1, "scope_id": 910000000001001, "section_id": 910000000001101, "field_key": "work_order_no", "label": "工单编号", "field_kind": "builtin", "input_type": "text", "value_type": "string", "source_type": "none", "native_column": "work_order_no", "multiple": 0, "column_span": 12, "visible": 1, "list_visible": 1, "filterable": 1, "sortable": 1, "dashboard_dimension": 0, "placeholder": "请输入工单编号", "help_text": "用于列表检索和跨模块关联", "sort_no": 10, "is_builtin": 1, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001202, "tenant_id": 1, "scope_id": 910000000001001, "section_id": 910000000001101, "field_key": "work_order_type", "label": "工单类型", "field_kind": "extension", "input_type": "select", "value_type": "code", "source_type": "static", "multiple": 0, "column_span": 12, "visible": 1, "list_visible": 1, "filterable": 1, "sortable": 0, "dashboard_dimension": 1, "placeholder": "请选择工单类型", "sort_no": 20, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001203, "tenant_id": 1, "scope_id": 910000000001001, "section_id": 910000000001101, "field_key": "priority", "label": "优先级", "field_kind": "extension", "input_type": "select", "value_type": "code", "source_type": "static", "multiple": 0, "column_span": 12, "visible": 1, "list_visible": 1, "filterable": 1, "sortable": 1, "dashboard_dimension": 1, "placeholder": "请选择优先级", "sort_no": 30, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001204, "tenant_id": 1, "scope_id": 910000000001001, "section_id": 910000000001102, "field_key": "owner_id", "label": "交付负责人", "field_kind": "extension", "input_type": "user", "value_type": "reference", "source_type": "user", "source_key": "active-users", "multiple": 0, "column_span": 12, "visible": 1, "list_visible": 1, "filterable": 1, "sortable": 0, "dashboard_dimension": 0, "placeholder": "请选择负责人", "sort_no": 40, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001205, "tenant_id": 1, "scope_id": 910000000001001, "section_id": 910000000001102, "field_key": "planned_start", "label": "计划开始", "field_kind": "extension", "input_type": "datetime", "value_type": "datetime", "source_type": "none", "multiple": 0, "column_span": 12, "visible": 1, "list_visible": 0, "filterable": 1, "sortable": 1, "dashboard_dimension": 0, "placeholder": "请选择开始时间", "sort_no": 50, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001206, "tenant_id": 1, "scope_id": 910000000001001, "section_id": 910000000001102, "field_key": "planned_end", "label": "计划结束", "field_kind": "extension", "input_type": "datetime", "value_type": "datetime", "source_type": "none", "multiple": 0, "column_span": 12, "visible": 1, "list_visible": 0, "filterable": 1, "sortable": 1, "dashboard_dimension": 0, "placeholder": "请选择结束时间", "sort_no": 60, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001207, "tenant_id": 1, "scope_id": 910000000001001, "section_id": 910000000001103, "field_key": "risk_level", "label": "风险等级", "field_kind": "extension", "input_type": "radio", "value_type": "code", "source_type": "static", "multiple": 0, "column_span": 24, "visible": 1, "list_visible": 1, "filterable": 1, "sortable": 0, "dashboard_dimension": 1, "placeholder": "请选择风险等级", "sort_no": 70, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001208, "tenant_id": 1, "scope_id": 910000000001001, "section_id": 910000000001103, "field_key": "description", "label": "工单说明", "field_kind": "extension", "input_type": "textarea", "value_type": "text", "source_type": "none", "multiple": 0, "column_span": 24, "visible": 1, "list_visible": 0, "filterable": 0, "sortable": 0, "dashboard_dimension": 0, "placeholder": "请填写交付范围、验收标准和注意事项", "sort_no": 80, "is_builtin": 0, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1}
+      ]
+    },
+    {
+      "table": "biz_form_field_rule",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000001301, "tenant_id": 1, "field_definition_id": 910000000001202, "action_code": "submit", "condition_type": "status", "condition_key": "DRAFT", "required": 1, "editable": 1, "visible": 1, "validation_json": {"message": "请选择工单类型"}, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001302, "tenant_id": 1, "field_definition_id": 910000000001203, "action_code": "submit", "condition_type": "status", "condition_key": "DRAFT", "required": 1, "editable": 1, "visible": 1, "validation_json": {"message": "请选择优先级"}, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001303, "tenant_id": 1, "field_definition_id": 910000000001205, "action_code": "submit", "condition_type": "status", "condition_key": "DRAFT", "required": 1, "editable": 1, "visible": 1, "validation_json": {"message": "请选择计划开始时间"}, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001304, "tenant_id": 1, "field_definition_id": 910000000001206, "action_code": "submit", "condition_type": "status", "condition_key": "DRAFT", "required": 1, "editable": 1, "visible": 1, "validation_json": {"message": "请选择计划结束时间"}, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001305, "tenant_id": 1, "field_definition_id": 910000000001207, "action_code": "approve", "condition_type": "status", "condition_key": "PENDING_APPROVAL", "required": 1, "editable": 0, "visible": 1, "validation_json": {"message": "审批前必须确认风险等级"}, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1}
+      ]
+    },
+    {
+      "table": "biz_form_field_option",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000001401, "tenant_id": 1, "field_definition_id": 910000000001202, "option_value": "RELEASE", "option_label": "版本交付", "option_group": "delivery", "sort_no": 10, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001402, "tenant_id": 1, "field_definition_id": 910000000001202, "option_value": "MIGRATION", "option_label": "数据迁移", "option_group": "delivery", "sort_no": 20, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001403, "tenant_id": 1, "field_definition_id": 910000000001202, "option_value": "CHANGE", "option_label": "系统变更", "option_group": "delivery", "sort_no": 30, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001411, "tenant_id": 1, "field_definition_id": 910000000001203, "option_value": "LOW", "option_label": "低", "option_group": "priority", "sort_no": 10, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001412, "tenant_id": 1, "field_definition_id": 910000000001203, "option_value": "MEDIUM", "option_label": "中", "option_group": "priority", "sort_no": 20, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001413, "tenant_id": 1, "field_definition_id": 910000000001203, "option_value": "HIGH", "option_label": "高", "option_group": "priority", "sort_no": 30, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001421, "tenant_id": 1, "field_definition_id": 910000000001207, "option_value": "LOW", "option_label": "低风险", "option_group": "risk", "sort_no": 10, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001422, "tenant_id": 1, "field_definition_id": 910000000001207, "option_value": "MEDIUM", "option_label": "中风险", "option_group": "risk", "sort_no": 20, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000001423, "tenant_id": 1, "field_definition_id": 910000000001207, "option_value": "HIGH", "option_label": "高风险", "option_group": "risk", "sort_no": 30, "enabled": 1, "deleted": 0, "created_by": 1, "updated_by": 1}
+      ]
+    },
+    {
+      "table": "biz_form_field_value",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000001501, "tenant_id": 1, "scope_id": 910000000001001, "field_definition_id": 910000000001201, "entity_type": "work_order", "entity_id": 910000000002001, "ordinal": 0, "value_text": "WO-2026-001", "value_label_snapshot": "WO-2026-001"},
+        {"id": 910000000001502, "tenant_id": 1, "scope_id": 910000000001001, "field_definition_id": 910000000001202, "entity_type": "work_order", "entity_id": 910000000002001, "ordinal": 0, "value_code": "RELEASE", "value_label_snapshot": "版本交付"},
+        {"id": 910000000001503, "tenant_id": 1, "scope_id": 910000000001001, "field_definition_id": 910000000001203, "entity_type": "work_order", "entity_id": 910000000002001, "ordinal": 0, "value_code": "HIGH", "value_label_snapshot": "高"},
+        {"id": 910000000001504, "tenant_id": 1, "scope_id": 910000000001001, "field_definition_id": 910000000001204, "entity_type": "work_order", "entity_id": 910000000002001, "ordinal": 0, "value_ref_type": "user", "value_ref_id": 910000000000004, "value_label_snapshot": "演示投产负责人"},
+        {"id": 910000000001505, "tenant_id": 1, "scope_id": 910000000001001, "field_definition_id": 910000000001205, "entity_type": "work_order", "entity_id": 910000000002001, "ordinal": 0, "value_datetime": "2026-08-12 09:00:00"},
+        {"id": 910000000001506, "tenant_id": 1, "scope_id": 910000000001001, "field_definition_id": 910000000001206, "entity_type": "work_order", "entity_id": 910000000002001, "ordinal": 0, "value_datetime": "2026-08-16 18:00:00"},
+        {"id": 910000000001507, "tenant_id": 1, "scope_id": 910000000001001, "field_definition_id": 910000000001207, "entity_type": "work_order", "entity_id": 910000000002001, "ordinal": 0, "value_code": "MEDIUM", "value_label_snapshot": "中风险"},
+        {"id": 910000000001508, "tenant_id": 1, "scope_id": 910000000001001, "field_definition_id": 910000000001208, "entity_type": "work_order", "entity_id": 910000000002001, "ordinal": 0, "value_text": "完成版本投产前的变更核对、数据迁移演练和回退方案确认。"}
+      ]
+    },
+    {
+      "table": "biz_form_config_revision",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000001901, "tenant_id": 1, "scope_id": 910000000001001, "revision_no": 1, "revision_status": "published", "snapshot_json": {"scopeKey": "delivery.work-order", "revision": 1, "sections": ["basic", "delivery", "quality"], "fieldCount": 8, "source": "mock"}, "change_summary": "交付工单首版字段配置", "created_by": 1, "published_by": 1, "created_at": "2026-08-08 09:00:00", "published_at": "2026-08-08 09:00:00"}
       ]
     }
   ],

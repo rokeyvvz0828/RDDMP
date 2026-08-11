@@ -6,6 +6,7 @@ import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.jwt.JwtTokenService;
 import com.ccb.security.model.AuthMe;
 import com.ccb.security.model.AuthUser;
+import com.ccb.security.model.ChangePasswordCommand;
 import com.ccb.security.model.LoginCommand;
 import com.ccb.security.model.RouteNode;
 import com.ccb.security.model.TokenPair;
@@ -61,6 +62,29 @@ public class AuthService {
     }
 
     public void logout(String refreshToken) { tokenService.revokeRefresh(refreshToken); }
+
+    public void changePassword(AuthUser principal, ChangePasswordCommand command) {
+        if (principal == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "登录状态已失效，请重新登录");
+        }
+        if (!command.newPassword().equals(command.confirmPassword())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "两次输入的新密码不一致");
+        }
+
+        AuthUser current = repository.findById(principal.id(), principal.tenantId())
+                .filter(AuthUser::enabled)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "账号不存在或已停用"));
+        if (!passwordEncoder.matches(command.oldPassword(), current.passwordHash())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "原密码不正确");
+        }
+        if (passwordEncoder.matches(command.newPassword(), current.passwordHash())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "新密码不能与原密码相同");
+        }
+        String passwordHash = passwordEncoder.encode(command.newPassword());
+        if (repository.updatePassword(current.id(), current.tenantId(), passwordHash) == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "密码保存失败，请稍后重试");
+        }
+    }
 
     public AuthMe me(AuthUser user) {
         return new AuthMe(user.id(), user.tenantId(), user.username(), user.displayName(), user.orgId(),

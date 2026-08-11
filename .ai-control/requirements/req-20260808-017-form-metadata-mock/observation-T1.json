@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "task_id": "T3",
+  "observer": "same Codex context; owner review remains required",
+  "status": "passed-with-known-risks",
+  "checks": [
+    {"name": "mock JSON", "result": "passed", "evidence": "node JSON.parse succeeded; datasetVersion=2026.08.08.1 and 35 biz_form_* rows declared"},
+    {"name": "JDK17 infrastructure tests", "result": "passed", "evidence": "mvn -pl :ccb-infrastructure -am test; 6 tests passed, including 3 MockDataInitializerTest cases"},
+    {"name": "frontend build", "result": "passed", "evidence": "npm --prefix web run build; vue-tsc and Vite build succeeded with existing dependency/chunk warnings"},
+    {"name": "governance and Flyway", "result": "passed", "evidence": "node scripts/check-all-governance.mjs and node scripts/check-flyway-migrations.mjs passed"},
+    {"name": "local startup", "result": "passed", "evidence": "JDK17 Boot JAR started with local profile; health returned UP; Mock log synchronized 119 rows"},
+    {"name": "database metadata chain", "result": "passed", "evidence": "local MySQL contains delivery.work-order with 3 sections, 8 fields, 5 rules, 9 options, 8 values and published revision 1"}
+  ],
+  "feedback": [],
+  "recorded_at": "2026-08-08T10:45:00+08:00"
+}

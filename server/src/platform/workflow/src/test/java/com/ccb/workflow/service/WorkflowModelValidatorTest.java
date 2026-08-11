@@ -52,7 +52,58 @@ class WorkflowModelValidatorTest {
     }
 
     @Test
-    void rejectsConditionWithoutDefaultAndUnknownVariable() {
+    void acceptsConditionUsingRuntimeCustomVariable() {
+        var result = validator.validate("""
+                {"schemaVersion":2,"variables":[],"nodes":[
+                  {"id":"start","type":"START","label":"发起","config":{}},
+                  {"id":"condition","type":"CONDITION","label":"条件","config":{"defaultEdgeId":"e-default"}},
+                  {"id":"end","type":"END","label":"结束","config":{}}
+                ],"edges":[
+                  {"id":"e1","source":"start","target":"condition"},
+                  {"id":"e2","source":"condition","target":"end","condition":"${releaseVersion == 'prod'}"},
+                  {"id":"e-default","source":"condition","target":"end","default":true}
+                ]}
+                """);
+
+        assertTrue(result.valid(), () -> result.errors().toString());
+    }
+
+    @Test
+    void acceptsFrontendNumberVariableType() {
+        var result = validator.validate("""
+                {"schemaVersion":2,"variables":[{"name":"amount","type":"NUMBER"}],"nodes":[
+                  {"id":"start","type":"START","label":"start","config":{}},
+                  {"id":"end","type":"END","label":"end","config":{}}
+                ],"edges":[
+                  {"id":"e1","source":"start","target":"end"}
+                ]}
+                """);
+
+        assertTrue(result.valid(), () -> result.errors().toString());
+    }
+
+    @Test
+    void reportsReadableMessageWhenApprovalHasMultipleOutgoingEdges() {
+        var result = validator.validate("""
+                {"schemaVersion":2,"variables":[],"nodes":[
+                  {"id":"start","type":"START","label":"开始","config":{}},
+                  {"id":"approval","type":"APPROVAL","label":"财务审批","config":{"assigneeType":"STARTER","mode":"ANY"}},
+                  {"id":"cc","type":"CC","label":"通知抄送","config":{"userIds":[2]}},
+                  {"id":"end","type":"END","label":"结束","config":{}}
+                ],"edges":[
+                  {"id":"e1","source":"start","target":"approval"},
+                  {"id":"e2","source":"approval","target":"cc"},
+                  {"id":"e3","source":"approval","target":"end"},
+                  {"id":"e4","source":"cc","target":"end"}
+                ]}
+                """);
+
+        var error = result.errors().stream().filter(item -> item.code().equals("TASK_DEGREE_INVALID")).findFirst().orElseThrow();
+        assertEquals("审批或抄送节点【财务审批】必须一入一出", error.message());
+    }
+
+    @Test
+    void rejectsConditionWithoutDefault() {
         var result = validator.validate("""
                 {"schemaVersion":2,"variables":[],"nodes":[
                   {"id":"start","type":"START","label":"发起","config":{}},
@@ -60,13 +111,12 @@ class WorkflowModelValidatorTest {
                   {"id":"end","type":"END","label":"结束","config":{}}
                 ],"edges":[
                   {"id":"e1","source":"start","target":"condition"},
-                  {"id":"e2","source":"condition","target":"end","condition":"${missing == true}"}
+                  {"id":"e2","source":"condition","target":"end","condition":"${customFlag == true}"}
                 ]}
                 """);
 
         assertFalse(result.valid());
         assertTrue(result.errors().stream().anyMatch(error -> error.code().equals("DEFAULT_BRANCH_MISSING")));
-        assertTrue(result.errors().stream().anyMatch(error -> error.code().equals("CONDITION_VARIABLE_MISSING")));
     }
 
     @Test

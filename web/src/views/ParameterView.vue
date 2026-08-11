@@ -4,8 +4,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Plus, Refresh, Delete } from '@element-plus/icons-vue'
 import UiDataTable from '../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../components/ui/UiFormDrawer.vue'
-import UiPageHeader from '../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
+import UiToolbar from '../components/ui/UiToolbar.vue'
 import { createSystem, deleteSystem, listSystem, updateSystem, updateSystemStatus } from '../api/system'
 import { apiErrorMessage } from '../api/error'
 import type { SystemRow } from '../types/system'
@@ -163,9 +163,10 @@ onMounted(loadAll)
 
 <template>
   <section class="parameter-page">
-    <UiPageHeader eyebrow="系统管理" title="参数管理" description="按参数类别维护系统、流程和 AI 运行参数。">
+    <UiToolbar>
+      <span class="muted">按参数类别维护系统、流程和 AI 运行参数</span>
       <template #actions><el-button type="primary" @click="openParamCreate"><el-icon><Plus /></el-icon>新增参数</el-button><el-button plain @click="openCategoryCreate"><el-icon><Plus /></el-icon>新增类别</el-button></template>
-    </UiPageHeader>
+    </UiToolbar>
     <div class="parameter-layout">
       <el-card class="parameter-categories" shadow="never">
         <template #header><div class="parameter-panel-heading"><strong>参数类别</strong><el-button text circle title="刷新类别" @click="loadCategories"><el-icon><Refresh /></el-icon></el-button></div></template>

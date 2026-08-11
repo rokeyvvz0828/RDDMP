@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "requirement_id": "REQ-20260807-014-business-form-metadata",
+  "objective": "建立可版本化、状态驱动、可查询且可扩展的统一业务表单元数据模型。",
+  "scope": [
+    "business form metadata contract",
+    "additive MySQL/Flyway metadata tables",
+    "governance and rollback evidence"
+  ],
+  "non_goals": [
+    "将所有业务字段改为 EAV",
+    "实现动态表单 API 或前端页面",
+    "修改现有业务逻辑、Java 包名或既有迁移"
+  ],
+  "decisions": [
+    "Keep core identity, status, relation, audit and high-frequency query fields in business tables.",
+    "Store configurable fields through scope, section, field definition, rule, option and value tables.",
+    "Use typed value columns and reserve JSON for explicitly declared structured fields.",
+    "Use status/role/expression condition keys instead of display labels in field rules.",
+    "Record published configuration snapshots for traceability and rollback."
+  ],
+  "risks": [
+    "The new schema is a public platform contract and needs owner review before API implementation.",
+    "Large-scale extension-field reporting requires query allowlists and dedicated indexes.",
+    "The migration was syntax-checked locally but needs a MySQL 8.4 startup migration check before release."
+  ],
+  "status": "approved-by-user-request",
+  "created_at": "2026-08-07T00:00:00+08:00"
+}

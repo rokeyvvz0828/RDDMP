@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "topic": "theme-mode-fan",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-10-theme-mode-fan-design.md",
+  "objective": "Separate appearance mode switching from theme layout settings and provide an accessible radial menu with page-wide color diffusion.",
+  "requirements": [
+    {"id":"R1","statement":"The current appearance mode is represented by Sun, Moon, or Monitor and persists through the existing theme store.","acceptance":["three modes","data attributes","refresh persistence"]},
+    {"id":"R2","statement":"The mode choices expand radially from the trigger and can be closed predictably.","acceptance":["outside click","Escape","desktop and mobile"]},
+    {"id":"R3","statement":"Changing mode creates a page-wide diffusion from the trigger center and honors reduced motion.","acceptance":["correct origin","full viewport","reduced motion"]},
+    {"id":"R4","statement":"The settings drawer does not duplicate appearance mode controls.","acceptance":["drawer keeps palette layout tabs density"]}
+  ],
+  "invariants":["existing preference storage","auth behavior unchanged","semantic theme tokens","no new dependency"],
+  "selected_approach":{"name":"shared ThemeModeFan component","reason":"one reusable interaction keeps both layout headers visually and behaviorally consistent","alternatives":["inline controls in each header","Element Plus dropdown"]},
+  "approval":{"status":"approved","evidence":"User confirmed the proposed interaction on 2026-08-10."}
+}

@@ -11,7 +11,9 @@
 3. 安装并启用 [control-engineering-skills](https://github.com/wjzxc123/control-engineering-skills) 提供的 `control-engineering@control-engineering-local` 插件。安装完成后重新打开 Codex 任务，使 Skill 被重新加载。
 4. 执行 `node scripts/check-development-entry.mjs --require-plugin`，只有检查通过后才进入需求分析和编码。
 
-业务前端任务还必须先检查 `web/src/modules/delivery-showcase/`，将其作为列表、表单、流程、图表和响应式设计的首选参考。
+业务前端任务还必须先检查 `web/src/modules/delivery-showcase/`，将其作为列表、表单、流程、图表和响应式设计的首选参考，并读取根目录 `design-h5.md`，按其中的移动端布局、滚动边界、操作层级和视口验收规则实施。
+
+涉及业务表单、详情、列表、筛选或统计的任务还必须读取并执行 `docs/integration/business-form-metadata-contract.md`。Agent 负责在同一任务中自动登记和维护业务表单元数据及 mock/初始化数据；不得把新业务首次启动后的字段配置留给研发人员手工完成。验收必须证明全新本地数据库启动后无需人工配置即可呈现该业务功能。
 
 插件安装由外部 Codex 环境完成，不将插件源码复制进业务仓库。macOS/Linux 官方安装方式：
 
@@ -55,6 +57,7 @@ Windows 使用 `python` 替换 `python3`。安装脚本必须报告 `installed=t
 | `docs/governance/README.md` | 正式规约导航和唯一事实源说明 | 否 |
 | `docs/governance/PROJECT-RULES.md` | 架构、API、权限、数据、前端、质量和发布规则 | 否 |
 | `docs/governance/CODEX-CODING-RULES.md` | Codex 准入、数据安全、修改边界、预检和完成报告 | 否 |
+| `design-h5.md` | 页面、列表、弹框、流程图、表单和图表的移动端工程规则 | 前端适配规则变更时走治理变更 |
 | `docs/governance/GITHUB-RULES.md` | 分支、PR、CODEOWNERS、审批和 Required Checks | 否 |
 | `docs/architecture/MODULES.md` | 后端分层、前端归属及契约原则的人类可读说明 | 仅架构任务 |
 | `docs/requirements/TEMPLATE.md` | 标准需求模板 | 不直接修改，复制使用 |

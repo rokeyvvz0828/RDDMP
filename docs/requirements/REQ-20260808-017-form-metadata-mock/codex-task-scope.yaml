@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260808-017", "status": "ready", "document": "docs/requirements/REQ-20260808-017-form-metadata-mock/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "platform/infrastructure + governance", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": [
+      "mock/mock-data.json",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+      "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+      "docs/integration/business-form-metadata-contract.md",
+      "docs/integration/mock-data-contract.md",
+      "docs/requirements/REQ-20260808-017-form-metadata-mock/**",
+      ".ai-control/requirements/req-20260808-017-form-metadata-mock/*.json"
+    ],
+    "read_only_paths": ["server/src/platform/infrastructure/src/main/resources/db/migration/V1__*.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V32__*.sql", "server/src/platform/system/**", "web/src/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {"required": false, "issue": "REQ-20260808-017", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["infrastructure mock loader tests", "governance and Flyway checks"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "No schema change; disable local mock synchronization to roll back the sample data."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "mock-loader", "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-infrastructure -am test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "flyway", "command": "node scripts/check-flyway-migrations.mjs"}
+  ],
+  "risk": {"level": "normal", "items": ["Mock-owned rows are overwritten on enabled local restart", "Live browser verification depends on the local MySQL service"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260808-017-form-metadata-mock", "control_justification": "cross-layer mock initialization and contract clarification", "acceptance_evidence": [".ai-control/requirements/req-20260808-017-form-metadata-mock/execution-T1.json", ".ai-control/requirements/req-20260808-017-form-metadata-mock/observation-T1.json", ".ai-control/requirements/req-20260808-017-form-metadata-mock/convergence.json"], "release_verification": [], "rollback": "Set MOCK_DATA_ENABLED=false for local rollback; revert this task's code and documentation changes without modifying published migrations."}
+}
