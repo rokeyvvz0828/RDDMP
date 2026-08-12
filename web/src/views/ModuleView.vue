@@ -143,8 +143,11 @@ async function load() {
     if (isUserResource.value && !orgTree.value.length) orgTree.value = (await getOrgTree()).data.data
     const queryOrgId = route.query.orgId ? Number(route.query.orgId) : undefined
     const response = await listSystem(resource.value, { page: page.value, size: isMenuResource.value ? 1000 : size.value, keyword: keyword.value || undefined, orgId: isUserResource.value ? (selectedOrgId.value || queryOrgId) || undefined : undefined })
-    rows.value = response.data.data.records
-    total.value = response.data.data.total
+    const records = response.data.data.records
+    rows.value = isMenuResource.value
+      ? records.filter(row => row.route_path !== '/system/form-metadata')
+      : records
+    total.value = isMenuResource.value ? rows.value.length : response.data.data.total
   } catch (error) { ElMessage.error(apiErrorMessage(error, '加载数据失败，请检查权限和服务状态')) } finally { loading.value = false }
 }
 
