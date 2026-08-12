@@ -98,6 +98,22 @@ public class AuthRepository {
                 """, passwordHash, Timestamp.from(Instant.now()), userId, tenantId);
     }
 
+    public String findAvatarObjectKey(long userId, long tenantId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT avatar_object_key FROM sys_user WHERE id = ? AND tenant_id = ? AND deleted = 0",
+                String.class,
+                userId,
+                tenantId);
+    }
+
+    public int updateAvatarObjectKey(long userId, long tenantId, String objectKey) {
+        return jdbcTemplate.update("""
+                UPDATE sys_user
+                SET avatar_object_key = ?, updated_at = ?
+                WHERE id = ? AND tenant_id = ? AND deleted = 0
+                """, objectKey, Timestamp.from(Instant.now()), userId, tenantId);
+    }
+
     private AuthUser mapUser(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new AuthUser(rs.getLong("id"), rs.getLong("tenant_id"), rs.getString("username"),
                 rs.getString("password_hash"), rs.getString("display_name"), rs.getLong("org_id"),

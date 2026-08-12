@@ -72,5 +72,9 @@ export const useAuthStore = defineStore('auth', () => {
     clear()
   }
 
-  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout, changePassword }
+  function updateUser(nextUser: AuthMe) {
+    user.value = nextUser
+  }
+
+  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout, changePassword, updateUser }
 })
