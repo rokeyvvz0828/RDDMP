@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260811-019", "status": "ready", "document": "docs/requirements/REQ-20260811-019-field-governed-designers/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "rokeyvvz0828", "module": "platform/system", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/system/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__field_governed_view_designers.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V36__repair_form_view_designer_menu.sql",
+      "server/src/platform/infrastructure/src/test/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      "web/src/views/FormMetadataView.vue",
+      "web/src/views/FormDesignerPrototypeView.vue",
+      "web/src/views/**Designer*.vue",
+      "web/src/router/index.ts",
+      "web/src/views/AppLayout.vue",
+      "mock/mock-data.json",
+      "docs/requirements/REQ-20260811-019-field-governed-designers/**",
+      "docs/engineering-control/designs/2026-08-11-field-governed-designers-design.md",
+      ".ai-control/requirements/req-20260811-019-field-governed-designers/*.json"
+    ],
+    "read_only_paths": ["server/src/shared/**", "server/src/platform/security/**", "server/src/platform/workflow/**", "web/src/components/ui/**", "web/src/modules/delivery-showcase/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260811-019", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["existing form metadata API and UI", "frontend build", "Flyway validation"]},
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V35__field_governed_view_designers.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V36__repair_form_view_designer_menu.sql"], "compatibility_and_rollback": "append-only V35/V36; retain V32/V33/V34 data and roll back application usage without deleting new tables"},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "system", "command": "mvn -pl :ccb-system -am test"},
+    {"name": "full", "command": "mvn test"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "flyway", "command": "node scripts/check-flyway-migrations.mjs"}
+  ],
+  "risk": {"level": "high", "items": ["new public metadata contract", "database migration", "field reference validation", "frontend designer behavior"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260811-019-field-governed-designers", "control_justification": "platform metadata and designer foundation requested by project owner", "acceptance_evidence": [".ai-control/requirements/req-20260811-019-field-governed-designers/execution-T1.json", ".ai-control/requirements/req-20260811-019-field-governed-designers/observation-T1.json", ".ai-control/requirements/req-20260811-019-field-governed-designers/convergence.json"], "release_verification": [], "rollback": "Revert application usage and keep V35 tables/data for compatible rollback; do not delete historical metadata."}
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260811-019-field-governed-designers",
+  "tasks": [
+    {"id": "T1", "goal": "establish field-governed view data model and contracts", "write_scope": ["docs/requirements/REQ-20260811-019-field-governed-designers/**", "docs/engineering-control/designs/2026-08-11-field-governed-designers-design.md", ".ai-control/requirements/req-20260811-019-field-governed-designers/**"], "acceptance": ["ready requirement", "approved design", "scope and ledger parse"], "status": "completed"},
+    {"id": "T2", "goal": "implement V35 schema and metadata view APIs", "write_scope": ["server/src/platform/system/**", "server/src/platform/infrastructure/src/main/resources/db/migration/V35__field_governed_view_designers.sql", "server/src/platform/infrastructure/src/test/**", "mock/mock-data.json"], "acceptance": ["view/field/step/page block tables", "same-scope reference validation", "list subset validation", "publish snapshot", "legacy API compatibility"], "status": "completed"},
+    {"id": "T3", "goal": "implement frontend field-governed designer foundation", "write_scope": ["web/src/api/form-metadata.ts", "web/src/types/form-metadata.ts", "web/src/views/FormMetadataView.vue", "web/src/views/FormDesignerPrototypeView.vue", "web/src/views/**Designer*.vue", "web/src/router/index.ts", "web/src/views/AppLayout.vue"], "acceptance": ["registered field selection", "view mode foundation", "no arbitrary component path", "mobile layout"], "status": "completed"},
+    {"id": "T4", "goal": "run integration and independent verification", "write_scope": [".ai-control/requirements/req-20260811-019-field-governed-designers/**"], "acceptance": ["tests", "governance", "flyway", "frontend build", "browser verification"], "status": "in_progress"}
+  ],
+  "dependencies": [{"from": "T1", "to": "T2", "kind": "serial"}, {"from": "T2", "to": "T3", "kind": "serial"}, {"from": "T3", "to": "T4", "kind": "serial"}],
+  "stop_conditions": ["existing V32/V33/V34 behavior regresses", "cross-tenant or cross-scope reference can be saved", "migration cannot run on MySQL 8.4", "frontend designer bypasses registered field definitions"],
+  "rollback": "Revert application use of V35 and keep new tables/data for compatible rollback; no destructive deletion."
+}

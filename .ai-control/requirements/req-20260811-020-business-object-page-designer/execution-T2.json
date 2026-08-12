@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/FormViewDesignerView.vue", "purpose": "重建业务对象页面集合设计器，并修复初始化声明顺序导致的白屏"},
+    {"path_or_resource": "web/src/types/form-metadata.ts", "purpose": "增加页面角色、页面模式和页面集合类型"}
+  ],
+  "requirements_addressed": ["列表优先", "角色化页面树", "单页/分步表单选择", "列表与表单属性隔离", "字段主列表约束"],
+  "commands": [
+    {"command": "npm run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit 与 Vite build 通过"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误"}
+  ],
+  "invariants_checked": [
+    {"invariant": "列表页显示列宽、固定列和筛选属性", "result": "pass"},
+    {"invariant": "新建页不显示列表属性并显示表单模式", "result": "pass"},
+    {"invariant": "页面不能在设计器内创建临时字段", "result": "pass"}
+  ],
+  "unresolved_items": ["需要在真实 375/390/430 窄视口或移动设备上继续做专项视觉采样"],
+  "recommended_next": "observe"
+}

@@ -1,8 +1,12 @@
 import http from './http'
 import type { ApiResponse } from '../types/auth'
-import type { FormMetadataField, FormMetadataSchema, FormMetadataScope, FormMetadataSection } from '../types/form-metadata'
+import type { FormMetadataField, FormMetadataModule, FormMetadataSchema, FormMetadataScope, FormMetadataSection, FormMetadataView, FormMetadataViewSchema } from '../types/form-metadata'
 
 const base = '/system/form-metadata'
+
+export function listFormMetadataModules() {
+  return http.get<ApiResponse<FormMetadataModule[]>>(`${base}/modules`)
+}
 
 export function listFormMetadataScopes(keyword?: string) {
   return http.get<ApiResponse<FormMetadataScope[]>>(`${base}/scopes`, { params: { keyword: keyword || undefined } })
@@ -46,4 +50,36 @@ export function deleteFormMetadataField(scopeId: number, fieldId: number) {
 
 export function publishFormMetadata(scopeId: number, changeSummary: string) {
   return http.post<ApiResponse<{ revisionId: number; revisionNo: number }>>(`${base}/scopes/${scopeId}/publish`, { change_summary: changeSummary })
+}
+
+export function listFormMetadataViews(scopeId: number) {
+  return http.get<ApiResponse<FormMetadataView[]>>(`${base}/scopes/${scopeId}/views`)
+}
+
+export function getFormMetadataView(scopeId: number, viewId: number) {
+  return http.get<ApiResponse<FormMetadataViewSchema>>(`${base}/scopes/${scopeId}/views/${viewId}`)
+}
+
+export function createFormMetadataView(scopeId: number, data: Record<string, unknown>) {
+  return http.post<ApiResponse<FormMetadataView>>(`${base}/scopes/${scopeId}/views`, data)
+}
+
+export function updateFormMetadataView(scopeId: number, viewId: number, data: Record<string, unknown>) {
+  return http.put<ApiResponse<FormMetadataView>>(`${base}/scopes/${scopeId}/views/${viewId}`, data)
+}
+
+export function createFormMetadataViewField(scopeId: number, viewId: number, data: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`${base}/scopes/${scopeId}/views/${viewId}/fields`, data)
+}
+
+export function updateFormMetadataViewField(scopeId: number, viewId: number, viewFieldId: number, data: Record<string, unknown>) {
+  return http.put<ApiResponse<Record<string, unknown>>>(`${base}/scopes/${scopeId}/views/${viewId}/fields/${viewFieldId}`, data)
+}
+
+export function deleteFormMetadataViewField(scopeId: number, viewId: number, viewFieldId: number) {
+  return http.delete<ApiResponse<void>>(`${base}/scopes/${scopeId}/views/${viewId}/fields/${viewFieldId}`)
+}
+
+export function publishFormMetadataView(scopeId: number, viewId: number, changeSummary: string) {
+  return http.post<ApiResponse<{ revisionId: number; revisionNo: number }>>(`${base}/scopes/${scopeId}/views/${viewId}/publish`, { change_summary: changeSummary })
 }

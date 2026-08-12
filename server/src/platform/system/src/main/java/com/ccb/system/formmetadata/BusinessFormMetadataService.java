@@ -22,6 +22,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class BusinessFormMetadataService {
     private static final Set<String> FIELD_KINDS = Set.of("builtin", "extension");
+    private static final Set<String> FIELD_ROLES = Set.of("normal", "status");
     private static final Set<String> INPUT_TYPES = Set.of("text", "textarea", "number", "date", "datetime", "select", "radio", "checkbox", "boolean", "person", "organization", "user", "attachment", "rich_text", "json");
     private static final Set<String> VALUE_TYPES = Set.of("string", "text", "code", "integer", "decimal", "date", "datetime", "boolean", "reference", "json");
     private static final Set<String> SOURCE_TYPES = Set.of("none", "static", "dict", "user", "organization", "role", "attachment", "api");
@@ -36,6 +37,17 @@ public class BusinessFormMetadataService {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.systemService = systemService;
+    }
+
+    public List<Map<String, Object>> listModules(AuthUser user) {
+        systemService.requireAction("form-metadata", "read", user);
+        return jdbc.queryForList("""
+                SELECT id, module_key, menu_name AS module_name, route_path, permission_code
+                FROM sys_menu
+                WHERE tenant_id = ? AND parent_id = 0 AND module_key IS NOT NULL AND module_key <> ''
+                  AND status = 1 AND visible = 1 AND deleted = 0
+                ORDER BY sort_no, id
+                """, user.tenantId());
     }
 
     public List<Map<String, Object>> listScopes(String keyword, AuthUser user) {
@@ -59,7 +71,7 @@ public class BusinessFormMetadataService {
         systemService.requireAction("form-metadata", "read", user);
         Map<String, Object> scope = findScope(scopeId, user.tenantId());
         List<Map<String, Object>> sections = jdbc.queryForList("SELECT id, scope_id, section_key, title, layout_mode, show_title, collapsed, sort_no, is_builtin, enabled FROM biz_form_section WHERE tenant_id = ? AND scope_id = ? AND deleted = 0 ORDER BY sort_no, id", user.tenantId(), scopeId);
-        List<Map<String, Object>> fields = jdbc.queryForList("SELECT id, scope_id, section_id, field_key, label, field_kind, input_type, value_type, source_type, source_key, component_key, native_column, multiple, column_span, visible, list_visible, filterable, sortable, dashboard_dimension, placeholder, help_text, default_value_json, sort_no, is_builtin, enabled FROM biz_form_field_definition WHERE tenant_id = ? AND scope_id = ? AND deleted = 0 ORDER BY sort_no, id", user.tenantId(), scopeId);
+        List<Map<String, Object>> fields = jdbc.queryForList("SELECT id, scope_id, section_id, field_key, label, field_kind, field_role, input_type, value_type, source_type, source_key, component_key, native_column, multiple, column_span, visible, form_available, list_visible, filterable, sortable, dashboard_dimension, placeholder, help_text, default_value_json, sort_no, is_builtin, enabled FROM biz_form_field_definition WHERE tenant_id = ? AND scope_id = ? AND deleted = 0 ORDER BY sort_no, id", user.tenantId(), scopeId);
         for (Map<String, Object> field : fields) {
             field.put("rules", jdbc.queryForList("SELECT id, action_code, condition_type, condition_key, required, editable, visible, validation_json, enabled FROM biz_form_field_rule WHERE tenant_id = ? AND field_definition_id = ? AND deleted = 0 ORDER BY id", user.tenantId(), field.get("id")));
             field.put("options", jdbc.queryForList("SELECT id, option_value, option_label, option_group, sort_no, enabled FROM biz_form_field_option WHERE tenant_id = ? AND field_definition_id = ? AND deleted = 0 ORDER BY sort_no, id", user.tenantId(), field.get("id")));
@@ -145,10 +157,12 @@ public class BusinessFormMetadataService {
         String fieldKey = required(input, "field_key");
         String label = required(input, "label");
         String kind = optional(input, "field_kind", "extension");
+        String role = optional(input, "field_role", "normal");
         String inputType = optional(input, "input_type", "text");
         String valueType = optional(input, "value_type", "string");
         String sourceType = optional(input, "source_type", "none");
         if (!FIELD_KINDS.contains(kind)) throw bad("字段类型只能是 builtin 或 extension");
+        if (!FIELD_ROLES.contains(role)) throw bad("字段角色只能是 normal 或 status");
         if (!INPUT_TYPES.contains(inputType)) throw bad("不支持的输入控件类型");
         if (!VALUE_TYPES.contains(valueType)) throw bad("不支持的值类型");
         if (!SOURCE_TYPES.contains(sourceType)) throw bad("不支持的选项来源");
@@ -157,7 +171,7 @@ public class BusinessFormMetadataService {
         Long sectionId = nullableLong(input.get("section_id"));
         if (sectionId != null) ensureSection(sectionId, scopeId, user.tenantId());
         Map<String, Object> values = new LinkedHashMap<>();
-        copy(values, input, "section_id", "field_key", "label", "field_kind", "input_type", "value_type", "source_type", "source_key", "component_key", "native_column", "multiple", "column_span", "visible", "list_visible", "filterable", "sortable", "dashboard_dimension", "placeholder", "help_text", "default_value_json", "sort_no", "enabled");
+        copy(values, input, "section_id", "field_key", "label", "field_kind", "field_role", "input_type", "value_type", "source_type", "source_key", "component_key", "native_column", "multiple", "column_span", "visible", "form_available", "list_visible", "filterable", "sortable", "dashboard_dimension", "placeholder", "help_text", "default_value_json", "sort_no", "enabled");
         if (fieldId == null) {
             Integer duplicate = jdbc.queryForObject("SELECT COUNT(*) FROM biz_form_field_definition WHERE tenant_id = ? AND scope_id = ? AND field_key = ? AND deleted = 0", Integer.class, user.tenantId(), scopeId, fieldKey);
             if (duplicate != null && duplicate > 0) throw bad("字段编码在当前业务范围内已存在");
@@ -172,6 +186,9 @@ public class BusinessFormMetadataService {
             ensureField(fieldId, scopeId, user.tenantId());
             values.put("updated_by", user.id());
             update("biz_form_field_definition", "id", fieldId, user.tenantId(), values);
+        }
+        if ("status".equals(role)) {
+            jdbc.update("UPDATE biz_form_field_definition SET field_role = 'normal', updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE tenant_id = ? AND scope_id = ? AND id <> ? AND field_role = 'status' AND deleted = 0", user.id(), user.tenantId(), scopeId, fieldId);
         }
         if (input.containsKey("rules")) replaceRules(fieldId, user.tenantId(), input.get("rules"), user.id());
         if (input.containsKey("options")) replaceOptions(fieldId, user.tenantId(), input.get("options"), user.id());
@@ -211,7 +228,7 @@ public class BusinessFormMetadataService {
     }
 
     private Map<String, Object> field(long scopeId, long fieldId, long tenantId) {
-        Map<String, Object> field = jdbc.queryForMap("SELECT id, scope_id, section_id, field_key, label, field_kind, input_type, value_type, source_type, source_key, component_key, native_column, multiple, column_span, visible, list_visible, filterable, sortable, dashboard_dimension, placeholder, help_text, default_value_json, sort_no, is_builtin, enabled FROM biz_form_field_definition WHERE id = ? AND scope_id = ? AND tenant_id = ? AND deleted = 0", fieldId, scopeId, tenantId);
+        Map<String, Object> field = jdbc.queryForMap("SELECT id, scope_id, section_id, field_key, label, field_kind, field_role, input_type, value_type, source_type, source_key, component_key, native_column, multiple, column_span, visible, form_available, list_visible, filterable, sortable, dashboard_dimension, placeholder, help_text, default_value_json, sort_no, is_builtin, enabled FROM biz_form_field_definition WHERE id = ? AND scope_id = ? AND tenant_id = ? AND deleted = 0", fieldId, scopeId, tenantId);
         field.put("rules", jdbc.queryForList("SELECT id, action_code, condition_type, condition_key, required, editable, visible, validation_json, enabled FROM biz_form_field_rule WHERE tenant_id = ? AND field_definition_id = ? AND deleted = 0 ORDER BY id", tenantId, fieldId));
         field.put("options", jdbc.queryForList("SELECT id, option_value, option_label, option_group, sort_no, enabled FROM biz_form_field_option WHERE tenant_id = ? AND field_definition_id = ? AND deleted = 0 ORDER BY sort_no, id", tenantId, fieldId));
         return field;

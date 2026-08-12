@@ -5,6 +5,7 @@ import DashboardView from '../views/DashboardView.vue'
 import ModuleView from '../views/ModuleView.vue'
 import ParameterView from '../views/ParameterView.vue'
 import FormMetadataView from '../views/FormMetadataView.vue'
+import FormViewDesignerView from '../views/FormViewDesignerView.vue'
 import RolePermissionView from '../views/RolePermissionView.vue'
 import WorkflowView from '../views/WorkflowView.vue'
 import AiView from '../views/AiView.vue'
@@ -23,6 +24,7 @@ const router = createRouter({
         { path: 'dashboard', name: 'dashboard', component: DashboardView },
         { path: 'system/params', name: 'system-params', component: ParameterView, meta: { title: '参数管理' } },
         { path: 'system/form-metadata', name: 'system-form-metadata', component: FormMetadataView, meta: { title: '输入项配置' } },
+        { path: 'system/form-designer-prototype', name: 'system-form-designer-prototype', component: FormViewDesignerView, meta: { title: '表单视图设计器' } },
         { path: 'system/role-permissions', name: 'role-permissions', component: RolePermissionView, meta: { title: '角色权限配置' } },
         { path: 'system/:section', name: 'module', component: ModuleView, props: true },
         { path: 'workflow', redirect: '/workflow/definitions' },

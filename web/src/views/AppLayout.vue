@@ -27,7 +27,7 @@ const topNavigationVisible = computed(() => theme.layout === 'top' || theme.layo
 const sideNavigationVisible = computed(() => theme.layout === 'side' || theme.layout === 'mixed')
 const mobileNavigationVisible = computed(() => mobileView.value)
 const sidebarCollapsed = computed(() => theme.sidebarCollapsed || mobileView.value)
-const fallbackTitles: Record<string, string> = { dashboard: '工作台', users: '用户管理', roles: '角色权限', orgs: '组织架构', menus: '菜单路由', params: '参数管理', 'form-metadata': '输入项配置', 'role-permissions': '角色权限配置', definitions: '流程定义', inbox: '待办审批', providers: '模型服务商', models: '模型配置', routes: '能力路由', components: '组件示例', 'delivery-showcase': '交付示范中心' }
+const fallbackTitles: Record<string, string> = { dashboard: '工作台', users: '用户管理', roles: '角色权限', orgs: '组织架构', menus: '菜单路由', params: '参数管理', 'form-metadata': '输入项配置', 'form-designer-prototype': '表单视图设计器', 'role-permissions': '角色权限配置', definitions: '流程定义', inbox: '待办审批', providers: '模型服务商', models: '模型配置', routes: '能力路由', components: '组件示例', 'delivery-showcase': '交付示范中心' }
 
 function findMenuTitle(nodes: RouteNode[], path: string): string | null {
   let matchPath = ''

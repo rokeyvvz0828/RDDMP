@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "requirement_id": "REQ-20260811-019-field-governed-designers",
+  "human_document": "docs/engineering-control/designs/2026-08-11-field-governed-designers-design.md",
+  "design_status": "approved-by-user-request",
+  "objective": "建立字段主列表、业务表单字段集合、表单/列表/分步视图和页面 Block 的平台底层配置能力，同时保持业务模块独立维护。",
+  "scope": ["compatible metadata schema", "view and page block references", "server-side reference validation", "frontend metadata contracts and designer foundation"],
+  "decisions": ["Keep business module routes, menus, APIs and services module-owned.", "Treat current form field definitions as the business field collection and add view references without breaking V32.", "Require list fields to reference enabled form-available fields.", "Use whitelisted component and block keys; never load arbitrary component paths from the database."],
+  "invariants": ["Existing form metadata APIs remain readable and writable.", "Tenant and RBAC checks remain server-side.", "Flyway migrations are append-only.", "No generic cross-business CRUD or arbitrary scripts are introduced."],
+  "unknowns": [{"id": "U1", "question": "Which concrete business module will be used for end-to-end validation?", "status": "deferred-to-follow-up-business-module-task", "blocking": false}],
+  "approval": {"status": "approved", "evidence": "User explicitly requested implementation of the revised field-governed designer architecture."}
+}

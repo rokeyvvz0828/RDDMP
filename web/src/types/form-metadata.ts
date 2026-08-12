@@ -36,6 +36,14 @@ export interface FormMetadataScope {
   field_count?: number
 }
 
+export interface FormMetadataModule {
+  id: number
+  module_key: string
+  module_name: string
+  route_path?: string | null
+  permission_code?: string | null
+}
+
 export interface FormMetadataSection {
   id: number
   scope_id: number
@@ -56,6 +64,7 @@ export interface FormMetadataField {
   field_key: string
   label: string
   field_kind: 'builtin' | 'extension'
+  field_role: 'normal' | 'status'
   input_type: string
   value_type: string
   source_type: string
@@ -65,6 +74,7 @@ export interface FormMetadataField {
   multiple: number | boolean
   column_span: number
   visible: number | boolean
+  form_available: number | boolean
   list_visible: number | boolean
   filterable: number | boolean
   sortable: number | boolean
@@ -84,6 +94,68 @@ export interface FormMetadataSchema {
   sections: FormMetadataSection[]
   fields: FormMetadataField[]
   revisions: Array<{ id: number; revision_no: number; revision_status: string; change_summary?: string | null; created_at?: string; published_at?: string | null }>
+}
+
+export type FormMetadataViewType = 'form' | 'detail' | 'list' | 'approval' | 'wizard'
+export type FormMetadataViewRole = 'list' | 'detail' | 'create' | 'edit' | 'approval'
+export type FormMetadataFormMode = 'single' | 'wizard' | 'none'
+
+export interface FormMetadataView {
+  id: number
+  scope_id: number
+  view_key: string
+  view_name: string
+  view_type: FormMetadataViewType
+  view_group_key?: string | null
+  view_role?: FormMetadataViewRole | null
+  form_mode?: FormMetadataFormMode | null
+  layout_json?: string | Record<string, unknown> | null
+  published_revision_id?: number | null
+  enabled: number | boolean
+}
+
+export interface FormMetadataViewField {
+  id?: number
+  view_id: number
+  field_definition_id: number
+  view_section_key?: string | null
+  sort_no: number
+  visible: number | boolean
+  editable: number | boolean
+  required: number | boolean
+  column_span: number
+  column_width?: number | null
+  fixed_position?: 'left' | 'right' | 'none' | null
+  filter_operator?: string | null
+  display_format_json?: string | Record<string, unknown> | null
+  mobile_visible: number | boolean
+  enabled: number | boolean
+  field_key: string
+  label: string
+  input_type: string
+  value_type: string
+  form_available: number | boolean
+  source_type: string
+  source_key?: string | null
+}
+
+export interface FormMetadataViewStep {
+  id: number
+  view_id: number
+  step_key: string
+  title: string
+  description?: string | null
+  validation_mode: string
+  sort_no: number
+  enabled: number | boolean
+  fields: Array<{ id: number; step_id: number; field_definition_id: number; sort_no: number; enabled: number | boolean; field_key: string; label: string; input_type: string }>
+}
+
+export interface FormMetadataViewSchema {
+  view: FormMetadataView
+  fields: FormMetadataViewField[]
+  steps: FormMetadataViewStep[]
+  revisions: Array<{ id: number; revision_no: number; revision_status: string; change_summary?: string | null }>
 }
 
 export type FormMetadataSchemaResponse = ApiResponse<FormMetadataSchema>

@@ -43,4 +43,4 @@ export interface RoleOption { id: number; role_code: string; role_name: string }
 
 export interface PermissionAction { id: number; action_code: string; permission_code: string; permission_name: string }
 
-export interface PermissionMenu { id: number; parent_id: number; menu_name: string; menu_type: string; route_path?: string; permission_code?: string; icon?: string; sort_no: number; actions: PermissionAction[]; children?: PermissionMenu[] }
+export interface PermissionMenu { id: number; parent_id: number; menu_name: string; menu_type: string; route_path?: string; permission_code?: string; icon?: string; module_key?: string; sort_no: number; actions: PermissionAction[]; children?: PermissionMenu[] }

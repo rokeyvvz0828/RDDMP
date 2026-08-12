@@ -29,7 +29,7 @@ const metadata: Partial<Record<SystemResource, ResourceMeta>> = {
   users: { title: '用户管理', description: '维护平台账号、组织归属和头像信息。', columns: [{ prop: 'username', label: '账号' }, { prop: 'display_name', label: '姓名' }, { prop: 'mobile_phone', label: '手机号' }, { prop: 'org_name', label: '所属组织' }, { prop: 'status', label: '状态' }, { prop: 'last_login_at', label: '最近登录' }], fields: [{ key: 'username', label: '账号', required: true }, { key: 'password', label: '初始密码', required: true }, { key: 'display_name', label: '姓名', required: true }, { key: 'mobile_phone', label: '手机号' }, { key: 'org_id', label: '所属组织', type: 'number' }] },
   roles: { title: '角色权限', description: '维护角色编码、名称和授权边界。', columns: [{ prop: 'role_code', label: '角色编码' }, { prop: 'role_name', label: '角色名称' }, { prop: 'status', label: '状态' }, { prop: 'created_at', label: '创建时间' }], fields: [{ key: 'role_code', label: '角色编码', required: true }, { key: 'role_name', label: '角色名称', required: true }] },
   orgs: { title: '组织架构', description: '维护组织层级，并从组织节点管理所属用户。', columns: [], fields: [{ key: 'org_code', label: '组织编码', required: true }, { key: 'org_name', label: '组织名称', required: true }, { key: 'parent_id', label: '上级组织', type: 'number' }, { key: 'sort_no', label: '排序', type: 'number' }] },
-  menus: { title: '菜单路由', description: '维护菜单树、路由地址、权限编码和菜单图标。', columns: [{ prop: 'menu_name', label: '菜单名称' }, { prop: 'menu_type', label: '类型' }, { prop: 'icon', label: '图标' }, { prop: 'route_path', label: '路由地址' }, { prop: 'permission_code', label: '权限编码' }, { prop: 'sort_no', label: '排序' }, { prop: 'status', label: '状态' }], fields: [{ key: 'menu_name', label: '菜单名称', required: true }, { key: 'menu_type', label: '菜单类型', required: true }, { key: 'icon', label: '菜单图标' }, { key: 'route_path', label: '路由地址' }, { key: 'component_path', label: '组件键' }, { key: 'permission_code', label: '权限编码' }, { key: 'parent_id', label: '上级菜单 ID', type: 'number' }, { key: 'sort_no', label: '排序', type: 'number' }] },
+  menus: { title: '菜单路由', description: '维护菜单树、路由地址和菜单图标，模块编码由路由地址自动生成。一级菜单模块编码作为业务模块入口。', columns: [{ prop: 'menu_name', label: '菜单名称' }, { prop: 'module_key', label: '模块编码' }, { prop: 'icon', label: '图标' }, { prop: 'route_path', label: '路由地址' }, { prop: 'permission_code', label: '权限编码' }, { prop: 'sort_no', label: '排序' }, { prop: 'status', label: '状态' }], fields: [{ key: 'menu_name', label: '菜单名称', required: true }, { key: 'menu_type', label: '菜单类型', required: true }, { key: 'module_key', label: '菜单模块编码' }, { key: 'icon', label: '菜单图标' }, { key: 'route_path', label: '路由地址' }, { key: 'component_path', label: '组件键' }, { key: 'permission_code', label: '权限编码' }, { key: 'parent_id', label: '上级菜单 ID', type: 'number' }, { key: 'sort_no', label: '排序', type: 'number' }] },
 }
 
 const current = computed(() => metadata[resource.value] || metadata.users!)
@@ -198,7 +198,10 @@ async function toggleStatus(row: SystemRow) {
 }
 
 function cellText(row: SystemRow, prop: string) { const value = row[prop]; return ['created_at', 'updated_at', 'last_login_at'].includes(prop) ? formatDateOnly(value) : value === null || value === undefined || value === '' ? '-' : String(value) }
-function menuTypeLabel(value: unknown) { return String(value) === 'directory' ? '目录' : '菜单' }
+function moduleKeyFromRoute(routePath: string) {
+  const segments = routePath.trim().split('/').filter(Boolean)
+  return routePath.trim().startsWith('/') && segments.length ? segments.map(segment => segment.toLowerCase()).join('.') : ''
+}
 function onPageChange(value: number) { page.value = value; load() }
 function onSizeChange(value: number) { size.value = value; page.value = 1; load() }
 function onOrgSelect(node: OrgTreeNode) { selectedOrgId.value = node.id; loadOrgUsers(node.id) }
@@ -235,7 +238,7 @@ onMounted(load)
 
     <div v-else-if="isMenuResource" v-loading="loading" class="ui-surface-card menu-tree-card">
       <el-tree :data="menuTree" node-key="id" default-expand-all :expand-on-click-node="false" empty-text="暂无菜单">
-        <template #default="{ data }"><div class="menu-tree-node"><div class="menu-tree-node__main"><UiMenuIcon :name="String(data.icon || '')" /><div class="menu-tree-node__content"><strong>{{ data.menu_name }}</strong><div><span class="menu-tree-node__id">菜单 ID: {{ data.id }}</span><span>{{ menuTypeLabel(data.menu_type) }}</span><span>{{ data.route_path || '无路由' }}</span></div></div></div><div class="menu-tree-node__actions"><UiStatusTag :value="data.status" :labels="{ '0': '停用', '1': '启用' }" /><el-button link type="primary" @click="openEdit(data)"><el-icon><Edit /></el-icon>编辑</el-button><el-button link type="danger" @click="removeRow(data)"><el-icon><Delete /></el-icon>删除</el-button><el-button link :type="data.status === 1 ? 'warning' : 'success'" @click="toggleStatus(data)"><el-icon><SwitchButton /></el-icon>{{ data.status === 1 ? '停用' : '启用' }}</el-button></div></div></template>
+        <template #default="{ data }"><div class="menu-tree-node"><div class="menu-tree-node__main"><UiMenuIcon :name="String(data.icon || '')" /><div class="menu-tree-node__content"><div class="menu-tree-node__title"><strong>{{ data.menu_name }}</strong><span class="menu-tree-node__id">菜单 ID {{ data.id }}</span></div><div class="menu-tree-node__meta"><el-tag v-if="data.module_key" size="small" type="success" effect="plain">模块 {{ data.module_key }}</el-tag><code>{{ data.route_path || '无路由' }}</code></div></div></div><div class="menu-tree-node__actions"><UiStatusTag :value="data.status" :labels="{ '0': '停用', '1': '启用' }" /><el-button link type="primary" @click="openEdit(data)"><el-icon><Edit /></el-icon>编辑</el-button><el-button link type="danger" @click="removeRow(data)"><el-icon><Delete /></el-icon>删除</el-button><el-button link :type="data.status === 1 ? 'warning' : 'success'" @click="toggleStatus(data)"><el-icon><SwitchButton /></el-icon>{{ data.status === 1 ? '停用' : '启用' }}</el-button></div></div></template>
       </el-tree>
       <div class="menu-tree-card__footer">共 {{ rows.length }} 个菜单</div>
     </div>
@@ -253,6 +256,7 @@ onMounted(load)
         <el-form-item v-for="field in current.fields" :key="field.key" :label="field.label" :required="field.required">
           <UiOrgTreeSelect v-if="(isUserResource && field.key === 'org_id') || (isOrgResource && field.key === 'parent_id')" :model-value="form[field.key] ? Number(form[field.key]) : null" :nodes="orgTree" :exclude-ids="isOrgResource && editingId ? excludedOrgIds : []" :placeholder="field.label" @update:model-value="form[field.key] = $event" />
           <el-select v-else-if="isMenuResource && field.key === 'icon'" v-model="form[field.key]" clearable filterable placeholder="选择菜单图标" style="width:100%"><el-option v-for="item in menuIconOptions" :key="item.key" :label="item.label" :value="item.key"><span class="menu-icon-option"><UiMenuIcon :name="item.key" /><span>{{ item.label }}</span></span></el-option></el-select>
+          <el-input v-else-if="field.key === 'module_key'" :model-value="moduleKeyFromRoute(String(form.route_path || ''))" disabled />
           <el-input v-else-if="field.type !== 'number'" v-model="form[field.key]" :type="field.key === 'password' ? 'password' : 'text'" :show-password="field.key === 'password'" />
           <el-input-number v-else v-model="form[field.key]" :min="0" style="width:100%" />
         </el-form-item>

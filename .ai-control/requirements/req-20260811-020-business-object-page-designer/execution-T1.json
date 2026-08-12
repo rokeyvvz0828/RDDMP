@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V37__business_object_page_designer.sql", "purpose": "追加页面角色、页面分组和单页/分步表单模式字段"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/formmetadata/BusinessFormViewService.java", "purpose": "归一化历史 view_type 并校验页面角色与表单模式"},
+    {"path_or_resource": "mock/mock-data.json", "purpose": "提供交付工单的列表、详情、新建、分步新建、编辑和审批页面样例"}
+  ],
+  "requirements_addressed": ["历史类型兼容", "角色/模式校验", "业务对象页面集合 Mock"],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am test", "exit_code": 0, "salient_output": "ccb-common、ccb-infrastructure、ccb-security、ccb-system 测试全部通过"},
+    {"command": "curl health checks", "exit_code": 0, "salient_output": "frontend=200; backend=200"}
+  ],
+  "invariants_checked": [
+    {"invariant": "历史 view_type 可归一化", "result": "pass"},
+    {"invariant": "列表和表单页面共享字段主列表", "result": "pass"},
+    {"invariant": "V37 为追加式迁移", "result": "pass"}
+  ],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

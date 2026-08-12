@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "requirement_id": "REQ-20260811-018-form-designer-prototype",
+  "control_prefix": "req-20260811-018-form-designer-prototype",
+  "task_id": "T2",
+  "status": "observed",
+  "checks": [
+    {
+      "id": "frontend-build",
+      "command": "npm run build",
+      "result": "passed",
+      "details": "vue-tsc and vite build completed successfully; only existing dependency annotation and chunk-size warnings were emitted."
+    },
+    {
+      "id": "governance",
+      "command": "node scripts/check-all-governance.mjs",
+      "result": "passed",
+      "details": "All repository governance checks passed, including module boundary and 34 Flyway migrations."
+    },
+    {
+      "id": "prototype-route",
+      "url": "http://127.0.0.1:5173/system/form-designer-prototype",
+      "result": "passed",
+      "details": "Route loaded with the form designer title, component palette, canvas and inspector."
+    },
+    {
+      "id": "designer-interactions",
+      "result": "passed",
+      "details": "Exact component actions added a numeric field, property editing synchronized the canvas, and design, preview and Schema tabs reflected the same in-memory DSL."
+    },
+    {
+      "id": "mobile-layout",
+      "viewport": "390x844",
+      "result": "passed",
+      "measurements": {
+        "innerWidth": 390,
+        "bodyScrollWidth": 390,
+        "documentScrollWidth": 390,
+        "formGridColumns": "340px"
+      },
+      "details": "Preview form reflowed to one column without horizontal page overflow."
+    }
+  ],
+  "known_residuals": [
+    "The prototype keeps state in browser memory and does not persist or publish metadata.",
+    "The production form-create adapter and formal designer API remain deferred."
+  ],
+  "observed_at": "2026-08-11T15:42:00+08:00"
+}

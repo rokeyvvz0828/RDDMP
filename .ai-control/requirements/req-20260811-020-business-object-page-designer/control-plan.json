@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260811-020-business-object-page-designer",
+  "tasks": [
+    {"id": "T1", "goal": "add page role/mode contract and mock data", "write_scope": ["server/src/platform/system/**", "server/src/platform/infrastructure/src/main/resources/db/migration/V37__business_object_page_designer.sql", "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java", "mock/mock-data.json", "web/src/types/form-metadata.ts", "web/src/api/form-metadata.ts"], "acceptance": ["legacy mapping", "role/mode validation", "project page collection mock"], "status": "implemented"},
+    {"id": "T2", "goal": "rebuild designer UI around business object page tree", "write_scope": ["web/src/views/FormViewDesignerView.vue"], "acceptance": ["role-first page creation", "role-specific inspector", "mobile layout"], "status": "implemented"},
+    {"id": "T3", "goal": "independent verification", "write_scope": [".ai-control/requirements/req-20260811-020-business-object-page-designer/**"], "acceptance": ["tests", "governance", "flyway", "frontend build", "browser evidence"], "status": "verified"}
+  ],
+  "dependencies": [{"from": "T1", "to": "T2", "kind": "serial"}, {"from": "T2", "to": "T3", "kind": "serial"}],
+  "stop_conditions": ["cross-scope field reference can be saved", "invalid role/mode combination can be saved", "history becomes unreadable", "mobile page-level overflow"],
+  "rollback": "stop application use of V37 fields and keep historical metadata"
+}

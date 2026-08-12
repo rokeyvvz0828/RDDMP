@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V35__field_governed_view_designers.sql", "purpose": "追加字段治理视图、分步、页面 Block 和版本表"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/formmetadata/BusinessFormViewService.java", "purpose": "提供视图引用、列表约束、步骤、Block、发布快照服务"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/formmetadata/BusinessFormMetadataService.java", "purpose": "让旧字段中心读取和保存 form_available"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/web/BusinessFormMetadataController.java", "purpose": "暴露视图和页面编排 REST API"},
+    {"path_or_resource": "mock/mock-data.json", "purpose": "登记表单视图、列表视图、分步视图、Block 和版本 Mock"}
+  ],
+  "requirements_addressed": ["字段主列表到视图字段集合的引用链路", "跨 scope、列表可用字段和 Block 白名单校验", "保留旧 V32/V33/V34 兼容"],
+  "commands": [
+    {"command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-system -am test", "exit_code": 0, "salient_output": "ccb-system reactor tests BUILD SUCCESS"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 35 migration(s)"},
+    {"command": "node -e JSON.parse(mock/mock-data.json)", "exit_code": 0, "salient_output": "mock/mock-data.json valid"}
+  ],
+  "local_checks": [{"check": "Java 17 compile and tests", "result": "passed", "evidence": "ccb-system and dependencies passed"}],
+  "diff_summary": ["append-only V35", "new service and controller endpoints", "mock whitelist and data additions"],
+  "invariants_checked": [
+    {"invariant": "view field remains in same tenant and scope", "result": "implemented", "evidence": "BusinessFormViewService.ensureField"},
+    {"invariant": "list field must be form-available", "result": "implemented", "evidence": "saveViewField rejects form_available=0"},
+    {"invariant": "Block type is allowlisted", "result": "implemented", "evidence": "BLOCK_TYPES validation"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["runtime migration and mock load require service startup with project environment variables"],
+  "recommended_next": "observe"
+}

@@ -34,7 +34,7 @@ public class SystemService {
             "users", new Spec("sys_user", "id, username, display_name, mobile_phone, org_id, avatar_object_key, status, last_login_at, created_at", "id DESC", Set.of("username", "password", "display_name", "mobile_phone", "org_id", "status"), Set.of("display_name", "mobile_phone", "org_id", "status")),
             "roles", new Spec("sys_role", "id, role_code, role_name, status, created_at", "id DESC", Set.of("role_code", "role_name", "status"), Set.of("role_name", "status")),
             "orgs", new Spec("sys_org", "id, parent_id, org_code, org_name, sort_no, status, created_at", "sort_no, id", Set.of("parent_id", "org_code", "org_name", "sort_no", "status"), Set.of("parent_id", "org_name", "sort_no", "status")),
-            "menus", new Spec("sys_menu", "id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, sort_no, visible, status", "parent_id, sort_no, id", Set.of("parent_id", "menu_type", "menu_name", "route_name", "route_path", "component_path", "permission_code", "icon", "sort_no", "visible", "status"), Set.of("parent_id", "menu_name", "route_name", "route_path", "component_path", "permission_code", "icon", "sort_no", "visible", "status")),
+            "menus", new Spec("sys_menu", "id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, module_key, sort_no, visible, status", "parent_id, sort_no, id", Set.of("parent_id", "menu_type", "menu_name", "route_name", "route_path", "component_path", "permission_code", "icon", "module_key", "sort_no", "visible", "status"), Set.of("parent_id", "menu_name", "route_name", "route_path", "component_path", "permission_code", "icon", "module_key", "sort_no", "visible", "status")),
             "param-categories", new Spec("sys_dict_type", "id, dict_code, dict_name, status, created_at", "id DESC", Set.of("dict_code", "dict_name", "status"), Set.of("dict_name", "status")),
             "params", new Spec("sys_config", "id, category_id, config_key, config_value, config_type, status, remark, created_at, updated_at", "id DESC", Set.of("category_id", "config_key", "config_value", "config_type", "status", "remark"), Set.of("category_id", "config_value", "config_type", "status", "remark")),
             "dicts", new Spec("sys_dict_type", "id, dict_code, dict_name, status, created_at", "id DESC", Set.of("dict_code", "dict_name", "status"), Set.of("dict_name", "status")),
@@ -82,6 +82,7 @@ public class SystemService {
         requireAction(resource, "create", user);
         Spec spec = spec(resource);
         Map<String, Object> fields = allowedFields(spec.createFields(), input);
+        normalizeMenuModuleKey(resource, fields, null, user.tenantId());
         validateOrganizationParent(resource, null, fields, user.tenantId());
         if (resource.equals("users") && fields.containsKey("password")) {
             fields.put("password_hash", passwordEncoder.encode(String.valueOf(fields.remove("password"))));
@@ -98,6 +99,7 @@ public class SystemService {
         requireAction(resource, "update", user);
         Spec spec = spec(resource);
         Map<String, Object> fields = allowedFields(spec.updateFields(), input);
+        normalizeMenuModuleKey(resource, fields, id, user.tenantId());
         validateOrganizationParent(resource, id, fields, user.tenantId());
         if (fields.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "No editable fields");
         List<Object> args = new ArrayList<>();
@@ -299,7 +301,7 @@ public class SystemService {
 
     public Map<String, Object> permissionCatalog(AuthUser user) {
         requireAction("roles", "read", user);
-        List<Map<String, Object>> menus = jdbc.queryForList("SELECT id, parent_id, menu_name, menu_type, route_path, permission_code, icon, sort_no FROM sys_menu WHERE tenant_id = ? AND deleted = 0 ORDER BY parent_id, sort_no, id", user.tenantId());
+        List<Map<String, Object>> menus = jdbc.queryForList("SELECT id, parent_id, menu_name, menu_type, route_path, permission_code, icon, module_key, sort_no FROM sys_menu WHERE tenant_id = ? AND deleted = 0 ORDER BY parent_id, sort_no, id", user.tenantId());
         for (Map<String, Object> menu : menus) menu.put("actions", jdbc.queryForList("SELECT id, action_code, permission_code, permission_name FROM sys_menu_permission WHERE tenant_id = ? AND menu_id = ? AND status = 1 ORDER BY id", user.tenantId(), menu.get("id")));
         return Map.of("menus", menus);
     }
@@ -355,6 +357,36 @@ public class SystemService {
             case "configs", "params" -> "config_key";
             default -> "id";
         };
+    }
+
+    private void normalizeMenuModuleKey(String resource, Map<String, Object> fields, Long id, long tenantId) {
+        if (!resource.equals("menus")) return;
+        String routePath = fields.containsKey("route_path") ? String.valueOf(fields.get("route_path")).trim() : null;
+        if ((routePath == null || routePath.isBlank()) && id != null) {
+            routePath = jdbc.query("SELECT route_path FROM sys_menu WHERE id = ? AND tenant_id = ? AND deleted = 0", rs -> rs.next() ? rs.getString("route_path") : null, id, tenantId);
+        }
+        if (routePath == null || routePath.isBlank()) {
+            fields.put("module_key", null);
+            return;
+        }
+        String moduleKey = moduleKeyFromRoute(routePath);
+        if (moduleKey == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "路由地址必须以 / 开头，并至少包含一个有效路径段");
+        fields.put("module_key", moduleKey);
+    }
+
+    private String moduleKeyFromRoute(String routePath) {
+        String normalized = routePath.trim();
+        if (!normalized.startsWith("/")) return null;
+        String[] segments = normalized.split("/");
+        StringBuilder key = new StringBuilder();
+        for (String segment : segments) {
+            if (segment == null || segment.isBlank()) continue;
+            String value = segment.trim().toLowerCase();
+            if (!value.matches("[a-z0-9][a-z0-9_-]*")) return null;
+            if (key.length() > 0) key.append('.');
+            key.append(value);
+        }
+        return key.isEmpty() ? null : key.toString();
     }
 
     private Map<String, Object> allowedFields(Set<String> allowed, Map<String, Object> input) {

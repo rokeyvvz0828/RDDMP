@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "requirement_id": "REQ-20260811-019-field-governed-designers",
+  "system_boundary": {"input": "field/view/page configuration", "controller": "metadata service and designer foundation", "actuator": "metadata rows, view references and published snapshots", "sensor": "API tests, migration checks, build and browser UI", "output": "validated form/list/wizard/page configuration"},
+  "invariants": ["View field references stay within the same tenant and scope.", "List fields are form-available fields.", "Module-owned route and business service boundaries remain explicit.", "Published snapshots are auditable and reversible."],
+  "disturbances": ["cross-scope references", "deleted or disabled fields", "legacy V32 data", "duplicate view keys", "mobile layout constraints", "concurrent configuration edits"],
+  "hypotheses": ["Existing system RBAC and audit APIs can be reused.", "MySQL accepts append-only V35 migration.", "Element Plus and existing UI components can render the foundation without a new dependency."],
+  "control_actions": ["create/update view", "bind field", "create wizard step", "bind step field", "create page block", "publish snapshot", "reject invalid reference"]
+}

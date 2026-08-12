@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260811-018", "status": "ready", "document": "docs/requirements/REQ-20260811-018-form-designer-prototype/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "zhangwei", "module": "web + governance", "module_owner": "rokeyvvz0828", "branch": "zhangwei-dev", "worktree": "/Users/zhangwei/project/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260811-018-form-designer-prototype/**",
+      "docs/engineering-control/designs/2026-08-11-form-designer-prototype-design.md",
+      "docs/engineering-control/plans/2026-08-11-form-designer-prototype-implementation-plan.md",
+      "web/src/views/FormDesignerPrototypeView.vue",
+      "web/src/router/index.ts",
+      "web/src/views/AppLayout.vue",
+      ".ai-control/requirements/req-20260811-018-form-designer-prototype/*.json"
+    ],
+    "read_only_paths": ["server/src/**", "web/src/components/ui/**", "web/src/modules/delivery-showcase/**", "package-lock.json"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {"required": false, "issue": "REQ-20260811-018", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["frontend production build", "governance checks", "browser prototype verification"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "No database or API change; remove the prototype route and view to roll back."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-demo-only"},
+  "required_tests": [
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "browser", "command": "Open /system/form-designer-prototype and verify add, reorder, edit, preview and schema interactions."}
+  ],
+  "risk": {"level": "normal", "items": ["The visual prototype is not yet the production metadata editor", "Native drag and drop is a temporary interaction sensor before form-create adapter integration"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260811-018-form-designer-prototype", "control_justification": "new user-facing design prototype and route", "acceptance_evidence": [".ai-control/requirements/req-20260811-018-form-designer-prototype/execution-T1.json", ".ai-control/requirements/req-20260811-018-form-designer-prototype/observation-T1.json", ".ai-control/requirements/req-20260811-018-form-designer-prototype/convergence.json"], "release_verification": [], "rollback": "Remove the prototype view and route; no database rollback is required."}
+}
