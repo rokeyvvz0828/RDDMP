@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 66,
+  "revision": 70,
   "created_at": "2026-08-13T06:16:16+00:00",
-  "updated_at": "2026-08-14T08:55:34+00:00",
+  "updated_at": "2026-08-14T09:07:34+00:00",
   "mode": "high-assurance",
   "phase": "executing",
   "phase_history": [
@@ -131,6 +131,18 @@
       "to": "executing",
       "evidence": "observation-T1.json error=0；T1 verified，继续执行 T2 平台最小公开能力",
       "recorded_at": "2026-08-14T08:55:34+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "execution-T2.json 已记录红绿测试、system 回归和真实 MySQL V35 证据；开始独立复验",
+      "recorded_at": "2026-08-14T09:07:31+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "observation-T2.json error=0；T2 verified，继续执行 T3 数据模型与仓储",
+      "recorded_at": "2026-08-14T09:07:34+00:00"
     }
   ],
   "stage_artifacts": {
@@ -12782,14 +12794,22 @@
       "escalation_conditions": [
         "需扩大公开包或无法表达审计事务"
       ],
-      "status": "active",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-14T08:55:34+00:00",
           "text": "T1 verified 后进入 T2；先写 platform/system capability 聚焦失败测试"
+        },
+        {
+          "recorded_at": "2026-08-14T09:07:31+00:00",
+          "text": "提交 c122884；聚焦 6、system reactor 23、Flyway/治理/scope 与真实 MySQL V35 兼容均通过"
+        },
+        {
+          "recorded_at": "2026-08-14T09:07:34+00:00",
+          "text": "observation-T2.json 无 P0-P3；T2 verified"
         }
       ],
-      "updated_at": "2026-08-14T08:55:34+00:00"
+      "updated_at": "2026-08-14T09:07:34+00:00"
     },
     {
       "id": "T3",
@@ -12851,9 +12871,14 @@
       "escalation_conditions": [
         "必须改变字段、永久唯一或父关系"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-14T08:19:35+00:00"
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-14T09:07:34+00:00",
+          "text": "T2 verified 后进入 T3；先建立 V36 约束与仓储失败测试"
+        }
+      ],
+      "updated_at": "2026-08-14T09:07:34+00:00"
     },
     {
       "id": "T4",
@@ -13410,6 +13435,19 @@
       "score": 0,
       "evidence": "observation-T1.json：Maven、治理、模块边界、范围和源码边界全部通过",
       "recorded_at": "2026-08-14T08:55:34+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "T2 平台安全引用、审计和 V35 复验",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "observation-T2.json：聚焦/全量测试、真实 MySQL V35、治理与 scope 全部通过",
+      "recorded_at": "2026-08-14T09:07:34+00:00"
     }
   ]
 }
