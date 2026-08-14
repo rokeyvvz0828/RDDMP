@@ -1,0 +1,1860 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260814-022-platform-business-integration",
+  "handoff_status": "awaiting-user-approval",
+  "created_at": "2026-08-14T11:04:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260814-022-platform-business-integration",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-14-platform-business-integration-design.md",
+    "objective": "Provide reusable workflow business integration, durable lifecycle delivery, dashboard task context, persistent attachments, internal session-confirmed signatures, and a replaceable Mock project context without moving business state into platform modules.",
+    "users": [
+      "Business-module developer integrating workflow and attachments",
+      "Approver using dashboard tasks and internal electronic signatures",
+      "Business user accessing authorized attachments",
+      "Platform administrator observing events, signatures, and attachment cleanup"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "A server-side business module must be able to start the current valid published workflow version by tenant-scoped stable definition code.",
+        "acceptance": [
+          "Unknown, unpublished, or invalid codes create no instance",
+          "A successful instance fixes definition ID and version",
+          "The legacy definition-ID start remains compatible"
+        ],
+        "priority": "must",
+        "source": "User approved fixed-code workflow startup after latest main inspection",
+        "counterexample": [
+          "The business module queries wf_definition",
+          "The browser chooses a definition ID"
+        ]
+      },
+      {
+        "id": "R2",
+        "statement": "Workflow instances must persist consistent business type, key, title, round, project display snapshot, action path, and data digest.",
+        "acceptance": [
+          "Inbox, done, detail, timeline, and lifecycle events expose the same context",
+          "Action paths accept only internal routes"
+        ],
+        "priority": "must",
+        "source": "User approved business context for dashboard and release detail navigation",
+        "counterexample": [
+          "A dashboard task shows only businessKey",
+          "An external URL is stored as actionPath"
+        ]
+      },
+      {
+        "id": "R3",
+        "statement": "Workflow state changes and immutable business lifecycle events must be stored in one transaction.",
+        "acceptance": [
+          "Committed workflow transitions retain an event across process restart",
+          "Rolled-back transitions leave no event"
+        ],
+        "priority": "must",
+        "source": "User approved durable lifecycle events",
+        "counterexample": [
+          "An in-memory callback is the only record",
+          "The event commits before a failed workflow transition"
+        ]
+      },
+      {
+        "id": "R4",
+        "statement": "Lifecycle events must be delivered at least once per stable subscriber with persistence, bounded retry, DEAD visibility, and consumer idempotency.",
+        "acceptance": [
+          "A temporarily failing consumer later succeeds",
+          "Duplicate delivery has one business effect",
+          "An authorized retry can recover DEAD delivery"
+        ],
+        "priority": "must",
+        "source": "User approved idempotent pass, return, and terminate events",
+        "counterexample": [
+          "A consumer outage silently drops approval",
+          "Retry generates a new event identity"
+        ]
+      },
+      {
+        "id": "R5",
+        "statement": "Legacy and Flowable workflow paths must emit the same STARTED, RETURNED, APPROVED, REJECTED, and TERMINATED event contract.",
+        "acceptance": [
+          "Contract tests cover both engines",
+          "Business consumers do not branch on engine type"
+        ],
+        "priority": "must",
+        "source": "Current repository has two workflow execution paths",
+        "counterexample": [
+          "Only Flowable completion creates an event",
+          "Payload semantics differ by engine"
+        ]
+      },
+      {
+        "id": "R6",
+        "statement": "The dashboard must show up to five current-user inbox tasks and five recent done tasks with links to full lists.",
+        "acceptance": [
+          "Loading, empty, error, forbidden, and populated states render",
+          "Full workflow inbox and done pages remain available"
+        ],
+        "priority": "must",
+        "source": "User requested unified task information on the home workbench",
+        "counterexample": [
+          "The dashboard uses hardcoded task cards",
+          "The full workflow pages are removed"
+        ]
+      },
+      {
+        "id": "R7",
+        "statement": "Workbench tasks must show business title, type, project display name, current node, actor, time, result, and an authorized internal business-detail route.",
+        "acceptance": [
+          "A task opens the intended business detail",
+          "Missing legacy metadata has safe fallback display"
+        ],
+        "priority": "must",
+        "source": "User approved enriched dashboard task context",
+        "counterexample": [
+          "The UI constructs a route from an unvalidated external URL",
+          "A task is identified only by a numeric instance ID"
+        ]
+      },
+      {
+        "id": "R8",
+        "statement": "Workflow approval nodes must support a backward-compatible signatureRequired setting that blocks decision until explicit confirmation.",
+        "acceptance": [
+          "Existing nodes default to unsigned behavior",
+          "A required node rejects an unconfirmed decision",
+          "The designer exposes the setting"
+        ],
+        "priority": "must",
+        "source": "User approved workflow-configured internal electronic signatures",
+        "counterexample": [
+          "Every old workflow suddenly requires a signature",
+          "The requirement exists only in frontend state"
+        ]
+      },
+      {
+        "id": "R9",
+        "statement": "Internal signatures must use the current authenticated identity, bind task, round, action, comment, and business digest, and remain immutable.",
+        "acceptance": [
+          "The server ignores client signer identity and does not accept a client-supplied digest",
+          "Approval and signature commit atomically against the stored instance digest",
+          "Timeline and detail expose the signature evidence"
+        ],
+        "priority": "must",
+        "source": "User selected current-login click confirmation without password re-entry",
+        "counterexample": [
+          "The client can submit another signer ID or replace the signed digest",
+          "A signature is editable after approval"
+        ]
+      },
+      {
+        "id": "R10",
+        "statement": "A new ccb-attachment platform module must own persistent attachment metadata, storage identity, state, binding, and audit.",
+        "acceptance": [
+          "Business modules store only attachment IDs",
+          "Object keys remain private",
+          "The attachment module has an independent Maven boundary"
+        ],
+        "priority": "must",
+        "source": "User approved persistent business attachments",
+        "counterexample": [
+          "The release module writes MinIO object keys",
+          "Temporary preview records are treated as permanent attachments"
+        ]
+      },
+      {
+        "id": "R11",
+        "statement": "TEMP attachments must be restricted to their uploader while BOUND attachments must use a fail-closed business AttachmentAccessPolicy.",
+        "acceptance": [
+          "Changing an attachment ID cannot bypass tenant or owner checks",
+          "A missing or failed policy denies access",
+          "Repeated identical binding is idempotent"
+        ],
+        "priority": "must",
+        "source": "User approved tenant, project, and business ownership controls while formal project authorization remains deferred",
+        "counterexample": [
+          "Any authenticated user can delete a known attachment ID",
+          "Policy failure grants access"
+        ]
+      },
+      {
+        "id": "R12",
+        "statement": "Authorized attachments must support metadata, preview, download, controlled deletion, immutable binding evidence, and retryable orphan cleanup.",
+        "acceptance": [
+          "kkFileView preview is reused when supported",
+          "Unsupported files can still download when authorized",
+          "Expired unbound files are cleaned idempotently"
+        ],
+        "priority": "must",
+        "source": "User approved the complete attachment lifecycle",
+        "counterexample": [
+          "Bound attachments are deleted by the generic browser endpoint",
+          "Cleanup deletes an active bound attachment"
+        ]
+      },
+      {
+        "id": "R13",
+        "statement": "The frontend must expose a replaceable ProjectContextProvider and Store with temporary Mock projects and persisted current selection.",
+        "acceptance": [
+          "AppLayout, dashboard, and future business pages consume the Store",
+          "Replacing the provider does not change consumer APIs"
+        ],
+        "priority": "must",
+        "source": "User stated the project module is in progress and requested a page Mock first",
+        "counterexample": [
+          "Every page embeds its own project array",
+          "Project selection disappears on refresh"
+        ]
+      },
+      {
+        "id": "R14",
+        "statement": "Mock project context and Mock project membership must be presentation and local-integration data only, never a production server authorization source.",
+        "acceptance": [
+          "Manipulating browser storage does not grant server data access",
+          "Formal project authorization remains an explicit dependency"
+        ],
+        "priority": "must",
+        "source": "User deferred project membership and data-scope implementation",
+        "counterexample": [
+          "A client projectRef is trusted as permission",
+          "Production is declared project-isolated using only Mock data"
+        ]
+      },
+      {
+        "id": "R15",
+        "statement": "Existing workflow by-ID startup, designer, inbox, done, notification publisher, and temporary file-preview behavior must remain compatible.",
+        "acceptance": [
+          "Existing tests and user flows pass",
+          "New fields are nullable for old workflow instances",
+          "signatureRequired defaults false"
+        ],
+        "priority": "must",
+        "source": "Repository compatibility contract and selected incremental approach",
+        "counterexample": [
+          "The existing workflow API is removed",
+          "The notification center is reimplemented"
+        ]
+      },
+      {
+        "id": "R16",
+        "statement": "Business modules must use public workflow and attachment contracts without platform dependencies on concrete business modules or private table access.",
+        "acceptance": [
+          "Platform modules compile without ccb-release",
+          "Business integration passes public-contract tests",
+          "No business repository writes wf or att tables"
+        ],
+        "priority": "must",
+        "source": "Platform AGENTS and user requirement for reusable platform capabilities",
+        "counterexample": [
+          "ccb-workflow imports com.ccb.release",
+          "A release service updates wf_instance directly"
+        ]
+      }
+    ],
+    "invariants": [
+      "Workflow terminal state and emitted terminal event remain consistent",
+      "Signer identity comes only from the authenticated server principal",
+      "Signature and bound attachment evidence is not physically deleted",
+      "Object storage keys are never exposed to business clients",
+      "Platform modules never depend on concrete business modules",
+      "Mock project data never grants server authorization"
+    ],
+    "constraints": [
+      "Java 17, Spring Boot 3.4.4, MySQL 8.4, Vue 3 and TypeScript",
+      "Append-only Flyway V35 and V36; V1 through V34 remain unchanged",
+      "Preserve existing com.ccb packages, APIs, and old workflow behavior",
+      "Reuse SystemNotificationPublisher and kkFileView capabilities",
+      "Public platform changes require full governance and regression verification",
+      "Desktop workbench and approval acceptance only for this requirement"
+    ],
+    "non_goals": [
+      "Formal project management and project-member authorization",
+      "CA or legally binding digital signature",
+      "Password, SMS, biometric, email, or external signature verification",
+      "External event bus or cross-system integrations",
+      "Release application, baseline, and report business logic",
+      "Artifact repository and artifact file upload"
+    ],
+    "selected_approach": {
+      "name": "Incremental workflow public contracts plus independent attachment module and replaceable frontend project provider",
+      "reason": "It preserves current platform behavior, keeps business modules independent, and creates reusable capabilities without building a general integration platform.",
+      "alternatives": [
+        {
+          "name": "Implement adapters and attachments inside ccb-release",
+          "rejected_because": "It duplicates platform concerns and cannot be reused by later business modules."
+        },
+        {
+          "name": "Build a generic cross-system event and low-code integration center",
+          "rejected_because": "It adds protocols and operations not required by the current modular monolith."
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "workflow code gateway",
+          "workflow business context",
+          "durable lifecycle delivery",
+          "dashboard task projection",
+          "internal signature",
+          "persistent attachment center",
+          "Mock project provider"
+        ],
+        "outside": [
+          "formal project backend",
+          "business state machines",
+          "external signatures",
+          "external messaging",
+          "artifact storage"
+        ]
+      },
+      "components": [
+        {
+          "name": "workflow-business-gateway",
+          "responsibility": "Resolve published definitions by code and start, terminate, or query business workflows",
+          "depends_on": [
+            "existing workflow services"
+          ]
+        },
+        {
+          "name": "workflow-lifecycle-outbox",
+          "responsibility": "Persist, dispatch, retry, and expose lifecycle event deliveries",
+          "depends_on": [
+            "workflow state transitions"
+          ]
+        },
+        {
+          "name": "workflow-signature",
+          "responsibility": "Validate signature-required decisions and store immutable session-confirmed evidence",
+          "depends_on": [
+            "authenticated user",
+            "workflow task",
+            "business digest"
+          ]
+        },
+        {
+          "name": "workflow-task-projection",
+          "responsibility": "Return enriched inbox, done, detail, timeline, and signature information",
+          "depends_on": [
+            "workflow business context"
+          ]
+        },
+        {
+          "name": "attachment-center",
+          "responsibility": "Own temporary and bound file lifecycle, policies, preview, download, deletion, audit, and cleanup",
+          "depends_on": [
+            "MinIO storage",
+            "file-preview public provider",
+            "authenticated user"
+          ]
+        },
+        {
+          "name": "dashboard-workbench",
+          "responsibility": "Render compact current-user inbox and done summaries with business navigation",
+          "depends_on": [
+            "workflow task API",
+            "project-context Store"
+          ]
+        },
+        {
+          "name": "mock-project-provider",
+          "responsibility": "Provide replaceable local project display context",
+          "depends_on": [
+            "browser local storage"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "WorkflowBusinessGateway",
+          "producer": "ccb-workflow",
+          "consumers": [
+            "business modules"
+          ],
+          "contract": "Resolve and start a published workflow by stable code, terminate a validated business instance, and query progress."
+        },
+        {
+          "name": "WorkflowLifecycleConsumer",
+          "producer": "business modules",
+          "consumers": [
+            "workflow lifecycle dispatcher"
+          ],
+          "contract": "Declare subscriber key and supported business types, then consume stable at-least-once events idempotently."
+        },
+        {
+          "name": "AttachmentGateway",
+          "producer": "ccb-attachment",
+          "consumers": [
+            "business modules"
+          ],
+          "contract": "Bind, inspect, and perform business-authorized attachment lifecycle operations using opaque IDs."
+        },
+        {
+          "name": "AttachmentAccessPolicy",
+          "producer": "business modules",
+          "consumers": [
+            "ccb-attachment"
+          ],
+          "contract": "Authorize a current user for a business key and operation without exposing storage identity."
+        },
+        {
+          "name": "ProjectContextProvider",
+          "producer": "frontend application",
+          "consumers": [
+            "AppLayout",
+            "dashboard",
+            "business pages"
+          ],
+          "contract": "Expose current and available projects behind a replaceable provider."
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "Stable workflow code and trusted business context",
+          "transitions": [
+            "resolve current published version",
+            "validate model and route",
+            "start fixed version",
+            "persist STARTED event"
+          ],
+          "output": "Workflow instance and durable event"
+        },
+        {
+          "input": "Workflow decision or termination",
+          "transitions": [
+            "validate task and optional signature",
+            "commit workflow state and signature",
+            "persist lifecycle event",
+            "dispatch with retry"
+          ],
+          "output": "Consistent workflow evidence and eventual business notification"
+        },
+        {
+          "input": "Authenticated multipart upload",
+          "transitions": [
+            "validate file",
+            "store opaque object",
+            "create TEMP metadata",
+            "bind after business save",
+            "authorize each access"
+          ],
+          "output": "Persistent authorized attachment ID"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "Workflow code missing, unpublished, or invalid",
+        "behavior": "Create no instance and return a clear conflict.",
+        "recovery": "Publish a valid definition and retry."
+      },
+      {
+        "condition": "Lifecycle consumer fails",
+        "behavior": "Keep committed workflow state and persist retry delivery.",
+        "recovery": "Automatic backoff or authorized DEAD retry."
+      },
+      {
+        "condition": "Signature confirmation or evidence write fails",
+        "behavior": "Reject or roll back the workflow decision.",
+        "recovery": "Restore the condition and resubmit while the task remains pending."
+      },
+      {
+        "condition": "Attachment access policy is missing or fails",
+        "behavior": "Deny bound attachment access.",
+        "recovery": "Register or restore the business policy."
+      },
+      {
+        "condition": "Preview service is unavailable",
+        "behavior": "Keep attachment metadata and authorized download available.",
+        "recovery": "Restore kkFileView and retry preview."
+      },
+      {
+        "condition": "Orphan cleanup or object deletion fails",
+        "behavior": "Keep a retryable cleanup job and hide logically deleted content.",
+        "recovery": "Automatic or authorized manual retry."
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "server-derived identity and tenant",
+        "fail-closed attachment policies",
+        "validated internal routes",
+        "private object keys",
+        "immutable signatures"
+      ],
+      "performance": [
+        "five-row dashboard limits",
+        "server-side task paging",
+        "indexed event scheduling",
+        "bounded retry and cleanup batches",
+        "short-lived presigned URLs"
+      ],
+      "compatibility": [
+        "nullable context for old instances",
+        "legacy by-ID API retained",
+        "signatureRequired defaults false",
+        "existing preview and notification APIs retained"
+      ],
+      "operations": [
+        "event backlog and DEAD visibility",
+        "attachment cleanup retry",
+        "signature and attachment audit",
+        "feature-disable rollback without data deletion"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R15",
+          "R16"
+        ],
+        "signal": "Stable-code gateway and old API both work without private table access.",
+        "method": "Workflow unit, integration, compatibility, and architecture tests."
+      },
+      {
+        "requirement_ids": [
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "signal": "Both engines create durable events and retries converge without duplicate business effects.",
+        "method": "Transactional, crash-window, duplicate, ordering, and retry tests."
+      },
+      {
+        "requirement_ids": [
+          "R6",
+          "R7"
+        ],
+        "signal": "Dashboard task data matches inbox and done APIs and navigates to internal business routes.",
+        "method": "Frontend build and desktop browser acceptance."
+      },
+      {
+        "requirement_ids": [
+          "R8",
+          "R9"
+        ],
+        "signal": "Required signatures are atomic, server-attributed, immutable, and visible.",
+        "method": "Workflow decision, authorization, persistence, and UI tests."
+      },
+      {
+        "requirement_ids": [
+          "R10",
+          "R11",
+          "R12"
+        ],
+        "signal": "Attachment lifecycle preserves ownership, policies, evidence, preview, download, deletion, and cleanup.",
+        "method": "Attachment module unit, integration, MinIO-adapter, and permission tests."
+      },
+      {
+        "requirement_ids": [
+          "R13",
+          "R14"
+        ],
+        "signal": "Mock project selection persists and cannot grant server authorization.",
+        "method": "Store tests, browser tests, and tampered-client permission tests."
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "Business modules provide stable business context and normalized SHA-256 digests.",
+        "basis": "Release design already requires immutable workflow rounds.",
+        "falsifier": "A business module cannot produce a stable key or digest."
+      },
+      {
+        "text": "Business consumers and attachment policies can be discovered as Spring beans in the modular monolith.",
+        "basis": "Current Boot module composes all Maven modules.",
+        "falsifier": "Deployment separates platform and business modules into different processes."
+      },
+      {
+        "text": "The future project module can replace the frontend provider without changing consumer APIs.",
+        "basis": "User stated project management is being implemented separately.",
+        "falsifier": "The project module requires a fundamentally different multi-project interaction model."
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "What are the final production limits and retention duration for attachments?",
+        "impact": "Configuration defaults only; lifecycle and data model are unchanged.",
+        "owner": "Platform owner",
+        "blocking": false
+      },
+      {
+        "question": "What retry count and backoff values should production use for lifecycle delivery and cleanup?",
+        "impact": "Operational tuning only; delivery semantics are unchanged.",
+        "owner": "Platform operations",
+        "blocking": false
+      },
+      {
+        "question": "What DTO will the formal project service expose?",
+        "impact": "Remote provider mapping only; Mock provider contract remains stable.",
+        "owner": "Project-management owner",
+        "blocking": false
+      }
+    ],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "Use stable workflow codes for business startup.",
+        "reason": "Business modules must not depend on mutable database IDs.",
+        "source": "User approval."
+      },
+      {
+        "id": "D2",
+        "decision": "Persist lifecycle events and deliver at least once with idempotent consumers.",
+        "reason": "Workflow completion must not be lost during consumer or process failure.",
+        "source": "User approval after latest main inspection."
+      },
+      {
+        "id": "D3",
+        "decision": "Put compact inbox and done summaries on the dashboard.",
+        "reason": "Approvers need a unified workbench while retaining full workflow pages.",
+        "source": "User approval."
+      },
+      {
+        "id": "D4",
+        "decision": "Create a separate ccb-attachment platform module.",
+        "reason": "Persistent business ownership is distinct from temporary preview.",
+        "source": "User approval of the recommended architecture."
+      },
+      {
+        "id": "D5",
+        "decision": "Use replaceable frontend Mock projects and defer formal server project authorization.",
+        "reason": "Project management is under separate implementation.",
+        "source": "User instruction."
+      },
+      {
+        "id": "D6",
+        "decision": "Internal signatures use current authenticated identity and explicit click confirmation without password re-entry.",
+        "reason": "Matches the requested internal approval strength and avoids external authentication scope.",
+        "source": "User explicit confirmation."
+      },
+      {
+        "id": "D7",
+        "decision": "Reuse the existing SystemNotificationPublisher.",
+        "reason": "Latest main already has a public idempotent notification contract.",
+        "source": "Repository inspection."
+      }
+    ],
+    "risks": [
+      {
+        "risk": "Two workflow execution paths emit inconsistent events.",
+        "impact": "Business state can diverge.",
+        "mitigation": "Use one event factory and contract suite for both engines."
+      },
+      {
+        "risk": "At-least-once delivery causes duplicate or stale transitions.",
+        "impact": "Business state may repeat or regress.",
+        "mitigation": "Stable event IDs, business-round checks, state preconditions, and unique consumer records."
+      },
+      {
+        "risk": "Session-confirm signatures are mistaken for legal digital signatures.",
+        "impact": "Governance or compliance misunderstanding.",
+        "mitigation": "Label the feature as internal confirmation and retain digest-bound audit evidence."
+      },
+      {
+        "risk": "Attachment policies are absent or incorrect.",
+        "impact": "Files become inaccessible or exposed.",
+        "mitigation": "Fail closed, test each business policy, and never expose object keys."
+      },
+      {
+        "risk": "Mock project values are trusted as authorization.",
+        "impact": "Cross-project data exposure.",
+        "mitigation": "Treat them as display only and keep formal project authorization as an explicit dependency."
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User confirmed the landed platform design, selected current-session click confirmation for internal signatures, and directed platform-first delivery.",
+      "confirmed_at": "2026-08-14T10:53:02+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-14-platform-business-integration-implementation-plan.md",
+    "plan_status": "draft",
+    "global_constraints": [
+      "Implement platform capabilities only; do not implement or commit REQ-20260814-021 release-management business code in this plan.",
+      "Create isolated branch feat/REQ-20260814-022-platform-business-integration and an independent worktree from latest origin/main before product implementation.",
+      "Use Java 17; do not use system Java 26.",
+      "Append Flyway V35 and V36 only; do not modify V1 through V34.",
+      "Preserve workflow startup by definitionId, workflow designer, inbox, done, notification, and temporary file-preview compatibility.",
+      "Platform modules must not depend on concrete business modules.",
+      "Signer identity comes only from AuthUser; clients cannot submit signerId, tenantId, or dataDigest.",
+      "Mock project data is presentation-only and cannot grant backend authorization.",
+      "Write only paths allowed by docs/requirements/REQ-20260814-022-platform-business-integration/codex-task-scope.yaml.",
+      "Each task requires focused verification and a separate commit checkpoint."
+    ],
+    "file_map": [
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/",
+        "status": "candidate-new",
+        "responsibility": "Public workflow business gateway, lifecycle event, and signature contracts",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+        "status": "candidate-new",
+        "responsibility": "Resolve published workflow definitions by code and expose business start, terminate, and progress operations",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+        "status": "candidate-new",
+        "responsibility": "Persist immutable lifecycle events in workflow transition transactions",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+        "status": "candidate-new",
+        "responsibility": "Discover consumers and manage delivery, retry, and DEAD state",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowSignatureService.java",
+        "status": "candidate-new",
+        "responsibility": "Validate and persist immutable SESSION_CONFIRM signature evidence",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+        "status": "existing",
+        "responsibility": "Legacy workflow execution and status transitions",
+        "evidence": "Repository inspection of latest origin/main"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+        "status": "existing",
+        "responsibility": "Flowable workflow execution and status transitions",
+        "evidence": "Repository inspection of latest origin/main"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java",
+        "status": "existing",
+        "responsibility": "Workflow detail, timeline, inbox, done, and termination queries",
+        "evidence": "Repository inspection of latest origin/main"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+        "status": "existing",
+        "responsibility": "Existing workflow HTTP API compatibility surface",
+        "evidence": "Repository inspection of latest origin/main"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowBusinessEventController.java",
+        "status": "candidate-new",
+        "responsibility": "Authorized lifecycle delivery monitoring and DEAD retry API",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "server/src/platform/attachment/",
+        "status": "candidate-new",
+        "responsibility": "Independent persistent attachment Maven module",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/model/FilePreviewUrlProvider.java",
+        "status": "candidate-new",
+        "responsibility": "Public controlled preview URL provider contract",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/service/KkFileViewUrlBuilder.java",
+        "status": "existing",
+        "responsibility": "Adapt trusted MinIO URLs to kkFileView preview URLs",
+        "evidence": "Repository inspection of latest origin/main"
+      },
+      {
+        "path": "web/src/api/workflow.ts",
+        "status": "existing",
+        "responsibility": "Frontend workflow request and projection types",
+        "evidence": "Repository inspection of latest origin/main"
+      },
+      {
+        "path": "web/src/api/attachments.ts",
+        "status": "candidate-new",
+        "responsibility": "Frontend persistent attachment requests",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "web/src/stores/project-context.ts",
+        "status": "candidate-new",
+        "responsibility": "Replaceable project-context provider and persisted current selection",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "web/src/types/project-context.ts",
+        "status": "candidate-new",
+        "responsibility": "Project display context contracts",
+        "evidence": "Approved design revision 1"
+      },
+      {
+        "path": "web/src/views/DashboardView.vue",
+        "status": "existing",
+        "responsibility": "Home dashboard and compact inbox/done workbench",
+        "evidence": "Repository inspection of latest origin/main"
+      },
+      {
+        "path": "web/src/views/WorkflowView.vue",
+        "status": "existing",
+        "responsibility": "Workflow design, inbox, done, monitor, and approval interactions",
+        "evidence": "Repository inspection of latest origin/main"
+      },
+      {
+        "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql",
+        "status": "candidate-new",
+        "responsibility": "Workflow business context, event delivery, and signature schema",
+        "evidence": "Migration allocation review"
+      },
+      {
+        "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V36__persistent_attachments.sql",
+        "status": "candidate-new",
+        "responsibility": "Persistent attachment metadata, binding, audit, and cleanup schema",
+        "evidence": "Migration allocation review"
+      },
+      {
+        "path": "governance/modules.yaml",
+        "status": "existing",
+        "responsibility": "Module ownership, dependency, and public-package source of truth",
+        "evidence": "Repository governance contract"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "Start the current valid published workflow version by stable code and persist trusted business context while retaining the legacy start path.",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R15",
+          "R16"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "WorkflowController currently starts only by definitionId.",
+          "wf_definition persists tenant, code, status, and current version.",
+          "WorkflowService and FlowableWorkflowService both create wf_instance records.",
+          "Legacy workflow instances must remain readable."
+        ],
+        "files": {
+          "create": [
+            "server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessGateway.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowStartCommand.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowStartResult.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowTerminateCommand.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowProgress.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/execution-T1.json",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/observation-T1.json"
+          ],
+          "modify": [
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java"
+          ],
+          "test": [
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "Existing workflow definition publication state",
+            "AuthUser server principal",
+            "Legacy workflow start services"
+          ],
+          "produces": [
+            "WorkflowBusinessGateway.startByCode(WorkflowStartCommand, AuthUser): WorkflowStartResult",
+            "WorkflowBusinessGateway.terminate(WorkflowTerminateCommand, AuthUser): void",
+            "WorkflowBusinessGateway.progress(long, AuthUser): WorkflowProgress"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T1-S1",
+            "action": "Add failing gateway and compatibility tests for valid, unknown, unpublished, invalid-route, missing-context, fixed-version, and legacy-by-ID cases.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am -Dtest=WorkflowBusinessIntegrationServiceTest,WorkflowServiceTest test",
+            "expected": "New tests fail because the gateway, DTOs, or schema fields do not exist; the failure is attributable to the missing capability.",
+            "evidence": "Command exit code and failing test names"
+          },
+          {
+            "id": "T1-S2",
+            "action": "Add nullable workflow business-context columns and create the event, delivery, and signature tables reserved for T2 and T3 in V35.",
+            "command": null,
+            "expected": "Old instances require no backfill; new fields and uniqueness/index constraints match the approved design.",
+            "evidence": "Migration diff and schema assertions"
+          },
+          {
+            "id": "T1-S3",
+            "action": "Implement tenant-scoped stable-code resolution and the public gateway without exposing JDBC maps, private workflow tables, or Flowable types.",
+            "command": null,
+            "expected": "Only a current valid published definition starts, and the started instance fixes definition ID and version.",
+            "evidence": "Focused service assertions"
+          },
+          {
+            "id": "T1-S4",
+            "action": "Route both legacy and Flowable start paths through one validated business-context write while preserving existing start signatures.",
+            "command": null,
+            "expected": "New and legacy starts persist compatible instance data; old callers compile unchanged.",
+            "evidence": "Compatibility test assertions"
+          },
+          {
+            "id": "T1-S5",
+            "action": "Implement tenant and business-key checked termination plus public progress projection.",
+            "command": null,
+            "expected": "Mismatched tenant, instance, business type, or business key is rejected; DTOs expose no private columns.",
+            "evidence": "Authorization and projection assertions"
+          },
+          {
+            "id": "T1-S6",
+            "action": "Run complete workflow module regression.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am test",
+            "expected": "Build succeeds with zero test failures and both by-code and by-ID starts covered.",
+            "evidence": "Maven exit code and test summary"
+          },
+          {
+            "id": "T1-S7",
+            "action": "Create the task checkpoint commit.",
+            "command": "git add server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql server/src/platform/workflow && git commit -m \"feat: add workflow business gateway\"",
+            "expected": "One commit contains only T1 scope.",
+            "evidence": "Commit hash and changed-file list"
+          }
+        ],
+        "acceptance_checks": [
+          "Unknown, unpublished, or invalid definitions create zero instances.",
+          "Successful by-code startup fixes definition ID and version and persists the approved context.",
+          "Legacy definitionId startup and old-instance reads remain compatible.",
+          "Platform contracts do not import a concrete business module."
+        ],
+        "risks": [
+          "Definition-code uniqueness or publication semantics may differ from inspected assumptions.",
+          "Two workflow start paths may persist different fields."
+        ],
+        "rollback": "Revert the T1 application commit; retain any applied V35 nullable columns and empty evidence tables without DROP.",
+        "stop_conditions": [
+          "origin/main allocates V35 before implementation.",
+          "A tenant cannot uniquely resolve a published definition code.",
+          "The legacy start API must be broken to implement the gateway."
+        ],
+        "escalation_conditions": [
+          "Implementation requires modifying the security module.",
+          "A business module must access workflow private tables.",
+          "Existing workflow publication semantics must change."
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "Persist immutable lifecycle events atomically and deliver them at least once with bounded retry, DEAD visibility, and idempotent consumers across both workflow engines.",
+        "requirement_ids": [
+          "R3",
+          "R4",
+          "R5",
+          "R16"
+        ],
+        "prerequisites": [
+          "T1"
+        ],
+        "input_facts": [
+          "V35 provides lifecycle event, delivery, and signature tables.",
+          "Both workflow paths change state in platform services.",
+          "The modular monolith can discover Spring consumer beans."
+        ],
+        "files": {
+          "create": [
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowLifecycleEventType.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowLifecycleEvent.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowLifecycleConsumer.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessEventQueryService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowBusinessEventController.java",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/execution-T2.json",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/observation-T2.json"
+          ],
+          "modify": [
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java"
+          ],
+          "test": [
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java",
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleParityTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "Workflow instance persisted business context from T1",
+            "Workflow state transition transactions"
+          ],
+          "produces": [
+            "WorkflowLifecycleConsumer.subscriberKey(): String",
+            "WorkflowLifecycleConsumer.supports(String): boolean",
+            "WorkflowLifecycleConsumer.consume(WorkflowLifecycleEvent): void",
+            "Authorized event-delivery monitoring and retry API"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T2-S1",
+            "action": "Add failing transaction, duplicate-delivery, retry, DEAD, and dual-engine parity tests for STARTED, RETURNED, APPROVED, REJECTED, and TERMINATED.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleEventServiceTest,WorkflowLifecycleDispatcherTest,WorkflowLifecycleParityTest test",
+            "expected": "Tests fail at missing event services and contracts.",
+            "evidence": "Command exit code and failing assertions"
+          },
+          {
+            "id": "T2-S2",
+            "action": "Implement one event factory sourced only from persisted workflow business context.",
+            "command": null,
+            "expected": "Both workflow engines produce the same immutable event fields.",
+            "evidence": "Parity test payload assertions"
+          },
+          {
+            "id": "T2-S3",
+            "action": "Insert lifecycle events in the same transaction after each workflow state mutation.",
+            "command": null,
+            "expected": "Rollback leaves no event and commit leaves exactly one stable event.",
+            "evidence": "Transaction integration assertions"
+          },
+          {
+            "id": "T2-S4",
+            "action": "Implement per-subscriber delivery records, bounded batches, retry backoff, attempt/error capture, and DEAD transition.",
+            "command": null,
+            "expected": "Temporary failures recover, duplicates retain one business effect, and exhausted retries remain visible.",
+            "evidence": "Dispatcher state assertions"
+          },
+          {
+            "id": "T2-S5",
+            "action": "Add workflow:event:manage protected paging and eventId plus subscriberKey retry operations that reuse the original event identity.",
+            "command": null,
+            "expected": "Unauthorized retry is rejected and authorized DEAD retry does not clone the event.",
+            "evidence": "Controller permission and identity assertions"
+          },
+          {
+            "id": "T2-S6",
+            "action": "Run lifecycle-focused and full workflow regressions.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am test",
+            "expected": "All workflow tests pass with zero failures.",
+            "evidence": "Maven exit code and test summary"
+          },
+          {
+            "id": "T2-S7",
+            "action": "Create the task checkpoint commit.",
+            "command": "git add server/src/platform/workflow && git commit -m \"feat: add durable workflow lifecycle events\"",
+            "expected": "One commit contains only T2 scope.",
+            "evidence": "Commit hash and changed-file list"
+          }
+        ],
+        "acceptance_checks": [
+          "State and lifecycle event commit atomically.",
+          "Both workflow engines emit the same five event types.",
+          "Delivery is persistent, at-least-once, bounded, observable, and manually recoverable.",
+          "Consumer duplicates and stale rounds cannot regress business state."
+        ],
+        "risks": [
+          "State changes may not share a Spring transaction boundary.",
+          "Consumer execution can form accidental reverse dependencies."
+        ],
+        "rollback": "Stop the dispatcher and revert T2 application code while retaining event and delivery evidence tables and records.",
+        "stop_conditions": [
+          "A workflow transition cannot share a transaction with event insertion.",
+          "Consumer discovery creates workflow-to-business compile dependencies.",
+          "The legacy engine has no stable terminal-state semantics."
+        ],
+        "escalation_conditions": [
+          "An external message broker becomes required.",
+          "A cross-process subscription protocol becomes required.",
+          "Implementation would rewrite Flowable runtime tables."
+        ]
+      },
+      {
+        "id": "T3",
+        "goal": "Support workflow-configured internal signatures using the current authenticated identity and explicit click confirmation.",
+        "requirement_ids": [
+          "R8",
+          "R9",
+          "R15"
+        ],
+        "prerequisites": [
+          "T2"
+        ],
+        "input_facts": [
+          "V35 provides an immutable signature table.",
+          "AuthUser is the sole trusted signer identity.",
+          "Existing approval nodes must default signatureRequired to false."
+        ],
+        "files": {
+          "create": [
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowSignatureItem.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowSignatureService.java",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/execution-T3.json",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/observation-T3.json"
+          ],
+          "modify": [
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+            "web/src/api/workflow.ts",
+            "web/src/components/workflow/WorkflowNodeInspector.vue",
+            "web/src/views/WorkflowView.vue"
+          ],
+          "test": [
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowSignatureServiceTest.java",
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowSignatureDecisionTest.java",
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionValidatorTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "AuthUser current principal",
+            "Persisted workflow task, round, and data digest",
+            "T2 lifecycle event transaction"
+          ],
+          "produces": [
+            "WorkflowNodeConfig.signatureRequired?: boolean",
+            "Decision option signatureConfirmed?: boolean",
+            "WorkflowSignatureItem evidence projection"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T3-S1",
+            "action": "Add failing tests for default false, required without confirmation, current-user confirmation, non-assignee, round mismatch, missing digest, transaction rollback, and old-flow compatibility.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am -Dtest=WorkflowSignatureServiceTest,WorkflowSignatureDecisionTest,WorkflowDefinitionValidatorTest test",
+            "expected": "Tests fail because signature configuration and evidence services are absent.",
+            "evidence": "Command exit code and failing test names"
+          },
+          {
+            "id": "T3-S2",
+            "action": "Extend approval-node model and validator with a boolean signatureRequired that defaults to false.",
+            "command": null,
+            "expected": "Only approval nodes accept the setting; old models validate unchanged.",
+            "evidence": "Validator assertions"
+          },
+          {
+            "id": "T3-S3",
+            "action": "Implement SESSION_CONFIRM evidence from AuthUser and persisted workflow data with tenant and task uniqueness and no update/delete path.",
+            "command": null,
+            "expected": "The client cannot choose signer identity or data digest.",
+            "evidence": "Service and repository assertions"
+          },
+          {
+            "id": "T3-S4",
+            "action": "Atomically join decision, signature evidence, and lifecycle event in both workflow paths.",
+            "command": null,
+            "expected": "Any failure rolls back all writes and leaves the task pending.",
+            "evidence": "Transaction assertions for both engines"
+          },
+          {
+            "id": "T3-S5",
+            "action": "Expose signatures in instance detail and timeline with empty fallback for legacy instances.",
+            "command": null,
+            "expected": "Signature evidence is queryable without breaking old instances.",
+            "evidence": "Projection assertions"
+          },
+          {
+            "id": "T3-S6",
+            "action": "Add the designer switch and approval confirmation dialog showing current account, business title, action, and internal-signature meaning.",
+            "command": "npm --prefix web run build",
+            "expected": "Frontend build succeeds; closing the dialog sends no decision and confirming sends signatureConfirmed=true.",
+            "evidence": "Build exit code and browser request evidence"
+          },
+          {
+            "id": "T3-S7",
+            "action": "Run workflow regression and create the task checkpoint commit.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am test && git add server/src/platform/workflow web/src/api/workflow.ts web/src/components/workflow web/src/views/WorkflowView.vue && git commit -m \"feat: add internal workflow signatures\"",
+            "expected": "All workflow tests pass and one T3-only commit is created.",
+            "evidence": "Maven summary and commit hash"
+          }
+        ],
+        "acceptance_checks": [
+          "Unsigned existing nodes remain compatible.",
+          "Required nodes block unconfirmed decisions.",
+          "Only the current task assignee can create SESSION_CONFIRM evidence.",
+          "Approval, signature, and lifecycle event are atomic.",
+          "Signature evidence is immutable and visible in detail and timeline."
+        ],
+        "risks": [
+          "Signature confirmation could be mistaken for a legal digital signature.",
+          "Two decision paths may diverge transactionally."
+        ],
+        "rollback": "Revert T3 code and keep signatureRequired default false; preserve written signature records as read-only evidence.",
+        "stop_conditions": [
+          "AuthUser or authentication behavior must change.",
+          "Approval and signature cannot share one transaction.",
+          "The client must submit the signed digest."
+        ],
+        "escalation_conditions": [
+          "Password re-entry, CA, SMS, legal digital signature, administrator proxy signing, or later countersigning is requested."
+        ]
+      },
+      {
+        "id": "T4",
+        "goal": "Provide an independent persistent attachment center with TEMP-to-BOUND lifecycle, fail-closed authorization, preview, download, audit, deletion, and cleanup.",
+        "requirement_ids": [
+          "R10",
+          "R11",
+          "R12",
+          "R15",
+          "R16"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "Current file-preview is temporary and lacks business ownership.",
+          "MinIO and kkFileView adapters already exist.",
+          "Business authorization must be supplied through a public policy without reverse module dependency."
+        ],
+        "files": {
+          "create": [
+            "server/src/platform/infrastructure/src/main/resources/db/migration/V36__persistent_attachments.sql",
+            "server/src/platform/attachment/pom.xml",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/config/AttachmentProperties.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/model/AttachmentGateway.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/model/AttachmentAccessPolicy.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/model/AttachmentOperation.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/model/AttachmentItem.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/model/AttachmentBindingCommand.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/repository/AttachmentRepository.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/AttachmentService.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/AttachmentAccessPolicyRegistry.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/AttachmentCleanupService.java",
+            "server/src/platform/attachment/src/main/java/com/ccb/attachment/web/AttachmentController.java",
+            "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/model/FilePreviewUrlProvider.java",
+            "web/src/api/attachments.ts",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/execution-T4.json",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/observation-T4.json"
+          ],
+          "modify": [
+            "pom.xml",
+            "server/src/platform/boot/pom.xml",
+            "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/service/KkFileViewUrlBuilder.java"
+          ],
+          "test": [
+            "server/src/platform/attachment/src/test/java/com/ccb/attachment/service/AttachmentServiceTest.java",
+            "server/src/platform/attachment/src/test/java/com/ccb/attachment/service/AttachmentAccessPolicyTest.java",
+            "server/src/platform/attachment/src/test/java/com/ccb/attachment/service/AttachmentCleanupServiceTest.java",
+            "server/src/platform/file-preview/src/test/java/com/ccb/filepreview/service/KkFileViewUrlBuilderTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "MinIO storage capability",
+            "kkFileView URL builder",
+            "AuthUser current principal"
+          ],
+          "produces": [
+            "AttachmentGateway.bind(AttachmentBindingCommand, AuthUser): void",
+            "AttachmentGateway.get(long, AuthUser): AttachmentItem",
+            "AttachmentGateway.deleteBound(long, String, String, AuthUser): void",
+            "AttachmentAccessPolicy.canAccess(AuthUser, String, AttachmentOperation): boolean",
+            "Persistent attachment browser API"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T4-S1",
+            "action": "Add failing tests for TEMP owner access, cross-tenant denial, idempotent binding, conflicting binding, missing/failed policy, preview, download, logical deletion, storage-delete failure, and orphan cleanup.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-attachment,:ccb-file-preview -am test",
+            "expected": "Tests fail because the attachment module and public preview provider do not exist.",
+            "evidence": "Command exit code and failing test names"
+          },
+          {
+            "id": "T4-S2",
+            "action": "Create V36 attachment tables and register ccb-attachment in root, dependency management, and Boot composition.",
+            "command": null,
+            "expected": "Metadata, bindings, immutable operation log, and retryable cleanup job have stable unique indexes.",
+            "evidence": "Migration and Maven reactor assertions"
+          },
+          {
+            "id": "T4-S3",
+            "action": "Expose FilePreviewUrlProvider and make KkFileViewUrlBuilder implement it without weakening existing host validation.",
+            "command": null,
+            "expected": "Existing preview behavior and security tests remain compatible.",
+            "evidence": "file-preview regression assertions"
+          },
+          {
+            "id": "T4-S4",
+            "action": "Implement validated upload to unpredictable object keys and idempotent TEMP-to-BOUND binding.",
+            "command": null,
+            "expected": "Business modules retain opaque IDs only; conflicting object binding is rejected.",
+            "evidence": "Lifecycle service assertions"
+          },
+          {
+            "id": "T4-S5",
+            "action": "Implement fail-closed TEMP and BOUND access checks and prevent browser-side bind or forced deletion of bound files.",
+            "command": null,
+            "expected": "Unknown, duplicate, or failing policies deny access and cross-tenant IDs never authorize.",
+            "evidence": "Permission test assertions"
+          },
+          {
+            "id": "T4-S6",
+            "action": "Implement authorized preview/download plus idempotent cleanup for expired TEMP and logically deleted objects with retry state.",
+            "command": null,
+            "expected": "Active bound objects are never cleaned and storage failures remain retryable.",
+            "evidence": "Cleanup and preview assertions"
+          },
+          {
+            "id": "T4-S7",
+            "action": "Run attachment, file-preview, and frontend build regressions.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-attachment,:ccb-file-preview -am test && npm --prefix web run build",
+            "expected": "All selected tests and frontend build pass with zero failures.",
+            "evidence": "Maven and npm exit codes"
+          },
+          {
+            "id": "T4-S8",
+            "action": "Create the task checkpoint commit.",
+            "command": "git add pom.xml server/src/platform/boot/pom.xml server/src/platform/attachment server/src/platform/file-preview server/src/platform/infrastructure/src/main/resources/db/migration/V36__persistent_attachments.sql web/src/api/attachments.ts && git commit -m \"feat: add persistent attachment center\"",
+            "expected": "One commit contains only T4 scope.",
+            "evidence": "Commit hash and changed-file list"
+          }
+        ],
+        "acceptance_checks": [
+          "Business modules persist only opaque attachment IDs.",
+          "TEMP access is uploader-only and BOUND access is fail-closed through one business policy.",
+          "Preview, download, deletion, audit, and cleanup obey tenant and state constraints.",
+          "Existing temporary preview remains compatible."
+        ],
+        "risks": [
+          "Incorrect policies may deny or expose files.",
+          "Object deletion and database state can diverge under storage failure."
+        ],
+        "rollback": "Disable new attachment entry points and revert module composition; preserve V36 metadata and bound attachment evidence without deleting stored objects.",
+        "stop_conditions": [
+          "origin/main allocates V36 before implementation.",
+          "Object storage cannot generate short-lived authorized URLs.",
+          "Attachment access requires a compile dependency on a concrete business module."
+        ],
+        "escalation_conditions": [
+          "Virus scanning, cross-system file transfer, content review, or artifact repository behavior is required.",
+          "Production MinIO credentials or configuration must be changed."
+        ]
+      },
+      {
+        "id": "T5",
+        "goal": "Expose enriched current-user workflow tasks on the dashboard and a replaceable presentation-only Mock project context.",
+        "requirement_ids": [
+          "R6",
+          "R7",
+          "R13",
+          "R14",
+          "R15"
+        ],
+        "prerequisites": [
+          "T3"
+        ],
+        "input_facts": [
+          "The dashboard currently lacks a task workbench.",
+          "Inbox and done projections currently expose limited business context.",
+          "Formal project management and server authorization are outside this requirement."
+        ],
+        "files": {
+          "create": [
+            "web/src/types/project-context.ts",
+            "web/src/stores/project-context.ts",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/execution-T5.json",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/observation-T5.json"
+          ],
+          "modify": [
+            "web/src/views/AppLayout.vue",
+            "web/src/views/DashboardView.vue",
+            "web/src/api/workflow.ts",
+            "web/src/styles.css",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java"
+          ],
+          "test": [
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTaskProjectionTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T1 workflow business context",
+            "T3 workflow task and signature projections",
+            "Existing Vue router and authenticated workflow APIs"
+          ],
+          "produces": [
+            "ProjectContextProvider.list(): Promise<ProjectContextItem[]>",
+            "ProjectContextProvider.current(): ProjectContextItem",
+            "ProjectContextProvider.select(projectRef: string): void",
+            "Enriched WorkflowTask and WorkflowDoneItem projections"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T5-S1",
+            "action": "Add failing projection tests requiring consistent business context across inbox, done, detail, and timeline with legacy fallback and internal-route validation.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am -Dtest=WorkflowTaskProjectionTest test",
+            "expected": "Tests fail because enriched task fields are absent.",
+            "evidence": "Command exit code and failing assertions"
+          },
+          {
+            "id": "T5-S2",
+            "action": "Extend backend task queries with business context and starter information without trusting projectRef for authorization.",
+            "command": null,
+            "expected": "Existing user task scope remains unchanged and old instances render safe fallback values.",
+            "evidence": "Projection and authorization assertions"
+          },
+          {
+            "id": "T5-S3",
+            "action": "Implement one Mock ProjectContextProvider and Pinia Store with localStorage persistence.",
+            "command": null,
+            "expected": "Consumers use the Store and replacing the provider preserves the consumer API.",
+            "evidence": "Frontend type and state assertions"
+          },
+          {
+            "id": "T5-S4",
+            "action": "Add a fixed-size top-level project selector to AppLayout with truncation and full-name tooltip.",
+            "command": null,
+            "expected": "Selection persists on refresh and long project names do not resize or overlap the shell.",
+            "evidence": "Desktop browser screenshots and DOM state"
+          },
+          {
+            "id": "T5-S5",
+            "action": "Add compact loading, empty, error, forbidden, populated, and view-all states for five inbox and five recent done items on Dashboard.",
+            "command": null,
+            "expected": "Authorized internal actionPath navigation reaches the intended business detail and full workflow lists remain accessible.",
+            "evidence": "Browser navigation and API evidence"
+          },
+          {
+            "id": "T5-S6",
+            "action": "Build frontend and verify desktop layouts at 1440x900 and 1280x720 in light and dark themes.",
+            "command": "npm --prefix web run build",
+            "expected": "TypeScript and Vite build pass; no overlap, overflow, or console error appears in the specified scenarios.",
+            "evidence": "Build exit code, browser screenshots, and console capture"
+          },
+          {
+            "id": "T5-S7",
+            "action": "Run workflow regression and create the task checkpoint commit.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am test && git add server/src/platform/workflow web/src/api/workflow.ts web/src/stores/project-context.ts web/src/types/project-context.ts web/src/views/AppLayout.vue web/src/views/DashboardView.vue web/src/styles.css && git commit -m \"feat: add dashboard workflow workbench\"",
+            "expected": "Workflow tests pass and one T5-only commit is created.",
+            "evidence": "Maven summary and commit hash"
+          }
+        ],
+        "acceptance_checks": [
+          "Dashboard shows no more than five current-user inbox and five recent done items plus full-list links.",
+          "Tasks show business title, type, project, node, actor, time, result, and safe business navigation.",
+          "Mock project selection persists and is replaceable.",
+          "Manipulating Mock project browser state cannot grant server data access."
+        ],
+        "risks": [
+          "Mock project filtering may be mistaken for a security boundary.",
+          "Legacy workflow metadata may be incomplete."
+        ],
+        "rollback": "Revert Dashboard and project Store changes; retain nullable backend business-context fields and preserve existing workflow pages.",
+        "stop_conditions": [
+          "Dashboard requires formal project authorization to render.",
+          "Existing routing cannot safely consume internal actionPath.",
+          "The change would delete existing notification or theme capability."
+        ],
+        "escalation_conditions": [
+          "Server-side project isolation is requested.",
+          "Auth Store or token structure must change.",
+          "Mobile acceptance is added to this requirement."
+        ]
+      },
+      {
+        "id": "T6",
+        "goal": "Register platform contracts and prove end-to-end convergence across workflow, signatures, attachments, governance, migrations, and dashboard behavior.",
+        "requirement_ids": [
+          "R15",
+          "R16"
+        ],
+        "prerequisites": [
+          "T2",
+          "T3",
+          "T4",
+          "T5"
+        ],
+        "input_facts": [
+          "Public platform changes require module governance and compatibility evidence.",
+          "REQ-20260814-022 owns only its prefixed evidence directory.",
+          "The release-management business module is outside this branch."
+        ],
+        "files": {
+          "create": [
+            "docs/integration/attachment-module-contract.md",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/convergence.json",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/execution-T6.json",
+            ".ai-control/requirements/req-20260814-022-platform-business-integration/observation-T6.json"
+          ],
+          "modify": [
+            "governance/modules.yaml",
+            "docs/architecture/MODULES.md",
+            ".github/CODEOWNERS",
+            "docs/integration/workflow-module-contract.md",
+            "docs/requirements/REQ-20260814-022-platform-business-integration/requirement.md"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [
+            "All T1 through T5 public contracts and verification evidence"
+          ],
+          "produces": [
+            "Registered ccb-attachment module boundary",
+            "Updated workflow public contract",
+            "Platform convergence evidence"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T6-S1",
+            "action": "Register ccb-attachment paths, dependencies, artifact, public model package, and owner; register the workflow integration package and frontend ownership.",
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "Governance check recognizes the new module and public packages with no undeclared dependency.",
+            "evidence": "Governance exit code and summary"
+          },
+          {
+            "id": "T6-S2",
+            "action": "Document by-code workflow startup, business context, lifecycle delivery, signatures, attachment lifecycle, policy failure behavior, and cleanup contracts.",
+            "command": null,
+            "expected": "A business-module developer can integrate without private table or storage-key access.",
+            "evidence": "Contract review checklist"
+          },
+          {
+            "id": "T6-S3",
+            "action": "Run focused and full backend, frontend, governance, Flyway, and whitespace checks.",
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow,:ccb-attachment,:ccb-file-preview -am test && JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn test && npm --prefix web run build && node scripts/check-all-governance.mjs && node scripts/check-flyway-migrations.mjs && git diff --check",
+            "expected": "Every command exits 0; V1 through V34 are unchanged and V35/V36 are unique and ordered.",
+            "evidence": "Exit codes and concise test/build/check summaries"
+          },
+          {
+            "id": "T6-S4",
+            "action": "Run desktop browser acceptance for project switching, dashboard tasks, safe detail navigation, required and optional signatures, TEMP upload, binding, authorized preview/download, and failure states.",
+            "command": null,
+            "expected": "Specified flows work in light and dark themes with no console errors, overlap, or authorization bypass.",
+            "evidence": "Role, route, viewport, request, console, and screenshot evidence"
+          },
+          {
+            "id": "T6-S5",
+            "action": "Record controlled execution, independent observation, range audit, deviations, and convergence evidence.",
+            "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260814-022-platform-business-integration/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+            "expected": "Scope check passes and convergence has no unresolved must-requirement failure.",
+            "evidence": "Scope result and prefixed control-ledger files"
+          },
+          {
+            "id": "T6-S6",
+            "action": "Create the final governance and contract checkpoint commit.",
+            "command": "git add governance/modules.yaml docs/architecture/MODULES.md .github/CODEOWNERS docs/integration .ai-control/requirements/req-20260814-022-platform-business-integration && git commit -m \"docs: register platform business integration contracts\"",
+            "expected": "One final commit contains only governance, contracts, and control evidence for REQ-20260814-022.",
+            "evidence": "Commit hash and changed-file list"
+          }
+        ],
+        "acceptance_checks": [
+          "All R1 through R16 have task and verification evidence.",
+          "Full Maven, frontend build, governance, Flyway, and scope checks pass.",
+          "Desktop browser acceptance proves dashboard, signature, and attachment paths.",
+          "No platform module depends on a concrete business module.",
+          "No REQ-20260814-021 product or evidence file is included in the platform implementation branch."
+        ],
+        "risks": [
+          "High-risk platform changes can pass focused tests but fail full composition.",
+          "Concurrent main changes can consume migration numbers or alter public contracts."
+        ],
+        "rollback": "Revert governance and documentation checkpoint separately; roll back product behavior by T1 through T5 commit boundaries while retaining migration evidence tables.",
+        "stop_conditions": [
+          "Any must requirement lacks automated or browser evidence.",
+          "Full regression, governance, Flyway, or scope checks fail.",
+          "Migration numbers conflict.",
+          "A scope audit finds files outside REQ-20260814-022 writable paths."
+        ],
+        "escalation_conditions": [
+          "A read-only path must change.",
+          "A signature or attachment authorization bypass is observed.",
+          "Latest main introduces incompatible workflow, database, or dashboard behavior."
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T2"
+      },
+      {
+        "from": "T2",
+        "to": "T3"
+      },
+      {
+        "from": "T3",
+        "to": "T5"
+      },
+      {
+        "from": "T2",
+        "to": "T6"
+      },
+      {
+        "from": "T3",
+        "to": "T6"
+      },
+      {
+        "from": "T4",
+        "to": "T6"
+      },
+      {
+        "from": "T5",
+        "to": "T6"
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T1",
+        "T4"
+      ],
+      [
+        "T2"
+      ],
+      [
+        "T3"
+      ],
+      [
+        "T5"
+      ],
+      [
+        "T6"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T1"
+        ],
+        "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am test",
+        "expected": "By-code and by-ID workflow starts both pass."
+      },
+      {
+        "after_tasks": [
+          "T2"
+        ],
+        "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleEventServiceTest,WorkflowLifecycleDispatcherTest,WorkflowLifecycleParityTest test",
+        "expected": "Transaction, dual-engine parity, duplicate, retry, DEAD, and manual recovery pass."
+      },
+      {
+        "after_tasks": [
+          "T3"
+        ],
+        "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-workflow -am test && npm --prefix web run build",
+        "expected": "Signature atomicity, backward compatibility, and frontend build pass."
+      },
+      {
+        "after_tasks": [
+          "T4"
+        ],
+        "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-attachment,:ccb-file-preview -am test",
+        "expected": "Attachment lifecycle, access policy, cleanup, and preview compatibility pass."
+      },
+      {
+        "after_tasks": [
+          "T5"
+        ],
+        "command": "npm --prefix web run build",
+        "expected": "Dashboard and project-context types build, followed by desktop browser acceptance without overlap or console errors."
+      },
+      {
+        "after_tasks": [
+          "T2",
+          "T3",
+          "T4",
+          "T5",
+          "T6"
+        ],
+        "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn test && npm --prefix web run build && node scripts/check-all-governance.mjs && node scripts/check-flyway-migrations.mjs && git diff --check",
+        "expected": "All commands exit 0 and migration/history checks pass."
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R1",
+        "task_ids": [
+          "T1"
+        ]
+      },
+      {
+        "requirement_id": "R2",
+        "task_ids": [
+          "T1"
+        ]
+      },
+      {
+        "requirement_id": "R3",
+        "task_ids": [
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R4",
+        "task_ids": [
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R5",
+        "task_ids": [
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R6",
+        "task_ids": [
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R7",
+        "task_ids": [
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R8",
+        "task_ids": [
+          "T3"
+        ]
+      },
+      {
+        "requirement_id": "R9",
+        "task_ids": [
+          "T3"
+        ]
+      },
+      {
+        "requirement_id": "R10",
+        "task_ids": [
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "R11",
+        "task_ids": [
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "R12",
+        "task_ids": [
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "R13",
+        "task_ids": [
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R14",
+        "task_ids": [
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R15",
+        "task_ids": [
+          "T1",
+          "T3",
+          "T4",
+          "T5",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R16",
+        "task_ids": [
+          "T1",
+          "T2",
+          "T4",
+          "T6"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "pending_review",
+      "evidence": "The implementation plan is landed for user review; no approval has been claimed.",
+      "confirmed_at": null
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "ccb-workflow",
+      "ccb-attachment",
+      "file-preview public adapter",
+      "Dashboard task workbench",
+      "Mock ProjectContextProvider"
+    ],
+    "state_variable_candidates": [
+      "Workflow instance state",
+      "Lifecycle event delivery state",
+      "Workflow task signature state",
+      "Attachment state",
+      "Attachment cleanup state",
+      "Current Mock project selection"
+    ],
+    "interface_candidates": [
+      "WorkflowBusinessGateway",
+      "WorkflowLifecycleConsumer",
+      "AttachmentGateway",
+      "AttachmentAccessPolicy",
+      "ProjectContextProvider"
+    ],
+    "sensor_candidates": [
+      "Focused Maven tests",
+      "Full Maven tests",
+      "Frontend production build",
+      "Flyway migration gate",
+      "Governance and scope gates",
+      "Database uniqueness constraints",
+      "Desktop browser flows",
+      "Lifecycle backlog and cleanup failure logs"
+    ],
+    "actuator_candidates": [
+      "Workflow transition transaction",
+      "Lifecycle dispatcher",
+      "Signature write",
+      "Attachment bind and delete",
+      "Attachment cleanup job",
+      "Frontend project Store selection"
+    ],
+    "disturbance_candidates": [
+      "Duplicate or out-of-order events",
+      "Consumer failures",
+      "MinIO or kkFileView outage",
+      "Concurrent approval",
+      "Browser storage tampering",
+      "Migration-number conflict from latest main"
+    ],
+    "delay_candidates": [
+      "Lifecycle retry backoff",
+      "Attachment cleanup interval",
+      "Dashboard refresh",
+      "Presigned URL expiry"
+    ],
+    "assumptions": [
+      {
+        "text": "Spring can discover workflow lifecycle consumers and attachment policies as beans in the modular monolith.",
+        "basis": "Current Boot module composes platform and business Maven modules.",
+        "falsifier": "Deployment separates platform and business modules into different processes."
+      },
+      {
+        "text": "Both workflow execution paths can share one database transaction with lifecycle event and optional signature persistence.",
+        "basis": "Current workflow state is persisted through platform services in one application.",
+        "falsifier": "Transaction tests show one path commits workflow state independently."
+      },
+      {
+        "text": "The future project module can replace ProjectContextProvider without changing consumer APIs.",
+        "basis": "The approved design isolates current Mock data behind a provider.",
+        "falsifier": "The formal project API requires a different multi-project interaction contract."
+      },
+      {
+        "text": "Existing MinIO and kkFileView capabilities can generate short-lived authorized preview and download URLs.",
+        "basis": "Current file-preview module already builds controlled preview URLs.",
+        "falsifier": "Focused adapter tests cannot produce usable short-lived URLs without exposing storage identity."
+      }
+    ]
+  }
+}

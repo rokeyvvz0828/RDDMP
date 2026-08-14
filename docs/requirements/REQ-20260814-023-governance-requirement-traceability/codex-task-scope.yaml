@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260814-023",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260814-023-governance-requirement-traceability/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "governance",
+    "module_owner": "rokeyvvz0828",
+    "branch": "docs/REQ-20260814-023-governance-requirement-traceability",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/governance/GITHUB-RULES.md",
+      "docs/governance/CODEX-CODING-RULES.md",
+      "CODEX-DEVELOPMENT-GUIDE.md",
+      ".github/pull_request_template.md",
+      "docs/requirements/REQ-20260814-023-governance-requirement-traceability/**"
+    ],
+    "read_only_paths": [
+      "AGENTS.md",
+      "README.md",
+      "governance/modules.yaml",
+      "scripts/**",
+      "docs/requirements/codex-task-scope.template.yaml"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260814-023",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["governance", "diff-check"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "Documentation-only wording change; revert the four synchronized documents."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "public-project-governance"
+  },
+  "required_tests": [
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "diff-check", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": ["Governance summaries can conflict if only the source rule is changed"]
+  },
+  "completion": {
+    "control_mode": "minimal",
+    "control_prefix": "req-20260814-023-governance-requirement-traceability",
+    "control_justification": "Documentation-only governance terminology alignment with no product, runtime, permission, database, or CI behavior change.",
+    "acceptance_evidence": [
+      "docs/requirements/REQ-20260814-023-governance-requirement-traceability/requirement.md"
+    ],
+    "release_verification": ["governance", "diff-check"],
+    "rollback": "Restore the previous Issue wording in the four synchronized documents."
+  }
+}

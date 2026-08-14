@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ArrowDown, Brush, DataBoard, Expand, Fold, Lock, Menu, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, Brush, Camera, DataBoard, Expand, Fold, Lock, Menu, SwitchButton } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import UiRouteMenuNode from '../components/ui/UiRouteMenuNode.vue'
@@ -13,6 +13,8 @@ import { useTabsStore } from '../stores/tabs'
 import ThemeSettingsDrawer from '../components/ui/ThemeSettingsDrawer.vue'
 import ThemeModeFan from '../components/ui/ThemeModeFan.vue'
 import UiNotificationCenter from '../components/ui/UiNotificationCenter.vue'
+import UiAvatarUpload from '../components/ui/UiAvatarUpload.vue'
+import { uploadOwnAvatar } from '../api/auth'
 import { paletteOptions } from '../types/ui'
 import type { RouteNode } from '../types/auth'
 import { apiErrorMessage } from '../api/error'
@@ -27,6 +29,10 @@ const mobileMenuOpen = ref(false)
 const mobileView = ref(false)
 const changePasswordOpen = ref(false)
 const changePasswordSaving = ref(false)
+const avatarDialogOpen = ref(false)
+const avatarSaving = ref(false)
+const avatarFile = ref<File | null>(null)
+const avatarPreview = ref<string | null>(null)
 const passwordFormRef = ref<FormInstance>()
 const passwordForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const passwordRules: FormRules = {
@@ -88,12 +94,42 @@ function openChangePassword() {
   resetPasswordForm()
   changePasswordOpen.value = true
 }
+function openAvatarDialog() {
+  avatarFile.value = null
+  avatarPreview.value = auth.user?.avatarUrl || null
+  avatarDialogOpen.value = true
+}
+function resetAvatarForm() {
+  avatarFile.value = null
+  avatarPreview.value = null
+}
 async function handleUserCommand(command: string) {
+  if (command === 'change-avatar') {
+    openAvatarDialog()
+    return
+  }
   if (command === 'change-password') {
     openChangePassword()
     return
   }
   if (command === 'logout') await logout()
+}
+async function submitAvatar() {
+  if (!avatarFile.value || avatarSaving.value) {
+    if (!avatarFile.value) ElMessage.warning('请选择头像后再保存')
+    return
+  }
+  avatarSaving.value = true
+  try {
+    const response = await uploadOwnAvatar(avatarFile.value)
+    auth.updateUser(response.data.data)
+    avatarDialogOpen.value = false
+    ElMessage.success('头像更换成功')
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '头像保存失败，请稍后重试'))
+  } finally {
+    avatarSaving.value = false
+  }
 }
 async function submitChangePassword() {
   const valid = await passwordFormRef.value?.validate().catch(() => false)
@@ -131,7 +167,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
         <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><span>工作台</span></el-menu-item>
         <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" />
       </el-menu>
-      <div class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
+      <div class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
     </header>
 
     <el-container class="app-frame">
@@ -148,7 +184,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
       <el-container>
         <el-header class="app-header">
           <div class="header-left"><el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button><el-button v-else-if="sideNavigationVisible" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button><div class="breadcrumb"><span>控制中心</span><b>/</b><strong>{{ title }}</strong></div></div>
-          <div v-if="!topNavigationVisible" class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
+          <div v-if="!topNavigationVisible" class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
         </el-header>
         <UiTabs v-if="theme.tabsEnabled" :current-path="route.fullPath" />
         <el-main class="app-main"><router-view :key="`${route.fullPath}:${tabsStore.refreshKey(route.fullPath)}`" /></el-main>
@@ -159,6 +195,11 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
       <el-menu :default-active="route.path" router class="app-menu mobile-menu-drawer__menu" @select="mobileMenuOpen = false"><el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item><UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" /></el-menu>
     </el-drawer>
     <ThemeSettingsDrawer v-model="settingsOpen" />
+    <el-dialog v-model="avatarDialogOpen" title="更换头像" width="430px" class="avatar-dialog" :close-on-click-modal="false" destroy-on-close @closed="resetAvatarForm">
+      <p class="avatar-dialog__hint">选择平台提供的卡通头像，或上传一张图片作为当前头像。</p>
+      <UiAvatarUpload v-model="avatarFile" v-model:preview-url="avatarPreview" :size="88" />
+      <template #footer><el-button @click="avatarDialogOpen = false">取消</el-button><el-button type="primary" :loading="avatarSaving" :disabled="!avatarFile" @click="submitAvatar">保存头像</el-button></template>
+    </el-dialog>
     <el-dialog v-model="changePasswordOpen" title="修改密码" width="420px" :close-on-click-modal="false" destroy-on-close @closed="resetPasswordForm">
       <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-position="top" @submit.prevent="submitChangePassword">
         <el-form-item label="原密码" prop="oldPassword"><el-input v-model="passwordForm.oldPassword" type="password" show-password autocomplete="current-password" /></el-form-item>

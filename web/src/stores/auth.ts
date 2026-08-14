@@ -3,6 +3,12 @@ import { defineStore } from 'pinia'
 import http from '../api/http'
 import type { ApiResponse, AuthMe, RouteNode, TokenPair } from '../types/auth'
 
+function hideOfflineRoutes(nodes: RouteNode[]): RouteNode[] {
+  return nodes
+    .filter(node => node.routePath !== '/system/form-metadata')
+    .map(node => ({ ...node, children: hideOfflineRoutes(node.children || []) }))
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('ccb.access_token') || '')
   const refreshToken = ref(localStorage.getItem('ccb.refresh_token') || '')
@@ -46,7 +52,8 @@ export const useAuthStore = defineStore('auth', () => {
         http.get<ApiResponse<RouteNode[]>>('/auth/routes')
       ])
       user.value = me.data.data
-      routes.value = menu.data.data
+      // Keep the backend capability available while its frontend entry is offline.
+      routes.value = hideOfflineRoutes(menu.data.data)
     } catch {
       clear()
     }
@@ -65,5 +72,9 @@ export const useAuthStore = defineStore('auth', () => {
     clear()
   }
 
-  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout, changePassword }
+  function updateUser(nextUser: AuthMe) {
+    user.value = nextUser
+  }
+
+  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout, changePassword, updateUser }
 })

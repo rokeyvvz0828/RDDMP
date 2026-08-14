@@ -27,5 +27,6 @@ export function apiErrorMessage(error: unknown, fallback: string) {
     const action = method === 'get' ? '查看' : method === 'post' ? '新增' : method === 'delete' ? '删除' : '编辑'
     return '没有' + permissionLabel(String(axiosError.config?.url || '')) + '的' + action + '权限'
   }
+  if (payload?.message && status && status >= 400 && status < 500) return payload.message
   return fallback
 }

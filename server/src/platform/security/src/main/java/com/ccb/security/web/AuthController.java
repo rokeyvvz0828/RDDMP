@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -54,6 +55,12 @@ public class AuthController {
     @GetMapping("/me")
     public ApiResponse<AuthMe> me(@AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(authService.me(user), TraceId.getOrCreate());
+    }
+
+    @PostMapping(value = "/me/avatar", consumes = "multipart/form-data")
+    public ApiResponse<AuthMe> updateOwnAvatar(@AuthenticationPrincipal AuthUser user,
+                                                @RequestPart("file") MultipartFile file) {
+        return ApiResponse.success(authService.updateOwnAvatar(user, file), TraceId.getOrCreate());
     }
 
     @GetMapping("/routes")

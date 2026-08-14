@@ -57,7 +57,7 @@ onBeforeUnmount(releaseObjectUrl)
   <div class="ui-avatar-upload" :style="{ '--avatar-upload-size': `${size}px` }">
     <el-avatar :size="size" :src="previewUrl || undefined"><el-icon><Camera /></el-icon></el-avatar>
     <div class="ui-avatar-upload__actions">
-      <el-popover v-model:visible="galleryOpen" placement="bottom-start" :width="330" trigger="click">
+      <el-popover v-model:visible="galleryOpen" placement="bottom-start" :width="330" popper-class="avatar-gallery-popover" trigger="click">
         <template #reference><el-button link type="primary" @click.stop>选择卡通头像</el-button></template>
         <div class="ui-avatar-gallery">
           <button v-for="avatar in defaultAvatars" :key="avatar.id" type="button" class="ui-avatar-gallery__item" :class="{ 'is-selected': selectedDefaultId === avatar.id }" :aria-label="avatar.name" :title="avatar.name" @click="selectDefault(avatar)">
