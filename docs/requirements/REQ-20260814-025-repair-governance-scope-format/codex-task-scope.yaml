@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260814-025",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260814-025-repair-governance-scope-format/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "governance",
+    "module_owner": "rokeyvvz0828",
+    "branch": "docs/REQ-20260814-contracts",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260810-018-theme-mode-fan/codex-task-scope.yaml",
+      "docs/requirements/REQ-20260811-019-workflow-list-pagination/codex-task-scope.yaml",
+      "docs/requirements/REQ-20260811-020-change-password/codex-task-scope.yaml",
+      ".ai-control/requirements/req-20260810-018-theme-mode-fan/*.json",
+      ".ai-control/requirements/req-20260811-019-workflow-list-pagination/*.json",
+      ".ai-control/requirements/req-20260811-020-change-password/*.json",
+      ".ai-control/requirements/req-20260814-021-release-management/*.json",
+      ".ai-control/requirements/req-20260814-022-platform-business-integration/*.json",
+      "docs/requirements/REQ-20260814-025-repair-governance-scope-format/**"
+    ],
+    "read_only_paths": [
+      "docs/requirements/REQ-20260810-018-theme-mode-fan/requirement.md",
+      "scripts/**",
+      "docs/governance/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": "REQ-20260814-025",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["governance", "json-parse", "diff-check"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "Representation-only task scope conversion."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "public-project-governance"
+  },
+  "required_tests": [
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "json-parse", "command": "jq empty docs/requirements/REQ-20260810-018-theme-mode-fan/codex-task-scope.yaml"},
+    {"name": "diff-check", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": ["A non-equivalent conversion could alter historical task authorization"]
+  },
+  "completion": {
+    "control_mode": "minimal",
+    "control_prefix": "req-20260814-025-repair-governance-scope-format",
+    "control_justification": "Mechanical governance-document conversion with no product or runtime behavior change.",
+    "acceptance_evidence": [
+      "docs/requirements/REQ-20260814-025-repair-governance-scope-format/requirement.md"
+    ],
+    "release_verification": ["governance", "json-parse", "diff-check"],
+    "rollback": "Restore the prior YAML representation."
+  }
+}
