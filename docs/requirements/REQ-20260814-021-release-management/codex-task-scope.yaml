@@ -1,0 +1,153 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260814-021",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260814-021-release-management/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/release",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260814-021-release-management",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": [
+      "local-shell",
+      "codex"
+    ]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/release/**",
+      "web/src/modules/release/**",
+      "web/src/router/index.ts",
+      "pom.xml",
+      "server/src/platform/boot/pom.xml",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__release_management.sql",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      ".github/CODEOWNERS",
+      "docs/requirements/REQ-20260814-021-release-management/**",
+      "docs/engineering-control/designs/2026-08-14-release-management-module-design.md",
+      "docs/engineering-control/plans/2026-08-14-release-management-implementation-plan.md",
+      ".ai-control/requirements/req-20260814-021-release-management/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/platform/infrastructure/src/main/java/**",
+      "server/src/platform/infrastructure/src/test/**",
+      "server/src/platform/file-preview/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/shared/**",
+      "server/src/modules/ai/**",
+      "web/src/api/http.ts",
+      "web/src/api/file-preview.ts",
+      "web/src/api/notifications.ts",
+      "web/src/api/workflow.ts",
+      "web/src/components/ui/**",
+      "web/src/components/workflow/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/stores/**",
+      "web/src/views/AppLayout.vue",
+      "docs/integration/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260814-021",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "governance-scope",
+      "full-maven-tests",
+      "frontend-build"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__release_management.sql"
+    ],
+    "compatibility_and_rollback": "Add release tables, indexes, menus, permissions and local initialization records only. Do not modify historical migrations; application rollback retains release and audit data."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [
+
+    ],
+    "data_classification": "internal-business-data"
+  },
+  "required_tests": [
+    {
+      "name": "unit",
+      "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test"
+    },
+    {
+      "name": "api",
+      "command": "Run focused release window, application, workflow-port, baseline and report API integration tests"
+    },
+    {
+      "name": "permission",
+      "command": "Run tenant, project, RBAC, data-scope and entity-authorization tests for release APIs and exports"
+    },
+    {
+      "name": "full-maven-tests",
+      "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn test"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "governance-scope",
+      "command": "node scripts/check-all-governance.mjs"
+    },
+    {
+      "name": "desktop-browser",
+      "command": "Run desktop browser acceptance for windows, applications, workflow progress, baselines and reports"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "New business module and additive database schema",
+      "Cross-layer Maven, router, menu and governance composition",
+      "Workflow lifecycle integration through a deferred platform port",
+      "Irreversible baseline and version-lineage operations"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260814-021-release-management",
+    "control_justification": "New cross-layer business module with database, workflow integration, authorization, irreversible baseline operations and desktop user flows.",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260814-021-release-management/execution-T1.json",
+      ".ai-control/requirements/req-20260814-021-release-management/observation-T1.json",
+      ".ai-control/requirements/req-20260814-021-release-management/convergence.json"
+    ],
+    "release_verification": [
+      "unit",
+      "api",
+      "permission",
+      "full-maven-tests",
+      "frontend-build",
+      "governance-scope",
+      "desktop-browser"
+    ],
+    "rollback": "Disable release menus and module assembly, revert the scoped application changes, and retain additive release, baseline and audit tables as read-only evidence."
+  }
+}

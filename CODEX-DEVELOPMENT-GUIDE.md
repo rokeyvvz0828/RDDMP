@@ -13,7 +13,7 @@
 
 业务前端任务还必须先检查 `web/src/modules/delivery-showcase/`，将其作为列表、表单、流程、图表和响应式设计的首选参考，并读取根目录 `design-h5.md`，按其中的移动端布局、滚动边界、操作层级和视口验收规则实施。
 
-涉及业务表单、详情、列表、筛选或统计的任务还必须读取并执行 `docs/integration/business-form-metadata-contract.md`。Agent 负责在同一任务中自动登记和维护业务表单元数据及 mock/初始化数据；不得把新业务首次启动后的字段配置留给研发人员手工完成。验收必须证明全新本地数据库启动后无需人工配置即可呈现该业务功能。
+“输入项配置/业务表单元数据”能力当前已下线。业务表单、详情、列表、筛选和统计由各业务模块按自身前后端契约实现，并随任务维护模块自己的数据库迁移与 Mock 数据；不得新增对 `biz_form_*` 表、输入项配置管理接口或动态表单发布配置的依赖。`docs/integration/business-form-metadata-contract.md` 只用于理解存量代码，除非单独的 `ready` 需求明确重新启用。
 
 插件安装由外部 Codex 环境完成，不将插件源码复制进业务仓库。macOS/Linux 官方安装方式：
 
@@ -259,7 +259,7 @@ cp docs/requirements/codex-task-scope.template.yaml "docs/requirements/$REQ/code
 - `writable_paths`：本次确实允许修改的最小路径。
 - `read_only_paths`：可用于理解但不能修改的代码和文档。
 - `forbidden_paths`：密钥、生产配置、无关模块等禁止范围。
-- `public_capability_change`：涉及 platform、shared、公开契约或公共前端时，填写 Issue、审批、兼容和回归测试。
+- `public_capability_change`：涉及 platform、shared、公开契约或公共前端时，填写已批准需求编号、审批、兼容和回归测试。
 - `database`、`external_access`、`required_tests` 和 `risk`：如实填写影响与验证要求。
 - `completion`：选择 `full` 或 `minimal`，完整模式填写唯一 `control_prefix` 和预期证据，最小模式填写免建账本理由。
 

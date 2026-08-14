@@ -16,9 +16,12 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -84,6 +87,46 @@ public class AuthService {
         if (repository.updatePassword(current.id(), current.tenantId(), passwordHash) == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "密码保存失败，请稍后重试");
         }
+    }
+
+    public AuthMe updateOwnAvatar(AuthUser principal, MultipartFile file) {
+        if (principal == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "登录状态已失效，请重新登录");
+        }
+        validateImage(file);
+        String oldKey = repository.findAvatarObjectKey(principal.id(), principal.tenantId());
+        String objectKey = "avatars/" + principal.tenantId() + "/" + principal.id() + "/" + UUID.randomUUID() + extension(file.getContentType());
+        try {
+            storage.put(objectKey, file.getInputStream(), file.getSize(), file.getContentType());
+        } catch (java.io.IOException exception) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "头像文件读取失败");
+        }
+        if (repository.updateAvatarObjectKey(principal.id(), principal.tenantId(), objectKey) == 0) {
+            storage.delete(objectKey);
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "头像保存失败，请稍后重试");
+        }
+        if (oldKey != null && !oldKey.isBlank()) storage.delete(oldKey);
+        AuthUser updated = repository.findById(principal.id(), principal.tenantId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "账号不存在或已停用"));
+        return me(updated);
+    }
+
+    private void validateImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择头像文件");
+        if (file.getSize() > 2 * 1024 * 1024) throw new BusinessException(ErrorCode.BAD_REQUEST, "头像不能超过 2MB");
+        String type = file.getContentType();
+        if (type == null || !Set.of("image/jpeg", "image/png", "image/gif", "image/webp").contains(type.toLowerCase())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "头像仅支持 JPG、PNG、GIF 或 WebP");
+        }
+    }
+
+    private String extension(String contentType) {
+        return switch (contentType.toLowerCase()) {
+            case "image/png" -> ".png";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            default -> ".jpg";
+        };
     }
 
     public AuthMe me(AuthUser user) {
