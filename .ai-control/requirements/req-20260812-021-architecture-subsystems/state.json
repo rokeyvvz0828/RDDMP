@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 62,
+  "revision": 66,
   "created_at": "2026-08-13T06:16:16+00:00",
-  "updated_at": "2026-08-14T08:24:00+00:00",
+  "updated_at": "2026-08-14T08:55:34+00:00",
   "mode": "high-assurance",
   "phase": "executing",
   "phase_history": [
@@ -119,6 +119,18 @@
       "to": "executing",
       "evidence": "T0 verified 且无未关闭反馈；继续执行 T1 模块与治理登记",
       "recorded_at": "2026-08-14T08:23:59+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "execution-T1.json 已记录模块装配、治理、Maven 与范围证据；开始独立复验",
+      "recorded_at": "2026-08-14T08:55:31+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "observation-T1.json error=0；T1 verified，继续执行 T2 平台最小公开能力",
+      "recorded_at": "2026-08-14T08:55:34+00:00"
     }
   ],
   "stage_artifacts": {
@@ -12693,14 +12705,22 @@
       "escalation_conditions": [
         "模块校验器不支持或 Owner 不一致"
       ],
-      "status": "active",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-14T08:24:00+00:00",
           "text": "开始读取 modules/root/Boot/CODEOWNERS 现状并登记 ccb-architecture"
+        },
+        {
+          "recorded_at": "2026-08-14T08:55:31+00:00",
+          "text": "提交 9072f5b；Maven reactor、governance、module-boundaries、scope、entry、Flyway 和 diff 均通过"
+        },
+        {
+          "recorded_at": "2026-08-14T08:55:34+00:00",
+          "text": "observation-T1.json 无 P0-P3；T1 verified"
         }
       ],
-      "updated_at": "2026-08-14T08:24:00+00:00"
+      "updated_at": "2026-08-14T08:55:34+00:00"
     },
     {
       "id": "T2",
@@ -12762,9 +12782,14 @@
       "escalation_conditions": [
         "需扩大公开包或无法表达审计事务"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-14T08:19:35+00:00"
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-14T08:55:34+00:00",
+          "text": "T1 verified 后进入 T2；先写 platform/system capability 聚焦失败测试"
+        }
+      ],
+      "updated_at": "2026-08-14T08:55:34+00:00"
     },
     {
       "id": "T3",
@@ -13372,6 +13397,19 @@
       "score": 0,
       "evidence": "observation-T0-fixes.json：入口正负向、全局迁移分配、main树、治理与分支全部通过",
       "recorded_at": "2026-08-14T08:22:51+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T1 模块装配与治理边界复验",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "observation-T1.json：Maven、治理、模块边界、范围和源码边界全部通过",
+      "recorded_at": "2026-08-14T08:55:34+00:00"
     }
   ]
 }
