@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "task_id": "T4",
+  "sample_label": "live migration and authenticated project workbench smoke",
+  "expected": "项目管理迁移成功，超级管理员可从动态菜单进入项目工作台，空数据展示正常",
+  "observed": "Flyway v36 成功；浏览器动态菜单出现项目管理；/projects 展示暂无可见项目且无权限错误",
+  "result": "matched",
+  "evidence": [
+    "HTTP GET /actuator/health returned 200",
+    "server log: Successfully applied 1 migration ... now at version v36",
+    "browser DOM: menuitem 项目管理",
+    "browser DOM: paragraph 暂无可见项目"
+  ],
+  "feedback": [],
+  "residual_risk": "未创建项目数据，因此成员范围和项目内 CRUD 仍依赖自动化单元测试证据；治理脚本的历史阻断项仍存在"
+}

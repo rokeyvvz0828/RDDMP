@@ -1,0 +1,28 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java", "purpose": "Expose plan-group CRUD and main-plan move endpoints"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "Enforce project/action authorization and transactionally move descendants"},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "purpose": "Cover descendant movement and child-plan rejection"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R5"],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am -DskipTests test-compile", "exit_code": 0, "salient_output": "Reactor test compilation succeeded for ccb-system."},
+    {"command": "mvn -pl :ccb-system -am '-Dtest=ProjectServiceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test", "exit_code": 1, "salient_output": "9 tests reached the target class but Mockito/Byte Buddy failed on Java 25.0.1."}
+  ],
+  "local_checks": [
+    {"check": "Service compile", "result": "pass", "evidence": "Maven test-compile exit code 0", "limitations": []},
+    {"check": "Runtime unit tests", "result": "blocked", "evidence": "Byte Buddy 1.15.11 officially supports Java 24 while environment is Java 25", "limitations": ["Assertions did not execute"]}
+  ],
+  "diff_summary": ["Added project-scoped group CRUD", "Added recursive descendant group update in one transaction", "Fixed SQL argument order for group_id update"],
+  "invariants_checked": [
+    {"invariant": "Only a main plan can be a move source", "result": "pass by compile-time test coverage", "evidence": "rejectsChildPlanAsGroupMoveSource test compiles"},
+    {"invariant": "All descendants receive the same group_id", "result": "pass by compile-time test coverage", "evidence": "movesMainPlanAndAllDescendantsToOneGroup test compiles"},
+    {"invariant": "Project, tenant, and action checks are server-side", "result": "pass", "evidence": "Service reuses requireAction and requireProjectAccess"}
+  ],
+  "disturbances": ["Java 25 runtime is incompatible with the repository's current Mockito Byte Buddy version"],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Run ProjectServiceTest under JDK 17 or a Byte Buddy version supporting Java 25"],
+  "recommended_next": "observe"
+}

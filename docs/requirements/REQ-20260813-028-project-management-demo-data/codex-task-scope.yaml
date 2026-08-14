@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260813-028", "status": "ready", "document": "docs/requirements/REQ-20260813-028-project-management-demo-data/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "rokeyvvz0828", "module": "platform/infrastructure", "module_owner": "rokeyvvz0828", "branch": "licon", "worktree": "D:/ai_project/ccb_rd"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {"writable_paths": ["mock/mock-data.json", "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java", "docs/requirements/REQ-20260813-028-project-management-demo-data/**", ".ai-control/requirements/req-20260813-028-project-management-demo-data/*.json"], "read_only_paths": [".env", "server/src/platform/system/**", "server/src/platform/infrastructure/src/main/resources/db/migration/**", "**/target/**", "**/node_modules/**"], "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]},
+  "public_capability_change": {"required": false, "issue": null, "owner_approved": true, "old_behavior_preserved": true, "regression_tests": []},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "Only local mock rows and allowlist change; remove those rows and restart local backend."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [{"name": "json", "command": "node -e JSON.parse(fs.readFileSync('mock/mock-data.json','utf8'))", "expected": "pass"}, {"name": "backend", "command": "mvn -pl :ccb-boot -am package -DskipTests", "expected": "pass"}, {"name": "runtime", "command": "local backend restart and project API query", "expected": "mock sync and project data visible"}],
+  "risk": {"level": "normal", "items": ["Existing local manual project rows with the same mock IDs will be overwritten by documented startup upsert."]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260813-028-project-management-demo-data", "control_justification": null, "acceptance_evidence": [".ai-control/requirements/req-20260813-028-project-management-demo-data/execution-T1.json", ".ai-control/requirements/req-20260813-028-project-management-demo-data/observation-T1.json", ".ai-control/requirements/req-20260813-028-project-management-demo-data/convergence.json"], "release_verification": [], "rollback": "Revert this requirement's mock data and allowlist changes, then restart the local backend."}
+}

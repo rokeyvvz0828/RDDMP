@@ -10,6 +10,7 @@ import WorkflowView from '../views/WorkflowView.vue'
 import AiView from '../views/AiView.vue'
 import ComponentShowcaseView from '../views/ComponentShowcaseView.vue'
 import DeliveryShowcaseModule from '../modules/delivery-showcase/DeliveryShowcaseModule.vue'
+import ProjectView from '../views/ProjectView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -21,6 +22,8 @@ const router = createRouter({
       redirect: '/dashboard',
       children: [
         { path: 'dashboard', name: 'dashboard', component: DashboardView },
+        { path: 'projects', name: 'projects', component: ProjectView, meta: { title: '项目管理' } },
+        { path: 'projects/:projectId', name: 'project-detail', component: ProjectView, meta: { title: '项目详情' } },
         { path: 'system/params', name: 'system-params', component: ParameterView, meta: { title: '参数管理' } },
         { path: 'system/form-metadata', name: 'system-form-metadata', component: FormMetadataView, meta: { title: '输入项配置' } },
         { path: 'system/role-permissions', name: 'role-permissions', component: RolePermissionView, meta: { title: '角色权限配置' } },

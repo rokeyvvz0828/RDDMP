@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {"id": "T1", "goal": "Implement project detail route restoration, readable overview facts, loading overlays, prominent calendar layout, selector label restoration, and direct card navigation", "write_scope": ["web/src/views/ProjectView.vue", "web/src/router/index.ts", "web/src/styles.css"], "acceptance": ["URL detail survives refresh", "calendar is beside a readable information panel", "calendar is visible in the desktop first viewport", "mobile layout has no horizontal overflow", "loading overlays are visible", "plan number width is increased", "edit selectors resolve names", "card navigation does not reload the project list"], "rollback": "Restore scoped frontend files", "stop_conditions": ["API contract change required", "build failure caused by unrelated files"]},
+    {"id": "T2", "goal": "Build and observe the frontend", "write_scope": [".ai-control/requirements/req-20260813-029-project-management-detail-polish/*.json"], "acceptance": ["build passes", "static checks pass", "frontend is reachable"], "rollback": "Keep implementation in place and report failed sensor with evidence", "stop_conditions": ["frontend cannot build or serve"]}
+  ],
+  "dependency_edges": ["T1 -> T2"],
+  "required_checks": ["npm --prefix web run build", "git diff --check", "frontend HTTP check"]
+}

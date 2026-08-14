@@ -1,0 +1,28 @@
+{
+  "task_id": "T1-T2",
+  "status": "corrected_and_verified_with_limits",
+  "changed_surfaces": [
+    {"path": "server/src/platform/infrastructure/src/main/resources/db/migration/V42__project_plan_group_color_tokens.sql", "purpose": "Normalize legacy system palette identifiers to brand."},
+    {"path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "Whitelist semantic tokens, default missing values, and return persisted color_key."},
+    {"path": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "purpose": "Cover create/update persistence and invalid token rejection."},
+    {"path": "web/src/types/project.ts", "purpose": "Define the semantic group color token contract."},
+    {"path": "web/src/views/ProjectView.vue", "purpose": "Use semantic token options, update local state from the save response, and render color-only swatches."},
+    {"path": "web/src/styles.css", "purpose": "Render group and plan rows through semantic theme variables and style color-only swatches."}
+  ],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "result": "42 migrations passed."},
+    {"command": "git diff --check", "exit_code": 0, "result": "No whitespace errors."},
+    {"command": "mvn -pl :ccb-system -am test -Dtest=ProjectServiceTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 1, "result": "Tests compile, but Mockito cannot instrument JdbcTemplate on Java 25 with Byte Buddy 1.15.11; all 12 tests fail before assertions."},
+    {"command": "npm install; npm run build", "exit_code": 0, "result": "Dependencies installed; vue-tsc and Vite production build passed."},
+    {"command": "node node_modules/vue-tsc/bin/vue-tsc.js --noEmit", "exit_code": 0, "result": "Vue/TypeScript typecheck passed."},
+    {"command": "node scripts/check-development-entry.mjs --require-plugin", "exit_code": 1, "result": "Codex CLI is unavailable, so plugin installation cannot be verified."}
+  ],
+  "invariants_checked": [
+    {"invariant": "Semantic token whitelist", "result": "pass_by_inspection", "evidence": "ProjectService accepts brand/accent/success/warning/danger/muted only."},
+    {"invariant": "Theme switching", "result": "pass_by_inspection", "evidence": "Rows and picker use semantic CSS variables."},
+    {"invariant": "Tenant, permission, and audit paths", "result": "pass_by_inspection", "evidence": "Existing access predicates and audit calls remain."}
+  ],
+  "disturbances": ["Local JDK is Java 25 while the repository Byte Buddy version supports through Java 24."],
+  "unresolved_items": ["Rerun Maven tests under JDK 17 or compatible Byte Buddy.", "Run browser-level save acceptance."],
+  "recommended_next": "Use CI or a JDK 17 workspace for final runtime verification."
+}

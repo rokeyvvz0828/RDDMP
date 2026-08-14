@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "requirement_id": "REQ-20260813-031",
+  "control_prefix": "req-20260813-031-project-plan-group-colors",
+  "objective": "为项目计划分组提供可持久化的系统主题配色并按分组区分计划表",
+  "phase": "converged",
+  "phase_history": [{"from": null, "to": "baseline", "evidence": "用户确认按系统主题配色区分计划分组", "recorded_at": "2026-08-13T06:00:00+08:00"}, {"from": "baseline", "to": "modeling", "evidence": "确认复用现有 PaletteKey、分组 CRUD、项目权限和租户边界", "recorded_at": "2026-08-13T06:01:00+08:00"}, {"from": "modeling", "to": "planning", "evidence": "新增 V41，服务端白名单校验，前端主题色选择与行样式", "recorded_at": "2026-08-13T06:02:00+08:00"}],
+  "requirements": ["分组颜色可新建/编辑并持久化", "空颜色兼容 ocean", "非法颜色服务端拒绝", "分组及所属计划按色区分", "不改变权限、租户、拖放和层级规则"],
+  "invariants": ["Flyway 只追加 V41", "前端复用 PaletteKey/paletteOptions", "写接口保留权限、项目访问、租户和审计"],
+  "artifacts": {"requirement": "docs/requirements/REQ-20260813-031-project-plan-group-colors/requirement.md", "scope": "docs/requirements/REQ-20260813-031-project-plan-group-colors/codex-task-scope.yaml", "design": "docs/engineering-control/designs/2026-08-13-project-plan-group-colors-design.md", "plan": "docs/engineering-control/plans/2026-08-13-project-plan-group-colors-implementation-plan.md"},
+  "tasks": [{"id": "T1", "status": "verified", "goal": "数据与服务端契约"}, {"id": "T2", "status": "verified", "goal": "前端分组配色"}, {"id": "T3", "status": "verified_with_limits", "goal": "验证与观测"}],
+  "open_risks": ["完整 Maven 测试在本机 Java 25/Byte Buddy 1.15.11 下被 Mockito 阻断；需 JDK 17 或升级兼容 Byte Buddy 后复验", "仓库治理检查的 Repository skill check 仍报告既有 SKILL.md 缺少 YAML frontmatter；不属于本轮源码变更"],
+  "updated_at": "2026-08-13T14:20:00+08:00"
+}

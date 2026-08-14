@@ -1,0 +1,25 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql", "purpose": "Add project plan group table and plan group_id column with comments"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java", "purpose": "Register the new table and column for mock data validation"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3"],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 40 migration(s)."},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors."}
+  ],
+  "local_checks": [
+    {"check": "Migration and schema registration", "result": "pass", "evidence": "V40 is append-only and migration checker passed", "limitations": ["No live MySQL schema inspection was run"]}
+  ],
+  "diff_summary": ["Added pm_project_plan_group with Chinese table and column comments", "Added nullable project-plan group_id with project index"],
+  "invariants_checked": [
+    {"invariant": "group_id is nullable and parent_id is unchanged", "result": "pass", "evidence": "V40 only adds group_id and does not alter parent_id"},
+    {"invariant": "Flyway migration is append-only", "result": "pass", "evidence": "Migration checker passed"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Live database migration execution remains for environment validation"],
+  "recommended_next": "observe"
+}

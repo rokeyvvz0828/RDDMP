@@ -1,0 +1,11 @@
+{
+  "requirement_id": "REQ-20260813-031",
+  "control_prefix": "req-20260813-031-project-plan-group-colors",
+  "gate": "PASS_WITH_ENVIRONMENT_LIMITS",
+  "decision": "Scoped implementation converged; deploy/runtime validation should rerun full backend tests in JDK17-compatible environment.",
+  "covered_requirements": ["R1", "R2", "R3", "R4"],
+  "evidence": ["execution-T1.json", "observation-T1.json", "Flyway 41 migrations passed", "Vue typecheck passed", "Vite build passed", "Maven skip-test package passed", "git diff --check passed"],
+  "regression": {"permission": "source paths unchanged and server checks retained", "tenant": "tenant predicates retained", "legacy_data": "null color defaults to ocean"},
+  "residual_risk": ["Full Maven test suite not runnable on current Java 25 due Byte Buddy incompatibility", "Repository skill check reports pre-existing SKILL.md metadata issue"],
+  "rollback": "Revert V41 and scoped source changes; keeping nullable color_key is backward-compatible but no longer consumed."
+}

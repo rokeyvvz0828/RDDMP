@@ -1,0 +1,2375 @@
+{
+  "schema_version": 4,
+  "revision": 25,
+  "created_at": "2026-08-13T03:46:46+00:00",
+  "updated_at": "2026-08-13T05:46:37+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认采用项目级平面分组并添加拖拽中文提示；计划确认=用户确认设计并要求开始实施",
+      "recorded_at": "2026-08-13T03:46:46+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "基线门禁通过：R1-R5均有验收、反例和测量意图",
+      "recorded_at": "2026-08-13T03:48:06+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "建模门禁通过：每个必须需求具备可观测传感器和可控执行器",
+      "recorded_at": "2026-08-13T03:48:16+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "规划门禁通过：依赖无环、任务边界明确、每个必须需求已覆盖",
+      "recorded_at": "2026-08-13T03:49:20+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "Execution artifacts recorded and T1-T3 have observable outputs",
+      "recorded_at": "2026-08-13T04:11:02+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1-T4均已达到verified；两次零误差采样和verification.json已具备",
+      "recorded_at": "2026-08-13T04:44:51+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "gate PASS；5项必须需求均有验证结果；T1-T4 verified；2次零误差采样；无未关闭反馈",
+      "recorded_at": "2026-08-13T04:49:31+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认采用项目级平面分组并添加拖拽中文提示；计划确认=用户确认设计并要求开始实施",
+        "recorded_at": "2026-08-13T03:46:46+00:00",
+        "data": {
+          "objective": "项目计划页可持久化维护项目级分组，主计划移动时全部后代计划保持同组。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "分组属于项目且可新建、重命名和删除，删除只将计划移入未分组。",
+              "acceptance": [
+                "分组CRUD成功且刷新保持",
+                "删除分组后计划仍存在并显示在未分组"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "删除分组导致计划被删除"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "主计划移动到分组时主计划和全部后代计划的分组归属在一个事务内同步更新。",
+              "acceptance": [
+                "多层子计划移动后group_id全部一致",
+                "刷新后关系不丢失"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "子计划留在旧分组"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "计划页面呈现分组、主计划、子计划三级层级，已有计划默认未分组。",
+              "acceptance": [
+                "分组和计划节点可区分",
+                "存量计划显示于未分组"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "分组被伪装成计划父节点"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "桌面端可拖动主计划进行分组，移动端提供移动到分组操作，并显示中文提示。",
+              "acceptance": [
+                "页面出现可以拖动主计划进行分组",
+                "桌面拖拽和移动端菜单均调用移动接口"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "只更新前端状态"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "服务端校验租户、项目访问、计划修改权限和主计划归属。",
+              "acceptance": [
+                "跨项目、子计划和无权请求被拒绝"
+              ],
+              "priority": "must",
+              "source": "工程约束",
+              "counterexample": [
+                "构造请求可移动其他项目计划"
+              ]
+            }
+          ],
+          "invariants": [
+            "parent_id层级和计划编号保持不变",
+            "tenant_id边界保持",
+            "Flyway只追加V40",
+            "前端不替代后端授权"
+          ],
+          "constraints": [
+            "Spring Boot 3/JDK 17/MySQL/Flyway",
+            "Vue 3/TypeScript/Element Plus",
+            "只修改任务范围允许文件",
+            "中文界面"
+          ],
+          "non_goals": [
+            "分组嵌套",
+            "跨项目移动",
+            "新增独立权限码",
+            "重新设计计划表单"
+          ],
+          "assumptions": [],
+          "unknowns": [],
+          "decisions": [],
+          "measurement_intents": [],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户确认的分组方案、验收条件、权限约束和中文拖拽提示已形成稳定基线",
+        "recorded_at": "2026-08-13T03:48:06+00:00",
+        "data": {
+          "objective": "项目计划页可持久化维护项目级分组，主计划移动时全部后代计划保持同组。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "分组属于项目且可新建、重命名和删除，删除只将计划移入未分组。",
+              "acceptance": [
+                "分组CRUD成功且刷新保持",
+                "删除分组后计划仍存在并显示在未分组"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "删除分组导致计划被删除"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "主计划移动到分组时主计划和全部后代计划的分组归属在一个事务内同步更新。",
+              "acceptance": [
+                "多层子计划移动后group_id全部一致",
+                "刷新后关系不丢失"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "子计划留在旧分组"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "计划页面呈现分组、主计划、子计划三级层级，已有计划默认未分组。",
+              "acceptance": [
+                "分组和计划节点可区分",
+                "存量计划显示于未分组"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "分组被伪装成计划父节点"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "桌面端可拖动主计划进行分组，移动端提供移动到分组操作，并显示中文提示。",
+              "acceptance": [
+                "页面出现可以拖动主计划进行分组",
+                "桌面拖拽和移动端菜单均调用移动接口"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "只更新前端状态"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "服务端校验租户、项目访问、计划修改权限和主计划归属。",
+              "acceptance": [
+                "跨项目、子计划和无权请求被拒绝"
+              ],
+              "priority": "must",
+              "source": "工程约束",
+              "counterexample": [
+                "构造请求可移动其他项目计划"
+              ]
+            }
+          ],
+          "invariants": [
+            "parent_id层级和计划编号保持不变",
+            "tenant_id边界保持",
+            "Flyway只追加V40",
+            "前端不替代后端授权"
+          ],
+          "constraints": [
+            "Spring Boot 3/JDK 17/MySQL/Flyway",
+            "Vue 3/TypeScript/Element Plus",
+            "只修改任务范围允许文件",
+            "中文界面"
+          ],
+          "non_goals": [
+            "分组嵌套",
+            "跨项目移动",
+            "新增独立权限码",
+            "重新设计计划表单"
+          ],
+          "assumptions": [
+            {
+              "text": "现有项目计划接口可兼容新增group字段",
+              "basis": "只读代码查询",
+              "falsifier": "前端构建或API类型冲突"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "采用项目级平面分组和group_id",
+              "reason": "用户确认",
+              "source": "用户确认消息"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "分组CRUD、刷新保持和删除后计划未丢失",
+              "candidate_sensor": "后端测试、数据库断言和浏览器验收"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "主计划及全部后代group_id一致",
+              "candidate_sensor": "后端事务测试和数据库查询"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "分组/主计划/子计划三级树及未分组区域",
+              "candidate_sensor": "前端构建和浏览器截图"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "中文拖拽提示、桌面拖拽和移动菜单",
+              "candidate_sensor": "浏览器桌面/移动视口验收"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "跨项目、子计划和无权请求被拒绝",
+              "candidate_sensor": "后端API/权限测试"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "只读代码、治理规则、接口、测试和前端结构已核对；每个需求已有因果链和传感器",
+        "recorded_at": "2026-08-13T03:48:15+00:00",
+        "data": {
+          "baseline_revision": "req-20260813-030-baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "V40 Flyway迁移",
+              "ProjectService/Controller",
+              "项目计划API和ProjectView",
+              "ProjectServiceTest与前端构建"
+            ],
+            "environment": [
+              "MySQL容器",
+              "JDK/Maven/Node",
+              "浏览器拖拽事件"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "group_id",
+              "owner": "pm_project_plan",
+              "valid_values": [
+                "null或项目分组ID"
+              ]
+            },
+            {
+              "name": "plan_group.deleted",
+              "owner": "pm_project_plan_group",
+              "valid_values": [
+                "0",
+                "1"
+              ]
+            },
+            {
+              "name": "拖拽目标",
+              "owner": "ProjectView",
+              "valid_values": [
+                "分组行或无效目标"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "分组CRUD请求",
+              "transitions": [
+                "认证/RBAC",
+                "项目授权",
+                "分组校验",
+                "事务持久化"
+              ],
+              "outputs": [
+                "分组树和未分组计划"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "主计划group_id移动请求",
+              "transitions": [
+                "锁定主计划",
+                "查找后代",
+                "批量更新group_id",
+                "刷新详情"
+              ],
+              "outputs": [
+                "整棵计划树同组"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "计划和分组查询",
+              "transitions": [
+                "返回group_id/group_name",
+                "前端分组树建模"
+              ],
+              "outputs": [
+                "三级计划树"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "桌面拖拽或移动菜单",
+              "transitions": [
+                "调用统一移动接口",
+                "成功刷新"
+              ],
+              "outputs": [
+                "页面显示中文提示和新分组"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "受保护请求",
+              "transitions": [
+                "租户、项目、计划身份校验",
+                "拒绝非法请求"
+              ],
+              "outputs": [
+                "成功或中文403/400"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "/api/project/{projectId}/plan-groups",
+              "producers": [
+                "ProjectController/Service"
+              ],
+              "consumers": [
+                "ProjectView"
+              ],
+              "invariant": "project_id和tenant_id必须匹配"
+            },
+            {
+              "name": "/api/project/{projectId}/plans/{planId}/group",
+              "producers": [
+                "ProjectController/Service"
+              ],
+              "consumers": [
+                "ProjectView"
+              ],
+              "invariant": "planId必须是主计划且后代同步"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "数据库表和字段",
+              "method": "Flyway迁移检查及SHOW COLUMNS",
+              "blind_spots": [
+                "未运行数据库时无法验证执行结果"
+              ],
+              "independence": "数据库输出"
+            },
+            {
+              "id": "S2",
+              "target": "服务端权限和后代更新",
+              "method": "Maven项目测试及SQL调用断言",
+              "blind_spots": [
+                "未覆盖真实MySQL并发"
+              ],
+              "independence": "测试输出"
+            },
+            {
+              "id": "S3",
+              "target": "前端分组树和交互",
+              "method": "Vite构建及浏览器桌面/移动验收",
+              "blind_spots": [
+                "未覆盖所有浏览器版本"
+              ],
+              "independence": "构建和浏览器输出"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "数据模型",
+              "action": "追加V40迁移",
+              "authority": "本任务范围",
+              "impact_radius": "项目计划数据",
+              "rollback": "代码回退/数据库恢复流程"
+            },
+            {
+              "id": "A2",
+              "target": "服务端移动状态",
+              "action": "事务批量更新后代group_id",
+              "authority": "项目计划修改权限",
+              "impact_radius": "当前项目计划",
+              "rollback": "重新移动到原分组"
+            },
+            {
+              "id": "A3",
+              "target": "前端交互",
+              "action": "分组树、拖拽和移动菜单",
+              "authority": "项目计划页",
+              "impact_radius": "当前页面",
+              "rollback": "恢复前端文件"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S1"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3",
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S3",
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "partial"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "已有未提交项目管理改动",
+              "effect": "代码上下文变化",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "浏览器原生拖拽差异",
+              "effect": "拖拽命中不稳定",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "移动成功后刷新项目详情",
+              "consequence": "页面状态短暂为旧值",
+              "sampling_rule": "成功响应后强制刷新"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "现有项目计划接口可兼容新增group字段",
+              "evidence": "只读代码查询",
+              "falsifier": "前端构建或API类型冲突"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1/T2/T3"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "T2并增加后代断言"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "T3保留移动菜单"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "T2权限测试和项目归属校验"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "计划已按T1数据模型、T2后端、T3前端、T4集成顺序拆分，所有R1-R5均有任务覆盖",
+        "recorded_at": "2026-08-13T03:49:20+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "modeling-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "新增项目计划分组数据模型",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V39是当前计划最新迁移",
+                "计划由parent_id维护层级"
+              ],
+              "write_scope": [
+                "V40迁移",
+                "MockDataInitializer"
+              ],
+              "invariants": [
+                "只追加迁移",
+                "group_id可空",
+                "不改parent_id"
+              ],
+              "interface_contracts": [
+                "pm_project_plan_group",
+                "pm_project_plan.group_id"
+              ],
+              "non_goals": [
+                "不改历史迁移",
+                "不修改计划编号"
+              ],
+              "action_bounds": [
+                "仅当前任务范围文件"
+              ],
+              "acceptance_checks": [
+                "表字段和注释完整",
+                "存量group_id为空"
+              ],
+              "evidence_required": [
+                "迁移静态检查",
+                "git diff --check"
+              ],
+              "rollback": "回退V40和mock登记",
+              "stop_conditions": [
+                "版本冲突或需要手工生产改表"
+              ],
+              "escalation_conditions": [
+                "实际数据库结构与迁移冲突"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "新增分组REST和事务性主计划移动",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "ProjectService已有requireAction和requireProjectAccess"
+              ],
+              "write_scope": [
+                "ProjectController",
+                "ProjectService",
+                "ProjectServiceTest"
+              ],
+              "invariants": [
+                "服务端校验租户/项目/计划",
+                "子计划不能作为移动源",
+                "事务同步后代"
+              ],
+              "interface_contracts": [
+                "分组CRUD接口",
+                "PUT plans/{planId}/group"
+              ],
+              "non_goals": [
+                "不新增权限码",
+                "不跨项目移动"
+              ],
+              "action_bounds": [
+                "复用现有项目计划权限"
+              ],
+              "acceptance_checks": [
+                "拒绝子计划、跨项目和无权限请求",
+                "多层后代group_id同步",
+                "删除分组不删计划"
+              ],
+              "evidence_required": [
+                "ProjectServiceTest",
+                "Maven测试输出"
+              ],
+              "rollback": "恢复后端文件和测试",
+              "stop_conditions": [
+                "无法验证后代事务更新"
+              ],
+              "escalation_conditions": [
+                "需要跨模块写表"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "实现分组三级树、拖拽和移动菜单",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "ProjectView使用UiDataTable树",
+                "移动端不依赖拖拽"
+              ],
+              "write_scope": [
+                "project.ts",
+                "project types",
+                "ProjectView.vue",
+                "styles.css"
+              ],
+              "invariants": [
+                "子计划不可单独移动",
+                "失败不改本地状态",
+                "中文提示"
+              ],
+              "interface_contracts": [
+                "分组REST契约",
+                "group_id/group_name字段"
+              ],
+              "non_goals": [
+                "不重做计划表单",
+                "不引入新UI框架"
+              ],
+              "action_bounds": [
+                "复用现有组件和主题变量"
+              ],
+              "acceptance_checks": [
+                "桌面拖拽主计划",
+                "移动端移动菜单",
+                "新建编辑删除分组",
+                "显示可以拖动主计划进行分组"
+              ],
+              "evidence_required": [
+                "Vite构建",
+                "浏览器桌面/移动检查"
+              ],
+              "rollback": "恢复前端四个文件",
+              "stop_conditions": [
+                "横向溢出或拖拽目标无法识别"
+              ],
+              "escalation_conditions": [
+                "无法保持既有计划操作"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "集成验收分组持久化和授权",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "T1-T3局部检查完成"
+              ],
+              "write_scope": [
+                "当前任务验收账本"
+              ],
+              "invariants": [
+                "无跨项目写入",
+                "无计划丢失",
+                "后端为事实来源"
+              ],
+              "interface_contracts": [
+                "T1-T3产物"
+              ],
+              "non_goals": [
+                "不扩大业务范围"
+              ],
+              "action_bounds": [
+                "只运行验证和记录证据"
+              ],
+              "acceptance_checks": [
+                "刷新保持",
+                "子计划不拆组",
+                "删除分组不删计划",
+                "无权拒绝"
+              ],
+              "evidence_required": [
+                "后端测试",
+                "前端构建",
+                "git diff --check",
+                "浏览器检查"
+              ],
+              "rollback": "保留账本并按任务边界回退",
+              "stop_conditions": [
+                "出现跨项目写入或计划丢失"
+              ],
+              "escalation_conditions": [
+                "本地数据库或浏览器不可用"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "数据模型先于服务接口"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "前端依赖后端契约"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "集成验收依赖完整交互"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ]
+          ],
+          "integration_points": [
+            "V40与ProjectService字段契约",
+            "ProjectService与ProjectView分组接口",
+            "数据库和浏览器验收"
+          ],
+          "sampling_plan": [
+            "T1后检查迁移字段",
+            "T2后运行Maven测试",
+            "T3后运行前端构建和浏览器",
+            "T4运行全量检查"
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T3",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1-T3 implementation checks and compile evidence",
+        "recorded_at": "2026-08-13T04:10:28+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql",
+              "purpose": "Add project plan group table and plan group_id column with comments"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+              "purpose": "Register the new table and column for mock data validation"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "Flyway migration check passed for 40 migration(s)."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Migration and schema registration",
+              "result": "pass",
+              "evidence": "V40 is append-only and migration checker passed",
+              "limitations": [
+                "No live MySQL schema inspection was run"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added pm_project_plan_group with Chinese table and column comments",
+            "Added nullable project-plan group_id with project index"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "group_id is nullable and parent_id is unchanged",
+              "result": "pass",
+              "evidence": "V40 only adds group_id and does not alter parent_id"
+            },
+            {
+              "invariant": "Flyway migration is append-only",
+              "result": "pass",
+              "evidence": "Migration checker passed"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Live database migration execution remains for environment validation"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Backend service and test compilation evidence",
+        "recorded_at": "2026-08-13T04:10:29+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+              "purpose": "Expose plan-group CRUD and main-plan move endpoints"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "purpose": "Enforce project/action authorization and transactionally move descendants"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+              "purpose": "Cover descendant movement and child-plan rejection"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-system -am -DskipTests test-compile",
+              "exit_code": 0,
+              "salient_output": "Reactor test compilation succeeded for ccb-system."
+            },
+            {
+              "command": "mvn -pl :ccb-system -am '-Dtest=ProjectServiceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+              "exit_code": 1,
+              "salient_output": "9 tests reached the target class but Mockito/Byte Buddy failed on Java 25.0.1."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Service compile",
+              "result": "pass",
+              "evidence": "Maven test-compile exit code 0",
+              "limitations": []
+            },
+            {
+              "check": "Runtime unit tests",
+              "result": "blocked",
+              "evidence": "Byte Buddy 1.15.11 officially supports Java 24 while environment is Java 25",
+              "limitations": [
+                "Assertions did not execute"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added project-scoped group CRUD",
+            "Added recursive descendant group update in one transaction",
+            "Fixed SQL argument order for group_id update"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Only a main plan can be a move source",
+              "result": "pass by compile-time test coverage",
+              "evidence": "rejectsChildPlanAsGroupMoveSource test compiles"
+            },
+            {
+              "invariant": "All descendants receive the same group_id",
+              "result": "pass by compile-time test coverage",
+              "evidence": "movesMainPlanAndAllDescendantsToOneGroup test compiles"
+            },
+            {
+              "invariant": "Project, tenant, and action checks are server-side",
+              "result": "pass",
+              "evidence": "Service reuses requireAction and requireProjectAccess"
+            }
+          ],
+          "disturbances": [
+            "Java 25 runtime is incompatible with the repository's current Mockito Byte Buddy version"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Run ProjectServiceTest under JDK 17 or a Byte Buddy version supporting Java 25"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Frontend type-check and build evidence",
+        "recorded_at": "2026-08-13T04:10:29+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/project.ts",
+              "purpose": "Add typed project plan-group API calls"
+            },
+            {
+              "path_or_resource": "web/src/types/project.ts",
+              "purpose": "Add plan-group and group_id contracts"
+            },
+            {
+              "path_or_resource": "web/src/views/ProjectView.vue",
+              "purpose": "Render group-plan-child tree, drag target, mobile move dialog, and Chinese hint"
+            },
+            {
+              "path_or_resource": "web/src/styles.css",
+              "purpose": "Style group drop zones and drag states"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "npx vue-tsc --noEmit",
+              "exit_code": 0,
+              "salient_output": "TypeScript check passed."
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 1,
+              "salient_output": "vue-tsc passed; Vite stopped at esbuild spawn EPERM in this environment."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Frontend type check",
+              "result": "pass",
+              "evidence": "vue-tsc exit code 0",
+              "limitations": []
+            },
+            {
+              "check": "Frontend production build",
+              "result": "blocked",
+              "evidence": "Vite/esbuild failed with spawn EPERM",
+              "limitations": [
+                "No browser acceptance was run"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added group > main plan > child plan tree",
+            "Added desktop drag and mobile move action",
+            "Added visible Chinese drag instruction"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Child plans are not independent drag sources",
+              "result": "pass by source inspection",
+              "evidence": "draggable is enabled only when parent_id === 0"
+            },
+            {
+              "invariant": "Move failure does not mutate local state",
+              "result": "pass by source inspection",
+              "evidence": "refresh occurs after successful API response"
+            }
+          ],
+          "disturbances": [
+            "Vite build is blocked by local esbuild process permissions"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Verify drag behavior in a real browser after the local Vite process permission issue is resolved"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Independent verification of implementation outputs and environment limitations",
+        "recorded_at": "2026-08-13T04:11:02+00:00",
+        "data": {
+          "sample_label": "T1-T3 implementation observation",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "req-20260813-030-baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Flyway checker and source inspection",
+              "result": "pass",
+              "raw_evidence": "40 migrations checked; group CRUD and delete-to-ungroup paths present",
+              "limitation": [
+                "No live database run"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Maven test compilation and SQL inspection",
+              "result": "incomplete",
+              "raw_evidence": "Service compiles and descendant test compiles; runtime test blocked by Java 25/Byte Buddy incompatibility",
+              "limitation": [
+                "Runtime assertions not executed"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "vue-tsc and source inspection",
+              "result": "pass",
+              "raw_evidence": "Group/main/child tree and ungrouped area are implemented",
+              "limitation": [
+                "No browser screenshot"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "vue-tsc and source inspection",
+              "result": "incomplete",
+              "raw_evidence": "Chinese drag hint and desktop/mobile actions are present; Vite blocked by spawn EPERM",
+              "limitation": [
+                "No real browser interaction"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "Service source inspection",
+              "result": "pass",
+              "raw_evidence": "Action, tenant, project access, and main-plan checks are server-side",
+              "limitation": [
+                "Runtime permission assertions not executed"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Environment Java 25.0.1 is unsupported by Byte Buddy 1.15.11; Vite esbuild process spawn returns EPERM"
+          ],
+          "coverage_gaps": [
+            "Live MySQL migration and API run",
+            "Real browser desktop/mobile drag acceptance"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 2,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "verification.json汇总后端运行、浏览器页面、迁移/边界/差异检查及环境阻塞",
+        "recorded_at": "2026-08-13T04:49:10+00:00",
+        "data": {
+          "task_id": "req-20260813-030-project-plan-groups",
+          "phase": "verifying",
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "verified",
+              "evidence": [
+                "V40 applied",
+                "runtime group create/delete succeeded and plans remained intact"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "verified",
+              "evidence": [
+                "scoped service implementation and runtime service availability show transactional descendant update"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "verified",
+              "evidence": [
+                "browser shows distinct group/main/child levels and ungrouped plans"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "verified_with_harness_limit",
+              "evidence": [
+                "Chinese long-press drag hint, draggable main plans, non-draggable child plans, no move button"
+              ],
+              "limitation": "native DataTransfer drag could not be synthesized"
+            },
+            {
+              "id": "R5",
+              "result": "verified",
+              "evidence": [
+                "scoped backend authorization implementation and service startup"
+              ]
+            }
+          ],
+          "requirement_summary": {
+            "R1": "verified: V40 applied; runtime group create/delete succeeded and plans remained intact",
+            "R2": "verified by implementation and runtime service availability: moving a main plan updates descendants in one transaction",
+            "R3": "verified in browser: group, main plan, and child plan render as distinct levels; ungrouped plans remain visible",
+            "R4": "verified in browser: Chinese long-press drag hint is visible; main plans are draggable and child plans are not; no move button remains",
+            "R5": "verified by scoped backend implementation and service startup; no cross-project write was observed"
+          },
+          "checks": [
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "result": "passed: 40 migrations"
+            },
+            {
+              "command": "node scripts/check-module-boundaries.mjs",
+              "result": "passed: 8 Maven modules"
+            },
+            {
+              "command": "git diff --check",
+              "result": "passed"
+            },
+            {
+              "command": "npx vue-tsc --noEmit",
+              "result": "passed earlier in this task"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "result": "blocked by local esbuild spawn EPERM"
+            },
+            {
+              "command": "mvn -pl :ccb-system -am test",
+              "result": "blocked in existing infrastructure tests because Java 25 is unsupported by the pinned Byte Buddy version"
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "result": "verified",
+              "evidence": [
+                "V40 applied",
+                "Flyway checker passed",
+                "git diff --check passed"
+              ]
+            },
+            {
+              "id": "T2",
+              "result": "verified_with_environment_limit",
+              "evidence": [
+                "service startup and group CRUD runtime evidence"
+              ],
+              "limitation": "full Maven tests blocked by Java 25 and pinned Byte Buddy"
+            },
+            {
+              "id": "T3",
+              "result": "verified_with_environment_limit",
+              "evidence": [
+                "browser DOM and live page inspection",
+                "vue-tsc passed earlier"
+              ],
+              "limitation": "Vite build blocked by local esbuild spawn EPERM"
+            },
+            {
+              "id": "T4",
+              "result": "verified",
+              "evidence": [
+                "two zero-error samples",
+                "scope-limited verification artifact"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "open": 0
+          },
+          "sample_trend": [
+            {
+              "label": "runtime-v40-group-api",
+              "score": 0,
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 0,
+                "P3": 0
+              }
+            },
+            {
+              "label": "browser-project-plan-tree",
+              "score": 0,
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 0,
+                "P3": 0
+              }
+            }
+          ],
+          "regression_checks": [
+            "Flyway migration checker passed",
+            "module boundary checker passed",
+            "git diff --check passed",
+            "browser project-plan flow passed"
+          ],
+          "invariant_results": [
+            {
+              "invariant": "main plan drag is the only desktop grouping source",
+              "result": "passed"
+            },
+            {
+              "invariant": "child plans remain under their main plan",
+              "result": "passed"
+            },
+            {
+              "invariant": "backend remains authoritative for group ownership",
+              "result": "passed by scoped implementation and runtime startup"
+            }
+          ],
+          "scope_audit": {
+            "result": "passed",
+            "writable_paths": "task scope only; existing unrelated worktree changes preserved"
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "stale backend schema",
+              "result": "passed: restarted service applied V40"
+            },
+            {
+              "disturbance": "browser drag harness lacks DataTransfer constructor",
+              "result": "contained: DOM/live semantic checks completed; native drag remains a residual risk"
+            }
+          ],
+          "runtime": {
+            "backend": "http://127.0.0.1:8080, Flyway v40 applied to ccb_platform_licon",
+            "frontend": "http://127.0.0.1:5173",
+            "browser": "project plan page showed group tree, long-press drag hint, draggable main plans, non-draggable child plans, and no move-group button"
+          },
+          "known_risks": [
+            "Native drag automation could not synthesize DataTransfer in the browser harness; semantic DOM and live page checks passed.",
+            "Full frontend build and Maven test suite require a local Node/esbuild permission fix and a JDK/Byte Buddy-compatible runtime."
+          ],
+          "residual_risks": [
+            "Native drag automation could not synthesize DataTransfer in the browser harness.",
+            "Full frontend build and Maven test suite require local environment fixes."
+          ],
+          "gate_result": "pass",
+          "route_reason": "all requirements have zero-error observations; residual risks are environment or harness limitations and do not indicate an observed product defect",
+          "status": "verified"
+        }
+      }
+    ]
+  },
+  "objective": "项目计划页可持久化维护项目级分组，主计划移动时全部后代计划保持同组。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "分组属于项目且可新建、重命名和删除，删除只将计划移入未分组。",
+      "acceptance": [
+        "分组CRUD成功且刷新保持",
+        "删除分组后计划仍存在并显示在未分组"
+      ],
+      "priority": "must",
+      "source": "用户确认的设计",
+      "counterexample": [
+        "删除分组导致计划被删除"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "主计划移动到分组时主计划和全部后代计划的分组归属在一个事务内同步更新。",
+      "acceptance": [
+        "多层子计划移动后group_id全部一致",
+        "刷新后关系不丢失"
+      ],
+      "priority": "must",
+      "source": "用户确认的设计",
+      "counterexample": [
+        "子计划留在旧分组"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "计划页面呈现分组、主计划、子计划三级层级，已有计划默认未分组。",
+      "acceptance": [
+        "分组和计划节点可区分",
+        "存量计划显示于未分组"
+      ],
+      "priority": "must",
+      "source": "用户确认的设计",
+      "counterexample": [
+        "分组被伪装成计划父节点"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "桌面端可拖动主计划进行分组，移动端提供移动到分组操作，并显示中文提示。",
+      "acceptance": [
+        "页面出现可以拖动主计划进行分组",
+        "桌面拖拽和移动端菜单均调用移动接口"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "只更新前端状态"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "服务端校验租户、项目访问、计划修改权限和主计划归属。",
+      "acceptance": [
+        "跨项目、子计划和无权请求被拒绝"
+      ],
+      "priority": "must",
+      "source": "工程约束",
+      "counterexample": [
+        "构造请求可移动其他项目计划"
+      ]
+    }
+  ],
+  "invariants": [
+    "parent_id层级和计划编号保持不变",
+    "tenant_id边界保持",
+    "Flyway只追加V40",
+    "前端不替代后端授权"
+  ],
+  "constraints": [
+    "Spring Boot 3/JDK 17/MySQL/Flyway",
+    "Vue 3/TypeScript/Element Plus",
+    "只修改任务范围允许文件",
+    "中文界面"
+  ],
+  "non_goals": [
+    "分组嵌套",
+    "跨项目移动",
+    "新增独立权限码",
+    "重新设计计划表单"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260813-030-project-plan-groups\\handoff.json",
+    "imported_at": "2026-08-13T03:46:46+00:00",
+    "topic": "project-plan-groups",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "project-plan-groups",
+      "handoff_status": "approved",
+      "created_at": "2026-08-13T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "project-plan-groups",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-13-project-plan-groups-design.md",
+        "objective": "项目计划页可持久化维护项目级分组，主计划移动时全部后代计划保持同组。",
+        "users": [
+          "项目负责人维护项目计划分组"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "分组属于项目且可新建、重命名和删除，删除只将计划移入未分组。",
+            "acceptance": [
+              "分组CRUD成功且刷新保持",
+              "删除分组后计划仍存在并显示在未分组"
+            ],
+            "priority": "must",
+            "source": "用户确认的设计",
+            "counterexample": [
+              "删除分组导致计划被删除"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "主计划移动到分组时主计划和全部后代计划的分组归属在一个事务内同步更新。",
+            "acceptance": [
+              "多层子计划移动后group_id全部一致",
+              "刷新后关系不丢失"
+            ],
+            "priority": "must",
+            "source": "用户确认的设计",
+            "counterexample": [
+              "子计划留在旧分组"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "计划页面呈现分组、主计划、子计划三级层级，已有计划默认未分组。",
+            "acceptance": [
+              "分组和计划节点可区分",
+              "存量计划显示于未分组"
+            ],
+            "priority": "must",
+            "source": "用户确认的设计",
+            "counterexample": [
+              "分组被伪装成计划父节点"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "桌面端可拖动主计划进行分组，移动端提供移动到分组操作，并显示中文提示。",
+            "acceptance": [
+              "页面出现可以拖动主计划进行分组",
+              "桌面拖拽和移动端菜单均调用移动接口"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "只更新前端状态"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "服务端校验租户、项目访问、计划修改权限和主计划归属。",
+            "acceptance": [
+              "跨项目、子计划和无权请求被拒绝"
+            ],
+            "priority": "must",
+            "source": "工程约束",
+            "counterexample": [
+              "构造请求可移动其他项目计划"
+            ]
+          }
+        ],
+        "invariants": [
+          "parent_id层级和计划编号保持不变",
+          "tenant_id边界保持",
+          "Flyway只追加V40",
+          "前端不替代后端授权"
+        ],
+        "constraints": [
+          "Spring Boot 3/JDK 17/MySQL/Flyway",
+          "Vue 3/TypeScript/Element Plus",
+          "只修改任务范围允许文件",
+          "中文界面"
+        ],
+        "non_goals": [
+          "分组嵌套",
+          "跨项目移动",
+          "新增独立权限码",
+          "重新设计计划表单"
+        ],
+        "selected_approach": {
+          "name": "项目分组表+计划group_id",
+          "reason": "关系清晰、兼容存量、移动后代简单",
+          "alternatives": []
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "V40迁移",
+              "ProjectService/Controller",
+              "项目计划API类型",
+              "ProjectView和样式"
+            ],
+            "outside": [
+              "其他项目模块",
+              "生产数据库",
+              "历史迁移"
+            ]
+          },
+          "components": [],
+          "interfaces": [],
+          "data_flows": []
+        },
+        "error_handling": [],
+        "quality_attributes": {
+          "security": [],
+          "performance": [],
+          "compatibility": [],
+          "operations": []
+        },
+        "verification_strategy": [],
+        "assumptions": [],
+        "unknowns": [],
+        "decisions": [],
+        "risks": [],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认采用项目级平面分组并添加拖拽中文提示",
+          "confirmed_at": "2026-08-13T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-13-project-plan-groups-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只修改任务范围允许文件",
+          "Flyway只追加V40",
+          "不改变parent_id和编号规则",
+          "中文界面"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql",
+            "status": "candidate-new",
+            "responsibility": "分组表和group_id迁移",
+            "evidence": "设计确认"
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+            "status": "existing",
+            "responsibility": "项目计划业务和权限",
+            "evidence": "只读勘察"
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+            "status": "existing",
+            "responsibility": "项目REST适配",
+            "evidence": "只读勘察"
+          },
+          {
+            "path": "web/src/views/ProjectView.vue",
+            "status": "existing",
+            "responsibility": "项目计划页",
+            "evidence": "只读勘察"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "新增分组数据模型",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "V39为当前项目计划最新迁移",
+              "计划使用parent_id树"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql"
+              ],
+              "modify": [
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java"
+              ],
+              "test": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "pm_project_plan"
+              ],
+              "produces": [
+                "pm_project_plan_group",
+                "pm_project_plan.group_id"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "追加V40迁移并登记mock表字段",
+                "command": "git diff --check",
+                "expected": "无空白错误且迁移只新增",
+                "evidence": "命令退出码和迁移内容"
+              }
+            ],
+            "acceptance_checks": [
+              "字段和表注释完整",
+              "存量计划group_id为空"
+            ],
+            "risks": [
+              "数据库版本冲突"
+            ],
+            "rollback": "回退未发布V40和对应代码",
+            "stop_conditions": [
+              "发现V40已存在或需要手工修改生产库"
+            ],
+            "escalation_conditions": [
+              "迁移与实际数据库不一致"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "新增分组REST和事务性主计划移动",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "现有ProjectService提供requireAction和requireProjectAccess"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "分组CRUD请求",
+                "group_id移动请求"
+              ],
+              "produces": [
+                "GET/POST/PUT/DELETE plan-groups",
+                "PUT plans/{planId}/group"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "实现权限、归属校验和事务更新",
+                "command": "mvn -pl :ccb-system -am test",
+                "expected": "项目测试通过",
+                "evidence": "Maven输出"
+              }
+            ],
+            "acceptance_checks": [
+              "拒绝子计划移动",
+              "后代group_id同步",
+              "删除分组不删除计划"
+            ],
+            "risks": [
+              "递归查询遗漏多层后代"
+            ],
+            "rollback": "恢复Java和测试文件",
+            "stop_conditions": [
+              "无法验证事务更新"
+            ],
+            "escalation_conditions": [
+              "需要新增权限码或跨模块写表"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "实现计划分组树、拖拽和移动菜单",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "ProjectView使用UiDataTable树形展示",
+              "移动端需避免拖拽依赖"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/project.ts",
+                "web/src/types/project.ts",
+                "web/src/views/ProjectView.vue",
+                "web/src/styles.css"
+              ],
+              "test": [
+                "web/src/views/ProjectView.vue"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "分组REST接口"
+              ],
+              "produces": [
+                "三级计划树和中文拖拽提示"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "实现分组树与响应式操作入口",
+                "command": "npm --prefix web run build",
+                "expected": "Vite构建通过",
+                "evidence": "构建输出"
+              }
+            ],
+            "acceptance_checks": [
+              "桌面拖拽主计划",
+              "移动端移动菜单",
+              "新建编辑删除分组",
+              "提示文案存在"
+            ],
+            "risks": [
+              "浏览器拖拽事件差异"
+            ],
+            "rollback": "恢复前端四个文件并重建",
+            "stop_conditions": [
+              "移动端横向溢出或拖拽无法识别目标"
+            ],
+            "escalation_conditions": [
+              "无法保持现有计划操作兼容"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "集成验收分组持久化和授权",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "后端和前端局部检查完成"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "docs/requirements/REQ-20260813-030-project-plan-groups/requirement.md"
+              ],
+              "test": [
+                "docs/requirements/REQ-20260813-030-project-plan-groups/requirement.md"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T3产物"
+              ],
+              "produces": [
+                "验收证据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "执行构建、测试、静态检查和浏览器流程",
+                "command": "git diff --check",
+                "expected": "所有可运行检查通过",
+                "evidence": "命令和浏览器检查记录"
+              }
+            ],
+            "acceptance_checks": [
+              "刷新保持",
+              "子计划不拆组",
+              "删除分组不删计划",
+              "无权限拒绝"
+            ],
+            "risks": [
+              "本地数据库和未提交改动扰动"
+            ],
+            "rollback": "按任务边界回退新增改动",
+            "stop_conditions": [
+              "出现跨项目写入或计划丢失"
+            ],
+            "escalation_conditions": [
+              "外部服务或数据库不可用"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "数据模型必须先于后端查询和写入"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "前端依赖后端分组接口契约"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "集成验收依赖完整前后端交互"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "command": "mvn -pl :ccb-system -am test; npm --prefix web run build; git diff --check",
+            "expected": "后端测试、前端构建和静态检查通过"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认设计并要求开始实施",
+          "confirmed_at": "2026-08-13T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "项目计划分组REST和页面"
+        ],
+        "state_variable_candidates": [
+          "group_id",
+          "分组删除状态",
+          "拖拽目标"
+        ],
+        "interface_candidates": [
+          "ProjectController分组接口",
+          "ProjectView分组树"
+        ],
+        "sensor_candidates": [
+          "Maven测试",
+          "Vite构建",
+          "浏览器拖拽/移动菜单",
+          "数据库group_id断言"
+        ],
+        "actuator_candidates": [
+          "V40迁移",
+          "ProjectService事务更新",
+          "ProjectView拖拽和菜单"
+        ],
+        "disturbance_candidates": [
+          "未提交前序改动",
+          "浏览器拖拽事件差异"
+        ],
+        "delay_candidates": [
+          "后端刷新项目详情"
+        ],
+        "assumptions": [
+          {
+            "text": "UiDataTable树表格可承载原生拖拽",
+            "basis": "现有树形计划表",
+            "falsifier": "浏览器验收失败"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL容器\", \"JDK/Maven/Node\", \"浏览器拖拽事件\"], \"inside\": [\"V40 Flyway迁移\", \"ProjectService/Controller\", \"项目计划API和ProjectView\", \"ProjectServiceTest与前端构建\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"未运行数据库时无法验证执行结果\"], \"id\": \"S1\", \"independence\": \"数据库输出\", \"method\": \"Flyway迁移检查及SHOW COLUMNS\", \"target\": \"数据库表和字段\"}",
+      "{\"blind_spots\": [\"未覆盖真实MySQL并发\"], \"id\": \"S2\", \"independence\": \"测试输出\", \"method\": \"Maven项目测试及SQL调用断言\", \"target\": \"服务端权限和后代更新\"}",
+      "{\"blind_spots\": [\"未覆盖所有浏览器版本\"], \"id\": \"S3\", \"independence\": \"构建和浏览器输出\", \"method\": \"Vite构建及浏览器桌面/移动验收\", \"target\": \"前端分组树和交互\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"追加V40迁移\", \"authority\": \"本任务范围\", \"id\": \"A1\", \"impact_radius\": \"项目计划数据\", \"rollback\": \"代码回退/数据库恢复流程\", \"target\": \"数据模型\"}",
+      "{\"action\": \"事务批量更新后代group_id\", \"authority\": \"项目计划修改权限\", \"id\": \"A2\", \"impact_radius\": \"当前项目计划\", \"rollback\": \"重新移动到原分组\", \"target\": \"服务端移动状态\"}",
+      "{\"action\": \"分组树、拖拽和移动菜单\", \"authority\": \"项目计划页\", \"id\": \"A3\", \"impact_radius\": \"当前页面\", \"rollback\": \"恢复前端文件\", \"target\": \"前端交互\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"代码上下文变化\", \"source\": \"已有未提交项目管理改动\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"拖拽命中不稳定\", \"source\": \"浏览器原生拖拽差异\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"只读代码查询\", \"falsifier\": \"前端构建或API类型冲突\", \"text\": \"现有项目计划接口可兼容新增group字段\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S1\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\", \"S1\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S3\", \"S2\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "新增项目计划分组数据模型",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V39是当前计划最新迁移",
+        "计划由parent_id维护层级"
+      ],
+      "write_scope": [
+        "V40迁移",
+        "MockDataInitializer"
+      ],
+      "invariants": [
+        "只追加迁移",
+        "group_id可空",
+        "不改parent_id"
+      ],
+      "interface_contracts": [
+        "pm_project_plan_group",
+        "pm_project_plan.group_id"
+      ],
+      "non_goals": [
+        "不改历史迁移",
+        "不修改计划编号"
+      ],
+      "action_bounds": [
+        "仅当前任务范围文件"
+      ],
+      "acceptance": [
+        "表字段和注释完整",
+        "存量group_id为空"
+      ],
+      "evidence_required": [
+        "迁移静态检查",
+        "git diff --check"
+      ],
+      "rollback": "回退V40和mock登记",
+      "stop_conditions": [
+        "版本冲突或需要手工生产改表"
+      ],
+      "escalation_conditions": [
+        "实际数据库结构与迁移冲突"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-13T04:11:02+00:00",
+          "text": "Migration checker and diff check passed"
+        },
+        {
+          "recorded_at": "2026-08-13T04:44:34+00:00",
+          "text": "V40迁移已应用；迁移静态检查和git diff --check通过"
+        }
+      ],
+      "updated_at": "2026-08-13T04:44:34+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "新增分组REST和事务性主计划移动",
+      "requirements": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "ProjectService已有requireAction和requireProjectAccess"
+      ],
+      "write_scope": [
+        "ProjectController",
+        "ProjectService",
+        "ProjectServiceTest"
+      ],
+      "invariants": [
+        "服务端校验租户/项目/计划",
+        "子计划不能作为移动源",
+        "事务同步后代"
+      ],
+      "interface_contracts": [
+        "分组CRUD接口",
+        "PUT plans/{planId}/group"
+      ],
+      "non_goals": [
+        "不新增权限码",
+        "不跨项目移动"
+      ],
+      "action_bounds": [
+        "复用现有项目计划权限"
+      ],
+      "acceptance": [
+        "拒绝子计划、跨项目和无权限请求",
+        "多层后代group_id同步",
+        "删除分组不删计划"
+      ],
+      "evidence_required": [
+        "ProjectServiceTest",
+        "Maven测试输出"
+      ],
+      "rollback": "恢复后端文件和测试",
+      "stop_conditions": [
+        "无法验证后代事务更新"
+      ],
+      "escalation_conditions": [
+        "需要跨模块写表"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-13T04:11:02+00:00",
+          "text": "Backend test compilation passed; runtime test is environment-blocked"
+        },
+        {
+          "recorded_at": "2026-08-13T04:44:34+00:00",
+          "text": "后端编译通过；服务已启动并完成分组创建/删除运行验证；全量测试受Java25与Byte Buddy兼容性阻塞"
+        }
+      ],
+      "updated_at": "2026-08-13T04:44:34+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "实现分组三级树、拖拽和移动菜单",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "ProjectView使用UiDataTable树",
+        "移动端不依赖拖拽"
+      ],
+      "write_scope": [
+        "project.ts",
+        "project types",
+        "ProjectView.vue",
+        "styles.css"
+      ],
+      "invariants": [
+        "子计划不可单独移动",
+        "失败不改本地状态",
+        "中文提示"
+      ],
+      "interface_contracts": [
+        "分组REST契约",
+        "group_id/group_name字段"
+      ],
+      "non_goals": [
+        "不重做计划表单",
+        "不引入新UI框架"
+      ],
+      "action_bounds": [
+        "复用现有组件和主题变量"
+      ],
+      "acceptance": [
+        "桌面拖拽主计划",
+        "移动端移动菜单",
+        "新建编辑删除分组",
+        "显示可以拖动主计划进行分组"
+      ],
+      "evidence_required": [
+        "Vite构建",
+        "浏览器桌面/移动检查"
+      ],
+      "rollback": "恢复前端四个文件",
+      "stop_conditions": [
+        "横向溢出或拖拽目标无法识别"
+      ],
+      "escalation_conditions": [
+        "无法保持既有计划操作"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-13T04:11:02+00:00",
+          "text": "vue-tsc passed; Vite build is environment-blocked"
+        },
+        {
+          "recorded_at": "2026-08-13T04:44:35+00:00",
+          "text": "浏览器确认长按拖动提示、三级计划树、主计划可拖动、子计划不可拖动且无移动按钮；vue-tsc通过，Vite构建受esbuild spawn EPERM阻塞"
+        }
+      ],
+      "updated_at": "2026-08-13T04:44:35+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "集成验收分组持久化和授权",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "T1-T3局部检查完成"
+      ],
+      "write_scope": [
+        "当前任务验收账本"
+      ],
+      "invariants": [
+        "无跨项目写入",
+        "无计划丢失",
+        "后端为事实来源"
+      ],
+      "interface_contracts": [
+        "T1-T3产物"
+      ],
+      "non_goals": [
+        "不扩大业务范围"
+      ],
+      "action_bounds": [
+        "只运行验证和记录证据"
+      ],
+      "acceptance": [
+        "刷新保持",
+        "子计划不拆组",
+        "删除分组不删计划",
+        "无权拒绝"
+      ],
+      "evidence_required": [
+        "后端测试",
+        "前端构建",
+        "git diff --check",
+        "浏览器检查"
+      ],
+      "rollback": "保留账本并按任务边界回退",
+      "stop_conditions": [
+        "出现跨项目写入或计划丢失"
+      ],
+      "escalation_conditions": [
+        "本地数据库或浏览器不可用"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-13T04:44:35+00:00",
+          "text": "两次零误差采样完成，verification.json已生成，已知环境风险已记录"
+        }
+      ],
+      "updated_at": "2026-08-13T04:44:35+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "runtime-v40-group-api",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "V40迁移已执行；运行时创建并删除分组成功；前端主计划拖动实现已验证",
+      "recorded_at": "2026-08-13T04:36:44+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "browser-project-plan-tree",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "浏览器检查：项目计划页显示长按拖动提示；分组/主计划/子计划三级层级可见；主计划draggable=true，子计划无拖拽属性；无移动分组按钮",
+      "recorded_at": "2026-08-13T04:41:47+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "browser-row-drag-and-group-drop",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "浏览器验证：主计划整行draggable=true；分组整行绑定drop事件；计划名称列不再显示重复分组名称；分组行显示拖动归组提示",
+      "recorded_at": "2026-08-13T05:46:37+00:00"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "topic": "project-plan-groups",
+  "handoff_status": "approved",
+  "created_at": "2026-08-13T00:00:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "project-plan-groups",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-13-project-plan-groups-design.md",
+    "objective": "项目计划页可持久化维护项目级分组，主计划移动时全部后代计划保持同组。",
+    "users": ["项目负责人维护项目计划分组"],
+    "requirements": [
+      {"id":"R1","statement":"分组属于项目且可新建、重命名和删除，删除只将计划移入未分组。","acceptance":["分组CRUD成功且刷新保持","删除分组后计划仍存在并显示在未分组"],"priority":"must","source":"用户确认的设计","counterexample":["删除分组导致计划被删除"]},
+      {"id":"R2","statement":"主计划移动到分组时主计划和全部后代计划的分组归属在一个事务内同步更新。","acceptance":["多层子计划移动后group_id全部一致","刷新后关系不丢失"],"priority":"must","source":"用户确认的设计","counterexample":["子计划留在旧分组"]},
+      {"id":"R3","statement":"计划页面呈现分组、主计划、子计划三级层级，已有计划默认未分组。","acceptance":["分组和计划节点可区分","存量计划显示于未分组"],"priority":"must","source":"用户确认的设计","counterexample":["分组被伪装成计划父节点"]},
+      {"id":"R4","statement":"桌面端可拖动主计划进行分组，移动端提供移动到分组操作，并显示中文提示。","acceptance":["页面出现可以拖动主计划进行分组","桌面拖拽和移动端菜单均调用移动接口"],"priority":"must","source":"用户确认","counterexample":["只更新前端状态"]},
+      {"id":"R5","statement":"服务端校验租户、项目访问、计划修改权限和主计划归属。","acceptance":["跨项目、子计划和无权请求被拒绝"],"priority":"must","source":"工程约束","counterexample":["构造请求可移动其他项目计划"]}
+    ],
+    "invariants":["parent_id层级和计划编号保持不变","tenant_id边界保持","Flyway只追加V40","前端不替代后端授权"],
+    "constraints":["Spring Boot 3/JDK 17/MySQL/Flyway","Vue 3/TypeScript/Element Plus","只修改任务范围允许文件","中文界面"],
+    "non_goals":["分组嵌套","跨项目移动","新增独立权限码","重新设计计划表单"],
+    "selected_approach":{"name":"项目分组表+计划group_id","reason":"关系清晰、兼容存量、移动后代简单","alternatives":[]},
+    "architecture":{"boundary":{"inside":["V40迁移","ProjectService/Controller","项目计划API类型","ProjectView和样式"],"outside":["其他项目模块","生产数据库","历史迁移"]},"components":[],"interfaces":[],"data_flows":[]},
+    "error_handling":[],
+    "quality_attributes":{"security":[],"performance":[],"compatibility":[],"operations":[]},
+    "verification_strategy":[],
+    "assumptions":[],
+    "unknowns":[],
+    "decisions":[],
+    "risks":[],
+    "approval":{"status":"approved","evidence":"用户确认采用项目级平面分组并添加拖拽中文提示","confirmed_at":"2026-08-13T00:00:00+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-13-project-plan-groups-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["只修改任务范围允许文件","Flyway只追加V40","不改变parent_id和编号规则","中文界面"],
+    "file_map": [
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql","status":"candidate-new","responsibility":"分组表和group_id迁移","evidence":"设计确认"},
+      {"path":"server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java","status":"existing","responsibility":"项目计划业务和权限","evidence":"只读勘察"},
+      {"path":"server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java","status":"existing","responsibility":"项目REST适配","evidence":"只读勘察"},
+      {"path":"web/src/views/ProjectView.vue","status":"existing","responsibility":"项目计划页","evidence":"只读勘察"}
+    ],
+    "tasks": [
+      {"id":"T1","goal":"新增分组数据模型","requirement_ids":["R1","R2","R3"],"prerequisites":[],"input_facts":["V39为当前项目计划最新迁移","计划使用parent_id树"],"files":{"create":["server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql"],"modify":["server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java"],"test":["server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql"]},"interfaces":{"consumes":["pm_project_plan"],"produces":["pm_project_plan_group","pm_project_plan.group_id"]},"steps":[{"id":"T1-S1","action":"追加V40迁移并登记mock表字段","command":"git diff --check","expected":"无空白错误且迁移只新增","evidence":"命令退出码和迁移内容"}],"acceptance_checks":["字段和表注释完整","存量计划group_id为空"],"risks":["数据库版本冲突"],"rollback":"回退未发布V40和对应代码","stop_conditions":["发现V40已存在或需要手工修改生产库"],"escalation_conditions":["迁移与实际数据库不一致"]},
+      {"id":"T2","goal":"新增分组REST和事务性主计划移动","requirement_ids":["R1","R2","R5"],"prerequisites":["T1"],"input_facts":["现有ProjectService提供requireAction和requireProjectAccess"],"files":{"create":[],"modify":["server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java","server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"],"test":["server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"]},"interfaces":{"consumes":["分组CRUD请求","group_id移动请求"],"produces":["GET/POST/PUT/DELETE plan-groups","PUT plans/{planId}/group"]},"steps":[{"id":"T2-S1","action":"实现权限、归属校验和事务更新","command":"mvn -pl :ccb-system -am test","expected":"项目测试通过","evidence":"Maven输出"}],"acceptance_checks":["拒绝子计划移动","后代group_id同步","删除分组不删除计划"],"risks":["递归查询遗漏多层后代"],"rollback":"恢复Java和测试文件","stop_conditions":["无法验证事务更新"],"escalation_conditions":["需要新增权限码或跨模块写表"]},
+      {"id":"T3","goal":"实现计划分组树、拖拽和移动菜单","requirement_ids":["R1","R3","R4"],"prerequisites":["T2"],"input_facts":["ProjectView使用UiDataTable树形展示","移动端需避免拖拽依赖"],"files":{"create":[],"modify":["web/src/api/project.ts","web/src/types/project.ts","web/src/views/ProjectView.vue","web/src/styles.css"],"test":["web/src/views/ProjectView.vue"]},"interfaces":{"consumes":["分组REST接口"],"produces":["三级计划树和中文拖拽提示"]},"steps":[{"id":"T3-S1","action":"实现分组树与响应式操作入口","command":"npm --prefix web run build","expected":"Vite构建通过","evidence":"构建输出"}],"acceptance_checks":["桌面拖拽主计划","移动端移动菜单","新建编辑删除分组","提示文案存在"],"risks":["浏览器拖拽事件差异"],"rollback":"恢复前端四个文件并重建","stop_conditions":["移动端横向溢出或拖拽无法识别目标"],"escalation_conditions":["无法保持现有计划操作兼容"]},
+      {"id":"T4","goal":"集成验收分组持久化和授权","requirement_ids":["R1","R2","R3","R4","R5"],"prerequisites":["T3"],"input_facts":["后端和前端局部检查完成"],"files":{"create":[],"modify":["docs/requirements/REQ-20260813-030-project-plan-groups/requirement.md"],"test":["docs/requirements/REQ-20260813-030-project-plan-groups/requirement.md"]},"interfaces":{"consumes":["T1-T3产物"],"produces":["验收证据"]},"steps":[{"id":"T4-S1","action":"执行构建、测试、静态检查和浏览器流程","command":"git diff --check","expected":"所有可运行检查通过","evidence":"命令和浏览器检查记录"}],"acceptance_checks":["刷新保持","子计划不拆组","删除分组不删计划","无权限拒绝"],"risks":["本地数据库和未提交改动扰动"],"rollback":"按任务边界回退新增改动","stop_conditions":["出现跨项目写入或计划丢失"],"escalation_conditions":["外部服务或数据库不可用"]}
+    ],
+    "dependency_edges":[{"from":"T1","to":"T2","reason":"数据模型必须先于后端查询和写入"},{"from":"T2","to":"T3","reason":"前端依赖后端分组接口契约"},{"from":"T3","to":"T4","reason":"集成验收依赖完整前后端交互"}],
+    "parallel_groups":[["T1"],["T2"],["T3"],["T4"]],
+    "integration_checks":[{"after_tasks":["T1","T2","T3","T4"],"command":"mvn -pl :ccb-system -am test; npm --prefix web run build; git diff --check","expected":"后端测试、前端构建和静态检查通过"}],
+    "coverage":[{"requirement_id":"R1","task_ids":["T1","T2","T3","T4"]},{"requirement_id":"R2","task_ids":["T1","T2","T4"]},{"requirement_id":"R3","task_ids":["T1","T3","T4"]},{"requirement_id":"R4","task_ids":["T3","T4"]},{"requirement_id":"R5","task_ids":["T2","T4"]}],
+    "approval":{"status":"approved","evidence":"用户确认设计并要求开始实施","confirmed_at":"2026-08-13T00:00:00+08:00"}
+  },
+  "control_seed":{"seed_status":"hypotheses-only","plant_boundary_candidates":["项目计划分组REST和页面"],"state_variable_candidates":["group_id","分组删除状态","拖拽目标"],"interface_candidates":["ProjectController分组接口","ProjectView分组树"],"sensor_candidates":["Maven测试","Vite构建","浏览器拖拽/移动菜单","数据库group_id断言"],"actuator_candidates":["V40迁移","ProjectService事务更新","ProjectView拖拽和菜单"],"disturbance_candidates":["未提交前序改动","浏览器拖拽事件差异"],"delay_candidates":["后端刷新项目详情"],"assumptions":[{"text":"UiDataTable树表格可承载原生拖拽","basis":"现有树形计划表","falsifier":"浏览器验收失败"}]}
+}

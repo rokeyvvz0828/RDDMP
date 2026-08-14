@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "topic": "project-plan-groups",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-13-project-plan-groups-design.md",
+  "objective": "项目计划页可持久化维护项目级分组，主计划移动时全部后代计划保持同组。",
+  "users": ["项目负责人维护项目计划分组"],
+  "requirements": [
+    {"id":"R1","statement":"分组属于项目且可新建、重命名和删除，删除只将计划移入未分组。","acceptance":["分组CRUD成功且刷新保持","删除分组后计划仍存在并显示在未分组"],"priority":"must","source":"用户确认的设计","counterexample":["删除分组导致计划被删除"]},
+    {"id":"R2","statement":"主计划移动到分组时主计划和全部后代计划的分组归属在一个事务内同步更新。","acceptance":["多层子计划移动后group_id全部一致","刷新后关系不丢失"],"priority":"must","source":"用户确认的设计","counterexample":["子计划留在旧分组"]},
+    {"id":"R3","statement":"计划页面呈现分组、主计划、子计划三级层级，已有计划默认未分组。","acceptance":["分组和计划节点可区分","存量计划显示于未分组"],"priority":"must","source":"用户确认的设计","counterexample":["分组被伪装成计划父节点"]},
+    {"id":"R4","statement":"桌面端可拖动主计划进行分组，移动端提供移动到分组操作，并显示中文提示。","acceptance":["页面出现可以拖动主计划进行分组","桌面拖拽和移动端菜单均调用移动接口"],"priority":"must","source":"用户确认","counterexample":["只更新前端状态"]},
+    {"id":"R5","statement":"服务端校验租户、项目访问、计划修改权限和主计划归属。","acceptance":["跨项目、子计划和无权请求被拒绝"],"priority":"must","source":"工程约束","counterexample":["构造请求可移动其他项目计划"]}
+  ],
+  "invariants":["parent_id层级和计划编号保持不变","tenant_id边界保持","Flyway只追加V40","前端不替代后端授权"],
+  "constraints":["Spring Boot 3/JDK 17/MySQL/Flyway","Vue 3/TypeScript/Element Plus","只修改任务范围允许文件","中文界面"],
+  "non_goals":["分组嵌套","跨项目移动","新增独立权限码","重新设计计划表单"],
+  "selected_approach":{"name":"项目分组表+计划group_id","reason":"关系清晰、兼容存量、移动后代简单","alternatives":[{"name":"分组伪装计划节点","rejected_because":"污染parent_id语义"},{"name":"独立关联表","rejected_because":"单一分组关系增加约束和查询复杂度"}]},
+  "architecture":{"boundary":{"inside":["V40迁移","ProjectService/Controller","项目计划API类型","ProjectView和样式"],"outside":["其他项目模块","生产数据库","历史迁移"]},"components":[{"name":"项目分组表","responsibility":"保存项目分组","depends_on":["项目"]},{"name":"项目服务","responsibility":"权限校验和事务性移动","depends_on":["JdbcTemplate"]},{"name":"项目计划页","responsibility":"展示三级树和拖拽/菜单","depends_on":["项目API"]}],"interfaces":[{"name":"计划分组REST","producer":"ProjectController","consumers":["ProjectView"],"contract":"分组CRUD和主计划移动均校验项目权限"}],"data_flows":[{"input":"分组创建或移动请求","transitions":["认证/RBAC","项目实体授权","校验主计划和目标分组","事务更新"],"output":"刷新后的分组和计划树"}]},
+  "error_handling":[{"condition":"目标分组不属于项目","behavior":"返回中文400","recovery":"保持原分组"},{"condition":"移动子计划","behavior":"返回中文400","recovery":"要求选择主计划"},{"condition":"无修改权限","behavior":"返回403","recovery":"前端隐藏写操作并显示权限提示"}],
+  "quality_attributes":{"security":["服务端校验权限、租户和项目归属"],"performance":["单事务批量更新后代计划"],"compatibility":["group_id可空兼容存量"],"operations":["迁移只新增、可按版本回退代码"]},
+  "verification_strategy":[{"requirement_ids":["R1","R2","R5"],"signal":"后端测试和数据库断言","method":"Maven测试、本地迁移和API检查"},{"requirement_ids":["R3","R4"],"signal":"计划树、拖拽、移动菜单和中文提示","method":"前端构建和浏览器验收"}],
+  "assumptions":[{"text":"Element Plus树表格可通过原生拖拽实现桌面交互","basis":"现有ProjectView使用树形UiDataTable","falsifier":"浏览器验收无法稳定识别目标行"}],
+  "unknowns":[],
+  "decisions":[{"id":"D1","decision":"采用项目级平面分组和group_id","reason":"用户确认","source":"用户确认消息"},{"id":"D2","decision":"分组删除将计划移入未分组","reason":"避免误删计划","source":"设计复核"}],
+  "risks":[{"risk":"浏览器拖拽命中差异","impact":"桌面拖拽不稳定","mitigation":"分组行高亮并提供移动到分组菜单"}],
+  "approval":{"status":"approved","evidence":"用户确认采用项目级平面分组并添加拖拽中文提示","confirmed_at":"2026-08-13T00:00:00+08:00"}
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "control_prefix": "req-20260813-028-project-management-demo-data",
+  "phase": "executed",
+  "executed_at": "2026-08-13T09:10:28+08:00",
+  "changes": [
+    "Extended the local mock-data allowlist with project, plan, role, member, member-role, and plan-organization tables.",
+    "Added two sanitized projects with main plans, child plans, status/progress/date coverage, project roles, members, and lead/cooperating organization relations.",
+    "Updated the mock dataset version to 2026.08.13.1."
+  ],
+  "commands": [
+    {"command": "node -e JSON.parse(fs.readFileSync('mock/mock-data.json','utf8'))", "result": "passed"},
+    {"command": "git diff --check", "result": "passed; only line-ending normalization warnings were reported"},
+    {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed"},
+    {"command": "restart local backend with profile local", "result": "passed"}
+  ],
+  "scope_check": {
+    "writable_files": [
+      "mock/mock-data.json",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+      ".ai-control/requirements/req-20260813-028-project-management-demo-data/*.json"
+    ],
+    "database_migrations_changed": false,
+    "production_access": false
+  },
+  "rollback": "Restore the two mock-data files from this task and restart the local backend."
+}

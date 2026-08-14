@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "task_id": "REQ-20260811-021",
+  "task": "T1",
+  "status": "completed",
+  "changes": ["V35__project_management.sql", "single visible project menu", "hidden project CRUD permission nodes"],
+  "verification": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed: 35 migrations"},
+    {"command": "node scripts/check-module-boundaries.mjs", "result": "passed: 8 Maven modules"},
+    {"command": "git diff --check", "result": "passed"}
+  ],
+  "runtime_note": "The existing 8080 Java process was not stopped; the development database still reports V35 unapplied, so runtime Flyway execution remains pending a controlled service restart."
+}
