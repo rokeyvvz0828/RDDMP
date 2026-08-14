@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "topic": "architecture-subsystems",
+  "design_revision": 4,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-12-architecture-subsystems-design.md",
+  "objective": "在独立 business/architecture 模块内建立逻辑子系统与物理子系统的类型化、租户隔离、权限受控、关联完整且可审计的基础信息管理闭环。",
+  "users": [
+    "架构信息查看者",
+    "架构信息维护者",
+    "系统管理员"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "逻辑子系统支持分页筛选、详情、新增、编辑和软删除。",
+      "acceptance": ["创建后可在原筛选和页码重读", "详情、编辑和软删除刷新后保持一致"],
+      "priority": "must",
+      "source": "用户批准修订 3，沿用已批准 V1 范围",
+      "counterexample": ["仅实现静态页面或前端假数据", "删除执行物理删除"]
+    },
+    {
+      "id": "R2",
+      "statement": "物理子系统支持完整维护，并且每条活动记录必须关联当前租户未删除逻辑子系统。",
+      "acceptance": ["一个逻辑可关联多个物理", "普通无效父引用返回 400", "活动初检后遭并发软删除返回 409"],
+      "priority": "must",
+      "source": "用户确认父子关系和删除语义",
+      "counterexample": ["物理记录没有逻辑父记录", "只在前端校验父引用"]
+    },
+    {
+      "id": "R3",
+      "statement": "两类编号由服务端转大写并校验格式，编号和名称在租户内永久唯一。",
+      "acceptance": ["编号为 2 到 32 位且只含字母数字连字符下划线", "重复和软删除后复用返回 409"],
+      "priority": "must",
+      "source": "用户确认手工编号与永久唯一",
+      "counterexample": ["保存小写编号", "删除后可复用编号或名称"]
+    },
+    {
+      "id": "R4",
+      "statement": "所有组织、用户、参数和逻辑子系统引用必须属于当前租户并符合保存时有效性规则。",
+      "acceptance": ["跨租户或无效引用被服务端拒绝", "参数代码仅来自资源对应白名单分类"],
+      "priority": "must",
+      "source": "项目安全规则与用户确认的受控来源",
+      "counterexample": ["业务模块信任客户端选项", "保存其他租户引用"]
+    },
+    {
+      "id": "R5",
+      "statement": "被活动物理子系统引用的逻辑子系统不得删除。",
+      "acceptance": ["删除返回 409", "父子记录均保持一致", "并发后无活动物理指向已删除逻辑"],
+      "priority": "must",
+      "source": "用户确认删除保护且不级联",
+      "counterexample": ["级联删除物理记录", "留下悬挂活动引用"]
+    },
+    {
+      "id": "R6",
+      "statement": "服务端按资源和动作执行八项权限、认证租户隔离和统一操作审计。",
+      "acceptance": ["401/403 与八项权限准确", "所有查询写入限定 AuthUser.tenantId", "成功和已认证失败操作可按 trace ID 复核"],
+      "priority": "must",
+      "source": "仓库安全不变量和用户批准审计方案 1",
+      "counterexample": ["只隐藏前端按钮", "客户端指定 tenant", "失败审计覆盖原业务错误"]
+    },
+    {
+      "id": "R7",
+      "statement": "逻辑事业群、物理负责团队、人员和六类分类通过平台组织、用户和参数安全来源读取。",
+      "acceptance": ["组织和用户 ID、参数代码按租户验证", "用户选项分页且只返回安全字段", "电话读取当前用户数据而不存业务表"],
+      "priority": "must",
+      "source": "用户确认平台受控来源和分类设计不变",
+      "counterexample": ["将负责团队或用户保存为自由文本", "业务用户必须获得 system 管理权限", "选项泄露密码或对象键"]
+    },
+    {
+      "id": "R8",
+      "statement": "菜单、权限、参数和虚构 Mock 数据可自动初始化并保持幂等，且不新增动态表单元数据。",
+      "acceptance": ["空库无需人工配置目录", "重复启动和 Mock 初始化不重复", "迁移和网络没有新增 biz_form 或 form-schema 依赖"],
+      "priority": "must",
+      "source": "用户选择固定表单且最新 main 下线元数据能力",
+      "counterexample": ["上线依赖手工输入项配置", "新增 biz_form 种子或 PublishedFormSchemaQuery"]
+    },
+    {
+      "id": "R9",
+      "statement": "两个固定强类型页面在桌面与移动端完整呈现加载、空、失败、无权限、只读和提交状态。",
+      "acceptance": ["小于 760px 使用卡片", "三个手机视口无页面级横向滚动", "前端构建和控制台检查通过"],
+      "priority": "must",
+      "source": "用户批准固定表单与项目移动端准入",
+      "counterexample": ["运行时请求 schema", "手机只能整页横向滚动", "失败后没有重试入口"]
+    },
+    {
+      "id": "R10",
+      "statement": "V1 不实现系统启用、停用、状态筛选或状态变更。",
+      "acceptance": ["页面、DTO、API 和权限中没有启停用动作", "软删除不描述为停用"],
+      "priority": "must",
+      "source": "用户明确要求",
+      "counterexample": ["列表出现启停按钮", "接口接受 status 变更"]
+    },
+    {
+      "id": "R11",
+      "statement": "逻辑与物理领域代码、表、HTTP 契约和前端页面归独立 business/architecture 模块。",
+      "acceptance": ["存在 ccb-architecture 并由 Boot 装配", "前端收口于 web/src/modules/architecture", "治理和 CODEOWNERS 一致", "platform/system 没有架构领域类型或规则"],
+      "priority": "must",
+      "source": "用户明确要求代码属于 module 而非 platform",
+      "counterexample": ["在 com.ccb.system 下实现子系统服务", "平台反向依赖业务模块"]
+    },
+    {
+      "id": "R12",
+      "statement": "tenant_id 仅由认证用户注入、页面不可见且数据库无默认值；受信任本地 Mock 只使用经校验的显式租户。",
+      "acceptance": ["请求 DTO 和查询参数不声明 tenant", "客户端同名字段不能改变持久化", "新表 tenant_id 非空无 DEFAULT", "非 local 或无开关不初始化架构 Mock"],
+      "priority": "must",
+      "source": "用户批准隐藏租户方案 A",
+      "counterexample": ["常量 1 兜底", "页面显示 tenant", "Mock 缺省或未校验租户"]
+    },
+    {
+      "id": "R13",
+      "statement": "物理所属事业群为可空文本，负责团队为必选平台组织并保存服务端名称快照，物理负责人和联系人均可空。",
+      "acceptance": ["事业群空白保存为 null 且最长 100", "负责团队创建和编辑必填", "组织失效后历史用快照可读并标记失效", "下一次编辑必须重选有效团队", "负责人和联系人可以为空"],
+      "priority": "must",
+      "source": "用户 2026-08-13 至 2026-08-14 逐项确认并批准修订 3",
+      "counterexample": ["物理事业群仍保存组织 ID", "客户端提交团队名称快照", "失效团队导致详情不可读", "负责人被错误设为必填"]
+    }
+  ],
+  "invariants": [
+    "所有运行期业务查询和写入都限定 AuthUser.tenantId",
+    "编号大写且编号和名称永久唯一",
+    "物理活动记录只关联同租户活动逻辑记录",
+    "负责团队快照和电话由服务端产生",
+    "成功业务写入和成功审计同事务，失败审计独立且不覆盖原错误",
+    "不新增 biz_form 或 form-schema 运行时依赖",
+    "不修改已发布 Flyway 脚本",
+    "不实现系统启停用"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot、JdbcTemplate、MySQL 和 Flyway",
+    "Vue 3、TypeScript、Element Plus 和现有公共 UI",
+    "目标主干最高迁移必须仍为 V34，V35-V37 与稳定 ID 未被实际文件占用",
+    "只修改 codex-task-scope.yaml 的 writable_paths",
+    "platform/system 公共能力变更需 Owner 审批和回归",
+    "业务模块不得直接写平台表"
+  ],
+  "non_goals": [
+    "系统启停用和状态历史",
+    "动态表单元数据和扩展字段",
+    "自动编号、智能补全和推荐",
+    "审批、导入导出和外部同步",
+    "事业群或负责团队级行权限",
+    "跨租户共享和级联删除"
+  ],
+  "selected_approach": {
+    "name": "独立业务模块、固定强类型表单和最小平台查询/审计契约",
+    "reason": "保持领域归属清晰，满足实时平台引用和统一审计，同时遵守最新 main 的表单元数据退役规则。",
+    "alternatives": [
+      "全部放入 platform/system：违背用户明确模块归属",
+      "架构直接查询或写平台表：形成私有表耦合并绕过契约",
+      "继续使用动态 schema：违背用户决策和最新仓库规则",
+      "架构自建审计表：用户未选，且会形成第二套审计体系"
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["ccb-architecture", "architecture Vue 模块", "SystemReferenceQuery", "SystemOperationAudit", "V35-V37", "local Mock"],
+      "outside": ["动态表单元数据", "系统启停用", "审批工作流", "正式事业群主数据"]
+    },
+    "components": [
+      "ArchitectureSubsystemController",
+      "LogicalSubsystemService",
+      "PhysicalSubsystemService",
+      "ArchitectureSubsystemRepository",
+      "ArchitectureOptionsService",
+      "SystemReferenceQuery",
+      "SystemOperationAudit",
+      "逻辑/物理固定强类型 Vue 页面"
+    ],
+    "interfaces": [
+      "逻辑与物理 CRUD HTTP",
+      "按资源上下文的 organizations/users/parameters/logical-subsystems options HTTP",
+      "OrganizationService public tree",
+      "SystemReferenceQuery user/parameter public contract",
+      "SystemOperationAudit public contract"
+    ],
+    "data_flows": [
+      "JWT AuthUser -> PreAuthorize -> 业务校验 -> arch repository -> success audit -> ApiResponse",
+      "架构 options -> OrganizationService/SystemReferenceQuery -> exact safe DTO",
+      "负责团队组织 -> 服务端有效性校验和名称快照 -> 物理表",
+      "业务失败回滚 -> independent failure audit -> 原错误响应",
+      "fixed Vue form -> typed command -> architecture API"
+    ]
+  },
+  "error_handling": [
+    "无效字段和普通无效引用返回 400",
+    "未认证和无权限返回 401/403",
+    "租户内不存在/已删除和未知选项资源返回 404/code 40400",
+    "唯一冲突、删除保护和并发父状态变化返回 409",
+    "负责团队失效时读取成功但编辑必须重选",
+    "审计失败不覆盖原业务错误"
+  ],
+  "quality_attributes": {
+    "security": ["服务端 RBAC", "认证租户", "exact safe option DTO", "客户端不能提交 snapshot/phone/tenant"],
+    "performance": ["业务和用户选项服务端分页", "参数按类别加载", "父子和筛选索引"],
+    "compatibility": ["既有 system API 不变", "trace_id 可空", "OrganizationService 不修改", "固定表单不依赖存量元数据"],
+    "operations": ["trace 审计", "Flyway 连续性", "Mock 幂等", "应用回退保留表和数据"]
+  },
+  "verification_strategy": [
+    "architecture/system/infrastructure 单元和集成测试",
+    "MySQL 空库和从 V34 到 V37 的增量迁移",
+    "父子并发两事务测试",
+    "Mock profile/租户/引用/幂等测试",
+    "Maven reactor、Boot package、前端构建和治理检查",
+    "管理员/只读/无权限/tenant2 真实 API 矩阵",
+    "桌面与三个手机视口真实浏览器 UAT"
+  ],
+  "assumptions": [
+    {
+      "text": "开始实施时目标主干最高仍为 V34，当前需求可取得 V35-V37。",
+      "basis": "两次 fetch 及所有远端分支扫描均未发现 V35-V40，未实施需求已同步顺延。",
+      "falsifier": "编码或提交前目标主干出现任一 V35-V37 文件。"
+    },
+    {
+      "text": "现有 OrganizationService 可稳定提供当前租户组织树。",
+      "basis": "com.ccb.system.org 已登记为公开包且只读勘察确认 tree(AuthUser)。",
+      "falsifier": "回归或真实数据证明无法区分有效组织或路径。"
+    },
+    {
+      "text": "固定表单和交付示范公共组件足以覆盖两页面。",
+      "basis": "只读勘察确认表格/移动卡片/表单抽屉模式存在。",
+      "falsifier": "实现必须修改公共 UI 才能满足已批准交互。"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "并行 main 是否会在本需求合入前占用 V35-V37？",
+      "impact": "出现冲突时必须停止并重新分配版本。",
+      "owner": "迁移 Owner",
+      "blocking": false
+    },
+    {
+      "question": "CLI JSON 与桌面 config/cache 的插件状态能否得到一致且不可误放行的判定？",
+      "impact": "负向场景误放行会破坏编码准入。",
+      "owner": "governance Owner",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {"question": "物理事业群如何建模？", "options": ["自由文本", "平台组织", "新主数据"], "selected": "可空自由文本，最长 100", "blocking": false, "source": "用户确认"},
+    {"question": "负责团队如何建模？", "options": ["平台组织", "自由文本"], "selected": "平台组织必填并保存名称快照", "blocking": false, "source": "用户确认"},
+    {"question": "表单结构如何实现？", "options": ["固定强类型", "动态发布元数据"], "selected": "固定强类型", "blocking": false, "source": "用户确认方案 1"},
+    {"question": "审计如何实现？", "options": ["SystemOperationAudit", "arch_operation_log"], "selected": "SystemOperationAudit", "blocking": false, "source": "用户确认方案 1"}
+  ],
+  "risks": [
+    "V35-V37 可能被并行主干提交占用",
+    "development-entry 多 CLI/桌面状态兼容可能误判",
+    "公共 capability 变更需持续回归",
+    "组织失效历史与编辑规则实现偏差",
+    "父子并发和租户引用穿透",
+    "前端重新引入已退役 schema 思路"
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户批准设计修订 3 与实施，随后针对 T0 两项阻塞明确要求修复，批准修订 4 的版本重分配和开发入口兼容动作。",
+    "confirmed_at": "2026-08-14T16:03:00+08:00"
+  }
+}

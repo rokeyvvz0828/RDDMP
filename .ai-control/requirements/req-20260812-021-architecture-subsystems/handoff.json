@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "topic": "architecture-subsystems",
+  "handoff_status": "approved-for-corrective-execution",
+  "created_at": "2026-08-14T14:50:50+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "architecture-subsystems",
+    "design_revision": 4,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-12-architecture-subsystems-design.md",
+    "objective": "在独立 business/architecture 模块内建立逻辑子系统与物理子系统的类型化、租户隔离、权限受控、关联完整且可审计的基础信息管理闭环。",
+    "users": ["架构信息查看者", "架构信息维护者", "系统管理员"],
+    "requirements": [
+      {"id":"R1","statement":"逻辑子系统支持分页筛选、详情、新增、编辑和软删除。","acceptance":["创建后可在原筛选和页码重读","详情、编辑和软删除刷新后保持一致"],"priority":"must","source":"用户批准修订 3","counterexample":["仅静态页面","物理删除"]},
+      {"id":"R2","statement":"物理子系统支持完整维护，并且每条活动记录必须关联当前租户未删除逻辑子系统。","acceptance":["逻辑一对多物理","无效父引用 400","并发父删除 409"],"priority":"must","source":"用户确认父子关系","counterexample":["无父记录","仅前端校验"]},
+      {"id":"R3","statement":"两类编号由服务端转大写并校验格式，编号和名称在租户内永久唯一。","acceptance":["格式准确","重复和删除后复用 409"],"priority":"must","source":"用户确认","counterexample":["保存小写","删除后复用"]},
+      {"id":"R4","statement":"所有组织、用户、参数和逻辑引用必须属于当前租户并符合保存时有效性。","acceptance":["跨租户/无效拒绝","参数白名单"],"priority":"must","source":"安全规则和用户确认","counterexample":["信任客户端","跨租户引用"]},
+      {"id":"R5","statement":"被活动物理子系统引用的逻辑子系统不得删除。","acceptance":["409","父子一致","无悬挂活动引用"],"priority":"must","source":"用户确认","counterexample":["级联删除","悬挂引用"]},
+      {"id":"R6","statement":"服务端按资源和动作执行八项权限、认证租户隔离和统一操作审计。","acceptance":["401/403 准确","AuthUser tenant","trace 审计"],"priority":"must","source":"用户批准审计方案 1","counterexample":["仅前端权限","客户端 tenant","审计覆盖错误"]},
+      {"id":"R7","statement":"逻辑事业群、物理负责团队、人员和六类分类通过平台安全来源读取。","acceptance":["受控引用","用户分页最小字段","实时电话不落业务表"],"priority":"must","source":"用户确认","counterexample":["团队自由文本","要求 system 管理权限","泄露字段"]},
+      {"id":"R8","statement":"菜单、权限、参数和虚构 Mock 自动初始化且幂等，不新增动态表单元数据。","acceptance":["空库无需手工目录","重复不新增","无 biz_form/schema"],"priority":"must","source":"用户选择固定表单和 main 退役规则","counterexample":["依赖输入项配置","新增 PublishedFormSchemaQuery"]},
+      {"id":"R9","statement":"两个固定强类型页面在桌面与移动端完整呈现全部关键状态。","acceptance":["小屏卡片","三个手机视口无整页横滚","构建/控制台通过"],"priority":"must","source":"用户和项目准入","counterexample":["运行时 schema","手机整页横滚","失败无重试"]},
+      {"id":"R10","statement":"V1 不实现启用、停用、状态筛选或状态变更。","acceptance":["无启停动作","软删除不等于停用"],"priority":"must","source":"用户明确要求","counterexample":["启停按钮","status 请求"]},
+      {"id":"R11","statement":"领域代码、表、HTTP 和前端归独立 business/architecture。","acceptance":["ccb-architecture/Boot","前端模块","治理一致","platform 无领域类型"],"priority":"must","source":"用户明确要求","counterexample":["com.ccb.system 领域服务","平台反向依赖"]},
+      {"id":"R12","statement":"tenant_id 仅由认证用户注入、页面不可见且数据库无默认；local Mock 只用经校验显式租户。","acceptance":["请求无 tenant","客户端不能覆盖","DB 无 DEFAULT","非 local 不运行"],"priority":"must","source":"用户确认方案 A","counterexample":["常量 1","页面 tenant","Mock 缺省"]},
+      {"id":"R13","statement":"物理事业群为可空文本，负责团队必选组织并保存服务端名称快照，物理负责人和联系人均可空。","acceptance":["blank 到 null/100","团队必填","失效历史可读/编辑重选","人员可空"],"priority":"must","source":"用户批准修订 3","counterexample":["事业群组织 ID","客户端快照","失效不可读","负责人必填"]}
+    ],
+    "invariants": ["AuthUser tenant", "永久唯一", "父子租户安全", "服务端 snapshot/phone", "统一审计", "无动态 schema", "只追加 Flyway", "无启停用"],
+    "constraints": ["scope writable paths", "main 最高 V34 且 V35-V37 未实际占用", "平台 Owner/回归", "Java17/Spring/MySQL/Vue3", "业务不直接写平台表"],
+    "non_goals": ["启停用", "动态表单", "自动编号/智能", "审批/导入导出", "团队级行权限", "跨租户/级联删除"],
+    "selected_approach": {"name":"独立业务模块、固定表单、最小平台查询/审计契约","reason":"领域归属、实时平台引用、统一审计和最新 main 规则一致","alternatives":["放 platform/system","直接访问平台表","动态 schema","arch 自建审计"]},
+    "architecture": {
+      "boundary":{"inside":["ccb-architecture","architecture Vue","SystemReferenceQuery","SystemOperationAudit","V35-V37","local Mock"],"outside":["动态表单","启停用","审批","事业群主数据"]},
+      "components":["logical/physical controller/service/repository","options service","system references/audit","fixed Vue pages"],
+      "interfaces":["CRUD HTTP","options HTTP","OrganizationService","SystemReferenceQuery","SystemOperationAudit"],
+      "data_flows":["JWT->RBAC->tenant service->arch SQL->audit->response","platform references->safe options","org->team snapshot","rollback->failure audit","fixed form->typed command"]
+    },
+    "error_handling": ["400 invalid", "401 unauthenticated", "403 forbidden", "404/40400 not found", "409 unique/delete/concurrency", "invalid team reads but edit reselects", "audit failure preserves business error"],
+    "quality_attributes": {"security":["server RBAC","tenant","safe DTO"],"performance":["pagination","indexed query","lazy parameters"],"compatibility":["system API unchanged","nullable trace","no metadata dependency"],"operations":["trace audit","Flyway continuity","Mock idempotency","retain data on rollback"]},
+    "verification_strategy": ["module tests", "MySQL migrations/concurrency", "Mock tests", "Maven/Vite/governance", "real API/SQL", "four viewport browser UAT"],
+    "assumptions": [
+      {"text":"开始实施时 main 最高为 V34，当前需求可取得 V35-V37","basis":"两次 fetch 和所有远端分支扫描","falsifier":"编码或提交前出现实际冲突文件"},
+      {"text":"OrganizationService 可复用","basis":"公开包和代码勘察","falsifier":"不能提供有效组织路径"},
+      {"text":"公共 UI 足以实现固定页面","basis":"delivery showcase 模式","falsifier":"必须改公共 UI"}
+    ],
+    "unknowns": [
+      {"question":"并行 main 是否会占用 V35-V37","impact":"冲突时重新分配","owner":"迁移 Owner","blocking":false},
+      {"question":"入口兼容是否同时通过正负向验证","impact":"误放行破坏准入","owner":"governance Owner","blocking":false}
+    ],
+    "decisions": [
+      {"question":"物理事业群","options":["文本","组织","新主数据"],"selected":"可空文本","blocking":false,"source":"用户"},
+      {"question":"负责团队","options":["组织","文本"],"selected":"组织必填+快照","blocking":false,"source":"用户"},
+      {"question":"表单","options":["固定","动态"],"selected":"固定","blocking":false,"source":"用户"},
+      {"question":"审计","options":["SystemOperationAudit","arch log"],"selected":"SystemOperationAudit","blocking":false,"source":"用户"}
+    ],
+    "risks": ["迁移并行占用", "CLI/桌面插件误判", "Owner/scope", "团队失效语义", "父子并发", "schema 回流"],
+    "approval": {"status":"approved","evidence":"用户于 2026-08-14 确认审计方案 1 并批准设计修订 3。","confirmed_at":"2026-08-14T14:50:50+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 3,
+    "human_document": "docs/engineering-control/plans/2026-08-13-architecture-subsystems-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["scope only", "hard T0 gates", "main highest V34/V35-V37 free", "fixed forms/no schema", "AuthUser tenant", "no enable/disable", "small commits"],
+    "file_map": [
+      {"path":"server/src/modules/architecture/**","status":"candidate-new","responsibility":"architecture backend module","evidence":"approved design"},
+      {"path":"web/src/modules/architecture/**","status":"candidate-new","responsibility":"typed architecture pages","evidence":"approved design"},
+      {"path":"server/src/platform/system/src/main/java/com/ccb/system/capability/**","status":"candidate-new","responsibility":"safe references and audit public contract","evidence":"approved platform boundary"},
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql","status":"candidate-new","responsibility":"nullable audit trace","evidence":"migration allocation"},
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql","status":"candidate-new","responsibility":"architecture tables","evidence":"approved data design"},
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql","status":"candidate-new","responsibility":"catalog seeds","evidence":"approved initialization"},
+      {"path":"mock/mock-data.json","status":"existing","responsibility":"local demo dataset","evidence":"mock contract"},
+      {"path":"pom.xml","status":"existing","responsibility":"reactor and dependency management","evidence":"repository inspection"},
+      {"path":"server/src/platform/boot/pom.xml","status":"existing","responsibility":"runtime composition","evidence":"repository inspection"},
+      {"path":"governance/modules.yaml","status":"existing","responsibility":"module graph","evidence":"repository instructions"},
+      {"path":"web/src/router/index.ts","status":"existing","responsibility":"static routes","evidence":"frontend inspection"}
+    ],
+    "tasks": [
+      {"id":"T0","goal":"repair entry compatibility and allocate contiguous migrations","requirement_ids":["R8","R11"],"prerequisites":[],"input_facts":["CLI/desktop plugin discovery differs; main highest V34; scope fields approved; branch corrected"],"files":{"create":[],"modify":["scripts/check-development-entry.mjs","current and affected unimplemented requirement version documents"],"test":["current prefix execution/observation"]},"interfaces":{"consumes":["origin/main/scope/CLI/config/cache"],"produces":["execution-ready evidence"]},"steps":[{"id":"T0-S1","action":"repair and verify entry positive/negative paths, scope approval, branch, main highest V34, V35-V37 and IDs free","command":"node scripts/check-development-entry.mjs --require-plugin","expected":"entry passes without false-positive; migration allocation is conflict-free","evidence":"exit codes, scope values, file and ID scans"}],"acceptance_checks":["entry positive/negative, approval fields, branch, migration slots and IDs green"],"risks":["parallel main and plugin-state drift"],"rollback":"revert script and unlanded version documents","stop_conditions":["negative entry false-positive","main occupies V35-V37","any gate fails"],"escalation_conditions":["published migration or secret config access required"]},
+      {"id":"T1","goal":"register module and composition","requirement_ids":["R11"],"prerequisites":["T0"],"input_facts":["explicit Maven/modules graph"],"files":{"create":["server/src/modules/architecture/pom.xml","server/src/modules/architecture/AGENTS.md"],"modify":["pom.xml","server/src/platform/boot/pom.xml","governance/modules.yaml","docs/architecture/MODULES.md",".github/CODEOWNERS"],"test":[]},"interfaces":{"consumes":["existing artifacts"],"produces":["ccb-architecture and governance boundary"]},"steps":[{"id":"T1-S1","action":"register and verify module","command":"node scripts/check-module-boundaries.mjs","expected":"business/architecture recognized","evidence":"Maven/governance outputs"},{"id":"T1-S2","action":"run full scope check after module registration","command":"node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260812-021-architecture-subsystems/codex-task-scope.yaml --base origin/main --head HEAD --working-tree","expected":"scope check passes before T2","evidence":"scope checker exit code 0"}],"acceptance_checks":["reactor parses","no reverse dependency","full scope check passes"],"risks":["module graph"],"rollback":"revert T1 commit","stop_conditions":["shared changes needed","full scope check fails"],"escalation_conditions":["validator or Owner mismatch"]},
+      {"id":"T2","goal":"safe references/audit and V35","requirement_ids":["R4","R6","R7"],"prerequisites":["T1"],"input_facts":["platform tables/operation log inspected"],"files":{"create":["system capability/internal classes and tests","V35"],"modify":[],"test":["system capability tests"]},"interfaces":{"consumes":["AuthUser/PageQuery"],"produces":["SystemReferenceQuery","SystemOperationAudit"]},"steps":[{"id":"T2-S1","action":"test-first implement contracts and V35","command":"mvn -pl :ccb-system -am test","expected":"0 failures and old log compatible","evidence":"tests and schema"}],"acceptance_checks":["tenant-safe references","audit semantics"],"risks":["public contract"],"rollback":"consumer-first Java revert, keep V35","stop_conditions":["V35 collision or system regression"],"escalation_conditions":["larger public package needed"]},
+      {"id":"T3","goal":"V36/model/repository","requirement_ids":["R1","R2","R3","R5","R12","R13"],"prerequisites":["T2"],"input_facts":["frozen table contract"],"files":{"create":["V36","architecture model/repository/tests"],"modify":[],"test":["MySQL migration/repository tests"]},"interfaces":{"consumes":["V35/module"],"produces":["tenant repository and tables"]},"steps":[{"id":"T3-S1","action":"implement migration and repository test-first","command":"mvn -pl :ccb-architecture -am test","expected":"V36 and repository checks pass","evidence":"MySQL output"}],"acceptance_checks":["constraints and filters exact"],"risks":["migration"],"rollback":"revert Java, keep V36","stop_conditions":["migration discontinuity"],"escalation_conditions":["field/rule change"]},
+      {"id":"T4","goal":"logical CRUD","requirement_ids":["R1","R3","R4","R6","R7","R12"],"prerequisites":["T3"],"input_facts":["references/audit/repository ready"],"files":{"create":["logical service/controller/tests","not-found advice"],"modify":["repository"],"test":["logical service/MockMvc"]},"interfaces":{"consumes":["platform contracts/repository"],"produces":["logical CRUD HTTP"]},"steps":[{"id":"T4-S1","action":"test-first logical use cases","command":"mvn -pl :ccb-architecture -am test","expected":"CRUD/security/audit pass","evidence":"JUnit/MockMvc"}],"acceptance_checks":["typed CRUD and errors"],"risks":["transaction/audit"],"rollback":"revert T4","stop_conditions":["scope external dependency"],"escalation_conditions":["field/error change"]},
+      {"id":"T5","goal":"physical CRUD/team/parent lock","requirement_ids":["R2","R3","R4","R5","R6","R7","R12","R13"],"prerequisites":["T4"],"input_facts":["physical contract and parent lock frozen"],"files":{"create":["physical service/controller/tests/concurrency test"],"modify":["repository","logical service"],"test":["physical service/MockMvc/MySQL"]},"interfaces":{"consumes":["logical parent/platform refs"],"produces":["physical CRUD and team validity"]},"steps":[{"id":"T5-S1","action":"test-first fields, snapshot and lock order","command":"mvn -pl :ccb-architecture -am test","expected":"two concurrency orders and field semantics pass","evidence":"JUnit/MySQL final state"}],"acceptance_checks":["invalid team readable/edit blocked","no dangling parent"],"risks":["locks/history"],"rollback":"revert T5, keep data","stop_conditions":["lock or snapshot mismatch"],"escalation_conditions":["new org history behavior"]},
+      {"id":"T6","goal":"safe options and contract","requirement_ids":["R4","R6","R7"],"prerequisites":["T5"],"input_facts":["final resource DTOs"],"files":{"create":["option DTO/service/controller/tests","architecture contract"],"modify":[],"test":["options MockMvc"]},"interfaces":{"consumes":["OrganizationService/SystemReferenceQuery/logical repository"],"produces":["four option endpoints"]},"steps":[{"id":"T6-S1","action":"implement exact-key options","command":"mvn -pl :ccb-architecture -am test","expected":"exact DTO/permission/error pass","evidence":"JSONPath"}],"acceptance_checks":["no system admin permission","no schema"] ,"risks":["field leakage"],"rollback":"revert T6","stop_conditions":["OrganizationService modification needed"],"escalation_conditions":["new paging contract needed"]},
+      {"id":"T7","goal":"V37 catalog","requirement_ids":["R6","R7","R8","R10"],"prerequisites":["T3"],"input_facts":["stable IDs"],"files":{"create":["V37","catalog migration test"],"modify":[],"test":["catalog MySQL test"]},"interfaces":{"consumes":["V36"],"produces":["menus/permissions/parameters"]},"steps":[{"id":"T7-S1","action":"seed and test exact counts","command":"node scripts/check-flyway-migrations.mjs","expected":"V37 continuous and no metadata/status seeds","evidence":"SQL/MySQL counts"}],"acceptance_checks":["3/8/6/6 counts"],"risks":["ID collision"],"rollback":"keep V37, future compensation","stop_conditions":["ID occupied"],"escalation_conditions":["multi-tenant seed requested"]},
+      {"id":"T8","goal":"local Mock","requirement_ids":["R8","R12","R13"],"prerequisites":["T3","T7"],"input_facts":["unified Mock initializer"],"files":{"create":[],"modify":["MockDataInitializer.java","MockDataInitializerTest.java","mock-data.json"],"test":["Mock tests"]},"interfaces":{"consumes":["arch tables/catalog"],"produces":["explicit-tenant fictional dataset"]},"steps":[{"id":"T8-S1","action":"validate tenant/refs/idempotency","command":"mvn -pl :ccb-infrastructure -am test","expected":"positive and negative Mock tests pass","evidence":"tests/JSON"}],"acceptance_checks":["local-only and atomic"],"risks":["initializer coupling"],"rollback":"revert mock files","stop_conditions":["real data or production needed"],"escalation_conditions":["mock contract change"]},
+      {"id":"T9","goal":"fixed typed Vue pages","requirement_ids":["R1","R2","R7","R9","R10","R13"],"prerequisites":["T6"],"input_facts":["showcase patterns and final HTTP contract"],"files":{"create":["web/src/modules/architecture/**"],"modify":["web/src/router/index.ts"],"test":[]},"interfaces":{"consumes":["CRUD/options"],"produces":["two static routes/pages"]},"steps":[{"id":"T9-S1","action":"implement typed selectors/forms/pages responsive","command":"npm --prefix web run build","expected":"build passes and source has no schema/tenant/status actions","evidence":"build/source/browser"}],"acceptance_checks":["team invalid state","full states","four viewports"] ,"risks":["async/overflow"],"rollback":"revert T9","stop_conditions":["shared frontend change needed"],"escalation_conditions":["dynamic field or UI exception"]},
+      {"id":"T10","goal":"full integration and convergence","requirement_ids":["R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13"],"prerequisites":["T2","T4","T5","T6","T7","T8","T9"],"input_facts":["all local tasks complete"],"files":{"create":["current prefix execution/observation/convergence"],"modify":[],"test":[]},"interfaces":{"consumes":["implementation/MySQL/Boot/browser"],"produces":["R1-R13 evidence and gate"]},"steps":[{"id":"T10-S1","action":"run automation, real migration/API/SQL/browser and three samples","command":"mvn test","expected":"all must and gate pass","evidence":"commands/HTTP/SQL/screenshots/control"}],"acceptance_checks":["full regression and convergence"],"risks":["environment/external baseline"],"rollback":"reverse T9 to T1, keep data","stop_conditions":["P0/P1 or production access"],"escalation_conditions":["destructive rollback or incompatible public change"]}
+    ],
+    "dependency_edges": [
+      {"from":"T0","to":"T1","reason":"gates"},{"from":"T1","to":"T2","reason":"module/public package"},{"from":"T2","to":"T3","reason":"V35/contracts"},{"from":"T3","to":"T4","reason":"persistence"},{"from":"T4","to":"T5","reason":"shared parent service"},{"from":"T5","to":"T6","reason":"final resources"},{"from":"T3","to":"T7","reason":"V37 after V36"},{"from":"T3","to":"T8","reason":"Mock tables"},{"from":"T7","to":"T8","reason":"Mock catalog"},{"from":"T6","to":"T9","reason":"HTTP contract"},{"from":"T2","to":"T10","reason":"platform integration"},{"from":"T4","to":"T10","reason":"logical"},{"from":"T5","to":"T10","reason":"physical"},{"from":"T6","to":"T10","reason":"options"},{"from":"T7","to":"T10","reason":"catalog"},{"from":"T8","to":"T10","reason":"Mock"},{"from":"T9","to":"T10","reason":"frontend"}
+    ],
+    "parallel_groups": [["T4","T7"]],
+    "integration_checks": [
+      {"after_tasks":["T0"],"command":"node scripts/check-development-entry.mjs --require-plugin","expected":"all gates green"},
+      {"after_tasks":["T1"],"command":"node scripts/check-module-boundaries.mjs","expected":"new module valid"},
+      {"after_tasks":["T1"],"command":"node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260812-021-architecture-subsystems/codex-task-scope.yaml --base origin/main --head HEAD --working-tree","expected":"full scope check passes after module registration"},
+      {"after_tasks":["T2"],"command":"mvn -pl :ccb-system -am test","expected":"0 failures"},
+      {"after_tasks":["T3","T7"],"command":"mvn -pl :ccb-architecture -am test","expected":"V36-V37 MySQL tests pass"},
+      {"after_tasks":["T4","T5","T6"],"command":"mvn -pl :ccb-architecture -am test","expected":"CRUD/concurrency/options pass"},
+      {"after_tasks":["T8"],"command":"mvn -pl :ccb-infrastructure -am test","expected":"Mock pass"},
+      {"after_tasks":["T9"],"command":"npm --prefix web run build","expected":"typed production build"},
+      {"after_tasks":["T10"],"command":"mvn test","expected":"full tests and external evidence pass"}
+    ],
+    "coverage": [
+      {"requirement_id":"R1","task_ids":["T3","T4","T9","T10"]},{"requirement_id":"R2","task_ids":["T3","T5","T9","T10"]},{"requirement_id":"R3","task_ids":["T3","T4","T5","T10"]},{"requirement_id":"R4","task_ids":["T2","T4","T5","T6","T10"]},{"requirement_id":"R5","task_ids":["T3","T5","T10"]},{"requirement_id":"R6","task_ids":["T2","T4","T5","T6","T7","T10"]},{"requirement_id":"R7","task_ids":["T2","T4","T5","T6","T7","T9","T10"]},{"requirement_id":"R8","task_ids":["T0","T7","T8","T10"]},{"requirement_id":"R9","task_ids":["T9","T10"]},{"requirement_id":"R10","task_ids":["T7","T9","T10"]},{"requirement_id":"R11","task_ids":["T0","T1","T10"]},{"requirement_id":"R12","task_ids":["T3","T4","T5","T8","T10"]},{"requirement_id":"R13","task_ids":["T3","T5","T8","T9","T10"]}
+    ],
+    "approval": {"status":"approved","evidence":"用户批准进入开发，随后明确要求修复 T0 的开发入口与迁移前置阻塞，批准计划修订 3。","confirmed_at":"2026-08-14T16:03:00+08:00"}
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["architecture Maven/Vue","system reference/audit","V35-V37","local Mock","static routes"],
+    "state_variable_candidates": ["logical/physical state","parent lock","team validity","permission/tenant/audit","migration","page async state"],
+    "interface_candidates": ["CRUD","options","OrganizationService","SystemReferenceQuery","SystemOperationAudit","composite FK","fixed form DTO"],
+    "sensor_candidates": ["JUnit/Mockito/MockMvc","Testcontainers MySQL/Flyway","Maven/Vite","governance/scope","real HTTP/SQL","browser Network/Console/screenshots"],
+    "actuator_candidates": ["scoped Java/SQL/Vue/Mock/composition/governance changes","small commits"],
+    "disturbance_candidates": ["V35-V37 parallel allocation","CLI/desktop plugin discovery","Owner/scope/branch","Docker/Maven/npm","parallel main changes"],
+    "delay_candidates": ["full Maven/Testcontainers","organization later invalid","async selectors","browser UAT"],
+    "assumptions": [
+      {"text":"main remains at V34 until this branch creates V35-V37","basis":"latest main and remote branch scan","falsifier":"target main gains a conflicting migration"},
+      {"text":"OrganizationService reusable","basis":"public code inspection","falsifier":"cannot supply valid hierarchy"},
+      {"text":"fixed pages fit shared UI","basis":"showcase inspection","falsifier":"shared UI change required"}
+    ]
+  }
+}

@@ -157,7 +157,7 @@ ccb-release
 - 前端业务模块：`web/src/modules/release/**`
 - 前端路由：`web/src/router/index.ts`
 - Maven 聚合与启动装配：根 `pom.xml`、`server/src/platform/boot/pom.xml`
-- 新增 Flyway 迁移：`V37__release_management.sql`；`V35/V36` 由前置平台业务集成需求使用
+- 新增 Flyway 迁移：`V40__release_management.sql`；`V35—V37` 由先实施的架构子系统需求使用，`V38/V39` 由前置平台业务集成需求使用
 - 模块治理登记：`governance/modules.yaml`、`docs/architecture/MODULES.md`、`.github/CODEOWNERS`
 - 本需求的实施计划和工程控制证据
 

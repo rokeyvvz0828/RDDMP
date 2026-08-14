@@ -1,0 +1,118 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-2",
+  "tasks": [
+    {
+      "id":"T0","goal":"修复开发入口兼容、确认 Owner/scope/分支并分配连续 V35-V37","requirement_ids":["R8","R11"],"prerequisites":[],
+      "input_facts":["CLI JSON 与桌面 config/cache 的插件状态来源不同","scope/Owner 已获批准","origin/main 与所有远端分支最高为 V34","当前分支符合 scope"],
+      "write_scope":["scripts/check-development-entry.mjs","当前需求/设计/计划/scope","两个未实施前置需求的精确迁移版本文档",".ai-control/requirements/req-20260812-021-architecture-subsystems/*.json"],
+      "invariants":["不修改产品代码","不覆盖未跟踪设计文件"],"interface_contracts":["所有硬门禁均以退出码或目标主干文件清单证明"],"non_goals":["不在本任务修复 scope 外 governance 脚本","不实施迁移"],
+      "action_bounds":["最小修复入口脚本、同步未落地迁移版本文档、只读刷新主干和扫描 ID"],"acceptance_checks":["development-entry 正向退出 0 且负向不误放行","scope 解锁字段与 Owner 通过","origin/main 最高 V34 且 V35-V37/ID 空闲","分支一致"],"evidence_required":["git/status/rev-list 输出","入口正负向结果与 scope 字段值","迁移及 ID 扫描"],
+      "rollback":"回退脚本兼容与版本文档重分配，不删除任何已发布迁移","stop_conditions":["入口负向误放行","主干实际占用 V35-V37","用户工作存在覆盖风险"],"escalation_conditions":["需要修改 shared/security、已发布迁移或重新分配 ID"]
+    },
+    {
+      "id":"T1","goal":"建立 ccb-architecture 装配和治理边界","requirement_ids":["R11"],"prerequisites":["T0"],
+      "input_facts":["根 POM/Boot 使用显式模块列表","modules.yaml 当前没有 business/architecture","CODEOWNERS 当前只登记 AI 业务模块"],
+      "write_scope":["server/src/modules/architecture/pom.xml","server/src/modules/architecture/AGENTS.md","pom.xml","server/src/platform/boot/pom.xml","governance/modules.yaml","docs/architecture/MODULES.md",".github/CODEOWNERS"],
+      "invariants":["platform/shared 不反向依赖 architecture","保留现有模块和包名"],"interface_contracts":["ccb-architecture 依赖 common/infrastructure/security/system","com.ccb.system.capability 是 system 唯一新增公开包"],"non_goals":["不实现领域逻辑","不改公共 UI"],
+      "action_bounds":["仅装配、所有权和空模块定义"],"acceptance_checks":["Maven 可解析 ccb-architecture","governance/module-boundaries 识别新模块","无反向依赖"],"evidence_required":["实际 diff","Maven/治理/边界/范围退出码"],
+      "rollback":"回退 T1 提交并删除空模块登记","stop_conditions":["需要重排现有模块或修改共享包"],"escalation_conditions":["模块校验器不支持或 Owner 不一致"]
+    },
+    {
+      "id":"T2","goal":"交付安全用户/参数查询、统一审计和 V35","requirement_ids":["R4","R6","R7"],"prerequisites":["T1"],
+      "input_facts":["sys_user 已有 mobile_phone/status/deleted/tenant_id","sys_config/sys_dict_type 承载参数","sys_operation_log 当前无 trace_id且既有 INSERT 省略新列"],
+      "write_scope":["server/src/platform/system/src/main/java/com/ccb/system/capability/**","server/src/platform/system/src/main/java/com/ccb/system/internal/capability/**","server/src/platform/system/src/test/java/com/ccb/system/capability/**","server/src/platform/system/src/test/java/com/ccb/system/internal/capability/**","server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql"],
+      "invariants":["公开类型无 architecture 语义","用户/参数全部租户限定","trace_id 可空且旧写入兼容"],"interface_contracts":["SystemReferenceQuery typed user/parameter records","SystemOperationAudit success required/failure REQUIRES_NEW"],"non_goals":["不修改 SystemService/SystemController/OrganizationService","不提供 form schema"],
+      "action_bounds":["只增加两个最小公开契约和私有 JdbcTemplate 实现","V35 只增加 trace 列与索引"],"acceptance_checks":["聚焦与 system 全测通过","exact safe reference 字段","成功/失败审计事务语义","旧日志写入回归"],"evidence_required":["diff","JUnit 结果","V35 information_schema/兼容证据"],
+      "rollback":"先回退消费者再回退 Java；保留 V35 可空列","stop_conditions":["主干出现冲突 V35","需要修改 scope 外平台代码","现有日志回归"],"escalation_conditions":["需扩大公开包或无法表达审计事务"]
+    },
+    {
+      "id":"T3","goal":"建立 V36 数据模型、仓储和 MySQL 传感器","requirement_ids":["R1","R2","R3","R5","R12","R13"],"prerequisites":["T2"],
+      "input_facts":["V36 字段和组合父外键已由设计冻结","new module POM 可承载 Testcontainers test 依赖"],
+      "write_scope":["server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql","server/src/modules/architecture/src/main/java/com/ccb/architecture/model/**","server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/**"],
+      "invariants":["tenant 无默认","永久唯一不含 deleted","仓储只访问 arch 表","命令无 tenant/phone/snapshot/status"],"interface_contracts":["tenant-explicit repository","tenant-safe physical logical composite FK"],"non_goals":["不实现 HTTP/前端","不增加平台表外键"],
+      "action_bounds":["V36、强类型 model 和 repository 最小实现"],"acceptance_checks":["空库/从 V35 增量迁移 V36","可空性/唯一/外键/索引准确","租户分页和软删除 SQL 测试"],"evidence_required":["MySQL 测试输出","information_schema 断言","diff"],
+      "rollback":"回退 Java并保留 V36 表","stop_conditions":["迁移不连续","约束无法表达","需改 scope 外测试基础设施"],"escalation_conditions":["必须改变字段、永久唯一或父关系"]
+    },
+    {
+      "id":"T4","goal":"交付逻辑子系统 CRUD、权限、租户和审计","requirement_ids":["R1","R3","R4","R6","R7","R12"],"prerequisites":["T3"],
+      "input_facts":["JWT 已将权限码写入 GrantedAuthority","OrganizationService.tree 按 tenant/deleted 返回组织","T2 提供 references/audit"],
+      "write_scope":["server/src/modules/architecture/src/main/java/com/ccb/architecture/service/LogicalSubsystemService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/LogicalSubsystemController.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureNotFoundException.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureExceptionAdvice.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/service/LogicalSubsystemServiceTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/web/LogicalSubsystemControllerTest.java"],
+      "invariants":["固定四权限","AuthUser tenant","success 同事务/failure 独立","局部 Advice 不改其他错误"],"interface_contracts":["logical CRUD typed ApiResponse/PageResult"],"non_goals":["不实现物理或 options 页面"],
+      "action_bounds":["逻辑服务、控制器、仓储增量和直接测试"],"acceptance_checks":["CRUD/筛选/软删除","400/401/403/404/409","引用、tenant、unique 和 audit"],"evidence_required":["service/MockMvc/system 回归","diff 和提交哈希"],
+      "rollback":"回退 T4 提交并保留 V36 数据","stop_conditions":["需 SystemController 或前端参与服务校验","失败审计覆盖原错误"],"escalation_conditions":["逻辑字段或错误语义需改变"]
+    },
+    {
+      "id":"T5","goal":"交付物理字段、团队快照、父锁和 CRUD","requirement_ids":["R2","R3","R4","R5","R6","R7","R12","R13"],"prerequisites":["T4"],
+      "input_facts":["物理 command 字段和可空性已冻结","OrganizationService 提供组织当前名/status","repository 可锁父记录"],
+      "write_scope":["server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/PhysicalSubsystemController.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/service/LogicalSubsystemService.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/service/PhysicalSubsystemServiceTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/service/PhysicalSubsystemConcurrencyMySqlTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/web/PhysicalSubsystemControllerTest.java"],
+      "invariants":["事业群 blank=null","团队必填且 snapshot 服务端生成","owner/contact 可空","父先物理后锁序"],"interface_contracts":["physical typed CRUD with responsibleTeamValid/displayName and live contact phone"],"non_goals":["不自动替换失效团队","不存电话"],
+      "action_bounds":["物理服务/控制器及父锁所需最小共享仓储修改"],"acceptance_checks":["字段可空性和 snapshot","组织失效可读/编辑重选","父锁两时序 409","无悬挂引用"],"evidence_required":["service/MockMvc/MySQL concurrency 输出","最终 SQL 状态","diff"],
+      "rollback":"回退 T5 提交，保留 V36 数据和快照","stop_conditions":["快照语义无法实现","并发测试不稳定","需弱化 tenant/active"],"escalation_conditions":["要求失效组织自动替换或允许原值保存"]
+    },
+    {
+      "id":"T6","goal":"交付最小选项 API 和架构模块契约","requirement_ids":["R4","R6","R7"],"prerequisites":["T5"],
+      "input_facts":["T2 references 已冻结","逻辑/物理 list 权限已存在","OrganizationService 可压平组织树"],
+      "write_scope":["server/src/modules/architecture/src/main/java/com/ccb/architecture/model/OrganizationOption.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/model/UserOption.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/model/ParameterOption.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/model/LogicalSubsystemOption.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitectureOptionsControllerTest.java","docs/integration/architecture-module-contract.md"],
+      "invariants":["资源上下文固定权限","exact safe DTO","无 schema API"],"interface_contracts":["organizations/users/parameters/logical-subsystems endpoints and exact keys"],"non_goals":["不修改 OrganizationService","不提供 system 管理 API 代理"],
+      "action_bounds":["只实现四类选项、权限/错误白名单和契约文档"],"acceptance_checks":["exact-key/null/分页 JSONPath","资源上下文 400/403/40400","业务用户无需 system 管理权限","无 schema source/network"],"evidence_required":["MockMvc/system 回归","contract diff"],
+      "rollback":"回退 T6 API/文档，保留 CRUD","stop_conditions":["必须泄露管理字段或修改 OrganizationService"],"escalation_conditions":["需新增组织分页平台契约或 scope 外索引"]
+    },
+    {
+      "id":"T7","goal":"初始化 V37 菜单、权限和六类参数","requirement_ids":["R6","R7","R8","R10"],"prerequisites":["T3"],
+      "input_facts":["菜单/权限/参数稳定 ID 已冻结","V37 不写 biz_form"],
+      "write_scope":["server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql","server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureCatalogMigrationMySqlTest.java"],
+      "invariants":["只授权超级管理员","无启停/元数据 seed","显式 tenant 1 仅用于初始目录"],"interface_contracts":["3 menus/8 permissions/6 categories/6 initial options"],"non_goals":["不复制到未来租户","不创建业务记录"],
+      "action_bounds":["V37 和精确迁移计数测试"],"acceptance_checks":["V36->V37 计数和授权准确","ID 不冲突","SQL 无 biz_form/status action"],"evidence_required":["MySQL migration 输出","SQL 负向 scan","diff"],
+      "rollback":"保留 V37；入口关闭用补偿迁移","stop_conditions":["ID 占用或迁移不连续"],"escalation_conditions":["需要多租户目录复制或扩展参数清单"]
+    },
+    {
+      "id":"T8","goal":"交付受限 local Mock 数据","requirement_ids":["R8","R12","R13"],"prerequisites":["T3","T7"],
+      "input_facts":["统一 MockDataInitializer 已有 allowlist/upsert","contract 要求 local+enabled 和显式 tenant"],
+      "write_scope":["server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java","server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java","mock/mock-data.json"],
+      "invariants":["非 local 不运行","不补 tenant/snapshot","不含真实数据","失败整体回滚"],"interface_contracts":["two arch table allowlists and explicit-tenant dataset"],"non_goals":["不用于生产 seed","不清理本地人工数据"],
+      "action_bounds":["扩展白名单、引用验证、单测和虚构数据"],"acceptance_checks":["tenant/root/ref/team negative cases","重复幂等","非 local/disabled"],"evidence_required":["infrastructure test 输出","JSON parse/row counts","diff"],
+      "rollback":"回退 Mock 代码/JSON，开发库可重建","stop_conditions":["需生产连接、真实数据或无法单事务"],"escalation_conditions":["需修改 Mock 契约或正式 seed 通道"]
+    },
+    {
+      "id":"T9","goal":"交付两个固定强类型 Vue 页面","requirement_ids":["R1","R2","R7","R9","R10","R13"],"prerequisites":["T6"],
+      "input_facts":["delivery showcase 有桌面表格/移动卡片/FormDrawer","公共 UI 和 authStore 可复用","HTTP DTO 已由 T4-T6 冻结"],
+      "write_scope":["web/src/modules/architecture/**","web/src/router/index.ts"],
+      "invariants":["无 schema/tenant/status payload","固定 TypeScript/FormRules","<760 card","权限显隐不替代后端"],"interface_contracts":["typed CRUD/options API","two exact static routes"],"non_goals":["不修改公共 UI/http/auth/package","不实现动态字段"],
+      "action_bounds":["architecture 前端模块和两条路由"],"acceptance_checks":["npm build","三个选择器处理过期响应","团队失效重选","全状态/脏表单/409","四视口无横滚"],"evidence_required":["build/source scan","browser screenshots/Network/Console/scrollWidth","diff"],
+      "rollback":"回退 T9 提交并移除路由","stop_conditions":["需公共前端修改","后端 DTO 漂移","业务 CSS 无法消除横滚"],"escalation_conditions":["需要动态字段、公共组件或移动端例外"]
+    },
+    {
+      "id":"T10","goal":"完成全量集成、真实 API、浏览器 UAT 和收敛","requirement_ids":["R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13"],"prerequisites":["T2","T4","T5","T6","T7","T8","T9"],
+      "input_facts":["全部实现和局部证据可用","high-assurance 要求至少三次采样和异质传感器"],
+      "write_scope":[".ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T*.json",".ai-control/requirements/req-20260812-021-architecture-subsystems/observation-T*.json",".ai-control/requirements/req-20260812-021-architecture-subsystems/convergence.json"],
+      "invariants":["未执行验证不描述为通过","P0/P1 不带入交付","不访问生产"],"interface_contracts":["R1-R13 evidence matrix and control gate"],"non_goals":["不自行批准/合并/发布"],
+      "action_bounds":["全量传感器、真实本地栈、scope 内纠偏和当前前缀证据"],"acceptance_checks":["全自动门禁","空库/增量 V37","真实 Boot/API/SQL","四视口 UAT","三次采样和收敛 gate"],"evidence_required":["命令/退出码/测试数","脱敏 HTTP/SQL/audit","截图/Network/Console","feedback/convergence"],
+      "rollback":"按 T9 到 T1 逆序回退应用，保留 V35-V37/业务/审计","stop_conditions":["安全/租户/父子/迁移 P0/P1","环境无等价证据","需要生产访问"],"escalation_conditions":["回退需删生产数据","公共契约必须破坏兼容","外部治理基线无法关闭"]
+    }
+  ],
+  "dependency_edges": [
+    {"from":"T0","to":"T1","reason":"执行前门禁"},{"from":"T1","to":"T2","reason":"公开包和模块登记"},{"from":"T2","to":"T3","reason":"V35 和模块依赖先稳定"},{"from":"T3","to":"T4","reason":"逻辑服务依赖表和仓储"},{"from":"T4","to":"T5","reason":"物理和删除保护共享父仓储"},{"from":"T5","to":"T6","reason":"选项消费稳定资源 DTO"},{"from":"T3","to":"T7","reason":"V37 依赖 V36"},{"from":"T3","to":"T8","reason":"Mock 依赖业务表"},{"from":"T7","to":"T8","reason":"Mock 依赖目录参数"},{"from":"T6","to":"T9","reason":"页面消费最终 HTTP 契约"},{"from":"T2","to":"T10","reason":"集成需平台契约"},{"from":"T4","to":"T10","reason":"集成需逻辑 CRUD"},{"from":"T5","to":"T10","reason":"集成需物理/并发"},{"from":"T6","to":"T10","reason":"集成需 options"},{"from":"T7","to":"T10","reason":"集成需 catalog"},{"from":"T8","to":"T10","reason":"集成需 Mock"},{"from":"T9","to":"T10","reason":"集成需页面"}
+  ],
+  "parallel_groups": [["T4","T7"]],
+  "integration_points": [
+    {"after_tasks":["T0"],"checks":["development-entry 正负向/scope/branch/main最高V34且V35-V37空闲"]},
+    {"after_tasks":["T1"],"checks":["Maven/governance/module-boundaries/full scope check"]},
+    {"after_tasks":["T2"],"checks":["system tests/V35/旧日志兼容"]},
+    {"after_tasks":["T3"],"checks":["V36 MySQL/repository"]},
+    {"after_tasks":["T4","T5"],"checks":["architecture CRUD/concurrency/audit"]},
+    {"after_tasks":["T6","T7"],"checks":["options exact-key/V37 counts/no schema"]},
+    {"after_tasks":["T8"],"checks":["infrastructure Mock profile/tenant/refs/idempotency"]},
+    {"after_tasks":["T9"],"checks":["frontend build/browser smoke"]},
+    {"after_tasks":["T10"],"checks":["full automation/real API-SQL/browser/control gate"]}
+  ],
+  "sampling_plan": [
+    {"label":"平台与数据契约采样","trigger":"T3 完成","observer":"独立观察者","sensors":["S3","S4","S5","S8"],"requirement_ids":["R3","R4","R6","R7","R8","R11","R12","R13"]},
+    {"label":"业务后端采样","trigger":"T6 完成","observer":"独立观察者","sensors":["S1","S2","S3","S4"],"requirement_ids":["R1","R2","R3","R4","R5","R6","R7","R12","R13"]},
+    {"label":"全栈收敛采样","trigger":"T10 验证前后","observer":"独立观察者","sensors":["S5","S6","S7","S8","S9","S10"],"requirement_ids":["R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13"]}
+  ],
+  "coverage": [
+    {"requirement_id":"R1","task_ids":["T3","T4","T9","T10"],"sensor_ids":["S1","S3","S7"]},{"requirement_id":"R2","task_ids":["T3","T5","T9","T10"],"sensor_ids":["S1","S2","S3"]},{"requirement_id":"R3","task_ids":["T3","T4","T5","T10"],"sensor_ids":["S1","S3","S5"]},{"requirement_id":"R4","task_ids":["T2","T4","T5","T6","T10"],"sensor_ids":["S1","S3"]},{"requirement_id":"R5","task_ids":["T3","T5","T10"],"sensor_ids":["S1","S2","S3"]},{"requirement_id":"R6","task_ids":["T2","T4","T5","T6","T7","T10"],"sensor_ids":["S3","S4"]},{"requirement_id":"R7","task_ids":["T2","T4","T5","T6","T7","T9","T10"],"sensor_ids":["S3","S4"]},{"requirement_id":"R8","task_ids":["T0","T7","T8","T10"],"sensor_ids":["S5","S9"]},{"requirement_id":"R9","task_ids":["T9","T10"],"sensor_ids":["S6","S7"]},{"requirement_id":"R10","task_ids":["T7","T9","T10"],"sensor_ids":["S6","S7","S9"]},{"requirement_id":"R11","task_ids":["T0","T1","T10"],"sensor_ids":["S8","S10"]},{"requirement_id":"R12","task_ids":["T3","T4","T5","T8","T10"],"sensor_ids":["S1","S3","S5"]},{"requirement_id":"R13","task_ids":["T3","T5","T8","T9","T10"],"sensor_ids":["S1","S3","S7"]}
+  ],
+  "plan_status": "ready"
+}

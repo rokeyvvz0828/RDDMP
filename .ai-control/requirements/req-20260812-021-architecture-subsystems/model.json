@@ -1,0 +1,130 @@
+{
+  "baseline_revision": "baseline-3",
+  "plant_boundary": {
+    "inside": [
+      "server/src/modules/architecture candidate-new Maven business module",
+      "web/src/modules/architecture candidate-new Vue business module",
+      "platform/system public SystemReferenceQuery and SystemOperationAudit capability",
+      "existing public OrganizationService",
+      "root and Boot Maven composition",
+      "V35-V37 migrations and local Mock dataset",
+      "architecture menus, permissions, options and static routes"
+    ],
+    "environment": [
+      "MySQL 8.4 and Flyway history",
+      "Spring Security AuthUser and GrantedAuthority population",
+      "parallel main migration allocation",
+      "Codex CLI plus desktop config/cache development-entry governance check",
+      "desktop and mobile browsers",
+      "module Owners and branch protection"
+    ]
+  },
+  "state_variables": [
+    {"name":"logical_record_state","owner":"ccb-architecture","valid_values":["absent","active","soft-deleted"]},
+    {"name":"physical_record_state","owner":"ccb-architecture","valid_values":["absent","active","soft-deleted"]},
+    {"name":"logical_parent_state","owner":"ccb-architecture/MySQL","valid_values":["active-unreferenced","active-referenced","soft-deleted"]},
+    {"name":"responsible_team_state","owner":"platform organization plus physical snapshot","valid_values":["active-current-name","invalid-snapshot-readable"]},
+    {"name":"authorization_state","owner":"Spring Security","valid_values":["unauthenticated","forbidden","allowed"]},
+    {"name":"audit_state","owner":"platform/system","valid_values":["success-recorded","failure-recorded","best-effort-failed"]},
+    {"name":"migration_state","owner":"Flyway","valid_values":["V34-current","V35-V37-allocated","V37-current"]},
+    {"name":"page_state","owner":"architecture Vue module","valid_values":["loading","ready","initial-empty","filtered-empty","failed","forbidden","read-only","submitting","deleting","conflict"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"authorized logical list/detail/create/update/delete request","transitions":["PreAuthorize","AuthUser tenant extraction","typed validation","reference validation","arch_logical_subsystem SQL","audit"],"outputs":["ApiResponse/PageResult and durable logical state"]},
+    {"requirement_id":"R2","input":"authorized physical command with logicalSubsystemId","transitions":["active parent precheck","transaction parent lock","physical validation/write","success audit"],"outputs":["active physical record or 400/409 without dangling reference"]},
+    {"requirement_id":"R3","input":"code and name","transitions":["trim and uppercase","regex/length validation","tenant permanent unique index"],"outputs":["normalized durable value or 400/409"]},
+    {"requirement_id":"R4","input":"organization/user/parameter/logical references","transitions":["AuthUser tenant","OrganizationService/SystemReferenceQuery lookup","resource category whitelist","business validation"],"outputs":["accepted same-tenant active references or 400"]},
+    {"requirement_id":"R5","input":"logical delete concurrent or not concurrent with physical write","transitions":["lock logical parent","count active physical references","soft delete or conflict"],"outputs":["409 with unchanged parent or soft-deleted unreferenced parent"]},
+    {"requirement_id":"R6","input":"JWT request and write outcome","transitions":["JwtAuthenticationFilter authorities","fixed PreAuthorize","tenant-scoped service","SystemOperationAudit success/failure path"],"outputs":["401/403/business result and trace-correlated sys_operation_log"]},
+    {"requirement_id":"R7","input":"architecture options request","transitions":["resource-context permission","organization tree or user/parameter public query","safe DTO mapping"],"outputs":["paged/minimal option records and live phone"]},
+    {"requirement_id":"R8","input":"Flyway startup and local Mock startup","transitions":["verify main highest V34 and V35-V37 unoccupied","apply V35-V37","seed deterministic catalog","validate and upsert explicit-tenant Mock"],"outputs":["idempotent menu/permission/parameter/demo state without biz_form writes"]},
+    {"requirement_id":"R9","input":"user opens logical or physical route on desktop/mobile","transitions":["static router","typed API load","shared UI composition","responsive table-to-card CSS","drawer actions"],"outputs":["usable state-specific page with no page-level overflow"]},
+    {"requirement_id":"R10","input":"page/API/code inspection","transitions":["fixed field DTO and route design","migration seed","source scan"],"outputs":["no enable/disable/status behavior"]},
+    {"requirement_id":"R11","input":"Maven/Vue/module registration","transitions":["root reactor","Boot dependency","modules.yaml public packages/allowed dependencies","CODEOWNERS","boundary checks"],"outputs":["business-owned module assembled without platform reverse dependency"]},
+    {"requirement_id":"R12","input":"authenticated request or local Mock row","transitions":["AuthUser tenant injection or local explicit-tenant validation","tenant-scoped SQL","DB NOT NULL without DEFAULT"],"outputs":["isolated tenant state or rejected request/startup"]},
+    {"requirement_id":"R13","input":"physical create/edit/read with business group, team and optional users","transitions":["blank-to-null","active organization lookup","server name snapshot","optional user validation","query current org validity"],"outputs":["durable approved fields and readable invalid-team history"]}
+  ],
+  "interfaces": [
+    {"name":"Architecture CRUD HTTP","producers":["ArchitectureSubsystemController"],"consumers":["architecture Vue typed API"],"invariant":"camelCase typed DTO, no tenant/status/phone/snapshot command fields"},
+    {"name":"Architecture options HTTP","producers":["ArchitectureOptionsService"],"consumers":["organization/user/parameter/logical selectors"],"invariant":"resource-context permission and exact safe keys"},
+    {"name":"OrganizationService.tree","producers":["platform/system com.ccb.system.org"],"consumers":["ArchitectureOptionsService and reference validation"],"invariant":"AuthUser tenant scoped, deleted organizations excluded, status available"},
+    {"name":"SystemReferenceQuery","producers":["platform/system internal implementation"],"consumers":["architecture service/options"],"invariant":"no architecture type and no sensitive user/system management fields"},
+    {"name":"SystemOperationAudit","producers":["platform/system internal implementation"],"consumers":["logical/physical write orchestration"],"invariant":"existing sys_operation_log, success transactionality, independent best-effort failure audit"},
+    {"name":"arch physical-to-logical relation","producers":["V36 and ArchitectureSubsystemRepository"],"consumers":["physical writes and logical delete"],"invariant":"tenant-safe composite FK and consistent parent-first lock order"},
+    {"name":"fixed architecture form contract","producers":["module TypeScript types and fixed Vue forms"],"consumers":["two pages"],"invariant":"no runtime schema/meta dependency"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"R1/R2/R3/R4/R5/R13 service and persistence behavior","method":"JUnit plus Testcontainers MySQL service/repository tests","blind_spots":["browser presentation"],"independence":"executes real SQL and transaction boundaries"},
+    {"id":"S2","target":"R2/R5 parent concurrency","method":"two TransactionTemplate threads controlled by CountDownLatch against MySQL","blind_spots":["production lock scheduling variance"],"independence":"forces both approved lock orderings"},
+    {"id":"S3","target":"R6/R7/R12 HTTP security and DTO","method":"MockMvc exact-key/JSONPath with authenticated role/tenant contexts","blind_spots":["JWT over real network"],"independence":"observes controller/security serialization boundary"},
+    {"id":"S4","target":"R6 audit","method":"platform contract tests plus real API and sys_operation_log SQL by trace ID","blind_spots":["central log aggregation"],"independence":"compares HTTP outcome with durable audit row"},
+    {"id":"S5","target":"R8/R12 migrations and Mock","method":"Flyway/Testcontainers information_schema and repeat Mock initialization tests","blind_spots":["other requirements not yet merged"],"independence":"observes database schema and row counts directly"},
+    {"id":"S6","target":"R9/R10 frontend types","method":"npm --prefix web run build plus source scans","blind_spots":["rendered usability"],"independence":"compiler and static contract sensor"},
+    {"id":"S7","target":"R9/R10/R13 rendered behavior","method":"real browser UAT at 1280x800, 375x812, 390x844, 430x932 with Network/Console/scrollWidth","blind_spots":["devices outside matrix"],"independence":"direct rendered and interaction observation"},
+    {"id":"S8","target":"R11 module composition","method":"Maven reactor/package, Boot health, check-module-boundaries and governance scripts","blind_spots":["future Codex CLI output format changes"],"independence":"build-time and runtime composition sensors"},
+    {"id":"S9","target":"R8 no retired metadata dependency","method":"rg for biz_form, form-schemas, PublishedFormSchemaQuery in task diff and runtime network","blind_spots":["string-free indirect dependency"],"independence":"source and HTTP negative evidence"},
+    {"id":"S10","target":"all requirements scope and regression","method":"check-codex-scope, git diff --check and full mvn test","blind_spots":["untracked files until included by working-tree checker"],"independence":"governance and broad regression sensor"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"architecture business behavior","action":"create/modify only server/src/modules/architecture and its tests","authority":"current scope after codex_allowed and branch gates","impact_radius":"business/architecture","rollback":"revert architecture task commit while retaining migrated data"},
+    {"id":"A2","target":"safe platform references and audit","action":"add minimal public interfaces/records and internal implementations under scoped capability paths","authority":"requires platform Owner approval","impact_radius":"platform/system public contract","rollback":"revert capability commit after consumers are removed"},
+    {"id":"A3","target":"schema and catalog state","action":"after collision scan append V35-V37","authority":"scoped Flyway paths, user-approved allocation and database approval","impact_radius":"database and initial tenant catalog","rollback":"retain migrated structures and revert application usage"},
+    {"id":"A4","target":"local demo state","action":"extend Mock whitelist/tests/JSON with explicit-tenant architecture rows","authority":"scoped infrastructure/mock paths","impact_radius":"local profile only","rollback":"remove architecture dataset entries after application rollback"},
+    {"id":"A5","target":"frontend page behavior","action":"create architecture Vue module and register two static routes","authority":"scoped architecture/router paths","impact_radius":"two architecture routes","rollback":"remove routes and module after backend rollback"},
+    {"id":"A6","target":"module composition and governance","action":"update root/Boot POM, modules.yaml, MODULES.md and CODEOWNERS","authority":"scoped composition/governance paths with Owner approval","impact_radius":"reactor and ownership graph","rollback":"remove registrations after consumers"},
+    {"id":"A7","target":"control evidence","action":"update only current requirement docs and current .ai-control prefix via control-loop commands","authority":"current task writable paths","impact_radius":"REQ-20260812-021 governance evidence","rollback":"append a newer artifact revision rather than erase history"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S3","S7"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S1","S2","S3"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S1","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S1","S2","S3"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S3","S4"],"observable":"yes"},
+    {"requirement_id":"R7","sensor_ids":["S3","S4"],"observable":"yes"},
+    {"requirement_id":"R8","sensor_ids":["S5","S9"],"observable":"yes"},
+    {"requirement_id":"R9","sensor_ids":["S6","S7"],"observable":"yes"},
+    {"requirement_id":"R10","sensor_ids":["S6","S7","S9"],"observable":"yes"},
+    {"requirement_id":"R11","sensor_ids":["S8","S10"],"observable":"yes"},
+    {"requirement_id":"R12","sensor_ids":["S1","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R13","sensor_ids":["S1","S3","S7"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"parallel main may allocate V35-V37 before this branch merges","effect":"migration versions would collide","detectable":true,"controllable":true},
+    {"source":"CLI JSON and desktop plugin state use different discovery paths","effect":"development-entry may false-negative or false-positive","detectable":true,"controllable":true},
+    {"source":"untracked approved documents","effect":"diff baseline requires explicit preservation and scoped staging","detectable":true,"controllable":true},
+    {"source":"public capability regression","effect":"existing system consumers could be affected","detectable":true,"controllable":true},
+    {"source":"Docker/MySQL/Maven network or resource state","effect":"long integration sensors may fail independently of implementation","detectable":true,"controllable":true},
+    {"source":"Windows PowerShell npm.ps1 execution policy","effect":"direct local npm invocation may fail while Linux CI command is valid","detectable":true,"controllable":true},
+    {"source":"parallel main changes may consume migrations, menu IDs or public packages","effect":"model and plan inputs drift","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"parallel migration merge timing","consequence":"version allocation may drift","sampling_rule":"fetch and verify main remains at V34 immediately before creating and committing V35-V37"},
+    {"source":"full Maven/Testcontainers suite","consequence":"feedback is slower than unit tests","sampling_rule":"run focused module tests at task boundaries and full suite at integration points"},
+    {"source":"debounced/paginated frontend options","consequence":"stale responses can overwrite current selection","sampling_rule":"browser test rapid query changes and require abort/sequence invalidation"},
+    {"source":"organization status changes after save","consequence":"history display differs from saved time","sampling_rule":"sample active, renamed and disabled/deleted states separately"}
+  ],
+  "assumptions": [
+    {"text":"JwtAuthenticationFilter authorities support fixed PreAuthorize without a platform guard.","evidence":"current filter maps AuthService permissions to SimpleGrantedAuthority.","falsifier":"MockMvc or real JWT requests ignore the expected authorities."},
+    {"text":"OrganizationService can be reused without modification.","evidence":"com.ccb.system.org is public; tree(AuthUser) filters tenant/deleted and returns status and hierarchy.","falsifier":"team lookup or path cannot be implemented without changing its public behavior."},
+    {"text":"SystemReferenceQuery can remain architecture-neutral.","evidence":"current sys_user/sys_config fields allow safe id/name/phone/code/label projection.","falsifier":"implementation requires architecture category or DTO types in platform."},
+    {"text":"trace_id nullable extension preserves existing operation log writers.","evidence":"current INSERT statements omit trace_id and current table has no such NOT NULL dependency.","falsifier":"migration regression breaks an existing log writer."},
+    {"text":"fixed forms can reuse shared UI without modifying it.","evidence":"delivery showcase contains desktop table, mobile cards and UiFormDrawer patterns.","falsifier":"approved behavior requires shared component change."}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"plan architecture logical task"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"plan physical and parent-lock task"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"plan validation and DB unique constraints"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"plan reference capability and validation"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"plan MySQL concurrency sensor"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"plan security and audit integration behind Owner gate"},
+    {"requirement_id":"R7","observable":"yes","controllable":"yes","action":"plan exact safe option contracts"},
+    {"requirement_id":"R8","observable":"yes","controllable":"yes","action":"claim V35-V37 after collision scan and test empty/incremental migration"},
+    {"requirement_id":"R9","observable":"yes","controllable":"yes","action":"plan typed pages and browser UAT"},
+    {"requirement_id":"R10","observable":"yes","controllable":"yes","action":"add negative scans and contract assertions"},
+    {"requirement_id":"R11","observable":"yes","controllable":"yes","action":"repair development-entry compatibility, then execute composition/governance task after T0"},
+    {"requirement_id":"R12","observable":"yes","controllable":"yes","action":"plan AuthUser-only and Mock exception tests"},
+    {"requirement_id":"R13","observable":"yes","controllable":"yes","action":"plan physical DTO/table/service/UI state tests"}
+  ],
+  "model_status": "ready"
+}

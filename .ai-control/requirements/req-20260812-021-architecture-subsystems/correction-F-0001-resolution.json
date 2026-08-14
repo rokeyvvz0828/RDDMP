@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "用户授权修复迁移前置；实际主干与所有远端分支均无 V35-V40，继续等待未实施需求会形成无期限阻塞。",
+  "dynamic_pattern": "stagnation",
+  "causal_assessment": {
+    "hypothesis": "把未落地需求文档的版本预留误当成已发布数据库前置",
+    "supporting_evidence": ["origin/main 最高 V34", "所有远端分支无 V35-V40", "两个预留需求尚未实现完整功能"],
+    "falsifier": "目标主干存在实际 V35-V37 文件"
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "未来 Flyway 版本分配",
+    "write_scope": ["当前需求版本设计与 scope", "两个未实施需求的精确版本引用"],
+    "invariants": ["不修改 V1-V34", "V35-V40 全局唯一", "不创建占位迁移"],
+    "impact_limit": "仅未落地迁移的版本号分配",
+    "rollback": "在任何新迁移文件创建前恢复原文档分配",
+    "correction_check": ["main 最高 V34", "全局 scope V35-V40 唯一", "Flyway 检查通过", "T0 无 SQL diff"],
+    "route": "observing"
+  },
+  "resolution": "verified",
+  "residual_risk": ["并行 main 可能在合并前占用版本，需再次 fetch"]
+}
