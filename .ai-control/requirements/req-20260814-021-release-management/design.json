@@ -1,0 +1,288 @@
+{
+  "schema_version": 1,
+  "topic": "release-management-module",
+  "design_revision": 4,
+  "design_status": "pending_review",
+  "human_document": "docs/engineering-control/designs/2026-08-14-release-management-module-design.md",
+  "objective": "Design an independently maintainable release-management business module for project-scoped release windows, version applications, workflow-linked approval state, baselines, version lineage, and real-time reports without placing business state inside platform modules.",
+  "users": [
+    "Project developer registering and tracking a version application",
+    "Tester and configured approver reviewing a release application",
+    "Configuration manager maintaining windows and baseline records",
+    "Platform administrator maintaining permissions without substituting for business approval"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "The planned ccb-release module must own release windows, applications, baselines, reports, and their business state.",
+      "acceptance": ["No release business table or release state machine is implemented in system or workflow modules", "The module can be tested with external port stubs"],
+      "priority": "must",
+      "source": "User selected architecture option A and required platform design to remain separate",
+      "counterexample": ["Release application status is inferred only from Flowable tables", "Release tables are placed in platform/system"]
+    },
+    {
+      "id": "R2",
+      "statement": "Every protected operation must enforce tenant, current project, RBAC, data scope, and entity authorization on the server.",
+      "acceptance": ["Cross-project and unauthorized requests are rejected", "List, detail, attachment, report, and export use the same project scope"],
+      "priority": "must",
+      "source": "Confirmed role and project-context rules plus repository governance",
+      "counterexample": ["Frontend visibility is the only authorization", "Client-supplied actor identity is trusted"]
+    },
+    {
+      "id": "R3",
+      "statement": "Release windows must enforce immutable project and code, ordered dates, same-year production dates, no overlap in one project, auditable edits, and a regular-submission switch.",
+      "acceptance": ["Invalid order, cross-year production, and overlapping windows cannot be saved", "Every allowed edit records reason and before/after values", "After regular baseline succeeds, the regular-submission switch is permanently locked off"],
+      "priority": "must",
+      "source": "User-confirmed window rules",
+      "counterexample": ["A window project can be changed", "A window can be disabled or deleted"]
+    },
+    {
+      "id": "R4",
+      "statement": "The module must derive regular, additional, overdue, overdue-additional, or emergency scenarios from project, dates, switch state, and history and map them to five fixed workflow codes.",
+      "acceptance": ["All date boundaries and additional combinations yield one deterministic scenario", "The applicant cannot select a workflow definition"],
+      "priority": "must",
+      "source": "User-confirmed scenario and workflow-code decisions",
+      "counterexample": ["A regular application can be submitted on or after production start", "The user manually chooses regular or emergency type"]
+    },
+    {
+      "id": "R5",
+      "statement": "An application must contain one physical subsystem and at least one unique delivery unit with a fixed artifact type snapshot and a nonblank version without spaces.",
+      "acceptance": ["Even a draft rejects missing delivery units or versions", "One delivery unit cannot be repeated in an application"],
+      "priority": "must",
+      "source": "User-confirmed application content rules",
+      "counterexample": ["An empty application draft is saved", "Artifact type is editable in the application"]
+    },
+    {
+      "id": "R6",
+      "statement": "Requirements, overdue reason, additional reason, emergency explanation, and optional attachments must follow scenario-specific validation.",
+      "acceptance": ["Regular submission requires at least one requirement number", "Emergency submission requires the emergency explanation but not a requirement number", "Attachments are optional in every scenario"],
+      "priority": "must",
+      "source": "User-confirmed field rules",
+      "counterexample": ["Emergency attachment is mandatory", "Requirements are stored as comma-separated text"]
+    },
+    {
+      "id": "R7",
+      "statement": "Duplicate, in-flight, additional, emergency, and cross-window history checks must follow the confirmed blocking and warning rules.",
+      "acceptance": ["Conflict results identify delivery unit, old and new version, application number, and required action", "Any additional delivery unit upgrades the whole regular application scenario"],
+      "priority": "must",
+      "source": "User-confirmed conflict matrix",
+      "counterexample": ["Emergency history automatically becomes an additional scenario", "History in another window blocks submission"]
+    },
+    {
+      "id": "R8",
+      "statement": "Draft, review, return, withdrawal, approval, baseline, and cancellation transitions must preserve immutable submission rounds and operation history.",
+      "acceptance": ["Illegal state transitions are rejected", "An in-review application must be withdrawn before it can be canceled or edited", "Every cancellation requires a reason", "Resubmission creates a new workflow round and retains previous opinions and signatures", "Crossing production start requires explicit emergency conversion"],
+      "priority": "must",
+      "source": "User-confirmed lifecycle rules",
+      "counterexample": ["An approved application can be edited or withdrawn", "Resubmission overwrites the prior workflow instance"]
+    },
+    {
+      "id": "R9",
+      "statement": "The module must integrate approval through five fixed workflow codes and consume workflow lifecycle results without reading workflow private tables.",
+      "acceptance": ["Missing or invalid published workflow blocks submission but not draft save", "Testing review precedes configuration-management review", "Each approval round produces only a whole-application pass or fail result"],
+      "priority": "must",
+      "source": "User-confirmed workflow integration design",
+      "counterexample": ["The module queries wf_task directly", "One delivery unit passes while another fails in the same application"]
+    },
+    {
+      "id": "R10",
+      "statement": "Business detail, workflow progress, opinions, rounds, and signature data must describe the same application and task as the unified inbox and done list.",
+      "acceptance": ["The application detail shows current node, assignee, progress, round history, opinions, and returned signature data", "Unified task navigation and business detail resolve the same application and workflow task"],
+      "priority": "must",
+      "source": "User-confirmed workflow progress and unified-task behavior",
+      "counterexample": ["Workflow progress is visible only in the generic workflow page", "A second business approval ledger replaces workflow task history"]
+    },
+    {
+      "id": "R11",
+      "statement": "Regular applications must enter one irreversible window-level baseline batch only after the production end date and after all noncancelled regular applications are approved.",
+      "acceptance": ["Blocking applications produce zero baseline writes and a complete blocker list", "Successful baseline closes and permanently locks regular submission and cannot be repeated"],
+      "priority": "must",
+      "source": "User-confirmed regular baseline rules",
+      "counterexample": ["Each regular application exposes its own baseline button", "A window baseline runs on the production end date"]
+    },
+    {
+      "id": "R12",
+      "statement": "Emergency applications must record approval and then be automatically and idempotently added to a per-application baseline batch.",
+      "acceptance": ["Success creates exactly one emergency batch", "Failure retains approved status and can retry without duplicate records"],
+      "priority": "must",
+      "source": "User-confirmed emergency baseline behavior",
+      "counterexample": ["An emergency application requires a manual application-level baseline confirmation", "Retry creates another baseline batch"]
+    },
+    {
+      "id": "R13",
+      "statement": "Baseline details and current pointers must preserve physical-subsystem and delivery-unit version lineage without deleting replaced versions.",
+      "acceptance": ["Batch plus physical subsystem plus delivery unit uniquely identifies a detail", "A later emergency version remains current when an older regular window is subsequently baselined"],
+      "priority": "must",
+      "source": "User-confirmed baseline identity rules",
+      "counterexample": ["Version string ordering determines current baseline", "Replacing a baseline deletes the prior version"]
+    },
+    {
+      "id": "R14",
+      "statement": "Additional and emergency versions must form an explicit, queryable replacement chain at delivery-unit granularity.",
+      "acceptance": ["Every replaced line identifies its replacing application, version, and effective date", "Only the endpoint of an additional regular chain enters the regular batch"],
+      "priority": "must",
+      "source": "User-confirmed replacement behavior",
+      "counterexample": ["A replaced version is physically deleted", "All intermediate additional versions enter the regular baseline batch"]
+    },
+    {
+      "id": "R15",
+      "statement": "Application actions, window edits, attachments, exports, workflow rounds, and baseline changes must be fully auditable.",
+      "acceptance": ["Audit data identifies actor, object, timestamp, reason, and structured before/after values where applicable", "Cancellation is impossible without a recorded reason"],
+      "priority": "must",
+      "source": "User-confirmed edit, cancellation, and traceability rules",
+      "counterexample": ["A window change overwrites data without its prior value", "A canceled application has no reason or actor"]
+    },
+    {
+      "id": "R16",
+      "statement": "Project and window reports must aggregate current business data in real time with confirmed deduplication, drill-down, and Excel export rules.",
+      "acceptance": ["Project and single-window totals match their filtered detail data", "Exported sheets match UI filters and permissions", "No approval-efficiency metric is emitted"],
+      "priority": "must",
+      "source": "User-confirmed reporting requirements",
+      "counterexample": ["Draft and canceled records inflate business-scale metrics", "Attachments are included in the export archive"]
+    },
+    {
+      "id": "R17",
+      "statement": "The business module must depend only on declared project-context, master-data, workflow, notification, and attachment ports whose platform implementations are designed separately.",
+      "acceptance": ["Current module design contains no platform table or internal implementation", "Platform capability work is tracked as a separate design dependency"],
+      "priority": "must",
+      "source": "User explicitly required platform design to be separated",
+      "counterexample": ["This module design adds fields to wf_definition", "Release code writes sys_notification or MinIO keys directly"]
+    },
+    {
+      "id": "R18",
+      "statement": "The implementation Agent must initialize form metadata, menu permissions, fixed workflow-code mocks, master-data mocks, applications, baselines, reports, and notifications idempotently for local development.",
+      "acceptance": ["A fresh local database displays the complete module without manual setup", "Repeated startup does not duplicate initialization records"],
+      "priority": "must",
+      "source": "RDDMP metadata and mock contracts plus user-confirmed mock requirement",
+      "counterexample": ["Developers must configure fields or workflows manually after first startup", "Production silently falls back to local mock providers"]
+    },
+    {
+      "id": "R19",
+      "statement": "The module must expose desktop list, form, detail, workflow-progress, baseline, and report pages by reusing RDDMP shared UI patterns.",
+      "acceptance": ["A desktop user can complete each core path", "Loading, empty, error, forbidden, submitting, readonly, conflict, and long-text states are visible"],
+      "priority": "must",
+      "source": "User confirmed desktop-only scope and page design",
+      "counterexample": ["Workflow progress is available only on the generic workflow page", "Mobile acceptance is claimed in this requirement"]
+    }
+  ],
+  "invariants": [
+    "One application belongs to one tenant, project, window, and physical subsystem",
+    "One delivery unit appears once per application",
+    "Approved business content is immutable",
+    "One regular baseline batch exists per window and one emergency batch per emergency application",
+    "Baseline history is never physically deleted",
+    "Platform private tables are not accessed by ccb-release"
+  ],
+  "constraints": [
+    "Java 17, Spring Boot 3.4.4, MySQL 8.4, Vue 3, TypeScript",
+    "Preserve com.ccb package compatibility",
+    "Flyway migrations are append-only",
+    "Use ApiResponse and server-side authorization",
+    "Desktop-only exception approved for this requirement",
+    "Platform capability implementation is outside this design"
+  ],
+  "non_goals": [
+    "Platform project-context implementation",
+    "Workflow engine, unified task, notification, signature, and persistent attachment internal implementation",
+    "External systems and AI",
+    "Formal requirement or defect integration",
+    "Artifact file storage and semantic version validation",
+    "Production execution and rollback tracking",
+    "Approval-efficiency metrics",
+    "Mobile business UI"
+  ],
+  "selected_approach": {
+    "name": "Single ccb-release business module with internal domain partitions",
+    "reason": "Window baseline, application conflict, version lineage, and reporting need cohesive transactions and ownership while remaining outside platform modules.",
+    "alternatives": [
+      {"name": "Separate Maven modules for windows, applications, and baselines", "rejected_because": "Adds excessive cross-module transaction and event complexity for the current scope."},
+      {"name": "Workflow-centered business state", "rejected_because": "Would couple release rules and reports to Flowable and weaken independent business maintenance."}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["release windows", "version applications", "conflict rules", "application rounds", "baseline batches and lineage", "real-time reports", "desktop release UI"],
+      "outside": ["project platform context implementation", "R&D master-data implementation", "workflow internals", "notification internals", "persistent attachment internals", "mobile UI"]
+    },
+    "implementation_scope": {
+      "backend": ["server/src/modules/release/**"],
+      "frontend": ["web/src/modules/release/**", "web/src/router/index.ts"],
+      "composition": ["pom.xml", "server/src/platform/boot/pom.xml"],
+      "database": ["server/src/platform/infrastructure/src/main/resources/db/migration/V37__release_management.sql"],
+      "governance": ["governance/modules.yaml", "docs/architecture/MODULES.md", ".github/CODEOWNERS"],
+      "platform_private_sources": "read_only"
+    },
+    "components": [
+      {"name": "window", "responsibility": "Own release-window dates, switch, overlap, audit, and regular-baseline readiness", "depends_on": ["ReleaseProjectContextPort"]},
+      {"name": "application", "responsibility": "Own application data, scenarios, conflicts, lifecycle, and submission rounds", "depends_on": ["window", "ReleaseMasterDataPort", "ReleaseWorkflowPort", "ReleaseAttachmentPort"]},
+      {"name": "baseline", "responsibility": "Own regular batches, emergency auto-baseline jobs, current pointers, and replacement lineage", "depends_on": ["window", "application", "ReleaseNotificationPort"]},
+      {"name": "reporting", "responsibility": "Provide project and window real-time aggregates, drill-down filters, and Excel exports", "depends_on": ["window", "application", "baseline"]},
+      {"name": "release-ui", "responsibility": "Provide desktop windows, applications, workflow context, baselines, and reports", "depends_on": ["release REST API", "RDDMP shared UI components"]}
+    ],
+    "interfaces": [
+      {"name": "ReleaseProjectContextPort", "producer": "future platform adapter", "consumers": ["window", "application", "reporting"], "contract": "Return authenticated current project and authorize project access."},
+      {"name": "ReleaseMasterDataPort", "producer": "future R&D management adapter", "consumers": ["application"], "contract": "Query physical subsystems, delivery units, artifact types, and display snapshots."},
+      {"name": "ReleaseWorkflowPort", "producer": "future workflow adapter", "consumers": ["application"], "contract": "Resolve and start a published workflow by fixed code, terminate it, query progress, and deliver lifecycle events."},
+      {"name": "ReleaseNotificationPort", "producer": "future system notification adapter", "consumers": ["window", "application", "baseline"], "contract": "Publish idempotent in-app business notifications."},
+      {"name": "ReleaseAttachmentPort", "producer": "future persistent attachment adapter", "consumers": ["application"], "contract": "Upload, authorize, preview, download, and delete persistent business attachments."}
+    ],
+    "data_flows": [
+      {"input": "Current project, business date, master-data selection, and application fields", "transitions": ["save snapshot", "derive scenario", "detect conflicts", "resolve workflow code", "start approval round"], "output": "Reviewing release application"},
+      {"input": "Workflow lifecycle event", "transitions": ["deduplicate event", "validate round and state", "update application", "schedule emergency baseline when applicable"], "output": "Returned, approved, or baselined application"},
+      {"input": "Window baseline command", "transitions": ["lock window", "validate date and blockers", "select final regular versions", "create batch and details", "update current pointers and application results"], "output": "Irreversible regular baseline batch"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Project or master-data port unavailable", "behavior": "Existing snapshots remain readable; new selection or protected writes fail clearly.", "recovery": "Restore the adapter and retry without losing form state."},
+    {"condition": "Workflow missing, unpublished, invalid, or unavailable", "behavior": "Draft save remains available but submission does not change application state.", "recovery": "Publish or restore the fixed-code workflow and resubmit."},
+    {"condition": "Concurrent state change", "behavior": "Reject stale rowVersion and preserve the newer server state.", "recovery": "Refresh and retry an allowed action."},
+    {"condition": "Regular baseline has blockers", "behavior": "Create no batch and return the complete blocker list.", "recovery": "Approve or cancel blockers and retry after the allowed date."},
+    {"condition": "Emergency auto-baseline fails", "behavior": "Keep approved status and record an idempotent failed job.", "recovery": "Automatic or authorized manual retry."},
+    {"condition": "Notification fails", "behavior": "Keep the committed business result and record a pending notification event.", "recovery": "Idempotent notification retry."}
+  ],
+  "quality_attributes": {
+    "security": ["tenant and project isolation", "server-side RBAC and entity authorization", "no trusted actor fields from clients", "no credentials or object keys in business logs"],
+    "performance": ["server-side paging", "project/window-scoped aggregation", "composite business indexes", "streaming bounded Excel export"],
+    "compatibility": ["append-only Flyway migration", "stable fixed workflow codes", "display numbering decoupled from internal IDs", "existing platform modules unchanged by this design"],
+    "operations": ["complete audit trail", "idempotent workflow events and baseline jobs", "fresh and repeatable local mock initialization", "read-only preservation of business evidence on rollback"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2"], "signal": "Release business ownership remains inside ccb-release and every protected path enforces tenant, project, RBAC, data-scope, and entity authorization.", "method": "Architecture dependency checks plus service and API authorization tests."},
+    {"requirement_ids": ["R3", "R4", "R5", "R6", "R7", "R8"], "signal": "Window, scenario, validation, conflict, and state-transition tests cover normal and boundary cases.", "method": "Parameterized domain and service tests."},
+    {"requirement_ids": ["R9", "R10", "R17"], "signal": "Workflow and other platform interactions pass consumer-port contract tests without private table access, and business detail matches unified tasks.", "method": "Stub adapters, architecture checks, and integration contract tests."},
+    {"requirement_ids": ["R11", "R12", "R13", "R14"], "signal": "Baseline concurrency, retries, lineage, and latest-pointer assertions remain stable under repeated execution.", "method": "Transactional integration tests against MySQL-compatible schema."},
+    {"requirement_ids": ["R15"], "signal": "Audited changes and operations preserve actor, reason, object, time, and before/after values where applicable.", "method": "Service and persistence audit assertions."},
+    {"requirement_ids": ["R16"], "signal": "Report API, drill-down detail, and exported workbook totals match.", "method": "Seeded data cross-check and workbook assertions."},
+    {"requirement_ids": ["R18"], "signal": "Fresh startup and repeated startup produce the same expected mock and metadata records.", "method": "Fresh database and idempotent reload verification."},
+    {"requirement_ids": ["R19"], "signal": "Desktop business paths and all asynchronous UI states are usable without console errors.", "method": "Frontend build and real desktop browser acceptance."}
+  ],
+  "assumptions": [
+    {"text": "The platform will later provide an authenticated current-project port.", "basis": "User defined the top-level project as the working context.", "falsifier": "Platform design chooses no server-verifiable project context."},
+    {"text": "R&D management will provide physical-subsystem and delivery-unit query data.", "basis": "User assigned master-data ownership to R&D management.", "falsifier": "R&D management cannot expose a stable adapter contract."},
+    {"text": "Workflow can resolve the current published version by stable code and emit lifecycle events.", "basis": "User selected workflow-code integration and unified tasks.", "falsifier": "Platform workflow design cannot safely expose these operations."},
+    {"text": "Persistent attachment IDs and preview will be provided by a later platform design.", "basis": "Current file-preview capability is temporary and user requires application attachments.", "falsifier": "Platform declines persistent attachment ownership."}
+  ],
+  "unknowns": [
+    {"question": "What are the final display formats for application numbers and baseline batch numbers?", "impact": "Only display and configuration; internal identity and relationships are unaffected.", "owner": "Configuration-management product owner", "blocking": false},
+    {"question": "How will each platform port be implemented internally?", "impact": "Blocks integrated implementation but is intentionally handled by a separate approved platform design.", "owner": "Platform owner", "blocking": false},
+    {"question": "What exact DTOs will future project and R&D modules publish?", "impact": "Adapter DTO mapping may change while consumer semantics remain stable.", "owner": "Project/R&D module owners", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "Use one ccb-release business module with internal domain partitions.", "reason": "Cohesive transactions and business ownership.", "source": "User selected option A."},
+    {"id": "D2", "decision": "Separate platform capability design from this module design.", "reason": "Keep business and platform ownership independently reviewable.", "source": "User explicitly requested separation."},
+    {"id": "D3", "decision": "Use five fixed workflow codes rather than a workflow-scene binding UI.", "reason": "Stable codes are sufficient and avoid duplicate configuration.", "source": "User confirmed workflow-code approach."},
+    {"id": "D4", "decision": "Use window-level regular baseline and automatic per-application emergency baseline.", "reason": "Matches production-window governance and emergency replacement behavior.", "source": "User confirmed baseline model."},
+    {"id": "D5", "decision": "Deliver desktop UI only in this requirement.", "reason": "User explicitly deferred mobile support.", "source": "User confirmation."}
+  ],
+  "risks": [
+    {"risk": "Platform ports are not ready when module implementation begins.", "impact": "Integrated flows cannot complete.", "mitigation": "Approve a separate platform design first and use contract stubs only for local module work."},
+    {"risk": "Concurrent additional and emergency baselines corrupt the current pointer.", "impact": "Incorrect latest release version.", "mitigation": "Use unique constraints, locking, explicit lineage, idempotency, and concurrency tests."},
+    {"risk": "Real-time reports degrade as data grows.", "impact": "Slow pages and exports.", "mitigation": "Scope queries, index dimensions, observe query plans, and add summaries only from measured need."},
+    {"risk": "Desktop-only pages are unusable on phones.", "impact": "Mobile users cannot complete the flow.", "mitigation": "Record the approved exception and deliver mobile adaptation as a separate requirement."}
+  ],
+  "approval": {
+    "status": "pending_review",
+    "evidence": "User approved the conversational module design and authorized document creation; landed revision still requires review.",
+    "confirmed_at": null
+  }
+}

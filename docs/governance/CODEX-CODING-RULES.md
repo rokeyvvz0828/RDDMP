@@ -20,7 +20,7 @@ Codex 任务必须关联状态为 `ready` 的 `requirement.md` 和完整的 `cod
 - 不修改用户或其他开发者的无关改动，不自行回退工作区。
 - `.ai-control` 只允许修改 `completion.control_prefix` 对应文件；无前缀历史账本和其他任务前缀只读。
 - 跨模块只使用登记的依赖和公开能力；不得直接写其他模块负责的数据表。
-- 修改 platform、shared、公共前端组件或公开契约时，必须声明 `public_capability_change`、关联 Issue、Owner 审批、兼容策略和回归测试。
+- 修改 platform、shared、公共前端组件或公开契约时，必须声明 `public_capability_change`、关联已批准需求编号、取得 Owner 审批，并明确兼容策略和回归测试。
 - 数据库、认证、权限、审计、附件、外部接口和供应链变更必须人工专项复核。
 
 ## 编码前预检
