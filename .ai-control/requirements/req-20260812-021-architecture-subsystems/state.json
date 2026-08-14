@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 70,
+  "revision": 73,
   "created_at": "2026-08-13T06:16:16+00:00",
-  "updated_at": "2026-08-14T09:07:34+00:00",
+  "updated_at": "2026-08-14T09:18:06+00:00",
   "mode": "high-assurance",
   "phase": "executing",
   "phase_history": [
@@ -143,6 +143,18 @@
       "to": "executing",
       "evidence": "observation-T2.json error=0；T2 verified，继续执行 T3 数据模型与仓储",
       "recorded_at": "2026-08-14T09:07:34+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "execution-T3.json 记录候选实现、仓储 4/4 和真实 MySQL 迁移失败；开始区分新代码误差与既有基线故障",
+      "recorded_at": "2026-08-14T09:17:58+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "observation-T3.json 识别 F-0004 P1：既有 V24 空库缺表；当前 scope 无合法修复执行器",
+      "recorded_at": "2026-08-14T09:18:06+00:00"
     }
   ],
   "stage_artifacts": {
@@ -12871,14 +12883,22 @@
       "escalation_conditions": [
         "必须改变字段、永久唯一或父关系"
       ],
-      "status": "active",
+      "status": "blocked",
       "evidence": [
         {
           "recorded_at": "2026-08-14T09:07:34+00:00",
           "text": "T2 verified 后进入 T3；先建立 V36 约束与仓储失败测试"
+        },
+        {
+          "recorded_at": "2026-08-14T09:17:58+00:00",
+          "text": "仓储测试 4/4；真实迁移在既有 V24 缺 FLW_EV_DATABASECHANGELOG 时失败，V36 未执行"
+        },
+        {
+          "recorded_at": "2026-08-14T09:18:06+00:00",
+          "text": "F-0004 已升级；冻结 T3 提交和后续任务，等待 scope 外迁移基线修复授权"
         }
       ],
-      "updated_at": "2026-08-14T09:07:34+00:00"
+      "updated_at": "2026-08-14T09:18:06+00:00"
     },
     {
       "id": "T4",
@@ -13394,6 +13414,26 @@
       "resolved_at": "2026-08-14T07:50:32+00:00",
       "resolution_evidence": "observation-T0.json：PLAN_ORDER_OK；T0 fields-only，T1 full-scope 且 scope 失败停止 T2；JSON/diff-check 通过",
       "decided_at": "2026-08-14T07:50:28+00:00"
+    },
+    {
+      "id": "F-0004",
+      "task": "T3",
+      "source": "S5",
+      "requirement": "R12",
+      "expected": "origin/main V1-V34 在空 MySQL 8.4 连续执行，随后可验证 V35-V36",
+      "observed": "V24__metadata_table_comments.sql 引用 V20 未创建的 FLW_EV_DATABASECHANGELOG/LOCK，空库在 V24 停止",
+      "evidence": "ArchitectureMigrationMySqlTest Testcontainers 原始堆栈；V20/V24 源码；flowable.database-schema-update=false",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": "V24 错误假定 Flowable Liquibase 元数据表先于 Flyway 存在",
+      "correction_check": "空库 V1-V34、既有库 validate、空库及 V35 增量到 V36 全部通过",
+      "decision": "escalate",
+      "decision_reason": "修复需要改变已发布迁移兼容策略或增加全局 Flyway 能力，超出当前 scope",
+      "created_at": "2026-08-14T09:17:58+00:00",
+      "resolved_at": null,
+      "resolution_evidence": null,
+      "decided_at": "2026-08-14T09:18:06+00:00"
     }
   ],
   "samples": [
@@ -13448,6 +13488,19 @@
       "score": 0,
       "evidence": "observation-T2.json：聚焦/全量测试、真实 MySQL V35、治理与 scope 全部通过",
       "recorded_at": "2026-08-14T09:07:34+00:00"
+    },
+    {
+      "id": "S-0005",
+      "label": "T3 数据模型与迁移首轮观察",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "observation-T3.json：仓储 4/4；空库在既有 V24 失败，V36 未获得真实迁移证据",
+      "recorded_at": "2026-08-14T09:18:06+00:00"
     }
   ]
 }

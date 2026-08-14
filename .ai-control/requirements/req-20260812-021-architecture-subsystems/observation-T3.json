@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "sample_label": "T3 数据模型与迁移首轮独立观察",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {
+      "requirement_id": "R3",
+      "sensor": "S2 仓储 SQL 单元测试",
+      "result": "pass",
+      "raw_evidence": "4 tests passed：tenant/deleted、LIKE 转义、软删除、父锁、物理固定筛选",
+      "limitation": ["未到达真实 V36 表"]
+    },
+    {
+      "requirement_id": "R12",
+      "sensor": "S5 Testcontainers 全迁移",
+      "result": "fail",
+      "raw_evidence": "Flyway 验证 36 migrations 后执行到 V24 失败：Table architecture_empty.FLW_EV_DATABASECHANGELOG doesn't exist",
+      "limitation": ["失败发生在 V36 之前，无法测量 V36 列和约束"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S5 增量迁移测试隔离库",
+      "result": "blocked",
+      "raw_evidence": "Access denied for user test to database architecture_incremental",
+      "limitation": ["测试夹具问题，可在 T3 scope 内纠正"]
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0004",
+      "severity": "P1",
+      "expected": "origin/main V1-V34 可在空 MySQL 8.4 连续迁移，使 V35-V36 获得可执行前置",
+      "observed": "V24 在空库直接 ALTER 未由 V20 创建的 FLW_EV_DATABASECHANGELOG/LOCK，迁移在 V24 停止",
+      "confidence": "high"
+    }
+  ],
+  "disturbances": [
+    "首次拉取 Ryuk 只影响时延",
+    "普通容器用户无建库权限是次要测试夹具误差"
+  ],
+  "coverage_gaps": [
+    "V36 information_schema、永久唯一和组合外键尚未获得真实测量",
+    "空库完整链路被 scope 外历史迁移阻断"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

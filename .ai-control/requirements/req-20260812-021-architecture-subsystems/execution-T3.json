@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "task_id": "T3",
+  "status": "blocked",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "V36__create_architecture_subsystems.sql",
+      "purpose": "候选逻辑/物理表、永久唯一和租户安全组合外键；尚未提交"
+    },
+    {
+      "path_or_resource": "com.ccb.architecture.model 与 ArchitectureSubsystemRepository",
+      "purpose": "候选强类型模型和 tenant-explicit 仓储；尚未提交"
+    },
+    {
+      "path_or_resource": "ArchitectureMigrationMySqlTest 与 ArchitectureSubsystemRepositoryTest",
+      "purpose": "真实 MySQL 迁移和仓储 SQL 传感器；尚未提交"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R5", "R12", "R13"],
+  "commands": [
+    {
+      "command": "T3 聚焦测试（实现前）",
+      "exit_code": 1,
+      "salient_output": "8 个 missing package/class 编译错误，红灯成立"
+    },
+    {
+      "command": "T3 Testcontainers MySQL 8.4 聚焦测试（实现后）",
+      "exit_code": 1,
+      "salient_output": "仓储 4/4 通过；迁移 0/2，通过 V1-V23 后在既有 V24 缺 FLW_EV_DATABASECHANGELOG 失败；另一个测试普通用户无 CREATE DATABASE 权限"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "仓储租户、筛选、软删除和父锁 SQL",
+      "result": "pass",
+      "evidence": "ArchitectureSubsystemRepositoryTest 4 tests passed",
+      "limitations": ["候选代码未提交，待迁移门禁解除后继续复验"]
+    },
+    {
+      "check": "空库完整 Flyway 到 V36",
+      "result": "fail",
+      "evidence": "V24__metadata_table_comments.sql:16 引用不存在的 FLW_EV_DATABASECHANGELOG；V36 未开始执行",
+      "limitations": ["故障位于已发布且当前 scope 只读的 V24"]
+    },
+    {
+      "check": "V35 到 V36 独立数据库",
+      "result": "blocked",
+      "evidence": "Testcontainers 普通用户不能 CREATE DATABASE",
+      "limitations": ["可在当前测试文件内改为独立容器或同库清理，不需要扩大产品 scope"]
+    }
+  ],
+  "diff_summary": [
+    "T3 候选实现只访问 arch_ 表，未修改历史迁移",
+    "真实传感器在 V36 前发现仓库既有空库基线缺陷",
+    "没有修改 V24 或通过跳过历史迁移伪造空库通过"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "不修改 V1-V35",
+      "result": "pass",
+      "evidence": "当前 T3 diff 只新增 V36 和 architecture 文件"
+    },
+    {
+      "invariant": "测试失败不得描述为迁移通过",
+      "result": "pass",
+      "evidence": "T3 保持 blocked，迁移传感器原始失败已记录"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "首次 Testcontainers 拉取 Ryuk 0.11.0",
+      "impact": "增加约 58 秒，不影响失败结论"
+    },
+    {
+      "event": "测试容器普通用户无建库权限",
+      "impact": "增量测试需在当前测试文件内改用独立容器或清理同库"
+    }
+  ],
+  "assumptions_falsified": [
+    "origin/main 的 V1-V34 可在全新 MySQL 8.4 空库中连续迁移"
+  ],
+  "unresolved_items": [
+    "F-0004：既有 V24 在空库引用未创建的 Flowable Liquibase 表，修复需要扩大当前 scope 或建立独立治理任务"
+  ],
+  "recommended_next": "correct"
+}
