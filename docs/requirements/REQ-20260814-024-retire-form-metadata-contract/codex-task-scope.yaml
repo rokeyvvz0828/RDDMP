@@ -1,0 +1,82 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260814-024",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260814-024-retire-form-metadata-contract/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "governance",
+    "module_owner": "rokeyvvz0828",
+    "branch": "docs/REQ-20260814-024-retire-form-metadata-contract",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "AGENTS.md",
+      "CODEX-DEVELOPMENT-GUIDE.md",
+      "docs/integration/business-form-metadata-contract.md",
+      "docs/integration/mock-data-contract.md",
+      "docs/requirements/REQ-20260814-024-retire-form-metadata-contract/**"
+    ],
+    "read_only_paths": [
+      "README.md",
+      "docs/governance/**",
+      "governance/modules.yaml",
+      "web/src/**",
+      "server/src/**",
+      "mock/mock-data.json"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260814-024",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["governance", "contract-search", "diff-check"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "Existing form metadata tables and migrations remain unchanged; only mandatory development contracts are retired."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "public-project-governance"
+  },
+  "required_tests": [
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "contract-search", "command": "Search active contracts for mandatory business form metadata adoption"},
+    {"name": "diff-check", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": ["Historical metadata documentation could be mistaken for an active development mandate"]
+  },
+  "completion": {
+    "control_mode": "minimal",
+    "control_prefix": "req-20260814-024-retire-form-metadata-contract",
+    "control_justification": "Documentation-only retirement of an already hidden feature contract; no product code, database, permission, API, or runtime behavior changes.",
+    "acceptance_evidence": [
+      "docs/requirements/REQ-20260814-024-retire-form-metadata-contract/requirement.md"
+    ],
+    "release_verification": ["governance", "contract-search", "diff-check"],
+    "rollback": "Restore the previous mandatory metadata wording in the four contract documents."
+  }
+}
