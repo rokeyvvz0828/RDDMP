@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "sample_label": "T7 V37 目录迁移独立观察",
+  "task_ids": ["T7"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {"requirement_id": "R6", "sensor": "S3 权限和管理员授权 SQL 断言", "result": "pass", "raw_evidence": "八项固定权限且非超级管理员没有自动授权", "limitation": ["JWT 403 由 T10 测量"]},
+    {"requirement_id": "R7", "sensor": "S4 六类参数精确代码和标签", "result": "pass", "raw_evidence": "六分类、六选项 ID/代码/标签与已批准目录一致", "limitation": []},
+    {"requirement_id": "R8", "sensor": "S4 MySQL 增量与幂等迁移", "result": "pass", "raw_evidence": "V36->V37 migrationsExecuted=1；重复=0；schema history=37", "limitation": ["MySQL 8.4 有 Flyway 支持版本提示"]},
+    {"requirement_id": "R10", "sensor": "S4 菜单树和负向表单扫描", "result": "pass", "raw_evidence": "父目录与两个子菜单字段精确；SQL 不写 biz_form；scope/boundary/diff 通过", "limitation": ["浏览器菜单呈现由 T10 测量"]}
+  ],
+  "feedback": [],
+  "disturbances": ["Flyway 对 MySQL 8.4 的已知非阻断升级提示", "用户未跟踪目录不在提交差异内"],
+  "coverage_gaps": ["T8 Mock、T9 前端和 T10 真实栈尚未执行"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

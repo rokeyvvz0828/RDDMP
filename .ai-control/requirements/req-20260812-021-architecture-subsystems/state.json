@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 132,
+  "revision": 140,
   "created_at": "2026-08-13T06:16:16+00:00",
-  "updated_at": "2026-08-15T05:16:44+00:00",
+  "updated_at": "2026-08-15T08:28:39+00:00",
   "mode": "high-assurance",
   "phase": "executing",
   "phase_history": [
@@ -269,6 +269,18 @@
       "to": "executing",
       "evidence": "T6 verified; proceed to T7 catalog migration",
       "recorded_at": "2026-08-15T05:16:43+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T7 MySQL, collision, scope and negative scans passed",
+      "recorded_at": "2026-08-15T08:28:34+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T7 verified; proceed to T8 local Mock sync",
+      "recorded_at": "2026-08-15T08:28:38+00:00"
     }
   ],
   "stage_artifacts": {
@@ -14303,6 +14315,107 @@
           "implementation_commit": "6df373f",
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 9,
+        "evidence": "T7 commit 81c7c29 and MySQL catalog sensor passed",
+        "recorded_at": "2026-08-15T08:28:33+00:00",
+        "data": {
+          "schema_version": 1,
+          "task_id": "T7",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "V37__seed_architecture_subsystem_catalog.sql",
+              "purpose": "初始化三菜单、八权限、超级管理员授权和六类参数"
+            },
+            {
+              "path_or_resource": "ArchitectureCatalogMigrationMySqlTest",
+              "purpose": "测量 V36 到 V37 增量、重复迁移、精确计数和最小授权"
+            }
+          ],
+          "requirements_addressed": [
+            "R6",
+            "R7",
+            "R8",
+            "R10"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureCatalogMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "MySQL 8.4：1/1 通过；V37 执行 1 次，重复执行 0 次"
+            },
+            {
+              "command": "git fetch origin main and collision scans",
+              "exit_code": 0,
+              "salient_output": "origin/main 为 HEAD 祖先且不占用 V35-V37、菜单/权限/参数固定 ID"
+            },
+            {
+              "command": "scope, module boundary, diff and negative SQL scans",
+              "exit_code": 0,
+              "salient_output": "2 files in scope；9 modules passed；无 biz_form 或启停用动作"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "目录精确性",
+              "result": "pass",
+              "evidence": "600/601/602、6011-6014、6021-6024、360001-360106 均由真实 MySQL 断言",
+              "limitations": []
+            },
+            {
+              "check": "最小授权",
+              "result": "pass",
+              "evidence": "超级管理员获得 3 菜单和 8 动作；测试角色获得 0 项",
+              "limitations": []
+            },
+            {
+              "check": "固定表单范围",
+              "result": "pass",
+              "evidence": "V37 不包含 biz_form 写入，迁移后 biz_form_scope 保持 0",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "追加 V37 初始租户目录迁移，不修改既有版本脚本",
+            "新增真实 MySQL 的 V36 到 V37 精确计数、授权和重复执行测试"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "只初始化租户 1 目录",
+              "result": "pass",
+              "evidence": "所有目录 INSERT 显式 tenant_id=1"
+            },
+            {
+              "invariant": "没有 status 动作",
+              "result": "pass",
+              "evidence": "权限仅 read/create/update/delete，负向扫描无 enable/disable/status"
+            },
+            {
+              "invariant": "迁移只追加且可重复启动",
+              "result": "pass",
+              "evidence": "V36->V37 单迁移且再次 migrate 为 0"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Flyway 当前声明最高支持 MySQL 8.1",
+              "impact": "MySQL 8.4 输出升级提示，但迁移和断言全部通过"
+            },
+            {
+              "event": "用户已有未跟踪 .dsh/** 与 docs/original/**",
+              "impact": "未读取、未修改、未暂存"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实登录后的动态菜单和权限由 T10 验证",
+            "T8 尚需受控同步虚构架构数据"
+          ],
+          "implementation_commit": "81c7c29",
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -14873,6 +14986,70 @@
           ],
           "coverage_gaps": [
             "T7 尚需初始化菜单/权限/参数，T9/T10 尚需真实前端和 JWT/API UAT"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 8,
+        "evidence": "T7 independent observation has no negative feedback",
+        "recorded_at": "2026-08-15T08:28:35+00:00",
+        "data": {
+          "schema_version": 1,
+          "sample_label": "T7 V37 目录迁移独立观察",
+          "task_ids": [
+            "T7"
+          ],
+          "baseline_revision": "baseline-3",
+          "measurements": [
+            {
+              "requirement_id": "R6",
+              "sensor": "S3 权限和管理员授权 SQL 断言",
+              "result": "pass",
+              "raw_evidence": "八项固定权限且非超级管理员没有自动授权",
+              "limitation": [
+                "JWT 403 由 T10 测量"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S4 六类参数精确代码和标签",
+              "result": "pass",
+              "raw_evidence": "六分类、六选项 ID/代码/标签与已批准目录一致",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "S4 MySQL 增量与幂等迁移",
+              "result": "pass",
+              "raw_evidence": "V36->V37 migrationsExecuted=1；重复=0；schema history=37",
+              "limitation": [
+                "MySQL 8.4 有 Flyway 支持版本提示"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "S4 菜单树和负向表单扫描",
+              "result": "pass",
+              "raw_evidence": "父目录与两个子菜单字段精确；SQL 不写 biz_form；scope/boundary/diff 通过",
+              "limitation": [
+                "浏览器菜单呈现由 T10 测量"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Flyway 对 MySQL 8.4 的已知非阻断升级提示",
+            "用户未跟踪目录不在提交差异内"
+          ],
+          "coverage_gaps": [
+            "T8 Mock、T9 前端和 T10 真实栈尚未执行"
           ],
           "error_counts": {
             "P0": 0,
@@ -19686,14 +19863,22 @@
       "escalation_conditions": [
         "需要多租户目录复制或扩展参数清单"
       ],
-      "status": "active",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-15T05:16:44+00:00",
           "text": "Start V37 menu permission and parameter catalog migration"
+        },
+        {
+          "recorded_at": "2026-08-15T08:28:33+00:00",
+          "text": "T7 implementation evidence recorded"
+        },
+        {
+          "recorded_at": "2026-08-15T08:28:37+00:00",
+          "text": "T7 observation complete with zero deviations"
         }
       ],
-      "updated_at": "2026-08-15T05:16:44+00:00"
+      "updated_at": "2026-08-15T08:28:37+00:00"
     },
     {
       "id": "T8",
@@ -19749,9 +19934,14 @@
       "escalation_conditions": [
         "需修改 Mock 契约或正式 seed 通道"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-15T04:13:57+00:00"
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-15T08:28:39+00:00",
+          "text": "Start trusted local architecture Mock initialization"
+        }
+      ],
+      "updated_at": "2026-08-15T08:28:39+00:00"
     },
     {
       "id": "T9",
@@ -20109,6 +20299,19 @@
       "score": 0,
       "evidence": "T6 exact DTO, permission, regression, scope, boundary and diff sensors passed",
       "recorded_at": "2026-08-15T05:16:41+00:00"
+    },
+    {
+      "id": "S-0011",
+      "label": "T7",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "V37 exact catalog, grant, idempotence and no-form sensors passed",
+      "recorded_at": "2026-08-15T08:28:36+00:00"
     }
   ]
 }
