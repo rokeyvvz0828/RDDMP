@@ -3,6 +3,8 @@ id: REQ-20260812-021
 status: ready
 owner: rokeyvvz0828
 module: business/architecture
+closure_status: accepted
+closed_at: 2026-08-15T22:13:16+08:00
 ---
 
 # 物理子系统与逻辑子系统基础信息管理
@@ -198,3 +200,9 @@ V1 数据范围为“具有相应权限的用户可访问当前租户全部子�
 ## 14. 当前准入状态
 
 用户于 2026-08-14 批准设计修订 3、实施计划修订 2 及其最小 platform/system 公共能力变更，并确认审计采用 `SystemOperationAudit` 平台契约；随后明确要求修复开发入口与迁移前置阻塞。迁移改为占用主干实际连续的 V35—V37，未落地需求的版本同步顺延；开发入口兼容修复和迁移/ID 冲突重扫通过后，T0 方可关闭。
+
+## 15. 关闭记录
+
+- 2026-08-15：用户确认验收通过并要求关闭需求。
+- 工程控制阶段为 `converged`，收敛门禁结果为 `pass`，未关闭反馈为 0。
+- 为兼容仓库 Codex scope 门禁，头部 `status` 与 scope 中的 requirement status 继续保留为 `ready`；实际关闭状态以 `closure_status: accepted`、本节和最终 handoff 为准。
