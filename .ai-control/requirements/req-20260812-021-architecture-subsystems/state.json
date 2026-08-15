@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 124,
+  "revision": 132,
   "created_at": "2026-08-13T06:16:16+00:00",
-  "updated_at": "2026-08-15T05:05:53+00:00",
+  "updated_at": "2026-08-15T05:16:44+00:00",
   "mode": "high-assurance",
   "phase": "executing",
   "phase_history": [
@@ -257,6 +257,18 @@
       "to": "executing",
       "evidence": "T5 已 verified 且无开放反馈，继续 T6 options 与契约",
       "recorded_at": "2026-08-15T05:05:51+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T6 focused and regression checks passed",
+      "recorded_at": "2026-08-15T05:16:38+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T6 verified; proceed to T7 catalog migration",
+      "recorded_at": "2026-08-15T05:16:43+00:00"
     }
   ],
   "stage_artifacts": {
@@ -14162,6 +14174,135 @@
           "implementation_commit": "9d393af",
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 8,
+        "evidence": "T6 commit 6df373f and passed local sensors",
+        "recorded_at": "2026-08-15T05:16:12+00:00",
+        "data": {
+          "schema_version": 1,
+          "task_id": "T6",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "OrganizationOption/UserOption/ParameterOption/LogicalSubsystemOption",
+              "purpose": "冻结最小安全 HTTP 选项记录"
+            },
+            {
+              "path_or_resource": "ArchitectureOptionsService",
+              "purpose": "组织压平分页、活动用户分页、参数分类白名单和逻辑选项投影"
+            },
+            {
+              "path_or_resource": "ArchitectureOptionsController",
+              "purpose": "逻辑/物理静态上下文路径与各自固定 list 权限"
+            },
+            {
+              "path_or_resource": "ArchitectureOptionsControllerTest",
+              "purpose": "exact-key、null、白名单、未知上下文和权限传感器"
+            },
+            {
+              "path_or_resource": "architecture-module-contract.md",
+              "purpose": "冻结 CRUD/options 路径、请求、响应、权限和错误语义"
+            }
+          ],
+          "requirements_addressed": [
+            "R4",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am '-Dtest=ArchitectureOptionsControllerTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+              "exit_code": 0,
+              "salient_output": "options exact-key/context/permission 6/6 通过"
+            },
+            {
+              "command": "mvn -pl :ccb-architecture -am '-Dtest=ArchitectureSubsystemRepositoryTest,LogicalSubsystemServiceTest,LogicalSubsystemControllerTest,PhysicalSubsystemServiceTest,PhysicalSubsystemControllerTest,ArchitectureOptionsControllerTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+              "exit_code": 0,
+              "salient_output": "architecture 无容器单元回归 40/40 通过"
+            },
+            {
+              "command": "mvn -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "system 11/11、security 4/4、infrastructure 6/6、common 2/2 通过"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260812-021-architecture-subsystems/codex-task-scope.yaml --base HEAD~1 --head HEAD",
+              "exit_code": 0,
+              "salient_output": "commit diff scope 8 files passed"
+            },
+            {
+              "command": "node scripts/check-module-boundaries.mjs 与 git diff --check HEAD~1 HEAD",
+              "exit_code": 0,
+              "salient_output": "9 modules passed；无 whitespace 错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "精确安全 DTO",
+              "result": "pass",
+              "evidence": "四类 JSON record exact-key；phone/parentId 显式 null；无 tenant/password/avatar/status/deleted/internal 字段",
+              "limitations": []
+            },
+            {
+              "check": "上下文最小权限",
+              "result": "pass",
+              "evidence": "七个已知端点使用静态路径和各自 list authority；没有 hasAnyAuthority 或两权限 OR；未知/不支持上下文 40400",
+              "limitations": [
+                "真实 JWT 403 由 T10 复验"
+              ]
+            },
+            {
+              "check": "引用与参数白名单",
+              "result": "pass",
+              "evidence": "组织只从 tenant tree 投影活动节点；用户走 active safe query；逻辑/物理三类参数严格隔离，跨上下文为 400",
+              "limitations": []
+            },
+            {
+              "check": "集成契约",
+              "result": "pass",
+              "evidence": "CRUD 请求/响应、options 查询/响应、错误码、权限及非目标均逐字段登记",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "新增四个 exact-key option records 和七个已知选项端点",
+            "逻辑/物理上下文各用静态 @PreAuthorize，不接受资源权限码或 OR 放行",
+            "组织只返回活动节点及 parentId/pathLabel；用户只返回 id/displayName/username/phone",
+            "逻辑选项仅物理上下文开放；逻辑上下文访问返回 40400",
+            "集成契约明确无 schema、无 status、无 tenant 和无 platform 管理字段"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "资源上下文固定权限",
+              "result": "pass",
+              "evidence": "七个 controller 方法反射精确断言"
+            },
+            {
+              "invariant": "exact safe DTO",
+              "result": "pass",
+              "evidence": "Jackson fieldNames exact-key 断言和显式 null"
+            },
+            {
+              "invariant": "无 schema API",
+              "result": "pass",
+              "evidence": "controller/service 路径扫描与 contract 明确非目标"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "用户已有 scope 外未跟踪 .dsh/** 与 docs/original/**",
+              "impact": "未读取、未修改、未暂存；commit diff scope 通过"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实 JWT 选项权限矩阵和前端选择器由 T9/T10 验证",
+            "V37 菜单、权限和参数目录由 T7 提供"
+          ],
+          "implementation_commit": "6df373f",
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -14671,6 +14812,67 @@
             "T6 尚需交付安全 options 和公开 contract",
             "T7/T8 尚需目录权限参数与 local Mock",
             "T9/T10 尚需真实前端、JWT/API、审计 SQL 和浏览器 UAT"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 7,
+        "evidence": "T6 independent observation has no negative feedback",
+        "recorded_at": "2026-08-15T05:16:40+00:00",
+        "data": {
+          "schema_version": 1,
+          "sample_label": "T6 安全选项与 HTTP 契约独立观察",
+          "task_ids": [
+            "T6"
+          ],
+          "baseline_revision": "baseline-3",
+          "measurements": [
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 exact-key MockMvc 与 S10 依赖扫描",
+              "result": "pass",
+              "raw_evidence": "OrganizationOption/UserOption/ParameterOption/LogicalSubsystemOption 精确字段；组织/用户/参数只消费公开 platform API；无 internal 或私有表访问",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S3 静态路径权限与错误语义",
+              "result": "pass",
+              "raw_evidence": "逻辑上下文三端点只用 architecture:logical:list；物理四端点只用 architecture:physical:list；未知/不支持上下文 40400；跨资源参数 400",
+              "limitation": [
+                "真实 SecurityFilterChain 由 T10 测量"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S3 安全字段与 system 回归",
+              "result": "pass",
+              "raw_evidence": "选项无密码、头像对象键、状态、删除、tenant 或管理字段；system 11/11 及依赖回归通过；业务端点不要求 system 管理权限",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R11",
+              "sensor": "S8 scope/module-boundary/diff",
+              "result": "pass",
+              "raw_evidence": "commit-diff scope 8 files、module-boundaries 9 modules、diff check 均通过",
+              "limitation": [
+                "working-tree scope 仍含用户未跟踪目录噪声"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "用户未跟踪目录只影响 working-tree scope，提交差异已隔离"
+          ],
+          "coverage_gaps": [
+            "T7 尚需初始化菜单/权限/参数，T9/T10 尚需真实前端和 JWT/API UAT"
           ],
           "error_counts": {
             "P0": 0,
@@ -19415,14 +19617,22 @@
       "escalation_conditions": [
         "需新增组织分页平台契约或 scope 外索引"
       ],
-      "status": "active",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-15T05:05:53+00:00",
           "text": "T4/T5 typed CRUD 已稳定，开始最小安全选项 API 和契约"
+        },
+        {
+          "recorded_at": "2026-08-15T05:16:37+00:00",
+          "text": "T6 implementation evidence recorded"
+        },
+        {
+          "recorded_at": "2026-08-15T05:16:42+00:00",
+          "text": "T6 observation complete with zero deviations"
         }
       ],
-      "updated_at": "2026-08-15T05:05:53+00:00"
+      "updated_at": "2026-08-15T05:16:42+00:00"
     },
     {
       "id": "T7",
@@ -19476,9 +19686,14 @@
       "escalation_conditions": [
         "需要多租户目录复制或扩展参数清单"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-15T04:13:57+00:00"
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-15T05:16:44+00:00",
+          "text": "Start V37 menu permission and parameter catalog migration"
+        }
+      ],
+      "updated_at": "2026-08-15T05:16:44+00:00"
     },
     {
       "id": "T8",
@@ -19881,6 +20096,19 @@
       "score": 0,
       "evidence": "observation-T5.json；聚焦、全回归、两种 MySQL 并发最终状态、scope 和模块边界均通过",
       "recorded_at": "2026-08-15T05:05:49+00:00"
+    },
+    {
+      "id": "S-0010",
+      "label": "T6",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "T6 exact DTO, permission, regression, scope, boundary and diff sensors passed",
+      "recorded_at": "2026-08-15T05:16:41+00:00"
     }
   ]
 }
