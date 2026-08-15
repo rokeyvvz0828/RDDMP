@@ -27,6 +27,8 @@ const router = createRouter({
         { path: 'workflow', redirect: '/workflow/definitions' },
         { path: 'workflow/:section', name: 'workflow', component: WorkflowView, props: true },
         { path: 'ai/:section', name: 'ai', component: AiView, props: true },
+        { path: 'architecture/logical-subsystems', name: 'architecture-logical-subsystems', component: () => import('../modules/architecture/LogicalSubsystemPage.vue'), meta: { title: '逻辑子系统' } },
+        { path: 'architecture/physical-subsystems', name: 'architecture-physical-subsystems', component: () => import('../modules/architecture/PhysicalSubsystemPage.vue'), meta: { title: '物理子系统' } },
         { path: 'components', name: 'components', component: ComponentShowcaseView, meta: { title: '组件示例' } },
         { path: 'delivery-showcase', name: 'delivery-showcase', component: DeliveryShowcaseModule, meta: { title: '交付示范中心' } }
       ]
