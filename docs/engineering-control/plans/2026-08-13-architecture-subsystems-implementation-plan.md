@@ -4,16 +4,16 @@
 
 ## 状态与来源
 
-- 计划修订：3
-- 设计修订：4
+- 计划修订：4
+- 设计修订：5
 - 设计文档：`docs/engineering-control/designs/2026-08-12-architecture-subsystems-design.md`
 - 状态：已批准
-- 批准证据：用户先批准进入开发，随后针对 T0 的两项阻塞明确要求“修复这两个问题”，授权版本重分配与开发入口兼容修复。
-- 旧计划处理：修订 1 的动态 schema 和旧物理字段设计继续失效；修订 2 的业务范围保持不变，仅替换迁移版本与 T0 治理传感器。
+- 批准证据：用户先批准进入开发，随后针对 T0 的两项阻塞明确要求“修复这两个问题”，授权版本重分配与开发入口兼容修复；2026-08-15 又批准扩大 scope，先建立独立空库迁移基线修复再恢复 T3。
+- 旧计划处理：修订 1 的动态 schema 和旧物理字段设计继续失效；修订 2 的业务范围保持不变；修订 3 的 T3 前新增 T3R，只修复 V24 前置，不改变业务字段或迁移版本。
 
 **目标：** 在独立 `business/architecture` 模块内交付逻辑/物理子系统强类型 CRUD、平台受控引用、统一审计、Flyway/Mock 初始化和桌面/移动页面。
 
-**架构：** 领域服务、表、API 和 Vue 页面归 architecture；platform/system 只新增无架构语义的用户/参数查询与操作审计契约，组织复用现有公开服务。固定表单不请求动态 schema。当前需求取得主干实际连续的 V35—V37；未落地的其他需求顺延到 V38—V40。
+**架构：** 领域服务、表、API 和 Vue 页面归 architecture；platform/system 只新增无架构语义的用户/参数查询与操作审计契约，组织复用现有公开服务。固定表单不请求动态 schema。platform/infrastructure 仅追加一个精确 Flyway `beforeMigrate` callback，补齐已发布 V24 的 Flowable 元数据前置；当前需求取得主干实际连续的 V35—V37，未落地的其他需求顺延到 V38—V40。
 
 **技术栈：** Java 17、Spring Boot 3.4.4、JdbcTemplate、MySQL 8.4、Flyway、JUnit 5、Mockito、Testcontainers、Vue 3、TypeScript、Element Plus。
 
@@ -25,7 +25,7 @@
 - platform/system 公共契约必须保持架构中立，公开包与内部实现分离；既有系统 API 行为保持不变。
 - 固定表单不得新增 `biz_form_*`、form-schema、PublishedFormSchemaQuery、元数据缓存或任意动态字段渲染。
 - V1 不新增启用、停用、status 请求字段或状态变更权限。
-- Flyway 只追加；生产回退不 DROP 表、不删除业务记录和审计证据。
+- Flyway 只追加；V1—V34 不修改。唯一非版本化 callback 必须命中治理白名单且仅幂等补齐 V24 前置；生产回退不 DROP 表、不删除业务记录和审计证据。
 - 小步提交；每个任务提交前运行局部测试和 `git diff --check`，不得混入无关格式化。
 
 ## 编码前硬门禁
@@ -52,6 +52,7 @@ T0 必须同时取得以下证据，否则不得执行 T1：
 | `server/src/platform/system/src/main/java/com/ccb/system/capability/**` | candidate-new | 用户/参数查询和审计公开契约 |
 | `server/src/platform/system/src/main/java/com/ccb/system/internal/capability/**` | candidate-new | 平台表私有 JdbcTemplate 实现 |
 | `server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql` | candidate-new | 审计 trace 兼容扩展 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql` | candidate-new | V24 Flowable Liquibase 元数据前置兼容 callback |
 | `server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql` | candidate-new | 两个业务表和约束 |
 | `server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql` | candidate-new | 菜单、权限、管理员授权和六类参数 |
 | `server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java` | existing | local Mock 白名单和引用校验 |
@@ -60,15 +61,16 @@ T0 必须同时取得以下证据，否则不得执行 T1：
 | `web/src/router/index.ts` | existing | 两条静态业务路由 |
 | `pom.xml`、`server/src/platform/boot/pom.xml` | existing | reactor、依赖管理和 Boot 装配 |
 | `governance/modules.yaml`、`docs/architecture/MODULES.md`、`.github/CODEOWNERS` | existing | 模块边界、公开包和所有权 |
+| `scripts/check-flyway-migrations.mjs` | existing | 版本迁移 append-only 与精确 callback 白名单 |
 | `docs/integration/architecture-module-contract.md` | candidate-new | 稳定 HTTP、平台 capability 和数据语义 |
 
 ## 任务依赖图与并行策略
 
 ```text
-T0 -> T1 -> T2 -> T3 -> T4 -> T5 -> T6 -> T9 -> T10
-                    |      |
-                    |      +--------> T7 -> T8 --+
-                    +-----------------------------+
+T0 -> T1 -> T2 -> T3R -> T3 -> T4 -> T5 -> T6 -> T9 -> T10
+                           |      |
+                           |      +--------> T7 -> T8 --+
+                           +-----------------------------+
 ```
 
 - T4 与 T7 可在 T3 后并行：分别修改 architecture Java 和 V37 SQL，没有共享写入面；二者都完成后再进入 T8/T10。
@@ -92,6 +94,8 @@ T0 -> T1 -> T2 -> T3 -> T4 -> T5 -> T6 -> T9 -> T10
 | R11 | T0、T1、T10 |
 | R12 | T3、T4、T5、T8、T10 |
 | R13 | T3、T5、T8、T9、T10 |
+
+T3R 是 R8 的迁移前置纠偏任务；它不新增业务行为，只恢复“空库无需人工预置”的可执行条件。
 
 ### T0：关闭开发入口、Owner、分支和迁移前置门禁
 
@@ -201,11 +205,39 @@ void recordFailure(SystemOperationAuditCommand command);
 
 **升级条件：** 需要扩大公开包到 `com.ccb.system.service`，或 audit 事务无法在当前 Spring 边界表达。
 
+### T3R：修复 V24 空库迁移前置
+
+**需求映射：** R8
+
+**前置任务：** T2
+
+**文件：**
+
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql`
+- 修改：`scripts/check-flyway-migrations.mjs`
+- 新建：`server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/EmptyDatabaseMigrationBaselineMySqlTest.java`
+
+**接口：** callback 由 Flyway migration location 自动发现；仅创建 `FLW_EV_DATABASECHANGELOG`、`FLW_EV_DATABASECHANGELOGLOCK` 及未锁定 ID=1 行，不进入 `flyway_schema_history`。
+
+- [ ] **步骤 1：固化失败与历史保护。** 保留空库 V1→V36 在 V24 失败的证据，记录 V24 文件哈希；测试断言 callback 不出现在版本历史。
+- [ ] **步骤 2：扩展迁移治理。** `check-flyway-migrations.mjs` 只额外接受精确 callback 文件名，其他非 `V<number>__*.sql` 继续失败，且 diff append-only 规则不变。
+- [ ] **步骤 3：实现兼容 callback。** 使用与现有开发库一致的 Flowable Liquibase 列定义和 `utf8mb3_bin`；所有 DDL/DML 幂等，不修改业务表或 Flyway history。
+- [ ] **步骤 4：复验三条路径。** 空库 V1→V34/V36；同库 target V35→V36；已越过 V24 后再次 migrate，表/锁行/history 均不重复。
+- [ ] **步骤 5：提交独立纠偏。** 运行聚焦迁移、Flyway governance、scope 和 diff；提交 `fix(infrastructure): repair empty database migration baseline`。
+
+**验收：** 原 F-0004 检查通过；V24 未修改；空库不需外部预建表；既有已越过 V24 的库只发生幂等 no-op。
+
+**回滚：** 正常应用回退保留 callback。只有后续替代机制已使所有新库可越过 V24 时，才能移除 callback；不得删除已存在元数据表。
+
+**停止条件：** callback 需要修改历史迁移、写 `flyway_schema_history`、触碰 Flowable 事件业务表，或已越过 V24 的幂等检查失败。
+
+**升级条件：** 标准元数据定义与现存库不兼容，或 Flyway 不识别 SQL callback。
+
 ### T3：建立 V36 数据模型、仓储与 MySQL 传感器
 
 **需求映射：** R1、R2、R3、R5、R12、R13
 
-**前置任务：** T2
+**前置任务：** T3R
 
 **文件：**
 
@@ -462,6 +494,7 @@ void recordFailure(SystemOperationAuditCommand command);
 | T0 | development-entry、scope、git ls-tree | 所有硬门禁为绿，主干最高 V34 且 V35—V37 可用 |
 | T1 | Maven parse、governance、module-boundaries | 新模块可识别、无反向依赖 |
 | T2 | system 全测 + V35 | 公共契约/审计通过，既有 system 无回归 |
+| T3R | Testcontainers Flyway + history + governance | 空库越过 V24、既有路径幂等、历史迁移未修改 |
 | T3 | Testcontainers Flyway/repository | V36 约束与租户 SQL 准确 |
 | T4/T5 | architecture 全测 + 并发 MySQL | CRUD、团队、父锁和 audit 通过 |
 | T6/T7 | MockMvc exact-key + V37 migration | 选项安全、目录参数计数准确、无 schema |
@@ -482,4 +515,4 @@ void recordFailure(SystemOperationAuditCommand command);
 
 ## 风险与用户批准
 
-高风险动作包括平台公开 Java 契约、现有审计表兼容迁移、两个新业务表、父子并发锁、Boot/Maven 装配和四视口真实 UAT。用户已批准计划修订 3、最小公共能力变更、开发入口兼容和未落地迁移版本重分配；`codex_allowed` 与 `owner_approved` 已解锁。仍须以修复后的入口命令和最新主干/ID 扫描关闭 T0。
+高风险动作包括平台公开 Java 契约、全局 Flyway callback、现有审计表兼容迁移、两个新业务表、父子并发锁、Boot/Maven 装配和四视口真实 UAT。用户已批准计划修订 4、最小公共能力变更、开发入口兼容、未落地迁移版本重分配和 T3R 空库迁移基线修复；`codex_allowed` 与 `owner_approved` 已解锁。callback 必须在独立提交中先通过空库、既有路径和治理检查，之后才恢复 T3。

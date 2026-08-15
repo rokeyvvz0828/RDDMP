@@ -26,6 +26,7 @@
       "server/src/platform/system/src/test/java/com/ccb/system/capability/**",
       "server/src/platform/system/src/test/java/com/ccb/system/internal/capability/**",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql",
       "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
@@ -37,6 +38,7 @@
       "server/src/platform/boot/pom.xml",
       "governance/modules.yaml",
       "scripts/check-development-entry.mjs",
+      "scripts/check-flyway-migrations.mjs",
       "docs/architecture/MODULES.md",
       ".github/CODEOWNERS",
       "docs/integration/architecture-module-contract.md",
@@ -91,7 +93,7 @@
     "required": true,
     "issue": "REQ-20260812-021",
     "owner_approved": true,
-    "approval_evidence": "用户于 2026-08-14T15:37:31+08:00 批准实施与最小 platform/system 公开能力变更；随后明确要求修复 development-entry 与迁移前置阻塞，授权本 scope 增加精确治理脚本及未落地迁移版本分配文档。",
+    "approval_evidence": "用户于 2026-08-14T15:37:31+08:00 批准实施与最小 platform/system 公开能力变更；随后明确要求修复 development-entry 与迁移前置阻塞。2026-08-15 用户再次批准扩大 scope，建立独立空库迁移基线修复，授权增加精确 Flyway SQL callback 与迁移治理检查修改，但不授权修改 V1-V34。",
     "old_behavior_preserved": true,
     "regression_tests": [
       "existing system resource APIs and generic /system/:section behavior remain unchanged",
@@ -102,16 +104,18 @@
       "existing menu, role, organization, user and parameter management tests pass",
       "boot assembles all existing modules plus ccb-architecture",
       "governance and module-boundary checks pass after registering business/architecture"
+      ,"Flyway SQL callback 通过 information_schema 守卫只幂等补齐 V24 所需的两个 Flowable Liquibase 元数据表和锁记录，不进入 flyway_schema_history，不修改 V1-V34 校验和"
     ]
   },
   "database": {
     "changed": true,
     "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql"
     ],
-    "compatibility_and_rollback": "截至 2026-08-14T16:03:00+08:00，刷新后的 origin/main 最高为 V34，当前实施需求取得连续的 V35-V37；原先仅由未实施需求文档预留的版本顺延。V35 仅增加可空 trace_id 和索引；V36 新增 arch_ 业务表，tenant_id 非空且无默认值；V37 仅初始化菜单、权限、管理员授权和参数，不写 biz_form_*。应用回退保留迁移和数据，关闭入口使用后续补偿迁移。"
+    "compatibility_and_rollback": "截至 2026-08-14T16:03:00+08:00，刷新后的 origin/main 最高为 V34，当前实施需求取得连续的 V35-V37；原先仅由未实施需求文档预留的版本顺延。beforeMigrate callback 使用 information_schema 守卫和静态预编译 DDL 幂等补齐 V24 已假定存在的 Flowable Liquibase 元数据表及 ID=1 未锁定记录，不修改历史迁移或业务表，也不写 Flyway 历史；V35 仅增加可空 trace_id 和索引；V36 新增 arch_ 业务表，tenant_id 非空且无默认值；V37 仅初始化菜单、权限、管理员授权和参数，不写 biz_form_*。应用回退保留 callback、迁移和数据；callback 只有在后续替代机制保证所有空库都能越过 V24 后才可移除。"
   },
   "external_access": {
     "changed": false,
@@ -161,6 +165,7 @@
       "HTTP/领域 tenant_id 只从 AuthUser 注入，客户端值、常量 1 兜底和本地 Mock 缺省租户均被禁止",
       "父子并发和软删除后的永久唯一性必须由数据库约束与服务端校验共同保证",
       "固定表单不得重新引入 biz_form、schema 请求或任意动态字段渲染"
+      ,"空库基线修复只能追加 Flyway callback，不得修改 V24 或伪造 flyway_schema_history；callback 必须在空库全链和已越过 V24 的幂等路径均通过"
     ]
   },
   "completion": {
@@ -176,13 +181,13 @@
       ".ai-control/requirements/req-20260812-021-architecture-subsystems/convergence.json"
     ],
     "release_verification": [
-      "空库/增量库从 V34 连续迁移到 V37",
+      "空库通过 callback 从 V1 连续迁移到 V37，已越过 V24 的增量库验证 callback 幂等后从 V34 到 V37",
       "Maven reactor 和 Boot 新模块装配",
       "真实 API 权限、认证租户、关联、负责团队和审计验证",
       "桌面与指定手机视口浏览器 UAT",
       "现有 system 模块与通用 capability 回归",
       "模块治理、范围和边界检查"
     ],
-    "rollback": "按前端、架构业务、平台 capability、Boot/根装配和治理登记的依赖逆序回退应用提交；保留 V38-V40、业务数据和审计；关闭入口使用后续补偿迁移，不手工删除生产数据。"
+    "rollback": "按前端、架构业务、平台 capability、Boot/根装配和治理登记的依赖逆序回退应用提交；保留 Flyway callback、V35-V37、业务数据和审计；关闭入口使用后续补偿迁移，不手工删除生产数据。"
   }
 }

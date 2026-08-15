@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "topic": "architecture-subsystems",
-  "design_revision": 4,
+  "design_revision": 5,
   "design_status": "approved",
   "human_document": "docs/engineering-control/designs/2026-08-12-architecture-subsystems-design.md",
   "objective": "在独立 business/architecture 模块内建立逻辑子系统与物理子系统的类型化、租户隔离、权限受控、关联完整且可审计的基础信息管理闭环。",
@@ -124,6 +124,7 @@
     "成功业务写入和成功审计同事务，失败审计独立且不覆盖原错误",
     "不新增 biz_form 或 form-schema 运行时依赖",
     "不修改已发布 Flyway 脚本",
+    "唯一迁移兼容 callback 只幂等补齐 V24 所需的两张 Flowable Liquibase 元数据表和 ID=1 锁记录，不写 flyway_schema_history",
     "不实现系统启停用"
   ],
   "constraints": [
@@ -133,6 +134,7 @@
     "只修改 codex-task-scope.yaml 的 writable_paths",
     "platform/system 公共能力变更需 Owner 审批和回归",
     "业务模块不得直接写平台表"
+    ,"空库兼容修复不得修改 V1-V34、Flowable 事件业务表或业务领域字段"
   ],
   "non_goals": [
     "系统启停用和状态历史",
@@ -143,8 +145,8 @@
     "跨租户共享和级联删除"
   ],
   "selected_approach": {
-    "name": "独立业务模块、固定强类型表单和最小平台查询/审计契约",
-    "reason": "保持领域归属清晰，满足实时平台引用和统一审计，同时遵守最新 main 的表单元数据退役规则。",
+    "name": "独立业务模块、固定强类型表单、最小平台查询/审计契约和精确 Flyway callback",
+    "reason": "保持领域归属清晰，满足实时平台引用和统一审计，同时遵守最新 main 的表单元数据退役规则，并在不修改 V24 的前提下恢复空库迁移。",
     "alternatives": [
       "全部放入 platform/system：违背用户明确模块归属",
       "架构直接查询或写平台表：形成私有表耦合并绕过契约",
@@ -154,7 +156,7 @@
   },
   "architecture": {
     "boundary": {
-      "inside": ["ccb-architecture", "architecture Vue 模块", "SystemReferenceQuery", "SystemOperationAudit", "V35-V37", "local Mock"],
+      "inside": ["ccb-architecture", "architecture Vue 模块", "SystemReferenceQuery", "SystemOperationAudit", "精确 Flyway beforeMigrate callback", "V35-V37", "local Mock"],
       "outside": ["动态表单元数据", "系统启停用", "审批工作流", "正式事业群主数据"]
     },
     "components": [
@@ -194,11 +196,11 @@
     "security": ["服务端 RBAC", "认证租户", "exact safe option DTO", "客户端不能提交 snapshot/phone/tenant"],
     "performance": ["业务和用户选项服务端分页", "参数按类别加载", "父子和筛选索引"],
     "compatibility": ["既有 system API 不变", "trace_id 可空", "OrganizationService 不修改", "固定表单不依赖存量元数据"],
-    "operations": ["trace 审计", "Flyway 连续性", "Mock 幂等", "应用回退保留表和数据"]
+    "operations": ["trace 审计", "Flyway 空库连续性和 callback 幂等", "Mock 幂等", "应用回退保留 callback、表和数据"]
   },
   "verification_strategy": [
     "architecture/system/infrastructure 单元和集成测试",
-    "MySQL 空库和从 V34 到 V37 的增量迁移",
+    "MySQL 空库 V1-V34/V37、已越过 V24 的 callback 幂等和从 V34 到 V37 的增量迁移",
     "父子并发两事务测试",
     "Mock profile/租户/引用/幂等测试",
     "Maven reactor、Boot package、前端构建和治理检查",
@@ -249,10 +251,11 @@
     "组织失效历史与编辑规则实现偏差",
     "父子并发和租户引用穿透",
     "前端重新引入已退役 schema 思路"
+    ,"全局 Flyway callback 若超出精确元数据范围会影响所有迁移启动"
   ],
   "approval": {
     "status": "approved",
-    "evidence": "用户批准设计修订 3 与实施，随后针对 T0 两项阻塞明确要求修复，批准修订 4 的版本重分配和开发入口兼容动作。",
-    "confirmed_at": "2026-08-14T16:03:00+08:00"
+    "evidence": "用户批准设计修订 3 与实施，随后针对 T0 两项阻塞明确要求修复，批准修订 4 的版本重分配和开发入口兼容动作；2026-08-15 批准扩大 scope，先实施独立空库迁移基线修复。",
+    "confirmed_at": "2026-08-15T00:00:00+08:00"
   }
 }

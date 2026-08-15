@@ -1,6 +1,6 @@
 {
-  "baseline_revision": "baseline-2",
-  "model_revision": "model-2",
+  "baseline_revision": "baseline-3",
+  "model_revision": "model-5",
   "tasks": [
     {
       "id":"T0","goal":"修复开发入口兼容、确认 Owner/scope/分支并分配连续 V35-V37","requirement_ids":["R8","R11"],"prerequisites":[],
@@ -27,7 +27,15 @@
       "rollback":"先回退消费者再回退 Java；保留 V35 可空列","stop_conditions":["主干出现冲突 V35","需要修改 scope 外平台代码","现有日志回归"],"escalation_conditions":["需扩大公开包或无法表达审计事务"]
     },
     {
-      "id":"T3","goal":"建立 V36 数据模型、仓储和 MySQL 传感器","requirement_ids":["R1","R2","R3","R5","R12","R13"],"prerequisites":["T2"],
+      "id":"T3R","goal":"以精确 Flyway callback 修复 V24 空库前置且保持历史迁移校验和","requirement_ids":["R8"],"prerequisites":["T2"],
+      "input_facts":["空 MySQL 8.4 的 V1-V36 在 V24 因缺少 FLW_EV_DATABASECHANGELOG/LOCK 失败","V20 未创建两张元数据表且 Boot 关闭 Flowable schema update","既有开发库的标准列定义和 ID=1 未锁定记录已只读核对","用户于 2026-08-15 批准扩大 scope"],
+      "write_scope":["server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql","scripts/check-flyway-migrations.mjs","server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/EmptyDatabaseMigrationBaselineMySqlTest.java","当前需求/设计/计划/scope",".ai-control/requirements/req-20260812-021-architecture-subsystems/*.json"],
+      "invariants":["不修改 V1-V34","不写 flyway_schema_history","只触及两张 Flowable Liquibase 元数据表和 ID=1 锁记录","已越过 V24 的库重复运行幂等"],"interface_contracts":["Flyway 自动发现精确 beforeMigrate callback","迁移治理只额外白名单该 callback，其他非版本 SQL 继续失败"],"non_goals":["不修改 Flowable 事件业务表","不改变 V35-V37 或 architecture 领域模型"],
+      "action_bounds":["单个 SQL callback、精确治理白名单、迁移测试夹具纠正"],"acceptance_checks":["空库 V1-V34/V36 通过","同库 V35 到 V36 只执行 V36","重复 migrate 不新增 history 或 lock row","V24 工作树无 diff","Flyway/governance/scope/diff 通过"],"evidence_required":["Testcontainers 输出","information_schema/history/lock-row 断言","V24 hash/diff","治理命令退出码"],
+      "rollback":"正常回退保留 callback；仅在替代机制确保新库越过 V24 后移除，不删除现有表","stop_conditions":["callback 未被 Flyway 识别","历史校验和变化","幂等路径改变既有数据"],"escalation_conditions":["需要修改 V24、Flowable 配置或其他平台 Java"]
+    },
+    {
+      "id":"T3","goal":"建立 V36 数据模型、仓储和 MySQL 传感器","requirement_ids":["R1","R2","R3","R5","R12","R13"],"prerequisites":["T3R"],
       "input_facts":["V36 字段和组合父外键已由设计冻结","new module POM 可承载 Testcontainers test 依赖"],
       "write_scope":["server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql","server/src/modules/architecture/src/main/java/com/ccb/architecture/model/**","server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/**"],
       "invariants":["tenant 无默认","永久唯一不含 deleted","仓储只访问 arch 表","命令无 tenant/phone/snapshot/status"],"interface_contracts":["tenant-explicit repository","tenant-safe physical logical composite FK"],"non_goals":["不实现 HTTP/前端","不增加平台表外键"],
@@ -92,13 +100,14 @@
     }
   ],
   "dependency_edges": [
-    {"from":"T0","to":"T1","reason":"执行前门禁"},{"from":"T1","to":"T2","reason":"公开包和模块登记"},{"from":"T2","to":"T3","reason":"V35 和模块依赖先稳定"},{"from":"T3","to":"T4","reason":"逻辑服务依赖表和仓储"},{"from":"T4","to":"T5","reason":"物理和删除保护共享父仓储"},{"from":"T5","to":"T6","reason":"选项消费稳定资源 DTO"},{"from":"T3","to":"T7","reason":"V37 依赖 V36"},{"from":"T3","to":"T8","reason":"Mock 依赖业务表"},{"from":"T7","to":"T8","reason":"Mock 依赖目录参数"},{"from":"T6","to":"T9","reason":"页面消费最终 HTTP 契约"},{"from":"T2","to":"T10","reason":"集成需平台契约"},{"from":"T4","to":"T10","reason":"集成需逻辑 CRUD"},{"from":"T5","to":"T10","reason":"集成需物理/并发"},{"from":"T6","to":"T10","reason":"集成需 options"},{"from":"T7","to":"T10","reason":"集成需 catalog"},{"from":"T8","to":"T10","reason":"集成需 Mock"},{"from":"T9","to":"T10","reason":"集成需页面"}
+    {"from":"T0","to":"T1","reason":"执行前门禁"},{"from":"T1","to":"T2","reason":"公开包和模块登记"},{"from":"T2","to":"T3R","reason":"V35 稳定后修复其前置空库基线"},{"from":"T3R","to":"T3","reason":"V24 前置复验通过后才能测量 V36"},{"from":"T3","to":"T4","reason":"逻辑服务依赖表和仓储"},{"from":"T4","to":"T5","reason":"物理和删除保护共享父仓储"},{"from":"T5","to":"T6","reason":"选项消费稳定资源 DTO"},{"from":"T3","to":"T7","reason":"V37 依赖 V36"},{"from":"T3","to":"T8","reason":"Mock 依赖业务表"},{"from":"T7","to":"T8","reason":"Mock 依赖目录参数"},{"from":"T6","to":"T9","reason":"页面消费最终 HTTP 契约"},{"from":"T2","to":"T10","reason":"集成需平台契约"},{"from":"T4","to":"T10","reason":"集成需逻辑 CRUD"},{"from":"T5","to":"T10","reason":"集成需物理/并发"},{"from":"T6","to":"T10","reason":"集成需 options"},{"from":"T7","to":"T10","reason":"集成需 catalog"},{"from":"T8","to":"T10","reason":"集成需 Mock"},{"from":"T9","to":"T10","reason":"集成需页面"}
   ],
   "parallel_groups": [["T4","T7"]],
   "integration_points": [
     {"after_tasks":["T0"],"checks":["development-entry 正负向/scope/branch/main最高V34且V35-V37空闲"]},
     {"after_tasks":["T1"],"checks":["Maven/governance/module-boundaries/full scope check"]},
     {"after_tasks":["T2"],"checks":["system tests/V35/旧日志兼容"]},
+    {"after_tasks":["T3R"],"checks":["空库 V1-V34/V36、已越过 V24 幂等、schema history、V24 无修改、Flyway governance"]},
     {"after_tasks":["T3"],"checks":["V36 MySQL/repository"]},
     {"after_tasks":["T4","T5"],"checks":["architecture CRUD/concurrency/audit"]},
     {"after_tasks":["T6","T7"],"checks":["options exact-key/V37 counts/no schema"]},
@@ -112,7 +121,19 @@
     {"label":"全栈收敛采样","trigger":"T10 验证前后","observer":"独立观察者","sensors":["S5","S6","S7","S8","S9","S10"],"requirement_ids":["R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13"]}
   ],
   "coverage": [
-    {"requirement_id":"R1","task_ids":["T3","T4","T9","T10"],"sensor_ids":["S1","S3","S7"]},{"requirement_id":"R2","task_ids":["T3","T5","T9","T10"],"sensor_ids":["S1","S2","S3"]},{"requirement_id":"R3","task_ids":["T3","T4","T5","T10"],"sensor_ids":["S1","S3","S5"]},{"requirement_id":"R4","task_ids":["T2","T4","T5","T6","T10"],"sensor_ids":["S1","S3"]},{"requirement_id":"R5","task_ids":["T3","T5","T10"],"sensor_ids":["S1","S2","S3"]},{"requirement_id":"R6","task_ids":["T2","T4","T5","T6","T7","T10"],"sensor_ids":["S3","S4"]},{"requirement_id":"R7","task_ids":["T2","T4","T5","T6","T7","T9","T10"],"sensor_ids":["S3","S4"]},{"requirement_id":"R8","task_ids":["T0","T7","T8","T10"],"sensor_ids":["S5","S9"]},{"requirement_id":"R9","task_ids":["T9","T10"],"sensor_ids":["S6","S7"]},{"requirement_id":"R10","task_ids":["T7","T9","T10"],"sensor_ids":["S6","S7","S9"]},{"requirement_id":"R11","task_ids":["T0","T1","T10"],"sensor_ids":["S8","S10"]},{"requirement_id":"R12","task_ids":["T3","T4","T5","T8","T10"],"sensor_ids":["S1","S3","S5"]},{"requirement_id":"R13","task_ids":["T3","T5","T8","T9","T10"],"sensor_ids":["S1","S3","S7"]}
+    {"requirement_id":"R1","task_ids":["T3","T4","T9","T10"],"sensor_ids":["S1","S3","S7"]},
+    {"requirement_id":"R2","task_ids":["T3","T5","T9","T10"],"sensor_ids":["S1","S2","S3"]},
+    {"requirement_id":"R3","task_ids":["T3","T4","T5","T10"],"sensor_ids":["S1","S3","S5"]},
+    {"requirement_id":"R4","task_ids":["T2","T4","T5","T6","T10"],"sensor_ids":["S1","S3"]},
+    {"requirement_id":"R5","task_ids":["T3","T5","T10"],"sensor_ids":["S1","S2","S3"]},
+    {"requirement_id":"R6","task_ids":["T2","T4","T5","T6","T7","T10"],"sensor_ids":["S3","S4"]},
+    {"requirement_id":"R7","task_ids":["T2","T4","T5","T6","T7","T9","T10"],"sensor_ids":["S3","S4"]},
+    {"requirement_id":"R8","task_ids":["T0","T3R","T7","T8","T10"],"sensor_ids":["S5","S9"]},
+    {"requirement_id":"R9","task_ids":["T9","T10"],"sensor_ids":["S6","S7"]},
+    {"requirement_id":"R10","task_ids":["T7","T9","T10"],"sensor_ids":["S6","S7","S9"]},
+    {"requirement_id":"R11","task_ids":["T0","T1","T10"],"sensor_ids":["S8","S10"]},
+    {"requirement_id":"R12","task_ids":["T3","T4","T5","T8","T10"],"sensor_ids":["S1","S3","S5"]},
+    {"requirement_id":"R13","task_ids":["T3","T5","T8","T9","T10"],"sensor_ids":["S1","S3","S7"]}
   ],
   "plan_status": "ready"
 }

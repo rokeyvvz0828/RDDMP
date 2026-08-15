@@ -4,9 +4,9 @@
 
 - 需求编号：REQ-20260812-021
 - 主题：architecture-subsystems
-- 设计修订：4
+- 设计修订：5
 - 状态：已批准
-- 批准依据：用户于 2026-08-14 批准修订 3、实施计划与最小 `SystemOperationAudit` 平台契约；在 T0 暴露 CLI 和迁移占位阻塞后，明确要求修复两个问题，批准修订 4 的版本重分配与开发入口兼容动作。
+- 批准依据：用户于 2026-08-14 批准修订 3、实施计划与最小 `SystemOperationAudit` 平台契约；在 T0 暴露 CLI 和迁移占位阻塞后，明确要求修复两个问题，批准修订 4 的版本重分配与开发入口兼容动作。T3 真实空库测试又发现已发布 V24 缺少 Flowable 元数据前置，用户于 2026-08-15 批准扩大 scope，先实施独立空库迁移基线修复。
 
 ## 1. 目标与成功定义
 
@@ -46,6 +46,7 @@
 
 - `ccb-architecture` Maven 模块和 `web/src/modules/architecture` 前端模块。
 - 两类资源、两页面、八项权限、菜单、参数目录、Mock 和 Flyway。
+- 不改历史迁移的 Flyway `beforeMigrate` 空库兼容层及其治理检查。
 - 用户/参数只读查询及操作审计的通用平台公开契约。
 - 根/Boot POM、模块治理、路由和 CODEOWNERS 装配。
 - 桌面、移动端、明暗主题和真实 API UAT。
@@ -68,6 +69,7 @@
 - 固定表单前端校验不替代服务端校验。
 - 成功写入和成功审计同事务；失败审计独立尽力执行且不覆盖原错误。
 - 不修改 V1—V34 或其他已发布 Flyway 脚本。
+- 兼容 callback 只可幂等创建 V24 已假定存在的两张 Flowable Liquibase 元数据表和未锁定 ID=1 记录，不修改 `flyway_schema_history`、业务表或 Flowable 事件业务表。
 
 ## 4. 数据设计
 
@@ -301,6 +303,7 @@ V35 为 `sys_operation_log` 增加可空 `trace_id VARCHAR(64)` 和 `(tenant_id,
 
 ### 10.2 本需求迁移
 
+- `beforeMigrate__ensure_flowable_event_registry_metadata.sql`：Flyway SQL callback；在每次 migrate 前以 `information_schema` 守卫的静态预编译 DDL 补齐 `FLW_EV_DATABASECHANGELOG`、`FLW_EV_DATABASECHANGELOGLOCK` 和未锁定 ID=1 记录，使空库可执行既有 V24。该文件不进入版本历史，不替代或修改 V24。
 - `V35__extend_operation_log_trace.sql`：兼容扩展审计表。
 - `V36__create_architecture_subsystems.sql`：两个业务表、唯一键、组合父外键和索引。
 - `V37__seed_architecture_subsystem_catalog.sql`：菜单、权限、超级管理员授权和六类参数。
@@ -331,6 +334,7 @@ V35 为 `sys_operation_log` 增加可空 `trace_id VARCHAR(64)` 和 `(tenant_id,
 - `mvn -pl :ccb-system -am test`：用户/参数查询、操作审计及现有 system 回归。
 - `mvn -pl :ccb-architecture -am test`：CRUD、DTO、权限、租户、引用、团队快照/失效、电话、参数、并发和 HTTP。
 - `mvn -pl :ccb-infrastructure -am test`：V35—V37、空库/增量和 Mock。
+- Testcontainers 迁移测试必须分别证明：空库 V1→V34/V36、同库 V35→V36、已越过 V24 后 callback 重复执行不新增版本历史或锁记录。
 - `mvn test` 与 Boot package：全 reactor 和装配。
 - `npm --prefix web run build`：Vue 类型和生产构建。
 - scope、governance、module-boundaries、Flyway、`git diff --check`。
@@ -354,10 +358,11 @@ V35 为 `sys_operation_log` 增加可空 `trace_id VARCHAR(64)` 和 `(tenant_id,
 | 用户/参数选项泄露管理字段 | exact-key DTO 和 HTTP JSONPath 断言 |
 | 并发父子写入 | MySQL 两事务受控时序测试 |
 | 固定表单与移动端漂移 | TypeScript 构建、四视口浏览器 UAT |
+| 全局 callback 影响所有迁移启动 | 文件名精确白名单；以 `information_schema` 守卫仅创建两张框架元数据表与 ID=1；空库、已越过 V24、schema history 三类断言 |
 
 编码前还必须满足：当前 scope `codex_allowed=true`、公共能力 Owner 审批、目标分支一致、开发入口检查通过、新计划已获用户批准、目标主干最高仍为 V34 且 V35—V37/稳定 ID 未被占用。
 
-回退按前端 → 架构业务 → 平台契约 → Boot/根装配 → 治理登记逆序执行；V35—V37 和业务数据保留。关闭菜单和撤销权限使用后续补偿迁移，不在生产 DROP 或手工清理。
+回退按前端 → 架构业务 → 平台契约 → Boot/根装配 → 治理登记逆序执行；兼容 callback、V35—V37 和业务数据保留。callback 只有在后续替代机制保证全新数据库无需它也能越过 V24 后才可移除；关闭菜单和撤销权限使用后续补偿迁移，不在生产 DROP 或手工清理。
 
 ## 13. 方案比较
 
@@ -377,9 +382,14 @@ V35 为 `sys_operation_log` 增加可空 `trace_id VARCHAR(64)` 和 `(tenant_id,
 
 用户选择固定表单；最新主干又明确下线该能力。继续新增 schema 查询会同时违背产品决策和仓库准入规则。
 
+### 13.5 采用：精确 SQL callback 修复 V24 前置
+
+已发布 V24 的校验和必须保持不变，V35 之后的版本化迁移又无法在 V24 前建立前置表，因此采用 Flyway 原生 `beforeMigrate` callback。相比修改 V24、伪造历史或引入 out-of-order 低版本迁移，该方案可追加、可幂等复验，并把影响限制在两张 Flowable Liquibase 元数据表。
+
 ## 14. 修订记录
 
 - 修订 1：初始旧系统映射和 V1 范围。
 - 修订 2：独立业务模块、tenant、平台 capability、schema 与完整并发/审计设计，用户于 2026-08-13 批准。
 - 修订 3：根据用户新增字段决策和 2026-08-14 最新 main，物理事业群改为可空文本，新增必选负责团队与名称快照，物理人员改为可空；移除全部动态 schema 能力；平台 capability 缩减为用户/参数查询和操作审计；迁移顺延为 V38—V40并增加 V35—V37 前置门禁。用户于 2026-08-14 批准。
 - 修订 4：用户要求修复迁移前置与开发入口阻塞；按主干实际落地顺序把本需求迁移改为 V35—V37，未实施需求顺延到 V38—V40，并将 CLI/桌面插件双来源验证纳入 T0。用户于 2026-08-14 批准执行。
+- 修订 5：T3 空库传感器发现 V24 在 Flowable schema update 关闭时引用不存在的 Liquibase 元数据表；用户于 2026-08-15 批准扩大 scope。新增精确 `beforeMigrate` callback 与治理白名单，不修改 V1—V34，并将空库全链、已越过 V24 的幂等性和 schema history 纳入硬验收。
