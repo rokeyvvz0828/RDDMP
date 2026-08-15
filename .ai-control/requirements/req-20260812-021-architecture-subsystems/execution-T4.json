@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "LogicalSubsystemService",
+      "purpose": "逻辑子系统字段规范化、租户限定、平台引用校验、永久唯一、事务和成功/失败审计编排"
+    },
+    {
+      "path_or_resource": "LogicalSubsystemController",
+      "purpose": "固定四权限的分页、详情、新增、编辑和软删除 HTTP API"
+    },
+    {
+      "path_or_resource": "ArchitectureNotFoundException 与 ArchitectureExceptionAdvice",
+      "purpose": "仅在 architecture 控制器范围内映射资源不存在为 HTTP 404/code 40400"
+    },
+    {
+      "path_or_resource": "LogicalSubsystemServiceTest 与 LogicalSubsystemControllerTest",
+      "purpose": "服务事务/引用/审计传感器和 MockMvc/权限/JSON 契约传感器"
+    }
+  ],
+  "requirements_addressed": ["R1", "R3", "R4", "R6", "R7", "R12"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am '-Dtest=LogicalSubsystemServiceTest,LogicalSubsystemControllerTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exit_code": 0,
+      "salient_output": "15 tests passed；服务 11/11、MockMvc 4/4"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test",
+      "exit_code": 0,
+      "salient_output": "新增成功更新/删除用例前的全模块回归通过：architecture 21/21；common 2、infrastructure 6、security 4、system 11 均通过；随后聚焦套件已包含并通过新增两例"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260812-021-architecture-subsystems/codex-task-scope.yaml --base HEAD~1 --head HEAD",
+      "exit_code": 0,
+      "salient_output": "REQ-20260812-021 commit diff scope passed for 6 files"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs",
+      "exit_code": 0,
+      "salient_output": "9 Maven modules passed"
+    },
+    {
+      "command": "git diff --check HEAD~1 HEAD",
+      "exit_code": 0,
+      "salient_output": "无 whitespace 错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "逻辑 CRUD 与固定 HTTP 契约",
+      "result": "pass",
+      "evidence": "MockMvc 验证 PageResult/camelCase/40400/客户端 tenant 字段不进入命令；服务测试验证创建、更新、删除和引用冲突",
+      "limitations": ["真实 JWT 401/403 和数据库审计行由 T10 本地 API 验收"]
+    },
+    {
+      "check": "租户、组织、用户和参数引用",
+      "result": "pass",
+      "evidence": "服务只从 AuthUser 读取 tenant；通过 OrganizationService.tree 和 SystemReferenceQuery 校验当前租户活动引用；无 platform 私有实现或表访问",
+      "limitations": []
+    },
+    {
+      "check": "事务与审计",
+      "result": "pass",
+      "evidence": "成功审计在 TransactionTemplate callback 内；失败审计在 callback 抛出并完成回滚后调用；审计异常不覆盖原业务错误；数据库异常摘要不进入日志",
+      "limitations": ["跨真实事务的 operation log 行将在 T10 复验"]
+    },
+    {
+      "check": "错误语义",
+      "result": "pass",
+      "evidence": "400 格式/引用、401 无认证租户、404 模块 Advice、409 唯一/引用均有直接测试；四个 PreAuthorize 表达式逐项断言",
+      "limitations": ["403 当前以注解契约测量，真实 SecurityFilterChain 在 T10 复验"]
+    }
+  ],
+  "diff_summary": [
+    "新增逻辑子系统五个资源端点并为 list/create/update/delete 固定四项 authority",
+    "编号转大写并校验 2—32 位，简称/名称/描述/备注执行长度和空白归一化",
+    "组织、联系人和三类参数均通过公开平台契约按 AuthUser 租户校验",
+    "永久唯一预检与数据库 DuplicateKey 均映射 409，软删除前锁定父记录并阻止活动物理引用",
+    "局部 Advice 只处理 ArchitectureNotFoundException，不修改全局异常处理"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "固定四权限且权限在服务端执行",
+      "result": "pass",
+      "evidence": "Controller 五方法逐项 PreAuthorize 反射断言；详情复用 list 权限"
+    },
+    {
+      "invariant": "tenant 只能来自 AuthUser",
+      "result": "pass",
+      "evidence": "command/query/controller 无 tenant 字段；repository 调用全部传 actor.tenantId；客户端 tenantId JSON 被忽略"
+    },
+    {
+      "invariant": "成功审计同事务、失败审计独立且不覆盖业务错误",
+      "result": "pass",
+      "evidence": "AtomicBoolean 事务边界断言和审计异常测试"
+    },
+    {
+      "invariant": "局部 Advice 不改变 400/401/403/409",
+      "result": "pass",
+      "evidence": "Advice 只有 ArchitectureNotFoundException 单一 handler；其他错误继续抛给全局处理"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "沙箱 Maven 使用隔离空本地仓库且网络被限制",
+      "impact": "首次测试未进入编译；在获准的沙箱外复用现有 Maven 仓库后测试通过"
+    },
+    {
+      "event": "用户已有 scope 外未跟踪 .dsh/** 与 docs/original/**",
+      "impact": "未读取、未修改、未暂存；使用提交差异 scope 隔离"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实 JWT 角色矩阵、HTTP 审计行和 trace ID 由 T10 本地栈复验",
+    "物理子系统的团队快照和父子并发语义由 T5 实施"
+  ],
+  "implementation_commit": "a5fe6ee",
+  "recommended_next": "observe"
+}

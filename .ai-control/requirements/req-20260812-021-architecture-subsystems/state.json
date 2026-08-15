@@ -1,10 +1,10 @@
 {
   "schema_version": 4,
-  "revision": 106,
+  "revision": 116,
   "created_at": "2026-08-13T06:16:16+00:00",
-  "updated_at": "2026-08-15T04:28:08+00:00",
+  "updated_at": "2026-08-15T04:48:15+00:00",
   "mode": "high-assurance",
-  "phase": "observing",
+  "phase": "executing",
   "phase_history": [
     {
       "from": null,
@@ -227,6 +227,24 @@
       "to": "observing",
       "evidence": "T3 ExecutionReport implemented，进入数据层独立观测",
       "recorded_at": "2026-08-15T04:23:42+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T3 已 verified 且无开放反馈，开始 T4",
+      "recorded_at": "2026-08-15T04:28:59+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T4 实现、聚焦测试、全模块回归和提交差异范围均可重复测量",
+      "recorded_at": "2026-08-15T04:48:09+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T4 已 verified 且无开放反馈，继续 T5 物理子系统",
+      "recorded_at": "2026-08-15T04:48:14+00:00"
     }
   ],
   "stage_artifacts": {
@@ -13843,6 +13861,147 @@
           ],
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 6,
+        "evidence": "a5fe6ee；聚焦 15/15；全模块真实 MySQL 回归通过",
+        "recorded_at": "2026-08-15T04:48:07+00:00",
+        "data": {
+          "schema_version": 1,
+          "task_id": "T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "LogicalSubsystemService",
+              "purpose": "逻辑子系统字段规范化、租户限定、平台引用校验、永久唯一、事务和成功/失败审计编排"
+            },
+            {
+              "path_or_resource": "LogicalSubsystemController",
+              "purpose": "固定四权限的分页、详情、新增、编辑和软删除 HTTP API"
+            },
+            {
+              "path_or_resource": "ArchitectureNotFoundException 与 ArchitectureExceptionAdvice",
+              "purpose": "仅在 architecture 控制器范围内映射资源不存在为 HTTP 404/code 40400"
+            },
+            {
+              "path_or_resource": "LogicalSubsystemServiceTest 与 LogicalSubsystemControllerTest",
+              "purpose": "服务事务/引用/审计传感器和 MockMvc/权限/JSON 契约传感器"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R4",
+            "R6",
+            "R7",
+            "R12"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am '-Dtest=LogicalSubsystemServiceTest,LogicalSubsystemControllerTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+              "exit_code": 0,
+              "salient_output": "15 tests passed；服务 11/11、MockMvc 4/4"
+            },
+            {
+              "command": "mvn -pl :ccb-architecture -am test",
+              "exit_code": 0,
+              "salient_output": "新增成功更新/删除用例前的全模块回归通过：architecture 21/21；common 2、infrastructure 6、security 4、system 11 均通过；随后聚焦套件已包含并通过新增两例"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260812-021-architecture-subsystems/codex-task-scope.yaml --base HEAD~1 --head HEAD",
+              "exit_code": 0,
+              "salient_output": "REQ-20260812-021 commit diff scope passed for 6 files"
+            },
+            {
+              "command": "node scripts/check-module-boundaries.mjs",
+              "exit_code": 0,
+              "salient_output": "9 Maven modules passed"
+            },
+            {
+              "command": "git diff --check HEAD~1 HEAD",
+              "exit_code": 0,
+              "salient_output": "无 whitespace 错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "逻辑 CRUD 与固定 HTTP 契约",
+              "result": "pass",
+              "evidence": "MockMvc 验证 PageResult/camelCase/40400/客户端 tenant 字段不进入命令；服务测试验证创建、更新、删除和引用冲突",
+              "limitations": [
+                "真实 JWT 401/403 和数据库审计行由 T10 本地 API 验收"
+              ]
+            },
+            {
+              "check": "租户、组织、用户和参数引用",
+              "result": "pass",
+              "evidence": "服务只从 AuthUser 读取 tenant；通过 OrganizationService.tree 和 SystemReferenceQuery 校验当前租户活动引用；无 platform 私有实现或表访问",
+              "limitations": []
+            },
+            {
+              "check": "事务与审计",
+              "result": "pass",
+              "evidence": "成功审计在 TransactionTemplate callback 内；失败审计在 callback 抛出并完成回滚后调用；审计异常不覆盖原业务错误；数据库异常摘要不进入日志",
+              "limitations": [
+                "跨真实事务的 operation log 行将在 T10 复验"
+              ]
+            },
+            {
+              "check": "错误语义",
+              "result": "pass",
+              "evidence": "400 格式/引用、401 无认证租户、404 模块 Advice、409 唯一/引用均有直接测试；四个 PreAuthorize 表达式逐项断言",
+              "limitations": [
+                "403 当前以注解契约测量，真实 SecurityFilterChain 在 T10 复验"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "新增逻辑子系统五个资源端点并为 list/create/update/delete 固定四项 authority",
+            "编号转大写并校验 2—32 位，简称/名称/描述/备注执行长度和空白归一化",
+            "组织、联系人和三类参数均通过公开平台契约按 AuthUser 租户校验",
+            "永久唯一预检与数据库 DuplicateKey 均映射 409，软删除前锁定父记录并阻止活动物理引用",
+            "局部 Advice 只处理 ArchitectureNotFoundException，不修改全局异常处理"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "固定四权限且权限在服务端执行",
+              "result": "pass",
+              "evidence": "Controller 五方法逐项 PreAuthorize 反射断言；详情复用 list 权限"
+            },
+            {
+              "invariant": "tenant 只能来自 AuthUser",
+              "result": "pass",
+              "evidence": "command/query/controller 无 tenant 字段；repository 调用全部传 actor.tenantId；客户端 tenantId JSON 被忽略"
+            },
+            {
+              "invariant": "成功审计同事务、失败审计独立且不覆盖业务错误",
+              "result": "pass",
+              "evidence": "AtomicBoolean 事务边界断言和审计异常测试"
+            },
+            {
+              "invariant": "局部 Advice 不改变 400/401/403/409",
+              "result": "pass",
+              "evidence": "Advice 只有 ArchitectureNotFoundException 单一 handler；其他错误继续抛给全局处理"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "沙箱 Maven 使用隔离空本地仓库且网络被限制",
+              "impact": "首次测试未进入编译；在获准的沙箱外复用现有 Maven 仓库后测试通过"
+            },
+            {
+              "event": "用户已有 scope 外未跟踪 .dsh/** 与 docs/original/**",
+              "impact": "未读取、未修改、未暂存；使用提交差异 scope 隔离"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实 JWT 角色矩阵、HTTP 审计行和 trace ID 由 T10 本地栈复验",
+            "物理子系统的团队快照和父子并发语义由 T5 实施"
+          ],
+          "implementation_commit": "a5fe6ee",
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -14152,6 +14311,98 @@
           "coverage_gaps": [
             "T4/T5 尚需验证服务校验、HTTP、平台引用、审计和并发事务",
             "T7 尚需验证菜单、权限和参数目录迁移"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "scope/module-boundary/diff/MockMvc/service/MySQL 多传感器复验，P0-P3=0",
+        "recorded_at": "2026-08-15T04:48:11+00:00",
+        "data": {
+          "schema_version": 1,
+          "sample_label": "T4 逻辑子系统 CRUD 独立观察",
+          "task_ids": [
+            "T4"
+          ],
+          "baseline_revision": "baseline-3",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 服务测试与 MockMvc",
+              "result": "pass",
+              "raw_evidence": "15 个聚焦测试通过；分页、详情、创建、更新、软删除与被物理引用时 409 均有传感器；仓储/MySQL 传感器此前 8/8 通过",
+              "limitation": [
+                "浏览器页面属于 T9"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 归一化/唯一测试与 S5 数据库约束回归",
+              "result": "pass",
+              "raw_evidence": "code 转 AP_201、文本 trim、参数大写；预检冲突与 DuplicateKey 均为 409；全模块真实 MySQL 回归通过",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 平台引用 mock 与 S10 依赖扫描",
+              "result": "pass",
+              "raw_evidence": "组织通过 OrganizationService.tree；用户/参数通过 SystemReferenceQuery；负向扫描无 com.ccb.system.internal、JdbcTemplate 或 platform 私有表",
+              "limitation": [
+                "真实选项 API 属于 T6"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S3 权限注解与模块 404 MockMvc",
+              "result": "pass",
+              "raw_evidence": "list/create/update/delete 四权限精确断言；资源不存在返回 HTTP 404/code 40400；400/401/409 服务错误保持既有 ErrorCode",
+              "limitation": [
+                "真实 JWT 401/403 角色矩阵在 T10 测量"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1 审计时序测试",
+              "result": "pass",
+              "raw_evidence": "成功 recordSuccess 发生在事务 callback 内；失败 recordFailure 发生在 callback 退出后；失败审计异常不覆盖原 404；异常 SQL 文本未写入摘要",
+              "limitation": [
+                "真实 sys_operation_log 行与 trace 在 T10 测量"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "sensor": "S10 HTTP/命令源码扫描与租户参数捕获",
+              "result": "pass",
+              "raw_evidence": "HTTP/command 无 tenant；全部仓储调用捕获 tenant=AuthUser.tenantId；tenant=0 返回 40100；提交 JSON 的 tenantId 不出现在响应或服务命令",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R11",
+              "sensor": "S8 scope/module-boundary/diff",
+              "result": "pass",
+              "raw_evidence": "commit-diff scope 6 files、module-boundaries 9 modules、git diff --check 均退出 0",
+              "limitation": [
+                "working-tree scope 仍受用户未跟踪 .dsh/** 和 docs/original/** 基线噪声影响"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "沙箱 Maven 首次因隔离本地仓库与网络限制失败，获准后在真实用户环境复验通过",
+            "Flyway 对 MySQL 8.4 高于已测试 8.1 的提示仍存在，但真实迁移/约束测试通过",
+            "用户未跟踪目录只影响 working-tree scope，提交差异已隔离"
+          ],
+          "coverage_gaps": [
+            "T5 尚需实现物理子系统、负责团队快照和父子并发",
+            "T6/T7 尚需选项 API 与菜单权限目录",
+            "T9/T10 尚需真实浏览器、JWT/API、数据库审计与完整 UAT"
           ],
           "error_counts": {
             "P0": 0,
@@ -18738,9 +18989,22 @@
       "escalation_conditions": [
         "逻辑字段或错误语义需改变"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-15T04:13:57+00:00"
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-15T04:28:59+00:00",
+          "text": "实施逻辑子系统 CRUD、权限、AuthUser tenant、引用校验、404/409 和统一审计"
+        },
+        {
+          "recorded_at": "2026-08-15T04:48:08+00:00",
+          "text": "execution-T4.json status=implemented，提交 a5fe6ee"
+        },
+        {
+          "recorded_at": "2026-08-15T04:48:13+00:00",
+          "text": "observation-T4.json error_counts 全 0；残余真实 JWT/API/审计行纳入 T10"
+        }
+      ],
+      "updated_at": "2026-08-15T04:48:13+00:00"
     },
     {
       "id": "T5",
@@ -18808,9 +19072,14 @@
       "escalation_conditions": [
         "要求失效组织自动替换或允许原值保存"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-15T04:13:57+00:00"
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-15T04:48:15+00:00",
+          "text": "T4 依赖已 verified，开始实现负责团队快照、父锁和物理 CRUD"
+        }
+      ],
+      "updated_at": "2026-08-15T04:48:15+00:00"
     },
     {
       "id": "T6",
@@ -19305,6 +19574,19 @@
       "score": 0,
       "evidence": "architecture 全测 8/8；依赖模块 23/23；V36 空库/增量、唯一/组合外键/tenant、scope 71 files 和边界检查通过",
       "recorded_at": "2026-08-15T04:28:08+00:00"
+    },
+    {
+      "id": "S-0008",
+      "label": "T4 逻辑子系统 CRUD",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "observation-T4.json；15 个聚焦测试、真实 MySQL 全模块回归、6 文件 scope 和 9 模块边界均通过",
+      "recorded_at": "2026-08-15T04:48:12+00:00"
     }
   ]
 }
