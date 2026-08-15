@@ -467,11 +467,12 @@ void recordFailure(SystemOperationAuditCommand command);
 
 **文件：**
 
-- 修改：仅当前前缀 `execution-T*.json`、`observation-T*.json`、`convergence.json` 证据文件；发现实现偏差时回到对应任务 scope 修复。
+- 修改：当前前缀 `execution-T*.json`、`observation-T*.json`、`convergence.json` 证据文件；发现实现偏差时回到对应任务 scope 修复。
+- 用户于 2026-08-15 追加授权：仅允许修改 `scripts/check-repo-skill.mjs` 与 `scripts/check-ai-control-layout.mjs`，分别兼容 Windows CRLF 和当前基准/纠偏账本文件；不扩展到产品代码或其他治理规则。
 
 **接口：** 消费全部实现、MySQL、Boot、管理员/只读/无权限/tenant2 上下文和真实浏览器；产出需求证据矩阵与收敛判断。
 
-- [ ] **步骤 1：自动门禁。** 运行 architecture/system/infrastructure 模块测试、`mvn test`、`mvn --batch-mode -DskipTests package`、前端构建、development-entry、scope、governance、module-boundaries、Flyway 和 diff；每条记录退出码与测试数。
+- [ ] **步骤 1：自动门禁。** 运行 architecture/system/infrastructure 模块测试、`mvn test`、`mvn --batch-mode -DskipTests package`、前端构建、development-entry、scope、governance、module-boundaries、Flyway 和 diff；每条记录退出码与测试数。若 Windows CRLF 或当前前缀的 `baseline.json`/`correction-*.json` 触发治理假阴性，仅按用户追加授权修复对应两个校验器并独立提交。
 - [ ] **步骤 2：真实迁移。** 空库 V1→V37，以及已执行到 V34 的已有库→V37；复核表、约束、目录、参数、Mock 两次幂等和 audit trace。
 - [ ] **步骤 3：运行真实 Boot。** 运行 package 后的 `ccb-boot` JAR，先 health，再登录和 API；不使用根聚合 `spring-boot:run` 作为可用性证明。
 - [ ] **步骤 4：API/权限/租户矩阵。** 执行两资源 CRUD/options、400/401/403/40400/409、客户端 tenant/status/phone/snapshot、团队失效和父锁两时序；按 trace 查审计。

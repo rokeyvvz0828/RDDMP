@@ -1,10 +1,10 @@
 {
   "schema_version": 4,
-  "revision": 148,
+  "revision": 152,
   "created_at": "2026-08-13T06:16:16+00:00",
-  "updated_at": "2026-08-15T08:38:26+00:00",
+  "updated_at": "2026-08-15T12:56:04+00:00",
   "mode": "high-assurance",
-  "phase": "executing",
+  "phase": "correcting",
   "phase_history": [
     {
       "from": null,
@@ -293,6 +293,18 @@
       "to": "executing",
       "evidence": "T8 verified; proceed to T9 frontend implementation",
       "recorded_at": "2026-08-15T08:38:25+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T10 自动门禁发现 F-0005；产品测试通过但 required governance check 受阻，进入观察确认因果边界",
+      "recorded_at": "2026-08-15T12:55:54+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "F-0005 已由独立命令复现；用户批准仅修改两个治理校验器，进入限幅纠偏",
+      "recorded_at": "2026-08-15T12:55:54+00:00"
     }
   ],
   "stage_artifacts": {
@@ -20378,6 +20390,26 @@
       "resolved_at": "2026-08-15T04:17:56+00:00",
       "resolution_evidence": "提交 6cdcb1b；空库 V1-V34 实际 34 migrations，V24 后重复 0，callback 不入 history，V24 无 diff，Flyway/scope 通过",
       "decided_at": "2026-08-15T04:04:39+00:00"
+    },
+    {
+      "id": "F-0005",
+      "task": "T10",
+      "source": "S8",
+      "requirement": "R11",
+      "expected": "Windows 工作树执行 node scripts/check-all-governance.mjs 退出 0，并识别当前前缀要求保留的 baseline/correction 账本",
+      "observed": "check-repo-skill 仅匹配 LF，check-ai-control-layout 拒绝 baseline/correction 文件并报告 design/handoff topic 不一致",
+      "evidence": "治理命令退出 1；git ls-files 显示 index LF/worktree CRLF；check-ai-control-layout 独立复现 10 项当前前缀错误",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "产品代码与提交内容未发生对应失败；偏差位于治理传感器和账本命名契约",
+      "causal_hypothesis": "两个校验器未覆盖 Windows 换行及 control-engineering 产物类型，且早期 handoff topic 未规范化",
+      "correction_check": "两个校验器聚焦正负向通过，check-all-governance 和 scope 全量退出 0",
+      "decision": "accept",
+      "decision_reason": "Required governance check 在 Windows 与当前批准账本类型上稳定失败；用户已批准把两个校验器加入 scope，采用不改变产品行为的最小兼容修复",
+      "created_at": "2026-08-15T12:55:54+00:00",
+      "resolved_at": null,
+      "resolution_evidence": null,
+      "decided_at": "2026-08-15T12:56:04+00:00"
     }
   ],
   "samples": [

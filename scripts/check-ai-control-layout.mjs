@@ -20,7 +20,7 @@ const expectedOriginalFiles = new Set([
   'observation-T3.json',
   'state.json',
 ]);
-const requirementFilePattern = /^(control-plan|convergence|design|handoff|model|state|execution(?:-[A-Za-z0-9-]+)?|observation(?:-[A-Za-z0-9-]+)?)\.json$/;
+const requirementFilePattern = /^(baseline|control-plan|convergence|correction(?:-[A-Za-z0-9-]+)?|design|handoff|model|state|execution(?:-[A-Za-z0-9-]+)?|observation(?:-[A-Za-z0-9-]+)?)\.json$/;
 
 for (const entry of fs.readdirSync(controlRoot, {withFileTypes: true})) {
   if (entry.name === '.DS_Store') continue;
