@@ -4,11 +4,12 @@
   "decision_reason": "Required governance check 在 Windows CRLF 与当前批准账本类型上稳定失败；用户批准仅修改两个治理校验器。",
   "dynamic_pattern": "sensor_false_negative",
   "causal_assessment": {
-    "hypothesis": "仓库 Skill 校验器只接受 LF，AI control 布局校验器的文件白名单落后于 control-engineering 生成的 baseline/correction 产物，且早期 handoff topic 未使用完整控制前缀。",
+    "hypothesis": "仓库 Skill 校验器只接受 LF，AI control 布局校验器的文件白名单和收敛证据存在性检查落后于 control-engineering 的 baseline/correction/通配符产物，且早期 handoff topic 未使用完整控制前缀。",
     "supporting_evidence": [
       "git ls-files --eol 显示 Skill 文件 index LF、Windows worktree CRLF",
       "提交对象中的 Skill frontmatter 通过同一规则",
-      "check-ai-control-layout 对当前前缀稳定报告 8 个文件类型错误和 2 个 topic mismatch"
+      "check-ai-control-layout 对当前前缀稳定报告 8 个文件类型错误和 2 个 topic mismatch",
+      "转入 converged 后将 execution-T*.json/observation-T*.json 当作字面文件名"
     ],
     "falsifier": "保持原校验器不变时，当前 Windows 工作树与完整当前前缀执行 check-all-governance 退出 0"
   },
@@ -25,15 +26,16 @@
       "不放宽 JSON 解析、topic 一致性或目录边界",
       "不修改产品、平台、数据库或其他需求账本"
     ],
-    "impact_limit": "只规范化换行并登记 baseline/correction 两类正式账本文件",
+    "impact_limit": "只规范化换行、登记正式账本类型并要求通配符至少匹配一个实际证据文件",
     "rollback": "回退独立 governance 修复提交；业务提交不受影响",
     "correction_check": [
       "check-repo-skill 对当前 CRLF 工作树通过且负向规则仍保留",
       "check-ai-control-layout 识别当前完整账本并继续拒绝非法文件/topic",
+      "缺失的通配符验收证据继续被拒绝",
       "check-all-governance、scope、module-boundaries、Flyway 和 diff 全部退出 0"
     ],
     "route": "correcting"
   },
-  "resolution": "pending-verification",
+  "resolution": "verified",
   "residual_risk": []
 }

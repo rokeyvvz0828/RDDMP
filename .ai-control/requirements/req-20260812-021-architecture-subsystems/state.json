@@ -1,10 +1,10 @@
 {
   "schema_version": 4,
-  "revision": 152,
+  "revision": 166,
   "created_at": "2026-08-13T06:16:16+00:00",
-  "updated_at": "2026-08-15T12:56:04+00:00",
+  "updated_at": "2026-08-15T13:12:14+00:00",
   "mode": "high-assurance",
-  "phase": "correcting",
+  "phase": "converged",
   "phase_history": [
     {
       "from": null,
@@ -305,6 +305,30 @@
       "to": "correcting",
       "evidence": "F-0005 已由独立命令复现；用户批准仅修改两个治理校验器，进入限幅纠偏",
       "recorded_at": "2026-08-15T12:55:54+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0005 已复验关闭且 required governance check 全绿，恢复 T10 执行",
+      "recorded_at": "2026-08-15T13:00:20+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "execution-T10.json 可解析且包含 R1-R13 全量自动、真实运行和范围证据；进入最终独立观察",
+      "recorded_at": "2026-08-15T13:04:35+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "所有 T0-T10/T3R 已 verified；全部反馈关闭；S-0012/S-0013/S-0014 连续零误差；进入收敛门禁",
+      "recorded_at": "2026-08-15T13:05:41+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "ConvergenceReport gate_result=pass；control gate PASS；13 must、12 verified tasks、5 closed feedback、14 samples 且末三次零误差",
+      "recorded_at": "2026-08-15T13:07:04+00:00"
     }
   ],
   "stage_artifacts": {
@@ -14566,6 +14590,207 @@
           "implementation_commit": "3ded28c",
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 11,
+        "evidence": "T10 全量自动、真实 API/SQL、浏览器与治理纠偏证据",
+        "recorded_at": "2026-08-15T13:04:35+00:00",
+        "data": {
+          "schema_version": 1,
+          "task_id": "T10",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "完整 origin/main..HEAD 产品与治理差异",
+              "purpose": "执行 R1-R13 最终集成、运行与范围验收"
+            },
+            {
+              "path_or_resource": "scripts/check-repo-skill.mjs",
+              "purpose": "按用户追加授权兼容 Windows CRLF，不放宽 frontmatter 内容规则"
+            },
+            {
+              "path_or_resource": "scripts/check-ai-control-layout.mjs",
+              "purpose": "识别 control-engineering 正式 baseline/correction 产物，不放宽目录、JSON 或 topic 规则"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7",
+            "R8",
+            "R9",
+            "R10",
+            "R11",
+            "R12",
+            "R13"
+          ],
+          "commands": [
+            {
+              "command": "mvn test",
+              "exit_code": 0,
+              "salient_output": "10 个 Reactor 模块 BUILD SUCCESS；25 份 Surefire 报告合计 99 tests，failures/errors/skipped 均为 0；architecture 47 项含 MySQL 8.4 迁移与并发"
+            },
+            {
+              "command": "mvn --batch-mode -DskipTests package",
+              "exit_code": 0,
+              "salient_output": "10 个 Reactor 模块成功；Boot 可执行 JAR 完成 repackage；42.842s"
+            },
+            {
+              "command": "npm.cmd --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 通过；2341 modules transformed；逻辑/物理页面为独立懒加载 chunk"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 0,
+              "salient_output": "12 modules、repository skill、development entry、30 requirement directories/242 JSON、9 Maven modules、37 migrations/1 callback 全部通过"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope ... --base origin/main --head HEAD",
+              "exit_code": 0,
+              "salient_output": "118 changed files 全部位于批准范围"
+            },
+            {
+              "command": "governance negative fixtures",
+              "exit_code": 0,
+              "salient_output": "临时 HEAD 快照完整治理通过；非法 Skill name 与非法 ledger file 均按预期退出 1；临时目录已安全清理"
+            },
+            {
+              "command": "GET /actuator/health",
+              "exit_code": 0,
+              "salient_output": "status=UP"
+            },
+            {
+              "command": "real local API contract probe",
+              "exit_code": 0,
+              "salient_output": "临时管理员登录 200；逻辑/物理列表、逻辑组织选项、物理用户选项均 HTTP 200/code 0/trace present/forbiddenFields false；临时账号剩余 0"
+            },
+            {
+              "command": "real local MySQL audit probe",
+              "exit_code": 0,
+              "salient_output": "UAT_LOG_BROWSER/UAT_PHY_BROWSER 均 tenant 1 且 deleted=1；CREATE/UPDATE/DELETE 六条审计 success=1 且 trace present"
+            },
+            {
+              "command": "in-app browser UAT",
+              "exit_code": 0,
+              "salient_output": "管理员/只读/无权限；1280x800、375x812、390x844、430x932；真实 CRUD、主题、抽屉、脏表单、无横滚与 clean console 通过"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无 whitespace 错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "自动化与迁移",
+              "result": "pass",
+              "evidence": "99 tests、全 Reactor package、V1-V37/回调治理、MySQL 并发和迁移测试通过",
+              "limitations": []
+            },
+            {
+              "check": "真实 API 与数据",
+              "result": "pass",
+              "evidence": "健康、认证、四个受保护读取端点、安全 DTO、软删除和六条 trace 审计通过",
+              "limitations": [
+                "浏览器工具不导出 Network waterfall；已由真实 HTTP 探针和数据库审计补充"
+              ]
+            },
+            {
+              "check": "权限与租户",
+              "result": "pass",
+              "evidence": "MockMvc/服务测试覆盖 400/401/403/40400/409、跨租户与父锁；浏览器覆盖管理员/只读/无权限；真实 API 由认证 tenant 注入",
+              "limitations": []
+            },
+            {
+              "check": "前端与响应式",
+              "result": "pass",
+              "evidence": "类型构建、四视口、明暗主题、固定表单、远程选择器和最终控制台通过",
+              "limitations": [
+                "仓库既有主入口 bundle >500kB 警告；新增页面已独立懒加载"
+              ]
+            },
+            {
+              "check": "治理纠偏",
+              "result": "pass",
+              "evidence": "dc03916 后正向全绿、负向仍拒绝；F-0005 已关闭",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "最终产品范围由 module/architecture、最小 system capability、追加迁移/Mock、静态前端路由与业务页面组成",
+            "未恢复已下线表单元数据；前端为固定强类型 DTO/表单",
+            "最终治理纠偏不修改产品行为，只修复两个跨平台/产物识别假阴性"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tenant 仅由认证上下文注入",
+              "result": "pass",
+              "evidence": "请求 DTO/前端无 tenant 字段；租户与跨租户测试通过"
+            },
+            {
+              "invariant": "不实现启停用",
+              "result": "pass",
+              "evidence": "资源 DTO、命令、页面和目录无业务 status 动作"
+            },
+            {
+              "invariant": "物理负责团队必填、事业群可选",
+              "result": "pass",
+              "evidence": "服务/页面校验与真实浏览器 CRUD 通过"
+            },
+            {
+              "invariant": "领域属于 module 而非 platform",
+              "result": "pass",
+              "evidence": "业务 Java 位于 server/src/modules/architecture；platform 仅提供公开安全引用与审计契约"
+            },
+            {
+              "invariant": "不覆盖用户工作",
+              "result": "pass",
+              "evidence": ".dsh/** 与 docs/original/** 未暂存、未提交"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "首次 package 在沙箱内访问 Maven Central 被 Permission denied",
+              "impact": "按权限规则在沙箱外复跑，同一命令 10 模块 BUILD SUCCESS；属于环境限制，不是工程失败"
+            },
+            {
+              "event": "working-tree scope 读取到用户未跟踪 .dsh/** 与 docs/original/**",
+              "impact": "提交态 scope 118 files 通过；两个目录保持未跟踪"
+            },
+            {
+              "event": "治理校验器对 CRLF 与正式账本类型假阴性",
+              "impact": "用户批准后由 dc03916 限幅修复，正负向和全治理复验通过"
+            }
+          ],
+          "assumptions_falsified": [
+            "Windows 文本检出与 Git 对象具有相同行结束符",
+            "旧 AI control 文件白名单覆盖 control-engineering 生成的全部正式产物"
+          ],
+          "unresolved_items": [
+            "浏览器工具不提供 Network waterfall 导出；真实 HTTP/SQL/audit 已提供等价连通与安全字段证据",
+            "前端主入口存在仓库既有大 chunk 警告；本需求页面已代码分割"
+          ],
+          "implementation_commits": [
+            "0d8f057",
+            "9072f5b",
+            "c122884",
+            "6cdcb1b",
+            "09e23ce",
+            "a5fe6ee",
+            "9d393af",
+            "6df373f",
+            "81c7c29",
+            "3ded28c",
+            "7883a0d",
+            "dc03916"
+          ],
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -15269,6 +15494,165 @@
           },
           "observation_status": "complete"
         }
+      },
+      {
+        "revision": 10,
+        "evidence": "R1-R13 由自动化、真实 API/SQL 与浏览器三类异质传感器复核",
+        "recorded_at": "2026-08-15T13:05:40+00:00",
+        "data": {
+          "schema_version": 1,
+          "sample_label": "T10 最终异质传感器观察",
+          "task_ids": [
+            "T0",
+            "T1",
+            "T2",
+            "T3R",
+            "T3",
+            "T4",
+            "T5",
+            "T6",
+            "T7",
+            "T8",
+            "T9",
+            "T10"
+          ],
+          "baseline_revision": "baseline-3",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "JUnit/MockMvc + 真实浏览器/API/SQL",
+              "result": "pass",
+              "raw_evidence": "逻辑分页筛选、详情、创建、编辑、软删除通过；UAT_LOG_BROWSER deleted=1 且三类写审计成功",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "服务与 MySQL 并发测试 + 真实浏览器",
+              "result": "pass",
+              "raw_evidence": "物理 CRUD、父逻辑必选、两种锁时序与先物理后逻辑删除通过；UAT_PHY_BROWSER deleted=1",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "领域/仓储测试 + V36 数据库约束",
+              "result": "pass",
+              "raw_evidence": "编号规范化、格式、租户内永久唯一与软删除后不可复用均有自动化断言",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "system capability/architecture 服务测试 + 真实安全 options",
+              "result": "pass",
+              "raw_evidence": "组织、用户、参数、逻辑引用的 tenant/status/deleted 校验通过；真实 options 响应安全字段无泄漏",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "真实 MySQL 外键/服务并发测试",
+              "result": "pass",
+              "raw_evidence": "活动物理引用阻止逻辑删除；并发删除竞争按冻结契约返回 409 并保持合法最终状态",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "MockMvc 权限矩阵 + 三角色浏览器 + SQL audit",
+              "result": "pass",
+              "raw_evidence": "八项动作权限、401/403/409/40400 回归通过；管理员/只读/无权限页面状态准确；六条真实写审计 success=1/trace present",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "exact-key Controller 测试 + 真实 options HTTP",
+              "result": "pass",
+              "raw_evidence": "组织/用户/六类参数/逻辑选项按资源权限读取；真实组织和用户端点 HTTP 200，forbiddenFields=false",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "V37 Testcontainers + Mock 两次初始化 + 源码负向扫描",
+              "result": "pass",
+              "raw_evidence": "目录、八权限、参数和授权计数准确且幂等；local Mock 显式 tenant/ref/team 校验通过；无动态表单元数据",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "Vue 类型构建 + 四视口真实浏览器",
+              "result": "pass",
+              "raw_evidence": "1280/375/390/430、浅深主题、加载/空/失败/无权限/只读/提交、抽屉滚动、脏表单和无横滚通过；最终 console 0",
+              "limitation": [
+                "当前浏览器工具不导出 waterfall；真实 HTTP 探针补充连通证据"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "DTO/SQL/前端源码负向扫描 + 页面观察",
+              "result": "pass",
+              "raw_evidence": "无启停用动作、状态筛选或业务 status 字段；页面不展示状态操作",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R11",
+              "sensor": "模块边界/governance/scope/Maven Reactor",
+              "result": "pass",
+              "raw_evidence": "business/architecture 独立模块、9 模块边界、12 模块治理、118 文件 scope 与 Boot 装配通过；F-0005 校验器纠偏正负向通过",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R12",
+              "sensor": "DTO 源码扫描 + 服务/仓储/Mock 测试 + 真实 SQL",
+              "result": "pass",
+              "raw_evidence": "HTTP/页面无 tenant；服务使用认证 tenant；V36 tenant_id 无业务默认；local Mock 仅显式开关和校验租户；真实 UAT 行 tenant=1",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "服务测试 + 固定表单 + 真实浏览器 CRUD",
+              "result": "pass",
+              "raw_evidence": "事业群可空、负责团队必选并保存名称快照、负责人/联系人可空；团队失效历史可读且编辑重选逻辑通过",
+              "limitation": []
+            }
+          ],
+          "feedback": [
+            {
+              "id": "F-0001",
+              "result": "resolved",
+              "evidence": "迁移号重新分配与主干扫描通过"
+            },
+            {
+              "id": "F-0002",
+              "result": "resolved",
+              "evidence": "development-entry 正负向与 Windows CLI 兼容通过"
+            },
+            {
+              "id": "F-0003",
+              "result": "resolved",
+              "evidence": "计划顺序纠正后 scope 门禁可执行"
+            },
+            {
+              "id": "F-0004",
+              "result": "resolved",
+              "evidence": "空库迁移 callback 与 Testcontainers 复验通过"
+            },
+            {
+              "id": "F-0005",
+              "result": "resolved",
+              "evidence": "dc03916；全治理正向与两个负向夹具通过"
+            }
+          ],
+          "disturbances": [
+            "沙箱内 Maven package 网络权限失败，沙箱外同命令成功",
+            "working-tree scope 受到用户未跟踪目录噪声；提交态 118 文件通过",
+            "浏览器 Network waterfall 不可导出；真实 HTTP/SQL/audit 提供独立等价观测"
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
       }
     ],
     "correcting": [
@@ -15486,7 +15870,428 @@
         }
       }
     ],
-    "verifying": []
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "基于最终提交态重新审计 R1-R13、T0-T10/T3R、F-0001..F-0005、S-0012..S-0014、回归/运行/范围/不变量",
+        "recorded_at": "2026-08-15T13:06:51+00:00",
+        "data": {
+          "baseline_revision": "baseline-3",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T9",
+                "T10"
+              ],
+              "evidence": [
+                "逻辑 CRUD/软删除自动化、真实浏览器、API 和 SQL 审计通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T5",
+                "T9",
+                "T10"
+              ],
+              "evidence": [
+                "物理 CRUD、父逻辑必选、两种 MySQL 并发与真实浏览器通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T5",
+                "T10"
+              ],
+              "evidence": [
+                "编号规范化/格式/永久唯一测试与 V36 约束通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5",
+                "T6",
+                "T10"
+              ],
+              "evidence": [
+                "安全引用 capability、租户/有效性测试和真实 options HTTP 通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T5",
+                "T10"
+              ],
+              "evidence": [
+                "活动子记录阻止父删除、并发 409 与合法最终状态通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5",
+                "T6",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "八项后端权限、三角色浏览器与六条真实 trace 审计通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5",
+                "T6",
+                "T7",
+                "T9",
+                "T10"
+              ],
+              "evidence": [
+                "组织/用户/参数/逻辑安全 options exact-key 与真实 HTTP 通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R8",
+              "result": "pass",
+              "task_ids": [
+                "T0",
+                "T3R",
+                "T7",
+                "T8",
+                "T10"
+              ],
+              "evidence": [
+                "V1-V37、目录权限参数、trusted local Mock 与幂等测试通过；无动态表单元数据"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R9",
+              "result": "pass",
+              "task_ids": [
+                "T9",
+                "T10"
+              ],
+              "evidence": [
+                "类型构建、四视口、三角色、浅深主题、全状态、无横滚与 clean console 通过"
+              ],
+              "limitations": [
+                "浏览器工具不导出 waterfall；真实 HTTP/SQL/audit 已补充连通证据"
+              ]
+            },
+            {
+              "id": "R10",
+              "result": "pass",
+              "task_ids": [
+                "T7",
+                "T9",
+                "T10"
+              ],
+              "evidence": [
+                "DTO/SQL/前端源码和真实页面均无启停用、状态筛选或状态动作"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R11",
+              "result": "pass",
+              "task_ids": [
+                "T0",
+                "T1",
+                "T10"
+              ],
+              "evidence": [
+                "独立 business/architecture 模块、Maven/Boot、9 模块边界、12 模块治理与 118 文件 scope 通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R12",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T5",
+                "T8",
+                "T10"
+              ],
+              "evidence": [
+                "认证 tenant 注入、数据库无默认、HTTP/页面无 tenant、trusted local 显式租户与真实 SQL 通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R13",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T5",
+                "T8",
+                "T9",
+                "T10"
+              ],
+              "evidence": [
+                "事业群可空、团队必选/快照、人员可空与团队失效重选通过"
+              ],
+              "limitations": []
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T0",
+              "status": "verified",
+              "evidence": [
+                "入口、Owner、分支和迁移槽位通过"
+              ]
+            },
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "模块装配和治理边界通过"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "system capability、审计与 V35 通过"
+              ]
+            },
+            {
+              "id": "T3R",
+              "status": "verified",
+              "evidence": [
+                "空库迁移基线纠偏通过"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "V36 与仓储模型通过"
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "逻辑子系统服务与 HTTP 通过"
+              ]
+            },
+            {
+              "id": "T5",
+              "status": "verified",
+              "evidence": [
+                "物理子系统、团队和并发通过"
+              ]
+            },
+            {
+              "id": "T6",
+              "status": "verified",
+              "evidence": [
+                "安全 options 契约通过"
+              ]
+            },
+            {
+              "id": "T7",
+              "status": "verified",
+              "evidence": [
+                "V37 目录/权限/参数通过"
+              ]
+            },
+            {
+              "id": "T8",
+              "status": "verified",
+              "evidence": [
+                "trusted local Mock 通过"
+              ]
+            },
+            {
+              "id": "T9",
+              "status": "verified",
+              "evidence": [
+                "固定强类型前端与真实浏览器 UAT 通过"
+              ]
+            },
+            {
+              "id": "T10",
+              "status": "verified",
+              "evidence": [
+                "99 tests、package/build、真实 API/SQL、浏览器、治理和 scope 全部通过"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 5,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0012",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0013",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0014",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Maven 全 Reactor 测试",
+              "result": "pass",
+              "evidence": "99 tests，failures/errors/skipped 0"
+            },
+            {
+              "check": "Boot 可执行包",
+              "result": "pass",
+              "evidence": "10 modules BUILD SUCCESS，Spring Boot repackage 完成"
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "vue-tsc/Vite 2341 modules transformed"
+            },
+            {
+              "check": "仓库治理",
+              "result": "pass",
+              "evidence": "check-all-governance 全绿，两个负向夹具仍拒绝"
+            },
+            {
+              "check": "范围与差异",
+              "result": "pass",
+              "evidence": "origin/main..HEAD 118 files in scope；git diff --check 通过"
+            },
+            {
+              "check": "真实运行",
+              "result": "pass",
+              "evidence": "Boot UP；认证 API 200；软删除与六条 trace audit；四视口 UAT"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "领域代码属于 module，platform 仅暴露最小安全 capability",
+              "result": "pass",
+              "evidence": "模块路径、依赖边界和公开包治理通过"
+            },
+            {
+              "invariant": "tenant 只由认证上下文或受信任 local Mock 显式注入",
+              "result": "pass",
+              "evidence": "DTO/页面负向扫描、租户测试和真实 SQL 通过"
+            },
+            {
+              "invariant": "V1 不包含启停用",
+              "result": "pass",
+              "evidence": "后端/迁移/前端无状态动作"
+            },
+            {
+              "invariant": "负责团队必填、事业群和人员按确认可空",
+              "result": "pass",
+              "evidence": "服务、页面与真实 CRUD 通过"
+            },
+            {
+              "invariant": "不使用已下线动态表单元数据",
+              "result": "pass",
+              "evidence": "源码/SQL/网络负向扫描和固定 DTO 页面通过"
+            },
+            {
+              "invariant": "不覆盖用户未关联改动",
+              "result": "pass",
+              "evidence": ".dsh/** 与 docs/original/** 保持未跟踪且未进入提交"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Windows CRLF",
+              "result": "pass",
+              "evidence": "治理正向通过，非法 Skill 负向仍失败"
+            },
+            {
+              "disturbance": "空数据库 V24 前置缺表",
+              "result": "pass",
+              "evidence": "受控 callback、空库和幂等 Testcontainers 通过"
+            },
+            {
+              "disturbance": "父子并发删除",
+              "result": "pass",
+              "evidence": "两种 MySQL 时序与最终状态通过"
+            },
+            {
+              "disturbance": "移动端与慢响应",
+              "result": "pass",
+              "evidence": "四视口、抽屉、过期响应丢弃和脏表单通过"
+            },
+            {
+              "disturbance": "沙箱网络限制",
+              "result": "pass",
+              "evidence": "授权环境中同一 Maven package 命令成功"
+            }
+          ],
+          "residual_risks": [
+            "前端主入口保留仓库既有 >500kB 构建警告；两个新增页面已经独立懒加载，不阻塞本需求。",
+            "浏览器工具未导出 Network waterfall；真实 HTTP、SQL 与审计提供了独立等价证据。"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R13 均具备任务、修改和至少两类异质传感器；所有任务 verified、5 条反馈关闭、连续三次零误差、自动化/真实运行/范围/不变量全部通过。"
+        }
+      }
+    ]
   },
   "objective": "用户能够在当前租户内通过两个专用页面安全维护逻辑子系统和物理子系统基础信息，并获得可复核的关联与审计结果。",
   "requirements": [
@@ -20222,14 +21027,18 @@
       "escalation_conditions": [
         "需要动态字段、公共组件或移动端例外"
       ],
-      "status": "active",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-15T08:38:26+00:00",
           "text": "Start fixed typed architecture Vue pages"
+        },
+        {
+          "recorded_at": "2026-08-15T13:00:21+00:00",
+          "text": "execution-T9.json 与 observation-T9.json：提交 7883a0d/40caf4a，build、真实 CRUD、三角色、四视口、主题、抽屉和最终零控制台错误通过"
         }
       ],
-      "updated_at": "2026-08-15T08:38:26+00:00"
+      "updated_at": "2026-08-15T13:00:21+00:00"
     },
     {
       "id": "T10",
@@ -20305,9 +21114,18 @@
         "公共契约必须破坏兼容",
         "外部治理基线无法关闭"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-15T04:13:57+00:00"
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-15T13:00:21+00:00",
+          "text": "T9 verified；治理纠偏关闭；开始最终集成、运行证据与收敛"
+        },
+        {
+          "recorded_at": "2026-08-15T13:05:40+00:00",
+          "text": "observation-T10.json：R1-R13 pass、F-0001..F-0005 closed、P0/P1/P2/P3=0"
+        }
+      ],
+      "updated_at": "2026-08-15T13:05:40+00:00"
     }
   ],
   "feedback": [
@@ -20407,8 +21225,8 @@
       "decision": "accept",
       "decision_reason": "Required governance check 在 Windows 与当前批准账本类型上稳定失败；用户已批准把两个校验器加入 scope，采用不改变产品行为的最小兼容修复",
       "created_at": "2026-08-15T12:55:54+00:00",
-      "resolved_at": null,
-      "resolution_evidence": null,
+      "resolved_at": "2026-08-15T13:00:20+00:00",
+      "resolution_evidence": "提交 dc03916；check-all-governance 与 scope(118 files) 退出 0；临时快照中非法 Skill 名称和非法 ledger 文件均退出 1",
       "decided_at": "2026-08-15T12:56:04+00:00"
     }
   ],
@@ -20568,6 +21386,45 @@
       "score": 0,
       "evidence": "Trusted local trigger, tenant, reference, snapshot, parameter and idempotence sensors passed",
       "recorded_at": "2026-08-15T08:38:23+00:00"
+    },
+    {
+      "id": "S-0013",
+      "label": "T9 fixed typed Vue pages",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Build/source scan, real CRUD, admin/read-only/no-permission matrix, 1280/375/390/430 light/dark responsive UAT and clean console passed",
+      "recorded_at": "2026-08-15T13:00:21+00:00"
+    },
+    {
+      "id": "S-0014",
+      "label": "T10 final integration convergence",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "99 tests、10-module package、Vue build、governance/scope、Boot health、real API/SQL/audit、four-viewport browser UAT all pass",
+      "recorded_at": "2026-08-15T13:05:40+00:00"
+    },
+    {
+      "id": "S-0015",
+      "label": "Post-convergence governance evidence verification",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "8a179b1 committed；converged acceptance wildcard matches existing execution/observation files；missing wildcard negative exits 1；full governance/scope/gate pass",
+      "recorded_at": "2026-08-15T13:12:14+00:00"
     }
   ]
 }
