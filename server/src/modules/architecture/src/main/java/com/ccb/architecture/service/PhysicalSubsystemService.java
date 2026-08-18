@@ -162,7 +162,6 @@ public class PhysicalSubsystemService {
         long responsibleTeamOrgId = requiredId(command.responsibleTeamOrgId(), "负责团队");
         OrgTreeNode responsibleTeam = requireActiveOrganization(actor, responsibleTeamOrgId, "负责团队");
         Long ownerUserId = validateOptionalUser(actor, command.ownerUserId(), "系统负责人");
-        Long contactUserId = validateOptionalUser(actor, command.contactUserId(), "联系人");
         String runtimeCode = validateParameter(actor, RUNTIME_CATEGORY, command.runtimeCode(), "系统运行时间");
         String systemLevelCode = validateParameter(actor, SYSTEM_LEVEL_CATEGORY, command.systemLevelCode(), "系统级别");
         String developmentFrameworkCode = validateParameter(actor, DEVELOPMENT_FRAMEWORK_CATEGORY,
@@ -170,7 +169,7 @@ public class PhysicalSubsystemService {
         PhysicalSubsystemCommand normalized = new PhysicalSubsystemCommand(code, shortName, name,
                 logicalSubsystemId, optional(command.businessGroupName(), "所属事业群", 100),
                 responsibleTeamOrgId, runtimeCode, systemLevelCode, developmentFrameworkCode,
-                ownerUserId, contactUserId, optional(command.description(), "系统描述", 2000),
+                ownerUserId, optional(command.description(), "系统描述", 2000),
                 optional(command.remark(), "备注", 1000));
         return new PreparedCommand(normalized, responsibleTeam.orgName());
     }
@@ -191,21 +190,24 @@ public class PhysicalSubsystemService {
         LogicalSubsystem logical = context.logicalSubsystems().computeIfAbsent(item.logicalSubsystemId(),
                 key -> repository.findLogical(actor.tenantId(), key).orElse(null));
         SystemUserReference owner = userReference(actor, item.ownerUserId(), context.users());
-        SystemUserReference contact = userReference(actor, item.contactUserId(), context.users());
+        SystemUserReference creator = userReference(actor, item.createdBy(), context.users());
         return new PhysicalSubsystemView(item.id(), item.code(), item.shortName(), item.name(),
                 item.logicalSubsystemId(), logical == null ? null : logical.code(), logical == null ? null : logical.name(),
                 item.businessGroupName(), item.responsibleTeamOrgId(), responsibleTeamDisplayName,
                 responsibleTeamValid, item.runtimeCode(), item.systemLevelCode(), item.developmentFrameworkCode(),
-                item.ownerUserId(), owner == null ? null : owner.displayName(), item.contactUserId(),
-                contact == null ? null : contact.displayName(), contact == null ? null : contact.phone(),
-                item.description(), item.remark(), item.createdBy(), item.updatedBy(), item.createdAt(), item.updatedAt());
+                item.ownerUserId(), owner == null ? null : owner.displayName(),
+                item.description(), item.remark(), item.createdBy(), creator == null ? null : creator.displayName(),
+                item.updatedBy(), item.createdAt(), item.updatedAt());
     }
 
     private SystemUserReference userReference(AuthUser actor, Long userId, Map<Long, Optional<SystemUserReference>> cache) {
         if (userId == null) {
             return null;
         }
-        return cache.computeIfAbsent(userId, key -> referenceQuery.findUser(actor, key, false)).orElse(null);
+        return cache.computeIfAbsent(userId, key -> {
+            Optional<SystemUserReference> reference = referenceQuery.findUser(actor, key, false);
+            return reference == null ? Optional.empty() : reference;
+        }).orElse(null);
     }
 
     private ProjectionContext projectionContext(AuthUser actor) {
@@ -251,15 +253,14 @@ public class PhysicalSubsystemService {
         if (normalized == null) {
             return null;
         }
-        normalized = normalized.toUpperCase(Locale.ROOT);
         List<SystemParameterReference> parameters = referenceQuery.activeParameters(actor, categoryCode);
         String expected = normalized;
-        boolean valid = parameters.stream().anyMatch(item -> item.code() != null
-                && item.code().trim().equalsIgnoreCase(expected));
-        if (!valid) {
-            throw badRequest(label + "参数无效或已停用");
-        }
-        return normalized;
+        return parameters.stream()
+                .map(SystemParameterReference::code)
+                .filter(code -> code != null && code.trim().equalsIgnoreCase(expected))
+                .map(String::trim)
+                .findFirst()
+                .orElseThrow(() -> badRequest(label + "参数无效或已停用"));
     }
 
     private void ensureUnique(long tenantId, PhysicalSubsystemCommand command, Long excludeId) {
@@ -409,12 +410,10 @@ public class PhysicalSubsystemService {
             String developmentFrameworkCode,
             Long ownerUserId,
             String ownerDisplayName,
-            Long contactUserId,
-            String contactDisplayName,
-            String contactPhone,
             String description,
             String remark,
             long createdBy,
+            String createdByDisplayName,
             long updatedBy,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {

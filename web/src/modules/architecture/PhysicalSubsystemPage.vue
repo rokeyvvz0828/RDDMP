@@ -62,9 +62,7 @@ const detailItems = computed<DetailItem[]>(() => detail.value ? [
   { label: '系统级别', value: optionLabel(levels.value, detail.value.systemLevelCode) },
   { label: '开发平台框架', value: optionLabel(frameworks.value, detail.value.developmentFrameworkCode) },
   { label: '负责人', value: detail.value.ownerDisplayName || '—' },
-  { label: '联系人', value: detail.value.contactDisplayName || '—' },
-  { label: '联系电话', value: detail.value.contactPhone || '—' },
-  { label: '创建人 ID', value: String(detail.value.createdBy) },
+  { label: '创建人', value: detail.value.createdByDisplayName || `用户 #${detail.value.createdBy}` },
   { label: '创建时间', value: formatDateTime(detail.value.createdAt) },
   { label: '最后更新', value: formatDateTime(detail.value.updatedAt) },
   { label: '系统描述', value: detail.value.description || '—', wide: true },
@@ -152,7 +150,7 @@ watch(canList, allowed => {
 
 <template>
   <main class="architecture-page">
-    <UiPageHeader title="物理子系统" description="维护可部署的物理系统、所属逻辑系统、事业群、负责团队和人员信息。">
+    <UiPageHeader title="物理子系统" description="维护可部署的物理系统、所属逻辑系统、事业群、负责团队和负责人信息。">
       <template #actions><el-button v-if="canCreate" type="primary" @click="createRecord"><el-icon><Plus /></el-icon>新建物理子系统</el-button></template>
     </UiPageHeader>
 

@@ -178,15 +178,14 @@ public class LogicalSubsystemService {
         if (normalized == null) {
             return null;
         }
-        normalized = normalized.toUpperCase(Locale.ROOT);
         List<SystemParameterReference> parameters = referenceQuery.activeParameters(actor, categoryCode);
         String expected = normalized;
-        boolean valid = parameters.stream().anyMatch(item -> item.code() != null
-                && item.code().trim().equalsIgnoreCase(expected));
-        if (!valid) {
-            throw badRequest(label + "参数无效或已停用");
-        }
-        return normalized;
+        return parameters.stream()
+                .map(SystemParameterReference::code)
+                .filter(code -> code != null && code.trim().equalsIgnoreCase(expected))
+                .map(String::trim)
+                .findFirst()
+                .orElseThrow(() -> badRequest(label + "参数无效或已停用"));
     }
 
     private void ensureUnique(long tenantId, LogicalSubsystemCommand command, Long excludeId) {

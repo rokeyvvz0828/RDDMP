@@ -46,7 +46,7 @@ class ArchitectureMigrationMySqlTest {
             assertColumn(connection, "arch_physical_subsystem", "responsible_team_org_id", "NO", null);
             assertColumn(connection, "arch_physical_subsystem", "responsible_team_name_snapshot", "NO", null);
             assertColumn(connection, "arch_physical_subsystem", "owner_user_id", "YES", null);
-            assertColumn(connection, "arch_physical_subsystem", "contact_user_id", "YES", null);
+            assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'arch_physical_subsystem' AND column_name = 'contact_user_id'"));
             assertEquals("tenant_id,code", indexColumns(connection, "arch_logical_subsystem", "uk_arch_logical_code"));
             assertEquals("tenant_id,name", indexColumns(connection, "arch_logical_subsystem", "uk_arch_logical_name"));
             assertEquals("tenant_id,code", indexColumns(connection, "arch_physical_subsystem", "uk_arch_physical_code"));

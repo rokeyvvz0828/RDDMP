@@ -11,7 +11,6 @@ public record PhysicalSubsystemCommand(
         String systemLevelCode,
         String developmentFrameworkCode,
         Long ownerUserId,
-        Long contactUserId,
         String description,
         String remark) {
 }

@@ -10,7 +10,18 @@ export function formatDateTime(value?: string | null) {
 
 export function optionLabel(options: ParameterOption[], code?: string | null) {
   if (!code) return '—'
-  return options.find(item => item.code === code)?.label || code
+  return findOption(options, code)?.label || code
+}
+
+export function canonicalOptionCode(options: ParameterOption[], code?: string | null) {
+  if (!code) return null
+  return findOption(options, code)?.code || code
+}
+
+function findOption(options: ParameterOption[], code: string) {
+  const normalized = code.trim().toLowerCase()
+  return options.find(item => item.code === code)
+    || options.find(item => item.code.trim().toLowerCase() === normalized)
 }
 
 export function normalizeText(value?: string | null) {

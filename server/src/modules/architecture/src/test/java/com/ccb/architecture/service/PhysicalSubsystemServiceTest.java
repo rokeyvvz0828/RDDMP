@@ -72,16 +72,16 @@ class PhysicalSubsystemServiceTest {
     }
 
     @Test
-    void listProjectsCurrentTeamLogicalLabelsAndLiveContactPhone() {
-        PhysicalSubsystem raw = physical(201, "团队旧名称", 30L, 31L);
+    void listProjectsCurrentTeamLogicalLabelsAndCreatorName() {
+        PhysicalSubsystem raw = physical(201, "团队旧名称", 30L);
         when(repository.pagePhysical(eq(7L), any(PageQuery.class), any(PhysicalSubsystemQuery.class)))
                 .thenReturn(new PageResult<>(List.of(raw), 1, 1, 20));
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "平台研发团队", 1)));
         when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
         when(referenceQuery.findUser(ACTOR, 30, false))
                 .thenReturn(Optional.of(new SystemUserReference(30, "系统负责人", "owner", null, true)));
-        when(referenceQuery.findUser(ACTOR, 31, false))
-                .thenReturn(Optional.of(new SystemUserReference(31, "联系人", "contact", "13800000000", true)));
+        when(referenceQuery.findUser(ACTOR, 9, false))
+                .thenReturn(Optional.of(new SystemUserReference(9, "架构管理员", "architect", null, true)));
 
         PageResult<PhysicalSubsystemView> result = service.list(ACTOR, new PageQuery(1, 20),
                 new PhysicalSubsystemQuery(" WP ", null, null, " 渠道 ", 12L, 101L));
@@ -91,7 +91,7 @@ class PhysicalSubsystemServiceTest {
             assertThat(view.responsibleTeamValid()).isTrue();
             assertThat(view.logicalSubsystemCode()).isEqualTo("AP_201");
             assertThat(view.ownerDisplayName()).isEqualTo("系统负责人");
-            assertThat(view.contactPhone()).isEqualTo("13800000000");
+            assertThat(view.createdByDisplayName()).isEqualTo("架构管理员");
         });
         ArgumentCaptor<PhysicalSubsystemQuery> query = ArgumentCaptor.forClass(PhysicalSubsystemQuery.class);
         verify(repository).pagePhysical(eq(7L), any(PageQuery.class), query.capture());
@@ -101,7 +101,7 @@ class PhysicalSubsystemServiceTest {
 
     @Test
     void detailUsesSnapshotWhenResponsibleTeamIsInactive() {
-        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原平台团队", null, null)));
+        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原平台团队", null)));
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "已改名团队", 0)));
         when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
 
@@ -125,7 +125,7 @@ class PhysicalSubsystemServiceTest {
                 eq("平台研发团队"), eq(9L));
         when(repository.findPhysical(eq(7L), anyLong()))
                 .thenAnswer(invocation -> Optional.of(physical(invocation.getArgument(1),
-                        "平台研发团队", null, null)));
+                        "平台研发团队", null)));
         doAnswer(invocation -> {
             assertThat(inTransaction.get()).isTrue();
             return null;
@@ -139,7 +139,7 @@ class PhysicalSubsystemServiceTest {
                 eq("平台研发团队"), eq(9L));
         assertThat(normalized.getValue().code()).isEqualTo("WP_201");
         assertThat(normalized.getValue().businessGroupName()).isNull();
-        assertThat(normalized.getValue().runtimeCode()).isEqualTo("24H");
+        assertThat(normalized.getValue().runtimeCode()).isEqualTo("architecture.runtime.7x24");
         assertThat(normalized.getValue().ownerUserId()).isNull();
         assertThat(result.responsibleTeamDisplayName()).isEqualTo("平台研发团队");
         verify(repository).lockLogical(7, 101);
@@ -175,7 +175,7 @@ class PhysicalSubsystemServiceTest {
 
     @Test
     void updateRequiresInactiveResponsibleTeamToBeReselected() {
-        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原团队", null, null)));
+        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原团队", null)));
         when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "原团队", 0)));
 
@@ -192,7 +192,7 @@ class PhysicalSubsystemServiceTest {
     @Test
     void updateExistingResourceRefreshesTeamSnapshotAndUsesExcludeId() {
         executeTransactions(new AtomicBoolean());
-        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原团队", null, null)));
+        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原团队", null)));
         validCreateReferences();
         when(repository.lockLogical(7, 101)).thenReturn(Optional.of(new LogicalSubsystemLock(101, false)));
         when(repository.updatePhysical(eq(7L), eq(201L), any(PhysicalSubsystemCommand.class),
@@ -214,7 +214,7 @@ class PhysicalSubsystemServiceTest {
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "平台研发团队", 1)));
         when(referenceQuery.findUser(ACTOR, 30, true)).thenReturn(Optional.empty());
         PhysicalSubsystemCommand command = new PhysicalSubsystemCommand("WP_201", "员工渠道物理", "员工渠道物理平台",
-                101L, null, 12L, null, null, null, 30L, null, null, null);
+                101L, null, 12L, null, null, null, 30L, null, null);
 
         assertThatThrownBy(() -> service.create(ACTOR, command, "trace-owner"))
                 .isInstanceOfSatisfying(BusinessException.class,
@@ -241,7 +241,7 @@ class PhysicalSubsystemServiceTest {
     @Test
     void deleteSoftDeletesWithoutRevalidatingHistoricTeam() {
         executeTransactions(new AtomicBoolean());
-        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "已删除团队", null, null)));
+        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "已删除团队", null)));
         when(repository.softDeletePhysical(7, 201, 9)).thenReturn(1);
 
         service.delete(ACTOR, 201, "trace-delete");
@@ -279,12 +279,12 @@ class PhysicalSubsystemServiceTest {
         when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "平台研发团队", 1)));
         when(referenceQuery.activeParameters(ACTOR, PhysicalSubsystemService.RUNTIME_CATEGORY))
-                .thenReturn(List.of(new SystemParameterReference("24H", "7*24")));
+                .thenReturn(List.of(new SystemParameterReference("architecture.runtime.7x24", "7*24")));
     }
 
     private PhysicalSubsystemCommand validCommand() {
         return new PhysicalSubsystemCommand(" wp_201 ", " 员工渠道物理 ", " 员工渠道物理平台 ",
-                101L, "   ", 12L, " 24h ", null, null, null, null, " 描述 ", "  ");
+                101L, "   ", 12L, " ARCHITECTURE.RUNTIME.7X24 ", null, null, null, " 描述 ", "  ");
     }
 
     private OrgTreeNode organization(long id, String name, int status) {
@@ -297,9 +297,9 @@ class PhysicalSubsystemServiceTest {
                 LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0));
     }
 
-    private PhysicalSubsystem physical(long id, String snapshot, Long ownerId, Long contactId) {
+    private PhysicalSubsystem physical(long id, String snapshot, Long ownerId) {
         return new PhysicalSubsystem(id, "WP_201", "员工渠道物理", "员工渠道物理平台", 101,
-                null, 12, snapshot, "24H", null, null, ownerId, contactId, "描述", null,
+                null, 12, snapshot, "architecture.runtime.7x24", null, null, ownerId, "描述", null,
                 9, 9, LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0));
     }
 }

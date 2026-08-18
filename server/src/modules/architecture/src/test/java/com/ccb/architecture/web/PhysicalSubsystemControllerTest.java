@@ -66,7 +66,9 @@ class PhysicalSubsystemControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.records[0].responsibleTeamDisplayName").value("平台研发团队"))
                 .andExpect(jsonPath("$.data.records[0].responsibleTeamValid").value(true))
-                .andExpect(jsonPath("$.data.records[0].contactPhone").value("13800000000"))
+                .andExpect(jsonPath("$.data.records[0].createdByDisplayName").value("架构管理员"))
+                .andExpect(jsonPath("$.data.records[0].contactUserId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].contactPhone").doesNotExist())
                 .andExpect(jsonPath("$.data.records[0].tenantId").doesNotExist())
                 .andExpect(jsonPath("$.data.records[0].responsibleTeamNameSnapshot").doesNotExist());
     }
@@ -81,7 +83,7 @@ class PhysicalSubsystemControllerTest {
                                 {
                                   "code":"WP_201","shortName":"员工渠道物理","name":"员工渠道物理平台",
                                   "logicalSubsystemId":101,"responsibleTeamOrgId":12,
-                                  "tenantId":999,"status":0,"contactPhone":"secret",
+                                  "tenantId":999,"status":0,"contactUserId":31,"contactPhone":"secret",
                                   "responsibleTeamNameSnapshot":"伪造团队"
                                 }
                                 """))
@@ -123,8 +125,9 @@ class PhysicalSubsystemControllerTest {
     private PhysicalSubsystemView view() {
         return new PhysicalSubsystemView(201, "WP_201", "员工渠道物理", "员工渠道物理平台",
                 101, "AP_201", "员工渠道整合平台", null, 12, "平台研发团队", true,
-                "24H", "A_PLUS", "P2", 30L, "系统负责人", 31L, "联系人", "13800000000",
-                "描述", null, 9, 9, LocalDateTime.of(2026, 8, 15, 10, 0),
+                "architecture.runtime.7x24", "architecture.system-level.a-plus",
+                "architecture.development-framework.employee-channel-p2", 30L, "系统负责人",
+                "描述", null, 9, "架构管理员", 9, LocalDateTime.of(2026, 8, 15, 10, 0),
                 LocalDateTime.of(2026, 8, 15, 10, 0));
     }
 

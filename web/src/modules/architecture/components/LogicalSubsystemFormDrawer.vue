@@ -6,7 +6,7 @@ import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
 import { apiErrorMessage } from '../../../api/error'
 import { createLogicalSubsystem, loadOrganizationOptions, loadParameterOptions, loadUserOptions, updateLogicalSubsystem } from '../api'
 import { useLatestOptions } from '../useLatestOptions'
-import { cancelled, normalizeText } from '../utils'
+import { cancelled, canonicalOptionCode, normalizeText } from '../utils'
 import type { LogicalSubsystem, LogicalSubsystemCommand, ParameterOption } from '../types'
 
 const props = defineProps<{ modelValue: boolean; record?: LogicalSubsystem | null }>()
@@ -59,6 +59,11 @@ async function initialize() {
   if (results[2].status === 'fulfilled') deploymentPlatforms.value = results[2].value
   if (results[3].status === 'fulfilled') systemTypes.value = results[3].value
   if (results[4].status === 'fulfilled') ownerships.value = results[4].value
+  const beforeCanonical = JSON.stringify(form)
+  form.deploymentPlatformCode = canonicalOptionCode(deploymentPlatforms.value, form.deploymentPlatformCode)
+  form.systemTypeCode = canonicalOptionCode(systemTypes.value, form.systemTypeCode)
+  form.systemOwnershipCode = canonicalOptionCode(ownerships.value, form.systemOwnershipCode)
+  if (baseline.value === beforeCanonical) baseline.value = JSON.stringify(form)
   if (results.some(item => item.status === 'rejected')) ElMessage.warning('部分选项加载失败，可关闭后重试')
 }
 

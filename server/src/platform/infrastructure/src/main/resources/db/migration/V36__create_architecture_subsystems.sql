@@ -39,7 +39,6 @@ CREATE TABLE arch_physical_subsystem (
     system_level_code VARCHAR(64) NULL,
     development_framework_code VARCHAR(64) NULL,
     owner_user_id BIGINT NULL,
-    contact_user_id BIGINT NULL,
     description VARCHAR(2000) NULL,
     remark VARCHAR(1000) NULL,
     deleted TINYINT NOT NULL DEFAULT 0,
@@ -54,7 +53,6 @@ CREATE TABLE arch_physical_subsystem (
     KEY idx_arch_physical_logical (tenant_id, logical_subsystem_id, deleted),
     KEY idx_arch_physical_team (tenant_id, responsible_team_org_id, deleted),
     KEY idx_arch_physical_owner (tenant_id, owner_user_id, deleted),
-    KEY idx_arch_physical_contact (tenant_id, contact_user_id, deleted),
     CONSTRAINT fk_arch_physical_logical
         FOREIGN KEY (tenant_id, logical_subsystem_id)
         REFERENCES arch_logical_subsystem (tenant_id, id)

@@ -13,7 +13,7 @@ import {
   updatePhysicalSubsystem
 } from '../api'
 import { useLatestOptions } from '../useLatestOptions'
-import { cancelled, normalizeText } from '../utils'
+import { cancelled, canonicalOptionCode, normalizeText } from '../utils'
 import type { LogicalSubsystemOption, OrganizationOption, ParameterOption, PhysicalSubsystem, PhysicalSubsystemCommand, UserOption } from '../types'
 
 const props = defineProps<{ modelValue: boolean; record?: PhysicalSubsystem | null }>()
@@ -43,7 +43,6 @@ const selectedTeamFallback = computed<OrganizationOption | null>(() => {
   return { id: props.record.responsibleTeamOrgId, name: props.record.responsibleTeamDisplayName, parentId: null, pathLabel: props.record.responsibleTeamDisplayName }
 })
 const selectedOwnerFallback = computed<UserOption | null>(() => userFallback(props.record?.ownerUserId, props.record?.ownerDisplayName))
-const selectedContactFallback = computed<UserOption | null>(() => userFallback(props.record?.contactUserId, props.record?.contactDisplayName, props.record?.contactPhone))
 
 const rules: FormRules<PhysicalSubsystemCommand> = {
   code: [
@@ -60,18 +59,18 @@ const rules: FormRules<PhysicalSubsystemCommand> = {
 }
 
 function emptyForm(): PhysicalSubsystemCommand {
-  return { code: '', shortName: '', name: '', logicalSubsystemId: null, businessGroupName: null, responsibleTeamOrgId: null, runtimeCode: null, systemLevelCode: null, developmentFrameworkCode: null, ownerUserId: null, contactUserId: null, description: null, remark: null }
+  return { code: '', shortName: '', name: '', logicalSubsystemId: null, businessGroupName: null, responsibleTeamOrgId: null, runtimeCode: null, systemLevelCode: null, developmentFrameworkCode: null, ownerUserId: null, description: null, remark: null }
 }
 
-function userFallback(id?: number | null, name?: string | null, phone?: string | null): UserOption | null {
+function userFallback(id?: number | null, name?: string | null): UserOption | null {
   if (!id || users.options.value.some(item => item.id === id)) return null
-  return { id, displayName: name || `用户 #${id}`, username: '历史引用', phone: phone || null }
+  return { id, displayName: name || `用户 #${id}`, username: '历史引用', phone: null }
 }
 
 async function initialize() {
   invalidTeamRequiresReselection.value = Boolean(props.record && !props.record.responsibleTeamValid)
   const value = props.record
-    ? { code: props.record.code, shortName: props.record.shortName, name: props.record.name, logicalSubsystemId: props.record.logicalSubsystemId, businessGroupName: props.record.businessGroupName, responsibleTeamOrgId: props.record.responsibleTeamValid ? props.record.responsibleTeamOrgId : null, runtimeCode: props.record.runtimeCode, systemLevelCode: props.record.systemLevelCode, developmentFrameworkCode: props.record.developmentFrameworkCode, ownerUserId: props.record.ownerUserId, contactUserId: props.record.contactUserId, description: props.record.description, remark: props.record.remark }
+    ? { code: props.record.code, shortName: props.record.shortName, name: props.record.name, logicalSubsystemId: props.record.logicalSubsystemId, businessGroupName: props.record.businessGroupName, responsibleTeamOrgId: props.record.responsibleTeamValid ? props.record.responsibleTeamOrgId : null, runtimeCode: props.record.runtimeCode, systemLevelCode: props.record.systemLevelCode, developmentFrameworkCode: props.record.developmentFrameworkCode, ownerUserId: props.record.ownerUserId, description: props.record.description, remark: props.record.remark }
     : emptyForm()
   Object.assign(form, value)
   await nextTick()
@@ -86,6 +85,11 @@ async function initialize() {
   if (results[3].status === 'fulfilled') runtimes.value = results[3].value
   if (results[4].status === 'fulfilled') levels.value = results[4].value
   if (results[5].status === 'fulfilled') frameworks.value = results[5].value
+  const beforeCanonical = JSON.stringify(form)
+  form.runtimeCode = canonicalOptionCode(runtimes.value, form.runtimeCode)
+  form.systemLevelCode = canonicalOptionCode(levels.value, form.systemLevelCode)
+  form.developmentFrameworkCode = canonicalOptionCode(frameworks.value, form.developmentFrameworkCode)
+  if (baseline.value === beforeCanonical) baseline.value = JSON.stringify(form)
   if (results.some(item => item.status === 'rejected')) ElMessage.warning('部分选项加载失败，可关闭后重试')
 }
 
@@ -173,7 +177,7 @@ function logicalSubsystemsVisible(open: boolean) { if (open) void logicalSubsyst
         </div>
       </section>
       <section class="architecture-form-section">
-        <h3>系统分类与人员</h3>
+        <h3>系统分类与负责人</h3>
         <div class="architecture-form-grid">
           <el-form-item label="系统运行时间"><el-select v-model="form.runtimeCode" clearable><el-option v-for="item in runtimes" :key="item.code" :label="item.label" :value="item.code" /></el-select></el-form-item>
           <el-form-item label="系统级别"><el-select v-model="form.systemLevelCode" clearable><el-option v-for="item in levels" :key="item.code" :label="item.label" :value="item.code" /></el-select></el-form-item>
@@ -181,12 +185,6 @@ function logicalSubsystemsVisible(open: boolean) { if (open) void logicalSubsyst
           <el-form-item label="负责人">
             <el-select v-model="form.ownerUserId" filterable remote clearable :remote-method="users.search" :loading="users.loading.value" placeholder="可选，搜索姓名、用户名或电话" @visible-change="usersVisible">
               <el-option v-if="selectedOwnerFallback" :key="selectedOwnerFallback.id" :label="selectedOwnerFallback.displayName" :value="selectedOwnerFallback.id" />
-              <el-option v-for="item in users.options.value" :key="item.id" :label="`${item.displayName}（${item.username}）`" :value="item.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="联系人" class="is-wide">
-            <el-select v-model="form.contactUserId" filterable remote clearable :remote-method="users.search" :loading="users.loading.value" placeholder="可选，搜索姓名、用户名或电话" @visible-change="usersVisible">
-              <el-option v-if="selectedContactFallback" :key="selectedContactFallback.id" :label="selectedContactFallback.displayName" :value="selectedContactFallback.id" />
               <el-option v-for="item in users.options.value" :key="item.id" :label="`${item.displayName}（${item.username}）`" :value="item.id" />
             </el-select>
           </el-form-item>

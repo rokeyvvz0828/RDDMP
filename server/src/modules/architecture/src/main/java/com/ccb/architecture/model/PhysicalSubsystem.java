@@ -15,7 +15,6 @@ public record PhysicalSubsystem(
         String systemLevelCode,
         String developmentFrameworkCode,
         Long ownerUserId,
-        Long contactUserId,
         String description,
         String remark,
         long createdBy,

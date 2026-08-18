@@ -133,8 +133,6 @@ public class MockDataInitializer implements ApplicationRunner {
         }
         Long ownerId = optionalPositiveLong(row, "owner_user_id", "arch_physical_subsystem");
         if (ownerId != null) requireActiveUser(tenantId, ownerId, "负责人");
-        Long contactId = optionalPositiveLong(row, "contact_user_id", "arch_physical_subsystem");
-        if (contactId != null) requireActiveUser(tenantId, contactId, "联系人");
         requireOptionalParameter(row, tenantId, "runtime_code", "ARCH_RUNTIME");
         requireOptionalParameter(row, tenantId, "system_level_code", "ARCH_SYSTEM_LEVEL");
         requireOptionalParameter(row, tenantId, "development_framework_code", "ARCH_DEVELOPMENT_FRAMEWORK");
@@ -306,7 +304,7 @@ public class MockDataInitializer implements ApplicationRunner {
         result.put("biz_form_field_value", set("id", "tenant_id", "scope_id", "field_definition_id", "entity_type", "entity_id", "ordinal", "value_text", "value_code", "value_number", "value_date", "value_datetime", "value_boolean", "value_ref_type", "value_ref_id", "value_json", "value_label_snapshot", "created_at", "updated_at"));
         result.put("biz_form_config_revision", set("id", "tenant_id", "scope_id", "revision_no", "revision_status", "snapshot_json", "change_summary", "created_by", "published_by", "created_at", "published_at"));
         result.put("arch_logical_subsystem", set("id", "tenant_id", "code", "short_name", "name", "business_org_id", "deployment_platform_code", "system_type_code", "system_ownership_code", "contact_user_id", "description", "remark", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
-        result.put("arch_physical_subsystem", set("id", "tenant_id", "code", "short_name", "name", "logical_subsystem_id", "business_group_name", "responsible_team_org_id", "responsible_team_name_snapshot", "runtime_code", "system_level_code", "development_framework_code", "owner_user_id", "contact_user_id", "description", "remark", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
+        result.put("arch_physical_subsystem", set("id", "tenant_id", "code", "short_name", "name", "logical_subsystem_id", "business_group_name", "responsible_team_org_id", "responsible_team_name_snapshot", "runtime_code", "system_level_code", "development_framework_code", "owner_user_id", "description", "remark", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
         return Collections.unmodifiableMap(result);
     }
 

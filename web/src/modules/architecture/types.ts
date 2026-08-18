@@ -40,12 +40,10 @@ export interface PhysicalSubsystem {
   developmentFrameworkCode: string | null
   ownerUserId: number | null
   ownerDisplayName: string | null
-  contactUserId: number | null
-  contactDisplayName: string | null
-  contactPhone: string | null
   description: string | null
   remark: string | null
   createdBy: number
+  createdByDisplayName: string | null
   updatedBy: number
   createdAt: string
   updatedAt: string
@@ -75,7 +73,6 @@ export interface PhysicalSubsystemCommand {
   systemLevelCode: string | null
   developmentFrameworkCode: string | null
   ownerUserId: number | null
-  contactUserId: number | null
   description: string | null
   remark: string | null
 }

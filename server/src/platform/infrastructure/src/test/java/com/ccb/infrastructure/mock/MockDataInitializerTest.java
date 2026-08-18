@@ -114,7 +114,7 @@ class MockDataInitializerTest {
                     {"id":9101,"tenant_id":1,"code":"LOGICAL_DEMO","short_name":"逻辑演示","name":"逻辑演示系统","business_org_id":910000000000002,"contact_user_id":910000000000002,"deleted":0,"created_by":1,"updated_by":1}
                   ]},
                   {"table":"arch_physical_subsystem","keyColumns":["id"],"rows":[
-                    {"id":9201,"tenant_id":1,"code":"PHYSICAL_DEMO","short_name":"物理演示","name":"物理演示系统","logical_subsystem_id":9101,"responsible_team_org_id":910000000000002,"responsible_team_name_snapshot":"研发工程中心","owner_user_id":910000000000002,"contact_user_id":null,"deleted":0,"created_by":1,"updated_by":1}
+                    {"id":9201,"tenant_id":1,"code":"PHYSICAL_DEMO","short_name":"物理演示","name":"物理演示系统","logical_subsystem_id":9101,"responsible_team_org_id":910000000000002,"responsible_team_name_snapshot":"研发工程中心","owner_user_id":910000000000002,"deleted":0,"created_by":1,"updated_by":1}
                   ]}
                 ]}
                 """);
@@ -222,6 +222,7 @@ class MockDataInitializerTest {
         physical.path("rows").forEach(row -> {
             assertTrue(row.path("tenant_id").asLong() > 0);
             assertTrue(row.path("responsible_team_name_snapshot").isTextual());
+            assertTrue(row.path("contact_user_id").isMissingNode());
             assertEquals("虚构演示数据", row.path("remark").asText());
         });
 
@@ -264,7 +265,7 @@ class MockDataInitializerTest {
                 {"datasetKey":"test","datasetVersion":"1","database":[{
                   "table":"arch_physical_subsystem","keyColumns":["id"],"rows":[{
                     "id":9201,"tenant_id":1,"logical_subsystem_id":9101,"responsible_team_org_id":910000000000002,
-                    "responsible_team_name_snapshot":"%s","owner_user_id":null,"contact_user_id":null
+                    "responsible_team_name_snapshot":"%s","owner_user_id":null
                   }]
                 }]}
                 """.formatted(snapshot);

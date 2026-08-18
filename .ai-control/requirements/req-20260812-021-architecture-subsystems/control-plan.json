@@ -54,8 +54,8 @@
       "id":"T5","goal":"交付物理字段、团队快照、父锁和 CRUD","requirement_ids":["R2","R3","R4","R5","R6","R7","R12","R13"],"prerequisites":["T4"],
       "input_facts":["物理 command 字段和可空性已冻结","OrganizationService 提供组织当前名/status","repository 可锁父记录"],
       "write_scope":["server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/PhysicalSubsystemController.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/service/LogicalSubsystemService.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/service/PhysicalSubsystemServiceTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/service/PhysicalSubsystemConcurrencyMySqlTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/web/PhysicalSubsystemControllerTest.java"],
-      "invariants":["事业群 blank=null","团队必填且 snapshot 服务端生成","owner/contact 可空","父先物理后锁序"],"interface_contracts":["physical typed CRUD with responsibleTeamValid/displayName and live contact phone"],"non_goals":["不自动替换失效团队","不存电话"],
-      "action_bounds":["物理服务/控制器及父锁所需最小共享仓储修改"],"acceptance_checks":["字段可空性和 snapshot","组织失效可读/编辑重选","父锁两时序 409","无悬挂引用"],"evidence_required":["service/MockMvc/MySQL concurrency 输出","最终 SQL 状态","diff"],
+      "invariants":["事业群 blank=null","团队必填且 snapshot 服务端生成","owner 可空","无物理联系人/联系电话","父先物理后锁序"],"interface_contracts":["physical typed CRUD with responsibleTeamValid/displayName and createdByDisplayName"],"non_goals":["不自动替换失效团队","不存电话"],
+      "action_bounds":["物理服务/控制器及父锁所需最小共享仓储修改"],"acceptance_checks":["字段可空性和 snapshot","组织失效可读/编辑重选","父锁两时序 409","无悬挂引用","物理联系人字段不存在"],"evidence_required":["service/MockMvc/MySQL concurrency 输出","最终 SQL 状态","diff"],
       "rollback":"回退 T5 提交，保留 V36 数据和快照","stop_conditions":["快照语义无法实现","并发测试不稳定","需弱化 tenant/active"],"escalation_conditions":["要求失效组织自动替换或允许原值保存"]
     },
     {
@@ -97,10 +97,18 @@
       "invariants":["未执行验证不描述为通过","P0/P1 不带入交付","不访问生产"],"interface_contracts":["R1-R13 evidence matrix and control gate"],"non_goals":["不自行批准/合并/发布"],
       "action_bounds":["全量传感器、真实本地栈、当前前缀证据，以及用户授权的两个治理校验器最小兼容修复"],"acceptance_checks":["全自动门禁","Windows CRLF 与 baseline/correction 账本均被治理校验器正确识别","空库/增量 V37","真实 Boot/API/SQL","四视口 UAT","三次采样和收敛 gate"],"evidence_required":["命令/退出码/测试数","治理校验器修复前后证据","脱敏 HTTP/SQL/audit","截图/Network/Console","feedback/convergence"],
       "rollback":"按 T9 到 T1 逆序回退应用，保留 V35-V37/业务/审计","stop_conditions":["安全/租户/父子/迁移 P0/P1","环境无等价证据","需要生产访问"],"escalation_conditions":["回退需删生产数据","公共契约必须破坏兼容","外部治理基线无法关闭"]
+    },
+    {
+      "id":"T11","goal":"落实物理子系统后续优化：移除联系人、修复字典反显、创建人显示名称","requirement_ids":["R2","R7","R9","R13"],"prerequisites":["T10"],
+      "input_facts":["用户 2026-08-18 指出物理详情和编辑页字典字段显示为参数代码","用户要求物理子系统移除联系人且直接删除相关数据不做新迁移","用户要求创建人 ID 改为创建人并反显名称"],
+      "write_scope":["server/src/modules/architecture/src/main/java/com/ccb/architecture/**","server/src/modules/architecture/src/test/java/com/ccb/architecture/**","server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql","server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java","server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java","mock/mock-data.json","web/src/modules/architecture/**","docs/requirements/REQ-20260812-021-architecture-subsystems/requirement.md","docs/integration/architecture-module-contract.md","docs/engineering-control/**",".ai-control/requirements/req-20260812-021-architecture-subsystems/*.json"],
+      "invariants":["只移除物理子系统联系人，逻辑子系统联系人保持原契约","参数字典保存 canonical code 并支持历史大小写数据反显","createdBy 仍保留审计 ID，createdByDisplayName 只做安全反显","不追加迁移、不访问生产"],"interface_contracts":["physical typed CRUD without contact fields","physical response with createdByDisplayName","parameter option rendering case-insensitive and canonicalized"],"non_goals":["不迁移已应用过的开发库","不删除逻辑子系统联系人","不改变权限与启停用契约"],
+      "action_bounds":["物理模型/仓储/服务/测试、V36 未落地迁移、Mock、固定 Vue 页面与契约文档的最小同步"],"acceptance_checks":["物理请求/响应/数据库/Mock/页面均无联系人/电话","详情页字典字段显示参数标签","编辑页 select 可反显历史大小写参数码并保存 canonical code","详情页显示创建人名称而非创建人 ID"],"evidence_required":["前端构建","后端聚焦测试或阻塞说明","governance/scope/diff 检查","源码扫描"],
+      "rollback":"回退 T11 diff；若本地库已执行旧 V36，按开发库重建或手工清理验证库，不生成生产补丁迁移","stop_conditions":["必须兼容已发布迁移","需要移除逻辑联系人","无法安全查询创建人显示名"],"escalation_conditions":["需连接生产或修改公共用户契约"]
     }
   ],
   "dependency_edges": [
-    {"from":"T0","to":"T1","reason":"执行前门禁"},{"from":"T1","to":"T2","reason":"公开包和模块登记"},{"from":"T2","to":"T3R","reason":"V35 稳定后修复其前置空库基线"},{"from":"T3R","to":"T3","reason":"V24 前置复验通过后才能测量 V36"},{"from":"T3","to":"T4","reason":"逻辑服务依赖表和仓储"},{"from":"T4","to":"T5","reason":"物理和删除保护共享父仓储"},{"from":"T5","to":"T6","reason":"选项消费稳定资源 DTO"},{"from":"T3","to":"T7","reason":"V37 依赖 V36"},{"from":"T3","to":"T8","reason":"Mock 依赖业务表"},{"from":"T7","to":"T8","reason":"Mock 依赖目录参数"},{"from":"T6","to":"T9","reason":"页面消费最终 HTTP 契约"},{"from":"T2","to":"T10","reason":"集成需平台契约"},{"from":"T4","to":"T10","reason":"集成需逻辑 CRUD"},{"from":"T5","to":"T10","reason":"集成需物理/并发"},{"from":"T6","to":"T10","reason":"集成需 options"},{"from":"T7","to":"T10","reason":"集成需 catalog"},{"from":"T8","to":"T10","reason":"集成需 Mock"},{"from":"T9","to":"T10","reason":"集成需页面"}
+    {"from":"T0","to":"T1","reason":"执行前门禁"},{"from":"T1","to":"T2","reason":"公开包和模块登记"},{"from":"T2","to":"T3R","reason":"V35 稳定后修复其前置空库基线"},{"from":"T3R","to":"T3","reason":"V24 前置复验通过后才能测量 V36"},{"from":"T3","to":"T4","reason":"逻辑服务依赖表和仓储"},{"from":"T4","to":"T5","reason":"物理和删除保护共享父仓储"},{"from":"T5","to":"T6","reason":"选项消费稳定资源 DTO"},{"from":"T3","to":"T7","reason":"V37 依赖 V36"},{"from":"T3","to":"T8","reason":"Mock 依赖业务表"},{"from":"T7","to":"T8","reason":"Mock 依赖目录参数"},{"from":"T6","to":"T9","reason":"页面消费最终 HTTP 契约"},{"from":"T2","to":"T10","reason":"集成需平台契约"},{"from":"T4","to":"T10","reason":"集成需逻辑 CRUD"},{"from":"T5","to":"T10","reason":"集成需物理/并发"},{"from":"T6","to":"T10","reason":"集成需 options"},{"from":"T7","to":"T10","reason":"集成需 catalog"},{"from":"T8","to":"T10","reason":"集成需 Mock"},{"from":"T9","to":"T10","reason":"集成需页面"},{"from":"T10","to":"T11","reason":"后续优化基于已收敛功能面进行限幅调整"}
   ],
   "parallel_groups": [["T4","T7"]],
   "integration_points": [
@@ -113,7 +121,8 @@
     {"after_tasks":["T6","T7"],"checks":["options exact-key/V37 counts/no schema"]},
     {"after_tasks":["T8"],"checks":["infrastructure Mock profile/tenant/refs/idempotency"]},
     {"after_tasks":["T9"],"checks":["frontend build/browser smoke"]},
-    {"after_tasks":["T10"],"checks":["full automation/real API-SQL/browser/control gate"]}
+    {"after_tasks":["T10"],"checks":["full automation/real API-SQL/browser/control gate"]},
+    {"after_tasks":["T11"],"checks":["frontend build/source scan/governance/scope/backend focused tests or explicit blocker"]}
   ],
   "sampling_plan": [
     {"label":"平台与数据契约采样","trigger":"T3 完成","observer":"独立观察者","sensors":["S3","S4","S5","S8"],"requirement_ids":["R3","R4","R6","R7","R8","R11","R12","R13"]},
@@ -122,18 +131,18 @@
   ],
   "coverage": [
     {"requirement_id":"R1","task_ids":["T3","T4","T9","T10"],"sensor_ids":["S1","S3","S7"]},
-    {"requirement_id":"R2","task_ids":["T3","T5","T9","T10"],"sensor_ids":["S1","S2","S3"]},
+    {"requirement_id":"R2","task_ids":["T3","T5","T9","T10","T11"],"sensor_ids":["S1","S2","S3"]},
     {"requirement_id":"R3","task_ids":["T3","T4","T5","T10"],"sensor_ids":["S1","S3","S5"]},
     {"requirement_id":"R4","task_ids":["T2","T4","T5","T6","T10"],"sensor_ids":["S1","S3"]},
     {"requirement_id":"R5","task_ids":["T3","T5","T10"],"sensor_ids":["S1","S2","S3"]},
     {"requirement_id":"R6","task_ids":["T2","T4","T5","T6","T7","T10"],"sensor_ids":["S3","S4"]},
-    {"requirement_id":"R7","task_ids":["T2","T4","T5","T6","T7","T9","T10"],"sensor_ids":["S3","S4"]},
+    {"requirement_id":"R7","task_ids":["T2","T4","T5","T6","T7","T9","T10","T11"],"sensor_ids":["S3","S4"]},
     {"requirement_id":"R8","task_ids":["T0","T3R","T7","T8","T10"],"sensor_ids":["S5","S9"]},
-    {"requirement_id":"R9","task_ids":["T9","T10"],"sensor_ids":["S6","S7"]},
+    {"requirement_id":"R9","task_ids":["T9","T10","T11"],"sensor_ids":["S6","S7"]},
     {"requirement_id":"R10","task_ids":["T7","T9","T10"],"sensor_ids":["S6","S7","S9"]},
     {"requirement_id":"R11","task_ids":["T0","T1","T10"],"sensor_ids":["S8","S10"]},
     {"requirement_id":"R12","task_ids":["T3","T4","T5","T8","T10"],"sensor_ids":["S1","S3","S5"]},
-    {"requirement_id":"R13","task_ids":["T3","T5","T8","T9","T10"],"sensor_ids":["S1","S3","S7"]}
+    {"requirement_id":"R13","task_ids":["T3","T5","T8","T9","T10","T11"],"sensor_ids":["S1","S3","S7"]}
   ],
   "plan_status": "ready"
 }

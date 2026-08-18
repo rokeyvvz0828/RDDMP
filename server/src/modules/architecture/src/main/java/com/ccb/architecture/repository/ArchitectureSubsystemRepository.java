@@ -28,7 +28,7 @@ public class ArchitectureSubsystemRepository {
     private static final String PHYSICAL_COLUMNS = """
             id, code, short_name, name, logical_subsystem_id, business_group_name,
             responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
-            development_framework_code, owner_user_id, contact_user_id, description, remark,
+            development_framework_code, owner_user_id, description, remark,
             created_by, updated_by, created_at, updated_at
             """;
 
@@ -46,7 +46,7 @@ public class ArchitectureSubsystemRepository {
             rs.getLong("responsible_team_org_id"), rs.getString("responsible_team_name_snapshot"),
             rs.getString("runtime_code"), rs.getString("system_level_code"),
             rs.getString("development_framework_code"), nullableLong(rs, "owner_user_id"),
-            nullableLong(rs, "contact_user_id"), rs.getString("description"), rs.getString("remark"),
+            rs.getString("description"), rs.getString("remark"),
             rs.getLong("created_by"), rs.getLong("updated_by"),
             localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")));
     private static final RowMapper<LogicalSubsystemLock> LOGICAL_LOCK_MAPPER = (rs, rowNum) ->
@@ -188,12 +188,12 @@ public class ArchitectureSubsystemRepository {
                 INSERT INTO arch_physical_subsystem
                     (id, tenant_id, code, short_name, name, logical_subsystem_id, business_group_name,
                      responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
-                     development_framework_code, owner_user_id, contact_user_id, description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     development_framework_code, owner_user_id, description, remark, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, tenantId, command.code(), command.shortName(), command.name(), command.logicalSubsystemId(),
                 command.businessGroupName(), command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
-                command.ownerUserId(), command.contactUserId(), command.description(), command.remark(), actorId, actorId);
+                command.ownerUserId(), command.description(), command.remark(), actorId, actorId);
     }
 
     public int updatePhysical(long tenantId, long id, PhysicalSubsystemCommand command,
@@ -202,13 +202,13 @@ public class ArchitectureSubsystemRepository {
                 UPDATE arch_physical_subsystem
                 SET code = ?, short_name = ?, name = ?, logical_subsystem_id = ?, business_group_name = ?,
                     responsible_team_org_id = ?, responsible_team_name_snapshot = ?, runtime_code = ?,
-                    system_level_code = ?, development_framework_code = ?, owner_user_id = ?, contact_user_id = ?,
+                    system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
                     description = ?, remark = ?, updated_by = ?
                 WHERE tenant_id = ? AND id = ? AND deleted = 0
                 """, command.code(), command.shortName(), command.name(), command.logicalSubsystemId(),
                 command.businessGroupName(), command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
-                command.ownerUserId(), command.contactUserId(), command.description(), command.remark(),
+                command.ownerUserId(), command.description(), command.remark(),
                 actorId, tenantId, id);
     }
 

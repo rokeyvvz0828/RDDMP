@@ -316,16 +316,16 @@ void recordFailure(SystemOperationAuditCommand command);
 - 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java`
 - 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/service/LogicalSubsystemService.java`
 
-**接口：** `PhysicalSubsystemCommand` 固定包含 code、shortName、name、logicalSubsystemId、businessGroupName、responsibleTeamOrgId、runtimeCode、systemLevelCode、developmentFrameworkCode、ownerUserId?、contactUserId?、description、remark；不含 snapshot/phone/tenant/status。
+**接口：** `PhysicalSubsystemCommand` 固定包含 code、shortName、name、logicalSubsystemId、businessGroupName、responsibleTeamOrgId、runtimeCode、systemLevelCode、developmentFrameworkCode、ownerUserId?、description、remark；不含 contact/snapshot/phone/tenant/status。
 
-- [ ] **步骤 1：写字段失败测试。** 事业群 blank→null/最长 100；负责团队缺失/跨租户/停用/删除失败；服务端忽略客户端同名快照；owner/contact 均可空且非空时有效；联系人电话实时投影。
+- [ ] **步骤 1：写字段失败测试。** 事业群 blank→null/最长 100；负责团队缺失/跨租户/停用/删除失败；服务端忽略客户端同名快照；owner 可空且非空时有效；物理联系人字段不得出现在请求、响应、数据库或 Mock 中。
 - [ ] **步骤 2：实现团队快照与历史读取。** 保存时从当前有效组织取得 ID/名称；读取时当前组织有效用当前名，否则用 snapshot 并返回 `responsibleTeamValid=false`；失效原值编辑被拒绝，删除仍可执行。
 - [ ] **步骤 3：写父锁并发失败测试。** 两个 `TransactionTemplate` 和 latch 固定“物理先锁”和“删除先锁且物理已初检”两种时序，断言 409 和最终无悬挂活动引用。
 - [ ] **步骤 4：实现物理事务和逻辑删除保护。** 固定父先、物理后锁顺序；普通无效初检 400，并发状态变化 409；成功/失败审计同 T4。
 - [ ] **步骤 5：运行局部与回归。** `mvn -pl :ccb-architecture -am -Dtest=PhysicalSubsystemServiceTest,PhysicalSubsystemConcurrencyMySqlTest,PhysicalSubsystemControllerTest -Dsurefire.failIfNoSpecifiedTests=false test`，再运行 architecture 全测。
 - [ ] **步骤 6：提交。** `feat(architecture): add physical subsystem management`。
 
-**验收：** 修订 3 的物理字段、快照、失效编辑、人员可空和并发父子不变量全部可重复验证。
+**验收：** 当前修订的物理字段、快照、失效编辑、负责人可空、无物理联系人和并发父子不变量全部可重复验证。
 
 **回滚：** 回退 T5 提交；V36 数据和快照保留。
 

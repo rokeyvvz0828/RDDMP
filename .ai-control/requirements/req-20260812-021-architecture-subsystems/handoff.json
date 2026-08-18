@@ -34,9 +34,9 @@
       {"id":"R10","statement":"V1 不实现启用、停用、状态筛选或状态变更。","acceptance":["无启停动作","软删除不等于停用"],"priority":"must","source":"用户明确要求","counterexample":["启停按钮","status 请求"]},
       {"id":"R11","statement":"领域代码、表、HTTP 和前端归独立 business/architecture。","acceptance":["ccb-architecture/Boot","前端模块","治理一致","platform 无领域类型"],"priority":"must","source":"用户明确要求","counterexample":["com.ccb.system 领域服务","平台反向依赖"]},
       {"id":"R12","statement":"tenant_id 仅由认证用户注入、页面不可见且数据库无默认；local Mock 只用经校验显式租户。","acceptance":["请求无 tenant","客户端不能覆盖","DB 无 DEFAULT","非 local 不运行"],"priority":"must","source":"用户确认方案 A","counterexample":["常量 1","页面 tenant","Mock 缺省"]},
-      {"id":"R13","statement":"物理事业群为可空文本，负责团队必选组织并保存服务端名称快照，物理负责人和联系人均可空。","acceptance":["blank 到 null/100","团队必填","失效历史可读/编辑重选","人员可空"],"priority":"must","source":"用户批准修订 3","counterexample":["事业群组织 ID","客户端快照","失效不可读","负责人必填"]}
+      {"id":"R13","statement":"物理事业群为可空文本，负责团队必选组织并保存服务端名称快照，物理负责人可空，物理子系统不维护联系人或联系电话。","acceptance":["blank 到 null/100","团队必填","失效历史可读/编辑重选","负责人可空","无物理联系人字段"],"priority":"must","source":"用户 2026-08-18 后续优化请求","counterexample":["事业群组织 ID","客户端快照","失效不可读","负责人必填","物理请求或页面仍出现联系人"]}
     ],
-    "invariants": ["AuthUser tenant", "永久唯一", "父子租户安全", "服务端 snapshot/phone", "统一审计", "无动态 schema", "只追加 Flyway", "无启停用"],
+    "invariants": ["AuthUser tenant", "永久唯一", "父子租户安全", "服务端 snapshot", "无物理联系人/联系电话", "统一审计", "无动态 schema", "只追加 Flyway", "无启停用"],
     "constraints": ["scope writable paths", "main 最高 V34 且 V35-V37 未实际占用", "平台 Owner/回归", "Java17/Spring/MySQL/Vue3", "业务不直接写平台表"],
     "non_goals": ["启停用", "动态表单", "自动编号/智能", "审批/导入导出", "团队级行权限", "跨租户/级联删除"],
     "selected_approach": {"name":"独立业务模块、固定表单、最小平台查询/审计契约","reason":"领域归属、实时平台引用、统一审计和最新 main 规则一致","alternatives":["放 platform/system","直接访问平台表","动态 schema","arch 自建审计"]},

@@ -68,7 +68,6 @@
   "systemLevelCode": "A_PLUS",
   "developmentFrameworkCode": "P2",
   "ownerUserId": null,
-  "contactUserId": null,
   "description": null,
   "remark": null
 }
@@ -76,9 +75,9 @@
 
 列表记录和详情的字段固定为：
 
-`id,code,shortName,name,logicalSubsystemId,logicalSubsystemCode,logicalSubsystemName,businessGroupName,responsibleTeamOrgId,responsibleTeamDisplayName,responsibleTeamValid,runtimeCode,systemLevelCode,developmentFrameworkCode,ownerUserId,ownerDisplayName,contactUserId,contactDisplayName,contactPhone,description,remark,createdBy,updatedBy,createdAt,updatedAt`。
+`id,code,shortName,name,logicalSubsystemId,logicalSubsystemCode,logicalSubsystemName,businessGroupName,responsibleTeamOrgId,responsibleTeamDisplayName,responsibleTeamValid,runtimeCode,systemLevelCode,developmentFrameworkCode,ownerUserId,ownerDisplayName,description,remark,createdBy,createdByDisplayName,updatedBy,createdAt,updatedAt`。
 
-`responsibleTeamDisplayName` 在组织仍活动时取当前名称，否则取保存时的服务端快照；`responsibleTeamValid=false` 时编辑必须重新选择活动组织。请求不能提交团队名称快照、电话、状态或审计字段。
+`responsibleTeamDisplayName` 在组织仍活动时取当前名称，否则取保存时的服务端快照；`responsibleTeamValid=false` 时编辑必须重新选择活动组织。`createdByDisplayName` 由服务端按 `createdBy` 投影当前租户用户显示名，历史用户不可读时可为 `null`。物理子系统不维护联系人或联系电话；请求不能提交联系人、团队名称快照、电话、状态或审计字段。
 
 ## 选项 API
 
@@ -111,5 +110,5 @@
 
 - `/api/architecture/form-schemas/**` 或任何动态表单 schema。
 - 子系统启用、停用或 status 写接口。
-- 客户端提供 tenant、团队名称快照、联系人电话或审计字段的写入能力。
+- 客户端提供 tenant、团队名称快照、物理联系人、电话或审计字段的写入能力。
 - 直接访问 `com.ccb.system.internal.*` 或 system 私有数据表。

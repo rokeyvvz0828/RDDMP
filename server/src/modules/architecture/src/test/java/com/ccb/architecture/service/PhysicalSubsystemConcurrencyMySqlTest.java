@@ -187,7 +187,7 @@ class PhysicalSubsystemConcurrencyMySqlTest {
 
     private PhysicalSubsystemCommand command() {
         return new PhysicalSubsystemCommand("WP_201", "员工渠道物理", "员工渠道物理平台", LOGICAL_ID,
-                null, 12L, null, null, null, null, null, null, null);
+                null, 12L, null, null, null, null, null, null);
     }
 
     private BusinessException businessFailure(Future<?> future) throws Exception {
