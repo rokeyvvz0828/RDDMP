@@ -14,6 +14,7 @@
 | 平台 | `server/src/platform/workflow` | 流程模型、BPMN 编译、运行服务与监控 |
 | 公共 | `server/src/shared/common` | 统一响应、分页、异常和 trace，不拥有业务数据 |
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
+| 业务 | `server/src/modules/requirement` | 需求管理平台：新建项目差异清单、存量需求阶段、系统清单、基线与统一改动记录 |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
 
@@ -22,6 +23,7 @@
 当前前端仍是单 Vue 应用和按技术类型组织的目录。迁移到 `web/src/modules/<module>` 前，不为页面虚构目录边界：
 
 - `web/src/api/{system,workflow,ai}.ts` 是相应后端域的请求入口。
+- `web/src/api/requirements.ts`、`web/src/types/requirements.ts` 与 `web/src/views/RequirementsView.vue` 属于需求管理业务域。
 - `web/src/components/workflow` 和 `WorkflowView.vue` 属于 workflow。
 - `web/src/modules/delivery-showcase` 是纯前端虚构交付示范模块，使用本地 mock 数据沉淀列表、表单、详情、审批和可视化样式，不拥有后端业务数据。
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。

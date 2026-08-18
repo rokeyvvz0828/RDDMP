@@ -7,6 +7,7 @@ import ParameterView from '../views/ParameterView.vue'
 import RolePermissionView from '../views/RolePermissionView.vue'
 import WorkflowView from '../views/WorkflowView.vue'
 import AiView from '../views/AiView.vue'
+import RequirementsView from '../views/RequirementsView.vue'
 import ComponentShowcaseView from '../views/ComponentShowcaseView.vue'
 import DeliveryShowcaseModule from '../modules/delivery-showcase/DeliveryShowcaseModule.vue'
 
@@ -27,6 +28,8 @@ const router = createRouter({
         { path: 'workflow', redirect: '/workflow/definitions' },
         { path: 'workflow/:section', name: 'workflow', component: WorkflowView, props: true },
         { path: 'ai/:section', name: 'ai', component: AiView, props: true },
+        { path: 'requirements', redirect: '/requirements/new-project' },
+        { path: 'requirements/:section', name: 'requirements', component: RequirementsView, props: true, meta: { title: '需求管理平台' } },
         { path: 'components', name: 'components', component: ComponentShowcaseView, meta: { title: '组件示例' } },
         { path: 'delivery-showcase', name: 'delivery-showcase', component: DeliveryShowcaseModule, meta: { title: '交付示范中心' } }
       ]
