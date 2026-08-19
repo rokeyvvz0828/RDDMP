@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-026-project-context",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-project-asset-library-design.md",
+  "objective": "Provide authoritative project master data and member-based data scope for the asset library and future business modules.",
+  "users": [
+    "Platform administrators managing global RBAC",
+    "Project owners and project administrators maintaining projects and members",
+    "Project members and read-only members consuming project-scoped business data",
+    "Business modules resolving project summaries and access scope through a public contract"
+  ],
+  "requirements": [
+    {
+      "id": "P1",
+      "statement": "Maintain a minimal tenant-scoped project directory with an immutable owner role and controlled member roles.",
+      "acceptance": ["Project codes are unique per tenant", "Owner, administrator, member and read-only roles are validated server-side"],
+      "priority": "must",
+      "source": "User-confirmed design section 1 and project-scope decision",
+      "counterexample": ["Using frontend Mock projects as an authorization source", "Allowing duplicate project codes within a tenant"]
+    },
+    {
+      "id": "P2",
+      "statement": "Expose stable project summary, membership and access-scope contracts without allowing consumers to read project tables.",
+      "acceptance": ["A consumer can resolve project status and current-user membership through public APIs", "Cross-tenant and non-member access does not disclose project data"],
+      "priority": "must",
+      "source": "User-confirmed architecture and security design",
+      "counterexample": ["A business module joins project private tables", "The browser submits trusted membership conclusions"]
+    },
+    {
+      "id": "P3",
+      "statement": "Archived projects remain readable to authorized users but reject writes through all consuming modules.",
+      "acceptance": ["Archiving changes the project to read-only", "Restoring re-enables writes according to the existing membership"],
+      "priority": "must",
+      "source": "User-confirmed project archive decision",
+      "counterexample": ["Archived projects still accept asset uploads or metadata changes"]
+    }
+  ],
+  "invariants": [
+    "Effective authorization combines platform RBAC, project role scope and entity state",
+    "Project data is tenant scoped and project rows are not physically deleted",
+    "Business consumers use public contracts rather than project private tables",
+    "Project and membership writes are audited"
+  ],
+  "constraints": ["Java 17", "Spring Boot 3.4.4", "MySQL 8.4", "Append-only Flyway migrations", "Preserve com.ccb package compatibility"],
+  "non_goals": ["Project plans", "Milestones", "Budgets", "Risks", "Time tracking", "External project synchronization", "Asset management"],
+  "selected_approach": {
+    "name": "Dedicated ccb-project business module",
+    "reason": "It creates one authoritative project data owner and a reusable access contract without placing business rules in platform/system.",
+    "alternatives": [
+      {"name": "Project catalog inside data migration", "rejected_because": "It would duplicate project ownership for future business modules."},
+      {"name": "Project data in platform/system", "rejected_because": "It would mix business project ownership into the system administration platform."}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["Project and project-member persistence", "Project APIs", "Project public Java contracts", "Project Context Store/Provider"], "outside": ["Asset metadata", "Attachments", "Workflow approval", "Complete project planning"]},
+    "components": [
+      {"name": "Project application service", "responsibility": "Validate and coordinate project and member lifecycle", "depends_on": ["security context", "project repository"]},
+      {"name": "Project access contract", "responsibility": "Expose stable summaries and membership decisions to consumers", "depends_on": ["project application service"]},
+      {"name": "Project Context Store", "responsibility": "Expose the selected formal project to frontend business pages", "depends_on": ["project API"]}
+    ],
+    "interfaces": [
+      {"name": "Project REST API", "producer": "ccb-project", "consumers": ["frontend"], "contract": "Authenticated project CRUD, membership and current-user scope"},
+      {"name": "Project context Java API", "producer": "ccb-project", "consumers": ["ccb-data-migration", "future business modules"], "contract": "Tenant-scoped project summary and access decision"}
+    ],
+    "data_flows": [
+      {"input": "Authenticated project or membership command", "transitions": ["RBAC check", "tenant check", "role/state validation", "transactional persistence", "audit"], "output": "Updated project summary or explicit rejection"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Concurrent project update", "behavior": "Return conflict without overwriting the newer state", "recovery": "Reload the project and retry with the current version"},
+    {"condition": "Cross-tenant or non-member access", "behavior": "Do not disclose project existence", "recovery": "Request membership through the authorized project process"},
+    {"condition": "Write to archived project", "behavior": "Reject the command", "recovery": "Restore the project through an authorized action"}
+  ],
+  "quality_attributes": {
+    "security": ["Server-side RBAC and member scope", "Tenant isolation", "Audited membership changes"],
+    "performance": ["Server-side pagination", "Indexed tenant/project/member lookups"],
+    "compatibility": ["Mock project provider remains demonstration-only", "Consumers depend on stable DTOs"],
+    "operations": ["Archive instead of physical delete", "Preserve data on application rollback"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["P1", "P2"], "signal": "Project and membership API results for each role and tenant", "method": "Focused integration and permission tests"},
+    {"requirement_ids": ["P3"], "signal": "Archived projects reject writes and restored projects recover access", "method": "State-transition API tests and consumer contract tests"}
+  ],
+  "assumptions": [
+    {"text": "The initial project domain only needs the confirmed minimal directory", "basis": "User selected the minimal-project option", "falsifier": "An approved requirement adds plans, milestones, budgets or risks"}
+  ],
+  "unknowns": [
+    {"question": "What final module path and public package names will the module Owner approve?", "impact": "Blocks ready status and implementation scope, but not the approved product design", "owner": "business/project and governance Owner", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "Use platform RBAC plus project member scope", "reason": "Separates operation permission from project data range", "source": "User confirmation"},
+    {"id": "D2", "decision": "Deliver a minimal project directory first", "reason": "Avoids expanding into complete project management", "source": "User confirmation"}
+  ],
+  "risks": [
+    {"risk": "An unstable project contract affects every downstream module", "impact": "Cross-module rework and authorization defects", "mitigation": "Approve DTOs and role semantics before implementation and run consumer contract tests"}
+  ],
+  "approval": {"status": "approved", "evidence": "User confirmed all seven design sections and selected the dedicated-module approach.", "confirmed_at": "2026-08-18T20:15:50+08:00"}
+}

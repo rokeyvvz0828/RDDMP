@@ -1,0 +1,210 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260818-026",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260818-026-project-context/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "project-control",
+    "target_module": "business/project",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260818-026-project-context",
+    "worktree": "/home/song/workspace/RDDMP/.worktrees/req-20260818-026-project-context"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": [
+      "local-shell",
+      "codex",
+      "browser"
+    ]
+  },
+  "scope": {
+    "writable_paths": [
+      ".gitignore",
+      "server/src/modules/project/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectory.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectoryUser.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/service/JdbcUserDirectory.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/service/JdbcUserDirectoryTest.java",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__project_context.sql",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+      "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+      "mock/mock-data.json",
+      "web/src/types/project-context.ts",
+      "web/src/api/projects.ts",
+      "web/src/stores/project-context.ts",
+      "web/src/modules/project/**",
+      "web/src/router/index.ts",
+      "web/src/views/AppLayout.vue",
+      "pom.xml",
+      "server/src/platform/boot/pom.xml",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/integration/project-context-contract.md",
+      ".github/CODEOWNERS",
+      "docs/requirements/REQ-20260818-026-project-context/**",
+      "docs/engineering-control/designs/2026-08-18-project-asset-library-design.md",
+      "docs/engineering-control/plans/2026-08-18-project-context-implementation-plan.md",
+      ".ai-control/requirements/req-20260818-026-project-context/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/file-preview/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/infrastructure/pom.xml",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/storage/**",
+      "server/src/platform/system/pom.xml",
+      "server/src/platform/system/src/main/java/com/ccb/system/web/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/org/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/notification/**",
+      "server/src/modules/ai/**",
+      "web/src/api/http.ts",
+      "web/src/api/error.ts",
+      "web/src/stores/auth.ts",
+      "web/src/types/auth.ts",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/styles.css",
+      "docs/integration/frontend-ui-contract.md",
+      "docs/integration/system-notification-contract.md",
+      "docs/requirements/REQ-20260814-022-platform-business-integration/**",
+      ".ai-control/requirements/req-20260814-022-platform-business-integration/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/*.p12",
+      "**/*.jks",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260818-026",
+    "owner_approved": true,
+    "approval_evidence": "User replied '按建议执行' on 2026-08-19 after the proposed business/project, read-only UserDirectory, task scope and V37 decision.",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "system-tests",
+      "security-regression",
+      "project-tests",
+      "infrastructure-tests",
+      "boot/full-maven-tests",
+      "frontend-build",
+      "governance",
+      "desktop-mobile-browser"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__project_context.sql"
+    ],
+    "compatibility_and_rollback": "Add tenant-scoped project, membership and append-only project audit tables plus project menu/RBAC entries. V35/V36 remain reserved for REQ-20260814-022. On application rollback disable the project entry and retain V37 data; never modify historical migrations or issue a production DROP."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-business-data"
+  },
+  "required_tests": [
+    {
+      "name": "api",
+      "command": "Run focused project REST request/response, validation, conflict and nondisclosure integration tests"
+    },
+    {
+      "name": "system-tests",
+      "command": "mvn -pl :ccb-system -am test"
+    },
+    {
+      "name": "project-tests",
+      "command": "mvn -pl :ccb-project -am test"
+    },
+    {
+      "name": "infrastructure-tests",
+      "command": "mvn -pl :ccb-infrastructure -am -Dtest=MockDataInitializerTest test"
+    },
+    {
+      "name": "full-maven-tests",
+      "command": "mvn test"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "governance",
+      "command": "node scripts/check-all-governance.mjs"
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-026-project-context/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"
+    },
+    {
+      "name": "flyway",
+      "command": "node scripts/check-flyway-migrations.mjs"
+    },
+    {
+      "name": "runtime",
+      "command": "Start local non-production MySQL/backend twice and verify V37 plus /actuator/health"
+    },
+    {
+      "name": "permission",
+      "command": "Run OWNER, ADMIN, MEMBER, VIEWER, non-member, no-RBAC and cross-tenant project API matrix"
+    },
+    {
+      "name": "desktop-mobile-browser",
+      "command": "Run /projects and ProjectContextSwitcher flows at 1440x900, 375x812, 390x844 and 430x932 in light/dark themes"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "New business module and public ProjectContextPort",
+      "New platform/system UserDirectory public capability",
+      "Tenant/project authorization and nondisclosure",
+      "V37 Flyway migration and RBAC entries",
+      "AppLayout and formal Project Context Store",
+      "REQ-20260814-022 must replan before writing the same Store/type paths"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260818-026-project-context",
+    "control_justification": "High-assurance delivery for a public cross-module contract, authorization boundary, append-only migration, global project context and responsive business UI.",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260818-026-project-context/execution-T1.json",
+      ".ai-control/requirements/req-20260818-026-project-context/observation-T1.json",
+      ".ai-control/requirements/req-20260818-026-project-context/execution-T2.json",
+      ".ai-control/requirements/req-20260818-026-project-context/observation-T2.json",
+      ".ai-control/requirements/req-20260818-026-project-context/execution-T3.json",
+      ".ai-control/requirements/req-20260818-026-project-context/observation-T3.json",
+      ".ai-control/requirements/req-20260818-026-project-context/execution-T4.json",
+      ".ai-control/requirements/req-20260818-026-project-context/observation-T4.json",
+      ".ai-control/requirements/req-20260818-026-project-context/convergence.json"
+    ],
+    "release_verification": [
+      "system-tests",
+      "project-tests",
+      "infrastructure-tests",
+      "full-maven-tests",
+      "frontend-build",
+      "governance",
+      "scope",
+      "flyway",
+      "runtime",
+      "permission",
+      "desktop-mobile-browser"
+    ],
+    "rollback": "Disable project menu and formal Project Context entry, revert application module composition and frontend routing, retain V37 project/member/audit data, and never drop production tables."
+  }
+}

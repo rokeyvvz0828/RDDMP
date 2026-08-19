@@ -1,0 +1,1122 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-026-project-context",
+  "handoff_status": "approved",
+  "created_at": "2026-08-18T20:34:44+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260818-026-project-context",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-18-project-asset-library-design.md",
+    "objective": "Provide authoritative project master data and member-based data scope for the asset library and future business modules.",
+    "users": [
+      "Platform administrators managing global RBAC",
+      "Project owners and project administrators maintaining projects and members",
+      "Project members and read-only members consuming project-scoped business data",
+      "Business modules resolving project summaries and access scope through a public contract"
+    ],
+    "requirements": [
+      {
+        "id": "P1",
+        "statement": "Maintain a minimal tenant-scoped project directory with an immutable owner role and controlled member roles.",
+        "acceptance": [
+          "Project codes are unique per tenant",
+          "Owner, administrator, member and read-only roles are validated server-side"
+        ],
+        "priority": "must",
+        "source": "User-confirmed design section 1 and project-scope decision",
+        "counterexample": [
+          "Using frontend Mock projects as an authorization source",
+          "Allowing duplicate project codes within a tenant"
+        ]
+      },
+      {
+        "id": "P2",
+        "statement": "Expose stable project summary, membership and access-scope contracts without allowing consumers to read project tables.",
+        "acceptance": [
+          "A consumer can resolve project status and current-user membership through public APIs",
+          "Cross-tenant and non-member access does not disclose project data"
+        ],
+        "priority": "must",
+        "source": "User-confirmed architecture and security design",
+        "counterexample": [
+          "A business module joins project private tables",
+          "The browser submits trusted membership conclusions"
+        ]
+      },
+      {
+        "id": "P3",
+        "statement": "Archived projects remain readable to authorized users but reject writes through all consuming modules.",
+        "acceptance": [
+          "Archiving changes the project to read-only",
+          "Restoring re-enables writes according to the existing membership"
+        ],
+        "priority": "must",
+        "source": "User-confirmed project archive decision",
+        "counterexample": [
+          "Archived projects still accept asset uploads or metadata changes"
+        ]
+      }
+    ],
+    "invariants": [
+      "Effective authorization combines platform RBAC, project role scope and entity state",
+      "Project data is tenant scoped and project rows are not physically deleted",
+      "Business consumers use public contracts rather than project private tables",
+      "Project and membership writes are audited"
+    ],
+    "constraints": [
+      "Java 17",
+      "Spring Boot 3.4.4",
+      "MySQL 8.4",
+      "Append-only Flyway migrations",
+      "Preserve com.ccb package compatibility"
+    ],
+    "non_goals": [
+      "Project plans",
+      "Milestones",
+      "Budgets",
+      "Risks",
+      "Time tracking",
+      "External project synchronization",
+      "Asset management"
+    ],
+    "selected_approach": {
+      "name": "Dedicated ccb-project business module",
+      "reason": "It creates one authoritative project data owner and a reusable access contract without placing business rules in platform/system.",
+      "alternatives": [
+        {
+          "name": "Project catalog inside data migration",
+          "rejected_because": "It would duplicate project ownership for future business modules."
+        },
+        {
+          "name": "Project data in platform/system",
+          "rejected_because": "It would mix business project ownership into the system administration platform."
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "Project and project-member persistence",
+          "Project APIs",
+          "Project public Java contracts",
+          "Project Context Store/Provider"
+        ],
+        "outside": [
+          "Asset metadata",
+          "Attachments",
+          "Workflow approval",
+          "Complete project planning"
+        ]
+      },
+      "components": [
+        {
+          "name": "Project application service",
+          "responsibility": "Validate and coordinate project and member lifecycle",
+          "depends_on": [
+            "security context",
+            "project repository"
+          ]
+        },
+        {
+          "name": "Project access contract",
+          "responsibility": "Expose stable summaries and membership decisions to consumers",
+          "depends_on": [
+            "project application service"
+          ]
+        },
+        {
+          "name": "Project Context Store",
+          "responsibility": "Expose the selected formal project to frontend business pages",
+          "depends_on": [
+            "project API"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "Project REST API",
+          "producer": "ccb-project",
+          "consumers": [
+            "frontend"
+          ],
+          "contract": "Authenticated project CRUD, membership and current-user scope"
+        },
+        {
+          "name": "Project context Java API",
+          "producer": "ccb-project",
+          "consumers": [
+            "ccb-data-migration",
+            "future business modules"
+          ],
+          "contract": "Tenant-scoped project summary and access decision"
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "Authenticated project or membership command",
+          "transitions": [
+            "RBAC check",
+            "tenant check",
+            "role/state validation",
+            "transactional persistence",
+            "audit"
+          ],
+          "output": "Updated project summary or explicit rejection"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "Concurrent project update",
+        "behavior": "Return conflict without overwriting the newer state",
+        "recovery": "Reload the project and retry with the current version"
+      },
+      {
+        "condition": "Cross-tenant or non-member access",
+        "behavior": "Do not disclose project existence",
+        "recovery": "Request membership through the authorized project process"
+      },
+      {
+        "condition": "Write to archived project",
+        "behavior": "Reject the command",
+        "recovery": "Restore the project through an authorized action"
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "Server-side RBAC and member scope",
+        "Tenant isolation",
+        "Audited membership changes"
+      ],
+      "performance": [
+        "Server-side pagination",
+        "Indexed tenant/project/member lookups"
+      ],
+      "compatibility": [
+        "Mock project provider remains demonstration-only",
+        "Consumers depend on stable DTOs"
+      ],
+      "operations": [
+        "Archive instead of physical delete",
+        "Preserve data on application rollback"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "P1",
+          "P2"
+        ],
+        "signal": "Project and membership API results for each role and tenant",
+        "method": "Focused integration and permission tests"
+      },
+      {
+        "requirement_ids": [
+          "P3"
+        ],
+        "signal": "Archived projects reject writes and restored projects recover access",
+        "method": "State-transition API tests and consumer contract tests"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "The initial project domain only needs the confirmed minimal directory",
+        "basis": "User selected the minimal-project option",
+        "falsifier": "An approved requirement adds plans, milestones, budgets or risks"
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "What final module path and public package names will the module Owner approve?",
+        "impact": "Blocks ready status and implementation scope, but not the approved product design",
+        "owner": "business/project and governance Owner",
+        "blocking": false
+      }
+    ],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "Use platform RBAC plus project member scope",
+        "reason": "Separates operation permission from project data range",
+        "source": "User confirmation"
+      },
+      {
+        "id": "D2",
+        "decision": "Deliver a minimal project directory first",
+        "reason": "Avoids expanding into complete project management",
+        "source": "User confirmation"
+      }
+    ],
+    "risks": [
+      {
+        "risk": "An unstable project contract affects every downstream module",
+        "impact": "Cross-module rework and authorization defects",
+        "mitigation": "Approve DTOs and role semantics before implementation and run consumer contract tests"
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User confirmed all seven design sections and selected the dedicated-module approach.",
+      "confirmed_at": "2026-08-18T20:15:50+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 2,
+    "human_document": "docs/engineering-control/plans/2026-08-18-project-context-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "REQ-20260818-026 must be ready and have a JSON-compatible codex-task-scope.yaml before product changes.",
+      "The module, public capability change, writable paths and V37 are Owner-approved; CODEOWNERS and the independent worktree remain enforced gates.",
+      "REQ-20260814-022 retains V35/V36; V37 is allocated here and must still be checked for new branch occupancy before creation.",
+      "ccb-project may consume only registered public packages from shared/common, platform/infrastructure, platform/security and platform/system.",
+      "Effective authorization is the intersection of platform RBAC, project role scope and project state.",
+      "Project roles are OWNER, ADMIN, MEMBER and VIEWER; project states are ACTIVE and ARCHIVED.",
+      "Project codes are tenant-unique, each project has one owner, projects are never physically deleted, and writes are audited.",
+      "Do not add asset, attachment, workflow, plan, milestone, budget, risk or time-tracking behavior.",
+      "Do not modify V1-V34 or use production data, real identities, secrets or frontend Mock projects as authorization sources.",
+      "Frontend work must reuse delivery-showcase patterns, shared UI and semantic theme variables, and cover desktop/mobile full states."
+    ],
+    "file_map": [
+      {
+        "path": ".gitignore",
+        "status": "existing",
+        "responsibility": "Ignore the repository-local isolated worktree directory",
+        "evidence": "using-git-worktrees entry gate"
+      },
+      {
+        "path": "pom.xml",
+        "status": "existing",
+        "responsibility": "Register and version Maven reactor modules",
+        "evidence": "Current root POM"
+      },
+      {
+        "path": "server/src/platform/boot/pom.xml",
+        "status": "existing",
+        "responsibility": "Compose runtime modules",
+        "evidence": "Current boot POM"
+      },
+      {
+        "path": "governance/modules.yaml",
+        "status": "existing",
+        "responsibility": "Own module paths, public packages and dependency boundaries",
+        "evidence": "Repository governance source"
+      },
+      {
+        "path": "docs/architecture/MODULES.md",
+        "status": "existing",
+        "responsibility": "Document module boundaries",
+        "evidence": "Repository governance rules"
+      },
+      {
+        "path": ".github/CODEOWNERS",
+        "status": "existing",
+        "responsibility": "Assign path review ownership",
+        "evidence": "GitHub governance"
+      },
+      {
+        "path": "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectory.java",
+        "status": "candidate-new",
+        "responsibility": "Expose tenant-scoped active-user lookup",
+        "evidence": "Project members require authoritative users"
+      },
+      {
+        "path": "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectoryUser.java",
+        "status": "candidate-new",
+        "responsibility": "Expose minimal user summary",
+        "evidence": "Public user-directory whitelist"
+      },
+      {
+        "path": "server/src/platform/system/src/main/java/com/ccb/system/service/JdbcUserDirectory.java",
+        "status": "candidate-new",
+        "responsibility": "Implement read-only lookup inside system ownership",
+        "evidence": "System uses JdbcTemplate"
+      },
+      {
+        "path": "server/src/platform/system/src/test/java/com/ccb/system/service/JdbcUserDirectoryTest.java",
+        "status": "candidate-new",
+        "responsibility": "Verify tenant, active-state and completeness constraints",
+        "evidence": "Public capability regression"
+      },
+      {
+        "path": "server/src/modules/project/pom.xml",
+        "status": "candidate-new",
+        "responsibility": "Declare ccb-project dependencies",
+        "evidence": "Approved dedicated-module design"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectRole.java",
+        "status": "candidate-new",
+        "responsibility": "Define fixed member roles",
+        "evidence": "Approved role model"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectStatus.java",
+        "status": "candidate-new",
+        "responsibility": "Define ACTIVE and ARCHIVED",
+        "evidence": "Approved lifecycle"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectAction.java",
+        "status": "candidate-new",
+        "responsibility": "Define project-scope actions",
+        "evidence": "Three-layer authorization"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectSummary.java",
+        "status": "candidate-new",
+        "responsibility": "Expose stable project summary",
+        "evidence": "Public project contract"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectMembership.java",
+        "status": "candidate-new",
+        "responsibility": "Expose current membership",
+        "evidence": "Public project contract"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/api/ProjectContextPort.java",
+        "status": "candidate-new",
+        "responsibility": "Authorize project role and state for consumers",
+        "evidence": "Approved module boundary"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/repository/ProjectRepository.java",
+        "status": "candidate-new",
+        "responsibility": "Persist project, membership and audit rows",
+        "evidence": "Project data ownership"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/service/ProjectContextService.java",
+        "status": "candidate-new",
+        "responsibility": "Implement project role/state decisions",
+        "evidence": "P2 and P3"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/service/ProjectService.java",
+        "status": "candidate-new",
+        "responsibility": "Coordinate project and member transactions",
+        "evidence": "Service boundary"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/web/ProjectController.java",
+        "status": "candidate-new",
+        "responsibility": "Adapt /api/projects with RBAC",
+        "evidence": "HTTP boundary"
+      },
+      {
+        "path": "server/src/modules/project/src/main/java/com/ccb/project/web/ProjectCommands.java",
+        "status": "candidate-new",
+        "responsibility": "Whitelist validated command fields",
+        "evidence": "REST contract"
+      },
+      {
+        "path": "server/src/modules/project/src/test/java/com/ccb/project/service/ProjectContextServiceTest.java",
+        "status": "candidate-new",
+        "responsibility": "Verify role, state and tenant decisions",
+        "evidence": "P2 and P3 sensor"
+      },
+      {
+        "path": "server/src/modules/project/src/test/java/com/ccb/project/service/ProjectServiceTest.java",
+        "status": "candidate-new",
+        "responsibility": "Verify domain invariants and optimistic locking",
+        "evidence": "P1 and P3 sensor"
+      },
+      {
+        "path": "server/src/modules/project/src/test/java/com/ccb/project/web/ProjectControllerSecurityTest.java",
+        "status": "candidate-new",
+        "responsibility": "Verify RBAC and HTTP fields",
+        "evidence": "Server-side authorization sensor"
+      },
+      {
+        "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V37__project_context.sql",
+        "status": "candidate-new",
+        "responsibility": "Add project schema and RBAC entries after version allocation",
+        "evidence": "Owner allocated V37 on 2026-08-19; execution must rescan occupancy"
+      },
+      {
+        "path": "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "status": "existing",
+        "responsibility": "Allowlist local project Mock tables",
+        "evidence": "Existing Mock contract"
+      },
+      {
+        "path": "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+        "status": "existing",
+        "responsibility": "Verify Mock allowlist and idempotence",
+        "evidence": "Existing Mock sensor"
+      },
+      {
+        "path": "mock/mock-data.json",
+        "status": "existing",
+        "responsibility": "Provide fictional local project/member data",
+        "evidence": "Unified Mock dataset"
+      },
+      {
+        "path": "web/src/types/project-context.ts",
+        "status": "candidate-new",
+        "responsibility": "Define formal project context and form types",
+        "evidence": "Formal replacement for planned Mock contract"
+      },
+      {
+        "path": "web/src/api/projects.ts",
+        "status": "candidate-new",
+        "responsibility": "Wrap project REST endpoints",
+        "evidence": "Frontend API boundary"
+      },
+      {
+        "path": "web/src/stores/project-context.ts",
+        "status": "candidate-new",
+        "responsibility": "Provide remote available/current project state",
+        "evidence": "Approved frontend context"
+      },
+      {
+        "path": "web/src/modules/project/ProjectManagementView.vue",
+        "status": "candidate-new",
+        "responsibility": "Present project management workspace",
+        "evidence": "P1 UI"
+      },
+      {
+        "path": "web/src/modules/project/components/ProjectFormDrawer.vue",
+        "status": "candidate-new",
+        "responsibility": "Edit minimal project fields",
+        "evidence": "Single form responsibility"
+      },
+      {
+        "path": "web/src/modules/project/components/ProjectMemberDialog.vue",
+        "status": "candidate-new",
+        "responsibility": "Maintain controlled members and owner transfer",
+        "evidence": "Membership UI"
+      },
+      {
+        "path": "web/src/modules/project/components/ProjectContextSwitcher.vue",
+        "status": "candidate-new",
+        "responsibility": "Switch authorized project in AppLayout",
+        "evidence": "Shared context entry"
+      },
+      {
+        "path": "web/src/modules/project/project.css",
+        "status": "candidate-new",
+        "responsibility": "Contain project responsive styling",
+        "evidence": "Avoid shared UI mutation"
+      },
+      {
+        "path": "web/src/router/index.ts",
+        "status": "existing",
+        "responsibility": "Map /projects route",
+        "evidence": "Current router pattern"
+      },
+      {
+        "path": "web/src/views/AppLayout.vue",
+        "status": "existing",
+        "responsibility": "Mount formal project switcher",
+        "evidence": "Current application shell"
+      },
+      {
+        "path": "docs/integration/project-context-contract.md",
+        "status": "candidate-new",
+        "responsibility": "Document Java, REST and frontend project contracts",
+        "evidence": "Cross-module contract"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "Create the approved public user directory, project contract types and ccb-project module boundary.",
+        "requirement_ids": [
+          "P2"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "PageQuery and PageResult exist in com.ccb.common.api.",
+          "AuthUser exists in the public com.ccb.security.model package.",
+          "platform/system owns sys_user and exposes com.ccb.system.model as public.",
+          "Implementation authorization gates remain unsatisfied."
+        ],
+        "files": {
+          "create": [
+            "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectory.java",
+            "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectoryUser.java",
+            "server/src/platform/system/src/main/java/com/ccb/system/service/JdbcUserDirectory.java",
+            "server/src/platform/system/src/test/java/com/ccb/system/service/JdbcUserDirectoryTest.java",
+            "server/src/modules/project/pom.xml",
+            "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectRole.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectStatus.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectAction.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectSummary.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/model/ProjectMembership.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/api/ProjectContextPort.java",
+            "docs/integration/project-context-contract.md"
+          ],
+          "modify": [
+            "pom.xml",
+            "server/src/platform/boot/pom.xml",
+            "governance/modules.yaml",
+            "docs/architecture/MODULES.md",
+            ".github/CODEOWNERS"
+          ],
+          "test": [
+            "server/src/platform/system/src/test/java/com/ccb/system/service/JdbcUserDirectoryTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "com.ccb.common.api.PageQuery",
+            "com.ccb.common.api.PageResult",
+            "com.ccb.security.model.AuthUser"
+          ],
+          "produces": [
+            "UserDirectory.searchActive(long tenantId, String keyword, PageQuery pageQuery): PageResult<UserDirectoryUser>",
+            "UserDirectory.requireActive(long tenantId, Set<Long> userIds): Map<Long, UserDirectoryUser>",
+            "ProjectContextPort.requireAccess(long projectId, AuthUser user, ProjectAction action): ProjectSummary",
+            "ProjectContextPort.membership(long projectId, AuthUser user): ProjectMembership",
+            "ProjectContextPort.available(AuthUser user): List<ProjectSummary>"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T1-S1",
+            "action": "Add JdbcUserDirectory tests for tenant, deleted, active and missing-user behavior",
+            "command": "mvn -pl :ccb-system -am -Dtest=JdbcUserDirectoryTest test",
+            "expected": "Compilation fails because UserDirectory or JdbcUserDirectory does not exist.",
+            "evidence": "Exit code and missing-type diagnostics"
+          },
+          {
+            "id": "T1-S2",
+            "action": "Implement the public user directory and minimal whitelist DTO",
+            "command": "mvn -pl :ccb-system -am -Dtest=JdbcUserDirectoryTest test",
+            "expected": "JdbcUserDirectoryTest passes with SQL and parameter assertions.",
+            "evidence": "Surefire test count and exit code"
+          },
+          {
+            "id": "T1-S3",
+            "action": "Register ccb-project and add fixed public project types",
+            "command": "mvn -pl :ccb-project -am -DskipTests compile",
+            "expected": "The reactor includes ccb-project and compiles without private-package imports.",
+            "evidence": "Reactor order, artifact and exit code"
+          },
+          {
+            "id": "T1-S4",
+            "action": "Document and validate module/public contract boundaries",
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "Governance passes for 9 Maven modules with no platform-to-business reverse dependency.",
+            "evidence": "Governance summary"
+          },
+          {
+            "id": "T1-S5",
+            "action": "Create the T1 commit checkpoint",
+            "command": "git commit -m \"feat(project): add project context contracts\"",
+            "expected": "The commit contains only T1 authorized paths.",
+            "evidence": "Commit id and scoped diff"
+          }
+        ],
+        "acceptance_checks": [
+          "User lookup returns only active non-deleted users in the authenticated tenant.",
+          "Project public types and documentation have identical role, state and action semantics.",
+          "ccb-project imports only registered public packages."
+        ],
+        "risks": [
+          "Public system contract affects all consumers",
+          "A conflicting project context may land from REQ-20260814-022"
+        ],
+        "rollback": "Revert the T1 commit; no database change exists.",
+        "stop_conditions": [
+          "Any implementation authorization gate is missing",
+          "Owner rejects module/public package names",
+          "System Owner rejects UserDirectory"
+        ],
+        "escalation_conditions": [
+          "User lookup needs sensitive fields or organization inheritance",
+          "Another branch defines incompatible project context types"
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "Deliver tenant-scoped project persistence, REST APIs, role/state authorization and immutable audit.",
+        "requirement_ids": [
+          "P1",
+          "P2",
+          "P3"
+        ],
+        "prerequisites": [
+          "T1"
+        ],
+        "input_facts": [
+          "T1 owns UserDirectory and ProjectContextPort signatures.",
+          "Current Flyway maximum is V34.",
+          "REQ-20260814-022 retains V35 and V36; the Owner allocated V37 to this requirement.",
+          "Project tables must not use cross-module foreign keys to sys_user."
+        ],
+        "files": {
+          "create": [
+            "server/src/platform/infrastructure/src/main/resources/db/migration/V37__project_context.sql",
+            "server/src/modules/project/src/main/java/com/ccb/project/repository/ProjectRepository.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/service/ProjectContextService.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/service/ProjectService.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/web/ProjectController.java",
+            "server/src/modules/project/src/main/java/com/ccb/project/web/ProjectCommands.java",
+            "server/src/modules/project/src/test/java/com/ccb/project/service/ProjectContextServiceTest.java",
+            "server/src/modules/project/src/test/java/com/ccb/project/service/ProjectServiceTest.java",
+            "server/src/modules/project/src/test/java/com/ccb/project/web/ProjectControllerSecurityTest.java"
+          ],
+          "modify": [
+            "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+            "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+            "mock/mock-data.json"
+          ],
+          "test": [
+            "server/src/modules/project/src/test/java/com/ccb/project/service/ProjectContextServiceTest.java",
+            "server/src/modules/project/src/test/java/com/ccb/project/service/ProjectServiceTest.java",
+            "server/src/modules/project/src/test/java/com/ccb/project/web/ProjectControllerSecurityTest.java",
+            "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T1 UserDirectory",
+            "T1 ProjectContextPort types",
+            "AuthUser",
+            "PageQuery and PageResult"
+          ],
+          "produces": [
+            "GET/POST/PUT /api/projects and archive/restore actions",
+            "GET/POST/PATCH/DELETE /api/projects/{projectId}/members and owner-transfer",
+            "GET /api/projects/available and /api/projects/member-candidates",
+            "pm_project, pm_project_member and pm_project_audit_event",
+            "project:list, project:list:create, project:list:update, project:list:member and project:list:archive"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T2-S1",
+            "action": "Add domain, context and controller-security failure tests",
+            "command": "mvn -pl :ccb-project -am test",
+            "expected": "Tests fail because repository, services and controller are absent.",
+            "evidence": "Named failing tests and diagnostics"
+          },
+          {
+            "id": "T2-S2",
+            "action": "Add the Owner-assigned Flyway migration for project tables, indexes, menu and permissions",
+            "command": "node scripts/check-flyway-migrations.mjs",
+            "expected": "Exactly one unique monotonic migration is added and V1-V34 are unchanged.",
+            "evidence": "Migration scan and Owner allocation record"
+          },
+          {
+            "id": "T2-S3",
+            "action": "Implement tenant-scoped repository transactions and append-only project audit",
+            "command": "mvn -pl :ccb-project -am -DskipTests compile",
+            "expected": "ccb-project compiles and every repository query is tenant-scoped.",
+            "evidence": "Compile output and SQL review"
+          },
+          {
+            "id": "T2-S4",
+            "action": "Implement OWNER, ADMIN, MEMBER and VIEWER action matrix with ARCHIVED read-only",
+            "command": "mvn -pl :ccb-project -am -Dtest=ProjectContextServiceTest test",
+            "expected": "Role, tenant, missing-project and archive tests pass.",
+            "evidence": "Surefire assertions"
+          },
+          {
+            "id": "T2-S5",
+            "action": "Implement ProjectService, validated commands and RBAC-protected REST endpoints",
+            "command": "mvn -pl :ccb-project -am test",
+            "expected": "Service and controller security tests pass with conflict and nondisclosure behavior.",
+            "evidence": "Surefire and serialized API assertions"
+          },
+          {
+            "id": "T2-S6",
+            "action": "Add fictional idempotent local project/member Mock data",
+            "command": "mvn -pl :ccb-infrastructure -am -Dtest=MockDataInitializerTest test",
+            "expected": "Allowlist, unknown-column rejection and idempotent upsert tests pass.",
+            "evidence": "Mock test count and datasetVersion"
+          },
+          {
+            "id": "T2-S7",
+            "action": "Run the project/system/infrastructure regression and create the T2 checkpoint",
+            "command": "mvn -pl :ccb-project,:ccb-system,:ccb-infrastructure -am test && node scripts/check-all-governance.mjs",
+            "expected": "Focused reactor and governance checks pass.",
+            "evidence": "Commands, exit codes and commit id"
+          }
+        ],
+        "acceptance_checks": [
+          "Project codes and memberships are tenant-unique and each project has exactly one owner.",
+          "All project queries are tenant-scoped and invisible projects do not disclose existence.",
+          "Platform RBAC, project roles and ACTIVE/ARCHIVED state are all enforced server-side.",
+          "Project/member writes, including failures, retain the required audit evidence."
+        ],
+        "risks": [
+          "V37 may be occupied by a newly integrated migration before execution",
+          "Owner/member invariant could be broken by concurrency",
+          "Incorrect RBAC grants could broaden access"
+        ],
+        "rollback": "Disable the menu and revert T2 application code; retain applied project/audit tables and never issue a production DROP.",
+        "stop_conditions": [
+          "V37 collides with the current branch or an incoming approved migration",
+          "Implementation needs direct sys_user access",
+          "Owner/member invariant cannot be transactional"
+        ],
+        "escalation_conditions": [
+          "Organization inheritance or multiple owners are required",
+          "Permission schema cannot express the five project permissions",
+          "A public audit platform change becomes necessary"
+        ]
+      },
+      {
+        "id": "T3",
+        "goal": "Deliver the formal remote Project Context store, project workspace and responsive member-management UI.",
+        "requirement_ids": [
+          "P1",
+          "P2",
+          "P3"
+        ],
+        "prerequisites": [
+          "T2"
+        ],
+        "input_facts": [
+          "T2 owns the project REST contract.",
+          "Delivery showcase and shared UI components provide the required layout patterns.",
+          "Owner assigned the formal type/store paths to REQ-026; REQ-20260814-022 must replan before its conflicting Mock task."
+        ],
+        "files": {
+          "create": [
+            "web/src/types/project-context.ts",
+            "web/src/api/projects.ts",
+            "web/src/stores/project-context.ts",
+            "web/src/modules/project/ProjectManagementView.vue",
+            "web/src/modules/project/components/ProjectFormDrawer.vue",
+            "web/src/modules/project/components/ProjectMemberDialog.vue",
+            "web/src/modules/project/components/ProjectContextSwitcher.vue",
+            "web/src/modules/project/project.css"
+          ],
+          "modify": [
+            "web/src/router/index.ts",
+            "web/src/views/AppLayout.vue"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [
+            "T2 /api/projects REST API",
+            "web/src/api/http.ts",
+            "authentication store",
+            "shared UI components"
+          ],
+          "produces": [
+            "ProjectContextItem {id, code, name, status, role}",
+            "ProjectContextProvider.list(): Promise<ProjectContextItem[]>",
+            "ProjectContext Store refresh/select/reset actions",
+            "/projects route and AppLayout ProjectContextSwitcher"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T3-S1",
+            "action": "Define formal TypeScript/API signatures and establish missing-implementation signal",
+            "command": "npm --prefix web run build",
+            "expected": "Build fails only on the intentionally missing Store or component implementation.",
+            "evidence": "vue-tsc diagnostics"
+          },
+          {
+            "id": "T3-S2",
+            "action": "Implement project API wrappers and remote Project Context Store",
+            "command": "npm --prefix web run build",
+            "expected": "API and Store types compile; selection is validated against server results.",
+            "evidence": "Build output and type review"
+          },
+          {
+            "id": "T3-S3",
+            "action": "Implement desktop table, mobile cards, project drawer and controlled member dialog",
+            "command": "npm --prefix web run build",
+            "expected": "vue-tsc and Vite production build pass.",
+            "evidence": "Build exit code and artifact summary"
+          },
+          {
+            "id": "T3-S4",
+            "action": "Mount /projects and a stable-height AppLayout project switcher",
+            "command": "npm --prefix web run build",
+            "expected": "Router and shell compile without altering token or route security.",
+            "evidence": "Build output and route mapping evidence"
+          },
+          {
+            "id": "T3-S5",
+            "action": "Create the T3 commit checkpoint",
+            "command": "git commit -m \"feat(project): add project management workspace\"",
+            "expected": "The commit contains only authorized frontend project paths.",
+            "evidence": "Commit id and scoped diff"
+          }
+        ],
+        "acceptance_checks": [
+          "Formal backend API is the only authorization-relevant project source.",
+          "Stored selection is tenant/user namespaced and revalidated after refresh.",
+          "Loading, empty, filtered-empty, failure, no-permission, read-only, submitting and conflict states are explicit.",
+          "Desktop and mobile users can reach project and member operations without horizontal page overflow."
+        ],
+        "risks": [
+          "Mock and remote Project Context definitions may conflict",
+          "AppLayout changes have broad UI impact"
+        ],
+        "rollback": "Revert the T3 frontend commit and remove /projects and the switcher; leave backend APIs available.",
+        "stop_conditions": [
+          "REQ-20260814-022 lands incompatible store/types",
+          "The solution requires authorization state in the token",
+          "Mobile access requires squeezing the desktop table"
+        ],
+        "escalation_conditions": [
+          "Full project planning is requested",
+          "All existing pages must be rewritten",
+          "Shared UI behavior must change"
+        ]
+      },
+      {
+        "id": "T4",
+        "goal": "Independently verify automated, runtime, authorization and desktop/mobile browser convergence.",
+        "requirement_ids": [
+          "P1",
+          "P2",
+          "P3"
+        ],
+        "prerequisites": [
+          "T3"
+        ],
+        "input_facts": [
+          "T1-T3 provide the final candidate implementation.",
+          "Convergence requires independent observations tied to P1-P3.",
+          "Production data and credentials are forbidden."
+        ],
+        "files": {
+          "create": [
+            ".ai-control/requirements/req-20260818-026-project-context/execution-T4.json",
+            ".ai-control/requirements/req-20260818-026-project-context/observation-T4.json",
+            ".ai-control/requirements/req-20260818-026-project-context/convergence.json"
+          ],
+          "modify": [
+            "docs/integration/project-context-contract.md"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [
+            "T1-T3 final Maven, Flyway, REST and frontend contracts"
+          ],
+          "produces": [
+            "Repeatable build/runtime/permission/browser evidence and convergence decision"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T4-S1",
+            "action": "Run focused and full automated checks",
+            "command": "mvn -pl :ccb-project,:ccb-system,:ccb-infrastructure -am test && mvn test && npm --prefix web run build && node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-026-project-context/codex-task-scope.yaml --base origin/main --head HEAD --working-tree && git diff --check",
+            "expected": "All commands exit 0; governance reports 9 Maven modules and scope has no deviation.",
+            "evidence": "Commands, exits, test counts and summaries"
+          },
+          {
+            "id": "T4-S2",
+            "action": "Start the local non-production database/backend twice and verify migration idempotence",
+            "command": "mvn -pl :ccb-boot -am spring-boot:run -Dspring-boot.run.profiles=local",
+            "expected": "Health is HTTP 200, project tables exist and restart reports schema current.",
+            "evidence": "Redacted health and Flyway/table evidence"
+          },
+          {
+            "id": "T4-S3",
+            "action": "Exercise OWNER, ADMIN, MEMBER, VIEWER, non-member, no-RBAC and cross-tenant API matrix",
+            "command": null,
+            "expected": "HTTP/business codes, audit and nondisclosure match the approved matrix.",
+            "evidence": "Method/path, subject role, response and audit summary"
+          },
+          {
+            "id": "T4-S4",
+            "action": "Exercise /projects and ProjectContextSwitcher at 1440x900, 375x812, 390x844 and 430x932 in light/dark themes",
+            "command": null,
+            "expected": "All critical paths are reachable with no page overflow, overlap, unauthorized request or unhandled console error.",
+            "evidence": "Viewport, DOM, network, console and screenshots"
+          },
+          {
+            "id": "T4-S5",
+            "action": "Run independent observation and decide convergence",
+            "command": null,
+            "expected": "No open P0/P1, security deviation, migration conflict or uncovered P1-P3 remains.",
+            "evidence": "Execution, observation and convergence artifacts"
+          }
+        ],
+        "acceptance_checks": [
+          "P1-P3 have automated, runtime and browser evidence.",
+          "Archived projects reject every write and restore preserves memberships.",
+          "Cross-tenant, non-member and no-platform-permission access does not disclose project data.",
+          "Scope, migration append-only behavior and rollback are independently verified."
+        ],
+        "risks": [
+          "Local MySQL or browser environment may be unavailable",
+          "Dynamic menu cache may hide or retain permissions"
+        ],
+        "rollback": "Disable the project menu and frontend entry and revert module composition; retain applied project and audit tables.",
+        "stop_conditions": [
+          "Any automated check fails",
+          "Migration collision exists",
+          "Authorization leaks project data",
+          "Archived writes succeed",
+          "Mobile critical action is unreachable"
+        ],
+        "escalation_conditions": [
+          "Production capacity or compensation is required",
+          "Authentication token, public UI or external synchronization must change"
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "reason": "Persistence and services consume the approved public contracts and module registration."
+      },
+      {
+        "from": "T2",
+        "to": "T3",
+        "reason": "Frontend types and actions consume the implemented REST contract."
+      },
+      {
+        "from": "T3",
+        "to": "T4",
+        "reason": "Integrated verification requires the complete backend and frontend."
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T1"
+      ],
+      [
+        "T2"
+      ],
+      [
+        "T3"
+      ],
+      [
+        "T4"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T1"
+        ],
+        "command": "mvn -pl :ccb-system,:ccb-project -am test",
+        "expected": "User-directory tests and project contract compilation pass."
+      },
+      {
+        "after_tasks": [
+          "T2"
+        ],
+        "command": "mvn -pl :ccb-project,:ccb-infrastructure -am test && node scripts/check-flyway-migrations.mjs",
+        "expected": "Domain, security, Mock and unique migration checks pass."
+      },
+      {
+        "after_tasks": [
+          "T3"
+        ],
+        "command": "npm --prefix web run build",
+        "expected": "vue-tsc and Vite production build pass."
+      },
+      {
+        "after_tasks": [
+          "T4"
+        ],
+        "command": "mvn test && npm --prefix web run build && node scripts/check-all-governance.mjs && git diff --check",
+        "expected": "P1-P3 evidence is complete with no open P0/P1 feedback."
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "P1",
+        "task_ids": [
+          "T2",
+          "T3",
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "P2",
+        "task_ids": [
+          "T1",
+          "T2",
+          "T3",
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "P3",
+        "task_ids": [
+          "T2",
+          "T3",
+          "T4"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User approved plan revision 1 on 2026-08-18 and replied '按建议执行' on 2026-08-19 to approve revision 2, business/project, the read-only UserDirectory capability, scoped implementation and V37 allocation.",
+      "confirmed_at": "2026-08-19T09:25:46+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "ccb-project module",
+      "platform/system UserDirectory public contract",
+      "Owner-assigned project Flyway schema",
+      "Project Context Store and /projects workspace"
+    ],
+    "state_variable_candidates": [
+      "Maven module compilation state",
+      "Flyway project schema state",
+      "project ACTIVE/ARCHIVED state",
+      "membership role",
+      "current selected project",
+      "frontend asynchronous state"
+    ],
+    "interface_candidates": [
+      "UserDirectory",
+      "ProjectContextPort",
+      "/api/projects",
+      "ProjectContextProvider"
+    ],
+    "sensor_candidates": [
+      "Focused and full Maven tests",
+      "Module-boundary and Flyway checks",
+      "Runtime health and migration restart",
+      "API permission matrix",
+      "Frontend production build",
+      "Browser DOM, network, console and viewport checks"
+    ],
+    "actuator_candidates": [
+      "Scoped code and contract edits",
+      "Append-only migration",
+      "Fictional Mock dataset update",
+      "Local build, test and runtime commands"
+    ],
+    "disturbance_candidates": [
+      "V37 occupancy by a newly integrated migration",
+      "Parallel creation of project-context Store/types",
+      "Unavailable local MySQL",
+      "Dynamic menu cache",
+      "Port collision"
+    ],
+    "delay_candidates": [
+      "Maven reactor build",
+      "Flyway startup",
+      "Mock synchronization",
+      "Project selection refresh"
+    ],
+    "assumptions": [
+      {
+        "text": "Owner approval for the module name, public packages, public UserDirectory capability, V37 allocation and writable paths remains valid during execution.",
+        "basis": "The user explicitly approved the recommended governance and V37 allocation on 2026-08-19.",
+        "falsifier": "Any Owner rejects or changes one of these implementation boundaries."
+      },
+      {
+        "text": "The approved minimal project directory is sufficient for REQ-20260818-026.",
+        "basis": "User selected the minimal-project option.",
+        "falsifier": "An approved requirement adds plans, milestones, budgets, risks or external synchronization."
+      }
+    ]
+  }
+}
