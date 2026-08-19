@@ -1,0 +1,109 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {
+      "id": "P1",
+      "result": "pass",
+      "task_ids": ["T2", "T3", "T5", "T4"],
+      "evidence": [
+        "T2 project 11 项及全量 Maven 测试通过，覆盖唯一项目编号、唯一负责人、角色校验、成员重复、乐观锁和审计",
+        "V37 首次应用、第二次启动幂等且成功记录恰好 1 条；两个测试项目各恰有 1 个 OWNER",
+        "T5 纠正固定密码后四个 Mock 角色真实登录均为 HTTP 200",
+        "T4 真实 JWT 权限与异常矩阵 39 项零失败，覆盖四角色、非成员、无 RBAC 和跨租户",
+        "8 条数据库审计记录覆盖创建、更新、成员增删、负责人转移、归档和恢复，并含 6 个不同 trace ID"
+      ],
+      "limitations": [
+        "运行证据来自隔离 MySQL 8.4 和本地虚构身份/项目数据，不替代生产上线核验"
+      ]
+    },
+    {
+      "id": "P2",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3", "T4"],
+      "evidence": [
+        "T1 UserDirectory 与 ProjectContextPort 公共契约、租户边界和模块公开包检查通过",
+        "T2 REST/服务测试及治理边界证明消费方不读取项目私有表",
+        "T4 跨租户、非成员、无 RBAC 和不存在对象的真实 API 状态/消息满足不披露语义",
+        "13 场景 Chromium 验收证明正式 Store/Provider 使用服务端 available 集合，项目选择在刷新后保持",
+        "最终 check-all-governance、模块边界和 61 文件 scope 检查通过"
+      ],
+      "limitations": [
+        "浏览器运行证据限于本地 Chromium，未覆盖其他浏览器引擎"
+      ]
+    },
+    {
+      "id": "P3",
+      "result": "pass",
+      "task_ids": ["T2", "T3", "T4"],
+      "evidence": [
+        "项目服务测试覆盖归档只读、恢复和乐观锁冲突",
+        "T4 真实 JWT 矩阵验证归档后保留读取、拒绝全部写入，恢复后按原成员关系重新启用写范围",
+        "归档/恢复数据库审计存在且 trace ID 可区分",
+        "Chromium 验收覆盖 loading、empty、error、forbidden、unsaved 和项目上下文持久化状态"
+      ],
+      "limitations": [
+        "未进行生产级高并发压测；并发覆盖由乐观锁测试和真实陈旧版本请求验证"
+      ]
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["公共契约、用户目录租户边界、Maven 模块和治理观测通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["项目服务、REST 安全、V37、Mock 初始化和审计测试通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["正式前端 Store/Provider、项目管理页面、构建和四视口双主题验收通过；F-0001 已关闭"]},
+    {"id": "T5", "status": "verified", "evidence": ["四处 Mock BCrypt 哈希有限纠正，直接匹配、四账号登录和数据不变量通过；F-0002 已关闭"]},
+    {"id": "T4", "status": "verified", "evidence": ["两次迁移启动、39 项 JWT 矩阵、数据库审计、全量回归和 13 场景浏览器组合验收通过"]}
+  ],
+  "feedback_summary": {
+    "total": 2,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 1, "P3": 0, "score": 5},
+    {"sample_id": "S-0004", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0005", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0006", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0007", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0008", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "完整 Maven 回归", "result": "pass", "evidence": "纠正后最终产品状态 mvn test 退出码 0，10 个 Reactor 模块成功"},
+    {"check": "前端生产构建", "result": "pass", "evidence": "vue-tsc 与 Vite 构建退出码 0，2337 个模块转换完成"},
+    {"check": "治理与模块边界", "result": "pass", "evidence": "最终 check-all-governance 退出码 0，12 个治理模块和 9 个 Maven 模块边界通过"},
+    {"check": "Flyway 静态与运行迁移", "result": "pass", "evidence": "35 个迁移静态检查通过，V37 首次应用且第二次启动幂等"},
+    {"check": "权限与不披露", "result": "pass", "evidence": "39 项真实 JWT API 矩阵零失败"},
+    {"check": "真实浏览器", "result": "pass", "evidence": "13 场景零断言失败；1440x900、375x812、390x844、430x932 明暗主题通过"},
+    {"check": "最终范围与补丁", "result": "pass", "evidence": "61 个变更文件均在授权范围，git diff --check 和当前前缀 JSON 校验通过"},
+    {"check": "运行可达性", "result": "pass", "evidence": "最终采样后端 health=UP，Vite /projects HTTP 200"}
+  ],
+  "invariant_results": [
+    {"invariant": "项目编号租户内唯一且每个项目恰有一个 OWNER", "result": "pass", "evidence": "服务测试、数据库唯一约束和两个运行项目 OWNER 行探针共同通过"},
+    {"invariant": "平台 RBAC、项目角色范围和实体状态三层交集在服务端执行", "result": "pass", "evidence": "Controller 安全测试和 39 项真实 JWT 矩阵共同通过"},
+    {"invariant": "跨租户、非成员、无 RBAC 和不存在对象不泄露项目数据", "result": "pass", "evidence": "真实 API 消息/状态一致性和浏览器空态/禁止态通过"},
+    {"invariant": "归档可读但拒绝写，恢复不丢失成员", "result": "pass", "evidence": "项目测试、真实归档/恢复请求和数据库审计通过"},
+    {"invariant": "消费模块只依赖公开契约，不读取项目私有表", "result": "pass", "evidence": "governance/modules.yaml、模块边界检查和契约扫描通过"},
+    {"invariant": "V37 只追加且重复启动幂等", "result": "pass", "evidence": "历史迁移无修改，V37 成功记录恰好 1 条"},
+    {"invariant": "所有产品修改与控制产物位于批准范围", "result": "pass", "evidence": "最终 codex scope 检查覆盖 61 个变更文件并通过"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "F-0001 手机首次加载无可见反馈", "result": "pass", "evidence": "有限纠正后 375x812 延迟请求 loadingVisible=true，最终真实请求复验仍通过"},
+    {"disturbance": "F-0002 Mock 固定密码哈希不匹配", "result": "pass", "evidence": "T5 有界纠正后四账号 HTTP 200，S-0006 与最终 39 项 JWT 矩阵复验通过"},
+    {"disturbance": "V24 隐含 Flowable Liquibase 日志表前提", "result": "pass", "evidence": "隔离空库完成有限前提引导后，两次正常启动迁移到 v37 且数据保留；未修改历史迁移"},
+    {"disturbance": "浏览器传感器缺少 Playwright 模块路径", "result": "pass", "evidence": "加载工作区运行依赖后同一脚本复跑 13 场景零失败"}
+  ],
+  "residual_risks": [
+    "从完全空白数据库启动仍受历史 V24 的 Flowable Liquibase 日志表前提影响；本需求未获授权修改历史迁移，上线应继续使用既有受管数据库基线并核对 V24 前提。",
+    "浏览器验收使用本地 Chromium，其他浏览器引擎和生产反向代理/网络条件未采样。",
+    "Vite 构建保留既有大 chunk 和第三方 PURE 注释告警，不影响本次构建和行为，但后续可由独立性能任务处理。",
+    "生产上线仍需按需求执行 V37 备份/迁移状态、菜单权限、真实租户角色和审计落库核验；不得以本地虚构数据替代。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "P1-P3 均由 verified 任务和至少两类异质传感器覆盖；两项反馈已复验关闭；8 次 high-assurance 采样满足趋势要求，最终连续三次样本 P0-P3 均为 0；自动化、迁移、权限、数据库、浏览器、范围和运行门禁全部通过。"
+}

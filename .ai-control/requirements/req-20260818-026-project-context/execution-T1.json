@@ -1,0 +1,106 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectory.java", "purpose": "定义租户启用用户只读查询契约"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectoryUser.java", "purpose": "定义不含敏感字段的用户摘要"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/JdbcUserDirectory.java", "purpose": "在 system 数据所有权内实现租户、删除和启用状态过滤"},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/service/JdbcUserDirectoryTest.java", "purpose": "验证搜索、分页、租户状态过滤和批量缺失拒绝"},
+    {"path_or_resource": "server/src/modules/project", "purpose": "新增 ccb-project 模块、固定角色/状态/动作模型及 ProjectContextPort"},
+    {"path_or_resource": "pom.xml", "purpose": "登记 ccb-project 版本与 reactor 模块"},
+    {"path_or_resource": "server/src/platform/boot/pom.xml", "purpose": "在组合根装配 ccb-project"},
+    {"path_or_resource": "governance/modules.yaml", "purpose": "登记 business/project 所有权、公开包和允许依赖"},
+    {"path_or_resource": "docs/architecture/MODULES.md", "purpose": "记录项目模块、UserDirectory 与 ProjectContextPort 边界"},
+    {"path_or_resource": ".github/CODEOWNERS", "purpose": "登记项目模块与未来 Web 项目路径 Owner"},
+    {"path_or_resource": "docs/integration/project-context-contract.md", "purpose": "固定三层授权、角色矩阵和跨模块禁止事项"},
+    {"path_or_resource": "docs/requirements/REQ-20260818-026-project-context/codex-task-scope.yaml", "purpose": "模块登记后把 assignment.module 切换为 business/project"}
+  ],
+  "requirements_addressed": ["P2"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-system -am -Dtest=JdbcUserDirectoryTest -Dsurefire.failIfNoSpecifiedTests=false test（实现前）",
+      "exit_code": 1,
+      "salient_output": "测试编译失败，明确缺少 UserDirectoryUser 与 JdbcUserDirectory；失败传感器有效"
+    },
+    {
+      "command": "mvn -pl :ccb-system -am -Dtest=JdbcUserDirectoryTest -Dsurefire.failIfNoSpecifiedTests=false test（实现后）",
+      "exit_code": 0,
+      "salient_output": "JdbcUserDirectoryTest: Tests run 2, Failures 0, Errors 0"
+    },
+    {
+      "command": "mvn -pl :ccb-project -am -DskipTests compile",
+      "exit_code": 0,
+      "salient_output": "ccb-common/infrastructure/security/system/project 六模块 reactor BUILD SUCCESS"
+    },
+    {
+      "command": "mvn -pl :ccb-system,:ccb-project -am test",
+      "exit_code": 0,
+      "salient_output": "六模块 BUILD SUCCESS；ccb-system 7 tests，全部 reactor 0 failure/error"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "12 modules、9 Maven modules、34 Flyway migrations 及全部治理检查通过"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-026-project-context/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "REQ-20260818-026 scope check passed，27 changed files"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "用户目录最小字段和租户/状态过滤",
+      "result": "pass",
+      "evidence": "JdbcUserDirectoryTest 2 tests passed，SQL 断言覆盖 tenant_id/deleted/status、keyword、offset/limit 与批量 IN",
+      "limitations": ["尚未连接真实 MySQL 采样查询计划和大数据分页性能"]
+    },
+    {
+      "check": "项目模块编译与公开契约",
+      "result": "pass",
+      "evidence": "ccb-project 6 个主源码编译成功，governance 模块边界检查通过",
+      "limitations": ["ProjectContextPort 尚无 T2 运行实现"]
+    },
+    {
+      "check": "范围和依赖边界",
+      "result": "pass",
+      "evidence": "scope/governance 成功；rg 未发现 project 导入 system service/repository 或读取 sys_user",
+      "limitations": ["未来 T3 前端文件创建后需补登记 project 所有权路径"]
+    }
+  ],
+  "diff_summary": [
+    "新增 system 所有的只读 UserDirectory 公共能力和测试",
+    "新增 ccb-project 模块骨架、公开角色/状态/动作/摘要/成员模型和 ProjectContextPort",
+    "完成 Maven、boot、modules.yaml、MODULES、CODEOWNERS、集成契约与 scope 归属切换",
+    "删除已入账但不符合前缀布局命名的临时 baseline.json，权威 baseline 仍在 state.json"
+  ],
+  "invariants_checked": [
+    {"invariant": "UserDirectory 只返回同租户启用用户的非敏感摘要", "result": "pass", "evidence": "查询字段白名单和 JdbcUserDirectoryTest SQL 断言"},
+    {"invariant": "project 不读取 sys_user 或 system 私有实现", "result": "pass", "evidence": "project 源码导入/表名扫描为空，模块边界检查通过"},
+    {"invariant": "platform 不反向依赖 business/project", "result": "pass", "evidence": "只有 composition boot 装配 project；9 模块边界检查通过"},
+    {"invariant": "ProjectContextPort 不替代调用方平台 RBAC", "result": "pass", "evidence": "集成契约明确调用方先执行 RBAC，端口只解析项目范围"},
+    {"invariant": "修改限于 scope writable_paths", "result": "pass", "evidence": "working-tree scope check passed"}
+  ],
+  "disturbances": [
+    {
+      "event": "governance 检查拒绝在 modules.yaml 提前登记尚不存在的 T3 Web 路径",
+      "impact": "T1 将 business/project 登记收敛为现有后端和契约路径；T3 创建文件时需要重新规划，把 governance/modules.yaml 加入 T3 写入面并补登记前端路径"
+    },
+    {
+      "event": "控制脚本示例的 python 命令在环境中不存在",
+      "impact": "已使用可用 python3 执行，账本门禁和行为未改变"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "T2 前仍需重新扫描 V37、菜单 600 和权限 6001-6005",
+    "T3 前需受控重新规划 modules.yaml 的前端项目路径登记",
+    "真实 MySQL、API 和浏览器行为留给 T2/T4 采样"
+  ],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,24 @@
+{
+  "sample_label": "T4 最终组合与真实浏览器采样",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "P1", "sensor": "S2 MySQL 8.4 迁移、约束与行不变量探针", "result": "pass", "raw_evidence": "首次正常启动从 23 应用 12 个迁移到 v37，第二次 schema up to date；V37 成功记录 1 条；两个测试项目各恰有 1 个 OWNER，唯一 OWNER 索引和 CHECK 约束存在", "limitation": ["隔离空库需要补齐历史 Flowable Liquibase 日志表前提"]},
+    {"requirement_id": "P1", "sensor": "S6 真实认证和 JWT REST 权限矩阵", "result": "pass", "raw_evidence": "39 项检查零失败；四个 Mock 角色均可登录，OWNER/ADMIN/MEMBER/VIEWER、非成员、无 RBAC 和跨租户的查询与写入结果符合三层授权", "limitation": ["使用本地虚构主体，不包含生产身份源"]},
+    {"requirement_id": "P1", "sensor": "S7 服务测试与数据库审计探针", "result": "pass", "raw_evidence": "project 11 项测试和全量 Maven 通过；重复项目/成员、非法 OWNER、过期版本和负责人转移均被覆盖；8 条审计记录覆盖创建、更新、成员增删、负责人转移、归档和恢复并含 6 个不同 trace ID", "limitation": []},
+    {"requirement_id": "P2", "sensor": "S3 全量构建、治理、scope 与模块边界检查", "result": "pass", "raw_evidence": "mvn test、npm build、check-all-governance、check-codex-scope、check-flyway-migrations 和 git diff --check 全部成功；61 个变更文件均在授权范围", "limitation": ["静态/自动化检查不单独证明运行行为"]},
+    {"requirement_id": "P2", "sensor": "S5 真实 Chromium 项目管理与 Project Context Store", "result": "pass", "raw_evidence": "真实 UI 登录后 /projects 与 ProjectContextSwitcher 使用服务端项目集合；成员弹窗显示 4 人，选择 projectId=910000000000801 后刷新保持；四视口双主题均展示 2 条项目且无溢出/重叠", "limitation": ["仅在本地 Chromium 验收"]},
+    {"requirement_id": "P2", "sensor": "S6 跨租户、非成员、无 RBAC 与不存在对象 API 矩阵", "result": "pass", "raw_evidence": "不允许的实体访问状态和消息保持不披露语义；跨租户浏览器为可访问项目空态，无 RBAC 为明确禁止态", "limitation": []},
+    {"requirement_id": "P3", "sensor": "S6 真实 JWT 归档、恢复与乐观锁矩阵", "result": "pass", "raw_evidence": "归档项目继续可读且所有写操作拒绝；恢复后按原成员关系重新允许写入；陈旧 version 请求冲突且不覆盖新状态", "limitation": []},
+    {"requirement_id": "P3", "sensor": "S5 Chromium 全状态与异常注入", "result": "pass", "raw_evidence": "13 场景零断言失败；375x812 延迟真实请求时 loadingVisible=true；跨租户空态、无 RBAC 禁止态、注入 HTTP 500 失败态、未保存确认均可观察，正常路径无页面错误或控制台错误", "limitation": ["403/500 预期异常场景产生浏览器资源错误日志，脚本按预期状态分类，不属于正常路径控制台偏差"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    "V24 历史迁移依赖的 Flowable Liquibase 日志表不在 V18-V20 中创建；隔离空库经一次有限引导后两次正常启动通过",
+    "浏览器复验脚本首次未注入 Playwright 模块路径；加载桌面工作区依赖后原样复跑通过，分类为传感器环境错误",
+    "F-0002 的 Mock 固定密码偏差已由 T5 纠正并在 S-0006 关闭，本采样复验四角色真实 JWT 和完整权限矩阵通过"
+  ],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

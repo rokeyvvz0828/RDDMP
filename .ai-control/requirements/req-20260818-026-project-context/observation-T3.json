@@ -1,0 +1,68 @@
+{
+  "sample_label": "T3 前端契约与响应式采样",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "P1",
+      "sensor": "S5 Chromium DOM、交互与截图",
+      "result": "pass",
+      "raw_evidence": "1440x900 展示 2 条桌面项目记录；375x812、390x844、430x932 均展示 2 张移动卡片，scrollWidth-clientWidth=0，header overlap=0；创建抽屉出现未保存确认；成员入口可达",
+      "limitation": ["REST 由 Playwright 提供虚构响应，未证明真实 MySQL/JWT 行为"]
+    },
+    {
+      "requirement_id": "P2",
+      "sensor": "S3 vue-tsc、Vite、治理、scope 与静态契约探针",
+      "result": "pass",
+      "raw_evidence": "npm --prefix web run build、check-all-governance、check-codex-scope、git diff --check 和 T3 contract/theme scan 退出码均为 0；Store 只消费 /projects/available",
+      "limitation": ["静态探针不验证服务端序列化与真实权限拒绝"]
+    },
+    {
+      "requirement_id": "P2",
+      "sensor": "S5 Chromium 首次加载状态",
+      "result": "fail",
+      "raw_evidence": "375x812 下将 GET /api/projects 延迟 900ms，标题和筛选已显示时 .el-loading-mask:visible 数量为 0；桌面表格在媒体查询中隐藏，初始 records 为空使移动卡片列表不存在",
+      "limitation": ["测量使用本地 Vite 与虚构延迟响应，但可确定 DOM 是否存在可见加载反馈"]
+    },
+    {
+      "requirement_id": "P3",
+      "sensor": "S5 Chromium 归档项目交互",
+      "result": "pass",
+      "raw_evidence": "归档项目卡片/表格显示已归档；成员弹层显示归档只读提示且 project-member-add 不存在；只有 OWNER 恢复入口可见",
+      "limitation": ["服务端对伪造写请求的最终拒绝由 T4 JWT 矩阵覆盖"]
+    },
+    {
+      "requirement_id": "P2",
+      "sensor": "S5 Chromium 项目上下文恢复",
+      "result": "pass",
+      "raw_evidence": "选择项目 102 后 localStorage ccb.project-context.1.1=102；刷新后选中标签仍为 ARCHIVED-PROJECT-WITH-LONG-CODE，明暗主题均无控制台脚本异常",
+      "limitation": ["可用集合失效切换使用 Store 代码探针，尚未单独截图"]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "P2",
+      "expected": "首次请求期间，375px 手机视口必须持续显示可识别的项目列表加载反馈",
+      "observed": "项目表格在手机媒体查询中被隐藏，移动卡片仅在 records 非空时创建，因此首次加载期间没有可见 loading 元素",
+      "reproduction": "启动 Vite，在 Chromium 375x812 拦截 GET /api/projects 并延迟 900ms，标题出现后统计 .el-loading-mask:visible",
+      "evidence": "mobile-loading 采样 loadingVisible=false；/tmp/req026-t3-observe/mobile-loading.png 为请求完成后的对照截图",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "虚构网络响应只测量前端 loading DOM，不覆盖后端时延来源",
+      "causal_hypothesis": "唯一 loading mask 附着在移动端 display:none 的 UiDataTable 上，且移动列表由 records.length 条件延后创建",
+      "correction_check": "相同 375x812/900ms 场景必须观察到可见加载反馈，完成后仍显示卡片且页面横向溢出为 0",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    "bundled Playwright 缺少默认 Chromium，改用宿主 /snap/bin/chromium",
+    "首次路由拦截误匹配 /src/api/*.ts，识别为 sensor-fault 后收窄到 pathname /api/ 并重新采样"
+  ],
+  "coverage_gaps": [
+    "真实 MySQL 8.4 与 JWT 权限矩阵",
+    "真实服务端序列化和跨租户/非成员拒绝",
+    "负责人转移及成员写入的真实网络结果"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,118 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V37__project_context.sql", "purpose": "追加项目、成员、审计表与菜单/五个动作权限"},
+    {"path_or_resource": "server/src/modules/project/src/main/java/com/ccb/project/repository/ProjectRepository.java", "purpose": "提供仅访问 pm_* 且全量 tenant_id 约束的持久化"},
+    {"path_or_resource": "server/src/modules/project/src/main/java/com/ccb/project/service/ProjectContextService.java", "purpose": "实现 ProjectContextPort、角色矩阵、归档只读和不泄露拒绝"},
+    {"path_or_resource": "server/src/modules/project/src/main/java/com/ccb/project/service/ProjectService.java", "purpose": "实现项目/成员命令、负责人转移、乐观锁和事务审计"},
+    {"path_or_resource": "server/src/modules/project/src/main/java/com/ccb/project/web/ProjectCommands.java", "purpose": "定义项目 REST 字段白名单和校验"},
+    {"path_or_resource": "server/src/modules/project/src/main/java/com/ccb/project/web/ProjectController.java", "purpose": "提供 /api/projects 及明确平台 RBAC 适配"},
+    {"path_or_resource": "server/src/modules/project/src/test/java/com/ccb/project", "purpose": "验证角色/状态矩阵、服务不变量、恢复和 Controller 权限"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java", "purpose": "登记 pm_project 和 pm_project_member 精确列 allowlist"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java", "purpose": "验证项目 Mock upsert 和未知列拒绝"},
+    {"path_or_resource": "mock/mock-data.json", "purpose": "增加一个虚构项目、四角色成员与平台菜单/权限映射"}
+  ],
+  "requirements_addressed": ["P1", "P2", "P3"],
+  "commands": [
+    {
+      "command": "迁移目录 V37/600/6001-6005/project:list/ProjectManagement 预检 + node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "当前目录最高 V34；候选版本、ID、路由与权限码未占用；34 个既有迁移检查通过"
+    },
+    {
+      "command": "mvn -pl :ccb-project -am -Dtest=ProjectContextServiceTest,ProjectServiceTest,ProjectControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test（实现前）",
+      "exit_code": 1,
+      "salient_output": "30 个编译错误明确指向缺少 repository/context/service/commands/controller，失败传感器有效"
+    },
+    {
+      "command": "mvn -pl :ccb-project -am -Dtest=ProjectContextServiceTest,ProjectServiceTest,ProjectControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test（主链实现后）",
+      "exit_code": 0,
+      "salient_output": "ProjectControllerSecurity 1、ProjectContextService 4、ProjectService 5，共 10 tests，0 failures/errors"
+    },
+    {
+      "command": "mvn -pl :ccb-infrastructure -am -Dtest=MockDataInitializerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "MockDataInitializerTest 5 tests，0 failures/errors；项目和成员 2 rows upsert 传感器通过"
+    },
+    {
+      "command": "mvn -pl :ccb-project,:ccb-infrastructure -am test（最终局部回归）",
+      "exit_code": 0,
+      "salient_output": "六模块 BUILD SUCCESS；project 11、system 7、infrastructure 8，所有测试 0 failures/errors"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs && node scripts/check-all-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "35 migrations、12 modules、9 Maven module boundaries 及全部治理检查通过"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-026-project-context/codex-task-scope.yaml --base origin/main --head HEAD --working-tree && git diff --check",
+      "exit_code": 0,
+      "salient_output": "REQ-20260818-026 scope passed，41 changed files；无空白错误"
+    },
+    {
+      "command": "非 project 模块 pm_*/sys_user 私表消费扫描与 ProjectRepository tenant_id 扫描",
+      "exit_code": 0,
+      "salient_output": "其他业务模块无 pm_* 或 project 私表消费；repository/migration 检出 30 个 tenant_id 约束信号"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "P1 项目、成员、负责人、乐观锁和审计规则",
+      "result": "pass",
+      "evidence": "ProjectServiceTest 6 tests 覆盖重复编号、唯一 OWNER 创建、冲突不审计、负责人转移、禁止直接赋 OWNER、恢复保留成员",
+      "limitations": ["唯一索引和事务回滚尚未在真实 MySQL 运行采样"]
+    },
+    {
+      "check": "P2 角色/租户/状态范围与 REST RBAC",
+      "result": "pass",
+      "evidence": "ProjectContextServiceTest 4 tests 覆盖四角色/四动作、归档只读、统一不泄露拒绝和 available；ControllerSecurity 反射验证五类权限",
+      "limitations": ["尚未通过 JWT 执行真实 HTTP 权限矩阵"]
+    },
+    {
+      "check": "P3 归档只读和恢复",
+      "result": "pass",
+      "evidence": "Context 测试证明 ARCHIVED 仅 VIEW；Service 测试证明恢复仅切换状态且不删除成员",
+      "limitations": ["未运行真实数据库状态切换和并发请求"]
+    },
+    {
+      "check": "V37 与 Mock 契约",
+      "result": "pass",
+      "evidence": "Flyway 静态检查 35 migrations；V37 使用 600/6001-6005 且无 sys_user 外键；Mock 5 tests 和 jq JSON 校验通过",
+      "limitations": ["V37 尚未在 MySQL 8.4 首次/重复启动执行"]
+    }
+  ],
+  "diff_summary": [
+    "追加 V37 三张租户项目表、数据库角色/状态约束、单 OWNER 唯一索引和项目 RBAC seed",
+    "实现 ProjectRepository、ProjectContextService、ProjectService、REST commands/controller",
+    "项目主数据更新收紧为 OWNER 的 MANAGE_PROJECT；ARCHIVED 公开端口保持仅 VIEW，恢复使用内部 OWNER 检查",
+    "项目写操作使用版本抢占和同事务成功审计，成员变更保持唯一负责人",
+    "新增虚构项目、四类成员及精确 Mock allowlist"
+  ],
+  "invariants_checked": [
+    {"invariant": "所有项目 SQL 按 tenant_id 隔离", "result": "pass", "evidence": "Repository 每个查询/更新/删除均含 tenant_id 参数，静态扫描 30 个信号"},
+    {"invariant": "有效权限为平台 RBAC、项目角色和项目状态交集", "result": "pass", "evidence": "Controller @PreAuthorize + Context 角色矩阵/状态测试"},
+    {"invariant": "项目编号、成员和负责人唯一", "result": "pass", "evidence": "V37 唯一索引、OWNER 生成列唯一索引、Service 事务与测试"},
+    {"invariant": "ARCHIVED 只读且恢复保留成员", "result": "pass", "evidence": "Context/Service 聚焦测试"},
+    {"invariant": "project 不读取 sys_user，消费方不读取 pm_*", "result": "pass", "evidence": "UserDirectory 调用与跨模块表名扫描"},
+    {"invariant": "项目与成员成功写操作审计", "result": "pass", "evidence": "所有 Service 写路径调用 repository.audit，测试验证创建/更新冲突/转移/恢复"},
+    {"invariant": "修改限于 scope writable_paths", "result": "pass", "evidence": "working-tree scope check passed"}
+  ],
+  "disturbances": [
+    {
+      "event": "第一次 V37 预检命令同时扫描 scope 文档，因声明的目标路径产生假阳性",
+      "impact": "传感器已校准为只扫描实际迁移目录和权限 seed；实际预检通过，不是版本冲突"
+    },
+    {
+      "event": "初版 V37 使用条件插入/INSERT IGNORE，可能在冲突时留下部分 seed",
+      "impact": "执行内复核后改为菜单和权限直接 INSERT，使冲突原子失败；角色关联仍使用幂等 INSERT IGNORE"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实 MySQL 8.4 的 generated column、CHECK、Flyway 首次/重复启动行为留给 T4",
+    "真实 JWT/API 的 OWNER/ADMIN/MEMBER/VIEWER/非成员/无 RBAC/跨租户矩阵留给 T4",
+    "T3 前仍需重新规划 governance/modules.yaml 和 REST/前端契约文档写入面"
+  ],
+  "recommended_next": "observe"
+}

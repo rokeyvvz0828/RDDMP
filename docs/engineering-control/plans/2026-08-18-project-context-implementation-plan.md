@@ -42,7 +42,7 @@
 3. `public_capability_change.owner_approved=true`，回归至少包含 system、security、project、boot、frontend 和 governance。
 4. `governance/modules.yaml` 的目标条目、公开包、Owner 和允许依赖已由治理 Owner 批准。
 5. Owner 已确认 V35/V36 保留给 `REQ-20260814-022`，V37 分配给本需求；若当前分支出现新迁移占用 V37，必须停止并重新规划。
-6. 已建立 `feat/REQ-20260818-026-project-context` 独立分支和工作区；scope 在 T1 注册新模块前暂归属现有 `project-control`，并以 `target_module=business/project` 固定目标模块；当前 `sjqy` 工作区不直接承担产品实现。
+6. 已建立 `feat/REQ-20260818-026-project-context` 独立分支和工作区；scope 在 T1 注册新模块前暂归属现有 `project-control`，并以 `target_module=business/project` 固定目标模块；T1 完成模块登记后必须把 `assignment.module` 切换为 `business/project` 并重新通过 scope 检查；当前 `sjqy` 工作区不直接承担产品实现。
 
 ## 文件职责地图
 
@@ -261,7 +261,7 @@ POST   /api/projects/{projectId}/owner-transfer
 - `pm_project` 保存 `id`、`tenant_id`、`project_code`、`project_name`、`status`、`owner_user_id`、`version` 和创建/更新审计字段。
 - `pm_project_member` 保存项目、用户、角色和创建/更新审计字段；租户/项目/用户唯一。
 - `pm_project_audit_event` 保存项目、操作人、动作、结果、trace ID、最小变更摘要和时间；无普通删除接口。
-- V37 菜单候选使用未占用 ID 400，权限 ID 使用 4001-4005；执行前必须由迁移扫描再次确认。
+- 建模确认 V11 已占用菜单 ID 400；V37 当前候选使用菜单 ID 600，权限 ID 使用 6001-6005。T2 执行前必须重新扫描当前迁移和待集成占用，任一冲突均停止并重新规划。
 
 - [ ] **步骤 1：建立领域失败测试**
 
@@ -375,6 +375,8 @@ git commit -m "feat(project): add project context APIs"
 - 新建：`web/src/modules/project/project.css`
 - 修改：`web/src/router/index.ts`
 - 修改：`web/src/views/AppLayout.vue`
+- 修改：`governance/modules.yaml`
+- 修改：`docs/integration/project-context-contract.md`
 
 **接口：**
 
@@ -427,7 +429,7 @@ export interface ProjectContextStore {
 
 - [ ] **步骤 3：实现项目管理工作区**
 
-桌面使用 `UiToolbar + UiDataTable + UiFormDrawer`，显示项目编号、名称、状态、负责人、当前用户角色和更新时间；移动端改为项目卡片。主操作为新建项目，成员维护、归档/恢复按权限和状态显示，服务端错误持续可见。
+桌面使用 `UiToolbar + UiDataTable + UiFormDrawer`，显示项目编号、名称、状态、负责人、当前用户角色和乐观锁版本；移动端改为项目卡片。主操作为新建项目，成员维护、归档/恢复按权限和状态显示，服务端错误持续可见。
 
 成员对话框使用 `member-candidates` 受控选择用户和固定角色，不允许自由输入人员名称。负责人转移明确展示后果并二次确认。
 
@@ -440,6 +442,8 @@ export interface ProjectContextStore {
 - [ ] **步骤 4：装配项目路由与顶级切换器**
 
 在 router 增加 `/projects` 静态组件映射；AppLayout 装配 `ProjectContextSwitcher`，长名称截断并用 Tooltip 展示，加载/无项目/失败状态不改变导航高度。切换项目只更新 Store，业务页面后续把 `currentProject.id` 作为查询条件，服务端仍重新授权。
+
+前端文件实际创建后，将 `web/src/api/projects.ts`、`web/src/types/project-context.ts` 和 `web/src/modules/project/**` 登记给 `business/project`；Store、router 和 AppLayout 继续由 `frontend/application` 拥有。同步集成契约的实际 REST 端点、请求字段、错误码和 TypeScript 字段映射。
 
 运行：`npm --prefix web run build`
 

@@ -1,0 +1,45 @@
+{
+  "sample_label": "T1 公共契约采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "P2",
+      "sensor": "S6 platform/system 用户目录聚焦测试",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-system -am -Dtest=JdbcUserDirectoryTest -Dsurefire.failIfNoSpecifiedTests=false test 退出码 0；2 tests，0 failures/errors；断言覆盖租户、deleted、status、分页和批量缺失",
+      "limitation": ["Mockito SQL 传感器未执行真实 MySQL 查询计划或大数据分页"]
+    },
+    {
+      "requirement_id": "P2",
+      "sensor": "S3 编译产物公开签名与枚举探针",
+      "result": "pass",
+      "raw_evidence": "javap 观察到 UserDirectory 两个方法、ProjectContextPort 三个方法，以及 OWNER/ADMIN/MEMBER/VIEWER、ACTIVE/ARCHIVED、四个 ProjectAction 编译常量",
+      "limitation": ["T2 尚未提供 ProjectContextPort 运行实现"]
+    },
+    {
+      "requirement_id": "P2",
+      "sensor": "S3 模块治理与范围检查",
+      "result": "pass",
+      "raw_evidence": "check-module-boundaries: 9 Maven modules passed；check-governance: 12 modules passed；check-codex-scope: REQ-20260818-026 passed，28 changed files",
+      "limitation": ["T3 前端项目路径尚未创建，因此尚未加入 business/project paths"]
+    },
+    {
+      "requirement_id": "P2",
+      "sensor": "S3 源码字段与私有依赖扫描",
+      "result": "pass",
+      "raw_evidence": "JdbcUserDirectory SELECT 仅含 id/username/display_name/org_id/org_name 且 ACTIVE_SCOPE 含 tenant_id/deleted/status；server/src/modules/project 无 system service/repository 导入或 sys_user 表名",
+      "limitation": ["静态扫描不能排除未来代码通过反射访问私有能力"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "modules.yaml 不能预登记不存在的 T3 Web 路径；该事实已在执行报告披露，T3 前需要重规划写入面"
+  ],
+  "coverage_gaps": [
+    "UserDirectory 的真实 MySQL 行映射、查询计划与数据量边界留给 T4 组合运行采样",
+    "ProjectContextPort 的运行授权和不泄露行为属于 T2/P2，不是 T1 骨架可测行为"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

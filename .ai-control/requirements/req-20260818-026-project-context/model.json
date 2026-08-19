@@ -1,0 +1,354 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": [
+      "business/project 模块的公开 ProjectContextPort 与公开模型",
+      "business/project 模块的项目、成员、审计持久化和领域服务",
+      "business/project REST API 的认证、RBAC、租户和实体授权适配",
+      "platform/system 拥有的租户内启用用户只读 UserDirectory",
+      "platform/infrastructure 的 V37 项目表、菜单权限和 Mock allowlist",
+      "Web 项目管理页面、Remote Project Context Store 与 AppLayout 切换入口",
+      "governance/modules.yaml、Maven reactor、CODEOWNERS 和项目上下文契约文档"
+    ],
+    "environment": [
+      "MySQL 8.4 与 Flyway 迁移历史",
+      "Spring Security 认证主体 AuthUser 和 sys_menu_permission 平台 RBAC",
+      "未来通过公开包消费 ProjectContextPort 的资产库及其他业务模块",
+      "本地虚构 Mock 数据、浏览器运行环境与用户并行分支",
+      "REQ-20260814-022 预留的 V35/V36 和其待重规划 Mock Project Context"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "project_status",
+      "owner": "business/project",
+      "valid_values": ["ACTIVE", "ARCHIVED"]
+    },
+    {
+      "name": "project_role",
+      "owner": "business/project",
+      "valid_values": ["OWNER", "ADMIN", "MEMBER", "VIEWER"]
+    },
+    {
+      "name": "effective_project_action",
+      "owner": "ProjectContextService",
+      "valid_values": ["VIEW", "WRITE", "MANAGE_MEMBERS", "MANAGE_PROJECT", "DENIED"]
+    },
+    {
+      "name": "project_version",
+      "owner": "pm_project",
+      "valid_values": ["non-negative optimistic-lock version"]
+    },
+    {
+      "name": "selected_project",
+      "owner": "Web Remote Project Context Store",
+      "valid_values": ["available project id", "none"]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "P1",
+      "input": "租户内授权用户提交项目或成员查询/命令及版本号",
+      "transitions": [
+        "Controller 从 AuthUser 获取可信 tenantId/userId 并执行平台 RBAC",
+        "ProjectService 规范化项目编号并通过 UserDirectory 校验启用用户",
+        "ProjectContextService 校验当前项目角色、租户和项目状态",
+        "Repository 在 tenant_id 条件内执行唯一约束、负责人不变量和乐观锁更新",
+        "同一事务写入最小项目审计事件"
+      ],
+      "outputs": [
+        "分页项目/成员结果或统一业务拒绝",
+        "每个项目恰有一个 OWNER 且项目编号租户内唯一",
+        "成功写入对应不可变审计行"
+      ]
+    },
+    {
+      "requirement_id": "P2",
+      "input": "认证用户或消费模块请求项目摘要、成员关系、可用项目或指定动作范围",
+      "transitions": [
+        "平台 RBAC 在 REST 边界判定操作许可",
+        "ProjectContextPort 以 AuthUser 的 tenantId/userId 查询项目和成员",
+        "角色矩阵与项目状态求交得到动作范围",
+        "公开 DTO 仅输出项目摘要、成员角色和允许范围",
+        "Web Store 仅从正式 REST 响应更新可用项目和当前选择"
+      ],
+      "outputs": [
+        "稳定 Java/REST/TypeScript 项目上下文契约",
+        "跨租户、非成员和不存在项目使用同类不泄露拒绝",
+        "模块治理证明消费者不能依赖项目私有包或 pm_* 表"
+      ]
+    },
+    {
+      "requirement_id": "P3",
+      "input": "OWNER 对 ACTIVE 项目执行归档，或对 ARCHIVED 项目执行恢复",
+      "transitions": [
+        "平台 RBAC、OWNER 项目角色和乐观锁共同通过",
+        "Repository 原子切换 project_status 并保留成员记录",
+        "ProjectContextService 对 ARCHIVED 仅保留 VIEW",
+        "所有项目写命令在状态校验后拒绝或在恢复后重新按原角色求交",
+        "状态切换写入项目审计事件"
+      ],
+      "outputs": [
+        "已归档项目对原授权成员可读但所有项目写动作被拒绝",
+        "恢复后原成员关系保持且写范围不自动扩大",
+        "状态切换和拒绝行为可由 API、数据库和浏览器观察"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "platform/system UserDirectory",
+      "producers": ["platform/system"],
+      "consumers": ["business/project"],
+      "invariant": "只返回同租户、deleted=0、status=1 的最小用户摘要，不暴露敏感字段且不允许 project 直接读取 sys_user"
+    },
+    {
+      "name": "ProjectContextPort",
+      "producers": ["business/project"],
+      "consumers": ["资产库及后续业务模块", "项目 REST API"],
+      "invariant": "调用方先执行自身平台 RBAC；端口只以 AuthUser 计算租户、成员、角色和项目状态范围，消费者不得读取 pm_* 私有表"
+    },
+    {
+      "name": "/api/projects REST contract",
+      "producers": ["business/project ProjectController"],
+      "consumers": ["Web 项目管理与 Remote Project Context Store"],
+      "invariant": "所有受保护操作服务端执行认证、RBAC、租户和实体授权，浏览器传入的权限结论不可信"
+    },
+    {
+      "name": "pm_project/pm_project_member/pm_project_audit_event",
+      "producers": ["business/project repository and V37"],
+      "consumers": ["business/project only"],
+      "invariant": "所有查询含 tenant_id；项目不物理删除；项目编号、成员和负责人不变量由数据库约束与事务共同保护"
+    },
+    {
+      "name": "Project Context Web Store",
+      "producers": ["web/src/stores/project-context.ts"],
+      "consumers": ["AppLayout 项目切换器", "未来业务页面"],
+      "invariant": "正式 API 是权威来源，本地选择只能取 available 集合成员且不得扩大服务端权限"
+    },
+    {
+      "name": "project RBAC seed",
+      "producers": ["V37 Flyway migration"],
+      "consumers": ["Spring Security authority evaluation", "system role-permission management"],
+      "invariant": "菜单和权限 ID 在迁移执行前无冲突；已确认 400 被占用，因此当前候选为菜单 600、权限 6001-6005"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "P1 项目编号、负责人、成员角色、乐观锁和审计不变量",
+      "method": "ProjectService 与 Repository 聚焦测试，包含重复编号/成员、非法角色、负责人转移、并发版本和审计断言",
+      "blind_spots": ["真实 MySQL 隔离级别与约束组合行为"],
+      "independence": "JVM 服务层自动化传感器"
+    },
+    {
+      "id": "S2",
+      "target": "P1/P3 真实持久化状态与事务结果",
+      "method": "非生产 MySQL 迁移后执行 API 并直接查询 pm_* 表的唯一性、成员保持和审计行",
+      "blind_spots": ["生产数据规模与生产拓扑"],
+      "independence": "数据库与运行 API 传感器，不复用单元测试替身"
+    },
+    {
+      "id": "S3",
+      "target": "P2 公开包、依赖方向与禁止私表消费",
+      "method": "Maven compile/test、check-all-governance 和 rg 私有表/私有包消费扫描",
+      "blind_spots": ["运行时反射访问"],
+      "independence": "静态编译与治理传感器"
+    },
+    {
+      "id": "S4",
+      "target": "P2/P3 角色、租户、非成员和归档动作矩阵",
+      "method": "ProjectContextService 与 Controller Security 参数化测试，比较 VIEW/WRITE/MANAGE_MEMBERS/MANAGE_PROJECT 结果",
+      "blind_spots": ["浏览器路由和控件状态"],
+      "independence": "服务端权限自动化传感器"
+    },
+    {
+      "id": "S5",
+      "target": "P1/P2/P3 用户可见项目管理路径与全状态 UI",
+      "method": "真实浏览器以 OWNER/VIEWER 路径在桌面和三个手机视口验证列表、表单、成员、归档/恢复、无权限、错误和刷新",
+      "blind_spots": ["未覆盖浏览器内核", "生产网络时延"],
+      "independence": "端到端视觉和交互传感器"
+    },
+    {
+      "id": "S6",
+      "target": "P2 UserDirectory 租户与启用状态边界",
+      "method": "JdbcUserDirectoryTest 断言 SQL 含 tenant_id/deleted/status 且缺失用户统一拒绝",
+      "blind_spots": ["大用户集分页性能"],
+      "independence": "平台契约聚焦测试"
+    },
+    {
+      "id": "S7",
+      "target": "P1/P2 Flyway、菜单权限和 Mock allowlist 契约",
+      "method": "迁移版本/ID 复扫、check-flyway-migrations、MockDataInitializerTest 和本地迁移启动",
+      "blind_spots": ["尚未合入分支可能在采样后占用 V37 或 ID"],
+      "independence": "迁移静态检查与基础设施运行传感器"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "platform/system 用户目录公开契约",
+      "action": "在已批准公开包内新增最小 DTO、只读查询实现和聚焦测试",
+      "authority": "scope writable_paths 与 platform/system Owner 批准",
+      "impact_radius": "platform/system 公共 API 及 project 消费方",
+      "rollback": "回退 T1 提交；无数据库影响"
+    },
+    {
+      "id": "A2",
+      "target": "business/project 模块与 ProjectContextPort",
+      "action": "登记新 Maven 模块、公开包、角色/状态/动作模型和稳定端口",
+      "authority": "scope writable_paths 与 business/project Owner 批准",
+      "impact_radius": "Maven reactor、boot 装配、模块治理和未来消费者",
+      "rollback": "在尚无消费者时回退 T1 模块登记提交"
+    },
+    {
+      "id": "A3",
+      "target": "项目持久化、领域规则、审计和 REST 权限",
+      "action": "新增 V37、Repository、Service、Controller 及权限/事务测试",
+      "authority": "scope writable_paths；只允许追加 V37 且执行前复扫",
+      "impact_radius": "新增 pm_* 表、项目 REST API、菜单权限和本地 Mock",
+      "rollback": "回退应用提交；已应用迁移保留表和审计数据，不在生产执行 DROP"
+    },
+    {
+      "id": "A4",
+      "target": "正式 Web 项目上下文与管理界面",
+      "action": "新增 API、类型、Pinia Store、项目页面/组件，并接入路由和 AppLayout",
+      "authority": "scope writable_paths",
+      "impact_radius": "应用壳项目切换、项目管理路由及未来 Store 消费者",
+      "rollback": "回退 T3 提交并移除路由/壳接入；后端契约保留"
+    },
+    {
+      "id": "A5",
+      "target": "菜单和动作权限主键冲突",
+      "action": "将计划中的已占用 400/4001-4005 修订为执行前确认的候选 600/6001-6005",
+      "authority": "planning 内修订工程参数，不改变已批准产品基准",
+      "impact_radius": "V37 seed 与 Mock 角色权限映射",
+      "rollback": "迁移应用前重新选择未占用编号并更新同一未发布 V37"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "P1",
+      "sensor_ids": ["S1", "S2", "S5", "S7"],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "P2",
+      "sensor_ids": ["S3", "S4", "S5", "S6", "S7"],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "P3",
+      "sensor_ids": ["S2", "S4", "S5"],
+      "observable": "yes"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "既有 V11 已占用 sys_menu.id=400，现有根菜单还包括 100/200/300/500",
+      "effect": "原计划 V37 菜单与权限主键候选失效",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "V37 或候选 600/6001-6005 在执行前被其他待集成迁移占用",
+      "effect": "T2 迁移无法安全追加",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "REQ-20260814-022 后续实现其 Mock Project Context Store/type",
+      "effect": "正式 Web Store/type 发生所有权和命名冲突",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "本地 MySQL、浏览器或服务端运行环境不可用",
+      "effect": "S2/S5 运行证据无法采样，high-assurance 收敛门禁受阻",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "用户或其他进程在共享仓库并行修改模块清单、迁移或前端壳",
+      "effect": "已验证边界、编号或集成点失效",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "现有 npm audit 告警与 Vite 大 chunk",
+      "effect": "产生与本需求无关的噪声，但不改变项目上下文行为",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "Flyway 迁移和应用启动",
+      "consequence": "迁移静态通过不代表表、约束和 seed 已在 MySQL 生效",
+      "sampling_rule": "服务启动完成并通过健康检查后再执行 API/数据库采样"
+    },
+    {
+      "source": "事务提交与前端查询刷新",
+      "consequence": "命令成功后立即读取旧列表可能形成假阴性",
+      "sampling_rule": "等待 API 成功响应，重新拉取权威列表并核对版本号"
+    },
+    {
+      "source": "权限/菜单迁移与重新登录",
+      "consequence": "旧认证会话可能未反映新增 authority",
+      "sampling_rule": "迁移和角色授权完成后重新登录，再采样受保护路由和操作"
+    },
+    {
+      "source": "Remote Project Context Store 初始化",
+      "consequence": "路由首屏可能在 available 请求返回前处于 loading/none",
+      "sampling_rule": "分别观察 loading、成功、空、失败、无权限和刷新恢复状态"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "sys_user 现有字段可在 platform/system 内构造不含敏感信息的启用用户摘要",
+      "evidence": "SystemService 使用 JdbcTemplate，现有查询可见 tenant_id、deleted、status 及身份摘要字段",
+      "falsifier": "实现测试证明所需 displayName/org 摘要必须读取未批准表或敏感字段"
+    },
+    {
+      "text": "sys_menu_permission 与 sys_role_permission 能表达项目菜单五个动作权限",
+      "evidence": "既有迁移包含 action_code、permission_code 唯一约束及角色权限映射",
+      "falsifier": "V37 预检或运行迁移证明动作编码/角色映射不能唯一表达所需权限"
+    },
+    {
+      "text": "候选菜单 600 与权限 6001-6005 当前未占用",
+      "evidence": "当前迁移扫描发现根菜单最高已知 500 且 400 已被 V11 占用",
+      "falsifier": "T2 执行前全迁移与待集成分支复扫发现任一候选 ID 被占用"
+    },
+    {
+      "text": "delivery-showcase 和共享 UI 足以承载桌面表格、移动卡片、表单抽屉和全状态反馈",
+      "evidence": "现有 UiToolbar、UiDataTable、UiFormDrawer、UiEmptyState、UiUserIdentity 及示范页面模式可复用",
+      "falsifier": "T3 实现或浏览器采样证明必须修改共享组件行为才能满足验收"
+    },
+    {
+      "text": "ProjectContextPort 由 project 拥有且消费方只需公开 api/model 包",
+      "evidence": "Owner 已批准 business/project 和公开只读 UserDirectory；modules.yaml 支持登记依赖与公开包",
+      "falsifier": "模块边界检查要求依赖 project 私有实现或发生 platform 反向依赖"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "P1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "由 A1-A3 建立用户校验、领域不变量、事务审计和数据库约束；用 S1/S2/S5/S7 分层采样"
+    },
+    {
+      "requirement_id": "P2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "由 A1/A2/A4 固定公开契约与正式 Store；用 S3/S4/S5/S6/S7 验证边界、权限和运行输出"
+    },
+    {
+      "requirement_id": "P3",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "由 A3 在统一状态门禁内实现归档只读和恢复；用 S2/S4/S5 验证状态、成员保持和全部写拒绝"
+    }
+  ],
+  "model_status": "ready"
+}

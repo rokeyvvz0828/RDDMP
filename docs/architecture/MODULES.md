@@ -13,6 +13,7 @@
 | 平台 | `server/src/platform/system` | 组织、用户、角色、菜单、参数、站内消息通知和系统管理 |
 | 平台 | `server/src/platform/workflow` | 流程模型、BPMN 编译、运行服务与监控 |
 | 公共 | `server/src/shared/common` | 统一响应、分页、异常和 trace，不拥有业务数据 |
+| 业务 | `server/src/modules/project` | 项目主数据、成员角色、归档状态和公开 Project Context 范围契约 |
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
@@ -27,6 +28,8 @@
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
 - `com.ccb.system.notification` 与 `web/src/api/notifications.ts` 提供租户隔离的站内消息发布和当前用户消息中心契约，业务模块不得直接写通知表。
+- `com.ccb.system.model.UserDirectory` 由 system 提供租户内启用用户的最小只读摘要；project 等消费方不得读取 `sys_user`。
+- `com.ccb.project.api.ProjectContextPort` 与 `web/src/api/projects.ts` 由 project 提供项目摘要、成员关系和项目动作范围；消费方不得读取 `pm_*` 私有表，也不得用该范围替代自身平台 RBAC。
 - 其余业务页面的归属以 `modules.yaml` 中列出的精确路径为准。
 
 公共前端能力变更需要说明现有页面回归范围。后续目录重构必须独立立项，保持路由、类型、接口和业务逻辑兼容。

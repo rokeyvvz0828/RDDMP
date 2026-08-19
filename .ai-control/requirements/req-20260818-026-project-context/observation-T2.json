@@ -1,0 +1,53 @@
+{
+  "sample_label": "T2 权限与持久化采样",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "P1",
+      "sensor": "S1 ProjectService 领域自动化",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-project -am test 退出码 0；ProjectServiceTest 6 tests 覆盖重复编号、唯一 OWNER、乐观锁不审计、负责人转移、禁止直接赋 OWNER 和恢复保留成员",
+      "limitation": ["Repository 使用 Mockito，尚未验证真实 MySQL 事务隔离和唯一索引错误映射"]
+    },
+    {
+      "requirement_id": "P2",
+      "sensor": "S4 角色/状态与 Controller 权限自动化",
+      "result": "pass",
+      "raw_evidence": "ProjectContextServiceTest 4 tests + ProjectControllerSecurityTest 1 test 全部通过；覆盖四角色/四动作、ARCHIVED、不泄露拒绝和五类 @PreAuthorize",
+      "limitation": ["反射权限测试不等于 JWT HTTP 运行矩阵"]
+    },
+    {
+      "requirement_id": "P3",
+      "sensor": "S4 状态转换测试与静态动作探针",
+      "result": "pass",
+      "raw_evidence": "ARCHIVED 只返回 VIEW；WRITE/MANAGE_MEMBERS/MANAGE_PROJECT 均拒绝；restore 测试验证未删除成员，ProjectService 更新项目主数据使用 MANAGE_PROJECT",
+      "limitation": ["尚未在数据库中观察 ACTIVE->ARCHIVED->ACTIVE 的版本和成员行"]
+    },
+    {
+      "requirement_id": "P1",
+      "sensor": "S7 V37 与 Mock 基础设施检查",
+      "result": "pass",
+      "raw_evidence": "Flyway 35 migrations passed；V37 含租户项目编号唯一、生成列单 OWNER 唯一、角色/状态 CHECK 和 6001-6005；Mock jq 观察四角色集合精确为 ADMIN/MEMBER/OWNER/VIEWER",
+      "limitation": ["静态迁移检查不执行 MySQL 8.4 DDL"]
+    },
+    {
+      "requirement_id": "P2",
+      "sensor": "S3 编译公开面和模块边界",
+      "result": "pass",
+      "raw_evidence": "javap 显示 ProjectService 13 个业务入口、ProjectContextService 实现 ProjectContextPort、Controller 对应 REST 入口；9 Maven modules 和 12 governance modules passed",
+      "limitation": ["T3 尚未消费 REST，因此字段端到端映射未采样"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "T1 已确认 governance 不允许预登记不存在的 Web 路径；T3 开始前需修订其任务写入面"
+  ],
+  "coverage_gaps": [
+    "V37 在 MySQL 8.4 的首次/重复启动、generated column 与 CHECK 行为",
+    "JWT 下 OWNER/ADMIN/MEMBER/VIEWER/非成员/无 RBAC/跨租户真实 API 矩阵",
+    "REST 响应与 T3 TypeScript/Store 的字段级组合"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

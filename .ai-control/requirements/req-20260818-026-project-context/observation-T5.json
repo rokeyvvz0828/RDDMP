@@ -1,0 +1,17 @@
+{
+  "sample_label": "T5 Mock 固定密码纠正复验",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "P1", "sensor": "S6 Spring Security BCrypt 与真实认证入口", "result": "pass", "raw_evidence": "BCryptPasswordEncoder.matches(password, newHash)=true；四个 Mock 项目角色 POST /api/auth/login 均 HTTP 200 且 accessToken 存在", "limitation": ["此采样验证认证前提，项目实体权限由 T4 后续矩阵覆盖"]},
+    {"requirement_id": "P1", "sensor": "S2 隔离数据库 Mock 传播与行不变量", "result": "pass", "raw_evidence": "重装上游模块后 Mock checksum 变化并同步；数据库查询返回用户数 4、唯一用户名 4、唯一哈希 1，tenant/status/deleted 未改变", "limitation": []},
+    {"requirement_id": "P1", "sensor": "S3 全量 Maven、治理、scope 和 diff", "result": "pass", "raw_evidence": "mvn test、check-all-governance、check-codex-scope、git diff --check 退出码均为 0", "limitation": []}
+  ],
+  "feedback": [],
+  "disturbances": [
+    "首次重启从旧的已安装 infrastructure 产物读取 Mock 资源；在传播时延结束前未误判为纠正失败，Reactor install 后重新采样通过"
+  ],
+  "coverage_gaps": ["七类主体项目 API 与真实浏览器组合仍由 T4 覆盖"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

@@ -18,6 +18,7 @@ import { uploadOwnAvatar } from '../api/auth'
 import { paletteOptions } from '../types/ui'
 import type { RouteNode } from '../types/auth'
 import { apiErrorMessage } from '../api/error'
+import ProjectContextSwitcher from '../modules/project/components/ProjectContextSwitcher.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -52,7 +53,7 @@ const topNavigationVisible = computed(() => theme.layout === 'top' || theme.layo
 const sideNavigationVisible = computed(() => theme.layout === 'side' || theme.layout === 'mixed')
 const mobileNavigationVisible = computed(() => mobileView.value)
 const sidebarCollapsed = computed(() => theme.sidebarCollapsed || mobileView.value)
-const fallbackTitles: Record<string, string> = { dashboard: '工作台', users: '用户管理', roles: '角色权限', orgs: '组织架构', menus: '菜单路由', params: '参数管理', 'form-metadata': '输入项配置', 'role-permissions': '角色权限配置', definitions: '流程定义', inbox: '待办审批', providers: '模型服务商', models: '模型配置', routes: '能力路由', components: '组件示例', 'delivery-showcase': '交付示范中心' }
+const fallbackTitles: Record<string, string> = { dashboard: '工作台', users: '用户管理', roles: '角色权限', orgs: '组织架构', menus: '菜单路由', params: '参数管理', 'form-metadata': '输入项配置', 'role-permissions': '角色权限配置', definitions: '流程定义', inbox: '待办审批', providers: '模型服务商', models: '模型配置', routes: '能力路由', projects: '项目管理', components: '组件示例', 'delivery-showcase': '交付示范中心' }
 
 function findMenuTitle(nodes: RouteNode[], path: string): string | null {
   let matchPath = ''
@@ -167,6 +168,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
         <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><span>工作台</span></el-menu-item>
         <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" />
       </el-menu>
+      <ProjectContextSwitcher class="project-context-switcher--top" />
       <div class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
     </header>
 
@@ -183,7 +185,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
       </el-aside>
       <el-container>
         <el-header class="app-header">
-          <div class="header-left"><el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button><el-button v-else-if="sideNavigationVisible" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button><div class="breadcrumb"><span>控制中心</span><b>/</b><strong>{{ title }}</strong></div></div>
+          <div class="header-left header-left--project-context"><el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button><el-button v-else-if="sideNavigationVisible" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button><div class="breadcrumb"><span>控制中心</span><b>/</b><strong>{{ title }}</strong></div><ProjectContextSwitcher class="project-context-switcher--header" /></div>
           <div v-if="!topNavigationVisible" class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
         </el-header>
         <UiTabs v-if="theme.tabsEnabled" :current-path="route.fullPath" />

@@ -1,0 +1,39 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "mock/mock-data.json", "purpose": "将四个 local Mock 项目角色的共享 BCrypt 哈希纠正为与固定测试密码 password 匹配的值"}
+  ],
+  "requirements_addressed": ["P1"],
+  "commands": [
+    {"command": "BCryptPasswordEncoder.matches(password, newHash)", "exit_code": 0, "salient_output": "true"},
+    {"command": "mvn -pl :ccb-boot -am -DskipTests install", "exit_code": 0, "salient_output": "10 个 Reactor 模块安装成功，infrastructure 从根 mock 目录复制 1 个资源"},
+    {"command": "mvn -f server/src/platform/boot/pom.xml spring-boot:run -Dspring-boot.run.profiles=local", "exit_code": 0, "salient_output": "schema v37 已最新；Mock 同步读取新 checksum 并完成 140 行 upsert"},
+    {"command": "POST /api/auth/login for mock.product/mock.release/mock.engineer/mock.qa", "exit_code": 0, "salient_output": "四个账号均 HTTP 200 且 accessToken 存在"},
+    {"command": "mvn test", "exit_code": 0, "salient_output": "10 个 Reactor 模块成功；project 11 项、infrastructure 8 项及相关回归全部通过"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "12 模块、开发入口、AI control、边界和 35 个迁移检查通过"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-026-project-context/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 0, "salient_output": "59 个变更文件均位于 REQ-026 授权范围"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误"}
+  ],
+  "local_checks": [
+    {"check": "原失败 BCrypt 检查", "result": "pass", "evidence": "当前 Spring Security BCryptPasswordEncoder 对 password/newHash 返回 true", "limitations": []},
+    {"check": "四账号真实登录", "result": "pass", "evidence": "OWNER/ADMIN/MEMBER/VIEWER 对应账号均 HTTP 200 且返回 accessToken", "limitations": ["项目权限矩阵由恢复后的 T4 执行"]},
+    {"check": "Mock 用户不变量", "result": "pass", "evidence": "数据库仍为 4 个唯一用户名、1 个共享哈希；tenant/status/deleted 保持 1/1/0", "limitations": []},
+    {"check": "回归与范围", "result": "pass", "evidence": "mvn test、治理、scope、git diff --check 均退出码 0", "limitations": []}
+  ],
+  "diff_summary": [
+    "只替换 mock.product、mock.engineer、mock.qa、mock.release 的四处 password_hash",
+    "未修改认证实现、项目权限、迁移、依赖或用户其他字段"
+  ],
+  "invariants_checked": [
+    {"invariant": "哈希只用于 local Mock 数据", "result": "pass", "evidence": "唯一产品修改面为 mock/mock-data.json"},
+    {"invariant": "四个 Mock 用户非密码字段不变", "result": "pass", "evidence": "实际补丁只替换四个 password_hash 值"},
+    {"invariant": "项目 RBAC、成员角色、租户隔离和错误语义不变", "result": "pass", "evidence": "相关实现无 diff；全量项目与安全测试通过"}
+  ],
+  "disturbances": [
+    {"event": "boot 直接运行最初读取本地 Maven 仓库中的旧 infrastructure 资源", "impact": "识别传播时延后先执行 Reactor install；重新启动读取新 checksum 并正确同步"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["由 observing 复验 F-0002 并关闭；随后 T4 执行完整七类主体矩阵"],
+  "recommended_next": "observe"
+}

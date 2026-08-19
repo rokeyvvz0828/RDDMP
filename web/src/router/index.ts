@@ -9,6 +9,7 @@ import WorkflowView from '../views/WorkflowView.vue'
 import AiView from '../views/AiView.vue'
 import ComponentShowcaseView from '../views/ComponentShowcaseView.vue'
 import DeliveryShowcaseModule from '../modules/delivery-showcase/DeliveryShowcaseModule.vue'
+import ProjectManagementView from '../modules/project/ProjectManagementView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,6 +28,7 @@ const router = createRouter({
         { path: 'workflow', redirect: '/workflow/definitions' },
         { path: 'workflow/:section', name: 'workflow', component: WorkflowView, props: true },
         { path: 'ai/:section', name: 'ai', component: AiView, props: true },
+        { path: 'projects', name: 'projects', component: ProjectManagementView, meta: { title: '项目管理' } },
         { path: 'components', name: 'components', component: ComponentShowcaseView, meta: { title: '组件示例' } },
         { path: 'delivery-showcase', name: 'delivery-showcase', component: DeliveryShowcaseModule, meta: { title: '交付示范中心' } }
       ]

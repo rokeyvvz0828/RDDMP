@@ -1,0 +1,28 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/project/ProjectManagementView.vue", "purpose": "在手机首次加载且无项目记录时渲染可访问的三行骨架状态"},
+    {"path_or_resource": "web/src/modules/project/project.css", "purpose": "仅在手机视口显示稳定高度的项目加载骨架"}
+  ],
+  "requirements_addressed": ["P2"],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc 与 Vite 通过，2337 modules transformed"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无格式错误"},
+    {"command": "Chromium T3 observation script", "exit_code": 0, "salient_output": "375x812/900ms loadingVisible=true；请求完成后2张卡片、overflow=0；桌面和其他状态回归通过"}
+  ],
+  "local_checks": [
+    {"check": "F-0001 原失败场景", "result": "pass", "evidence": "project-mobile-loading 在延迟期间可见", "limitations": ["使用虚构延迟响应"]},
+    {"check": "桌面/移动回归", "result": "pass", "evidence": "1440、375、390、430 视口无横向溢出和头部重叠", "limitations": []}
+  ],
+  "diff_summary": ["新增仅限手机首次加载的项目卡片骨架，不改变数据、权限和操作行为"],
+  "invariants_checked": [
+    {"invariant": "桌面继续使用 UiDataTable loading", "result": "pass", "evidence": "1440 loadingVisible=true，正常数据仍有2行"},
+    {"invariant": "手机完成后仍显示既有卡片", "result": "pass", "evidence": "三个手机视口均显示2张卡片"},
+    {"invariant": "不修改 API、Store、权限和共享 UI", "result": "pass", "evidence": "实际产品 diff 仅两个项目页面文件"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实服务端慢请求由T4运行环境复验"],
+  "recommended_next": "observe"
+}

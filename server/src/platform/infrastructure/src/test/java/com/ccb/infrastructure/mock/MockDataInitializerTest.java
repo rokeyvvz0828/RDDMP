@@ -88,4 +88,54 @@ class MockDataInitializerTest {
 
         verify(jdbc, atLeast(2)).update(anyString(), any(Object[].class));
     }
+
+    @Test
+    void upsertsProjectAndMemberRows() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResourceLoader resources = mock(ResourceLoader.class);
+        Resource resource = mock(Resource.class);
+        when(resources.getResource("classpath:mock/mock-data.json")).thenReturn(resource);
+        when(resource.getInputStream()).thenReturn(new ByteArrayInputStream("""
+                {
+                  "datasetKey": "test",
+                  "datasetVersion": "1",
+                  "database": [
+                    {
+                      "table": "pm_project",
+                      "keyColumns": ["id"],
+                      "rows": [{"id": 910000000009101, "tenant_id": 1, "project_code": "MOCK-PROJECT", "project_name": "演示项目", "status": "ACTIVE", "owner_user_id": 910000000000001, "version": 0, "created_by": 910000000000001, "updated_by": 910000000000001, "deleted": 0}]
+                    },
+                    {
+                      "table": "pm_project_member",
+                      "keyColumns": ["tenant_id", "project_id", "user_id"],
+                      "rows": [{"tenant_id": 1, "project_id": 910000000009101, "user_id": 910000000000001, "role": "OWNER", "created_by": 910000000000001, "updated_by": 910000000000001}]
+                    }
+                  ]
+                }
+                """.getBytes(StandardCharsets.UTF_8)));
+        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+
+        MockDataProperties properties = new MockDataProperties();
+        properties.setResource("classpath:mock/mock-data.json");
+        new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties).run(new DefaultApplicationArguments());
+
+        verify(jdbc, atLeast(3)).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void rejectsUnknownProjectColumn() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResourceLoader resources = mock(ResourceLoader.class);
+        Resource resource = mock(Resource.class);
+        when(resources.getResource("classpath:mock/mock-data.json")).thenReturn(resource);
+        when(resource.getInputStream()).thenReturn(new ByteArrayInputStream("""
+                {"datasetKey":"test","datasetVersion":"1","database":[{"table":"pm_project","keyColumns":["id"],"rows":[{"id":1,"secret":"not-allowed"}]}]}
+                """.getBytes(StandardCharsets.UTF_8)));
+
+        MockDataProperties properties = new MockDataProperties();
+        properties.setResource("classpath:mock/mock-data.json");
+        MockDataInitializer initializer = new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties);
+
+        assertThrows(IllegalStateException.class, () -> initializer.run(new DefaultApplicationArguments()));
+    }
 }

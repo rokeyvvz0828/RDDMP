@@ -1,0 +1,464 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立只读用户目录、business/project 模块和唯一公开 Project Context 契约，并使模块治理与 Maven 装配可验证。",
+      "requirement_ids": ["P2"],
+      "prerequisites": [
+        "baseline-2 与 model-1 已通过门禁",
+        "business/project 与 platform/system UserDirectory Owner 批准仍有效",
+        "隔离工作树和 feat/REQ-20260818-026-project-context 分支保持有效"
+      ],
+      "input_facts": [
+        "platform/system 拥有 sys_user 且 SystemService 已使用 JdbcTemplate",
+        "AuthUser 位于 platform/security 公开包 com.ccb.security.model",
+        "当前 scope 在新模块登记前暂归 project-control，target_module 已固定为 business/project",
+        "公开包只需 com.ccb.project.api、com.ccb.project.model 与 system 最小用户摘要"
+      ],
+      "write_scope": [
+        "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectory.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectoryUser.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/service/JdbcUserDirectory.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/service/JdbcUserDirectoryTest.java",
+        "server/src/modules/project/**",
+        "pom.xml",
+        "server/src/platform/boot/pom.xml",
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        ".github/CODEOWNERS",
+        "docs/integration/project-context-contract.md",
+        "docs/requirements/REQ-20260818-026-project-context/codex-task-scope.yaml",
+        ".ai-control/requirements/req-20260818-026-project-context/execution-T1.json"
+      ],
+      "invariants": [
+        "UserDirectory 只返回同租户、deleted=0、status=1 用户的非敏感摘要",
+        "project 不读取 sys_user 或 system 私有实现包",
+        "platform 模块不得反向依赖 business/project",
+        "ProjectContextPort 不替代调用方平台 RBAC",
+        "保持现有 com.ccb 包名与 system 行为"
+      ],
+      "interface_contracts": [
+        "UserDirectory.searchActive 与 requireActive 由 platform/system 生产，business/project 只依赖公开 model 包",
+        "ProjectContextPort.requireAccess、membership、available 以 AuthUser 为可信主体",
+        "ProjectRole 固定 OWNER/ADMIN/MEMBER/VIEWER；ProjectStatus 固定 ACTIVE/ARCHIVED；ProjectAction 固定 VIEW/WRITE/MANAGE_MEMBERS/MANAGE_PROJECT"
+      ],
+      "non_goals": [
+        "不创建 pm_* 表或 REST 实现",
+        "不修改 platform/security",
+        "不增加组织继承、敏感用户字段或通用公共组件",
+        "不实现 Web 页面"
+      ],
+      "action_bounds": [
+        "先建立 UserDirectory 失败测试，再实现最小查询契约",
+        "新增 project 模块骨架、公开模型与端口，不预实现持久化行为",
+        "登记 Maven、boot、modules.yaml、MODULES、CODEOWNERS 和集成契约",
+        "模块登记完成后把 scope assignment.module 从 project-control 切换为 business/project 并复验"
+      ],
+      "acceptance_checks": [
+        "JdbcUserDirectoryTest 证明 SQL 与参数包含 tenant_id、deleted=0、status=1，批量缺失统一拒绝",
+        "mvn -pl :ccb-project -am -DskipTests compile 成功且 reactor 依赖方向正确",
+        "node scripts/check-all-governance.mjs 成功并登记 business/project",
+        "scope assignment 切换后 check-codex-scope working-tree 成功",
+        "rg 证明 project 未导入 com.ccb.system.service 或直接查询 sys_user"
+      ],
+      "evidence_required": [
+        "execution-T1.json 中的实际 diff 路径、失败测试和通过测试命令/退出码",
+        "Maven reactor 与 governance/scope 原始摘要",
+        "公开接口签名与边界扫描结果",
+        "执行期间出现的扰动、假设失效和未决项"
+      ],
+      "rollback": "回退 T1 产品提交并恢复 scope 临时归属；T1 不含数据库迁移。",
+      "stop_conditions": [
+        "UserDirectory 必须暴露敏感字段或读取未授权数据源",
+        "模块治理要求 project 依赖 system 私有包或 platform 反向依赖 business",
+        "发现其他任务已登记 business/project 或同名公开类型"
+      ],
+      "escalation_conditions": [
+        "Owner 批准的模块名、公开包或 UserDirectory 签名需要变化",
+        "需要修改 server/src/shared 或 platform/security",
+        "scope 切换为 business/project 后检查器仍不能识别新模块"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "实现租户隔离的项目/成员/审计持久化、三层授权、归档状态语义和受保护 REST API。",
+      "requirement_ids": ["P1", "P2", "P3"],
+      "prerequisites": [
+        "T1 已 verified",
+        "V37、菜单 600、权限 6001-6005 在当前迁移与待集成占用复扫中均未冲突",
+        "scope assignment.module 已为 business/project"
+      ],
+      "input_facts": [
+        "项目编号租户内唯一、负责人唯一、项目不物理删除",
+        "有效权限等于平台 RBAC、项目角色和项目状态的交集",
+        "sys_menu_permission 与 sys_role_permission 已支持 action_code 和权限码",
+        "ErrorCode.CONFLICT=40900 可表达唯一性与乐观锁冲突",
+        "MockDataInitializer 使用精确表/列 allowlist"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V37__project_context.sql",
+        "server/src/modules/project/**",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+        "mock/mock-data.json",
+        ".ai-control/requirements/req-20260818-026-project-context/execution-T2.json"
+      ],
+      "invariants": [
+        "所有项目 SQL 含 tenant_id，非成员/跨租户/不存在统一拒绝且不泄露存在性",
+        "同一项目恰有一个 OWNER，owner_user_id 与 OWNER 成员一致",
+        "项目编号租户内唯一、成员租户/项目/用户唯一、版本冲突拒绝",
+        "ARCHIVED 仅允许 VIEW，恢复不删除成员也不扩大角色",
+        "项目和成员成功写操作在同一事务写入最小不可变审计",
+        "不为 sys_user 建跨模块外键"
+      ],
+      "interface_contracts": [
+        "ProjectContextPort 角色矩阵：OWNER 全部；ADMIN 不含 MANAGE_PROJECT；MEMBER 为 VIEW/WRITE；VIEWER 仅 VIEW；ARCHIVED 仅 VIEW",
+        "REST 使用 /api/projects 资源契约和 project:list 及 create/update/member/archive 动作权限",
+        "V37 当前候选菜单 600、权限 6001-6005，执行前复扫是硬门禁",
+        "Controller 只适配 HTTP/认证/Bean Validation，Service 负责事务、实体授权和业务校验"
+      ],
+      "non_goals": [
+        "不实现资产数据、项目物理删除、外部同步或组织自动继承",
+        "不修改历史 Flyway 迁移",
+        "不绕过 UserDirectory 直接读取 sys_user",
+        "不修改 shared/platform 公共审计能力"
+      ],
+      "action_bounds": [
+        "先复扫 V37 和 RBAC ID，再建立领域/权限失败测试",
+        "仅追加 V37 创建三个 pm_* 表、索引、菜单、五个权限和管理员授权",
+        "Repository 仅访问 pm_project、pm_project_member、pm_project_audit_event",
+        "实现服务端角色/状态矩阵、乐观锁、事务审计和字段白名单 REST",
+        "仅为本地虚构数据登记准确 Mock allowlist 和项目成员"
+      ],
+      "acceptance_checks": [
+        "check-flyway-migrations 与迁移/ID 复扫成功",
+        "ProjectServiceTest 覆盖重复编号/成员、非法角色、负责人转移、乐观锁、审计和跨租户",
+        "ProjectContextServiceTest 覆盖四角色、四动作、ACTIVE/ARCHIVED 与不泄露拒绝",
+        "ProjectControllerSecurityTest 证明每个写入口执行明确平台 RBAC",
+        "MockDataInitializerTest 覆盖 allowlist、未知列拒绝和幂等",
+        "mvn -pl :ccb-project,:ccb-system,:ccb-infrastructure -am test 与 governance 成功"
+      ],
+      "evidence_required": [
+        "execution-T2.json 中迁移预检、实际 diff、Surefire 测试数和退出码",
+        "权限矩阵、租户条件、审计与乐观锁关键断言摘要",
+        "Flyway/Mock/governance 检查结果",
+        "菜单/权限最终编号及无冲突证据",
+        "执行期间扰动和剩余风险"
+      ],
+      "rollback": "回退 T2 应用代码和菜单入口；已应用环境保留 V37 表及审计数据，不修改历史迁移且不执行生产 DROP。",
+      "stop_conditions": [
+        "V37 或菜单/权限候选编号被占用",
+        "需要读取 sys_user 私表或其他模块私表",
+        "现有数据库能力无法在事务内保持负责人不变量",
+        "权限表无法表达五个项目权限"
+      ],
+      "escalation_conditions": [
+        "需要多个负责人、组织范围继承、物理删除或外部同步",
+        "需要改变 ErrorCode、通用审计或 shared 公共契约",
+        "必须采用不同迁移版本或权限命名"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "提供正式 Remote Project Context Store、全状态项目管理界面和桌面/移动端一致的项目切换路径。",
+      "requirement_ids": ["P1", "P2", "P3"],
+      "prerequisites": [
+        "T2 已 verified 且 REST/错误/权限字段契约稳定",
+        "REQ-20260814-022 未写入同名 Store/type，若已写入则先重规划",
+        "delivery-showcase 和共享 UI 的只读复用模式仍有效"
+      ],
+      "input_facts": [
+        "Web 使用 Vue 3、TypeScript、Pinia、Element Plus、静态路由和统一 http",
+        "delivery-showcase 已提供桌面表格、移动卡片、表单抽屉和全状态模式",
+        "AppLayout 是正式项目切换器的应用壳集成点",
+        "前端权限和本地存储均不能替代服务端授权"
+      ],
+      "write_scope": [
+        "web/src/types/project-context.ts",
+        "web/src/api/projects.ts",
+        "web/src/stores/project-context.ts",
+        "web/src/modules/project/**",
+        "web/src/router/index.ts",
+        "web/src/views/AppLayout.vue",
+        "governance/modules.yaml",
+        "docs/integration/project-context-contract.md",
+        ".ai-control/requirements/req-20260818-026-project-context/execution-T3.json"
+      ],
+      "invariants": [
+        "正式 API 是项目和权限权威来源，本地选择只允许 available 集合成员",
+        "页面覆盖 loading/empty/error/forbidden/submitting/read-only/unsaved/expired 状态",
+        "归档项目所有写控件只读且服务端仍最终拒绝",
+        "复用 web/src/components/ui 和语义主题变量，不修改只读共享组件",
+        "桌面表格与移动卡片表达同一数据和操作层级"
+      ],
+      "interface_contracts": [
+        "TypeScript 类型和 API DTO 与 T2 REST 契约逐字段一致",
+        "project-context-contract.md 列出实际 REST 端点、请求字段、错误码和前端字段映射，作为 T3 组合检查依据",
+        "Store 暴露 available、selected、loading/error 与 refresh/select 行为",
+        "AppLayout 切换器在刷新、无可用项目、已选项目失效时使用服务端可用集合恢复",
+        "项目页面使用静态 /projects 路由并根据 authority 与项目角色/状态共同展示操作"
+      ],
+      "non_goals": [
+        "不实现资产库页面或业务表单元数据",
+        "不修改共享 UI 组件、全局主题或依赖版本",
+        "不拆分 Vite 大 chunk",
+        "不信任前端推导结果进行后端授权"
+      ],
+      "action_bounds": [
+        "先固定 REST/类型映射和 Store 行为，再接入 AppLayout",
+        "先创建 web/src/api/projects.ts、web/src/types/project-context.ts 和 web/src/modules/project/**，再将这些实际存在路径登记到 business/project；Store、router 和 AppLayout 继续由 frontend/application 拥有",
+        "同步 project-context-contract.md 的实际 REST 端点、请求字段、错误码和 TypeScript 字段映射",
+        "复用示范中心的桌面表格、移动卡片、抽屉、身份与状态组件组合",
+        "项目页面实现查询、创建/编辑、成员、负责人转移、归档/恢复和明确结果反馈",
+        "只在 web/src/modules/project/project.css 增加项目专项响应式样式"
+      ],
+      "acceptance_checks": [
+        "npm --prefix web run build 成功且 TypeScript 无错误",
+        "前端文件创建后 check-module-boundaries 与 check-all-governance 成功，business/project 只登记实际存在的 API、类型和模块路径",
+        "project-context-contract.md 与 Controller、ProjectCommands、TypeScript DTO 的端点、字段和错误语义逐项一致",
+        "静态检查证明无 Mock 项目授权来源或前端私自扩大权限",
+        "组件/Store 聚焦检查覆盖 available 为空、选择失效、API 失败、重复提交和归档只读",
+        "页面结构满足 1440x900 与 375/390/430 手机宽度的滚动和弹层约束",
+        "明暗主题均使用语义变量且无硬编码一色主题"
+      ],
+      "evidence_required": [
+        "execution-T3.json 中实际 diff、构建命令/退出码和状态覆盖摘要",
+        "REST/TypeScript 字段映射清单",
+        "响应式布局与共享组件复用说明",
+        "执行期间发现的未建模消费者、扰动和未决项"
+      ],
+      "rollback": "回退 T3 提交并移除 /projects 路由和 AppLayout 切换器；后端项目契约和数据保留。",
+      "stop_conditions": [
+        "发现 REQ-20260814-022 或其他任务已写入同名 Store/type",
+        "必须修改只读共享 UI 或全局主题才能完成",
+        "T2 REST 契约仍不稳定或缺少必要权限信号",
+        "移动端关键任务无法在已批准布局内完成"
+      ],
+      "escalation_conditions": [
+        "需要新增公共前端组件或更改 AppLayout 全局导航契约",
+        "需要引入新依赖或升级现有依赖",
+        "产品要求改变已确认的字段、角色或项目状态语义"
+      ]
+    },
+    {
+      "id": "T5",
+      "goal": "纠正 F-0002，使四个本地 Mock 项目角色的 BCrypt 哈希与固定测试密码 password 一致。",
+      "requirement_ids": ["P1"],
+      "prerequisites": [
+        "F-0002 已由主 Agent accept 且纠正决定限定为 Mock 密码哈希",
+        "mock/mock-data.json 仍是 local Mock 用户的唯一数据源",
+        "不修改认证实现、历史迁移或生产配置"
+      ],
+      "input_facts": [
+        "四个 Mock 用户复用同一个 password_hash",
+        "当前哈希经 BCryptPasswordEncoder.matches(password, hash) 返回 false",
+        "docs/integration/mock-data-contract.md 明确固定测试密码为 password"
+      ],
+      "write_scope": [
+        "mock/mock-data.json",
+        ".ai-control/requirements/req-20260818-026-project-context/execution-T5.json",
+        ".ai-control/requirements/req-20260818-026-project-context/observation-T5.json"
+      ],
+      "invariants": [
+        "哈希只用于 local Mock 数据，不写入生产配置或提交明文密码字段",
+        "四个 Mock 用户除 password_hash 外的字段保持不变",
+        "不改变项目 RBAC、成员角色、租户隔离和错误语义"
+      ],
+      "interface_contracts": [
+        "mock.product、mock.release、mock.engineer、mock.qa 使用 password 可通过 /api/auth/login",
+        "MockDataInitializer 重启同步新哈希且不产生重复用户"
+      ],
+      "non_goals": [
+        "不更换生产管理员密码或 BOOTSTRAP_ADMIN_PASSWORD_HASH",
+        "不扩展认证 API、密码策略或 Mock 用户集合",
+        "不修改 T1-T3 产品实现"
+      ],
+      "action_bounds": [
+        "生成一个可由当前 Spring Security BCryptPasswordEncoder 验证的 password 哈希",
+        "只替换四个 Mock 用户的相同 password_hash",
+        "重启本地后端传播 Mock 同步并运行直接哈希与真实登录检查"
+      ],
+      "acceptance_checks": [
+        "BCryptPasswordEncoder.matches(password, 新哈希) 为 true",
+        "四个 Mock 账号 POST /api/auth/login 均返回 HTTP 200",
+        "Mock 同步后四个用户仍各一条且非密码字段未变化",
+        "mvn test、治理、scope 和 git diff --check 无回归"
+      ],
+      "evidence_required": [
+        "只包含四处 password_hash 替换的实际 diff",
+        "直接 BCrypt、四账号登录、Mock 数据行数与回归命令结果",
+        "F-0002 原失败检查与纠正后结果对照"
+      ],
+      "rollback": "恢复 mock/mock-data.json 中 F-0002 纠正前哈希；隔离数据库可由原 Mock 内容重新同步。",
+      "stop_conditions": [
+        "新哈希仍不能由当前 BCryptPasswordEncoder 匹配",
+        "纠正需要修改认证实现、依赖或历史迁移",
+        "Mock 同步改变四个用户的非密码字段"
+      ],
+      "escalation_conditions": [
+        "固定密码契约需要产品或安全 Owner 重新决策",
+        "修复必须超出 codex-task-scope.yaml writable_paths",
+        "真实登录失败被证明还有独立因果来源"
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "在完整组合环境中独立采样迁移、权限、运行与真实浏览器行为，为 P1-P3 生成收敛证据。",
+      "requirement_ids": ["P1", "P2", "P3"],
+      "prerequisites": [
+        "T1-T3 均已完成局部检查并等待组合验收",
+        "T5 已纠正 F-0002 且四个 Mock 项目角色可取得真实 JWT",
+        "非生产 MySQL、后端、前端和浏览器工具可用",
+        "工作树范围检查和未关联用户修改核对完成"
+      ],
+      "input_facts": [
+        "high-assurance 至少需要三次采样和两类独立传感器",
+        "构建成功不等于运行或浏览器通过",
+        "迁移需通过首次启动和重复启动验证",
+        "验收必须覆盖 OWNER/ADMIN/MEMBER/VIEWER/非成员/无 RBAC/跨租户"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260818-026-project-context/execution-T4.json",
+        ".ai-control/requirements/req-20260818-026-project-context/observation-T4.json"
+      ],
+      "invariants": [
+        "T4 不在未重新规划时修改产品代码",
+        "只使用本地虚构数据且不访问生产",
+        "所有失败如实记录为原子反馈，不以重试隐藏",
+        "浏览器证据按角色、路由、视口、主题、接口和控制台分别记录"
+      ],
+      "interface_contracts": [
+        "V37、/api/projects、ProjectContextPort 和 Web Store 组合行为与 T1-T3 契约一致",
+        "健康接口和 SPA 静态资源可达后才开始浏览器采样",
+        "无 RBAC、非成员、跨租户和不存在项目均不得泄露数据"
+      ],
+      "non_goals": [
+        "不连接生产或使用真实个人/项目数据",
+        "不在验收阶段顺手重构或扩展功能",
+        "不把 npm audit 和大 chunk 既有告警误判为本需求失败"
+      ],
+      "action_bounds": [
+        "运行全量 Maven、前端构建、治理、scope、Flyway 与 diff 检查",
+        "启动本地 MySQL/后端/前端两次验证迁移幂等和健康",
+        "执行 API 权限矩阵与数据库不变量探针",
+        "在四个视口和明暗主题执行项目管理/切换器用户路径",
+        "发现产品偏差时停止 T4 并进入 observing/correcting，不直接扩大修改范围"
+      ],
+      "acceptance_checks": [
+        "mvn test、npm --prefix web run build、check-all-governance、check-codex-scope、check-flyway-migrations 和 git diff --check 均成功",
+        "首次和第二次启动均健康，V37 只应用一次且数据保留",
+        "API 权限矩阵覆盖七类主体并符合三层授权与不泄露语义",
+        "/projects 与 ProjectContextSwitcher 在 1440x900、375x812、390x844、430x932 明暗主题无重叠/溢出/控制台错误",
+        "加载、空、失败、无权限、提交中、只读、未保存与过期状态均有可观察结果"
+      ],
+      "evidence_required": [
+        "execution-T4.json 中所有命令、退出码、运行 URL、数据集和环境限制",
+        "observation-T4.json 中 API/数据库/浏览器原始测量和截图路径",
+        "三次 high-assurance 采样及传感器独立性说明",
+        "任何 P0-P3 偏差、噪声、盲区和残余风险"
+      ],
+      "rollback": "停止本地服务并回退相关应用提交；本地环境可重建，已应用/生产环境保留 V37 数据且通过禁用菜单回退入口。",
+      "stop_conditions": [
+        "本地环境不可用导致 S2/S5 无法采样",
+        "出现 P0/P1 安全、租户泄露或迁移破坏偏差",
+        "发现范围外文件修改或并行迁移/契约冲突"
+      ],
+      "escalation_conditions": [
+        "需要生产环境或真实数据才能验证",
+        "纠正必须超出当前 writable_paths 或改变需求基准",
+        "V37 已在其他环境以冲突内容应用"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "T2 消费 T1 的 UserDirectory、ProjectContextPort 和 Maven 模块边界"},
+    {"from": "T2", "to": "T3", "reason": "T3 消费稳定的项目 REST、错误和权限契约"},
+    {"from": "T3", "to": "T5", "reason": "T5 纠正 T4 观测到的真实登录前提偏差，且不改变 T1-T3 契约"},
+    {"from": "T5", "to": "T4", "reason": "T4 七类主体矩阵依赖四个 Mock 项目角色取得真实 JWT"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"], ["T5"], ["T4"]],
+  "integration_points": [
+    {
+      "after_tasks": ["T1"],
+      "checks": [
+        "编译 ccb-project 及上游模块",
+        "检查 modules.yaml/MODULES/CODEOWNERS/契约一致性",
+        "scope assignment 切换至 business/project 后复验"
+      ]
+    },
+    {
+      "after_tasks": ["T2"],
+      "checks": [
+        "复验 V37 与 RBAC ID",
+        "运行 project/system/infrastructure 测试",
+        "审查 REST、ProjectContextPort、数据库和 Mock 契约组合"
+      ]
+    },
+    {
+      "after_tasks": ["T3"],
+      "checks": [
+        "前端构建与 REST/TypeScript 字段对账",
+        "AppLayout、静态路由与 Store 初始化组合检查"
+      ]
+    },
+    {
+      "after_tasks": ["T5"],
+      "checks": [
+        "直接 BCrypt 校验与四账号真实登录",
+        "Mock 同步行数、非密码字段和范围回归"
+      ]
+    },
+    {
+      "after_tasks": ["T1", "T2", "T3", "T5", "T4"],
+      "checks": [
+        "全量自动化、运行、权限矩阵、数据库与浏览器验收",
+        "scope、治理和工作树扰动复查"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1 公共契约采样",
+      "trigger": "T1 返回执行报告且局部检查完成",
+      "observer": "独立观察阶段",
+      "sensors": ["S3", "S6"],
+      "requirement_ids": ["P2"]
+    },
+    {
+      "label": "T2 权限与持久化采样",
+      "trigger": "T2 返回执行报告且迁移/服务测试完成",
+      "observer": "独立观察阶段",
+      "sensors": ["S1", "S4", "S7"],
+      "requirement_ids": ["P1", "P2", "P3"]
+    },
+    {
+      "label": "T3 前端契约采样",
+      "trigger": "T3 返回执行报告且前端构建完成",
+      "observer": "独立观察阶段",
+      "sensors": ["S3", "S5"],
+      "requirement_ids": ["P1", "P2", "P3"]
+    },
+    {
+      "label": "T5 Mock 固定密码纠正采样",
+      "trigger": "新哈希已同步且四账号真实登录完成",
+      "observer": "独立观察阶段",
+      "sensors": ["S3", "S6"],
+      "requirement_ids": ["P1"]
+    },
+    {
+      "label": "T4 组合收敛采样",
+      "trigger": "本地迁移、服务、API 和浏览器路径全部可采样",
+      "observer": "独立观察阶段",
+      "sensors": ["S2", "S3", "S4", "S5", "S7"],
+      "requirement_ids": ["P1", "P2", "P3"]
+    }
+  ],
+  "coverage": [
+    {"requirement_id": "P1", "task_ids": ["T2", "T3", "T5", "T4"], "sensor_ids": ["S1", "S2", "S3", "S5", "S6", "S7"]},
+    {"requirement_id": "P2", "task_ids": ["T1", "T2", "T3", "T4"], "sensor_ids": ["S3", "S4", "S5", "S6", "S7"]},
+    {"requirement_id": "P3", "task_ids": ["T2", "T3", "T4"], "sensor_ids": ["S2", "S4", "S5"]}
+  ],
+  "plan_status": "ready"
+}

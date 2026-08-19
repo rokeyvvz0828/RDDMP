@@ -1,0 +1,33 @@
+{
+  "sample_label": "T3 手机加载纠正复验",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "P2",
+      "sensor": "S5 Chromium 原失败检查",
+      "result": "pass",
+      "raw_evidence": "375x812 下 GET /api/projects 延迟 900ms，project-mobile-loading 可见；loadingVisible=true；响应后2张卡片且overflow=0",
+      "limitation": ["虚构响应仅测前端加载状态"]
+    },
+    {
+      "requirement_id": "P1",
+      "sensor": "S3 build 与 S5 视口回归",
+      "result": "pass",
+      "raw_evidence": "前端构建退出码0；1440、375、390、430正常数据、未保存确认、成员入口与选择持久化保持通过",
+      "limitation": ["真实后端组合由T4覆盖"]
+    },
+    {
+      "requirement_id": "P3",
+      "sensor": "S5 归档只读回归",
+      "result": "pass",
+      "raw_evidence": "归档成员弹层仍显示只读提示且无成员添加控件",
+      "limitation": ["服务端拒绝由T4覆盖"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": ["真实MySQL/JWT组合"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

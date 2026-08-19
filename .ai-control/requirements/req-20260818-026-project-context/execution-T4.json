@@ -1,0 +1,56 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "rddmp-req026-mysql/ccb_platform", "purpose": "在隔离 MySQL 8.4 中完成历史前提引导、V24-V37 迁移、重复启动、权限矩阵和数据库不变量探针"},
+    {"path_or_resource": "http://127.0.0.1:8080", "purpose": "运行本地后端健康检查、真实认证和项目 REST 权限矩阵"},
+    {"path_or_resource": "http://127.0.0.1:5174", "purpose": "运行真实后端与 Vite 组合浏览器验收"},
+    {"path_or_resource": "/tmp/req026-t4-browser", "purpose": "保存四视口、双主题和异常状态的非生产浏览器截图"}
+  ],
+  "requirements_addressed": ["P1", "P2", "P3"],
+  "commands": [
+    {"command": "mvn test", "exit_code": 0, "salient_output": "纠正后最终产品状态下 10 个 Reactor 模块全部成功；project 模块 11 项测试通过"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc 与 Vite 生产构建通过；2337 个模块转换完成"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "12 个模块、开发入口、AI control、模块边界和 35 个迁移检查通过"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-026-project-context/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 0, "salient_output": "最终 61 个变更文件均位于 REQ-026 授权范围"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "35 个 Flyway 迁移静态检查通过"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "未发现空白或补丁格式错误"},
+    {"command": "SPRING_FLYWAY_TARGET=23 FLOWABLE_DATABASE_SCHEMA_UPDATE=true MOCK_DATA_ENABLED=false mvn -f server/src/platform/boot/pom.xml spring-boot:run -Dspring-boot.run.profiles=local", "exit_code": 1, "salient_output": "Liquibase 创建 FLW_EV_DATABASECHANGELOG/LOCK 后因 V20 已存在 FLW_EVENT_DEPLOYMENT 退出；该历史引导扰动未修改迁移"},
+    {"command": "MOCK_DATA_ENABLED=true mvn -f server/src/platform/boot/pom.xml spring-boot:run -Dspring-boot.run.profiles=local", "exit_code": 0, "salient_output": "首次正常启动应用 V24-V37，健康接口 UP，Mock 数据同步成功"},
+    {"command": "MOCK_DATA_ENABLED=true mvn -f server/src/platform/boot/pom.xml spring-boot:run -Dspring-boot.run.profiles=local", "exit_code": 0, "salient_output": "第二次正常启动报告 schema v37 已最新，无迁移重复且数据保留"},
+    {"command": "真实 JWT 项目 API 权限与异常矩阵", "exit_code": 0, "salient_output": "39 项检查、0 失败；覆盖 OWNER、ADMIN、MEMBER、VIEWER、非成员、无 RBAC、跨租户、重复项目/成员、非法 OWNER、乐观锁、负责人转移、归档/恢复和不披露语义"},
+    {"command": "MySQL 项目、成员、审计和 V37 探针", "exit_code": 0, "salient_output": "原始项目与运行时项目各恰有 1 个 OWNER；8 条审计记录覆盖 6 个不同 trace ID；V37 成功记录恰好 1 条"},
+    {"command": "NODE_PATH=<bundled-node-modules> <bundled-node> /tmp/req026-t4-browser.cjs", "exit_code": 0, "salient_output": "13 个真实 Chromium 场景、0 个断言失败；桌面和三种手机视口、明暗主题及异常状态通过"},
+    {"command": "curl http://127.0.0.1:8080/actuator/health && curl http://127.0.0.1:5174/projects", "exit_code": 0, "salient_output": "最终采样时后端 status=UP，Vite /projects HTTP 200"}
+  ],
+  "local_checks": [
+    {"check": "完整自动化、构建与治理", "result": "pass", "evidence": "Maven、前端构建、治理、scope、Flyway 静态检查和 diff 检查均退出码 0", "limitations": ["Vite 报告既有大 chunk 和第三方 PURE 注释告警，不影响构建或本需求行为"]},
+    {"check": "迁移首次与重复启动", "result": "pass", "evidence": "首次到 v37，第二次 no migration necessary；V37 成功记录恰好 1 条", "limitations": ["历史 V24 的隔离空库前提需先补齐 Flowable Liquibase 日志表"]},
+    {"check": "V37 与项目数据不变量", "result": "pass", "evidence": "项目三表、唯一 OWNER 生成列/索引和角色/状态/CHECK 约束存在；两个项目各 1 个 OWNER", "limitations": []},
+    {"check": "真实 JWT 权限、状态与不披露矩阵", "result": "pass", "evidence": "39 项检查零失败；平台 RBAC、项目成员范围和实体状态交集符合 P1-P3", "limitations": ["仅使用本地虚构租户、用户和项目数据"]},
+    {"check": "项目审计", "result": "pass", "evidence": "创建、更新、成员增删、负责人转移、归档和恢复均有审计；8 条记录含 6 个不同 trace ID", "limitations": []},
+    {"check": "真实浏览器组合", "result": "pass", "evidence": "13 场景无断言失败；四视口双主题均无水平溢出/头部重叠，真实登录、成员弹窗、未保存、持久化、加载/空/失败/无权限状态通过", "limitations": ["使用本地 Chromium；无生产环境或真实数据采样"]}
+  ],
+  "diff_summary": [
+    "T4 未修改产品代码，只更新当前任务前缀内的执行与观测证据",
+    "V37 首次和重复启动、39 项真实 JWT 矩阵、数据库审计和 13 场景浏览器验收完成",
+    "F-0002 纠正后的四角色真实认证和完整组合路径已复验"
+  ],
+  "invariants_checked": [
+    {"invariant": "T4 不在未重新规划时修改产品代码", "result": "pass", "evidence": "T4 最终动作仅涉及隔离运行资源、临时截图和当前前缀账本证据"},
+    {"invariant": "只使用本地虚构数据且不访问生产", "result": "pass", "evidence": "MySQL 容器为 rddmp-req026-mysql，接口均为 127.0.0.1，浏览器数据为 Mock/req026 测试主体"},
+    {"invariant": "V37 只追加且重复启动幂等", "result": "pass", "evidence": "历史迁移无修改，flyway_schema_history 中 V37 成功记录数量为 1"},
+    {"invariant": "归档只读、恢复按原成员关系生效", "result": "pass", "evidence": "真实 JWT 矩阵验证归档写拒绝、读取保留及恢复后写范围恢复"},
+    {"invariant": "跨租户、非成员、无 RBAC 和不存在对象不泄露", "result": "pass", "evidence": "真实 API 状态码与消息一致性矩阵及浏览器空态/禁止态通过"}
+  ],
+  "disturbances": [
+    {"event": "V24 假定 Flowable Liquibase 日志表已存在，但 V18-V20 只创建业务表", "impact": "隔离空库需要一次有限引导；仓库历史迁移未修改"},
+    {"event": "开启 Flowable 自动建表与 V20 手工表冲突", "impact": "引导进程退出，但已创建 V24 所需两张日志表；关闭自动建表后两次正常启动成功"},
+    {"event": "浏览器脚本首次复跑未注入 Playwright 模块路径", "impact": "分类为传感器环境错误；加载桌面工作区依赖后同一脚本 13 场景零失败"}
+  ],
+  "assumptions_falsified": [
+    "仓库 Mock 用户初始哈希与固定测试密码 password 匹配；该假设已通过 T5 纠正并关闭 F-0002"
+  ],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}
