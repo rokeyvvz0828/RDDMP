@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-029-asset-transfer-and-ui",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-project-asset-library-design.md",
+  "objective": "Deliver normal and migration-package transfer workflows plus one responsive asset-management interface covering every confirmed operation and state.",
+  "users": ["Project users managing assets on desktop", "Project users working from mobile viewports", "Reviewers processing assigned asset reviews", "Operators observing transfer jobs"],
+  "requirements": [
+    {
+      "id": "U1",
+      "statement": "Support normal single/batch upload, single download and batch ZIP export with observable per-file progress and partial failure.",
+      "acceptance": ["A batch of up to 1000 files runs asynchronously", "Users can retry failed files without repeating successes", "Large-file transfer remains streaming"],
+      "priority": "must",
+      "source": "User-confirmed normal import/export semantics",
+      "counterexample": ["Treating import as download", "Hiding an entire batch result after one item fails"]
+    },
+    {
+      "id": "U2",
+      "statement": "Export and import ZIP64 migration packages with directories, files, controlled tags, append-only remarks and an integrity manifest.",
+      "acceptance": ["Export excludes favorites, shares, members, approvals and audit", "Import re-scans every file and creates drafts", "UUID conflicts and per-file failures appear in a result report"],
+      "priority": "must",
+      "source": "User-confirmed combined normal and migration-package option",
+      "counterexample": ["Trusting imported approval or permission state", "Allowing path traversal or unbounded archive expansion"]
+    },
+    {
+      "id": "U3",
+      "statement": "Provide a unified desktop asset workspace with project context, lazy directory tree, paginated table, details and batch commands.",
+      "acceptance": ["All requested asset operations are reachable", "Upload and transfer progress remains visible", "Loading, empty, error, permission and partial-success states are distinct"],
+      "priority": "must",
+      "source": "Original unified-interface request and confirmed frontend design",
+      "counterexample": ["A marketing landing page instead of the tool", "A page that requires frontend-only filtering"]
+    },
+    {
+      "id": "U4",
+      "statement": "Provide equivalent mobile workflows without compressing the desktop table or requiring drag and drop.",
+      "acceptance": ["375x812, 390x844 and 430x932 have no page-level horizontal overflow", "Directory, selection, move, upload and dangerous actions remain reachable", "Light and dark themes are readable"],
+      "priority": "must",
+      "source": "User-confirmed responsive design and RDDMP H5 rules",
+      "counterexample": ["Shrinking desktop table text to fit mobile", "Making drag-and-drop the only upload or move mechanism"]
+    }
+  ],
+  "invariants": ["Frontend project selection is not an authorization decision", "Migration import never inherits source permissions or approval", "Every batch reports partial results", "No page-level horizontal overflow on required mobile viewports", "Public UI components keep existing behavior"],
+  "constraints": ["Vue 3 and existing Element Plus patterns", "Reuse delivery-showcase and shared UI", "Maximum 88vh mobile sheets", "Maximum batch 1000", "Streaming ZIP64", "Real-browser acceptance"],
+  "non_goals": ["Database backup", "Cross-tenant migration", "External object-store import", "Full-text search", "OCR", "Online editing", "Public component redesign"],
+  "selected_approach": {
+    "name": "Asynchronous transfer jobs plus dedicated responsive data-migration frontend module",
+    "reason": "Large batches and ZIP64 need persistent progress, while the operational UI must preserve desktop density and mobile reachability.",
+    "alternatives": [
+      {"name": "Synchronous request/response ZIP generation", "rejected_because": "Large packages would time out and lose partial-failure observability."},
+      {"name": "One responsive desktop table", "rejected_because": "It would create mobile overflow and inaccessible actions."}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["Transfer job orchestration", "ZIP64 manifest validation", "Import conflict reporting", "Data-migration frontend module", "Desktop/mobile acceptance"], "outside": ["Project persistence", "Object storage internals", "Asset core rules", "Workflow engine internals"]},
+    "components": [
+      {"name": "Transfer job service", "responsibility": "Run normal batch and migration-package operations with durable progress", "depends_on": ["asset service", "attachment contract", "job repository"]},
+      {"name": "Manifest validator", "responsibility": "Validate paths, sizes, compression ratios and hashes before import", "depends_on": ["streaming ZIP reader"]},
+      {"name": "Asset workspace", "responsibility": "Coordinate project, directory, filters, table/cards, details and commands", "depends_on": ["project context store", "asset APIs", "shared UI"]},
+      {"name": "Transfer queue", "responsibility": "Display upload/import/export progress and retries without shifting layout", "depends_on": ["attachment upload API", "transfer job API"]}
+    ],
+    "interfaces": [
+      {"name": "Transfer job API", "producer": "ccb-data-migration", "consumers": ["frontend"], "contract": "Create, inspect, retry and retrieve batch or migration-package results"},
+      {"name": "Asset frontend APIs", "producer": "backend modules", "consumers": ["web/src/modules/data-migration"], "contract": "Typed project, attachment, asset, review and transfer operations"}
+    ],
+    "data_flows": [
+      {"input": "Authorized migration-package import", "transitions": ["upload", "archive safety validation", "manifest and hash validation", "conflict preview", "per-file rescan", "draft asset creation", "result report"], "output": "Imported drafts plus UUID mapping and failures"},
+      {"input": "Project and directory selection", "transitions": ["server query", "table or card rendering", "command authorization", "persistent progress feedback"], "output": "Updated workspace with preserved context"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Archive path traversal, excessive expansion or invalid manifest", "behavior": "Reject before creating assets", "recovery": "Correct the package and start a new import"},
+    {"condition": "Individual import/export item fails", "behavior": "Continue independent items and record the exact failure", "recovery": "Retry failed items from the result report"},
+    {"condition": "Workspace API fails", "behavior": "Preserve project, directory and filter context and show a retry action", "recovery": "Retry the affected region without resetting the page"},
+    {"condition": "Mobile action cannot use drag and drop", "behavior": "Expose file and directory selectors", "recovery": "Complete the same task through touch-accessible controls"}
+  ],
+  "quality_attributes": {
+    "security": ["Archive traversal and zip-bomb protection", "Re-scan imported files", "Server-side permission checks", "No imported credentials or approval state"],
+    "performance": ["Streaming ZIP64", "Durable asynchronous jobs", "Lazy directories", "Server pagination", "Stable upload queue dimensions"],
+    "compatibility": ["Reuse shared UI and Project Context Store", "No shared-component behavior changes"],
+    "operations": ["Job progress and failure metrics", "Retryable transfer states", "Preserve results on application rollback"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["U1", "U2"], "signal": "Transfer outputs, manifest integrity, conflict mapping and per-file results", "method": "ZIP fixtures, security tests, API integration and large-stream tests"},
+    {"requirement_ids": ["U3", "U4"], "signal": "Rendered states and reachable commands at required themes and viewports", "method": "Frontend build plus real-browser desktop/mobile acceptance with network and console inspection"}
+  ],
+  "assumptions": [
+    {"text": "A card list is the accepted mobile representation for assets", "basis": "User confirmed the responsive interface design", "falsifier": "A later approved design requires a different mobile comparison model"}
+  ],
+  "unknowns": [
+    {"question": "Which named roles and synthetic fixture package will final browser acceptance use?", "impact": "Must be fixed in the implementation scope and acceptance plan", "owner": "data-migration and test Owners", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "Support both normal transfers and migration packages", "reason": "They solve distinct daily and migration workflows", "source": "User confirmation"},
+    {"id": "D2", "decision": "Use separate desktop table and mobile card compositions", "reason": "Preserves operational density without mobile overflow", "source": "User confirmation"},
+    {"id": "D3", "decision": "Limit new styling to asset-specific directory, file-cell and upload-queue surfaces", "reason": "Keeps the feature within RDDMP shared UI and theme contracts", "source": "Repository governance and user-confirmed design"}
+  ],
+  "risks": [
+    {"risk": "Large archives consume unbounded CPU, disk or memory", "impact": "Service degradation", "mitigation": "Streaming, entry/count/ratio/depth limits, quotas and asynchronous execution"},
+    {"risk": "Mobile parity is claimed from build output only", "impact": "Unreachable operations and overflow", "mitigation": "Mandatory real-browser acceptance at three mobile viewports and both themes"}
+  ],
+  "approval": {"status": "approved", "evidence": "User confirmed all seven design sections and selected the dedicated-module approach.", "confirmed_at": "2026-08-18T20:15:50+08:00"}
+}

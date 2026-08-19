@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-028-data-migration-asset-library",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-project-asset-library-design.md",
+  "objective": "Provide a project-scoped data-migration asset domain for immutable files, directories, metadata collaboration, approval, controlled external sharing and a permanent recycle bin.",
+  "users": ["Project owners and administrators", "Project members", "Read-only project members", "Workflow reviewers", "Security administrators", "External share recipients"],
+  "requirements": [
+    {
+      "id": "L1",
+      "statement": "Create immutable-content assets with system UUIDs and server-derived file metadata after attachment scanning succeeds.",
+      "acceptance": ["File number is a generated UUID", "Name, size, type, MD5, SHA-256, uploader and upload time come from trusted attachment/authentication data", "Binary replacement is impossible through metadata update APIs"],
+      "priority": "must",
+      "source": "Original user request and confirmed immutable-content decision",
+      "counterexample": ["Accepting uploader identity or hash values from the browser", "Replacing content while retaining a file UUID"]
+    },
+    {
+      "id": "L2",
+      "statement": "Query assets by project, UUID, name, directory, tag, review state, uploader and time with project scope and server pagination.",
+      "acceptance": ["A 100,000-file project first page meets p95 at or below 800ms in the controlled benchmark", "Cross-project and cross-tenant records are not returned"],
+      "priority": "must",
+      "source": "Original query requirement and confirmed scale",
+      "counterexample": ["Loading all project files into browser memory", "Filtering only on the frontend"]
+    },
+    {
+      "id": "L3",
+      "statement": "Support project directories, controlled tags, append-only remarks, per-user favorites and batch operations with explicit partial results.",
+      "acceptance": ["Directory cycles and duplicate sibling names are rejected", "Batch tag, remark and favorite actions report per-item failures", "Remarks preserve author and time"],
+      "priority": "must",
+      "source": "Original user request and confirmed collaboration decisions",
+      "counterexample": ["Overwriting a single shared remark field", "Accepting arbitrary free-form project tags"]
+    },
+    {
+      "id": "L4",
+      "statement": "Use explicit workflow approval and freeze metadata while review is pending while keeping every review state visible to project members.",
+      "acceptance": ["Draft can be submitted and withdrawn", "Pending metadata writes conflict", "Approval and rejection history is visible and audited"],
+      "priority": "must",
+      "source": "User-confirmed review decisions",
+      "counterexample": ["Automatically approving uploaded files", "Changing tags or directory during pending review"]
+    },
+    {
+      "id": "L5",
+      "statement": "Provide revocable, password-protected external links with a seven-day maximum, access limits and separate preview/download grants.",
+      "acceptance": ["Only token hashes and BCrypt password hashes are stored", "Archive, recycle, quarantine or explicit revoke invalidates access", "Attempts and successful accesses are rate-limited and audited"],
+      "priority": "must",
+      "source": "User-confirmed strong external-share policy",
+      "counterexample": ["Permanent public URLs", "A share bypasses scan or asset state checks"]
+    },
+    {
+      "id": "L6",
+      "statement": "Move deleted assets into a permanent recycle bin with controlled restore and physical purge.",
+      "acceptance": ["Delete revokes shares and preserves recoverable metadata", "Restore reactivates valid relations", "Purge removes content and business relations but keeps immutable audit"],
+      "priority": "must",
+      "source": "User-confirmed permanent recycle-bin decision",
+      "counterexample": ["Automatic retention expiry", "Physical deletion on the normal delete action"]
+    }
+  ],
+  "invariants": ["Platform RBAC, project role and asset state must all allow an operation", "Asset content is immutable", "Project and attachment private tables are not read directly", "Archived projects are read-only", "Recycle and quarantine invalidate all shares"],
+  "constraints": ["Depends on approved project, attachment and workflow contracts", "Server-side pagination", "Maximum batch size 1000", "Append-only migrations", "Unified ApiResponse and trace IDs"],
+  "non_goals": ["Full-text search", "OCR", "Online editing", "Binary versioning", "Migration-package transfer", "Cross-project storage deduplication", "Permanent public links"],
+  "selected_approach": {
+    "name": "Dedicated ccb-data-migration business module consuming platform contracts",
+    "reason": "Asset collaboration and lifecycle are data-migration business rules, while project, object and workflow ownership stay reusable and independent.",
+    "alternatives": [
+      {"name": "Put all rules in ccb-attachment", "rejected_because": "Business directories, tags and reviews would pollute the platform layer."},
+      {"name": "Implement project and storage privately", "rejected_because": "It duplicates authoritative data and security-critical infrastructure."}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["Asset metadata", "Directories", "Tags", "Remarks", "Favorites", "Workflow binding", "External shares", "Recycle bin"], "outside": ["Project private persistence", "MinIO object keys", "ClamAV implementation", "Workflow engine internals", "Transfer UI"]},
+    "components": [
+      {"name": "Asset application service", "responsibility": "Coordinate asset lifecycle and project/attachment checks", "depends_on": ["project contract", "attachment contract", "asset repositories"]},
+      {"name": "Collaboration service", "responsibility": "Manage tags, remarks and favorites", "depends_on": ["project contract", "asset repositories"]},
+      {"name": "Review gateway", "responsibility": "Submit and reconcile workflow approval without reading workflow tables", "depends_on": ["workflow contract"]},
+      {"name": "Share gateway", "responsibility": "Issue and validate strongly constrained external grants", "depends_on": ["asset application service", "attachment access contract", "rate limiter"]}
+    ],
+    "interfaces": [
+      {"name": "Asset REST API", "producer": "ccb-data-migration", "consumers": ["frontend"], "contract": "Scoped query, metadata, directory, collaboration, review and recycle operations"},
+      {"name": "External share API", "producer": "ccb-data-migration", "consumers": ["external recipients"], "contract": "Token and password protected preview/download with atomic limits"},
+      {"name": "Workflow lifecycle consumer", "producer": "ccb-workflow", "consumers": ["ccb-data-migration"], "contract": "Idempotent review outcome events"}
+    ],
+    "data_flows": [
+      {"input": "READY attachment plus project/directory context", "transitions": ["project access check", "duplicate signal", "UUID generation", "DRAFT asset persistence", "audit"], "output": "Immutable-content asset"},
+      {"input": "External token and extraction code", "transitions": ["hash lookup", "rate limit", "BCrypt check", "expiry/count/state check", "atomic count", "attachment access"], "output": "Allowed preview/download or non-disclosing rejection"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Metadata version conflict or pending review", "behavior": "Return conflict and preserve stored state", "recovery": "Reload or withdraw review before editing"},
+    {"condition": "Batch operation partially fails", "behavior": "Return success/failure counts and per-item errors", "recovery": "Retry only failed items"},
+    {"condition": "External-link brute force", "behavior": "Rate-limit and temporarily lock the token", "recovery": "Wait for the lock period or revoke and issue a new share"},
+    {"condition": "Physical purge cannot delete the object", "behavior": "Retain a retryable purge state and deny content access", "recovery": "Compensation retries while audit remains intact"}
+  ],
+  "quality_attributes": {
+    "security": ["Three-layer authorization", "Token and password hashing", "Atomic access counts", "Non-disclosing denials", "Immutable audit"],
+    "performance": ["Indexed tenant/project/file queries", "Lazy directory tree", "Asynchronous batches up to 1000 items"],
+    "compatibility": ["Consumes versioned public contracts", "Does not alter temporary preview behavior"],
+    "operations": ["Share invalidation monitoring", "Retryable purge", "Workflow event idempotency", "Permanent recycle storage visibility"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["L1", "L2"], "signal": "Trusted asset metadata, scoped query results and benchmark latency", "method": "API integration, permission and controlled dataset performance tests"},
+    {"requirement_ids": ["L3", "L4"], "signal": "Directory/collaboration state and review transitions", "method": "Domain, concurrency and workflow contract tests"},
+    {"requirement_ids": ["L5"], "signal": "External link grants and denials", "method": "Expiry, password, rate-limit, concurrent-count and state-invalidation security tests"},
+    {"requirement_ids": ["L6"], "signal": "Recycle, restore and purge state plus audit", "method": "Lifecycle integration and compensation tests"}
+  ],
+  "assumptions": [
+    {"text": "Project members may see all review states", "basis": "User explicitly selected project-wide visibility", "falsifier": "A later approved privacy requirement restricts draft visibility"}
+  ],
+  "unknowns": [
+    {"question": "Which workflow code and reviewer-selection policy will the Owner approve for asset review?", "impact": "Must be fixed in the task scope before implementation", "owner": "data-migration and workflow Owners", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "Keep file content immutable and create a new UUID for changed content", "reason": "Maintains audit integrity without a version subsystem", "source": "User confirmation"},
+    {"id": "D2", "decision": "Keep recycle-bin entries permanently until explicit purge", "reason": "User rejected automatic retention", "source": "User confirmation"},
+    {"id": "D3", "decision": "Allow duplicate content after warning", "reason": "The same bytes can be a valid independent asset in another directory", "source": "User confirmation"}
+  ],
+  "risks": [
+    {"risk": "Anonymous sharing becomes an authorization bypass", "impact": "Asset disclosure", "mitigation": "Short validity, mandatory password, explicit grants, atomic limits, rate limiting, revocation and audit"},
+    {"risk": "Permanent recycle bin creates unbounded storage", "impact": "Capacity exhaustion", "mitigation": "Visible quotas, administrative purge permission and capacity monitoring without automatic deletion"}
+  ],
+  "approval": {"status": "approved", "evidence": "User confirmed all seven design sections and selected the dedicated-module approach.", "confirmed_at": "2026-08-18T20:15:50+08:00"}
+}

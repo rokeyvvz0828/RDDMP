@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-027-secure-persistent-attachment",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-project-asset-library-design.md",
+  "objective": "Provide a reusable platform capability for secure persistent files up to 5GB with resumable transfer, integrity checks, malware isolation, preview and ranged download.",
+  "users": ["Authenticated business users uploading files", "Business modules binding persistent attachments", "Security administrators handling quarantined files", "Operators monitoring storage, scanning and cleanup"],
+  "requirements": [
+    {
+      "id": "A1",
+      "statement": "Upload files up to 5GB through resumable multipart sessions with per-user concurrency and storage quota enforcement.",
+      "acceptance": ["Parts can be retried without restarting successful parts", "Expired or cancelled sessions clean unfinished parts idempotently", "A user cannot exceed 20 concurrent uploads"],
+      "priority": "must",
+      "source": "User-confirmed large-asset decision",
+      "counterexample": ["Buffering a complete 5GB file in application memory", "Trusting the client to declare a completed upload"]
+    },
+    {
+      "id": "A2",
+      "statement": "Compute server-side MD5 and SHA-256 and isolate every object until ClamAV reports it clean.",
+      "acceptance": ["Stored hashes match the completed object", "A test malware file enters quarantine", "Non-ready files cannot be previewed, downloaded or business-bound"],
+      "priority": "must",
+      "source": "User-confirmed integrity and ClamAV decisions",
+      "counterexample": ["Using multipart ETag as the file MD5", "Allowing scan failure to bypass quarantine"]
+    },
+    {
+      "id": "A3",
+      "statement": "Expose business-neutral attachment contracts for controlled preview, HTTP Range download and physical cleanup without leaking object keys.",
+      "acceptance": ["Business modules persist attachment IDs only", "Preview and download enforce tenant and access policy", "Object deletion failures remain retryable"],
+      "priority": "must",
+      "source": "User-confirmed module-boundary design",
+      "counterexample": ["A business page constructs MinIO or kkFileView URLs", "The platform attachment module imports a business implementation"]
+    }
+  ],
+  "invariants": ["MinIO buckets remain private", "Business modules never own object keys", "Only READY objects are accessible", "The platform module does not depend on data-migration implementation"],
+  "constraints": ["Maximum file size defaults to 5GB", "Twenty concurrent uploads per user", "Streaming IO", "Short-lived upload and access URLs", "Append-only Flyway migrations"],
+  "non_goals": ["Project ownership", "Asset directories", "Tags", "Remarks", "Favorites", "Workflow approval", "Anonymous sharing", "Migration packages", "Cross-tenant deduplication"],
+  "selected_approach": {
+    "name": "Dedicated ccb-attachment platform module",
+    "reason": "Storage, scanning and preview are reusable platform concerns while business ownership remains outside the platform.",
+    "alternatives": [
+      {"name": "Implement storage inside data migration", "rejected_because": "It duplicates security-critical infrastructure for every business module."},
+      {"name": "Extend temporary file preview directly", "rejected_because": "The current preview service deliberately has no persistent metadata or long-term lifecycle."}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["Multipart sessions", "Persistent object metadata", "Hashing", "ClamAV", "Preview and ranged download", "Object cleanup", "Access-policy SPI"], "outside": ["Project rules", "Asset workflow", "External shares", "Business recycle bin"]},
+    "components": [
+      {"name": "Upload session service", "responsibility": "Authorize, sign and finalize multipart uploads", "depends_on": ["MinIO storage", "security context", "quota policy"]},
+      {"name": "File inspection pipeline", "responsibility": "Stream hashes, inspect type and invoke ClamAV", "depends_on": ["MinIO storage", "ClamAV"]},
+      {"name": "Attachment access gateway", "responsibility": "Authorize preview/download through registered business policies", "depends_on": ["access-policy SPI", "file-preview adapter", "MinIO storage"]}
+    ],
+    "interfaces": [
+      {"name": "Multipart upload API", "producer": "ccb-attachment", "consumers": ["frontend upload client"], "contract": "Create, sign, inspect, complete or cancel a scoped session"},
+      {"name": "Attachment Java API", "producer": "ccb-attachment", "consumers": ["business modules"], "contract": "Resolve READY attachment metadata and request controlled access or cleanup"},
+      {"name": "AttachmentAccessPolicy SPI", "producer": "ccb-attachment", "consumers": ["business policy implementations"], "contract": "Decide access for an opaque business binding without a platform-to-business dependency"}
+    ],
+    "data_flows": [
+      {"input": "Authorized upload request", "transitions": ["quota and concurrency check", "multipart transfer", "server-side hash", "type inspection", "ClamAV scan", "READY or quarantine"], "output": "Persistent attachment UUID and immutable technical metadata"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Part upload failure", "behavior": "Preserve successful parts and expose retry state", "recovery": "Retry the failed part before session expiry"},
+    {"condition": "ClamAV unavailable", "behavior": "Keep the object inaccessible in SCAN_FAILED", "recovery": "Retry scanning without re-uploading the object"},
+    {"condition": "Malware detected", "behavior": "Set QUARANTINED and deny all content access", "recovery": "A security administrator applies an audited quarantine action"},
+    {"condition": "Object cleanup failure", "behavior": "Retain metadata and a retryable deletion state", "recovery": "Background compensation retries with monitoring"}
+  ],
+  "quality_attributes": {
+    "security": ["Private bucket", "Short-lived signatures", "MIME and content inspection", "ClamAV quarantine", "Tenant and access-policy checks"],
+    "performance": ["Streaming 5GB transfers", "HTTP Range", "No full-file heap buffering", "Bounded concurrency"],
+    "compatibility": ["Preserve existing temporary preview behavior", "Expose versioned public DTOs"],
+    "operations": ["Session expiry cleanup", "Scan retry monitoring", "Storage quota metrics", "Retryable object deletion"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["A1"], "signal": "Multipart state and resulting object for success, pause, retry, cancel and expiry", "method": "MinIO integration tests and equivalent large-file streaming tests"},
+    {"requirement_ids": ["A2"], "signal": "Hash values and scan state", "method": "Hash fixtures, MIME spoofing tests and a synthetic antivirus test file"},
+    {"requirement_ids": ["A3"], "signal": "Authorized preview/range download and denied cross-tenant access", "method": "API, SPI contract and security integration tests"}
+  ],
+  "assumptions": [
+    {"text": "MinIO, ClamAV and kkFileView can run as controlled local or deployment services", "basis": "User selected the built-in scanning and existing preview approach", "falsifier": "The target deployment prohibits one of these services"}
+  ],
+  "unknowns": [
+    {"question": "Will this requirement supersede or amend the unimplemented attachment scope in REQ-20260814-022?", "impact": "Blocks ready status to prevent parallel platform attachment implementations", "owner": "platform Owner", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "Use resumable multipart upload for files up to 5GB", "reason": "Large migration assets cannot rely on a single Spring multipart request", "source": "User confirmation"},
+    {"id": "D2", "decision": "Require ClamAV before content access", "reason": "Preview and external delivery must not process unscanned files", "source": "User confirmation"}
+  ],
+  "risks": [
+    {"risk": "Large transfers and scanning exhaust application or storage resources", "impact": "Availability degradation", "mitigation": "Streaming IO, quotas, concurrency bounds, timeouts and observable asynchronous states"},
+    {"risk": "Overlap with REQ-20260814-022 creates two attachment contracts", "impact": "Incompatible platform APIs", "mitigation": "Owner must choose one merged contract before ready status"}
+  ],
+  "approval": {"status": "approved", "evidence": "User confirmed all seven design sections and selected the dedicated-module approach.", "confirmed_at": "2026-08-18T20:15:50+08:00"}
+}
