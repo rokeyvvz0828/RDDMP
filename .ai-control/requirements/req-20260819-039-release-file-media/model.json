@@ -1,0 +1,273 @@
+{
+  "baseline_revision": "baseline-revision-2",
+  "plant_boundary": {
+    "inside": [
+      "Release application create/update/detail/conflict/submit flow",
+      "Revisioned rel_application_delivery persistence",
+      "Additional rel_application_relation persistence",
+      "Workflow submission validation and canonical digest",
+      "Production baseline synchronization, result maintenance, current and history queries",
+      "Release analytics summary and drilldown",
+      "Release application, conflict, baseline, production and analytics Vue views",
+      "Append-only V46 migration for release-owned tables"
+    ],
+    "environment": [
+      "MySQL 8.4 local isolated schema and Flyway runtime",
+      "Existing workflow platform and application-detail approval integration",
+      "Existing RBAC/security principal and tenant context",
+      "Frontend mock project/subsystem/delivery-unit options",
+      "Vite browser runtime at 127.0.0.1:5173",
+      "Dirty rokey worktree with unrelated user changes"
+    ]
+  },
+  "state_variables": [
+    {"name": "delivery_item_type", "owner": "Release application domain", "valid_values": ["DELIVERY_UNIT", "FILE_MEDIA"]},
+    {"name": "delivery_item_key", "owner": "Release application domain", "valid_values": ["UNIT:<delivery-unit-code>", "FILE:<sha256-trimmed-path>"]},
+    {"name": "file_path", "owner": "Release application domain", "valid_values": ["null for DELIVERY_UNIT", "trimmed 1..1024 non-control-character text for FILE_MEDIA"]},
+    {"name": "artifact_version", "owner": "Release application domain", "valid_values": ["nonblank no-space text for DELIVERY_UNIT", "null for FILE_MEDIA"]},
+    {"name": "application_revision_active", "owner": "ReleaseApplicationStore", "valid_values": ["active revision", "historical revision"]},
+    {"name": "conflict_token", "owner": "ReleaseApplicationService", "valid_values": ["current canonical digest", "stale", "absent"]},
+    {"name": "application_characteristic", "owner": "Release scenario policy", "valid_values": ["STANDARD", "ADDITIONAL"]},
+    {"name": "production_candidate_active", "owner": "ReleaseProductionStore", "valid_values": [true, false]},
+    {"name": "production_result", "owner": "Release production domain", "valid_values": ["RELEASED", "SUCCEEDED", "FAILED", "NOT_DEPLOYED"]},
+    {"name": "current_production_record", "owner": "ReleaseProductionStore query", "valid_values": ["latest successful record per tenant/subsystem/item key", "none"]}
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "One or both selected content types with populated ordinary deliveries and/or paths",
+      "transitions": ["Vue form state", "write DTO split", "service unifies items", "revision persistence", "response splits items"],
+      "outputs": ["Saved and reopened delivery-only, file-only or mixed application"]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "Zero or more file path rows",
+      "transitions": ["Frontend immediate validation", "Server trim/length/control-character validation", "duplicate item-key rejection", "transactional write"],
+      "outputs": ["Distinct path rows or explicit zero-write validation error"]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "Path-only FileMediaInput",
+      "transitions": ["Server normalization", "fixed FILE metadata construction", "unified DeliverySnapshot persistence"],
+      "outputs": ["FILE/文件介质/FILE/null-version row under application subsystem"]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "Trimmed file path",
+      "transitions": ["SHA-256 item-key generation", "revision uniqueness", "same-window conflict query", "production candidate/current grouping"],
+      "outputs": ["Equal path identity and independent distinct paths"]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "Non-emergency submit containing an item key found in historical same-window applications",
+      "transitions": ["Conflict fact load", "released-path additional derivation", "canonical token", "user conflict action", "token revalidation", "workflow start"],
+      "outputs": ["Complete conflict report, correct ADDITIONAL characteristic and single-confirm submit"]
+    },
+    {
+      "requirement_id": "R6",
+      "input": "Approved application containing multiple unified items",
+      "transitions": ["Lifecycle consumer calls production service", "one entry per item key", "active candidate replacement", "per-entry result update and audit"],
+      "outputs": ["Independent baseline row and result for every path"]
+    },
+    {
+      "requirement_id": "R7",
+      "input": "SUCCEEDED file-media production entries",
+      "transitions": ["Current query partitions by tenant/subsystem/item key", "latest successful ordering", "entry-id anchor history query", "result reversal recalculation"],
+      "outputs": ["Path-based current production and isolated history with no version"]
+    },
+    {
+      "requirement_id": "R8",
+      "input": "Existing ordinary release rows and authorized/unauthorized requests",
+      "transitions": ["V46 UNIT key backfill", "backward-compatible constructors and DTO field", "existing security annotations", "full regression"],
+      "outputs": ["Unchanged ordinary behavior and server-side authorization"]
+    },
+    {
+      "requirement_id": "R9",
+      "input": "Application and production DTOs containing item type and optional path/version",
+      "transitions": ["Explicit conditional rendering", "path-aware search", "separate analytics counts", "application-level drilldown"],
+      "outputs": ["Consistent item-type display in all associated views"]
+    },
+    {
+      "requirement_id": "R10",
+      "input": "Mixed application and long file paths at target viewports",
+      "transitions": ["Responsive single-column form", "min-width zero and wrapping", "stable icon controls", "drawer-local scroll"],
+      "outputs": ["Reachable controls and no page-level horizontal overflow"]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "Release application write/read contract",
+      "producers": ["ReleaseApplicationDrawer", "ReleaseApplicationService"],
+      "consumers": ["ReleaseApplicationService", "Application list/detail/conflict views", "ReleaseSubmissionService"],
+      "invariant": "deliveries retains ordinary semantics; fileMedia contains path-only values; server owns FILE metadata"
+    },
+    {
+      "name": "Unified DeliverySnapshot",
+      "producers": ["ReleaseApplicationService", "ReleaseApplicationStore"],
+      "consumers": ["Conflict logic", "Workflow digest", "ReleaseProductionService"],
+      "invariant": "itemType, itemKey, filePath and artifactVersion form one valid ordinary or file-media state"
+    },
+    {
+      "name": "Stable item key",
+      "producers": ["ReleaseApplicationService", "V46 ordinary-row backfill"],
+      "consumers": ["Application unique key", "Conflict query/token", "Additional relation", "Production candidate/current/history"],
+      "invariant": "UNIT uses code; FILE uses SHA-256 of the exact trimmed path"
+    },
+    {
+      "name": "Workflow canonical digest",
+      "producers": ["ReleaseSubmissionService"],
+      "consumers": ["Workflow round", "Workflow start context", "Business approval audit"],
+      "invariant": "Stable ordering and content distinguish ordinary version and file path without filesystem access"
+    },
+    {
+      "name": "Production Entry DTO and history",
+      "producers": ["ReleaseProductionService/Store/Controller"],
+      "consumers": ["Baseline view", "Current production view", "Analytics"],
+      "invariant": "entryId is tenant-authorized; history partitions by subsystem and itemKey; file version is null"
+    },
+    {
+      "name": "Analytics summary",
+      "producers": ["ReleaseAnalyticsStore/Service"],
+      "consumers": ["ReleaseAnalyticsView"],
+      "invariant": "ordinary and file-media counts are separate while drilldown remains one row per application"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "Application item validation, conflict, digest and persistence",
+      "method": "Focused JUnit/Mockito and SQL contract tests",
+      "blind_spots": ["Real MySQL DDL execution", "Browser interaction"],
+      "independence": "Runs deterministic Java logic and SQL string assertions without browser or live database"
+    },
+    {
+      "id": "S2",
+      "target": "Production candidate, result, current/history and authorization",
+      "method": "Production service and controller security tests",
+      "blind_spots": ["Real Flyway migration", "Rendered frontend"],
+      "independence": "Observes production-domain transitions separately from application-form rendering"
+    },
+    {
+      "id": "S3",
+      "target": "Schema compatibility and runtime availability",
+      "method": "V46 contract plus backed-up real Flyway startup and /actuator/health",
+      "blind_spots": ["Full user workflow semantics", "Mobile layout"],
+      "independence": "Uses MySQL/Flyway/runtime rather than mocked service behavior"
+    },
+    {
+      "id": "S4",
+      "target": "Frontend type contract and production bundle",
+      "method": "TypeScript and Vite production build",
+      "blind_spots": ["Runtime backend facts", "Visual overlap"],
+      "independence": "Compiler-level sensor independent from Java tests"
+    },
+    {
+      "id": "S5",
+      "target": "End-to-end release facts",
+      "method": "Real HTTP create/conflict/submit/approve/baseline/current/history/analytics flow",
+      "blind_spots": ["Visual layout at all viewports"],
+      "independence": "Observes persisted runtime state across module boundaries"
+    },
+    {
+      "id": "S6",
+      "target": "Responsive usability and associated-view rendering",
+      "method": "Browser screenshots, DOM text, interaction, console and scrollWidth at desktop/mobile viewports",
+      "blind_spots": ["Unexercised backend branches"],
+      "independence": "Rendered-browser sensor independent from unit assertions and compiler"
+    },
+    {
+      "id": "S7",
+      "target": "Repository invariants and unrelated-change protection",
+      "method": "Governance, scope, git diff --check and status attribution",
+      "blind_spots": ["Semantic runtime correctness"],
+      "independence": "Repository-policy sensor independent from feature behavior"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "Persistent identity and constraints",
+      "action": "Add append-only V46 with backfill, checks and item-key indexes",
+      "authority": "Approved task-scope write access to candidate V46",
+      "impact_radius": "Three release-owned tables containing local existing data",
+      "rollback": "Before execution remove candidate migration; after execution use verified backup or later compensating migration"
+    },
+    {
+      "id": "A2",
+      "target": "Application validation, conflict and workflow digest",
+      "action": "Modify release application models, Store and services with focused tests",
+      "authority": "Approved business/release paths",
+      "impact_radius": "Release application create/update/submit and downstream production input",
+      "rollback": "Revert only scoped T1/T2 diffs before file data is retained"
+    },
+    {
+      "id": "A3",
+      "target": "Production baseline/current/history",
+      "action": "Modify production models, Store, service and controller",
+      "authority": "Approved business/release production paths",
+      "impact_radius": "Release baseline, result maintenance and production version queries",
+      "rollback": "Revert scoped Java only before file production records are retained"
+    },
+    {
+      "id": "A4",
+      "target": "Release analytics",
+      "action": "Add separate file-media count and item-key-aware SQL",
+      "authority": "Approved business/release reporting paths",
+      "impact_radius": "Release analytics summary and drilldown",
+      "rollback": "Revert reporting files independently"
+    },
+    {
+      "id": "A5",
+      "target": "User-visible mixed application workflow",
+      "action": "Modify release TypeScript API, drawer, detail, conflict, baseline, current and analytics views",
+      "authority": "Approved web release module paths",
+      "impact_radius": "Six release pages and shared release DTO",
+      "rollback": "Revert scoped frontend changes; backend remains old-request compatible"
+    }
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S4", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S3", "S5"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2", "S3", "S5"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S2", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S2", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S1", "S2", "S3", "S4", "S7"], "observable": "yes"},
+    {"requirement_id": "R9", "sensor_ids": ["S4", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R10", "sensor_ids": ["S6"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Dirty rokey worktree and user edits", "effect": "Same-file changes can invalidate patches or scope attribution", "detectable": true, "controllable": false},
+    {"source": "Existing local database rows", "effect": "Duplicate identity can block V46 unique-key migration", "detectable": true, "controllable": false},
+    {"source": "Origin/main migration changes", "effect": "V46 version can collide before integration", "detectable": true, "controllable": false},
+    {"source": "MySQL dump or DDL permissions", "effect": "Backup or migration cannot proceed", "detectable": true, "controllable": false},
+    {"source": "Workflow configuration/test user permissions", "effect": "Real submit or approval flow can fail independent of item implementation", "detectable": true, "controllable": false},
+    {"source": "Browser cache and existing sessions", "effect": "Stale frontend/auth state can produce misleading UI results", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "Maven full reactor", "consequence": "Slow feedback after cross-record changes", "sampling_rule": "Use focused tests after each task and full tests only at integration gates"},
+    {"source": "Flyway DDL and service cold start", "consequence": "Health sampled too early appears unavailable", "sampling_rule": "Wait for Started CcbApplication and Flyway V46 log before health probe"},
+    {"source": "Workflow and lifecycle transition", "consequence": "Baseline may not exist until approval event commits", "sampling_rule": "Poll application status and baseline only after approved lifecycle response"},
+    {"source": "Vue transition and network loading", "consequence": "Screenshots can capture incomplete layouts", "sampling_rule": "Wait for loading indicators and network requests to settle before DOM/pixel sample"}
+  ],
+  "assumptions": [
+    {"text": "The isolated local schema is representative for V46.", "evidence": "Current backend uses that schema and Flyway validates through V45.", "falsifier": "Schema introspection or startup differs from migration contracts."},
+    {"text": "Stable item key can replace delivery code in all identity paths without changing ordinary semantics.", "evidence": "All identified application, relation and production SQL consumers are in scoped release files.", "falsifier": "Search or tests reveal another unmodeled consumer using delivery code identity."},
+    {"text": "Entry-id history can preserve authorization and compatibility.", "evidence": "Controller already has production-version permission and Store can anchor by tenant/id.", "falsifier": "Existing clients require only the old route for file media or route resolution conflicts."},
+    {"text": "Frontend associated views are contained in web/src/modules/release.", "evidence": "Repository search found all artifactVersion/deliveries renderers there.", "falsifier": "Runtime or search reveals an external consumer."}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Use A2/A5 with S1/S4/S5/S6."},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Use A2/A5 with validation and runtime sensors."},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and verify Store/runtime facts."},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Use A1/A2/A3 and item-key tests/runtime."},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "Use A2/A5 and conflict/token sensors."},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "Use A1/A3/A5 and production sensors."},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "Use A3/A5 and current/history runtime."},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "Use bounded compatible actuators and broad regression/security sensors."},
+    {"requirement_id": "R9", "observable": "yes", "controllable": "yes", "action": "Use A4/A5 and build/API/browser sensors."},
+    {"requirement_id": "R10", "observable": "yes", "controllable": "yes", "action": "Use A5 and required viewport browser measurements."}
+  ],
+  "model_status": "ready"
+}

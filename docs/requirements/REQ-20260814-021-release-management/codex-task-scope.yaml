@@ -10,7 +10,7 @@
     "developer": "codex",
     "module": "business/release",
     "module_owner": "rokeyvvz0828",
-    "branch": "feat/REQ-20260814-021-release-management",
+    "branch": "rokey",
     "worktree": "/Users/zhangwei/project/RDDMP"
   },
   "codex": {
@@ -18,17 +18,20 @@
     "contains_confidential_information": false,
     "allowed_tools": [
       "local-shell",
-      "codex"
+      "codex",
+      "browser"
     ]
   },
   "scope": {
     "writable_paths": [
       "server/src/modules/release/**",
+      "web/src/api/release.ts",
       "web/src/modules/release/**",
       "web/src/router/index.ts",
       "pom.xml",
       "server/src/platform/boot/pom.xml",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__release_management.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V38__release_management.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V39__release_application_revision_history.sql",
       "governance/modules.yaml",
       "docs/architecture/MODULES.md",
       ".github/CODEOWNERS",
@@ -80,7 +83,8 @@
   "database": {
     "changed": true,
     "migration_files": [
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__release_management.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V38__release_management.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V39__release_application_revision_history.sql"
     ],
     "compatibility_and_rollback": "Add release tables, indexes, menus, permissions and local initialization records only. Do not modify historical migrations; application rollback retains release and audit data."
   },
@@ -119,6 +123,10 @@
     {
       "name": "desktop-browser",
       "command": "Run desktop browser acceptance for windows, applications, workflow progress, baselines and reports"
+    },
+    {
+      "name": "mobile-browser",
+      "command": "Run browser acceptance at 375x812, 390x844 and 430x932 for application creation, approval detail and baseline operations; verify no page-level horizontal overflow"
     }
   ],
   "risk": {
@@ -146,7 +154,8 @@
       "full-maven-tests",
       "frontend-build",
       "governance-scope",
-      "desktop-browser"
+      "desktop-browser",
+      "mobile-browser"
     ],
     "rollback": "Disable release menus and module assembly, revert the scoped application changes, and retain additive release, baseline and audit tables as read-only evidence."
   }

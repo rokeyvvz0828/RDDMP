@@ -1,0 +1,17 @@
+{
+  "sample_label": "T4 production and reporting sample",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R13", "sensor": "Candidate ordering and replay tests", "result": "pass", "raw_evidence": "Later approved application replaces active candidate; older replay is no-op", "limitation": []},
+    {"requirement_id": "R14", "sensor": "Result validation and audit tests", "result": "pass", "raw_evidence": "Required time/reason, rowVersion and log assertions pass", "limitation": []},
+    {"requirement_id": "R15", "sensor": "Current-version SQL review", "result": "pass", "raw_evidence": "Only SUCCEEDED rows ordered by production_at, updated_at and id participate", "limitation": ["Runtime fallback sampled in T8"]},
+    {"requirement_id": "R17", "sensor": "Analytics shared-filter test", "result": "pass", "raw_evidence": "Summary and drilldown receive identical tenant/project/window filters", "limitation": ["Runtime aggregate equality sampled in T8"]},
+    {"requirement_id": "R18", "sensor": "Controller RBAC and tenant-bound SQL review", "result": "pass", "raw_evidence": "Production and analytics endpoints require release permissions and SQL binds tenant", "limitation": ["Project member authorization deferred"]}
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": ["Real MySQL aggregate and fallback behavior remains T8"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

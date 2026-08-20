@@ -1,0 +1,19 @@
+{
+  "sample_label": "T3 集成运行时采样",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S2 认证浏览器 DOM 与真实窗口 API", "result": "unobservable", "raw_evidence": "投产基线页面显示 没有该操作的查看权限；配置数据库无 rel_release_window 表", "limitation": ["无法渲染窗口下拉选项"]},
+    {"requirement_id": "R2", "sensor": "S2 认证浏览器 DOM", "result": "incomplete", "raw_evidence": "批量维护按钮为 disabled，但该状态同时受无选择项影响；无真实基线行可测", "limitation": ["无法区分窗口时间门禁与空数据/权限门禁"]},
+    {"requirement_id": "R3", "sensor": "S1/S3 固定时钟测试、前端边界表达式与构建", "result": "pass", "raw_evidence": "精确边界测试通过；前端 now >= endTime 且 60 秒刷新；两轮 Maven/Vite 成功", "limitation": ["未在浏览器等待真实时间边界"]},
+    {"requirement_id": "R4", "sensor": "S1 单条/批量无写入服务测试与完整回归", "result": "pass", "raw_evidence": "提前请求 CONFLICT 且 Mockito verify never；ccb-release 54/54 通过", "limitation": ["真实 HTTP 因授权和表缺失无法调用"]},
+    {"requirement_id": "R5", "sensor": "S1/S3 源码路径与完整回归", "result": "pass", "raw_evidence": "前后端均无 versionType 分支；现有结果/审计回归通过", "limitation": []}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Local migration/schema and authorization baseline is invalid for release runtime", "impact": "R1 and browser portion of R2 cannot be measured; classified as environment disturbance rather than product deviation"}
+  ],
+  "coverage_gaps": ["真实窗口下拉第二行布局与原因", "未结束窗口下基线数据可见性", "真实行复选框、单条操作和批量按钮状态", "浏览器控制台在完整目标页面的数据路径"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "incomplete"
+}

@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260814-026",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260814-026-release-management-prototype/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "frontend/application",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/release/**",
+      "web/src/router/index.ts",
+      "web/src/stores/auth.ts",
+      "docs/requirements/REQ-20260814-026-release-management-prototype/**",
+      "docs/engineering-control/designs/2026-08-14-release-management-prototype-design.md",
+      "docs/engineering-control/plans/2026-08-14-release-management-prototype-implementation-plan.md",
+      ".ai-control/requirements/req-20260814-026-release-management-prototype/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/components/ui/**",
+      "web/src/components/workflow/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/api/**",
+      "web/src/types/**",
+      "web/src/styles.css",
+      "docs/integration/**",
+      "docs/engineering-control/designs/2026-08-14-release-management-module-design.md",
+      "docs/requirements/REQ-20260814-021-release-management/**",
+      "server/**",
+      "mock/mock-data.json"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260814-026",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["frontend-build", "governance-scope", "responsive-browser"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "Frontend-only revision; revert revision-2 release module, route and style changes to restore revision 1."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "fictional-mock-data"
+  },
+  "required_tests": [
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance-scope", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "responsive-browser", "command": "Run browser acceptance at 1280x800, 375x812, 390x844 and 430x932 for release windows, applications, production baselines, current production versions, analytics and workflow review"},
+    {"name": "diff-check", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": [
+      "Prototype route injection touches the shared authentication route list",
+      "Mock interactions must not be mistaken for persisted backend behavior",
+      "Dense conflict and approval details need desktop and H5 overflow and action-reachability checks",
+      "Revision 1 convergence evidence must not be reused as revision 2 completion evidence"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260814-026-release-management-prototype",
+    "control_justification": "New multi-view frontend business prototype with shared route integration and complex user interactions.",
+    "acceptance_evidence": [],
+    "release_verification": ["frontend-build", "governance-scope", "responsive-browser", "diff-check"],
+    "rollback": "Revert only revision-2 release prototype files, route and style changes to restore the revision-1 prototype; no database rollback is required."
+  }
+}

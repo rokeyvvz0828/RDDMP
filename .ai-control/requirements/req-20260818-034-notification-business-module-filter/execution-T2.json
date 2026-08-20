@@ -1,0 +1,42 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java", "purpose": "在工作流业务上下文中增加独立业务板块编码和名称"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java", "purpose": "校验并持久化业务板块元数据"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java", "purpose": "将业务板块元数据写入生命周期事件"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java", "purpose": "投递生命周期事件时恢复业务板块上下文"},
+    {"path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java", "purpose": "待审批和结果通知显式透传业务板块并兼容旧流程"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java", "purpose": "验证工作流实例板块字段持久化"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java", "purpose": "验证生命周期投递保留板块元数据"},
+    {"path_or_resource": "server/src/platform/boot/src/test/java/com/ccb/boot/integration/WorkflowSystemNotificationBridgeTest.java", "purpose": "验证通知命令的板块、业务类型和路由"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R5"],
+  "commands": [
+    {"command": "git diff --check && rg -n 'new WorkflowBusinessContext|new NotificationPublishCommand' server/src -g '*.java'", "exit_code": 0, "salient_output": "静态检查通过，所有直接构造调用已枚举"},
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow,:ccb-boot,:ccb-release -am test", "exit_code": 1, "salient_output": "产品模块测试通过；boot 测试夹具 Map.of 超过 10 项导致 testCompile 失败"},
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-boot -am test", "exit_code": 0, "salient_output": "workflow 38、release 51、boot 3 个测试全部通过，Reactor BUILD SUCCESS"}
+  ],
+  "local_checks": [
+    {"check": "工作流板块元数据编译与单元测试", "result": "pass", "evidence": "ccb-workflow 38 tests passed", "limitations": ["尚未执行真实 MySQL 迁移和认证 API 检查"]},
+    {"check": "通知桥接板块透传", "result": "pass", "evidence": "WorkflowSystemNotificationBridgeTest 3 tests passed and asserts release / 配置管理 / release_application", "limitations": ["旧未知业务类型回退仅由代码路径审查覆盖"]},
+    {"check": "配置管理消费者兼容", "result": "pass", "evidence": "ccb-release 51 tests passed", "limitations": []}
+  ],
+  "diff_summary": [
+    "工作流实例和生命周期事件携带 moduleCode/moduleName",
+    "待审批与审批结果通知透传板块元数据",
+    "旧运行中流程缺少元数据时映射已知业务并对未知类型生成合法确定性编码"
+  ],
+  "invariants_checked": [
+    {"invariant": "租户和当前用户隔离保持不变", "result": "pass", "evidence": "所有工作流查询仍带 tenant_id，通知收件人仍取任务处理人与流程发起人"},
+    {"invariant": "通知幂等事件标识保持不变", "result": "pass", "evidence": "workflow-task 与 workflow-lifecycle eventId 生成规则未变"},
+    {"invariant": "业务类型和详情路由保持不变", "result": "pass", "evidence": "桥接测试断言 release_application 和 /release/applications/SQ-001"}
+  ],
+  "disturbances": [
+    {"event": "首次 Maven 测试被沙箱阻止写入 target", "impact": "改用批准权限重跑，未影响产品结论"},
+    {"event": "boot 测试夹具 Map.of 超过 Java API 项数上限", "impact": "改为 Map.ofEntries 后复跑通过"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实 MySQL V44 迁移和运行中旧流程验证留待集成观测"],
+  "recommended_next": "observe"
+}

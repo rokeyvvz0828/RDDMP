@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-041-release-application-semantic-tags",
+  "handoff_status": "approved",
+  "created_at": "2026-08-20T09:53:24+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260820-041-release-application-semantic-tags",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-20-release-application-semantic-tags-design.md",
+    "objective": "Unify the version type, application characteristic, and status columns as compact semantic tags without changing business behavior.",
+    "users": ["Configuration-management users scanning the release application list"],
+    "requirements": [
+      {"id": "R1", "statement": "All three columns must use compact tags with consistent dimensions and alignment.", "acceptance": ["All three columns render through UiStatusTag", "Tags share dimensions and alignment"], "priority": "must", "source": "User selected option one.", "counterexample": ["Ordinary applications remain bare text"]},
+      {"id": "R2", "statement": "Existing semantic colors for version type and status must remain unchanged.", "acceptance": ["Version and status tones retain current mappings"], "priority": "must", "source": "Existing implementation and approved design.", "counterexample": ["A status changes color meaning"]},
+      {"id": "R3", "statement": "Application characteristic must display 普通申请 or 追加申请 as a semantic tag.", "acceptance": ["普通申请 uses info tone", "追加申请 uses warning tone"], "priority": "must", "source": "Approved option-one design.", "counterexample": ["普通 remains bare text"]},
+      {"id": "R4", "statement": "The presentation change must not alter release application data or behavior.", "acceptance": ["No API, state, filter, permission, or backend changes", "Frontend build passes"], "priority": "must", "source": "Scoped visual invariant.", "counterexample": ["Characteristic data or filtering changes"]}
+    ],
+    "invariants": ["DTO values remain unchanged", "Version and status tone functions remain unchanged", "Unrelated dirty-worktree changes remain untouched"],
+    "constraints": ["Modify only the release application list presentation", "Reuse UiStatusTag", "Remain on rokey and do not commit or push"],
+    "non_goals": ["Redesign global tags", "Change other release views", "Add status types or filters"],
+    "selected_approach": {"name": "Unified semantic tags", "reason": "It removes mixed text and tag presentation with the existing component.", "alternatives": [{"name": "Layered tags", "rejected_because": "Adds another local visual rule."}, {"name": "Muted ordinary text", "rejected_because": "Preserves inconsistency."}]},
+    "architecture": {
+      "boundary": {"inside": ["ReleaseApplicationView characteristic-cell rendering"], "outside": ["API", "Backend", "Other pages", "Global theme"]},
+      "components": [{"name": "ReleaseApplicationView", "responsibility": "Render three aligned semantic tags.", "depends_on": ["UiStatusTag", "ReleaseApplicationDto"]}, {"name": "UiStatusTag", "responsibility": "Provide the existing small plain semantic tag.", "depends_on": ["Element Plus"]}],
+      "interfaces": [{"name": "Release application row presentation", "producer": "ReleaseApplicationDto", "consumers": ["ReleaseApplicationView"], "contract": "Presentation mappings do not mutate row data."}],
+      "data_flows": [{"input": "versionType, characteristic, status", "transitions": ["Map labels and tones", "Render UiStatusTag"], "output": "Aligned semantic labels"}]
+    },
+    "error_handling": [{"condition": "Characteristic is not ADDITIONAL", "behavior": "Render 普通申请 with info tone.", "recovery": "No recovery required."}, {"condition": "Label approaches column width", "behavior": "Verify single-line fit before changing width.", "recovery": "Escalate if a broader layout change is required."}],
+    "quality_attributes": {"security": ["No authorization changes"], "performance": ["No meaningful runtime cost"], "compatibility": ["No API or state change"], "operations": ["No migration or configuration"]},
+    "verification_strategy": [{"requirement_ids": ["R1", "R2", "R3"], "signal": "Three columns show aligned confirmed labels and tones.", "method": "Source assertion and browser inspection."}, {"requirement_ids": ["R4"], "signal": "Build passes and scope remains local.", "method": "Production build, scoped diff, and whitespace check."}],
+    "assumptions": [{"text": "The scope is only the three columns shown in the list screenshot.", "basis": "The user referenced the left and right neighboring columns.", "falsifier": "The user requests other pages."}],
+    "unknowns": [],
+    "decisions": [{"id": "D1", "decision": "Use unified semantic tags.", "reason": "Strongest scanning consistency.", "source": "User selected option one."}, {"id": "D2", "decision": "Display 普通申请 instead of 普通.", "reason": "Symmetric with 追加申请.", "source": "Approved option-one proposal."}],
+    "risks": [{"risk": "普通申请 may be tight in a 100px column.", "impact": "Potential clipping.", "mitigation": "Use the existing small tag and verify in browser."}],
+    "approval": {"status": "approved", "evidence": "The user confirmed design revision one on 2026-08-20.", "confirmed_at": "2026-08-20T09:53:24+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-20-release-application-semantic-tags-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["Only modify ReleaseApplicationView characteristic rendering", "No data, API, backend, public component, commit, or push changes", "Preserve existing version and status mappings"],
+    "file_map": [{"path": "web/src/modules/release/components/ReleaseApplicationView.vue", "status": "existing", "responsibility": "Release application list presentation", "evidence": "Current three columns are co-located in the table template"}, {"path": "web/src/components/ui/UiStatusTag.vue", "status": "existing", "responsibility": "Readonly shared tag component", "evidence": "Already consumed by the adjacent columns"}],
+    "tasks": [{
+      "id": "T1",
+      "goal": "Unify the three table semantics as aligned compact tags.",
+      "requirement_ids": ["R1", "R2", "R3", "R4"],
+      "prerequisites": [],
+      "input_facts": ["Version type and status already use UiStatusTag", "Application characteristic mixes el-tag and bare text", "UiStatusTag uses small plain el-tag"],
+      "files": {"create": [".ai-control/requirements/req-20260820-041-release-application-semantic-tags/execution-T1.json", ".ai-control/requirements/req-20260820-041-release-application-semantic-tags/observation-T1.json", ".ai-control/requirements/req-20260820-041-release-application-semantic-tags/convergence.json"], "modify": ["web/src/modules/release/components/ReleaseApplicationView.vue"], "test": []},
+      "interfaces": {"consumes": ["scope.row.characteristic", "UiStatusTag(value, tone)"], "produces": ["ADDITIONAL -> 追加申请/warning", "other -> 普通申请/info"]},
+      "steps": [
+        {"id": "T1-S1", "action": "Record the mixed-rendering baseline", "command": "rg -n \"characteristic.*ADDITIONAL.*el-tag.*普通\" web/src/modules/release/components/ReleaseApplicationView.vue", "expected": "The current mixed tag and bare-text rendering is found", "evidence": "Matching source line"},
+        {"id": "T1-S2", "action": "Replace only the characteristic cell with UiStatusTag", "command": null, "expected": "Both characteristic values use the confirmed label and tone while adjacent mappings remain unchanged", "evidence": "Scoped template diff"},
+        {"id": "T1-S3", "action": "Run the frontend production build", "command": "npm --prefix web run build", "expected": "vue-tsc and Vite exit 0", "evidence": "Build summary"},
+        {"id": "T1-S4", "action": "Run whitespace and scope checks", "command": "git diff --check", "expected": "Exit 0 and no unrelated product file changes from this task", "evidence": "Command result and target source assertion"},
+        {"id": "T1-S5", "action": "Inspect representative tag combinations in the browser", "command": null, "expected": "Labels align, colors match semantics, no clipping or new console errors", "evidence": "Screenshot and DOM geometry"}
+      ],
+      "acceptance_checks": ["Three columns use UiStatusTag", "普通申请 and 追加申请 use info and warning tones", "Existing version and status mappings remain", "Build and browser checks pass"],
+      "risks": ["Four-character ordinary label may be tight in the current column"],
+      "rollback": "Restore only the original characteristic-cell template in ReleaseApplicationView.vue.",
+      "stop_conditions": ["A global component or multi-column layout change becomes necessary"],
+      "escalation_conditions": ["The user requests expansion to other pages or a color-mapping change"]
+    }],
+    "dependency_edges": [],
+    "parallel_groups": [["T1"]],
+    "integration_checks": [{"after_tasks": ["T1"], "command": "npm --prefix web run build", "expected": "Exit 0"}, {"after_tasks": ["T1"], "command": "git diff --check", "expected": "No whitespace errors"}],
+    "coverage": [{"requirement_id": "R1", "task_ids": ["T1"]}, {"requirement_id": "R2", "task_ids": ["T1"]}, {"requirement_id": "R3", "task_ids": ["T1"]}, {"requirement_id": "R4", "task_ids": ["T1"]}],
+    "approval": {"status": "approved", "evidence": "The user explicitly confirmed direct development from implementation plan revision one on 2026-08-20.", "confirmed_at": "2026-08-20T09:58:28+08:00"}
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["ReleaseApplicationView three semantic table cells"],
+    "state_variable_candidates": ["Tag labels", "Semantic tones", "Tag dimensions", "Cell alignment", "Column clipping"],
+    "interface_candidates": ["UiStatusTag value and tone props", "ReleaseApplicationDto row values"],
+    "sensor_candidates": ["Source assertion", "Frontend build", "Scoped diff", "Browser screenshot", "DOM geometry", "Console errors"],
+    "actuator_candidates": ["Characteristic-cell UiStatusTag label and tone bindings"],
+    "disturbance_candidates": ["Element Plus theme", "Chinese font metrics", "Browser zoom", "100px column width"],
+    "delay_candidates": ["Vite hot update", "Table layout reflow"],
+    "assumptions": [{"text": "A local template change is sufficient.", "basis": "Adjacent columns already use UiStatusTag successfully.", "falsifier": "Browser evidence shows clipping that requires a broader layout change."}]
+  }
+}

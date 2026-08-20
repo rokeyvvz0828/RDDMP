@@ -1,0 +1,70 @@
+{
+  "baseline_revision": "approved-design-revision-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["All three target columns render the same UiStatusTag component", "Shared component fixes height at the same small size", "Column-capacity audit indicates the four-character label fits"],
+      "limitations": ["No authenticated post-change screenshot"]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["Existing versionTone and statusTone functions are unchanged"],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["Characteristic mapping renders 普通申请/info and 追加申请/warning"],
+      "limitations": []
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["Frontend production build exited 0", "git diff --check exited 0", "Only local template rendering changed"],
+      "limitations": ["Target source existed in an already-untracked directory"]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": ["Source assertions, component contract, dimension audit, build, and whitespace check passed"]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "T1-final", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Frontend production build", "result": "pass", "evidence": "2362 modules transformed and assets generated"},
+    {"check": "Whitespace validation", "result": "pass", "evidence": "git diff --check exited 0"}
+  ],
+  "invariant_results": [
+    {"invariant": "DTO and business behavior remain unchanged", "result": "pass", "evidence": "Template-only edit"},
+    {"invariant": "Existing version and status mappings remain unchanged", "result": "pass", "evidence": "Functions and adjacent bindings unchanged"},
+    {"invariant": "No shared component or CSS changes", "result": "pass", "evidence": "Implementation touched only ReleaseApplicationView.vue"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Authenticated browser view unavailable", "result": "pass-with-limitation", "evidence": "Independent source, component CSS, column-capacity, and production-build sensors remain valid"}
+  ],
+  "residual_risks": [
+    "A signed-in browser screenshot was not captured; final visual appearance should be refreshed and observed in the user's existing session"
+  ],
+  "gate_result": "pass",
+  "route_reason": "All must requirements have task, implementation, source/component, build, and scope evidence; no P0-P1 feedback remains"
+}

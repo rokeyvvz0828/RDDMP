@@ -1,0 +1,22 @@
+{
+  "objective": "The file-media editor presents a coherent compact form-field hierarchy on desktop and mobile while preserving existing entry behavior.",
+  "requirements": [
+    {"id": "R1", "statement": "The file-media title and add action must use the same compact field hierarchy as surrounding form controls.", "acceptance": ["The title no longer appears as a section heading", "The add action shares the title row with compact emphasis"], "priority": "must", "source": "Approved design revision 1", "counterexample": ["The title remains oversized", "The add action remains visually detached"]},
+    {"id": "R2", "statement": "Every path row must use a stable aligned index-input-delete layout.", "acceptance": ["Single and multiple rows share the same columns", "All row controls remain vertically centered"], "priority": "must", "source": "Approved design revision 1", "counterexample": ["Side columns dominate or misalign with the input"]},
+    {"id": "R3", "statement": "The layout must remain usable without page horizontal overflow on required mobile and desktop viewports.", "acceptance": ["375x812, 390x844, 430x932 and desktop have no document horizontal overflow", "Input and delete action remain reachable"], "priority": "must", "source": "Approved design revision 1", "counterexample": ["Long paths widen the drawer", "Mobile clips row actions"]},
+    {"id": "R4", "statement": "Existing file-media state, validation and payload behavior must remain unchanged.", "acceptance": ["Selecting file media creates the first row", "Add and delete update only the intended row count", "Frontend build passes without API changes"], "priority": "must", "source": "Approved design revision 1", "counterexample": ["The visual fix changes payload or breaks add/delete"]}
+  ],
+  "invariants": ["draft.fileMedia and ReleaseApplicationWrite remain unchanged", "Existing handlers and validation remain authoritative", "Unrelated dirty work remains untouched", "No dependency, backend, database, commit or push changes"],
+  "constraints": ["Product edits limited to ReleaseApplicationDrawer.vue and release-prototype.css", "Use existing Element Plus controls and CSS variables", "Remain on rokey"],
+  "non_goals": ["Redesign the full drawer", "Change other form sections", "Change backend or validation", "Add panels, file browsing or instructional copy"],
+  "assumptions": [{"text": "The defect is localized to file-media markup and CSS.", "basis": "Read-only inspection locates the full surface in one template line and CSS lines 339-354.", "falsifier": "Browser inspection proves a global layout rule causes the defect."}],
+  "unknowns": [],
+  "decisions": [{"question": "Which visual structure should be used?", "options": ["Compact standard form row", "Grouped panel", "One form item per path"], "selected": "Compact standard form row", "blocking": false, "source": "User selected option 1 and confirmed design revision 1."}],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "Title/add hierarchy and computed dimensions", "candidate_sensor": "Authenticated browser screenshot and DOM styles"},
+    {"requirement_id": "R2", "observable": "Row grid columns and control alignment for one and multiple rows", "candidate_sensor": "Browser geometry measurements"},
+    {"requirement_id": "R3", "observable": "Document overflow and control bounds at required viewports", "candidate_sensor": "Browser scrollWidth/clientWidth and bounding boxes"},
+    {"requirement_id": "R4", "observable": "Row-count changes and successful type/build checks", "candidate_sensor": "Browser interaction plus npm production build"}
+  ],
+  "baseline_status": "ready"
+}

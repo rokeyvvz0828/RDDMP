@@ -1,0 +1,2893 @@
+{
+  "schema_version": 4,
+  "revision": 27,
+  "created_at": "2026-08-20T06:36:02+00:00",
+  "updated_at": "2026-08-20T07:23:43+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user selected directly related historical applications and confirmed the proposed backend and detail-page design on 2026-08-20.；计划确认=The user confirmed the directly related history design, then explicitly requested development and continuation on 2026-08-20.",
+      "recorded_at": "2026-08-20T06:36:02+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Requirement baseline is measurable and approved",
+      "recorded_at": "2026-08-20T06:39:29+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "R1-R6 are observable and controllable within approved release scope",
+      "recorded_at": "2026-08-20T06:39:29+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Controlled tasks are complete, acyclic and within approved scope",
+      "recorded_at": "2026-08-20T06:39:29+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T3 execution reports are measurable and within approved scope",
+      "recorded_at": "2026-08-20T07:22:39+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "Two standard-mode samples completed with zero feedback and all tasks verified",
+      "recorded_at": "2026-08-20T07:23:15+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "R1-R6 passed with 73 backend tests, frontend build, real-data browser checks and two zero-error samples",
+      "recorded_at": "2026-08-20T07:23:43+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user selected directly related historical applications and confirmed the proposed backend and detail-page design on 2026-08-20.；计划确认=The user confirmed the directly related history design, then explicitly requested development and continuation on 2026-08-20.",
+        "recorded_at": "2026-08-20T06:36:02+00:00",
+        "data": {
+          "objective": "Show directly related historical applications and their current statuses inside additional-application details for approval reference.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Only additional applications must expose a related-history section sourced from persisted ADDITIONAL relations.",
+              "acceptance": [
+                "Additional details load direct related history",
+                "Standard applications do not show the section",
+                "Later or unrelated same-window applications are not included"
+              ],
+              "priority": "must",
+              "source": "User selected directly related historical applications on 2026-08-20.",
+              "counterexample": [
+                "The section uses the dynamic conflict list",
+                "All same-window applications are displayed"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Each related application must show its code, current status, version type, requester, department, creation time, release time, requirements and description.",
+              "acceptance": [
+                "All listed fields are visible without leaving the current approval detail",
+                "Status reflects the current historical-application state"
+              ],
+              "priority": "must",
+              "source": "Confirmed detail design.",
+              "counterexample": [
+                "Only an application code is shown",
+                "Status is a stale relation snapshot"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Related delivery and file-media changes must be recomputed from current active items and grouped by historical application.",
+              "acceptance": [
+                "Multiple relation rows produce one application entry",
+                "Removed current items do not appear",
+                "Displayed before/after values match current active content"
+              ],
+              "priority": "must",
+              "source": "Existing revision-preserving data model and confirmed design.",
+              "counterexample": [
+                "A historical application is duplicated per delivery row",
+                "A removed draft item remains in the reference list"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Related applications must be sorted by latest release time and link to their in-app details without embedding attachments.",
+              "acceptance": [
+                "Newest released source appears first",
+                "Application code opens its detail route",
+                "No attachment payload is returned by the history endpoint"
+              ],
+              "priority": "must",
+              "source": "Confirmed interaction design.",
+              "counterexample": [
+                "Ordering is unstable",
+                "The reference endpoint duplicates attachment data"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "The endpoint must enforce tenant isolation and release-application view permission without broad fallback queries.",
+              "acceptance": [
+                "Cross-tenant records cannot be returned",
+                "The endpoint requires release:application:view or system:admin",
+                "Empty relations return an empty list"
+              ],
+              "priority": "must",
+              "source": "Platform authorization invariant.",
+              "counterexample": [
+                "A missing relation triggers a same-window scan",
+                "A user without view permission can query history"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "Related-history empty and error states must remain local and must not block the main detail or approval panel.",
+              "acceptance": [
+                "Empty additional history has explicit copy",
+                "A history request failure exposes local retry",
+                "Main detail and approval controls remain available"
+              ],
+              "priority": "must",
+              "source": "Confirmed failure-isolation design.",
+              "counterexample": [
+                "History failure causes the whole detail page to fail",
+                "An empty section silently disappears on an additional application"
+              ]
+            }
+          ],
+          "invariants": [
+            "rel_application_relation remains the lineage fact source",
+            "Historical status is read live",
+            "Existing approval and conflict behavior is unchanged",
+            "No historical attachments are embedded",
+            "Unrelated dirty-worktree changes remain untouched"
+          ],
+          "constraints": [
+            "Reuse Spring JDBC and existing release module patterns",
+            "Do not add a database migration",
+            "Use existing release:application:view authorization",
+            "Remain on rokey and add no dependency"
+          ],
+          "non_goals": [
+            "Show all earlier same-window applications",
+            "Modify historical applications from the reference area",
+            "Build a generic lineage graph",
+            "Backfill legacy relations",
+            "Change attachments or approval actions"
+          ],
+          "assumptions": [
+            {
+              "text": "Persisted ADDITIONAL relations exist for formally created additional applications and active-item filtering removes stale revision rows.",
+              "basis": "Current create/update service calls persistAdditionalRelations and delivery revisions preserve active flags.",
+              "falsifier": "Fixtures show valid additional applications without any persisted relations or current active item keys."
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "Should a logically deleted historical source remain as an immutable non-clickable audit snapshot?",
+              "impact": "Current design skips unavailable sources; a future audit requirement may need snapshot persistence.",
+              "owner": "Product owner",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Display only directly related historical applications.",
+              "reason": "This is the scope explicitly selected by the user.",
+              "source": "User choice on 2026-08-20."
+            },
+            {
+              "id": "D2",
+              "decision": "Expose a dedicated flat read endpoint.",
+              "reason": "It avoids recursive Response growth and keeps list/conflict payloads unchanged.",
+              "source": "Confirmed design."
+            },
+            {
+              "id": "D3",
+              "decision": "Read status live and recompute changes from active content.",
+              "reason": "This prevents stale relation snapshots after draft revisions.",
+              "source": "Confirmed design."
+            },
+            {
+              "id": "D4",
+              "decision": "Do not embed historical attachments.",
+              "reason": "The reference remains scannable and links to the full historical detail when needed.",
+              "source": "Confirmed design."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R5"
+              ],
+              "signal": "Store and service return only direct, active, tenant-scoped grouped history.",
+              "method": "Focused persistence and service tests with later, unrelated, stale and cross-tenant fixtures."
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "signal": "The API exposes complete summary fields, live status, recomputed changes and stable ordering.",
+              "method": "Service and controller contract assertions."
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R6"
+              ],
+              "signal": "The detail page shows additional-only reference cards, working links and isolated empty/error states.",
+              "method": "Frontend build and authenticated browser checks."
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "signal": "Release module and frontend regressions remain green.",
+              "method": "Maven release-module tests, npm production build and git diff check."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Approved design R1-R6 reviewed; no blocking unknowns",
+        "recorded_at": "2026-08-20T06:39:29+00:00",
+        "data": {
+          "objective": "Show directly related historical applications and their live statuses inside additional-application details without blocking approval work.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Only additional applications expose related history sourced from persisted ADDITIONAL relations.",
+              "acceptance": [
+                "Additional details load direct history",
+                "Standard details hide the section",
+                "Unrelated same-window records are absent"
+              ],
+              "priority": "must",
+              "source": "Approved design D1-D2",
+              "counterexample": [
+                "Dynamic conflicts are reused"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Each history entry exposes identifying, requester, timing, requirement and description fields with live status.",
+              "acceptance": [
+                "Approved summary fields are visible",
+                "Status equals the current historical application state"
+              ],
+              "priority": "must",
+              "source": "Approved design",
+              "counterexample": [
+                "Only a code or stale status is shown"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Delivery and file-media changes are recomputed from current active items and grouped by historical application.",
+              "acceptance": [
+                "Multiple rows produce one history entry",
+                "Removed current items are absent",
+                "Before and after values match active content"
+              ],
+              "priority": "must",
+              "source": "Approved design D3",
+              "counterexample": [
+                "Inactive relation snapshots are displayed"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "History is sorted newest release first and links to details without embedding attachments.",
+              "acceptance": [
+                "Ordering is stable",
+                "Code opens the existing detail route",
+                "History payload has no attachments"
+              ],
+              "priority": "must",
+              "source": "Approved design D4",
+              "counterexample": [
+                "Attachments are duplicated"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "The endpoint enforces tenant isolation and release application view permission without fallback scans.",
+              "acceptance": [
+                "Cross-tenant records are absent",
+                "View permission or admin is required",
+                "Empty relations remain empty"
+              ],
+              "priority": "must",
+              "source": "Platform authorization invariant",
+              "counterexample": [
+                "An unauthorized user reads history"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "History loading, empty and failure states are local and do not block detail or approval controls.",
+              "acceptance": [
+                "Empty copy is explicit",
+                "Failure has local retry",
+                "Main detail and approval remain usable"
+              ],
+              "priority": "must",
+              "source": "Approved failure-isolation design",
+              "counterexample": [
+                "History failure fails the whole page"
+              ]
+            }
+          ],
+          "invariants": [
+            "rel_application_relation remains the lineage source",
+            "Historical status is live",
+            "Approval, conflict and attachment behavior are unchanged",
+            "Unrelated worktree changes remain untouched"
+          ],
+          "constraints": [
+            "Java 17 and existing Spring JDBC patterns",
+            "Vue 3 and existing release UI patterns",
+            "No migration or dependency",
+            "Remain on rokey"
+          ],
+          "non_goals": [
+            "All earlier same-window history",
+            "Historical actions or attachment aggregation",
+            "Generic lineage graph",
+            "Legacy backfill"
+          ],
+          "assumptions": [
+            {
+              "text": "Persisted ADDITIONAL relations cover valid current lineage.",
+              "basis": "persistAdditionalRelations runs after create and update.",
+              "falsifier": "A valid additional fixture lacks a relation for an active item."
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "Should deleted history remain as an immutable snapshot?",
+              "impact": "Current design skips unavailable sources.",
+              "owner": "Product owner",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Only direct persisted relations are shown.",
+              "reason": "Explicit user selection.",
+              "source": "User confirmation"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R5"
+              ],
+              "signal": "Direct active tenant-scoped rows only",
+              "method": "Store and service tests"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R4"
+              ],
+              "signal": "Flat live sorted DTO without attachments",
+              "method": "Service and controller contract tests"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R6"
+              ],
+              "signal": "Additional-only isolated responsive section",
+              "method": "Frontend build and browser checks"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Verified relation persistence, active delivery revisions, service computation, endpoint consumers and UI sensors",
+        "recorded_at": "2026-08-20T06:39:29+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "ReleaseApplicationStore direct relation lookup",
+              "ReleaseApplicationService history aggregation",
+              "ReleaseApplicationController read endpoint",
+              "Release API client",
+              "ReleaseApplicationDetailPage history state and section"
+            ],
+            "environment": [
+              "MySQL release tables",
+              "Spring Security and tenant AuthUser",
+              "Vue Router and HTTP client",
+              "Existing dirty rokey worktree",
+              "Local authenticated browser"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "current_characteristic",
+              "owner": "Release application",
+              "valid_values": [
+                "STANDARD",
+                "ADDITIONAL"
+              ]
+            },
+            {
+              "name": "active_item_keys",
+              "owner": "rel_application_delivery",
+              "valid_values": [
+                "empty",
+                "one-or-more"
+              ]
+            },
+            {
+              "name": "related_history",
+              "owner": "ReleaseApplicationService",
+              "valid_values": [
+                "empty",
+                "one-or-more"
+              ]
+            },
+            {
+              "name": "history_request_state",
+              "owner": "ReleaseApplicationDetailPage",
+              "valid_values": [
+                "idle",
+                "loading",
+                "loaded",
+                "error"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "Authenticated current application code",
+              "transitions": [
+                "Load tenant application",
+                "Check ADDITIONAL",
+                "Query persisted relations matching active items"
+              ],
+              "outputs": [
+                "Direct history list or empty"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "Related historical IDs",
+              "transitions": [
+                "Load tenant applications",
+                "Read current fields and status",
+                "Map flat DTO"
+              ],
+              "outputs": [
+                "Complete live history summaries"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Historical and current active deliveries",
+              "transitions": [
+                "Reuse itemChanges/versionChanges",
+                "Drop empty changes",
+                "Deduplicate by history ID"
+              ],
+              "outputs": [
+                "Grouped current changes"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Mapped history summaries",
+              "transitions": [
+                "Sort by approvedAt then createdAt and code",
+                "Render router links"
+              ],
+              "outputs": [
+                "Stable linked summaries without attachments"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "Authenticated user and application code",
+              "transitions": [
+                "Controller permission check",
+                "Service tenant lookup",
+                "Store tenant predicates"
+              ],
+              "outputs": [
+                "Authorized tenant-only response"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "Independent history request",
+              "transitions": [
+                "Set local loading",
+                "Capture local error or data",
+                "Retry only history"
+              ],
+              "outputs": [
+                "Usable main detail and approval panel"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Persisted additional lineage",
+              "producers": [
+                "persistAdditionalRelations"
+              ],
+              "consumers": [
+                "findRelatedHistoryIds"
+              ],
+              "invariant": "Only relation_type ADDITIONAL for the current tenant and application is consumed."
+            },
+            {
+              "name": "GET related-history",
+              "producers": [
+                "ReleaseApplicationController"
+              ],
+              "consumers": [
+                "ReleaseApplicationDetailPage"
+              ],
+              "invariant": "Flat list, no attachments or recursive conflicts."
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Store SQL and service aggregation boundaries",
+              "method": "Focused JUnit/Mockito and persistence contract tests",
+              "blind_spots": [
+                "Browser layout"
+              ],
+              "independence": "Automated backend assertions"
+            },
+            {
+              "id": "S2",
+              "target": "Permission annotation and API type compatibility",
+              "method": "Controller security test and frontend build",
+              "blind_spots": [
+                "Runtime data quality"
+              ],
+              "independence": "Reflection and compiler checks"
+            },
+            {
+              "id": "S3",
+              "target": "Additional-only loading, empty, error, link and responsive behavior",
+              "method": "Authenticated browser DOM, network, console and geometry checks",
+              "blind_spots": [
+                "Authentication or empty local data may limit scenarios"
+              ],
+              "independence": "Runtime UI observation"
+            },
+            {
+              "id": "S4",
+              "target": "Approved scope and regression",
+              "method": "Scope, governance and git diff checks",
+              "blind_spots": [
+                "Product semantics"
+              ],
+              "independence": "Repository checks"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Direct history data path",
+              "action": "Add one Store query, flat DTO, Service aggregator and protected Controller endpoint",
+              "authority": "Approved business/release scope",
+              "impact_radius": "Additive release read path",
+              "rollback": "Remove additive backend surfaces"
+            },
+            {
+              "id": "A2",
+              "target": "Approval reference presentation",
+              "action": "Add API DTO/call and isolated additional-only section with scoped CSS",
+              "authority": "Approved release frontend scope",
+              "impact_radius": "One detail page",
+              "rollback": "Remove local frontend surfaces"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Legacy stale relations",
+              "effect": "Rows may reference inactive current items",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Dirty rokey worktree",
+              "effect": "Global diff contains unrelated changes",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Expired authentication or cleared test data",
+              "effect": "Browser scenarios may be unavailable",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Independent history response and Vite reload",
+              "consequence": "Brief loading state or stale browser sample",
+              "sampling_rule": "Wait for network idle and current module before geometry checks"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Current active-item filtering is sufficient to discard stale relation revisions.",
+              "evidence": "Application updates deactivate old delivery rows before inserting new active rows.",
+              "falsifier": "A stale relation item key also matches a semantically replaced active item incorrectly."
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A2 with S1/S3"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A2 with S1/S2/S3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 with S1"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A2 with S1/S3"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 with S1/S2"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 with S2/S3"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T3 cover R1-R6 with serial contract ownership, bounded writes and two sensor classes",
+        "recorded_at": "2026-08-20T06:39:29+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Expose and test the direct related-history backend contract.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "ADDITIONAL relations and active delivery rows exist",
+                "versionChanges already handles delivery units and file media"
+              ],
+              "write_scope": [
+                "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java"
+              ],
+              "invariants": [
+                "Tenant and view permission enforced",
+                "Existing detail/conflict/approval behavior unchanged",
+                "No migration"
+              ],
+              "interface_contracts": [
+                "GET /api/release/applications/{code}/related-history returns flat RelatedHistoryView list",
+                "No attachment or recursive conflict data"
+              ],
+              "non_goals": [
+                "Backfill or generic lineage graph"
+              ],
+              "action_bounds": [
+                "Add one relation query and one additive read path",
+                "Reuse existing difference computation"
+              ],
+              "acceptance_checks": [
+                "Standard empty",
+                "Direct active grouped live sorted history",
+                "Permission protected"
+              ],
+              "evidence_required": [
+                "Focused failing and green tests",
+                "Release reactor summary",
+                "Scoped diff"
+              ],
+              "rollback": "Remove additive backend surfaces and tests.",
+              "stop_conditions": [
+                "Database migration or cross-module private data access is required"
+              ],
+              "escalation_conditions": [
+                "Persisted lineage is absent for valid applications"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Render and test the isolated related-history detail section.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "T1 provides a flat endpoint",
+                "Detail page already isolates workflow failure"
+              ],
+              "write_scope": [
+                "web/src/api/release.ts",
+                "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "invariants": [
+                "Main detail and approval remain usable",
+                "Standard details hide the section",
+                "No shared component change"
+              ],
+              "interface_contracts": [
+                "Frontend DTO exactly matches RelatedHistoryView",
+                "History retry calls only related-history endpoint"
+              ],
+              "non_goals": [
+                "Historical actions or attachments"
+              ],
+              "action_bounds": [
+                "Add local state, markup and scoped styles only"
+              ],
+              "acceptance_checks": [
+                "Loading/data/empty/error states",
+                "History link works",
+                "No mobile overflow"
+              ],
+              "evidence_required": [
+                "Frontend build",
+                "Browser DOM/network/console/geometry",
+                "Scoped diff"
+              ],
+              "rollback": "Remove the history API, detail section and scoped CSS.",
+              "stop_conditions": [
+                "Shared UI or approval panel changes become necessary"
+              ],
+              "escalation_conditions": [
+                "Reference must mutate historical data"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Verify integrated backend, frontend, permissions and approved scope.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1/T2 outputs are measurable",
+                "Local services normally use 8080/5173"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260820-044-release-additional-related-history/*.json"
+              ],
+              "invariants": [
+                "No product changes outside T1/T2",
+                "No unauthorized test data"
+              ],
+              "interface_contracts": [
+                "Browser consumes the real endpoint"
+              ],
+              "non_goals": [
+                "Production validation or release"
+              ],
+              "action_bounds": [
+                "Run approved commands and browser checks",
+                "Restart local services only when needed"
+              ],
+              "acceptance_checks": [
+                "Two standard-mode samples",
+                "Zero open P0/P1",
+                "R1-R6 evidence and scope consistency"
+              ],
+              "evidence_required": [
+                "Tests/build/browser/scope/diff results",
+                "Execution and observation reports",
+                "Convergence gate"
+              ],
+              "rollback": "Discard invalid evidence and return to T1/T2 for bounded correction.",
+              "stop_conditions": [
+                "P0/P1 remains or verification requires unauthorized mutation"
+              ],
+              "escalation_conditions": [
+                "Local runtime cannot provide an authorized path"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Frontend consumes backend contract"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Integration needs both layers"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Release reactor tests"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "Frontend build"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "Authenticated browser and scope checks"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "Backend contract sample",
+              "trigger": "T1 execution report",
+              "observer": "Automated backend observer",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "Integrated UI sample",
+              "trigger": "T2/T3 execution",
+              "observer": "Runtime and repository observer",
+              "sensors": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R6"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "Backend additive contract implemented and Java 17 reactor passed",
+        "recorded_at": "2026-08-20T07:21:04+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java",
+              "purpose": "Add the flat related-history response contract."
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+              "purpose": "Query tenant-scoped direct ADDITIONAL relations for active item keys."
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+              "purpose": "Aggregate live, deduplicated and sorted historical application summaries."
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+              "purpose": "Expose the permission-protected read endpoint."
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application",
+              "purpose": "Cover persistence, service aggregation and controller authorization."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl server/src/modules/release -am test",
+              "exit_code": 0,
+              "salient_output": "ccb-release: 73 tests, 0 failures, 0 errors; reactor BUILD SUCCESS."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Release backend reactor",
+              "result": "pass",
+              "evidence": "All release and dependency modules passed under Java 17.",
+              "limitations": [
+                "No production database was modified for the test suite."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added one additive flat read endpoint for direct related history.",
+            "Filtered by tenant, relation type and active current item keys.",
+            "Mapped live status and recomputed changes without attachments or recursive payloads."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Tenant and release view permission are enforced.",
+              "result": "pass",
+              "evidence": "Persistence predicates and controller security test passed."
+            },
+            {
+              "invariant": "Existing release behavior and schema remain unchanged.",
+              "result": "pass",
+              "evidence": "Additive implementation, no migration, full release reactor passed."
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Frontend section implemented and production build passed",
+        "recorded_at": "2026-08-20T07:21:38+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/release.ts",
+              "purpose": "Add the related-history DTO and API client."
+            },
+            {
+              "path_or_resource": "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+              "purpose": "Render independently loaded related history for additional applications."
+            },
+            {
+              "path_or_resource": "web/src/modules/release/release-prototype.css",
+              "purpose": "Add desktop and mobile history presentation styles."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "2362 modules transformed; production build completed in 4.54s."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Frontend type and production build",
+              "result": "pass",
+              "evidence": "vue-tsc and Vite build exited successfully.",
+              "limitations": [
+                "Existing bundle-size warning remains unrelated to this feature."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added additional-only history loading with local loading, empty, error and retry state.",
+            "Added linked history cards with current status and version changes.",
+            "Added responsive layouts without changing the approval panel contract."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Main detail and approval remain usable when history is independent.",
+              "result": "pass",
+              "evidence": "History state is loaded and caught separately; frontend build passed."
+            },
+            {
+              "invariant": "No shared component behavior changed.",
+              "result": "pass",
+              "evidence": "Changes are confined to release API, detail page and scoped release CSS."
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "The in-app browser does not expose request interception, so isolated request failure was verified structurally rather than by runtime network blocking."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Health, browser, responsive, console and repository checks recorded",
+        "recorded_at": "2026-08-20T07:22:39+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260820-044-release-additional-related-history",
+              "purpose": "Record implementation and verification evidence."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "curl http://127.0.0.1:8080/actuator/health",
+              "exit_code": 0,
+              "salient_output": "status UP"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "Module, repository skill and development entry checks passed; eight unrelated pre-existing ledger files remain invalid."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Authenticated real-data browser flow",
+              "result": "pass",
+              "evidence": "SQ-202608-001 showed one direct history card; SQ-202608-002 hid the section; link navigation succeeded.",
+              "limitations": [
+                "No additional application with zero relations exists in the current real dataset."
+              ]
+            },
+            {
+              "check": "Responsive geometry and console",
+              "result": "pass",
+              "evidence": "375x812, 390x844 and 430x932 had document widths equal to viewport widths; console error list was empty.",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "Integrated backend, frontend, database and browser evidence without changing test data."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "No unauthorized test data mutation.",
+              "result": "pass",
+              "evidence": "Browser validation used the two existing release applications and one persisted ADDITIONAL relation."
+            },
+            {
+              "invariant": "Unrelated dirty rokey changes remain untouched.",
+              "result": "pass",
+              "evidence": "No reset, clean, checkout, commit or branch switch was performed."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "System Maven defaulted to Java 26.",
+              "impact": "Byte Buddy rejected Java 26 before release tests; rerun under project Java 17 passed."
+            },
+            {
+              "event": "Governance scans include unrelated historical ledgers.",
+              "impact": "Eight pre-existing ledger format failures remain outside REQ-044."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Request interception is unavailable in the selected in-app browser."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Independent Java 17 backend contract sample completed",
+        "recorded_at": "2026-08-20T07:23:14+00:00",
+        "data": {
+          "sample_label": "Backend contract sample",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 service and persistence tests",
+              "result": "pass",
+              "raw_evidence": "Standard-empty and direct ADDITIONAL relation paths passed in the 73-test release suite.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 mapping assertions",
+              "result": "pass",
+              "raw_evidence": "Live history summary fields and status mapping tests passed.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 aggregation assertions",
+              "result": "pass",
+              "raw_evidence": "Deduplication, active-item filtering and current version-change tests passed.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 ordering assertions",
+              "result": "pass",
+              "raw_evidence": "Approved/created/code ordering and flat no-attachment contract passed.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1 and S2 permission/tenant checks",
+              "result": "pass",
+              "raw_evidence": "Tenant SQL predicates and release:application:view/system:admin controller security test passed.",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Java 26 produced an invalid Mockito sensor run; Java 17 is the calibrated project runtime and passed."
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Authenticated real-data desktop and mobile browser sample completed",
+        "recorded_at": "2026-08-20T07:23:14+00:00",
+        "data": {
+          "sample_label": "Integrated UI sample",
+          "task_ids": [
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S3 authenticated browser DOM",
+              "result": "pass",
+              "raw_evidence": "SQ-202608-001 displayed one direct history card and SQ-202608-002 did not display the section.",
+              "limitation": [
+                "No direct-related empty additional sample exists in the current dataset."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S3 real-data detail DOM",
+              "result": "pass",
+              "raw_evidence": "History card showed code, current status, version type, requester, department, timestamps, requirement, description and version change.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S3 browser interaction",
+              "result": "pass",
+              "raw_evidence": "Clicking SQ-202608-002 navigated to its application detail and the response embedded no attachments.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S2 build plus S3 layout/console",
+              "result": "pass",
+              "raw_evidence": "Approval panel remained visible; 375x812, 390x844 and 430x932 had no horizontal overflow; browser console had zero errors.",
+              "limitation": [
+                "The selected browser has no request interception capability; local history-error handling is verified by isolated state/catch implementation and production build."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "The current real dataset contains two applications and only one persisted ADDITIONAL relation."
+          ],
+          "coverage_gaps": [
+            "Runtime network blocking of only the history endpoint is unavailable in this browser surface."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final R1-R6 traceability, regression, runtime and scope audit completed",
+        "recorded_at": "2026-08-20T07:23:43+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "Backend standard/direct relation tests passed.",
+                "Authenticated additional and standard browser comparison passed."
+              ],
+              "limitations": [
+                "No empty additional real-data sample exists."
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "Backend mapping tests passed.",
+                "Real history card showed all approved fields and live status."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "Active-item filtering, grouping and recomputation tests passed."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "Stable ordering tests passed.",
+                "Historical detail link navigation passed."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "Tenant-scoped persistence contract and controller security test passed."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "History uses independent state/catch/retry and production build passed.",
+                "Approval remained visible and all tested viewports had no overflow or console errors."
+              ],
+              "limitations": [
+                "Runtime single-endpoint blocking was not supported by the browser capability set."
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Java 17 release reactor: 73 tests passed."
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "Frontend production build and responsive browser checks passed."
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "Health UP, real-data browser flow, diff and scope audit completed."
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Release reactor under Java 17",
+              "result": "pass",
+              "evidence": "73 tests, zero failures/errors."
+            },
+            {
+              "check": "Frontend production build",
+              "result": "pass",
+              "evidence": "vue-tsc and Vite build completed."
+            },
+            {
+              "check": "Tracked diff whitespace",
+              "result": "pass",
+              "evidence": "git diff --check returned no output."
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "Persisted ADDITIONAL relations remain the lineage source.",
+              "result": "pass",
+              "evidence": "Store query and real relation-backed UI sample."
+            },
+            {
+              "invariant": "Historical status is read live and attachments are not embedded.",
+              "result": "pass",
+              "evidence": "Service tests and flat browser payload presentation."
+            },
+            {
+              "invariant": "Approval behavior and unrelated dirty changes remain unchanged.",
+              "result": "pass",
+              "evidence": "Approval panel present; no unrelated reset or refactor performed."
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Wrong default JDK",
+              "result": "pass",
+              "evidence": "Sensor recalibrated to the backend's Java 17 runtime and full reactor passed."
+            },
+            {
+              "disturbance": "Dirty rokey worktree",
+              "result": "pass",
+              "evidence": "Only approved product files and REQ-044 evidence were used; unrelated changes were preserved."
+            }
+          ],
+          "residual_risks": [
+            "The current local real dataset does not contain an additional application with zero direct relations.",
+            "Eight unrelated historical ledger files keep the repository-wide AI-control layout check red.",
+            "An accidental startup against devsec_platform created a Flyway history table and failed V2 immediately; that unrelated database was not used further or cleaned destructively."
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R6 have task, automated and runtime evidence; all tasks are verified, both samples have zero P0/P1, and approved-scope invariants hold."
+        }
+      }
+    ]
+  },
+  "objective": "Show directly related historical applications and their live statuses inside additional-application details without blocking approval work.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Only additional applications expose related history sourced from persisted ADDITIONAL relations.",
+      "acceptance": [
+        "Additional details load direct history",
+        "Standard details hide the section",
+        "Unrelated same-window records are absent"
+      ],
+      "priority": "must",
+      "source": "Approved design D1-D2",
+      "counterexample": [
+        "Dynamic conflicts are reused"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Each history entry exposes identifying, requester, timing, requirement and description fields with live status.",
+      "acceptance": [
+        "Approved summary fields are visible",
+        "Status equals the current historical application state"
+      ],
+      "priority": "must",
+      "source": "Approved design",
+      "counterexample": [
+        "Only a code or stale status is shown"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Delivery and file-media changes are recomputed from current active items and grouped by historical application.",
+      "acceptance": [
+        "Multiple rows produce one history entry",
+        "Removed current items are absent",
+        "Before and after values match active content"
+      ],
+      "priority": "must",
+      "source": "Approved design D3",
+      "counterexample": [
+        "Inactive relation snapshots are displayed"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "History is sorted newest release first and links to details without embedding attachments.",
+      "acceptance": [
+        "Ordering is stable",
+        "Code opens the existing detail route",
+        "History payload has no attachments"
+      ],
+      "priority": "must",
+      "source": "Approved design D4",
+      "counterexample": [
+        "Attachments are duplicated"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "The endpoint enforces tenant isolation and release application view permission without fallback scans.",
+      "acceptance": [
+        "Cross-tenant records are absent",
+        "View permission or admin is required",
+        "Empty relations remain empty"
+      ],
+      "priority": "must",
+      "source": "Platform authorization invariant",
+      "counterexample": [
+        "An unauthorized user reads history"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "History loading, empty and failure states are local and do not block detail or approval controls.",
+      "acceptance": [
+        "Empty copy is explicit",
+        "Failure has local retry",
+        "Main detail and approval remain usable"
+      ],
+      "priority": "must",
+      "source": "Approved failure-isolation design",
+      "counterexample": [
+        "History failure fails the whole page"
+      ]
+    }
+  ],
+  "invariants": [
+    "rel_application_relation remains the lineage source",
+    "Historical status is live",
+    "Approval, conflict and attachment behavior are unchanged",
+    "Unrelated worktree changes remain untouched"
+  ],
+  "constraints": [
+    "Java 17 and existing Spring JDBC patterns",
+    "Vue 3 and existing release UI patterns",
+    "No migration or dependency",
+    "Remain on rokey"
+  ],
+  "non_goals": [
+    "All earlier same-window history",
+    "Historical actions or attachment aggregation",
+    "Generic lineage graph",
+    "Legacy backfill"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-044-release-additional-related-history/handoff.json",
+    "imported_at": "2026-08-20T06:36:02+00:00",
+    "topic": "req-20260820-044-release-additional-related-history",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260820-044-release-additional-related-history",
+      "handoff_status": "approved",
+      "created_at": "2026-08-20T14:20:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260820-044-release-additional-related-history",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-20-release-additional-related-history-design.md",
+        "objective": "Show directly related historical applications and their current statuses inside additional-application details for approval reference.",
+        "users": [
+          "Approvers and authorized release-application viewers reviewing an additional application"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Only additional applications must expose a related-history section sourced from persisted ADDITIONAL relations.",
+            "acceptance": [
+              "Additional details load direct related history",
+              "Standard applications do not show the section",
+              "Later or unrelated same-window applications are not included"
+            ],
+            "priority": "must",
+            "source": "User selected directly related historical applications on 2026-08-20.",
+            "counterexample": [
+              "The section uses the dynamic conflict list",
+              "All same-window applications are displayed"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Each related application must show its code, current status, version type, requester, department, creation time, release time, requirements and description.",
+            "acceptance": [
+              "All listed fields are visible without leaving the current approval detail",
+              "Status reflects the current historical-application state"
+            ],
+            "priority": "must",
+            "source": "Confirmed detail design.",
+            "counterexample": [
+              "Only an application code is shown",
+              "Status is a stale relation snapshot"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Related delivery and file-media changes must be recomputed from current active items and grouped by historical application.",
+            "acceptance": [
+              "Multiple relation rows produce one application entry",
+              "Removed current items do not appear",
+              "Displayed before/after values match current active content"
+            ],
+            "priority": "must",
+            "source": "Existing revision-preserving data model and confirmed design.",
+            "counterexample": [
+              "A historical application is duplicated per delivery row",
+              "A removed draft item remains in the reference list"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Related applications must be sorted by latest release time and link to their in-app details without embedding attachments.",
+            "acceptance": [
+              "Newest released source appears first",
+              "Application code opens its detail route",
+              "No attachment payload is returned by the history endpoint"
+            ],
+            "priority": "must",
+            "source": "Confirmed interaction design.",
+            "counterexample": [
+              "Ordering is unstable",
+              "The reference endpoint duplicates attachment data"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "The endpoint must enforce tenant isolation and release-application view permission without broad fallback queries.",
+            "acceptance": [
+              "Cross-tenant records cannot be returned",
+              "The endpoint requires release:application:view or system:admin",
+              "Empty relations return an empty list"
+            ],
+            "priority": "must",
+            "source": "Platform authorization invariant.",
+            "counterexample": [
+              "A missing relation triggers a same-window scan",
+              "A user without view permission can query history"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "Related-history empty and error states must remain local and must not block the main detail or approval panel.",
+            "acceptance": [
+              "Empty additional history has explicit copy",
+              "A history request failure exposes local retry",
+              "Main detail and approval controls remain available"
+            ],
+            "priority": "must",
+            "source": "Confirmed failure-isolation design.",
+            "counterexample": [
+              "History failure causes the whole detail page to fail",
+              "An empty section silently disappears on an additional application"
+            ]
+          }
+        ],
+        "invariants": [
+          "rel_application_relation remains the lineage fact source",
+          "Historical status is read live",
+          "Existing approval and conflict behavior is unchanged",
+          "No historical attachments are embedded",
+          "Unrelated dirty-worktree changes remain untouched"
+        ],
+        "constraints": [
+          "Reuse Spring JDBC and existing release module patterns",
+          "Do not add a database migration",
+          "Use existing release:application:view authorization",
+          "Remain on rokey and add no dependency"
+        ],
+        "non_goals": [
+          "Show all earlier same-window applications",
+          "Modify historical applications from the reference area",
+          "Build a generic lineage graph",
+          "Backfill legacy relations",
+          "Change attachments or approval actions"
+        ],
+        "selected_approach": {
+          "name": "Persisted relation aggregation through a dedicated read endpoint",
+          "reason": "It provides exact lineage semantics, avoids recursive DTO expansion and prevents later or unrelated same-window applications from appearing.",
+          "alternatives": [
+            {
+              "name": "Reuse dynamic conflict report",
+              "rejected_because": "It can include applications created after the current application and is not immutable lineage."
+            },
+            {
+              "name": "List every earlier application in the same window and subsystem",
+              "rejected_because": "It adds noise and does not identify the applications that directly caused additional classification."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "Related-relation query",
+              "History aggregation service",
+              "Read controller endpoint",
+              "Frontend history DTO/API",
+              "Additional-detail reference section",
+              "Scoped responsive styles and tests"
+            ],
+            "outside": [
+              "Application creation and update semantics",
+              "Workflow actions",
+              "Conflict gate",
+              "Attachments",
+              "Database schema",
+              "Other release views"
+            ]
+          },
+          "components": [
+            {
+              "name": "ReleaseApplicationStore",
+              "responsibility": "Return direct historical application IDs for active ADDITIONAL relation items within the tenant.",
+              "depends_on": [
+                "rel_application_relation",
+                "rel_application_delivery"
+              ]
+            },
+            {
+              "name": "ReleaseApplicationService",
+              "responsibility": "Authorize the current application, aggregate related applications, recompute changes and sort the read model.",
+              "depends_on": [
+                "ReleaseApplicationStore",
+                "Existing application loaders and item-change logic"
+              ]
+            },
+            {
+              "name": "ReleaseApplicationController",
+              "responsibility": "Expose the permission-protected related-history read endpoint.",
+              "depends_on": [
+                "ReleaseApplicationService",
+                "Spring Security"
+              ]
+            },
+            {
+              "name": "Release API client",
+              "responsibility": "Define the flat history contract and fetch related history.",
+              "depends_on": [
+                "HTTP client"
+              ]
+            },
+            {
+              "name": "ReleaseApplicationDetailPage",
+              "responsibility": "Load history independently and render additional-only reference, empty, error and link states.",
+              "depends_on": [
+                "Release API client",
+                "Vue Router",
+                "UiStatusTag"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "GET /api/release/applications/{code}/related-history",
+              "producer": "ReleaseApplicationController",
+              "consumers": [
+                "ReleaseApplicationDetailPage"
+              ],
+              "contract": "Returns a tenant-scoped flat list of directly related historical applications with current status and recomputed changes; never includes attachments or conflict actions."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "Current application code and authenticated user",
+              "transitions": [
+                "load current application",
+                "return empty for standard application",
+                "resolve persisted ADDITIONAL relation IDs matching active items",
+                "load current historical states",
+                "recompute and aggregate changes",
+                "sort newest release first"
+              ],
+              "output": "Flat related-history list for approval reference"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Current application is missing or cross-tenant",
+            "behavior": "Use existing not-found or forbidden semantics.",
+            "recovery": "User returns to the authorized application list."
+          },
+          {
+            "condition": "A relation points to a deleted or unavailable historical application",
+            "behavior": "Skip that relation while retaining other valid history.",
+            "recovery": "Data repair can restore the missing business record without endpoint changes."
+          },
+          {
+            "condition": "Related-history request fails",
+            "behavior": "Keep main detail and approval usable and show a local retry state.",
+            "recovery": "Retry only the related-history request."
+          },
+          {
+            "condition": "Additional application has no valid related history",
+            "behavior": "Show an explicit empty state and do not broaden the query.",
+            "recovery": "Correct relation data through the normal application flow or data repair."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Tenant-scoped query",
+            "release:application:view or system:admin required",
+            "No attachment data expansion"
+          ],
+          "performance": [
+            "Relation-index lookup and bounded related ID set",
+            "No whole-window scan",
+            "Avoid duplicate per-relation DTOs"
+          ],
+          "compatibility": [
+            "Additive read endpoint",
+            "No schema or existing DTO changes required",
+            "Existing clients remain compatible"
+          ],
+          "operations": [
+            "No migration or configuration change",
+            "Local endpoint failure is observable in the detail section"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R5"
+            ],
+            "signal": "Store and service return only direct, active, tenant-scoped grouped history.",
+            "method": "Focused persistence and service tests with later, unrelated, stale and cross-tenant fixtures."
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "signal": "The API exposes complete summary fields, live status, recomputed changes and stable ordering.",
+            "method": "Service and controller contract assertions."
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4",
+              "R6"
+            ],
+            "signal": "The detail page shows additional-only reference cards, working links and isolated empty/error states.",
+            "method": "Frontend build and authenticated browser checks."
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "signal": "Release module and frontend regressions remain green.",
+            "method": "Maven release-module tests, npm production build and git diff check."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "Persisted ADDITIONAL relations exist for formally created additional applications and active-item filtering removes stale revision rows.",
+            "basis": "Current create/update service calls persistAdditionalRelations and delivery revisions preserve active flags.",
+            "falsifier": "Fixtures show valid additional applications without any persisted relations or current active item keys."
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "Should a logically deleted historical source remain as an immutable non-clickable audit snapshot?",
+            "impact": "Current design skips unavailable sources; a future audit requirement may need snapshot persistence.",
+            "owner": "Product owner",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Display only directly related historical applications.",
+            "reason": "This is the scope explicitly selected by the user.",
+            "source": "User choice on 2026-08-20."
+          },
+          {
+            "id": "D2",
+            "decision": "Expose a dedicated flat read endpoint.",
+            "reason": "It avoids recursive Response growth and keeps list/conflict payloads unchanged.",
+            "source": "Confirmed design."
+          },
+          {
+            "id": "D3",
+            "decision": "Read status live and recompute changes from active content.",
+            "reason": "This prevents stale relation snapshots after draft revisions.",
+            "source": "Confirmed design."
+          },
+          {
+            "id": "D4",
+            "decision": "Do not embed historical attachments.",
+            "reason": "The reference remains scannable and links to the full historical detail when needed.",
+            "source": "Confirmed design."
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Legacy or stale relation rows refer to items no longer active.",
+            "impact": "Incorrect history can appear.",
+            "mitigation": "Join/filter against current active delivery item keys and recompute changes."
+          },
+          {
+            "risk": "Multiple relation rows duplicate a historical application.",
+            "impact": "The page becomes noisy and counts are misleading.",
+            "mitigation": "Deduplicate IDs in persistence and aggregate changes per historical application in the service."
+          },
+          {
+            "risk": "Independent history loading can create a brief layout shift.",
+            "impact": "Approval page may move after initial render.",
+            "mitigation": "Use a stable local loading state with bounded minimum height."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user selected directly related historical applications and confirmed the proposed backend and detail-page design on 2026-08-20.",
+          "confirmed_at": "2026-08-20T14:12:23+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-20-release-additional-related-history-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Remain on rokey and preserve unrelated dirty-worktree changes",
+          "No database migration, dependency, attachment expansion or approval-write change",
+          "Enforce release:application:view and tenant isolation",
+          "Use independently recoverable frontend history state"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java",
+            "status": "existing",
+            "responsibility": "Flat related-history read model",
+            "evidence": "Existing release DTO owner"
+          },
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+            "status": "existing",
+            "responsibility": "Tenant-scoped persisted relation lookup",
+            "evidence": "Existing release JDBC owner"
+          },
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+            "status": "existing",
+            "responsibility": "Authorization, aggregation, recomputation and sorting",
+            "evidence": "Existing application business service"
+          },
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+            "status": "existing",
+            "responsibility": "Protected HTTP read endpoint",
+            "evidence": "Existing application controller"
+          },
+          {
+            "path": "web/src/api/release.ts",
+            "status": "existing",
+            "responsibility": "Frontend related-history contract",
+            "evidence": "Existing release API client"
+          },
+          {
+            "path": "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+            "status": "existing",
+            "responsibility": "Independent history loading and rendering",
+            "evidence": "Existing application detail page"
+          },
+          {
+            "path": "web/src/modules/release/release-prototype.css",
+            "status": "existing",
+            "responsibility": "Scoped responsive history presentation",
+            "evidence": "Existing release module stylesheet"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Expose a protected tenant-scoped read endpoint for directly related historical applications.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "ADDITIONAL relations are persisted after create and update",
+              "Active delivery rows identify the current revision",
+              "Existing versionChanges recomputes unit and file-media changes"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java"
+              ],
+              "test": [
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "rel_application_relation",
+                "active rel_application_delivery",
+                "ReleaseApplicationStore.findById"
+              ],
+              "produces": [
+                "GET /api/release/applications/{code}/related-history -> List<RelatedHistoryView>"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add focused service, SQL contract and security tests",
+                "command": null,
+                "expected": "Tests define standard-empty, direct-only, active-item, aggregation, sorting and permission behavior",
+                "evidence": "Test source and initial failing signal"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Run focused tests before implementation",
+                "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am -Dtest=ReleaseApplicationServiceTest,ReleaseApplicationPersistenceContractTest,ReleaseApplicationControllerSecurityTest test",
+                "expected": "Fails because the new contract is absent",
+                "evidence": "Exit code and key failure"
+              },
+              {
+                "id": "T1-S3",
+                "action": "Implement the flat DTO, relation lookup, service aggregation and controller endpoint",
+                "command": null,
+                "expected": "Endpoint returns only current direct persisted history with live state and recomputed changes",
+                "evidence": "Scoped source diff"
+              },
+              {
+                "id": "T1-S4",
+                "action": "Run Release reactor tests",
+                "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test",
+                "expected": "Zero test failures",
+                "evidence": "Maven summary and exit code"
+              }
+            ],
+            "acceptance_checks": [
+              "Standard application returns empty",
+              "Stale and unrelated relations are excluded",
+              "Historical applications are grouped and sorted",
+              "Endpoint requires view permission"
+            ],
+            "risks": [
+              "Legacy relations can reference inactive items"
+            ],
+            "rollback": "Remove only the additive DTO, Store query, Service method, Controller route and related tests.",
+            "stop_conditions": [
+              "A database migration or cross-module private-table write becomes necessary"
+            ],
+            "escalation_conditions": [
+              "Valid additional applications lack persisted lineage or immutable deleted-history snapshots become mandatory"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Render independently recoverable related-history reference information in additional-application details.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4",
+              "R6"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "The detail page already separates workflow failure",
+              "UiStatusTag and semantic release styles are available",
+              "The approved endpoint is flat and attachment-free"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/release.ts",
+                "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "GET /api/release/applications/{code}/related-history"
+              ],
+              "produces": [
+                "Additional-only loading, data, empty, error and retry states with in-app links"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Add the frontend DTO, API call and independent request state",
+                "command": null,
+                "expected": "History lifecycle is isolated from main detail and workflow loading",
+                "evidence": "TypeScript and component diff"
+              },
+              {
+                "id": "T2-S2",
+                "action": "Render compact history summaries and version changes",
+                "command": null,
+                "expected": "Approver can inspect all approved fields and open historical details",
+                "evidence": "Template source and browser DOM"
+              },
+              {
+                "id": "T2-S3",
+                "action": "Add scoped responsive styles",
+                "command": null,
+                "expected": "Desktop is scannable and phone widths use one column without document overflow",
+                "evidence": "CSS diff and browser geometry"
+              },
+              {
+                "id": "T2-S4",
+                "action": "Build the frontend",
+                "command": "npm --prefix web run build",
+                "expected": "TypeScript and Vite complete with zero errors",
+                "evidence": "Build summary and exit code"
+              }
+            ],
+            "acceptance_checks": [
+              "Standard details hide the section",
+              "Additional details expose explicit loading/empty/error states",
+              "Retry affects only history",
+              "Long content and mobile layout do not overflow"
+            ],
+            "risks": [
+              "Independent loading can cause layout shift"
+            ],
+            "rollback": "Remove the related-history client contract, detail section and release-related-history styles.",
+            "stop_conditions": [
+              "A shared UI component or approval panel change becomes necessary"
+            ],
+            "escalation_conditions": [
+              "The reference area must mutate or attach historical application data"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Verify the integrated contract, permissions, responsive UI and approved write scope.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "T1 and T2 produce an additive endpoint and isolated UI",
+              "Local backend and frontend normally run on 8080 and 5173"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-044-release-additional-related-history/execution-T1.json",
+                ".ai-control/requirements/req-20260820-044-release-additional-related-history/observation-T1.json",
+                ".ai-control/requirements/req-20260820-044-release-additional-related-history/execution-T2.json",
+                ".ai-control/requirements/req-20260820-044-release-additional-related-history/observation-T2.json",
+                ".ai-control/requirements/req-20260820-044-release-additional-related-history/convergence.json"
+              ],
+              "modify": [
+                ".ai-control/requirements/req-20260820-044-release-additional-related-history/state.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 endpoint",
+                "T2 detail page"
+              ],
+              "produces": [
+                "Automated, runtime, browser, scope and convergence evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Run Release tests, frontend build, governance, scope and diff checks",
+                "command": "node scripts/check-all-governance.mjs",
+                "expected": "Required checks pass or unrelated baseline failures are isolated",
+                "evidence": "Command exits and summaries"
+              },
+              {
+                "id": "T3-S2",
+                "action": "Confirm current backend and frontend processes are reachable",
+                "command": "curl -s http://127.0.0.1:8080/actuator/health",
+                "expected": "Current build is healthy and Vite serves the page",
+                "evidence": "Health and process evidence"
+              },
+              {
+                "id": "T3-S3",
+                "action": "Verify desktop and mobile application-detail states",
+                "command": null,
+                "expected": "Data, empty and local failure states are usable with no overflow or approval blockage",
+                "evidence": "Browser screenshots, DOM geometry, network and console checks"
+              },
+              {
+                "id": "T3-S4",
+                "action": "Audit requirement coverage and close only with zero open P0/P1 feedback",
+                "command": null,
+                "expected": "R1-R6 converge with scoped changes",
+                "evidence": "Observation and convergence artifacts"
+              }
+            ],
+            "acceptance_checks": [
+              "Automated tests and build pass",
+              "Protected route and tenant behavior are covered",
+              "Desktop and three required phone viewports are usable",
+              "Scope and diff audits pass"
+            ],
+            "risks": [
+              "Expired authentication or cleared local data may limit runtime scenarios"
+            ],
+            "rollback": "Discard invalid evidence and roll back only T1/T2 scoped changes if a product deviation is found.",
+            "stop_conditions": [
+              "A P0/P1 deviation remains open or verification requires unauthorized data mutation"
+            ],
+            "escalation_conditions": [
+              "Local runtime cannot provide an authorized test path after rebuild and restart"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Frontend consumes the backend contract"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Integrated verification requires both layers"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test",
+            "expected": "Zero test failures"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Zero build errors"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "git diff --check",
+            "expected": "No whitespace errors"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user confirmed the directly related history design, then explicitly requested development and continuation on 2026-08-20.",
+          "confirmed_at": "2026-08-20T14:12:23+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Release relation lookup and history aggregation",
+          "Application detail related-history section"
+        ],
+        "state_variable_candidates": [
+          "current characteristic",
+          "active item keys",
+          "persisted related IDs",
+          "historical live status",
+          "frontend history request state"
+        ],
+        "interface_candidates": [
+          "GET /api/release/applications/{code}/related-history"
+        ],
+        "sensor_candidates": [
+          "Mockito and JDBC contract tests",
+          "Maven release reactor",
+          "Vite build",
+          "browser DOM/network/console"
+        ],
+        "actuator_candidates": [
+          "Store relation query",
+          "Service history aggregation",
+          "Vue independent loader and local history section"
+        ],
+        "disturbance_candidates": [
+          "stale legacy relations",
+          "dirty rokey worktree",
+          "expired authentication",
+          "empty local test data"
+        ],
+        "delay_candidates": [
+          "backend rebuild/restart",
+          "Vite hot reload",
+          "independent history response"
+        ],
+        "assumptions": [
+          {
+            "text": "Persisted ADDITIONAL relations cover valid current lineage.",
+            "basis": "persistAdditionalRelations runs after create and update.",
+            "falsifier": "A valid additional fixture has no persisted relation for its active item."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL release tables\", \"Spring Security and tenant AuthUser\", \"Vue Router and HTTP client\", \"Existing dirty rokey worktree\", \"Local authenticated browser\"], \"inside\": [\"ReleaseApplicationStore direct relation lookup\", \"ReleaseApplicationService history aggregation\", \"ReleaseApplicationController read endpoint\", \"Release API client\", \"ReleaseApplicationDetailPage history state and section\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Browser layout\"], \"id\": \"S1\", \"independence\": \"Automated backend assertions\", \"method\": \"Focused JUnit/Mockito and persistence contract tests\", \"target\": \"Store SQL and service aggregation boundaries\"}",
+      "{\"blind_spots\": [\"Runtime data quality\"], \"id\": \"S2\", \"independence\": \"Reflection and compiler checks\", \"method\": \"Controller security test and frontend build\", \"target\": \"Permission annotation and API type compatibility\"}",
+      "{\"blind_spots\": [\"Authentication or empty local data may limit scenarios\"], \"id\": \"S3\", \"independence\": \"Runtime UI observation\", \"method\": \"Authenticated browser DOM, network, console and geometry checks\", \"target\": \"Additional-only loading, empty, error, link and responsive behavior\"}",
+      "{\"blind_spots\": [\"Product semantics\"], \"id\": \"S4\", \"independence\": \"Repository checks\", \"method\": \"Scope, governance and git diff checks\", \"target\": \"Approved scope and regression\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Add one Store query, flat DTO, Service aggregator and protected Controller endpoint\", \"authority\": \"Approved business/release scope\", \"id\": \"A1\", \"impact_radius\": \"Additive release read path\", \"rollback\": \"Remove additive backend surfaces\", \"target\": \"Direct history data path\"}",
+      "{\"action\": \"Add API DTO/call and isolated additional-only section with scoped CSS\", \"authority\": \"Approved release frontend scope\", \"id\": \"A2\", \"impact_radius\": \"One detail page\", \"rollback\": \"Remove local frontend surfaces\", \"target\": \"Approval reference presentation\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Rows may reference inactive current items\", \"source\": \"Legacy stale relations\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Global diff contains unrelated changes\", \"source\": \"Dirty rokey worktree\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Browser scenarios may be unavailable\", \"source\": \"Expired authentication or cleared test data\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"Application updates deactivate old delivery rows before inserting new active rows.\", \"falsifier\": \"A stale relation item key also matches a semantically replaced active item incorrectly.\", \"text\": \"Current active-item filtering is sufficient to discard stale relation revisions.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S2\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Expose and test the direct related-history backend contract.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ADDITIONAL relations and active delivery rows exist",
+        "versionChanges already handles delivery units and file media"
+      ],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java"
+      ],
+      "invariants": [
+        "Tenant and view permission enforced",
+        "Existing detail/conflict/approval behavior unchanged",
+        "No migration"
+      ],
+      "interface_contracts": [
+        "GET /api/release/applications/{code}/related-history returns flat RelatedHistoryView list",
+        "No attachment or recursive conflict data"
+      ],
+      "non_goals": [
+        "Backfill or generic lineage graph"
+      ],
+      "action_bounds": [
+        "Add one relation query and one additive read path",
+        "Reuse existing difference computation"
+      ],
+      "acceptance": [
+        "Standard empty",
+        "Direct active grouped live sorted history",
+        "Permission protected"
+      ],
+      "evidence_required": [
+        "Focused failing and green tests",
+        "Release reactor summary",
+        "Scoped diff"
+      ],
+      "rollback": "Remove additive backend surfaces and tests.",
+      "stop_conditions": [
+        "Database migration or cross-module private data access is required"
+      ],
+      "escalation_conditions": [
+        "Persisted lineage is absent for valid applications"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-20T07:20:53+00:00",
+          "text": "Backend implementation and focused checks completed"
+        },
+        {
+          "recorded_at": "2026-08-20T07:21:14+00:00",
+          "text": "Backend output ready for independent observation"
+        },
+        {
+          "recorded_at": "2026-08-20T07:23:14+00:00",
+          "text": "Backend contract observed with zero P0-P3 deviations"
+        }
+      ],
+      "updated_at": "2026-08-20T07:23:14+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Render and test the isolated related-history detail section.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "T1 provides a flat endpoint",
+        "Detail page already isolates workflow failure"
+      ],
+      "write_scope": [
+        "web/src/api/release.ts",
+        "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+        "web/src/modules/release/release-prototype.css"
+      ],
+      "invariants": [
+        "Main detail and approval remain usable",
+        "Standard details hide the section",
+        "No shared component change"
+      ],
+      "interface_contracts": [
+        "Frontend DTO exactly matches RelatedHistoryView",
+        "History retry calls only related-history endpoint"
+      ],
+      "non_goals": [
+        "Historical actions or attachments"
+      ],
+      "action_bounds": [
+        "Add local state, markup and scoped styles only"
+      ],
+      "acceptance": [
+        "Loading/data/empty/error states",
+        "History link works",
+        "No mobile overflow"
+      ],
+      "evidence_required": [
+        "Frontend build",
+        "Browser DOM/network/console/geometry",
+        "Scoped diff"
+      ],
+      "rollback": "Remove the history API, detail section and scoped CSS.",
+      "stop_conditions": [
+        "Shared UI or approval panel changes become necessary"
+      ],
+      "escalation_conditions": [
+        "Reference must mutate historical data"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-20T07:21:24+00:00",
+          "text": "Frontend history section implementation completed"
+        },
+        {
+          "recorded_at": "2026-08-20T07:22:39+00:00",
+          "text": "Frontend output ready for browser observation"
+        },
+        {
+          "recorded_at": "2026-08-20T07:23:15+00:00",
+          "text": "Frontend build and browser observations passed"
+        }
+      ],
+      "updated_at": "2026-08-20T07:23:15+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Verify integrated backend, frontend, permissions and approved scope.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1/T2 outputs are measurable",
+        "Local services normally use 8080/5173"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-044-release-additional-related-history/*.json"
+      ],
+      "invariants": [
+        "No product changes outside T1/T2",
+        "No unauthorized test data"
+      ],
+      "interface_contracts": [
+        "Browser consumes the real endpoint"
+      ],
+      "non_goals": [
+        "Production validation or release"
+      ],
+      "action_bounds": [
+        "Run approved commands and browser checks",
+        "Restart local services only when needed"
+      ],
+      "acceptance": [
+        "Two standard-mode samples",
+        "Zero open P0/P1",
+        "R1-R6 evidence and scope consistency"
+      ],
+      "evidence_required": [
+        "Tests/build/browser/scope/diff results",
+        "Execution and observation reports",
+        "Convergence gate"
+      ],
+      "rollback": "Discard invalid evidence and return to T1/T2 for bounded correction.",
+      "stop_conditions": [
+        "P0/P1 remains or verification requires unauthorized mutation"
+      ],
+      "escalation_conditions": [
+        "Local runtime cannot provide an authorized path"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-20T07:22:39+00:00",
+          "text": "Integrated runtime verification executed"
+        },
+        {
+          "recorded_at": "2026-08-20T07:22:39+00:00",
+          "text": "Integrated output ready for observation"
+        },
+        {
+          "recorded_at": "2026-08-20T07:23:15+00:00",
+          "text": "Integrated health, browser, responsive, console and scope checks passed"
+        }
+      ],
+      "updated_at": "2026-08-20T07:23:15+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "Backend contract sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Release reactor 73 tests passed; direct, stale, grouped, sorted, tenant and permission cases covered",
+      "recorded_at": "2026-08-20T07:23:14+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "Integrated UI sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Additional-only history, link, responsive widths, approval visibility and zero console errors observed",
+      "recorded_at": "2026-08-20T07:23:15+00:00"
+    }
+  ]
+}

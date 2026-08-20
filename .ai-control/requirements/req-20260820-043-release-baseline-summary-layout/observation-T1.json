@@ -1,0 +1,19 @@
+{
+  "sample_label": "T1 implementation observation",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S3 scoped DOM inspection", "result": "pass", "raw_evidence": "ReleaseBaselineView renders release-ledger-summary__window with windowCode, windowName and statusLabel before the metric container.", "limitation": ["Current in-app browser session is unauthenticated, so the final business-page screenshot is unavailable."]},
+    {"requirement_id": "R2", "sensor": "S3 scoped DOM and CSS inspection", "result": "pass", "raw_evidence": "Exactly five metric children are rendered and release-ledger-summary__metrics uses repeat(5, minmax(0, 1fr)) on desktop.", "limitation": ["Source contract is verified; authenticated computed geometry is not sampled."]},
+    {"requirement_id": "R3", "sensor": "S3 responsive CSS inspection", "result": "pass", "raw_evidence": "At max-width 760px the metric grid uses two columns with the fifth item spanning two; at max-width 430px it uses one column and resets all right/bottom separators.", "limitation": ["Direct responsive business-page screenshots require a renewed authenticated session."]},
+    {"requirement_id": "R4", "sensor": "S1 build plus S3 scope plus S4 service probes", "result": "pass", "raw_evidence": "npm run build exited 0; only the approved template/CSS surfaces changed; frontend returned HTTP 200 and backend health returned UP.", "limitation": ["Release files are untracked, so source excerpts rather than git diff establish the local change boundary."]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Expired in-app browser authentication", "effect": "Authenticated runtime screenshots cannot be collected without user-authorized credential entry.", "classification": "disturbance"},
+    {"event": "Browser URL policy blocked a standalone data URL preview", "effect": "The attempted authentication-free rendering sensor is unavailable and was not retried through another surface.", "classification": "sensor-fault"}
+  ],
+  "coverage_gaps": ["Final visual confirmation in the authenticated production-baseline page remains a user-visible follow-up check; structural, responsive-rule, build and service evidence are complete."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

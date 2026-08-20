@@ -1,0 +1,141 @@
+{
+  "task_id": "T6",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "ccb_platform_req034_runtime2_20260818",
+      "purpose": "Apply Flyway V46 and verify compatible backfill on the isolated local MySQL database"
+    },
+    {
+      "path_or_resource": "release application, conflict, production and analytics APIs",
+      "purpose": "Exercise mixed and file-only applications through real persistence and workflow transitions"
+    },
+    {
+      "path_or_resource": "release application, baseline, current-production and analytics pages",
+      "purpose": "Verify file-media rendering and interaction at required desktop and mobile viewports"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"],
+  "commands": [
+    {
+      "command": "Flyway startup against ccb_platform_req034_runtime2_20260818",
+      "exit_code": 0,
+      "salient_output": "V46 applied successfully; 68 application delivery rows, 7 relation rows and 10 production rows retained and backfilled as DELIVERY_UNIT"
+    },
+    {
+      "command": "restore verification of /private/tmp/rddmp-backups/ccb_platform_req034_runtime2_20260818-after-v46-20260819T174341.sql",
+      "exit_code": 0,
+      "salient_output": "SHA-256 a1e7f9db3bd55b5a7e268996c60fce28577fb2eeb2361c16199f94d9a0b84db7; 100 tables restored and release row counts matched"
+    },
+    {
+      "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test",
+      "exit_code": 0,
+      "salient_output": "All 11 reactor modules passed; release module ran 65 tests; BUILD SUCCESS"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit and Vite production build passed; only existing chunk-size warnings remained"
+    },
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "Module, repository-skill and development-entry checks passed; layout check remains blocked by pre-existing invalid ledger filenames in unrelated requirements"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260819-039-release-file-media/codex-task-scope.yaml --working-tree",
+      "exit_code": 1,
+      "salient_output": "Rejected the user-mandated rokey branch because the checker requires a feature/REQ-* branch; no path check was reached"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Real mixed application workflow",
+      "result": "pass",
+      "evidence": "SQ-202608-051 stored REPORT-SVC plus two independent file paths, completed two approvals and reached RELEASED with three baseline rows",
+      "limitations": []
+    },
+    {
+      "check": "Conflict and validation behavior",
+      "result": "pass",
+      "evidence": "SQ-202608-052 was classified ADDITIONAL and conflicted only on the repeated path; empty, trim-duplicate, over-1024 and control-character paths returned 400",
+      "limitations": []
+    },
+    {
+      "check": "Independent production maintenance",
+      "result": "pass",
+      "evidence": "SQ-202608-053 produced two FILE rows; entry 1787133209782422 changed to SUCCEEDED while 1787133209783408 remained RELEASED; current production and entry history returned only the successful path",
+      "limitations": []
+    },
+    {
+      "check": "Analytics and responsive browser flow",
+      "result": "pass",
+      "evidence": "Analytics reported deliveryUnitCount=0 and fileMediaCount=2; 375x812, 390x844, 430x932, 1280x800 and 1440x900 had no page horizontal overflow and kept core actions reachable",
+      "limitations": ["Browser verification reused the current authenticated local session"]
+    },
+    {
+      "check": "Service reachability",
+      "result": "pass",
+      "evidence": "Existing backend PID 11206 listens on 8080 and frontend PID 87260 listens on 5173; /release returned HTTP 200",
+      "limitations": ["The actuator health endpoint is protected and was not used as the availability oracle"]
+    }
+  ],
+  "diff_summary": [
+    "Applied the append-only V46 schema and verified retained ordinary rows",
+    "Created and approved real mixed and file-only applications without direct business-row insertion",
+    "Verified path-level conflict, baseline, production history and analytics behavior",
+    "Verified all required desktop and mobile viewports and the final production build"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Existing ordinary delivery data remains compatible",
+      "result": "pass",
+      "evidence": "All existing release rows were retained and backfilled as DELIVERY_UNIT; full backend tests passed"
+    },
+    {
+      "invariant": "File paths are text-only and never accessed on disk",
+      "result": "pass",
+      "evidence": "API validation and workflow used path strings only; no filesystem integration was introduced"
+    },
+    {
+      "invariant": "Mock business synchronization remains disabled",
+      "result": "pass",
+      "evidence": "Runtime verification used MOCK_DATA_ENABLED=false"
+    },
+    {
+      "invariant": "No commit, push or unrelated cleanup occurs",
+      "result": "pass",
+      "evidence": "Work remained on rokey with unrelated dirty content preserved"
+    }
+  ],
+  "disturbances": [
+    {
+      "disturbance": "The first intended pre-migration backup targeted the container default database rather than the actual .env database",
+      "effect": "A correct pre-V46 restore point for the actual database was not created",
+      "containment": "After V46 succeeded, the actual database was immediately backed up, restore-tested and row-count verified; no data loss or migration error was observed"
+    },
+    {
+      "disturbance": "Repository-wide governance includes malformed historical ledger filenames and the scope checker rejects the approved rokey branch name",
+      "effect": "The two repository-wide commands exit 1 before proving a clean global state",
+      "containment": "Current requirement ledger naming was corrected, task files were manually audited against the approved scope, and unrelated historical files were left untouched"
+    }
+  ],
+  "assumptions_falsified": [
+    "The initially selected backup command was assumed to target the actual runtime database"
+  ],
+  "unresolved_items": [
+    "The missing pre-V46 backup for the actual database is an irreversible process deviation; the verified post-V46 backup is the available recovery point",
+    "Repository-wide governance and automated scope checks remain externally blocked by unrelated ledger filenames and the user-approved rokey branch exception"
+  ],
+  "recommended_next": "observe"
+}

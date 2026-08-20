@@ -1,0 +1,40 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application", "purpose": "版本申请持久化、场景、冲突、状态和 REST API"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application", "purpose": "版本规则、权限、冲突、审计和历史契约测试"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V39__release_application_revision_history.sql", "purpose": "前向增加申请子表修订历史"},
+    {"path_or_resource": "docs/requirements/REQ-20260814-021-release-management/codex-task-scope.yaml", "purpose": "同步 V39 治理范围"}
+  ],
+  "requirements_addressed": ["R3", "R5", "R6", "R7", "R8", "R18"],
+  "commands": [
+    {"command": "mvn -pl :ccb-release -am test", "exit_code": 0, "salient_output": "ccb-release 21 tests passed; all eight reactor modules succeeded"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "39 Flyway migrations and all governance checks passed"},
+    {"command": "rg DELETE FROM rel_application", "exit_code": 0, "salient_output": "No physical-delete application history statement found"}
+  ],
+  "local_checks": [
+    {"check": "场景与流程编码", "result": "pass", "evidence": "Regular, urgent, emergency and additional boundary tests passed", "limitations": []},
+    {"check": "冲突与状态", "result": "pass", "evidence": "Complete historical response, version changes, token invalidation, ownership, cancel and audit assertions passed", "limitations": ["Workflow-backed submit and withdrawal are completed in T5"]},
+    {"check": "不可变明细历史", "result": "pass", "evidence": "V39 schema and persistence contract retire prior revisions without DELETE", "limitations": ["V39 real MySQL execution remains in T8"]}
+  ],
+  "diff_summary": [
+    "保存项目、物理子系统、交付单元、制品类型/版本和需求明细快照",
+    "服务端判定常规、紧急、应急和追加特征及五个固定流程编码",
+    "冲突返回旧申请全部业务内容（附件除外）、版本变化、允许动作和事实摘要令牌",
+    "草稿编辑、撤回和取消使用 rowVersion、申请人/管理员授权及业务事件日志",
+    "V39 使交付单元、需求和附件关联按申请修订保留历史"
+  ],
+  "invariants_checked": [
+    {"invariant": "Snapshot fields are complete", "result": "pass", "evidence": "Captured persistence entity contains IDs, codes, names and artifact type"},
+    {"invariant": "Structured children are normalized", "result": "pass", "evidence": "Delivery and requirement stores remain separate rows"},
+    {"invariant": "History is not physically deleted", "result": "pass", "evidence": "Active revision update and no-DELETE tests pass"},
+    {"invariant": "Applicant and tenant derive from AuthUser", "result": "pass", "evidence": "Ownership and cross-tenant tests pass"}
+  ],
+  "disturbances": [
+    {"event": "V38 child keys could not retain editable history", "impact": "Added forward-only V39 after migration-safety review; V38 was not modified"}
+  ],
+  "assumptions_falsified": ["One mutable child snapshot was sufficient for the immutable-history invariant"],
+  "unresolved_items": ["Workflow submit/real withdrawal and attachment binding are intentionally owned by T5"],
+  "recommended_next": "observe"
+}

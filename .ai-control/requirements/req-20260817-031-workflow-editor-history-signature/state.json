@@ -1,0 +1,3629 @@
+{
+  "schema_version": 4,
+  "revision": 29,
+  "created_at": "2026-08-17T06:06:09+00:00",
+  "updated_at": "2026-08-17T07:00:43+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed every design section and explicitly requested implementation on 2026-08-17.；计划确认=User reviewed the persisted plan summary and explicitly confirmed implementation on 2026-08-17.",
+      "recorded_at": "2026-08-17T06:06:09+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Approved design baseline reviewed; six must requirements have measurable acceptance criteria and no blocking unknowns.",
+      "recorded_at": "2026-08-17T06:06:33+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Model ready: every must requirement is observable and controllable within approved scope.",
+      "recorded_at": "2026-08-17T06:08:03+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Control plan ready; all must requirements have task and sensor coverage within approved write scope.",
+      "recorded_at": "2026-08-17T06:09:19+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "All bounded changes are implemented, applied to original rokey, and have repeatable automated/runtime sensors.",
+      "recorded_at": "2026-08-17T06:59:41+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "Two independent zero-error samples cover every must requirement and all tasks are verified.",
+      "recorded_at": "2026-08-17T06:59:41+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Convergence gate passed: all must requirements covered, T1-T5 verified, zero open feedback, two zero-error standard samples and final regressions green.",
+      "recorded_at": "2026-08-17T07:00:43+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed every design section and explicitly requested implementation on 2026-08-17.；计划确认=User reviewed the persisted plan summary and explicitly confirmed implementation on 2026-08-17.",
+        "recorded_at": "2026-08-17T06:06:09+00:00",
+        "data": {
+          "objective": "Make workflow lifecycle, editing, history and internal electronic signatures safe, traceable and usable without changing active instance execution semantics.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Draft definitions may be deleted while published definitions must be archived and may be restored by an administrator with a reason.",
+              "acceptance": [
+                "archive blocks new starts without affecting running instances or history",
+                "restore reuses the prior published version and does not create a new version",
+                "delete rejects every non-draft status"
+              ],
+              "priority": "must",
+              "source": "User approved archive and restore behavior on 2026-08-17.",
+              "counterexample": [
+                "archiving hides version history",
+                "restoring creates an unrequested version",
+                "published definition is soft-deleted"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Adding a node from a zero-edge or single-edge node must append or atomically insert and reconnect the graph.",
+              "acceptance": [
+                "single-edge insertion produces parent-to-new and new-to-original-target edges",
+                "the resulting graph saves and publishes",
+                "multiple outgoing branches are not guessed"
+              ],
+              "priority": "must",
+              "source": "User requested automatic node and edge creation.",
+              "counterexample": [
+                "user must manually delete the existing edge",
+                "original successor becomes isolated"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "The workflow editor must fit the viewport with persistent title and footer actions and an independently scrollable content region.",
+              "acceptance": [
+                "save remains reachable on desktop and 375x812, 390x844 and 430x932 viewports",
+                "no page-level horizontal overflow",
+                "fullscreen behavior remains available"
+              ],
+              "priority": "must",
+              "source": "User reported the save button was below the visible workflow dialog.",
+              "counterexample": [
+                "browser zoom is required to save",
+                "fixed canvas height pushes the footer off screen"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Definition detail must expose immutable version history and definition-scoped update events.",
+              "acceptance": [
+                "all versions are listed and a selected version graph opens read-only",
+                "create, update, publish, unpublish, archive and restore events show operator, time, version and reason"
+              ],
+              "priority": "must",
+              "source": "User reported missing history versions and update records.",
+              "counterexample": [
+                "only current version is visible",
+                "events cannot identify the operator"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Approval nodes must expose the existing signature requirement as explicit Yes/No and preserve backend enforcement and authenticated evidence for approve, reject and return actions.",
+              "acceptance": [
+                "signature Yes/No is visible in approval node configuration and defaults to No",
+                "required actions without confirmation remain rejected before engine progression",
+                "successful signed decisions continue to persist existing wf_signature evidence without regression"
+              ],
+              "priority": "must",
+              "source": "User confirmed login-identity confirmation signing and node-level workflow configuration.",
+              "counterexample": [
+                "frontend hiding can bypass signing",
+                "client chooses the signer identity",
+                "signature persists while approval rolls back"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "A new append-only migration and corrected mock source must keep schema-version metadata consistent with schemaVersion 2 JSON without modifying V34.",
+              "acceptance": [
+                "V34 checksum remains unchanged",
+                "post-migration mismatch counts are zero",
+                "mock synchronization does not recreate mismatches"
+              ],
+              "priority": "must",
+              "source": "Repository and local database inspection on 2026-08-17.",
+              "counterexample": [
+                "V34 is edited",
+                "Flyway reports success but mock startup restores invalid metadata"
+              ]
+            }
+          ],
+          "invariants": [
+            "running instances remain bound to their original definition version and deployment",
+            "tenant and entity authorization is enforced by the backend",
+            "business and frontend code never writes Flowable ACT tables",
+            "Flyway migrations are append-only",
+            "rokey-only uncommitted or unmerged business code is not included"
+          ],
+          "constraints": [
+            "Spring Boot 3.4.4 and Java 17",
+            "MySQL 8.4 and Flyway",
+            "Vue 3, TypeScript and Element Plus",
+            "existing definitionJson field and schemaVersion 2 remain compatible",
+            "platform internal signature only; no external CA"
+          ],
+          "non_goals": [
+            "third-party certificate or seal integration",
+            "workflow engine or designer rewrite",
+            "automatic branch choice for multi-edge gateways",
+            "release-management business page integration",
+            "business form metadata reactivation"
+          ],
+          "assumptions": [
+            {
+              "text": "wf_definition.status can store ARCHIVED without a column type change",
+              "basis": "the current schema uses a string status and queries explicitly gate PUBLISHED starts",
+              "falsifier": "schema inspection reveals an enum/check constraint"
+            },
+            {
+              "text": "the existing V35 authenticated confirmation remains sufficient for internal signing",
+              "basis": "user explicitly selected current-login confirmation and no external CA",
+              "falsifier": "a legal or compliance requirement mandates certificate-backed signatures"
+            },
+            {
+              "text": "definition events do not require a visual field-by-field graph diff",
+              "basis": "the request asks for historical versions and update records, both supplied by snapshots and events",
+              "falsifier": "user requires visual graph diffing"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use incremental cross-layer changes",
+              "reason": "selected by the user",
+              "source": "User selected option 1 on 2026-08-17."
+            },
+            {
+              "id": "D2",
+              "decision": "Published definitions are archived rather than deleted and administrators may restore them",
+              "reason": "preserves audit and active-instance semantics",
+              "source": "User approved archive and restore on 2026-08-17."
+            },
+            {
+              "id": "D3",
+              "decision": "Electronic signature is configured on approval nodes and enforced for approve, reject and return",
+              "reason": "matches decision-level signing",
+              "source": "User confirmed the signature design section on 2026-08-17."
+            },
+            {
+              "id": "D4",
+              "decision": "Do not modify V34; append repair migrations",
+              "reason": "Flyway migrations are immutable after execution",
+              "source": "Repository governance and user-confirmed data design."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R4"
+              ],
+              "signal": "lifecycle and history service tests plus API/browser flows pass",
+              "method": "JDK 17 focused tests and authenticated browser verification"
+            },
+            {
+              "requirement_ids": [
+                "R2"
+              ],
+              "signal": "inserted graph preserves successor and passes backend model validation",
+              "method": "component-level graph checks and save/publish browser flow"
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "signal": "footer actions remain visible/reachable without page overflow",
+              "method": "desktop and 375x812, 390x844, 430x932 screenshots and DOM overflow checks"
+            },
+            {
+              "requirement_ids": [
+                "R5"
+              ],
+              "signal": "unsigned required decisions fail and signed decisions create one immutable evidence row",
+              "method": "service/API tests and database aggregate verification"
+            },
+            {
+              "requirement_ids": [
+                "R6"
+              ],
+              "signal": "V34 is unchanged and mismatch counts are zero after migration and mock sync",
+              "method": "Flyway validation and read-only MySQL aggregate queries"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Repository and runtime inspection verified lifecycle, graph, signature, migration actuators and independent sensors for all six requirements.",
+        "recorded_at": "2026-08-17T06:08:03+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "WorkflowController authenticated definition and task endpoints",
+              "WorkflowService and FlowableWorkflowService lifecycle and runtime orchestration",
+              "WorkflowAuditService and WorkflowSignatureService immutable evidence writes",
+              "wf_definition, wf_version, wf_audit_event and wf_signature platform-owned state",
+              "WorkflowView, WorkflowDesigner, WorkflowNodeInspector and typed workflow API client",
+              "MockDataInitializer, mock-data.json and append-only Flyway workflow metadata repair"
+            ],
+            "environment": [
+              "authenticated browser session",
+              "MySQL 8.4 runtime and local rddmp-local-mysql data",
+              "Flowable engine tables and deployment/runtime services",
+              "original dirty rokey worktree and concurrent user edits",
+              "JDK 17 Maven and Node/Vite build runtime"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "definition_status",
+              "owner": "wf_definition through WorkflowService",
+              "valid_values": [
+                "DRAFT",
+                "PUBLISHED",
+                "ARCHIVED"
+              ]
+            },
+            {
+              "name": "definition_current_version",
+              "owner": "wf_definition and wf_version",
+              "valid_values": [
+                "positive published version",
+                "draft successor version"
+              ]
+            },
+            {
+              "name": "bound_instance_version",
+              "owner": "workflow application instance and Flowable deployment",
+              "valid_values": [
+                "immutable definition_id + version_no + deployment_id"
+              ]
+            },
+            {
+              "name": "definition_history",
+              "owner": "wf_version and wf_audit_event",
+              "valid_values": [
+                "ordered immutable snapshots and definition events"
+              ]
+            },
+            {
+              "name": "designer_graph",
+              "owner": "WorkflowDesigner local Vue Flow state",
+              "valid_values": [
+                "connected validated node and edge graph"
+              ]
+            },
+            {
+              "name": "signature_required",
+              "owner": "published definition_json approval node config",
+              "valid_values": [
+                true,
+                false
+              ]
+            },
+            {
+              "name": "signature_evidence",
+              "owner": "wf_signature",
+              "valid_values": [
+                "one immutable authenticated evidence row per controlled decision"
+              ]
+            },
+            {
+              "name": "model_schema_version",
+              "owner": "wf_definition and wf_version metadata",
+              "valid_values": [
+                2
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "authenticated delete, archive, restore or start request",
+              "transitions": [
+                "tenant-scoped definition lookup",
+                "expected-state and reason validation",
+                "definition state update",
+                "definition audit write or published-only start lookup"
+              ],
+              "outputs": [
+                "draft hidden",
+                "published archived",
+                "archived restored",
+                "new start blocked while active instances remain executable"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "right-click add from a selected node",
+              "transitions": [
+                "snapshot outgoing edges",
+                "append or single-edge replacement",
+                "atomic Vue Flow nodes/edges assignment",
+                "sync graph model and backend validation"
+              ],
+              "outputs": [
+                "connected new user task with original successor preserved or unchanged multi-branch graph"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "open designer at a supported viewport",
+              "transitions": [
+                "Element Plus dialog layout",
+                "flex body sizing",
+                "independent content/canvas scrolling"
+              ],
+              "outputs": [
+                "reachable title/footer actions and no page-level horizontal overflow"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "open definition current/history/events view",
+              "transitions": [
+                "tenant-scoped versions/events query",
+                "typed API mapping",
+                "read-only graph rendering or event rendering"
+              ],
+              "outputs": [
+                "ordered versions, historical graph and operator/reason/time update records"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "configure signature and submit approve, reject or return",
+              "transitions": [
+                "boolean node config frozen in version",
+                "instance-bound config lookup",
+                "authenticated confirmation validation",
+                "task action and immutable signature transaction"
+              ],
+              "outputs": [
+                "unsigned controlled action rejected or signed action completed with evidence"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "Flyway migration and local mock synchronization",
+              "transitions": [
+                "V42 JSON schema metadata repair",
+                "allowed-column filtering",
+                "mock definition upsert"
+              ],
+              "outputs": [
+                "zero definition/version rows whose root schemaVersion is 2 but metadata differs"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "definition_lifecycle_http",
+              "producers": [
+                "WorkflowController",
+                "WorkflowService"
+              ],
+              "consumers": [
+                "web workflow API",
+                "WorkflowView"
+              ],
+              "invariant": "tenant identity comes from authentication and archive/restore reason is mandatory"
+            },
+            {
+              "name": "definition_history_http",
+              "producers": [
+                "WorkflowController",
+                "WorkflowService",
+                "wf_version",
+                "wf_audit_event"
+              ],
+              "consumers": [
+                "web workflow API",
+                "WorkflowView"
+              ],
+              "invariant": "historical definition_json is immutable and cross-tenant data is invisible"
+            },
+            {
+              "name": "workflow_graph_model",
+              "producers": [
+                "WorkflowDesigner"
+              ],
+              "consumers": [
+                "WorkflowView save",
+                "backend model validator",
+                "Flowable compiler"
+              ],
+              "invariant": "single-flow tasks keep valid connectivity and original successor is not lost"
+            },
+            {
+              "name": "signature_contract",
+              "producers": [
+                "WorkflowNodeInspector",
+                "WorkflowSignatureService"
+              ],
+              "consumers": [
+                "published definition version",
+                "task completion service",
+                "wf_signature"
+              ],
+              "invariant": "requirement is read from bound version and signer identity is server-authenticated"
+            },
+            {
+              "name": "schema_metadata_sync",
+              "producers": [
+                "V42",
+                "MockDataInitializer",
+                "mock-data.json"
+              ],
+              "consumers": [
+                "wf_definition",
+                "wf_version",
+                "workflow model readers"
+              ],
+              "invariant": "root JSON schemaVersion 2 implies metadata model_schema_version 2"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "definition lifecycle and history service behavior",
+              "method": "JDK 17 focused Maven tests with JDBC/Mockito assertions",
+              "blind_spots": [
+                "browser button state",
+                "real MySQL collation differences"
+              ],
+              "independence": "direct service and SQL interaction without frontend"
+            },
+            {
+              "id": "S2",
+              "target": "authenticated lifecycle, history and graph save behavior",
+              "method": "real backend browser flow plus API responses and database rows",
+              "blind_spots": [
+                "production authorization configuration"
+              ],
+              "independence": "runtime path independent of unit-test mocks"
+            },
+            {
+              "id": "S3",
+              "target": "graph typing and responsive editor layout",
+              "method": "Vite production build, saved graph counts, screenshots and DOM overflow measurements",
+              "blind_spots": [
+                "unlisted browser engines"
+              ],
+              "independence": "compiler plus rendered browser geometry"
+            },
+            {
+              "id": "S4",
+              "target": "server-authoritative internal signing",
+              "method": "WorkflowSignatureServiceTest plus unsigned/signed API calls and wf_signature aggregate query",
+              "blind_spots": [
+                "external CA semantics are outside scope"
+              ],
+              "independence": "service test and persistent runtime evidence use different observation paths"
+            },
+            {
+              "id": "S5",
+              "target": "schema metadata consistency",
+              "method": "Flyway validate, MockDataInitializerTest and MySQL mismatch aggregate queries before and after app startup",
+              "blind_spots": [
+                "future external import jobs"
+              ],
+              "independence": "migration history, unit test and database aggregate are distinct sensors"
+            },
+            {
+              "id": "S6",
+              "target": "repository integration safety",
+              "method": "governance, scope, full Maven, frontend build and git diff checks",
+              "blind_spots": [
+                "remote CI environment differences"
+              ],
+              "independence": "static governance and full build regression"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "definition lifecycle and history state transitions",
+              "action": "modify workflow services, controller, audit query and focused tests",
+              "authority": "REQ-031 workflow server write scope",
+              "impact_radius": "shared platform workflow definitions, not Flowable tables",
+              "rollback": "revert T1 files; retain immutable audit rows"
+            },
+            {
+              "id": "A2",
+              "target": "designer graph and dialog geometry",
+              "action": "modify WorkflowDesigner graph replacement and scoped workflow dialog styles",
+              "authority": "REQ-031 web write scope",
+              "impact_radius": "workflow administration view only",
+              "rollback": "revert T2 frontend files and discard unsaved graph"
+            },
+            {
+              "id": "A3",
+              "target": "lifecycle/history/signature user interface",
+              "action": "modify typed API, WorkflowView and approval-node inspector",
+              "authority": "REQ-031 web write scope",
+              "impact_radius": "workflow administration UI and existing signature boolean presentation",
+              "rollback": "revert T3 files; backend remains compatible"
+            },
+            {
+              "id": "A4",
+              "target": "schema metadata repair and mock synchronization",
+              "action": "add V42 and update initializer allowlist, test and mock data",
+              "authority": "REQ-031 infrastructure and mock write scope",
+              "impact_radius": "workflow schema metadata only",
+              "rollback": "revert application/mock changes and retain executed corrective migration"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S4",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S5",
+                "S6"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "concurrent edits in original rokey",
+              "effect": "verified files may no longer apply cleanly",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "local Flyway V40/V41 history",
+              "effect": "migration number collision if an older number is used",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "default JDK 26 Mockito self-attach behavior",
+              "effect": "false-negative backend tests",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "occupied development ports or stale servers",
+              "effect": "browser observes the wrong build",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "existing dirty rokey release and workflow integration changes",
+              "effect": "baseline behavior differs from origin/main",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "full Maven reactor tests",
+              "consequence": "slow feedback after cross-module changes",
+              "sampling_rule": "use focused tests after each backend task and full tests only at integration"
+            },
+            {
+              "source": "Flyway and mock synchronization during application startup",
+              "consequence": "sampling before startup completes can miss reintroduced metadata",
+              "sampling_rule": "query after migration and again after application readiness"
+            },
+            {
+              "source": "browser hot reload and old authenticated tabs",
+              "consequence": "screenshots may reflect stale assets or session state",
+              "sampling_rule": "verify server ports/build hash and reload before each viewport sample"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "wf_definition.status accepts ARCHIVED",
+              "evidence": "schema and queries use a string status with explicit PUBLISHED checks",
+              "falsifier": "database constraint inspection or migration execution rejects ARCHIVED"
+            },
+            {
+              "text": "all new starts pass through a published-state lookup",
+              "evidence": "observed WorkflowService and FlowableWorkflowService start paths",
+              "falsifier": "repository search finds a public direct RuntimeService start path"
+            },
+            {
+              "text": "existing V35 signing reads the instance-bound definition version",
+              "evidence": "WorkflowSignatureService resolves task context and version definition_json",
+              "falsifier": "focused test shows current mutable definition changes signing behavior"
+            },
+            {
+              "text": "V42 is free in the target branch",
+              "evidence": "worktree files stop at V39 and local database history uses V40/V41 only",
+              "falsifier": "latest target branch or Flyway history contains a different V42"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 with S1/S2 sampling"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 with S2/S3 sampling"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 with S3 viewport sampling"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 and A3 with S1/S2 sampling"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3 while preserving existing service enforcement, sampled by S4"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A4 with S5/S6 sampling"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Five bounded tasks cover all requirements with verified sensors, explicit dependencies, rollback and stop conditions.",
+        "recorded_at": "2026-08-17T06:09:19+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Add safe tenant-scoped definition archive/restore and version/update history APIs.",
+              "requirement_ids": [
+                "R1",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "WorkflowService.deleteDefinition soft-deletes every status.",
+                "WorkflowService and FlowableWorkflowService start paths require PUBLISHED.",
+                "wf_version and wf_audit_event already own immutable snapshots and events."
+              ],
+              "write_scope": [
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java"
+              ],
+              "invariants": [
+                "active instances keep original definition version and deployment",
+                "archive and restore do not create or delete versions or deployments",
+                "all definition queries and updates remain tenant-scoped"
+              ],
+              "interface_contracts": [
+                "DELETE definitions accepts DRAFT only",
+                "archive and restore POST bodies require nonblank reason",
+                "versions and events remain readable for ARCHIVED definitions",
+                "new starts accept PUBLISHED only"
+              ],
+              "non_goals": [
+                "no Flowable table edits",
+                "no new permission identifiers",
+                "no visual graph diff"
+              ],
+              "action_bounds": [
+                "modify only platform workflow server files and focused tests",
+                "use expected-state SQL updates",
+                "reuse wf_version and wf_audit_event"
+              ],
+              "acceptance_checks": [
+                "draft delete succeeds and all non-draft deletes fail",
+                "published archive blocks new starts but leaves an existing instance processable",
+                "archived restore reuses the same version and deployment",
+                "version detail and definition-only events are ordered and tenant-isolated"
+              ],
+              "evidence_required": [
+                "actual diff",
+                "focused Maven command and exit code",
+                "test assertions for normal and failure paths"
+              ],
+              "rollback": "Revert T1 files; retain immutable audit events.",
+              "stop_conditions": [
+                "ARCHIVED is rejected by the schema",
+                "a public direct Flowable start bypass is found"
+              ],
+              "escalation_conditions": [
+                "archiving cascades into deployment deletion",
+                "implementation requires a new public permission code"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Automatically insert serial nodes and keep workflow designer footer actions reachable.",
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "WorkflowDesigner.addNode rejects a single-flow task with any outgoing edge.",
+                "Vue Flow edge state includes both endpoints and handles.",
+                "workflow canvas is fixed at 560px inside a non-flex dialog body."
+              ],
+              "write_scope": [
+                "web/src/components/workflow/WorkflowDesigner.vue",
+                "web/src/views/WorkflowView.vue",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "multiple outgoing branches are never guessed",
+                "original successor remains connected after one-edge insertion",
+                "fullscreen designer behavior remains available"
+              ],
+              "interface_contracts": [
+                "zero edges append and connect",
+                "one edge atomically becomes parent-to-new and new-to-successor",
+                "multiple edges leave graph unchanged and require edge selection"
+              ],
+              "non_goals": [
+                "no designer rewrite",
+                "no automatic gateway branch selection",
+                "no global Element Plus dialog change"
+              ],
+              "action_bounds": [
+                "modify workflow designer graph mutation and scoped workflow dialog styles only"
+              ],
+              "acceptance_checks": [
+                "zero-edge and one-edge graphs save and validate",
+                "multiple-edge graph does not mutate",
+                "footer is reachable and page has no horizontal overflow at all four viewports"
+              ],
+              "evidence_required": [
+                "actual diff",
+                "frontend build output",
+                "graph node/edge counts",
+                "browser screenshots and DOM overflow values"
+              ],
+              "rollback": "Revert T2 frontend files and discard any unsaved graph.",
+              "stop_conditions": [
+                "required edge handles cannot be preserved",
+                "backend requires the replaced edge id to remain stable"
+              ],
+              "escalation_conditions": [
+                "a new branch chooser is required",
+                "shared dialog CSS must change"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Expose lifecycle/history in the workflow UI and render signature requirement as explicit Yes/No.",
+              "requirement_ids": [
+                "R1",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1 produces lifecycle/history endpoints.",
+                "WorkflowView owns definition actions and designer dialog.",
+                "existing server signature enforcement is bound to published definition version."
+              ],
+              "write_scope": [
+                "web/src/api/workflow.ts",
+                "web/src/views/WorkflowView.vue",
+                "web/src/components/workflow/WorkflowNodeInspector.vue",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "button visibility never replaces server authorization",
+                "historical graph viewing never mutates the current draft",
+                "signatureRequired remains a boolean and defaults false"
+              ],
+              "interface_contracts": [
+                "archive/restore send required reason in JSON body",
+                "history APIs map to typed version and event rows",
+                "APPROVAL nodes expose explicit signature Yes/No",
+                "approve/reject/return still send signatureConfirmed only after current-user confirmation"
+              ],
+              "non_goals": [
+                "no external CA",
+                "no signature on add-sign, transfer, delegate or CC",
+                "no visual version diff"
+              ],
+              "action_bounds": [
+                "modify workflow administration UI and typed API only",
+                "reuse existing signature runtime behavior"
+              ],
+              "acceptance_checks": [
+                "draft/published/archived actions and labels match state",
+                "historical versions open read-only graphs",
+                "events show operator, time, reason and version",
+                "signature Yes/No saves the correct boolean and existing signature tests pass"
+              ],
+              "evidence_required": [
+                "actual diff",
+                "frontend build output",
+                "focused signature test output",
+                "authenticated browser evidence"
+              ],
+              "rollback": "Revert T3 files; backend APIs and immutable signature records remain.",
+              "stop_conditions": [
+                "history responses cannot reconstruct graphs",
+                "history state aliases the current editable graph"
+              ],
+              "escalation_conditions": [
+                "certificate-backed signatures are requested",
+                "new permission identifiers are required"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "Repair schema metadata with append-only V42 and prevent mock sync regression.",
+              "requirement_ids": [
+                "R6"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V34 executed and cannot be modified.",
+                "local Flyway history occupies V40 and V41 while source files stop at V39.",
+                "wf_definition mock allowlist and rows omit model_schema_version."
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V42__repair_workflow_schema_versions_after_mock_sync.sql",
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+                "mock/mock-data.json"
+              ],
+              "invariants": [
+                "executed migrations remain byte-for-byte unchanged",
+                "V42 changes metadata only",
+                "mock schema metadata stays aligned with definition_json root schemaVersion"
+              ],
+              "interface_contracts": [
+                "root JSON schemaVersion 2 implies model_schema_version 2 in both definition and version tables",
+                "wf_definition mock upsert permits model_schema_version"
+              ],
+              "non_goals": [
+                "no Flowable table changes",
+                "no JSON graph rewrite",
+                "no migration rollback script"
+              ],
+              "action_bounds": [
+                "add V42 only and update the direct mock synchronization source and test"
+              ],
+              "acceptance_checks": [
+                "infrastructure tests pass",
+                "Flyway validation passes",
+                "definition and version mismatch counts are zero after migration and after app startup"
+              ],
+              "evidence_required": [
+                "actual diff",
+                "infrastructure Maven output",
+                "Flyway history/checksum output",
+                "two aggregate query results"
+              ],
+              "rollback": "Revert code and mock files; retain any executed V42 and corrected metadata.",
+              "stop_conditions": [
+                "another V42 exists in target history",
+                "root schema path differs from $.schemaVersion"
+              ],
+              "escalation_conditions": [
+                "another writer reintroduces mismatch",
+                "migration cost requires a production maintenance decision"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "Integrate and independently verify all requirements, then safely apply only REQ-031 files to original rokey.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "input_facts": [
+                "original rokey contains unrelated user modifications",
+                "real backend data is required except project and subsystem/delivery-unit context"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/execution-T1.json",
+                ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/observation-T1.json",
+                ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/convergence.json"
+              ],
+              "invariants": [
+                "original rokey is not overwritten wholesale",
+                "no remote push or commit occurs",
+                "no required server process is left running"
+              ],
+              "interface_contracts": [
+                "all T1-T4 contracts integrate against real backend APIs and MySQL",
+                "back-write is file-scoped and hash-guarded"
+              ],
+              "non_goals": [
+                "no remote integration",
+                "no unrelated baseline cleanup",
+                "no mobile product feature beyond responsive admin access"
+              ],
+              "action_bounds": [
+                "run tests, isolated services, browser and database sensors",
+                "only after clean hash comparison apply verified REQ-031 files"
+              ],
+              "acceptance_checks": [
+                "focused and full backend tests pass with JDK 17",
+                "frontend, governance, scope and diff gates pass",
+                "real-data lifecycle/history/insertion/signature flow passes",
+                "four viewports have reachable actions and no page overflow",
+                "schema mismatch aggregates are zero"
+              ],
+              "evidence_required": [
+                "all command exit codes",
+                "browser screenshots and DOM measurements",
+                "database aggregate output",
+                "per-file back-write hash manifest"
+              ],
+              "rollback": "Delete isolated worktree before back-write or apply REQ-031-only reverse patch after back-write; retain immutable migrations and evidence rows.",
+              "stop_conditions": [
+                "a required gate fails without an unrelated-baseline explanation",
+                "original target files changed concurrently",
+                "a migration would need mutation"
+              ],
+              "escalation_conditions": [
+                "scope expansion is required",
+                "protected remote or production access is required",
+                "concurrent target edits need manual merge"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "T3 consumes T1 lifecycle/history endpoints."
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T2 and T3 share WorkflowView and styles, so graph/layout changes settle first."
+            },
+            {
+              "from": "T1",
+              "to": "T5",
+              "reason": "T5 verifies backend lifecycle/history."
+            },
+            {
+              "from": "T2",
+              "to": "T5",
+              "reason": "T5 verifies graph insertion and layout."
+            },
+            {
+              "from": "T3",
+              "to": "T5",
+              "reason": "T5 verifies lifecycle/history/signature UI."
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "T5 verifies V42 and mock synchronization."
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1",
+              "T2",
+              "T4"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T5"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "JDK 17 workflow focused tests"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "frontend production build",
+                "browser graph and history smoke flow"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "infrastructure tests",
+                "Flyway validate",
+                "mismatch aggregates"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "checks": [
+                "governance",
+                "scope",
+                "git diff",
+                "full backend and frontend builds"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "four viewport browser flow",
+                "database evidence",
+                "original-worktree hash guard"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "pre-change baseline",
+              "trigger": "before product edits",
+              "observer": "main controller",
+              "sensors": [
+                "S1",
+                "S3",
+                "S4",
+                "S5",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "T1 focused sample",
+              "trigger": "T1 implementation complete",
+              "observer": "independent observation pass",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R4"
+              ]
+            },
+            {
+              "label": "T2/T3 UI sample",
+              "trigger": "T2 and T3 implementation complete",
+              "observer": "independent browser/build pass",
+              "sensors": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "T4 data sample",
+              "trigger": "T4 implementation complete",
+              "observer": "independent database pass",
+              "sensors": [
+                "S5"
+              ],
+              "requirement_ids": [
+                "R6"
+              ]
+            },
+            {
+              "label": "final convergence sample",
+              "trigger": "T1-T5 complete",
+              "observer": "independent full regression and browser pass",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S5",
+                "S6"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "Implementation, original-rokey back-write, focused/full tests, frontend build, browser and MySQL evidence recorded.",
+        "recorded_at": "2026-08-17T06:59:41+00:00",
+        "data": {
+          "task_id": "T1-T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java and WorkflowController.java",
+              "purpose": "Add tenant-scoped archive, restore, draft-only deletion, version history and definition event APIs."
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java and WorkflowSignatureServiceTest.java",
+              "purpose": "Cover lifecycle state transitions, immutable history and existing internal signature enforcement."
+            },
+            {
+              "path_or_resource": "web/src/api/workflow.ts, WorkflowView.vue, WorkflowDesigner.vue, WorkflowNodeInspector.vue and web/src/styles.css",
+              "purpose": "Expose lifecycle/history actions, read-only historical graphs, atomic node insertion, responsive editor layout and explicit signature Yes/No."
+            },
+            {
+              "path_or_resource": "V42__repair_workflow_schema_versions_after_mock_sync.sql, MockDataInitializer.java, MockDataInitializerTest.java and mock/mock-data.json",
+              "purpose": "Repair schema-version metadata append-only and preserve it during mock synchronization."
+            },
+            {
+              "path_or_resource": "original local rokey worktree",
+              "purpose": "Apply the 13 verified REQ-031 product files through a generated 952-line patch after git apply --check."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "JDK 17 Maven focused WorkflowDefinitionLifecycleTest and WorkflowSignatureServiceTest",
+              "exit_code": 0,
+              "salient_output": "8 tests run, 0 failures, 0 errors; BUILD SUCCESS in original rokey."
+            },
+            {
+              "command": "JDK 17 full Maven reactor test with Byte Buddy agent",
+              "exit_code": 0,
+              "salient_output": "Full reactor BUILD SUCCESS; workflow 35 tests and release 43 tests passed in the byte-identical isolated implementation."
+            },
+            {
+              "command": "vue-tsc --noEmit and vite build --configLoader runner",
+              "exit_code": 0,
+              "salient_output": "Type check passed; 2358 modules transformed and production build completed in original rokey."
+            },
+            {
+              "command": "node scripts/check-module-boundaries.mjs and check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "10 Maven module boundaries and 40 Flyway migrations passed."
+            },
+            {
+              "command": "git apply --check /private/tmp/req031-backwrite.patch then git apply",
+              "exit_code": 0,
+              "salient_output": "Patch sha256 8c7c32fa78dcda26cacc4e702a099ecf5d062fd58e40e2d8fc8423ed0dc0fff0 applied without conflict; all 13 product files matched the isolated worktree byte-for-byte afterward."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Real lifecycle API and MySQL flow",
+              "result": "pass",
+              "evidence": "Draft create/delete, publish, mandatory archive reason, archive/start blocking, existing-instance approval, restore, history and event persistence were exercised against ccb_platform_req031.",
+              "limitations": [
+                "Isolated local MySQL clone, not production data."
+              ]
+            },
+            {
+              "check": "Designer interaction and responsive rendering",
+              "result": "pass",
+              "evidence": "Single-edge insertion rewired 3/2 to 4/3; selected multi-edge insertion rewired 5/5 to 6/6; 1280x720, 375x812, 390x844 and 430x932 had zero page overflow and visible footer actions.",
+              "limitations": [
+                "Chromium browser only."
+              ]
+            },
+            {
+              "check": "Schema metadata repair",
+              "result": "pass",
+              "evidence": "V42 applied to isolated clone; definition and version mismatch aggregates both returned zero and mock synchronization preserves model_schema_version.",
+              "limitations": [
+                "Future external import writers remain outside this requirement."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Published definitions now archive/restore with mandatory reasons while only drafts can be deleted.",
+            "Definition versions and update records are visible, with historical graphs rendered read-only.",
+            "Node insertion automatically reconnects zero/single outgoing paths and requires explicit branch selection for multiple paths.",
+            "Workflow editor actions remain reachable across desktop and requested mobile-width viewports.",
+            "Approval-node signature configuration now displays explicit Yes/No without weakening server enforcement.",
+            "V42 and mock synchronization keep schemaVersion 2 metadata aligned."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Running instances remain bound to the original version and deployment.",
+              "result": "pass",
+              "evidence": "An instance started before archive completed approval while the definition remained archived; restore kept one version and the same deployment id."
+            },
+            {
+              "invariant": "Flyway migrations are append-only.",
+              "result": "pass",
+              "evidence": "V34 was not modified and the repository Flyway check passed with new V42."
+            },
+            {
+              "invariant": "Original rokey unrelated changes are preserved and no commit or push occurs.",
+              "result": "pass",
+              "evidence": "Only the 13 REQ-031 product files were applied; branch remains rokey with its prior dirty files and no Git commit/push command was run."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "check-all-governance stopped on invalid pre-existing REQ-20260816-029 implementation-plan.json.",
+              "impact": "Aggregate governance script could not complete; repository governance, Skill, development-entry, module-boundary and Flyway checks were run independently and passed."
+            },
+            {
+              "event": "Default JDK Mockito self-attachment is incompatible in this environment.",
+              "impact": "Tests were run with JDK 17 and the existing Byte Buddy agent as the calibrated repository test sensor."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Existing Vite bundle-size and PURE-comment warnings remain non-blocking and predate this requirement.",
+            "The unrelated REQ-20260816-029 ledger remains invalid and was intentionally not modified."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Independent automated, API/database and rendered-browser measurements found no requirement deviation.",
+        "recorded_at": "2026-08-17T06:59:41+00:00",
+        "data": {
+          "sample_label": "REQ-031 integrated independent observation",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 focused lifecycle tests plus S2 real API/MySQL lifecycle flow",
+              "result": "pass",
+              "raw_evidence": "Four lifecycle tests passed; real publish/archive/start-block/existing-instance-approval/restore/delete paths returned expected statuses and preserved deployment/version.",
+              "limitation": [
+                "Local authenticated environment only."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 browser graph interaction plus S3 node/edge count probes",
+              "result": "pass",
+              "raw_evidence": "Single-edge insertion changed nodes/edges from 3/2 to 4/3 and preserved the successor; multiple outgoing paths did not mutate until a concrete edge was selected, then changed 5/5 to 6/6.",
+              "limitation": [
+                "No automated visual graph-diff product feature is in scope."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 Chromium screenshots and DOM overflow geometry",
+              "result": "pass",
+              "raw_evidence": "1280x720, 375x812, 390x844 and 430x932 each measured zero horizontal overflow with save/footer controls visible.",
+              "limitation": [
+                "Other browser engines were not sampled."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 history query tests plus S2 authenticated history UI",
+              "result": "pass",
+              "raw_evidence": "Current design, historical versions and update records rendered; selected historical graphs were read-only and events showed operation, version, operator, reason and time.",
+              "limitation": [
+                "History pagination stress was not required by this change."
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S4 signature service tests plus S2 approval-node browser configuration",
+              "result": "pass",
+              "raw_evidence": "Four signature tests passed and approval nodes visibly presented required signature as Yes/No while preserving authenticated confirmation behavior.",
+              "limitation": [
+                "External CA and certificate semantics are explicitly out of scope."
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S5 Flyway/mock tests and MySQL mismatch aggregates plus S6 migration check",
+              "result": "pass",
+              "raw_evidence": "Flyway check passed for 40 migrations; V42 left zero definition mismatches and zero version mismatches; mock initializer test verifies model_schema_version is allowed.",
+              "limitation": [
+                "Production migration duration was not measured."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Aggregate governance script encounters an unrelated pre-existing invalid REQ-20260816-029 ledger.",
+              "classification": "disturbance",
+              "evidence": "check-all-governance reports invalid ledger file requirements/req-20260816-029-shell-header-tab-row-revision/implementation-plan.json; independent relevant checks pass."
+            }
+          ],
+          "coverage_gaps": [
+            "Production authorization configuration and non-Chromium browsers were not sampled.",
+            "The unrelated aggregate governance ledger failure prevents a single all-in-one green command."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final traceability, regression, invariant, scope and disturbance audit completed with two zero-error samples.",
+        "recorded_at": "2026-08-17T07:00:43+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T5"
+              ],
+              "evidence": [
+                "WorkflowDefinitionLifecycleTest passed 4/4.",
+                "Real API/MySQL publish, mandatory archive reason, blocked new start, existing-instance completion, restore and draft deletion paths passed."
+              ],
+              "limitations": [
+                "Local authenticated MySQL clone rather than production."
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T5"
+              ],
+              "evidence": [
+                "Single-edge insertion changed graph 3 nodes/2 edges to 4 nodes/3 edges and preserved the original successor.",
+                "Multi-edge add-from-node left 5/5 unchanged; selecting a concrete edge produced 6/6 and rewired only that branch."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T5"
+              ],
+              "evidence": [
+                "Chromium measurements at 1280x720, 375x812, 390x844 and 430x932 reported zero page horizontal overflow and visible footer/save actions.",
+                "Vue TypeScript and production build passed."
+              ],
+              "limitations": [
+                "Non-Chromium browser engines were not sampled."
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T5"
+              ],
+              "evidence": [
+                "Current design, historical versions and update records tabs rendered against real API data.",
+                "Historical graph opened read-only; persisted events showed operation, version, operator, reason and timestamp."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T5"
+              ],
+              "evidence": [
+                "WorkflowSignatureServiceTest passed 4/4.",
+                "Approval-node inspector visibly rendered need-electronic-signature as Yes/No and kept false as the default."
+              ],
+              "limitations": [
+                "External CA is outside the approved baseline."
+              ]
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "Flyway migration check passed for 40 migrations without modifying V34.",
+                "V42 produced definition mismatch 0 and version mismatch 0; mock initializer test preserves model_schema_version."
+              ],
+              "limitations": [
+                "Future external metadata writers remain outside this module."
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Focused tests and real lifecycle/history runtime flow passed."
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "Graph mutation probes and responsive browser checks passed."
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "History/lifecycle/signature UI checks and frontend build passed."
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "Migration, mock synchronization and MySQL aggregate checks passed."
+              ]
+            },
+            {
+              "id": "T5",
+              "status": "verified",
+              "evidence": [
+                "952-line guarded patch applied to original rokey; 13 product files byte-match and focused integration checks passed."
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Full JDK 17 Maven reactor",
+              "result": "pass",
+              "evidence": "BUILD SUCCESS; workflow 35 tests and release 43 tests passed."
+            },
+            {
+              "check": "Original rokey focused backend tests",
+              "result": "pass",
+              "evidence": "8 tests, 0 failures and 0 errors."
+            },
+            {
+              "check": "Original rokey frontend typecheck and production build",
+              "result": "pass",
+              "evidence": "vue-tsc passed and Vite built 2358 modules."
+            },
+            {
+              "check": "Repository module and migration gates",
+              "result": "pass",
+              "evidence": "10 Maven module boundaries and 40 Flyway migrations passed."
+            },
+            {
+              "check": "Diff integrity",
+              "result": "pass",
+              "evidence": "git diff --check passed and all 13 back-written product files byte-match the isolated verified state."
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "Active instances retain their bound version and deployment.",
+              "result": "pass",
+              "evidence": "Archived-definition running instance remained processable; restore kept version and deployment unchanged."
+            },
+            {
+              "invariant": "Backend remains the authority for tenant access and signature identity.",
+              "result": "pass",
+              "evidence": "Lifecycle/history controller derives AuthUser and signature service tests enforce current authenticated user confirmation."
+            },
+            {
+              "invariant": "Flyway migrations remain append-only.",
+              "result": "pass",
+              "evidence": "V42 was added and V34 was not modified."
+            },
+            {
+              "invariant": "Unrelated rokey work is preserved and no remote action occurs.",
+              "result": "pass",
+              "evidence": "File-scoped patch was used; no commit or push command was run."
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Original rokey contains substantial unrelated dirty work.",
+              "result": "pass",
+              "evidence": "Patch was generated from original-current to isolated-current, passed git apply --check, then all 13 target files were byte-compared."
+            },
+            {
+              "disturbance": "Aggregate governance script stops on unrelated invalid REQ-20260816-029 ledger.",
+              "result": "controlled",
+              "evidence": "Relevant repository governance, Skill, development-entry, module-boundary and Flyway checks were run independently and passed; unrelated ledger was not altered."
+            }
+          ],
+          "residual_risks": [
+            "Existing non-blocking Vite bundle-size and PURE-comment warnings remain.",
+            "Production authorization configuration, production migration duration and non-Chromium browsers were not sampled.",
+            "The unrelated REQ-20260816-029 ledger continues to block the aggregate governance wrapper."
+          ],
+          "gate_result": "pass",
+          "route_reason": "All six must requirements have task, implementation and heterogeneous evidence coverage; all five tasks are verified; two consecutive standard-mode samples have zero P0-P3 errors; scoped regressions and invariants pass."
+        }
+      }
+    ]
+  },
+  "objective": "Make workflow lifecycle, editing, history and internal electronic signatures safe, traceable and usable without changing active instance execution semantics.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Draft definitions may be deleted while published definitions must be archived and may be restored by an administrator with a reason.",
+      "acceptance": [
+        "archive blocks new starts without affecting running instances or history",
+        "restore reuses the prior published version and does not create a new version",
+        "delete rejects every non-draft status"
+      ],
+      "priority": "must",
+      "source": "User approved archive and restore behavior on 2026-08-17.",
+      "counterexample": [
+        "archiving hides version history",
+        "restoring creates an unrequested version",
+        "published definition is soft-deleted"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Adding a node from a zero-edge or single-edge node must append or atomically insert and reconnect the graph.",
+      "acceptance": [
+        "single-edge insertion produces parent-to-new and new-to-original-target edges",
+        "the resulting graph saves and publishes",
+        "multiple outgoing branches are not guessed"
+      ],
+      "priority": "must",
+      "source": "User requested automatic node and edge creation.",
+      "counterexample": [
+        "user must manually delete the existing edge",
+        "original successor becomes isolated"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "The workflow editor must fit the viewport with persistent title and footer actions and an independently scrollable content region.",
+      "acceptance": [
+        "save remains reachable on desktop and 375x812, 390x844 and 430x932 viewports",
+        "no page-level horizontal overflow",
+        "fullscreen behavior remains available"
+      ],
+      "priority": "must",
+      "source": "User reported the save button was below the visible workflow dialog.",
+      "counterexample": [
+        "browser zoom is required to save",
+        "fixed canvas height pushes the footer off screen"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Definition detail must expose immutable version history and definition-scoped update events.",
+      "acceptance": [
+        "all versions are listed and a selected version graph opens read-only",
+        "create, update, publish, unpublish, archive and restore events show operator, time, version and reason"
+      ],
+      "priority": "must",
+      "source": "User reported missing history versions and update records.",
+      "counterexample": [
+        "only current version is visible",
+        "events cannot identify the operator"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Approval nodes must expose the existing signature requirement as explicit Yes/No and preserve backend enforcement and authenticated evidence for approve, reject and return actions.",
+      "acceptance": [
+        "signature Yes/No is visible in approval node configuration and defaults to No",
+        "required actions without confirmation remain rejected before engine progression",
+        "successful signed decisions continue to persist existing wf_signature evidence without regression"
+      ],
+      "priority": "must",
+      "source": "User confirmed login-identity confirmation signing and node-level workflow configuration.",
+      "counterexample": [
+        "frontend hiding can bypass signing",
+        "client chooses the signer identity",
+        "signature persists while approval rolls back"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "A new append-only migration and corrected mock source must keep schema-version metadata consistent with schemaVersion 2 JSON without modifying V34.",
+      "acceptance": [
+        "V34 checksum remains unchanged",
+        "post-migration mismatch counts are zero",
+        "mock synchronization does not recreate mismatches"
+      ],
+      "priority": "must",
+      "source": "Repository and local database inspection on 2026-08-17.",
+      "counterexample": [
+        "V34 is edited",
+        "Flyway reports success but mock startup restores invalid metadata"
+      ]
+    }
+  ],
+  "invariants": [
+    "running instances remain bound to their original definition version and deployment",
+    "tenant and entity authorization is enforced by the backend",
+    "business and frontend code never writes Flowable ACT tables",
+    "Flyway migrations are append-only",
+    "rokey-only uncommitted or unmerged business code is not included"
+  ],
+  "constraints": [
+    "Spring Boot 3.4.4 and Java 17",
+    "MySQL 8.4 and Flyway",
+    "Vue 3, TypeScript and Element Plus",
+    "existing definitionJson field and schemaVersion 2 remain compatible",
+    "platform internal signature only; no external CA"
+  ],
+  "non_goals": [
+    "third-party certificate or seal integration",
+    "workflow engine or designer rewrite",
+    "automatic branch choice for multi-edge gateways",
+    "release-management business page integration",
+    "business form metadata reactivation"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/handoff.json",
+    "imported_at": "2026-08-17T06:06:09+00:00",
+    "topic": "req-20260817-031-workflow-editor-history-signature",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260817-031-workflow-editor-history-signature",
+      "handoff_status": "approved",
+      "created_at": "2026-08-17T13:59:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260817-031-workflow-editor-history-signature",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-17-workflow-editor-history-signature-design.md",
+        "objective": "Make workflow lifecycle, editing, history and internal electronic signatures safe, traceable and usable without changing active instance execution semantics.",
+        "users": [
+          "Workflow administrators archive, restore, edit and inspect definitions.",
+          "Approvers confirm an internal signature with their authenticated identity when a published node requires it.",
+          "Auditors inspect definition events, immutable versions and signature evidence.",
+          "Business modules consume the platform workflow API without accessing Flowable tables."
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Draft definitions may be deleted while published definitions must be archived and may be restored by an administrator with a reason.",
+            "acceptance": [
+              "archive blocks new starts without affecting running instances or history",
+              "restore reuses the prior published version and does not create a new version",
+              "delete rejects every non-draft status"
+            ],
+            "priority": "must",
+            "source": "User approved archive and restore behavior on 2026-08-17.",
+            "counterexample": [
+              "archiving hides version history",
+              "restoring creates an unrequested version",
+              "published definition is soft-deleted"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Adding a node from a zero-edge or single-edge node must append or atomically insert and reconnect the graph.",
+            "acceptance": [
+              "single-edge insertion produces parent-to-new and new-to-original-target edges",
+              "the resulting graph saves and publishes",
+              "multiple outgoing branches are not guessed"
+            ],
+            "priority": "must",
+            "source": "User requested automatic node and edge creation.",
+            "counterexample": [
+              "user must manually delete the existing edge",
+              "original successor becomes isolated"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "The workflow editor must fit the viewport with persistent title and footer actions and an independently scrollable content region.",
+            "acceptance": [
+              "save remains reachable on desktop and 375x812, 390x844 and 430x932 viewports",
+              "no page-level horizontal overflow",
+              "fullscreen behavior remains available"
+            ],
+            "priority": "must",
+            "source": "User reported the save button was below the visible workflow dialog.",
+            "counterexample": [
+              "browser zoom is required to save",
+              "fixed canvas height pushes the footer off screen"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Definition detail must expose immutable version history and definition-scoped update events.",
+            "acceptance": [
+              "all versions are listed and a selected version graph opens read-only",
+              "create, update, publish, unpublish, archive and restore events show operator, time, version and reason"
+            ],
+            "priority": "must",
+            "source": "User reported missing history versions and update records.",
+            "counterexample": [
+              "only current version is visible",
+              "events cannot identify the operator"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Approval nodes must expose the existing signature requirement as explicit Yes/No and preserve backend enforcement and authenticated evidence for approve, reject and return actions.",
+            "acceptance": [
+              "signature Yes/No is visible in approval node configuration and defaults to No",
+              "required actions without confirmation remain rejected before engine progression",
+              "successful signed decisions continue to persist existing wf_signature evidence without regression"
+            ],
+            "priority": "must",
+            "source": "User confirmed login-identity confirmation signing and node-level workflow configuration.",
+            "counterexample": [
+              "frontend hiding can bypass signing",
+              "client chooses the signer identity",
+              "signature persists while approval rolls back"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "A new append-only migration and corrected mock source must keep schema-version metadata consistent with schemaVersion 2 JSON without modifying V34.",
+            "acceptance": [
+              "V34 checksum remains unchanged",
+              "post-migration mismatch counts are zero",
+              "mock synchronization does not recreate mismatches"
+            ],
+            "priority": "must",
+            "source": "Repository and local database inspection on 2026-08-17.",
+            "counterexample": [
+              "V34 is edited",
+              "Flyway reports success but mock startup restores invalid metadata"
+            ]
+          }
+        ],
+        "invariants": [
+          "running instances remain bound to their original definition version and deployment",
+          "tenant and entity authorization is enforced by the backend",
+          "business and frontend code never writes Flowable ACT tables",
+          "Flyway migrations are append-only",
+          "rokey-only uncommitted or unmerged business code is not included"
+        ],
+        "constraints": [
+          "Spring Boot 3.4.4 and Java 17",
+          "MySQL 8.4 and Flyway",
+          "Vue 3, TypeScript and Element Plus",
+          "existing definitionJson field and schemaVersion 2 remain compatible",
+          "platform internal signature only; no external CA"
+        ],
+        "non_goals": [
+          "third-party certificate or seal integration",
+          "workflow engine or designer rewrite",
+          "automatic branch choice for multi-edge gateways",
+          "release-management business page integration",
+          "business form metadata reactivation"
+        ],
+        "selected_approach": {
+          "name": "incremental cross-layer workflow closure",
+          "reason": "It reuses Flowable, wf_version and wf_audit_event while closing lifecycle, history, editor and signature behavior with bounded changes.",
+          "alternatives": [
+            {
+              "name": "frontend-only fixes",
+              "rejected_because": "cannot enforce lifecycle or signatures and cannot supply reliable history"
+            },
+            {
+              "name": "workflow model redesign",
+              "rejected_because": "unnecessary blast radius and regression risk for the requested repairs"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "workflow frontend API, designer, inspector and view",
+              "platform workflow controller and services",
+              "workflow migrations and local mock workflow metadata"
+            ],
+            "outside": [
+              "release-management business module",
+              "external signature providers",
+              "Flowable ACT table ownership",
+              "business form metadata"
+            ]
+          },
+          "components": [
+            {
+              "name": "WorkflowDesigner",
+              "responsibility": "append or insert nodes while preserving a valid graph",
+              "depends_on": [
+                "Vue Flow",
+                "workflow graph contract"
+              ]
+            },
+            {
+              "name": "WorkflowNodeInspector",
+              "responsibility": "present the existing approval-node signature requirement as explicit Yes/No",
+              "depends_on": [
+                "workflow node contract"
+              ]
+            },
+            {
+              "name": "WorkflowView",
+              "responsibility": "definition lifecycle, history UI, responsive editor and generic signing interaction",
+              "depends_on": [
+                "workflow API",
+                "shared UI components"
+              ]
+            },
+            {
+              "name": "WorkflowController",
+              "responsibility": "authenticated lifecycle, history and action HTTP adaptation",
+              "depends_on": [
+                "WorkflowService"
+              ]
+            },
+            {
+              "name": "WorkflowService and FlowableWorkflowService",
+              "responsibility": "state transitions, history queries and regression-safe use of existing transactional signature enforcement",
+              "depends_on": [
+                "WorkflowAuditService",
+                "WorkflowSignatureService",
+                "Flowable",
+                "workflow database"
+              ]
+            },
+            {
+              "name": "WorkflowAuditService",
+              "responsibility": "definition and task audit event persistence",
+              "depends_on": [
+                "wf_audit_event"
+              ]
+            },
+            {
+              "name": "Flyway and mock synchronization",
+              "responsibility": "schema-version metadata consistency while preserving V35 signature schema",
+              "depends_on": [
+                "MySQL 8.4"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "definition archive and restore",
+              "producer": "WorkflowController",
+              "consumers": [
+                "WorkflowView",
+                "platform administrators"
+              ],
+              "contract": "state-checked transition with mandatory reason and audit"
+            },
+            {
+              "name": "definition versions and events",
+              "producer": "WorkflowController",
+              "consumers": [
+                "WorkflowView",
+                "auditors"
+              ],
+              "contract": "tenant-scoped immutable version data and definition-only events"
+            },
+            {
+              "name": "task decision",
+              "producer": "WorkflowController",
+              "consumers": [
+                "WorkflowView",
+                "business modules"
+              ],
+              "contract": "signatureConfirmed is required only when the bound published node requires signing for approve, reject or return"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "published definition plus archive reason",
+              "transitions": [
+                "authorize",
+                "validate PUBLISHED",
+                "set ARCHIVED",
+                "write audit"
+              ],
+              "output": "archived definition that remains queryable"
+            },
+            {
+              "input": "single outgoing graph edge plus add-node command",
+              "transitions": [
+                "construct new node",
+                "replace original edge with two edges",
+                "sync graph",
+                "validate on save"
+              ],
+              "output": "valid serial graph"
+            },
+            {
+              "input": "task decision and signature confirmation",
+              "transitions": [
+                "authorize task",
+                "load bound version node",
+                "enforce signature",
+                "advance engine",
+                "write action, audit and signature in one transaction"
+              ],
+              "output": "approved decision with immutable evidence or no state change"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "lifecycle action does not match current status",
+            "behavior": "return an explicit conflict error without mutation",
+            "recovery": "refresh definition and select a valid action"
+          },
+          {
+            "condition": "multi-edge node is used for add-from-here",
+            "behavior": "leave the graph unchanged and request a specific edge",
+            "recovery": "select or right-click the intended edge"
+          },
+          {
+            "condition": "required signature is not confirmed",
+            "behavior": "reject before Flowable progression and write no partial evidence",
+            "recovery": "confirm signing as the current authenticated user and resubmit"
+          },
+          {
+            "condition": "signature persistence fails",
+            "behavior": "roll back task action and engine-related business synchronization",
+            "recovery": "retry after storage availability is restored"
+          },
+          {
+            "condition": "history region fails to load",
+            "behavior": "show a scoped error without hiding the current definition",
+            "recovery": "retry history loading"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "server-authoritative signer identity",
+            "tenant-scoped history and signature queries",
+            "RBAC for delete, archive and restore"
+          ],
+          "performance": [
+            "indexed definition/version/event/signature queries",
+            "bounded history responses"
+          ],
+          "compatibility": [
+            "missing signatureRequired means false",
+            "existing definitionJson and active instances remain valid",
+            "archived status does not remove deployments"
+          ],
+          "operations": [
+            "append-only migrations",
+            "schema mismatch count as a verification sensor",
+            "application rollback leaves corrected metadata and evidence intact"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R4"
+            ],
+            "signal": "lifecycle and history service tests plus API/browser flows pass",
+            "method": "JDK 17 focused tests and authenticated browser verification"
+          },
+          {
+            "requirement_ids": [
+              "R2"
+            ],
+            "signal": "inserted graph preserves successor and passes backend model validation",
+            "method": "component-level graph checks and save/publish browser flow"
+          },
+          {
+            "requirement_ids": [
+              "R3"
+            ],
+            "signal": "footer actions remain visible/reachable without page overflow",
+            "method": "desktop and 375x812, 390x844, 430x932 screenshots and DOM overflow checks"
+          },
+          {
+            "requirement_ids": [
+              "R5"
+            ],
+            "signal": "unsigned required decisions fail and signed decisions create one immutable evidence row",
+            "method": "service/API tests and database aggregate verification"
+          },
+          {
+            "requirement_ids": [
+              "R6"
+            ],
+            "signal": "V34 is unchanged and mismatch counts are zero after migration and mock sync",
+            "method": "Flyway validation and read-only MySQL aggregate queries"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "wf_definition.status can store ARCHIVED without a column type change",
+            "basis": "the current schema uses a string status and queries explicitly gate PUBLISHED starts",
+            "falsifier": "schema inspection reveals an enum/check constraint"
+          },
+          {
+            "text": "the existing V35 authenticated confirmation remains sufficient for internal signing",
+            "basis": "user explicitly selected current-login confirmation and no external CA",
+            "falsifier": "a legal or compliance requirement mandates certificate-backed signatures"
+          },
+          {
+            "text": "definition events do not require a visual field-by-field graph diff",
+            "basis": "the request asks for historical versions and update records, both supplied by snapshots and events",
+            "falsifier": "user requires visual graph diffing"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use incremental cross-layer changes",
+            "reason": "selected by the user",
+            "source": "User selected option 1 on 2026-08-17."
+          },
+          {
+            "id": "D2",
+            "decision": "Published definitions are archived rather than deleted and administrators may restore them",
+            "reason": "preserves audit and active-instance semantics",
+            "source": "User approved archive and restore on 2026-08-17."
+          },
+          {
+            "id": "D3",
+            "decision": "Electronic signature is configured on approval nodes and enforced for approve, reject and return",
+            "reason": "matches decision-level signing",
+            "source": "User confirmed the signature design section on 2026-08-17."
+          },
+          {
+            "id": "D4",
+            "decision": "Do not modify V34; append repair migrations",
+            "reason": "Flyway migrations are immutable after execution",
+            "source": "Repository governance and user-confirmed data design."
+          }
+        ],
+        "risks": [
+          {
+            "risk": "an archived definition remains startable through an overlooked path",
+            "impact": "lifecycle control is bypassed",
+            "mitigation": "centralize published-definition lookup and test all start APIs"
+          },
+          {
+            "risk": "edge replacement corrupts graph connectivity",
+            "impact": "workflow cannot publish or reaches the wrong successor",
+            "mitigation": "atomic array construction, graph validation and browser save/publish test"
+          },
+          {
+            "risk": "signature requirement is read from the current rather than bound version",
+            "impact": "incorrect approval enforcement",
+            "mitigation": "load definition_json by task instance definition_id and version_no"
+          },
+          {
+            "risk": "migration numbers collide with already executed local history",
+            "impact": "Flyway validation or future branch integration fails",
+            "mitigation": "use V42 after observed local V40/V41 history and require Owner review of migration ordering"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed every design section and explicitly requested implementation on 2026-08-17.",
+          "confirmed_at": "2026-08-17T13:59:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-17-workflow-editor-history-signature-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Implement only in /private/tmp/rddmp-workflow-fix-rokey until isolated verification completes.",
+          "Preserve all existing rokey user changes and do not modify server/src/modules.",
+          "Keep active instances bound to their original definition version and deployment.",
+          "Use current authenticated identity for internal signatures and no external CA.",
+          "Do not modify executed migrations; add only V42 for schema metadata repair.",
+          "Use Java 17 and existing Spring Boot, Vue, TypeScript, Element Plus and response patterns."
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+            "status": "existing",
+            "responsibility": "definition lifecycle and application service guards",
+            "evidence": "contains current delete, publish, unpublish and start methods"
+          },
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+            "status": "existing",
+            "responsibility": "Flowable deployment/runtime orchestration and definition audit",
+            "evidence": "records current definition lifecycle events"
+          },
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java",
+            "status": "existing",
+            "responsibility": "immutable workflow audit writes",
+            "evidence": "provides record method for wf_audit_event"
+          },
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+            "status": "existing",
+            "responsibility": "authenticated workflow HTTP endpoints",
+            "evidence": "contains definition CRUD and publish endpoints"
+          },
+          {
+            "path": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java",
+            "status": "candidate-new",
+            "responsibility": "lifecycle and history regression tests",
+            "evidence": "no focused archive/restore test currently exists"
+          },
+          {
+            "path": "web/src/components/workflow/WorkflowDesigner.vue",
+            "status": "existing",
+            "responsibility": "node and edge graph editing",
+            "evidence": "addNode currently rejects any existing outgoing edge"
+          },
+          {
+            "path": "web/src/components/workflow/WorkflowNodeInspector.vue",
+            "status": "existing",
+            "responsibility": "node configuration including signature requirement",
+            "evidence": "signatureRequired currently uses a verbose switch"
+          },
+          {
+            "path": "web/src/views/WorkflowView.vue",
+            "status": "existing",
+            "responsibility": "definition lifecycle, designer dialog and history UI",
+            "evidence": "contains current definition table and fixed-size dialog"
+          },
+          {
+            "path": "web/src/api/workflow.ts",
+            "status": "existing",
+            "responsibility": "typed workflow HTTP client",
+            "evidence": "contains existing workflow graph and signature types"
+          },
+          {
+            "path": "web/src/styles.css",
+            "status": "existing",
+            "responsibility": "workflow responsive layout",
+            "evidence": "designer canvas currently has fixed 560px height"
+          },
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V42__repair_workflow_schema_versions_after_mock_sync.sql",
+            "status": "candidate-new",
+            "responsibility": "append-only schema metadata repair",
+            "evidence": "V34 is immutable and local V40/V41 are already occupied"
+          },
+          {
+            "path": "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+            "status": "existing",
+            "responsibility": "mock table column allowlist and synchronization",
+            "evidence": "wf_definition allowlist omits model_schema_version"
+          },
+          {
+            "path": "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+            "status": "candidate-new",
+            "responsibility": "mock schema metadata regression test",
+            "evidence": "no current focused test covers this field"
+          },
+          {
+            "path": "mock/mock-data.json",
+            "status": "existing",
+            "responsibility": "local demonstration data source",
+            "evidence": "wf_definition rows omit model_schema_version"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Add safe definition archive/restore and tenant-scoped version and definition-event history APIs.",
+            "requirement_ids": [
+              "R1",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "WorkflowService.deleteDefinition currently soft-deletes every status.",
+              "New starts already require a PUBLISHED definition.",
+              "wf_version and wf_audit_event contain the immutable snapshots and events needed for history."
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java"
+              ],
+              "modify": [
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java"
+              ],
+              "test": [
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "AuthUser tenant and identity",
+                "wf_definition",
+                "wf_version",
+                "wf_audit_event"
+              ],
+              "produces": [
+                "POST /api/workflows/definitions/{id}/archive with required reason",
+                "POST /api/workflows/definitions/{id}/restore with required reason",
+                "GET /api/workflows/definitions/{id}/versions",
+                "GET /api/workflows/definitions/{id}/versions/{versionNo}",
+                "GET /api/workflows/definitions/{id}/events",
+                "DEFINITION_ARCHIVED and DEFINITION_RESTORED audit events"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add failing tests for draft-only delete, archive, restore, reasons, tenant boundaries and history ordering.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowDefinitionLifecycleTest test",
+                "expected": "Fails because lifecycle/history behavior is absent.",
+                "evidence": "Maven exit code and first relevant assertion."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Implement expected-status lifecycle updates and immutable definition audit events.",
+                "command": null,
+                "expected": "Only DRAFT deletes, only PUBLISHED archives, only ARCHIVED restores, and each transition is tenant-scoped.",
+                "evidence": "Code diff and lifecycle test assertions."
+              },
+              {
+                "id": "T1-S3",
+                "action": "Implement version summary/detail and definition-only event queries.",
+                "command": null,
+                "expected": "Archived definitions remain queryable and cross-tenant rows are hidden.",
+                "evidence": "Query tests for ordering, version JSON and event filtering."
+              },
+              {
+                "id": "T1-S4",
+                "action": "Expose the five HTTP endpoints with authenticated identity and existing ApiResponse.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test",
+                "expected": "Workflow module and dependency tests pass with zero failures.",
+                "evidence": "Focused Maven report."
+              },
+              {
+                "id": "T1-S5",
+                "action": "Check the task diff.",
+                "command": "git diff --check -- server/src/platform/workflow",
+                "expected": "No whitespace errors.",
+                "evidence": "Command exit code 0."
+              }
+            ],
+            "acceptance_checks": [
+              "Published and archived definitions cannot be deleted.",
+              "Archive blocks new starts without changing active instances.",
+              "Restore creates no version or deployment.",
+              "Archived detail, versions and definition events remain visible.",
+              "Empty reasons and cross-tenant access fail explicitly."
+            ],
+            "risks": [
+              "A start path may bypass the published-state lookup.",
+              "Concurrent lifecycle updates may silently overwrite state."
+            ],
+            "rollback": "Revert T1 files; no schema change is introduced and audit events remain immutable.",
+            "stop_conditions": [
+              "wf_definition.status cannot store ARCHIVED.",
+              "A public start path bypasses platform state checks."
+            ],
+            "escalation_conditions": [
+              "Archiving cascades into Flowable deployment deletion.",
+              "A new public permission code is required outside the approved scope."
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Insert serial workflow nodes automatically and keep designer actions reachable at supported viewports.",
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "WorkflowDesigner.addNode currently rejects approval or CC parents with any outgoing edge.",
+              "Workflow edges carry source, target, handles, labels, conditions and default state.",
+              "The designer canvas is fixed at 560px and the dialog body lacks a flex scroll boundary."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/components/workflow/WorkflowDesigner.vue",
+                "web/src/views/WorkflowView.vue",
+                "web/src/styles.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "WorkflowGraph nodes and edges",
+                "Vue Flow node and edge state"
+              ],
+              "produces": [
+                "zero-edge append",
+                "single-edge atomic insert",
+                "multiple-edge no-op warning",
+                "viewport-bounded workflow dialog CSS contract"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Capture zero-edge, one-edge and multiple-edge graph baselines.",
+                "command": null,
+                "expected": "Current one-edge case reproduces the warning without graph mutation.",
+                "evidence": "Before/after node and edge counts."
+              },
+              {
+                "id": "T2-S2",
+                "action": "Implement immutable zero-edge append and one-edge replacement with two connected edges.",
+                "command": null,
+                "expected": "One-edge insertion adds one node and one net edge while preserving the original successor.",
+                "evidence": "Graph state and successful backend model validation."
+              },
+              {
+                "id": "T2-S3",
+                "action": "Make the dialog a viewport-bounded flex column with independently scrolling body and flexible canvas.",
+                "command": null,
+                "expected": "Header/footer remain reachable and fullscreen behavior remains intact.",
+                "evidence": "Computed layout and screenshots."
+              },
+              {
+                "id": "T2-S4",
+                "action": "Run the frontend production build and diff check.",
+                "command": "npm --prefix web run build",
+                "expected": "TypeScript and Vite build pass.",
+                "evidence": "Build exit code 0."
+              },
+              {
+                "id": "T2-S5",
+                "action": "Verify a serial insertion and reachable footer in desktop and 375x812 browser views.",
+                "command": null,
+                "expected": "Graph saves and the page has no overall horizontal overflow.",
+                "evidence": "Browser screenshots and DOM overflow values."
+              }
+            ],
+            "acceptance_checks": [
+              "Zero outgoing edge appends and connects.",
+              "One outgoing edge becomes parent-to-new-to-original-successor.",
+              "Multiple outgoing edges do not mutate the graph.",
+              "Save and close remain reachable in normal and fullscreen modes."
+            ],
+            "risks": [
+              "Incorrect handle preservation may invalidate the graph.",
+              "Global dialog styles may affect unrelated pages."
+            ],
+            "rollback": "Revert the three frontend files; unsaved graph changes can be discarded by closing the dialog.",
+            "stop_conditions": [
+              "Vue Flow cannot preserve required handles.",
+              "Backend validation requires the replaced edge id to remain stable."
+            ],
+            "escalation_conditions": [
+              "A new branch-selection UI is required for multiple outgoing edges.",
+              "The fix requires global Element Plus dialog changes."
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Expose lifecycle/history in the workflow UI and make signature configuration an explicit Yes/No choice.",
+            "requirement_ids": [
+              "R1",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "T1 provides archive, restore, version and event APIs.",
+              "WorkflowView owns the definition table and designer dialog.",
+              "signatureRequired, signature_required and signatureConfirmed already exist and backend enforcement is version-bound."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/workflow.ts",
+                "web/src/views/WorkflowView.vue",
+                "web/src/components/workflow/WorkflowNodeInspector.vue",
+                "web/src/styles.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 lifecycle/history endpoints",
+                "existing WorkflowDefinition and WorkflowGraph types"
+              ],
+              "produces": [
+                "typed lifecycle/history API functions",
+                "WorkflowDefinitionVersion",
+                "WorkflowDefinitionEvent",
+                "current/history/events UI",
+                "boolean signatureRequired Yes/No control"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Add typed lifecycle and history API calls.",
+                "command": null,
+                "expected": "Archive/restore use request bodies and every history response has a TypeScript type.",
+                "evidence": "API diff and typecheck."
+              },
+              {
+                "id": "T3-S2",
+                "action": "Render draft delete, published archive and archived restore actions with required reasons and status labels.",
+                "command": null,
+                "expected": "Archived definitions are view-only and all successful actions refresh the list.",
+                "evidence": "Authenticated browser flow."
+              },
+              {
+                "id": "T3-S3",
+                "action": "Add current design, historical versions and update records views with read-only historical graphs.",
+                "command": null,
+                "expected": "Switching history does not mutate the current graph and errors are isolated to their panel.",
+                "evidence": "Browser history flow and API responses."
+              },
+              {
+                "id": "T3-S4",
+                "action": "Replace the signature switch with an explicit Yes/No selection defaulting to false.",
+                "command": null,
+                "expected": "Saved graph still contains a boolean signatureRequired only on approval nodes.",
+                "evidence": "Saved definition JSON."
+              },
+              {
+                "id": "T3-S5",
+                "action": "Run frontend build and focused signature regression.",
+                "command": "npm --prefix web run build && env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowSignatureServiceTest test",
+                "expected": "Frontend build and signature tests pass.",
+                "evidence": "Both command exit codes 0."
+              }
+            ],
+            "acceptance_checks": [
+              "Lifecycle buttons match definition state and reasons are required.",
+              "All versions and definition events are visible for archived definitions.",
+              "Historical graphs are read-only.",
+              "Signature selection clearly says Yes or No.",
+              "Unsigned required approve/reject/return remain blocked server-side."
+            ],
+            "risks": [
+              "Historical graph state may overwrite the current draft.",
+              "UI button visibility could be mistaken for authorization."
+            ],
+            "rollback": "Revert T3 frontend files; backend lifecycle APIs remain backward compatible and existing signatures are retained.",
+            "stop_conditions": [
+              "T1 responses cannot uniquely reconstruct a historical graph.",
+              "Current and history graphs cannot be isolated without a broader view rewrite."
+            ],
+            "escalation_conditions": [
+              "Visual version diffing or certificate-backed signatures are requested.",
+              "New permission identifiers are required."
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "Repair workflow schema metadata with V42 and prevent local mock synchronization from reintroducing mismatches.",
+            "requirement_ids": [
+              "R6"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "Local Flyway history already contains V40 and V41.",
+              "V34 executed but metadata mismatches remain.",
+              "wf_definition mock rows and allowed columns omit model_schema_version."
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V42__repair_workflow_schema_versions_after_mock_sync.sql",
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java"
+              ],
+              "modify": [
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+                "mock/mock-data.json"
+              ],
+              "test": [
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "wf_definition.definition_json",
+                "wf_version.definition_json",
+                "MockDataInitializer allowed columns"
+              ],
+              "produces": [
+                "V42 append-only metadata repair",
+                "wf_definition mock model_schema_version=2 synchronization"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "Add a failing test for wf_definition model_schema_version in mock data and allowed columns.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-infrastructure -am -Dtest=MockDataInitializerTest test",
+                "expected": "Fails on the missing field or allowlist entry.",
+                "evidence": "Focused Maven failure."
+              },
+              {
+                "id": "T4-S2",
+                "action": "Add idempotent V42 updates for definition and version rows whose root JSON schemaVersion is 2.",
+                "command": null,
+                "expected": "Only mismatched metadata changes; JSON, versions, statuses and Flowable tables remain untouched.",
+                "evidence": "Migration diff and affected-row query."
+              },
+              {
+                "id": "T4-S3",
+                "action": "Add model_schema_version to the definition allowlist and every workflow definition mock row.",
+                "command": null,
+                "expected": "Mock synchronization preserves metadata value 2.",
+                "evidence": "Passing initializer test and parsed JSON."
+              },
+              {
+                "id": "T4-S4",
+                "action": "Run infrastructure tests, Flyway validation and mismatch aggregate queries.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-infrastructure -am test",
+                "expected": "Tests pass and both mismatch counts are zero after migration and mock sync.",
+                "evidence": "Maven result, Flyway result and SQL aggregate output."
+              }
+            ],
+            "acceptance_checks": [
+              "V42 does not collide with local migration history.",
+              "V34 and V35 checksums remain unchanged.",
+              "Definition and version mismatch counts are zero.",
+              "Mock synchronization does not reintroduce mismatches."
+            ],
+            "risks": [
+              "V42 may collide on another branch.",
+              "A hidden synchronization source may overwrite metadata later."
+            ],
+            "rollback": "Revert code and mock changes; retain any executed V42 and corrected metadata.",
+            "stop_conditions": [
+              "A different V42 already exists in the target branch or database.",
+              "The actual JSON schema path is not $.schemaVersion."
+            ],
+            "escalation_conditions": [
+              "Other synchronization sources also write mismatched metadata.",
+              "Migration cost requires a production maintenance decision."
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "Prove cross-layer convergence and safely apply only REQ-031 changes back to the original local rokey worktree.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "input_facts": [
+              "The original rokey worktree contains unrelated user changes and must not be overwritten.",
+              "Browser validation requires real backend data except project and subsystem delivery-unit context."
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/execution-T1.json",
+                ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/observation-T1.json",
+                ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/convergence.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T4 code and test outputs"
+              ],
+              "produces": [
+                "automated test evidence",
+                "browser screenshots",
+                "database aggregate evidence",
+                "REQ-031-only back-write manifest"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "Run development-entry and requirement scope gates.",
+                "command": "node scripts/check-development-entry.mjs --require-plugin && node scripts/check-codex-scope.mjs --requirement REQ-20260817-031",
+                "expected": "Both commands exit 0.",
+                "evidence": "Gate outputs."
+              },
+              {
+                "id": "T5-S2",
+                "action": "Run focused and full backend tests with JDK 17.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test && env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test",
+                "expected": "Zero test failures.",
+                "evidence": "Maven reports."
+              },
+              {
+                "id": "T5-S3",
+                "action": "Run frontend build, governance and diff checks.",
+                "command": "npm --prefix web run build && node scripts/check-all-governance.mjs && git diff --check",
+                "expected": "All commands exit 0.",
+                "evidence": "Build and gate outputs."
+              },
+              {
+                "id": "T5-S4",
+                "action": "Run the authenticated real-data lifecycle, history, insertion and signature browser flow on isolated ports.",
+                "command": null,
+                "expected": "UI, API and database state agree for every action.",
+                "evidence": "Screenshots, API responses and database aggregates."
+              },
+              {
+                "id": "T5-S5",
+                "action": "Check desktop, 375x812, 390x844 and 430x932 layouts and page overflow.",
+                "command": null,
+                "expected": "No overlap or page-level horizontal overflow and footer actions are reachable.",
+                "evidence": "Four screenshots and DOM measurements."
+              },
+              {
+                "id": "T5-S6",
+                "action": "Compare original target-file hashes before any back-write.",
+                "command": null,
+                "expected": "No concurrent target-file changes; otherwise back-write stops with a conflict manifest.",
+                "evidence": "Per-file hash comparison."
+              },
+              {
+                "id": "T5-S7",
+                "action": "After user approval, apply only verified REQ-031 files to original rokey and rerun focused gates without committing or pushing.",
+                "command": null,
+                "expected": "Original user changes remain and REQ-031 gates pass.",
+                "evidence": "Original worktree status and verification outputs."
+              }
+            ],
+            "acceptance_checks": [
+              "All six requirements have automated, database or browser evidence.",
+              "No unresolved feedback remains.",
+              "No required process is left running.",
+              "Original rokey receives no unrelated isolated-worktree files."
+            ],
+            "risks": [
+              "Full regression may expose unrelated baseline failures.",
+              "Concurrent edits may invalidate safe back-write."
+            ],
+            "rollback": "Delete the isolated worktree before back-write, or apply an REQ-031-only reverse patch after back-write; keep executed migrations and immutable audit/signature rows.",
+            "stop_conditions": [
+              "A required gate fails without evidence it is unrelated.",
+              "Original target files change concurrently.",
+              "A migration would need deletion or modification."
+            ],
+            "escalation_conditions": [
+              "A scope-expanding regression fix needs approval.",
+              "Protected remote or production access is required.",
+              "Concurrent original changes need manual merge decisions."
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "The UI consumes lifecycle and history endpoints produced by T1."
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T2 and T3 both modify WorkflowView and styles, so graph/layout behavior must settle first."
+          },
+          {
+            "from": "T1",
+            "to": "T5",
+            "reason": "Integration verification requires backend lifecycle and history behavior."
+          },
+          {
+            "from": "T2",
+            "to": "T5",
+            "reason": "Integration verification requires node insertion and responsive layout behavior."
+          },
+          {
+            "from": "T3",
+            "to": "T5",
+            "reason": "Integration verification requires lifecycle/history/signature UI behavior."
+          },
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "Database verification requires V42 and mock synchronization protection."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1",
+            "T2",
+            "T4"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T5"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test",
+            "expected": "Workflow tests pass."
+          },
+          {
+            "after_tasks": [
+              "T2",
+              "T3"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Frontend production build passes."
+          },
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-infrastructure -am test",
+            "expected": "Infrastructure tests pass and later database mismatch queries return zero."
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "command": "node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs --requirement REQ-20260817-031 && git diff --check",
+            "expected": "Governance, scope and diff gates pass."
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test && npm --prefix web run build",
+            "expected": "Full backend and frontend regression passes."
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T4",
+              "T5"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User reviewed the persisted plan summary and explicitly confirmed implementation on 2026-08-17.",
+          "confirmed_at": "2026-08-17T14:05:15+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "workflow definition lifecycle",
+          "immutable version and audit history",
+          "workflow designer graph state",
+          "internal signature configuration and enforcement",
+          "mock schema metadata synchronization"
+        ],
+        "state_variable_candidates": [
+          "definition status",
+          "current version",
+          "model schema version",
+          "graph nodes and edges",
+          "signature requirement and confirmation",
+          "Flyway version",
+          "post-sync mismatch count"
+        ],
+        "interface_candidates": [
+          "WorkflowController HTTP API",
+          "JdbcTemplate workflow tables",
+          "Flowable deployment/runtime API",
+          "web workflow API client",
+          "Vue Flow graph v-model"
+        ],
+        "sensor_candidates": [
+          "JDK 17 Maven tests",
+          "Vite build",
+          "Flyway validate",
+          "MySQL aggregate queries",
+          "browser screenshots and DOM checks",
+          "governance and scope scripts",
+          "git diff --check"
+        ],
+        "actuator_candidates": [
+          "expected-status SQL update",
+          "audit event write",
+          "atomic node/edge replacement",
+          "dialog CSS",
+          "mock allowlist and data update",
+          "V42 metadata update"
+        ],
+        "disturbance_candidates": [
+          "concurrent original rokey edits",
+          "local V40/V41 history",
+          "default JDK 26",
+          "occupied development ports",
+          "existing database rows",
+          "Element Plus teleported dialogs"
+        ],
+        "delay_candidates": [
+          "full Maven tests",
+          "frontend production build",
+          "Flyway application startup",
+          "browser service cold start"
+        ],
+        "assumptions": [
+          {
+            "text": "wf_definition.status accepts ARCHIVED",
+            "basis": "current schema uses a string and published-state checks are explicit",
+            "falsifier": "schema constraint inspection rejects ARCHIVED"
+          },
+          {
+            "text": "all starts require a PUBLISHED definition",
+            "basis": "observed service start lookup",
+            "falsifier": "a public bypass path is found"
+          },
+          {
+            "text": "existing V35 signing reads bound version configuration",
+            "basis": "observed WorkflowSignatureService design",
+            "falsifier": "service reads current mutable definition JSON"
+          },
+          {
+            "text": "V42 is available in the target branch",
+            "basis": "local history occupies V40 and V41 only",
+            "falsifier": "target branch or database contains another V42"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"authenticated browser session\", \"MySQL 8.4 runtime and local rddmp-local-mysql data\", \"Flowable engine tables and deployment/runtime services\", \"original dirty rokey worktree and concurrent user edits\", \"JDK 17 Maven and Node/Vite build runtime\"], \"inside\": [\"WorkflowController authenticated definition and task endpoints\", \"WorkflowService and FlowableWorkflowService lifecycle and runtime orchestration\", \"WorkflowAuditService and WorkflowSignatureService immutable evidence writes\", \"wf_definition, wf_version, wf_audit_event and wf_signature platform-owned state\", \"WorkflowView, WorkflowDesigner, WorkflowNodeInspector and typed workflow API client\", \"MockDataInitializer, mock-data.json and append-only Flyway workflow metadata repair\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"browser button state\", \"real MySQL collation differences\"], \"id\": \"S1\", \"independence\": \"direct service and SQL interaction without frontend\", \"method\": \"JDK 17 focused Maven tests with JDBC/Mockito assertions\", \"target\": \"definition lifecycle and history service behavior\"}",
+      "{\"blind_spots\": [\"production authorization configuration\"], \"id\": \"S2\", \"independence\": \"runtime path independent of unit-test mocks\", \"method\": \"real backend browser flow plus API responses and database rows\", \"target\": \"authenticated lifecycle, history and graph save behavior\"}",
+      "{\"blind_spots\": [\"unlisted browser engines\"], \"id\": \"S3\", \"independence\": \"compiler plus rendered browser geometry\", \"method\": \"Vite production build, saved graph counts, screenshots and DOM overflow measurements\", \"target\": \"graph typing and responsive editor layout\"}",
+      "{\"blind_spots\": [\"external CA semantics are outside scope\"], \"id\": \"S4\", \"independence\": \"service test and persistent runtime evidence use different observation paths\", \"method\": \"WorkflowSignatureServiceTest plus unsigned/signed API calls and wf_signature aggregate query\", \"target\": \"server-authoritative internal signing\"}",
+      "{\"blind_spots\": [\"future external import jobs\"], \"id\": \"S5\", \"independence\": \"migration history, unit test and database aggregate are distinct sensors\", \"method\": \"Flyway validate, MockDataInitializerTest and MySQL mismatch aggregate queries before and after app startup\", \"target\": \"schema metadata consistency\"}",
+      "{\"blind_spots\": [\"remote CI environment differences\"], \"id\": \"S6\", \"independence\": \"static governance and full build regression\", \"method\": \"governance, scope, full Maven, frontend build and git diff checks\", \"target\": \"repository integration safety\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"modify workflow services, controller, audit query and focused tests\", \"authority\": \"REQ-031 workflow server write scope\", \"id\": \"A1\", \"impact_radius\": \"shared platform workflow definitions, not Flowable tables\", \"rollback\": \"revert T1 files; retain immutable audit rows\", \"target\": \"definition lifecycle and history state transitions\"}",
+      "{\"action\": \"modify WorkflowDesigner graph replacement and scoped workflow dialog styles\", \"authority\": \"REQ-031 web write scope\", \"id\": \"A2\", \"impact_radius\": \"workflow administration view only\", \"rollback\": \"revert T2 frontend files and discard unsaved graph\", \"target\": \"designer graph and dialog geometry\"}",
+      "{\"action\": \"modify typed API, WorkflowView and approval-node inspector\", \"authority\": \"REQ-031 web write scope\", \"id\": \"A3\", \"impact_radius\": \"workflow administration UI and existing signature boolean presentation\", \"rollback\": \"revert T3 files; backend remains compatible\", \"target\": \"lifecycle/history/signature user interface\"}",
+      "{\"action\": \"add V42 and update initializer allowlist, test and mock data\", \"authority\": \"REQ-031 infrastructure and mock write scope\", \"id\": \"A4\", \"impact_radius\": \"workflow schema metadata only\", \"rollback\": \"revert application/mock changes and retain executed corrective migration\", \"target\": \"schema metadata repair and mock synchronization\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"verified files may no longer apply cleanly\", \"source\": \"concurrent edits in original rokey\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"migration number collision if an older number is used\", \"source\": \"local Flyway V40/V41 history\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"false-negative backend tests\", \"source\": \"default JDK 26 Mockito self-attach behavior\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"browser observes the wrong build\", \"source\": \"occupied development ports or stale servers\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"baseline behavior differs from origin/main\", \"source\": \"existing dirty rokey release and workflow integration changes\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"schema and queries use a string status with explicit PUBLISHED checks\", \"falsifier\": \"database constraint inspection or migration execution rejects ARCHIVED\", \"text\": \"wf_definition.status accepts ARCHIVED\"}",
+      "{\"evidence\": \"observed WorkflowService and FlowableWorkflowService start paths\", \"falsifier\": \"repository search finds a public direct RuntimeService start path\", \"text\": \"all new starts pass through a published-state lookup\"}",
+      "{\"evidence\": \"WorkflowSignatureService resolves task context and version definition_json\", \"falsifier\": \"focused test shows current mutable definition changes signing behavior\", \"text\": \"existing V35 signing reads the instance-bound definition version\"}",
+      "{\"evidence\": \"worktree files stop at V39 and local database history uses V40/V41 only\", \"falsifier\": \"latest target branch or Flyway history contains a different V42\", \"text\": \"V42 is free in the target branch\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S4\", \"S2\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S5\", \"S6\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Add safe tenant-scoped definition archive/restore and version/update history APIs.",
+      "requirements": [
+        "R1",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "WorkflowService.deleteDefinition soft-deletes every status.",
+        "WorkflowService and FlowableWorkflowService start paths require PUBLISHED.",
+        "wf_version and wf_audit_event already own immutable snapshots and events."
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java"
+      ],
+      "invariants": [
+        "active instances keep original definition version and deployment",
+        "archive and restore do not create or delete versions or deployments",
+        "all definition queries and updates remain tenant-scoped"
+      ],
+      "interface_contracts": [
+        "DELETE definitions accepts DRAFT only",
+        "archive and restore POST bodies require nonblank reason",
+        "versions and events remain readable for ARCHIVED definitions",
+        "new starts accept PUBLISHED only"
+      ],
+      "non_goals": [
+        "no Flowable table edits",
+        "no new permission identifiers",
+        "no visual graph diff"
+      ],
+      "action_bounds": [
+        "modify only platform workflow server files and focused tests",
+        "use expected-state SQL updates",
+        "reuse wf_version and wf_audit_event"
+      ],
+      "acceptance": [
+        "draft delete succeeds and all non-draft deletes fail",
+        "published archive blocks new starts but leaves an existing instance processable",
+        "archived restore reuses the same version and deployment",
+        "version detail and definition-only events are ordered and tenant-isolated"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "focused Maven command and exit code",
+        "test assertions for normal and failure paths"
+      ],
+      "rollback": "Revert T1 files; retain immutable audit events.",
+      "stop_conditions": [
+        "ARCHIVED is rejected by the schema",
+        "a public direct Flowable start bypass is found"
+      ],
+      "escalation_conditions": [
+        "archiving cascades into deployment deletion",
+        "implementation requires a new public permission code"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-17T06:58:06+00:00",
+          "text": "Workflow lifecycle and history implementation completed in isolated rokey worktree."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "Lifecycle and history implementation is independently measurable."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "Lifecycle/history tests and real API lifecycle flow passed."
+        }
+      ],
+      "updated_at": "2026-08-17T06:59:41+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Automatically insert serial nodes and keep workflow designer footer actions reachable.",
+      "requirements": [
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "WorkflowDesigner.addNode rejects a single-flow task with any outgoing edge.",
+        "Vue Flow edge state includes both endpoints and handles.",
+        "workflow canvas is fixed at 560px inside a non-flex dialog body."
+      ],
+      "write_scope": [
+        "web/src/components/workflow/WorkflowDesigner.vue",
+        "web/src/views/WorkflowView.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "multiple outgoing branches are never guessed",
+        "original successor remains connected after one-edge insertion",
+        "fullscreen designer behavior remains available"
+      ],
+      "interface_contracts": [
+        "zero edges append and connect",
+        "one edge atomically becomes parent-to-new and new-to-successor",
+        "multiple edges leave graph unchanged and require edge selection"
+      ],
+      "non_goals": [
+        "no designer rewrite",
+        "no automatic gateway branch selection",
+        "no global Element Plus dialog change"
+      ],
+      "action_bounds": [
+        "modify workflow designer graph mutation and scoped workflow dialog styles only"
+      ],
+      "acceptance": [
+        "zero-edge and one-edge graphs save and validate",
+        "multiple-edge graph does not mutate",
+        "footer is reachable and page has no horizontal overflow at all four viewports"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "frontend build output",
+        "graph node/edge counts",
+        "browser screenshots and DOM overflow values"
+      ],
+      "rollback": "Revert T2 frontend files and discard any unsaved graph.",
+      "stop_conditions": [
+        "required edge handles cannot be preserved",
+        "backend requires the replaced edge id to remain stable"
+      ],
+      "escalation_conditions": [
+        "a new branch chooser is required",
+        "shared dialog CSS must change"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-17T06:58:06+00:00",
+          "text": "Designer insertion and responsive dialog implementation completed."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "Graph insertion and responsive editor implementation is independently measurable."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "Graph insertion probes and four-viewport editor checks passed."
+        }
+      ],
+      "updated_at": "2026-08-17T06:59:41+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Expose lifecycle/history in the workflow UI and render signature requirement as explicit Yes/No.",
+      "requirements": [
+        "R1",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1 produces lifecycle/history endpoints.",
+        "WorkflowView owns definition actions and designer dialog.",
+        "existing server signature enforcement is bound to published definition version."
+      ],
+      "write_scope": [
+        "web/src/api/workflow.ts",
+        "web/src/views/WorkflowView.vue",
+        "web/src/components/workflow/WorkflowNodeInspector.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "button visibility never replaces server authorization",
+        "historical graph viewing never mutates the current draft",
+        "signatureRequired remains a boolean and defaults false"
+      ],
+      "interface_contracts": [
+        "archive/restore send required reason in JSON body",
+        "history APIs map to typed version and event rows",
+        "APPROVAL nodes expose explicit signature Yes/No",
+        "approve/reject/return still send signatureConfirmed only after current-user confirmation"
+      ],
+      "non_goals": [
+        "no external CA",
+        "no signature on add-sign, transfer, delegate or CC",
+        "no visual version diff"
+      ],
+      "action_bounds": [
+        "modify workflow administration UI and typed API only",
+        "reuse existing signature runtime behavior"
+      ],
+      "acceptance": [
+        "draft/published/archived actions and labels match state",
+        "historical versions open read-only graphs",
+        "events show operator, time, reason and version",
+        "signature Yes/No saves the correct boolean and existing signature tests pass"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "frontend build output",
+        "focused signature test output",
+        "authenticated browser evidence"
+      ],
+      "rollback": "Revert T3 files; backend APIs and immutable signature records remain.",
+      "stop_conditions": [
+        "history responses cannot reconstruct graphs",
+        "history state aliases the current editable graph"
+      ],
+      "escalation_conditions": [
+        "certificate-backed signatures are requested",
+        "new permission identifiers are required"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-17T06:58:06+00:00",
+          "text": "Lifecycle/history/signature workflow UI implementation completed."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "Lifecycle/history/signature UI is independently measurable."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "History UI and signature Yes/No browser checks passed."
+        }
+      ],
+      "updated_at": "2026-08-17T06:59:41+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "Repair schema metadata with append-only V42 and prevent mock sync regression.",
+      "requirements": [
+        "R6"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V34 executed and cannot be modified.",
+        "local Flyway history occupies V40 and V41 while source files stop at V39.",
+        "wf_definition mock allowlist and rows omit model_schema_version."
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V42__repair_workflow_schema_versions_after_mock_sync.sql",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+        "mock/mock-data.json"
+      ],
+      "invariants": [
+        "executed migrations remain byte-for-byte unchanged",
+        "V42 changes metadata only",
+        "mock schema metadata stays aligned with definition_json root schemaVersion"
+      ],
+      "interface_contracts": [
+        "root JSON schemaVersion 2 implies model_schema_version 2 in both definition and version tables",
+        "wf_definition mock upsert permits model_schema_version"
+      ],
+      "non_goals": [
+        "no Flowable table changes",
+        "no JSON graph rewrite",
+        "no migration rollback script"
+      ],
+      "action_bounds": [
+        "add V42 only and update the direct mock synchronization source and test"
+      ],
+      "acceptance": [
+        "infrastructure tests pass",
+        "Flyway validation passes",
+        "definition and version mismatch counts are zero after migration and after app startup"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "infrastructure Maven output",
+        "Flyway history/checksum output",
+        "two aggregate query results"
+      ],
+      "rollback": "Revert code and mock files; retain any executed V42 and corrected metadata.",
+      "stop_conditions": [
+        "another V42 exists in target history",
+        "root schema path differs from $.schemaVersion"
+      ],
+      "escalation_conditions": [
+        "another writer reintroduces mismatch",
+        "migration cost requires a production maintenance decision"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-17T06:58:06+00:00",
+          "text": "Append-only V42 and mock synchronization repair completed."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "V42 and mock synchronization repair is independently measurable."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "Flyway/mock checks and zero mismatch aggregates passed."
+        }
+      ],
+      "updated_at": "2026-08-17T06:59:41+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "Integrate and independently verify all requirements, then safely apply only REQ-031 files to original rokey.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "input_facts": [
+        "original rokey contains unrelated user modifications",
+        "real backend data is required except project and subsystem/delivery-unit context"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/execution-T1.json",
+        ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/observation-T1.json",
+        ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/convergence.json"
+      ],
+      "invariants": [
+        "original rokey is not overwritten wholesale",
+        "no remote push or commit occurs",
+        "no required server process is left running"
+      ],
+      "interface_contracts": [
+        "all T1-T4 contracts integrate against real backend APIs and MySQL",
+        "back-write is file-scoped and hash-guarded"
+      ],
+      "non_goals": [
+        "no remote integration",
+        "no unrelated baseline cleanup",
+        "no mobile product feature beyond responsive admin access"
+      ],
+      "action_bounds": [
+        "run tests, isolated services, browser and database sensors",
+        "only after clean hash comparison apply verified REQ-031 files"
+      ],
+      "acceptance": [
+        "focused and full backend tests pass with JDK 17",
+        "frontend, governance, scope and diff gates pass",
+        "real-data lifecycle/history/insertion/signature flow passes",
+        "four viewports have reachable actions and no page overflow",
+        "schema mismatch aggregates are zero"
+      ],
+      "evidence_required": [
+        "all command exit codes",
+        "browser screenshots and DOM measurements",
+        "database aggregate output",
+        "per-file back-write hash manifest"
+      ],
+      "rollback": "Delete isolated worktree before back-write or apply REQ-031-only reverse patch after back-write; retain immutable migrations and evidence rows.",
+      "stop_conditions": [
+        "a required gate fails without an unrelated-baseline explanation",
+        "original target files changed concurrently",
+        "a migration would need mutation"
+      ],
+      "escalation_conditions": [
+        "scope expansion is required",
+        "protected remote or production access is required",
+        "concurrent target edits need manual merge"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-17T06:58:06+00:00",
+          "text": "Integrated implementation copied to original rokey with git-apply hash guard and focused checks passed."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "Integrated original-rokey state is independently measurable."
+        },
+        {
+          "recorded_at": "2026-08-17T06:59:41+00:00",
+          "text": "Original rokey patch, byte-match and focused integration checks passed."
+        }
+      ],
+      "updated_at": "2026-08-17T06:59:41+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "isolated full regression and runtime sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Full Maven reactor, frontend build, real API/MySQL lifecycle, schema aggregates and four viewport browser checks passed.",
+      "recorded_at": "2026-08-17T06:59:41+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "original rokey integration sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "13 product files byte-match isolated implementation; focused 8 tests, typecheck/build, module boundary, Flyway and diff checks pass.",
+      "recorded_at": "2026-08-17T06:59:41+00:00"
+    }
+  ]
+}

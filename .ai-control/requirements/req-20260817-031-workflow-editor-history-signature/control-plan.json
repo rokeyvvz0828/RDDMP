@@ -1,0 +1,567 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Add safe tenant-scoped definition archive/restore and version/update history APIs.",
+      "requirement_ids": [
+        "R1",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "WorkflowService.deleteDefinition soft-deletes every status.",
+        "WorkflowService and FlowableWorkflowService start paths require PUBLISHED.",
+        "wf_version and wf_audit_event already own immutable snapshots and events."
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowAuditService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java"
+      ],
+      "invariants": [
+        "active instances keep original definition version and deployment",
+        "archive and restore do not create or delete versions or deployments",
+        "all definition queries and updates remain tenant-scoped"
+      ],
+      "interface_contracts": [
+        "DELETE definitions accepts DRAFT only",
+        "archive and restore POST bodies require nonblank reason",
+        "versions and events remain readable for ARCHIVED definitions",
+        "new starts accept PUBLISHED only"
+      ],
+      "non_goals": [
+        "no Flowable table edits",
+        "no new permission identifiers",
+        "no visual graph diff"
+      ],
+      "action_bounds": [
+        "modify only platform workflow server files and focused tests",
+        "use expected-state SQL updates",
+        "reuse wf_version and wf_audit_event"
+      ],
+      "acceptance_checks": [
+        "draft delete succeeds and all non-draft deletes fail",
+        "published archive blocks new starts but leaves an existing instance processable",
+        "archived restore reuses the same version and deployment",
+        "version detail and definition-only events are ordered and tenant-isolated"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "focused Maven command and exit code",
+        "test assertions for normal and failure paths"
+      ],
+      "rollback": "Revert T1 files; retain immutable audit events.",
+      "stop_conditions": [
+        "ARCHIVED is rejected by the schema",
+        "a public direct Flowable start bypass is found"
+      ],
+      "escalation_conditions": [
+        "archiving cascades into deployment deletion",
+        "implementation requires a new public permission code"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "Automatically insert serial nodes and keep workflow designer footer actions reachable.",
+      "requirement_ids": [
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "WorkflowDesigner.addNode rejects a single-flow task with any outgoing edge.",
+        "Vue Flow edge state includes both endpoints and handles.",
+        "workflow canvas is fixed at 560px inside a non-flex dialog body."
+      ],
+      "write_scope": [
+        "web/src/components/workflow/WorkflowDesigner.vue",
+        "web/src/views/WorkflowView.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "multiple outgoing branches are never guessed",
+        "original successor remains connected after one-edge insertion",
+        "fullscreen designer behavior remains available"
+      ],
+      "interface_contracts": [
+        "zero edges append and connect",
+        "one edge atomically becomes parent-to-new and new-to-successor",
+        "multiple edges leave graph unchanged and require edge selection"
+      ],
+      "non_goals": [
+        "no designer rewrite",
+        "no automatic gateway branch selection",
+        "no global Element Plus dialog change"
+      ],
+      "action_bounds": [
+        "modify workflow designer graph mutation and scoped workflow dialog styles only"
+      ],
+      "acceptance_checks": [
+        "zero-edge and one-edge graphs save and validate",
+        "multiple-edge graph does not mutate",
+        "footer is reachable and page has no horizontal overflow at all four viewports"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "frontend build output",
+        "graph node/edge counts",
+        "browser screenshots and DOM overflow values"
+      ],
+      "rollback": "Revert T2 frontend files and discard any unsaved graph.",
+      "stop_conditions": [
+        "required edge handles cannot be preserved",
+        "backend requires the replaced edge id to remain stable"
+      ],
+      "escalation_conditions": [
+        "a new branch chooser is required",
+        "shared dialog CSS must change"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "Expose lifecycle/history in the workflow UI and render signature requirement as explicit Yes/No.",
+      "requirement_ids": [
+        "R1",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1 produces lifecycle/history endpoints.",
+        "WorkflowView owns definition actions and designer dialog.",
+        "existing server signature enforcement is bound to published definition version."
+      ],
+      "write_scope": [
+        "web/src/api/workflow.ts",
+        "web/src/views/WorkflowView.vue",
+        "web/src/components/workflow/WorkflowNodeInspector.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "button visibility never replaces server authorization",
+        "historical graph viewing never mutates the current draft",
+        "signatureRequired remains a boolean and defaults false"
+      ],
+      "interface_contracts": [
+        "archive/restore send required reason in JSON body",
+        "history APIs map to typed version and event rows",
+        "APPROVAL nodes expose explicit signature Yes/No",
+        "approve/reject/return still send signatureConfirmed only after current-user confirmation"
+      ],
+      "non_goals": [
+        "no external CA",
+        "no signature on add-sign, transfer, delegate or CC",
+        "no visual version diff"
+      ],
+      "action_bounds": [
+        "modify workflow administration UI and typed API only",
+        "reuse existing signature runtime behavior"
+      ],
+      "acceptance_checks": [
+        "draft/published/archived actions and labels match state",
+        "historical versions open read-only graphs",
+        "events show operator, time, reason and version",
+        "signature Yes/No saves the correct boolean and existing signature tests pass"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "frontend build output",
+        "focused signature test output",
+        "authenticated browser evidence"
+      ],
+      "rollback": "Revert T3 files; backend APIs and immutable signature records remain.",
+      "stop_conditions": [
+        "history responses cannot reconstruct graphs",
+        "history state aliases the current editable graph"
+      ],
+      "escalation_conditions": [
+        "certificate-backed signatures are requested",
+        "new permission identifiers are required"
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "Repair schema metadata with append-only V42 and prevent mock sync regression.",
+      "requirement_ids": [
+        "R6"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V34 executed and cannot be modified.",
+        "local Flyway history occupies V40 and V41 while source files stop at V39.",
+        "wf_definition mock allowlist and rows omit model_schema_version."
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V42__repair_workflow_schema_versions_after_mock_sync.sql",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+        "mock/mock-data.json"
+      ],
+      "invariants": [
+        "executed migrations remain byte-for-byte unchanged",
+        "V42 changes metadata only",
+        "mock schema metadata stays aligned with definition_json root schemaVersion"
+      ],
+      "interface_contracts": [
+        "root JSON schemaVersion 2 implies model_schema_version 2 in both definition and version tables",
+        "wf_definition mock upsert permits model_schema_version"
+      ],
+      "non_goals": [
+        "no Flowable table changes",
+        "no JSON graph rewrite",
+        "no migration rollback script"
+      ],
+      "action_bounds": [
+        "add V42 only and update the direct mock synchronization source and test"
+      ],
+      "acceptance_checks": [
+        "infrastructure tests pass",
+        "Flyway validation passes",
+        "definition and version mismatch counts are zero after migration and after app startup"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "infrastructure Maven output",
+        "Flyway history/checksum output",
+        "two aggregate query results"
+      ],
+      "rollback": "Revert code and mock files; retain any executed V42 and corrected metadata.",
+      "stop_conditions": [
+        "another V42 exists in target history",
+        "root schema path differs from $.schemaVersion"
+      ],
+      "escalation_conditions": [
+        "another writer reintroduces mismatch",
+        "migration cost requires a production maintenance decision"
+      ]
+    },
+    {
+      "id": "T5",
+      "goal": "Integrate and independently verify all requirements, then safely apply only REQ-031 files to original rokey.",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "input_facts": [
+        "original rokey contains unrelated user modifications",
+        "real backend data is required except project and subsystem/delivery-unit context"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/execution-T1.json",
+        ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/observation-T1.json",
+        ".ai-control/requirements/req-20260817-031-workflow-editor-history-signature/convergence.json"
+      ],
+      "invariants": [
+        "original rokey is not overwritten wholesale",
+        "no remote push or commit occurs",
+        "no required server process is left running"
+      ],
+      "interface_contracts": [
+        "all T1-T4 contracts integrate against real backend APIs and MySQL",
+        "back-write is file-scoped and hash-guarded"
+      ],
+      "non_goals": [
+        "no remote integration",
+        "no unrelated baseline cleanup",
+        "no mobile product feature beyond responsive admin access"
+      ],
+      "action_bounds": [
+        "run tests, isolated services, browser and database sensors",
+        "only after clean hash comparison apply verified REQ-031 files"
+      ],
+      "acceptance_checks": [
+        "focused and full backend tests pass with JDK 17",
+        "frontend, governance, scope and diff gates pass",
+        "real-data lifecycle/history/insertion/signature flow passes",
+        "four viewports have reachable actions and no page overflow",
+        "schema mismatch aggregates are zero"
+      ],
+      "evidence_required": [
+        "all command exit codes",
+        "browser screenshots and DOM measurements",
+        "database aggregate output",
+        "per-file back-write hash manifest"
+      ],
+      "rollback": "Delete isolated worktree before back-write or apply REQ-031-only reverse patch after back-write; retain immutable migrations and evidence rows.",
+      "stop_conditions": [
+        "a required gate fails without an unrelated-baseline explanation",
+        "original target files changed concurrently",
+        "a migration would need mutation"
+      ],
+      "escalation_conditions": [
+        "scope expansion is required",
+        "protected remote or production access is required",
+        "concurrent target edits need manual merge"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T3",
+      "reason": "T3 consumes T1 lifecycle/history endpoints."
+    },
+    {
+      "from": "T2",
+      "to": "T3",
+      "reason": "T2 and T3 share WorkflowView and styles, so graph/layout changes settle first."
+    },
+    {
+      "from": "T1",
+      "to": "T5",
+      "reason": "T5 verifies backend lifecycle/history."
+    },
+    {
+      "from": "T2",
+      "to": "T5",
+      "reason": "T5 verifies graph insertion and layout."
+    },
+    {
+      "from": "T3",
+      "to": "T5",
+      "reason": "T5 verifies lifecycle/history/signature UI."
+    },
+    {
+      "from": "T4",
+      "to": "T5",
+      "reason": "T5 verifies V42 and mock synchronization."
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1",
+      "T2",
+      "T4"
+    ],
+    [
+      "T3"
+    ],
+    [
+      "T5"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1"
+      ],
+      "checks": [
+        "JDK 17 workflow focused tests"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T2",
+        "T3"
+      ],
+      "checks": [
+        "frontend production build",
+        "browser graph and history smoke flow"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T4"
+      ],
+      "checks": [
+        "infrastructure tests",
+        "Flyway validate",
+        "mismatch aggregates"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "checks": [
+        "governance",
+        "scope",
+        "git diff",
+        "full backend and frontend builds"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T5"
+      ],
+      "checks": [
+        "four viewport browser flow",
+        "database evidence",
+        "original-worktree hash guard"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "pre-change baseline",
+      "trigger": "before product edits",
+      "observer": "main controller",
+      "sensors": [
+        "S1",
+        "S3",
+        "S4",
+        "S5",
+        "S6"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ]
+    },
+    {
+      "label": "T1 focused sample",
+      "trigger": "T1 implementation complete",
+      "observer": "independent observation pass",
+      "sensors": [
+        "S1"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R4"
+      ]
+    },
+    {
+      "label": "T2/T3 UI sample",
+      "trigger": "T2 and T3 implementation complete",
+      "observer": "independent browser/build pass",
+      "sensors": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ]
+    },
+    {
+      "label": "T4 data sample",
+      "trigger": "T4 implementation complete",
+      "observer": "independent database pass",
+      "sensors": [
+        "S5"
+      ],
+      "requirement_ids": [
+        "R6"
+      ]
+    },
+    {
+      "label": "final convergence sample",
+      "trigger": "T1-T5 complete",
+      "observer": "independent full regression and browser pass",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1",
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T2",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T2",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T1",
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S4",
+        "S2"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "task_ids": [
+        "T4",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S5",
+        "S6"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

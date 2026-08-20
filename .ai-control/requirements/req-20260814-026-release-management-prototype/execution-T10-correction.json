@@ -1,0 +1,31 @@
+{
+  "task_id": "T10",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype/execution-revision-1-model.json", "purpose": "Preserve the exact revision-1 model under an allowed archive filename"},
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype/execution-revision-1-control-plan.json", "purpose": "Preserve the exact revision-1 control plan under an allowed archive filename"},
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype/execution-revision-1-state.json", "purpose": "Preserve the exact converged revision-1 state under an allowed archive filename"},
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype/execution-revision-1-convergence.json", "purpose": "Preserve the exact revision-1 convergence report under an allowed archive filename"},
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype/model.json", "purpose": "Expose the active revision-2 model at the canonical governance path"},
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype/control-plan.json", "purpose": "Expose the active revision-2 plan at the canonical governance path"},
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype/state.json", "purpose": "Expose the active revision-2 ledger at the canonical governance path"}
+  ],
+  "requirements_addressed": ["R14"],
+  "commands": [
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "AI control layout passed for 30 requirement directories and 228 JSON files; all repository governance checks passed"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors"},
+    {"command": "control_loop.py status --state .../state.json", "exit_code": 0, "salient_output": "Canonical revision-2 state loaded in executing phase with design_revision=2 and plan_revision=2"}
+  ],
+  "local_checks": [
+    {"check": "Original governance failure", "result": "pass", "evidence": "The same full governance command now exits 0 and reports no invalid ledger files", "limitations": []}
+  ],
+  "diff_summary": ["Archived revision-1 canonical evidence without changing content", "Promoted revision-2 active model, plan and state to the required canonical names"],
+  "invariants_checked": [
+    {"invariant": "Product code remains unchanged by the correction", "result": "pass", "evidence": "Only files in the requirement evidence directory were moved"},
+    {"invariant": "Revision-1 evidence remains available", "result": "pass", "evidence": "Four revision-1 JSON files remain under execution-revision-1-* names"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

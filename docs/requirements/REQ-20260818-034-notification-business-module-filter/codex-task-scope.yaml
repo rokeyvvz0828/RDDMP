@@ -1,0 +1,121 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260818-034",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260818-034-notification-business-module-filter/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "platform/system",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/api/notifications.ts",
+      "web/src/types/notification.ts",
+      "web/src/components/ui/UiNotificationCenter.vue",
+      "web/src/styles.css",
+      "server/src/platform/system/src/main/java/com/ccb/system/notification/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/service/SystemNotificationServiceTest.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/**",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+      "server/src/platform/workflow/src/test/**",
+      "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java",
+      "server/src/platform/boot/src/test/**",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+      "server/src/modules/release/src/test/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V44__notification_business_module.sql",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+      "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+      "mock/mock-data.json",
+      "docs/integration/system-notification-contract.md",
+      "docs/integration/workflow-module-contract.md",
+      "docs/requirements/REQ-20260818-034-notification-business-module-filter/**",
+      "docs/engineering-control/designs/2026-08-18-notification-business-module-filter-design.md",
+      "docs/engineering-control/plans/2026-08-18-notification-business-module-filter-implementation-plan.md",
+      ".ai-control/requirements/req-20260818-034-notification-business-module-filter/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/modules/delivery-showcase/**",
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V26__system_notifications.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260818-034",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["system-notification-tests", "workflow-tests", "release-tests", "backend-full-tests", "frontend-build", "notification-browser-flow"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V44__notification_business_module.sql"],
+    "compatibility_and_rollback": "Append-only module metadata columns and indexes. Existing notification and workflow records are backfilled; application rollback keeps the new columns and populated values."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-notification-metadata"
+  },
+  "required_tests": [
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "api", "command": "verify authenticated module-aware notification list, module options, global unread count, mark-read and mark-all-read APIs"},
+    {"name": "permission", "command": "verify unauthenticated rejection and tenant/user-scoped notification, module-option and count queries"},
+    {"name": "system-notification-tests", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-system -am test"},
+    {"name": "workflow-tests", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test"},
+    {"name": "release-tests", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test"},
+    {"name": "backend-full-tests", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "notification-browser-flow", "command": "browser checks for module display, filtering, counts, read state, errors and responsive drawer"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-034-notification-business-module-filter/codex-task-scope.yaml --working-tree"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "notification publishing is a shared platform contract used by multiple modules",
+      "workflow context propagation spans persisted instances and lifecycle events",
+      "backfill must preserve existing notifications and running workflows",
+      "filtered and global unread counts must remain internally consistent"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260818-034-notification-business-module-filter",
+    "control_justification": "cross-module public notification and workflow contracts, database migration, shared frontend component and authenticated user flow",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260818-034-notification-business-module-filter/execution-T1.json",
+      ".ai-control/requirements/req-20260818-034-notification-business-module-filter/observation-T1.json",
+      ".ai-control/requirements/req-20260818-034-notification-business-module-filter/convergence.json"
+    ],
+    "release_verification": ["backend-full-tests", "frontend-build", "notification-browser-flow", "governance"],
+    "rollback": "Revert application changes while retaining append-only notification and workflow module metadata columns and backfilled values."
+  }
+}

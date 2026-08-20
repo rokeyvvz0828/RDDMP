@@ -1,0 +1,22 @@
+{
+  "objective": "The production-baseline summary presents the selected release window and five metrics in a stable two-level responsive layout without changing business behavior.",
+  "requirements": [
+    {"id": "R1", "statement": "The selected release window must occupy a dedicated top information row with code, name and status.", "acceptance": ["Window context is visually separate from metrics", "Code, name and status remain readable on desktop"], "priority": "must", "source": "Approved design revision 1", "counterexample": ["Window remains a competing metric cell", "Name or status is omitted"]},
+    {"id": "R2", "statement": "The five numeric metrics must render as one equal-width desktop row without an orphaned second row.", "acceptance": ["All five metric cells share one desktop row", "No unused second-row whitespace remains"], "priority": "must", "source": "Approved design revision 1", "counterexample": ["The final metric wraps alone", "Metric widths are inconsistent"]},
+    {"id": "R3", "statement": "The summary must adapt to two metric columns on narrow screens and one column on phone widths without overflow.", "acceptance": ["No page-level horizontal overflow", "Labels, values and separators do not overlap"], "priority": "must", "source": "Approved design revision 1", "counterexample": ["Metrics clip or overlap", "Responsive borders become incoherent"]},
+    {"id": "R4", "statement": "The change must preserve existing selection, statistics, permissions and API behavior.", "acceptance": ["No state, event or API contract changes", "Frontend production build passes"], "priority": "must", "source": "Approved design revision 1", "counterexample": ["Metric values or filtering behavior change", "A backend or API change is introduced"]}
+  ],
+  "invariants": ["selectedWindow and summary remain authoritative", "No nested cards or new dependencies", "Existing data, permissions and API contracts remain unchanged", "Unrelated dirty work remains untouched"],
+  "constraints": ["Product edits limited to ReleaseBaselineView.vue and release-prototype.css", "Use existing Vue, Element Plus and CSS variables", "Remain on rokey"],
+  "non_goals": ["Redesign the toolbar or table", "Change metric definitions or order", "Change backend behavior", "Generalize the pattern to other pages"],
+  "assumptions": [{"text": "The defect is fully controlled by the summary markup and local CSS.", "basis": "Read-only inspection found all six values and the five-track grid in the two approved files.", "falsifier": "Runtime computed styles reveal an unavoidable third-file override."}],
+  "unknowns": [],
+  "decisions": [{"question": "Which summary structure should be used?", "options": ["Six cells in one row", "Window row plus five metrics", "Auto-fit metric flow"], "selected": "Window row plus five metrics", "blocking": false, "source": "User selected option 2 and approved design revision 1."}],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "Window code, name and status in a distinct top row", "candidate_sensor": "DOM structure and desktop screenshot"},
+    {"requirement_id": "R2", "observable": "Five equal metric columns and one desktop row", "candidate_sensor": "Computed grid and element geometry"},
+    {"requirement_id": "R3", "observable": "Responsive column count, separators and document overflow", "candidate_sensor": "Viewport screenshots and scrollWidth/clientWidth"},
+    {"requirement_id": "R4", "observable": "Scoped diff and successful type/build checks", "candidate_sensor": "Git boundary inspection and npm production build"}
+  ],
+  "baseline_status": "ready"
+}

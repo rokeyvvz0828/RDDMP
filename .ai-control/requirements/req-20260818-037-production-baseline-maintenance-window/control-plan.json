@@ -1,0 +1,81 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Reject single and batch production-result maintenance before the owning window reaches productionEnd.",
+      "requirement_ids": ["R3", "R4", "R5"],
+      "prerequisites": [],
+      "input_facts": ["Entry.windowId identifies the owning window", "ReleaseWindowStore.findById is tenant scoped", "updateResult and updateResults are transactional entry points", "Neighboring release services use injectable Clock"],
+      "write_scope": ["server/src/modules/release/src/main/java/com/ccb/release/production/service/ReleaseProductionService.java", "server/src/modules/release/src/test/java/com/ccb/release/production/service/ReleaseProductionServiceTest.java", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/execution-T1.json", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/observation-T1.json"],
+      "invariants": ["Backend server time is authoritative", "Lookup is tenant scoped", "Exact productionEnd is maintainable", "Existing row-version, result validation and audit behavior remain", "No versionType exception"],
+      "interface_contracts": ["Single and batch controllers retain existing request and response shapes", "ReleaseWindowStore remains unmodified", "Early rejection performs no updateResult or appendResultLog call"],
+      "non_goals": ["No API, database, controller, store or window-status change", "No administrator or emergency bypass"],
+      "action_bounds": ["Add ReleaseWindowStore and Clock dependencies to the service", "Add one internal owning-window time check before existing mutation semantics", "Add fixed-clock Mockito tests only in the existing production service test"],
+      "acceptance_checks": ["Before-end single call returns CONFLICT without persistence calls", "Exact-boundary single call reaches existing successful update", "Before-end batch rejects transaction path", "All existing release tests pass"],
+      "evidence_required": ["Focused source/test diff", "Focused test red then green signal", "Full ccb-release reactor summary", "No-write Mockito verification", "Disturbances and assumptions"],
+      "rollback": "Restore the pre-task service constructor/internal method and test fixture; no data rollback.",
+      "stop_conditions": ["Entry cannot resolve a tenant window", "A schema or public API change becomes necessary", "A concurrent user change overlaps either target file"],
+      "escalation_conditions": ["Product rule requires an exception", "Window status rather than productionEnd becomes authoritative"]
+    },
+    {
+      "id": "T2",
+      "goal": "Keep unfinished-window baselines viewable while clearly disabling every frontend result-maintenance actuator.",
+      "requirement_ids": ["R1", "R2", "R3", "R5"],
+      "prerequisites": [],
+      "input_facts": ["ReleaseWindowDto already exposes productionEnd and statusLabel", "ReleaseBaselineView owns selection, single action, batch action and result dialog", "The current isMaintainable predicate only tests RELEASED"],
+      "write_scope": ["web/src/modules/release/components/ReleaseBaselineView.vue", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/execution-T2.json", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/observation-T2.json"],
+      "invariants": ["Unfinished windows stay selectable", "Baseline entries remain visible", "Exact productionEnd is eligible", "All version types use the same window predicate", "Existing maintained rows still show 已维护"],
+      "interface_contracts": ["No ReleaseWindowDto or HTTP change", "Option second line and page notice use selected window productionEnd", "All open/save handlers defensively recheck eligibility"],
+      "non_goals": ["No global CSS or shared component modification", "No second-level countdown", "No mobile-specific layout"],
+      "action_bounds": ["Modify ReleaseBaselineView local script and template only", "Use a component-local minute timer and existing Element Plus controls", "Do not alter API calls or shared stores"],
+      "acceptance_checks": ["Unfinished option shows reason and stays selectable", "Table data is visible", "Selection/single/batch/save cannot run early", "At/after boundary eligibility recomputes", "Frontend production build passes"],
+      "evidence_required": ["Focused component diff", "Build exit code", "Browser DOM and interaction", "Console log result", "Disturbances and limitations"],
+      "rollback": "Restore the original option rendering and isMaintainable predicate; remove the component timer and notice.",
+      "stop_conditions": ["productionEnd is not parseable", "A shared/global UI change is required", "A concurrent user change overlaps the component"],
+      "escalation_conditions": ["Second-level timing, cross-timezone selection or mobile redesign is requested"]
+    },
+    {
+      "id": "T3",
+      "goal": "Verify the integrated server and browser behavior and close the control loop.",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["T1 and T2 expose stable verified outputs", "Local Vite runs on 127.0.0.1:5173", "A current unfinished window exists in local data"],
+      "write_scope": [".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/execution-T3.json", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/observation-T3.json", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/convergence.json", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/state.json"],
+      "invariants": ["No product write outside T1/T2 scope", "Backend process uses the new build", "Existing dirty worktree remains untouched", "Known unrelated governance failures are disclosed"],
+      "interface_contracts": ["Browser uses real window and baseline APIs", "Final evidence distinguishes product success from repository baseline failures"],
+      "non_goals": ["No test-data mutation beyond normal read-only browser inspection", "No governance-rule edits"],
+      "action_bounds": ["Rebuild and restart local backend if required", "Use authenticated desktop browser", "Run approved commands and write control evidence only"],
+      "acceptance_checks": ["R1-R5 have runtime or automated evidence", "No browser warning/error", "Two standard-mode zero-P0/P1 samples", "Control gate passes"],
+      "evidence_required": ["Process identity", "Browser DOM and control state", "Maven and Vite summaries", "Governance/scope/diff outputs", "Control gate output"],
+      "rollback": "Remove T3 evidence if invalid; revert T1/T2 only if product verification finds a real deviation.",
+      "stop_conditions": ["New backend cannot start", "No unfinished window can be observed", "A P0/P1 deviation remains open"],
+      "escalation_conditions": ["Verification requires unauthorized data mutation or shared platform changes"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T3", "reason": "Integrated verification requires the server gate."},
+    {"from": "T2", "to": "T3", "reason": "Integrated verification requires the rendered UI gate."}
+  ],
+  "parallel_groups": [["T1", "T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["Focused and full ccb-release tests"]},
+    {"after_tasks": ["T2"], "checks": ["Frontend production build"]},
+    {"after_tasks": ["T1", "T2"], "checks": ["Restart backend and inspect unfinished-window baseline in authenticated browser"]},
+    {"after_tasks": ["T3"], "checks": ["Governance, scope, diff and convergence gate"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 server gate sample", "trigger": "T1 execution report", "observer": "Independent test-output observer", "sensors": ["S1", "S3"], "requirement_ids": ["R3", "R4", "R5"]},
+    {"label": "T2 UI gate sample", "trigger": "T2 execution report", "observer": "Runtime browser observer", "sensors": ["S2", "S3"], "requirement_ids": ["R1", "R2", "R3", "R5"]},
+    {"label": "Final integration sample", "trigger": "T3 final checks", "observer": "Convergence verifier", "sensors": ["S1", "S2", "S3"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T2", "T3"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R2", "task_ids": ["T2", "T3"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2", "S3"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2", "S3"]}
+  ],
+  "plan_status": "ready"
+}

@@ -1,0 +1,1063 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260817-032-release-workflow-scene-binding",
+  "handoff_status": "approved",
+  "created_at": "2026-08-17T15:50:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260817-032-release-workflow-scene-binding",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-17-release-workflow-scene-binding-design.md",
+    "objective": "Allow configuration administrators to bind each release-approval scenario to a published workflow per project, with backend resolution, immutable running-version semantics, auditability and workflow lifecycle protection.",
+    "users": [
+      "Configuration administrators bind five release scenarios for the current project.",
+      "Project developers submit release applications without selecting or typing workflow identifiers.",
+      "Workflow administrators maintain definitions while the platform protects referenced and historical definitions.",
+      "Auditors inspect binding changes and immutable workflow history."
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "Configuration management must expose five fixed approval scenarios whose published-workflow bindings are isolated by tenant and project.",
+        "acceptance": [
+          "project switching loads the corresponding bindings",
+          "each project and scene has at most one binding",
+          "the user selects a published workflow instead of typing a code"
+        ],
+        "priority": "must",
+        "source": "User confirmed a separate configuration-management page and project-specific bindings on 2026-08-17.",
+        "counterexample": [
+          "project A overwrites project B",
+          "workflow code must be memorized",
+          "workflow graph is edited from the binding page"
+        ]
+      },
+      {
+        "id": "R2",
+        "statement": "Projects may save partial bindings, while submission must fail atomically only when its resolved scenario is unbound or references a non-published definition.",
+        "acceptance": [
+          "unconfigured scenes are visibly marked",
+          "configured scenes remain usable",
+          "failed submission creates no round, instance or status transition"
+        ],
+        "priority": "must",
+        "source": "User approved fixed scenes with partial configuration and hit-time blocking.",
+        "counterexample": [
+          "missing emergency binding blocks regular submissions",
+          "a failed start leaves a STARTING round"
+        ]
+      },
+      {
+        "id": "R3",
+        "statement": "The release backend must resolve the project-scene binding by workflow definition ID and freeze the actual definition version and instance on each submitted round.",
+        "acceptance": [
+          "new submissions use the binding committed at submission time",
+          "existing submissions continue on their original definition version after rebinding",
+          "the frontend cannot choose a workflow in the application payload"
+        ],
+        "priority": "must",
+        "source": "User approved that binding changes affect only future applications.",
+        "counterexample": [
+          "rebinding reroutes an active instance",
+          "client-supplied definition ID controls submission"
+        ]
+      },
+      {
+        "id": "R4",
+        "statement": "Binding changes must require a reason, preserve before and after values with operator and time, enforce tenant/project authorization and reject stale writes.",
+        "acceptance": [
+          "create, update and unbind history is queryable",
+          "stale row versions are rejected",
+          "cross-project and cross-tenant access is denied"
+        ],
+        "priority": "must",
+        "source": "User approved traceable binding lifecycle behavior.",
+        "counterexample": [
+          "only the final value is retained",
+          "last writer silently overwrites a concurrent update"
+        ]
+      },
+      {
+        "id": "R5",
+        "statement": "Only never-published definitions with no instances and no active business binding may be deleted; an actively bound definition may not be archived.",
+        "acceptance": [
+          "a pure draft can be soft-deleted",
+          "a formerly published draft cannot be deleted",
+          "any historical instance blocks deletion",
+          "archive reports active project-scene references"
+        ],
+        "priority": "must",
+        "source": "User confirmed workflow lifecycle and reference-protection rules.",
+        "counterexample": [
+          "unpublish then delete bypasses history protection",
+          "archiving a bound definition breaks future release submissions"
+        ]
+      }
+    ],
+    "invariants": [
+      "release scenario selection is server-authoritative",
+      "running instances remain bound to their original definition and version",
+      "all definitions, bindings and queries are tenant scoped",
+      "project context remains a stable interface while its current source is mocked",
+      "Flyway migrations are append-only",
+      "unrelated rokey worktree changes remain untouched"
+    ],
+    "constraints": [
+      "local rokey branch",
+      "Spring Boot 3.4.4 and Java 17",
+      "MySQL 8.4 and Flyway",
+      "Vue 3, TypeScript and Element Plus",
+      "existing WorkflowBusinessGateway and release lifecycle consumer remain the integration boundary"
+    ],
+    "non_goals": [
+      "platform-wide generic scenario center",
+      "workflow graph editing from configuration management",
+      "manual workflow choice on a release application",
+      "automatic creation of approval graphs or assignees",
+      "changes to release scenario classification rules"
+    ],
+    "selected_approach": {
+      "name": "project-scoped release workflow bindings",
+      "reason": "It removes memorized codes, supports project differences and keeps workflow authoring separate with bounded module integration.",
+      "alternatives": [
+        {
+          "name": "hard-coded workflow codes",
+          "rejected_because": "error-prone configuration and code changes are required to remap scenarios"
+        },
+        {
+          "name": "platform-wide generic scenario center",
+          "rejected_because": "cross-module governance and scope are larger than the current release-management requirement"
+        },
+        {
+          "name": "business-purpose selection in workflow authoring",
+          "rejected_because": "it couples generic workflow authoring to release-specific scene semantics"
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "release workflow binding schema, service, API and page",
+          "release submission binding resolution",
+          "workflow delete and archive reference guards",
+          "focused permissions, tests and audit"
+        ],
+        "outside": [
+          "project-management implementation",
+          "workflow graph redesign",
+          "platform generic scenario registry",
+          "release scenario classification changes"
+        ]
+      },
+      "components": [
+        {
+          "name": "ReleaseWorkflowBindingService",
+          "responsibility": "manage project bindings, optimistic locking, audit and submission-time resolution",
+          "depends_on": [
+            "ReleaseWorkflowBindingStore",
+            "WorkflowDefinitionCatalog"
+          ]
+        },
+        {
+          "name": "ReleaseWorkflowBindingStore",
+          "responsibility": "persist bindings and immutable binding history",
+          "depends_on": [
+            "rel_workflow_binding",
+            "rel_workflow_binding_history"
+          ]
+        },
+        {
+          "name": "ReleaseSubmissionService",
+          "responsibility": "map the existing business scenario to a binding and start the selected published definition",
+          "depends_on": [
+            "ReleaseWorkflowBindingService",
+            "WorkflowBusinessGateway"
+          ]
+        },
+        {
+          "name": "WorkflowDefinitionCatalog",
+          "responsibility": "provide tenant-scoped published candidates and definition validation",
+          "depends_on": [
+            "workflow database"
+          ]
+        },
+        {
+          "name": "WorkflowService",
+          "responsibility": "enforce delete and archive guards using versions, instances and business references",
+          "depends_on": [
+            "ReleaseWorkflowBindingReference"
+          ]
+        },
+        {
+          "name": "ReleaseApprovalWorkflowPage",
+          "responsibility": "display five scene bindings, validity, reasoned updates and history for the current project",
+          "depends_on": [
+            "release API",
+            "project context"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "release workflow binding API",
+          "producer": "release module",
+          "consumers": [
+            "ReleaseApprovalWorkflowPage"
+          ],
+          "contract": "tenant/project-scoped fixed scene list, published candidates, reasoned optimistic updates and history"
+        },
+        {
+          "name": "workflow definition catalog",
+          "producer": "workflow platform",
+          "consumers": [
+            "release module"
+          ],
+          "contract": "read-only published-definition summaries and server-side status validation"
+        },
+        {
+          "name": "release workflow binding reference",
+          "producer": "release module",
+          "consumers": [
+            "WorkflowService"
+          ],
+          "contract": "read-only active references for archive and delete decisions without direct rel-table access"
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "current project plus fixed scene",
+          "transitions": [
+            "load binding",
+            "select published definition",
+            "validate row version and reason",
+            "write binding and history atomically"
+          ],
+          "output": "audited project-scene binding"
+        },
+        {
+          "input": "release submission",
+          "transitions": [
+            "derive scenario",
+            "resolve binding",
+            "validate PUBLISHED",
+            "start workflow",
+            "freeze definition, version and instance on round"
+          ],
+          "output": "in-review application or no mutation"
+        },
+        {
+          "input": "workflow delete or archive",
+          "transitions": [
+            "lock definition",
+            "inspect published versions and instances",
+            "query active business references",
+            "allow or reject lifecycle action"
+          ],
+          "output": "safe lifecycle transition with history preserved"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "scene is unbound",
+        "behavior": "reject only the matching submission before workflow or round creation",
+        "recovery": "bind a published workflow for the current project and retry"
+      },
+      {
+        "condition": "bound definition is no longer published",
+        "behavior": "mark the binding invalid and reject submission",
+        "recovery": "rebind or restore the definition"
+      },
+      {
+        "condition": "binding row version is stale",
+        "behavior": "reject without overwrite",
+        "recovery": "reload the current binding and submit a new reasoned change"
+      },
+      {
+        "condition": "definition has history, instances or bindings",
+        "behavior": "reject delete with an explicit reason",
+        "recovery": "retain or archive after removing active bindings"
+      },
+      {
+        "condition": "published definition has active references",
+        "behavior": "reject archive and return bounded project-scene summaries",
+        "recovery": "rebind or unbind references, then archive"
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "server-authoritative project, tenant and permission checks",
+        "frontend cannot choose submission workflow",
+        "audit identity comes from authentication"
+      ],
+      "performance": [
+        "unique project-scene index",
+        "definition-reference index",
+        "bounded candidate and history responses"
+      ],
+      "compatibility": [
+        "existing instances and rounds need no migration",
+        "current mocked project contract remains usable",
+        "existing lifecycle callbacks remain unchanged"
+      ],
+      "operations": [
+        "append-only migration",
+        "explicit invalid binding observability",
+        "no silent fallback to hard-coded codes",
+        "application rollback retains non-destructive schema"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R4"
+        ],
+        "signal": "binding APIs and page show isolated fixed scenes, partial state, history and conflict behavior",
+        "method": "service/API tests, frontend build and authenticated browser checks across two mock projects"
+      },
+      {
+        "requirement_ids": [
+          "R2",
+          "R3"
+        ],
+        "signal": "submission starts the configured definition and failures leave no partial state",
+        "method": "transactional integration tests and database aggregate verification"
+      },
+      {
+        "requirement_ids": [
+          "R5"
+        ],
+        "signal": "pure draft deletion succeeds while prior publication, instances and references block destructive lifecycle actions",
+        "method": "workflow service tests and API checks"
+      },
+      {
+        "requirement_ids": [
+          "R1",
+          "R3"
+        ],
+        "signal": "end-to-end release submission, business-owned approval and lifecycle callback complete",
+        "method": "browser workflow using a published test definition and project binding"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "the current mocked project ID remains stable until project management integration",
+        "basis": "the existing project-context contract already supplies a stable currentRef",
+        "falsifier": "the project module introduces a different canonical identifier without mapping"
+      },
+      {
+        "text": "workflow definition IDs remain stable across published versions",
+        "basis": "wf_version is keyed under wf_definition and current publishing updates current_version",
+        "falsifier": "workflow versioning is redesigned to replace definitions rather than append versions"
+      }
+    ],
+    "unknowns": [],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "Place approval workflow configuration in configuration management, separate from workflow authoring",
+        "reason": "separates business usage from graph design",
+        "source": "User confirmed on 2026-08-17."
+      },
+      {
+        "id": "D2",
+        "decision": "Bind workflows independently per project",
+        "reason": "projects may use different approval paths",
+        "source": "User confirmed on 2026-08-17."
+      },
+      {
+        "id": "D3",
+        "decision": "Show five fixed scenes and permit partial binding",
+        "reason": "unused scenes should not block configured scenarios",
+        "source": "User confirmed on 2026-08-17."
+      },
+      {
+        "id": "D4",
+        "decision": "Binding changes affect only future submissions",
+        "reason": "active workflow versions must remain immutable",
+        "source": "User confirmed on 2026-08-17."
+      },
+      {
+        "id": "D5",
+        "decision": "Only pure drafts may be deleted and active bindings block archive",
+        "reason": "preserve instances, history, signatures and audit",
+        "source": "User confirmed on 2026-08-17."
+      }
+    ],
+    "risks": [
+      {
+        "risk": "mock project identifiers change",
+        "impact": "existing bindings appear missing",
+        "mitigation": "stabilize currentRef and provide a one-time mapping when project management is integrated"
+      },
+      {
+        "risk": "binding changes race with submission",
+        "impact": "a submission uses an unexpected definition",
+        "mitigation": "resolve committed binding transactionally and freeze the actual result on the round"
+      },
+      {
+        "risk": "workflow lifecycle creates a direct module-table dependency",
+        "impact": "module boundaries erode",
+        "mitigation": "use a read-only reference interface implemented by release management"
+      },
+      {
+        "risk": "bound workflow is unpublished outside release management",
+        "impact": "new submissions stop",
+        "mitigation": "show invalid state, block clearly and log the condition rather than silently falling back"
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User reviewed the landed design summary and explicitly requested implementation on local rokey on 2026-08-17.",
+      "confirmed_at": "2026-08-17T15:45:00+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-17-release-workflow-scene-binding-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "Work only on local rokey and do not commit, push or overwrite unrelated dirty-worktree changes.",
+      "Append V43 only; never modify V1 through V42.",
+      "Use the existing mocked project currentRef contract.",
+      "Resolve workflow bindings on the backend and freeze actual definition and version per round.",
+      "Do not let workflow platform code query rel_* tables directly.",
+      "Do not change release scenario classification rules."
+    ],
+    "file_map": [
+      {
+        "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V43__release_workflow_scene_binding.sql",
+        "status": "candidate-new",
+        "responsibility": "binding schema, audit schema, indexes, permissions and workflow_code compatibility",
+        "evidence": "V42 is the highest current source migration"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration",
+        "status": "existing",
+        "responsibility": "workflow catalog, start-by-ID and definition-reference public contracts",
+        "evidence": "existing WorkflowBusinessGateway integration boundary"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+        "status": "existing",
+        "responsibility": "published catalog and workflow start implementation",
+        "evidence": "currently implements startByCode"
+      },
+      {
+        "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+        "status": "existing",
+        "responsibility": "definition delete and archive lifecycle guards",
+        "evidence": "currently checks only DRAFT or PUBLISHED status"
+      },
+      {
+        "path": "server/src/modules/release/src/main/java/com/ccb/release/workflow",
+        "status": "candidate-new",
+        "responsibility": "project-scene binding model, persistence, service and HTTP API",
+        "evidence": "release module currently has no workflow binding package"
+      },
+      {
+        "path": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+        "status": "existing",
+        "responsibility": "submission-time binding resolution and workflow launch",
+        "evidence": "currently starts by hard-coded scenario workflowCode"
+      },
+      {
+        "path": "web/src/modules/release/components/ReleaseWorkflowBindingView.vue",
+        "status": "candidate-new",
+        "responsibility": "five-scene configuration and history UI",
+        "evidence": "release navigation currently contains five other views"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "Expose tenant-scoped published workflow definitions, start by definition ID, and protect definition deletion/archive from history and business references.",
+        "requirement_ids": [
+          "R3",
+          "R5"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "WorkflowBusinessIntegrationService currently resolves only by code.",
+          "WorkflowService delete currently checks only DRAFT.",
+          "Release module already depends on workflow, so the SPI must be defined in workflow and implemented by release."
+        ],
+        "files": {
+          "create": [
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowDefinitionSummary.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowDefinitionCatalog.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowStartDefinitionCommand.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowDefinitionReference.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowDefinitionReferenceProvider.java"
+          ],
+          "modify": [
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessGateway.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+            "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java"
+          ],
+          "test": [
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+            "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "wf_definition, wf_version and wf_instance tenant-scoped data"
+          ],
+          "produces": [
+            "WorkflowDefinitionCatalog",
+            "WorkflowBusinessGateway.startByDefinitionId",
+            "WorkflowDefinitionReferenceProvider"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T1-S1",
+            "action": "Add failing tests for catalog, ID start and lifecycle guards.",
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -Dtest=WorkflowBusinessIntegrationServiceTest,WorkflowDefinitionLifecycleTest test",
+            "expected": "New assertions fail before implementation.",
+            "evidence": "Exit code and assertion messages."
+          },
+          {
+            "id": "T1-S2",
+            "action": "Implement integration records, services and guarded lifecycle checks.",
+            "command": null,
+            "expected": "Existing code-based starts remain compatible while new ID-based starts and guards compile.",
+            "evidence": "Focused diff."
+          },
+          {
+            "id": "T1-S3",
+            "action": "Run focused regression.",
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -Dtest=WorkflowBusinessIntegrationServiceTest,WorkflowDefinitionLifecycleTest test",
+            "expected": "Zero test failures.",
+            "evidence": "Maven summary."
+          }
+        ],
+        "acceptance_checks": [
+          "only PUBLISHED definitions are candidates or startable",
+          "formerly published or instanced definitions cannot be deleted",
+          "active references block delete and archive"
+        ],
+        "risks": [
+          "optional SPI injection must not break workflow-only tests"
+        ],
+        "rollback": "Remove new contracts and restore three modified workflow files.",
+        "stop_conditions": [
+          "Maven dependency cycle appears",
+          "an unmodeled start path bypasses the integration service"
+        ],
+        "escalation_conditions": [
+          "Flowable deployment semantics must change",
+          "history deletion is required"
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "Persist and expose audited project-scene bindings with partial configuration, validity and optimistic locking.",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R4",
+          "R5"
+        ],
+        "prerequisites": [
+          "T1"
+        ],
+        "input_facts": [
+          "Release project IDs are stable strings in current DTOs.",
+          "Five scenes are fixed by approved design.",
+          "V42 is current highest source migration."
+        ],
+        "files": {
+          "create": [
+            "server/src/platform/infrastructure/src/main/resources/db/migration/V43__release_workflow_scene_binding.sql",
+            "server/src/modules/release/src/main/java/com/ccb/release/workflow/model/ReleaseWorkflowBindingModels.java",
+            "server/src/modules/release/src/main/java/com/ccb/release/workflow/persistence/ReleaseWorkflowBindingStore.java",
+            "server/src/modules/release/src/main/java/com/ccb/release/workflow/service/ReleaseWorkflowBindingService.java",
+            "server/src/modules/release/src/main/java/com/ccb/release/workflow/web/ReleaseWorkflowBindingController.java",
+            "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowDefinitionReferenceProvider.java"
+          ],
+          "modify": [
+            "server/src/modules/release/src/test/java/com/ccb/release/ReleaseSchemaContractTest.java"
+          ],
+          "test": [
+            "server/src/modules/release/src/test/java/com/ccb/release/workflow/service/ReleaseWorkflowBindingServiceTest.java",
+            "server/src/modules/release/src/test/java/com/ccb/release/workflow/web/ReleaseWorkflowBindingControllerSecurityTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "WorkflowDefinitionCatalog",
+            "WorkflowDefinitionReferenceProvider"
+          ],
+          "produces": [
+            "four /api/release/workflow-bindings endpoints",
+            "ReleaseWorkflowBindingService.resolve"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T2-S1",
+            "action": "Add migration, service and security failure tests.",
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -Dtest=ReleaseSchemaContractTest,ReleaseWorkflowBindingServiceTest,ReleaseWorkflowBindingControllerSecurityTest test",
+            "expected": "Tests fail because schema and binding services do not exist.",
+            "evidence": "Maven failures."
+          },
+          {
+            "id": "T2-S2",
+            "action": "Add V43 and implement binding vertical slice plus reference provider.",
+            "command": null,
+            "expected": "Five scenes, published candidates, reasoned updates, history and references compile.",
+            "evidence": "Schema and Java diff."
+          },
+          {
+            "id": "T2-S3",
+            "action": "Run focused release binding tests.",
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -Dtest=ReleaseSchemaContractTest,ReleaseWorkflowBindingServiceTest,ReleaseWorkflowBindingControllerSecurityTest test",
+            "expected": "Zero failures.",
+            "evidence": "Maven summary."
+          }
+        ],
+        "acceptance_checks": [
+          "five scenes returned even when unbound",
+          "stale row version rejected",
+          "history and binding write are atomic",
+          "references include bindings to unpublished definitions"
+        ],
+        "risks": [
+          "V43 collision with parallel migration"
+        ],
+        "rollback": "Restore source files; retain an already-applied empty V43 schema without destructive rollback.",
+        "stop_conditions": [
+          "V43 is already occupied",
+          "final project identifier is incompatible"
+        ],
+        "escalation_conditions": [
+          "platform-wide generic scene registry becomes mandatory"
+        ]
+      },
+      {
+        "id": "T3",
+        "goal": "Resolve project-scene binding during release submission and freeze the actual workflow definition, code and version.",
+        "requirement_ids": [
+          "R2",
+          "R3"
+        ],
+        "prerequisites": [
+          "T2"
+        ],
+        "input_facts": [
+          "ReleaseScenarioPolicy currently hard-codes five workflow codes.",
+          "ReleaseSubmissionService runs transactionally and records definition/version/instance per round."
+        ],
+        "files": {
+          "create": [],
+          "modify": [
+            "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseScenarioPolicy.java",
+            "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+            "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+            "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java",
+            "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java"
+          ],
+          "test": [
+            "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseScenarioPolicyTest.java",
+            "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+            "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "ReleaseWorkflowBindingService.resolve",
+            "WorkflowBusinessGateway.startByDefinitionId"
+          ],
+          "produces": [
+            "server-authoritative five-scene resolution",
+            "actual workflow identity frozen on round"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T3-S1",
+            "action": "Rewrite focused tests for scene keys and binding resolution.",
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -Dtest=ReleaseScenarioPolicyTest,ReleaseSubmissionServiceTest,ReleaseApplicationServiceTest test",
+            "expected": "Tests fail against hard-coded code behavior.",
+            "evidence": "Maven failures."
+          },
+          {
+            "id": "T3-S2",
+            "action": "Implement resolve-before-round and ID-based start while making draft workflow_code empty.",
+            "command": null,
+            "expected": "No client or hard-coded code determines the submitted workflow.",
+            "evidence": "Focused code diff and search."
+          },
+          {
+            "id": "T3-S3",
+            "action": "Run release module regression.",
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release test",
+            "expected": "Zero failures.",
+            "evidence": "Maven summary and rg result without production hard-coded starts."
+          }
+        ],
+        "acceptance_checks": [
+          "unbound or invalid scenes create no partial round or state",
+          "rebind affects only later submissions",
+          "round stores actual definition and version"
+        ],
+        "risks": [
+          "nullable workflow_code may affect an overlooked reader"
+        ],
+        "rollback": "Restore submission and model files; leave unused binding infrastructure intact.",
+        "stop_conditions": [
+          "external contract requires non-null draft workflow code",
+          "transaction cannot keep start and business mutation consistent"
+        ],
+        "escalation_conditions": [
+          "release state machine or lifecycle events must change"
+        ]
+      },
+      {
+        "id": "T4",
+        "goal": "Add the configuration-management approval workflow page with project-aware five-scene binding and history.",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R4"
+        ],
+        "prerequisites": [
+          "T3"
+        ],
+        "input_facts": [
+          "ReleaseManagementPrototype owns local view navigation.",
+          "Project store exposes currentRef and current name.",
+          "Element Plus is the current component system."
+        ],
+        "files": {
+          "create": [
+            "web/src/modules/release/components/ReleaseWorkflowBindingView.vue"
+          ],
+          "modify": [
+            "web/src/api/release.ts",
+            "web/src/modules/release/types.ts",
+            "web/src/modules/release/ReleaseManagementPrototype.vue",
+            "web/src/modules/release/release-prototype.css"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [
+            "T2 binding HTTP API",
+            "project-context currentRef/current"
+          ],
+          "produces": [
+            "workflow-bindings release view",
+            "reasoned bind/unbind and history UX"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T4-S1",
+            "action": "Add DTOs, API functions, view key and component integration.",
+            "command": null,
+            "expected": "The new navigation opens an isolated binding view for current project.",
+            "evidence": "Frontend diff."
+          },
+          {
+            "id": "T4-S2",
+            "action": "Implement published dropdown, validity, reason dialogs, history and local retries.",
+            "command": null,
+            "expected": "All five fixed scenes are visible and project changes discard stale edit state.",
+            "evidence": "DOM and interaction checks."
+          },
+          {
+            "id": "T4-S3",
+            "action": "Build frontend.",
+            "command": "npm run build",
+            "expected": "TypeScript and Vite build succeed.",
+            "evidence": "Build summary."
+          }
+        ],
+        "acceptance_checks": [
+          "no manual workflow code field",
+          "project switch reloads bindings",
+          "invalid and unconfigured states are explicit",
+          "reason is mandatory for bind, change and unbind"
+        ],
+        "risks": [
+          "navigation width regression"
+        ],
+        "rollback": "Remove component and restore API, view key, host view and scoped styles.",
+        "stop_conditions": [
+          "project context lacks stable ref/name",
+          "global shell redesign becomes necessary"
+        ],
+        "escalation_conditions": [
+          "binding UI is moved to workflow or platform configuration"
+        ]
+      },
+      {
+        "id": "T5",
+        "goal": "Validate strict migration, cross-module tests and real browser workflows including negative paths.",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "prerequisites": [
+          "T4"
+        ],
+        "input_facts": [
+          "An isolated ccb_platform_rokey_20260817 database is available.",
+          "Backend runs on 8080 and frontend on 5173.",
+          "Original ccb_platform must remain untouched."
+        ],
+        "files": {
+          "create": [],
+          "modify": [],
+          "test": [
+            ".ai-control/requirements/req-20260817-032-release-workflow-scene-binding execution and observation artifacts"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "all T1-T4 outputs"
+          ],
+          "produces": [
+            "migration, test, API, browser and database evidence"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T5-S1",
+            "action": "Build all current backend artifacts.",
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-boot -am -DskipTests install",
+            "expected": "BUILD SUCCESS.",
+            "evidence": "Maven summary."
+          },
+          {
+            "id": "T5-S2",
+            "action": "Run focused cross-module regression.",
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow,:ccb-release -am test",
+            "expected": "Zero failures.",
+            "evidence": "Maven summary."
+          },
+          {
+            "id": "T5-S3",
+            "action": "Apply strict Flyway to the isolated database and start backend.",
+            "command": "mvn -pl :ccb-boot -Dspring-boot.run.profiles=local spring-boot:run",
+            "expected": "V43 applied, health UP and no migration errors.",
+            "evidence": "Flyway log and health response."
+          },
+          {
+            "id": "T5-S4",
+            "action": "Exercise binding, submission, approval, rebinding and lifecycle negative paths in browser.",
+            "command": null,
+            "expected": "Normal and failure states match R1-R5 with no overlap or stale project data.",
+            "evidence": "DOM snapshots, screenshots, API status and database aggregates."
+          }
+        ],
+        "acceptance_checks": [
+          "all must requirements have runtime evidence",
+          "old database is untouched",
+          "backend remains available for user verification"
+        ],
+        "risks": [
+          "local dirty worktree or isolated DB disturbances"
+        ],
+        "rollback": "Stop backend and restore task files only; never reset unrelated changes or destructively roll back schema.",
+        "stop_conditions": [
+          "strict migration requires editing old migrations",
+          "user edits overlap task files incompatibly"
+        ],
+        "escalation_conditions": [
+          "P0/P1 data integrity deviation",
+          "real project or organization data is required"
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "reason": "Binding validation and lifecycle reference protection depend on the workflow catalog and reference SPI."
+      },
+      {
+        "from": "T2",
+        "to": "T3",
+        "reason": "Submission can resolve a scene only after audited project-scene bindings are persisted and queryable."
+      },
+      {
+        "from": "T3",
+        "to": "T4",
+        "reason": "The frontend must consume the stable binding and submission contracts established by the backend."
+      },
+      {
+        "from": "T4",
+        "to": "T5",
+        "reason": "End-to-end verification requires both backend integration and the configuration page to be complete."
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T1"
+      ],
+      [
+        "T2"
+      ],
+      [
+        "T3"
+      ],
+      [
+        "T4"
+      ],
+      [
+        "T5"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T1"
+        ],
+        "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow test",
+        "expected": "workflow module tests pass"
+      },
+      {
+        "after_tasks": [
+          "T2",
+          "T3"
+        ],
+        "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release test",
+        "expected": "release module tests pass"
+      },
+      {
+        "after_tasks": [
+          "T4"
+        ],
+        "command": "cd web && npm run build",
+        "expected": "frontend build passes"
+      },
+      {
+        "after_tasks": [
+          "T5"
+        ],
+        "command": "git diff --check",
+        "expected": "no whitespace errors in the worktree diff"
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R1",
+        "task_ids": [
+          "T2",
+          "T4",
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R2",
+        "task_ids": [
+          "T2",
+          "T3",
+          "T4",
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R3",
+        "task_ids": [
+          "T1",
+          "T3",
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R4",
+        "task_ids": [
+          "T2",
+          "T4",
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R5",
+        "task_ids": [
+          "T1",
+          "T2",
+          "T5"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User explicitly approved implementation by saying '执行' on 2026-08-17.",
+      "confirmed_at": "2026-08-17T16:10:00+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "workflow definition lifecycle",
+      "project-scene bindings",
+      "release submission transaction",
+      "release configuration UI"
+    ],
+    "state_variable_candidates": [
+      "binding definition ID",
+      "binding row version",
+      "definition status",
+      "published version count",
+      "instance count",
+      "application round workflow identity",
+      "binding validity"
+    ],
+    "interface_candidates": [
+      "workflow definition catalog",
+      "start by definition ID",
+      "definition reference SPI",
+      "binding HTTP API",
+      "workflow lifecycle events"
+    ],
+    "sensor_candidates": [
+      "JUnit and Mockito",
+      "Flyway history",
+      "MySQL aggregates",
+      "HTTP status and payload",
+      "frontend build",
+      "browser DOM and screenshots"
+    ],
+    "actuator_candidates": [
+      "binding update",
+      "workflow publish/unpublish/archive",
+      "release submission",
+      "business-owned approval"
+    ],
+    "disturbance_candidates": [
+      "mock project identifier change",
+      "concurrent rebinding",
+      "Flyway version collision",
+      "external workflow unpublish",
+      "dirty-worktree overlap"
+    ],
+    "delay_candidates": [
+      "workflow lifecycle delivery",
+      "project-switch API refresh"
+    ],
+    "assumptions": [
+      {
+        "text": "current project ref remains stable",
+        "basis": "existing mocked project contract",
+        "falsifier": "project module changes canonical IDs without mapping"
+      },
+      {
+        "text": "definition ID remains stable across workflow versions",
+        "basis": "existing wf_definition/wf_version model",
+        "falsifier": "versioning replaces definitions"
+      }
+    ]
+  }
+}

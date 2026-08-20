@@ -1,0 +1,49 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id":"R1","result":"pass","task_ids":["T1"],"evidence":["1280x720 DOM: one inline UiTabs, zero breadcrumb, app-main y=76","Final production build and diff check passed"],"limitations":[]},
+    {"id":"R2","result":"pass","task_ids":["T1"],"evidence":["Desktop project, toggle, tabs and action rectangles were disjoint","Desktop scrollWidth equaled clientWidth"],"limitations":["Only the side layout was visually sampled"]},
+    {"id":"R3","result":"pass","task_ids":["T1"],"evidence":["Switch, direct close, refresh, close others and close all were exercised successfully","UiTabs and tabsStore source were unchanged","Final reload produced no new console errors"],"limitations":["Full browser restart persistence was not sampled"]},
+    {"id":"R4","result":"pass","task_ids":["T1"],"evidence":["375x812, 390x844 and 430x932 each retained one independent sticky tab strip and readable title","All required mobile widths had scrollWidth equal clientWidth","Mobile project selector remained usable in the navigation drawer"],"limitations":["Unlisted mobile browser chrome differences were not sampled"]}
+  ],
+  "task_results": [
+    {"id":"T1","status":"verified","evidence":["Execution and observation reports recorded","Compiler, diff, runtime geometry, interaction and console sensors passed"]}
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2":0,"P3":0}
+  },
+  "sample_trend": [
+    {"sample_id":"S-0001","P0":0,"P1":1,"P2":0,"P3":0,"score":20},
+    {"sample_id":"S-0002","P0":0,"P1":0,"P2":0,"P3":0,"score":0}
+  ],
+  "regression_checks": [
+    {"check":"Frontend production build","result":"pass","evidence":"vue-tsc and Vite exited 0 after final correction"},
+    {"check":"Focused whitespace/diff check","result":"pass","evidence":"git diff --check exited 0"},
+    {"check":"Desktop and responsive browser acceptance","result":"pass","evidence":"Required DOM, geometry and interaction measurements passed"},
+    {"check":"Fresh browser console","result":"pass","evidence":"No new error-level entries after final reload"}
+  ],
+  "invariant_results": [
+    {"invariant":"tabsStore remains the sole route-tab state source","result":"pass","evidence":"No tabsStore or UiTabs implementation edits"},
+    {"invariant":"Project context and global account actions remain usable","result":"pass","evidence":"Desktop controls remained visible; mobile project selector was verified in the drawer"},
+    {"invariant":"Exactly one UiTabs is rendered at every viewport","result":"pass","evidence":"tabsCount=1 at desktop and all three mobile sizes"},
+    {"invariant":"No page-level horizontal overflow","result":"pass","evidence":"scrollWidth equaled clientWidth for every measured viewport"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance":"Existing dirty worktree","result":"pass","evidence":"Focused patch and diff check preserved unrelated target-file changes"},
+    {"disturbance":"Narrow mobile header","result":"pass","evidence":"375px correction moved project selection into the drawer and restored readable title geometry"},
+    {"disturbance":"Many route tabs","result":"pass","evidence":"Four desktop tabs remained within the 402.6px constrained middle region without displacing actions"}
+  ],
+  "residual_risks": [
+    "Top and mixed layout modes were compiler-covered but not separately visually sampled",
+    "The project continues to emit a non-blocking Vite large-chunk warning"
+  ],
+  "gate_result": "pass",
+  "route_reason": "All must requirements have verified task coverage and runtime evidence; two standard-mode samples show P1 reduced to zero; no feedback remains open."
+}

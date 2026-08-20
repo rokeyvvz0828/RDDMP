@@ -1,0 +1,19 @@
+{
+  "task_id":"T1",
+  "status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"V45__release_menu_level_permissions.sql","purpose":"拆分六个子菜单、迁移动作并保留存量角色授权"},
+    {"path_or_resource":"ReleaseProductionController.java","purpose":"拆分投产基线和生产版本权限"},
+    {"path_or_resource":"ReleaseWindowController.java","purpose":"允许依赖菜单只读获取窗口选项"},
+    {"path_or_resource":"release security and schema contract tests","purpose":"固定迁移与方法权限契约"}
+  ],
+  "requirements_addressed":["R1","R3","R4","R5"],
+  "commands":[{"command":"mvn -pl :ccb-release -am -Dtest=ReleaseProductionControllerSecurityTest,ReleaseWindowControllerSecurityTest,ReleaseSchemaContractTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"Tests run: 6, Failures: 0, Errors: 0; 8/8 reactor modules SUCCESS"}],
+  "local_checks":[{"check":"迁移与 Controller 聚焦测试","result":"pass","evidence":"V45 六路由、权限拆分、6016 兼容授予和 Controller 方法权限断言全部通过","limitations":["真实 MySQL 迁移在集成阶段执行"]}],
+  "diff_summary":["菜单 600 转为目录并新增 610-615","权限 6002-6015 迁移到各子菜单","6011/6012 更名为 baseline 权限并新增 6016 production-version 权限","后端方法权限按新矩阵拆分"],
+  "invariants_checked":[{"invariant":"不修改历史迁移和业务表数据","result":"pass","evidence":"仅新增 V45，契约测试断言无 UPDATE rel_*"},{"invariant":"存量权限 ID 稳定","result":"pass","evidence":"6002-6015 仅更新菜单归属/代码，角色关系主键不变"},{"invariant":"系统管理员继续拥有覆盖权限","result":"pass","evidence":"所有方法注解保留 system:admin"}],
+  "disturbances":[{"event":"rokey 工作区包含大量无关未提交修改","impact":"实现只触碰 REQ-038 范围文件，未清理或覆盖其他内容"}],
+  "assumptions_falsified":[],
+  "unresolved_items":["V45 需要在当前本地 MySQL 上执行并核对存量角色结果"],
+  "recommended_next":"observe"
+}

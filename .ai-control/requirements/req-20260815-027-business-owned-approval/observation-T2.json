@@ -1,0 +1,23 @@
+{
+  "sample_label": "T2 release-owned approval source and build sample",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S2 source-contract assertions", "result": "pass", "raw_evidence": "Complete page contains application, artifact, attachment, progress and audit sections before mounting ReleaseApprovalPanel", "limitation": ["Route runtime is unavailable until T3 registration"]},
+    {"requirement_id": "R2", "sensor": "S2 route-reference assertions", "result": "pass", "raw_evidence": "Release list shell and detail drawer use /release/applications/:applicationCode and contain no /workflow/review navigation", "limitation": ["Historical route conversion belongs to T3"]},
+    {"requirement_id": "R5", "sensor": "S2 API ownership assertions", "result": "pass", "raw_evidence": "Approval panel uses getWorkflowTaskContext, server allowed_actions and decideWorkflowTask; it contains no inbox scan and no signer identifier", "limitation": ["Live 403/409 responses remain for integrated runtime"]},
+    {"requirement_id": "R7", "sensor": "S3 production TypeScript/Vite build plus source state-flow review", "result": "pass", "raw_evidence": "Build exit 0; successful decision records business projection, reloads task context and emits instance refresh without navigation", "limitation": ["Actual user click and backend mutation remain for T5"]},
+    {"requirement_id": "R10", "sensor": "S3 production build and scoped responsive CSS inspection", "result": "pass", "raw_evidence": "Build exit 0; 760px and 430px rules collapse layout, descriptions, units, status header and action buttons without whole-page fixed width", "limitation": ["Required viewport screenshots and overflow probes remain for T5"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "RDDMP path requires escalated build execution to write Vite temporary files", "impact": "Build sensor was rerun with approved filesystem escalation and completed successfully"}
+  ],
+  "coverage_gaps": [
+    "The approved serial plan registers the business route in T3, so T2 cannot yet be reached through Vue Router",
+    "This observation was performed in the same Codex task and is not an organizationally independent reviewer; repeatable source and build sensors are preserved",
+    "Live workflow 403, 409 and successful-decision browser behavior is deferred to T5 integration"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

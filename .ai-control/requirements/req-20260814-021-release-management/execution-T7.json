@@ -1,0 +1,132 @@
+{
+  "task_id": "T7",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/release/ReleaseApplicationDetailPage.vue and ReleaseApprovalPanel.vue",
+      "purpose": "在版本申请详情内查询真实流程上下文、执行审批并轮询业务权威状态"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseBaselineView.vue and ReleaseCurrentProductionView.vue",
+      "purpose": "使用后端候选制品、投产结果和生产版本接口"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseAnalyticsView.vue, ReleaseChart.vue and ReleaseDetailDrawer.vue",
+      "purpose": "使用后端统计汇总和统一过滤下钻"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/ReleaseWorkflowReviewPage.vue, web/src/views/TaskCenterView.vue and web/src/router/index.ts",
+      "purpose": "统一待办仅导航到业务详情，保留旧审核链接到业务详情的兼容跳转"
+    },
+    {
+      "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/window/service/ReleaseWindowService.java",
+      "purpose": "明确 Spring 生产构造函数并保留可注入 Clock 的测试构造函数"
+    },
+    {
+      "path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/CcbApplication.java",
+      "purpose": "启用生命周期事件调度，使审批完成事件可被持续投递"
+    },
+    {
+      "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/reporting/persistence/ReleaseAnalyticsStore.java and ReleaseAnalyticsStoreTest.java",
+      "purpose": "修复 MySQL 8.4 DISTINCT 与 ORDER BY 组合并增加统计查询回归测试"
+    }
+  ],
+  "requirements_addressed": ["R2", "R9", "R10", "R11", "R12", "R13", "R14", "R15", "R16", "R17", "R21"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-release -am test",
+      "exit_code": 0,
+      "salient_output": "ccb-release 43 tests passed, including lifecycle, production, analytics and security tests"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc and Vite production build passed; 2358 modules transformed"
+    },
+    {
+      "command": "rg forbidden release business Mock symbols",
+      "exit_code": 1,
+      "salient_output": "No createReleasePrototypeState, useReleaseRepository, ReleasePrototypeState or ReleaseDemoState symbols found"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "业务详情内审批",
+      "result": "pass",
+      "evidence": "SQ-202608-002、SQ-202608-003 和 SQ-202608-004 均通过真实工作流；SQ-202608-004 在 390x844 页面完成意见、电子签名和同意",
+      "limitations": []
+    },
+    {
+      "check": "审批状态回写",
+      "result": "pass",
+      "evidence": "启用调度后 PENDING 生命周期事件一次投递成功，申请由 IN_REVIEW 自动回写为 RELEASED；页面在审批后最多 8 秒轮询权威状态",
+      "limitations": ["事件投递为异步最终一致，页面通过有限轮询呈现"]
+    },
+    {
+      "check": "投产基线和生产版本",
+      "result": "pass",
+      "evidence": "SQ-202608-003 的 AUTH-SDK 通过页面登记投产成功，生产版本显示 2026.08.15.3",
+      "limitations": []
+    },
+    {
+      "check": "统计和下钻",
+      "result": "pass",
+      "evidence": "窗口、系统、交付单元、需求和投产结果统计与真实申请记录一致，MySQL 8.4 查询返回成功",
+      "limitations": []
+    },
+    {
+      "check": "响应式布局",
+      "result": "pass",
+      "evidence": "375x812、390x844 和 430x932 均无页面级横向溢出，390x844 实际完成审批操作",
+      "limitations": ["未开发独立移动端，按批准范围复用响应式 Web"]
+    }
+  ],
+  "diff_summary": [
+    "审批进度、当前任务、意见、签名和操作统一来自工作流接口并嵌入版本申请详情",
+    "生产基线、生产版本、历史和统计页面全部改用真实后端事实",
+    "业务状态 Mock 被移除，仅保留项目、物理子系统和交付单元选择器 Mock",
+    "修复应用启动构造器歧义、生命周期事件未调度和 MySQL 统计查询兼容问题",
+    "审批后重新查询工作流与版本申请，避免流程完成但页面仍显示审批中的时间差"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "工作流是当前节点、意见、签名和任务的唯一事实源",
+      "result": "pass",
+      "evidence": "详情与操作面板使用相同实例和当前任务接口，前端不生成任务或审批结果"
+    },
+    {
+      "invariant": "审批准出和投产成功是两个独立事实",
+      "result": "pass",
+      "evidence": "RELEASED 申请先进入投产候选，只有单独登记 SUCCEEDED 后才进入当前生产版本"
+    },
+    {
+      "invariant": "业务 Mock 不作为持久状态源",
+      "result": "pass",
+      "evidence": "禁用符号扫描无匹配，正式页面均调用 release.ts 和 workflow.ts"
+    },
+    {
+      "invariant": "页面级横向溢出被禁止",
+      "result": "pass",
+      "evidence": "三个手机视口 scrollWidth 检查和实际交互通过"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "真实审批暴露生命周期事件一直为 PENDING",
+      "impact": "定位为应用未启用 Spring scheduling；在启动组合根启用后事件一次投递成功"
+    },
+    {
+      "event": "MySQL 8.4 拒绝 DISTINCT 查询中未投影的 ORDER BY 列",
+      "impact": "使用带排序投影的子查询修复并增加聚焦回归测试"
+    }
+  ],
+  "assumptions_falsified": [
+    "仅声明 @Scheduled 分发器即可自动运行；实际还必须由应用组合根启用 scheduling",
+    "统计 SQL 在 H2/Mock 级检查通过即可保证 MySQL 兼容；实际需要 MySQL 8.4 运行证据"
+  ],
+  "unresolved_items": [
+    "项目上下文、物理子系统和交付单元仍按批准范围使用前端 Mock，等待上游模块接入",
+    "Vite 产物存在既有大 chunk 警告，不影响当前功能正确性"
+  ],
+  "recommended_next": "observe"
+}

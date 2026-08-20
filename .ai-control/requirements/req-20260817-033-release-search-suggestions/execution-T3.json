@@ -1,0 +1,45 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    { "path_or_resource": "web/src/modules/release/components/ReleaseApplicationView.vue", "purpose": "Use a stable selected application code for main-list queries." },
+    { "path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue", "purpose": "Provide isolated debounced candidate requests, stale-response suppression and scope cleanup." },
+    { "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java", "purpose": "Include subsystem code in the existing fuzzy keyword predicate." },
+    { "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java", "purpose": "Lock application-code, subsystem-code and subsystem-name keyword coverage." }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    { "command": "cd web && npm run build", "exit_code": 0, "salient_output": "Vue type-check passed; Vite transformed 2362 modules and built production assets with only the existing chunk-size warning." },
+    { "command": "mvn -pl :ccb-release -am -Dtest=ReleaseApplicationPersistenceContractTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "ReleaseApplicationPersistenceContractTest: 2 tests, 0 failures, 0 errors." },
+    { "command": "mvn -pl :ccb-boot -am -DskipTests package", "exit_code": 0, "salient_output": "11-module reactor package completed successfully and rebuilt the boot archive." },
+    { "command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors." },
+    { "command": "curl -s http://127.0.0.1:8080/actuator/health", "exit_code": 0, "salient_output": "status UP" }
+  ],
+  "local_checks": [
+    { "check": "Application candidate and main-list separation", "result": "pass", "evidence": "Empty focus showed 3 candidates; typing AUTH/auth or rapid prior text kept 3 main rows; selection reduced the list to one; clear restored 3.", "limitations": [] },
+    { "check": "Subsystem code backend correction", "result": "pass", "evidence": "Focused test passed, direct API returned SQ-202608-002 for AUTH, and browser returned the same candidate after backend restart.", "limitations": [] },
+    { "check": "Four-page browser matrix", "result": "pass", "evidence": "Window, application, baseline and production controls each showed scoped options, fuzzy matched declared fields, preserved rows during typing and applied real selection.", "limitations": ["Current test data contains 1 window, 3 applications, 2 baseline entries and 1 production entry, below the 20-option cap."] },
+    { "check": "Scope invalidation", "result": "pass", "evidence": "Switching from P-RDDMP-UPGRADE to P-CORE-MODERN cleared the selected production entry and yielded 0 rows; switching back restored project data without restoring the stale selection.", "limitations": [] },
+    { "check": "Runtime console", "result": "pass", "evidence": "No page warning or error logs were captured after the final interaction matrix.", "limitations": [] }
+  ],
+  "diff_summary": [
+    "Replaced the final plain list search with the shared selection-only candidate control.",
+    "Added independent remote candidate state with 300ms debounce and generation-based stale-response suppression.",
+    "Corrected the existing release application keyword predicate to cover subsystem code and added a focused test."
+  ],
+  "invariants_checked": [
+    { "invariant": "Main-list pagination and status filters are not driven by temporary text", "result": "pass", "evidence": "Only selectedApplicationCode and status call the main query; browser rows stayed unchanged during typing." },
+    { "invariant": "Candidate failure or no match does not clear main data", "result": "pass", "evidence": "Initial no-match observation left all 3 application rows visible." },
+    { "invariant": "Tenant/project/status/mine-only/sort/pagination SQL remains unchanged", "result": "pass", "evidence": "Correction changed only one parameterized OR group and its argument count." },
+    { "invariant": "No new API, schema, dependency or public component", "result": "pass", "evidence": "Routes, DTOs, migrations, package manifests and shared UI components are unchanged." }
+  ],
+  "disturbances": [
+    { "event": "Sandbox initially blocked Vite and Maven target writes.", "impact": "The same commands were rerun with approved build-directory access and passed." },
+    { "event": "The in-app browser required a fresh controlled tab after the existing tab handle became stale.", "impact": "A fresh localhost tab was used with the same authenticated local session." }
+  ],
+  "assumptions_falsified": [
+    "The initial model assumed the existing keyword API covered subsystem code; browser evidence disproved it and the predicate was corrected."
+  ],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

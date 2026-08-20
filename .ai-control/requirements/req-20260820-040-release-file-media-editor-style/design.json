@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-040-release-file-media-editor-style",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-20-release-file-media-editor-style-design.md",
+  "objective": "Make the file-media editor visually consistent with the surrounding release-application form without changing any business behavior.",
+  "users": ["Release applicants entering one or more file-media paths in the artifact-registration step"],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "The file-media title and add action must use the same compact field hierarchy as surrounding form controls.",
+      "acceptance": ["The title no longer appears as a section heading", "The add-path action shares the title row and uses a compact icon-and-text button"],
+      "priority": "must",
+      "source": "User selected option 1 after reviewing the current screenshot on 2026-08-20.",
+      "counterexample": ["The file-media title remains substantially larger than form labels", "The add button floats separately at the far right with oversized height"]
+    },
+    {
+      "id": "R2",
+      "statement": "Every path row must use a stable index-input-delete layout with aligned control heights and consistent spacing.",
+      "acceptance": ["Single and multiple rows align to the same three columns", "Index, input and delete control remain vertically centered without layout shift"],
+      "priority": "must",
+      "source": "Visual defect shown in the user screenshot.",
+      "counterexample": ["The row number is visually dominant", "The delete button sits above or below the input baseline"]
+    },
+    {
+      "id": "R3",
+      "statement": "The compact layout must remain usable without page-level horizontal overflow on required mobile and desktop viewports.",
+      "acceptance": ["375x812, 390x844, 430x932 and desktop widths have no document horizontal overflow", "Path input and delete action remain reachable"],
+      "priority": "must",
+      "source": "Existing responsive release-module quality constraint.",
+      "counterexample": ["A long path widens the drawer", "The delete action is clipped on mobile"]
+    },
+    {
+      "id": "R4",
+      "statement": "Existing file-media state, validation and payload behavior must remain unchanged.",
+      "acceptance": ["Selecting file media still creates the first row", "Add and delete change only the intended row count", "Frontend build passes without API type changes"],
+      "priority": "must",
+      "source": "Scoped visual-fix invariant.",
+      "counterexample": ["The fix changes validation or request payload", "Adding or deleting a path no longer works"]
+    }
+  ],
+  "invariants": ["File-media behavior and payload remain unchanged", "Existing Element Plus and design-token conventions are reused", "Unrelated dirty-worktree changes remain untouched", "Control dimensions remain stable across content and viewports"],
+  "constraints": ["Modify only the file-media markup in ReleaseApplicationDrawer.vue and its local rules in release-prototype.css", "Remain on the existing rokey branch", "Do not add dependencies"],
+  "non_goals": ["Redesign the full drawer", "Change delivery-unit or attachment presentation", "Change backend APIs or validation", "Add file browsing, cards or instructional copy"],
+  "selected_approach": {
+    "name": "Compact standard form row",
+    "reason": "It matches the surrounding form hierarchy, fixes the reported imbalance with the smallest change surface and avoids another framed container.",
+    "alternatives": [
+      {"name": "Grouped bordered panel", "rejected_because": "It adds visual weight and an unnecessary nested container."},
+      {"name": "One form item per path", "rejected_because": "It consumes too much vertical space for multi-path entry."}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["File-media title/action markup", "Path-row layout and responsive CSS"],
+      "outside": ["Release state model", "API payload", "Backend", "Other form sections", "Global theme"]
+    },
+    "components": [
+      {"name": "ReleaseApplicationDrawer", "responsibility": "Expose a compact semantic title/action row and stable path rows while retaining existing bindings and handlers.", "depends_on": ["Element Plus input and button", "addFileMedia", "removeFileMedia"]},
+      {"name": "release-prototype.css", "responsibility": "Define field hierarchy, spacing, stable columns and mobile constraints for the file-media editor.", "depends_on": ["Existing semantic CSS variables"]}
+    ],
+    "interfaces": [
+      {"name": "File-media editor state", "producer": "ReleaseApplicationDrawer draft", "consumers": ["Existing save and submit flow"], "contract": "Markup and CSS changes do not alter draft.fileMedia or ReleaseApplicationWrite."}
+    ],
+    "data_flows": [
+      {"input": "File-media checkbox and path-row actions", "transitions": ["reuse existing toggle, add and remove handlers", "render compact field layout"], "output": "Unchanged draft.fileMedia payload with improved presentation"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Path validation fails", "behavior": "Keep existing warning and submission behavior.", "recovery": "User corrects the indicated path."},
+    {"condition": "Mobile width is constrained", "behavior": "Input shrinks within the stable three-column row and the delete control remains visible.", "recovery": "No special action required."}
+  ],
+  "quality_attributes": {
+    "security": ["No security or authorization behavior changes"],
+    "performance": ["Static local layout rules add no meaningful runtime cost"],
+    "compatibility": ["No state, API, database or saved-data changes"],
+    "operations": ["No migration, configuration or deployment change"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2"], "signal": "Title, add action and path rows share a coherent field hierarchy and stable alignment.", "method": "Authenticated desktop browser inspection with one and multiple rows."},
+    {"requirement_ids": ["R2", "R3"], "signal": "Required mobile and desktop viewports show reachable controls and no document horizontal overflow.", "method": "Browser screenshots and scrollWidth/clientWidth measurements at 375x812, 390x844, 430x932 and desktop."},
+    {"requirement_ids": ["R4"], "signal": "Add/delete behavior and production build remain valid.", "method": "Interactive browser checks, npm production build and git diff check."}
+  ],
+  "assumptions": [
+    {"text": "The reported issue is visual hierarchy and alignment rather than a requested workflow change.", "basis": "The user identified only local style confusion and selected the standard-form-row option.", "falsifier": "The user requests different content, validation or path-entry interaction."}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "Use the compact standard-form-row approach without a framed panel.", "reason": "It best matches adjacent controls and minimizes visual weight.", "source": "User selected option 1 on 2026-08-20."},
+    {"id": "D2", "decision": "Keep an icon-and-text add action but reduce its visual emphasis.", "reason": "The command remains clear without competing with the primary form actions.", "source": "Selected option 1 design."},
+    {"id": "D3", "decision": "Retain the circular danger delete icon with stable compact dimensions.", "reason": "It is familiar, already implemented and appropriate for a row-level destructive action.", "source": "Existing UI convention and selected scope."}
+  ],
+  "risks": [
+    {"risk": "Element Plus label styling conflicts with the custom title/action row.", "impact": "Alignment can vary by density or theme.", "mitigation": "Use dedicated local class names and verify current themes and viewport widths."},
+    {"risk": "Three columns become cramped on narrow mobile widths.", "impact": "Input or delete control can clip.", "mitigation": "Use minmax(0, 1fr), compact fixed side columns and explicit overflow measurements."}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "The user selected option 1 and explicitly confirmed the landed design on 2026-08-20.",
+    "confirmed_at": "2026-08-20T09:10:43+08:00"
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-043-release-baseline-summary-layout",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-20-release-baseline-summary-layout-design.md",
+  "objective": "Present the selected release window and five production-baseline metrics in a stable two-level responsive summary without changing business behavior.",
+  "users": ["Configuration-management users reviewing the selected production window and baseline counts"],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "The selected release window must occupy a dedicated top information row with code, name and status.",
+      "acceptance": ["Window context is visually separate from metrics", "Code, name and status remain readable on desktop"],
+      "priority": "must",
+      "source": "User selected option 2 and confirmed implementation on 2026-08-20.",
+      "counterexample": ["Window code remains one of six competing metric cells", "Window name or status is omitted"]
+    },
+    {
+      "id": "R2",
+      "statement": "The five numeric metrics must render as one equal-width desktop row without an orphaned second row.",
+      "acceptance": ["All five metric cells share one row at desktop width", "No unused second-row whitespace remains"],
+      "priority": "must",
+      "source": "Layout defect visible in the user screenshot.",
+      "counterexample": ["The final metric wraps alone", "Metric columns have visibly inconsistent widths"]
+    },
+    {
+      "id": "R3",
+      "statement": "The summary must adapt to two metric columns on narrow screens and one column on phone widths without overflow.",
+      "acceptance": ["No document-level horizontal overflow", "Labels and values do not overlap at responsive breakpoints"],
+      "priority": "must",
+      "source": "Existing responsive release-module constraint.",
+      "counterexample": ["Metrics are clipped", "Borders or content overlap after wrapping"]
+    },
+    {
+      "id": "R4",
+      "statement": "The change must preserve existing selection, statistics, permissions and API behavior.",
+      "acceptance": ["No state, event or API contract changes", "Frontend production build passes"],
+      "priority": "must",
+      "source": "Scoped visual-change invariant.",
+      "counterexample": ["Metric values or filtering behavior change", "Backend or API changes are introduced"]
+    }
+  ],
+  "invariants": ["Existing selectedWindow and summary data remain authoritative", "No nested cards are introduced", "Existing design tokens and compact operational style are retained", "Unrelated worktree changes remain untouched"],
+  "constraints": ["Limit implementation to ReleaseBaselineView.vue and release-prototype.css", "Remain on the rokey branch", "Do not add dependencies"],
+  "non_goals": ["Redesign the baseline toolbar or table", "Change metric definitions or order", "Change backend behavior", "Refactor other release summaries"],
+  "selected_approach": {
+    "name": "Window information row plus five-metric row",
+    "reason": "It separates business context from outcome metrics and removes the existing five-track/six-item mismatch.",
+    "alternatives": [
+      {"name": "Six cells in one row", "rejected_because": "It fixes wrapping but preserves weak hierarchy between window context and metrics."},
+      {"name": "Auto-fit metric cards", "rejected_because": "Intermediate-width wrapping would be less predictable for a fixed metric set."}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["Baseline summary markup", "Baseline summary responsive CSS"], "outside": ["Baseline data loading", "Statistics computation", "Permissions", "Backend and APIs", "Other release views"]},
+    "components": [
+      {"name": "ReleaseBaselineView", "responsibility": "Render existing window context and metrics in two semantic layers.", "depends_on": ["selectedWindow", "summary"]},
+      {"name": "release-prototype.css", "responsibility": "Provide stable desktop and responsive layout, spacing and separators.", "depends_on": ["Existing CSS variables"]}
+    ],
+    "interfaces": [
+      {"name": "Baseline summary view model", "producer": "ReleaseBaselineView computed state", "consumers": ["Summary template"], "contract": "selectedWindow and summary values are presented without transformation changes."}
+    ],
+    "data_flows": [
+      {"input": "Existing selected window and five summary counts", "transitions": ["group window context", "render equal metric row", "apply responsive columns"], "output": "Stable two-level baseline summary"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "No release window is selected", "behavior": "Do not render the summary container.", "recovery": "Summary appears when a window is selected."},
+    {"condition": "Window name is longer than available space", "behavior": "Keep the code and status visible while auxiliary text truncates safely.", "recovery": "Wider viewport reveals more text."}
+  ],
+  "quality_attributes": {
+    "security": ["No permission or data-access changes"],
+    "performance": ["Static markup and CSS add no meaningful runtime cost"],
+    "compatibility": ["No state, API, database or persisted-data changes"],
+    "operations": ["No migration or configuration changes"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2"], "signal": "Desktop summary has a dedicated window row and one equal five-metric row.", "method": "Browser screenshot and DOM layout inspection at desktop width."},
+    {"requirement_ids": ["R3"], "signal": "Narrow and phone widths wrap predictably without overflow or overlap.", "method": "Responsive screenshots and scrollWidth/clientWidth checks near 760px and 430px."},
+    {"requirement_ids": ["R4"], "signal": "Existing behavior and type contracts remain valid.", "method": "Production frontend build and scoped diff inspection."}
+  ],
+  "assumptions": [
+    {"text": "The red-boxed issue is the summary grid mismatch and weak information hierarchy.", "basis": "The screenshot highlights only the malformed summary area and the user chose the hierarchical option.", "falsifier": "The user requests different metrics, interactions or business semantics."}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "Use a dedicated top window row and a lower five-metric row.", "reason": "It provides stronger hierarchy and stable alignment.", "source": "User selected option 2."},
+    {"id": "D2", "decision": "Keep both layers inside one bordered summary container.", "reason": "It avoids nested cards and remains consistent with the operational UI.", "source": "Confirmed design."},
+    {"id": "D3", "decision": "Use five desktop columns, two narrow columns and one phone column.", "reason": "The fixed metric set remains predictable at each breakpoint.", "source": "Confirmed responsive design."}
+  ],
+  "risks": [
+    {"risk": "Long window names can compete with the status tag.", "impact": "Header content may overflow.", "mitigation": "Use a shrinkable text area with ellipsis and a non-shrinking status tag."},
+    {"risk": "Wrapped metric borders can look inconsistent at breakpoints.", "impact": "Visual seams can appear between rows.", "mitigation": "Define breakpoint-specific column and border rules and verify screenshots."}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "The user selected option 2 and explicitly replied '确认并实施' on 2026-08-20.",
+    "confirmed_at": "2026-08-20T11:20:48+08:00"
+  }
+}

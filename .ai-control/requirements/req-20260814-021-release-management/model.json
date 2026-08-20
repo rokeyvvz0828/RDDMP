@@ -1,0 +1,142 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": [
+      "ccb-release Maven module and rel_* tables",
+      "release window, application, production and reporting services and REST APIs",
+      "release workflow and attachment adapters",
+      "five release frontend views and application-detail approval panel"
+    ],
+    "environment": [
+      "MySQL 8.4 and Flyway infrastructure",
+      "platform workflow through WorkflowBusinessGateway and WorkflowLifecycleConsumer",
+      "platform attachment through AttachmentGateway and frontend attachment API",
+      "platform security through AuthUser and Spring method authorization",
+      "frontend project, physical-subsystem and delivery-unit selector Mock",
+      "future formal project and R&D master-data modules"
+    ]
+  },
+  "state_variables": [
+    {"name":"window_state","owner":"release/window","valid_values":["NOT_STARTED","DECLARATION_OPEN","PRODUCTION_PREP","PRODUCTION_ACTIVE","CLOSED"]},
+    {"name":"regular_submission_enabled","owner":"release/window","valid_values":[true,false]},
+    {"name":"application_state","owner":"release/application","valid_values":["DRAFT","IN_REVIEW","RETURNED","WITHDRAWN","CANCELLED","RELEASED"]},
+    {"name":"application_round","owner":"release/application","valid_values":["positive integer with one active workflow instance"]},
+    {"name":"application_row_version","owner":"release/application","valid_values":["non-negative integer"]},
+    {"name":"workflow_task_state","owner":"platform/workflow","valid_values":["platform-defined runtime state"]},
+    {"name":"production_result","owner":"release/production","valid_values":["RELEASED","SUCCEEDED","FAILED","NOT_DEPLOYED"]},
+    {"name":"effective_production_version","owner":"release/production query","valid_values":["latest valid SUCCEEDED entry or absent"]},
+    {"name":"analytics_projection","owner":"release/reporting","valid_values":["database-derived summary and drill-down under one filter"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"Module composition and release command","transitions":["ccb-release service validates","rel_* store persists","REST DTO returns"],"outputs":["Release-owned persistent state"]},
+    {"requirement_id":"R2","input":"Page query or refresh","transitions":["Frontend calls release API","Service queries MySQL"],"outputs":["Five views show persisted facts"]},
+    {"requirement_id":"R3","input":"Selector choice and application save","transitions":["Frontend sends selector snapshots","Backend validates and persists immutable child rows"],"outputs":["Historical snapshot independent of selector changes"]},
+    {"requirement_id":"R4","input":"Create or update window command","transitions":["RBAC and tenant check","Date and overlap policy","Optimistic update","Audit append"],"outputs":["Valid persisted window or explicit rejection"]},
+    {"requirement_id":"R5","input":"Application draft","transitions":["Scenario-specific validation","Normalized application and child persistence"],"outputs":["Complete application detail or validation error"]},
+    {"requirement_id":"R6","input":"Emergency flag, window dates and history","transitions":["Server scenario policy","Fixed code mapping"],"outputs":["Derived version type, additional flag and workflow code"]},
+    {"requirement_id":"R7","input":"Delivery units selected for a window","transitions":["Historical query","Allowed-action policy","Conflict digest"],"outputs":["Complete conflict facts and confirmation token"]},
+    {"requirement_id":"R8","input":"Draft, submit, withdraw, cancel, return or resubmit command","transitions":["RBAC, ownership, state and rowVersion check","State transition","Event append"],"outputs":["Audited new state or 409"]},
+    {"requirement_id":"R9","input":"Valid submit command","transitions":["Attachment and window checks","WorkflowBusinessGateway.startByCode","Round and instance persistence"],"outputs":["IN_REVIEW application bound to real workflow or atomic rollback"]},
+    {"requirement_id":"R10","input":"Application detail load","transitions":["Release API returns business facts and active instance","Workflow API returns task and progress facts"],"outputs":["One consistent node, round, opinion and signature presentation"]},
+    {"requirement_id":"R11","input":"Workflow lifecycle event","transitions":["Business-type and receipt check","Active round and instance check","Idempotent state update"],"outputs":["RELEASED or RETURNED exactly once"]},
+    {"requirement_id":"R12","input":"Uploaded attachment IDs","transitions":["AttachmentGateway ownership/status validation","Scenario category validation","Business binding"],"outputs":["Persistent authorized attachments or rejection"]},
+    {"requirement_id":"R13","input":"RELEASED application event or baseline query","transitions":["Group by window, subsystem and delivery unit","Order by approval completion and application ID","Idempotent candidate refresh"],"outputs":["Latest traceable released candidate"]},
+    {"requirement_id":"R14","input":"Production-result command","transitions":["RBAC and rowVersion check","Reason/time validation","Result update and audit append"],"outputs":["Audited deployment result"]},
+    {"requirement_id":"R15","input":"Production-version query","transitions":["Filter valid SUCCEEDED entries","Order by production time and stable ID"],"outputs":["Current production version and history with fallback"]},
+    {"requirement_id":"R16","input":"Emergency submit and approval completion time","transitions":["Find active production window or nearest future window","Reject submit when no receiver","Assign candidate on release"],"outputs":["Deterministic receiving window"]},
+    {"requirement_id":"R17","input":"Analytics filters","transitions":["Shared database filter construction","Summary aggregation or paged drill-down"],"outputs":["Reproducible counts and details"]},
+    {"requirement_id":"R18","input":"Protected read or write request","transitions":["Authentication","Tenant and RBAC check","Ownership and entity-state check"],"outputs":["Authorized result or explicit 401, 403 or 409"]},
+    {"requirement_id":"R19","input":"Fresh build and migration","transitions":["Maven aggregation","Flyway V38","Menu and permission seed","Governance validation"],"outputs":["Operable recognized release module"]},
+    {"requirement_id":"R20","input":"Acceptance operator actions","transitions":["Workflow API creates definitions","Release APIs create business records","Business detail performs approval","Production API records outcome"],"outputs":["End-to-end persisted acceptance facts without direct release-table inserts"]},
+    {"requirement_id":"R21","input":"Desktop or phone interaction","transitions":["Responsive layout reflows","Local containers scroll where required","Actions call same APIs"],"outputs":["Reachable core flow without page-level overflow"]}
+  ],
+  "interfaces": [
+    {"name":"Release REST API","producers":["ccb-release controllers"],"consumers":["web/src/api/release.ts"],"invariant":"Server owns validation, authority and persisted business state."},
+    {"name":"WorkflowBusinessGateway","producers":["platform/workflow public package"],"consumers":["release submission service"],"invariant":"Release starts or terminates workflows by public contract and never writes workflow tables."},
+    {"name":"WorkflowLifecycleConsumer","producers":["release lifecycle adapter"],"consumers":["platform workflow dispatcher"],"invariant":"Only release_application events for the active round change release state."},
+    {"name":"AttachmentGateway","producers":["platform/attachment public package"],"consumers":["release submission and access policy"],"invariant":"Attachment tenant, owner, status and binding are validated by the platform contract."},
+    {"name":"Selector snapshot DTO","producers":["release-master-data.mock.ts"],"consumers":["release application API"],"invariant":"Only selector options are Mock; submitted ID, code, name and artifact type become persistent snapshots."}
+  ],
+  "sensors": [
+    {"id":"S1","target":"Java domain rules and state transitions","method":"Focused JUnit and Mockito tests in ccb-release","blind_spots":["Browser composition","Real MySQL dialect and workflow runtime"],"independence":"Direct service-level assertions"},
+    {"id":"S2","target":"Module, dependency, Flyway and governance structure","method":"Maven reactor plus check-all-governance","blind_spots":["Runtime business correctness"],"independence":"Repository static and build tooling"},
+    {"id":"S3","target":"Persistent API and cross-view facts","method":"Isolated-MySQL API acceptance and restart checks","blind_spots":["Visual layout","Production infrastructure"],"independence":"Runtime HTTP and database observation"},
+    {"id":"S4","target":"Workflow and attachment contract behavior","method":"Contract tests plus real local workflow/attachment API path","blind_spots":["External services not in current scope"],"independence":"Public interface and runtime event observation"},
+    {"id":"S5","target":"Frontend type safety and absence of business Mock","method":"Vue production build and source-symbol scan","blind_spots":["Interactive usability"],"independence":"Compiler and source inspection"},
+    {"id":"S6","target":"Desktop and phone user flows","method":"Browser interaction, network, console, screenshot and scrollWidth checks","blind_spots":["Unvisited role combinations"],"independence":"Rendered runtime observation"},
+    {"id":"S7","target":"Authorization boundaries","method":"Controller/service permission tests and cross-tenant API probes","blind_spots":["Formal project membership because the source module is deferred"],"independence":"Negative-path service and HTTP observation"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"Module and schema composition","action":"Add ccb-release, V38, menus, permissions and governance entries","authority":"REQ-20260814-021 writable paths","impact_radius":"Maven composition, schema and navigation","rollback":"Disable module and menus; retain migrated tables"},
+    {"id":"A2","target":"Window and application rules","action":"Implement scoped stores, policies, services, controllers and tests","authority":"server/src/modules/release","impact_radius":"Release business API","rollback":"Disable endpoints and preserve audit rows"},
+    {"id":"A3","target":"Workflow and attachment integration","action":"Implement public-contract adapters and lifecycle consumer","authority":"server/src/modules/release only","impact_radius":"Release submission and approval state","rollback":"Disable submission and unregister consumer"},
+    {"id":"A4","target":"Production and analytics facts","action":"Implement candidate, result, version and aggregation services","authority":"server/src/modules/release","impact_radius":"Baseline and reporting views","rollback":"Disable routes and preserve logs"},
+    {"id":"A5","target":"Formal release UI","action":"Replace business Mock with API-driven Vue views while preserving selector Mock","authority":"web/src/api/release.ts, web/src/modules/release and router","impact_radius":"Release user flows","rollback":"Disable release menu without restoring Mock as formal behavior"},
+    {"id":"A6","target":"Verification environment","action":"Run isolated database, workflow setup, APIs and browser sensors","authority":"Local non-production environment","impact_radius":"Local acceptance data only","rollback":"Stop services and retain or discard isolated database"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S2","S5"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S3","S6"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S1","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S1","S3","S7"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R7","sensor_ids":["S1","S3","S6"],"observable":"yes"},
+    {"requirement_id":"R8","sensor_ids":["S1","S3","S7"],"observable":"yes"},
+    {"requirement_id":"R9","sensor_ids":["S1","S3","S4"],"observable":"yes"},
+    {"requirement_id":"R10","sensor_ids":["S3","S4","S6"],"observable":"yes"},
+    {"requirement_id":"R11","sensor_ids":["S1","S3","S4"],"observable":"yes"},
+    {"requirement_id":"R12","sensor_ids":["S1","S3","S4","S7"],"observable":"yes"},
+    {"requirement_id":"R13","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R14","sensor_ids":["S1","S3","S7"],"observable":"yes"},
+    {"requirement_id":"R15","sensor_ids":["S1","S3","S6"],"observable":"yes"},
+    {"requirement_id":"R16","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R17","sensor_ids":["S1","S3","S6"],"observable":"yes"},
+    {"requirement_id":"R18","sensor_ids":["S1","S3","S7"],"observable":"partial"},
+    {"requirement_id":"R19","sensor_ids":["S2","S3"],"observable":"yes"},
+    {"requirement_id":"R20","sensor_ids":["S3","S4","S6"],"observable":"yes"},
+    {"requirement_id":"R21","sensor_ids":["S5","S6"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"Existing dirty rokey worktree","effect":"Same-file edits may change composition or prototype assumptions","detectable":true,"controllable":false},
+    {"source":"Unpublished or differently configured workflow definitions","effect":"Submission fails or approval path differs","detectable":true,"controllable":true},
+    {"source":"Duplicate, delayed or stale workflow events","effect":"Potential repeated or out-of-order release transitions","detectable":true,"controllable":true},
+    {"source":"Attachment storage or preview failure","effect":"Upload or preview fails independently of release state","detectable":true,"controllable":false},
+    {"source":"Deferred formal project and R&D modules","effect":"Project-member authorization and selector authority remain incomplete","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"Workflow lifecycle delivery retry","consequence":"Approval API may complete before release state is visible","sampling_rule":"Poll the business detail until the persisted lifecycle event is consumed or timeout explicitly."},
+    {"source":"Post-command frontend refetch","consequence":"Immediate stale display can be mistaken for failed persistence","sampling_rule":"Sample after the command response and authoritative refetch finish."},
+    {"source":"Attachment upload then bind","consequence":"A temporary attachment can expire before application submission","sampling_rule":"Verify TEMP then BOUND states within one acceptance flow."},
+    {"source":"Analytics aggregation","consequence":"Large filters can delay summary and drill-down","sampling_rule":"Compare results only after both requests complete under identical filters."}
+  ],
+  "assumptions": [
+    {"text":"JdbcTemplate remains the repository persistence pattern.","evidence":"System, workflow and attachment services use JdbcTemplate and baseline tests pass.","falsifier":"Release module cannot implement transactional queries without a new persistence dependency."},
+    {"text":"WorkflowBusinessGateway and AttachmentGateway are stable public contracts.","evidence":"Interfaces exist in declared public packages and their module tests pass.","falsifier":"Release contract tests require platform-private data or signature changes."},
+    {"text":"The existing prototype visual structure can be retained while changing its data source.","evidence":"Release views and responsive CSS already exist and frontend baseline build passes.","falsifier":"Formal DTOs require a page structure incompatible with approved workflows."}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"Use A1, A2 and A5 with S1, S2 and S5."},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"Use A2, A4 and A5 with S3 and S6."},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"Use A2 and A5 with S1, S3 and S5."},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"Use A2 with S1, S3 and S7."},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"Use A2 with S1 and S3."},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"Use A2 with boundary tests."},
+    {"requirement_id":"R7","observable":"yes","controllable":"yes","action":"Use A2 and A5 with conflict tests and browser checks."},
+    {"requirement_id":"R8","observable":"yes","controllable":"yes","action":"Use A2 and A3 with state and permission tests."},
+    {"requirement_id":"R9","observable":"yes","controllable":"yes","action":"Use A3 with contract and runtime sensors."},
+    {"requirement_id":"R10","observable":"yes","controllable":"yes","action":"Use A3 and A5 with workflow API and browser comparisons."},
+    {"requirement_id":"R11","observable":"yes","controllable":"yes","action":"Use A3 with lifecycle tests and receipts."},
+    {"requirement_id":"R12","observable":"yes","controllable":"yes","action":"Use A3 and A5 with attachment contract and runtime flow."},
+    {"requirement_id":"R13","observable":"yes","controllable":"yes","action":"Use A4 with candidate tests and API."},
+    {"requirement_id":"R14","observable":"yes","controllable":"yes","action":"Use A4 with audit and permission sensors."},
+    {"requirement_id":"R15","observable":"yes","controllable":"yes","action":"Use A4 and A5 with fallback tests and browser query."},
+    {"requirement_id":"R16","observable":"yes","controllable":"yes","action":"Use A2, A3 and A4 with boundary tests."},
+    {"requirement_id":"R17","observable":"yes","controllable":"yes","action":"Use A4 and A5 with shared-filter assertions."},
+    {"requirement_id":"R18","observable":"partial","controllable":"partial","action":"Enforce tenant, RBAC, ownership and state now; preserve and disclose the approved project-member blind spot."},
+    {"requirement_id":"R19","observable":"yes","controllable":"yes","action":"Use A1 with build, migration and governance sensors."},
+    {"requirement_id":"R20","observable":"yes","controllable":"yes","action":"Use A6 with S3, S4 and S6 and prohibit direct release-table inserts."},
+    {"requirement_id":"R21","observable":"yes","controllable":"yes","action":"Use A5 and A6 with compiler and browser geometry sensors."}
+  ],
+  "model_status": "ready"
+}

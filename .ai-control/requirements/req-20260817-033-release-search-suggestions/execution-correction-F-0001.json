@@ -1,0 +1,41 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "The browser reproduces the must-requirement failure and the existing release application SQL visibly omits subsystem_code while the candidate contract declares it searchable.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "ReleaseApplicationStore.findPage omits subsystem_code from the existing keyword predicate.",
+    "supporting_evidence": [
+      "Exact application code SQ-202608-002 returns a candidate, proving the frontend remote event path works.",
+      "AUTH returns no candidate although the visible application row has subsystem code AUTH.",
+      "The SQL predicate contains application_code LIKE and subsystem_name LIKE only."
+    ],
+    "falsifier": "AUTH still returns no candidate after subsystem_code is included and the backend is restarted."
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "existing release application keyword predicate",
+    "write_scope": [
+      "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java"
+    ],
+    "invariants": [
+      "Tenant, project, status, mine-only, sorting and pagination predicates remain unchanged.",
+      "No API route, DTO, database schema or dependency changes.",
+      "Keyword matching remains parameterized."
+    ],
+    "impact_limit": "One additional OR predicate and one persistence contract assertion in the business/release module.",
+    "rollback": "Remove the subsystem_code predicate and its focused contract test.",
+    "correction_check": [
+      "Run the focused ReleaseApplicationPersistenceContractTest.",
+      "Restart the local backend.",
+      "Repeat AUTH candidate search and verify the main table remains unchanged before selection.",
+      "Rerun the frontend production build and whitespace check."
+    ],
+    "route": "modeling"
+  },
+  "resolution": "open",
+  "residual_risk": [
+    "Case-insensitive behavior still depends on the existing MySQL collation, as did the original keyword fields."
+  ]
+}

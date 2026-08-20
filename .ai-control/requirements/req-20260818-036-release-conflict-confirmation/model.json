@@ -1,0 +1,51 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["ReleaseConflictDialog emitted actions and visibility", "ReleaseManagementPrototype pending submission and conflict response routing"],
+    "environment": ["Existing release submit API", "Existing release conflict query API", "Backend conflict-token generator", "Applicant browser", "Dirty rokey worktree"]
+  },
+  "state_variables": [
+    {"name": "conflictOpen", "owner": "ReleaseManagementPrototype", "valid_values": ["true", "false"]},
+    {"name": "pendingSubmission.confirmedConflictToken", "owner": "ReleaseManagementPrototype", "valid_values": ["undefined", "current token"]},
+    {"name": "serverConflictToken", "owner": "Release backend", "valid_values": ["absent", "unchanged", "changed"]},
+    {"name": "submissionState", "owner": "ReleaseManagementPrototype", "valid_values": ["idle", "submitting", "submitted", "failed"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Conflict dialog with one or more historical applications", "transitions": ["Render card-specific actions", "Render collection-level footer actions"], "outputs": ["Defer and primary create-new are adjacent in the footer"]},
+    {"requirement_id": "R2", "input": "Applicant clicks footer create-new", "transitions": ["Store current token", "Close dialog", "Set resolving state", "Submit saved application with token"], "outputs": ["One in-flight submit while dialog is closed"]},
+    {"requirement_id": "R3", "input": "Token-bearing submit returns HTTP 409", "transitions": ["Query current conflict report", "Compare current token with confirmed token"], "outputs": ["Changed token reopens; unchanged token shows original error with dialog closed"]},
+    {"requirement_id": "R4", "input": "Applicant chooses cancel-old, edit-old or defer", "transitions": ["Keep item-specific conflict argument for cancel/edit", "Close only for defer"], "outputs": ["Existing actions retain behavior"]}
+  ],
+  "interfaces": [
+    {"name": "ReleaseConflictDialog choose event", "producers": ["ReleaseConflictDialog"], "consumers": ["ReleaseManagementPrototype.chooseConflict"], "invariant": "CREATE_NEW is collection-level; CANCEL_OLD and EDIT_OLD identify a historical application"},
+    {"name": "ReleaseSubmitRequest.conflictToken", "producers": ["ReleaseManagementPrototype"], "consumers": ["Existing release submit API"], "invariant": "The token confirms only the conflict facts that produced it"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Type safety and state-flow contracts for R1-R4", "method": "Frontend production build and focused source assertions", "blind_spots": ["Visual alignment and runtime request timing"], "independence": "Compiler and static structure"},
+    {"id": "S2", "target": "Visible dialog, click, request and status outcomes for R1-R4", "method": "Authenticated desktop browser interaction and console/network observation", "blind_spots": ["Concurrency cases not produced by the local data setup"], "independence": "Direct runtime user-path observation"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Conflict dialog action hierarchy", "action": "Move CREATE_NEW from each card to the footer and emit it without an item", "authority": "REQ-20260818-036 writable scope", "impact_radius": "ReleaseConflictDialog only", "rollback": "Restore the component's pre-task template and event signature"},
+    {"id": "A2", "target": "Pending confirmation and HTTP 409 routing", "action": "Retain the confirmed token, close before submit and reopen only on token change", "authority": "REQ-20260818-036 writable scope", "impact_radius": "ReleaseManagementPrototype conflict flow only", "rollback": "Restore the page's pre-task pending and submit functions"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Concurrent modification of a historical application", "effect": "Conflict token changes during submission", "detectable": true, "controllable": false},
+    {"source": "Unrelated backend HTTP 409", "effect": "Previously reopened the duplicate dialog incorrectly", "detectable": true, "controllable": true},
+    {"source": "Dirty untracked release-module files", "effect": "A broad edit could overwrite unrelated work", "detectable": true, "controllable": true}
+  ],
+  "delays": [{"source": "Submit and conflict refresh requests", "consequence": "The UI can remain in resolving state while the result is pending", "sampling_rule": "Observe state before click, immediately after click and after request completion"}],
+  "assumptions": [{"text": "The conflict token covers all relevant conflict facts.", "evidence": "ReleaseSubmissionService compares recomputed report token before submission.", "falsifier": "Relevant conflict facts change without a token change."}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Plan A1 with build and browser sampling"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Plan A1 and A2 with click/request sampling"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Plan A2 with same-token and changed-token checks"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Bound A1/A2 to preserve existing branches"}
+  ],
+  "model_status": "ready"
+}

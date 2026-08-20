@@ -1,0 +1,42 @@
+{
+  "task_id": "T6",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "purpose": "Resolve the authenticated user's pending task by business identity"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java", "purpose": "Expose the authenticated business-task context endpoint"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTaskContextTest.java", "purpose": "Cover direct-entry task resolution and no-pending-task behavior"},
+    {"path_or_resource": "web/src/api/workflow.ts", "purpose": "Add the current business-task context client"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseApprovalPanel.vue", "purpose": "Auto-resolve approval actions when taskId is absent"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseDetailDrawer.vue", "purpose": "Keep business-list navigation independent from Mock task IDs"},
+    {"path_or_resource": "docs/integration/workflow-module-contract.md", "purpose": "Document direct business-page task resolution"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R5", "R6", "R10"],
+  "commands": [
+    {"command": "JAVA_HOME=Java17 mvn -pl :ccb-workflow -am -Dtest=WorkflowServiceTaskContextTest,WorkflowTaskProjectionTest,WorkflowSignatureServiceTest test", "exit_code": 0, "salient_output": "12 tests passed with zero failures or errors"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "Vue type check and Vite production build passed; existing bundle-size warning only"},
+    {"command": "Browser direct-entry and taskId-entry checks", "exit_code": 0, "salient_output": "Both URLs expose the same three permitted actions; 390x844 has no horizontal overflow"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "Direct business entry", "result": "pass", "evidence": "/release/applications/SQ-001 resolved task 900000000000205 for the authenticated user and displayed approval actions", "limitations": []},
+    {"check": "Precise task entry", "result": "pass", "evidence": "The existing taskId URL displayed the same current node and actions", "limitations": []},
+    {"check": "Server authorization", "result": "pass", "evidence": "Resolution SQL constrains tenant, assignee, business identity, task status and instance status, then reuses taskContext authorization", "limitations": []}
+  ],
+  "diff_summary": [
+    "Direct application entry no longer depends on task-center navigation",
+    "taskId remains an optional precise locator",
+    "Business type was aligned with persisted release_application data"
+  ],
+  "invariants_checked": [
+    {"invariant": "Frontend does not infer task permission", "result": "pass", "evidence": "The server derives tenant and user from AuthUser and returns allowed actions"},
+    {"invariant": "No inbox scan", "result": "pass", "evidence": "A bounded indexed business identity query resolves one current task"},
+    {"invariant": "No commit or push", "result": "pass", "evidence": "Changes remain local on rokey"}
+  ],
+  "disturbances": [
+    {"event": "Persisted business_type differed from the earlier prototype document", "impact": "Aligned release integration to release_application after database observation"},
+    {"event": "Default sandbox blocked build output", "impact": "Maven and Vite were rerun with explicit local build permission"}
+  ],
+  "assumptions_falsified": ["A release detail page requires a taskId-bearing navigation source to expose approval"],
+  "unresolved_items": ["The user-selected branch rokey still does not match the repository branch regex"],
+  "recommended_next": "observe"
+}

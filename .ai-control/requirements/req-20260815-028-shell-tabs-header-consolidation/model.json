@@ -1,0 +1,69 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "AppLayout desktop and mobile shell composition",
+      "UiTabs responsive mount location",
+      "Header and tab flex/overflow styles"
+    ],
+    "environment": [
+      "Vue Router current route",
+      "Pinia tabsStore state",
+      "Element Plus tab layout",
+      "Browser viewport and media query"
+    ]
+  },
+  "state_variables": [
+    {"name":"mobileView","owner":"AppLayout","valid_values":["true","false"]},
+    {"name":"tabsEnabled","owner":"theme store","valid_values":["true","false"]},
+    {"name":"activeRoute","owner":"Vue Router","valid_values":["route.fullPath"]},
+    {"name":"openTabs","owner":"tabsStore","valid_values":["ordered route tab collection"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"Desktop viewport with tabs enabled","transitions":["mobileView resolves false","AppLayout mounts UiTabs in header","breadcrumb and independent desktop tab row are omitted"],"outputs":["one inline tab strip","business content starts below one shell row"]},
+    {"requirement_id":"R2","input":"Desktop viewport with project, navigation and account controls","transitions":["fixed side regions retain intrinsic width","middle tab region shrinks with min-width zero","tab overflow remains inside UiTabs"],"outputs":["all header controls remain visible and usable"]},
+    {"requirement_id":"R3","input":"Tab click, close, refresh or context-menu command","transitions":["UiTabs receives unchanged currentPath","UiTabs invokes existing tabsStore and router operations"],"outputs":["existing navigation and tab command outcomes"]},
+    {"requirement_id":"R4","input":"Viewport at or below 760px","transitions":["mobileView resolves true","header shows current title","AppLayout mounts independent sticky UiTabs below header"],"outputs":["compact mobile header and separate tab row without page overflow"]}
+  ],
+  "interfaces": [
+    {"name":"UiTabs currentPath prop","producers":["AppLayout route.fullPath"],"consumers":["UiTabs"],"invariant":"The active tab path is unchanged by mount location"},
+    {"name":"tabsStore","producers":["route watcher and UiTabs commands"],"consumers":["AppLayout router-view refresh key","UiTabs"],"invariant":"tabsStore remains the sole tab state owner"},
+    {"name":"760px responsive boundary","producers":["window.matchMedia and CSS media query"],"consumers":["AppLayout","shell styles"],"invariant":"Desktop and mobile UiTabs mounts are mutually exclusive"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"Template/type correctness and authorized diff","method":"Vite production build plus focused git diff check","blind_spots":["runtime geometry","interactive context menu behavior"],"independence":"Compiler and Git whitespace checks"},
+    {"id":"S2","target":"Desktop DOM count, title duplication, rectangles and overflow","method":"Browser DOM and geometry inspection with multiple tabs","blind_spots":["phone-specific layout"],"independence":"Direct runtime rendering observation"},
+    {"id":"S3","target":"Tab command behavior","method":"Browser switch, close, refresh and context-menu interactions","blind_spots":["persistence after a full browser restart"],"independence":"Direct user-path interaction"},
+    {"id":"S4","target":"Mobile title, separate tab row and horizontal overflow","method":"Browser geometry checks at 375x812, 390x844 and 430x932","blind_spots":["unlisted device browser chrome differences"],"independence":"Runtime viewport measurements"},
+    {"id":"S5","target":"Runtime JavaScript errors","method":"Browser console inspection after desktop and mobile interactions","blind_spots":["errors in routes not exercised"],"independence":"Runtime console output"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"AppLayout responsive UiTabs composition","action":"Change only the conditional mount positions and desktop/mobile title composition","authority":"User-approved edit to AppLayout.vue","impact_radius":"Application shell markup","rollback":"Restore the pre-task AppLayout mount structure"},
+    {"id":"A2","target":"Header and tab geometry","action":"Add constrained desktop flex rules and preserve mobile sticky-tab rules","authority":"User-approved edit to styles.css","impact_radius":"Application shell header and tabs selectors","rollback":"Restore the pre-task shell style rules"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S2"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S2","S4"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S1","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S4","S5"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"Existing dirty worktree","effect":"Target files contain unrelated approved changes","detectable":true,"controllable":false},
+    {"source":"Many open route tabs","effect":"Middle header region can exceed available width","detectable":true,"controllable":true},
+    {"source":"Layout mode and viewport changes","effect":"Header controls and mount point change at runtime","detectable":true,"controllable":true}
+  ],
+  "delays": [
+    {"source":"Vue HMR and media-query update","consequence":"Immediate measurement may observe the prior DOM","sampling_rule":"Wait for page settle after reload or viewport change before measuring"}
+  ],
+  "assumptions": [
+    {"text":"Element Plus tabs can shrink inside a flex child with min-width zero","evidence":"UiTabs already declares flex:1 and min-width:0","falsifier":"Runtime rectangle exceeds its header region or displaces fixed controls"},
+    {"text":"UiTabs state survives mutually exclusive remounting","evidence":"Persistent tab state and commands are owned by Pinia tabsStore","falsifier":"Viewport transition resets open tabs or duplicates listeners"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"Use A1 and A2, measure with S1 and S2"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"Use A2, measure with S2 and S4"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"Keep UiTabs unchanged and measure with S1, S3 and S5"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"Use A1 and mobile-preserving A2, measure with S4 and S5"}
+  ],
+  "model_status": "ready"
+}

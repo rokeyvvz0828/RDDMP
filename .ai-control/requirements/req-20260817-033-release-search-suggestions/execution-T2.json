@@ -1,0 +1,33 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    { "path_or_resource": "web/src/modules/release/components/ReleaseWindowView.vue", "purpose": "Map windows to candidates and filter only by selected window id." },
+    { "path_or_resource": "web/src/modules/release/components/ReleaseBaselineView.vue", "purpose": "Map selected-window baseline entries to candidates and invalidate stale selections." },
+    { "path_or_resource": "web/src/modules/release/components/ReleaseCurrentProductionView.vue", "purpose": "Map project production entries to candidates and invalidate selection on project changes." }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    { "command": "cd web && npx vue-tsc --noEmit", "exit_code": 0, "salient_output": "Vue and TypeScript type-check completed with no errors after all three local integrations." },
+    { "command": "rg -n <el-input.*release-search-input web/src/modules/release/components", "exit_code": 0, "salient_output": "Only ReleaseApplicationView retained a legacy list search input, as expected before T3." }
+  ],
+  "local_checks": [
+    { "check": "Three local view integrations compile", "result": "pass", "evidence": "vue-tsc exited 0", "limitations": ["Rendered dropdown behavior remains for integrated browser observation."] },
+    { "check": "Legacy input reduction", "result": "pass", "evidence": "Targeted rg found exactly the application list input.", "limitations": [] },
+    { "check": "Stable exact-record filtering", "result": "pass", "evidence": "Each rows computation compares the real record id to selectedSearchId and composes the existing independent filter.", "limitations": ["Static inspection does not exercise selection events."] }
+  ],
+  "diff_summary": [
+    "Replaced three plain keyword inputs with ReleaseSearchSelect.",
+    "Added real-record candidate labels, descriptions and searchable keyword mappings.",
+    "Added selection invalidation for refreshed project/window scopes."
+  ],
+  "invariants_checked": [
+    { "invariant": "Existing independent filters remain active", "result": "pass", "evidence": "Window status, baseline result and artifact type predicates remain in rows computations." },
+    { "invariant": "No extra suggestion API calls", "result": "pass", "evidence": "Options are computed from existing windows or entries refs." },
+    { "invariant": "Stale scope selections are removed", "result": "pass", "evidence": "Window data, baseline window/project and production project refresh paths clear or validate selectedSearchId." }
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Runtime candidate filtering and row restoration will be measured with all four pages after T3."],
+  "recommended_next": "observe"
+}

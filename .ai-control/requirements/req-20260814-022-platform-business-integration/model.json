@@ -1,0 +1,113 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "ccb-workflow definition resolution, instance transitions, task projections and monitoring",
+      "ccb-attachment metadata, authorization, storage lifecycle and cleanup",
+      "ccb-file-preview public preview URL adapter",
+      "Dashboard workflow workbench and ProjectContext Store",
+      "Flyway V35 and V36 plus Maven and governance composition"
+    ],
+    "environment": [
+      "Authenticated AuthUser and tenant context",
+      "MySQL 8.4 and Flowable runtime",
+      "MinIO and kkFileView",
+      "Future business modules implementing lifecycle consumers and attachment policies",
+      "Future project-management provider"
+    ]
+  },
+  "state_variables": [
+    {"name": "workflow_business_context", "owner": "ccb-workflow", "valid_values": ["legacy-null", "validated-context"]},
+    {"name": "workflow_lifecycle_delivery", "owner": "ccb-workflow", "valid_values": ["PENDING", "DELIVERED", "RETRY", "DEAD"]},
+    {"name": "workflow_signature", "owner": "ccb-workflow", "valid_values": ["not-required", "required-unconfirmed", "confirmed-immutable"]},
+    {"name": "attachment_state", "owner": "ccb-attachment", "valid_values": ["TEMP", "BOUND", "DELETED"]},
+    {"name": "attachment_cleanup_state", "owner": "ccb-attachment", "valid_values": ["NONE", "PENDING", "RETRY", "DONE"]},
+    {"name": "current_project", "owner": "frontend ProjectContext Store", "valid_values": ["mock project refs"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "stable workflow code", "transitions": ["tenant-scoped published definition resolution", "model and route validation", "fixed-version instance start"], "outputs": ["WorkflowStartResult or zero-write conflict"]},
+    {"requirement_id": "R2", "input": "trusted business context", "transitions": ["field and digest validation", "instance context persistence"], "outputs": ["enriched progress and task projections"]},
+    {"requirement_id": "R3", "input": "workflow state transition", "transitions": ["persist state", "persist immutable lifecycle event in the same transaction"], "outputs": ["consistent state and event"]},
+    {"requirement_id": "R4", "input": "pending lifecycle event", "transitions": ["discover subscribers", "create delivery", "bounded dispatch and retry"], "outputs": ["DELIVERED or observable DEAD delivery"]},
+    {"requirement_id": "R5", "input": "duplicate or stale event", "transitions": ["stable event and subscriber identity", "consumer round and state preconditions"], "outputs": ["at most one forward business effect"]},
+    {"requirement_id": "R6", "input": "current authenticated user", "transitions": ["paged inbox and done query", "limit each dashboard list to five"], "outputs": ["workbench loading, empty, error, forbidden or populated state"]},
+    {"requirement_id": "R7", "input": "workflow task context", "transitions": ["business projection", "internal route validation"], "outputs": ["safe business detail navigation"]},
+    {"requirement_id": "R8", "input": "approval node configuration", "transitions": ["default false compatibility", "required confirmation enforcement"], "outputs": ["optional or signature-gated decision"]},
+    {"requirement_id": "R9", "input": "confirmed decision by current principal", "transitions": ["assignee, round and digest validation", "atomic immutable signature and workflow decision"], "outputs": ["signature evidence in detail and timeline"]},
+    {"requirement_id": "R10", "input": "validated multipart upload", "transitions": ["opaque object storage", "TEMP metadata", "business binding"], "outputs": ["opaque attachment ID and BOUND evidence"]},
+    {"requirement_id": "R11", "input": "attachment access request", "transitions": ["tenant and state check", "TEMP uploader or fail-closed BOUND policy"], "outputs": ["authorized result or denial"]},
+    {"requirement_id": "R12", "input": "authorized attachment operation or expired orphan", "transitions": ["metadata, preview/download/delete authorization", "logical deletion and retryable cleanup"], "outputs": ["available file or durable cleanup result"]},
+    {"requirement_id": "R13", "input": "project selection", "transitions": ["replaceable provider", "Pinia Store", "local persistence"], "outputs": ["stable current project context"]},
+    {"requirement_id": "R14", "input": "tampered browser project state", "transitions": ["presentation-only consumption", "independent server authentication and authorization"], "outputs": ["no additional server access"]},
+    {"requirement_id": "R15", "input": "legacy workflow or preview caller", "transitions": ["nullable additions and default false", "retained by-ID and preview entry points"], "outputs": ["compatible existing behavior"]},
+    {"requirement_id": "R16", "input": "business module integration", "transitions": ["public workflow or attachment contract", "platform-owned persistence"], "outputs": ["no platform-to-business dependency and no private-table write"]}
+  ],
+  "interfaces": [
+    {"name": "WorkflowBusinessGateway", "producers": ["ccb-workflow"], "consumers": ["business modules"], "invariant": "Uses stable codes and DTOs without exposing private tables or Flowable types."},
+    {"name": "WorkflowLifecycleConsumer", "producers": ["business modules"], "consumers": ["ccb-workflow dispatcher"], "invariant": "At-least-once events retain stable eventId and require idempotent consumption."},
+    {"name": "AttachmentGateway", "producers": ["ccb-attachment"], "consumers": ["business modules"], "invariant": "Business modules retain opaque attachment IDs only."},
+    {"name": "AttachmentAccessPolicy", "producers": ["business modules"], "consumers": ["ccb-attachment"], "invariant": "Missing, duplicate or failed policy denies BOUND access."},
+    {"name": "ProjectContextProvider", "producers": ["frontend application"], "consumers": ["AppLayout", "Dashboard", "future business pages"], "invariant": "Provider data affects display only and never server authorization."}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "workflow gateway, events, task projection and signatures", "method": "focused and full ccb-workflow Maven tests", "blind_spots": ["real browser rendering", "external business consumer implementation"], "independence": "service and persistence assertions"},
+    {"id": "S2", "target": "attachment ownership, authorization and cleanup", "method": "ccb-attachment and ccb-file-preview Maven tests", "blind_spots": ["production MinIO availability"], "independence": "state and adapter assertions"},
+    {"id": "S3", "target": "schema ordering, uniqueness and append-only compatibility", "method": "Flyway governance check and migration inspection", "blind_spots": ["production data volume"], "independence": "static migration sensor"},
+    {"id": "S4", "target": "frontend contracts and responsive composition", "method": "Vue TypeScript production build", "blind_spots": ["runtime API and visual behavior"], "independence": "compiler and bundler"},
+    {"id": "S5", "target": "dashboard, project switch, approval and attachment user paths", "method": "desktop browser acceptance with network and console inspection", "blind_spots": ["production load"], "independence": "runtime UI sensor"},
+    {"id": "S6", "target": "module ownership, public packages and authorized paths", "method": "repository governance and scope checks", "blind_spots": ["semantic runtime defects"], "independence": "repository policy sensor"},
+    {"id": "S7", "target": "backward compatibility", "method": "full Maven regression plus existing workflow and preview tests", "blind_spots": ["unknown external callers"], "independence": "cross-module regression sensor"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "workflow business integration", "action": "add public gateway, context persistence and projections within ccb-workflow", "authority": "REQ-20260814-022 writable scope", "impact_radius": "workflow module and V35", "rollback": "revert application code while retaining nullable migration data"},
+    {"id": "A2", "target": "lifecycle and signature consistency", "action": "add transactional events, dispatcher and immutable signatures", "authority": "REQ-20260814-022 writable scope", "impact_radius": "workflow transitions", "rollback": "disable dispatch and new signature configuration while retaining evidence"},
+    {"id": "A3", "target": "persistent attachment lifecycle", "action": "add ccb-attachment, V36 and preview adapter", "authority": "REQ-20260814-022 writable scope", "impact_radius": "new platform module and storage adapter", "rollback": "disable entry points and retain metadata and objects"},
+    {"id": "A4", "target": "workbench and project context", "action": "add Store/provider and compact Dashboard task views", "authority": "REQ-20260814-022 writable scope", "impact_radius": "application shell and dashboard", "rollback": "remove new UI while preserving backend nullable fields"},
+    {"id": "A5", "target": "public ownership and integration contracts", "action": "update module registry, CODEOWNERS and integration documents", "authority": "owner-approved public capability scope", "impact_radius": "governance", "rollback": "revert documentation only after product rollback"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S4", "S5"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R9", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R10", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R11", "sensor_ids": ["S2"], "observable": "yes"},
+    {"requirement_id": "R12", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R13", "sensor_ids": ["S4", "S5"], "observable": "yes"},
+    {"requirement_id": "R14", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R15", "sensor_ids": ["S1", "S2", "S7"], "observable": "yes"},
+    {"requirement_id": "R16", "sensor_ids": ["S6", "S7"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "duplicate or out-of-order events", "effect": "repeated or regressed business transition", "detectable": true, "controllable": true},
+    {"source": "consumer, MinIO or kkFileView outage", "effect": "delayed delivery, cleanup or preview", "detectable": true, "controllable": false},
+    {"source": "concurrent approval", "effect": "duplicate decision or mismatched signature", "detectable": true, "controllable": true},
+    {"source": "browser storage tampering", "effect": "false presentation context", "detectable": true, "controllable": true},
+    {"source": "existing release prototype changes in the same worktree", "effect": "scope and frontend integration noise", "detectable": true, "controllable": true},
+    {"source": "future main migration-number conflict", "effect": "Flyway ordering failure", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "lifecycle retry backoff", "consequence": "immediate sampling may observe RETRY before delivery", "sampling_rule": "assert scheduled state then advance dispatcher clock"},
+    {"source": "attachment cleanup interval", "consequence": "expired TEMP remains until cleanup cycle", "sampling_rule": "invoke bounded cleanup explicitly in tests"},
+    {"source": "dashboard request and route refresh", "consequence": "UI may briefly show loading", "sampling_rule": "wait for request completion before DOM assertion"},
+    {"source": "presigned URL expiry", "consequence": "cached links become invalid", "sampling_rule": "request a fresh authorized URL per operation"}
+  ],
+  "assumptions": [
+    {"text": "Spring discovers lifecycle consumers and attachment policies as beans in the modular monolith.", "evidence": "Boot composes all Maven modules and Spring scans com.ccb.", "falsifier": "composition test cannot discover consumers without a reverse dependency"},
+    {"text": "Both workflow paths can share transaction boundaries with event and signature persistence.", "evidence": "current state writes are service-managed in one application.", "falsifier": "transaction tests show a path commits independently"},
+    {"text": "The future project module can replace the provider without changing consumers.", "evidence": "approved provider and Store contract isolates Mock data.", "falsifier": "formal project API requires incompatible multi-project semantics"},
+    {"text": "Existing storage and preview capabilities can create short-lived authorized links.", "evidence": "current MinioStorageService and KkFileViewUrlBuilder tests pass.", "falsifier": "attachment adapter cannot reuse them without exposing object keys"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1-R9", "observable": "yes", "controllable": "yes", "action": "Use A1 and A2 with S1, S3, S5 and S7."},
+    {"requirement_id": "R10-R12", "observable": "yes", "controllable": "yes", "action": "Use A3 with S2, S3 and S5."},
+    {"requirement_id": "R13-R14", "observable": "yes", "controllable": "yes", "action": "Use A4 with S4 and S5 while preserving server authorization."},
+    {"requirement_id": "R15-R16", "observable": "yes", "controllable": "yes", "action": "Use A1-A5 with full regression and governance sensors."}
+  ],
+  "model_status": "ready"
+}

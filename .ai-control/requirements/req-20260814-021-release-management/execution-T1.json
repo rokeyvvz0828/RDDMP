@@ -1,0 +1,68 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/pom.xml", "purpose": "建立 ccb-release Maven 模块"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/integration/package-info.java", "purpose": "声明受治理的公开集成包"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/ReleaseSchemaContractTest.java", "purpose": "校验迁移表、关键约束、权限和无业务种子"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V38__release_management.sql", "purpose": "创建十二张配置管理业务表并登记菜单权限"},
+    {"path_or_resource": "web/src/api/release.ts", "purpose": "建立前端公开 API 所有权标记"},
+    {"path_or_resource": "pom.xml", "purpose": "将 ccb-release 纳入根聚合与依赖管理"},
+    {"path_or_resource": "server/src/platform/boot/pom.xml", "purpose": "将 ccb-release 纳入运行时组合根"},
+    {"path_or_resource": "governance/modules.yaml", "purpose": "登记 business/release 模块边界和依赖"},
+    {"path_or_resource": "docs/architecture/MODULES.md", "purpose": "同步模块唯一事实源摘要"},
+    {"path_or_resource": ".github/CODEOWNERS", "purpose": "登记配置管理前后端所有权"}
+  ],
+  "requirements_addressed": ["R1", "R19"],
+  "commands": [
+    {
+      "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test",
+      "exit_code": 0,
+      "salient_output": "Reactor build success; ReleaseSchemaContractTest 1 test, 0 failures"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "13 governed modules, 10 Maven modules and 38 Flyway migrations passed"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "ccb-release 聚合编译与迁移契约测试",
+      "result": "pass",
+      "evidence": "Maven 退出码 0；ReleaseSchemaContractTest 通过",
+      "limitations": ["尚未在隔离验收数据库实际执行 V38，留给 T8"]
+    },
+    {
+      "check": "模块、Maven、Flyway 与治理边界检查",
+      "result": "pass",
+      "evidence": "治理脚本退出码 0，V38 被识别为第 38 个合法迁移",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "新增独立 ccb-release 模块并接入根聚合和 boot",
+    "新增十二张 rel_* 业务及审计表、配置管理菜单和十三项权限",
+    "新增模块治理边界、CODEOWNERS 和架构摘要",
+    "未插入投产窗口、版本申请或投产基线业务数据"
+  ],
+  "invariants_checked": [
+    {"invariant": "不修改 V1-V37", "result": "pass", "evidence": "T1 scoped diff 只新增 V38"},
+    {"invariant": "不写入配置管理业务种子", "result": "pass", "evidence": "迁移契约测试拒绝 rel_release_window、rel_release_application、rel_production_entry INSERT"},
+    {"invariant": "依赖仅指向已登记公开模块", "result": "pass", "evidence": "模块治理检查通过"},
+    {"invariant": "保留工作树既有改动", "result": "pass", "evidence": "未回退或覆盖范围外文件"}
+  ],
+  "disturbances": [
+    {
+      "event": "首次治理采样发现 modules.yaml 声明的公开路径必须已经存在",
+      "impact": "回到 planning 扩充 T1 边界，增加最小 Java 包和前端 API 所有权标记后检查通过"
+    }
+  ],
+  "assumptions_falsified": [
+    "治理模块声明可以先于公开路径创建"
+  ],
+  "unresolved_items": [
+    "V38 的真实 MySQL 执行和 API 业务验收由后续任务及 T8 在 ccb_platform_acceptance_027 完成"
+  ],
+  "recommended_next": "observe"
+}

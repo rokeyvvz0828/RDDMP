@@ -1,0 +1,61 @@
+{
+  "baseline_revision":"baseline-2",
+  "model_revision":"model-1",
+  "tasks":[
+    {
+      "id":"T1",
+      "goal":"实现工作流终止后永久取消的后端状态机，并证明普通撤回不回归。",
+      "requirement_ids":["R2","R3","R4","R6","R7"],
+      "prerequisites":[],
+      "input_facts":["withdraw 形成 WITHDRAW_REQUESTED 并保持申请 IN_REVIEW","TERMINATED 当前把 WITHDRAW_REQUESTED 映射为 WITHDRAWN","CANCELLED 已被现有编辑和附件状态守卫排除","round_status 使用字符串存储"],
+      "write_scope":["server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java","server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java","server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowStore.java","server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumer.java","server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java","server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java","server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java","server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java"],
+      "invariants":["工作流终止确认前申请保持 IN_REVIEW","普通撤回终态保持 WITHDRAWN","所有者、权限、行版本和状态由服务端校验","不修改 platform/workflow 和数据库"],
+      "interface_contracts":["POST /api/release/applications/{code}/conflict-cancel 接收 rowVersion 和必填 reason","成功响应为 status=IN_REVIEW、operationStatus=CANCEL_REQUESTED","CANCEL_REQUESTED+TERMINATED -> CANCELLED","WITHDRAW_REQUESTED+TERMINATED -> WITHDRAWN"],
+      "non_goals":["改变普通撤回接口","新增权限或迁移","修改工作流平台","提交或清理 rokey"],
+      "action_bounds":["仅增加冲突取消命令、两项条件状态更新和生命周期映射","仅增加直接覆盖新行为和回归的测试","不重构申请或工作流包结构"],
+      "acceptance_checks":["新命令成功时只形成 CANCEL_REQUESTED 并调用 terminate","无效所有者、状态、版本、轮次和原因被拒绝","终止异常不提前形成 CANCELLED","生命周期把取消意图形成 CANCELLED、普通撤回形成 WITHDRAWN","CANCELLED 更新、提交、重新提交和附件变更被拒绝","release 模块测试通过"],
+      "evidence_required":["任务实际 diff","聚焦测试红灯与绿灯命令、退出码和关键断言","完整 release 模块测试摘要","范围外扰动和未决项"],
+      "rollback":"同时恢复端点、service 命令、store 状态方法、生命周期分支和对应测试。",
+      "stop_conditions":["round_status 不接受 CANCEL_REQUESTED","终止异常不能回滚","事件不能匹配当前轮次","范围内文件出现无法保留的并行修改"],
+      "escalation_conditions":["需要修改工作流平台、迁移或权限数据","普通撤回存在与设计冲突的未建模消费者"]
+    },
+    {
+      "id":"T2",
+      "goal":"让冲突弹框调用永久取消命令并完成桌面、移动端集成验收。",
+      "requirement_ids":["R1","R2","R4","R5","R6","R7"],
+      "prerequisites":["T1"],
+      "input_facts":["弹框已校验 preflight、owner、IN_REVIEW 和撤回权限","页面已有 2 秒轮询和继续门禁","现有响应式卡片动作区和底部栏可复用"],
+      "write_scope":["web/src/api/release.ts","web/src/modules/release/ReleaseManagementPrototype.vue","web/src/modules/release/components/ReleaseConflictDialog.vue"],
+      "invariants":["普通列表撤回继续调用 /withdraw","仍有 IN_REVIEW 阻塞项时继续申请禁用","关闭弹框停止轮询并保留原表单","桌面和移动不新增横向滚动"],
+      "interface_contracts":["cancelBlockedReleaseApplication 调用 /conflict-cancel","弹框输出 cancel 事件并接受 cancellingCode","显示取消申请/取消处理中","终止后通过原预检恢复继续"],
+      "non_goals":["修改公共 UI、全局样式、路由或权限 store","改变冲突匹配或普通撤回","创建新的弹层结构"],
+      "action_bounds":["仅替换冲突专用 API、处理函数、状态名、事件和文案","复用现有轮询、错误恢复和布局","只在授权三文件内修改"],
+      "acceptance_checks":["本人审批中阻塞项显示取消，其他用户或状态不显示","取消中继续申请禁用，终止后恢复","旧申请最终 CANCELLED 且详情只读","普通列表撤回最终 WITHDRAWN 且可编辑重新提交","前端构建通过","1440x900 和 390x844 浏览器路径无重叠溢出、网络或控制台错误"],
+      "evidence_required":["任务实际 diff","前端构建命令与退出码","静态旧文案搜索结果","浏览器角色、申请单号、视口、请求状态和截图","扰动与剩余风险"],
+      "rollback":"同时恢复 release API、页面处理函数/状态和弹框事件/属性/文案，并与 T1 回退同步。",
+      "stop_conditions":["T1 接口不符合契约","本地认证或服务无法验证","无法建立审批中冲突测试数据","范围内文件出现无法保留的并行修改"],
+      "escalation_conditions":["需要公共 UI、全局样式、路由、平台工作流或数据库修改","移动布局需要超出本需求的重构"]
+    }
+  ],
+  "dependency_edges":[{"from":"T1","to":"T2","reason":"T2 消费 T1 的新增端点和状态终态契约。"}],
+  "parallel_groups":[["T1"],["T2"]],
+  "integration_points":[
+    {"after_tasks":["T1"],"checks":["运行聚焦后端测试","运行 ccb-release 完整测试","独立检查取消与普通撤回状态映射"]},
+    {"after_tasks":["T1","T2"],"checks":["运行前端生产构建","执行桌面与移动浏览器验收","执行治理、范围和 diff 检查并区分 rokey 既有扰动"]}
+  ],
+  "sampling_plan":[
+    {"label":"T1 完成采样","trigger":"T1 返回执行报告","observer":"主 Agent 独立复验","sensors":["S1","S2","S3"],"requirement_ids":["R2","R3","R4","R6","R7"]},
+    {"label":"T2 与集成采样","trigger":"T2 构建和浏览器流程完成","observer":"主 Agent 运行态复验","sensors":["S4","S5"],"requirement_ids":["R1","R2","R4","R5","R6","R7"]},
+    {"label":"最终收敛采样","trigger":"全部任务 verified 且无未关闭反馈","observer":"收敛验收","sensors":["S1","S2","S3","S4","S5"],"requirement_ids":["R1","R2","R3","R4","R5","R6","R7"]}
+  ],
+  "coverage":[
+    {"requirement_id":"R1","task_ids":["T2"],"sensor_ids":["S4","S5"]},
+    {"requirement_id":"R2","task_ids":["T1","T2"],"sensor_ids":["S1","S5"]},
+    {"requirement_id":"R3","task_ids":["T1"],"sensor_ids":["S1","S2","S5"]},
+    {"requirement_id":"R4","task_ids":["T1","T2"],"sensor_ids":["S2","S3","S5"]},
+    {"requirement_id":"R5","task_ids":["T2"],"sensor_ids":["S4","S5"]},
+    {"requirement_id":"R6","task_ids":["T1","T2"],"sensor_ids":["S3","S5"]},
+    {"requirement_id":"R7","task_ids":["T1","T2"],"sensor_ids":["S1","S5"]}
+  ],
+  "plan_status":"ready"
+}

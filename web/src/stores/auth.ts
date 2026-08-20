@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import http from '../api/http'
 import type { ApiResponse, AuthMe, RouteNode, TokenPair } from '../types/auth'
+import { useTabsStore } from './tabs'
 
 function hideOfflineRoutes(nodes: RouteNode[]): RouteNode[] {
   return nodes
@@ -29,6 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = ''
     user.value = null
     routes.value = []
+    useTabsStore().closeAll()
     localStorage.removeItem('ccb.access_token')
     localStorage.removeItem('ccb.refresh_token')
   }
@@ -37,6 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const response = await http.post<ApiResponse<TokenPair>>('/auth/login', { username, password })
+      useTabsStore().closeAll()
       saveTokens(response.data.data)
       await hydrate()
     } finally {
@@ -52,7 +55,6 @@ export const useAuthStore = defineStore('auth', () => {
         http.get<ApiResponse<RouteNode[]>>('/auth/routes')
       ])
       user.value = me.data.data
-      // Keep the backend capability available while its frontend entry is offline.
       routes.value = hideOfflineRoutes(menu.data.data)
     } catch {
       clear()
@@ -76,5 +78,25 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = nextUser
   }
 
-  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout, changePassword, updateUser }
+  function hasPermission(permission: string) {
+    return Boolean(user.value?.permissions.includes('system:admin') || user.value?.permissions.includes(permission))
+  }
+
+  function hasRoute(path: string) {
+    const visit = (nodes: RouteNode[]): boolean => nodes.some(node => node.routePath === path || visit(node.children || []))
+    return visit(routes.value)
+  }
+
+  function firstAccessibleReleasePath() {
+    return [
+      '/release/windows',
+      '/release/applications',
+      '/release/production-baseline',
+      '/release/production-versions',
+      '/release/analytics',
+      '/release/workflow-bindings'
+    ].find(hasRoute)
+  }
+
+  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout, changePassword, updateUser, hasPermission, hasRoute, firstAccessibleReleasePath }
 })

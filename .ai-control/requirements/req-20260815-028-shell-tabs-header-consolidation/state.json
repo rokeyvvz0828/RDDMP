@@ -1,0 +1,1756 @@
+{
+  "schema_version": 4,
+  "revision": 17,
+  "created_at": "2026-08-16T02:54:51+00:00",
+  "updated_at": "2026-08-16T03:10:58+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User reviewed the landed design, confirmed it, and explicitly directed implementation.；计划确认=User confirmed the landed design and explicitly requested direct development.",
+      "recorded_at": "2026-08-16T02:54:51+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Approved baseline imported from user-confirmed design and implementation plan",
+      "recorded_at": "2026-08-16T02:55:21+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "All must requirements have observable causal paths and authorized actuators",
+      "recorded_at": "2026-08-16T02:56:22+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "T1 covers R1-R4 with build, diff, runtime geometry and interaction evidence",
+      "recorded_at": "2026-08-16T02:57:17+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 execution report recorded with final runtime outputs",
+      "recorded_at": "2026-08-16T03:09:23+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1 verified; no open feedback; two samples recorded with final P0/P1 zero",
+      "recorded_at": "2026-08-16T03:10:06+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Convergence gate passed with final P0/P1 zero and all tasks verified",
+      "recorded_at": "2026-08-16T03:10:58+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User reviewed the landed design, confirmed it, and explicitly directed implementation.；计划确认=User confirmed the landed design and explicitly requested direct development.",
+        "recorded_at": "2026-08-16T02:54:51+00:00",
+        "data": {
+          "objective": "Remove duplicate desktop page titles and one shell row by placing existing route tabs inside the application header while preserving mobile behavior and all tab operations.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Desktop renders route tabs inside the application header without the duplicate breadcrumb or separate tab row.",
+              "acceptance": [
+                "Current page title appears once",
+                "Business content moves upward by the removed row height"
+              ],
+              "priority": "must",
+              "source": "User highlighted both regions and confirmed option 1",
+              "counterexample": [
+                "User management remains visible in breadcrumb and tabs"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Project selection, sidebar toggle, inline tabs and global header actions remain simultaneously usable on desktop.",
+              "acceptance": [
+                "Header controls do not overlap",
+                "Tab overflow does not displace fixed controls"
+              ],
+              "priority": "must",
+              "source": "Existing shell workflow and confirmed approach",
+              "counterexample": [
+                "Several tabs hide the account menu or project selector"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Existing tab navigation and context-menu behavior remains unchanged.",
+              "acceptance": [
+                "Switch, close, refresh, close others and close all keep current semantics"
+              ],
+              "priority": "must",
+              "source": "Existing UiTabs contract",
+              "counterexample": [
+                "Moving tabs resets tabsStore or makes dashboard closable"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Phone viewports retain the independent sticky tab row and current-page title.",
+              "acceptance": [
+                "375x812, 390x844 and 430x932 remain usable without page horizontal overflow"
+              ],
+              "priority": "must",
+              "source": "User-confirmed option 1 and mobile contract",
+              "counterexample": [
+                "All phone tabs are compressed into the 56px global header"
+              ]
+            }
+          ],
+          "invariants": [
+            "tabsStore remains the sole route-tab state source",
+            "UiTabs remains responsible for tab commands and context menu",
+            "Project context and global account actions remain usable",
+            "No page-level horizontal overflow is introduced"
+          ],
+          "constraints": [
+            "Use existing Vue 3, Element Plus and shell components",
+            "Do not add dependencies or modify backend and business pages",
+            "Preserve existing dirty worktree changes",
+            "Meet desktop and required phone viewport behavior"
+          ],
+          "non_goals": [
+            "Changing tab persistence or caching",
+            "Redesigning sidebar or top-navigation mode",
+            "Removing multi-tab navigation"
+          ],
+          "assumptions": [
+            {
+              "text": "Element Plus tab navigation works inside a flex child with min-width zero",
+              "basis": "Existing UiTabs uses Element Plus card tabs and flex sizing",
+              "falsifier": "Browser shows tabs expanding outside the middle region"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Merge tabs into desktop header and preserve an independent mobile tab row",
+              "reason": "Removes repetition without harming mobile ergonomics",
+              "source": "User confirmed option 1"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "Desktop title is not duplicated and fixed controls remain usable",
+              "method": "Desktop browser inspection with multiple tabs"
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "signal": "All tab commands retain outcomes",
+              "method": "Switch, close, refresh and context-menu interactions"
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "Mobile retains separate tabs without page overflow",
+              "method": "375x812, 390x844 and 430x932 geometry checks"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "signal": "No build or whitespace regression",
+              "method": "npm run build and git diff --check"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Verified AppLayout, UiTabs ownership, 760px breakpoint, existing dirty target-file changes and runtime sensors",
+        "recorded_at": "2026-08-16T02:56:22+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "AppLayout desktop and mobile shell composition",
+              "UiTabs responsive mount location",
+              "Header and tab flex/overflow styles"
+            ],
+            "environment": [
+              "Vue Router current route",
+              "Pinia tabsStore state",
+              "Element Plus tab layout",
+              "Browser viewport and media query"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "mobileView",
+              "owner": "AppLayout",
+              "valid_values": [
+                "true",
+                "false"
+              ]
+            },
+            {
+              "name": "tabsEnabled",
+              "owner": "theme store",
+              "valid_values": [
+                "true",
+                "false"
+              ]
+            },
+            {
+              "name": "activeRoute",
+              "owner": "Vue Router",
+              "valid_values": [
+                "route.fullPath"
+              ]
+            },
+            {
+              "name": "openTabs",
+              "owner": "tabsStore",
+              "valid_values": [
+                "ordered route tab collection"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "Desktop viewport with tabs enabled",
+              "transitions": [
+                "mobileView resolves false",
+                "AppLayout mounts UiTabs in header",
+                "breadcrumb and independent desktop tab row are omitted"
+              ],
+              "outputs": [
+                "one inline tab strip",
+                "business content starts below one shell row"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "Desktop viewport with project, navigation and account controls",
+              "transitions": [
+                "fixed side regions retain intrinsic width",
+                "middle tab region shrinks with min-width zero",
+                "tab overflow remains inside UiTabs"
+              ],
+              "outputs": [
+                "all header controls remain visible and usable"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Tab click, close, refresh or context-menu command",
+              "transitions": [
+                "UiTabs receives unchanged currentPath",
+                "UiTabs invokes existing tabsStore and router operations"
+              ],
+              "outputs": [
+                "existing navigation and tab command outcomes"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Viewport at or below 760px",
+              "transitions": [
+                "mobileView resolves true",
+                "header shows current title",
+                "AppLayout mounts independent sticky UiTabs below header"
+              ],
+              "outputs": [
+                "compact mobile header and separate tab row without page overflow"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "UiTabs currentPath prop",
+              "producers": [
+                "AppLayout route.fullPath"
+              ],
+              "consumers": [
+                "UiTabs"
+              ],
+              "invariant": "The active tab path is unchanged by mount location"
+            },
+            {
+              "name": "tabsStore",
+              "producers": [
+                "route watcher and UiTabs commands"
+              ],
+              "consumers": [
+                "AppLayout router-view refresh key",
+                "UiTabs"
+              ],
+              "invariant": "tabsStore remains the sole tab state owner"
+            },
+            {
+              "name": "760px responsive boundary",
+              "producers": [
+                "window.matchMedia and CSS media query"
+              ],
+              "consumers": [
+                "AppLayout",
+                "shell styles"
+              ],
+              "invariant": "Desktop and mobile UiTabs mounts are mutually exclusive"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Template/type correctness and authorized diff",
+              "method": "Vite production build plus focused git diff check",
+              "blind_spots": [
+                "runtime geometry",
+                "interactive context menu behavior"
+              ],
+              "independence": "Compiler and Git whitespace checks"
+            },
+            {
+              "id": "S2",
+              "target": "Desktop DOM count, title duplication, rectangles and overflow",
+              "method": "Browser DOM and geometry inspection with multiple tabs",
+              "blind_spots": [
+                "phone-specific layout"
+              ],
+              "independence": "Direct runtime rendering observation"
+            },
+            {
+              "id": "S3",
+              "target": "Tab command behavior",
+              "method": "Browser switch, close, refresh and context-menu interactions",
+              "blind_spots": [
+                "persistence after a full browser restart"
+              ],
+              "independence": "Direct user-path interaction"
+            },
+            {
+              "id": "S4",
+              "target": "Mobile title, separate tab row and horizontal overflow",
+              "method": "Browser geometry checks at 375x812, 390x844 and 430x932",
+              "blind_spots": [
+                "unlisted device browser chrome differences"
+              ],
+              "independence": "Runtime viewport measurements"
+            },
+            {
+              "id": "S5",
+              "target": "Runtime JavaScript errors",
+              "method": "Browser console inspection after desktop and mobile interactions",
+              "blind_spots": [
+                "errors in routes not exercised"
+              ],
+              "independence": "Runtime console output"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "AppLayout responsive UiTabs composition",
+              "action": "Change only the conditional mount positions and desktop/mobile title composition",
+              "authority": "User-approved edit to AppLayout.vue",
+              "impact_radius": "Application shell markup",
+              "rollback": "Restore the pre-task AppLayout mount structure"
+            },
+            {
+              "id": "A2",
+              "target": "Header and tab geometry",
+              "action": "Add constrained desktop flex rules and preserve mobile sticky-tab rules",
+              "authority": "User-approved edit to styles.css",
+              "impact_radius": "Application shell header and tabs selectors",
+              "rollback": "Restore the pre-task shell style rules"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Existing dirty worktree",
+              "effect": "Target files contain unrelated approved changes",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Many open route tabs",
+              "effect": "Middle header region can exceed available width",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Layout mode and viewport changes",
+              "effect": "Header controls and mount point change at runtime",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vue HMR and media-query update",
+              "consequence": "Immediate measurement may observe the prior DOM",
+              "sampling_rule": "Wait for page settle after reload or viewport change before measuring"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Element Plus tabs can shrink inside a flex child with min-width zero",
+              "evidence": "UiTabs already declares flex:1 and min-width:0",
+              "falsifier": "Runtime rectangle exceeds its header region or displaces fixed controls"
+            },
+            {
+              "text": "UiTabs state survives mutually exclusive remounting",
+              "evidence": "Persistent tab state and commands are owned by Pinia tabsStore",
+              "falsifier": "Viewport transition resets open tabs or duplicates listeners"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1 and A2, measure with S1 and S2"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A2, measure with S2 and S4"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Keep UiTabs unchanged and measure with S1, S3 and S5"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1 and mobile-preserving A2, measure with S4 and S5"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Plan reconciled with verified model; task write scope limited to AppLayout.vue and styles.css",
+        "recorded_at": "2026-08-16T02:57:17+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Render the existing route tabs inside the desktop header while preserving the mobile title, mobile sticky tabs and every existing tab command.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "AppLayout currently renders breadcrumb and UiTabs as separate desktop rows",
+                "UiTabs owns all route-tab commands and tabsStore owns persistent tab state",
+                "AppLayout and CSS share the same 760px mobile boundary",
+                "AppLayout.vue and styles.css contain unrelated changes that must be preserved"
+              ],
+              "write_scope": [
+                "web/src/views/AppLayout.vue",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "tabsStore remains the sole route-tab state source",
+                "UiTabs currentPath and command behavior remain unchanged",
+                "Project selector, sidebar toggle and global actions remain usable",
+                "Exactly one UiTabs instance is rendered at every viewport",
+                "No page-level horizontal overflow is introduced"
+              ],
+              "interface_contracts": [
+                "AppLayout continues to pass route.fullPath to UiTabs",
+                "Desktop and mobile UiTabs mount conditions are mutually exclusive at the existing breakpoint"
+              ],
+              "non_goals": [
+                "Do not change tabsStore, UiTabs internals, route metadata or backend APIs",
+                "Do not redesign sidebar, top navigation or business pages",
+                "Do not alter unrelated existing worktree changes"
+              ],
+              "action_bounds": [
+                "Modify only AppLayout mount composition and shell header/tab CSS",
+                "Use existing components, tokens and 760px breakpoint",
+                "Keep the correction reversible within the two approved files"
+              ],
+              "acceptance_checks": [
+                "Desktop current title appears once and the independent desktop tab row is absent",
+                "Desktop project selector, sidebar toggle, tabs and account actions do not overlap with several tabs open",
+                "Switch, close, refresh, close others and close all retain their existing outcomes",
+                "375x812, 390x844 and 430x932 retain the current title and separate sticky tabs without horizontal overflow",
+                "Frontend build and focused diff check exit successfully",
+                "Browser console contains no new errors"
+              ],
+              "evidence_required": [
+                "Focused source diff",
+                "Frontend build output and exit code",
+                "Focused git diff check output and exit code",
+                "Desktop DOM count and geometry",
+                "Tab interaction results",
+                "Three mobile viewport geometry checks",
+                "Browser console result"
+              ],
+              "rollback": "Restore the pre-task UiTabs mount location and shell header/tab style rules while preserving unrelated file changes.",
+              "stop_conditions": [
+                "The correction requires changes outside the two approved files",
+                "The existing UiTabs or tabsStore public behavior must change",
+                "Mobile overflow cannot be corrected within the approved shell selectors"
+              ],
+              "escalation_conditions": [
+                "The user-confirmed mobile independent tab behavior must change",
+                "Global navigation architecture needs redesign"
+              ]
+            }
+          ],
+          "dependency_edges": [],
+          "parallel_groups": [
+            [
+              "T1"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Run frontend production build",
+                "Run focused diff check",
+                "Exercise browser desktop and mobile acceptance paths"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "Execution baseline",
+              "trigger": "Before target-file edits",
+              "observer": "Main controller",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "Post-implementation observation",
+              "trigger": "T1 returns execution report",
+              "observer": "Independent runtime observation",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "Focused diff, final build, desktop/mobile geometry, interactions and console checks captured",
+        "recorded_at": "2026-08-16T03:09:23+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/views/AppLayout.vue",
+              "purpose": "Mount UiTabs inside the desktop header, retain a separate mobile mount and move the mobile project selector into the navigation drawer"
+            },
+            {
+              "path_or_resource": "web/src/styles.css",
+              "purpose": "Constrain desktop header tabs and preserve readable, overflow-free mobile header geometry"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc passed; Vite built 2358 modules in 4.15s"
+            },
+            {
+              "command": "git diff --check -- web/src/views/AppLayout.vue web/src/styles.css",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors"
+            },
+            {
+              "command": "Browser desktop and mobile acceptance checks",
+              "exit_code": 0,
+              "salient_output": "One UiTabs at all viewports; 1280 desktop inline geometry passed; 375/390/430 mobile geometry and interactions passed"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Frontend production build",
+              "result": "pass",
+              "evidence": "vue-tsc and vite exited 0 after the final mobile correction",
+              "limitations": [
+                "Existing Rollup large-chunk warning remains"
+              ]
+            },
+            {
+              "check": "Focused diff check",
+              "result": "pass",
+              "evidence": "git diff --check exited 0",
+              "limitations": []
+            },
+            {
+              "check": "Desktop runtime composition",
+              "result": "pass",
+              "evidence": "At 1280x720 tabsCount=1, breadcrumbs=0, tabInHeader=true, scrollWidth=clientWidth=1280",
+              "limitations": [
+                "Only the side layout was visually sampled"
+              ]
+            },
+            {
+              "check": "Tab interactions",
+              "result": "pass",
+              "evidence": "Switch, direct close, refresh, close others and close all produced the existing route/tab outcomes",
+              "limitations": [
+                "Persistence across full browser restart was not sampled"
+              ]
+            },
+            {
+              "check": "Mobile runtime composition",
+              "result": "pass",
+              "evidence": "At 375x812, 390x844 and 430x932 tabsCount=1, title remained readable, tab strip started below the 56px header, and scrollWidth equaled clientWidth",
+              "limitations": [
+                "Unlisted device browser chrome differences were not sampled"
+              ]
+            },
+            {
+              "check": "Fresh-page console",
+              "result": "pass",
+              "evidence": "No new error-level logs after final reload",
+              "limitations": [
+                "Two transient Vite HMR errors captured during editing predated the final reload"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Removed the desktop breadcrumb and independent desktop tab row",
+            "Mounted the existing UiTabs in a shrinkable middle header region on desktop",
+            "Kept a mutually exclusive sticky mobile tab row and current-page title",
+            "Moved the mobile project selector into the navigation drawer to prevent title compression"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tabsStore remains the sole route-tab state source",
+              "result": "pass",
+              "evidence": "UiTabs and tabsStore implementations were unchanged"
+            },
+            {
+              "invariant": "UiTabs commands retain existing semantics",
+              "result": "pass",
+              "evidence": "All five tab command paths were exercised in the browser"
+            },
+            {
+              "invariant": "Project context and global account actions remain usable",
+              "result": "pass",
+              "evidence": "Desktop project selector and actions remained visible; mobile project selector was visible in the navigation drawer"
+            },
+            {
+              "invariant": "No page-level horizontal overflow",
+              "result": "pass",
+              "evidence": "scrollWidth equaled clientWidth at desktop and all three required phone widths"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Existing target-file changes from platform and project-context work",
+              "impact": "Focused patching and diff inspection were used; unrelated changes were preserved"
+            },
+            {
+              "event": "Initial 375px sample compressed the mobile title to 2px",
+              "impact": "Within-scope correction moved project selection into the drawer and restored a 168px header-left region"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Independent build, DOM geometry, interaction, responsive and console measurements found no remaining deviation",
+        "recorded_at": "2026-08-16T03:10:05+00:00",
+        "data": {
+          "sample_label": "T1 final runtime observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 build/diff plus S2 desktop DOM geometry",
+              "result": "pass",
+              "raw_evidence": "1280x720 rendered one .ui-tabs-bar inside .app-header, zero .breadcrumb elements, app-main began at y=76, and build/diff checks exited 0",
+              "limitation": [
+                "Only the side layout was visually sampled"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 desktop rectangles",
+              "result": "pass",
+              "raw_evidence": "At 1280px project selector ended at x=510.4, toggle occupied x=526.4-558.4, tabs occupied x=574.4-977, and actions occupied x=993-1248 without overlap",
+              "limitation": [
+                "Extremely narrow desktop widths above 760px were not separately sampled"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 browser interactions plus S5 console",
+              "result": "pass",
+              "raw_evidence": "Switch selected /system/users; refresh retained four tabs; close others retained dashboard plus user; close all returned dashboard; direct close returned dashboard; final reload produced no new console errors",
+              "limitation": [
+                "Full browser restart persistence was not sampled"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S4 mobile geometry plus S5 console",
+              "result": "pass",
+              "raw_evidence": "375x812, 390x844 and 430x932 each rendered one mobile tab strip at y=56, retained the current title, had scrollWidth equal clientWidth, and exposed the project selector in the navigation drawer",
+              "limitation": [
+                "Unlisted device browser chrome differences were not sampled"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Existing dirty-worktree changes remained present but focused diff and write-scope checks found no out-of-scope edits",
+            "Transient Vite HMR errors occurred during live editing; a final clean reload produced no new error-level logs"
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final traceability, regressions, invariants, scope and two-sample trend audited",
+        "recorded_at": "2026-08-16T03:10:58+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "1280x720 DOM: one inline UiTabs, zero breadcrumb, app-main y=76",
+                "Final production build and diff check passed"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "Desktop project, toggle, tabs and action rectangles were disjoint",
+                "Desktop scrollWidth equaled clientWidth"
+              ],
+              "limitations": [
+                "Only the side layout was visually sampled"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "Switch, direct close, refresh, close others and close all were exercised successfully",
+                "UiTabs and tabsStore source were unchanged",
+                "Final reload produced no new console errors"
+              ],
+              "limitations": [
+                "Full browser restart persistence was not sampled"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "375x812, 390x844 and 430x932 each retained one independent sticky tab strip and readable title",
+                "All required mobile widths had scrollWidth equal clientWidth",
+                "Mobile project selector remained usable in the navigation drawer"
+              ],
+              "limitations": [
+                "Unlisted mobile browser chrome differences were not sampled"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Execution and observation reports recorded",
+                "Compiler, diff, runtime geometry, interaction and console sensors passed"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 1,
+              "P2": 0,
+              "P3": 0,
+              "score": 20
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Frontend production build",
+              "result": "pass",
+              "evidence": "vue-tsc and Vite exited 0 after final correction"
+            },
+            {
+              "check": "Focused whitespace/diff check",
+              "result": "pass",
+              "evidence": "git diff --check exited 0"
+            },
+            {
+              "check": "Desktop and responsive browser acceptance",
+              "result": "pass",
+              "evidence": "Required DOM, geometry and interaction measurements passed"
+            },
+            {
+              "check": "Fresh browser console",
+              "result": "pass",
+              "evidence": "No new error-level entries after final reload"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "tabsStore remains the sole route-tab state source",
+              "result": "pass",
+              "evidence": "No tabsStore or UiTabs implementation edits"
+            },
+            {
+              "invariant": "Project context and global account actions remain usable",
+              "result": "pass",
+              "evidence": "Desktop controls remained visible; mobile project selector was verified in the drawer"
+            },
+            {
+              "invariant": "Exactly one UiTabs is rendered at every viewport",
+              "result": "pass",
+              "evidence": "tabsCount=1 at desktop and all three mobile sizes"
+            },
+            {
+              "invariant": "No page-level horizontal overflow",
+              "result": "pass",
+              "evidence": "scrollWidth equaled clientWidth for every measured viewport"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Existing dirty worktree",
+              "result": "pass",
+              "evidence": "Focused patch and diff check preserved unrelated target-file changes"
+            },
+            {
+              "disturbance": "Narrow mobile header",
+              "result": "pass",
+              "evidence": "375px correction moved project selection into the drawer and restored readable title geometry"
+            },
+            {
+              "disturbance": "Many route tabs",
+              "result": "pass",
+              "evidence": "Four desktop tabs remained within the 402.6px constrained middle region without displacing actions"
+            }
+          ],
+          "residual_risks": [
+            "Top and mixed layout modes were compiler-covered but not separately visually sampled",
+            "The project continues to emit a non-blocking Vite large-chunk warning"
+          ],
+          "gate_result": "pass",
+          "route_reason": "All must requirements have verified task coverage and runtime evidence; two standard-mode samples show P1 reduced to zero; no feedback remains open."
+        }
+      }
+    ]
+  },
+  "objective": "Remove duplicate desktop page titles and one shell row by placing existing route tabs inside the application header while preserving mobile behavior and all tab operations.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Desktop renders route tabs inside the application header without the duplicate breadcrumb or separate tab row.",
+      "acceptance": [
+        "Current page title appears once",
+        "Business content moves upward by the removed row height"
+      ],
+      "priority": "must",
+      "source": "User highlighted both regions and confirmed option 1",
+      "counterexample": [
+        "User management remains visible in breadcrumb and tabs"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Project selection, sidebar toggle, inline tabs and global header actions remain simultaneously usable on desktop.",
+      "acceptance": [
+        "Header controls do not overlap",
+        "Tab overflow does not displace fixed controls"
+      ],
+      "priority": "must",
+      "source": "Existing shell workflow and confirmed approach",
+      "counterexample": [
+        "Several tabs hide the account menu or project selector"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Existing tab navigation and context-menu behavior remains unchanged.",
+      "acceptance": [
+        "Switch, close, refresh, close others and close all keep current semantics"
+      ],
+      "priority": "must",
+      "source": "Existing UiTabs contract",
+      "counterexample": [
+        "Moving tabs resets tabsStore or makes dashboard closable"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Phone viewports retain the independent sticky tab row and current-page title.",
+      "acceptance": [
+        "375x812, 390x844 and 430x932 remain usable without page horizontal overflow"
+      ],
+      "priority": "must",
+      "source": "User-confirmed option 1 and mobile contract",
+      "counterexample": [
+        "All phone tabs are compressed into the 56px global header"
+      ]
+    }
+  ],
+  "invariants": [
+    "tabsStore remains the sole route-tab state source",
+    "UiTabs remains responsible for tab commands and context menu",
+    "Project context and global account actions remain usable",
+    "No page-level horizontal overflow is introduced"
+  ],
+  "constraints": [
+    "Use existing Vue 3, Element Plus and shell components",
+    "Do not add dependencies or modify backend and business pages",
+    "Preserve existing dirty worktree changes",
+    "Meet desktop and required phone viewport behavior"
+  ],
+  "non_goals": [
+    "Changing tab persistence or caching",
+    "Redesigning sidebar or top-navigation mode",
+    "Removing multi-tab navigation"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260815-028-shell-tabs-header-consolidation/handoff.json",
+    "imported_at": "2026-08-16T02:54:51+00:00",
+    "topic": "req-20260815-028-shell-tabs-header-consolidation",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260815-028-shell-tabs-header-consolidation",
+      "handoff_status": "approved",
+      "created_at": "2026-08-16T10:50:41+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260815-028-shell-tabs-header-consolidation",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-15-shell-tabs-header-consolidation-design.md",
+        "objective": "Remove duplicate desktop page titles and one shell row by placing existing route tabs inside the application header while preserving mobile behavior and all tab operations.",
+        "users": [
+          "Desktop users switching repeatedly among workbench, system, workflow and release-management pages",
+          "Phone users retaining the compact sticky header and independent tab row"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Desktop renders route tabs inside the application header without the duplicate breadcrumb or separate tab row.",
+            "acceptance": [
+              "Current page title appears once",
+              "Business content moves upward by the removed row height"
+            ],
+            "priority": "must",
+            "source": "User highlighted both regions and confirmed option 1",
+            "counterexample": [
+              "User management remains visible in breadcrumb and tabs"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Project selection, sidebar toggle, inline tabs and global header actions remain simultaneously usable on desktop.",
+            "acceptance": [
+              "Header controls do not overlap",
+              "Tab overflow does not displace fixed controls"
+            ],
+            "priority": "must",
+            "source": "Existing shell workflow and confirmed approach",
+            "counterexample": [
+              "Several tabs hide the account menu or project selector"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Existing tab navigation and context-menu behavior remains unchanged.",
+            "acceptance": [
+              "Switch, close, refresh, close others and close all keep current semantics"
+            ],
+            "priority": "must",
+            "source": "Existing UiTabs contract",
+            "counterexample": [
+              "Moving tabs resets tabsStore or makes dashboard closable"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Phone viewports retain the independent sticky tab row and current-page title.",
+            "acceptance": [
+              "375x812, 390x844 and 430x932 remain usable without page horizontal overflow"
+            ],
+            "priority": "must",
+            "source": "User-confirmed option 1 and mobile contract",
+            "counterexample": [
+              "All phone tabs are compressed into the 56px global header"
+            ]
+          }
+        ],
+        "invariants": [
+          "tabsStore remains the sole route-tab state source",
+          "UiTabs remains responsible for tab commands and context menu",
+          "Project context and global account actions remain usable",
+          "No page-level horizontal overflow is introduced"
+        ],
+        "constraints": [
+          "Use existing Vue 3, Element Plus and shell components",
+          "Do not add dependencies or modify backend and business pages",
+          "Preserve existing dirty worktree changes",
+          "Meet desktop and required phone viewport behavior"
+        ],
+        "non_goals": [
+          "Changing tab persistence or caching",
+          "Redesigning sidebar or top-navigation mode",
+          "Removing multi-tab navigation"
+        ],
+        "selected_approach": {
+          "name": "Desktop inline header tabs with mobile independent tabs",
+          "reason": "Removes repetition and a full desktop shell row while preserving navigation and mobile ergonomics.",
+          "alternatives": [
+            {
+              "name": "Keep two rows and weaken breadcrumb",
+              "rejected_because": "Retains unnecessary vertical space and partial duplication."
+            },
+            {
+              "name": "Remove tabs and keep breadcrumb",
+              "rejected_because": "Removes an established repeated-work navigation capability."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "desktop AppLayout header composition",
+              "responsive UiTabs placement",
+              "shell tab layout CSS"
+            ],
+            "outside": [
+              "tabsStore behavior",
+              "route metadata",
+              "business pages",
+              "backend APIs"
+            ]
+          },
+          "components": [
+            {
+              "name": "AppLayout",
+              "responsibility": "Mount UiTabs inline on desktop and below the header on mobile",
+              "depends_on": [
+                "route",
+                "theme",
+                "tabsStore"
+              ]
+            },
+            {
+              "name": "UiTabs",
+              "responsibility": "Render and operate the same route tabs in either placement",
+              "depends_on": [
+                "tabsStore",
+                "router"
+              ]
+            },
+            {
+              "name": "shell styles",
+              "responsibility": "Constrain inline width, height, overflow and mobile fallback",
+              "depends_on": [
+                "existing breakpoints",
+                "theme tokens"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "UiTabs props",
+              "producer": "AppLayout",
+              "consumers": [
+                "UiTabs"
+              ],
+              "contract": "currentPath remains route.fullPath regardless of placement"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "route.fullPath and tabsStore.tabs",
+              "transitions": [
+                "open current route tab",
+                "choose mutually exclusive desktop or mobile mount",
+                "render one UiTabs instance"
+              ],
+              "output": "one authoritative tab strip with unchanged commands"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Inline tabs exceed available desktop width",
+            "behavior": "Middle region shrinks and uses tab navigation without overlapping fixed controls",
+            "recovery": "Close tabs or use navigation controls"
+          },
+          {
+            "condition": "Viewport crosses mobile breakpoint",
+            "behavior": "Inline tabs are replaced by the independent sticky tab row",
+            "recovery": "Responsive layout updates automatically"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "No authorization or data-boundary changes"
+          ],
+          "performance": [
+            "No additional requests or duplicated state"
+          ],
+          "compatibility": [
+            "Preserve tab commands and required phone viewports"
+          ],
+          "operations": [
+            "Build, geometry and console checks provide evidence"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "Desktop title is not duplicated and fixed controls remain usable",
+            "method": "Desktop browser inspection with multiple tabs"
+          },
+          {
+            "requirement_ids": [
+              "R3"
+            ],
+            "signal": "All tab commands retain outcomes",
+            "method": "Switch, close, refresh and context-menu interactions"
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "Mobile retains separate tabs without page overflow",
+            "method": "375x812, 390x844 and 430x932 geometry checks"
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "signal": "No build or whitespace regression",
+            "method": "npm run build and git diff --check"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "Element Plus tab navigation works inside a flex child with min-width zero",
+            "basis": "Existing UiTabs uses Element Plus card tabs and flex sizing",
+            "falsifier": "Browser shows tabs expanding outside the middle region"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Merge tabs into desktop header and preserve an independent mobile tab row",
+            "reason": "Removes repetition without harming mobile ergonomics",
+            "source": "User confirmed option 1"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Three header regions compete for width",
+            "impact": "Overlap at medium desktop widths",
+            "mitigation": "Fix side controls, shrink middle tabs and verify overflow"
+          },
+          {
+            "risk": "Responsive rendering creates duplicate tab instances",
+            "impact": "Duplicate visible strips",
+            "mitigation": "Use mutually exclusive mobileView conditions"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User reviewed the landed design, confirmed it, and explicitly directed implementation.",
+          "confirmed_at": "2026-08-16T10:50:41+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-16-shell-tabs-header-consolidation-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Do not add dependencies or change backend, route contracts, tabsStore or business pages",
+          "Preserve unrelated worktree changes",
+          "Keep project selector and global actions usable",
+          "Keep mobile title and independent sticky tabs",
+          "Do not introduce page-level horizontal overflow"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/views/AppLayout.vue",
+            "status": "existing",
+            "responsibility": "Responsive shell composition and UiTabs mount location",
+            "evidence": "Current template owns header, breadcrumb and independent UiTabs"
+          },
+          {
+            "path": "web/src/styles.css",
+            "status": "existing",
+            "responsibility": "Header, tabs, breakpoint and overflow layout",
+            "evidence": "Current selectors define app-header, breadcrumb, ui-tabs-bar and mobile behavior"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Consolidate desktop route tabs into the application header while preserving mobile and tab behavior.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "AppLayout currently renders breadcrumb and UiTabs as separate desktop rows",
+              "UiTabs owns all route-tab commands and consumes only currentPath plus tabsStore",
+              "mobileView is the existing 760px breakpoint signal",
+              "AppLayout and styles.css contain unrelated user changes that must be preserved"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/views/AppLayout.vue",
+                "web/src/styles.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "UiTabs(currentPath)",
+                "tabsStore.tabs",
+                "mobileView",
+                "theme.tabsEnabled"
+              ],
+              "produces": [
+                "desktop .app-header__tabs mount",
+                "mobile .app-mobile-tabs mount"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Capture current desktop and mobile DOM and geometry baseline",
+                "command": null,
+                "expected": "Desktop contains breadcrumb plus independent tabs; mobile independent tabs remain functional",
+                "evidence": "DOM snapshot and element rectangles"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Modify AppLayout to mount UiTabs inline on desktop and independently only on mobile",
+                "command": null,
+                "expected": "Exactly one UiTabs is rendered at every viewport",
+                "evidence": "Template diff and DOM count"
+              },
+              {
+                "id": "T1-S3",
+                "action": "Add constrained desktop flex and mobile fallback styles",
+                "command": null,
+                "expected": "Header controls do not overlap and content moves upward",
+                "evidence": "Element rectangles and scrollWidth"
+              },
+              {
+                "id": "T1-S4",
+                "action": "Run frontend build and focused diff check",
+                "command": "npm --prefix web run build && git diff --check -- web/src/views/AppLayout.vue web/src/styles.css",
+                "expected": "Both commands exit 0",
+                "evidence": "Command outputs"
+              },
+              {
+                "id": "T1-S5",
+                "action": "Verify desktop tab commands and three phone viewports",
+                "command": null,
+                "expected": "No duplicate title, behavior regression, console error or page overflow",
+                "evidence": "Browser interactions, DOM, console and geometry"
+              }
+            ],
+            "acceptance_checks": [
+              "Desktop current title appears only in inline tabs and the separate tab row is absent",
+              "Project selector, sidebar toggle, tabs and global actions do not overlap",
+              "Switch, close, refresh, close others and close all retain current behavior",
+              "375x812, 390x844 and 430x932 keep independent tabs without page overflow",
+              "Frontend build and diff check pass"
+            ],
+            "risks": [
+              "Medium desktop widths may constrain the tab region",
+              "Incorrect conditions may render duplicate UiTabs"
+            ],
+            "rollback": "Restore independent UiTabs placement and prior desktop ui-tabs-bar styling without changing tabsStore or business state.",
+            "stop_conditions": [
+              "The change requires tabsStore or route-contract modification",
+              "Fixed header controls cannot coexist at supported desktop widths",
+              "Mobile page overflow cannot be corrected within the two approved files"
+            ],
+            "escalation_conditions": [
+              "The confirmed mobile-independent-tabs rule must change",
+              "The global navigation architecture requires redesign"
+            ]
+          }
+        ],
+        "dependency_edges": [],
+        "parallel_groups": [
+          [
+            "T1"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "npm --prefix web run build && git diff --check -- web/src/views/AppLayout.vue web/src/styles.css",
+            "expected": "TypeScript, Vite and diff checks pass before browser acceptance"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed the landed design and explicitly requested direct development.",
+          "confirmed_at": "2026-08-16T10:50:41+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "AppLayout shell composition",
+          "UiTabs responsive mount and CSS geometry"
+        ],
+        "state_variable_candidates": [
+          "mobileView",
+          "theme.tabsEnabled",
+          "route.fullPath",
+          "tabsStore.tabs",
+          "header element rectangles",
+          "document scrollWidth"
+        ],
+        "interface_candidates": [
+          "UiTabs currentPath prop",
+          "tabsStore operations",
+          "mobile breakpoint"
+        ],
+        "sensor_candidates": [
+          "Vue build",
+          "DOM count",
+          "element rectangles",
+          "tab interactions",
+          "console logs",
+          "scrollWidth"
+        ],
+        "actuator_candidates": [
+          "AppLayout conditional mount",
+          "header flex rules",
+          "mobile media rules"
+        ],
+        "disturbance_candidates": [
+          "dirty worktree",
+          "many open tabs",
+          "medium desktop width",
+          "viewport changes",
+          "layout modes"
+        ],
+        "delay_candidates": [
+          "Vue HMR",
+          "responsive media-query update",
+          "route and tabsStore watcher update"
+        ],
+        "assumptions": [
+          {
+            "text": "A single UiTabs can move between mutually exclusive responsive mount points without state loss",
+            "basis": "UiTabs state is stored in Pinia, not component-local state except the transient context menu",
+            "falsifier": "Viewport changes reset route tabs or produce duplicate listeners"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Vue Router current route\", \"Pinia tabsStore state\", \"Element Plus tab layout\", \"Browser viewport and media query\"], \"inside\": [\"AppLayout desktop and mobile shell composition\", \"UiTabs responsive mount location\", \"Header and tab flex/overflow styles\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"runtime geometry\", \"interactive context menu behavior\"], \"id\": \"S1\", \"independence\": \"Compiler and Git whitespace checks\", \"method\": \"Vite production build plus focused git diff check\", \"target\": \"Template/type correctness and authorized diff\"}",
+      "{\"blind_spots\": [\"phone-specific layout\"], \"id\": \"S2\", \"independence\": \"Direct runtime rendering observation\", \"method\": \"Browser DOM and geometry inspection with multiple tabs\", \"target\": \"Desktop DOM count, title duplication, rectangles and overflow\"}",
+      "{\"blind_spots\": [\"persistence after a full browser restart\"], \"id\": \"S3\", \"independence\": \"Direct user-path interaction\", \"method\": \"Browser switch, close, refresh and context-menu interactions\", \"target\": \"Tab command behavior\"}",
+      "{\"blind_spots\": [\"unlisted device browser chrome differences\"], \"id\": \"S4\", \"independence\": \"Runtime viewport measurements\", \"method\": \"Browser geometry checks at 375x812, 390x844 and 430x932\", \"target\": \"Mobile title, separate tab row and horizontal overflow\"}",
+      "{\"blind_spots\": [\"errors in routes not exercised\"], \"id\": \"S5\", \"independence\": \"Runtime console output\", \"method\": \"Browser console inspection after desktop and mobile interactions\", \"target\": \"Runtime JavaScript errors\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Change only the conditional mount positions and desktop/mobile title composition\", \"authority\": \"User-approved edit to AppLayout.vue\", \"id\": \"A1\", \"impact_radius\": \"Application shell markup\", \"rollback\": \"Restore the pre-task AppLayout mount structure\", \"target\": \"AppLayout responsive UiTabs composition\"}",
+      "{\"action\": \"Add constrained desktop flex rules and preserve mobile sticky-tab rules\", \"authority\": \"User-approved edit to styles.css\", \"id\": \"A2\", \"impact_radius\": \"Application shell header and tabs selectors\", \"rollback\": \"Restore the pre-task shell style rules\", \"target\": \"Header and tab geometry\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Target files contain unrelated approved changes\", \"source\": \"Existing dirty worktree\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Middle header region can exceed available width\", \"source\": \"Many open route tabs\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Header controls and mount point change at runtime\", \"source\": \"Layout mode and viewport changes\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"UiTabs already declares flex:1 and min-width:0\", \"falsifier\": \"Runtime rectangle exceeds its header region or displaces fixed controls\", \"text\": \"Element Plus tabs can shrink inside a flex child with min-width zero\"}",
+      "{\"evidence\": \"Persistent tab state and commands are owned by Pinia tabsStore\", \"falsifier\": \"Viewport transition resets open tabs or duplicates listeners\", \"text\": \"UiTabs state survives mutually exclusive remounting\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Render the existing route tabs inside the desktop header while preserving the mobile title, mobile sticky tabs and every existing tab command.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "AppLayout currently renders breadcrumb and UiTabs as separate desktop rows",
+        "UiTabs owns all route-tab commands and tabsStore owns persistent tab state",
+        "AppLayout and CSS share the same 760px mobile boundary",
+        "AppLayout.vue and styles.css contain unrelated changes that must be preserved"
+      ],
+      "write_scope": [
+        "web/src/views/AppLayout.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "tabsStore remains the sole route-tab state source",
+        "UiTabs currentPath and command behavior remain unchanged",
+        "Project selector, sidebar toggle and global actions remain usable",
+        "Exactly one UiTabs instance is rendered at every viewport",
+        "No page-level horizontal overflow is introduced"
+      ],
+      "interface_contracts": [
+        "AppLayout continues to pass route.fullPath to UiTabs",
+        "Desktop and mobile UiTabs mount conditions are mutually exclusive at the existing breakpoint"
+      ],
+      "non_goals": [
+        "Do not change tabsStore, UiTabs internals, route metadata or backend APIs",
+        "Do not redesign sidebar, top navigation or business pages",
+        "Do not alter unrelated existing worktree changes"
+      ],
+      "action_bounds": [
+        "Modify only AppLayout mount composition and shell header/tab CSS",
+        "Use existing components, tokens and 760px breakpoint",
+        "Keep the correction reversible within the two approved files"
+      ],
+      "acceptance": [
+        "Desktop current title appears once and the independent desktop tab row is absent",
+        "Desktop project selector, sidebar toggle, tabs and account actions do not overlap with several tabs open",
+        "Switch, close, refresh, close others and close all retain their existing outcomes",
+        "375x812, 390x844 and 430x932 retain the current title and separate sticky tabs without horizontal overflow",
+        "Frontend build and focused diff check exit successfully",
+        "Browser console contains no new errors"
+      ],
+      "evidence_required": [
+        "Focused source diff",
+        "Frontend build output and exit code",
+        "Focused git diff check output and exit code",
+        "Desktop DOM count and geometry",
+        "Tab interaction results",
+        "Three mobile viewport geometry checks",
+        "Browser console result"
+      ],
+      "rollback": "Restore the pre-task UiTabs mount location and shell header/tab style rules while preserving unrelated file changes.",
+      "stop_conditions": [
+        "The correction requires changes outside the two approved files",
+        "The existing UiTabs or tabsStore public behavior must change",
+        "Mobile overflow cannot be corrected within the approved shell selectors"
+      ],
+      "escalation_conditions": [
+        "The user-confirmed mobile independent tab behavior must change",
+        "Global navigation architecture needs redesign"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-16T02:57:57+00:00",
+          "text": "Execution started after preserving dirty-worktree baseline"
+        },
+        {
+          "recorded_at": "2026-08-16T03:09:23+00:00",
+          "text": "Implementation complete and independently measurable"
+        },
+        {
+          "recorded_at": "2026-08-16T03:10:06+00:00",
+          "text": "R1-R4 observed through compiler, diff, runtime geometry and interaction sensors"
+        }
+      ],
+      "updated_at": "2026-08-16T03:10:06+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "Pre-implementation shell baseline",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "AppLayout source and highlighted runtime showed desktop breadcrumb plus a separate UiTabs row, violating R1",
+      "recorded_at": "2026-08-16T03:09:23+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "Post-implementation final observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Build and diff checks passed; desktop and required mobile runtime checks passed; no fresh console errors",
+      "recorded_at": "2026-08-16T03:10:06+00:00"
+    }
+  ]
+}

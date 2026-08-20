@@ -1,0 +1,604 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Provide current-user single-task context and authorization regression",
+      "requirement_ids": [
+        "R5",
+        "R6",
+        "R9"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "WorkflowService already projects business context for inbox/done and owns the compatibility decision path",
+        "WorkflowSignatureService.required reads signature policy by task and tenant",
+        "FlowableWorkflowService already supports published decision actions but is read-only in this scope"
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTaskContextTest.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTaskProjectionTest.java",
+        "web/src/api/workflow.ts"
+      ],
+      "invariants": [
+        "Existing inbox, done, decision and monitor APIs remain compatible",
+        "Tenant and current user come only from AuthUser",
+        "Frontend visibility never replaces server authorization"
+      ],
+      "interface_contracts": [
+        "GET /api/workflows/tasks/{id}/context returns stable business, task, action, signature and actionable fields",
+        "POST /api/workflows/tasks/{id}/decision repeats assignee, state, action and signature checks"
+      ],
+      "non_goals": [
+        "No security-module change",
+        "No Flowable private-table access",
+        "No dependency addition"
+      ],
+      "action_bounds": [
+        "Modify only authorized WorkflowService/Controller/API/test surfaces",
+        "Reuse existing JdbcTemplate, node label resolver and signature service"
+      ],
+      "acceptance_checks": [
+        "Valid current assignee receives actionable context and server allowed actions",
+        "Completed own task returns read-only context",
+        "Wrong assignee is forbidden",
+        "Missing/stale/duplicate decisions fail safely",
+        "Java 17 workflow tests and frontend build pass"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "JUnit command and exit code",
+        "Frontend build exit code",
+        "SQL/auth invariant review"
+      ],
+      "rollback": "Remove the context endpoint/client/tests and restore modified WorkflowService/Controller code",
+      "stop_conditions": [
+        "Required change crosses into security or read-only FlowableWorkflowService",
+        "Allowed actions cannot be derived from model facts"
+      ],
+      "escalation_conditions": [
+        "Shared Java DTO or permission-code change becomes required"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "Deliver shared release business detail and embedded approval",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R5",
+        "R7",
+        "R10"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "ReleaseManagementPrototype and ReleaseWorkflowReviewPage currently create separate cloned states",
+        "ReleaseDetailDrawer already renders application, units, requirements, attachments, progress and logs",
+        "The confirmed route is /release/applications/:applicationCode"
+      ],
+      "write_scope": [
+        "web/src/modules/release/repository.ts",
+        "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+        "web/src/modules/release/components/ReleaseApprovalPanel.vue",
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "web/src/modules/release/components/ReleaseApplicationView.vue",
+        "web/src/modules/release/components/ReleaseDetailDrawer.vue",
+        "web/src/modules/release/types.ts",
+        "web/src/modules/release/mock.ts",
+        "web/src/modules/release/release-prototype.css"
+      ],
+      "invariants": [
+        "Release owns business facts and rendering",
+        "Workflow context owns task actionability and signature",
+        "No complete business detail means no approval controls",
+        "Current release data remains replaceable Mock"
+      ],
+      "interface_contracts": [
+        "Repository resolves applicationCode deterministically across routes",
+        "Approval panel consumes T1 context and existing decision API",
+        "Successful decision reloads context/progress and only then syncs Mock business projection"
+      ],
+      "non_goals": [
+        "No formal release backend",
+        "No shared UI modification",
+        "No external signature"
+      ],
+      "action_bounds": [
+        "Create a minimal module-level shared Repository",
+        "Reuse existing release details and semantic styles",
+        "Keep responsive styles inside release stylesheet"
+      ],
+      "acceptance_checks": [
+        "List and business route show the same application facts",
+        "Actionable task can sign and decide in full context",
+        "Denied/stale/error tasks are read-only or recoverable",
+        "Decision stays on current route and refreshes state",
+        "Frontend build passes"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "Build output",
+        "Route and state-reference source checks",
+        "Browser detail/action evidence"
+      ],
+      "rollback": "Delete new repository/detail/panel and restore local state plus drawer navigation",
+      "stop_conditions": [
+        "Frontend must infer server permissions",
+        "Workflow summary is the only source of business details"
+      ],
+      "escalation_conditions": [
+        "Shared UI, attachment, project or formal release backend changes are required"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "Converge task aggregation, workflow management and historical routes",
+      "requirement_ids": [
+        "R2",
+        "R3",
+        "R4",
+        "R8",
+        "R10"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "Dashboard already consumes action_path but falls back to /workflow/inbox",
+        "WorkflowView currently mixes definitions, monitor, inbox, done and decision controls",
+        "No TaskCenterView exists",
+        "Router has explicit /workflow/review before /workflow/:section"
+      ],
+      "write_scope": [
+        "web/src/views/TaskCenterView.vue",
+        "web/src/views/DashboardView.vue",
+        "web/src/views/WorkflowView.vue",
+        "web/src/router/index.ts",
+        "web/src/views/AppLayout.vue",
+        "web/src/styles.css",
+        "web/src/modules/release/ReleaseWorkflowReviewPage.vue"
+      ],
+      "invariants": [
+        "Dashboard and task center navigate only",
+        "Workflow management retains definitions/configuration/monitoring",
+        "Historical routes do not loop or render generic approval",
+        "Unsafe action_path never becomes navigation"
+      ],
+      "interface_contracts": [
+        "Pending navigation appends taskId; done navigation appends instanceId",
+        "/workflow/inbox and /workflow/done redirect to /workbench/tasks tabs",
+        "Old review resolves release business or returns dashboard"
+      ],
+      "non_goals": [
+        "No notification-center component change",
+        "No quick approval",
+        "No menu database change in this task"
+      ],
+      "action_bounds": [
+        "Use existing workflow APIs and project-context store",
+        "Add scoped task-center styles only",
+        "Remove approval branches from WorkflowView without redesigning definitions/monitor"
+      ],
+      "acceptance_checks": [
+        "Task center supports pending/done pagination and project filter",
+        "Dashboard View All and rows navigate correctly",
+        "WorkflowView contains no business decision calls",
+        "Old URLs refresh and back safely",
+        "Frontend build passes"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "Build output",
+        "Route-reference assertions",
+        "Desktop/mobile browser navigation"
+      ],
+      "rollback": "Delete task center and restore dashboard, WorkflowView, routes, titles and styles",
+      "stop_conditions": [
+        "Task center must duplicate business details or approval",
+        "Legacy resolution needs private cross-module data"
+      ],
+      "escalation_conditions": [
+        "Notification center, shared tabs or system route API must change"
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "Remove workflow approval menus by forward migration and publish the contract",
+      "requirement_ids": [
+        "R4",
+        "R8",
+        "R9"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "V7 created menu 202 and V29 created menu 204",
+        "Role links use sys_role_menu and must be deleted before menu rows",
+        "Historical Flyway files are immutable"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V37__business_owned_workflow_approval.sql",
+        "docs/integration/workflow-module-contract.md"
+      ],
+      "invariants": [
+        "Definitions and monitor menus remain",
+        "Workflow inbox/done/decision APIs remain",
+        "Rollback uses a later forward migration"
+      ],
+      "interface_contracts": [
+        "V37 deletes all role links and menu IDs 202/204",
+        "Workflow contract documents business-owned approval and task context"
+      ],
+      "non_goals": [
+        "No system service change",
+        "No historical migration edit",
+        "No API deletion"
+      ],
+      "action_bounds": [
+        "Append one idempotent-style delete migration",
+        "Update only workflow integration contract"
+      ],
+      "acceptance_checks": [
+        "Flyway checker passes",
+        "Governance and diff checks pass",
+        "Contract matches Java/TypeScript fields",
+        "Post-login menu omits 202/204"
+      ],
+      "evidence_required": [
+        "Migration diff",
+        "Flyway/governance command outputs",
+        "Runtime menu evidence"
+      ],
+      "rollback": "Restore menu rows only with a later forward migration; revert docs independently",
+      "stop_conditions": [
+        "V37 is occupied",
+        "Menu IDs represent different objects or unknown constraints block deletion"
+      ],
+      "escalation_conditions": [
+        "System service, role API or governance boundaries must change"
+      ]
+    },
+    {
+      "id": "T5",
+      "goal": "Run integrated authorization and responsive convergence acceptance",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10"
+      ],
+      "prerequisites": [
+        "T4"
+      ],
+      "input_facts": [
+        "T1-T4 produce all product and migration surfaces",
+        "High-assurance mode requires at least three samples and two independent sensor types",
+        "Required viewports are fixed by design-h5"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260815-027-business-owned-approval/*.json",
+        "docs/requirements/REQ-20260815-027-business-owned-approval/codex-task-scope.yaml"
+      ],
+      "invariants": [
+        "No production access or real data",
+        "No unapproved path change",
+        "No commit or push",
+        "Failures remain truthfully reported"
+      ],
+      "interface_contracts": [
+        "Final evidence covers every R1-R10 chain",
+        "Scope checker branch-regex deviation remains disclosed and is not hidden"
+      ],
+      "non_goals": [
+        "No new feature work beyond corrections for observed deviations",
+        "No governance checker modification"
+      ],
+      "action_bounds": [
+        "Run authorized local tests/build/runtime/browser checks",
+        "Write only current-prefix evidence and scope acceptance list"
+      ],
+      "acceptance_checks": [
+        "Java 17 focused and full Maven tests pass",
+        "Frontend build, governance, Flyway and diff checks pass",
+        "Desktop and three phone viewports pass interaction and overflow checks",
+        "All tasks are independently observed and no P0/P1 remains"
+      ],
+      "evidence_required": [
+        "Command exit codes and summaries",
+        "Browser screenshots/network/console/DOM measurements",
+        "Task execution and observation reports",
+        "Final scope audit"
+      ],
+      "rollback": "Revert T1-T4 by task boundary, retain failure evidence, restore DB menus only by later migration",
+      "stop_conditions": [
+        "Any authorization, migration, scope, build or viewport invariant fails without bounded correction"
+      ],
+      "escalation_conditions": [
+        "Production access, restricted paths, governance changes or formal backend work become necessary"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "T2 consumes task context"
+    },
+    {
+      "from": "T2",
+      "to": "T3",
+      "reason": "T3 routes target T2 business detail"
+    },
+    {
+      "from": "T3",
+      "to": "T4",
+      "reason": "Replacement navigation precedes menu removal"
+    },
+    {
+      "from": "T4",
+      "to": "T5",
+      "reason": "Final acceptance needs migration and all code"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ],
+    [
+      "T3"
+    ],
+    [
+      "T4"
+    ],
+    [
+      "T5"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1"
+      ],
+      "checks": [
+        "Java 17 workflow module tests",
+        "Frontend type/build contract check"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T2",
+        "T3"
+      ],
+      "checks": [
+        "Frontend production build",
+        "Route-reference audit",
+        "Business navigation browser sample"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T4"
+      ],
+      "checks": [
+        "Flyway checker",
+        "Governance checker",
+        "Migrated menu observation"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T5"
+      ],
+      "checks": [
+        "Full Maven",
+        "Four-viewport browser acceptance",
+        "Scope and convergence gate"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1 platform contract sample",
+      "trigger": "T1 execution report",
+      "observer": "independent observation pass",
+      "sensors": [
+        "S1",
+        "S2"
+      ],
+      "requirement_ids": [
+        "R5",
+        "R6",
+        "R9"
+      ]
+    },
+    {
+      "label": "T2-T3 frontend integration sample",
+      "trigger": "T2 and T3 execution reports",
+      "observer": "independent observation pass",
+      "sensors": [
+        "S2",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R7",
+        "R8",
+        "R10"
+      ]
+    },
+    {
+      "label": "T4 migration sample",
+      "trigger": "T4 execution report",
+      "observer": "independent observation pass",
+      "sensors": [
+        "S4",
+        "S5"
+      ],
+      "requirement_ids": [
+        "R4",
+        "R9"
+      ]
+    },
+    {
+      "label": "Final convergence sample",
+      "trigger": "T5 complete runtime",
+      "observer": "independent final verifier",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T2",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T2",
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T3",
+        "T4",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S2",
+        "S3",
+        "S4"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "task_ids": [
+        "T1",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "task_ids": [
+        "T2",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "task_ids": [
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "task_ids": [
+        "T1",
+        "T4",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R10",
+      "task_ids": [
+        "T2",
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S2",
+        "S3"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

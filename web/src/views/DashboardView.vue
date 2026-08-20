@@ -1,59 +1,107 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { Calendar, Check, Clock, Connection, Lock, Refresh, UserFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
-import { Calendar, Connection, Lock, UserFilled } from '@element-plus/icons-vue'
+import { useProjectContextStore } from '../stores/project-context'
+import { listWorkflowDone, listWorkflowInbox, type WorkflowDoneItem, type WorkflowTask } from '../api/workflow'
+import { apiErrorMessage } from '../api/error'
+import UiEmptyState from '../components/ui/UiEmptyState.vue'
+import UiStatusTag from '../components/ui/UiStatusTag.vue'
 
+const router = useRouter()
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
+const inbox = ref<WorkflowTask[]>([])
+const done = ref<WorkflowDoneItem[]>([])
+const loading = ref(false)
+const forbidden = ref(false)
+const errorMessage = ref('')
 const currentHour = new Date().getHours()
 const greeting = computed(() => currentHour < 12 ? '早上好' : currentHour < 18 ? '下午好' : '晚上好')
+const projectInbox = computed(() => inbox.value.filter(item => !item.project_ref || item.project_ref === projectContext.currentRef))
+const projectDone = computed(() => done.value.filter(item => !item.project_ref || item.project_ref === projectContext.currentRef))
+
+async function loadTasks() {
+  loading.value = true
+  forbidden.value = false
+  errorMessage.value = ''
+  try {
+    const [inboxResponse, doneResponse] = await Promise.all([listWorkflowInbox({ page: 1, size: 5 }), listWorkflowDone({ page: 1, size: 5 })])
+    inbox.value = inboxResponse.data.data.records || []
+    done.value = doneResponse.data.data.records || []
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    forbidden.value = status === 403
+    errorMessage.value = apiErrorMessage(error, '工作流任务加载失败')
+  } finally { loading.value = false }
+}
+
+function openBusiness(item: WorkflowTask | WorkflowDoneItem) {
+  const doneItem = 'action_code' in item
+  const fallback = { path: '/workbench/tasks', query: { tab: doneItem ? 'done' : 'pending' } }
+  const path = item.action_path
+  if (!path || !path.startsWith('/') || path.startsWith('//') || /[\\\r\n]/.test(path)) {
+    void router.push(fallback)
+    return
+  }
+  try {
+    const decoded = decodeURIComponent(path)
+    if (!decoded.startsWith('/') || decoded.startsWith('//') || /[\\\r\n]/.test(decoded)) {
+      void router.push(fallback)
+      return
+    }
+    const resolved = router.resolve(path)
+    void router.push({ path: resolved.path, query: { ...resolved.query, ...(doneItem ? { instanceId: item.instance_id } : { taskId: item.id }) }, hash: resolved.hash })
+  } catch {
+    void router.push(fallback)
+  }
+}
+
+watch(() => projectContext.currentRef, () => { /* Project filtering is presentation-only. */ })
+onMounted(async () => { await projectContext.initialize(); await loadTasks() })
 </script>
 
 <template>
   <div class="dashboard-page">
     <section class="page-intro">
-      <div>
-        <span class="panel-kicker">工作台 / 01</span>
-        <h1>{{ greeting }}，{{ auth.user?.displayName || '管理员' }}</h1>
-        <p>这是你的平台工作台，当前系统运行在单租户基础模式。</p>
-      </div>
+      <div><span class="panel-kicker">工作台 / 01</span><h1>{{ greeting }}，{{ auth.user?.displayName || '管理员' }}</h1><p>{{ projectContext.current?.name || '当前项目' }}</p></div>
       <div class="status-pill"><span class="status-dot"></span>系统运行正常</div>
     </section>
 
     <section class="metric-grid">
-      <el-card shadow="never" class="metric-card accent-blue">
-        <div class="metric-top"><span>组织节点</span><el-icon><Connection /></el-icon></div>
-        <strong>01</strong><small>根组织已配置</small>
-      </el-card>
-      <el-card shadow="never" class="metric-card accent-green">
-        <div class="metric-top"><span>可用菜单</span><el-icon><Calendar /></el-icon></div>
-        <strong>{{ auth.routes[0]?.children?.length || 0 }}</strong><small>来自动态路由配置</small>
-      </el-card>
-      <el-card shadow="never" class="metric-card accent-orange">
-        <div class="metric-top"><span>角色权限</span><el-icon><Lock /></el-icon></div>
-        <strong>{{ auth.user?.permissions?.length || 0 }}</strong><small>后端授权生效</small>
-      </el-card>
-      <el-card shadow="never" class="metric-card accent-purple">
-        <div class="metric-top"><span>当前账号</span><el-icon><UserFilled /></el-icon></div>
-        <strong>管理员</strong><small>{{ auth.user?.username }}</small>
-      </el-card>
+      <el-card shadow="never" class="metric-card accent-blue"><div class="metric-top"><span>我的待办</span><el-icon><Clock /></el-icon></div><strong>{{ projectInbox.length }}</strong><small>当前项目工作流任务</small></el-card>
+      <el-card shadow="never" class="metric-card accent-green"><div class="metric-top"><span>最近已办</span><el-icon><Check /></el-icon></div><strong>{{ projectDone.length }}</strong><small>最近处理记录</small></el-card>
+      <el-card shadow="never" class="metric-card accent-orange"><div class="metric-top"><span>角色权限</span><el-icon><Lock /></el-icon></div><strong>{{ auth.user?.permissions?.length || 0 }}</strong><small>后端授权生效</small></el-card>
+      <el-card shadow="never" class="metric-card accent-purple"><div class="metric-top"><span>当前账号</span><el-icon><UserFilled /></el-icon></div><strong>{{ auth.user?.displayName || '管理员' }}</strong><small>{{ auth.user?.username }}</small></el-card>
+    </section>
+
+    <el-alert v-if="forbidden" type="warning" :closable="false" show-icon title="当前账号没有工作流任务访问权限" />
+    <el-alert v-else-if="errorMessage" type="error" :closable="false" show-icon :title="errorMessage"><el-button link type="primary" @click="loadTasks"><el-icon><Refresh /></el-icon>重试</el-button></el-alert>
+
+    <section v-else v-loading="loading" class="dashboard-task-grid">
+      <div class="dashboard-task-panel">
+        <header><div><span class="panel-kicker">MY TASKS</span><h3>我的待办</h3></div><router-link :to="{ path: '/workbench/tasks', query: { tab: 'pending' } }">查看全部</router-link></header>
+        <div v-if="projectInbox.length" class="dashboard-task-list">
+          <button v-for="item in projectInbox" :key="item.id" type="button" @click="openBusiness(item)">
+            <span class="dashboard-task-icon"><Clock /></span><span><strong>{{ item.business_title || item.business_key }}</strong><small>{{ item.project_name || '未关联项目' }} · {{ item.node_name || item.task_key }}</small></span><UiStatusTag :value="item.status" :labels="{ PENDING: '待处理', SENT: '已抄送' }" />
+          </button>
+        </div>
+        <UiEmptyState v-else title="暂无待办任务" />
+      </div>
+      <div class="dashboard-task-panel">
+        <header><div><span class="panel-kicker">RECENT DONE</span><h3>最近已办</h3></div><router-link :to="{ path: '/workbench/tasks', query: { tab: 'done' } }">查看全部</router-link></header>
+        <div v-if="projectDone.length" class="dashboard-task-list">
+          <button v-for="item in projectDone" :key="item.id" type="button" @click="openBusiness(item)">
+            <span class="dashboard-task-icon is-done"><Check /></span><span><strong>{{ item.business_title || item.business_key }}</strong><small>{{ item.project_name || '未关联项目' }} · {{ item.node_name || item.definition_name || '-' }}</small></span><UiStatusTag :value="item.action_code" :labels="{ APPROVE: '已同意', REJECT: '已拒绝', RETURN: '已退回' }" />
+          </button>
+        </div>
+        <UiEmptyState v-else title="暂无已办记录" />
+      </div>
     </section>
 
     <section class="dashboard-grid">
-      <el-card shadow="never" class="surface-card activity-card">
-        <template #header><div class="card-heading"><div><span class="panel-kicker">系统状态</span><h3>平台状态</h3></div><span class="muted">实时</span></div></template>
-        <div class="signal-row"><span class="signal-icon blue"><Connection /></span><div><strong>认证服务</strong><p>JWT access / refresh 正常工作</p></div><span class="signal-ok">在线</span></div>
-        <div class="signal-row"><span class="signal-icon green"><Calendar /></span><div><strong>动态菜单</strong><p>权限菜单已加载至当前工作台</p></div><span class="signal-ok">在线</span></div>
-        <div class="signal-row"><span class="signal-icon orange"><Lock /></span><div><strong>权限边界</strong><p>后端接口授权已启用</p></div><span class="signal-ok">在线</span></div>
-      </el-card>
-
-      <el-card shadow="never" class="surface-card quick-card">
-        <template #header><div class="card-heading"><div><span class="panel-kicker">快捷入口</span><h3>常用功能</h3></div></div></template>
-        <div class="quick-list">
-          <router-link to="/system/users"><span class="quick-index">01</span><span><strong>用户管理</strong><small>维护账号与状态</small></span><b>→</b></router-link>
-          <router-link to="/system/roles"><span class="quick-index">02</span><span><strong>角色权限</strong><small>配置角色与菜单授权</small></span><b>→</b></router-link>
-          <router-link to="/system/params"><span class="quick-index">03</span><span><strong>参数管理</strong><small>统一维护运行参数</small></span><b>→</b></router-link>
-        </div>
-      </el-card>
+      <el-card shadow="never" class="surface-card activity-card"><template #header><div class="card-heading"><div><span class="panel-kicker">系统状态</span><h3>平台状态</h3></div><span class="muted">实时</span></div></template><div class="signal-row"><span class="signal-icon blue"><Connection /></span><div><strong>认证服务</strong><p>当前登录会话有效</p></div><span class="signal-ok">在线</span></div><div class="signal-row"><span class="signal-icon green"><Calendar /></span><div><strong>项目上下文</strong><p>{{ projectContext.current?.shortName || '加载中' }}</p></div><span class="signal-ok">Mock</span></div></el-card>
     </section>
   </div>
 </template>

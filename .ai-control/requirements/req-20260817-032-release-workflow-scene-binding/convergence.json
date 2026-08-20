@@ -1,0 +1,118 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T2", "T4", "T5"],
+      "evidence": [
+        "Five fixed scenes are returned and rendered with published deployed workflow choices.",
+        "Authenticated project switching produced isolated 1/5 and 0/5 configuration states.",
+        "Release binding service, controller security, frontend build, DOM, and geometry checks passed."
+      ],
+      "limitations": ["Project context is intentionally mocked behind a stable project-ref interface."]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T2", "T3", "T5"],
+      "evidence": [
+        "Partial configuration is persisted and displayed without blocking configured scenes.",
+        "Unbound submission returned 409 before creating an approval round or changing application status.",
+        "A configured regular submission started its deployed workflow and entered IN_REVIEW."
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T3", "T5"],
+      "evidence": [
+        "SQ-202608-001 froze deployed Flow A and remained unchanged after rebinding.",
+        "SQ-202608-002 submitted later froze deployed Flow B.",
+        "Workflow candidate and start validation exclude unpublished and undeployed definitions, and the client payload cannot choose a workflow."
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R4",
+      "result": "pass-with-deferred-p2",
+      "task_ids": ["T2", "T4", "T5"],
+      "evidence": [
+        "Bind, rebind, and unbind require reasons and retain before/after values, operator, project, and operation time.",
+        "Stale row-version update returned 409 and cross-project state remained isolated.",
+        "History is queryable from the configuration page."
+      ],
+      "limitations": ["Displayed audit times are approximately eight hours behind Shanghai time because the platform database-session and LocalDateTime contract is not normalized; F-0001 is deferred as P2 for a central fix."]
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T5"],
+      "evidence": [
+        "An actively bound definition could not be archived and returned 409.",
+        "A formerly published draft could not be deleted and returned 409.",
+        "A never-published definition with no instance or binding could be deleted and returned 200."
+      ],
+      "limitations": []
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["38 workflow tests and real lifecycle probes passed."]},
+    {"id": "T2", "status": "verified", "evidence": ["V43, binding persistence, audit, optimistic locking, isolation, and reference checks passed."]},
+    {"id": "T3", "status": "verified", "evidence": ["Atomic unbound failure and immutable pre/post-rebind workflow identity were verified with real APIs and SQL state."]},
+    {"id": "T4", "status": "verified", "evidence": ["Frontend build, five-scene rendering, project switching, history, and zero-overflow browser checks passed."]},
+    {"id": "T5", "status": "verified", "evidence": ["86 backend tests, focused integration, backend package, frontend build, Flyway V43, HTTP health, browser, and diff checks passed."]}
+  ],
+  "feedback_summary": {
+    "total": 2,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 1, "P3": 0},
+    "rejected_duplicates": 1
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 1, "P3": 0, "score": 5},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 1, "P3": 0, "score": 5}
+  ],
+  "regression_checks": [
+    {"check": "Workflow module tests", "result": "pass", "evidence": "38 tests, 0 failures, 0 errors."},
+    {"check": "Release module tests", "result": "pass", "evidence": "48 tests, 0 failures, 0 errors."},
+    {"check": "Focused deployed-definition integration tests", "result": "pass", "evidence": "3 tests, 0 failures, 0 errors."},
+    {"check": "Frontend production build", "result": "pass", "evidence": "Vue TypeScript and Vite build completed."},
+    {"check": "Backend package, Flyway, and diff integrity", "result": "pass", "evidence": "Backend package passed; 41 migrations validated at V43; git diff --check passed."},
+    {"check": "Final local runtime", "result": "pass", "evidence": "Backend health UP, frontend HTTP 200, browser console errors 0, and binding table client/scroll widths both 857px."}
+  ],
+  "invariant_results": [
+    {"invariant": "Release scene selection remains server-authoritative.", "result": "pass", "evidence": "The submission service derives the scene and resolves the project binding; frontend submission contracts contain no workflow selector."},
+    {"invariant": "Running approval rounds retain original workflow identity.", "result": "pass", "evidence": "Applications A and B retained different frozen definition IDs across rebinding."},
+    {"invariant": "Tenant and project isolation is preserved.", "result": "pass", "evidence": "Backend predicates include tenant/project scope and browser switching returned isolated state."},
+    {"invariant": "Flyway is append-only and the original database is untouched.", "result": "pass", "evidence": "V43 was applied only to ccb_platform_rokey_20260817; no destructive database operation was run."},
+    {"invariant": "Unrelated rokey work is preserved and no Git integration occurs.", "result": "pass", "evidence": "The dirty worktree remains; no reset, commit, or push command was run."}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "Legacy PUBLISHED rows had no Flowable deployment.",
+      "result": "pass",
+      "evidence": "Published candidate and requirePublished queries now require deployment IDs; focused tests and real submissions passed afterward."
+    },
+    {
+      "disturbance": "The rokey worktree contains extensive unrelated user changes.",
+      "result": "pass",
+      "evidence": "Work remained scoped to the approved feature and its control artifacts; unrelated changes were neither reverted nor committed."
+    }
+  ],
+  "residual_risks": [
+    "F-0001: platform audit timestamps can display about eight hours behind Asia/Shanghai. Fix centrally by defining database session, storage, and JSON timestamp semantics; do not add release-only offsets.",
+    "F-0002 was rejected as an exact duplicate introduced only to satisfy correcting-stage provenance and does not represent another product defect.",
+    "Project context, physical subsystem, and delivery-unit catalogs remain mocked until their owning modules are available.",
+    "Verification used an isolated local database and Chromium in-app browser rather than production infrastructure and additional browser engines."
+  ],
+  "gate_result": "pass",
+  "route_reason": "All five must requirements have verified task and sensor coverage, all five tasks are verified, three standard-mode samples have zero P0/P1, automated and runtime evidence pass, and the only remaining deviation is one explicitly deferred platform-level P2."
+}

@@ -184,12 +184,12 @@ public class MockDataInitializer implements ApplicationRunner {
         result.put("sys_dict_type", set("id", "tenant_id", "dict_code", "dict_name", "status", "created_at", "updated_at", "deleted"));
         result.put("sys_dict_item", set("id", "tenant_id", "dict_type_id", "item_value", "item_label", "sort_no", "status", "created_at", "updated_at", "deleted"));
         result.put("sys_config", set("id", "tenant_id", "category_id", "config_key", "config_value", "config_type", "status", "remark", "created_at", "updated_at", "deleted"));
-        result.put("sys_notification", set("id", "tenant_id", "event_id", "business_type", "business_key", "title", "content", "notification_level", "source_name", "action_path", "created_by", "created_at"));
+        result.put("sys_notification", set("id", "tenant_id", "event_id", "module_code", "module_name", "business_type", "business_key", "title", "content", "notification_level", "source_name", "action_path", "created_by", "created_at"));
         result.put("sys_user_notification", set("notification_id", "tenant_id", "user_id", "is_read", "read_at", "created_at"));
         result.put("ai_provider", set("id", "tenant_id", "provider_code", "provider_name", "endpoint", "status", "deleted", "created_at"));
         result.put("ai_model", set("id", "tenant_id", "provider_id", "model_code", "model_name", "capabilities", "credential_secret", "status", "deleted", "created_at"));
         result.put("ai_route", set("id", "tenant_id", "capability", "model_id", "priority", "status", "deleted", "created_at"));
-        result.put("wf_definition", set("id", "tenant_id", "code", "name", "status", "current_version", "deleted", "created_at", "updated_at"));
+        result.put("wf_definition", set("id", "tenant_id", "code", "name", "status", "current_version", "model_schema_version", "deleted", "created_at", "updated_at"));
         result.put("wf_version", set("id", "tenant_id", "definition_id", "version_no", "definition_json", "model_schema_version", "status", "created_at"));
         result.put("wf_instance", set("id", "tenant_id", "definition_id", "version_no", "business_key", "status", "deleted", "starter_id", "variables_json", "created_at"));
         result.put("wf_task", set("id", "tenant_id", "instance_id", "task_key", "node_id", "task_type", "task_group_key", "parent_task_id", "assignee_type", "assignee_name", "assignee_id", "status", "comment", "completed_at", "created_at"));

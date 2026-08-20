@@ -15,12 +15,13 @@
 - 设计文档：docs/engineering-control/designs/2026-08-14-platform-business-integration-design.md
 - 需求文档：docs/requirements/REQ-20260814-022-platform-business-integration/requirement.md
 - 任务范围：docs/requirements/REQ-20260814-022-platform-business-integration/codex-task-scope.yaml
-- 状态：待确认
+- 状态：已批准
+- 批准依据：用户于 2026-08-14 明确要求开始编码，先从最新 main 完善平台能力，再开发配置管理模块，并指定直接在 rokey 分支实施。
 
 ## 全局约束
 
 - 平台能力先实施，REQ-20260814-021 版本发布业务代码不进入本计划。
-- 从最新 origin/main 创建独立分支 feat/REQ-20260814-022-platform-business-integration 和独立 worktree。
+- rokey 已于 2026-08-14 快进到最新 origin/main；按用户要求直接在 rokey 实施并保护现有未提交原型修改。
 - Java 固定使用 17，不使用系统 Java 26。
 - Flyway 只新增 V35 和 V36，不修改 V1 至 V34。
 - 保持现有按 definitionId 启动、流程设计、待办已办、通知和 file-preview 接口兼容。
@@ -28,7 +29,7 @@
 - 签署人只来自 AuthUser；客户端不提交 signerId、tenantId 或 dataDigest。
 - Mock 项目不参与服务端授权。
 - 所有写入限制在本需求 codex-task-scope.yaml。
-- 每个任务完成局部验证后建立独立提交检查点，不混入 REQ-20260814-021 文档。
+- 每个任务完成后建立差异与验证检查点；除非用户另行要求，不自动提交或推送。
 
 ---
 
@@ -592,4 +593,4 @@ git commit -m "docs: register platform business integration contracts"
 - 新增持久对象存储所有权与访问策略。
 - 修改首页和流程审批交互。
 
-进入开发前必须由用户批准当前计划修订。批准后将计划和 handoff 状态改为 approved/ready，导入 control-engineering，并在独立 worktree 中执行。
+当前计划已由用户批准。将 handoff 状态改为 approved/ready 并导入 control-engineering 后，直接在 rokey 分支执行。

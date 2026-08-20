@@ -1,0 +1,39 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "defer",
+  "decision_reason": "The observed eight-hour display offset is real and non-critical, but its cause is the platform-wide database-session, storage, and timezone-less API contract. A release-only correction would create inconsistent timestamp semantics across modules.",
+  "dynamic_pattern": "systemic",
+  "causal_assessment": {
+    "hypothesis": "MySQL CURRENT_TIMESTAMP is evaluated in the UTC container session while JDBC and JSON expose timezone-less LocalDateTime values interpreted as Shanghai wall time.",
+    "supporting_evidence": [
+      "The binding operation performed around 16:50 displayed as 08:50:52.",
+      "application-local.yml declares serverTimezone=Asia/Shanghai, but there is no central forceConnectionTimeZoneToSession or offset-bearing API contract.",
+      "Multiple existing platform migrations and services use CURRENT_TIMESTAMP and LocalDateTime, so the causal surface is not release-specific."
+    ],
+    "falsifier": "A controlled connection showing MySQL session time_zone already set to Asia/Shanghai while the same stored instant and API serialization still reproduce the offset."
+  },
+  "control_action": {
+    "gain": "zero-in-current-module",
+    "target": "Platform timestamp contract",
+    "write_scope": [],
+    "invariants": [
+      "Do not add release-only +8-hour transformations.",
+      "Do not reinterpret existing persisted DATETIME values without a migration policy.",
+      "Preserve workflow binding and audit data already verified."
+    ],
+    "impact_limit": "No product-code action in REQ-032; future correction must cover representative platform modules and existing data semantics.",
+    "rollback": "No current-module action was applied.",
+    "correction_check": [
+      "Define whether stored timestamps are UTC instants or Asia/Shanghai wall time.",
+      "Configure the database session and JSON contract consistently.",
+      "Verify binding history plus representative workflow, system, and form-metadata timestamps around a known instant.",
+      "Document compatibility treatment for existing DATETIME values."
+    ],
+    "route": "verifying"
+  },
+  "resolution": "deferred",
+  "residual_risk": [
+    "Audit times can display approximately eight hours behind local business time until the platform contract is normalized.",
+    "A future central fix must account for existing rows to avoid double-shifting historical data."
+  ]
+}

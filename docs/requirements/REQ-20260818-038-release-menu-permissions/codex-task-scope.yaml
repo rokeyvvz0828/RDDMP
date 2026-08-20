@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260818-038",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260818-038-release-menu-permissions/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/release",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V45__release_menu_level_permissions.sql",
+      "server/src/modules/release/src/main/java/com/ccb/release/production/web/ReleaseProductionController.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/window/web/ReleaseWindowController.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/ReleaseSchemaContractTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/production/web/ReleaseProductionControllerSecurityTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/window/web/ReleaseWindowControllerSecurityTest.java",
+      "web/src/stores/auth.ts",
+      "web/src/router/index.ts",
+      "web/src/modules/release/ReleaseManagementPrototype.vue",
+      "web/src/modules/release/components/ReleaseWindowView.vue",
+      "web/src/modules/release/components/ReleaseApplicationView.vue",
+      "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+      "web/src/modules/release/components/ReleaseBaselineView.vue",
+      "web/src/modules/release/components/ReleaseWorkflowBindingView.vue",
+      "web/src/modules/release/prototype-route.ts",
+      "docs/requirements/REQ-20260818-038-release-menu-permissions/**",
+      "docs/engineering-control/designs/2026-08-18-release-menu-permissions-design.md",
+      "docs/engineering-control/plans/2026-08-18-release-menu-permissions-implementation-plan.md",
+      ".ai-control/requirements/req-20260818-038-release-menu-permissions/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "web/src/api/release.ts",
+      "web/src/views/RolePermissionView.vue",
+      "web/src/views/AppLayout.vue",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/ai/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260818-038",
+    "owner_approved": true,
+    "old_behavior_preserved": false,
+    "regression_tests": ["release-security-tests", "release-schema-contract", "frontend-build", "role-menu-browser-flow"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V45__release_menu_level_permissions.sql"],
+    "compatibility_and_rollback": "Append-only migration preserves permission IDs and grants; rollback uses a later compensating migration rather than editing V45."
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-role-and-release-menu-metadata"},
+  "required_tests": [
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "release-security-tests", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseProductionControllerSecurityTest,ReleaseWindowControllerSecurityTest,ReleaseSchemaContractTest -Dsurefire.failIfNoSpecifiedTests=false test"},
+    {"name": "release-module-test", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "role-menu-browser-flow", "command": "browser verifies all-access, one-menu, read-only and no-release-menu roles"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-038-release-menu-permissions/codex-task-scope.yaml --working-tree"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["Incorrect permission migration could hide menus from existing roles.", "Static frontend routes must not bypass dynamic menu authorization.", "Cross-menu window option dependencies must remain usable without granting write access."]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260818-038-release-menu-permissions",
+    "control_justification": "The change alters RBAC, menu routing, API authorization and an append-only database migration.",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260818-038-release-menu-permissions/execution-T1.json",
+      ".ai-control/requirements/req-20260818-038-release-menu-permissions/execution-T2.json",
+      ".ai-control/requirements/req-20260818-038-release-menu-permissions/observation-T1.json",
+      ".ai-control/requirements/req-20260818-038-release-menu-permissions/observation-T2.json",
+      ".ai-control/requirements/req-20260818-038-release-menu-permissions/convergence.json"
+    ],
+    "release_verification": ["release-security-tests", "release-module-test", "frontend-build", "role-menu-browser-flow", "governance", "scope"],
+    "rollback": "Revert scoped source changes; recover database mapping only through a new compensating Flyway migration."
+  }
+}

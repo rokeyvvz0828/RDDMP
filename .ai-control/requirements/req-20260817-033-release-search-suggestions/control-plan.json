@@ -1,0 +1,211 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-2",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Provide one release-local selection-only fuzzy suggestion component and option contract.",
+      "requirement_ids": ["R1", "R2", "R3", "R5"],
+      "prerequisites": [],
+      "input_facts": [
+        "The four list views currently use plain el-input keyword controls.",
+        "Element Plus el-select is already installed and used throughout the release module.",
+        "No existing shared component separates temporary filter text from a stable selected option."
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseSearchSelect.vue",
+        "web/src/modules/release/types.ts",
+        "web/src/modules/release/release-prototype.css"
+      ],
+      "invariants": [
+        "No allow-create or arbitrary free-text model value is introduced.",
+        "At most 20 options render.",
+        "Temporary text does not emit update:modelValue.",
+        "Styles remain scoped to the release module and semantic theme variables."
+      ],
+      "interface_contracts": [
+        "ReleaseSearchOption has value, label, description and keywords.",
+        "ReleaseSearchSelect emits update:modelValue only for real selection or clear and emits search for temporary queries."
+      ],
+      "non_goals": [
+        "No platform-wide shared component.",
+        "No backend API or dependency change.",
+        "No mobile redesign."
+      ],
+      "action_bounds": [
+        "Add only the release-local component, option type and related CSS.",
+        "Use existing Vue 3 and Element Plus capabilities."
+      ],
+      "acceptance_checks": [
+        "vue-tsc accepts the component contract.",
+        "Static inspection confirms no allow-create and a 20-option limit.",
+        "Temporary query and stable model state are separate."
+      ],
+      "evidence_required": [
+        "actual diff for the three scoped files",
+        "vue-tsc command and exit code",
+        "static contract inspection"
+      ],
+      "rollback": "Delete ReleaseSearchSelect.vue and restore the task-added type and CSS block.",
+      "stop_conditions": [
+        "The installed Element Plus version cannot separate filter text from selected values.",
+        "Implementation requires modifying public components outside the release module."
+      ],
+      "escalation_conditions": [
+        "A dependency upgrade or platform-wide component contract becomes necessary."
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "Integrate real-record fuzzy selection into release windows, production baseline and current production lists.",
+      "requirement_ids": ["R1", "R2", "R3", "R4"],
+      "prerequisites": ["T1"],
+      "input_facts": [
+        "ReleaseWindowView receives a complete current-project windows array and can select by window id.",
+        "ReleaseBaselineView receives a complete selected-window entry array and can select by entry id.",
+        "ReleaseCurrentProductionView receives a complete current-project production entry array and can select by entry id."
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseWindowView.vue",
+        "web/src/modules/release/components/ReleaseBaselineView.vue",
+        "web/src/modules/release/components/ReleaseCurrentProductionView.vue"
+      ],
+      "invariants": [
+        "Existing status, production-result and artifact-type filters remain composable.",
+        "Selection uses exact record ids after fuzzy candidate filtering.",
+        "Scope refresh clears a selected id that no longer exists.",
+        "No extra backend candidate request is added."
+      ],
+      "interface_contracts": [
+        "Each view maps its real loaded records to ReleaseSearchOption.",
+        "Each rows computation filters by stable selected id and existing independent filters."
+      ],
+      "non_goals": [
+        "No change to window CRUD or baseline maintenance.",
+        "No change to project-context mocking.",
+        "No server-side pagination redesign."
+      ],
+      "action_bounds": [
+        "Replace only the three list keyword states/templates/filters.",
+        "Add watchers only to invalidate stale selections after scope changes."
+      ],
+      "acceptance_checks": [
+        "vue-tsc passes after all three integrations.",
+        "Typing without selection leaves rows unchanged.",
+        "Selecting an option filters to its exact record and clearing restores rows under other filters.",
+        "Only the application legacy search input remains after T2."
+      ],
+      "evidence_required": [
+        "actual diff for the three scoped views",
+        "vue-tsc command and exit code",
+        "targeted rg result for remaining legacy input"
+      ],
+      "rollback": "Restore each view's previous keyword ref, includes-based rows filter, Search icon import and el-input template.",
+      "stop_conditions": [
+        "A local data source is discovered to be truncated for its current scope.",
+        "A selected value cannot be invalidated without changing business data flow."
+      ],
+      "escalation_conditions": [
+        "A new backend suggestion endpoint becomes necessary for any local view."
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "Provide debounced project-scoped application suggestions without mutating the main list until selection and complete cross-page verification.",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": ["T2"],
+      "input_facts": [
+        "ReleaseApplicationView currently debounces keyword changes directly into the main-list query.",
+        "ReleaseManagementPrototype owns application pagination, status and list API loading.",
+        "listReleaseApplications already supports page, size, projectId and keyword.",
+        "Browser evidence proves the existing backend keyword predicate omits subsystem_code while exact application-code matching works."
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseApplicationView.vue",
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java"
+      ],
+      "invariants": [
+        "Candidate loading, error and records remain separate from main-list state.",
+        "Candidate query is page 1, size 20 and current-project scoped.",
+        "The existing parameterized keyword predicate covers application code, subsystem code and subsystem name.",
+        "Only selected applicationCode is sent to the main list keyword.",
+        "Status filtering and pagination keep existing behavior.",
+        "Older candidate responses cannot overwrite newer results."
+      ],
+      "interface_contracts": [
+        "ReleaseApplicationView consumes candidate options/loading/error and emits search-options for temporary text.",
+        "ReleaseManagementPrototype provides a 300ms debounced generation-guarded candidate query using listReleaseApplications."
+      ],
+      "non_goals": [
+        "No API endpoint or backend query semantics change.",
+        "No application CRUD, workflow or approval change.",
+        "No changes outside the release module."
+      ],
+      "action_bounds": [
+        "Replace the application keyword watcher with selected application-code handling.",
+        "Add isolated candidate request state, debounce cleanup and project-switch invalidation in the parent.",
+        "Correct only the missing subsystem_code OR predicate and add a focused contract assertion.",
+        "Run build, diff checks and authenticated browser verification."
+      ],
+      "acceptance_checks": [
+        "npm run build passes.",
+        "The focused release application persistence contract test passes.",
+        "No legacy release list search el-input remains.",
+        "git diff --check passes.",
+        "All four pages show first 20 on empty focus, fuzzy-filter candidates, ignore unselected text, apply selection and restore on clear.",
+        "Rapid application input does not mutate the main list or allow stale candidates to win."
+      ],
+      "evidence_required": [
+        "actual diff for application view and parent",
+        "production build output and exit code",
+        "static scope and whitespace checks",
+        "browser row, option, request and console observations"
+      ],
+      "rollback": "Restore ReleaseApplicationView's keyword watcher, remove parent candidate state/provider, and remove the subsystem_code predicate/test assertion; then reverse T2 and T1 in dependency order if full rollback is required.",
+      "stop_conditions": [
+        "The existing API cannot return project-scoped fuzzy candidates.",
+        "Runtime authentication or backend availability prevents browser observation after build succeeds.",
+        "Implementation requires changes outside the approved release frontend scope."
+      ],
+      "escalation_conditions": [
+        "A backend API contract or dependency change becomes necessary."
+      ]
+    }
+  ],
+  "dependency_edges": [
+    { "from": "T1", "to": "T2", "reason": "T2 consumes the shared selector and option contract created by T1." },
+    { "from": "T2", "to": "T3", "reason": "T3 completes the last integration and validates all four pages after local providers have exercised the component contract." }
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    { "after_tasks": ["T1"], "checks": ["Run vue-tsc and inspect component selection semantics."] },
+    { "after_tasks": ["T2"], "checks": ["Run vue-tsc and verify only the application legacy input remains."] },
+    { "after_tasks": ["T1", "T2", "T3"], "checks": ["Run production build, git diff --check and authenticated four-page browser matrix."] }
+  ],
+  "sampling_plan": [
+    {
+      "label": "shared-contract sample",
+      "trigger": "T1 execution report is recorded",
+      "observer": "main agent using compiler and static repository sensors",
+      "sensors": ["S1", "S2"],
+      "requirement_ids": ["R1", "R2", "R3", "R5"]
+    },
+    {
+      "label": "integrated-runtime sample",
+      "trigger": "T3 execution report and build complete",
+      "observer": "main agent using browser and request observations",
+      "sensors": ["S1", "S2", "S3", "S4"],
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"]
+    }
+  ],
+  "coverage": [
+    { "requirement_id": "R1", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S3"] },
+    { "requirement_id": "R2", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S3"] },
+    { "requirement_id": "R3", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S3", "S4"] },
+    { "requirement_id": "R4", "task_ids": ["T2", "T3"], "sensor_ids": ["S3", "S4"] },
+    { "requirement_id": "R5", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S2", "S3"] }
+  ],
+  "plan_status": "ready"
+}

@@ -1,0 +1,71 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": ["Workflow definition catalog and business gateway", "Workflow definition delete and archive lifecycle", "Release project-scene binding persistence and API", "Release submission transaction and approval rounds", "Release configuration navigation and binding view"],
+    "environment": ["Mocked project-context store", "MySQL and Flyway", "Flowable runtime", "Authenticated tenant and operator context", "Existing dirty rokey worktree"]
+  },
+  "state_variables": [
+    {"name": "definition_status", "owner": "wf_definition", "valid_values": ["DRAFT", "PUBLISHED", "ARCHIVED"]},
+    {"name": "published_history_count", "owner": "wf_version", "valid_values": ["0", ">0"]},
+    {"name": "instance_history_count", "owner": "wf_instance", "valid_values": ["0", ">0"]},
+    {"name": "scene_binding", "owner": "rel_workflow_binding", "valid_values": ["unbound", "bound-valid", "bound-invalid"]},
+    {"name": "binding_row_version", "owner": "rel_workflow_binding", "valid_values": ["non-negative integer"]},
+    {"name": "approval_round_workflow_identity", "owner": "rel_release_approval_round", "valid_values": ["definition-id/version/instance tuple"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Current tenant, project reference, and fixed scene", "transitions": ["Binding API scopes by tenant and project", "Workflow catalog returns tenant-published definitions", "UI renders five fixed rows"], "outputs": ["Project-specific binding configuration"]},
+    {"requirement_id": "R2", "input": "Release submission for a server-derived scene", "transitions": ["Resolve project-scene binding", "Validate bound definition is published", "Start workflow and persist round within the submission transaction"], "outputs": ["Successful IN_REVIEW submission or atomic conflict without partial state"]},
+    {"requirement_id": "R3", "input": "Submission followed by a later binding change", "transitions": ["Start by stable definition ID", "Workflow selects current published version", "Round stores actual definition ID, version, and instance", "Later update changes only binding row"], "outputs": ["Existing round identity remains unchanged; later submission uses new binding"]},
+    {"requirement_id": "R4", "input": "Create, update, unbind, or stale binding write", "transitions": ["Authorize endpoint", "Check row version", "Persist current row", "Append before/after history with operator, reason, and time"], "outputs": ["Queryable audit history or conflict on stale write"]},
+    {"requirement_id": "R5", "input": "Delete or archive workflow definition", "transitions": ["Inspect definition status", "Count all published versions and all instances", "Ask registered business reference providers", "Apply lifecycle transition only when guards pass"], "outputs": ["Protected history and active bindings, or allowed pure-draft deletion"]}
+  ],
+  "interfaces": [
+    {"name": "WorkflowDefinitionCatalog", "producers": ["workflow module"], "consumers": ["release binding service"], "invariant": "Only tenant-scoped published definitions are candidates and ID validation is server-side"},
+    {"name": "WorkflowBusinessGateway.startByDefinitionId", "producers": ["workflow module"], "consumers": ["release submission service"], "invariant": "Validated business context is persisted and the actual definition version is returned"},
+    {"name": "WorkflowDefinitionReferenceProvider", "producers": ["release module and future business modules"], "consumers": ["workflow lifecycle service"], "invariant": "Workflow module has no dependency on business tables"},
+    {"name": "Release workflow binding HTTP API", "producers": ["release module"], "consumers": ["release Vue view"], "invariant": "Tenant comes from authentication and project is explicit in the request"},
+    {"name": "Release workflow lifecycle callback", "producers": ["workflow lifecycle dispatcher"], "consumers": ["ReleaseWorkflowLifecycleConsumer"], "invariant": "business_type remains release_application"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Workflow catalog, start-by-ID, and lifecycle guards", "method": "Focused JUnit tests with JDBC stubs", "blind_spots": ["Real MySQL dialect and Spring provider aggregation"], "independence": "Direct service behavior without browser state"},
+    {"id": "S2", "target": "Binding persistence, audit, optimistic locking, and submission atomicity", "method": "Release module service tests plus real-DB API and SQL probes", "blind_spots": ["Concurrent load beyond explicit stale-version cases"], "independence": "Combines isolated service assertions with persisted database state"},
+    {"id": "S3", "target": "Migration compatibility", "method": "Strict Flyway migration against isolated MySQL schema", "blind_spots": ["Unknown future migration number collisions"], "independence": "Database engine executes DDL directly"},
+    {"id": "S4", "target": "Frontend contracts and rendering", "method": "TypeScript production build and browser DOM interaction", "blind_spots": ["Mobile layout is outside scope"], "independence": "Compiler and browser observe separate failure modes"},
+    {"id": "S5", "target": "End-to-end future-only rebinding semantics", "method": "HTTP workflow create/publish/bind/submit/rebind sequence with database verification", "blind_spots": ["External project-management integration remains mocked"], "independence": "Observes running application behavior and stored state"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Workflow public integration API and lifecycle guards", "action": "Add public records/interfaces and bounded service checks", "authority": "Local rokey source write access", "impact_radius": "ccb-workflow and direct tests", "rollback": "Remove only files and hunks introduced by T1"},
+    {"id": "A2", "target": "Release scene binding state", "action": "Append V43 and implement release-owned store/service/controller/provider", "authority": "Local rokey source write access", "impact_radius": "ccb-release and infrastructure migration", "rollback": "Remove V43 before external application and revert T2-only files"},
+    {"id": "A3", "target": "Release submission selection", "action": "Replace workflow-code scenario output with binding resolution and start by definition ID", "authority": "Local rokey source write access", "impact_radius": "Release application submission path", "rollback": "Restore T3 hunks while preserving unrelated release work"},
+    {"id": "A4", "target": "Configuration management UI", "action": "Add project-aware binding view and API types", "authority": "Local rokey source write access", "impact_radius": "Release frontend module", "rollback": "Remove T4 component and navigation/API additions"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S2", "S4", "S5"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S5"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Dirty rokey worktree", "effect": "Overlapping workflow and release files may include user changes", "detectable": true, "controllable": true},
+    {"source": "Existing database migration inconsistency", "effect": "Old default schema cannot prove V43 correctness", "detectable": true, "controllable": true},
+    {"source": "Mocked project context", "effect": "Project identity source may later change", "detectable": true, "controllable": false},
+    {"source": "Concurrent Flyway additions", "effect": "V43 may collide before integration", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "Workflow lifecycle callback dispatch", "consequence": "Business status updates occur after workflow action emission", "sampling_rule": "Assert callback completion before reading release status"},
+    {"source": "Project switch API refresh", "consequence": "UI can briefly show previous project bindings", "sampling_rule": "Await the project-scoped request and discard stale responses"}
+  ],
+  "assumptions": [
+    {"text": "ccb-release can consume ccb-workflow integration contracts without a dependency cycle", "evidence": "release pom already depends on workflow while workflow does not depend on release", "falsifier": "A required workflow implementation imports a release type"},
+    {"text": "WorkflowService.start returns the actual definition version", "evidence": "Current start result query includes version_no", "falsifier": "Enterprise workflow path omits version_no"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Implement A1, A2, and A4"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Implement A2 and A3 transaction checks"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Implement A1 and A3"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Implement A2 audit and optimistic locking"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "Implement A1 provider guards"}
+  ],
+  "model_status": "ready"
+}

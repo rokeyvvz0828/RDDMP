@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-037-production-baseline-maintenance-window",
+  "handoff_status": "approved",
+  "created_at": "2026-08-18T15:02:10+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260818-037-production-baseline-maintenance-window",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-18-production-baseline-maintenance-window-design.md",
+    "objective": "Keep production baselines viewable while preventing any result maintenance before the owning window reaches productionEnd.",
+    "users": ["Production managers reviewing and maintaining production-baseline results"],
+    "requirements": [
+      {"id": "R1", "statement": "Window options show status, production end time and an unavailable reason while remaining selectable.", "acceptance": ["Unfinished options show a reason and load their baseline"], "priority": "must", "source": "User confirmation", "counterexample": ["No reason is shown", "The window cannot be viewed"]},
+      {"id": "R2", "statement": "All frontend maintenance controls are unavailable before the selected window ends while data stays visible.", "acceptance": ["Selection, single and batch maintenance are disabled", "A page reason shows the opening time"], "priority": "must", "source": "User confirmation", "counterexample": ["Maintenance dialog opens early", "Baseline is hidden"]},
+      {"id": "R3", "statement": "The boundary is now greater than or equal to productionEnd in Asia/Shanghai.", "acceptance": ["Before is denied", "Exact boundary is allowed", "Frontend recomputes without login"], "priority": "must", "source": "Approved design", "counterexample": ["CLOSED status is required", "One-minute-early maintenance is allowed"]},
+      {"id": "R4", "statement": "Single and batch APIs enforce the owning window end time without client eligibility claims.", "acceptance": ["Early calls conflict", "No writes or audit occur", "Batch remains atomic"], "priority": "must", "source": "Data-integrity invariant", "counterexample": ["Direct API bypass", "Partial batch persistence"]},
+      {"id": "R5", "statement": "The rule covers all version types without changing result semantics, locking or audit.", "acceptance": ["No versionType branch", "Existing result tests remain green"], "priority": "must", "source": "Approved design", "counterexample": ["Emergency bypass", "Existing validation regresses"]}
+    ],
+    "invariants": ["productionEnd is tenant-scoped window data", "Backend validation is authoritative", "Batch remains transactional", "Unrelated changes are untouched"],
+    "constraints": ["Reuse ReleaseWindowDto and ReleaseWindowStore", "No API or database change", "Remain on rokey", "Use Vue 3, Element Plus and Clock patterns"],
+    "non_goals": ["Hide unfinished baselines", "Add bypass", "Change window status", "Change emergency assignment", "Mobile redesign"],
+    "selected_approach": {"name": "Frontend guidance plus server-enforced window gate", "reason": "Immediate feedback plus non-bypassable integrity without contract expansion.", "alternatives": [{"name": "Frontend only", "rejected_because": "Direct API bypass."}, {"name": "New eligibility DTO", "rejected_because": "Existing window data is sufficient."}]},
+    "architecture": {
+      "boundary": {"inside": ["Baseline option presentation", "Frontend eligibility", "Production service gate", "Focused tests"], "outside": ["Window status", "API DTO", "Database", "Assignment", "Mobile"]},
+      "components": [
+        {"name": "ReleaseBaselineView", "responsibility": "Show reasons and disable all maintenance before productionEnd.", "depends_on": ["ReleaseWindowDto", "minute timer"]},
+        {"name": "ReleaseProductionService", "responsibility": "Enforce tenant window productionEnd before writes.", "depends_on": ["Production store", "Window store", "Clock"]},
+        {"name": "ReleaseProductionServiceTest", "responsibility": "Verify boundaries, no-write rejection and regressions.", "depends_on": ["Mockito", "JUnit"]}
+      ],
+      "interfaces": [
+        {"name": "Window eligibility", "producer": "Window API", "consumers": ["ReleaseBaselineView"], "contract": "productionEnd controls maintenance while viewing remains allowed."},
+        {"name": "Result gate", "producer": "ReleaseProductionService", "consumers": ["Single and batch controllers"], "contract": "Tenant window exists and now is not before productionEnd."}
+      ],
+      "data_flows": [
+        {"input": "Window plus frontend time", "transitions": ["Compare", "Show reason", "Disable or enable"], "output": "View-only or maintainable UI"},
+        {"input": "Result command", "transitions": ["Lock entry", "Load window", "Check clock", "Existing update"], "output": "Conflict without writes or maintained result"}
+      ]
+    },
+    "error_handling": [
+      {"condition": "Before productionEnd", "behavior": "CONFLICT with end time and no writes.", "recovery": "Wait or correct schedule."},
+      {"condition": "Window missing", "behavior": "Business error and stop.", "recovery": "Refresh and investigate."},
+      {"condition": "Clock disagreement", "behavior": "Server rejection wins.", "recovery": "Refresh and retry after server boundary."}
+    ],
+    "quality_attributes": {"security": ["Tenant-scoped non-bypassable gate"], "performance": ["One indexed lookup per entry under 200 limit"], "compatibility": ["No contract changes"], "operations": ["Error includes opening time", "No migration"]},
+    "verification_strategy": [
+      {"requirement_ids": ["R3", "R4", "R5"], "signal": "Fixed-clock tests cover denial, boundary and regression.", "method": "Focused and full Maven tests."},
+      {"requirement_ids": ["R1", "R2", "R3"], "signal": "Dropdown and controls match window time while data stays visible.", "method": "Build and desktop browser."}
+    ],
+    "assumptions": [{"text": "Client and server clocks are normally close.", "basis": "Minute precision timestamps.", "falsifier": "Skew enables UI before server."}],
+    "unknowns": [],
+    "decisions": [
+      {"id": "D1", "decision": "Unfinished windows remain selectable.", "reason": "Process visibility.", "source": "User confirmation."},
+      {"id": "D2", "decision": "All versions share the gate.", "reason": "No approved exception.", "source": "User approval."},
+      {"id": "D3", "decision": "Exact productionEnd is maintainable.", "reason": "Only pre-end is forbidden.", "source": "Approved design."}
+    ],
+    "risks": [
+      {"risk": "Clock skew", "impact": "UI and server temporarily differ.", "mitigation": "Server authority and minute refresh."},
+      {"risk": "Cross-window batch", "impact": "Mixed eligibility.", "mitigation": "Per-entry validation in one transaction."}
+    ],
+    "approval": {"status": "approved", "evidence": "The user reviewed the landed design and explicitly requested development.", "confirmed_at": "2026-08-18T15:02:10+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-18-production-baseline-maintenance-window-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["All versions share the gate", "Unfinished windows remain viewable", "Boundary is now >= productionEnd", "No API or database changes", "Protect dirty worktree"],
+    "file_map": [
+      {"path": "web/src/modules/release/components/ReleaseBaselineView.vue", "status": "existing", "responsibility": "Baseline window and maintenance UI", "evidence": "Repository inspection"},
+      {"path": "server/src/modules/release/src/main/java/com/ccb/release/production/service/ReleaseProductionService.java", "status": "existing", "responsibility": "Production result service", "evidence": "Repository inspection"},
+      {"path": "server/src/modules/release/src/test/java/com/ccb/release/production/service/ReleaseProductionServiceTest.java", "status": "existing", "responsibility": "Service regression tests", "evidence": "Repository inspection"}
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "Enforce the owning window productionEnd in single and batch result updates.",
+        "requirement_ids": ["R3", "R4", "R5"],
+        "prerequisites": [],
+        "input_facts": ["Entry has windowId", "ReleaseWindowStore has tenant-scoped findById", "Service update methods are transactional", "Clock injection exists in neighboring release services"],
+        "files": {"create": [], "modify": ["server/src/modules/release/src/main/java/com/ccb/release/production/service/ReleaseProductionService.java"], "test": ["server/src/modules/release/src/test/java/com/ccb/release/production/service/ReleaseProductionServiceTest.java"]},
+        "interfaces": {"consumes": ["ReleaseWindowStore.findById", "ReleaseWindow.productionEnd", "Clock"], "produces": ["Server-authoritative maintenance gate shared by single and batch updates"]},
+        "steps": [
+          {"id": "T1-S1", "action": "Add fixed-clock denial, exact-boundary and no-write tests.", "command": null, "expected": "Tests encode R3-R5 before implementation.", "evidence": "Test diff"},
+          {"id": "T1-S2", "action": "Run focused test baseline.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseProductionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "New tests fail before the service gate exists.", "evidence": "Exit code and failing assertions"},
+          {"id": "T1-S3", "action": "Inject ReleaseWindowStore and Clock and validate before existing result writes.", "command": null, "expected": "Before-end requests conflict without writes; exact boundary continues.", "evidence": "Service diff"},
+          {"id": "T1-S4", "action": "Run focused and full module tests.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test", "expected": "All reactor tests pass.", "evidence": "Surefire summary"}
+        ],
+        "acceptance_checks": ["Before-end single call rejects without write", "Exact boundary allows", "Batch remains atomic", "Existing validation tests pass"],
+        "risks": ["Constructor change affects tests", "Per-entry lookup in batch"],
+        "rollback": "Restore service constructor/internal validation and remove only new tests.",
+        "stop_conditions": ["Entry cannot resolve a tenant window", "A schema or public API change is required"],
+        "escalation_conditions": ["An emergency or administrator bypass is requested", "Boundary changes to status-based"]
+      },
+      {
+        "id": "T2",
+        "goal": "Make unfinished windows viewable but clearly non-maintainable in every frontend control.",
+        "requirement_ids": ["R1", "R2", "R3", "R5"],
+        "prerequisites": [],
+        "input_facts": ["ReleaseWindowDto contains productionEnd and statusLabel", "Baseline view owns all result maintenance actuators"],
+        "files": {"create": [], "modify": ["web/src/modules/release/components/ReleaseBaselineView.vue"], "test": []},
+        "interfaces": {"consumes": ["ReleaseWindowDto.productionEnd", "statusLabel"], "produces": ["Window availability reason", "Unified frontend maintainability predicate"]},
+        "steps": [
+          {"id": "T2-S1", "action": "Record current option and maintainability behavior.", "command": null, "expected": "Single-line option and result-only predicate confirmed.", "evidence": "Source references"},
+          {"id": "T2-S2", "action": "Add minute time state and eligibility derivation.", "command": null, "expected": "Exact productionEnd enables; parse failure disables safely.", "evidence": "Component diff"},
+          {"id": "T2-S3", "action": "Render two-line options and page reason.", "command": null, "expected": "Unfinished window remains selectable with explicit reason.", "evidence": "DOM snapshot"},
+          {"id": "T2-S4", "action": "Gate selection, single, batch and submit handlers.", "command": null, "expected": "No frontend actuator opens before the boundary.", "evidence": "Browser interaction"},
+          {"id": "T2-S5", "action": "Run frontend production build.", "command": "npm --prefix web run build", "expected": "vue-tsc and Vite exit 0.", "evidence": "Build summary"}
+        ],
+        "acceptance_checks": ["Reason visible in option and page", "Data remains visible", "All maintenance controls disabled", "Minute refresh recalculates"],
+        "risks": ["Client clock skew", "Date parsing"],
+        "rollback": "Restore original option template and maintainability predicate; remove timer.",
+        "stop_conditions": ["productionEnd cannot be parsed", "Shared/global UI changes become necessary"],
+        "escalation_conditions": ["Second-level countdown or mobile redesign is requested"]
+      },
+      {
+        "id": "T3",
+        "goal": "Verify the integrated rule and record control evidence.",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+        "prerequisites": ["T1", "T2"],
+        "input_facts": ["Local Vite and backend service are available", "A current unfinished window exists"],
+        "files": {"create": [".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/execution-T1.json", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/observation-T1.json", ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/convergence.json"], "modify": [], "test": []},
+        "interfaces": {"consumes": ["T1 backend gate", "T2 frontend eligibility"], "produces": ["Build, test, browser and governance evidence"]},
+        "steps": [
+          {"id": "T3-S1", "action": "Ensure local frontend and backend use the new code.", "command": null, "expected": "Authenticated release page and result APIs are reachable.", "evidence": "Process and HTTP state"},
+          {"id": "T3-S2", "action": "Run desktop browser flow on an unfinished window.", "command": null, "expected": "Reason visible, data visible, every maintenance actuator unavailable, no console errors.", "evidence": "DOM, screenshot and console"},
+          {"id": "T3-S3", "action": "Run final automated checks.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test && npm --prefix web run build && git diff --check", "expected": "Product tests/build/diff pass; unrelated governance baselines are disclosed.", "evidence": "Exit codes and summaries"},
+          {"id": "T3-S4", "action": "Record execution, observation, samples and convergence gate.", "command": null, "expected": "T1-T3 verified, no open P0/P1, ledger converged.", "evidence": "Control artifacts and status"}
+        ],
+        "acceptance_checks": ["R1-R5 have runtime or automated evidence", "Two standard-mode samples", "No open P0/P1"],
+        "risks": ["Backend restart delay", "Shared test data changes"],
+        "rollback": "Remove only this task's evidence and revert T1/T2 if verification fails.",
+        "stop_conditions": ["Backend cannot load new code", "No unfinished window exists", "P0/P1 deviation appears"],
+        "escalation_conditions": ["Verification requires unauthorized data or shared-module changes"]
+      }
+    ],
+    "dependency_edges": [
+      {"from": "T1", "to": "T3", "reason": "Integrated API and browser verification requires the server-enforced window gate."},
+      {"from": "T2", "to": "T3", "reason": "Integrated browser verification requires the window reason and disabled maintenance controls."}
+    ],
+    "parallel_groups": [["T1", "T2"], ["T3"]],
+    "integration_checks": [
+      {"after_tasks": ["T1"], "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test", "expected": "Release reactor passes."},
+      {"after_tasks": ["T2"], "command": "npm --prefix web run build", "expected": "Vue TypeScript and Vite pass."},
+      {"after_tasks": ["T1", "T2", "T3"], "command": "git diff --check", "expected": "No whitespace errors."}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T2", "T3"]},
+      {"requirement_id": "R2", "task_ids": ["T2", "T3"]},
+      {"requirement_id": "R3", "task_ids": ["T1", "T2", "T3"]},
+      {"requirement_id": "R4", "task_ids": ["T1", "T3"]},
+      {"requirement_id": "R5", "task_ids": ["T1", "T2", "T3"]}
+    ],
+    "approval": {"status": "approved", "evidence": "The user reviewed plan revision 1 and explicitly replied 确认编码.", "confirmed_at": "2026-08-18T15:06:28+08:00"}
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["Baseline maintenance UI", "Production result service", "Focused service tests"],
+    "state_variable_candidates": ["Current time", "Selected window", "productionEnd", "Maintenance eligibility", "Entry result", "Selection", "Dialog state"],
+    "interface_candidates": ["Window DTO", "Single result command", "Batch result command", "Business error"],
+    "sensor_candidates": ["Fixed-clock unit tests", "Release regression", "Frontend build", "Browser DOM and console", "Diff check"],
+    "actuator_candidates": ["Frontend maintenance enablement", "Server window gate", "Result persistence"],
+    "disturbance_candidates": ["Clock skew", "Window schedule edit", "Cross-window batch", "Stale backend process", "Dirty worktree"],
+    "delay_candidates": ["Minute timer", "Backend restart", "Window refresh", "Dialog transition"],
+    "assumptions": [
+      {"text": "productionEnd parses consistently in the browser.", "basis": "Existing ISO LocalDateTime responses are already displayed.", "falsifier": "A valid response yields Invalid Date."},
+      {"text": "Entry.windowId references a valid same-tenant window.", "basis": "Entries are generated from assigned release applications.", "falsifier": "A persisted entry has no matching tenant window."},
+      {"text": "Batch transaction rolls back earlier per-entry writes when a later validation fails.", "basis": "The public batch method is @Transactional.", "falsifier": "Integration evidence shows partial persistence."}
+    ]
+  }
+}

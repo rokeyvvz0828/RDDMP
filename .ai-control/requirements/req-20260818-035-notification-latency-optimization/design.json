@@ -1,0 +1,372 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-035-notification-latency-optimization",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-notification-latency-optimization-design.md",
+  "objective": "Reduce normal-path latency from committed workflow lifecycle event to foreground notification-bell update to P95 at or below 2 seconds for approximately 200 concurrent foreground users.",
+  "users": [
+    "Approvers waiting for newly assigned release-management approvals",
+    "Applicants waiting for workflow outcome notifications",
+    "Platform operators recovering durable notification deliveries without rolling back business workflow results"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "A committed workflow lifecycle event must be dispatched immediately by eventId and reflected by a one-second foreground unread-count poll so normal-path end-to-end notification latency is P95 <= 2 seconds.",
+      "acceptance": [
+        "At least 20 real event runs measure P95 <= 2 seconds from event transaction commit to browser bell-count update",
+        "The immediate path does not wait for the five-second scheduled scan",
+        "The foreground unread-count polling base interval is one second"
+      ],
+      "priority": "must",
+      "source": "User confirmed the two-second P95 target and selected immediate after-commit dispatch plus frontend polling on 2026-08-18.",
+      "counterexample": [
+        "Lifecycle notifications remain dependent on the five-second scheduler",
+        "The foreground notification center continues polling every fifteen seconds"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Immediate dispatch must occur only after a successful transaction commit and its failure must never roll back or change the committed workflow action.",
+      "acceptance": [
+        "A rolled-back event transaction produces no notification dispatch",
+        "A failing notification consumer leaves the workflow approval result successful and durable",
+        "The failed delivery remains available for scheduled compensation"
+      ],
+      "priority": "must",
+      "source": "User-confirmed reliability design on 2026-08-18.",
+      "counterexample": [
+        "Notification failure causes approval rollback",
+        "An event from a rolled-back transaction is delivered"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Immediate and scheduled delivery paths must atomically claim each delivery row before invoking a consumer, preserving one consumer call during normal races and idempotent effects during crash recovery.",
+      "acceptance": [
+        "Concurrent immediate and scheduled attempts on one delivery result in exactly one successful claim and one consumer call",
+        "A process crash after consumer success but before status persistence may retry, but existing consumer idempotency produces one business effect and one notification"
+      ],
+      "priority": "must",
+      "source": "User-confirmed architecture and reliability design on 2026-08-18.",
+      "counterexample": [
+        "Both paths select PENDING and invoke the consumer before either updates status",
+        "Crash recovery creates duplicate user notifications"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Immediate failures and stale claimed deliveries must automatically return to the durable scheduled path while retaining the existing five-attempt and DEAD semantics.",
+      "acceptance": [
+        "An immediate failure returns the delivery to schedulable PENDING and a later scheduled pass can deliver it",
+        "A DISPATCHING row older than the recovery threshold is reclaimed without manual database editing",
+        "Repeated scheduled failure reaches DEAD on the fifth attempt and manual retry remains compatible"
+      ],
+      "priority": "must",
+      "source": "User-confirmed failure and recovery design on 2026-08-18.",
+      "counterexample": [
+        "A delivery remains permanently DISPATCHING after interruption",
+        "Immediate dispatch failure discards the durable event"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Unread polling must run only while the document is visible, refresh immediately on visibility restoration, focus, and drawer open, and prevent overlapping count requests.",
+      "acceptance": [
+        "Hidden documents issue no periodic unread-count requests",
+        "Visibility restoration, focus, and drawer open cause an immediate refresh",
+        "A slow unread-count request never overlaps another count request",
+        "A changed count refreshes list and module summaries only when the drawer is open"
+      ],
+      "priority": "must",
+      "source": "User-confirmed frontend polling design on 2026-08-18.",
+      "counterexample": [
+        "Background tabs continue polling once per second",
+        "Slow responses accumulate concurrent polling requests",
+        "The full notification list reloads every second while the drawer is closed"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "Consecutive silent unread-count failures must back off to 2, 5, and 15 seconds without repeated user-facing errors, and reset to one second after success or foreground restoration.",
+      "acceptance": [
+        "Observed retry intervals follow 2s, 5s, and 15s on consecutive failures",
+        "Background failures do not repeatedly display error messages",
+        "A successful refresh, focus, or visibility restoration resets the base interval to one second"
+      ],
+      "priority": "must",
+      "source": "User-confirmed degradation design on 2026-08-18.",
+      "counterexample": [
+        "A failed endpoint is retried every second indefinitely",
+        "Every silent polling failure displays a toast"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "The existing authenticated unread-count endpoint must sustain approximately 200 requests per second from 200 foreground users.",
+      "acceptance": [
+        "Two hundred concurrent clients poll for 60 seconds with zero request errors",
+        "Unread-count API response-time P95 is <= 200ms under that load",
+        "Database connection-pool exhaustion and application error logs are absent during the run"
+      ],
+      "priority": "must",
+      "source": "User confirmed approximately 200 foreground users and the performance acceptance on 2026-08-18.",
+      "counterexample": [
+        "The implementation meets latency only by exceeding database or connection-pool capacity",
+        "The load run contains request errors or API P95 above 200ms"
+      ]
+    }
+  ],
+  "invariants": [
+    "Workflow lifecycle events and delivery rows remain durable in the same business transaction",
+    "Rolled-back business transactions do not emit notifications",
+    "Notification failure never changes a committed workflow result",
+    "The five-second scheduler remains as a compensation path",
+    "Existing notification and release-consumer idempotency semantics remain in force",
+    "Tenant and user scoping continue to come from the authenticated server principal",
+    "Unrelated dirty-worktree changes are preserved"
+  ],
+  "constraints": [
+    "Reuse GET /api/notifications/unread-count without adding an API",
+    "Reuse wf_lifecycle_delivery.status and updated_at without a new table or index",
+    "Use the existing Java 17, Spring Boot, MySQL 8.4, Vue 3 and TypeScript stack",
+    "Implementation will occur on the local rokey branch after a separately approved plan",
+    "Do not introduce SSE, WebSocket, browser Push, a message queue or cache for this requirement"
+  ],
+  "non_goals": [
+    "Changing notification content, module filtering, visual design, read semantics or business routes",
+    "Changing workflow approval rules or task-assignment notification behavior",
+    "Strict exactly-once consumer invocation across process crashes",
+    "Adding notification tables, indexes, APIs, queues, caches or external delivery channels"
+  ],
+  "selected_approach": {
+    "name": "After-commit event dispatch plus visibility-aware one-second polling",
+    "reason": "It removes both known timer delays while preserving the durable scheduler and existing API, idempotency, schema and operating model at the confirmed 200-user scale.",
+    "alternatives": [
+      {
+        "name": "Only shorten existing backend and frontend timers",
+        "rejected_because": "It retains periodic backend scanning as the normal path, leaves race handling weak and still allows timer delays to stack."
+      },
+      {
+        "name": "SSE or WebSocket push",
+        "rejected_because": "It adds connection lifecycle, authentication renewal, proxy and reconnect compensation complexity that is unnecessary for the confirmed target and scale."
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "Workflow lifecycle event after-commit trigger",
+        "Atomic delivery claiming, completion, failure and stale-claim recovery",
+        "Foreground notification unread-count polling lifecycle and backoff",
+        "Focused, end-to-end and capacity verification"
+      ],
+      "outside": [
+        "Notification business-module filtering behavior",
+        "Workflow task-assignment event publishing",
+        "Push transports and external notification channels",
+        "New persistence structures or APIs"
+      ]
+    },
+    "components": [
+      {
+        "name": "WorkflowLifecycleEventService",
+        "responsibility": "Persist lifecycle events and delivery rows in the business transaction and trigger event-specific dispatch only after commit.",
+        "depends_on": ["JdbcTemplate", "Spring transaction synchronization", "WorkflowLifecycleDispatcher"]
+      },
+      {
+        "name": "WorkflowLifecycleDispatcher",
+        "responsibility": "Share atomic claim, consume, complete, fail and stale-claim recovery behavior between event-specific and scheduled entry points.",
+        "depends_on": ["wf_lifecycle_delivery", "wf_lifecycle_event", "WorkflowLifecycleConsumer"]
+      },
+      {
+        "name": "SystemNotificationService",
+        "responsibility": "Return the authenticated user's unread total through the existing indexed query.",
+        "depends_on": ["sys_user_notification", "authenticated AuthUser"]
+      },
+      {
+        "name": "UiNotificationCenter",
+        "responsibility": "Run one non-overlapping visibility-aware count poll, update the bell, and refresh drawer data only when required.",
+        "depends_on": ["getNotificationUnreadCount", "document visibility", "window focus", "existing list and module APIs"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "event-specific lifecycle dispatch",
+        "producer": "WorkflowLifecycleEventService after successful transaction commit",
+        "consumers": ["WorkflowLifecycleDispatcher"],
+        "contract": "Dispatch only delivery rows belonging to eventId; each row must be atomically claimed before consumer invocation; exceptions are contained from the business result."
+      },
+      {
+        "name": "scheduled lifecycle compensation",
+        "producer": "WorkflowLifecycleDispatcher five-second scheduler",
+        "consumers": ["WorkflowLifecycleConsumer implementations"],
+        "contract": "Claim due PENDING/RETRY rows and stale DISPATCHING rows using the same state machine as the immediate path."
+      },
+      {
+        "name": "GET /api/notifications/unread-count",
+        "producer": "platform/system",
+        "consumers": ["UiNotificationCenter"],
+        "contract": "Return the authenticated tenant/user's global unread count; request and response schema remain unchanged."
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "Committed workflow lifecycle event and PENDING delivery rows",
+        "transitions": ["after-commit trigger", "atomic PENDING/RETRY to DISPATCHING claim", "consumer invocation", "DISPATCHING to DELIVERED or recoverable failure"],
+        "output": "Durable system notification or schedulable compensation record"
+      },
+      {
+        "input": "Visible foreground notification center",
+        "transitions": ["immediate unread query", "one-second self-scheduled polling", "count comparison", "conditional drawer refresh", "failure backoff or hidden-page pause"],
+        "output": "Updated bell count and, only when open and changed, refreshed notification content"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "The lifecycle-event transaction rolls back",
+      "behavior": "No immediate dispatch is invoked and no notification is visible.",
+      "recovery": "The business caller handles the original transaction failure; there is no notification delivery to recover."
+    },
+    {
+      "condition": "Immediate consumer invocation fails",
+      "behavior": "The committed workflow result remains successful; an error summary is recorded and the delivery returns to schedulable PENDING.",
+      "recovery": "The existing five-second scheduler retries through the durable delivery record."
+    },
+    {
+      "condition": "The process stops after claiming a delivery",
+      "behavior": "The row remains DISPATCHING until its updated_at exceeds the configured threshold.",
+      "recovery": "Scheduled recovery returns it to retryable processing; consumer idempotency suppresses duplicate effects."
+    },
+    {
+      "condition": "Unread-count polling fails consecutively",
+      "behavior": "The last successful badge remains and silent polling backs off to 2, 5 and 15 seconds without repeated toasts.",
+      "recovery": "Success, focus or visibility restoration resets polling to one second."
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "Unread-count queries remain authenticated and tenant/user scoped",
+      "Logs omit notification content, credentials and sensitive business data",
+      "No client-supplied user identity or new externally exposed interface is introduced"
+    ],
+    "performance": [
+      "Normal-path end-to-end notification latency P95 <= 2 seconds",
+      "Unread-count endpoint P95 <= 200ms with 200 concurrent one-second pollers for 60 seconds",
+      "Only count polling occurs every second; list and module summaries refresh conditionally",
+      "Hidden pages do not poll and requests never overlap"
+    ],
+    "compatibility": [
+      "Existing notification API and DTO contracts remain unchanged",
+      "The five-second scheduler, five retries, DEAD state and manual retry remain compatible",
+      "Task-assignment notifications and business workflow rules remain unchanged",
+      "No database migration is required"
+    ],
+    "operations": [
+      "Immediate failures remain visible through delivery status and safe error logs",
+      "Stale DISPATCHING rows are automatically recovered using updated_at",
+      "Operational checks cover immediate success/failure, compensation, DEAD rows, count QPS and latency"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": ["R1", "R2"],
+      "signal": "Dispatch starts only after commit, business results survive notification failure, and browser latency meets target.",
+      "method": "Transaction-focused backend tests plus at least 20 authenticated end-to-end browser event runs."
+    },
+    {
+      "requirement_ids": ["R3", "R4"],
+      "signal": "Only one normal-race claim succeeds and failed or stale deliveries recover without duplicate effects.",
+      "method": "Concurrent dispatcher tests, consumer idempotency regression, interruption recovery and five-attempt DEAD tests."
+    },
+    {
+      "requirement_ids": ["R5", "R6"],
+      "signal": "Polling follows visibility, request de-duplication, conditional refresh and backoff rules.",
+      "method": "Frontend timer and request tests plus browser network inspection across visible, hidden, focus and drawer states."
+    },
+    {
+      "requirement_ids": ["R7"],
+      "signal": "The current unread endpoint handles the confirmed foreground load without errors or excessive latency.",
+      "method": "A 200-client, 60-second authenticated load run with API latency, errors, connection-pool state and application logs recorded."
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "Approximately 200 users means 200 simultaneously visible foreground pages and therefore approximately 200 unread-count requests per second.",
+      "basis": "User supplied the concurrency scale and selected one-second polling.",
+      "falsifier": "Measured foreground concurrency materially exceeds 200 users."
+    },
+    {
+      "text": "Lifecycle consumers are local, short-running and idempotent.",
+      "basis": "Current consumers run in-process; notification publication has an event idempotency key and release lifecycle consumption tracks receipts.",
+      "falsifier": "A consumer performs long external I/O or cannot tolerate replay after a crash."
+    },
+    {
+      "text": "A default 60-second stale-claim threshold is safely above normal lifecycle-consumer duration.",
+      "basis": "Current consumers perform local database work expected to complete well below one minute.",
+      "falsifier": "Focused timing tests show legitimate consumer execution approaching or exceeding 60 seconds."
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "Use normal-path P95 <= 2 seconds as the user-visible latency objective.",
+      "reason": "It is measurable and allows exceptional failure/recovery paths to remain durable rather than falsely promising a hard deadline.",
+      "source": "User confirmed 2 seconds on 2026-08-18."
+    },
+    {
+      "id": "D2",
+      "decision": "Trigger specific lifecycle deliveries immediately after commit and retain the scheduler as compensation.",
+      "reason": "This removes the known five-second wait without weakening transaction durability or recovery.",
+      "source": "User selected option 1 and confirmed the architecture on 2026-08-18."
+    },
+    {
+      "id": "D3",
+      "decision": "Poll the existing unread-count endpoint every second only while foreground-visible.",
+      "reason": "At the confirmed 200-user scale it meets the latency target with less infrastructure than push connections.",
+      "source": "User selected option 1 and confirmed approximately 200 users on 2026-08-18."
+    },
+    {
+      "id": "D4",
+      "decision": "Use atomic delivery-row claiming and updated_at-based stale recovery without a schema migration.",
+      "reason": "The current VARCHAR status and timestamp fields already support the required state machine and recovery signal.",
+      "source": "User confirmed the reliability design on 2026-08-18."
+    },
+    {
+      "id": "D5",
+      "decision": "Back off silent frontend failures to 2, 5 and 15 seconds and reset on success or foreground restoration.",
+      "reason": "This protects the server during faults while preserving immediate recovery for active users.",
+      "source": "User confirmed the frontend degradation design on 2026-08-18."
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Actual foreground concurrency or polling fan-out exceeds the confirmed 200-user baseline.",
+      "impact": "Unread-count database and connection-pool load may exceed the measured capacity.",
+      "mitigation": "Run the required load test, observe pool and query latency, and separately review caching or push only if measured demand exceeds the baseline."
+    },
+    {
+      "risk": "The stale-claim threshold is shorter than a legitimate consumer execution.",
+      "impact": "A second worker may replay a still-running consumer.",
+      "mitigation": "Default to 60 seconds, make the threshold configurable, measure consumer duration and retain consumer idempotency."
+    },
+    {
+      "risk": "Synchronous after-commit dispatch extends request-thread occupancy.",
+      "impact": "Business API latency or throughput may degrade even though the transaction is already committed.",
+      "mitigation": "Dispatch only the specific event through local consumers, measure business response latency, and introduce a bounded existing-stack executor only if measurements require it."
+    },
+    {
+      "risk": "Parallel dirty-worktree changes overlap the same dispatcher or notification-center files.",
+      "impact": "A broad edit could overwrite unrelated work or create hard-to-review conflicts.",
+      "mitigation": "Re-read current files before implementation, apply minimal patches and never reset or clean the worktree."
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "The user reviewed the landed revision and explicitly requested direct development on 2026-08-18.",
+    "confirmed_at": "2026-08-18T10:58:01+08:00"
+  }
+}

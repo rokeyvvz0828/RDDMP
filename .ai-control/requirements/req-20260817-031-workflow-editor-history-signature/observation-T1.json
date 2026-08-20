@@ -1,0 +1,63 @@
+{
+  "sample_label": "REQ-031 integrated independent observation",
+  "task_ids": ["T1", "T2", "T3", "T4", "T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 focused lifecycle tests plus S2 real API/MySQL lifecycle flow",
+      "result": "pass",
+      "raw_evidence": "Four lifecycle tests passed; real publish/archive/start-block/existing-instance-approval/restore/delete paths returned expected statuses and preserved deployment/version.",
+      "limitation": ["Local authenticated environment only."]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 browser graph interaction plus S3 node/edge count probes",
+      "result": "pass",
+      "raw_evidence": "Single-edge insertion changed nodes/edges from 3/2 to 4/3 and preserved the successor; multiple outgoing paths did not mutate until a concrete edge was selected, then changed 5/5 to 6/6.",
+      "limitation": ["No automated visual graph-diff product feature is in scope."]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 Chromium screenshots and DOM overflow geometry",
+      "result": "pass",
+      "raw_evidence": "1280x720, 375x812, 390x844 and 430x932 each measured zero horizontal overflow with save/footer controls visible.",
+      "limitation": ["Other browser engines were not sampled."]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S1 history query tests plus S2 authenticated history UI",
+      "result": "pass",
+      "raw_evidence": "Current design, historical versions and update records rendered; selected historical graphs were read-only and events showed operation, version, operator, reason and time.",
+      "limitation": ["History pagination stress was not required by this change."]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S4 signature service tests plus S2 approval-node browser configuration",
+      "result": "pass",
+      "raw_evidence": "Four signature tests passed and approval nodes visibly presented required signature as Yes/No while preserving authenticated confirmation behavior.",
+      "limitation": ["External CA and certificate semantics are explicitly out of scope."]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S5 Flyway/mock tests and MySQL mismatch aggregates plus S6 migration check",
+      "result": "pass",
+      "raw_evidence": "Flyway check passed for 40 migrations; V42 left zero definition mismatches and zero version mismatches; mock initializer test verifies model_schema_version is allowed.",
+      "limitation": ["Production migration duration was not measured."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "Aggregate governance script encounters an unrelated pre-existing invalid REQ-20260816-029 ledger.",
+      "classification": "disturbance",
+      "evidence": "check-all-governance reports invalid ledger file requirements/req-20260816-029-shell-header-tab-row-revision/implementation-plan.json; independent relevant checks pass."
+    }
+  ],
+  "coverage_gaps": [
+    "Production authorization configuration and non-Chromium browsers were not sampled.",
+    "The unrelated aggregate governance ledger failure prevents a single all-in-one green command."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

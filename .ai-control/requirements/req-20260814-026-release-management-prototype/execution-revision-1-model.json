@@ -1,0 +1,83 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "web/src/modules/release frontend prototype",
+      "web/src/router/index.ts /release registration",
+      "web/src/stores/auth.ts prototype menu composition",
+      "session-owned release windows, applications and baselines"
+    ],
+    "environment": [
+      "backend-provided authenticated RouteNode list",
+      "existing RDDMP shared UI components",
+      "Element Plus and ECharts runtime",
+      "Vite development and production build",
+      "desktop browser light and dark themes"
+    ]
+  },
+  "state_variables": [
+    {"name": "active_view", "owner": "ReleaseManagementPrototype", "valid_values": ["windows", "applications", "baselines", "analytics"]},
+    {"name": "demo_state", "owner": "ReleaseManagementPrototype", "valid_values": ["normal", "loading", "empty", "error", "forbidden"]},
+    {"name": "windows", "owner": "ReleaseManagementPrototype", "valid_values": ["deterministic fictional window collection"]},
+    {"name": "applications", "owner": "ReleaseManagementPrototype", "valid_values": ["deterministic fictional application collection", "session-updated collection"]},
+    {"name": "baselines", "owner": "ReleaseManagementPrototype", "valid_values": ["deterministic fictional batch collection", "session-updated collection"]},
+    {"name": "overlay_state", "owner": "ReleaseManagementPrototype and child components", "valid_values": ["closed", "form", "conflict", "detail", "lineage", "confirmation"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "authenticated routes and /release navigation", "transitions": ["filter offline backend routes", "append deduplicated prototype node", "resolve Vue route", "switch in-module view"], "outputs": ["one visible configuration-management entry", "four reachable views"]},
+    {"requirement_id": "R2", "input": "deterministic Mock factory or session action", "transitions": ["clone initial state", "update one state owner", "derive list, detail, baseline and metrics"], "outputs": ["cross-view consistent values", "deterministic reset"]},
+    {"requirement_id": "R3", "input": "application draft and historical session records", "transitions": ["validate fields", "derive scenario", "detect conflicts", "resolve or block", "apply lifecycle action"], "outputs": ["explicit scenario", "conflict dialog", "session-only list/detail update"]},
+    {"requirement_id": "R4", "input": "view state, theme and desktop viewport", "transitions": ["render shared UI patterns", "bound tables and overlays", "resize charts", "show async state"], "outputs": ["readable desktop UI", "explicit loading/empty/error/forbidden states", "no console error"]},
+    {"requirement_id": "R5", "input": "scoped product diff", "transitions": ["build", "governance scope check", "git path audit", "remove module route and menu injection for rollback"], "outputs": ["frontend-only change", "reversible prototype"]}
+  ],
+  "interfaces": [
+    {"name": "prototype_route_node", "producers": ["prototype-route.ts"], "consumers": ["auth.ts", "UiRouteMenuNode"], "invariant": "Append exactly once by routePath and preserve every server node"},
+    {"name": "release_prototype_state", "producers": ["mock.ts", "ReleaseManagementPrototype"], "consumers": ["four release views"], "invariant": "One session state is the sole data source and reset is deterministic"},
+    {"name": "application_decision", "producers": ["scenario and conflict pure functions"], "consumers": ["ReleaseApplicationDrawer", "ReleaseConflictDialog", "ReleaseManagementPrototype"], "invariant": "Scenario is derived and conflicts name unit, versions and application number"},
+    {"name": "release_metrics", "producers": ["buildReleaseMetrics"], "consumers": ["ReleaseAnalyticsView"], "invariant": "Cards, charts and drill-down derive from the same filtered records"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Type and bundle integrity", "method": "npm --prefix web run build", "blind_spots": ["Runtime interaction correctness", "visual overlap"], "independence": "Compiler and bundler output"},
+    {"id": "S2", "target": "Navigation and core user paths", "method": "Real browser role/text/DOM interaction at /release", "blind_spots": ["Unexercised combinations"], "independence": "Runtime UI observation"},
+    {"id": "S3", "target": "Cross-view data consistency", "method": "Compare visible list, detail, baseline and chart/drill-down counts before and after actions", "blind_spots": ["Formal backend persistence is outside scope"], "independence": "Observed derived values"},
+    {"id": "S4", "target": "Desktop visual and theme behavior", "method": "Screenshots, scrollWidth measurement and console inspection at 1280x800 and 1440x900 in both themes", "blind_spots": ["Mobile UI is an approved non-goal"], "independence": "Browser pixels, DOM geometry and console"},
+    {"id": "S5", "target": "Scope and rollback boundary", "method": "node scripts/check-all-governance.mjs plus git diff --name-only and git diff --check", "blind_spots": ["Manual future commits outside this task"], "independence": "Repository governance and Git metadata"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Mock domain and derivations", "action": "Create types.ts and mock.ts within release module", "authority": "REQ-20260814-026 writable paths", "impact_radius": "release prototype only", "rollback": "Delete new files"},
+    {"id": "A2", "target": "Navigation", "action": "Register /release and append one deduplicated prototype RouteNode", "authority": "REQ-20260814-026 writable paths", "impact_radius": "frontend router and auth menu composition", "rollback": "Remove route import/child and prototype append"},
+    {"id": "A3", "target": "Business interaction UI", "action": "Create scoped Vue components and CSS", "authority": "REQ-20260814-026 writable paths", "impact_radius": "release prototype route", "rollback": "Delete web/src/modules/release"},
+    {"id": "A4", "target": "Observed deviations", "action": "Apply limited fixes inside the current task write scope and rerun affected sensors", "authority": "REQ-20260814-026 writable paths", "impact_radius": "single release component or route composition", "rollback": "Restore pre-fix diff hunk"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S5"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "backend route ordering or duplicate /release data", "effect": "duplicate or misplaced menu entry", "detectable": true, "controllable": true},
+    {"source": "long Chinese names, versions and application numbers", "effect": "table or overlay overlap", "detectable": true, "controllable": true},
+    {"source": "rapid duplicate clicks", "effect": "duplicate session applications or actions", "detectable": true, "controllable": true},
+    {"source": "local backend authentication availability", "effect": "browser route cannot be reached after login", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "simulated submitting state", "consequence": "Immediate sampling can occur before state update", "sampling_rule": "Wait for loading indicator to disappear before comparing state"},
+    {"source": "ECharts resize", "consequence": "Initial screenshot can capture an unpainted canvas", "sampling_rule": "Wait for chart render and verify nonblank canvas pixels"},
+    {"source": "auth hydrate", "consequence": "Menu can be sampled before routes load", "sampling_rule": "Wait for authenticated layout and menu text before inspection"}
+  ],
+  "assumptions": [
+    {"text": "Appending a uniquely keyed RouteNode preserves server menus", "evidence": "auth.ts currently replaces routes with a newly filtered array", "falsifier": "Browser inspection shows duplicate or missing server routes"},
+    {"text": "Existing dependencies cover the prototype", "evidence": "Element Plus and ECharts are installed and used by delivery-showcase", "falsifier": "A required approved interaction cannot be built without another package"},
+    {"text": "The current authenticated local environment can reach /release", "evidence": "Existing app uses the same router and auth hydrate path", "falsifier": "Local backend or login remains unavailable during runtime acceptance"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Implement route node, route and shell then sample build and browser"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Centralize state and compare cross-view outputs"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Implement pure decisions and exercise representative browser paths"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Reuse shared UI and correct scoped CSS from geometry evidence"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "Enforce task paths and audit the final diff"}
+  ],
+  "model_status": "ready"
+}

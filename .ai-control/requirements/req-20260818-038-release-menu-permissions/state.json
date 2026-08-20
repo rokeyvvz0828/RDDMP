@@ -1,0 +1,1623 @@
+{
+  "schema_version": 4,
+  "revision": 19,
+  "created_at": "2026-08-18T08:35:00+00:00",
+  "updated_at": "2026-08-18T09:11:52+00:00",
+  "mode": "high-assurance",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化需求基准阶段",
+      "recorded_at": "2026-08-18T08:35:00+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Requirement baseline is ready and fully measurable",
+      "recorded_at": "2026-08-18T08:35:16+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "All requirements are observable and controllable within approved scope",
+      "recorded_at": "2026-08-18T08:36:52+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Approved plan is ready for implementation",
+      "recorded_at": "2026-08-18T08:36:52+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 and T2 implemented with automated and runtime evidence",
+      "recorded_at": "2026-08-18T09:08:28+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "All tasks verified, no open feedback, and integration observation completed",
+      "recorded_at": "2026-08-18T09:09:26+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "High-assurance gate passed with three zero-error samples and all tasks verified",
+      "recorded_at": "2026-08-18T09:11:52+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "User approved six child-menu RBAC design and requested implementation",
+        "recorded_at": "2026-08-18T08:35:16+00:00",
+        "data": {
+          "objective": "Enforce role-based visibility and access for each of the six release-management menus.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Release management exposes one parent directory and six independently authorized child menus.",
+              "acceptance": [
+                "The dynamic route tree contains only child menus assigned to the current role",
+                "The six children have distinct view permissions and routes"
+              ],
+              "priority": "must",
+              "source": "User-approved design",
+              "counterexample": [
+                "All six functions remain one menu",
+                "A role sees an unassigned child"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Frontend menus, direct routes, internal navigation, data requests and write controls follow the current role permissions.",
+              "acceptance": [
+                "Unauthorized routes redirect to the dashboard",
+                "Unauthorized tabs and actions are absent",
+                "Authorized pages do not fail because unrelated menu data was requested"
+              ],
+              "priority": "must",
+              "source": "User request and security invariant",
+              "counterexample": [
+                "Typing a hidden route opens it",
+                "A read-only role sees an enabled write button",
+                "A one-menu role receives unrelated 403 errors"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Backend APIs enforce independent view and write permissions, including separate production-baseline and production-version authorities.",
+              "acceptance": [
+                "Baseline APIs require release:baseline permissions",
+                "Production-version APIs require release:production-version:view",
+                "Window writes and application actions retain their own authorities"
+              ],
+              "priority": "must",
+              "source": "Approved permission matrix",
+              "counterexample": [
+                "Baseline permission grants production-version data",
+                "Frontend hiding is the only enforcement"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "The append-only migration preserves equivalent access for roles that already hold release permissions.",
+              "acceptance": [
+                "Existing permission IDs remain usable",
+                "Roles with former production view receive both baseline and production-version view",
+                "Parent and child sys_role_menu rows are rebuilt from action assignments"
+              ],
+              "priority": "must",
+              "source": "Compatibility requirement",
+              "counterexample": [
+                "RELEASE_ADMIN loses a menu after migration",
+                "Historical migration files are edited"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Role permission administration continues to derive menu assignments and parent directories from selected child actions.",
+              "acceptance": [
+                "Selecting an action stores its child and parent in sys_role_menu",
+                "Selecting only a child write action still provides that child view authority through its menu"
+              ],
+              "priority": "must",
+              "source": "Existing platform RBAC contract",
+              "counterexample": [
+                "Administrators must separately edit sys_role_menu",
+                "A child action exists without a navigable parent"
+              ]
+            }
+          ],
+          "invariants": [
+            "Backend authorization is authoritative",
+            "Flyway migrations are append-only",
+            "Existing release business data is unchanged",
+            "Unrelated dirty worktree changes remain untouched"
+          ],
+          "constraints": [
+            "Remain on local rokey branch",
+            "Reuse sys_menu, sys_menu_permission and saveRolePermissions",
+            "Use existing Vue Router, Pinia and dynamic route tree",
+            "Only paths in REQ-20260818-038 scope are writable"
+          ],
+          "non_goals": [
+            "Project-level data scope",
+            "Field-level permissions",
+            "Changing workflow or release business rules",
+            "Changing administrator eligibility for role management"
+          ],
+          "assumptions": [
+            {
+              "text": "Existing roles express release access through sys_role_permission rows for IDs 6002-6015.",
+              "basis": "V38/V43 and current local database inspection.",
+              "falsifier": "A release role has only legacy permission 6001 and no action assignments."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use a real directory and six child sys_menu records.",
+              "reason": "Role menus must be independently assignable.",
+              "source": "User approval."
+            },
+            {
+              "id": "D2",
+              "decision": "Keep write permissions as child actions and derive menu assignments through existing platform logic.",
+              "reason": "No parallel RBAC framework is needed.",
+              "source": "Confirmed design and code inspection."
+            },
+            {
+              "id": "D3",
+              "decision": "Allow dependent read-only window option access without granting window write permissions.",
+              "reason": "Application, baseline and analytics pages require the same controlled option data.",
+              "source": "System model dependency."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "signal": "Migration and controller contract tests distinguish the six permission surfaces and compatibility grants.",
+              "method": "Focused Maven tests and SQL inspection."
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "signal": "Four role profiles show only authorized menus/routes/actions without unrelated 403 requests.",
+              "method": "Frontend build plus authenticated browser and API observation."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Repository, migration, controller, auth-store and router dependencies inspected",
+        "recorded_at": "2026-08-18T08:36:52+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "sys_menu, sys_menu_permission, sys_role_menu and sys_role_permission release records",
+              "Release controller authorization annotations",
+              "Auth store dynamic route and authority state",
+              "Vue Router release guards",
+              "Release management tabs, data loaders and write controls"
+            ],
+            "environment": [
+              "Existing SystemService.saveRolePermissions algorithm",
+              "AuthRepository authority and route queries",
+              "Current local MySQL schema and data",
+              "Dirty rokey worktree",
+              "Browser session cache"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "role_release_actions",
+              "owner": "sys_role_permission",
+              "valid_values": [
+                "none",
+                "one-or-more child actions"
+              ]
+            },
+            {
+              "name": "role_release_menus",
+              "owner": "sys_role_menu",
+              "valid_values": [
+                "none",
+                "parent plus assigned children"
+              ]
+            },
+            {
+              "name": "frontend_release_routes",
+              "owner": "auth.routes",
+              "valid_values": [
+                "server-assigned dynamic tree"
+              ]
+            },
+            {
+              "name": "active_release_view",
+              "owner": "Vue Router",
+              "valid_values": [
+                "one of six authorized child paths"
+              ]
+            },
+            {
+              "name": "write_control_state",
+              "owner": "release components",
+              "valid_values": [
+                "hidden",
+                "visible"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "V45 menu and permission mapping plus role assignments",
+              "transitions": [
+                "AuthRepository reads assigned menus",
+                "Auth service builds child tree",
+                "AppLayout renders the tree"
+              ],
+              "outputs": [
+                "Parent directory with authorized child menus"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "AuthMe permissions and dynamic routes",
+              "transitions": [
+                "Router guard checks route permission",
+                "Release component filters views",
+                "Data loaders and controls check action permissions"
+              ],
+              "outputs": [
+                "Authorized page behavior without unrelated requests"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Authenticated API request",
+              "transitions": [
+                "Spring method security evaluates split authority",
+                "Controller delegates only when authorized"
+              ],
+              "outputs": [
+                "Allowed data or HTTP 403"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Existing permission rows and role grants",
+              "transitions": [
+                "V45 retains IDs and moves ownership",
+                "Former production-view grants copy to new production-version permission",
+                "Child and parent menu rows derive from role actions"
+              ],
+              "outputs": [
+                "Equivalent existing role access"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "Administrator saves child actions",
+              "transitions": [
+                "SystemService resolves owning menu",
+                "Ancestor traversal retains parent",
+                "AuthRepository contributes child menu permission_code"
+              ],
+              "outputs": [
+                "Navigable child and inherited view authority"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Dynamic RouteNode tree",
+              "producers": [
+                "AuthRepository",
+                "AuthService"
+              ],
+              "consumers": [
+                "auth store",
+                "AppLayout",
+                "release router guard"
+              ],
+              "invariant": "Only assigned visible active menus are returned"
+            },
+            {
+              "name": "AuthMe.permissions",
+              "producers": [
+                "AuthRepository.findPermissions"
+              ],
+              "consumers": [
+                "router",
+                "release pages"
+              ],
+              "invariant": "Union of assigned action codes and assigned menu permission codes"
+            },
+            {
+              "name": "Release permission catalog",
+              "producers": [
+                "sys_menu and sys_menu_permission"
+              ],
+              "consumers": [
+                "RolePermissionView",
+                "SystemService.saveRolePermissions"
+              ],
+              "invariant": "Each active action belongs to one real menu"
+            },
+            {
+              "name": "Window option list",
+              "producers": [
+                "ReleaseWindowController.list"
+              ],
+              "consumers": [
+                "window, application, baseline and analytics views"
+              ],
+              "invariant": "Dependent read access never grants window create or update"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Migration structure and compatibility mapping",
+              "method": "Schema contract assertions and local database SQL queries after Flyway",
+              "blind_spots": [
+                "Cannot prove browser cache refresh"
+              ],
+              "independence": "Inspects persisted authorization facts"
+            },
+            {
+              "id": "S2",
+              "target": "Controller permission split and dependent list access",
+              "method": "Reflection-based security contract tests and authenticated API probes",
+              "blind_spots": [
+                "Annotations do not prove all service data-scope rules"
+              ],
+              "independence": "Uses Spring metadata and HTTP behavior"
+            },
+            {
+              "id": "S3",
+              "target": "Frontend route, tab, request and control behavior",
+              "method": "TypeScript production build plus browser tests with four role profiles",
+              "blind_spots": [
+                "A role profile samples permission combinations rather than all combinations"
+              ],
+              "independence": "Observes compiled and rendered runtime behavior"
+            },
+            {
+              "id": "S4",
+              "target": "Scope and regression integrity",
+              "method": "Release reactor tests, governance, scope and git diff checks",
+              "blind_spots": [
+                "Dirty baseline produces unrelated status noise"
+              ],
+              "independence": "Repository automation has different failure assumptions"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Persisted menu model",
+              "action": "Append V45 to split parent/children and migrate grants",
+              "authority": "Approved database scope",
+              "impact_radius": "Release RBAC metadata only",
+              "rollback": "Restore local DB backup or add compensating migration"
+            },
+            {
+              "id": "A2",
+              "target": "Backend permission surfaces",
+              "action": "Split production permissions and authorize required window option consumers",
+              "authority": "Approved release controller scope",
+              "impact_radius": "Release controller method security",
+              "rollback": "Revert scoped controller changes"
+            },
+            {
+              "id": "A3",
+              "target": "Frontend authorization behavior",
+              "action": "Remove forced route, add authority helpers/guards, filter views/loads/actions",
+              "authority": "Approved frontend scope",
+              "impact_radius": "Release routes and components",
+              "rollback": "Revert scoped frontend changes"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Existing dirty worktree",
+              "effect": "Broad diff and test results include unrelated changes",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Stale authentication token after role edit",
+              "effect": "Permissions remain cached until re-login/hydration",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Mock data synchronizer",
+              "effect": "Could overwrite RBAC data on backend restart",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Flyway checksum history",
+              "effect": "Editing old migrations would fail validation",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Backend restart and Flyway",
+              "consequence": "Runtime permissions lag source until restart",
+              "sampling_rule": "Verify Flyway V45 and health before API/browser tests"
+            },
+            {
+              "source": "Auth hydration",
+              "consequence": "Role changes require a new session to refresh authorities",
+              "sampling_rule": "Logout/login after each role profile change"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "SystemService.saveRolePermissions remains compatible with child menu actions.",
+              "evidence": "It resolves action menu IDs and walks parent IDs.",
+              "falsifier": "Saving an action fails to insert both child and parent sys_role_menu rows."
+            },
+            {
+              "text": "Release menu IDs 610-615 and permission ID 6016 are unused.",
+              "evidence": "Repository migration search found no references.",
+              "falsifier": "Pre-migration DB contains any of those IDs."
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 observed by S1/S3"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3 observed by S3/S4"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 observed by S2/S4"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 observed by S1/S3"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Reuse existing platform algorithm and observe with S1/S3"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Two bounded tasks cover migration/backend then frontend integration",
+        "recorded_at": "2026-08-18T08:36:52+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Create the six-child persisted menu model and enforce split backend permissions while preserving existing role access.",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Menu 600 currently owns permissions 6001-6015",
+                "saveRolePermissions derives menus from actions",
+                "Permission 6011 currently grants both baseline and production-version views"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V45__release_menu_level_permissions.sql",
+                "server/src/modules/release/src/main/java/com/ccb/release/production/web/ReleaseProductionController.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/window/web/ReleaseWindowController.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/ReleaseSchemaContractTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/production/web/ReleaseProductionControllerSecurityTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/window/web/ReleaseWindowControllerSecurityTest.java"
+              ],
+              "invariants": [
+                "No historical migration is edited",
+                "No release business row changes",
+                "System admin override remains",
+                "Window writes retain window-specific permissions"
+              ],
+              "interface_contracts": [
+                "Existing endpoint paths and DTOs remain",
+                "Permission IDs 6002-6015 remain stable",
+                "New production-version view permission is 6016"
+              ],
+              "non_goals": [
+                "No service business logic or data-scope change",
+                "No system RBAC framework change"
+              ],
+              "action_bounds": [
+                "Add one append-only migration",
+                "Change only controller authorization expressions",
+                "Add focused contract tests"
+              ],
+              "acceptance_checks": [
+                "V45 expresses six children and compatibility grants",
+                "Baseline and production-version methods use distinct permissions",
+                "Window list supports approved dependent read consumers",
+                "Focused tests and release reactor pass"
+              ],
+              "evidence_required": [
+                "SQL diff",
+                "Controller test output",
+                "Post-Flyway role/menu query"
+              ],
+              "rollback": "Revert Java/tests; restore local DB backup or add compensating migration.",
+              "stop_conditions": [
+                "Target IDs already exist with unrelated semantics",
+                "Migration would require editing V38/V43",
+                "Existing role grants cannot be mapped deterministically"
+              ],
+              "escalation_conditions": [
+                "New project-level data scope is requested",
+                "SystemService algorithm proves incompatible"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Make frontend navigation, direct routes, data loads and write controls obey the six menu/action permissions.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "auth routes currently force-inject /release",
+                "router currently checks token only",
+                "ReleaseManagementPrototype hardcodes all tabs and loads three APIs",
+                "Child components render write controls unconditionally"
+              ],
+              "write_scope": [
+                "web/src/stores/auth.ts",
+                "web/src/router/index.ts",
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/components/ReleaseWindowView.vue",
+                "web/src/modules/release/components/ReleaseApplicationView.vue",
+                "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+                "web/src/modules/release/components/ReleaseBaselineView.vue",
+                "web/src/modules/release/components/ReleaseWorkflowBindingView.vue",
+                "web/src/modules/release/prototype-route.ts"
+              ],
+              "invariants": [
+                "Dynamic backend routes remain the menu source",
+                "Static route components stay registered",
+                "Backend remains authoritative",
+                "Existing authorized workflows remain unchanged"
+              ],
+              "interface_contracts": [
+                "AuthMe.permissions is the action authority source",
+                "RouteNode.routePath is the menu access source",
+                "/release redirects to first authorized child"
+              ],
+              "non_goals": [
+                "No visual redesign",
+                "No API DTO changes",
+                "No changes to application detail approval ownership"
+              ],
+              "action_bounds": [
+                "Remove forced route injection",
+                "Add small auth permission/route helpers",
+                "Register six permission-tagged routes",
+                "Filter views and loads",
+                "Pass explicit write capability props to four editable components"
+              ],
+              "acceptance_checks": [
+                "Frontend build passes",
+                "One-menu role sees and loads only one child",
+                "Read-only role has no write controls",
+                "Direct unauthorized routes return dashboard",
+                "All-access behavior remains"
+              ],
+              "evidence_required": [
+                "Focused diff",
+                "Production build",
+                "Browser DOM/network/console evidence for four roles and mobile menu"
+              ],
+              "rollback": "Revert scoped frontend files.",
+              "stop_conditions": [
+                "Auth store cannot hydrate before route guard",
+                "A child page requires an undeclared API permission",
+                "Concurrent edits overlap scoped sections"
+              ],
+              "escalation_conditions": [
+                "A new backend lookup endpoint becomes necessary",
+                "User changes menu hierarchy"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Frontend permission names and routes depend on the persisted/backend contract."
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Focused migration and controller tests"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "Release reactor",
+                "Frontend build",
+                "Flyway application",
+                "Role browser matrix"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "backend-contract",
+              "trigger": "T1 complete",
+              "observer": "main agent with automated sensors",
+              "sensors": [
+                "S1",
+                "S2",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "frontend-integration",
+              "trigger": "T2 complete",
+              "observer": "main agent with compiler and browser sensors",
+              "sensors": [
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ]
+            },
+            {
+              "label": "final-convergence",
+              "trigger": "all tasks and runtime restart complete",
+              "observer": "runtime/browser verification",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "Frontend build, release reactor, Flyway V45, role matrix and responsive browser validation completed",
+        "recorded_at": "2026-08-18T09:08:28+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/stores/auth.ts",
+              "purpose": "Remove unconditional release route injection, expose permission/route helpers, and clear cross-account route tabs."
+            },
+            {
+              "path_or_resource": "web/src/router/index.ts",
+              "purpose": "Register six child routes and reject direct access without both menu and action authority."
+            },
+            {
+              "path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue",
+              "purpose": "Render only authorized release views and load only required data."
+            },
+            {
+              "path_or_resource": "release editable child components",
+              "purpose": "Hide or disable window, application, baseline, and workflow-binding write controls by action permission."
+            },
+            {
+              "path_or_resource": "local MySQL Flyway schema history",
+              "purpose": "Apply V45 and verify existing administrative role compatibility."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "npm run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit and vite build completed successfully after the final auth-tab fix."
+            },
+            {
+              "command": "mvn -pl server/src/modules/release -am -Dtest=ReleaseSchemaContractTest,ReleaseWindowControllerSecurityTest,ReleaseProductionControllerSecurityTest test",
+              "exit_code": 0,
+              "salient_output": "6 tests, 0 failures, 0 errors; 8 reactor modules successful."
+            },
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl server/src/modules/release -am test",
+              "exit_code": 0,
+              "salient_output": "All 8 reactor modules successful; ccb-release ran 56 tests with 0 failures and 0 errors."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Flyway V45 runtime migration",
+              "result": "pass",
+              "evidence": "Schema history reached version 45; SUPER_ADMIN and RELEASE_ADMIN each retained 6 release child menus and 15 active actions.",
+              "limitations": []
+            },
+            {
+              "check": "Four-profile browser permission matrix",
+              "result": "pass",
+              "evidence": "All-access, one-menu-only, six-menu read-only, and no-release-menu users rendered the expected navigation and action controls; unauthorized direct routes returned dashboard; console errors were empty.",
+              "limitations": [
+                "Role combinations were representative rather than exhaustive."
+              ]
+            },
+            {
+              "check": "Responsive navigation",
+              "result": "pass",
+              "evidence": "At 390x844 the no-release role mobile drawer contained only Dashboard.",
+              "limitations": []
+            },
+            {
+              "check": "Temporary validation data cleanup",
+              "result": "pass",
+              "evidence": "Three temporary users and three temporary roles were deleted; follow-up queries returned zero matches.",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "Dynamic backend routes are the only source for release menu visibility.",
+            "Six static Vue routes carry distinct menu and view authorities while /release selects the first authorized child.",
+            "Release page tabs and write controls are permission-filtered and unrelated API loads are avoided.",
+            "Session clearing removes tabs opened by a previous role so they cannot appear after account switching.",
+            "The obsolete frontend prototype route injection module was removed."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Backend authorization remains authoritative",
+              "result": "pass",
+              "evidence": "Controller security tests and role API probes use the split authorities."
+            },
+            {
+              "invariant": "Existing authorized release workflows remain available",
+              "result": "pass",
+              "evidence": "SUPER_ADMIN browser flow showed all six pages and write controls; full release tests passed."
+            },
+            {
+              "invariant": "Unrelated dirty worktree changes remain untouched",
+              "result": "pass",
+              "evidence": "Edits remained within the approved REQ-038 path list."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "The first V45 attempt hit MySQL error 1093 on a self-referencing delete.",
+              "impact": "The database was restored from the pre-migration backup, V45 was corrected to a self LEFT JOIN delete, and the migration then applied successfully."
+            },
+            {
+              "event": "The initial full reactor run used Java 26, which the current Byte Buddy version does not support.",
+              "impact": "The same suite was rerun with the project-required Java 17 and passed."
+            },
+            {
+              "event": "Browser sampling exposed one stale cross-account route tab.",
+              "impact": "Authentication clear/login now resets route tabs; the exact read-only-to-no-access switch was re-tested successfully."
+            },
+            {
+              "event": "Scope checker requires a feature/REQ branch while the approved branch is rokey.",
+              "impact": "Scope was audited manually against the explicit writable path list; no branch switch was made."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Repository-wide governance still reports pre-existing invalid ledger filenames in six unrelated requirement directories.",
+            "The validation backend currently relies on a temporary least-privilege local database account while it remains running."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Independent compiler, Java 17 reactor, database, desktop and mobile role-matrix sensors observed no remaining product deviation",
+        "recorded_at": "2026-08-18T09:09:26+00:00",
+        "data": {
+          "sample_label": "T2 frontend and runtime role-matrix integration sample",
+          "task_ids": [
+            "T1",
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 runtime database plus S3 browser route tree",
+              "result": "pass",
+              "raw_evidence": "Flyway V45 produced six child menus; administrator UI and role permission catalog rendered all six distinct routes.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S3 compiled frontend and authenticated browser profiles",
+              "result": "pass",
+              "raw_evidence": "One-menu role saw only Window; read-only role saw six read pages without write controls; no-release role saw no release navigation; direct unauthorized URL returned Dashboard; 390x844 drawer showed only Dashboard.",
+              "limitation": [
+                "Representative role profiles do not enumerate every possible permission combination."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S2 security tests plus authenticated API-backed page behavior",
+              "result": "pass",
+              "raw_evidence": "Six security/schema tests passed and read-only pages loaded using distinct baseline and production-version authorities without write access.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 post-migration SQL counts plus S4 Java 17 reactor",
+              "result": "pass",
+              "raw_evidence": "SUPER_ADMIN and RELEASE_ADMIN retained 6 child menus and 15 active actions; all 8 reactor modules passed.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1 permission catalog plus S3 role switches",
+              "result": "pass",
+              "raw_evidence": "Role permission tree grouped actions under each child and parent directory; saving child actions produced the expected child/parent route tree for temporary roles.",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "The first V45 statement form was incompatible with MySQL self-reference rules; restore-and-retry with a self LEFT JOIN succeeded.",
+            "The first full test command selected Java 26; the project-required Java 17 rerun passed.",
+            "A stale cross-account tab was observed during sampling, corrected in auth session clearing, and the exact switch was re-tested."
+          ],
+          "coverage_gaps": [
+            "Repository scope automation cannot run on the user-required rokey branch because it hardcodes feature/REQ branch naming.",
+            "Repository-wide governance remains red due to six unrelated pre-existing invalid ledger filenames."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final automated, database, browser, responsive, health, scope and invariant audit completed",
+        "recorded_at": "2026-08-18T09:11:52+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "V45 schema contract and post-Flyway queries show directory 600 with children 610-615.",
+                "Administrator role tree and release navigation render six independent child routes."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "Four authenticated browser profiles verified all-access, one-menu, read-only, and no-release behavior.",
+                "Direct unauthorized route returned Dashboard; mobile no-release drawer contained only Dashboard; final console error set was empty.",
+                "Cross-account stale tabs are cleared and the read-only-to-no-release switch was re-tested."
+              ],
+              "limitations": [
+                "Representative permission profiles do not enumerate every mathematical combination."
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "Focused controller/schema suite ran 6 tests with zero failures.",
+                "Full Java 17 reactor passed, including 56 ccb-release tests."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "V45 applied successfully after database restore-and-retry.",
+                "SUPER_ADMIN and RELEASE_ADMIN each retained 6 child menus and 15 active release actions."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "Role permission administration displays actions under each release child.",
+                "Temporary one-menu and read-only role saves generated the expected child and parent route trees; all temporary records were removed."
+              ],
+              "limitations": []
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Migration/controller contract tests and runtime compatibility queries passed."
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "Frontend build, desktop/mobile role matrix, direct-route denial, read-only controls, and account-switch cleanup passed."
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Focused release permission contracts",
+              "result": "pass",
+              "evidence": "6 tests, 0 failures, 0 errors."
+            },
+            {
+              "check": "Full release dependency reactor on Java 17",
+              "result": "pass",
+              "evidence": "8/8 modules successful; ccb-release 56 tests, 0 failures, 0 errors."
+            },
+            {
+              "check": "Frontend production build",
+              "result": "pass",
+              "evidence": "vue-tsc and Vite completed successfully after final auth-tab change."
+            },
+            {
+              "check": "Runtime services",
+              "result": "pass",
+              "evidence": "Backend actuator status UP and frontend HTTP status 200."
+            },
+            {
+              "check": "Repository diff whitespace",
+              "result": "pass",
+              "evidence": "git diff --check exited 0."
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "Backend authorization is authoritative",
+              "result": "pass",
+              "evidence": "Controller annotations, authenticated routes, and API-backed browser behavior agree."
+            },
+            {
+              "invariant": "Flyway migrations are append-only",
+              "result": "pass",
+              "evidence": "Only new V45 was added; historical migrations were not changed."
+            },
+            {
+              "invariant": "Existing release business data is unchanged",
+              "result": "pass",
+              "evidence": "Migration touches only sys_menu, sys_menu_permission, sys_role_menu and sys_role_permission."
+            },
+            {
+              "invariant": "Unrelated dirty worktree changes remain untouched",
+              "result": "pass",
+              "evidence": "Implementation files are contained by the approved REQ-038 writable path list."
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "MySQL self-referencing delete restriction",
+              "result": "pass",
+              "evidence": "Database restored from backup; self LEFT JOIN migration applied and compatibility counts passed."
+            },
+            {
+              "disturbance": "Unsupported default Java 26 test runtime",
+              "result": "pass",
+              "evidence": "Project-required Java 17 rerun passed the complete reactor."
+            },
+            {
+              "disturbance": "Cross-account browser tab cache",
+              "result": "pass",
+              "evidence": "Auth clear/login resets tabs; exact role-switch reproduction passed."
+            }
+          ],
+          "residual_risks": [
+            "The repository scope script cannot validate the user-required rokey branch because it hardcodes feature/REQ branch naming; manual path audit found no out-of-scope REQ-038 changes.",
+            "Repository-wide governance remains red only for six pre-existing invalid ledger filenames outside REQ-038.",
+            "The running validation backend uses a temporary least-privilege local database account; it should be removed when this temporary backend process is stopped or replaced by the normal local launch environment."
+          ],
+          "gate_result": "pass",
+          "route_reason": "All five must requirements have task, source, automated, database, browser, responsive and regression evidence; both tasks are verified; three high-assurance samples have zero errors; no feedback remains open."
+        }
+      }
+    ]
+  },
+  "objective": "Enforce role-based visibility and access for each of the six release-management menus.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Release management exposes one parent directory and six independently authorized child menus.",
+      "acceptance": [
+        "The dynamic route tree contains only child menus assigned to the current role",
+        "The six children have distinct view permissions and routes"
+      ],
+      "priority": "must",
+      "source": "User-approved design",
+      "counterexample": [
+        "All six functions remain one menu",
+        "A role sees an unassigned child"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Frontend menus, direct routes, internal navigation, data requests and write controls follow the current role permissions.",
+      "acceptance": [
+        "Unauthorized routes redirect to the dashboard",
+        "Unauthorized tabs and actions are absent",
+        "Authorized pages do not fail because unrelated menu data was requested"
+      ],
+      "priority": "must",
+      "source": "User request and security invariant",
+      "counterexample": [
+        "Typing a hidden route opens it",
+        "A read-only role sees an enabled write button",
+        "A one-menu role receives unrelated 403 errors"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Backend APIs enforce independent view and write permissions, including separate production-baseline and production-version authorities.",
+      "acceptance": [
+        "Baseline APIs require release:baseline permissions",
+        "Production-version APIs require release:production-version:view",
+        "Window writes and application actions retain their own authorities"
+      ],
+      "priority": "must",
+      "source": "Approved permission matrix",
+      "counterexample": [
+        "Baseline permission grants production-version data",
+        "Frontend hiding is the only enforcement"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "The append-only migration preserves equivalent access for roles that already hold release permissions.",
+      "acceptance": [
+        "Existing permission IDs remain usable",
+        "Roles with former production view receive both baseline and production-version view",
+        "Parent and child sys_role_menu rows are rebuilt from action assignments"
+      ],
+      "priority": "must",
+      "source": "Compatibility requirement",
+      "counterexample": [
+        "RELEASE_ADMIN loses a menu after migration",
+        "Historical migration files are edited"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Role permission administration continues to derive menu assignments and parent directories from selected child actions.",
+      "acceptance": [
+        "Selecting an action stores its child and parent in sys_role_menu",
+        "Selecting only a child write action still provides that child view authority through its menu"
+      ],
+      "priority": "must",
+      "source": "Existing platform RBAC contract",
+      "counterexample": [
+        "Administrators must separately edit sys_role_menu",
+        "A child action exists without a navigable parent"
+      ]
+    }
+  ],
+  "invariants": [
+    "Backend authorization is authoritative",
+    "Flyway migrations are append-only",
+    "Existing release business data is unchanged",
+    "Unrelated dirty worktree changes remain untouched"
+  ],
+  "constraints": [
+    "Remain on local rokey branch",
+    "Reuse sys_menu, sys_menu_permission and saveRolePermissions",
+    "Use existing Vue Router, Pinia and dynamic route tree",
+    "Only paths in REQ-20260818-038 scope are writable"
+  ],
+  "non_goals": [
+    "Project-level data scope",
+    "Field-level permissions",
+    "Changing workflow or release business rules",
+    "Changing administrator eligibility for role management"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"Existing SystemService.saveRolePermissions algorithm\", \"AuthRepository authority and route queries\", \"Current local MySQL schema and data\", \"Dirty rokey worktree\", \"Browser session cache\"], \"inside\": [\"sys_menu, sys_menu_permission, sys_role_menu and sys_role_permission release records\", \"Release controller authorization annotations\", \"Auth store dynamic route and authority state\", \"Vue Router release guards\", \"Release management tabs, data loaders and write controls\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Cannot prove browser cache refresh\"], \"id\": \"S1\", \"independence\": \"Inspects persisted authorization facts\", \"method\": \"Schema contract assertions and local database SQL queries after Flyway\", \"target\": \"Migration structure and compatibility mapping\"}",
+      "{\"blind_spots\": [\"Annotations do not prove all service data-scope rules\"], \"id\": \"S2\", \"independence\": \"Uses Spring metadata and HTTP behavior\", \"method\": \"Reflection-based security contract tests and authenticated API probes\", \"target\": \"Controller permission split and dependent list access\"}",
+      "{\"blind_spots\": [\"A role profile samples permission combinations rather than all combinations\"], \"id\": \"S3\", \"independence\": \"Observes compiled and rendered runtime behavior\", \"method\": \"TypeScript production build plus browser tests with four role profiles\", \"target\": \"Frontend route, tab, request and control behavior\"}",
+      "{\"blind_spots\": [\"Dirty baseline produces unrelated status noise\"], \"id\": \"S4\", \"independence\": \"Repository automation has different failure assumptions\", \"method\": \"Release reactor tests, governance, scope and git diff checks\", \"target\": \"Scope and regression integrity\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Append V45 to split parent/children and migrate grants\", \"authority\": \"Approved database scope\", \"id\": \"A1\", \"impact_radius\": \"Release RBAC metadata only\", \"rollback\": \"Restore local DB backup or add compensating migration\", \"target\": \"Persisted menu model\"}",
+      "{\"action\": \"Split production permissions and authorize required window option consumers\", \"authority\": \"Approved release controller scope\", \"id\": \"A2\", \"impact_radius\": \"Release controller method security\", \"rollback\": \"Revert scoped controller changes\", \"target\": \"Backend permission surfaces\"}",
+      "{\"action\": \"Remove forced route, add authority helpers/guards, filter views/loads/actions\", \"authority\": \"Approved frontend scope\", \"id\": \"A3\", \"impact_radius\": \"Release routes and components\", \"rollback\": \"Revert scoped frontend changes\", \"target\": \"Frontend authorization behavior\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Broad diff and test results include unrelated changes\", \"source\": \"Existing dirty worktree\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Permissions remain cached until re-login/hydration\", \"source\": \"Stale authentication token after role edit\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Could overwrite RBAC data on backend restart\", \"source\": \"Mock data synchronizer\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Editing old migrations would fail validation\", \"source\": \"Flyway checksum history\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"It resolves action menu IDs and walks parent IDs.\", \"falsifier\": \"Saving an action fails to insert both child and parent sys_role_menu rows.\", \"text\": \"SystemService.saveRolePermissions remains compatible with child menu actions.\"}",
+      "{\"evidence\": \"Repository migration search found no references.\", \"falsifier\": \"Pre-migration DB contains any of those IDs.\", \"text\": \"Release menu IDs 610-615 and permission ID 6016 are unused.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Create the six-child persisted menu model and enforce split backend permissions while preserving existing role access.",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Menu 600 currently owns permissions 6001-6015",
+        "saveRolePermissions derives menus from actions",
+        "Permission 6011 currently grants both baseline and production-version views"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V45__release_menu_level_permissions.sql",
+        "server/src/modules/release/src/main/java/com/ccb/release/production/web/ReleaseProductionController.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/window/web/ReleaseWindowController.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/ReleaseSchemaContractTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/production/web/ReleaseProductionControllerSecurityTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/window/web/ReleaseWindowControllerSecurityTest.java"
+      ],
+      "invariants": [
+        "No historical migration is edited",
+        "No release business row changes",
+        "System admin override remains",
+        "Window writes retain window-specific permissions"
+      ],
+      "interface_contracts": [
+        "Existing endpoint paths and DTOs remain",
+        "Permission IDs 6002-6015 remain stable",
+        "New production-version view permission is 6016"
+      ],
+      "non_goals": [
+        "No service business logic or data-scope change",
+        "No system RBAC framework change"
+      ],
+      "action_bounds": [
+        "Add one append-only migration",
+        "Change only controller authorization expressions",
+        "Add focused contract tests"
+      ],
+      "acceptance": [
+        "V45 expresses six children and compatibility grants",
+        "Baseline and production-version methods use distinct permissions",
+        "Window list supports approved dependent read consumers",
+        "Focused tests and release reactor pass"
+      ],
+      "evidence_required": [
+        "SQL diff",
+        "Controller test output",
+        "Post-Flyway role/menu query"
+      ],
+      "rollback": "Revert Java/tests; restore local DB backup or add compensating migration.",
+      "stop_conditions": [
+        "Target IDs already exist with unrelated semantics",
+        "Migration would require editing V38/V43",
+        "Existing role grants cannot be mapped deterministically"
+      ],
+      "escalation_conditions": [
+        "New project-level data scope is requested",
+        "SystemService algorithm proves incompatible"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T08:40:07+00:00",
+          "text": "Focused migration and controller tests: 6 passed, 0 failed"
+        }
+      ],
+      "updated_at": "2026-08-18T08:40:07+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Make frontend navigation, direct routes, data loads and write controls obey the six menu/action permissions.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "auth routes currently force-inject /release",
+        "router currently checks token only",
+        "ReleaseManagementPrototype hardcodes all tabs and loads three APIs",
+        "Child components render write controls unconditionally"
+      ],
+      "write_scope": [
+        "web/src/stores/auth.ts",
+        "web/src/router/index.ts",
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "web/src/modules/release/components/ReleaseWindowView.vue",
+        "web/src/modules/release/components/ReleaseApplicationView.vue",
+        "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+        "web/src/modules/release/components/ReleaseBaselineView.vue",
+        "web/src/modules/release/components/ReleaseWorkflowBindingView.vue",
+        "web/src/modules/release/prototype-route.ts"
+      ],
+      "invariants": [
+        "Dynamic backend routes remain the menu source",
+        "Static route components stay registered",
+        "Backend remains authoritative",
+        "Existing authorized workflows remain unchanged"
+      ],
+      "interface_contracts": [
+        "AuthMe.permissions is the action authority source",
+        "RouteNode.routePath is the menu access source",
+        "/release redirects to first authorized child"
+      ],
+      "non_goals": [
+        "No visual redesign",
+        "No API DTO changes",
+        "No changes to application detail approval ownership"
+      ],
+      "action_bounds": [
+        "Remove forced route injection",
+        "Add small auth permission/route helpers",
+        "Register six permission-tagged routes",
+        "Filter views and loads",
+        "Pass explicit write capability props to four editable components"
+      ],
+      "acceptance": [
+        "Frontend build passes",
+        "One-menu role sees and loads only one child",
+        "Read-only role has no write controls",
+        "Direct unauthorized routes return dashboard",
+        "All-access behavior remains"
+      ],
+      "evidence_required": [
+        "Focused diff",
+        "Production build",
+        "Browser DOM/network/console evidence for four roles and mobile menu"
+      ],
+      "rollback": "Revert scoped frontend files.",
+      "stop_conditions": [
+        "Auth store cannot hydrate before route guard",
+        "A child page requires an undeclared API permission",
+        "Concurrent edits overlap scoped sections"
+      ],
+      "escalation_conditions": [
+        "A new backend lookup endpoint becomes necessary",
+        "User changes menu hierarchy"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T08:40:07+00:00",
+          "text": "Backend permission contract is stable"
+        },
+        {
+          "recorded_at": "2026-08-18T09:08:28+00:00",
+          "text": "All acceptance checks passed; temporary role data removed; stale cross-account tab corrected and re-tested"
+        }
+      ],
+      "updated_at": "2026-08-18T09:08:28+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "backend-contract",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "V45/schema and controller security tests passed; runtime DB remains for integration",
+      "recorded_at": "2026-08-18T08:40:07+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "frontend-integration",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Four authenticated role profiles, direct-route denial, read-only controls, mobile drawer, console logs and temporary-data cleanup all passed",
+      "recorded_at": "2026-08-18T09:09:26+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "final-convergence",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Java 17 full reactor, focused security tests, frontend production build, Flyway V45 data checks, role browser matrix, responsive drawer, service health and diff checks passed with zero product deviations",
+      "recorded_at": "2026-08-18T09:10:15+00:00"
+    }
+  ]
+}

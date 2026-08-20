@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260817-031-workflow-editor-history-signature",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-17-workflow-editor-history-signature-design.md",
+  "objective": "Make workflow lifecycle, editing, history and internal electronic signatures safe, traceable and usable without changing active instance execution semantics.",
+  "users": [
+    "Workflow administrators archive, restore, edit and inspect definitions.",
+    "Approvers confirm an internal signature with their authenticated identity when a published node requires it.",
+    "Auditors inspect definition events, immutable versions and signature evidence.",
+    "Business modules consume the platform workflow API without accessing Flowable tables."
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Draft definitions may be deleted while published definitions must be archived and may be restored by an administrator with a reason.",
+      "acceptance": [
+        "archive blocks new starts without affecting running instances or history",
+        "restore reuses the prior published version and does not create a new version",
+        "delete rejects every non-draft status"
+      ],
+      "priority": "must",
+      "source": "User approved archive and restore behavior on 2026-08-17.",
+      "counterexample": ["archiving hides version history", "restoring creates an unrequested version", "published definition is soft-deleted"]
+    },
+    {
+      "id": "R2",
+      "statement": "Adding a node from a zero-edge or single-edge node must append or atomically insert and reconnect the graph.",
+      "acceptance": ["single-edge insertion produces parent-to-new and new-to-original-target edges", "the resulting graph saves and publishes", "multiple outgoing branches are not guessed"],
+      "priority": "must",
+      "source": "User requested automatic node and edge creation.",
+      "counterexample": ["user must manually delete the existing edge", "original successor becomes isolated"]
+    },
+    {
+      "id": "R3",
+      "statement": "The workflow editor must fit the viewport with persistent title and footer actions and an independently scrollable content region.",
+      "acceptance": ["save remains reachable on desktop and 375x812, 390x844 and 430x932 viewports", "no page-level horizontal overflow", "fullscreen behavior remains available"],
+      "priority": "must",
+      "source": "User reported the save button was below the visible workflow dialog.",
+      "counterexample": ["browser zoom is required to save", "fixed canvas height pushes the footer off screen"]
+    },
+    {
+      "id": "R4",
+      "statement": "Definition detail must expose immutable version history and definition-scoped update events.",
+      "acceptance": ["all versions are listed and a selected version graph opens read-only", "create, update, publish, unpublish, archive and restore events show operator, time, version and reason"],
+      "priority": "must",
+      "source": "User reported missing history versions and update records.",
+      "counterexample": ["only current version is visible", "events cannot identify the operator"]
+    },
+    {
+      "id": "R5",
+      "statement": "Approval nodes must expose the existing signature requirement as explicit Yes/No and preserve backend enforcement and authenticated evidence for approve, reject and return actions.",
+      "acceptance": ["signature Yes/No is visible in approval node configuration and defaults to No", "required actions without confirmation remain rejected before engine progression", "successful signed decisions continue to persist existing wf_signature evidence without regression"],
+      "priority": "must",
+      "source": "User confirmed login-identity confirmation signing and node-level workflow configuration.",
+      "counterexample": ["frontend hiding can bypass signing", "client chooses the signer identity", "signature persists while approval rolls back"]
+    },
+    {
+      "id": "R6",
+      "statement": "A new append-only migration and corrected mock source must keep schema-version metadata consistent with schemaVersion 2 JSON without modifying V34.",
+      "acceptance": ["V34 checksum remains unchanged", "post-migration mismatch counts are zero", "mock synchronization does not recreate mismatches"],
+      "priority": "must",
+      "source": "Repository and local database inspection on 2026-08-17.",
+      "counterexample": ["V34 is edited", "Flyway reports success but mock startup restores invalid metadata"]
+    }
+  ],
+  "invariants": [
+    "running instances remain bound to their original definition version and deployment",
+    "tenant and entity authorization is enforced by the backend",
+    "business and frontend code never writes Flowable ACT tables",
+    "Flyway migrations are append-only",
+    "rokey-only uncommitted or unmerged business code is not included"
+  ],
+  "constraints": [
+    "Spring Boot 3.4.4 and Java 17",
+    "MySQL 8.4 and Flyway",
+    "Vue 3, TypeScript and Element Plus",
+    "existing definitionJson field and schemaVersion 2 remain compatible",
+    "platform internal signature only; no external CA"
+  ],
+  "non_goals": [
+    "third-party certificate or seal integration",
+    "workflow engine or designer rewrite",
+    "automatic branch choice for multi-edge gateways",
+    "release-management business page integration",
+    "business form metadata reactivation"
+  ],
+  "selected_approach": {
+    "name": "incremental cross-layer workflow closure",
+    "reason": "It reuses Flowable, wf_version and wf_audit_event while closing lifecycle, history, editor and signature behavior with bounded changes.",
+    "alternatives": [
+      {"name": "frontend-only fixes", "rejected_because": "cannot enforce lifecycle or signatures and cannot supply reliable history"},
+      {"name": "workflow model redesign", "rejected_because": "unnecessary blast radius and regression risk for the requested repairs"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["workflow frontend API, designer, inspector and view", "platform workflow controller and services", "workflow migrations and local mock workflow metadata"],
+      "outside": ["release-management business module", "external signature providers", "Flowable ACT table ownership", "business form metadata"]
+    },
+    "components": [
+      {"name": "WorkflowDesigner", "responsibility": "append or insert nodes while preserving a valid graph", "depends_on": ["Vue Flow", "workflow graph contract"]},
+      {"name": "WorkflowNodeInspector", "responsibility": "present the existing approval-node signature requirement as explicit Yes/No", "depends_on": ["workflow node contract"]},
+      {"name": "WorkflowView", "responsibility": "definition lifecycle, history UI, responsive editor and generic signing interaction", "depends_on": ["workflow API", "shared UI components"]},
+      {"name": "WorkflowController", "responsibility": "authenticated lifecycle, history and action HTTP adaptation", "depends_on": ["WorkflowService"]},
+      {"name": "WorkflowService and FlowableWorkflowService", "responsibility": "state transitions, history queries and regression-safe use of existing transactional signature enforcement", "depends_on": ["WorkflowAuditService", "WorkflowSignatureService", "Flowable", "workflow database"]},
+      {"name": "WorkflowAuditService", "responsibility": "definition and task audit event persistence", "depends_on": ["wf_audit_event"]},
+      {"name": "Flyway and mock synchronization", "responsibility": "schema-version metadata consistency while preserving V35 signature schema", "depends_on": ["MySQL 8.4"]}
+    ],
+    "interfaces": [
+      {"name": "definition archive and restore", "producer": "WorkflowController", "consumers": ["WorkflowView", "platform administrators"], "contract": "state-checked transition with mandatory reason and audit"},
+      {"name": "definition versions and events", "producer": "WorkflowController", "consumers": ["WorkflowView", "auditors"], "contract": "tenant-scoped immutable version data and definition-only events"},
+      {"name": "task decision", "producer": "WorkflowController", "consumers": ["WorkflowView", "business modules"], "contract": "signatureConfirmed is required only when the bound published node requires signing for approve, reject or return"}
+    ],
+    "data_flows": [
+      {"input": "published definition plus archive reason", "transitions": ["authorize", "validate PUBLISHED", "set ARCHIVED", "write audit"], "output": "archived definition that remains queryable"},
+      {"input": "single outgoing graph edge plus add-node command", "transitions": ["construct new node", "replace original edge with two edges", "sync graph", "validate on save"], "output": "valid serial graph"},
+      {"input": "task decision and signature confirmation", "transitions": ["authorize task", "load bound version node", "enforce signature", "advance engine", "write action, audit and signature in one transaction"], "output": "approved decision with immutable evidence or no state change"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "lifecycle action does not match current status", "behavior": "return an explicit conflict error without mutation", "recovery": "refresh definition and select a valid action"},
+    {"condition": "multi-edge node is used for add-from-here", "behavior": "leave the graph unchanged and request a specific edge", "recovery": "select or right-click the intended edge"},
+    {"condition": "required signature is not confirmed", "behavior": "reject before Flowable progression and write no partial evidence", "recovery": "confirm signing as the current authenticated user and resubmit"},
+    {"condition": "signature persistence fails", "behavior": "roll back task action and engine-related business synchronization", "recovery": "retry after storage availability is restored"},
+    {"condition": "history region fails to load", "behavior": "show a scoped error without hiding the current definition", "recovery": "retry history loading"}
+  ],
+  "quality_attributes": {
+    "security": ["server-authoritative signer identity", "tenant-scoped history and signature queries", "RBAC for delete, archive and restore"],
+    "performance": ["indexed definition/version/event/signature queries", "bounded history responses"],
+    "compatibility": ["missing signatureRequired means false", "existing definitionJson and active instances remain valid", "archived status does not remove deployments"],
+    "operations": ["append-only migrations", "schema mismatch count as a verification sensor", "application rollback leaves corrected metadata and evidence intact"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R4"], "signal": "lifecycle and history service tests plus API/browser flows pass", "method": "JDK 17 focused tests and authenticated browser verification"},
+    {"requirement_ids": ["R2"], "signal": "inserted graph preserves successor and passes backend model validation", "method": "component-level graph checks and save/publish browser flow"},
+    {"requirement_ids": ["R3"], "signal": "footer actions remain visible/reachable without page overflow", "method": "desktop and 375x812, 390x844, 430x932 screenshots and DOM overflow checks"},
+    {"requirement_ids": ["R5"], "signal": "unsigned required decisions fail and signed decisions create one immutable evidence row", "method": "service/API tests and database aggregate verification"},
+    {"requirement_ids": ["R6"], "signal": "V34 is unchanged and mismatch counts are zero after migration and mock sync", "method": "Flyway validation and read-only MySQL aggregate queries"}
+  ],
+  "assumptions": [
+    {"text": "wf_definition.status can store ARCHIVED without a column type change", "basis": "the current schema uses a string status and queries explicitly gate PUBLISHED starts", "falsifier": "schema inspection reveals an enum/check constraint"},
+    {"text": "the existing V35 authenticated confirmation remains sufficient for internal signing", "basis": "user explicitly selected current-login confirmation and no external CA", "falsifier": "a legal or compliance requirement mandates certificate-backed signatures"},
+    {"text": "definition events do not require a visual field-by-field graph diff", "basis": "the request asks for historical versions and update records, both supplied by snapshots and events", "falsifier": "user requires visual graph diffing"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "Use incremental cross-layer changes", "reason": "selected by the user", "source": "User selected option 1 on 2026-08-17."},
+    {"id": "D2", "decision": "Published definitions are archived rather than deleted and administrators may restore them", "reason": "preserves audit and active-instance semantics", "source": "User approved archive and restore on 2026-08-17."},
+    {"id": "D3", "decision": "Electronic signature is configured on approval nodes and enforced for approve, reject and return", "reason": "matches decision-level signing", "source": "User confirmed the signature design section on 2026-08-17."},
+    {"id": "D4", "decision": "Do not modify V34; append repair migrations", "reason": "Flyway migrations are immutable after execution", "source": "Repository governance and user-confirmed data design."}
+  ],
+  "risks": [
+    {"risk": "an archived definition remains startable through an overlooked path", "impact": "lifecycle control is bypassed", "mitigation": "centralize published-definition lookup and test all start APIs"},
+    {"risk": "edge replacement corrupts graph connectivity", "impact": "workflow cannot publish or reaches the wrong successor", "mitigation": "atomic array construction, graph validation and browser save/publish test"},
+    {"risk": "signature requirement is read from the current rather than bound version", "impact": "incorrect approval enforcement", "mitigation": "load definition_json by task instance definition_id and version_no"},
+    {"risk": "migration numbers collide with already executed local history", "impact": "Flyway validation or future branch integration fails", "mitigation": "use V42 after observed local V40/V41 history and require Owner review of migration ordering"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User confirmed every design section and explicitly requested implementation on 2026-08-17.",
+    "confirmed_at": "2026-08-17T13:59:00+08:00"
+  }
+}

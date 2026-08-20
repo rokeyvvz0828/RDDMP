@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260814-026-release-management-prototype",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-14-release-management-prototype-design.md",
+  "objective": "Revise the interactive configuration-management prototype so approval means artifact clearance, production results determine the current production version, and the complete workflow is usable on desktop and H5 without backend or database changes.",
+  "users": [
+    "project developers creating version applications",
+    "workflow approvers reviewing and signing tasks",
+    "configuration administrators querying cleared versions",
+    "production managers maintaining production outcomes",
+    "project managers reviewing current production versions and analytics"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Provide production-window, version-application, production-baseline, production-version and analytics views under one configuration-management entry.",
+      "acceptance": ["All five views are reachable after login", "Switching views preserves module context and uses one mock fact model"],
+      "priority": "must",
+      "source": "User optimization item 1 and selected option 1",
+      "counterexample": ["Production baseline and current production version remain merged in one ambiguous view"]
+    },
+    {
+      "id": "R2",
+      "statement": "Separate version type from application characteristic.",
+      "acceptance": ["Version types are regular, urgent and emergency", "Additional is a derived read-only characteristic and maps to additional workflow codes"],
+      "priority": "must",
+      "source": "User-confirmed terminology and additional handling",
+      "counterexample": ["Additional regular appears as a user-selectable version type"]
+    },
+    {
+      "id": "R3",
+      "statement": "Show rich production-window eligibility and prevent invalid selection.",
+      "acceptance": ["Each option shows code, name, four minute-precision timestamps, status and disabled reason", "Closed, pre-declaration and already-producing windows cannot receive non-emergency applications", "Declaration start defaults to the first day of the current month at 00:00"],
+      "priority": "must",
+      "source": "User optimization items 4 and 9",
+      "counterexample": ["A closed window looks selectable", "Window periods omit time-of-day"]
+    },
+    {
+      "id": "R4",
+      "statement": "Drive application fields and validation from the emergency choice and derived version type.",
+      "acceptance": ["Emergency hides window, derived version type and requirement number", "Emergency requires a description and at least one test-report attachment", "Non-emergency requires at least one requirement and derives regular or urgent from window dates"],
+      "priority": "must",
+      "source": "User optimization items 3, 5 and 7",
+      "counterexample": ["Emergency remains selectable from the automatic type field", "An emergency application submits without a test report"]
+    },
+    {
+      "id": "R5",
+      "statement": "Show the latest successful production version for every selected delivery unit.",
+      "acceptance": ["The form displays version, version type and production time from current production data", "No successful history produces an explicit empty value"],
+      "priority": "must",
+      "source": "User optimization item 6",
+      "counterexample": ["The form shows the latest approved version as if it were deployed"]
+    },
+    {
+      "id": "R6",
+      "statement": "Present duplicate applications with a complete business snapshot and status-dependent user choices.",
+      "acceptance": ["The dialog includes all original business information except attachments", "Draft, returned and withdrawn records allow cancel, edit or create", "In-review records allow create and require withdrawal before old-record edit or cancel", "Cleared records only allow creating an additional application"],
+      "priority": "must",
+      "source": "User optimization item 10 and confirmed conflict rules",
+      "counterexample": ["The system silently blocks all duplicates", "The dialog exposes old attachments"]
+    },
+    {
+      "id": "R7",
+      "statement": "Treat workflow approval completion as artifact clearance only.",
+      "acceptance": ["Approved applications and their delivery units enter the selected window as cleared candidates", "Approval alone does not update the current production version", "Workflow code is selected from version type and additional characteristic"],
+      "priority": "must",
+      "source": "User optimization item 1 and explicit rename from pending confirmation to artifact clearance",
+      "counterexample": ["An approval event immediately marks the version as deployed"]
+    },
+    {
+      "id": "R8",
+      "statement": "Maintain actual production outcomes in a window-scoped production baseline.",
+      "acceptance": ["The view lists the latest cleared candidate per subsystem and delivery unit by approval completion time", "Outcomes are artifact-cleared, succeeded, failed and not-produced", "Outcome corrections require reason and retain before value, after value, operator and time"],
+      "priority": "must",
+      "source": "User optimization item 1 and correction confirmation",
+      "counterexample": ["The candidate is chosen by lexical version comparison", "A production result changes without an audit reason"]
+    },
+    {
+      "id": "R9",
+      "statement": "Provide a cross-window current production-version projection derived only from successful production history.",
+      "acceptance": ["Each subsystem and delivery unit shows latest successful version, type, production date and source window", "Reversing a success recalculates the previous valid successful version"],
+      "priority": "must",
+      "source": "User optimization item 2 and correction confirmation",
+      "counterexample": ["A failed or merely cleared version appears as the current production version"]
+    },
+    {
+      "id": "R10",
+      "statement": "Assign emergency applications to a production window at approval completion.",
+      "acceptance": ["Approval within a production window assigns that window", "Otherwise the nearest future window is assigned and remains fixed", "Draft can be saved but submission is blocked when no current or future window can receive it"],
+      "priority": "must",
+      "source": "User optimization item 8 and final no-window confirmation",
+      "counterexample": ["The user manually selects an emergency window", "An emergency application is approved with no resolvable window"]
+    },
+    {
+      "id": "R11",
+      "statement": "Provide one responsive workflow review route for release approvals.",
+      "acceptance": ["The route is /workflow/review/:taskId with businessType and businessId", "The current valid assignee can view details and approve, reject, return and confirm signature", "The same route uses desktop and H5 layouts without changing business behavior"],
+      "priority": "must",
+      "source": "User optimization item 11 and approved platform integration design",
+      "counterexample": ["H5 uses a second route with different approval rules", "A non-assignee can execute an action"]
+    },
+    {
+      "id": "R12",
+      "statement": "Provide consistent analytics with multi-dimensional drill-down.",
+      "acceptance": ["Metrics cover windows, subsystems, delivery units, requirements, applications, version types, clearance and production outcomes", "Charts and drill-down rows reconcile with the same mock facts"],
+      "priority": "must",
+      "source": "User optimization item 12 and prior report requirements",
+      "counterexample": ["Analytics counts differ from the application or production-baseline views"]
+    },
+    {
+      "id": "R13",
+      "statement": "Keep prototype controls out of the normal business interface while preserving development-state testing.",
+      "acceptance": ["The duplicate current-project, mock and state toolbar is absent from the normal page", "Development-only debug mode can still show loading, empty, failure, forbidden and reset states"],
+      "priority": "must",
+      "source": "Browser comment and user confirmation",
+      "counterexample": ["Normal users see a Mock state selector above the business page"]
+    },
+    {
+      "id": "R14",
+      "statement": "Keep revision 2 frontend-only, responsive, reversible and shaped for future formal APIs.",
+      "acceptance": ["No Java, Flyway or real platform-service implementation changes", "Desktop and 375x812, 390x844 and 430x932 paths have no page-level horizontal overflow", "Removing revision-2 frontend changes restores revision 1"],
+      "priority": "must",
+      "source": "Approved prototype boundary and RDDMP H5 contract",
+      "counterexample": ["The prototype writes database state", "The H5 approval page requires horizontal page scrolling"]
+    }
+  ],
+  "invariants": [
+    "One application belongs to one project and one physical subsystem and contains at least one delivery unit",
+    "A delivery unit has exactly one artifact type: image or binary",
+    "Artifact files are not uploaded to the configuration-management module",
+    "Approval completion means artifact clearance and never implies successful production",
+    "Only a valid successful production history record can drive the current production version",
+    "Latest window candidate is selected by approval completion time rather than version-string ordering",
+    "Emergency window assignment is fixed after approval completion",
+    "Workflow and signature identity are validated by the server in the formal implementation",
+    "Prototype operations never claim durable persistence"
+  ],
+  "constraints": [
+    "Vue 3, TypeScript, Vite, Element Plus, ECharts and existing dependencies only",
+    "No server, database, Flyway, real workflow, notification, attachment storage or external-system changes",
+    "Use fictional project, subsystem, delivery-unit, requirement, task and attachment metadata",
+    "Attachment limit is 20MB per file and 10 files per application",
+    "Version values are required and may not contain spaces; semantic ordering is out of scope",
+    "Acceptance viewports are 375x812, 390x844, 430x932 and 1280x800 or larger",
+    "Development remains on local rokey as requested"
+  ],
+  "non_goals": [
+    "Formal configuration-management backend and database schema",
+    "Real project-management, R&D-management, requirement-management or test-defect integration",
+    "Artifact repository or artifact binary upload",
+    "Independent mobile application or separate H5 route",
+    "External digital signature or certificate authority",
+    "Semantic version comparison and automatic production-result detection",
+    "Meeting workbench or batch approval"
+  ],
+  "selected_approach": {
+    "name": "Unified domain mock with two-level baseline projections and one responsive approval route",
+    "reason": "It makes clearance, actual production and current production versions independently observable while preserving a direct path to formal APIs and avoiding duplicated Web/H5 rules.",
+    "alternatives": [
+      {
+        "name": "Add production flags to the old baseline view",
+        "rejected_because": "It continues to mix cleared candidates, window outcomes and current production state and cannot safely recalculate history."
+      },
+      {
+        "name": "Separate Web and H5 approval routes",
+        "rejected_because": "It duplicates task permissions, state transitions and signature behavior and creates drift risk."
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "release prototype domain types and session repository",
+        "five module views",
+        "duplicate-application interaction",
+        "production outcome and current-version projections",
+        "responsive workflow review prototype route",
+        "development-only debug entry"
+      ],
+      "outside": [
+        "Java services and database",
+        "real workflow and signature implementation",
+        "real attachments and external systems",
+        "formal project, subsystem, delivery-unit and requirement providers"
+      ]
+    },
+    "components": [
+      {"name": "release-prototype-repository", "responsibility": "Own deterministic session facts and atomic mock commands", "depends_on": []},
+      {"name": "project-context-provider", "responsibility": "Expose the current fixed mock project through a replaceable contract", "depends_on": []},
+      {"name": "window-view", "responsibility": "Present four timestamps, eligibility, state and regular-application switch", "depends_on": ["release-prototype-repository"]},
+      {"name": "application-view", "responsibility": "Present list, form, type derivation, latest production version and duplicate decisions", "depends_on": ["release-prototype-repository", "project-context-provider"]},
+      {"name": "production-baseline-view", "responsibility": "Maintain window-scoped candidate production outcomes and audit", "depends_on": ["release-prototype-repository"]},
+      {"name": "current-production-view", "responsibility": "Project latest valid successful production per subsystem and delivery unit", "depends_on": ["release-prototype-repository"]},
+      {"name": "analytics-view", "responsibility": "Derive metrics, charts and drill-down from the same facts", "depends_on": ["release-prototype-repository"]},
+      {"name": "workflow-review-page", "responsibility": "Render one task and shared actions using responsive desktop/H5 layouts", "depends_on": ["release-prototype-repository"]}
+    ],
+    "interfaces": [
+      {"name": "WindowQuery", "producer": "formal release module", "consumers": ["window-view", "application-view"], "contract": "Return window timestamps, status, selectable and disabledReason within current project scope."},
+      {"name": "ApplicationCommand", "producer": "formal release module", "consumers": ["application-view"], "contract": "Save, submit, withdraw, cancel and resubmit with requestId and dataVersion."},
+      {"name": "ConflictQuery", "producer": "formal release module", "consumers": ["application-view"], "contract": "Return complete historical business snapshots excluding attachments and explicit allowed actions."},
+      {"name": "WorkflowLifecycle", "producer": "platform workflow", "consumers": ["formal release module"], "contract": "Deliver lifecycle events at least once; release consumes idempotently by eventId, application code and workflow round."},
+      {"name": "ProductionLedgerCommand", "producer": "formal release module", "consumers": ["production-baseline-view"], "contract": "Update outcome with reason, requestId and dataVersion and retain audit."},
+      {"name": "CurrentProductionQuery", "producer": "formal release module", "consumers": ["application-view", "current-production-view"], "contract": "Return latest valid successful production metadata for delivery units."},
+      {"name": "WorkflowReviewRoute", "producer": "platform workflow frontend", "consumers": ["workflow approvers"], "contract": "Use /workflow/review/:taskId?businessType=release&businessId=... and server-validated actions."}
+    ],
+    "data_flows": [
+      {"input": "non-emergency application draft", "transitions": ["resolve eligible window", "derive regular or urgent type", "load current production versions", "detect duplicates", "map workflow code", "save or submit"], "output": "application and workflow round"},
+      {"input": "emergency application draft", "transitions": ["validate description and test report", "verify a current or future window exists", "submit emergency workflow", "assign window at approval completion"], "output": "fixed-window cleared candidates"},
+      {"input": "workflow approval event", "transitions": ["deduplicate event", "mark application cleared", "update latest window candidates by approvedAt"], "output": "artifact-cleared production-ledger entries"},
+      {"input": "production outcome correction", "transitions": ["check permission and dataVersion", "append audit", "recalculate latest valid successful history"], "output": "updated production baseline and current production version"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Field validation fails", "behavior": "Show field-local errors and preserve all entered data.", "recovery": "Correct the fields and retry."},
+    {"condition": "No current or future window can receive an emergency application", "behavior": "Allow draft save but block submit with a window-maintenance message.", "recovery": "Create an eligible production window and resubmit."},
+    {"condition": "A duplicate application exists", "behavior": "Show the historical business snapshot and only status-allowed decisions.", "recovery": "Choose cancel, edit or create as permitted."},
+    {"condition": "Concurrent dataVersion conflict returns 409", "behavior": "Do not overwrite server state; preserve local changes and show the conflicting current state.", "recovery": "Reload and explicitly reapply the change."},
+    {"condition": "Business rule validation returns 422", "behavior": "Map rule code to the affected field or delivery unit.", "recovery": "Correct input and retry."},
+    {"condition": "Authorization fails with 403", "behavior": "Show forbidden state and remove write actions.", "recovery": "Return to an authorized view or obtain access."},
+    {"condition": "Task is already processed or expired with 410", "behavior": "Render read-only detail and the current task result.", "recovery": "Return to inbox or business detail."},
+    {"condition": "A command is clicked repeatedly", "behavior": "Disable pending controls and reuse the same idempotency key.", "recovery": "Render the command's final returned state."}
+  ],
+  "quality_attributes": {
+    "security": [
+      "Use fictional data only in the prototype",
+      "Formal write actions require authentication, RBAC, project scope, entity authorization and audit",
+      "Formal workflow and signature actors come only from the authenticated server context"
+    ],
+    "performance": [
+      "Derive analytics from normalized mock facts without duplicate metric stores",
+      "Formal latest-production lookups must support batch queries",
+      "Dispose ECharts instances when views unmount"
+    ],
+    "compatibility": [
+      "Keep existing overdue workflow codes while displaying urgent-version terminology",
+      "Use one route and action contract for Web and H5",
+      "No page-level horizontal overflow at required desktop and mobile viewports",
+      "Support light and dark themes without new dependencies"
+    ],
+    "operations": [
+      "Keep normal business UI free of debug controls",
+      "Provide deterministic development-only state reset",
+      "Formal implementation monitors workflow event retries, emergency assignment failures, production corrections and projection recalculation"
+    ]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2", "R3", "R4"], "signal": "Five views, window eligibility, version naming and field linkage match the confirmed rules.", "method": "Vue build plus desktop browser application paths."},
+    {"requirement_ids": ["R5", "R6"], "signal": "Latest successful production metadata and complete duplicate snapshots are visible with correct actions.", "method": "Deterministic mock scenarios and browser interaction."},
+    {"requirement_ids": ["R7", "R8", "R9", "R10"], "signal": "Clearance, production outcome, rollback projection and emergency assignment remain consistent across views.", "method": "Cross-view state assertions and browser regression paths."},
+    {"requirement_ids": ["R11"], "signal": "A valid pending task is actionable and an expired task is read-only on desktop and H5.", "method": "Browser acceptance at 1280x800, 375x812, 390x844 and 430x932."},
+    {"requirement_ids": ["R12", "R13", "R14"], "signal": "Analytics reconcile, debug controls stay isolated and the diff remains frontend-only.", "method": "Metric cross-check, debug-mode checks, governance scope audit, git diff check and browser console inspection."}
+  ],
+  "assumptions": [
+    {"text": "Current project, subsystem and delivery-unit providers can remain mocked for this prototype revision.", "basis": "User explicitly deferred those platform integrations.", "falsifier": "The prototype is required to enforce real project or entity permissions."},
+    {"text": "The platform workflow will expose code-based startup, lifecycle events, inbox/done projection and internal signature as separately designed.", "basis": "Approved platform-business-integration design.", "falsifier": "The platform contract is rejected or its stable workflow-code interface changes."},
+    {"text": "Existing frontend dependencies can support responsive review and analytics without a new package.", "basis": "Revision 1 already uses Element Plus and ECharts.", "falsifier": "An approved interaction cannot be implemented with current dependencies."}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "Use separate production-baseline and current-production views.", "reason": "Window outcomes and cross-window production truth have different ownership and lifecycles.", "source": "User selected option 1."},
+    {"id": "D2", "decision": "Approval completion means artifact clearance only.", "reason": "Approved artifacts may still fail or not enter production.", "source": "User optimization item 1 and explicit terminology confirmation."},
+    {"id": "D3", "decision": "Display urgent version while retaining overdue workflow codes.", "reason": "Business terminology changes without breaking established workflow mappings.", "source": "User optimization item 5."},
+    {"id": "D4", "decision": "Treat additional as a derived application characteristic.", "reason": "It affects workflow risk handling but is not a version category.", "source": "User confirmation."},
+    {"id": "D5", "decision": "Assign emergency applications to a window at approval completion and then freeze assignment.", "reason": "Emergency users should not manually choose a window, while production accounting still needs one.", "source": "User optimization item 8 and confirmations."},
+    {"id": "D6", "decision": "Let the user decide how to handle duplicate applications within status constraints.", "reason": "Duplicates need warning and traceability but should not impose one universal resolution.", "source": "User optimization item 10."},
+    {"id": "D7", "decision": "Use one responsive workflow-review route for Web and H5.", "reason": "Permissions, actions and task state remain consistent across layouts.", "source": "User optimization item 11 and confirmed recommendation."},
+    {"id": "D8", "decision": "Remove prototype controls from normal UI and expose them only through a development entry.", "reason": "Business users do not need Mock or state controls.", "source": "Browser comment and confirmation."}
+  ],
+  "risks": [
+    {"risk": "Revision-1 convergence evidence may be mistaken for revision-2 completion.", "impact": "Unimplemented behavior could be reported as delivered.", "mitigation": "Mark revision-1 evidence as historical and create a new plan, execution and observation cycle for revision 2."},
+    {"risk": "Duplicated stored baseline and analytics values can diverge.", "impact": "Views report contradictory production versions.", "mitigation": "Store normalized facts and derive candidates, current production and metrics."},
+    {"risk": "Emergency assignment may race with window changes.", "impact": "An approved application has no stable accounting window.", "mitigation": "Check availability before submit and perform atomic server-side assignment at approval completion in the formal implementation."},
+    {"risk": "The complete conflict snapshot is dense on H5.", "impact": "Actions or critical history become unreadable.", "mitigation": "Use summary cards, expandable sections and a bounded scrolling dialog while excluding attachments."}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User confirmed the final architecture and interface section, then explicitly deferred the project-lifecycle expansion and instructed completion of the currently designed revision-2 scope.",
+    "confirmed_at": "2026-08-14T23:17:24+08:00"
+  }
+}

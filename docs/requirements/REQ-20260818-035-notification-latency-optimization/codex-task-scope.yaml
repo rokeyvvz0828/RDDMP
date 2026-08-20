@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260818-035",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260818-035-notification-latency-optimization/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "platform/workflow",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+      "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+      "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java",
+      "web/src/components/ui/UiNotificationCenter.vue",
+      "docs/requirements/REQ-20260818-035-notification-latency-optimization/**",
+      "docs/engineering-control/designs/2026-08-18-notification-latency-optimization-design.md",
+      "docs/engineering-control/plans/2026-08-18-notification-latency-optimization-implementation-plan.md",
+      ".ai-control/requirements/req-20260818-035-notification-latency-optimization/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/platform/system/**",
+      "server/src/platform/boot/**",
+      "server/src/modules/release/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V26__system_notifications.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql",
+      "web/src/api/notifications.ts",
+      "web/src/types/notification.ts",
+      "web/src/modules/delivery-showcase/**",
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260818-035",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["workflow-lifecycle-tests", "backend-full-tests", "frontend-build", "notification-browser-flow", "unread-count-load"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "No schema change. DISPATCHING uses the existing VARCHAR status field and updated_at supports stale-claim recovery."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-notification-metadata"
+  },
+  "required_tests": [
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "workflow-lifecycle-tests", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test"},
+    {"name": "backend-full-tests", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "notification-browser-flow", "command": "authenticated browser checks for one-second polling, hidden pause, focus refresh, drawer refresh and no overlapping unread requests"},
+    {"name": "unread-count-load", "command": "200 authenticated clients call /api/notifications/unread-count for 60 seconds; require zero errors and P95 <= 200ms"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-035-notification-latency-optimization/codex-task-scope.yaml --working-tree"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "after-commit behavior affects shared workflow lifecycle delivery",
+      "immediate and scheduled paths must not double-consume",
+      "one-second foreground polling creates approximately 200 QPS at the confirmed scale",
+      "target files already contain unrelated uncommitted work that must be preserved"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260818-035-notification-latency-optimization",
+    "control_justification": "shared platform workflow delivery behavior, durable recovery, public notification component and measured concurrency target",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T1.json",
+      ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T1.json",
+      ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T2.json",
+      ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T2.json",
+      ".ai-control/requirements/req-20260818-035-notification-latency-optimization/convergence.json"
+    ],
+    "release_verification": ["workflow-lifecycle-tests", "backend-full-tests", "frontend-build", "notification-browser-flow", "unread-count-load", "governance"],
+    "rollback": "Revert only REQ-20260818-035 code changes; the durable five-second scheduler remains available and no database rollback is required."
+  }
+}

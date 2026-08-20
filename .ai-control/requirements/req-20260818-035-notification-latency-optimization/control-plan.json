@@ -1,0 +1,166 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Provide after-commit event-specific dispatch with atomic claim, compensation and stale recovery.",
+      "requirement_ids": ["R1", "R2", "R3", "R4"],
+      "prerequisites": [],
+      "input_facts": [
+        "WorkflowLifecycleEventService writes event and delivery rows in caller transactions.",
+        "WorkflowLifecycleDispatcher currently selects PENDING/RETRY every five seconds and consumes before a claim.",
+        "The existing delivery table can represent DISPATCHING and stale recovery without a migration."
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T1.json",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T1.json"
+      ],
+      "invariants": [
+        "Event and delivery rows commit before dispatch.",
+        "Notification failure never changes a committed workflow result.",
+        "The scheduler, five attempts, DEAD and manual retry remain compatible.",
+        "Unrelated dirty-worktree changes remain untouched."
+      ],
+      "interface_contracts": [
+        "dispatchEvent(String eventId) handles only matching due deliveries.",
+        "Only a successful PENDING/RETRY to DISPATCHING conditional update authorizes consumption.",
+        "Successful consumption changes DISPATCHING to DELIVERED; immediate failure returns to schedulable PENDING.",
+        "Stale DISPATCHING is recovered by updated_at and remains replay-idempotent."
+      ],
+      "non_goals": ["No schema, API, queue, cache or lifecycle-consumer contract change."],
+      "action_bounds": [
+        "Modify only the two lifecycle services and their direct tests.",
+        "Keep the default scheduler delay at five seconds and stale threshold at sixty seconds.",
+        "Do not alter business workflow state transitions or notification payloads."
+      ],
+      "acceptance_checks": [
+        "Commit dispatches immediately and rollback does not dispatch.",
+        "Immediate/scheduled normal race invokes one consumer.",
+        "Immediate failure does not escape and remains schedulable.",
+        "Stale claim recovers and fifth scheduled failure reaches DEAD.",
+        "Workflow Maven tests pass."
+      ],
+      "evidence_required": ["Actual T1 diff", "Focused and module Maven commands with exit codes", "Consumer call-count and state assertions", "Unexpected disturbances"],
+      "rollback": "Revert only T1 service and test changes; the existing scheduler remains.",
+      "stop_conditions": ["A consumer is not replay-idempotent", "A schema change is required", "Immediate dispatch can observe incomplete business state"],
+      "escalation_conditions": ["A queue, public event-contract change or retry-semantic change becomes necessary"]
+    },
+    {
+      "id": "T2",
+      "goal": "Provide visibility-aware one-second unread polling with request de-duplication and failure backoff.",
+      "requirement_ids": ["R1", "R5", "R6"],
+      "prerequisites": ["T1"],
+      "input_facts": [
+        "UiNotificationCenter uses a 15000ms setInterval and focus refresh.",
+        "The existing unread-count endpoint and list/module request version guards are reusable.",
+        "The frontend has no unit-test framework and must retain its current public template contract."
+      ],
+      "write_scope": [
+        "web/src/components/ui/UiNotificationCenter.vue",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T2.json",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T2.json"
+      ],
+      "invariants": [
+        "Notification API, DTO, display, filter, read and navigation semantics remain unchanged.",
+        "Hidden pages issue no periodic count requests.",
+        "Only one unread-count request may be in flight.",
+        "Unrelated component edits remain untouched."
+      ],
+      "interface_contracts": [
+        "Visible successful polling waits one second after request completion.",
+        "Focus, visibility restoration and drawer open trigger or reuse an immediate count request.",
+        "Failures back off at two, five and fifteen seconds without repeated toast.",
+        "List and module summaries refresh only when the drawer is open and the count changed."
+      ],
+      "non_goals": ["No API, store, global poller, dependency, push transport or UI redesign."],
+      "action_bounds": [
+        "Modify only the script section lifecycle needed for polling.",
+        "Preserve existing request-version guards and visible error behavior.",
+        "Use browser-native visibility/focus events and setTimeout."
+      ],
+      "acceptance_checks": [
+        "Frontend production build passes.",
+        "Code no longer contains the 15000ms fixed interval.",
+        "Visible, hidden, focus, drawer, in-flight and backoff paths match R5-R6.",
+        "Existing notification drawer behavior remains usable."
+      ],
+      "evidence_required": ["Actual T2 diff", "Frontend build exit code", "Browser Network/Console observations", "Unexpected disturbances"],
+      "rollback": "Restore the prior polling lifecycle in UiNotificationCenter.vue only.",
+      "stop_conditions": ["API or DTO changes become necessary", "Existing drawer request guards cannot be preserved"],
+      "escalation_conditions": ["A new dependency, global polling service or push transport becomes necessary"]
+    },
+    {
+      "id": "T3",
+      "goal": "Prove integration latency, capacity, compatibility and scope convergence.",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": [
+        "T1 and T2 expose repeatable backend and frontend sensors.",
+        "Local frontend and backend normally run at ports 5173 and 8080.",
+        "The unread-count query has a tenant/user/is_read leading index."
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T3.json",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T3.json",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/convergence.json"
+      ],
+      "invariants": [
+        "Verification uses local non-production data and authenticated test identities.",
+        "Performance targets are not relaxed to claim completion.",
+        "No product file changes are made during T3 unless feedback returns to planning/executing."
+      ],
+      "interface_contracts": [
+        "At least 20 normal event-to-bell samples determine R1 P95.",
+        "Two hundred clients for sixty seconds determine R7 errors and API P95.",
+        "Browser Network and Console determine R5-R6 runtime behavior."
+      ],
+      "non_goals": ["No production access, production data, code commit, push or release."],
+      "action_bounds": [
+        "Run approved local tests and probes only.",
+        "Record unrelated baseline failures without editing range-external files.",
+        "Return any product defect to a bounded correction loop."
+      ],
+      "acceptance_checks": [
+        "Focused/full backend and frontend builds pass.",
+        "Browser lifecycle and notification regression pass.",
+        "Twenty-run normal latency P95 is at most two seconds.",
+        "Two-hundred-client count load has zero errors and P95 at most 200ms.",
+        "Governance, diff and scope checks are accounted for."
+      ],
+      "evidence_required": ["Command exit codes", "Browser network/console evidence", "Latency sample", "Load-test summary", "Scope and residual-risk audit"],
+      "rollback": "Disable immediate triggering and restore prior polling while retaining durable scheduled delivery.",
+      "stop_conditions": ["Runtime cannot be restored after three attempts", "No local test identity is available", "The 200-QPS gate fails"],
+      "escalation_conditions": ["Meeting must requirements requires cache, push, queue or a changed objective"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "Backend normal path must exist before end-to-end frontend latency can be measured."},
+    {"from": "T2", "to": "T3", "reason": "Integration and capacity verification require both implementation tasks."}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["Run workflow module Maven tests", "Sample backend state-machine assertions with S1"]},
+    {"after_tasks": ["T2"], "checks": ["Run frontend production build", "Sample browser polling lifecycle with S2"]},
+    {"after_tasks": ["T1", "T2", "T3"], "checks": ["Run full regression", "Measure S3 and S4 thresholds", "Audit scope and residual risks"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 completion sample", "trigger": "T1 execution report", "observer": "Main agent using repeatable focused tests, marked non-independent", "sensors": ["S1", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4"]},
+    {"label": "T2 completion sample", "trigger": "T2 execution report", "observer": "Main agent using build and browser runtime, marked non-independent", "sensors": ["S2", "S5"], "requirement_ids": ["R1", "R5", "R6"]},
+    {"label": "Final integration sample", "trigger": "T3 evidence complete", "observer": "Main agent using heterogeneous runtime sensors, marked non-independent", "sensors": ["S1", "S2", "S3", "S4", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S3", "S5"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S5"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S5"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S5"]},
+    {"requirement_id": "R5", "task_ids": ["T2", "T3"], "sensor_ids": ["S2", "S5"]},
+    {"requirement_id": "R6", "task_ids": ["T2", "T3"], "sensor_ids": ["S2", "S5"]},
+    {"requirement_id": "R7", "task_ids": ["T3"], "sensor_ids": ["S4"]}
+  ],
+  "plan_status": "ready"
+}

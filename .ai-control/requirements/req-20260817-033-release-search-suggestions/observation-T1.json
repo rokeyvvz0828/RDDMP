@@ -1,0 +1,44 @@
+{
+  "sample_label": "shared-contract sample",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 Vue compiler and component contract inspection",
+      "result": "pass",
+      "raw_evidence": "vue-tsc exited 0 and ReleaseSearchSelect exposes one option contract for local and remote modes.",
+      "limitation": ["No list page consumes the component until T2/T3."]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 static option pipeline inspection",
+      "result": "pass",
+      "raw_evidence": "Local matching lowercases keywords/query and all visible candidate paths end with slice(0, 20).",
+      "limitation": ["Real record mappings are measured in T2/T3."]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S2 event-path inspection",
+      "result": "pass",
+      "raw_evidence": "Temporary filter methods call search(); only the el-select change handler emits update:modelValue and no allow-create path exists.",
+      "limitation": ["Element Plus runtime blur behavior remains for browser sampling."]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S1 compiler plus S2 scoped CSS inspection",
+      "result": "pass",
+      "raw_evidence": "Explicit loading/no-match/error empty state and release-prefixed truncating option styles compile successfully.",
+      "limitation": ["Rendered toolbar and popper geometry remain for browser sampling."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "The release module is untracked in the dirty worktree, so HEAD-relative git diff cannot independently identify T1 lines."
+  ],
+  "coverage_gaps": [
+    "Runtime focus, blur, selection and clear behavior is intentionally deferred until the component has all four call sites."
+  ],
+  "error_counts": { "P0": 0, "P1": 0, "P2": 0, "P3": 0 },
+  "observation_status": "complete"
+}

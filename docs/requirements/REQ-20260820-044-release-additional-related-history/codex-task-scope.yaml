@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260820-044",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260820-044-release-additional-related-history/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/release",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java",
+      "web/src/api/release.ts",
+      "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+      "web/src/modules/release/release-prototype.css",
+      "docs/requirements/REQ-20260820-044-release-additional-related-history/**",
+      "docs/engineering-control/designs/2026-08-20-release-additional-related-history-design.md",
+      "docs/engineering-control/plans/2026-08-20-release-additional-related-history-implementation-plan.md",
+      ".ai-control/requirements/req-20260820-044-release-additional-related-history/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/modules/delivery-showcase/**",
+      "server/src/platform/**",
+      "server/src/shared/**",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [
+      ".env", ".env.*", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/ai/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": ["release-module-tests", "frontend-build", "related-history-browser-flow"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "No schema or stored-data change. Remove the additive endpoint and UI section."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-release-application-metadata"
+  },
+  "required_tests": [
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "release-module-tests", "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "related-history-browser-flow", "command": "browser verifies additional/standard/empty/error layouts and history links at desktop and mobile viewports"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-044-release-additional-related-history/codex-task-scope.yaml --working-tree"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": [
+      "Legacy relation rows may reference delivery revisions no longer active.",
+      "The dirty rokey worktree contains unrelated changes that must remain untouched."
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260820-044-release-additional-related-history",
+    "control_justification": "The change adds a protected backend contract and an approval-reference user flow across frontend and backend.",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260820-044-release-additional-related-history/execution-T1.json",
+      ".ai-control/requirements/req-20260820-044-release-additional-related-history/observation-T1.json",
+      ".ai-control/requirements/req-20260820-044-release-additional-related-history/execution-T2.json",
+      ".ai-control/requirements/req-20260820-044-release-additional-related-history/observation-T2.json",
+      ".ai-control/requirements/req-20260820-044-release-additional-related-history/convergence.json"
+    ],
+    "release_verification": ["release-module-tests", "frontend-build", "related-history-browser-flow", "governance", "scope"],
+    "rollback": "Revert only REQ-20260820-044 endpoint, DTO, tests and detail-page history section changes."
+  }
+}

@@ -6,12 +6,21 @@ export interface SystemNotification {
   content: string
   level: NotificationLevel
   sourceName: string
+  moduleCode: string
+  moduleName: string
   businessType: string
   businessKey: string
   actionPath: string | null
   read: boolean
   readAt: string | null
   createdAt: string
+}
+
+export interface NotificationModuleSummary {
+  moduleCode: string
+  moduleName: string
+  totalCount: number
+  unreadCount: number
 }
 
 export interface NotificationPage {

@@ -1,0 +1,36 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/production/service/ReleaseProductionService.java", "purpose": "在投产结果写入前按所属窗口 productionEnd 执行服务端权威门禁"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/production/service/ReleaseProductionServiceTest.java", "purpose": "使用固定 Asia/Shanghai 时钟覆盖提前拒绝、精确边界和批量无写入行为"}
+  ],
+  "requirements_addressed": ["R3", "R4", "R5"],
+  "commands": [
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseProductionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 1, "salient_output": "TDD 初始采样因 ReleaseProductionService 尚无 ReleaseWindowStore/Clock 测试构造函数而编译失败"},
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseProductionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "ReleaseProductionServiceTest: Tests run: 10, Failures: 0, Errors: 0"},
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test", "exit_code": 0, "salient_output": "Reactor 8/8 SUCCESS; ccb-release Tests run: 54, Failures: 0, Errors: 0; BUILD SUCCESS"}
+  ],
+  "local_checks": [
+    {"check": "固定时钟服务测试", "result": "pass", "evidence": "提前单条和批量请求均返回 CONFLICT，Mockito 验证 updateResult/appendResultLog 从未调用；精确 productionEnd 可写入", "limitations": ["批量事务回滚由 Spring @Transactional 语义保障，聚焦测试不连接真实数据库"]},
+    {"check": "发布模块完整 Reactor 回归", "result": "pass", "evidence": "8 个 Reactor 模块构建成功，ccb-release 54 项测试零失败", "limitations": ["浏览器与真实 HTTP 行为由 T3 验证"]}
+  ],
+  "diff_summary": [
+    "ReleaseProductionService 注入租户窗口 Store 与业务时区 Clock",
+    "锁定基线明细后、原结果校验与写入前执行所属窗口结束时间检查",
+    "未到 productionEnd 返回包含结束时间的 CONFLICT，恰好到达边界允许继续",
+    "补充单条、批量和精确边界测试，未按版本类型分支"
+  ],
+  "invariants_checked": [
+    {"invariant": "后端时间权威且精确 productionEnd 可维护", "result": "pass", "evidence": "Clock.fixed 边界测试通过，比较仅使用 LocalDateTime.now(clock).isBefore(productionEnd)"},
+    {"invariant": "窗口查询保持租户隔离", "result": "pass", "evidence": "调用 windows.findById(entry.windowId(), user.tenantId())"},
+    {"invariant": "原结果、乐观锁、字段语义和审计行为不变", "result": "pass", "evidence": "ReleaseProductionServiceTest 10 项与 ccb-release 54 项测试全部通过"},
+    {"invariant": "三类版本统一受限", "result": "pass", "evidence": "门禁未读取 versionType"}
+  ],
+  "disturbances": [
+    {"event": "release 模块当前整体尚未被 Git 跟踪", "impact": "普通 git diff 无法展示目标文件，改用精确文件审阅、测试和范围路径核对"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实数据库事务与 HTTP 集成由 T3 运行时验证覆盖"],
+  "recommended_next": "observe"
+}

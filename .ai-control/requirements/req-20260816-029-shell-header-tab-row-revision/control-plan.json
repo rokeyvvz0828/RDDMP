@@ -1,0 +1,86 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Reorder desktop collapse/project controls and restore a standalone tab row across side, top and mixed layouts without mobile or tab-command regression.",
+      "requirement_ids": ["R1","R2","R3","R4","R5"],
+      "prerequisites": [],
+      "input_facts": [
+        "Side desktop currently renders project selection before the collapse control",
+        "Desktop UiTabs is currently a descendant of app-header__tabs",
+        "Top and mixed layouts own global controls in app-top-navigation",
+        "UiTabs and tabsStore own tab behavior and must remain unchanged",
+        "AppLayout.vue and styles.css contain unrelated edits that must be preserved"
+      ],
+      "write_scope": ["web/src/views/AppLayout.vue","web/src/styles.css"],
+      "invariants": [
+        "tabsStore remains the sole route-tab state owner",
+        "UiTabs behavior and currentPath contract remain unchanged",
+        "Project context, sidebar collapse and global account actions remain usable",
+        "Exactly one UiTabs is rendered at every viewport",
+        "No page-level horizontal overflow is introduced",
+        "Unrelated dirty-worktree changes remain intact"
+      ],
+      "interface_contracts": [
+        "AppLayout passes route.fullPath to the single UiTabs instance",
+        "Collapse controls toggle theme.sidebarCollapsed only when side navigation exists",
+        "Project selectors continue to call projectContext.select"
+      ],
+      "non_goals": [
+        "Do not edit UiTabs, tabsStore, routes, business pages, backend or dependencies",
+        "Do not restore desktop breadcrumbs",
+        "Do not redesign mobile or global navigation behavior"
+      ],
+      "action_bounds": [
+        "Modify only shell template order, mount conditions and related CSS selectors",
+        "Suppress empty desktop secondary headers without changing state owners",
+        "Keep all corrections reversible within the two approved files"
+      ],
+      "acceptance_checks": [
+        "Side and mixed desktop collapse control is left of project selection wherever side navigation exists",
+        "Desktop UiTabs is a separate full-width row and no breadcrumb is visible",
+        "Switch, direct close, refresh, close others and close all retain their outcomes",
+        "Top and mixed desktop layouts have no empty secondary header or duplicate tabs",
+        "375x812, 390x844 and 430x932 retain readable title, sticky tabs, drawer project selector and no overflow",
+        "Frontend build, focused diff and fresh console checks pass"
+      ],
+      "evidence_required": [
+        "Focused source diff",
+        "Build and diff command outputs and exit codes",
+        "Side/top/mixed desktop DOM order, parent relationship and rectangles",
+        "All tab interaction results",
+        "Three mobile viewport geometry checks",
+        "Fresh console sample"
+      ],
+      "rollback": "Restore the pre-task control order, UiTabs mount conditions and shell CSS while preserving unrelated changes in the same files.",
+      "stop_conditions": [
+        "Completion requires edits outside the two approved product files",
+        "A supported layout mode requires a new product decision",
+        "Mobile regression cannot be corrected within approved shell selectors"
+      ],
+      "escalation_conditions": [
+        "Desktop breadcrumb or mobile design must change",
+        "A layout mode must be removed or project context relocated"
+      ]
+    }
+  ],
+  "dependency_edges": [],
+  "parallel_groups": [["T1"]],
+  "integration_points": [
+    {"after_tasks":["T1"],"checks":["Run frontend production build","Run focused diff check","Verify side/top/mixed desktop layouts","Verify tab commands","Verify required mobile viewports and console"]}
+  ],
+  "sampling_plan": [
+    {"label":"Pre-change layout baseline","trigger":"Before target-file edits","observer":"Main controller","sensors":["S1","S2"],"requirement_ids":["R1","R2","R5"]},
+    {"label":"Post-implementation observation","trigger":"T1 execution report recorded","observer":"Independent runtime observation","sensors":["S1","S2","S3","S4","S5"],"requirement_ids":["R1","R2","R3","R4","R5"]}
+  ],
+  "coverage": [
+    {"requirement_id":"R1","task_ids":["T1"],"sensor_ids":["S2"]},
+    {"requirement_id":"R2","task_ids":["T1"],"sensor_ids":["S1","S2"]},
+    {"requirement_id":"R3","task_ids":["T1"],"sensor_ids":["S1","S3","S5"]},
+    {"requirement_id":"R4","task_ids":["T1"],"sensor_ids":["S4","S5"]},
+    {"requirement_id":"R5","task_ids":["T1"],"sensor_ids":["S2","S5"]}
+  ],
+  "plan_status": "ready"
+}

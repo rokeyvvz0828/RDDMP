@@ -1,0 +1,72 @@
+{
+  "plan_revision": 1,
+  "human_document": "docs/engineering-control/plans/2026-08-16-shell-header-tab-row-revision-implementation-plan.md",
+  "plan_status": "ready",
+  "global_constraints": [
+    "Only modify web/src/views/AppLayout.vue and web/src/styles.css product surfaces",
+    "Do not change UiTabs, tabsStore, routes, business pages, backend or dependencies",
+    "Do not restore the desktop breadcrumb",
+    "Preserve the current mobile title, sticky tabs and drawer project selector",
+    "Preserve unrelated dirty-worktree changes and do not commit or push"
+  ],
+  "file_map": [
+    {"path":"web/src/views/AppLayout.vue","status":"existing","responsibility":"Compose collapse, project, global actions and the single UiTabs mount","evidence":"Current template owns all shell mount positions"},
+    {"path":"web/src/styles.css","status":"existing","responsibility":"Define header order, standalone tab row, responsive stickiness and overflow","evidence":"Current selectors own app-header, ui-tabs-bar and 760px behavior"}
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Place the desktop collapse control before project selection and restore a separate route-tab row without changing tab or mobile behavior.",
+      "requirement_ids": ["R1","R2","R3","R4","R5"],
+      "prerequisites": [],
+      "input_facts": [
+        "AppLayout currently places the side-layout project selector before the collapse control",
+        "Desktop UiTabs is currently mounted inside .app-header__tabs",
+        "UiTabs and tabsStore own tab commands and state and need no changes",
+        "The target files contain unrelated approved work that must be preserved"
+      ],
+      "files": {"create":[],"modify":["web/src/views/AppLayout.vue","web/src/styles.css"],"test":[]},
+      "interfaces": {
+        "consumes":["theme.layout","theme.sidebarCollapsed","projectContext.currentRef","mobileView","route.fullPath","tabsStore.tabs"],
+        "produces":["desktop collapse-before-project order","single standalone UiTabs(currentPath=route.fullPath) mount","unchanged mobile shell behavior"]
+      },
+      "steps": [
+        {"id":"T1-S1","action":"Capture current template and browser DOM/geometry baseline","command":null,"expected":"Project precedes collapse and desktop tabs are inside app-header","evidence":"Source lines, parent relationship and rectangles"},
+        {"id":"T1-S2","action":"Reorder AppLayout controls and move the single UiTabs mount below the global header without leaving an empty top-layout header","command":null,"expected":"Side and mixed collapse controls precede their project selector; tabs are a separate row; mobile title and drawer selector remain","evidence":"Focused template diff and DOM count"},
+        {"id":"T1-S3","action":"Remove inline-tab CSS and retain stable standalone tab/header responsive styles","command":null,"expected":"Header controls are independent from tab count and the tab row spans content width","evidence":"Focused style diff and runtime rectangles"},
+        {"id":"T1-S4","action":"Run frontend build and focused diff check","command":"npm --prefix web run build && git diff --check -- web/src/views/AppLayout.vue web/src/styles.css","expected":"Both checks exit 0","evidence":"Command output and exit codes"},
+        {"id":"T1-S5","action":"Verify side, top and mixed desktop layouts plus all tab commands","command":null,"expected":"No empty header, overlap or behavior regression","evidence":"DOM, rectangles, interactions and width measurements"},
+        {"id":"T1-S6","action":"Verify 375x812, 390x844 and 430x932 plus a fresh console sample","command":null,"expected":"One sticky tab row, readable title, usable drawer project selector, no overflow or new console errors","evidence":"Mobile DOM, geometry and console records"}
+      ],
+      "acceptance_checks": [
+        "Desktop collapse control is left of project selection wherever a side navigation exists",
+        "Desktop UiTabs is a separate full-width row and no breadcrumb is visible",
+        "Switch, direct close, refresh, close others and close all retain their outcomes",
+        "Top and mixed layouts do not contain an empty second header",
+        "375x812, 390x844 and 430x932 retain current mobile behavior without horizontal overflow",
+        "Frontend build, focused diff and fresh console checks pass"
+      ],
+      "risks": ["Top or mixed layout may retain an empty app-header", "Responsive conditions could render duplicate tabs"],
+      "rollback": "Restore the pre-task AppLayout control order, UiTabs mount conditions and corresponding shell CSS while preserving unrelated file changes.",
+      "stop_conditions": ["The change requires UiTabs, tabsStore, route, business-page or backend edits", "A layout mode requires a new product decision", "Mobile regression cannot be fixed within the two approved files"],
+      "escalation_conditions": ["The breadcrumb or mobile design must change", "A supported layout mode must be removed or project context relocated"]
+    }
+  ],
+  "dependency_edges": [],
+  "parallel_groups": [["T1"]],
+  "integration_checks": [
+    {"after_tasks":["T1"],"command":"npm --prefix web run build && git diff --check -- web/src/views/AppLayout.vue web/src/styles.css","expected":"Compiler, production build and focused diff checks pass before browser acceptance"}
+  ],
+  "coverage": [
+    {"requirement_id":"R1","task_ids":["T1"]},
+    {"requirement_id":"R2","task_ids":["T1"]},
+    {"requirement_id":"R3","task_ids":["T1"]},
+    {"requirement_id":"R4","task_ids":["T1"]},
+    {"requirement_id":"R5","task_ids":["T1"]}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User reviewed the landed implementation plan and explicitly directed development.",
+    "confirmed_at": "2026-08-16T11:38:00+08:00"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "The governance script reproducibly rejects revision-suffixed model, control-plan and state filenames even though their JSON contents are valid.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "Revision-2 canonical artifacts were given names outside requirementFilePattern while the revision-1 canonical names still occupied the permitted slots.",
+    "supporting_evidence": "scripts/check-ai-control-layout.mjs permits canonical model, control-plan and state names and arbitrary execution-* archives; the failure lists exactly the three revision-suffixed files.",
+    "falsifier": "Governance still reports the same invalid-file violations after revision 2 is placed in canonical slots and revision 1 is archived under execution-* names."
+  },
+  "control_action": {
+    "gain": "proportional-low",
+    "target": "Only the six control-evidence filenames for revision preservation and canonical revision-2 ownership",
+    "write_scope": [".ai-control/requirements/req-20260814-026-release-management-prototype/*.json"],
+    "invariants": ["Do not change product code", "Preserve revision-1 JSON byte content", "Keep the active revision-2 state writable by control_loop.py"],
+    "impact_limit": "Rename revision-1 canonical files to accepted execution-revision-1-* archives and revision-2 model, plan and state to canonical names.",
+    "rollback": "Reverse the six filename moves.",
+    "correction_check": ["node scripts/check-all-governance.mjs", "git diff --check", "control_loop.py status on canonical state.json"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["Governance validates filename shape and JSON parsing, not each archived file's phase schema"]
+}

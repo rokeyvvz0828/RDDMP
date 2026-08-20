@@ -1,0 +1,116 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立类型安全、可复位且跨视图一致的 Mock 状态与唯一原型菜单节点",
+      "requirement_ids": ["R1", "R2", "R5"],
+      "prerequisites": [],
+      "input_facts": ["RouteNode 由 web/src/types/auth.ts 定义", "auth.hydrate 在服务端菜单返回后生成新数组", "当前前端构建命令可直接测量类型和打包"],
+      "write_scope": ["web/src/modules/release/types.ts", "web/src/modules/release/mock.ts", "web/src/modules/release/prototype-route.ts", "web/src/stores/auth.ts"],
+      "invariants": ["所有数据虚构", "服务端路由节点不被覆盖或修改", "重复 hydrate 不产生重复 /release"],
+      "interface_contracts": ["createReleasePrototypeRoute 返回合法 RouteNode", "createReleasePrototypeState 返回深度独立状态", "场景、冲突和指标函数为纯函数"],
+      "non_goals": ["不注册 Vue 页面", "不修改后端菜单或数据库"],
+      "action_bounds": ["只创建 release 领域文件并在 auth.ts 追加去重节点", "不修改公共 RouteNode 类型"],
+      "acceptance_checks": ["生产构建通过", "重置结果确定且深度独立", "菜单组合保留全部服务端路由"],
+      "evidence_required": ["实际 diff", "npm --prefix web run build 退出码", "菜单去重代码证据"],
+      "rollback": "删除三个新文件并移除 auth.ts 原型节点追加。",
+      "stop_conditions": ["必须修改 RouteNode 公共契约", "服务端菜单被原型逻辑覆盖"],
+      "escalation_conditions": ["需要后端菜单或数据库变更"]
+    },
+    {
+      "id": "T2",
+      "goal": "交付可发现的四视图模块壳层和投产窗口完整交互",
+      "requirement_ids": ["R1", "R2", "R4"],
+      "prerequisites": ["T1"],
+      "input_facts": ["共享工具栏、表格、状态和空状态组件可读复用", "router/index.ts 使用直接组件路由", "T1 提供唯一状态和菜单节点"],
+      "write_scope": ["web/src/modules/release/ReleaseManagementPrototype.vue", "web/src/modules/release/components/ReleaseWindowView.vue", "web/src/modules/release/release-prototype.css", "web/src/router/index.ts"],
+      "invariants": ["模块导航在错误状态仍可见", "窗口编码和项目只读", "所有样式限制在 release-prototype-page"],
+      "interface_contracts": ["/release 渲染 ReleaseManagementPrototype", "ReleaseWindowView 只通过 props/events 读写状态"],
+      "non_goals": ["不实现申请、基线和统计内部组件", "不修改 AppLayout 或全局样式"],
+      "action_bounds": ["注册一个路由", "创建壳层、窗口组件和作用域 CSS"],
+      "acceptance_checks": ["菜单和直接路由均可进入", "四个视图按钮稳定", "窗口筛选、编辑、开关和纳基提示可复位", "异步状态明确"],
+      "evidence_required": ["实际 diff", "前端构建", "浏览器路由和窗口视图证据"],
+      "rollback": "删除壳层、窗口组件和 CSS，并移除 /release 路由。",
+      "stop_conditions": ["必须修改 AppLayout 或公共 UI 才能显示"],
+      "escalation_conditions": ["现有组件无法表达批准的状态"]
+    },
+    {
+      "id": "T3",
+      "goal": "交付版本申请列表、表单、冲突判断、状态动作和流程详情",
+      "requirement_ids": ["R2", "R3", "R4"],
+      "prerequisites": ["T2"],
+      "input_facts": ["REQ-20260814-021 已固定业务规则", "T1 纯函数和 T2 会话状态是唯一数据源"],
+      "write_scope": ["web/src/modules/release/components/ReleaseApplicationView.vue", "web/src/modules/release/components/ReleaseApplicationDrawer.vue", "web/src/modules/release/components/ReleaseConflictDialog.vue", "web/src/modules/release/components/ReleaseDetailDrawer.vue", "web/src/modules/release/ReleaseManagementPrototype.vue", "web/src/modules/release/release-prototype.css"],
+      "invariants": ["场景自动派生", "一张申请只有一个物理子系统和至少一个交付单元", "同一操作重复点击不产生重复记录", "列表与详情共享对象状态"],
+      "interface_contracts": ["表单通过 save 事件提交草稿", "冲突弹框返回明确 decision", "详情动作由壳层统一更新状态"],
+      "non_goals": ["不调用真实申请、工作流、附件或签名接口", "不跨刷新持久化"],
+      "action_bounds": ["仅创建四个申请组件并扩展壳层和作用域 CSS"],
+      "acceptance_checks": ["常规、追加、阻断和应急样例可复验", "校验失败保留输入", "长文本不覆盖操作列", "详情流程和列表状态一致"],
+      "evidence_required": ["实际 diff", "前端构建", "代表场景浏览器操作证据"],
+      "rollback": "删除四个申请组件并恢复壳层到 T2 状态。",
+      "stop_conditions": ["出现重复记录或跨视图状态分叉"],
+      "escalation_conditions": ["新产品决策与 REQ-20260814-021 冲突"]
+    },
+    {
+      "id": "T4",
+      "goal": "交付基线批次、替代链、统一统计指标、图表和下钻",
+      "requirement_ids": ["R2", "R4"],
+      "prerequisites": ["T3"],
+      "input_facts": ["ECharts 已存在且交付示范中心提供生命周期模式", "T3 申请状态可驱动基线和指标"],
+      "write_scope": ["web/src/modules/release/components/ReleaseBaselineView.vue", "web/src/modules/release/components/ReleaseAnalyticsView.vue", "web/src/modules/release/components/ReleaseChart.vue", "web/src/modules/release/ReleaseManagementPrototype.vue", "web/src/modules/release/release-prototype.css"],
+      "invariants": ["批次、物理子系统和交付单元唯一定位明细", "替代历史不因最新指针变化消失", "指标、图表和下钻使用同一派生数据"],
+      "interface_contracts": ["ReleaseChart 接收 option/height/ariaLabel", "图表点击只改变下钻筛选", "导出仅展示占位说明"],
+      "non_goals": ["不生成真实 Excel", "不新增依赖或服务端统计"],
+      "action_bounds": ["创建三个组件并扩展壳层和作用域 CSS"],
+      "acceptance_checks": ["基线与替代链可追溯", "指标与下钻数量一致", "空数据不显示空白画布", "ECharts 卸载无控制台错误"],
+      "evidence_required": ["实际 diff", "前端构建", "图表非空和数据交叉核对证据"],
+      "rollback": "删除三个组件并移除壳层挂载。",
+      "stop_conditions": ["需要新依赖或第二份硬编码指标数据"],
+      "escalation_conditions": ["用户要求真实导出、持久化或服务端聚合"]
+    },
+    {
+      "id": "T5",
+      "goal": "完成范围、构建、治理和桌面运行验收并形成证据",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": ["T4"],
+      "input_facts": ["全部产品代码已可运行测量", "任务范围定义了构建、治理、diff 和浏览器传感器"],
+      "write_scope": [".ai-control/requirements/req-20260814-026-release-management-prototype/execution-T1.json", ".ai-control/requirements/req-20260814-026-release-management-prototype/observation-T1.json", ".ai-control/requirements/req-20260814-026-release-management-prototype/convergence.json"],
+      "invariants": ["不修改产品代码扩大范围", "证据区分构建、运行和浏览器验收", "无独立观察时明确限制"],
+      "interface_contracts": ["自动检查返回原始退出码", "浏览器证据记录路径、视口、操作、控制台和几何结果"],
+      "non_goals": ["不提交、不推送、不合并", "不声称正式后端完成"],
+      "action_bounds": ["运行检查、启动现有服务、浏览器测量并写当前前缀证据"],
+      "acceptance_checks": ["构建、治理和 diff 检查通过", "1280x800 与 1440x900 核心路径无重叠和页面溢出", "浅深主题和状态无控制台错误", "实际 diff 全部在授权范围"],
+      "evidence_required": ["命令退出码", "浏览器截图和 DOM/控制台结果", "最终文件清单和范围审计"],
+      "rollback": "回退 REQ-20260814-026 的产品和证据文件，不执行数据库动作。",
+      "stop_conditions": ["构建失败", "页面白屏", "控制台错误未解决", "范围越界"],
+      "escalation_conditions": ["需要后端、数据库或公共组件变更", "本地认证环境无法恢复"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "壳层消费 Mock 状态和菜单节点"},
+    {"from": "T2", "to": "T3", "reason": "申请组件挂载到壳层并共享状态"},
+    {"from": "T3", "to": "T4", "reason": "基线和统计依赖申请状态"},
+    {"from": "T4", "to": "T5", "reason": "最终验收需要完整四视图"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"], ["T5"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["npm --prefix web run build", "检查 /release 菜单去重代码"]},
+    {"after_tasks": ["T2", "T3", "T4"], "checks": ["npm --prefix web run build", "四视图共享状态检查"]},
+    {"after_tasks": ["T5"], "checks": ["node scripts/check-all-governance.mjs", "git diff --check", "桌面浏览器验收"]}
+  ],
+  "sampling_plan": [
+    {"label": "执行前基线", "trigger": "进入 executing", "observer": "主 Agent", "sensors": ["S1", "S5"], "requirement_ids": ["R4", "R5"]},
+    {"label": "T1-T4 集成采样", "trigger": "完整原型实现报告生成", "observer": "观察上下文", "sensors": ["S1", "S2", "S3"], "requirement_ids": ["R1", "R2", "R3", "R4"]},
+    {"label": "最终桌面验收", "trigger": "所有自动检查和浏览器路径完成", "observer": "独立观察者或明确标记非独立观察", "sensors": ["S2", "S3", "S4", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T5"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2", "T3", "T4", "T5"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R3", "task_ids": ["T3", "T5"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R4", "task_ids": ["T2", "T3", "T4", "T5"], "sensor_ids": ["S1", "S2", "S4"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T5"], "sensor_ids": ["S1", "S5"]}
+  ],
+  "plan_status": "ready"
+}

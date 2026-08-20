@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-037-production-baseline-maintenance-window",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-production-baseline-maintenance-window-design.md",
+  "objective": "Keep production baselines viewable while preventing any result maintenance before the owning window reaches productionEnd.",
+  "users": ["Production managers reviewing and maintaining production-baseline results"],
+  "requirements": [
+    {"id": "R1", "statement": "Window options must show status, production end time and the reason maintenance is unavailable while remaining selectable.", "acceptance": ["An unfinished window option shows a second-line unavailable reason and can still load its baseline"], "priority": "must", "source": "User confirmed dropdown reason and view-only behavior on 2026-08-18", "counterexample": ["The option only shows a status label with no reason", "The unfinished window cannot be selected for viewing"]},
+    {"id": "R2", "statement": "All frontend maintenance controls must be unavailable before the selected window ends while baseline data remains visible.", "acceptance": ["Row selection, single maintenance and batch maintenance are disabled before productionEnd", "A page-level reason identifies the opening time"], "priority": "must", "source": "User confirmed viewable but not maintainable", "counterexample": ["A user can open the maintenance dialog before the window ends", "The entire baseline is hidden"]},
+    {"id": "R3", "statement": "The maintenance boundary must be now greater than or equal to productionEnd using the Asia/Shanghai business-time interpretation.", "acceptance": ["A fixed time before the boundary is denied", "A fixed time exactly at the boundary is allowed", "The frontend recomputes eligibility without requiring a new login"], "priority": "must", "source": "Confirmed design", "counterexample": ["Maintenance waits for a later CLOSED status", "Maintenance is allowed one minute early"]},
+    {"id": "R4", "statement": "Single and batch result APIs must enforce the owning window end time on the server without accepting client eligibility claims.", "acceptance": ["Early direct API calls return conflict", "No result update or audit append occurs on rejection", "A rejected batch remains atomic"], "priority": "must", "source": "Engineering security and data-integrity invariant", "counterexample": ["Calling the API directly bypasses the UI restriction", "Part of a rejected batch is persisted"]},
+    {"id": "R5", "statement": "The rule must cover regular, urgent and emergency entries without changing existing result semantics, locking or audit behavior.", "acceptance": ["Eligibility does not branch on versionType", "Existing already-maintained, stale-version and field-validation tests remain green"], "priority": "must", "source": "User-approved complete design", "counterexample": ["Emergency entries bypass the window gate", "Existing result validation is reordered in a way that permits invalid writes"]}
+  ],
+  "invariants": ["productionEnd comes from the tenant-scoped release window record", "Backend time validation is authoritative", "Batch updates remain transactional", "Unrelated dirty-worktree changes remain untouched"],
+  "constraints": ["Reuse existing ReleaseWindowDto and ReleaseWindowStore", "No API DTO or database change", "Remain on local rokey branch", "Use existing Vue 3, Element Plus and Java Clock patterns"],
+  "non_goals": ["Hide unfinished baselines", "Add administrator bypass", "Change release-window status calculation", "Change emergency window assignment", "Implement mobile-specific layout"],
+  "selected_approach": {"name": "Frontend guidance plus server-enforced window gate", "reason": "It gives immediate user feedback and preserves integrity for direct API callers without expanding the public contract.", "alternatives": [{"name": "Frontend-only gate", "rejected_because": "Direct API calls can bypass it."}, {"name": "New baseline eligibility response DTO", "rejected_because": "The existing window DTO already supplies productionEnd and a contract change is unnecessary."}]},
+  "architecture": {
+    "boundary": {"inside": ["Release baseline window-option presentation", "Frontend maintenance eligibility", "Production-result service time gate", "Focused service tests"], "outside": ["Release-window status algorithm", "API DTOs", "Database schema", "Window assignment", "Mobile redesign"]},
+    "components": [
+      {"name": "ReleaseBaselineView", "responsibility": "Show window availability reasons and disable every maintenance actuator before productionEnd.", "depends_on": ["ReleaseWindowDto.productionEnd", "minute timer"]},
+      {"name": "ReleaseProductionService", "responsibility": "Enforce the owning tenant window productionEnd before any result update.", "depends_on": ["ReleaseProductionStore", "ReleaseWindowStore", "Clock"]},
+      {"name": "ReleaseProductionServiceTest", "responsibility": "Verify time boundaries, no-write rejection and existing result behavior with a fixed clock.", "depends_on": ["Mockito", "JUnit"]}
+    ],
+    "interfaces": [
+      {"name": "Window eligibility", "producer": "Release window API", "consumers": ["ReleaseBaselineView"], "contract": "productionEnd is the comparison boundary; unfinished windows remain viewable."},
+      {"name": "Result maintenance gate", "producer": "ReleaseProductionService", "consumers": ["single and batch result controllers"], "contract": "A tenant-scoped owning window must exist and now must not be before productionEnd."}
+    ],
+    "data_flows": [
+      {"input": "Selected window and current frontend time", "transitions": ["compare productionEnd", "render reason", "enable or disable maintenance controls"], "output": "View-only or maintainable baseline UI"},
+      {"input": "Single or batch result command", "transitions": ["lock baseline entry", "load tenant window", "check server clock", "run existing validation and update"], "output": "Conflict without writes or the existing maintained result"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Current server time is before productionEnd", "behavior": "Return CONFLICT with the end time and do not update or append audit.", "recovery": "Wait until the displayed end time or correct the window schedule through existing management."},
+    {"condition": "Owning window cannot be found in the current tenant", "behavior": "Return a business error and stop maintenance.", "recovery": "Refresh and investigate inconsistent data."},
+    {"condition": "Frontend clock differs from server", "behavior": "Server rejection wins and the API message is displayed.", "recovery": "Refresh window data and retry after server time reaches the boundary."}
+  ],
+  "quality_attributes": {"security": ["Tenant-scoped server validation cannot be bypassed by the client"], "performance": ["One indexed window lookup per result entry within the existing 200-entry batch limit"], "compatibility": ["No request, response, database or route contract changes"], "operations": ["Business error includes the authoritative opening time", "No new configuration or migration"]},
+  "verification_strategy": [
+    {"requirement_ids": ["R3", "R4", "R5"], "signal": "Fixed-clock service tests reject early writes, allow the exact boundary and preserve existing semantics.", "method": "Focused and full ccb-release Maven tests with Mockito no-write verification."},
+    {"requirement_ids": ["R1", "R2", "R3"], "signal": "Dropdown reasons and all maintenance controls match selected-window time while data stays visible.", "method": "Frontend production build and authenticated desktop browser interaction."},
+    {"requirement_ids": ["R1", "R2", "R3", "R4", "R5"], "signal": "No unauthorized files or broken governance contracts are introduced.", "method": "Scope, governance and git diff checks with existing baseline failures disclosed."}
+  ],
+  "assumptions": [{"text": "Browser and server clocks are normally close enough for minute-level presentation.", "basis": "Both display and store window timestamps at minute precision.", "falsifier": "A material client clock skew makes the UI enable maintenance before the server boundary."}],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "Unfinished windows remain selectable and viewable.", "reason": "Managers still need process visibility before completion.", "source": "User confirmation on 2026-08-18."},
+    {"id": "D2", "decision": "All version types use the same window-end gate.", "reason": "The confirmed design contains no emergency exception.", "source": "User confirmation of the complete design on 2026-08-18."},
+    {"id": "D3", "decision": "The exact productionEnd instant is maintainable.", "reason": "The requirement forbids maintenance only while the end time has not arrived.", "source": "Confirmed boundary design."}
+  ],
+  "risks": [
+    {"risk": "Client clock skew can temporarily disagree with the server.", "impact": "A control may appear enabled but the server rejects it.", "mitigation": "Keep the server authoritative and show its error; update frontend time every minute."},
+    {"risk": "A malformed batch contains entries from different windows.", "impact": "Eligibility can differ across entries.", "mitigation": "Validate every entry inside the existing transaction so any failure rolls back the batch."}
+  ],
+  "approval": {"status": "approved", "evidence": "The user reviewed the landed design and explicitly requested development.", "confirmed_at": "2026-08-18T15:02:10+08:00"}
+}

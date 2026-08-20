@@ -1,0 +1,30 @@
+{
+  "task_id": "T9",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/release/ReleaseWorkflowReviewPage.vue", "purpose": "Provide one responsive review page and approval actions"},
+    {"path_or_resource": "web/src/router/index.ts", "purpose": "Register the authenticated hidden workflow review route"},
+    {"path_or_resource": "web/src/modules/release/types.ts", "purpose": "Define review task and action state"},
+    {"path_or_resource": "web/src/modules/release/mock.ts", "purpose": "Provide valid, completed, missing and forbidden review task facts"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseApplicationView.vue", "purpose": "Expose review links for in-review applications"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseDetailDrawer.vue", "purpose": "Expose the same review route from application details"},
+    {"path_or_resource": "web/src/modules/release/release-prototype.css", "purpose": "Keep desktop and H5 review content and actions reachable"}
+  ],
+  "requirements_addressed": ["R7", "R10", "R11", "R13", "R14"],
+  "commands": [
+    {"command": "npm run build (workdir web, after integrated implementation)", "exit_code": 0, "salient_output": "Vue type checking and Vite production build passed"}
+  ],
+  "local_checks": [
+    {"check": "Unified review route", "result": "pass", "evidence": "Valid review page showed approve, reject and return actions and the current login signer 管理员", "limitations": ["Mock task authorization demonstrates the contract but is not the formal server authorization"]},
+    {"check": "H5 layout", "result": "pass", "evidence": "375x812, 390x844 and 430x932 review pages had document scrollWidth equal to viewport width and reachable actions", "limitations": []}
+  ],
+  "diff_summary": ["Added one authenticated route for desktop and H5", "Added current-login signature confirmation", "Added approve, reject and return actions", "Added explicit read-only, missing and forbidden task states"],
+  "invariants_checked": [
+    {"invariant": "Web and H5 use one route and business behavior", "result": "pass", "evidence": "Responsive layout changes at the same /workflow/review/:taskId route"},
+    {"invariant": "Review completion means artifact clearance", "result": "pass", "evidence": "Approve action updates the clearance state and does not create production success"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Real assignee validation and signature persistence remain platform integration responsibilities"],
+  "recommended_next": "observe"
+}

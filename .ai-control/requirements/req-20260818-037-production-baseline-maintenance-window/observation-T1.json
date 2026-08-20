@@ -1,0 +1,17 @@
+{
+  "sample_label": "T1 后端窗口门禁完成采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R3", "sensor": "S1 固定 Asia/Shanghai Clock 边界测试", "result": "pass", "raw_evidence": "allowsResultMaintenanceAtExactWindowEnd 通过；实现以 isBefore 判断，因此 now == productionEnd 不拒绝", "limitation": ["前端分钟刷新由 T2/T3 覆盖"]},
+    {"requirement_id": "R4", "sensor": "S1 单条/批量 Mockito 无写入断言", "result": "pass", "raw_evidence": "提前请求返回 ErrorCode.CONFLICT；updateResult 与 appendResultLog 均 verify never；10 项聚焦测试通过", "limitation": ["未对真实数据库做故障注入"]},
+    {"requirement_id": "R5", "sensor": "S3 ccb-release 完整 Reactor 回归和源代码接口审查", "result": "pass", "raw_evidence": "ccb-release 54 项测试零失败；8/8 Reactor SUCCESS；门禁无 versionType 分支且未修改 DTO/Store/Controller/数据库", "limitation": ["release 模块整体未跟踪，Git 无法提供逐文件基线 diff"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "WorkflowLifecycleEventServiceTest 输出预期的 notification unavailable 警告堆栈", "impact": "测试本身 4/4 通过，属于故障隔离测试日志，不是本需求偏差"}
+  ],
+  "coverage_gaps": ["真实 HTTP 与数据库路径留待 T3 集成采样"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

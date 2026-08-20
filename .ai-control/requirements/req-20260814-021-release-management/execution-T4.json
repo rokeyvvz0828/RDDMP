@@ -1,0 +1,37 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/production", "purpose": "投产候选、结果审计和生产版本 API"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/reporting", "purpose": "统计汇总和下钻 API"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/production", "purpose": "候选、幂等、结果和回放测试"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/reporting", "purpose": "汇总下钻过滤一致性测试"}
+  ],
+  "requirements_addressed": ["R13", "R14", "R15", "R16", "R17", "R18"],
+  "commands": [
+    {"command": "mvn -pl :ccb-release -am test", "exit_code": 0, "salient_output": "ccb-release 28 tests; all reactor modules succeeded"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "All governance and 39 Flyway checks passed"}
+  ],
+  "local_checks": [
+    {"check": "Candidate selection and replay", "result": "pass", "evidence": "Approval time/application ID selection, idempotence and older replay tests passed", "limitations": []},
+    {"check": "Deployment result and audit", "result": "pass", "evidence": "Success time, failure reason, stale rowVersion and audit assertions passed", "limitations": []},
+    {"check": "Production version and analytics queries", "result": "pass", "evidence": "Latest successful fallback query and shared-filter service contract compiled and tested", "limitations": ["Cross-view count equality is completed on real MySQL in T8"]}
+  ],
+  "diff_summary": [
+    "Approval creates RELEASED candidates separately from deployment results",
+    "Latest candidate uses approvedAt and application ID, never version-string ordering",
+    "Result changes require rowVersion and reasons and append before/after audit",
+    "Current production is derived from latest valid SUCCEEDED history",
+    "Analytics expose window/system/unit/requirement/application/type/result counts and drilldown"
+  ],
+  "invariants_checked": [
+    {"invariant": "Approval and deployment result are separate", "result": "pass", "evidence": "Candidate defaults RELEASED"},
+    {"invariant": "Every result change is audited", "result": "pass", "evidence": "Service test verifies result log"},
+    {"invariant": "Historical successes remain queryable", "result": "pass", "evidence": "No result rows are deleted and current query derives by NOT EXISTS ordering"},
+    {"invariant": "Summary and drilldown share filters", "result": "pass", "evidence": "Tenant/project/window filter contract test passed"}
+  ],
+  "disturbances": [{"event": "Older lifecycle replay could reactivate an obsolete source", "impact": "Activation now compares approvedAt/applicationId and regression test passes"}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Real SQL cross-view equality and fallback are scheduled for T8"],
+  "recommended_next": "observe"
+}

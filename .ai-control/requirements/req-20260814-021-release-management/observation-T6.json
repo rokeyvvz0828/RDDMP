@@ -1,0 +1,77 @@
+{
+  "sample_label": "T6 window-application frontend source-of-truth sample",
+  "task_ids": ["T6"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R2",
+      "sensor": "S5 production build plus release import/source scan",
+      "result": "pass",
+      "raw_evidence": "Vue production build passed and window/application surfaces contain no prototype repository or business-state Mock imports",
+      "limitation": ["Production and analytics views are intentionally owned by T7"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S7 Mock boundary scan plus DTO inspection",
+      "result": "pass",
+      "raw_evidence": "Only project context and subsystem/delivery selector snapshots remain Mock; write DTO persists complete project/subsystem/delivery snapshots",
+      "limitation": ["Upstream project and R&D master-data validity remains deferred"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S5 TypeScript build and backend DTO contract comparison",
+      "result": "pass",
+      "raw_evidence": "Window create/update/toggle contracts match backend DTOs; four minute-precision fields and server availability/status are rendered",
+      "limitation": ["Network response behavior is deferred to isolated T8"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S5 form DTO/type build and source path inspection",
+      "result": "pass",
+      "raw_evidence": "One subsystem, unique selected units, artifact type/version, requirements, emergency explanation and attachment IDs are submitted through formal API types",
+      "limitation": ["Browser field validation and persistence refresh are deferred to T8"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S7 authoritative-field scan",
+      "result": "pass",
+      "raw_evidence": "Frontend no longer submits versionType, characteristic or workflowCode; it labels scenario as a server-authoritative estimate",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S5 conflict DTO build plus dialog source inspection",
+      "result": "pass",
+      "raw_evidence": "Dialog renders server history snapshots excluding attachments and sends conflict token, target row version, action and reason to backend",
+      "limitation": ["Live multi-conflict behavior is deferred to T8"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S5 write-path and recoverable-error inspection",
+      "result": "pass",
+      "raw_evidence": "All writes carry rowVersion where required; drawer remains open across failures and submission 409 refreshes authoritative conflict facts",
+      "limitation": ["Concurrent browser requests are deferred to T8"]
+    },
+    {
+      "requirement_id": "R18",
+      "sensor": "S5 403/error/loading state inspection and build",
+      "result": "pass",
+      "raw_evidence": "Window/application list errors, loading states, save errors and submitting states compile and use shared API error handling",
+      "limitation": ["Project-member authorization remains explicitly deferred"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "Vite temporary-config write was sandbox-blocked on the first run",
+      "classification": "sensor-fault",
+      "evidence": "EPERM at node_modules/.vite-temp; approved rerun completed the same build successfully"
+    }
+  ],
+  "coverage_gaps": [
+    "Browser network, console and screenshot evidence is deferred to T8 because acceptance must not use the original database",
+    "Production, analytics and business-owned approval surfaces are measured in T7/T8"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

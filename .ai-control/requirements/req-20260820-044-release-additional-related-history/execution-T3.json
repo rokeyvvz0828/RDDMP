@@ -1,0 +1,29 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": ".ai-control/requirements/req-20260820-044-release-additional-related-history", "purpose": "Record implementation and verification evidence."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+  "commands": [
+    {"command": "curl http://127.0.0.1:8080/actuator/health", "exit_code": 0, "salient_output": "status UP"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors."},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "Module, repository skill and development entry checks passed; eight unrelated pre-existing ledger files remain invalid."}
+  ],
+  "local_checks": [
+    {"check": "Authenticated real-data browser flow", "result": "pass", "evidence": "SQ-202608-001 showed one direct history card; SQ-202608-002 hid the section; link navigation succeeded.", "limitations": ["No additional application with zero relations exists in the current real dataset."]},
+    {"check": "Responsive geometry and console", "result": "pass", "evidence": "375x812, 390x844 and 430x932 had document widths equal to viewport widths; console error list was empty.", "limitations": []}
+  ],
+  "diff_summary": ["Integrated backend, frontend, database and browser evidence without changing test data."],
+  "invariants_checked": [
+    {"invariant": "No unauthorized test data mutation.", "result": "pass", "evidence": "Browser validation used the two existing release applications and one persisted ADDITIONAL relation."},
+    {"invariant": "Unrelated dirty rokey changes remain untouched.", "result": "pass", "evidence": "No reset, clean, checkout, commit or branch switch was performed."}
+  ],
+  "disturbances": [
+    {"event": "System Maven defaulted to Java 26.", "impact": "Byte Buddy rejected Java 26 before release tests; rerun under project Java 17 passed."},
+    {"event": "Governance scans include unrelated historical ledgers.", "impact": "Eight pre-existing ledger format failures remain outside REQ-044."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Request interception is unavailable in the selected in-app browser."],
+  "recommended_next": "observe"
+}

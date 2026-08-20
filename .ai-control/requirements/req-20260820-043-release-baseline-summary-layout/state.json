@@ -1,0 +1,1819 @@
+{
+  "schema_version": 4,
+  "revision": 18,
+  "created_at": "2026-08-20T03:28:29+00:00",
+  "updated_at": "2026-08-20T03:43:25+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user selected option 2 and explicitly replied '确认并实施' on 2026-08-20.；计划确认=The user explicitly replied '执行' after reviewing implementation-plan revision 1.",
+      "recorded_at": "2026-08-20T03:28:29+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Baseline ready with measurable R1-R4",
+      "recorded_at": "2026-08-20T03:31:13+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "R1-R4 observable and controllable within two approved files",
+      "recorded_at": "2026-08-20T03:31:53+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "T1 ready with exact two-file scope and rollback",
+      "recorded_at": "2026-08-20T03:32:32+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "Implemented output has build source and runtime service evidence",
+      "recorded_at": "2026-08-20T03:37:16+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1 verified with zero feedback; final sample pending",
+      "recorded_at": "2026-08-20T03:40:16+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Final gate PASS with two zero-error samples",
+      "recorded_at": "2026-08-20T03:43:25+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user selected option 2 and explicitly replied '确认并实施' on 2026-08-20.；计划确认=The user explicitly replied '执行' after reviewing implementation-plan revision 1.",
+        "recorded_at": "2026-08-20T03:28:29+00:00",
+        "data": {
+          "objective": "Present the selected release window and five production-baseline metrics in a stable two-level responsive summary without changing business behavior.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "The selected release window must occupy a dedicated top information row with code, name and status.",
+              "acceptance": [
+                "Window context is visually separate from metrics",
+                "Code, name and status remain readable on desktop"
+              ],
+              "priority": "must",
+              "source": "User selected option 2 and confirmed implementation on 2026-08-20.",
+              "counterexample": [
+                "Window code remains one of six competing metric cells",
+                "Window name or status is omitted"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "The five numeric metrics must render as one equal-width desktop row without an orphaned second row.",
+              "acceptance": [
+                "All five metric cells share one row at desktop width",
+                "No unused second-row whitespace remains"
+              ],
+              "priority": "must",
+              "source": "Layout defect visible in the user screenshot.",
+              "counterexample": [
+                "The final metric wraps alone",
+                "Metric columns have visibly inconsistent widths"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "The summary must adapt to two metric columns on narrow screens and one column on phone widths without overflow.",
+              "acceptance": [
+                "No document-level horizontal overflow",
+                "Labels and values do not overlap at responsive breakpoints"
+              ],
+              "priority": "must",
+              "source": "Existing responsive release-module constraint.",
+              "counterexample": [
+                "Metrics are clipped",
+                "Borders or content overlap after wrapping"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "The change must preserve existing selection, statistics, permissions and API behavior.",
+              "acceptance": [
+                "No state, event or API contract changes",
+                "Frontend production build passes"
+              ],
+              "priority": "must",
+              "source": "Scoped visual-change invariant.",
+              "counterexample": [
+                "Metric values or filtering behavior change",
+                "Backend or API changes are introduced"
+              ]
+            }
+          ],
+          "invariants": [
+            "Existing selectedWindow and summary data remain authoritative",
+            "No nested cards are introduced",
+            "Existing design tokens and compact operational style are retained",
+            "Unrelated worktree changes remain untouched"
+          ],
+          "constraints": [
+            "Limit implementation to ReleaseBaselineView.vue and release-prototype.css",
+            "Remain on the rokey branch",
+            "Do not add dependencies"
+          ],
+          "non_goals": [
+            "Redesign the baseline toolbar or table",
+            "Change metric definitions or order",
+            "Change backend behavior",
+            "Refactor other release summaries"
+          ],
+          "assumptions": [
+            {
+              "text": "The red-boxed issue is the summary grid mismatch and weak information hierarchy.",
+              "basis": "The screenshot highlights only the malformed summary area and the user chose the hierarchical option.",
+              "falsifier": "The user requests different metrics, interactions or business semantics."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use a dedicated top window row and a lower five-metric row.",
+              "reason": "It provides stronger hierarchy and stable alignment.",
+              "source": "User selected option 2."
+            },
+            {
+              "id": "D2",
+              "decision": "Keep both layers inside one bordered summary container.",
+              "reason": "It avoids nested cards and remains consistent with the operational UI.",
+              "source": "Confirmed design."
+            },
+            {
+              "id": "D3",
+              "decision": "Use five desktop columns, two narrow columns and one phone column.",
+              "reason": "The fixed metric set remains predictable at each breakpoint.",
+              "source": "Confirmed responsive design."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "Desktop summary has a dedicated window row and one equal five-metric row.",
+              "method": "Browser screenshot and DOM layout inspection at desktop width."
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "signal": "Narrow and phone widths wrap predictably without overflow or overlap.",
+              "method": "Responsive screenshots and scrollWidth/clientWidth checks near 760px and 430px."
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "Existing behavior and type contracts remain valid.",
+              "method": "Production frontend build and scoped diff inspection."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Approved design revision 1 reviewed against current request",
+        "recorded_at": "2026-08-20T03:30:41+00:00",
+        "data": {
+          "objective": "The production-baseline summary presents the selected release window and five metrics in a stable two-level responsive layout without changing business behavior.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "The selected release window must occupy a dedicated top information row with code, name and status.",
+              "acceptance": [
+                "Window context is visually separate from metrics",
+                "Code, name and status remain readable on desktop"
+              ],
+              "priority": "must",
+              "source": "Approved design revision 1",
+              "counterexample": [
+                "Window remains a competing metric cell",
+                "Name or status is omitted"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "The five numeric metrics must render as one equal-width desktop row without an orphaned second row.",
+              "acceptance": [
+                "All five metric cells share one desktop row",
+                "No unused second-row whitespace remains"
+              ],
+              "priority": "must",
+              "source": "Approved design revision 1",
+              "counterexample": [
+                "The final metric wraps alone",
+                "Metric widths are inconsistent"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "The summary must adapt to two metric columns on narrow screens and one column on phone widths without overflow.",
+              "acceptance": [
+                "No page-level horizontal overflow",
+                "Labels, values and separators do not overlap"
+              ],
+              "priority": "must",
+              "source": "Approved design revision 1",
+              "counterexample": [
+                "Metrics clip or overlap",
+                "Responsive borders become incoherent"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "The change must preserve existing selection, statistics, permissions and API behavior.",
+              "acceptance": [
+                "No state, event or API contract changes",
+                "Frontend production build passes"
+              ],
+              "priority": "must",
+              "source": "Approved design revision 1",
+              "counterexample": [
+                "Metric values or filtering behavior change",
+                "A backend or API change is introduced"
+              ]
+            }
+          ],
+          "invariants": [
+            "selectedWindow and summary remain authoritative",
+            "No nested cards or new dependencies",
+            "Existing data, permissions and API contracts remain unchanged",
+            "Unrelated dirty work remains untouched"
+          ],
+          "constraints": [
+            "Product edits limited to ReleaseBaselineView.vue and release-prototype.css",
+            "Use existing Vue, Element Plus and CSS variables",
+            "Remain on rokey"
+          ],
+          "non_goals": [
+            "Redesign the toolbar or table",
+            "Change metric definitions or order",
+            "Change backend behavior",
+            "Generalize the pattern to other pages"
+          ],
+          "assumptions": [
+            {
+              "text": "The defect is fully controlled by the summary markup and local CSS.",
+              "basis": "Read-only inspection found all six values and the five-track grid in the two approved files.",
+              "falsifier": "Runtime computed styles reveal an unavoidable third-file override."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "Which summary structure should be used?",
+              "options": [
+                "Six cells in one row",
+                "Window row plus five metrics",
+                "Auto-fit metric flow"
+              ],
+              "selected": "Window row plus five metrics",
+              "blocking": false,
+              "source": "User selected option 2 and approved design revision 1."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "Window code, name and status in a distinct top row",
+              "candidate_sensor": "DOM structure and desktop screenshot"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "Five equal metric columns and one desktop row",
+              "candidate_sensor": "Computed grid and element geometry"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "Responsive column count, separators and document overflow",
+              "candidate_sensor": "Viewport screenshots and scrollWidth/clientWidth"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "Scoped diff and successful type/build checks",
+              "candidate_sensor": "Git boundary inspection and npm production build"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Markup CSS causal path and sensors verified by source inspection",
+        "recorded_at": "2026-08-20T03:31:33+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ReleaseBaselineView summary DOM",
+              "release-ledger-summary local CSS",
+              "Existing selectedWindow and summary bindings"
+            ],
+            "environment": [
+              "Element Plus tag styles",
+              "Release page content width",
+              "Vite frontend runtime",
+              "Viewport and authentication state"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "selected_window",
+              "owner": "ReleaseBaselineView selectedWindow",
+              "valid_values": [
+                "undefined",
+                "ReleaseWindowDto"
+              ]
+            },
+            {
+              "name": "desktop_metric_columns",
+              "owner": "release-ledger-summary__metrics CSS",
+              "valid_values": [
+                "5"
+              ]
+            },
+            {
+              "name": "responsive_metric_columns",
+              "owner": "CSS media queries",
+              "valid_values": [
+                "2",
+                "1"
+              ]
+            },
+            {
+              "name": "horizontal_overflow",
+              "owner": "Browser layout",
+              "valid_values": [
+                "false"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "selectedWindow exists",
+              "transitions": [
+                "Render dedicated window row",
+                "Apply shrinkable text and fixed status styles"
+              ],
+              "outputs": [
+                "Distinct readable window context"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "Five summary values",
+              "transitions": [
+                "Render metric container",
+                "Apply five-column desktop grid"
+              ],
+              "outputs": [
+                "One equal-width metric row"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Narrow or phone viewport",
+              "transitions": [
+                "Apply two- or one-column media rule",
+                "Reset separators for wrapped rows"
+              ],
+              "outputs": [
+                "No overlap or horizontal overflow"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Existing selectedWindow and summary values",
+              "transitions": [
+                "Change markup grouping and CSS only",
+                "Run type/build and scoped diff sensors"
+              ],
+              "outputs": [
+                "Unchanged business behavior"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "selectedWindow",
+              "producers": [
+                "windows and windowId computed lookup"
+              ],
+              "consumers": [
+                "Summary window row"
+              ],
+              "invariant": "No selection or data-loading behavior changes."
+            },
+            {
+              "name": "summary",
+              "producers": [
+                "Existing entries computed aggregation"
+              ],
+              "consumers": [
+                "Five metric cells"
+              ],
+              "invariant": "Metric values, order and semantics remain unchanged."
+            },
+            {
+              "name": "release-ledger-summary CSS contract",
+              "producers": [
+                "release-prototype.css"
+              ],
+              "consumers": [
+                "ReleaseBaselineView markup"
+              ],
+              "invariant": "Selectors remain scoped to the baseline summary."
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Type and production-build compatibility",
+              "method": "npm run build",
+              "blind_spots": [
+                "Visual alignment"
+              ],
+              "independence": "Compiler and bundler output"
+            },
+            {
+              "id": "S2",
+              "target": "R1-R3 DOM hierarchy, grid columns, separators and overflow",
+              "method": "Authenticated browser screenshots and DOM geometry at desktop, 760px and 430px",
+              "blind_spots": [
+                "Authentication may block runtime page access"
+              ],
+              "independence": "Direct runtime rendering"
+            },
+            {
+              "id": "S3",
+              "target": "R4 approved write boundary",
+              "method": "Scoped source inspection and git diff --check",
+              "blind_spots": [
+                "Files are currently untracked within a dirty worktree"
+              ],
+              "independence": "Filesystem evidence"
+            },
+            {
+              "id": "S4",
+              "target": "Service availability",
+              "method": "Frontend HTTP status and backend actuator health",
+              "blind_spots": [
+                "Does not verify authenticated content"
+              ],
+              "independence": "Runtime endpoint probes"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Baseline summary DOM hierarchy",
+              "action": "Split only the existing summary block into window and metrics layers",
+              "authority": "Approved workspace write",
+              "impact_radius": "One summary block",
+              "rollback": "Restore the pre-task summary markup"
+            },
+            {
+              "id": "A2",
+              "target": "Baseline summary layout",
+              "action": "Replace only release-ledger-summary rules and responsive overrides",
+              "authority": "Approved workspace write",
+              "impact_radius": "One summary component",
+              "rollback": "Restore the pre-task summary CSS rules"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Long window names",
+              "effect": "Window text can compete with the status tag",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Existing dirty rokey worktree",
+              "effect": "Global diff contains unrelated changes and release files are untracked",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Expired browser authentication",
+              "effect": "Runtime visual sensors may redirect to login",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite hot update and browser repaint",
+              "consequence": "Immediate screenshots can sample stale layout",
+              "sampling_rule": "Reload or wait for the updated module before measuring"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "The two approved files fully control the summary defect.",
+              "evidence": "The complete markup and CSS mismatch were found there.",
+              "falsifier": "Runtime inspection identifies a required third-file change."
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1/A2 and S2/S3"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1/A2 and S2/S3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "Use A2 and S2; record authentication limitation if direct page access remains blocked"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Freeze data logic and verify with S1/S3/S4"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Single bounded task covers R1-R4 with build diff and runtime sensors",
+        "recorded_at": "2026-08-20T03:32:15+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Render a dedicated release-window row and a stable responsive five-metric row.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Current template renders six direct summary children",
+                "Current desktop CSS defines only five tracks",
+                "selectedWindow and summary expose all required values",
+                "Frontend and backend services are running"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseBaselineView.vue",
+                "web/src/modules/release/release-prototype.css",
+                ".ai-control/requirements/req-20260820-043-release-baseline-summary-layout/*.json"
+              ],
+              "invariants": [
+                "No state, metric, permission, API or backend changes",
+                "No nested cards or new dependencies",
+                "Unrelated dirty work remains untouched",
+                "No commit or push"
+              ],
+              "interface_contracts": [
+                "selectedWindow lookup remains unchanged",
+                "summary shape and metric semantics remain unchanged",
+                "CSS selectors remain local to release-ledger-summary"
+              ],
+              "non_goals": [
+                "No toolbar or table redesign",
+                "No other release view changes",
+                "No global theme change",
+                "No new dependency"
+              ],
+              "action_bounds": [
+                "Adjust only baseline summary markup/classes and corresponding local CSS",
+                "Use five desktop columns, two narrow columns and one phone column"
+              ],
+              "acceptance_checks": [
+                "Dedicated window row contains code, name and status",
+                "Five metrics align in one equal desktop row",
+                "Responsive two-/one-column layout has no overlap or overflow",
+                "No-window behavior and business logic remain unchanged",
+                "Frontend build and diff checks pass"
+              ],
+              "evidence_required": [
+                "Actual scoped source excerpts",
+                "Build and diff command results",
+                "Desktop and responsive runtime evidence or explicit authentication limitation",
+                "Frontend and backend service probes"
+              ],
+              "rollback": "Restore only the baseline summary markup block and corresponding local CSS rules.",
+              "stop_conditions": [
+                "A third product file becomes necessary",
+                "A required window field is absent",
+                "An unrelated build failure cannot be isolated"
+              ],
+              "escalation_conditions": [
+                "User requests metric or interaction changes",
+                "The pattern must be generalized to other pages"
+              ]
+            }
+          ],
+          "dependency_edges": [],
+          "parallel_groups": [
+            [
+              "T1"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Run npm run build",
+                "Run git diff --check",
+                "Probe frontend and backend services",
+                "Inspect desktop and responsive layout when authenticated"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 implementation sample",
+              "trigger": "T1 execution report",
+              "observer": "independent runtime observer",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "Two-file implementation built successfully with service probes",
+        "recorded_at": "2026-08-20T03:36:39+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseBaselineView.vue",
+              "purpose": "Split the baseline summary into a selected-window information row and a five-metric row."
+            },
+            {
+              "path_or_resource": "web/src/modules/release/release-prototype.css",
+              "purpose": "Provide stable desktop five-column and responsive two-/one-column layout with safe text overflow and separators."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "npm run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite completed; 2362 modules transformed and production assets emitted."
+            },
+            {
+              "command": "git diff --check -- web/src/modules/release/components/ReleaseBaselineView.vue web/src/modules/release/release-prototype.css",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            },
+            {
+              "command": "curl http://127.0.0.1:5173/release/production-baseline",
+              "exit_code": 0,
+              "salient_output": "HTTP 200."
+            },
+            {
+              "command": "curl http://127.0.0.1:8080/actuator/health",
+              "exit_code": 0,
+              "salient_output": "status UP."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Approved markup boundary",
+              "result": "pass",
+              "evidence": "The summary now contains only release-ledger-summary__window and release-ledger-summary__metrics, reusing selectedWindow and summary.",
+              "limitations": [
+                "The two release product files are pre-existing untracked files, so scoped source excerpts replace commit diff attribution."
+              ]
+            },
+            {
+              "check": "Desktop and responsive CSS contract",
+              "result": "pass",
+              "evidence": "Source defines repeat(5) desktop, repeat(2) at 760px and 1fr at 430px with explicit last-item and separator rules.",
+              "limitations": [
+                "Authenticated runtime screenshot is blocked by the current expired browser session."
+              ]
+            },
+            {
+              "check": "Build and service availability",
+              "result": "pass",
+              "evidence": "Production build exited 0; frontend returned 200 and backend health returned UP.",
+              "limitations": [
+                "Endpoint probes do not assert authenticated page content."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added a dedicated top row for window code, name and status.",
+            "Moved the five counts into an equal desktop metric grid.",
+            "Added two-column narrow layout and one-column phone layout with deterministic separators.",
+            "Added ellipsis handling for long window names without changing data flow."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "No selection, summary, permission, API or backend behavior changes",
+              "result": "pass",
+              "evidence": "Only template grouping and local CSS changed; script logic and imports are unchanged."
+            },
+            {
+              "invariant": "No nested cards or dependency changes",
+              "result": "pass",
+              "evidence": "One existing bordered summary container remains and package files are untouched."
+            },
+            {
+              "invariant": "Unrelated dirty work remains untouched",
+              "result": "pass",
+              "evidence": "Product writes were limited to the two approved release files."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "The in-app browser session is currently redirected to login.",
+              "impact": "Direct authenticated desktop/mobile screenshots cannot be collected in the execution stage without user-authorized credential entry."
+            },
+            {
+              "event": "The release module files are untracked in the current rokey worktree.",
+              "impact": "git diff does not expose a baseline patch for these files; scoped source inspection is used instead."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Independent observation must record the authenticated runtime-visual coverage limitation."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Build source and service sensors show no implementation deviation; visual auth limitation recorded",
+        "recorded_at": "2026-08-20T03:39:14+00:00",
+        "data": {
+          "sample_label": "T1 implementation observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S3 scoped DOM inspection",
+              "result": "pass",
+              "raw_evidence": "ReleaseBaselineView renders release-ledger-summary__window with windowCode, windowName and statusLabel before the metric container.",
+              "limitation": [
+                "Current in-app browser session is unauthenticated, so the final business-page screenshot is unavailable."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S3 scoped DOM and CSS inspection",
+              "result": "pass",
+              "raw_evidence": "Exactly five metric children are rendered and release-ledger-summary__metrics uses repeat(5, minmax(0, 1fr)) on desktop.",
+              "limitation": [
+                "Source contract is verified; authenticated computed geometry is not sampled."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 responsive CSS inspection",
+              "result": "pass",
+              "raw_evidence": "At max-width 760px the metric grid uses two columns with the fifth item spanning two; at max-width 430px it uses one column and resets all right/bottom separators.",
+              "limitation": [
+                "Direct responsive business-page screenshots require a renewed authenticated session."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 build plus S3 scope plus S4 service probes",
+              "result": "pass",
+              "raw_evidence": "npm run build exited 0; only the approved template/CSS surfaces changed; frontend returned HTTP 200 and backend health returned UP.",
+              "limitation": [
+                "Release files are untracked, so source excerpts rather than git diff establish the local change boundary."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Expired in-app browser authentication",
+              "effect": "Authenticated runtime screenshots cannot be collected without user-authorized credential entry.",
+              "classification": "disturbance"
+            },
+            {
+              "event": "Browser URL policy blocked a standalone data URL preview",
+              "effect": "The attempted authentication-free rendering sensor is unavailable and was not retried through another surface.",
+              "classification": "sensor-fault"
+            }
+          ],
+          "coverage_gaps": [
+            "Final visual confirmation in the authenticated production-baseline page remains a user-visible follow-up check; structural, responsive-rule, build and service evidence are complete."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Two zero-error samples; builds and services pass; auth visual limitation disclosed",
+        "recorded_at": "2026-08-20T03:42:37+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "Final DOM structure has a dedicated window row with windowCode, windowName and statusLabel",
+                "Production build passes"
+              ],
+              "limitations": [
+                "Authenticated business-page screenshot was unavailable because the current browser session is logged out."
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "Five metric children are contained by a repeat(5, minmax(0, 1fr)) desktop grid",
+                "The prior six-child/five-track mismatch no longer exists"
+              ],
+              "limitations": [
+                "Final computed browser geometry awaits the user's refreshed authenticated page."
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "760px rule defines two metric columns and deterministic fifth-item span",
+                "430px rule defines one column and resets right/bottom borders",
+                "All grid items use min-width 0 and long window text uses ellipsis"
+              ],
+              "limitations": [
+                "Responsive verification is source-contract based rather than an authenticated runtime screenshot."
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "Two independent production builds exited 0",
+                "Scoped diff check is clean",
+                "No script, API, permission or backend code changed",
+                "Frontend returned 200 and backend health returned UP"
+              ],
+              "limitations": []
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Implementation stayed within the two approved product files",
+                "Observation found no deviations",
+                "Two build/service samples recorded zero P0-P3 errors"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Frontend production build sample 1",
+              "result": "pass",
+              "evidence": "2362 modules transformed; Vite build completed in 4.25s."
+            },
+            {
+              "check": "Frontend production build sample 2",
+              "result": "pass",
+              "evidence": "2362 modules transformed; Vite build completed in 4.52s."
+            },
+            {
+              "check": "Whitespace and service probes",
+              "result": "pass",
+              "evidence": "git diff --check exited 0; frontend HTTP 200; backend status UP."
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "Selection, summary values, permissions and APIs remain unchanged",
+              "result": "pass",
+              "evidence": "Only the existing summary template block and its local CSS were modified."
+            },
+            {
+              "invariant": "No nested cards or dependencies",
+              "result": "pass",
+              "evidence": "One bordered summary container remains; package files are untouched."
+            },
+            {
+              "invariant": "Unrelated worktree changes remain untouched",
+              "result": "pass",
+              "evidence": "Writes were limited to approved product files and requirement-control artifacts."
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Long window name",
+              "result": "pass",
+              "evidence": "Window text container has min-width 0 and auxiliary name has overflow ellipsis while the status tag is non-shrinking."
+            },
+            {
+              "disturbance": "Expired browser authentication",
+              "result": "controlled-degradation",
+              "evidence": "Build, source-contract and service sensors remain valid; absence of authenticated screenshots is disclosed rather than hidden."
+            }
+          ],
+          "residual_risks": [
+            "The user should refresh an authenticated production-baseline page for final visual acceptance; browser-authenticated screenshots were not available in this run."
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R4 have a verified task, scoped implementation evidence, two zero-error samples, passing builds and healthy services; no feedback remains open and the visual authentication limitation is disclosed."
+        }
+      }
+    ]
+  },
+  "objective": "The production-baseline summary presents the selected release window and five metrics in a stable two-level responsive layout without changing business behavior.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "The selected release window must occupy a dedicated top information row with code, name and status.",
+      "acceptance": [
+        "Window context is visually separate from metrics",
+        "Code, name and status remain readable on desktop"
+      ],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": [
+        "Window remains a competing metric cell",
+        "Name or status is omitted"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "The five numeric metrics must render as one equal-width desktop row without an orphaned second row.",
+      "acceptance": [
+        "All five metric cells share one desktop row",
+        "No unused second-row whitespace remains"
+      ],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": [
+        "The final metric wraps alone",
+        "Metric widths are inconsistent"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "The summary must adapt to two metric columns on narrow screens and one column on phone widths without overflow.",
+      "acceptance": [
+        "No page-level horizontal overflow",
+        "Labels, values and separators do not overlap"
+      ],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": [
+        "Metrics clip or overlap",
+        "Responsive borders become incoherent"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "The change must preserve existing selection, statistics, permissions and API behavior.",
+      "acceptance": [
+        "No state, event or API contract changes",
+        "Frontend production build passes"
+      ],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": [
+        "Metric values or filtering behavior change",
+        "A backend or API change is introduced"
+      ]
+    }
+  ],
+  "invariants": [
+    "selectedWindow and summary remain authoritative",
+    "No nested cards or new dependencies",
+    "Existing data, permissions and API contracts remain unchanged",
+    "Unrelated dirty work remains untouched"
+  ],
+  "constraints": [
+    "Product edits limited to ReleaseBaselineView.vue and release-prototype.css",
+    "Use existing Vue, Element Plus and CSS variables",
+    "Remain on rokey"
+  ],
+  "non_goals": [
+    "Redesign the toolbar or table",
+    "Change metric definitions or order",
+    "Change backend behavior",
+    "Generalize the pattern to other pages"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-043-release-baseline-summary-layout/handoff.json",
+    "imported_at": "2026-08-20T03:28:29+00:00",
+    "topic": "req-20260820-043-release-baseline-summary-layout",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260820-043-release-baseline-summary-layout",
+      "handoff_status": "approved",
+      "created_at": "2026-08-20T11:23:34+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260820-043-release-baseline-summary-layout",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-20-release-baseline-summary-layout-design.md",
+        "objective": "Present the selected release window and five production-baseline metrics in a stable two-level responsive summary without changing business behavior.",
+        "users": [
+          "Configuration-management users reviewing the selected production window and baseline counts"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "The selected release window must occupy a dedicated top information row with code, name and status.",
+            "acceptance": [
+              "Window context is visually separate from metrics",
+              "Code, name and status remain readable on desktop"
+            ],
+            "priority": "must",
+            "source": "User selected option 2 and confirmed implementation on 2026-08-20.",
+            "counterexample": [
+              "Window code remains one of six competing metric cells",
+              "Window name or status is omitted"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "The five numeric metrics must render as one equal-width desktop row without an orphaned second row.",
+            "acceptance": [
+              "All five metric cells share one row at desktop width",
+              "No unused second-row whitespace remains"
+            ],
+            "priority": "must",
+            "source": "Layout defect visible in the user screenshot.",
+            "counterexample": [
+              "The final metric wraps alone",
+              "Metric columns have visibly inconsistent widths"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "The summary must adapt to two metric columns on narrow screens and one column on phone widths without overflow.",
+            "acceptance": [
+              "No document-level horizontal overflow",
+              "Labels and values do not overlap at responsive breakpoints"
+            ],
+            "priority": "must",
+            "source": "Existing responsive release-module constraint.",
+            "counterexample": [
+              "Metrics are clipped",
+              "Borders or content overlap after wrapping"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "The change must preserve existing selection, statistics, permissions and API behavior.",
+            "acceptance": [
+              "No state, event or API contract changes",
+              "Frontend production build passes"
+            ],
+            "priority": "must",
+            "source": "Scoped visual-change invariant.",
+            "counterexample": [
+              "Metric values or filtering behavior change",
+              "Backend or API changes are introduced"
+            ]
+          }
+        ],
+        "invariants": [
+          "Existing selectedWindow and summary data remain authoritative",
+          "No nested cards are introduced",
+          "Existing design tokens and compact operational style are retained",
+          "Unrelated worktree changes remain untouched"
+        ],
+        "constraints": [
+          "Limit implementation to ReleaseBaselineView.vue and release-prototype.css",
+          "Remain on the rokey branch",
+          "Do not add dependencies"
+        ],
+        "non_goals": [
+          "Redesign the baseline toolbar or table",
+          "Change metric definitions or order",
+          "Change backend behavior",
+          "Refactor other release summaries"
+        ],
+        "selected_approach": {
+          "name": "Window information row plus five-metric row",
+          "reason": "It separates business context from outcome metrics and removes the existing five-track/six-item mismatch.",
+          "alternatives": [
+            {
+              "name": "Six cells in one row",
+              "rejected_because": "It fixes wrapping but preserves weak hierarchy between window context and metrics."
+            },
+            {
+              "name": "Auto-fit metric cards",
+              "rejected_because": "Intermediate-width wrapping would be less predictable for a fixed metric set."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "Baseline summary markup",
+              "Baseline summary responsive CSS"
+            ],
+            "outside": [
+              "Baseline data loading",
+              "Statistics computation",
+              "Permissions",
+              "Backend and APIs",
+              "Other release views"
+            ]
+          },
+          "components": [
+            {
+              "name": "ReleaseBaselineView",
+              "responsibility": "Render existing window context and metrics in two semantic layers.",
+              "depends_on": [
+                "selectedWindow",
+                "summary"
+              ]
+            },
+            {
+              "name": "release-prototype.css",
+              "responsibility": "Provide stable desktop and responsive layout, spacing and separators.",
+              "depends_on": [
+                "Existing CSS variables"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Baseline summary view model",
+              "producer": "ReleaseBaselineView computed state",
+              "consumers": [
+                "Summary template"
+              ],
+              "contract": "selectedWindow and summary values are presented without transformation changes."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "Existing selected window and five summary counts",
+              "transitions": [
+                "group window context",
+                "render equal metric row",
+                "apply responsive columns"
+              ],
+              "output": "Stable two-level baseline summary"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "No release window is selected",
+            "behavior": "Do not render the summary container.",
+            "recovery": "Summary appears when a window is selected."
+          },
+          {
+            "condition": "Window name is longer than available space",
+            "behavior": "Keep the code and status visible while auxiliary text truncates safely.",
+            "recovery": "Wider viewport reveals more text."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "No permission or data-access changes"
+          ],
+          "performance": [
+            "Static markup and CSS add no meaningful runtime cost"
+          ],
+          "compatibility": [
+            "No state, API, database or persisted-data changes"
+          ],
+          "operations": [
+            "No migration or configuration changes"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "Desktop summary has a dedicated window row and one equal five-metric row.",
+            "method": "Browser screenshot and DOM layout inspection at desktop width."
+          },
+          {
+            "requirement_ids": [
+              "R3"
+            ],
+            "signal": "Narrow and phone widths wrap predictably without overflow or overlap.",
+            "method": "Responsive screenshots and scrollWidth/clientWidth checks near 760px and 430px."
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "Existing behavior and type contracts remain valid.",
+            "method": "Production frontend build and scoped diff inspection."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "The red-boxed issue is the summary grid mismatch and weak information hierarchy.",
+            "basis": "The screenshot highlights only the malformed summary area and the user chose the hierarchical option.",
+            "falsifier": "The user requests different metrics, interactions or business semantics."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use a dedicated top window row and a lower five-metric row.",
+            "reason": "It provides stronger hierarchy and stable alignment.",
+            "source": "User selected option 2."
+          },
+          {
+            "id": "D2",
+            "decision": "Keep both layers inside one bordered summary container.",
+            "reason": "It avoids nested cards and remains consistent with the operational UI.",
+            "source": "Confirmed design."
+          },
+          {
+            "id": "D3",
+            "decision": "Use five desktop columns, two narrow columns and one phone column.",
+            "reason": "The fixed metric set remains predictable at each breakpoint.",
+            "source": "Confirmed responsive design."
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Long window names can compete with the status tag.",
+            "impact": "Header content may overflow.",
+            "mitigation": "Use a shrinkable text area with ellipsis and a non-shrinking status tag."
+          },
+          {
+            "risk": "Wrapped metric borders can look inconsistent at breakpoints.",
+            "impact": "Visual separators can appear inconsistent between rows.",
+            "mitigation": "Define breakpoint-specific column and border rules and verify screenshots."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user selected option 2 and explicitly replied '确认并实施' on 2026-08-20.",
+          "confirmed_at": "2026-08-20T11:20:48+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-20-release-baseline-summary-layout-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Modify only ReleaseBaselineView.vue and release-prototype.css",
+          "Do not change state, API, backend or metric semantics",
+          "Do not add dependencies",
+          "Preserve unrelated worktree changes"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/release/components/ReleaseBaselineView.vue",
+            "status": "existing",
+            "responsibility": "Render selected-window context and production-baseline metrics.",
+            "evidence": "Current summary markup is at line 220."
+          },
+          {
+            "path": "web/src/modules/release/release-prototype.css",
+            "status": "existing",
+            "responsibility": "Define release-module summary and responsive layout.",
+            "evidence": "Current five-track summary rule is at line 219 and mobile rule near line 312."
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Render a dedicated release-window row and a stable responsive five-metric row.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "The current template renders six direct children",
+              "The current desktop CSS defines only five tracks",
+              "selectedWindow and summary already expose every required value"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/release/components/ReleaseBaselineView.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "selectedWindow",
+                "summary"
+              ],
+              "produces": [
+                "release-ledger-summary__window",
+                "release-ledger-summary__metrics"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Record the current six-item/five-track mismatch.",
+                "command": "rg -n 'release-ledger-summary|repeat\\(4' web/src/modules/release/components/ReleaseBaselineView.vue web/src/modules/release/release-prototype.css",
+                "expected": "The template and CSS mismatch is visible in command output.",
+                "evidence": "Matching lines and user screenshot."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Split the summary template into window and metric layers using existing values.",
+                "command": null,
+                "expected": "One window information row and one five-metric container exist without new state or events.",
+                "evidence": "Scoped template diff."
+              },
+              {
+                "id": "T1-S3",
+                "action": "Implement desktop five-column and responsive two-/one-column CSS with safe overflow handling.",
+                "command": null,
+                "expected": "The summary has predictable columns and separators at all required widths.",
+                "evidence": "Scoped CSS diff and layout measurements."
+              },
+              {
+                "id": "T1-S4",
+                "action": "Run production build and whitespace checks.",
+                "command": "npm run build && git diff --check -- web/src/modules/release/components/ReleaseBaselineView.vue web/src/modules/release/release-prototype.css",
+                "expected": "Both commands exit successfully.",
+                "evidence": "Exit codes and build summary."
+              },
+              {
+                "id": "T1-S5",
+                "action": "Inspect desktop, 760px and 430px layouts and measure horizontal overflow.",
+                "command": null,
+                "expected": "Desktop is one metric row, responsive columns are stable, and scrollWidth is not greater than clientWidth.",
+                "evidence": "Browser screenshots and DOM measurements, or an explicit authentication limitation."
+              }
+            ],
+            "acceptance_checks": [
+              "Window code, name and status appear in a dedicated row",
+              "Five metrics form one equal desktop row",
+              "Narrow and phone widths use two and one columns without overflow",
+              "No-window behavior and all data logic remain unchanged",
+              "Frontend build passes"
+            ],
+            "risks": [
+              "Long window names can overflow",
+              "Wrapped borders can become inconsistent"
+            ],
+            "rollback": "Revert only the summary markup and related CSS rules added by T1 while preserving all unrelated worktree changes.",
+            "stop_conditions": [
+              "A required window field is absent",
+              "The fix requires changing a third product file",
+              "An unrelated build failure cannot be isolated"
+            ],
+            "escalation_conditions": [
+              "The user requests metric or behavior changes",
+              "The pattern must be generalized to other pages"
+            ]
+          }
+        ],
+        "dependency_edges": [],
+        "parallel_groups": [
+          [
+            "T1"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "npm run build",
+            "expected": "vue-tsc and Vite complete with exit code 0."
+          },
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "curl -s http://127.0.0.1:8080/actuator/health",
+            "expected": "Response contains status UP."
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user explicitly replied '执行' after reviewing implementation-plan revision 1.",
+          "confirmed_at": "2026-08-20T11:27:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Baseline summary template and local CSS"
+        ],
+        "state_variable_candidates": [
+          "Window-row height",
+          "Metric column count",
+          "Metric row count",
+          "Horizontal overflow"
+        ],
+        "interface_candidates": [
+          "selectedWindow",
+          "summary",
+          "Two-layer CSS class contract"
+        ],
+        "sensor_candidates": [
+          "Build exit code",
+          "DOM structure",
+          "Screenshots",
+          "scrollWidth/clientWidth"
+        ],
+        "actuator_candidates": [
+          "Vue template grouping",
+          "CSS Grid and breakpoint rules"
+        ],
+        "disturbance_candidates": [
+          "Long window names",
+          "Viewport width",
+          "Permission-dependent content width",
+          "Unauthenticated browser state"
+        ],
+        "delay_candidates": [
+          "Vite HMR",
+          "Browser repaint"
+        ],
+        "assumptions": [
+          {
+            "text": "The two product files fully control the highlighted summary area.",
+            "basis": "Read-only code inspection found the complete markup and style rules there.",
+            "falsifier": "Runtime inspection reveals additional overriding styles or wrappers."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Element Plus tag styles\", \"Release page content width\", \"Vite frontend runtime\", \"Viewport and authentication state\"], \"inside\": [\"ReleaseBaselineView summary DOM\", \"release-ledger-summary local CSS\", \"Existing selectedWindow and summary bindings\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Visual alignment\"], \"id\": \"S1\", \"independence\": \"Compiler and bundler output\", \"method\": \"npm run build\", \"target\": \"Type and production-build compatibility\"}",
+      "{\"blind_spots\": [\"Authentication may block runtime page access\"], \"id\": \"S2\", \"independence\": \"Direct runtime rendering\", \"method\": \"Authenticated browser screenshots and DOM geometry at desktop, 760px and 430px\", \"target\": \"R1-R3 DOM hierarchy, grid columns, separators and overflow\"}",
+      "{\"blind_spots\": [\"Files are currently untracked within a dirty worktree\"], \"id\": \"S3\", \"independence\": \"Filesystem evidence\", \"method\": \"Scoped source inspection and git diff --check\", \"target\": \"R4 approved write boundary\"}",
+      "{\"blind_spots\": [\"Does not verify authenticated content\"], \"id\": \"S4\", \"independence\": \"Runtime endpoint probes\", \"method\": \"Frontend HTTP status and backend actuator health\", \"target\": \"Service availability\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Split only the existing summary block into window and metrics layers\", \"authority\": \"Approved workspace write\", \"id\": \"A1\", \"impact_radius\": \"One summary block\", \"rollback\": \"Restore the pre-task summary markup\", \"target\": \"Baseline summary DOM hierarchy\"}",
+      "{\"action\": \"Replace only release-ledger-summary rules and responsive overrides\", \"authority\": \"Approved workspace write\", \"id\": \"A2\", \"impact_radius\": \"One summary component\", \"rollback\": \"Restore the pre-task summary CSS rules\", \"target\": \"Baseline summary layout\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Window text can compete with the status tag\", \"source\": \"Long window names\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Global diff contains unrelated changes and release files are untracked\", \"source\": \"Existing dirty rokey worktree\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Runtime visual sensors may redirect to login\", \"source\": \"Expired browser authentication\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"The complete markup and CSS mismatch were found there.\", \"falsifier\": \"Runtime inspection identifies a required third-file change.\", \"text\": \"The two approved files fully control the summary defect.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Render a dedicated release-window row and a stable responsive five-metric row.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Current template renders six direct summary children",
+        "Current desktop CSS defines only five tracks",
+        "selectedWindow and summary expose all required values",
+        "Frontend and backend services are running"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseBaselineView.vue",
+        "web/src/modules/release/release-prototype.css",
+        ".ai-control/requirements/req-20260820-043-release-baseline-summary-layout/*.json"
+      ],
+      "invariants": [
+        "No state, metric, permission, API or backend changes",
+        "No nested cards or new dependencies",
+        "Unrelated dirty work remains untouched",
+        "No commit or push"
+      ],
+      "interface_contracts": [
+        "selectedWindow lookup remains unchanged",
+        "summary shape and metric semantics remain unchanged",
+        "CSS selectors remain local to release-ledger-summary"
+      ],
+      "non_goals": [
+        "No toolbar or table redesign",
+        "No other release view changes",
+        "No global theme change",
+        "No new dependency"
+      ],
+      "action_bounds": [
+        "Adjust only baseline summary markup/classes and corresponding local CSS",
+        "Use five desktop columns, two narrow columns and one phone column"
+      ],
+      "acceptance": [
+        "Dedicated window row contains code, name and status",
+        "Five metrics align in one equal desktop row",
+        "Responsive two-/one-column layout has no overlap or overflow",
+        "No-window behavior and business logic remain unchanged",
+        "Frontend build and diff checks pass"
+      ],
+      "evidence_required": [
+        "Actual scoped source excerpts",
+        "Build and diff command results",
+        "Desktop and responsive runtime evidence or explicit authentication limitation",
+        "Frontend and backend service probes"
+      ],
+      "rollback": "Restore only the baseline summary markup block and corresponding local CSS rules.",
+      "stop_conditions": [
+        "A third product file becomes necessary",
+        "A required window field is absent",
+        "An unrelated build failure cannot be isolated"
+      ],
+      "escalation_conditions": [
+        "User requests metric or interaction changes",
+        "The pattern must be generalized to other pages"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-20T03:35:42+00:00",
+          "text": "Two-file implementation completed; entering evidence capture"
+        },
+        {
+          "recorded_at": "2026-08-20T03:36:58+00:00",
+          "text": "Implementation output ready for independent measurement"
+        },
+        {
+          "recorded_at": "2026-08-20T03:39:55+00:00",
+          "text": "R1-R4 pass build source and service sensors; no feedback; auth visual limitation disclosed"
+        }
+      ],
+      "updated_at": "2026-08-20T03:39:55+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 implementation observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Build exit 0; five desktop columns; two and one responsive columns; frontend 200; backend UP; authenticated screenshot unavailable",
+      "recorded_at": "2026-08-20T03:39:35+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "Final convergence sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Second production build exit 0; diff check clean; frontend 200; backend UP; source contract unchanged",
+      "recorded_at": "2026-08-20T03:41:30+00:00"
+    }
+  ]
+}

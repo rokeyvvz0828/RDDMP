@@ -1,0 +1,33 @@
+{
+  "sample_label": "T2 release-window rules sample",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R4",
+      "sensor": "Focused release-window unit and controller security tests",
+      "result": "pass",
+      "raw_evidence": "Invalid order/minute precision/overlap, immutable project, all status boundaries and RBAC annotations passed",
+      "limitation": ["MySQL gap-lock behavior is not load-tested in this sample"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "Optimistic-lock and audit interaction assertions",
+      "result": "pass",
+      "raw_evidence": "Stale and failed updates return conflict; successful updates capture field-level audit and reason",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R18",
+      "sensor": "SQL ownership and tenant-bound query scan",
+      "result": "pass",
+      "raw_evidence": "All window SQL is tenant-bound where entity data is read or written and references only two owned tables",
+      "limitation": ["Project-member authorization is explicitly deferred"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": ["Real database concurrency and HTTP authorization will be sampled in T8"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

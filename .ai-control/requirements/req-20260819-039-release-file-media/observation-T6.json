@@ -1,0 +1,102 @@
+{
+  "sample_label": "T6 final migration and runtime sample",
+  "task_ids": ["T6"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S5 real API and S6 browser form",
+      "result": "pass",
+      "raw_evidence": "SQ-202608-051 persisted REPORT-SVC and two file paths; browser independently enabled both content sections",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 negative API checks and S6 browser row controls",
+      "result": "pass",
+      "raw_evidence": "Multiple path-only rows add/remove correctly; invalid and duplicate path cases return 400",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S5 persisted API response",
+      "result": "pass",
+      "raw_evidence": "Every path returned fixed FILE metadata and null artifact version",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S5 conflict, baseline and history API results",
+      "result": "pass",
+      "raw_evidence": "Equal path A conflicted while distinct paths remained separate through baseline and entry history",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S5 released-application conflict flow",
+      "result": "pass",
+      "raw_evidence": "SQ-202608-052 was ADDITIONAL and referenced only released SQ-202608-051 path A",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S5 independent production updates and S6 baseline page",
+      "result": "pass",
+      "raw_evidence": "Two FILE baseline rows were created and only entry 1787133209782422 changed state and rowVersion",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S5 current-production/history API and S6 rendered dialog",
+      "result": "pass",
+      "raw_evidence": "Only the successful path appeared in current production with no version and entry-specific history",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S1 MySQL inspection, S3 full Maven reactor and S7 migration audit",
+      "result": "pass",
+      "raw_evidence": "V46 retained 68 application rows, 7 relation rows and 10 production rows; all 11 Maven modules passed",
+      "limitation": ["The actual runtime database lacked a verified pre-V46 restore point due to the documented backup-target mistake"]
+    },
+    {
+      "requirement_id": "R9",
+      "sensor": "S5 analytics API and S6 downstream page inspection",
+      "result": "pass",
+      "raw_evidence": "Detail, conflict, baseline, current production and analytics distinguish paths and explicit no-version state",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R10",
+      "sensor": "S6 screenshots and DOM geometry",
+      "result": "pass",
+      "raw_evidence": "All five required viewports had scrollWidth <= innerWidth, local drawer scrolling and reachable actions",
+      "limitation": []
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R8",
+      "expected": "A verified backup of the actual isolated database exists before V46",
+      "observed": "The first backup targeted another database; only a post-V46 backup of the actual database is verified",
+      "reproduction": "Compare the first backup target with DB_URL and the verified post-V46 backup metadata",
+      "evidence": "Post-V46 backup SHA-256 a1e7f9db3bd55b5a7e268996c60fce28577fb2eeb2361c16199f94d9a0b84db7 restores 100 tables with matching release row counts",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "The pre-V46 database image cannot be reconstructed after migration",
+      "causal_hypothesis": "The initial backup command used the container default database instead of parsing the active DB_URL",
+      "correction_check": "For later migrations, compare the backup database name to DB_URL before startup and verify restore before Flyway runs",
+      "classification": "process-deviation"
+    }
+  ],
+  "disturbances": [
+    "Global governance is noisy from unrelated historical ledgers",
+    "The scope tool rejects the explicitly approved rokey branch before evaluating paths"
+  ],
+  "coverage_gaps": [
+    "No pre-V46 restore rehearsal exists for the actual database",
+    "Repository-wide green governance requires unrelated cleanup outside this task"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "complete"
+}

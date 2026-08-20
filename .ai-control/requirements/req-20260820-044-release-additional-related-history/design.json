@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-044-release-additional-related-history",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-20-release-additional-related-history-design.md",
+  "objective": "Show directly related historical applications and their current statuses inside additional-application details for approval reference.",
+  "users": ["Approvers and authorized release-application viewers reviewing an additional application"],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Only additional applications must expose a related-history section sourced from persisted ADDITIONAL relations.",
+      "acceptance": ["Additional details load direct related history", "Standard applications do not show the section", "Later or unrelated same-window applications are not included"],
+      "priority": "must",
+      "source": "User selected directly related historical applications on 2026-08-20.",
+      "counterexample": ["The section uses the dynamic conflict list", "All same-window applications are displayed"]
+    },
+    {
+      "id": "R2",
+      "statement": "Each related application must show its code, current status, version type, requester, department, creation time, release time, requirements and description.",
+      "acceptance": ["All listed fields are visible without leaving the current approval detail", "Status reflects the current historical-application state"],
+      "priority": "must",
+      "source": "Confirmed detail design.",
+      "counterexample": ["Only an application code is shown", "Status is a stale relation snapshot"]
+    },
+    {
+      "id": "R3",
+      "statement": "Related delivery and file-media changes must be recomputed from current active items and grouped by historical application.",
+      "acceptance": ["Multiple relation rows produce one application entry", "Removed current items do not appear", "Displayed before/after values match current active content"],
+      "priority": "must",
+      "source": "Existing revision-preserving data model and confirmed design.",
+      "counterexample": ["A historical application is duplicated per delivery row", "A removed draft item remains in the reference list"]
+    },
+    {
+      "id": "R4",
+      "statement": "Related applications must be sorted by latest release time and link to their in-app details without embedding attachments.",
+      "acceptance": ["Newest released source appears first", "Application code opens its detail route", "No attachment payload is returned by the history endpoint"],
+      "priority": "must",
+      "source": "Confirmed interaction design.",
+      "counterexample": ["Ordering is unstable", "The reference endpoint duplicates attachment data"]
+    },
+    {
+      "id": "R5",
+      "statement": "The endpoint must enforce tenant isolation and release-application view permission without broad fallback queries.",
+      "acceptance": ["Cross-tenant records cannot be returned", "The endpoint requires release:application:view or system:admin", "Empty relations return an empty list"],
+      "priority": "must",
+      "source": "Platform authorization invariant.",
+      "counterexample": ["A missing relation triggers a same-window scan", "A user without view permission can query history"]
+    },
+    {
+      "id": "R6",
+      "statement": "Related-history empty and error states must remain local and must not block the main detail or approval panel.",
+      "acceptance": ["Empty additional history has explicit copy", "A history request failure exposes local retry", "Main detail and approval controls remain available"],
+      "priority": "must",
+      "source": "Confirmed failure-isolation design.",
+      "counterexample": ["History failure causes the whole detail page to fail", "An empty section silently disappears on an additional application"]
+    }
+  ],
+  "invariants": ["rel_application_relation remains the lineage fact source", "Historical status is read live", "Existing approval and conflict behavior is unchanged", "No historical attachments are embedded", "Unrelated dirty-worktree changes remain untouched"],
+  "constraints": ["Reuse Spring JDBC and existing release module patterns", "Do not add a database migration", "Use existing release:application:view authorization", "Remain on rokey and add no dependency"],
+  "non_goals": ["Show all earlier same-window applications", "Modify historical applications from the reference area", "Build a generic lineage graph", "Backfill legacy relations", "Change attachments or approval actions"],
+  "selected_approach": {
+    "name": "Persisted relation aggregation through a dedicated read endpoint",
+    "reason": "It provides exact lineage semantics, avoids recursive DTO expansion and prevents later or unrelated same-window applications from appearing.",
+    "alternatives": [
+      {"name": "Reuse dynamic conflict report", "rejected_because": "It can include applications created after the current application and is not immutable lineage."},
+      {"name": "List every earlier application in the same window and subsystem", "rejected_because": "It adds noise and does not identify the applications that directly caused additional classification."}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["Related-relation query", "History aggregation service", "Read controller endpoint", "Frontend history DTO/API", "Additional-detail reference section", "Scoped responsive styles and tests"],
+      "outside": ["Application creation and update semantics", "Workflow actions", "Conflict gate", "Attachments", "Database schema", "Other release views"]
+    },
+    "components": [
+      {"name": "ReleaseApplicationStore", "responsibility": "Return direct historical application IDs for active ADDITIONAL relation items within the tenant.", "depends_on": ["rel_application_relation", "rel_application_delivery"]},
+      {"name": "ReleaseApplicationService", "responsibility": "Authorize the current application, aggregate related applications, recompute changes and sort the read model.", "depends_on": ["ReleaseApplicationStore", "Existing application loaders and item-change logic"]},
+      {"name": "ReleaseApplicationController", "responsibility": "Expose the permission-protected related-history read endpoint.", "depends_on": ["ReleaseApplicationService", "Spring Security"]},
+      {"name": "Release API client", "responsibility": "Define the flat history contract and fetch related history.", "depends_on": ["HTTP client"]},
+      {"name": "ReleaseApplicationDetailPage", "responsibility": "Load history independently and render additional-only reference, empty, error and link states.", "depends_on": ["Release API client", "Vue Router", "UiStatusTag"]}
+    ],
+    "interfaces": [
+      {"name": "GET /api/release/applications/{code}/related-history", "producer": "ReleaseApplicationController", "consumers": ["ReleaseApplicationDetailPage"], "contract": "Returns a tenant-scoped flat list of directly related historical applications with current status and recomputed changes; never includes attachments or conflict actions."}
+    ],
+    "data_flows": [
+      {"input": "Current application code and authenticated user", "transitions": ["load current application", "return empty for standard application", "resolve persisted ADDITIONAL relation IDs matching active items", "load current historical states", "recompute and aggregate changes", "sort newest release first"], "output": "Flat related-history list for approval reference"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Current application is missing or cross-tenant", "behavior": "Use existing not-found or forbidden semantics.", "recovery": "User returns to the authorized application list."},
+    {"condition": "A relation points to a deleted or unavailable historical application", "behavior": "Skip that relation while retaining other valid history.", "recovery": "Data repair can restore the missing business record without endpoint changes."},
+    {"condition": "Related-history request fails", "behavior": "Keep main detail and approval usable and show a local retry state.", "recovery": "Retry only the related-history request."},
+    {"condition": "Additional application has no valid related history", "behavior": "Show an explicit empty state and do not broaden the query.", "recovery": "Correct relation data through the normal application flow or data repair."}
+  ],
+  "quality_attributes": {
+    "security": ["Tenant-scoped query", "release:application:view or system:admin required", "No attachment data expansion"],
+    "performance": ["Relation-index lookup and bounded related ID set", "No whole-window scan", "Avoid duplicate per-relation DTOs"],
+    "compatibility": ["Additive read endpoint", "No schema or existing DTO changes required", "Existing clients remain compatible"],
+    "operations": ["No migration or configuration change", "Local endpoint failure is observable in the detail section"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R3", "R5"], "signal": "Store and service return only direct, active, tenant-scoped grouped history.", "method": "Focused persistence and service tests with later, unrelated, stale and cross-tenant fixtures."},
+    {"requirement_ids": ["R2", "R3", "R4"], "signal": "The API exposes complete summary fields, live status, recomputed changes and stable ordering.", "method": "Service and controller contract assertions."},
+    {"requirement_ids": ["R1", "R2", "R4", "R6"], "signal": "The detail page shows additional-only reference cards, working links and isolated empty/error states.", "method": "Frontend build and authenticated browser checks."},
+    {"requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"], "signal": "Release module and frontend regressions remain green.", "method": "Maven release-module tests, npm production build and git diff check."}
+  ],
+  "assumptions": [
+    {"text": "Persisted ADDITIONAL relations exist for formally created additional applications and active-item filtering removes stale revision rows.", "basis": "Current create/update service calls persistAdditionalRelations and delivery revisions preserve active flags.", "falsifier": "Fixtures show valid additional applications without any persisted relations or current active item keys."}
+  ],
+  "unknowns": [
+    {"question": "Should a logically deleted historical source remain as an immutable non-clickable audit snapshot?", "impact": "Current design skips unavailable sources; a future audit requirement may need snapshot persistence.", "owner": "Product owner", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "Display only directly related historical applications.", "reason": "This is the scope explicitly selected by the user.", "source": "User choice on 2026-08-20."},
+    {"id": "D2", "decision": "Expose a dedicated flat read endpoint.", "reason": "It avoids recursive Response growth and keeps list/conflict payloads unchanged.", "source": "Confirmed design."},
+    {"id": "D3", "decision": "Read status live and recompute changes from active content.", "reason": "This prevents stale relation snapshots after draft revisions.", "source": "Confirmed design."},
+    {"id": "D4", "decision": "Do not embed historical attachments.", "reason": "The reference remains scannable and links to the full historical detail when needed.", "source": "Confirmed design."}
+  ],
+  "risks": [
+    {"risk": "Legacy or stale relation rows refer to items no longer active.", "impact": "Incorrect history can appear.", "mitigation": "Join/filter against current active delivery item keys and recompute changes."},
+    {"risk": "Multiple relation rows duplicate a historical application.", "impact": "The page becomes noisy and counts are misleading.", "mitigation": "Deduplicate IDs in persistence and aggregate changes per historical application in the service."},
+    {"risk": "Independent history loading can create a brief layout shift.", "impact": "Approval page may move after initial render.", "mitigation": "Use a stable local loading state with bounded minimum height."}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "The user selected directly related historical applications and confirmed the proposed backend and detail-page design on 2026-08-20.",
+    "confirmed_at": "2026-08-20T14:12:23+08:00"
+  }
+}

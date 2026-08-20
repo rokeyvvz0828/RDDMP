@@ -1,0 +1,45 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V37__business_owned_workflow_approval.sql", "purpose": "Remove every workflow inbox/done role link before deleting the menu rows"},
+    {"path_or_resource": "mock/mock-data.json", "purpose": "Prevent post-Flyway Mock synchronization from recreating obsolete role-menu grants"},
+    {"path_or_resource": "docs/integration/workflow-module-contract.md", "purpose": "Publish business-owned approval, task-context and historical-route responsibilities"},
+    {"path_or_resource": "docs/requirements/REQ-20260815-027-business-owned-approval/codex-task-scope.yaml", "purpose": "Authorize the directly implicated Mock fixture correction"}
+  ],
+  "requirements_addressed": ["R4", "R8", "R9"],
+  "commands": [
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "All repository governance checks passed; Flyway reports 37 migrations"},
+    {"command": "Java 17 Maven boot reactor package with tests skipped", "exit_code": 0, "salient_output": "Ten-module reactor build success and corrected Mock data packaged"},
+    {"command": "Restart backend, run Mock synchronization, query removed and retained menu IDs", "exit_code": 0, "salient_output": "menus=0, role_links=0, retained=2"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No tracked whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "Forward-only migration", "result": "pass", "evidence": "V37 deletes all role links before menu IDs 202/204 and historical migrations remain untouched", "limitations": []},
+    {"check": "Post-start Mock stability", "result": "pass", "evidence": "After corrected Mock synchronization and a second restart, 202/204 menu and role-link counts remain zero", "limitations": ["Local runtime uses a cross-branch schema with Flyway validation disabled; source Flyway checker validates repository history independently"]},
+    {"check": "Retained workflow administration", "result": "pass", "evidence": "Database retains menu IDs 201/203 and browser sidebar shows only 流程定义 and 流程监控 under 工作流", "limitations": []},
+    {"check": "Contract consistency", "result": "pass", "evidence": "Contract task-context fields and decision rules match Java service/controller and TypeScript API", "limitations": []}
+  ],
+  "diff_summary": [
+    "Added append-only V37 cleanup for workflow inbox and done menus",
+    "Removed four obsolete Mock role grants discovered by runtime observation",
+    "Documented the final module ownership and secure task-context contract",
+    "Kept workflow definitions, monitoring and all public task APIs available"
+  ],
+  "invariants_checked": [
+    {"invariant": "Definitions and monitor menus remain", "result": "pass", "evidence": "Retained database count is 2 and browser sidebar shows both entries"},
+    {"invariant": "Workflow inbox/done/decision APIs remain", "result": "pass", "evidence": "No backend API deletion and contract lists the retained APIs"},
+    {"invariant": "Removed menus leave no role links after startup", "result": "pass", "evidence": "Post-Mock database query returns menus=0 and role_links=0"}
+  ],
+  "disturbances": [
+    {"event": "Local main database has migration versions 35-41 from another branch", "impact": "Backend runtime requires validate-on-migrate=false locally; repository migration history still passes the append-only checker"},
+    {"event": "Initial Mock fixture recreated four role links", "impact": "F-0001 was accepted and corrected by removing only those four fixture grants"}
+  ],
+  "assumptions_falsified": [
+    "The migration was not the last local writer; MockDataInitializer required a fixture correction"
+  ],
+  "unresolved_items": [
+    "Fresh-database V1 migration remains sensitive to how quoted .env properties are loaded; normal Docker/local bootstrap history predates this task"
+  ],
+  "recommended_next": "observe"
+}

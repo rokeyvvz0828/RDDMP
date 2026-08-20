@@ -1,0 +1,76 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["Live dialog geometry showed 暂不处理 followed by primary 仍创建新申请 in the footer.", "Template inspection confirmed CREATE_NEW is absent from history cards."],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["One confirmation submitted SQ-202608-044 and changed it from 草稿 to 审批中.", "The dialog closed and the resolving/loading state prevents overlapping confirmation actions."],
+      "limitations": ["Element Plus retains its DOM node briefly during the normal close transition."]
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["The 409 branch reopens only when refreshed conflictToken differs from confirmedConflictToken.", "An unchanged token falls through to the original business error while the dialog remains closed.", "TypeScript and production bundling passed."],
+      "limitations": ["No concurrent server mutation was introduced solely to force a changed-token browser response."]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["CANCEL_OLD and EDIT_OLD remain conditional card-level actions carrying the selected historical application.", "暂不处理 still closes without submission."],
+      "limitations": ["Destructive historical cancel/edit actions were not executed in the shared local data set."]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": ["Frontend production build passed.", "Live duplicate submission passed.", "Two zero-error control samples were recorded."]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "npm --prefix web run build", "result": "pass", "evidence": "vue-tsc passed; Vite transformed 2362 modules and built in 4.64s."},
+    {"check": "git diff --check", "result": "pass", "evidence": "Exit code 0 with no whitespace errors."},
+    {"check": "Browser console", "result": "pass", "evidence": "No warning or error entries after the full submission flow."},
+    {"check": "Development entry", "result": "pass", "evidence": "node scripts/check-development-entry.mjs --require-plugin passed."}
+  ],
+  "invariant_results": [
+    {"invariant": "Backend conflict-token validation remains authoritative", "result": "pass", "evidence": "No backend or API contract changed; only the server-issued token is submitted."},
+    {"invariant": "Existing permission and application-state rules remain unchanged", "result": "pass", "evidence": "No permission, workflow, backend or database surface changed."},
+    {"invariant": "Unrelated dirty-worktree changes are preserved", "result": "pass", "evidence": "No unrelated file was reverted or overwritten."}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Normal dialog transition and asynchronous submission", "result": "pass", "evidence": "The final UI had zero dialogs and refreshed the application to 审批中 after one confirmation."},
+    {"disturbance": "Repository-wide governance baseline failures", "result": "contained", "evidence": "Task-local invalid baseline artifact was removed; unrelated historical files and branch policy were disclosed without broadening scope."}
+  ],
+  "residual_risks": [
+    "The repository-wide governance command remains red because six unrelated historical ledger filenames are rejected by the current checker.",
+    "The scope checker rejects the user-selected rokey branch before path evaluation.",
+    "The existing Vite bundle-size warning is unchanged."
+  ],
+  "gate_result": "pass",
+  "route_reason": "All four must requirements are covered by verified T1 evidence, two standard-mode samples have P0-P3 equal to zero, and the remaining red repository gates are pre-existing scope and governance baselines outside this bounded product fix."
+}

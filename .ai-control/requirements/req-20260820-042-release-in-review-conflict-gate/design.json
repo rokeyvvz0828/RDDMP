@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-042-release-in-review-conflict-gate",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-20-release-in-review-conflict-gate-design.md",
+  "objective": "Prevent draft saves and submissions while matching historical applications remain in review, with an owned-application withdrawal shortcut and resumable original action.",
+  "users": ["Release applicants saving or submitting an application with same-window, same-item conflicts"],
+  "requirements": [
+    {"id":"R1","statement":"Draft save and submit must preflight conflicts and must not persist while an in-review conflict exists.","acceptance":["No insert or update occurs before blockers clear"],"priority":"must","source":"User confirmation","counterexample":["A blocked second draft exists in the database"]},
+    {"id":"R2","statement":"Create, update, and submit must enforce the same in-review gate server-side.","acceptance":["Direct API and confirmed conflict token cannot bypass the gate"],"priority":"must","source":"Approved design","counterexample":["A matching token submits while an old application is in review"]},
+    {"id":"R3","statement":"Owned in-review conflicts must offer a card-level withdrawal shortcut when the user has permission.","acceptance":["Button appears at card lower right only for owned in-review applications"],"priority":"must","source":"User screenshot and confirmation","counterexample":["Another user's application exposes withdrawal"]},
+    {"id":"R4","statement":"Withdrawal requires a reason and continue stays disabled until every blocker leaves in-review state.","acceptance":["Two-second refresh updates status","Disabled continue explains the reason"],"priority":"must","source":"User confirmation","counterexample":["Continue is enabled while one blocker remains"]},
+    {"id":"R5","statement":"Continue must resume the original draft-save or submit action after blockers clear.","acceptance":["Draft mode saves only then","Submit mode persists and submits only then"],"priority":"must","source":"Approved design","counterexample":["Continue always submits regardless of original action"]},
+    {"id":"R6","statement":"Cancel must return to the form with entered values retained and no persisted new draft.","acceptance":["Drawer data remains","Database has no new application"],"priority":"must","source":"Approved design","counterexample":["Cancel loses form data or leaves a draft"]}
+  ],
+  "invariants": ["Only IN_REVIEW blocks", "Additional classification remains released-version based", "No database migration", "Existing workflow withdrawal state machine remains"],
+  "constraints": ["Reuse existing withdrawal API", "Poll only while dialog is open", "Protect unrelated dirty work"],
+  "non_goals": ["Withdraw another user's application", "Change conflict matching scope", "Change non-review conflict rules"],
+  "selected_approach": {"name":"Server-enforced preflight state machine","reason":"Avoids invalid drafts and prevents API bypass.","alternatives":[{"name":"Frontend-only gate","rejected_because":"Direct API calls bypass it."},{"name":"Persist then warn","rejected_because":"Violates the explicit no-draft rule."}]},
+  "architecture": {"boundary":{"inside":["Release preflight API","Create/update/submit gates","Conflict dialog state machine"],"outside":["Database schema","Workflow engine termination semantics"]},"components":[{"name":"ReleaseApplicationService","responsibility":"Preview and persistence gate","depends_on":["ReleaseApplicationStore"]},{"name":"ReleaseManagementPrototype","responsibility":"Retain and resume the original action","depends_on":["Release APIs"]},{"name":"ReleaseConflictDialog","responsibility":"Display blockers and controls","depends_on":["Element Plus"]}],"interfaces":[{"name":"Conflict preview","producer":"ReleaseApplicationController","consumers":["ReleaseManagementPrototype"],"contract":"Returns conflict details without persistence"}],"data_flows":[{"input":"Unsaved write payload","transitions":["Preview","Optional withdrawal and polling","Final server recheck","Persist or submit"],"output":"No blocked draft or successfully resumed action"}]},
+  "error_handling": [{"condition":"Withdrawal or polling fails","behavior":"Keep continue disabled and show error","recovery":"Retry or cancel"},{"condition":"Final recheck finds a blocker","behavior":"Return 409 and reopen blocker flow","recovery":"Refresh conflicts"}],
+  "quality_attributes": {"security":["Tenant, owner, and permission checks remain server-side"],"performance":["Polling runs every two seconds only while blocked dialog is open"],"compatibility":["No schema change"],"operations":["No migration"]},
+  "verification_strategy": [{"requirement_ids":["R1","R2"],"signal":"Backend tests prove no persistence and no token bypass","method":"JUnit/Mockito"},{"requirement_ids":["R3","R4","R5","R6"],"signal":"Dialog controls and state transitions match design","method":"Frontend build and browser interaction"}],
+  "assumptions": [{"text":"The existing withdrawal lifecycle eventually changes application status to WITHDRAWN.","basis":"ReleaseWorkflowLifecycleConsumer implementation","falsifier":"Workflow termination event is not delivered"}],
+  "unknowns": [],
+  "decisions": [{"id":"D1","decision":"No draft persistence before blockers clear","reason":"Explicit user requirement","source":"User confirmation"},{"id":"D2","decision":"Use two-second polling","reason":"Prompt automatic enablement","source":"Approved design"}],
+  "risks": [{"risk":"Workflow termination is delayed","impact":"Continue remains disabled longer","mitigation":"Show processing state and keep polling while open"}],
+  "approval": {"status":"approved","evidence":"User confirmed the revised preflight design and requested direct implementation on 2026-08-20.","confirmed_at":"2026-08-20T10:10:00+08:00"}
+}

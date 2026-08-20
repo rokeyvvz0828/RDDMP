@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260818-037",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260818-037-production-baseline-maintenance-window/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/release",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/release/components/ReleaseBaselineView.vue",
+      "server/src/modules/release/src/main/java/com/ccb/release/production/service/ReleaseProductionService.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/production/service/ReleaseProductionServiceTest.java",
+      "docs/requirements/REQ-20260818-037-production-baseline-maintenance-window/**",
+      "docs/engineering-control/designs/2026-08-18-production-baseline-maintenance-window-design.md",
+      "docs/engineering-control/plans/2026-08-18-production-baseline-maintenance-window-implementation-plan.md",
+      ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/api/release.ts",
+      "web/src/modules/release/release-prototype.css",
+      "server/src/modules/release/src/main/java/com/ccb/release/window/**",
+      "server/src/modules/release/src/main/java/com/ccb/release/production/persistence/**",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/ai/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260818-037",
+    "owner_approved": true,
+    "old_behavior_preserved": false,
+    "regression_tests": ["release-production-service-test", "frontend-build", "production-baseline-browser-flow"]
+  },
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "No schema change; revert the scoped frontend and service changes."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-release-window-and-baseline-metadata"},
+  "required_tests": [
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "release-production-service-test", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseProductionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test"},
+    {"name": "release-module-test", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "production-baseline-browser-flow", "command": "desktop browser verifies dropdown reason, view-only state before productionEnd and maintenance availability at/after productionEnd"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-037-production-baseline-maintenance-window/codex-task-scope.yaml --working-tree"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {"level": "normal", "items": ["Frontend and backend clocks must use the same Asia/Shanghai business-time interpretation.", "Batch updates must remain atomic when any selected entry belongs to an unfinished window."]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260818-037-production-baseline-maintenance-window",
+    "control_justification": "The change adds a server-enforced time gate to an audited production-result operation.",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/execution-T1.json",
+      ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/observation-T1.json",
+      ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window/convergence.json"
+    ],
+    "release_verification": ["release-production-service-test", "release-module-test", "frontend-build", "production-baseline-browser-flow", "governance", "scope"],
+    "rollback": "Revert only REQ-20260818-037 changes in ReleaseBaselineView.vue, ReleaseProductionService.java and ReleaseProductionServiceTest.java."
+  }
+}

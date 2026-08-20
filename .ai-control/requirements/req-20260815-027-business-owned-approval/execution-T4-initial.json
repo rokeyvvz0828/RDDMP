@@ -1,0 +1,41 @@
+{
+  "task_id": "T4",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V37__business_owned_workflow_approval.sql", "purpose": "Delete workflow inbox/done role links and menu rows in dependency order"},
+    {"path_or_resource": "docs/integration/workflow-module-contract.md", "purpose": "Publish business-owned approval, task context, authorization and historical-route responsibilities"}
+  ],
+  "requirements_addressed": ["R4", "R8", "R9"],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 37 migrations"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "All repository governance checks passed"},
+    {"command": "Maven boot reactor package with Java 17 and skipped tests", "exit_code": 0, "salient_output": "Ten-module reactor build success"},
+    {"command": "Runtime query for menu 202/204, role links and retained 201/203", "exit_code": 0, "salient_output": "menus=0, role_links=4, retained=2"}
+  ],
+  "local_checks": [
+    {"check": "Append-only migration source", "result": "pass", "evidence": "V37 deletes sys_role_menu before sys_menu and does not modify historical migrations", "limitations": []},
+    {"check": "Contract-to-code fields", "result": "pass", "evidence": "Documented task-context fields, 403/409 behavior and signatureConfirmed semantics match Java and TypeScript", "limitations": []},
+    {"check": "Runtime database state", "result": "fail", "evidence": "Mock synchronization recreated four role links for removed menu IDs after the migration-equivalent cleanup", "limitations": ["Local schema has cross-branch Flyway checksum history, so runtime used exact SQL rather than applying repository V37"]}
+  ],
+  "diff_summary": [
+    "Added forward-only menu cleanup migration",
+    "Documented that approvals render and execute only in complete business detail pages",
+    "Identified Mock role-menu fixture as a later writer that violates role-link cleanup"
+  ],
+  "invariants_checked": [
+    {"invariant": "Definitions and monitor menus remain", "result": "pass", "evidence": "Runtime retained menu IDs 201 and 203"},
+    {"invariant": "Workflow task APIs remain", "result": "pass", "evidence": "No backend API was deleted and contract still lists inbox, done, context and decision APIs"},
+    {"invariant": "All role links for removed menus are deleted", "result": "fail", "evidence": "Runtime query returned four role links after Mock synchronization"}
+  ],
+  "disturbances": [
+    {"event": "Local ccb_platform schema contains migrations 35-41 from another branch", "impact": "Repository V35-V37 checksums cannot be applied to that local history; validation was measured with source checker and exact SQL"},
+    {"event": "MockDataInitializer runs after Flyway and mock/mock-data.json still grants menu 202/204", "impact": "Four orphan sys_role_menu records are recreated"}
+  ],
+  "assumptions_falsified": [
+    "V37 was assumed to be the last writer for menu 202/204 role links, but MockDataInitializer writes the same keys after migration"
+  ],
+  "unresolved_items": [
+    "Remove menu 202/204 grants from mock/mock-data.json and add that direct fixture writer to the requirement scope"
+  ],
+  "recommended_next": "observe"
+}

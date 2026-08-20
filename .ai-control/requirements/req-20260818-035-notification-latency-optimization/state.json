@@ -1,0 +1,3264 @@
+{
+  "schema_version": 4,
+  "revision": 34,
+  "created_at": "2026-08-18T03:07:18+00:00",
+  "updated_at": "2026-08-18T04:03:09+00:00",
+  "mode": "standard",
+  "phase": "correcting",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user reviewed the landed revision and explicitly requested direct development on 2026-08-18.；计划确认=User reviewed the landed design and explicitly requested direct development on 2026-08-18.",
+      "recorded_at": "2026-08-18T03:07:18+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Approved design revision 1 imported; R1-R7 are measurable and have no blocking unknowns.",
+      "recorded_at": "2026-08-18T03:08:10+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Engineering model revision 1 covers causal paths, sensors and authorized actuators for R1-R7.",
+      "recorded_at": "2026-08-18T03:10:02+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Control plan revision 1 is ready; all must requirements have bounded tasks and verified sensors.",
+      "recorded_at": "2026-08-18T03:11:53+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 output is measurable by S1 and S5.",
+      "recorded_at": "2026-08-18T03:19:59+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 verified with no feedback; proceed to planned T2 frontend task.",
+      "recorded_at": "2026-08-18T03:21:46+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 output is measurable by frontend build, code-contract checks and browser runtime.",
+      "recorded_at": "2026-08-18T03:28:01+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 verified with no feedback; proceed to planned T3 integration verification.",
+      "recorded_at": "2026-08-18T03:28:53+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 execution report records reproducible integration, browser and load-test evidence, including the failed R7 latency gate.",
+      "recorded_at": "2026-08-18T04:00:08+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "Observation T3 completed with one high-confidence P1 deviation on R7 and no other product deviation.",
+      "recorded_at": "2026-08-18T04:01:37+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user reviewed the landed revision and explicitly requested direct development on 2026-08-18.；计划确认=User reviewed the landed design and explicitly requested direct development on 2026-08-18.",
+        "recorded_at": "2026-08-18T03:07:18+00:00",
+        "data": {
+          "objective": "Reduce normal-path latency from committed workflow lifecycle event to foreground notification-bell update to P95 at or below 2 seconds for approximately 200 concurrent foreground users.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "A committed workflow lifecycle event must be dispatched immediately by eventId and reflected by a one-second foreground unread-count poll so normal-path end-to-end notification latency is P95 <= 2 seconds.",
+              "acceptance": [
+                "At least 20 real event runs measure P95 <= 2 seconds from event transaction commit to browser bell-count update",
+                "The immediate path does not wait for the five-second scheduled scan",
+                "The foreground unread-count polling base interval is one second"
+              ],
+              "priority": "must",
+              "source": "User confirmed the two-second P95 target and selected immediate after-commit dispatch plus frontend polling on 2026-08-18.",
+              "counterexample": [
+                "Lifecycle notifications remain dependent on the five-second scheduler",
+                "The foreground notification center continues polling every fifteen seconds"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Immediate dispatch must occur only after a successful transaction commit and its failure must never roll back or change the committed workflow action.",
+              "acceptance": [
+                "A rolled-back event transaction produces no notification dispatch",
+                "A failing notification consumer leaves the workflow approval result successful and durable",
+                "The failed delivery remains available for scheduled compensation"
+              ],
+              "priority": "must",
+              "source": "User-confirmed reliability design on 2026-08-18.",
+              "counterexample": [
+                "Notification failure causes approval rollback",
+                "An event from a rolled-back transaction is delivered"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Immediate and scheduled delivery paths must atomically claim each delivery row before invoking a consumer, preserving one consumer call during normal races and idempotent effects during crash recovery.",
+              "acceptance": [
+                "Concurrent immediate and scheduled attempts on one delivery result in exactly one successful claim and one consumer call",
+                "A process crash after consumer success but before status persistence may retry, but existing consumer idempotency produces one business effect and one notification"
+              ],
+              "priority": "must",
+              "source": "User-confirmed architecture and reliability design on 2026-08-18.",
+              "counterexample": [
+                "Both paths select PENDING and invoke the consumer before either updates status",
+                "Crash recovery creates duplicate user notifications"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Immediate failures and stale claimed deliveries must automatically return to the durable scheduled path while retaining the existing five-attempt and DEAD semantics.",
+              "acceptance": [
+                "An immediate failure returns the delivery to schedulable PENDING and a later scheduled pass can deliver it",
+                "A DISPATCHING row older than the recovery threshold is reclaimed without manual database editing",
+                "Repeated scheduled failure reaches DEAD on the fifth attempt and manual retry remains compatible"
+              ],
+              "priority": "must",
+              "source": "User-confirmed failure and recovery design on 2026-08-18.",
+              "counterexample": [
+                "A delivery remains permanently DISPATCHING after interruption",
+                "Immediate dispatch failure discards the durable event"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Unread polling must run only while the document is visible, refresh immediately on visibility restoration, focus, and drawer open, and prevent overlapping count requests.",
+              "acceptance": [
+                "Hidden documents issue no periodic unread-count requests",
+                "Visibility restoration, focus, and drawer open cause an immediate refresh",
+                "A slow unread-count request never overlaps another count request",
+                "A changed count refreshes list and module summaries only when the drawer is open"
+              ],
+              "priority": "must",
+              "source": "User-confirmed frontend polling design on 2026-08-18.",
+              "counterexample": [
+                "Background tabs continue polling once per second",
+                "Slow responses accumulate concurrent polling requests",
+                "The full notification list reloads every second while the drawer is closed"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "Consecutive silent unread-count failures must back off to 2, 5, and 15 seconds without repeated user-facing errors, and reset to one second after success or foreground restoration.",
+              "acceptance": [
+                "Observed retry intervals follow 2s, 5s, and 15s on consecutive failures",
+                "Background failures do not repeatedly display error messages",
+                "A successful refresh, focus, or visibility restoration resets the base interval to one second"
+              ],
+              "priority": "must",
+              "source": "User-confirmed degradation design on 2026-08-18.",
+              "counterexample": [
+                "A failed endpoint is retried every second indefinitely",
+                "Every silent polling failure displays a toast"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "The existing authenticated unread-count endpoint must sustain approximately 200 requests per second from 200 foreground users.",
+              "acceptance": [
+                "Two hundred concurrent clients poll for 60 seconds with zero request errors",
+                "Unread-count API response-time P95 is <= 200ms under that load",
+                "Database connection-pool exhaustion and application error logs are absent during the run"
+              ],
+              "priority": "must",
+              "source": "User confirmed approximately 200 foreground users and the performance acceptance on 2026-08-18.",
+              "counterexample": [
+                "The implementation meets latency only by exceeding database or connection-pool capacity",
+                "The load run contains request errors or API P95 above 200ms"
+              ]
+            }
+          ],
+          "invariants": [
+            "Workflow lifecycle events and delivery rows remain durable in the same business transaction",
+            "Rolled-back business transactions do not emit notifications",
+            "Notification failure never changes a committed workflow result",
+            "The five-second scheduler remains as a compensation path",
+            "Existing notification and release-consumer idempotency semantics remain in force",
+            "Tenant and user scoping continue to come from the authenticated server principal",
+            "Unrelated dirty-worktree changes are preserved"
+          ],
+          "constraints": [
+            "Reuse GET /api/notifications/unread-count without adding an API",
+            "Reuse wf_lifecycle_delivery.status and updated_at without a new table or index",
+            "Use the existing Java 17, Spring Boot, MySQL 8.4, Vue 3 and TypeScript stack",
+            "Implementation will occur on the local rokey branch after a separately approved plan",
+            "Do not introduce SSE, WebSocket, browser Push, a message queue or cache for this requirement"
+          ],
+          "non_goals": [
+            "Changing notification content, module filtering, visual design, read semantics or business routes",
+            "Changing workflow approval rules or task-assignment notification behavior",
+            "Strict exactly-once consumer invocation across process crashes",
+            "Adding notification tables, indexes, APIs, queues, caches or external delivery channels"
+          ],
+          "assumptions": [
+            {
+              "text": "Approximately 200 users means 200 simultaneously visible foreground pages and therefore approximately 200 unread-count requests per second.",
+              "basis": "User supplied the concurrency scale and selected one-second polling.",
+              "falsifier": "Measured foreground concurrency materially exceeds 200 users."
+            },
+            {
+              "text": "Lifecycle consumers are local, short-running and idempotent.",
+              "basis": "Current consumers run in-process; notification publication has an event idempotency key and release lifecycle consumption tracks receipts.",
+              "falsifier": "A consumer performs long external I/O or cannot tolerate replay after a crash."
+            },
+            {
+              "text": "A default 60-second stale-claim threshold is safely above normal lifecycle-consumer duration.",
+              "basis": "Current consumers perform local database work expected to complete well below one minute.",
+              "falsifier": "Focused timing tests show legitimate consumer execution approaching or exceeding 60 seconds."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use normal-path P95 <= 2 seconds as the user-visible latency objective.",
+              "reason": "It is measurable and allows exceptional failure/recovery paths to remain durable rather than falsely promising a hard deadline.",
+              "source": "User confirmed 2 seconds on 2026-08-18."
+            },
+            {
+              "id": "D2",
+              "decision": "Trigger specific lifecycle deliveries immediately after commit and retain the scheduler as compensation.",
+              "reason": "This removes the known five-second wait without weakening transaction durability or recovery.",
+              "source": "User selected option 1 and confirmed the architecture on 2026-08-18."
+            },
+            {
+              "id": "D3",
+              "decision": "Poll the existing unread-count endpoint every second only while foreground-visible.",
+              "reason": "At the confirmed 200-user scale it meets the latency target with less infrastructure than push connections.",
+              "source": "User selected option 1 and confirmed approximately 200 users on 2026-08-18."
+            },
+            {
+              "id": "D4",
+              "decision": "Use atomic delivery-row claiming and updated_at-based stale recovery without a schema migration.",
+              "reason": "The current VARCHAR status and timestamp fields already support the required state machine and recovery signal.",
+              "source": "User confirmed the reliability design on 2026-08-18."
+            },
+            {
+              "id": "D5",
+              "decision": "Back off silent frontend failures to 2, 5 and 15 seconds and reset on success or foreground restoration.",
+              "reason": "This protects the server during faults while preserving immediate recovery for active users.",
+              "source": "User confirmed the frontend degradation design on 2026-08-18."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "Dispatch starts only after commit, business results survive notification failure, and browser latency meets target.",
+              "method": "Transaction-focused backend tests plus at least 20 authenticated end-to-end browser event runs."
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R4"
+              ],
+              "signal": "Only one normal-race claim succeeds and failed or stale deliveries recover without duplicate effects.",
+              "method": "Concurrent dispatcher tests, consumer idempotency regression, interruption recovery and five-attempt DEAD tests."
+            },
+            {
+              "requirement_ids": [
+                "R5",
+                "R6"
+              ],
+              "signal": "Polling follows visibility, request de-duplication, conditional refresh and backoff rules.",
+              "method": "Frontend timer and request tests plus browser network inspection across visible, hidden, focus and drawer states."
+            },
+            {
+              "requirement_ids": [
+                "R7"
+              ],
+              "signal": "The current unread endpoint handles the confirmed foreground load without errors or excessive latency.",
+              "method": "A 200-client, 60-second authenticated load run with API latency, errors, connection-pool state and application logs recorded."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Code, schema, tests and runtime interfaces inspected; R1-R7 are observable and controllable within the approved scope.",
+        "recorded_at": "2026-08-18T03:09:40+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "Workflow lifecycle event persistence and transaction completion",
+              "Workflow lifecycle delivery claim, consumption, retry and recovery",
+              "System notification unread-count query",
+              "UiNotificationCenter polling and drawer refresh lifecycle"
+            ],
+            "environment": [
+              "MySQL 8.4 transaction and row-update semantics",
+              "Spring transaction synchronization and scheduler",
+              "Browser visibility, focus and timer scheduling",
+              "Authenticated local users and existing release workflow consumers"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "delivery_status",
+              "owner": "platform/workflow",
+              "valid_values": [
+                "PENDING",
+                "RETRY",
+                "DISPATCHING",
+                "DELIVERED",
+                "DEAD"
+              ]
+            },
+            {
+              "name": "delivery_attempt_count",
+              "owner": "platform/workflow",
+              "valid_values": [
+                "0 through 5"
+              ]
+            },
+            {
+              "name": "delivery_updated_at",
+              "owner": "platform/workflow",
+              "valid_values": [
+                "database timestamp"
+              ]
+            },
+            {
+              "name": "unread_count",
+              "owner": "platform/system",
+              "valid_values": [
+                "non-negative integer"
+              ]
+            },
+            {
+              "name": "document_visibility",
+              "owner": "browser",
+              "valid_values": [
+                "visible",
+                "hidden"
+              ]
+            },
+            {
+              "name": "count_request_state",
+              "owner": "UiNotificationCenter",
+              "valid_values": [
+                "idle",
+                "in-flight"
+              ]
+            },
+            {
+              "name": "poll_failure_level",
+              "owner": "UiNotificationCenter",
+              "valid_values": [
+                "0",
+                "1",
+                "2",
+                "3+"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "Committed lifecycle event",
+              "transitions": [
+                "after-commit trigger",
+                "event-specific atomic claim",
+                "notification persistence",
+                "visible one-second unread poll"
+              ],
+              "outputs": [
+                "Bell count updates with P95 <= 2 seconds"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "Commit, rollback or consumer exception",
+              "transitions": [
+                "transaction synchronization outcome",
+                "isolated immediate dispatch"
+              ],
+              "outputs": [
+                "Commit may notify, rollback does not notify, notification failure does not change workflow result"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Immediate and scheduled candidates for one delivery",
+              "transitions": [
+                "conditional status update",
+                "only update-count 1 may consume",
+                "idempotent persistence"
+              ],
+              "outputs": [
+                "One normal-race consumer call and one business effect"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Consumer failure or interrupted DISPATCHING row",
+              "transitions": [
+                "error state update",
+                "scheduled compensation",
+                "updated_at stale recovery",
+                "attempt threshold"
+              ],
+              "outputs": [
+                "Delivery eventually succeeds or reaches DEAD after five attempts"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "Visible, hidden, focused or drawer-open browser state",
+              "transitions": [
+                "timer scheduling/cancellation",
+                "shared in-flight request",
+                "count comparison"
+              ],
+              "outputs": [
+                "Polling only while visible and conditional drawer refresh"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "Consecutive unread-count failures and later recovery",
+              "transitions": [
+                "failure-level increment",
+                "2/5/15 second backoff",
+                "success/foreground reset"
+              ],
+              "outputs": [
+                "Bounded silent retry load and one-second recovered polling"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "200 visible authenticated clients",
+              "transitions": [
+                "approximately 200 count queries per second",
+                "indexed tenant/user/unread lookup"
+              ],
+              "outputs": [
+                "60-second run has zero errors and API P95 <= 200ms"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "lifecycle event transaction",
+              "producers": [
+                "WorkflowLifecycleEventService callers"
+              ],
+              "consumers": [
+                "WorkflowLifecycleEventService"
+              ],
+              "invariant": "Event and delivery rows are committed together before dispatch"
+            },
+            {
+              "name": "event-specific dispatch",
+              "producers": [
+                "WorkflowLifecycleEventService afterCommit"
+              ],
+              "consumers": [
+                "WorkflowLifecycleDispatcher"
+              ],
+              "invariant": "Exceptions never alter the committed workflow result"
+            },
+            {
+              "name": "delivery claim",
+              "producers": [
+                "Immediate and scheduled dispatcher entry points"
+              ],
+              "consumers": [
+                "WorkflowLifecycleConsumer"
+              ],
+              "invariant": "Only a conditional update count of one authorizes consumption"
+            },
+            {
+              "name": "GET /api/notifications/unread-count",
+              "producers": [
+                "platform/system"
+              ],
+              "consumers": [
+                "UiNotificationCenter"
+              ],
+              "invariant": "Response is authenticated tenant/user global unread total and schema is unchanged"
+            },
+            {
+              "name": "browser lifecycle events",
+              "producers": [
+                "document and window"
+              ],
+              "consumers": [
+                "UiNotificationCenter"
+              ],
+              "invariant": "Hidden state cancels periodic polling and foreground restoration refreshes immediately"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Transaction and delivery state-machine behavior for R2-R4",
+              "method": "Focused JUnit tests with captured SQL update counts, states and consumer-call counters",
+              "blind_spots": [
+                "Real MySQL lock scheduling timing"
+              ],
+              "independence": "Deterministic service-level assertions independent from browser behavior"
+            },
+            {
+              "id": "S2",
+              "target": "Frontend polling lifecycle for R5-R6",
+              "method": "Authenticated browser Network and Console observation across visible, hidden, focus and drawer states",
+              "blind_spots": [
+                "Long-duration browser throttling outside sampled session"
+              ],
+              "independence": "Direct browser runtime observation independent from Java unit tests"
+            },
+            {
+              "id": "S3",
+              "target": "End-to-end notification latency for R1",
+              "method": "At least 20 timestamped real workflow event-to-bell runs",
+              "blind_spots": [
+                "Rare failure/recovery paths are excluded from normal-path percentile"
+              ],
+              "independence": "Crosses backend persistence, API and browser polling"
+            },
+            {
+              "id": "S4",
+              "target": "Unread-count capacity for R7",
+              "method": "200-client 60-second authenticated load run measuring errors and response percentiles",
+              "blind_spots": [
+                "Production-scale network and database differences"
+              ],
+              "independence": "Runtime load sensor independent from source inspection"
+            },
+            {
+              "id": "S5",
+              "target": "Compatibility for R1-R6",
+              "method": "Workflow Maven regression, full Maven test and frontend production build",
+              "blind_spots": [
+                "Environment-specific production behavior"
+              ],
+              "independence": "Compiler and repository regression suites"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Backend dispatch delay and race/recovery state",
+              "action": "Modify WorkflowLifecycleEventService and WorkflowLifecycleDispatcher with direct tests",
+              "authority": "REQ-20260818-035 scope authorization",
+              "impact_radius": "Shared platform workflow lifecycle deliveries",
+              "rollback": "Revert only T1 service and test changes; scheduler remains"
+            },
+            {
+              "id": "A2",
+              "target": "Frontend notification observation delay and retry load",
+              "action": "Modify UiNotificationCenter polling lifecycle only",
+              "authority": "REQ-20260818-035 scope authorization",
+              "impact_radius": "Authenticated global notification center",
+              "rollback": "Restore prior 15-second interval implementation"
+            },
+            {
+              "id": "A3",
+              "target": "Verification evidence",
+              "action": "Run focused/full tests, browser probes, latency samples and local load test",
+              "authority": "Local non-production verification permission",
+              "impact_radius": "Local test runtime only",
+              "rollback": "Stop test processes and retain no product data changes beyond test notifications"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Existing dirty worktree and parallel user changes",
+              "effect": "Target files or baseline tests may change during execution",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Scheduler and immediate dispatch race",
+              "effect": "Duplicate consumer invocation without atomic claim",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Consumer exception or process interruption",
+              "effect": "Delayed or replayed delivery",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Browser timer throttling and slow network",
+              "effect": "Polling delay or overlapping request risk",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Local database and connection-pool capacity",
+              "effect": "Load latency or errors",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Existing scheduled lifecycle scan",
+              "consequence": "Up to approximately five seconds before notification persistence",
+              "sampling_rule": "Compare event-specific dispatch with scheduler-only baseline"
+            },
+            {
+              "source": "Existing frontend interval",
+              "consequence": "Up to approximately fifteen seconds before bell refresh",
+              "sampling_rule": "Observe count-request cadence in browser Network"
+            },
+            {
+              "source": "New one-second self-scheduled poll",
+              "consequence": "Response duration plus one second defines steady-state cadence",
+              "sampling_rule": "Measure from request completion to next request start"
+            },
+            {
+              "source": "Failure backoff",
+              "consequence": "Failure paths intentionally exceed the normal two-second target",
+              "sampling_rule": "Evaluate separately from normal-path P95"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Lifecycle consumers are short-running and idempotent",
+              "evidence": "Current notification event key and release receipt tracking",
+              "falsifier": "A consumer performs long external I/O or duplicates effects on replay"
+            },
+            {
+              "text": "The existing unread index supports 200 QPS",
+              "evidence": "Index starts with tenant_id, user_id and is_read",
+              "falsifier": "Required 60-second load run exceeds 200ms P95 or has errors"
+            },
+            {
+              "text": "A 60-second stale threshold exceeds normal consumer duration",
+              "evidence": "Current consumers perform local database work",
+              "falsifier": "Focused timing shows legitimate execution approaches 60 seconds"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1/A2 and measure with S3/S5"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1 and measure with S1/S5"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1 and measure with S1/S5"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1 and measure with S1/S5"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A2 and measure with S2/S5"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A2 and measure with S2/S5"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A3 and measure with S4; replan if capacity fails"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Validated serial T1-T3 plan covers R1-R7 with authorized write scopes, sensors, rollback and escalation boundaries.",
+        "recorded_at": "2026-08-18T03:11:37+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Provide after-commit event-specific dispatch with atomic claim, compensation and stale recovery.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "WorkflowLifecycleEventService writes event and delivery rows in caller transactions.",
+                "WorkflowLifecycleDispatcher currently selects PENDING/RETRY every five seconds and consumes before a claim.",
+                "The existing delivery table can represent DISPATCHING and stale recovery without a migration."
+              ],
+              "write_scope": [
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java",
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T1.json",
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T1.json"
+              ],
+              "invariants": [
+                "Event and delivery rows commit before dispatch.",
+                "Notification failure never changes a committed workflow result.",
+                "The scheduler, five attempts, DEAD and manual retry remain compatible.",
+                "Unrelated dirty-worktree changes remain untouched."
+              ],
+              "interface_contracts": [
+                "dispatchEvent(String eventId) handles only matching due deliveries.",
+                "Only a successful PENDING/RETRY to DISPATCHING conditional update authorizes consumption.",
+                "Successful consumption changes DISPATCHING to DELIVERED; immediate failure returns to schedulable PENDING.",
+                "Stale DISPATCHING is recovered by updated_at and remains replay-idempotent."
+              ],
+              "non_goals": [
+                "No schema, API, queue, cache or lifecycle-consumer contract change."
+              ],
+              "action_bounds": [
+                "Modify only the two lifecycle services and their direct tests.",
+                "Keep the default scheduler delay at five seconds and stale threshold at sixty seconds.",
+                "Do not alter business workflow state transitions or notification payloads."
+              ],
+              "acceptance_checks": [
+                "Commit dispatches immediately and rollback does not dispatch.",
+                "Immediate/scheduled normal race invokes one consumer.",
+                "Immediate failure does not escape and remains schedulable.",
+                "Stale claim recovers and fifth scheduled failure reaches DEAD.",
+                "Workflow Maven tests pass."
+              ],
+              "evidence_required": [
+                "Actual T1 diff",
+                "Focused and module Maven commands with exit codes",
+                "Consumer call-count and state assertions",
+                "Unexpected disturbances"
+              ],
+              "rollback": "Revert only T1 service and test changes; the existing scheduler remains.",
+              "stop_conditions": [
+                "A consumer is not replay-idempotent",
+                "A schema change is required",
+                "Immediate dispatch can observe incomplete business state"
+              ],
+              "escalation_conditions": [
+                "A queue, public event-contract change or retry-semantic change becomes necessary"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Provide visibility-aware one-second unread polling with request de-duplication and failure backoff.",
+              "requirement_ids": [
+                "R1",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "UiNotificationCenter uses a 15000ms setInterval and focus refresh.",
+                "The existing unread-count endpoint and list/module request version guards are reusable.",
+                "The frontend has no unit-test framework and must retain its current public template contract."
+              ],
+              "write_scope": [
+                "web/src/components/ui/UiNotificationCenter.vue",
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T2.json",
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T2.json"
+              ],
+              "invariants": [
+                "Notification API, DTO, display, filter, read and navigation semantics remain unchanged.",
+                "Hidden pages issue no periodic count requests.",
+                "Only one unread-count request may be in flight.",
+                "Unrelated component edits remain untouched."
+              ],
+              "interface_contracts": [
+                "Visible successful polling waits one second after request completion.",
+                "Focus, visibility restoration and drawer open trigger or reuse an immediate count request.",
+                "Failures back off at two, five and fifteen seconds without repeated toast.",
+                "List and module summaries refresh only when the drawer is open and the count changed."
+              ],
+              "non_goals": [
+                "No API, store, global poller, dependency, push transport or UI redesign."
+              ],
+              "action_bounds": [
+                "Modify only the script section lifecycle needed for polling.",
+                "Preserve existing request-version guards and visible error behavior.",
+                "Use browser-native visibility/focus events and setTimeout."
+              ],
+              "acceptance_checks": [
+                "Frontend production build passes.",
+                "Code no longer contains the 15000ms fixed interval.",
+                "Visible, hidden, focus, drawer, in-flight and backoff paths match R5-R6.",
+                "Existing notification drawer behavior remains usable."
+              ],
+              "evidence_required": [
+                "Actual T2 diff",
+                "Frontend build exit code",
+                "Browser Network/Console observations",
+                "Unexpected disturbances"
+              ],
+              "rollback": "Restore the prior polling lifecycle in UiNotificationCenter.vue only.",
+              "stop_conditions": [
+                "API or DTO changes become necessary",
+                "Existing drawer request guards cannot be preserved"
+              ],
+              "escalation_conditions": [
+                "A new dependency, global polling service or push transport becomes necessary"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Prove integration latency, capacity, compatibility and scope convergence.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1 and T2 expose repeatable backend and frontend sensors.",
+                "Local frontend and backend normally run at ports 5173 and 8080.",
+                "The unread-count query has a tenant/user/is_read leading index."
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T3.json",
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T3.json",
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/convergence.json"
+              ],
+              "invariants": [
+                "Verification uses local non-production data and authenticated test identities.",
+                "Performance targets are not relaxed to claim completion.",
+                "No product file changes are made during T3 unless feedback returns to planning/executing."
+              ],
+              "interface_contracts": [
+                "At least 20 normal event-to-bell samples determine R1 P95.",
+                "Two hundred clients for sixty seconds determine R7 errors and API P95.",
+                "Browser Network and Console determine R5-R6 runtime behavior."
+              ],
+              "non_goals": [
+                "No production access, production data, code commit, push or release."
+              ],
+              "action_bounds": [
+                "Run approved local tests and probes only.",
+                "Record unrelated baseline failures without editing range-external files.",
+                "Return any product defect to a bounded correction loop."
+              ],
+              "acceptance_checks": [
+                "Focused/full backend and frontend builds pass.",
+                "Browser lifecycle and notification regression pass.",
+                "Twenty-run normal latency P95 is at most two seconds.",
+                "Two-hundred-client count load has zero errors and P95 at most 200ms.",
+                "Governance, diff and scope checks are accounted for."
+              ],
+              "evidence_required": [
+                "Command exit codes",
+                "Browser network/console evidence",
+                "Latency sample",
+                "Load-test summary",
+                "Scope and residual-risk audit"
+              ],
+              "rollback": "Disable immediate triggering and restore prior polling while retaining durable scheduled delivery.",
+              "stop_conditions": [
+                "Runtime cannot be restored after three attempts",
+                "No local test identity is available",
+                "The 200-QPS gate fails"
+              ],
+              "escalation_conditions": [
+                "Meeting must requirements requires cache, push, queue or a changed objective"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Backend normal path must exist before end-to-end frontend latency can be measured."
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Integration and capacity verification require both implementation tasks."
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Run workflow module Maven tests",
+                "Sample backend state-machine assertions with S1"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "Run frontend production build",
+                "Sample browser polling lifecycle with S2"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "Run full regression",
+                "Measure S3 and S4 thresholds",
+                "Audit scope and residual risks"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 completion sample",
+              "trigger": "T1 execution report",
+              "observer": "Main agent using repeatable focused tests, marked non-independent",
+              "sensors": [
+                "S1",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "T2 completion sample",
+              "trigger": "T2 execution report",
+              "observer": "Main agent using build and browser runtime, marked non-independent",
+              "sensors": [
+                "S2",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "Final integration sample",
+              "trigger": "T3 evidence complete",
+              "observer": "Main agent using heterogeneous runtime sensors, marked non-independent",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 implemented within scope; 11 focused tests and 46 workflow regression tests passed.",
+        "recorded_at": "2026-08-18T03:19:59+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+              "purpose": "Add event-specific REQUIRES_NEW dispatch, atomic claims, immediate compensation and stale-claim recovery"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+              "purpose": "Trigger event-specific dispatch after transaction commit while isolating failures"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+              "purpose": "Cover transaction propagation, claims, event targeting, compensation, recovery and DEAD behavior"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java",
+              "purpose": "Cover commit, rollback, no-transaction and immediate-failure behavior"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "Baseline: 2 dispatcher tests passed."
+            },
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest,WorkflowLifecycleEventServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 1,
+              "salient_output": "Expected pre-implementation compile failures for dispatchEvent and setDispatcher; one AuthUser fixture mismatch was corrected."
+            },
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest,WorkflowLifecycleEventServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "After implementation: 10 focused tests passed."
+            },
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test",
+              "exit_code": 0,
+              "salient_output": "46 workflow-module tests passed."
+            },
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest,WorkflowLifecycleEventServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "After adding REQUIRES_NEW: 11 focused tests passed."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Transaction boundary",
+              "result": "pass",
+              "evidence": "Commit callback test, rollback test and REQUIRES_NEW annotation assertion pass",
+              "limitations": [
+                "No real MySQL commit-race integration test yet"
+              ]
+            },
+            {
+              "check": "Atomic claim and normal-race exclusion",
+              "result": "pass",
+              "evidence": "Claim update-count 0 prevents consumer invocation; event dispatch processes one claimed row",
+              "limitations": [
+                "Deterministic JdbcTemplate stub does not reproduce database lock scheduling"
+              ]
+            },
+            {
+              "check": "Failure and recovery",
+              "result": "pass",
+              "evidence": "Immediate failure returns PENDING; stale DISPATCHING recovery and fifth-failure DEAD tests pass",
+              "limitations": [
+                "Process termination is represented by persisted stale state"
+              ]
+            },
+            {
+              "check": "Workflow regression",
+              "result": "pass",
+              "evidence": "Maven reported 46 tests, 0 failures",
+              "limitations": [
+                "Full repository regression remains T3"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Both event-specific and scheduled dispatch now claim PENDING/RETRY rows through DISPATCHING before consumption.",
+            "Event-specific dispatch runs in a new transaction after the event transaction commits.",
+            "Immediate failures are contained and returned to PENDING; scheduled failures retain retry/DEAD behavior.",
+            "Scheduled runs recover DISPATCHING rows older than the bounded configurable threshold."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Event rows commit before immediate dispatch",
+              "result": "pass",
+              "evidence": "Transaction synchronization only calls dispatch in afterCommit"
+            },
+            {
+              "invariant": "Notification failure does not change business result",
+              "result": "pass",
+              "evidence": "Immediate dispatcher exception is caught and event creation returns normally"
+            },
+            {
+              "invariant": "Scheduler and retry compatibility remain",
+              "result": "pass",
+              "evidence": "Existing retry and DEAD tests plus workflow module regression pass"
+            },
+            {
+              "invariant": "No schema or public event-contract change",
+              "result": "pass",
+              "evidence": "Only authorized service/test files changed; existing columns and consumer interface reused"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Target workflow files were initially untracked in the dirty worktree, so ordinary git diff did not show their content.",
+              "impact": "Evidence uses direct file inspection, tests and scoped status instead of assuming an empty diff."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Real runtime event-to-notification timing and MySQL concurrency remain for T3."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 implemented within one component; production build and authenticated drawer check passed.",
+        "recorded_at": "2026-08-18T03:28:01+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/components/ui/UiNotificationCenter.vue",
+              "purpose": "Replace fixed 15-second interval with a visible-page one-second self-scheduled unread poll, shared in-flight request and failure backoff"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R5",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "Pre-change baseline build passed; Vite built 2362 modules."
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "Post-change vue-tsc and Vite build passed; Vite built 2362 modules in 5.26s."
+            },
+            {
+              "command": "Authenticated browser reload and notification drawer open",
+              "exit_code": 0,
+              "salient_output": "Dashboard loaded with bell count 1; notification drawer showed module filter and notification records; no console errors."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Build and type safety",
+              "result": "pass",
+              "evidence": "vue-tsc --noEmit and Vite production build exited 0",
+              "limitations": [
+                "Repository has no frontend unit-test framework"
+              ]
+            },
+            {
+              "check": "Polling lifecycle structure",
+              "result": "pass",
+              "evidence": "Static check shows 1000ms base, 2000/5000/15000ms backoff, setTimeout, visibilitychange and shared request/cycle guards; no setInterval remains",
+              "limitations": [
+                "Browser runtime does not expose resource timing entries through its read-only evaluation sandbox"
+              ]
+            },
+            {
+              "check": "Notification drawer regression",
+              "result": "pass",
+              "evidence": "Authenticated browser displayed bell, unread count, module filter and notifications with zero console errors",
+              "limitations": [
+                "Hidden-tab request pause requires final T3 runtime observation"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Unread count requests now share one in-flight Promise.",
+            "Successful visible polling self-schedules one second after completion.",
+            "Hidden state cancels the timer; visibility restoration, focus and drawer open refresh immediately.",
+            "Silent consecutive failures back off to two, five and fifteen seconds.",
+            "Closed drawer updates only the bell; open drawer refreshes list and module summaries only when unread count changes."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Notification API and DTO remain unchanged",
+              "result": "pass",
+              "evidence": "Only UiNotificationCenter.vue changed for T2 and existing API imports are reused"
+            },
+            {
+              "invariant": "Drawer display, filtering, read and navigation remain",
+              "result": "pass",
+              "evidence": "Template was not changed and authenticated drawer browser check passed"
+            },
+            {
+              "invariant": "Count requests do not overlap",
+              "result": "pass",
+              "evidence": "refreshUnreadCount returns the shared unreadCountRequest and runPollingCycle returns the shared pollingCycle"
+            },
+            {
+              "invariant": "Hidden pages have no scheduled timer",
+              "result": "pass",
+              "evidence": "schedulePoll checks visibility and visibilitychange hidden branch clears the timeout"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "The browser read-only evaluation environment does not expose Performance resource entries.",
+              "impact": "Direct request cadence evidence is deferred to T3 through alternative runtime sensors."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Hidden-tab network pause, exact one-second request cadence and failure-backoff timing remain for T3 runtime verification."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 full tests, 20-event runtime latency sample, authenticated 200-client load and governance/scope audit completed.",
+        "recorded_at": "2026-08-18T03:59:57+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T3.json",
+              "purpose": "Record integration, latency, capacity, governance and runtime verification evidence without changing product code"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "mvn test",
+              "exit_code": 0,
+              "salient_output": "Full backend test suite passed. Focused workflow tests passed 47 tests and release tests passed 51 tests."
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite production build passed."
+            },
+            {
+              "command": "20 authenticated real application create-and-submit runs with browser bell observation",
+              "exit_code": 0,
+              "salient_output": "Applications SQ-202608-024 through SQ-202608-043 created real workflow instances. All 40 lifecycle deliveries reached DELIVERED at attempt_count=1. Submit-response-to-bell P95 was approximately 945ms and maximum was 1027ms."
+            },
+            {
+              "command": "node /private/tmp/req035-load-test.mjs",
+              "exit_code": 2,
+              "salient_output": "200 clients completed 12000/12000 authenticated requests over about 60 seconds with zero errors. Latency p50=109.63ms, p95=221.407ms, p99=343.717ms, max=420.491ms; the required p95 <= 200ms capacity gate failed."
+            },
+            {
+              "command": "node scripts/check-development-entry.mjs --require-plugin",
+              "exit_code": 0,
+              "salient_output": "Development entry check passed."
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "Failed only on five pre-existing invalid .ai-control artifacts belonging to requirements 029, 032 and 033; no REQ-20260818-035 governance defect was reported."
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-035-notification-latency-optimization/codex-task-scope.yaml --working-tree",
+              "exit_code": 1,
+              "salient_output": "Scope checker rejected the existing rokey branch name because its generic policy expects feature/REQ-*; the user explicitly required development on rokey."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Normal-path event-to-bell latency",
+              "result": "pass",
+              "evidence": "20 real workflow submissions measured approximately 945ms P95 and 1027ms maximum against the 2000ms P95 objective.",
+              "limitations": [
+                "Commit time is proxied by the submit response, which occurs immediately after transaction commit."
+              ]
+            },
+            {
+              "check": "Durable immediate delivery and compensation",
+              "result": "pass",
+              "evidence": "All 40 real lifecycle deliveries completed DELIVERED on the first attempt; focused and full tests cover rollback suppression, isolated after-commit dispatch, atomic claim, retry, DEAD and stale-claim recovery.",
+              "limitations": [
+                "Crash recovery remains test-driven because forcibly terminating the local process between consumer success and persistence would not provide deterministic timing."
+              ]
+            },
+            {
+              "check": "Notification-center foreground behavior",
+              "result": "pass",
+              "evidence": "Authenticated browser showed real configuration-management notifications, updated the bell during sampling, displayed the business module filter and emitted no console errors; build and component contracts cover visible-only self-scheduling, shared in-flight requests and 2s/5s/15s backoff.",
+              "limitations": [
+                "The in-app browser did not expose raw resource-timing entries, so exact hidden-tab and injected-failure request timestamps rely on lifecycle contract inspection plus browser regression evidence."
+              ]
+            },
+            {
+              "check": "Approximately 200 foreground users",
+              "result": "fail",
+              "evidence": "12000/12000 requests returned HTTP 200 with no pool exhaustion, but response-time P95 was 221.407ms against the required 200ms.",
+              "limitations": [
+                "The authenticated endpoint includes the pre-existing security identity resolution path; its cost is not isolated from the notification query in this end-to-end load result."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "T3 made no product-code changes.",
+            "The two-second user-visible latency objective passed with approximately 1.055 seconds of P95 headroom.",
+            "Capacity was stable and error-free at 200 clients, but API P95 exceeded the separate 200ms gate by 21.407ms."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Performance targets are not relaxed to claim completion",
+              "result": "pass",
+              "evidence": "R7 remains failed at 221.407ms rather than being rounded below the 200ms threshold."
+            },
+            {
+              "invariant": "Verification uses local non-production data and authenticated test identities",
+              "result": "pass",
+              "evidence": "All workflow and load samples used the isolated local runtime database and local admin identity."
+            },
+            {
+              "invariant": "No product file changes are made during T3",
+              "result": "pass",
+              "evidence": "Only requirement control evidence is recorded in T3."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "The isolated runtime database contained V44 schema while Flyway history ended at V43, and a fresh database could not migrate past pre-existing V24 Flowable-table ordering.",
+              "impact": "Runtime verification used the isolated database with SPRING_FLYWAY_ENABLED=false; no migration file was modified."
+            },
+            {
+              "event": "JWT-authenticated requests initially failed because AuthService.me() generated MinIO avatar presigned URLs while local MinIO credentials were invalid.",
+              "impact": "The backend was restarted with the existing local MinIO credentials; product security code remained untouched."
+            },
+            {
+              "event": "Governance and scope checks include pre-existing repository state outside requirement 035.",
+              "impact": "Five unrelated invalid control artifacts and the explicitly requested rokey branch name prevent clean global-check exit codes."
+            }
+          ],
+          "assumptions_falsified": [
+            "The existing authenticated unread-count endpoint does not meet the assumed p95 <= 200ms threshold under the confirmed 200-client load; observed p95 was 221.407ms."
+          ],
+          "unresolved_items": [
+            "R7 response-time P95 remains 21.407ms above the 200ms must-requirement threshold.",
+            "The likely high-cost authentication identity and avatar-presigning path is under server/src/platform/security/**, which is explicitly read-only for REQ-20260818-035 and requires separate authorization before correction."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1 observed with focused tests and static SQL/transaction checks; no deviations found.",
+        "recorded_at": "2026-08-18T03:21:46+00:00",
+        "data": {
+          "sample_label": "T1 backend delivery completion sample",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S5 focused compilation and dispatch tests",
+              "result": "pass",
+              "raw_evidence": "11 focused lifecycle tests passed; dispatchEvent exists and is invoked by afterCommit",
+              "limitation": [
+                "End-to-end browser latency remains for T3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 commit/rollback/exception tests",
+              "result": "pass",
+              "raw_evidence": "Commit callback dispatches once, rollback dispatches zero times, immediate exception does not escape event creation",
+              "limitation": [
+                "Transaction synchronization is simulated at service level"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 claim update-count and consumer-call assertions",
+              "result": "pass",
+              "raw_evidence": "Denied claim returns processed count 0 and consumer call count 0; successful claim consumes once",
+              "limitation": [
+                "Real MySQL blocking race remains for T3 runtime sampling"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 failure/recovery/DEAD assertions",
+              "result": "pass",
+              "raw_evidence": "Immediate failure becomes PENDING at attempt 1, stale DISPATCHING recovers, attempt 5 becomes DEAD",
+              "limitation": [
+                "Process crash represented by stale persisted state"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "The expected immediate-failure test emits a WARN stack trace while still passing; this is an intentional operational signal, not a product deviation.",
+            "Target source files are untracked in the pre-existing dirty worktree, so normal git diff cannot independently show their baseline delta."
+          ],
+          "coverage_gaps": [
+            "R1 two-second end-to-end timing is deferred to T3.",
+            "Real MySQL immediate/scheduler concurrency is not reproduced by the JdbcTemplate stub."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 observed with production build, static lifecycle contracts and authenticated drawer runtime; no deviations found.",
+        "recorded_at": "2026-08-18T03:28:53+00:00",
+        "data": {
+          "sample_label": "T2 frontend polling completion sample",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S5 frontend production build plus polling constants",
+              "result": "pass",
+              "raw_evidence": "Build exited 0; base interval is 1000ms and fixed 15000ms setInterval is absent",
+              "limitation": [
+                "End-to-end P95 remains T3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2 browser drawer plus lifecycle contract inspection",
+              "result": "pass",
+              "raw_evidence": "Authenticated drawer loaded without console errors; shared request/cycle guards, visibility cancellation and focus/drawer immediate paths are present",
+              "limitation": [
+                "Browser sandbox did not expose network resource timestamps; hidden-tab traffic is deferred to T3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S2/S5 static interval mapping and build",
+              "result": "pass",
+              "raw_evidence": "Failure intervals are exactly 2000, 5000 and 15000ms; silent catch returns failure state and only explicit loads request a toast",
+              "limitation": [
+                "Injected runtime failure timing remains T3"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Performance resource timing is unavailable in the in-app browser read-only evaluation scope.",
+            "The component already had unrelated dirty-worktree changes; T2 retained the template and modified only polling script behavior."
+          ],
+          "coverage_gaps": [
+            "Direct hidden-tab network suppression and exact runtime backoff timestamps need an alternative T3 sensor.",
+            "R1 event-to-bell P95 needs real workflow events in T3."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Independent T3 observation covers R1-R7 with real event latency, authenticated browser behavior, 200-client load and disclosed sensor limits.",
+        "recorded_at": "2026-08-18T04:01:22+00:00",
+        "data": {
+          "sample_label": "T3 integration latency and 200-client capacity sample",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S2 real workflow submission, lifecycle-delivery database state and browser bell observation",
+              "result": "pass",
+              "raw_evidence": "20 real events produced 40/40 DELIVERED lifecycle rows at attempt_count=1. Submit-response-to-bell samples were 142, 93, 938, 862, 744, 691, 664, 599, 525, 471, 404, 338, 264, 164, 92, 53, 1027, 945, 917 and 773ms; P95 was approximately 945ms and maximum was 1027ms.",
+              "limitation": [
+                "The submit response immediately follows transaction commit and is used as a conservative observable proxy for commit time."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 workflow lifecycle tests and real first-attempt delivery records",
+              "result": "pass",
+              "raw_evidence": "Tests verify no dispatch before commit, no dispatch on rollback and notification-consumer failure isolation; the full backend suite passed.",
+              "limitation": [
+                "Rollback and consumer-failure paths are deterministic test evidence rather than destructive browser scenarios."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 concurrent claim tests plus 40 real lifecycle deliveries",
+              "result": "pass",
+              "raw_evidence": "Atomic PENDING/RETRY to DISPATCHING claim tests passed and all sampled real deliveries completed once at attempt_count=1 without duplicate notification effects.",
+              "limitation": [
+                "A real process crash between consumer success and status persistence was not injected; existing idempotency is covered by tests."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 immediate-failure, scheduled-retry, fifth-attempt-DEAD and stale-DISPATCHING recovery tests",
+              "result": "pass",
+              "raw_evidence": "Focused workflow tests passed immediate failure return to PENDING, scheduled compensation, five-attempt DEAD semantics and updated_at-based stale claim recovery.",
+              "limitation": [
+                "No long-duration wall-clock recovery test was required because the same transitions are tested against controlled timestamps."
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2 authenticated browser regression plus S5 frontend build and component lifecycle inspection",
+              "result": "pass",
+              "raw_evidence": "The foreground bell updated during real event sampling, the open drawer showed real configuration-management notifications, and no browser errors occurred. The component uses visibility cancellation, immediate focus/visibility/drawer refresh, one shared unread request and one shared polling cycle; list and module reloads are conditional on an open drawer and changed count.",
+              "limitation": [
+                "The in-app browser sandbox did not expose raw resource timing, so hidden-tab request suppression is corroborated by lifecycle code structure rather than timestamped network export."
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S5 frontend build and polling failure-state inspection",
+              "result": "pass",
+              "raw_evidence": "The build passed with failure delays fixed at 2000, 5000 and 15000ms; silent polling catches do not toast, and success/focus/visibility restoration resets failure state to the one-second base.",
+              "limitation": [
+                "Injected network-failure timestamps were not exported from the browser sandbox."
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S3 200-client authenticated unread-count load for 60 rounds plus backend/MySQL health observation",
+              "result": "fail",
+              "raw_evidence": "12000/12000 requests completed with zero errors and all returned HTTP 200. Latency p50=109.63ms, p95=221.407ms, p99=343.717ms and max=420.491ms. MySQL Max_used_connections=21, Threads_connected=12 and Threads_running=2; no application errors or connection-pool exhaustion occurred.",
+              "limitation": [
+                "The end-to-end endpoint measurement includes authentication identity resolution and avatar URL presigning in addition to the unread-count query."
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R7",
+              "expected": "Two hundred authenticated clients complete 60 one-second polling rounds with zero errors and unread-count API response-time P95 <= 200ms, without connection-pool exhaustion or application errors.",
+              "observed": "All 12000 requests succeeded with no pool or application errors, but response-time P95 was 221.407ms, exceeding the threshold by 21.407ms.",
+              "reproduction": "Run node /private/tmp/req035-load-test.mjs against the local authenticated backend with 200 clients and 60 rounds.",
+              "evidence": "Load summary: clients=200, rounds=60, completedRequests=12000, errors=0, statuses.200=12000, p95=221.407ms; MySQL Max_used_connections=21 and Threads_running=2.",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "One local-machine sample measures the complete authenticated request path and does not isolate per-layer CPU or I/O cost.",
+              "causal_hypothesis": "Hypothesis: JwtAuthenticationFilter invokes AuthService.me() repeatedly for each request, and identity hydration including MinIO avatar URL presigning contributes enough fixed cost to push endpoint P95 above 200ms.",
+              "correction_check": "After an authorized bounded authentication-path optimization, rerun the identical 200-client, 60-round script and require zero errors plus P95 <= 200ms.",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            "Local JWT requests initially failed due to invalid MinIO credentials used by avatar URL generation; the runtime was restarted with the existing local credentials before sampling.",
+            "The isolated database required Flyway to be disabled because of pre-existing migration-history/order inconsistencies unrelated to requirement 035.",
+            "Global governance reports five pre-existing invalid control artifacts, and the generic scope checker rejects the user-required rokey branch name."
+          ],
+          "coverage_gaps": [
+            "Raw hidden-tab and injected-failure browser request timestamps are unavailable from the in-app browser resource-timing sandbox; lifecycle structure and browser regression provide the available evidence.",
+            "Per-layer profiling of the authentication path cannot be added under this requirement because server/src/platform/security/** is explicitly read-only."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [
+      {
+        "revision": 1,
+        "evidence": "F-0001 triage confirms a measured R7 deviation and escalates the smallest plausible correction because platform/security is read-only in the approved requirement scope.",
+        "recorded_at": "2026-08-18T04:02:58+00:00",
+        "data": {
+          "feedback_id": "F-0001",
+          "decision": "escalate",
+          "decision_reason": "The measured R7 deviation is reproducible and high confidence, but the smallest plausible correction surface is server/src/platform/security/**, which REQ-20260818-035 explicitly marks read-only. Correcting it without a new authorized requirement or scope revision would violate the approved module boundary.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "JwtAuthenticationFilter calls AuthService.me() twice per authenticated request, and AuthService.me() hydrates identity data and generates an avatar presigned URL, adding sufficient fixed overhead to push the unread-count endpoint above 200ms P95 under 200-client load.",
+            "supporting_evidence": [
+              "JwtAuthenticationFilter.java calls authService.me(user) separately for roles and permissions.",
+              "AuthService.java builds AuthMe with storage.presignedUrl(user.avatarObjectKey()).",
+              "The load test had zero request errors, MySQL Max_used_connections of 21 and Threads_running of 2, which does not indicate notification-query or connection-pool saturation.",
+              "JWT requests failed before valid MinIO credentials were restored, confirming that ordinary authenticated API requests currently depend on avatar URL generation."
+            ],
+            "falsifier": "Request profiling or an authorized A/B implementation shows that removing duplicate identity hydration and per-request avatar presigning does not reduce the identical load-test P95, or demonstrates that the unread-count SQL itself dominates latency."
+          },
+          "control_action": {
+            "gain": "low until authorization and profiling, then medium for a bounded correction",
+            "target": "Authenticated-request identity hydration in JwtAuthenticationFilter and AuthService",
+            "write_scope": [
+              "server/src/platform/security/src/main/java/com/ccb/security/web/JwtAuthenticationFilter.java",
+              "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+              "corresponding platform/security tests",
+              "a separately approved requirement and codex-task-scope.yaml"
+            ],
+            "invariants": [
+              "Do not weaken JWT validation, tenant isolation, role or permission enforcement.",
+              "Do not remove the avatar URL from the explicit /auth/me response contract.",
+              "Do not introduce SSE, WebSocket, cache, queue, schema or index changes under the notification-latency requirement.",
+              "Keep the existing notification endpoint and DTO unchanged."
+            ],
+            "impact_limit": "Only eliminate duplicate or unnecessary identity enrichment on ordinary authenticated requests; do not redesign authorization or notification delivery.",
+            "rollback": "Restore the pre-correction security filter and AuthService implementation from the bounded correction diff.",
+            "correction_check": [
+              "Run all platform security and full backend tests.",
+              "Verify /api/auth/me still returns the expected roles, permissions and avatar URL.",
+              "Verify authenticated tenant and permission enforcement on representative protected endpoints.",
+              "Rerun /private/tmp/req035-load-test.mjs with 200 clients and 60 rounds; require zero errors and P95 <= 200ms.",
+              "Repeat at least 20 event-to-bell runs and retain P95 <= 2s."
+            ],
+            "route": "new authorized requirement or explicit scope revision, then planning and executing"
+          },
+          "resolution": "escalated",
+          "residual_risk": [
+            "R7 remains 21.407ms above its response-time P95 threshold in the measured local environment.",
+            "The primary two-second event-to-bell objective is already satisfied at approximately 945ms P95 and is not blocked functionally by this capacity deviation.",
+            "No convergence report may claim pass while F-0001 remains escalated."
+          ]
+        }
+      }
+    ],
+    "verifying": []
+  },
+  "objective": "Reduce normal-path latency from committed workflow lifecycle event to foreground notification-bell update to P95 at or below 2 seconds for approximately 200 concurrent foreground users.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "A committed workflow lifecycle event must be dispatched immediately by eventId and reflected by a one-second foreground unread-count poll so normal-path end-to-end notification latency is P95 <= 2 seconds.",
+      "acceptance": [
+        "At least 20 real event runs measure P95 <= 2 seconds from event transaction commit to browser bell-count update",
+        "The immediate path does not wait for the five-second scheduled scan",
+        "The foreground unread-count polling base interval is one second"
+      ],
+      "priority": "must",
+      "source": "User confirmed the two-second P95 target and selected immediate after-commit dispatch plus frontend polling on 2026-08-18.",
+      "counterexample": [
+        "Lifecycle notifications remain dependent on the five-second scheduler",
+        "The foreground notification center continues polling every fifteen seconds"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Immediate dispatch must occur only after a successful transaction commit and its failure must never roll back or change the committed workflow action.",
+      "acceptance": [
+        "A rolled-back event transaction produces no notification dispatch",
+        "A failing notification consumer leaves the workflow approval result successful and durable",
+        "The failed delivery remains available for scheduled compensation"
+      ],
+      "priority": "must",
+      "source": "User-confirmed reliability design on 2026-08-18.",
+      "counterexample": [
+        "Notification failure causes approval rollback",
+        "An event from a rolled-back transaction is delivered"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Immediate and scheduled delivery paths must atomically claim each delivery row before invoking a consumer, preserving one consumer call during normal races and idempotent effects during crash recovery.",
+      "acceptance": [
+        "Concurrent immediate and scheduled attempts on one delivery result in exactly one successful claim and one consumer call",
+        "A process crash after consumer success but before status persistence may retry, but existing consumer idempotency produces one business effect and one notification"
+      ],
+      "priority": "must",
+      "source": "User-confirmed architecture and reliability design on 2026-08-18.",
+      "counterexample": [
+        "Both paths select PENDING and invoke the consumer before either updates status",
+        "Crash recovery creates duplicate user notifications"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Immediate failures and stale claimed deliveries must automatically return to the durable scheduled path while retaining the existing five-attempt and DEAD semantics.",
+      "acceptance": [
+        "An immediate failure returns the delivery to schedulable PENDING and a later scheduled pass can deliver it",
+        "A DISPATCHING row older than the recovery threshold is reclaimed without manual database editing",
+        "Repeated scheduled failure reaches DEAD on the fifth attempt and manual retry remains compatible"
+      ],
+      "priority": "must",
+      "source": "User-confirmed failure and recovery design on 2026-08-18.",
+      "counterexample": [
+        "A delivery remains permanently DISPATCHING after interruption",
+        "Immediate dispatch failure discards the durable event"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Unread polling must run only while the document is visible, refresh immediately on visibility restoration, focus, and drawer open, and prevent overlapping count requests.",
+      "acceptance": [
+        "Hidden documents issue no periodic unread-count requests",
+        "Visibility restoration, focus, and drawer open cause an immediate refresh",
+        "A slow unread-count request never overlaps another count request",
+        "A changed count refreshes list and module summaries only when the drawer is open"
+      ],
+      "priority": "must",
+      "source": "User-confirmed frontend polling design on 2026-08-18.",
+      "counterexample": [
+        "Background tabs continue polling once per second",
+        "Slow responses accumulate concurrent polling requests",
+        "The full notification list reloads every second while the drawer is closed"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "Consecutive silent unread-count failures must back off to 2, 5, and 15 seconds without repeated user-facing errors, and reset to one second after success or foreground restoration.",
+      "acceptance": [
+        "Observed retry intervals follow 2s, 5s, and 15s on consecutive failures",
+        "Background failures do not repeatedly display error messages",
+        "A successful refresh, focus, or visibility restoration resets the base interval to one second"
+      ],
+      "priority": "must",
+      "source": "User-confirmed degradation design on 2026-08-18.",
+      "counterexample": [
+        "A failed endpoint is retried every second indefinitely",
+        "Every silent polling failure displays a toast"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "The existing authenticated unread-count endpoint must sustain approximately 200 requests per second from 200 foreground users.",
+      "acceptance": [
+        "Two hundred concurrent clients poll for 60 seconds with zero request errors",
+        "Unread-count API response-time P95 is <= 200ms under that load",
+        "Database connection-pool exhaustion and application error logs are absent during the run"
+      ],
+      "priority": "must",
+      "source": "User confirmed approximately 200 foreground users and the performance acceptance on 2026-08-18.",
+      "counterexample": [
+        "The implementation meets latency only by exceeding database or connection-pool capacity",
+        "The load run contains request errors or API P95 above 200ms"
+      ]
+    }
+  ],
+  "invariants": [
+    "Workflow lifecycle events and delivery rows remain durable in the same business transaction",
+    "Rolled-back business transactions do not emit notifications",
+    "Notification failure never changes a committed workflow result",
+    "The five-second scheduler remains as a compensation path",
+    "Existing notification and release-consumer idempotency semantics remain in force",
+    "Tenant and user scoping continue to come from the authenticated server principal",
+    "Unrelated dirty-worktree changes are preserved"
+  ],
+  "constraints": [
+    "Reuse GET /api/notifications/unread-count without adding an API",
+    "Reuse wf_lifecycle_delivery.status and updated_at without a new table or index",
+    "Use the existing Java 17, Spring Boot, MySQL 8.4, Vue 3 and TypeScript stack",
+    "Implementation will occur on the local rokey branch after a separately approved plan",
+    "Do not introduce SSE, WebSocket, browser Push, a message queue or cache for this requirement"
+  ],
+  "non_goals": [
+    "Changing notification content, module filtering, visual design, read semantics or business routes",
+    "Changing workflow approval rules or task-assignment notification behavior",
+    "Strict exactly-once consumer invocation across process crashes",
+    "Adding notification tables, indexes, APIs, queues, caches or external delivery channels"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260818-035-notification-latency-optimization/handoff.json",
+    "imported_at": "2026-08-18T03:07:18+00:00",
+    "topic": "req-20260818-035-notification-latency-optimization",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260818-035-notification-latency-optimization",
+      "handoff_status": "approved",
+      "created_at": "2026-08-18T10:58:01+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260818-035-notification-latency-optimization",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-18-notification-latency-optimization-design.md",
+        "objective": "Reduce normal-path latency from committed workflow lifecycle event to foreground notification-bell update to P95 at or below 2 seconds for approximately 200 concurrent foreground users.",
+        "users": [
+          "Approvers waiting for newly assigned release-management approvals",
+          "Applicants waiting for workflow outcome notifications",
+          "Platform operators recovering durable notification deliveries without rolling back business workflow results"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "A committed workflow lifecycle event must be dispatched immediately by eventId and reflected by a one-second foreground unread-count poll so normal-path end-to-end notification latency is P95 <= 2 seconds.",
+            "acceptance": [
+              "At least 20 real event runs measure P95 <= 2 seconds from event transaction commit to browser bell-count update",
+              "The immediate path does not wait for the five-second scheduled scan",
+              "The foreground unread-count polling base interval is one second"
+            ],
+            "priority": "must",
+            "source": "User confirmed the two-second P95 target and selected immediate after-commit dispatch plus frontend polling on 2026-08-18.",
+            "counterexample": [
+              "Lifecycle notifications remain dependent on the five-second scheduler",
+              "The foreground notification center continues polling every fifteen seconds"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Immediate dispatch must occur only after a successful transaction commit and its failure must never roll back or change the committed workflow action.",
+            "acceptance": [
+              "A rolled-back event transaction produces no notification dispatch",
+              "A failing notification consumer leaves the workflow approval result successful and durable",
+              "The failed delivery remains available for scheduled compensation"
+            ],
+            "priority": "must",
+            "source": "User-confirmed reliability design on 2026-08-18.",
+            "counterexample": [
+              "Notification failure causes approval rollback",
+              "An event from a rolled-back transaction is delivered"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Immediate and scheduled delivery paths must atomically claim each delivery row before invoking a consumer, preserving one consumer call during normal races and idempotent effects during crash recovery.",
+            "acceptance": [
+              "Concurrent immediate and scheduled attempts on one delivery result in exactly one successful claim and one consumer call",
+              "A process crash after consumer success but before status persistence may retry, but existing consumer idempotency produces one business effect and one notification"
+            ],
+            "priority": "must",
+            "source": "User-confirmed architecture and reliability design on 2026-08-18.",
+            "counterexample": [
+              "Both paths select PENDING and invoke the consumer before either updates status",
+              "Crash recovery creates duplicate user notifications"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Immediate failures and stale claimed deliveries must automatically return to the durable scheduled path while retaining the existing five-attempt and DEAD semantics.",
+            "acceptance": [
+              "An immediate failure returns the delivery to schedulable PENDING and a later scheduled pass can deliver it",
+              "A DISPATCHING row older than the recovery threshold is reclaimed without manual database editing",
+              "Repeated scheduled failure reaches DEAD on the fifth attempt and manual retry remains compatible"
+            ],
+            "priority": "must",
+            "source": "User-confirmed failure and recovery design on 2026-08-18.",
+            "counterexample": [
+              "A delivery remains permanently DISPATCHING after interruption",
+              "Immediate dispatch failure discards the durable event"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Unread polling must run only while the document is visible, refresh immediately on visibility restoration, focus, and drawer open, and prevent overlapping count requests.",
+            "acceptance": [
+              "Hidden documents issue no periodic unread-count requests",
+              "Visibility restoration, focus, and drawer open cause an immediate refresh",
+              "A slow unread-count request never overlaps another count request",
+              "A changed count refreshes list and module summaries only when the drawer is open"
+            ],
+            "priority": "must",
+            "source": "User-confirmed frontend polling design on 2026-08-18.",
+            "counterexample": [
+              "Background tabs continue polling once per second",
+              "Slow responses accumulate concurrent polling requests",
+              "The full notification list reloads every second while the drawer is closed"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "Consecutive silent unread-count failures must back off to 2, 5, and 15 seconds without repeated user-facing errors, and reset to one second after success or foreground restoration.",
+            "acceptance": [
+              "Observed retry intervals follow 2s, 5s, and 15s on consecutive failures",
+              "Background failures do not repeatedly display error messages",
+              "A successful refresh, focus, or visibility restoration resets the base interval to one second"
+            ],
+            "priority": "must",
+            "source": "User-confirmed degradation design on 2026-08-18.",
+            "counterexample": [
+              "A failed endpoint is retried every second indefinitely",
+              "Every silent polling failure displays a toast"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "The existing authenticated unread-count endpoint must sustain approximately 200 requests per second from 200 foreground users.",
+            "acceptance": [
+              "Two hundred concurrent clients poll for 60 seconds with zero request errors",
+              "Unread-count API response-time P95 is <= 200ms under that load",
+              "Database connection-pool exhaustion and application error logs are absent during the run"
+            ],
+            "priority": "must",
+            "source": "User confirmed approximately 200 foreground users and the performance acceptance on 2026-08-18.",
+            "counterexample": [
+              "The implementation meets latency only by exceeding database or connection-pool capacity",
+              "The load run contains request errors or API P95 above 200ms"
+            ]
+          }
+        ],
+        "invariants": [
+          "Workflow lifecycle events and delivery rows remain durable in the same business transaction",
+          "Rolled-back business transactions do not emit notifications",
+          "Notification failure never changes a committed workflow result",
+          "The five-second scheduler remains as a compensation path",
+          "Existing notification and release-consumer idempotency semantics remain in force",
+          "Tenant and user scoping continue to come from the authenticated server principal",
+          "Unrelated dirty-worktree changes are preserved"
+        ],
+        "constraints": [
+          "Reuse GET /api/notifications/unread-count without adding an API",
+          "Reuse wf_lifecycle_delivery.status and updated_at without a new table or index",
+          "Use the existing Java 17, Spring Boot, MySQL 8.4, Vue 3 and TypeScript stack",
+          "Implementation will occur on the local rokey branch after a separately approved plan",
+          "Do not introduce SSE, WebSocket, browser Push, a message queue or cache for this requirement"
+        ],
+        "non_goals": [
+          "Changing notification content, module filtering, visual design, read semantics or business routes",
+          "Changing workflow approval rules or task-assignment notification behavior",
+          "Strict exactly-once consumer invocation across process crashes",
+          "Adding notification tables, indexes, APIs, queues, caches or external delivery channels"
+        ],
+        "selected_approach": {
+          "name": "After-commit event dispatch plus visibility-aware one-second polling",
+          "reason": "It removes both known timer delays while preserving the durable scheduler and existing API, idempotency, schema and operating model at the confirmed 200-user scale.",
+          "alternatives": [
+            {
+              "name": "Only shorten existing backend and frontend timers",
+              "rejected_because": "It retains periodic backend scanning as the normal path, leaves race handling weak and still allows timer delays to stack."
+            },
+            {
+              "name": "SSE or WebSocket push",
+              "rejected_because": "It adds connection lifecycle, authentication renewal, proxy and reconnect compensation complexity that is unnecessary for the confirmed target and scale."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "Workflow lifecycle event after-commit trigger",
+              "Atomic delivery claiming, completion, failure and stale-claim recovery",
+              "Foreground notification unread-count polling lifecycle and backoff",
+              "Focused, end-to-end and capacity verification"
+            ],
+            "outside": [
+              "Notification business-module filtering behavior",
+              "Workflow task-assignment event publishing",
+              "Push transports and external notification channels",
+              "New persistence structures or APIs"
+            ]
+          },
+          "components": [
+            {
+              "name": "WorkflowLifecycleEventService",
+              "responsibility": "Persist lifecycle events and delivery rows in the business transaction and trigger event-specific dispatch only after commit.",
+              "depends_on": [
+                "JdbcTemplate",
+                "Spring transaction synchronization",
+                "WorkflowLifecycleDispatcher"
+              ]
+            },
+            {
+              "name": "WorkflowLifecycleDispatcher",
+              "responsibility": "Share atomic claim, consume, complete, fail and stale-claim recovery behavior between event-specific and scheduled entry points.",
+              "depends_on": [
+                "wf_lifecycle_delivery",
+                "wf_lifecycle_event",
+                "WorkflowLifecycleConsumer"
+              ]
+            },
+            {
+              "name": "SystemNotificationService",
+              "responsibility": "Return the authenticated user's unread total through the existing indexed query.",
+              "depends_on": [
+                "sys_user_notification",
+                "authenticated AuthUser"
+              ]
+            },
+            {
+              "name": "UiNotificationCenter",
+              "responsibility": "Run one non-overlapping visibility-aware count poll, update the bell, and refresh drawer data only when required.",
+              "depends_on": [
+                "getNotificationUnreadCount",
+                "document visibility",
+                "window focus",
+                "existing list and module APIs"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "event-specific lifecycle dispatch",
+              "producer": "WorkflowLifecycleEventService after successful transaction commit",
+              "consumers": [
+                "WorkflowLifecycleDispatcher"
+              ],
+              "contract": "Dispatch only delivery rows belonging to eventId; each row must be atomically claimed before consumer invocation; exceptions are contained from the business result."
+            },
+            {
+              "name": "scheduled lifecycle compensation",
+              "producer": "WorkflowLifecycleDispatcher five-second scheduler",
+              "consumers": [
+                "WorkflowLifecycleConsumer implementations"
+              ],
+              "contract": "Claim due PENDING/RETRY rows and stale DISPATCHING rows using the same state machine as the immediate path."
+            },
+            {
+              "name": "GET /api/notifications/unread-count",
+              "producer": "platform/system",
+              "consumers": [
+                "UiNotificationCenter"
+              ],
+              "contract": "Return the authenticated tenant/user's global unread count; request and response schema remain unchanged."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "Committed workflow lifecycle event and PENDING delivery rows",
+              "transitions": [
+                "after-commit trigger",
+                "atomic PENDING/RETRY to DISPATCHING claim",
+                "consumer invocation",
+                "DISPATCHING to DELIVERED or recoverable failure"
+              ],
+              "output": "Durable system notification or schedulable compensation record"
+            },
+            {
+              "input": "Visible foreground notification center",
+              "transitions": [
+                "immediate unread query",
+                "one-second self-scheduled polling",
+                "count comparison",
+                "conditional drawer refresh",
+                "failure backoff or hidden-page pause"
+              ],
+              "output": "Updated bell count and, only when open and changed, refreshed notification content"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "The lifecycle-event transaction rolls back",
+            "behavior": "No immediate dispatch is invoked and no notification is visible.",
+            "recovery": "The business caller handles the original transaction failure; there is no notification delivery to recover."
+          },
+          {
+            "condition": "Immediate consumer invocation fails",
+            "behavior": "The committed workflow result remains successful; an error summary is recorded and the delivery returns to schedulable PENDING.",
+            "recovery": "The existing five-second scheduler retries through the durable delivery record."
+          },
+          {
+            "condition": "The process stops after claiming a delivery",
+            "behavior": "The row remains DISPATCHING until its updated_at exceeds the configured threshold.",
+            "recovery": "Scheduled recovery returns it to retryable processing; consumer idempotency suppresses duplicate effects."
+          },
+          {
+            "condition": "Unread-count polling fails consecutively",
+            "behavior": "The last successful badge remains and silent polling backs off to 2, 5 and 15 seconds without repeated toasts.",
+            "recovery": "Success, focus or visibility restoration resets polling to one second."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Unread-count queries remain authenticated and tenant/user scoped",
+            "Logs omit notification content, credentials and sensitive business data",
+            "No client-supplied user identity or new externally exposed interface is introduced"
+          ],
+          "performance": [
+            "Normal-path end-to-end notification latency P95 <= 2 seconds",
+            "Unread-count endpoint P95 <= 200ms with 200 concurrent one-second pollers for 60 seconds",
+            "Only count polling occurs every second; list and module summaries refresh conditionally",
+            "Hidden pages do not poll and requests never overlap"
+          ],
+          "compatibility": [
+            "Existing notification API and DTO contracts remain unchanged",
+            "The five-second scheduler, five retries, DEAD state and manual retry remain compatible",
+            "Task-assignment notifications and business workflow rules remain unchanged",
+            "No database migration is required"
+          ],
+          "operations": [
+            "Immediate failures remain visible through delivery status and safe error logs",
+            "Stale DISPATCHING rows are automatically recovered using updated_at",
+            "Operational checks cover immediate success/failure, compensation, DEAD rows, count QPS and latency"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "Dispatch starts only after commit, business results survive notification failure, and browser latency meets target.",
+            "method": "Transaction-focused backend tests plus at least 20 authenticated end-to-end browser event runs."
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R4"
+            ],
+            "signal": "Only one normal-race claim succeeds and failed or stale deliveries recover without duplicate effects.",
+            "method": "Concurrent dispatcher tests, consumer idempotency regression, interruption recovery and five-attempt DEAD tests."
+          },
+          {
+            "requirement_ids": [
+              "R5",
+              "R6"
+            ],
+            "signal": "Polling follows visibility, request de-duplication, conditional refresh and backoff rules.",
+            "method": "Frontend timer and request tests plus browser network inspection across visible, hidden, focus and drawer states."
+          },
+          {
+            "requirement_ids": [
+              "R7"
+            ],
+            "signal": "The current unread endpoint handles the confirmed foreground load without errors or excessive latency.",
+            "method": "A 200-client, 60-second authenticated load run with API latency, errors, connection-pool state and application logs recorded."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "Approximately 200 users means 200 simultaneously visible foreground pages and therefore approximately 200 unread-count requests per second.",
+            "basis": "User supplied the concurrency scale and selected one-second polling.",
+            "falsifier": "Measured foreground concurrency materially exceeds 200 users."
+          },
+          {
+            "text": "Lifecycle consumers are local, short-running and idempotent.",
+            "basis": "Current consumers run in-process; notification publication has an event idempotency key and release lifecycle consumption tracks receipts.",
+            "falsifier": "A consumer performs long external I/O or cannot tolerate replay after a crash."
+          },
+          {
+            "text": "A default 60-second stale-claim threshold is safely above normal lifecycle-consumer duration.",
+            "basis": "Current consumers perform local database work expected to complete well below one minute.",
+            "falsifier": "Focused timing tests show legitimate consumer execution approaching or exceeding 60 seconds."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use normal-path P95 <= 2 seconds as the user-visible latency objective.",
+            "reason": "It is measurable and allows exceptional failure/recovery paths to remain durable rather than falsely promising a hard deadline.",
+            "source": "User confirmed 2 seconds on 2026-08-18."
+          },
+          {
+            "id": "D2",
+            "decision": "Trigger specific lifecycle deliveries immediately after commit and retain the scheduler as compensation.",
+            "reason": "This removes the known five-second wait without weakening transaction durability or recovery.",
+            "source": "User selected option 1 and confirmed the architecture on 2026-08-18."
+          },
+          {
+            "id": "D3",
+            "decision": "Poll the existing unread-count endpoint every second only while foreground-visible.",
+            "reason": "At the confirmed 200-user scale it meets the latency target with less infrastructure than push connections.",
+            "source": "User selected option 1 and confirmed approximately 200 users on 2026-08-18."
+          },
+          {
+            "id": "D4",
+            "decision": "Use atomic delivery-row claiming and updated_at-based stale recovery without a schema migration.",
+            "reason": "The current VARCHAR status and timestamp fields already support the required state machine and recovery signal.",
+            "source": "User confirmed the reliability design on 2026-08-18."
+          },
+          {
+            "id": "D5",
+            "decision": "Back off silent frontend failures to 2, 5 and 15 seconds and reset on success or foreground restoration.",
+            "reason": "This protects the server during faults while preserving immediate recovery for active users.",
+            "source": "User confirmed the frontend degradation design on 2026-08-18."
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Actual foreground concurrency or polling fan-out exceeds the confirmed 200-user baseline.",
+            "impact": "Unread-count database and connection-pool load may exceed the measured capacity.",
+            "mitigation": "Run the required load test, observe pool and query latency, and separately review caching or push only if measured demand exceeds the baseline."
+          },
+          {
+            "risk": "The stale-claim threshold is shorter than a legitimate consumer execution.",
+            "impact": "A second worker may replay a still-running consumer.",
+            "mitigation": "Default to 60 seconds, make the threshold configurable, measure consumer duration and retain consumer idempotency."
+          },
+          {
+            "risk": "Synchronous after-commit dispatch extends request-thread occupancy.",
+            "impact": "Business API latency or throughput may degrade even though the transaction is already committed.",
+            "mitigation": "Dispatch only the specific event through local consumers, measure business response latency, and introduce a bounded existing-stack executor only if measurements require it."
+          },
+          {
+            "risk": "Parallel dirty-worktree changes overlap the same dispatcher or notification-center files.",
+            "impact": "A broad edit could overwrite unrelated work or create hard-to-review conflicts.",
+            "mitigation": "Re-read current files before implementation, apply minimal patches and never reset or clean the worktree."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user reviewed the landed revision and explicitly requested direct development on 2026-08-18.",
+          "confirmed_at": "2026-08-18T10:58:01+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-18-notification-latency-optimization-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Only scope-authorized paths may change and unrelated dirty-worktree edits must be preserved.",
+          "No API, schema, migration, cache, queue, SSE or WebSocket change.",
+          "The scheduler, five attempts, DEAD/manual retry, authentication and idempotency remain compatible.",
+          "No commit, push or branch switch without a separate request."
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+            "status": "existing",
+            "responsibility": "Persist events and trigger dispatch after commit.",
+            "evidence": "Repository inspection."
+          },
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+            "status": "existing",
+            "responsibility": "Claim, consume, recover and retry lifecycle deliveries.",
+            "evidence": "Repository inspection."
+          },
+          {
+            "path": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java",
+            "status": "candidate-new",
+            "responsibility": "Verify transaction synchronization.",
+            "evidence": "No dedicated test currently exists."
+          },
+          {
+            "path": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+            "status": "existing",
+            "responsibility": "Verify delivery state machine.",
+            "evidence": "Existing retry tests."
+          },
+          {
+            "path": "web/src/components/ui/UiNotificationCenter.vue",
+            "status": "existing",
+            "responsibility": "Control notification polling lifecycle.",
+            "evidence": "Existing 15000ms interval."
+          }
+        ],
+        "tasks": [
+          {
+            "input_facts": [
+              "Workflow lifecycle dispatch currently has a 5000ms scheduled delay.",
+              "UiNotificationCenter currently has a 15000ms unread-count interval.",
+              "wf_lifecycle_delivery already has status, attempt_count, next_attempt_at and updated_at."
+            ],
+            "id": "T1",
+            "goal": "Provide after-commit event dispatch with atomic claim, compensation and stale recovery.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [],
+            "files": {
+              "create": [
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java"
+              ],
+              "modify": [
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java"
+              ],
+              "test": [
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "Spring transaction synchronization",
+                "WorkflowLifecycleConsumer",
+                "wf_lifecycle_delivery"
+              ],
+              "produces": [
+                "WorkflowLifecycleDispatcher.dispatchEvent(String eventId)",
+                "DISPATCHING claim state",
+                "updated_at stale recovery"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add failing dispatcher state-machine tests.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest test",
+                "expected": "New event-specific claim and recovery tests fail before implementation.",
+                "evidence": "Focused Maven output."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Implement shared candidate selection, conditional claim, completion, failure and stale recovery.",
+                "command": null,
+                "expected": "Only a successful claim invokes a consumer.",
+                "evidence": "Minimal dispatcher diff."
+              },
+              {
+                "id": "T1-S3",
+                "action": "Add transaction commit, rollback and no-transaction event-service tests.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleEventServiceTest test",
+                "expected": "Tests distinguish commit from rollback behavior.",
+                "evidence": "Focused Maven output."
+              },
+              {
+                "id": "T1-S4",
+                "action": "Implement after-commit event-specific trigger and exception isolation.",
+                "command": null,
+                "expected": "Committed events dispatch immediately without propagating notification failure.",
+                "evidence": "Minimal event-service diff."
+              },
+              {
+                "id": "T1-S5",
+                "action": "Run workflow regression.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test",
+                "expected": "Exit 0 with zero failures.",
+                "evidence": "Maven summary."
+              }
+            ],
+            "acceptance_checks": [
+              "Commit dispatches immediately",
+              "Rollback does not dispatch",
+              "Normal race consumes once",
+              "Immediate failure remains schedulable",
+              "Stale claim recovers",
+              "Fifth scheduled failure reaches DEAD"
+            ],
+            "risks": [
+              "Crash replay depends on existing consumer idempotency."
+            ],
+            "rollback": "Revert the two workflow services and requirement tests; retain the five-second scheduler.",
+            "stop_conditions": [
+              "A consumer is not replay-idempotent",
+              "A schema change becomes necessary",
+              "Immediate dispatch can observe incomplete business state"
+            ],
+            "escalation_conditions": [
+              "A queue or public event-contract change is required"
+            ]
+          },
+          {
+            "input_facts": [
+              "Workflow lifecycle dispatch currently has a 5000ms scheduled delay.",
+              "UiNotificationCenter currently has a 15000ms unread-count interval.",
+              "wf_lifecycle_delivery already has status, attempt_count, next_attempt_at and updated_at."
+            ],
+            "id": "T2",
+            "goal": "Provide visibility-aware one-second unread polling with request de-duplication and failure backoff.",
+            "requirement_ids": [
+              "R1",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/components/ui/UiNotificationCenter.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "Existing notification APIs",
+                "document visibility",
+                "window focus"
+              ],
+              "produces": [
+                "One self-scheduled poll",
+                "Shared in-flight request",
+                "2s/5s/15s backoff",
+                "Conditional drawer refresh"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Capture current build and browser polling baseline.",
+                "command": "npm --prefix web run build",
+                "expected": "Build exits 0 and the old 15-second behavior is observable.",
+                "evidence": "Build and browser baseline."
+              },
+              {
+                "id": "T2-S2",
+                "action": "Implement one-second visible-page self-scheduling with an in-flight guard.",
+                "command": null,
+                "expected": "Hidden pages have no timer and requests cannot overlap.",
+                "evidence": "Notification-center diff."
+              },
+              {
+                "id": "T2-S3",
+                "action": "Implement count-change refresh and 2s/5s/15s silent backoff.",
+                "command": null,
+                "expected": "Closed drawer updates only the bell; open drawer refreshes only after a count change.",
+                "evidence": "Diff and browser network evidence."
+              },
+              {
+                "id": "T2-S4",
+                "action": "Run frontend production build.",
+                "command": "npm --prefix web run build",
+                "expected": "vue-tsc and Vite exit 0.",
+                "evidence": "Build summary."
+              }
+            ],
+            "acceptance_checks": [
+              "Visible base interval is one second",
+              "Hidden page does not poll",
+              "Focus, visibility and drawer open refresh immediately",
+              "Count requests never overlap",
+              "Backoff resets after recovery"
+            ],
+            "risks": [
+              "One-second polling creates approximately 200 QPS at confirmed scale."
+            ],
+            "rollback": "Restore the prior notification-center polling lifecycle only.",
+            "stop_conditions": [
+              "API or DTO changes become necessary",
+              "Existing drawer concurrency guards cannot be preserved"
+            ],
+            "escalation_conditions": [
+              "A new frontend dependency, global poller or push transport is required"
+            ]
+          },
+          {
+            "input_facts": [
+              "Workflow lifecycle dispatch currently has a 5000ms scheduled delay.",
+              "UiNotificationCenter currently has a 15000ms unread-count interval.",
+              "wf_lifecycle_delivery already has status, attempt_count, next_attempt_at and updated_at."
+            ],
+            "id": "T3",
+            "goal": "Prove integration latency, capacity, compatibility and scope convergence.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T3.json",
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T3.json",
+                ".ai-control/requirements/req-20260818-035-notification-latency-optimization/convergence.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 backend behavior",
+                "T2 frontend behavior",
+                "Local authenticated runtime"
+              ],
+              "produces": [
+                "Full test evidence",
+                "20-run latency sample",
+                "200-client load result",
+                "Browser lifecycle evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Run backend, frontend, governance and diff gates.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test; npm --prefix web run build; node scripts/check-all-governance.mjs; git diff --check",
+                "expected": "Relevant commands exit 0; unrelated dirty-worktree failures are isolated.",
+                "evidence": "Command summaries."
+              },
+              {
+                "id": "T3-S2",
+                "action": "Verify visible, hidden, focus and drawer polling behavior in the browser.",
+                "command": "browser verification",
+                "expected": "Polling lifecycle matches R5 and R6 with no console regression.",
+                "evidence": "Network and console observations."
+              },
+              {
+                "id": "T3-S3",
+                "action": "Measure at least 20 event-to-badge runs.",
+                "command": "authenticated business-flow timing run",
+                "expected": "Normal-path P95 is at or below two seconds.",
+                "evidence": "Timestamp sample and percentile."
+              },
+              {
+                "id": "T3-S4",
+                "action": "Run 200 authenticated unread-count clients for 60 seconds.",
+                "command": "local load harness",
+                "expected": "Zero errors and API P95 at or below 200ms.",
+                "evidence": "Load summary and backend log check."
+              },
+              {
+                "id": "T3-S5",
+                "action": "Run requirement scope audit and record convergence.",
+                "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-035-notification-latency-optimization/codex-task-scope.yaml --working-tree",
+                "expected": "Requirement changes are authorized and pre-existing edits are separated.",
+                "evidence": "Scope and convergence records."
+              }
+            ],
+            "acceptance_checks": [
+              "All R1-R7 signals have repeatable evidence",
+              "No notification UI regression",
+              "Latency and capacity thresholds pass"
+            ],
+            "risks": [
+              "Local runtime data and dirty-worktree changes may create unrelated failures."
+            ],
+            "rollback": "Disable immediate triggering and restore old polling while retaining durable scheduled delivery.",
+            "stop_conditions": [
+              "Runtime cannot be restored after three attempts",
+              "No local test identity is available",
+              "The 200-QPS gate fails"
+            ],
+            "escalation_conditions": [
+              "Meeting the target requires cache, push, queue or a changed objective"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Establish the backend event path before measuring the frontend end-to-end notification delay."
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Integration, browser and capacity verification require both implementation tasks to be complete."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test",
+            "expected": "Exit 0."
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Exit 0."
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test; npm --prefix web run build; node scripts/check-all-governance.mjs; git diff --check",
+            "expected": "All requirement-relevant gates pass."
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User reviewed the landed design and explicitly requested direct development on 2026-08-18.",
+          "confirmed_at": "2026-08-18T10:58:01+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Lifecycle transaction and delivery state machine",
+          "Unread endpoint",
+          "Notification-center polling"
+        ],
+        "state_variable_candidates": [
+          "delivery status",
+          "attempt count",
+          "updated_at",
+          "unread count",
+          "visibility",
+          "in-flight request",
+          "failure level",
+          "poll delay"
+        ],
+        "interface_candidates": [
+          "emit",
+          "dispatchEvent",
+          "dispatchBatch",
+          "GET /api/notifications/unread-count",
+          "visibilitychange",
+          "focus"
+        ],
+        "sensor_candidates": [
+          "JUnit",
+          "captured SQL",
+          "Maven/Vite exits",
+          "browser network/console",
+          "latency samples",
+          "load percentiles"
+        ],
+        "actuator_candidates": [
+          "after-commit callback",
+          "conditional claim",
+          "stale recovery",
+          "self-scheduled timer",
+          "backoff",
+          "conditional drawer refresh"
+        ],
+        "disturbance_candidates": [
+          "scheduler race",
+          "consumer exception",
+          "process interruption",
+          "slow network",
+          "hidden page",
+          "parallel user changes"
+        ],
+        "delay_candidates": [
+          "5000ms scheduler",
+          "15000ms old poll",
+          "1000ms new poll",
+          "query latency",
+          "browser jitter"
+        ],
+        "assumptions": [
+          {
+            "text": "Approximately 200 users means 200 simultaneously visible foreground pages and therefore approximately 200 unread-count requests per second.",
+            "basis": "User supplied the concurrency scale and selected one-second polling.",
+            "falsifier": "Measured foreground concurrency materially exceeds 200 users."
+          },
+          {
+            "text": "Lifecycle consumers are local, short-running and idempotent.",
+            "basis": "Current consumers run in-process; notification publication has an event idempotency key and release lifecycle consumption tracks receipts.",
+            "falsifier": "A consumer performs long external I/O or cannot tolerate replay after a crash."
+          },
+          {
+            "text": "A default 60-second stale-claim threshold is safely above normal lifecycle-consumer duration.",
+            "basis": "Current consumers perform local database work expected to complete well below one minute.",
+            "falsifier": "Focused timing tests show legitimate consumer execution approaching or exceeding 60 seconds."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL 8.4 transaction and row-update semantics\", \"Spring transaction synchronization and scheduler\", \"Browser visibility, focus and timer scheduling\", \"Authenticated local users and existing release workflow consumers\"], \"inside\": [\"Workflow lifecycle event persistence and transaction completion\", \"Workflow lifecycle delivery claim, consumption, retry and recovery\", \"System notification unread-count query\", \"UiNotificationCenter polling and drawer refresh lifecycle\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Real MySQL lock scheduling timing\"], \"id\": \"S1\", \"independence\": \"Deterministic service-level assertions independent from browser behavior\", \"method\": \"Focused JUnit tests with captured SQL update counts, states and consumer-call counters\", \"target\": \"Transaction and delivery state-machine behavior for R2-R4\"}",
+      "{\"blind_spots\": [\"Long-duration browser throttling outside sampled session\"], \"id\": \"S2\", \"independence\": \"Direct browser runtime observation independent from Java unit tests\", \"method\": \"Authenticated browser Network and Console observation across visible, hidden, focus and drawer states\", \"target\": \"Frontend polling lifecycle for R5-R6\"}",
+      "{\"blind_spots\": [\"Rare failure/recovery paths are excluded from normal-path percentile\"], \"id\": \"S3\", \"independence\": \"Crosses backend persistence, API and browser polling\", \"method\": \"At least 20 timestamped real workflow event-to-bell runs\", \"target\": \"End-to-end notification latency for R1\"}",
+      "{\"blind_spots\": [\"Production-scale network and database differences\"], \"id\": \"S4\", \"independence\": \"Runtime load sensor independent from source inspection\", \"method\": \"200-client 60-second authenticated load run measuring errors and response percentiles\", \"target\": \"Unread-count capacity for R7\"}",
+      "{\"blind_spots\": [\"Environment-specific production behavior\"], \"id\": \"S5\", \"independence\": \"Compiler and repository regression suites\", \"method\": \"Workflow Maven regression, full Maven test and frontend production build\", \"target\": \"Compatibility for R1-R6\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Modify WorkflowLifecycleEventService and WorkflowLifecycleDispatcher with direct tests\", \"authority\": \"REQ-20260818-035 scope authorization\", \"id\": \"A1\", \"impact_radius\": \"Shared platform workflow lifecycle deliveries\", \"rollback\": \"Revert only T1 service and test changes; scheduler remains\", \"target\": \"Backend dispatch delay and race/recovery state\"}",
+      "{\"action\": \"Modify UiNotificationCenter polling lifecycle only\", \"authority\": \"REQ-20260818-035 scope authorization\", \"id\": \"A2\", \"impact_radius\": \"Authenticated global notification center\", \"rollback\": \"Restore prior 15-second interval implementation\", \"target\": \"Frontend notification observation delay and retry load\"}",
+      "{\"action\": \"Run focused/full tests, browser probes, latency samples and local load test\", \"authority\": \"Local non-production verification permission\", \"id\": \"A3\", \"impact_radius\": \"Local test runtime only\", \"rollback\": \"Stop test processes and retain no product data changes beyond test notifications\", \"target\": \"Verification evidence\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Target files or baseline tests may change during execution\", \"source\": \"Existing dirty worktree and parallel user changes\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Duplicate consumer invocation without atomic claim\", \"source\": \"Scheduler and immediate dispatch race\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Delayed or replayed delivery\", \"source\": \"Consumer exception or process interruption\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Polling delay or overlapping request risk\", \"source\": \"Browser timer throttling and slow network\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Load latency or errors\", \"source\": \"Local database and connection-pool capacity\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"Current notification event key and release receipt tracking\", \"falsifier\": \"A consumer performs long external I/O or duplicates effects on replay\", \"text\": \"Lifecycle consumers are short-running and idempotent\"}",
+      "{\"evidence\": \"Index starts with tenant_id, user_id and is_read\", \"falsifier\": \"Required 60-second load run exceeds 200ms P95 or has errors\", \"text\": \"The existing unread index supports 200 QPS\"}",
+      "{\"evidence\": \"Current consumers perform local database work\", \"falsifier\": \"Focused timing shows legitimate execution approaches 60 seconds\", \"text\": \"A 60-second stale threshold exceeds normal consumer duration\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S5\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S5\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S5\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Provide after-commit event-specific dispatch with atomic claim, compensation and stale recovery.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "WorkflowLifecycleEventService writes event and delivery rows in caller transactions.",
+        "WorkflowLifecycleDispatcher currently selects PENDING/RETRY every five seconds and consumes before a claim.",
+        "The existing delivery table can represent DISPATCHING and stale recovery without a migration."
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T1.json",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T1.json"
+      ],
+      "invariants": [
+        "Event and delivery rows commit before dispatch.",
+        "Notification failure never changes a committed workflow result.",
+        "The scheduler, five attempts, DEAD and manual retry remain compatible.",
+        "Unrelated dirty-worktree changes remain untouched."
+      ],
+      "interface_contracts": [
+        "dispatchEvent(String eventId) handles only matching due deliveries.",
+        "Only a successful PENDING/RETRY to DISPATCHING conditional update authorizes consumption.",
+        "Successful consumption changes DISPATCHING to DELIVERED; immediate failure returns to schedulable PENDING.",
+        "Stale DISPATCHING is recovered by updated_at and remains replay-idempotent."
+      ],
+      "non_goals": [
+        "No schema, API, queue, cache or lifecycle-consumer contract change."
+      ],
+      "action_bounds": [
+        "Modify only the two lifecycle services and their direct tests.",
+        "Keep the default scheduler delay at five seconds and stale threshold at sixty seconds.",
+        "Do not alter business workflow state transitions or notification payloads."
+      ],
+      "acceptance": [
+        "Commit dispatches immediately and rollback does not dispatch.",
+        "Immediate/scheduled normal race invokes one consumer.",
+        "Immediate failure does not escape and remains schedulable.",
+        "Stale claim recovers and fifth scheduled failure reaches DEAD.",
+        "Workflow Maven tests pass."
+      ],
+      "evidence_required": [
+        "Actual T1 diff",
+        "Focused and module Maven commands with exit codes",
+        "Consumer call-count and state assertions",
+        "Unexpected disturbances"
+      ],
+      "rollback": "Revert only T1 service and test changes; the existing scheduler remains.",
+      "stop_conditions": [
+        "A consumer is not replay-idempotent",
+        "A schema change is required",
+        "Immediate dispatch can observe incomplete business state"
+      ],
+      "escalation_conditions": [
+        "A queue, public event-contract change or retry-semantic change becomes necessary"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T03:12:31+00:00",
+          "text": "T1 execution started after re-reading target services, tests and dirty-worktree boundaries."
+        },
+        {
+          "recorded_at": "2026-08-18T03:19:59+00:00",
+          "text": "T1 execution report recorded with passing focused and module checks."
+        },
+        {
+          "recorded_at": "2026-08-18T03:21:46+00:00",
+          "text": "Observation T1 complete with zero P0-P3 deviations; runtime latency and MySQL load remain assigned to T3."
+        }
+      ],
+      "updated_at": "2026-08-18T03:21:46+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Provide visibility-aware one-second unread polling with request de-duplication and failure backoff.",
+      "requirements": [
+        "R1",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "UiNotificationCenter uses a 15000ms setInterval and focus refresh.",
+        "The existing unread-count endpoint and list/module request version guards are reusable.",
+        "The frontend has no unit-test framework and must retain its current public template contract."
+      ],
+      "write_scope": [
+        "web/src/components/ui/UiNotificationCenter.vue",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T2.json",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T2.json"
+      ],
+      "invariants": [
+        "Notification API, DTO, display, filter, read and navigation semantics remain unchanged.",
+        "Hidden pages issue no periodic count requests.",
+        "Only one unread-count request may be in flight.",
+        "Unrelated component edits remain untouched."
+      ],
+      "interface_contracts": [
+        "Visible successful polling waits one second after request completion.",
+        "Focus, visibility restoration and drawer open trigger or reuse an immediate count request.",
+        "Failures back off at two, five and fifteen seconds without repeated toast.",
+        "List and module summaries refresh only when the drawer is open and the count changed."
+      ],
+      "non_goals": [
+        "No API, store, global poller, dependency, push transport or UI redesign."
+      ],
+      "action_bounds": [
+        "Modify only the script section lifecycle needed for polling.",
+        "Preserve existing request-version guards and visible error behavior.",
+        "Use browser-native visibility/focus events and setTimeout."
+      ],
+      "acceptance": [
+        "Frontend production build passes.",
+        "Code no longer contains the 15000ms fixed interval.",
+        "Visible, hidden, focus, drawer, in-flight and backoff paths match R5-R6.",
+        "Existing notification drawer behavior remains usable."
+      ],
+      "evidence_required": [
+        "Actual T2 diff",
+        "Frontend build exit code",
+        "Browser Network/Console observations",
+        "Unexpected disturbances"
+      ],
+      "rollback": "Restore the prior polling lifecycle in UiNotificationCenter.vue only.",
+      "stop_conditions": [
+        "API or DTO changes become necessary",
+        "Existing drawer request guards cannot be preserved"
+      ],
+      "escalation_conditions": [
+        "A new dependency, global polling service or push transport becomes necessary"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T03:21:46+00:00",
+          "text": "T2 execution started after verified T1 dependency."
+        },
+        {
+          "recorded_at": "2026-08-18T03:28:01+00:00",
+          "text": "T2 execution report recorded with build and browser evidence."
+        },
+        {
+          "recorded_at": "2026-08-18T03:28:53+00:00",
+          "text": "Observation T2 complete with zero P0-P3 deviations; runtime timing gaps remain assigned to T3."
+        }
+      ],
+      "updated_at": "2026-08-18T03:28:53+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Prove integration latency, capacity, compatibility and scope convergence.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1 and T2 expose repeatable backend and frontend sensors.",
+        "Local frontend and backend normally run at ports 5173 and 8080.",
+        "The unread-count query has a tenant/user/is_read leading index."
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T3.json",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/observation-T3.json",
+        ".ai-control/requirements/req-20260818-035-notification-latency-optimization/convergence.json"
+      ],
+      "invariants": [
+        "Verification uses local non-production data and authenticated test identities.",
+        "Performance targets are not relaxed to claim completion.",
+        "No product file changes are made during T3 unless feedback returns to planning/executing."
+      ],
+      "interface_contracts": [
+        "At least 20 normal event-to-bell samples determine R1 P95.",
+        "Two hundred clients for sixty seconds determine R7 errors and API P95.",
+        "Browser Network and Console determine R5-R6 runtime behavior."
+      ],
+      "non_goals": [
+        "No production access, production data, code commit, push or release."
+      ],
+      "action_bounds": [
+        "Run approved local tests and probes only.",
+        "Record unrelated baseline failures without editing range-external files.",
+        "Return any product defect to a bounded correction loop."
+      ],
+      "acceptance": [
+        "Focused/full backend and frontend builds pass.",
+        "Browser lifecycle and notification regression pass.",
+        "Twenty-run normal latency P95 is at most two seconds.",
+        "Two-hundred-client count load has zero errors and P95 at most 200ms.",
+        "Governance, diff and scope checks are accounted for."
+      ],
+      "evidence_required": [
+        "Command exit codes",
+        "Browser network/console evidence",
+        "Latency sample",
+        "Load-test summary",
+        "Scope and residual-risk audit"
+      ],
+      "rollback": "Disable immediate triggering and restore prior polling while retaining durable scheduled delivery.",
+      "stop_conditions": [
+        "Runtime cannot be restored after three attempts",
+        "No local test identity is available",
+        "The 200-QPS gate fails"
+      ],
+      "escalation_conditions": [
+        "Meeting must requirements requires cache, push, queue or a changed objective"
+      ],
+      "status": "blocked",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T03:28:53+00:00",
+          "text": "T3 integration and performance verification started after T1 and T2 verification."
+        },
+        {
+          "recorded_at": "2026-08-18T04:00:03+00:00",
+          "text": "T3 execution is partially complete and measurable; R7 capacity latency requires independent deviation observation."
+        },
+        {
+          "recorded_at": "2026-08-18T04:01:42+00:00",
+          "text": "R7 performance deviation requires correction triage; product correction is not authorized within the current read-only security scope."
+        },
+        {
+          "recorded_at": "2026-08-18T04:03:09+00:00",
+          "text": "T3 cannot reach verified while escalated P1 feedback F-0001 remains open; security-path correction requires a separately authorized writable scope."
+        }
+      ],
+      "updated_at": "2026-08-18T04:03:09+00:00"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0001",
+      "task": "T3",
+      "source": "T3 200-client authenticated load test",
+      "requirement": "R7",
+      "expected": "200 clients for 60 rounds with zero errors and unread-count API P95 <= 200ms without pool exhaustion or application errors.",
+      "observed": "12000/12000 requests succeeded with no pool or application errors, but API P95 was 221.407ms.",
+      "evidence": "Load test p50=109.63ms, p95=221.407ms, p99=343.717ms, max=420.491ms; MySQL Max_used_connections=21 and Threads_running=2.",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "Single local-machine end-to-end sample includes authentication identity hydration and avatar URL presigning.",
+      "causal_hypothesis": "Hypothesis: repeated AuthService.me() identity hydration and MinIO avatar URL presigning in JwtAuthenticationFilter contributes enough fixed request cost to exceed 200ms P95.",
+      "correction_check": "Rerun the same 200-client, 60-round authenticated load test after an authorized bounded security-path optimization; require zero errors and P95 <= 200ms.",
+      "decision": "escalate",
+      "decision_reason": "R7 is measurably above 200ms P95. The smallest plausible correction touches server/src/platform/security/**, explicitly read-only under REQ-20260818-035, so separate authorization or a scope revision is required.",
+      "created_at": "2026-08-18T04:01:32+00:00",
+      "resolved_at": null,
+      "resolution_evidence": null,
+      "decided_at": "2026-08-18T04:03:04+00:00"
+    }
+  ],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 backend completion",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "11 focused tests passed; atomic claim, commit/rollback, compensation and recovery assertions passed.",
+      "recorded_at": "2026-08-18T03:21:46+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 frontend completion",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Frontend build passed; one-second self-scheduling, hidden cancellation, in-flight de-duplication and backoff contracts observed; drawer had no console errors.",
+      "recorded_at": "2026-08-18T03:28:53+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T3 integration and capacity",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "R1-R6 passed. R7 completed 12000/12000 requests with zero errors but response-time P95 was 221.407ms against <=200ms.",
+      "recorded_at": "2026-08-18T04:01:26+00:00"
+    }
+  ]
+}

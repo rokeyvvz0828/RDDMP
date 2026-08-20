@@ -27,13 +27,15 @@ public class DeliveryService {
         notificationPublisher.publish(new NotificationPublishCommand(
                 tenantId,
                 "test-ready:" + projectCode,
+                "delivery",
+                "交付示范中心",
                 "DELIVERY_PROJECT",
                 projectCode,
                 List.of(ownerId),
                 "项目已进入测试阶段",
                 projectCode + " 已完成研发交付，请安排测试。",
                 NotificationLevel.INFO,
-                "交付管理",
+                "测试流转",
                 "/delivery-showcase/projects",
                 operatorId));
     }
@@ -46,12 +48,14 @@ public class DeliveryService {
 | --- | --- |
 | `tenantId` | 必须来自当前业务上下文，不得由前端任意指定 |
 | `eventId` | 同一业务事件保持稳定，用于重试幂等，最长 128 字符 |
+| `moduleCode` | 必填的稳定业务板块编码；小写字母开头，可包含小写字母、数字、下划线和连字符，最长 64 字符 |
+| `moduleName` | 必填的业务板块展示名，最长 128 字符，例如 `配置管理` |
 | `businessType` | 稳定的业务类型编码，最长 64 字符 |
 | `businessKey` | 可追溯的业务主键，最长 128 字符 |
 | `recipientUserIds` | 同租户、启用且未删除的用户，去重后 1 至 500 人 |
 | `title` / `content` | 必填，最长分别为 200 / 2000 字符，不放敏感信息 |
 | `level` | `INFO`、`SUCCESS`、`WARNING` 或 `ERROR`，为空时按 `INFO` |
-| `sourceName` | 用户可识别的业务来源，最长 128 字符 |
+| `sourceName` | 消息触发来源，最长 128 字符，例如 `审批中心`；不得代替业务板块 |
 | `actionPath` | 可空；非空时必须为 `/` 开头的站内路由 |
 | `actorUserId` | 可空；非空时必须是同租户有效用户，用于发布审计 |
 
@@ -62,13 +66,16 @@ public class DeliveryService {
 - 发布方法参与调用方事务；业务事务回滚时通知写入一并回滚。异步消费方应使用自己的稳定事件标识重试。
 - 发布成功写入 `sys_operation_log`，日志只记录业务类型和通知编号，不记录通知正文。
 
+`moduleCode/moduleName`、`sourceName` 和 `businessType` 含义独立。以配置管理审批通知为例，三者分别为 `release / 配置管理`、`审批中心`、`release_application`，前端展示为 `配置管理 · 审批中心`。业务模块必须在发布或启动工作流时显式提供板块信息，不得由前端根据路由或标题推导。
+
 ## 用户接口
 
 前端统一通过 `web/src/api/notifications.ts` 调用：
 
-- `GET /api/notifications`：当前用户消息分页，可用 `unreadOnly=true` 筛选未读。
+- `GET /api/notifications`：当前用户消息分页，可用 `unreadOnly=true` 筛选未读，并可用 `moduleCode` 按业务板块服务端筛选；未知合法编码返回空分页。
+- `GET /api/notifications/modules`：当前用户可见的业务板块及各板块消息总数、未读数。
 - `GET /api/notifications/unread-count`：当前用户未读数。
 - `PATCH /api/notifications/{id}/read`：仅更新当前用户的该条消息。
 - `PATCH /api/notifications/read-all`：仅更新当前用户的全部未读消息。
 
-接口从认证主体读取租户和用户，不接受客户端身份参数。业务页面需要刷新通知状态时，应复用消息中心能力，不自行查询通知表。
+接口从认证主体读取租户和用户，不接受客户端身份参数。业务板块聚合也从当前用户的通知关联数据开始查询，不暴露其他用户或租户的板块。铃铛角标使用全局未读数；板块筛选只影响分页总数和未读页签计数；`read-all` 仍标记当前用户全部板块的消息。业务页面需要刷新通知状态时，应复用消息中心能力，不自行查询通知表。

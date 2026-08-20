@@ -1,0 +1,21 @@
+{
+  "sample_label": "T1 contract completion sample",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1 focused schema/model contract tests", "result": "pass", "raw_evidence": "ReleaseSchemaContractTest and ReleaseApplicationPersistenceContractTest: 8 tests, 0 failures", "limitation": ["Application service population of file rows is T2"]},
+    {"requirement_id": "R2", "sensor": "S1 Java compile plus model contract inspection", "result": "pass", "raw_evidence": "CreateRequest and UpdateRequest compile with List<FileMediaInput>; old constructors compile", "limitation": ["Path validation is T2"]},
+    {"requirement_id": "R3", "sensor": "S3 independent DDL structure scan", "result": "pass", "raw_evidence": "V46 contains FILE_MEDIA CHECK constraints fixing ID/code/type and null version on application and production rows", "limitation": ["Server-side creation is T2"]},
+    {"requirement_id": "R4", "sensor": "S1 persistence tests plus S3 DDL scan", "result": "pass", "raw_evidence": "Conflict SQL uses d.item_key; all three tables receive item_key and key-based indexes", "limitation": ["SHA-256 key generation is T2"]},
+    {"requirement_id": "R6", "sensor": "S3 DDL structure scan", "result": "pass", "raw_evidence": "Production source/candidate indexes identify item_key, allowing multiple FILE rows", "limitation": ["Production service behavior is T3"]},
+    {"requirement_id": "R7", "sensor": "S3 DDL structure scan", "result": "pass", "raw_evidence": "Current-production index uses subsystem_code and item_key; artifact version is nullable under FILE_MEDIA constraint", "limitation": ["Current-production query implementation is T3"]},
+    {"requirement_id": "R8", "sensor": "S7 compile and append-only migration checks", "result": "pass", "raw_evidence": "Eight-project compile succeeds; V38/V39 scoped diff is empty; V46 contains no DELETE FROM rel_", "limitation": ["Real MySQL migration is protected and deferred to T6"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "T1 release source files are untracked in the pre-existing dirty worktree", "impact": "Static path and test evidence replace historical Git line attribution"}
+  ],
+  "coverage_gaps": ["MySQL 8.4 DDL execution and backfill data inspection are deferred to T6 after verified backup"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

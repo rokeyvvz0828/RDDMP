@@ -1,0 +1,1770 @@
+{
+  "schema_version": 4,
+  "revision": 18,
+  "created_at": "2026-08-18T06:33:27+00:00",
+  "updated_at": "2026-08-18T06:53:49+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user approved the recommended footer and token-comparison design by replying '开发'.；计划确认=The user reviewed the recommended implementation behavior and replied '开发'.",
+      "recorded_at": "2026-08-18T06:33:27+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Baseline R1-R4 is measurable, has no blocking unknowns and preserves the backend contract.",
+      "recorded_at": "2026-08-18T06:33:39+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Model revision 1 validates two authorized actuators and build/browser sensors for every must requirement.",
+      "recorded_at": "2026-08-18T06:33:51+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Control plan revision 1 is ready and the authorized frontend task is executable on rokey.",
+      "recorded_at": "2026-08-18T06:34:02+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "Execution report recorded; task output is stable and independently measurable.",
+      "recorded_at": "2026-08-18T06:50:31+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1 verified with zero observed product errors; final convergence audit remains.",
+      "recorded_at": "2026-08-18T06:51:49+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Gate passed with T1 verified, two zero-error samples and no open feedback.",
+      "recorded_at": "2026-08-18T06:53:49+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user approved the recommended footer and token-comparison design by replying '开发'.；计划确认=The user reviewed the recommended implementation behavior and replied '开发'.",
+        "recorded_at": "2026-08-18T06:33:27+00:00",
+        "data": {
+          "objective": "Make duplicate-application confirmation a single collection-level action that closes immediately and is requested again only when conflict facts change.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "The create-new confirmation must appear as the primary footer action beside defer handling.",
+              "acceptance": [
+                "The footer renders defer first and create-new second with primary styling"
+              ],
+              "priority": "must",
+              "source": "User correction on 2026-08-18",
+              "counterexample": [
+                "Create-new remains inside each historical-application card"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Confirming create-new must close the dialog immediately and submit with the current conflict token without duplicate clicks.",
+              "acceptance": [
+                "The dialog closes before the submit request finishes",
+                "The submit request contains the confirmed token",
+                "Loading prevents duplicate confirmation"
+              ],
+              "priority": "must",
+              "source": "User correction on 2026-08-18",
+              "counterexample": [
+                "The dialog remains visible after confirmation",
+                "A second click starts another submit"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "An unchanged confirmed conflict must not reopen the dialog; only a changed server token may require confirmation again.",
+              "acceptance": [
+                "A same-token 409 shows its actual error with the dialog closed",
+                "A changed-token 409 refreshes facts and reopens the dialog"
+              ],
+              "priority": "must",
+              "source": "User correction and approved recommended design on 2026-08-18",
+              "counterexample": [
+                "Every 409 is treated as a duplicate conflict"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Existing cancel-old, edit-old and defer actions must remain compatible.",
+              "acceptance": [
+                "Card-level cancel and edit remain available according to allowedActions",
+                "Defer closes without submission"
+              ],
+              "priority": "must",
+              "source": "Existing behavior preserved by user-approved bounded fix",
+              "counterexample": [
+                "The fix removes or changes existing card-level actions"
+              ]
+            }
+          ],
+          "invariants": [
+            "Backend conflict-token validation remains authoritative",
+            "No unrelated dirty-worktree change is overwritten",
+            "Existing permission and application-state rules remain unchanged"
+          ],
+          "constraints": [
+            "Modify only the two authorized Vue files",
+            "Reuse Vue 3 and Element Plus patterns",
+            "Do not change API, backend, schema or dependencies",
+            "Remain on local rokey branch"
+          ],
+          "non_goals": [
+            "Persisting conflict confirmation across page reloads",
+            "Changing conflict matching rules",
+            "Adding mobile-specific layout work",
+            "Changing cancel-old or edit-old semantics"
+          ],
+          "assumptions": [
+            {
+              "text": "The existing conflict token changes whenever conflict facts relevant to confirmation change.",
+              "basis": "The backend recomputes and compares the token before submission.",
+              "falsifier": "A relevant conflict fact changes while the returned token remains identical."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use the existing token as a transient confirmation and reopen only on token change.",
+              "reason": "It directly addresses both reported defects without backend changes.",
+              "source": "User approved the recommended design and requested development on 2026-08-18."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "Footer order and immediate close are visible and one submit request carries the token.",
+              "method": "Desktop browser interaction plus request observation."
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R4"
+              ],
+              "signal": "Same-token errors do not reopen, changed-token errors do, and existing actions remain.",
+              "method": "Focused code contract, production build and browser regression."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "User-approved REQ-20260818-036 design was reconciled with the current conflict dialog, submit token contract and repository boundaries.",
+        "recorded_at": "2026-08-18T06:33:33+00:00",
+        "data": {
+          "objective": "Allow a release applicant to confirm creation despite unchanged duplicate facts exactly once in the current submission flow, with the dialog closing immediately and changed facts requiring renewed confirmation.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "The create-new confirmation must appear as the primary footer action beside defer handling.",
+              "acceptance": [
+                "The footer renders defer first and create-new second with primary styling"
+              ],
+              "priority": "must",
+              "source": "User correction on 2026-08-18",
+              "counterexample": [
+                "Create-new remains inside each historical-application card"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Confirming create-new must close the dialog immediately and submit with the current conflict token without duplicate clicks.",
+              "acceptance": [
+                "The dialog closes before the submit request finishes",
+                "The submit request contains the confirmed token",
+                "Loading prevents duplicate confirmation"
+              ],
+              "priority": "must",
+              "source": "User correction on 2026-08-18",
+              "counterexample": [
+                "The dialog remains visible after confirmation",
+                "A second click starts another submit"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "An unchanged confirmed conflict must not reopen the dialog; only a changed server token may require confirmation again.",
+              "acceptance": [
+                "A same-token 409 shows its actual error with the dialog closed",
+                "A changed-token 409 refreshes facts and reopens the dialog"
+              ],
+              "priority": "must",
+              "source": "User-approved recommended design on 2026-08-18",
+              "counterexample": [
+                "Every 409 is treated as a duplicate conflict"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Existing cancel-old, edit-old and defer actions must remain compatible.",
+              "acceptance": [
+                "Card-level cancel and edit remain available according to allowedActions",
+                "Defer closes without submission"
+              ],
+              "priority": "must",
+              "source": "Existing behavior preserved by the bounded fix",
+              "counterexample": [
+                "The fix removes or changes existing card-level actions"
+              ]
+            }
+          ],
+          "invariants": [
+            "Backend conflict-token validation remains authoritative",
+            "Existing permission and application-state rules remain unchanged",
+            "Unrelated dirty-worktree changes are preserved"
+          ],
+          "constraints": [
+            "Modify only the two authorized Vue files",
+            "Do not change API, backend, database, permissions or dependencies",
+            "Remain on local rokey branch",
+            "Mobile-specific redesign remains deferred"
+          ],
+          "non_goals": [
+            "Persist confirmation across page reloads",
+            "Change conflict matching",
+            "Change cancel-old or edit-old semantics",
+            "Add mobile-specific layout"
+          ],
+          "assumptions": [
+            {
+              "text": "The conflict token changes whenever relevant conflict facts change.",
+              "basis": "Existing backend recomputes and compares the token before submission.",
+              "falsifier": "A relevant conflict fact changes while the returned token remains identical."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "How should an applicant confirm unchanged duplicate facts?",
+              "options": [
+                "Transient conflict-token confirmation",
+                "Persisted backend confirmation"
+              ],
+              "selected": "Transient conflict-token confirmation",
+              "blocking": false,
+              "source": "User approved the recommended design and requested development."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "Footer button order and style",
+              "candidate_sensor": "Browser snapshot and template inspection"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "Dialog visibility, submit payload and duplicate-click state",
+              "candidate_sensor": "Browser interaction and request observation"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "Dialog behavior for same and changed conflict tokens",
+              "candidate_sensor": "Controlled browser outcomes and state-flow inspection"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "Existing card and defer actions",
+              "candidate_sensor": "Browser regression and template inspection"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Current Vue flow and backend conflict-token comparison establish observable and controllable causal paths for R1-R4.",
+        "recorded_at": "2026-08-18T06:33:45+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ReleaseConflictDialog emitted actions and visibility",
+              "ReleaseManagementPrototype pending submission and conflict response routing"
+            ],
+            "environment": [
+              "Existing release submit API",
+              "Existing release conflict query API",
+              "Backend conflict-token generator",
+              "Applicant browser",
+              "Dirty rokey worktree"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "conflictOpen",
+              "owner": "ReleaseManagementPrototype",
+              "valid_values": [
+                "true",
+                "false"
+              ]
+            },
+            {
+              "name": "pendingSubmission.confirmedConflictToken",
+              "owner": "ReleaseManagementPrototype",
+              "valid_values": [
+                "undefined",
+                "current token"
+              ]
+            },
+            {
+              "name": "serverConflictToken",
+              "owner": "Release backend",
+              "valid_values": [
+                "absent",
+                "unchanged",
+                "changed"
+              ]
+            },
+            {
+              "name": "submissionState",
+              "owner": "ReleaseManagementPrototype",
+              "valid_values": [
+                "idle",
+                "submitting",
+                "submitted",
+                "failed"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "Conflict dialog with one or more historical applications",
+              "transitions": [
+                "Render card-specific actions",
+                "Render collection-level footer actions"
+              ],
+              "outputs": [
+                "Defer and primary create-new are adjacent in the footer"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "Applicant clicks footer create-new",
+              "transitions": [
+                "Store current token",
+                "Close dialog",
+                "Set resolving state",
+                "Submit saved application with token"
+              ],
+              "outputs": [
+                "One in-flight submit while dialog is closed"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Token-bearing submit returns HTTP 409",
+              "transitions": [
+                "Query current conflict report",
+                "Compare current token with confirmed token"
+              ],
+              "outputs": [
+                "Changed token reopens; unchanged token shows original error with dialog closed"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Applicant chooses cancel-old, edit-old or defer",
+              "transitions": [
+                "Keep item-specific conflict argument for cancel/edit",
+                "Close only for defer"
+              ],
+              "outputs": [
+                "Existing actions retain behavior"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "ReleaseConflictDialog choose event",
+              "producers": [
+                "ReleaseConflictDialog"
+              ],
+              "consumers": [
+                "ReleaseManagementPrototype.chooseConflict"
+              ],
+              "invariant": "CREATE_NEW is collection-level; CANCEL_OLD and EDIT_OLD identify a historical application"
+            },
+            {
+              "name": "ReleaseSubmitRequest.conflictToken",
+              "producers": [
+                "ReleaseManagementPrototype"
+              ],
+              "consumers": [
+                "Existing release submit API"
+              ],
+              "invariant": "The token confirms only the conflict facts that produced it"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Type safety and state-flow contracts for R1-R4",
+              "method": "Frontend production build and focused source assertions",
+              "blind_spots": [
+                "Visual alignment and runtime request timing"
+              ],
+              "independence": "Compiler and static structure"
+            },
+            {
+              "id": "S2",
+              "target": "Visible dialog, click, request and status outcomes for R1-R4",
+              "method": "Authenticated desktop browser interaction and console/network observation",
+              "blind_spots": [
+                "Concurrency cases not produced by the local data setup"
+              ],
+              "independence": "Direct runtime user-path observation"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Conflict dialog action hierarchy",
+              "action": "Move CREATE_NEW from each card to the footer and emit it without an item",
+              "authority": "REQ-20260818-036 writable scope",
+              "impact_radius": "ReleaseConflictDialog only",
+              "rollback": "Restore the component's pre-task template and event signature"
+            },
+            {
+              "id": "A2",
+              "target": "Pending confirmation and HTTP 409 routing",
+              "action": "Retain the confirmed token, close before submit and reopen only on token change",
+              "authority": "REQ-20260818-036 writable scope",
+              "impact_radius": "ReleaseManagementPrototype conflict flow only",
+              "rollback": "Restore the page's pre-task pending and submit functions"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Concurrent modification of a historical application",
+              "effect": "Conflict token changes during submission",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Unrelated backend HTTP 409",
+              "effect": "Previously reopened the duplicate dialog incorrectly",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Dirty untracked release-module files",
+              "effect": "A broad edit could overwrite unrelated work",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Submit and conflict refresh requests",
+              "consequence": "The UI can remain in resolving state while the result is pending",
+              "sampling_rule": "Observe state before click, immediately after click and after request completion"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "The conflict token covers all relevant conflict facts.",
+              "evidence": "ReleaseSubmissionService compares recomputed report token before submission.",
+              "falsifier": "Relevant conflict facts change without a token change."
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Plan A1 with build and browser sampling"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Plan A1 and A2 with click/request sampling"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Plan A2 with same-token and changed-token checks"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Bound A1/A2 to preserve existing branches"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "One bounded frontend task covers R1-R4 with exact write scope, rollback, stop conditions and two sampling points.",
+        "recorded_at": "2026-08-18T06:33:57+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Correct duplicate-application confirmation hierarchy and token-aware submission behavior.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "ReleaseSubmitRequest already accepts conflictToken",
+                "Backend submission accepts unchanged conflicts when the token matches",
+                "CREATE_NEW conflict resolution currently returns the same report",
+                "The current frontend reopens the dialog for every HTTP 409"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseConflictDialog.vue",
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/execution-T1.json",
+                ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/observation-T1.json",
+                ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/convergence.json"
+              ],
+              "invariants": [
+                "Backend conflict-token validation remains authoritative",
+                "Cancel-old, edit-old and defer behavior remain",
+                "No unrelated dirty-worktree change is overwritten"
+              ],
+              "interface_contracts": [
+                "CREATE_NEW choose event is collection-level",
+                "CANCEL_OLD and EDIT_OLD choose events carry the historical application",
+                "Only a changed server token can invalidate current confirmation"
+              ],
+              "non_goals": [
+                "No API, backend, database, permission, dependency or mobile-specific change",
+                "No persisted confirmation across refresh"
+              ],
+              "action_bounds": [
+                "Modify only the dialog event/template and page pending/submit conflict branches",
+                "Use existing Element Plus buttons and release API functions",
+                "Do not refactor unrelated release-page logic"
+              ],
+              "acceptance_checks": [
+                "Footer order and primary style match R1",
+                "Dialog closes before token-bearing submit completes",
+                "Repeated clicks cannot create overlapping confirms",
+                "Same-token 409 does not reopen",
+                "Changed-token 409 refreshes and reopens",
+                "Cancel-old, edit-old and defer remain",
+                "Frontend build passes"
+              ],
+              "evidence_required": [
+                "Focused diff",
+                "Frontend build exit code",
+                "git diff --check",
+                "Desktop browser path and console/network result",
+                "Governance and scope-check results with unrelated baseline failures disclosed"
+              ],
+              "rollback": "Restore only the modified sections of the two Vue files from the T1 pre-change snapshot.",
+              "stop_conditions": [
+                "A backend or API contract change becomes necessary",
+                "A user or process changes either target file during implementation",
+                "The local runtime cannot produce a duplicate conflict after three setup attempts"
+              ],
+              "escalation_conditions": [
+                "Confirmation must persist across page reloads",
+                "A new public error-code contract is required",
+                "Mobile-specific redesign is reintroduced"
+              ]
+            }
+          ],
+          "dependency_edges": [],
+          "parallel_groups": [
+            [
+              "T1"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Frontend production build",
+                "Authenticated desktop duplicate-application browser flow",
+                "Scope and whitespace audit"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 implementation sample",
+              "trigger": "T1 execution report recorded",
+              "observer": "independent observation pass",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "Final convergence sample",
+              "trigger": "T1 verified and regression checks complete",
+              "observer": "convergence verifier",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "Product diff, production build, live browser path and disclosed repository gates",
+        "recorded_at": "2026-08-18T06:50:19+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseConflictDialog.vue",
+              "purpose": "Move the collection-level create-new confirmation into the dialog footer beside defer handling and keep historical-application actions card-specific."
+            },
+            {
+              "path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue",
+              "purpose": "Retain the confirmed conflict token for the current pending submission, close before submit, and reopen only when the server token changes."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit passed; Vite transformed 2362 modules and completed the production build in 4.49s."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "Core governance, repository skill and development-entry checks passed; AI-control layout remains blocked by unrelated pre-existing invalid ledger filenames. The task-local baseline.json named by the same checker was removed."
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-036-release-conflict-confirmation/codex-task-scope.yaml --working-tree",
+              "exit_code": 1,
+              "salient_output": "The checker rejected the user-selected branch rokey because it requires <type>/REQ-YYYYMMDD-NNN-short-name; no out-of-scope path violation was reported before that branch gate."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Release conflict browser flow",
+              "result": "pass",
+              "evidence": "SQ-202608-044 opened a real duplicate-conflict report; footer rendered 暂不处理 then primary 仍创建新申请; confirmation submitted once and the list refreshed to 审批中 without reopening the dialog.",
+              "limitations": [
+                "Changed-token reopening was verified by the bounded token-comparison branch and production build rather than mutating concurrent server data during this run."
+              ]
+            },
+            {
+              "check": "Browser console",
+              "result": "pass",
+              "evidence": "Only Vite connection and hot-update debug entries were present; no warning or error entry was observed.",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "Removed the per-history-card create-new button and added one primary footer confirmation.",
+            "Made CREATE_NEW payload collection-level while preserving CANCEL_OLD and EDIT_OLD payloads.",
+            "Stored the confirmed conflict token on the current pending submission and submitted directly with that token.",
+            "Compared refreshed 409 conflict tokens so unchanged facts stay closed and changed facts require confirmation again."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Backend conflict-token validation remains authoritative",
+              "result": "pass",
+              "evidence": "The frontend only forwards the server-issued token; no backend or API contract changed."
+            },
+            {
+              "invariant": "Existing cancel-old, edit-old and defer behavior remain",
+              "result": "pass",
+              "evidence": "Card-level allowedActions branches remain intact and defer still updates the dialog model to false."
+            },
+            {
+              "invariant": "No unrelated dirty-worktree change is overwritten",
+              "result": "pass",
+              "evidence": "Product edits are limited to the two authorized Vue files; existing worktree changes were preserved."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "The initial Vite build could not write node_modules/.vite-temp under the sandbox.",
+              "impact": "The same build was rerun with the required filesystem permission and passed."
+            },
+            {
+              "event": "Repository-wide governance includes unrelated historical ledger filename failures and rokey violates the generic branch-name rule.",
+              "impact": "These baseline failures are disclosed and were not hidden by changing unrelated governance files."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Repository-wide AI-control layout and branch-name gates remain red for unrelated historical records and the user-selected rokey branch."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Independent browser geometry, live submission state, build and token-branch observation",
+        "recorded_at": "2026-08-18T06:51:28+00:00",
+        "data": {
+          "sample_label": "T1 final implementation observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Live desktop browser geometry and DOM inspection",
+              "result": "pass",
+              "raw_evidence": "The conflict dialog footer contained 暂不处理 at x=1011.5 followed by primary 仍创建新申请 at x=1111.5; both had y=489.14 and height=32. No CREATE_NEW action remained in a historical card.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Live end-to-end duplicate submission using SQ-202608-044",
+              "result": "pass",
+              "raw_evidence": "After one 仍创建新申请 action, all dialogs were gone after the normal transition and SQ-202608-044 changed from 草稿 to 审批中 at 2026-08-18 06:45. The confirmation button used resolving/loading state during submission.",
+              "limitation": [
+                "The DOM node remained present briefly during the Element Plus close transition; it was removed after submission completed."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "Token-aware branch inspection plus TypeScript production build",
+              "result": "pass",
+              "raw_evidence": "submitSavedApplication compares refreshed report.conflictToken against confirmedConflictToken. It reopens only when applications exist and the token changed; an unchanged-token 409 falls through to the original apiErrorMessage while conflictOpen stays false. vue-tsc and Vite production build passed.",
+              "limitation": [
+                "The changed-token branch was not triggered by mutating concurrent server conflict facts during this observation."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Template and handler regression inspection",
+              "result": "pass",
+              "raw_evidence": "CANCEL_OLD and EDIT_OLD remain card-level and require a selected conflict; defer still closes through update:modelValue=false; the existing resolveReleaseConflict branches remain unchanged.",
+              "limitation": [
+                "Cancel-old and edit-old were inspected rather than executed to avoid modifying unrelated historical applications."
+              ]
+            },
+            {
+              "requirement_id": "R1-R4",
+              "sensor": "Frontend build, diff check and browser console",
+              "result": "pass",
+              "raw_evidence": "npm --prefix web run build exited 0 with 2362 modules transformed; git diff --check exited 0; browser console contained no warning or error entries.",
+              "limitation": [
+                "The Vite build retains the repository's existing large-chunk warning."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Full governance remains red because six unrelated historical requirement directories use filenames rejected by check-ai-control-layout.mjs.",
+              "classification": "baseline failure outside T1 scope"
+            },
+            {
+              "event": "The scope checker rejects branch rokey before evaluating file paths.",
+              "classification": "user-selected branch versus repository generic branch policy"
+            }
+          ],
+          "coverage_gaps": [
+            "No concurrent server mutation was introduced solely to force a changed conflict token.",
+            "Historical cancel/edit actions were preserved by source inspection and build rather than destructive browser execution."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final R1-R4 trace audit, second zero-error sample, build, diff and live browser state",
+        "recorded_at": "2026-08-18T06:53:33+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "Live dialog geometry showed 暂不处理 followed by primary 仍创建新申请 in the footer.",
+                "Template inspection confirmed CREATE_NEW is absent from history cards."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "One confirmation submitted SQ-202608-044 and changed it from 草稿 to 审批中.",
+                "The dialog closed and the resolving/loading state prevents overlapping confirmation actions."
+              ],
+              "limitations": [
+                "Element Plus retains its DOM node briefly during the normal close transition."
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "The 409 branch reopens only when refreshed conflictToken differs from confirmedConflictToken.",
+                "An unchanged token falls through to the original business error while the dialog remains closed.",
+                "TypeScript and production bundling passed."
+              ],
+              "limitations": [
+                "No concurrent server mutation was introduced solely to force a changed-token browser response."
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "CANCEL_OLD and EDIT_OLD remain conditional card-level actions carrying the selected historical application.",
+                "暂不处理 still closes without submission."
+              ],
+              "limitations": [
+                "Destructive historical cancel/edit actions were not executed in the shared local data set."
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Frontend production build passed.",
+                "Live duplicate submission passed.",
+                "Two zero-error control samples were recorded."
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "npm --prefix web run build",
+              "result": "pass",
+              "evidence": "vue-tsc passed; Vite transformed 2362 modules and built in 4.64s."
+            },
+            {
+              "check": "git diff --check",
+              "result": "pass",
+              "evidence": "Exit code 0 with no whitespace errors."
+            },
+            {
+              "check": "Browser console",
+              "result": "pass",
+              "evidence": "No warning or error entries after the full submission flow."
+            },
+            {
+              "check": "Development entry",
+              "result": "pass",
+              "evidence": "node scripts/check-development-entry.mjs --require-plugin passed."
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "Backend conflict-token validation remains authoritative",
+              "result": "pass",
+              "evidence": "No backend or API contract changed; only the server-issued token is submitted."
+            },
+            {
+              "invariant": "Existing permission and application-state rules remain unchanged",
+              "result": "pass",
+              "evidence": "No permission, workflow, backend or database surface changed."
+            },
+            {
+              "invariant": "Unrelated dirty-worktree changes are preserved",
+              "result": "pass",
+              "evidence": "No unrelated file was reverted or overwritten."
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Normal dialog transition and asynchronous submission",
+              "result": "pass",
+              "evidence": "The final UI had zero dialogs and refreshed the application to 审批中 after one confirmation."
+            },
+            {
+              "disturbance": "Repository-wide governance baseline failures",
+              "result": "contained",
+              "evidence": "Task-local invalid baseline artifact was removed; unrelated historical files and branch policy were disclosed without broadening scope."
+            }
+          ],
+          "residual_risks": [
+            "The repository-wide governance command remains red because six unrelated historical ledger filenames are rejected by the current checker.",
+            "The scope checker rejects the user-selected rokey branch before path evaluation.",
+            "The existing Vite bundle-size warning is unchanged."
+          ],
+          "gate_result": "pass",
+          "route_reason": "All four must requirements are covered by verified T1 evidence, two standard-mode samples have P0-P3 equal to zero, and the remaining red repository gates are pre-existing scope and governance baselines outside this bounded product fix."
+        }
+      }
+    ]
+  },
+  "objective": "Allow a release applicant to confirm creation despite unchanged duplicate facts exactly once in the current submission flow, with the dialog closing immediately and changed facts requiring renewed confirmation.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "The create-new confirmation must appear as the primary footer action beside defer handling.",
+      "acceptance": [
+        "The footer renders defer first and create-new second with primary styling"
+      ],
+      "priority": "must",
+      "source": "User correction on 2026-08-18",
+      "counterexample": [
+        "Create-new remains inside each historical-application card"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Confirming create-new must close the dialog immediately and submit with the current conflict token without duplicate clicks.",
+      "acceptance": [
+        "The dialog closes before the submit request finishes",
+        "The submit request contains the confirmed token",
+        "Loading prevents duplicate confirmation"
+      ],
+      "priority": "must",
+      "source": "User correction on 2026-08-18",
+      "counterexample": [
+        "The dialog remains visible after confirmation",
+        "A second click starts another submit"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "An unchanged confirmed conflict must not reopen the dialog; only a changed server token may require confirmation again.",
+      "acceptance": [
+        "A same-token 409 shows its actual error with the dialog closed",
+        "A changed-token 409 refreshes facts and reopens the dialog"
+      ],
+      "priority": "must",
+      "source": "User-approved recommended design on 2026-08-18",
+      "counterexample": [
+        "Every 409 is treated as a duplicate conflict"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Existing cancel-old, edit-old and defer actions must remain compatible.",
+      "acceptance": [
+        "Card-level cancel and edit remain available according to allowedActions",
+        "Defer closes without submission"
+      ],
+      "priority": "must",
+      "source": "Existing behavior preserved by the bounded fix",
+      "counterexample": [
+        "The fix removes or changes existing card-level actions"
+      ]
+    }
+  ],
+  "invariants": [
+    "Backend conflict-token validation remains authoritative",
+    "Existing permission and application-state rules remain unchanged",
+    "Unrelated dirty-worktree changes are preserved"
+  ],
+  "constraints": [
+    "Modify only the two authorized Vue files",
+    "Do not change API, backend, database, permissions or dependencies",
+    "Remain on local rokey branch",
+    "Mobile-specific redesign remains deferred"
+  ],
+  "non_goals": [
+    "Persist confirmation across page reloads",
+    "Change conflict matching",
+    "Change cancel-old or edit-old semantics",
+    "Add mobile-specific layout"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/handoff.json",
+    "imported_at": "2026-08-18T06:33:27+00:00",
+    "topic": "req-20260818-036-release-conflict-confirmation",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260818-036-release-conflict-confirmation",
+      "handoff_status": "approved",
+      "created_at": "2026-08-18T14:23:30+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260818-036-release-conflict-confirmation",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-18-release-conflict-confirmation-design.md",
+        "objective": "Make duplicate-application confirmation a single collection-level action that closes immediately and is requested again only when conflict facts change.",
+        "users": [
+          "Release applicants submitting a new application that overlaps an existing application in the same production window"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "The create-new confirmation must appear as the primary footer action beside defer handling.",
+            "acceptance": [
+              "The footer renders defer first and create-new second with primary styling"
+            ],
+            "priority": "must",
+            "source": "User correction on 2026-08-18",
+            "counterexample": [
+              "Create-new remains inside each historical-application card"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Confirming create-new must close the dialog immediately and submit with the current conflict token without duplicate clicks.",
+            "acceptance": [
+              "The dialog closes before the submit request finishes",
+              "The submit request contains the confirmed token",
+              "Loading prevents duplicate confirmation"
+            ],
+            "priority": "must",
+            "source": "User correction on 2026-08-18",
+            "counterexample": [
+              "The dialog remains visible after confirmation",
+              "A second click starts another submit"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "An unchanged confirmed conflict must not reopen the dialog; only a changed server token may require confirmation again.",
+            "acceptance": [
+              "A same-token 409 shows its actual error with the dialog closed",
+              "A changed-token 409 refreshes facts and reopens the dialog"
+            ],
+            "priority": "must",
+            "source": "User correction and approved recommended design on 2026-08-18",
+            "counterexample": [
+              "Every 409 is treated as a duplicate conflict"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Existing cancel-old, edit-old and defer actions must remain compatible.",
+            "acceptance": [
+              "Card-level cancel and edit remain available according to allowedActions",
+              "Defer closes without submission"
+            ],
+            "priority": "must",
+            "source": "Existing behavior preserved by user-approved bounded fix",
+            "counterexample": [
+              "The fix removes or changes existing card-level actions"
+            ]
+          }
+        ],
+        "invariants": [
+          "Backend conflict-token validation remains authoritative",
+          "No unrelated dirty-worktree change is overwritten",
+          "Existing permission and application-state rules remain unchanged"
+        ],
+        "constraints": [
+          "Modify only the two authorized Vue files",
+          "Reuse Vue 3 and Element Plus patterns",
+          "Do not change API, backend, schema or dependencies",
+          "Remain on local rokey branch"
+        ],
+        "non_goals": [
+          "Persisting conflict confirmation across page reloads",
+          "Changing conflict matching rules",
+          "Adding mobile-specific layout work",
+          "Changing cancel-old or edit-old semantics"
+        ],
+        "selected_approach": {
+          "name": "Transient confirmed conflict token with direct submit",
+          "reason": "The submit API already validates the token, so this removes the redundant create-new resolution round trip and distinguishes changed conflicts from unrelated 409 responses.",
+          "alternatives": [
+            {
+              "name": "Persist confirmation on the backend",
+              "rejected_because": "It requires schema and lifecycle changes beyond this defect."
+            },
+            {
+              "name": "Only close the dialog",
+              "rejected_because": "The broad 409 handler would still reopen it."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "Release conflict dialog footer",
+              "Pending submission confirmed-token state",
+              "Submit 409 conflict-token comparison"
+            ],
+            "outside": [
+              "Release backend",
+              "Release API types",
+              "Database",
+              "Workflow",
+              "Mobile-specific redesign"
+            ]
+          },
+          "components": [
+            {
+              "name": "ReleaseConflictDialog",
+              "responsibility": "Render conflict facts, card-specific actions and one collection-level create-new confirmation.",
+              "depends_on": [
+                "Element Plus dialog and buttons"
+              ]
+            },
+            {
+              "name": "ReleaseManagementPrototype",
+              "responsibility": "Retain the confirmed token for the current pending application and route submit outcomes correctly.",
+              "depends_on": [
+                "Existing release API functions"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "choose event",
+              "producer": "ReleaseConflictDialog",
+              "consumers": [
+                "ReleaseManagementPrototype.chooseConflict"
+              ],
+              "contract": "CREATE_NEW is collection-level and carries no historical item; CANCEL_OLD and EDIT_OLD carry the selected historical item."
+            },
+            {
+              "name": "submit conflictToken",
+              "producer": "ReleaseManagementPrototype",
+              "consumers": [
+                "Existing submitReleaseApplication API"
+              ],
+              "contract": "A token confirms exactly the currently observed conflict facts; a different returned token requires new confirmation."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "User confirms create-new with current conflict report",
+              "transitions": [
+                "store confirmed token",
+                "close dialog",
+                "submit saved application",
+                "compare token only if submit returns 409"
+              ],
+              "output": "Application enters review, actual non-conflict error is shown, or changed conflicts are reopened"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Submission returns 409 with unchanged conflict token",
+            "behavior": "Keep the conflict dialog closed and show the original business error.",
+            "recovery": "User resolves the reported business issue and retries within the current application context."
+          },
+          {
+            "condition": "Submission returns 409 with a changed conflict token",
+            "behavior": "Refresh the application and conflict report, clear prior confirmation and reopen the dialog.",
+            "recovery": "User reviews the changed facts and confirms again."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "No permission or identity behavior changes"
+          ],
+          "performance": [
+            "CREATE_NEW removes one redundant resolution request"
+          ],
+          "compatibility": [
+            "Existing API and card actions remain compatible"
+          ],
+          "operations": [
+            "Actual submission errors remain visible instead of being masked as duplicate conflicts"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "Footer order and immediate close are visible and one submit request carries the token.",
+            "method": "Desktop browser interaction plus request observation."
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R4"
+            ],
+            "signal": "Same-token errors do not reopen, changed-token errors do, and existing actions remain.",
+            "method": "Focused code contract, production build and browser regression."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "The existing conflict token changes whenever conflict facts relevant to confirmation change.",
+            "basis": "The backend recomputes and compares the token before submission.",
+            "falsifier": "A relevant conflict fact changes while the returned token remains identical."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use the existing token as a transient confirmation and reopen only on token change.",
+            "reason": "It directly addresses both reported defects without backend changes.",
+            "source": "User approved the recommended design and requested development on 2026-08-18."
+          }
+        ],
+        "risks": [
+          {
+            "risk": "An unrelated 409 may previously have been hidden behind the conflict dialog.",
+            "impact": "After the fix a real business error becomes visible.",
+            "mitigation": "Use apiErrorMessage and keep the saved draft available for correction."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user approved the recommended footer and token-comparison design by replying '开发'.",
+          "confirmed_at": "2026-08-18T14:23:30+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-18-release-conflict-confirmation-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Modify only the two authorized Vue files",
+          "Preserve unrelated rokey changes",
+          "Do not change API, backend, database, permissions or dependencies",
+          "Do not commit, push or switch branches"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/release/components/ReleaseConflictDialog.vue",
+            "status": "existing",
+            "responsibility": "Conflict facts, card actions and dialog footer confirmation",
+            "evidence": "Current source inspection"
+          },
+          {
+            "path": "web/src/modules/release/ReleaseManagementPrototype.vue",
+            "status": "existing",
+            "responsibility": "Pending submission, confirmed token and submit error routing",
+            "evidence": "Current source inspection"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Correct duplicate-application confirmation layout and state flow.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "SubmitRequest already accepts conflictToken",
+              "Backend submission accepts unchanged conflict facts when the token matches",
+              "Current frontend reopens conflicts for every HTTP 409"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/release/components/ReleaseConflictDialog.vue",
+                "web/src/modules/release/ReleaseManagementPrototype.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "ReleaseConflictReportDto.conflictToken",
+                "submitReleaseApplication",
+                "getReleaseApplicationConflicts"
+              ],
+              "produces": [
+                "Collection-level CREATE_NEW event",
+                "Pending submission confirmedConflictToken",
+                "Changed-token-only conflict reopen"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Move CREATE_NEW to the dialog footer and make its conflict item optional.",
+                "command": null,
+                "expected": "Footer renders defer then primary create-new; cards retain cancel and edit only.",
+                "evidence": "Focused diff and browser snapshot"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Store the confirmed token, close immediately and submit directly.",
+                "command": null,
+                "expected": "One token-bearing submit starts while the dialog is closed and duplicate clicks are disabled.",
+                "evidence": "Focused diff and browser network/state observation"
+              },
+              {
+                "id": "T1-S3",
+                "action": "Reopen only when the latest server conflict token differs from the confirmed token.",
+                "command": null,
+                "expected": "Same-token errors remain visible without reopening; changed tokens reopen with refreshed facts.",
+                "evidence": "Focused diff and controlled browser outcomes"
+              },
+              {
+                "id": "T1-S4",
+                "action": "Run build, governance, scope, whitespace and browser verification.",
+                "command": "npm --prefix web run build",
+                "expected": "Build succeeds and all acceptance paths are observable or explicitly disclosed.",
+                "evidence": "Command exits and browser record"
+              }
+            ],
+            "acceptance_checks": [
+              "Footer action hierarchy matches R1",
+              "Dialog closes immediately and submit carries token",
+              "Unchanged token does not reopen",
+              "Changed token reopens",
+              "Cancel/edit/defer remain compatible",
+              "Frontend build passes"
+            ],
+            "risks": [
+              "Unrelated 409 errors become newly visible",
+              "Dirty untracked release files require minimal patches"
+            ],
+            "rollback": "Restore only the changed sections of the two Vue files to their T1 pre-change content.",
+            "stop_conditions": [
+              "The fix requires backend or API contract changes",
+              "The runtime cannot produce a duplicate conflict after three setup attempts"
+            ],
+            "escalation_conditions": [
+              "Confirmation must persist across page reloads",
+              "A new shared error code is required"
+            ]
+          }
+        ],
+        "dependency_edges": [],
+        "parallel_groups": [
+          [
+            "T1"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "vue-tsc and Vite exit 0"
+          },
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "desktop browser duplicate-application path",
+            "expected": "Footer, close, token submit and reopen rules match R1-R4 without console errors"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user reviewed the recommended implementation behavior and replied '开发'.",
+          "confirmed_at": "2026-08-18T14:23:30+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Release duplicate-conflict dialog and submit state flow"
+        ],
+        "state_variable_candidates": [
+          "conflictOpen",
+          "pendingSubmission",
+          "confirmedConflictToken",
+          "serverConflictToken",
+          "submissionResult"
+        ],
+        "interface_candidates": [
+          "ReleaseConflictDialog choose event",
+          "submitReleaseApplication conflictToken",
+          "getReleaseApplicationConflicts"
+        ],
+        "sensor_candidates": [
+          "Frontend build",
+          "browser dialog visibility",
+          "submit request payload",
+          "application status",
+          "browser console"
+        ],
+        "actuator_candidates": [
+          "Footer action placement",
+          "confirmed-token state",
+          "409 token comparison"
+        ],
+        "disturbance_candidates": [
+          "Concurrent conflict changes",
+          "Unrelated HTTP 409",
+          "Repeated user click",
+          "Dirty worktree"
+        ],
+        "delay_candidates": [
+          "Submit request duration",
+          "Conflict refresh request duration"
+        ],
+        "assumptions": [
+          {
+            "text": "The conflict token represents all relevant conflict facts.",
+            "basis": "Existing backend comparison before submission.",
+            "falsifier": "Relevant facts change without a token change."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Existing release submit API\", \"Existing release conflict query API\", \"Backend conflict-token generator\", \"Applicant browser\", \"Dirty rokey worktree\"], \"inside\": [\"ReleaseConflictDialog emitted actions and visibility\", \"ReleaseManagementPrototype pending submission and conflict response routing\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Visual alignment and runtime request timing\"], \"id\": \"S1\", \"independence\": \"Compiler and static structure\", \"method\": \"Frontend production build and focused source assertions\", \"target\": \"Type safety and state-flow contracts for R1-R4\"}",
+      "{\"blind_spots\": [\"Concurrency cases not produced by the local data setup\"], \"id\": \"S2\", \"independence\": \"Direct runtime user-path observation\", \"method\": \"Authenticated desktop browser interaction and console/network observation\", \"target\": \"Visible dialog, click, request and status outcomes for R1-R4\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Move CREATE_NEW from each card to the footer and emit it without an item\", \"authority\": \"REQ-20260818-036 writable scope\", \"id\": \"A1\", \"impact_radius\": \"ReleaseConflictDialog only\", \"rollback\": \"Restore the component's pre-task template and event signature\", \"target\": \"Conflict dialog action hierarchy\"}",
+      "{\"action\": \"Retain the confirmed token, close before submit and reopen only on token change\", \"authority\": \"REQ-20260818-036 writable scope\", \"id\": \"A2\", \"impact_radius\": \"ReleaseManagementPrototype conflict flow only\", \"rollback\": \"Restore the page's pre-task pending and submit functions\", \"target\": \"Pending confirmation and HTTP 409 routing\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Conflict token changes during submission\", \"source\": \"Concurrent modification of a historical application\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Previously reopened the duplicate dialog incorrectly\", \"source\": \"Unrelated backend HTTP 409\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"A broad edit could overwrite unrelated work\", \"source\": \"Dirty untracked release-module files\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"ReleaseSubmissionService compares recomputed report token before submission.\", \"falsifier\": \"Relevant conflict facts change without a token change.\", \"text\": \"The conflict token covers all relevant conflict facts.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Correct duplicate-application confirmation hierarchy and token-aware submission behavior.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ReleaseSubmitRequest already accepts conflictToken",
+        "Backend submission accepts unchanged conflicts when the token matches",
+        "CREATE_NEW conflict resolution currently returns the same report",
+        "The current frontend reopens the dialog for every HTTP 409"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseConflictDialog.vue",
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/execution-T1.json",
+        ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/observation-T1.json",
+        ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/convergence.json"
+      ],
+      "invariants": [
+        "Backend conflict-token validation remains authoritative",
+        "Cancel-old, edit-old and defer behavior remain",
+        "No unrelated dirty-worktree change is overwritten"
+      ],
+      "interface_contracts": [
+        "CREATE_NEW choose event is collection-level",
+        "CANCEL_OLD and EDIT_OLD choose events carry the historical application",
+        "Only a changed server token can invalidate current confirmation"
+      ],
+      "non_goals": [
+        "No API, backend, database, permission, dependency or mobile-specific change",
+        "No persisted confirmation across refresh"
+      ],
+      "action_bounds": [
+        "Modify only the dialog event/template and page pending/submit conflict branches",
+        "Use existing Element Plus buttons and release API functions",
+        "Do not refactor unrelated release-page logic"
+      ],
+      "acceptance": [
+        "Footer order and primary style match R1",
+        "Dialog closes before token-bearing submit completes",
+        "Repeated clicks cannot create overlapping confirms",
+        "Same-token 409 does not reopen",
+        "Changed-token 409 refreshes and reopens",
+        "Cancel-old, edit-old and defer remain",
+        "Frontend build passes"
+      ],
+      "evidence_required": [
+        "Focused diff",
+        "Frontend build exit code",
+        "git diff --check",
+        "Desktop browser path and console/network result",
+        "Governance and scope-check results with unrelated baseline failures disclosed"
+      ],
+      "rollback": "Restore only the modified sections of the two Vue files from the T1 pre-change snapshot.",
+      "stop_conditions": [
+        "A backend or API contract change becomes necessary",
+        "A user or process changes either target file during implementation",
+        "The local runtime cannot produce a duplicate conflict after three setup attempts"
+      ],
+      "escalation_conditions": [
+        "Confirmation must persist across page reloads",
+        "A new public error-code contract is required",
+        "Mobile-specific redesign is reintroduced"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T06:34:08+00:00",
+          "text": "T1 started after re-reading both target Vue files and preserving the dirty worktree."
+        },
+        {
+          "recorded_at": "2026-08-18T06:50:25+00:00",
+          "text": "Implementation complete; production build and live duplicate-conflict submission passed."
+        },
+        {
+          "recorded_at": "2026-08-18T06:51:43+00:00",
+          "text": "Observation covered R1-R4 with no P0-P3 deviation; limitations and unrelated governance baselines disclosed."
+        }
+      ],
+      "updated_at": "2026-08-18T06:51:43+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 implementation observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "R1-R4 measured; production build and browser path passed; no product deviation observed.",
+      "recorded_at": "2026-08-18T06:51:35+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "Final convergence sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Production build passed; diff check passed; SQ-202608-044 remains IN_REVIEW; zero dialogs and zero browser warning/error logs.",
+      "recorded_at": "2026-08-18T06:52:39+00:00"
+    }
+  ]
+}
