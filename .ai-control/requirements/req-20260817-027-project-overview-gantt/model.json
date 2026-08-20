@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260817-027-project-overview-gantt",
+  "phase": "modeling",
+  "system_boundary": {"input": "selectedProject.plans and theme CSS variables", "output": "read-only overview charts", "owner": "web/src/views/ProjectView.vue"},
+  "invariants": ["no backend/API/database changes", "existing project plan hierarchy and permissions unchanged", "page-level horizontal overflow remains absent"],
+  "sensors": ["frontend type/build", "git diff check", "browser DOM/chart labels/scroll widths"],
+  "actuators": ["ProjectView chart state and template", "styles.css responsive chart container"],
+  "uncertainties": ["ECharts custom series behavior on narrow containers"],
+  "decision": "Reuse existing ECharts and DeliveryGantt custom-series pattern; use chart-local horizontal scrolling for dense time axes."
+}

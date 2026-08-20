@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260817-026-project-detail-tabs",
+  "status": "converged",
+  "recorded_at": "2026-08-17T09:25:29+08:00",
+  "requirements": [
+    {"id": "R1", "status": "passed", "evidence": "All five project detail internal tabs preserved one global 项目详情 tab."},
+    {"id": "R2", "status": "passed", "evidence": "The internal tab query remained addressable and survived refresh on 项目计划."},
+    {"id": "R3", "status": "passed", "evidence": "Existing global tabs remained present and no UiTabs context contract was changed."},
+    {"id": "R4", "status": "passed", "evidence": "Frontend build, git diff check, and desktop browser acceptance passed; mobile-specific layout sampling was unavailable in the browser session and the implementation does not change responsive layout rules."}
+  ],
+  "verification": {
+    "frontend_build": "passed",
+    "git_diff_check": "passed",
+    "browser_project_detail_tabs": "passed",
+    "browser_refresh_preservation": "passed",
+    "desktop_overflow_check": "passed",
+    "mobile_viewport": "not independently available in this environment"
+  },
+  "residual_risks": ["Mobile viewport was not independently resized during browser acceptance; no responsive CSS or layout behavior was changed by this task."],
+  "rollback": "Restore web/src/views/AppLayout.vue and rebuild."
+}

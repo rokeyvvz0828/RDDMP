@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "completed",
+  "recorded_at": "2026-08-17T09:25:29+08:00",
+  "goal": "Use one global application tab for each project detail route while preserving the internal project tab query.",
+  "scope": ["web/src/views/AppLayout.vue"],
+  "changes": [
+    "Canonicalize project detail application tabs to /projects/{projectId}.",
+    "Keep route.fullPath for other application tabs.",
+    "Remove stale query-variant project tabs when entering project detail.",
+    "Use the canonical path for UiTabs selection while retaining ?tab=overview|plans|members|roles|settings for internal navigation and refresh."
+  ],
+  "commands": [
+    {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite production build completed with existing non-blocking Rollup warnings"},
+    {"command": "git diff --check", "result": "passed"}
+  ],
+  "unresolved": []
+}

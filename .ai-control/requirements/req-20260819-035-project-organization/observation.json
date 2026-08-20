@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "topic": "project-organization",
+  "phase": "observing",
+  "recorded_at": "2026-08-20T08:52:00+08:00",
+  "independence": "same Codex context; browser DOM observation is runtime evidence but not an independent human review",
+  "measurements": [
+    {"id": "S1", "target": "后端服务编译和测试", "result": "passed", "evidence": "ccb-system reactor tests: 24 run, 0 failures, 0 errors"},
+    {"id": "S2", "target": "前端类型检查和生产构建", "result": "passed", "evidence": "vue-tsc --noEmit and Vite production build completed"},
+    {"id": "S3", "target": "Flyway 迁移结构", "result": "passed", "evidence": "check-flyway-migrations passed for 50 migrations"},
+    {"id": "S4", "target": "工作区空白字符", "result": "passed", "evidence": "git diff --check exited 0"},
+    {"id": "S5", "target": "项目组织架构前端布局", "result": "passed", "evidence": "browser DOM shows independent project organization tree, all-organizations filter, member organization column, and role associated-person column"},
+    {"id": "S6", "target": "新后端接口和V50运行态迁移", "result": "passed", "evidence": "旧后端已停止并由当前源码重新打包启动；启动日志确认校验50个迁移并成功应用V50，项目详情组织接口返回空数据而非404/500"},
+    {"id": "S7", "target": "组织维护入口和弹窗", "result": "passed", "evidence": "browser DOM shows administrator project owner can reach 新增根组织, member edit/remove, and role maintenance; organization dialog exposes parent, code, name, sort, and status fields"},
+    {"id": "S8", "target": "375x812移动端布局", "result": "passed", "evidence": "browser evaluate measured innerWidth/bodyWidth/document scrollWidth all 375 while organization dialog was open"},
+    {"id": "S9", "target": "浏览器控制台", "result": "passed", "evidence": "browser tab dev logs returned no warning or error entries"}
+  ],
+  "feedback": [
+    "按用户确认，项目组织树使用 pm_project_org，未复用 sys_org；系统组织树仍仅用于既有计划和风险字段。",
+    "当前数据库没有预置项目组织节点，浏览器显示空状态是正常数据状态；本次未提交浏览器写操作，避免在本地现有数据上产生副作用。"
+  ],
+  "conclusion": "当前源码、V50迁移、新接口和前端维护入口已在线；健康检查、迁移应用、项目组织接口读取和浏览器页面入口均已验证。尚未通过浏览器写入虚构组织数据做端到端保存验证。"
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260817-031-project-risk-drawer-comments",
+  "phase": "executing",
+  "tasks": [
+    {"id": "T1", "goal": "追加评论表并提供租户/项目/风险范围的GET/POST接口", "writes": ["server/src/platform/infrastructure/src/main/resources/db/migration/V44__project_risk_comments.sql", "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java", "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"], "checks": ["mvn -pl :ccb-system -am test", "node scripts/check-flyway-migrations.mjs"]},
+    {"id": "T2", "goal": "实现风险右侧抽屉三模式和评论状态", "writes": ["web/src/api/project.ts", "web/src/types/project.ts", "web/src/views/ProjectView.vue", "web/src/styles.css"], "checks": ["npm --prefix web run build", "desktop browser", "375x812 browser"]},
+    {"id": "T3", "goal": "集成采样并记录范围和残余风险", "writes": [".ai-control/requirements/req-20260817-031-project-risk-drawer-comments/*.json"], "checks": ["git diff --check", "health 200", "browser console"]}
+  ],
+  "dependencies": [{"from": "T1", "to": "T2"}, {"from": "T2", "to": "T3"}],
+  "stop_conditions": ["跨租户/跨项目评论读取或写入", "评论绕过风险字段权限", "V43被修改", "抽屉白屏或移动端溢出"],
+  "rollback": "恢复任务范围内代码并按部署流程回滚V44，不修改V43。"
+}

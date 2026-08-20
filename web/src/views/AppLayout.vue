@@ -68,15 +68,25 @@ function findMenuTitle(nodes: RouteNode[], path: string): string | null {
   return matchTitle || null
 }
 const title = computed(() => String(route.meta.title || findMenuTitle(auth.routes, route.path) || fallbackTitles[String(route.params.section || route.name || 'dashboard')] || '系统模块'))
+const appTabPath = computed(() => route.name === 'project-detail' && route.params.projectId ? route.path : route.fullPath)
 const themeLabel = computed(() => {
   const palette = paletteOptions.find(item => item.key === theme.palette)?.label || '默认配色'
   const appearance = { light: '浅色', dark: '深色', system: '跟随系统' }[theme.appearance]
   return palette + ' / ' + appearance
 })
 
+function removeProjectQueryTabs() {
+  tabsStore.tabs
+    .filter(tab => tab.path.startsWith('/projects/') && tab.path.includes('?'))
+    .forEach(tab => tabsStore.close(tab.path))
+}
+
 watch(() => route.fullPath, () => {
   mobileMenuOpen.value = false
-  if (theme.tabsEnabled) tabsStore.open({ path: route.fullPath, title: title.value, closable: route.path !== '/dashboard' })
+  if (theme.tabsEnabled) {
+    if (route.name === 'project-detail') removeProjectQueryTabs()
+    tabsStore.open({ path: appTabPath.value, title: title.value, closable: route.path !== '/dashboard' })
+  }
 }, { immediate: true })
 
 async function logout() {
@@ -186,7 +196,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
           <div class="header-left"><el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button><el-button v-else-if="sideNavigationVisible" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button><div class="breadcrumb"><span>控制中心</span><b>/</b><strong>{{ title }}</strong></div></div>
           <div v-if="!topNavigationVisible" class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
         </el-header>
-        <UiTabs v-if="theme.tabsEnabled" :current-path="route.fullPath" />
+        <UiTabs v-if="theme.tabsEnabled" :current-path="appTabPath" />
         <el-main class="app-main"><router-view :key="`${route.fullPath}:${tabsStore.refreshKey(route.fullPath)}`" /></el-main>
       </el-container>
     </el-container>

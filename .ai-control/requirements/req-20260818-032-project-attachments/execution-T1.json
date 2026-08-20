@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "completed",
+  "scope": [
+    "pom.xml",
+    "server/src/platform/boot/pom.xml",
+    "server/src/platform/attachment/**",
+    "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/model/FilePreviewUrlProvider.java",
+    "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/service/KkFileViewUrlBuilder.java",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V45__persistent_project_attachments.sql"
+  ],
+  "actions": [
+    "新增 ccb-attachment 平台模块和 AttachmentPort 公开契约",
+    "实现 MinIO 持久对象、附件元数据、短时下载和 kkFileView 预览地址",
+    "追加 V45 附件表及中文表字段注释"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-attachment,:ccb-system -am test", "result": "passed", "evidence": "attachment 3 tests; file-preview 7 tests; infrastructure 6 tests"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed", "evidence": "45 migrations checked"}
+  ],
+  "invariants_checked": ["object_key is absent from public models", "V45 is append-only", "temporary file-preview behavior is preserved"],
+  "open_risks": ["real MinIO object lifecycle remains pending runtime verification"]
+}

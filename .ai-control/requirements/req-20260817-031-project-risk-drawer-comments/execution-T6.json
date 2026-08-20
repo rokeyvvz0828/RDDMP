@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260817-031-project-risk-drawer-comments",
+  "task_id": "T6",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path": "web/src/views/ProjectView.vue", "purpose": "进度描述入口恢复问题上报只读摘要，并将评论输入框置于评论列表之前"},
+    {"path": "web/src/styles.css", "purpose": "调整评论输入区底部分隔线和间距"},
+    {"path": "docs/engineering-control/designs/2026-08-17-project-risk-drawer-comments-design.md", "purpose": "记录进度描述只读摘要修订4"}
+  ],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "result": "vue-tsc和Vite构建通过；保留既有chunk体积及Rollup注释警告"},
+    {"command": "git diff --check", "exit_code": 0, "result": "通过；仅有既有LF/CRLF提示"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "result": "布局调整后vue-tsc和Vite构建通过；保留既有chunk体积及Rollup注释警告"}
+  ],
+  "invariants_checked": [
+    {"invariant": "进度描述只读摘要不可编辑", "result": "使用el-descriptions，无v-model和编辑控件"},
+    {"invariant": "风险更新接口契约不变", "result": "未修改API、DTO、权限和后端代码"}
+  ],
+  "unresolved_items": ["评论发表接口未重复提交测试数据", "任务范围检查仍受licon分支命名规则阻塞"],
+  "recommended_next": "observe"
+}
