@@ -1,0 +1,28 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/api/project.ts", "purpose": "Add typed project plan-group API calls"},
+    {"path_or_resource": "web/src/types/project.ts", "purpose": "Add plan-group and group_id contracts"},
+    {"path_or_resource": "web/src/views/ProjectView.vue", "purpose": "Render group-plan-child tree, drag target, mobile move dialog, and Chinese hint"},
+    {"path_or_resource": "web/src/styles.css", "purpose": "Style group drop zones and drag states"}
+  ],
+  "requirements_addressed": ["R1", "R3", "R4"],
+  "commands": [
+    {"command": "npx vue-tsc --noEmit", "exit_code": 0, "salient_output": "TypeScript check passed."},
+    {"command": "npm --prefix web run build", "exit_code": 1, "salient_output": "vue-tsc passed; Vite stopped at esbuild spawn EPERM in this environment."}
+  ],
+  "local_checks": [
+    {"check": "Frontend type check", "result": "pass", "evidence": "vue-tsc exit code 0", "limitations": []},
+    {"check": "Frontend production build", "result": "blocked", "evidence": "Vite/esbuild failed with spawn EPERM", "limitations": ["No browser acceptance was run"]}
+  ],
+  "diff_summary": ["Added group > main plan > child plan tree", "Added desktop drag and mobile move action", "Added visible Chinese drag instruction"],
+  "invariants_checked": [
+    {"invariant": "Child plans are not independent drag sources", "result": "pass by source inspection", "evidence": "draggable is enabled only when parent_id === 0"},
+    {"invariant": "Move failure does not mutate local state", "result": "pass by source inspection", "evidence": "refresh occurs after successful API response"}
+  ],
+  "disturbances": ["Vite build is blocked by local esbuild process permissions"],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Verify drag behavior in a real browser after the local Vite process permission issue is resolved"],
+  "recommended_next": "observe"
+}

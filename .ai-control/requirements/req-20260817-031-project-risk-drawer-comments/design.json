@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "topic": "project-risk-drawer-comments",
+  "design_revision": 4,
+  "design_status": "approved",
+  "layout_revision": {
+    "status": "approved",
+    "summary": "采用固定头部、模式页签、局部滚动正文和固定底部操作区的企业后台抽屉布局",
+    "desktop_width": "min(820px, 100vw)",
+    "mobile_width": "100vw",
+    "verification": ["桌面风险编辑", "375x812三模式切换", "页面无横向溢出", "控制台无错误"]
+  },
+  "entry_mode_revision": {
+    "status": "approved",
+    "visible_modes": {"report": ["report"], "progress": ["progress"], "tracking": ["progress", "tracking"]},
+    "operation_layout": "风险操作列使用不换行紧凑操作组",
+    "comment_identity": "UiUserIdentity默认头像姓名和悬浮资料卡",
+    "progress_report_summary": "进度描述入口显示问题上报只读摘要，不显示问题跟踪"
+  },
+  "human_document": "docs/engineering-control/designs/2026-08-17-project-risk-drawer-comments-design.md",
+  "objective": "将项目风险改为右侧抽屉三模式，并持久化项目成员可发表的进展评论。",
+  "users": ["项目成员查看风险和发表评论", "项目负责人或超级管理员维护风险字段"],
+  "requirements": [
+    {"id": "R1", "statement": "新增和编辑只显示问题上报第一部分", "acceptance": ["右侧抽屉没有第二、三部分编辑提交控件"], "priority": "must", "source": "用户确认", "counterexample": ["新增风险可直接编辑第三部分"]},
+    {"id": "R2", "statement": "进度描述只读展示上报信息并按最新优先发表评论", "acceptance": ["UiUserIdentity显示头像姓名", "评论按时间倒序", "发表后评论置顶"], "priority": "must", "source": "用户确认", "counterexample": ["评论按旧到新排列", "客户端可伪造评论作者"]},
+    {"id": "R3", "statement": "问题跟踪维护第三部分字段", "acceptance": ["保存后风险跟踪字段刷新"], "priority": "must", "source": "用户确认", "counterexample": ["跟踪按钮仍打开全量表单"]},
+    {"id": "R4", "statement": "评论复用项目可见范围且不新增评论权限", "acceptance": ["项目成员可发表", "非成员读写均被拒绝", "风险字段权限不被评论绕过"], "priority": "must", "source": "用户确认", "counterexample": ["跨项目读取评论", "评论接口授予风险字段修改能力"]},
+    {"id": "R5", "statement": "V44和全链路验证通过", "acceptance": ["迁移、测试、构建、范围和浏览器检查有证据"], "priority": "must", "source": "仓库规约", "counterexample": ["修改V43历史迁移"]}
+  ],
+  "invariants": ["tenant_id/project_id/risk_id三层范围", "评论作者由AuthUser确定", "V43不修改"],
+  "constraints": ["保持现有Java包名和Vue模式", "只修改任务范围授权文件", "不新增评论权限"],
+  "non_goals": ["通知", "附件", "审批", "业务表单元数据", "项目范围调整"],
+  "selected_approach": {"name": "同一右侧抽屉三模式", "reason": "保留项目详情上下文并降低重复字段", "alternatives": [{"name": "多个弹框", "rejected_because": "状态和字段重复"}, {"name": "独立详情页", "rejected_because": "破坏项目详情Tab上下文"}]},
+  "architecture": {"boundary": {"inside": ["ProjectController评论接口", "ProjectService评论和访问校验", "V44评论表", "ProjectView风险抽屉"], "outside": ["独立评论权限", "通知附件审批"]}, "components": [{"name": "ProjectService", "responsibility": "评论范围、校验、持久化和审计", "depends_on": ["JdbcTemplate", "AuthUser"]}, {"name": "ProjectView", "responsibility": "抽屉模式、表单和评论状态", "depends_on": ["UiUserIdentity", "project API"]}], "interfaces": [{"name": "risk-comments", "producer": "ProjectController/ProjectService", "consumers": ["ProjectView"], "contract": "GET列表和POST comment_text，作者由认证用户决定"}]},
+  "data_flows": [{"input": "项目成员进入进度描述", "transitions": ["加载风险评论", "按时间倒序渲染", "提交评论", "服务端校验并写入"], "output": "最新评论置顶"}],
+  "error_handling": [{"condition": "非成员或租户不匹配", "behavior": "统一拒绝", "recovery": "保留当前页面并显示中文错误"}, {"condition": "评论为空/超长", "behavior": "服务端400，前端阻止发送", "recovery": "保留输入重试"}],
+  "quality_attributes": {"security": ["服务端认证、项目范围和租户校验"], "performance": ["按风险索引查询评论"], "compatibility": ["V44追加、V43不改"], "operations": ["迁移检查和审计"]},
+  "verification_strategy": [{"requirement_ids": ["R1", "R2", "R3"], "signal": "抽屉模式和评论DOM状态", "method": "浏览器桌面/移动验收"}, {"requirement_ids": ["R4"], "signal": "服务端范围和权限测试", "method": "Maven测试和运行态接口"}, {"requirement_ids": ["R5"], "signal": "构建、迁移、范围命令", "method": "自动化检查"}],
+  "assumptions": [{"text": "UiUserIdentity可接收评论作者适配对象", "basis": "现有组件props", "falsifier": "TypeScript构建失败"}],
+  "unknowns": [],
+  "decisions": [{"id": "D1", "decision": "评论不新增独立权限", "reason": "用户明确所有可进入风险页面的人可发表", "source": "用户确认"}, {"id": "D2", "decision": "评论POST同步风险progress_description摘要", "reason": "兼容已有风险字段", "source": "已确认设计"}],
+  "risks": [{"risk": "V43已执行环境迁移顺序", "impact": "评论表未建导致接口失败", "mitigation": "追加V44并运行Flyway检查/启动验证"}],
+  "approval": {"status": "approved", "evidence": "用户确认先不考虑权限且确认实施抽屉、评论和跟踪设计", "confirmed_at": "2026-08-17T18:00:00+08:00"}
+}

@@ -1,0 +1,21 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V38__project_plan_number_and_calendar.sql", "purpose": "plan rule, sequence, code and unique index"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "settings persistence, locked sequence allocation, progress average"},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "purpose": "insert placeholder and generated code regression test"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3"],
+  "commands": [
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test", "exit_code": 0, "salient_output": "ccb-system tests passed; 9 tests in focused reactor"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "no whitespace errors; Windows line-ending warnings only"}
+  ],
+  "local_checks": [{"check": "create plan SQL parameter count", "result": "passed", "evidence": "focused regression test and source SQL have 14 columns/14 placeholders", "limitations": ["not a high-volume concurrency test"]}],
+  "diff_summary": ["added V38 schema fields and index", "server owns plan code generation", "project progress is AVG(progress)"],
+  "invariants_checked": [{"invariant": "tenant and permission predicates preserved", "result": "passed", "evidence": "existing ProjectService access and action checks retained"}],
+  "disturbances": [{"event": "runtime initially used stale service and exposed SQL parameter 15 failure", "impact": "browser create plan failed", "resolution": "corrected placeholder count and restarted packaged backend"}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["high-volume concurrent plan creation requires dedicated load testing"],
+  "recommended_next": "observe"
+}

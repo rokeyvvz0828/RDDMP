@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "observed",
+  "recorded_at": "2026-08-17T14:32:42+08:00",
+  "observations": [
+    {
+      "scenario": "Fresh overview before selection",
+      "result": "passed",
+      "evidence": "At /projects/910000000003001?tab=overview the main Gantt rendered one canvas, the child area showed 请选择主计划, and the body/document scroll widths were both 1280."
+    },
+    {
+      "scenario": "Select main plan with children",
+      "result": "passed",
+      "evidence": "Clicking the 平台升级总体计划 bar produced 平台升级总体计划 · 子计划甘特图 and one child canvas; child rows were rendered below the selected parent context."
+    },
+    {
+      "scenario": "Switch main plan without children",
+      "result": "passed",
+      "evidence": "Clicking the 上线验收计划 bar changed the child heading to 上线验收计划 · 子计划甘特图 and showed 该主计划暂无有效日期的子计划 with no child canvas."
+    },
+    {
+      "scenario": "Switch back and refresh",
+      "result": "passed",
+      "evidence": "Switching back restored the first child canvas; a subsequent refresh returned to the no-selection prompt."
+    },
+    {
+      "scenario": "Layout and console",
+      "result": "passed",
+      "evidence": "The reordered schedule was visually inspected in the dark tech-blue theme; after a fresh reload the page had no runtime errors and no page-level horizontal overflow."
+    }
+  ],
+  "coverage_note": "The available in-app browser remained fixed at 1280x720; independent mobile viewport sampling was unavailable.",
+  "residual_risks": ["Run final mobile visual checks at 375x812, 390x844 and 430x932 in a resizable browser before production release."]
+}

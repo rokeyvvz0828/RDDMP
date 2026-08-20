@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "control_prefix": "req-20260813-028-project-management-demo-data",
+  "phase": "observed",
+  "observed_at": "2026-08-13T09:14:00+08:00",
+  "sensors": [
+    {
+      "name": "backend_health",
+      "endpoint": "http://127.0.0.1:8080/actuator/health",
+      "result": "HTTP 200",
+      "value": "{\"status\":\"UP\"}"
+    },
+    {
+      "name": "mock_sync_log",
+      "result": "passed",
+      "value": "dataset=rddmp-local-platform version=2026.08.13.1 rows=153"
+    },
+    {
+      "name": "project_workbench_api",
+      "endpoint": "GET /api/project/workbench",
+      "result": "passed after local admin login",
+      "value": "4 projects returned; RDDMP-PLATFORM has 4 plans and 4 members; RDDMP-DATA has 3 plans and 3 members"
+    },
+    {
+      "name": "project_detail_api",
+      "endpoint": "GET /api/project/{id}",
+      "result": "passed",
+      "value": "Both new projects returned main/child plan parent IDs, roles, members, lead organizations, and cooperating organizations"
+    },
+    {
+      "name": "frontend_reachability",
+      "endpoint": "http://127.0.0.1:5173",
+      "result": "HTTP 200"
+    }
+  ],
+  "residual_risks": [
+    "This is local mock data and is synchronized only when the local profile and mock-data switch are enabled.",
+    "Terminal output may display Chinese text with incorrect console encoding; the JSON parser and API values remain valid."
+  ]
+}

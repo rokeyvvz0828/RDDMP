@@ -1,0 +1,16 @@
+{
+  "baseline_revision":"baseline-2",
+  "model_revision":"modeling-1",
+  "tasks":[
+    {"id":"T1","goal":"新增项目计划分组数据模型","requirement_ids":["R1","R2","R3"],"prerequisites":[],"input_facts":["V39是当前计划最新迁移","计划由parent_id维护层级"],"write_scope":["V40迁移","MockDataInitializer"],"invariants":["只追加迁移","group_id可空","不改parent_id"],"interface_contracts":["pm_project_plan_group","pm_project_plan.group_id"],"non_goals":["不改历史迁移","不修改计划编号"],"action_bounds":["仅当前任务范围文件"],"acceptance_checks":["表字段和注释完整","存量group_id为空"],"evidence_required":["迁移静态检查","git diff --check"],"rollback":"回退V40和mock登记","stop_conditions":["版本冲突或需要手工生产改表"],"escalation_conditions":["实际数据库结构与迁移冲突"]},
+    {"id":"T2","goal":"新增分组REST和事务性主计划移动","requirement_ids":["R1","R2","R5"],"prerequisites":["T1"],"input_facts":["ProjectService已有requireAction和requireProjectAccess"],"write_scope":["ProjectController","ProjectService","ProjectServiceTest"],"invariants":["服务端校验租户/项目/计划","子计划不能作为移动源","事务同步后代"],"interface_contracts":["分组CRUD接口","PUT plans/{planId}/group"],"non_goals":["不新增权限码","不跨项目移动"],"action_bounds":["复用现有项目计划权限"],"acceptance_checks":["拒绝子计划、跨项目和无权限请求","多层后代group_id同步","删除分组不删计划"],"evidence_required":["ProjectServiceTest","Maven测试输出"],"rollback":"恢复后端文件和测试","stop_conditions":["无法验证后代事务更新"],"escalation_conditions":["需要跨模块写表"]},
+    {"id":"T3","goal":"实现分组三级树、拖拽和移动菜单","requirement_ids":["R1","R3","R4"],"prerequisites":["T2"],"input_facts":["ProjectView使用UiDataTable树","移动端不依赖拖拽"],"write_scope":["project.ts","project types","ProjectView.vue","styles.css"],"invariants":["子计划不可单独移动","失败不改本地状态","中文提示"],"interface_contracts":["分组REST契约","group_id/group_name字段"],"non_goals":["不重做计划表单","不引入新UI框架"],"action_bounds":["复用现有组件和主题变量"],"acceptance_checks":["桌面拖拽主计划","移动端移动菜单","新建编辑删除分组","显示可以拖动主计划进行分组"],"evidence_required":["Vite构建","浏览器桌面/移动检查"],"rollback":"恢复前端四个文件","stop_conditions":["横向溢出或拖拽目标无法识别"],"escalation_conditions":["无法保持既有计划操作"]},
+    {"id":"T4","goal":"集成验收分组持久化和授权","requirement_ids":["R1","R2","R3","R4","R5"],"prerequisites":["T3"],"input_facts":["T1-T3局部检查完成"],"write_scope":["当前任务验收账本"],"invariants":["无跨项目写入","无计划丢失","后端为事实来源"],"interface_contracts":["T1-T3产物"],"non_goals":["不扩大业务范围"],"action_bounds":["只运行验证和记录证据"],"acceptance_checks":["刷新保持","子计划不拆组","删除分组不删计划","无权拒绝"],"evidence_required":["后端测试","前端构建","git diff --check","浏览器检查"],"rollback":"保留账本并按任务边界回退","stop_conditions":["出现跨项目写入或计划丢失"],"escalation_conditions":["本地数据库或浏览器不可用"]}
+  ],
+  "dependency_edges":[{"from":"T1","to":"T2","reason":"数据模型先于服务接口"},{"from":"T2","to":"T3","reason":"前端依赖后端契约"},{"from":"T3","to":"T4","reason":"集成验收依赖完整交互"}],
+  "parallel_groups":[["T1"],["T2"],["T3"],["T4"]],
+  "integration_points":["V40与ProjectService字段契约","ProjectService与ProjectView分组接口","数据库和浏览器验收"],
+  "sampling_plan":["T1后检查迁移字段","T2后运行Maven测试","T3后运行前端构建和浏览器","T4运行全量检查"],
+  "coverage":[{"requirement_id":"R1","task_ids":["T1","T2","T3","T4"]},{"requirement_id":"R2","task_ids":["T1","T2","T4"]},{"requirement_id":"R3","task_ids":["T1","T3","T4"]},{"requirement_id":"R4","task_ids":["T3","T4"]},{"requirement_id":"R5","task_ids":["T2","T4"]}],
+  "plan_status":"ready"
+}

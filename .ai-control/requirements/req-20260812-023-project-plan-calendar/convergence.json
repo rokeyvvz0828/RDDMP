@@ -1,0 +1,23 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["settings API test coverage", "browser saved settings alert"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["focused test", "browser returned RDC-2026-X01-2026", "temporary plan removed"], "limitations": ["no high-volume concurrency test"]},
+    {"id": "R3", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["backend AVG(progress) implementation", "project card and detail displayed 26%"], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T2", "T3"], "evidence": ["frontend build", "browser showed 2026 年 8 月 calendar with dated plan"], "limitations": ["mobile and dense overlap visual QA not sampled"]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["Maven focused test exit 0", "SQL defect corrected and runtime rechecked"]},
+    {"id": "T2", "status": "verified", "evidence": ["frontend production build exit 0", "browser settings/progress/calendar DOM"]},
+    {"id": "T3", "status": "verified", "evidence": ["health 200", "two final zero-error samples", "temporary acceptance data removed"]}
+  ],
+  "feedback_summary": {"total": 1, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [{"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}, {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}],
+  "regression_checks": [{"check": "backend focused tests", "result": "pass", "evidence": "9 tests passed"}, {"check": "frontend production build", "result": "pass", "evidence": "2330 modules transformed; build exit 0"}, {"check": "runtime health", "result": "pass", "evidence": "8080 actuator health 200"}],
+  "invariant_results": [{"invariant": "server-side tenant and permission checks", "result": "pass", "evidence": "existing ProjectService guards retained"}, {"invariant": "no independent calendar table", "result": "pass", "evidence": "calendar derives from plans in ProjectView"}],
+  "scope_audit": {"within_scope": true, "unexpected_changes": ["pre-existing unrelated dirty files remain untouched"]},
+  "disturbance_resilience": [{"disturbance": "stale backend runtime", "result": "pass", "evidence": "packaged restart loaded Flyway V38 and corrected plan creation"}, {"disturbance": "governance checker rejects existing REQ-20260810-018 YAML", "result": "deferred outside scope", "evidence": "node scripts/check-all-governance.mjs failure"}],
+  "residual_risks": ["high-volume concurrent plan creation needs load testing", "governance checker has a pre-existing unrelated YAML compatibility failure", "calendar dense overlap is summarized after three plans per day"],
+  "gate_result": "pass",
+  "route_reason": "all four must requirements have verified task coverage, final P0/P1 are zero, runtime and browser evidence passed; non-blocking residual risks are disclosed"
+}

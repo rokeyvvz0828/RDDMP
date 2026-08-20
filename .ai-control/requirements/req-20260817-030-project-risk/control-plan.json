@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260817-030-project-risk",
+  "tasks": [
+    {"id": "T1", "goal": "Implement risk schema, parameters, permissions and service contract", "writes": ["server/src/platform/infrastructure/src/main/resources/db/migration/V43__project_risk_management.sql", "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java", "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"], "acceptance": ["risk CRUD is tenant/project scoped", "generated numbering and enum validation pass", "permissions and audit are enforced"]},
+    {"id": "T2", "goal": "Implement project risk tab and form", "writes": ["web/src/api/project.ts", "web/src/types/project.ts", "web/src/views/ProjectView.vue", "web/src/styles.css"], "acceptance": ["tab follows plans", "three sections contain all fields", "enum/org/date controls and states are complete"]},
+    {"id": "T3", "goal": "Verify and converge", "writes": [".ai-control/requirements/req-20260817-030-project-risk/*.json"], "acceptance": ["tests/build/static/browser evidence recorded", "no open P0/P1 or scope deviation"]}
+  ],
+  "stop_conditions": ["cross-project or cross-tenant query", "client-controlled risk number accepted", "missing server-side permission", "migration edits a published script", "browser white screen or form data loss"],
+  "rollback": "Restore scoped code and use deployment rollback for V43 according to migration policy."
+}

@@ -1,0 +1,2083 @@
+{
+  "schema_version": 4,
+  "revision": 7,
+  "created_at": "2026-08-18T03:11:54+00:00",
+  "updated_at": "2026-08-18T04:00:00+00:00",
+  "mode": "standard",
+  "phase": "observing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认按可复用持久附件平台方案进入实施；计划确认=用户确认按该计划进入代码实施",
+      "recorded_at": "2026-08-18T03:11:54+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "model.json已记录，边界、状态、接口和传感器可观测",
+      "recorded_at": "2026-08-18T03:13:16+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "modeling gate通过：R1-R5均可观测且有受权执行器",
+      "recorded_at": "2026-08-18T03:16:02+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "planning gate通过：R1-R5全部有任务、传感器、回滚和停止条件",
+      "recorded_at": "2026-08-18T03:17:22+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T3实现与自动化检查完成；T4记录治理、分支、Docker和认证浏览器环境限制，尚未宣称收敛",
+      "recorded_at": "2026-08-18T04:00:00+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认按可复用持久附件平台方案进入实施；计划确认=用户确认按该计划进入代码实施",
+        "recorded_at": "2026-08-18T03:11:54+00:00",
+        "data": {
+          "objective": "项目详情支持持久附件上传、列表、在线预览、下载和受控删除",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "项目详情显示项目附件页签并提供明确加载/空/失败状态",
+              "acceptance": [
+                "项目成员进入项目详情可以打开附件页签"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "只添加上传按钮但没有项目上下文"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "附件持久保存并绑定项目",
+              "acceptance": [
+                "上传后刷新页面仍可看到文件元数据"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "仅存为临时预览文件"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "附件支持kkFileView在线预览和短时下载",
+              "acceptance": [
+                "预览和下载地址由服务端按需生成"
+              ],
+              "priority": "must",
+              "source": "用户确认的设计",
+              "counterexample": [
+                "前端拼接MinIO或外部URL"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "附件遵循项目成员、负责人和超级管理员权限",
+              "acceptance": [
+                "非成员跨项目和跨租户请求被拒绝"
+              ],
+              "priority": "must",
+              "source": "现有项目权限规则",
+              "counterexample": [
+                "仅依靠前端隐藏按钮"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "迁移、测试、构建和浏览器验收通过",
+              "acceptance": [
+                "V45追加、后端测试、前端构建和桌面/移动验收有证据"
+              ],
+              "priority": "must",
+              "source": "仓库交付规约",
+              "counterexample": [
+                "修改已发布迁移"
+              ]
+            }
+          ],
+          "invariants": [
+            "tenant_id + business_type + business_id三层范围",
+            "对象键只在服务端",
+            "V45追加且历史迁移不变",
+            "临时file-preview语义不变"
+          ],
+          "constraints": [
+            "保持com.ccb包名",
+            "业务模块只能依赖公开AttachmentPort",
+            "前端复用UiFilePreview",
+            "项目权限在ProjectService服务端校验"
+          ],
+          "non_goals": [
+            "版本管理",
+            "全文检索",
+            "分片上传",
+            "外部分享",
+            "匿名上传"
+          ],
+          "assumptions": [
+            {
+              "text": "MinIO和kkFileView已按现有本地配置可达",
+              "basis": "现有docker-compose和file-preview能力",
+              "falsifier": "运行态预览或对象写入失败"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "项目附件直接创建BOUND记录",
+              "reason": "项目ID在上传入口已知，避免产生孤儿TEMP文件",
+              "source": "用户确认的项目页签场景"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R3"
+              ],
+              "signal": "浏览器DOM和交互",
+              "method": "桌面/375px项目详情附件页签"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R4"
+              ],
+              "signal": "API、数据库和权限结果",
+              "method": "服务测试和项目成员/非成员请求"
+            },
+            {
+              "requirement_ids": [
+                "R5"
+              ],
+              "signal": "构建、迁移和治理输出",
+              "method": "Maven/Vite/Flyway/governance"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "EngineeringSystemModel已按插件契约记录附件模块、项目权限、前端状态、接口、传感器、执行器和扰动",
+        "recorded_at": "2026-08-18T03:15:49+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ccb-attachment元数据与MinIO对象",
+              "ccb-system项目附件授权和HTTP适配",
+              "ProjectView项目附件页签"
+            ],
+            "environment": [
+              "MinIO服务",
+              "kkFileView服务",
+              "MySQL/Flyway",
+              "浏览器和前端调用方"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "attachment_metadata",
+              "owner": "ccb-attachment",
+              "valid_values": [
+                "BOUND",
+                "DELETED"
+              ],
+              "observable": "附件列表和数据库记录"
+            },
+            {
+              "name": "object_storage",
+              "owner": "MinIO",
+              "valid_values": [
+                "present",
+                "absent",
+                "cleanup_failed"
+              ],
+              "observable": "MinIO对象操作结果"
+            },
+            {
+              "name": "project_access",
+              "owner": "ccb-system",
+              "valid_values": [
+                "member",
+                "owner",
+                "super_admin",
+                "denied"
+              ],
+              "observable": "项目服务权限结果"
+            },
+            {
+              "name": "preview_link",
+              "owner": "ccb-attachment/file-preview",
+              "valid_values": [
+                "generated",
+                "failed"
+              ],
+              "observable": "预览接口响应和iframe加载"
+            },
+            {
+              "name": "frontend_view",
+              "owner": "frontend/application",
+              "valid_values": [
+                "loading",
+                "empty",
+                "ready",
+                "uploading",
+                "error",
+                "previewing"
+              ],
+              "observable": "浏览器DOM和控制台"
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "项目成员打开项目详情",
+              "transitions": [
+                "读取项目详情",
+                "显示项目附件页签",
+                "加载附件列表"
+              ],
+              "outputs": [
+                "附件页签和加载/空/失败状态"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "选择有效文件",
+              "transitions": [
+                "项目更新权限校验",
+                "文件校验",
+                "MinIO写入",
+                "附件元数据写入"
+              ],
+              "outputs": [
+                "BOUND附件，刷新后可查询"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "点击预览或下载",
+              "transitions": [
+                "项目读取权限校验",
+                "附件范围查询",
+                "生成短时地址",
+                "返回业务响应"
+              ],
+              "outputs": [
+                "UiFilePreview地址或下载地址"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "非成员或跨租户请求",
+              "transitions": [
+                "ProjectService项目访问校验"
+              ],
+              "outputs": [
+                "拒绝且不访问对象"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "代码和迁移变更",
+              "transitions": [
+                "单元测试",
+                "构建",
+                "Flyway和治理检查",
+                "浏览器验收"
+              ],
+              "outputs": [
+                "可复核交付证据"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "MinioStorageService",
+              "producers": [
+                "platform/infrastructure"
+              ],
+              "consumers": [
+                "platform/attachment"
+              ],
+              "invariant": "只由服务端使用对象键并生成短时地址"
+            },
+            {
+              "name": "FilePreviewUrlProvider",
+              "producers": [
+                "platform/file-preview"
+              ],
+              "consumers": [
+                "platform/attachment"
+              ],
+              "invariant": "只接受可信MinIO源地址"
+            },
+            {
+              "name": "AttachmentPort",
+              "producers": [
+                "platform/attachment"
+              ],
+              "consumers": [
+                "platform/system"
+              ],
+              "invariant": "不暴露对象键，所有方法带租户和业务范围"
+            },
+            {
+              "name": "ProjectAttachmentHttp",
+              "producers": [
+                "platform/system"
+              ],
+              "consumers": [
+                "frontend/application"
+              ],
+              "invariant": "项目ID始终由路径和服务端权限共同确定"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "AttachmentService",
+              "method": "单元测试和mock存储调用",
+              "blind_spots": [
+                "真实MinIO网络"
+              ],
+              "independence": "测试断言与服务实现分离"
+            },
+            {
+              "id": "S2",
+              "target": "V45迁移",
+              "method": "check-flyway-migrations.mjs",
+              "blind_spots": [
+                "真实数据库凭据"
+              ],
+              "independence": "脚本读取迁移文件"
+            },
+            {
+              "id": "S3",
+              "target": "项目权限",
+              "method": "ProjectServiceTest和API响应",
+              "blind_spots": [
+                "未覆盖的角色组合"
+              ],
+              "independence": "认证主体和返回状态观测"
+            },
+            {
+              "id": "S4",
+              "target": "前端附件页签",
+              "method": "Vite构建和浏览器DOM",
+              "blind_spots": [
+                "非Chromium布局"
+              ],
+              "independence": "渲染结果和控制台观测"
+            },
+            {
+              "id": "S5",
+              "target": "上传预览运行态",
+              "method": "MinIO/kkFileView/浏览器链路",
+              "blind_spots": [
+                "生产网络拓扑"
+              ],
+              "independence": "真实服务响应和对象状态"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "附件平台",
+              "action": "追加V45并实现对象/元数据生命周期",
+              "authority": "当前需求writable_paths",
+              "impact_radius": "新platform/attachment模块",
+              "rollback": "恢复新增代码并保留V45"
+            },
+            {
+              "id": "A2",
+              "target": "项目接口",
+              "action": "增加项目范围附件路由和AttachmentPort调用",
+              "authority": "当前需求writable_paths",
+              "impact_radius": "platform/system项目域",
+              "rollback": "移除项目附件路由和依赖"
+            },
+            {
+              "id": "A3",
+              "target": "项目详情",
+              "action": "增加附件页签、上传、预览和删除状态",
+              "authority": "当前需求writable_paths",
+              "impact_radius": "ProjectView和样式",
+              "rollback": "恢复前端附件页签改动"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "MinIO不可用",
+              "effect": "上传/下载失败",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "kkFileView无法访问签名地址",
+              "effect": "预览iframe失败",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "licon分支历史范围文件",
+              "effect": "范围发现检查失败",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "multipart上传",
+              "consequence": "附件列表在请求完成前不可刷新",
+              "sampling_rule": "等待上传响应后重新加载列表"
+            },
+            {
+              "source": "短时预览地址",
+              "consequence": "旧地址可能过期",
+              "sampling_rule": "每次预览重新请求地址"
+            },
+            {
+              "source": "对象清理",
+              "consequence": "元数据删除和对象删除结果可能分离",
+              "sampling_rule": "记录清理失败并检查对象状态"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "MinIOStorageService已有方法足以支撑附件对象生命周期",
+              "evidence": "现有put/presignedUrl/delete源码",
+              "falsifier": "测试发现必须修改基础设施公共实现"
+            },
+            {
+              "text": "项目现有权限编码可复用项目更新权限",
+              "evidence": "ProjectService.requireAction/requireProjectAccess源码",
+              "falsifier": "权限测试无法区分上传删除"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入planning"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入planning"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入planning"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入planning"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入planning"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T4写入边界、依赖、接口所有权、采样计划和覆盖关系已登记",
+        "recorded_at": "2026-08-18T03:17:21+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "附件平台与公开契约可独立测试",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "MinioStorageService提供put/presignedUrl/delete",
+                "KkFileViewUrlBuilder已有可信源校验"
+              ],
+              "write_scope": [
+                "pom.xml",
+                "server/src/platform/boot/pom.xml",
+                "server/src/platform/attachment/**",
+                "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/model/**",
+                "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/service/KkFileViewUrlBuilder.java",
+                "server/src/platform/file-preview/src/test/**",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V45__persistent_project_attachments.sql"
+              ],
+              "invariants": [
+                "对象键只在附件服务内部",
+                "V45追加",
+                "临时file-preview行为不变"
+              ],
+              "interface_contracts": [
+                "FilePreviewUrlProvider",
+                "AttachmentPort/AttachmentItem/AttachmentLink"
+              ],
+              "non_goals": [
+                "不修改MinioStorageService",
+                "不增加业务权限节点"
+              ],
+              "action_bounds": [
+                "新增ccb-attachment Maven模块和V45",
+                "公开最小模型与端口",
+                "复用现有MinIO和kkFileView适配"
+              ],
+              "acceptance_checks": [
+                "空文件/超限/类型拒绝",
+                "对象写入和元数据失败清理",
+                "租户业务范围隔离",
+                "附件测试通过"
+              ],
+              "evidence_required": [
+                "实际diff",
+                "mvn -pl :ccb-attachment -am test退出码",
+                "Flyway检查退出码"
+              ],
+              "rollback": "移除T1新增代码并保留V45回退策略",
+              "stop_conditions": [
+                "需要修改基础设施公共实现",
+                "无法清理对象"
+              ],
+              "escalation_conditions": [
+                "必须引入新的权限体系"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "项目附件接口遵循项目权限",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "ProjectService已有requireProjectAccess和requireAction"
+              ],
+              "write_scope": [
+                "governance/modules.yaml",
+                "docs/architecture/MODULES.md",
+                "docs/integration/attachment-module-contract.md",
+                "server/src/platform/system/pom.xml",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ],
+              "invariants": [
+                "项目服务不读附件表",
+                "所有接口带项目和租户范围",
+                "对象键不出现在响应"
+              ],
+              "interface_contracts": [
+                "AttachmentPort",
+                "项目附件HTTP API"
+              ],
+              "non_goals": [
+                "不修改项目成员模型",
+                "不支持业务模块绕过项目权限"
+              ],
+              "action_bounds": [
+                "system依赖attachment公开契约",
+                "增加项目范围Controller适配和测试"
+              ],
+              "acceptance_checks": [
+                "成员读",
+                "负责人/更新权限写",
+                "非成员和跨租户拒绝",
+                "项目删除处理附件"
+              ],
+              "evidence_required": [
+                "ProjectServiceTest",
+                "Maven输出",
+                "API错误响应"
+              ],
+              "rollback": "移除项目附件路由和依赖，保留V45元数据",
+              "stop_conditions": [
+                "需要直接写附件表"
+              ],
+              "escalation_conditions": [
+                "现有权限编码不足"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "项目详情附件页签可用",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R5"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "ProjectView已有页签和加载状态",
+                "UiFilePreview支持短时URL"
+              ],
+              "write_scope": [
+                "web/src/api/attachments.ts",
+                "web/src/api/project.ts",
+                "web/src/types/attachments.ts",
+                "web/src/types/project.ts",
+                "web/src/views/ProjectView.vue",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "前端不拼接外部预览地址",
+                "保存当前项目详情上下文",
+                "移动端无横向溢出"
+              ],
+              "interface_contracts": [
+                "项目附件HTTP API",
+                "UiFilePreview"
+              ],
+              "non_goals": [
+                "不修改公共预览组件",
+                "不新增全局主题"
+              ],
+              "action_bounds": [
+                "增加附件类型/API",
+                "在项目风险后新增附件页签",
+                "上传/列表/预览/下载/删除状态"
+              ],
+              "acceptance_checks": [
+                "空/加载/失败状态",
+                "上传成功刷新",
+                "预览弹窗",
+                "下载和删除",
+                "桌面和375px布局"
+              ],
+              "evidence_required": [
+                "前端构建输出",
+                "浏览器DOM/API/控制台结果",
+                "实际diff"
+              ],
+              "rollback": "恢复前端附件API、类型、页签和样式",
+              "stop_conditions": [
+                "必须改变公共UI组件契约"
+              ],
+              "escalation_conditions": [
+                "需要改变现有页签路由语义"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "完成集成验收和收敛证据",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "input_facts": [
+                "T1-T3输出和测试结果"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260818-032-project-attachments/*.json"
+              ],
+              "invariants": [
+                "范围内修改",
+                "V43/V44不变",
+                "无对象键泄露"
+              ],
+              "interface_contracts": [
+                "附件API",
+                "项目详情附件页签"
+              ],
+              "non_goals": [
+                "不扩展未批准附件功能"
+              ],
+              "action_bounds": [
+                "运行自动化检查和真实浏览器路径",
+                "记录执行/观测/验证证据"
+              ],
+              "acceptance_checks": [
+                "后端测试",
+                "前端构建",
+                "Flyway",
+                "治理",
+                "成员/非成员浏览器路径"
+              ],
+              "evidence_required": [
+                "命令退出码",
+                "API结果",
+                "DOM和控制台",
+                "范围审计"
+              ],
+              "rollback": "保留证据并关闭附件入口",
+              "stop_conditions": [
+                "跨项目访问",
+                "对象键泄露",
+                "预览白屏"
+              ],
+              "escalation_conditions": [
+                "外部服务不可用导致关键路径不可观测"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2"
+            },
+            {
+              "from": "T2",
+              "to": "T3"
+            },
+            {
+              "from": "T3",
+              "to": "T4"
+            }
+          ],
+          "parallel_groups": [],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "mvn -pl :ccb-attachment -am test",
+                "node scripts/check-flyway-migrations.mjs"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "mvn -pl :ccb-attachment,:ccb-system -am test"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "npm --prefix web run build"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "checks": [
+                "node scripts/check-all-governance.mjs",
+                "git diff --check",
+                "desktop/375px browser acceptance"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1附件平台采样",
+              "trigger": "T1执行完成",
+              "observer": "独立验证",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R5"
+              ]
+            },
+            {
+              "label": "T2项目权限采样",
+              "trigger": "T2执行完成",
+              "observer": "独立验证",
+              "sensors": [
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ]
+            },
+            {
+              "label": "T3前端采样",
+              "trigger": "T3执行完成",
+              "observer": "独立验证",
+              "sensors": [
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R5"
+              ]
+            },
+            {
+              "label": "T4集成采样",
+              "trigger": "T4执行完成",
+              "observer": "独立验证",
+              "sensors": [
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [],
+    "observing": [],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "项目详情支持持久附件上传、列表、在线预览、下载和受控删除",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "项目详情显示项目附件页签并提供明确加载/空/失败状态",
+      "acceptance": [
+        "项目成员进入项目详情可以打开附件页签"
+      ],
+      "priority": "must",
+      "source": "用户确认的设计",
+      "counterexample": [
+        "只添加上传按钮但没有项目上下文"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "附件持久保存并绑定项目",
+      "acceptance": [
+        "上传后刷新页面仍可看到文件元数据"
+      ],
+      "priority": "must",
+      "source": "用户确认的设计",
+      "counterexample": [
+        "仅存为临时预览文件"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "附件支持kkFileView在线预览和短时下载",
+      "acceptance": [
+        "预览和下载地址由服务端按需生成"
+      ],
+      "priority": "must",
+      "source": "用户确认的设计",
+      "counterexample": [
+        "前端拼接MinIO或外部URL"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "附件遵循项目成员、负责人和超级管理员权限",
+      "acceptance": [
+        "非成员跨项目和跨租户请求被拒绝"
+      ],
+      "priority": "must",
+      "source": "现有项目权限规则",
+      "counterexample": [
+        "仅依靠前端隐藏按钮"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "迁移、测试、构建和浏览器验收通过",
+      "acceptance": [
+        "V45追加、后端测试、前端构建和桌面/移动验收有证据"
+      ],
+      "priority": "must",
+      "source": "仓库交付规约",
+      "counterexample": [
+        "修改已发布迁移"
+      ]
+    }
+  ],
+  "invariants": [
+    "tenant_id + business_type + business_id三层范围",
+    "对象键只在服务端",
+    "V45追加且历史迁移不变",
+    "临时file-preview语义不变"
+  ],
+  "constraints": [
+    "保持com.ccb包名",
+    "业务模块只能依赖公开AttachmentPort",
+    "前端复用UiFilePreview",
+    "项目权限在ProjectService服务端校验"
+  ],
+  "non_goals": [
+    "版本管理",
+    "全文检索",
+    "分片上传",
+    "外部分享",
+    "匿名上传"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260818-032-project-attachments\\handoff.json",
+    "imported_at": "2026-08-18T03:11:54+00:00",
+    "topic": "project-attachments",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "project-attachments",
+      "handoff_status": "approved",
+      "created_at": "2026-08-18T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "project-attachments",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-18-project-attachments-design.md",
+        "objective": "项目详情支持持久附件上传、列表、在线预览、下载和受控删除",
+        "users": [
+          "项目成员查看和下载附件",
+          "项目负责人或项目更新权限用户维护附件",
+          "超级管理员管理所有项目附件"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "项目详情显示项目附件页签并提供明确加载/空/失败状态",
+            "acceptance": [
+              "项目成员进入项目详情可以打开附件页签"
+            ],
+            "priority": "must",
+            "source": "用户确认的设计",
+            "counterexample": [
+              "只添加上传按钮但没有项目上下文"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "附件持久保存并绑定项目",
+            "acceptance": [
+              "上传后刷新页面仍可看到文件元数据"
+            ],
+            "priority": "must",
+            "source": "用户确认的设计",
+            "counterexample": [
+              "仅存为临时预览文件"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "附件支持kkFileView在线预览和短时下载",
+            "acceptance": [
+              "预览和下载地址由服务端按需生成"
+            ],
+            "priority": "must",
+            "source": "用户确认的设计",
+            "counterexample": [
+              "前端拼接MinIO或外部URL"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "附件遵循项目成员、负责人和超级管理员权限",
+            "acceptance": [
+              "非成员跨项目和跨租户请求被拒绝"
+            ],
+            "priority": "must",
+            "source": "现有项目权限规则",
+            "counterexample": [
+              "仅依靠前端隐藏按钮"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "迁移、测试、构建和浏览器验收通过",
+            "acceptance": [
+              "V45追加、后端测试、前端构建和桌面/移动验收有证据"
+            ],
+            "priority": "must",
+            "source": "仓库交付规约",
+            "counterexample": [
+              "修改已发布迁移"
+            ]
+          }
+        ],
+        "invariants": [
+          "tenant_id + business_type + business_id三层范围",
+          "对象键只在服务端",
+          "V45追加且历史迁移不变",
+          "临时file-preview语义不变"
+        ],
+        "constraints": [
+          "保持com.ccb包名",
+          "业务模块只能依赖公开AttachmentPort",
+          "前端复用UiFilePreview",
+          "项目权限在ProjectService服务端校验"
+        ],
+        "non_goals": [
+          "版本管理",
+          "全文检索",
+          "分片上传",
+          "外部分享",
+          "匿名上传"
+        ],
+        "selected_approach": {
+          "name": "独立持久附件平台 + 项目详情适配",
+          "reason": "为后续业务复用附件生命周期，避免项目模块直接管理对象键",
+          "alternatives": [
+            {
+              "name": "项目模块直接保存MinIO对象",
+              "rejected_because": "重复建设且违反后续公共附件能力边界"
+            },
+            {
+              "name": "复用临时file-preview",
+              "rejected_because": "无法持久绑定、授权和生命周期管理"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "ccb-attachment元数据和MinIO对象",
+              "ccb-system项目权限和业务绑定",
+              "ProjectView附件页签"
+            ],
+            "outside": [
+              "附件版本管理",
+              "外部分享",
+              "临时file-preview生命周期"
+            ]
+          },
+          "components": [
+            {
+              "name": "AttachmentService",
+              "responsibility": "附件对象、元数据和短时链接"
+            },
+            {
+              "name": "ProjectService",
+              "responsibility": "项目访问和附件业务授权"
+            },
+            {
+              "name": "ProjectView",
+              "responsibility": "附件列表、上传和预览交互"
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "AttachmentPort",
+              "producer": "ccb-attachment",
+              "consumer": "ccb-system",
+              "contract": "上传绑定、列表、预览、下载和删除，不暴露对象键"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "项目成员选择文件",
+              "transitions": [
+                "项目权限校验",
+                "MinIO写入",
+                "V45元数据写入",
+                "刷新附件列表"
+              ],
+              "output": "已绑定项目附件"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "项目不可见或附件跨租户",
+            "behavior": "服务端拒绝",
+            "recovery": "前端保留当前页并显示中文错误"
+          },
+          {
+            "condition": "对象写入或预览失败",
+            "behavior": "返回失败且避免暴露对象键",
+            "recovery": "允许重试或继续使用列表"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "认证、租户、项目成员和负责人校验"
+          ],
+          "performance": [
+            "按项目索引查询元数据，短时地址按需生成"
+          ],
+          "compatibility": [
+            "追加V45，不改变旧file-preview"
+          ],
+          "operations": [
+            "审计上传、预览、下载、删除，保留失败清理状态"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R3"
+            ],
+            "signal": "浏览器DOM和交互",
+            "method": "桌面/375px项目详情附件页签"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R4"
+            ],
+            "signal": "API、数据库和权限结果",
+            "method": "服务测试和项目成员/非成员请求"
+          },
+          {
+            "requirement_ids": [
+              "R5"
+            ],
+            "signal": "构建、迁移和治理输出",
+            "method": "Maven/Vite/Flyway/governance"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "MinIO和kkFileView已按现有本地配置可达",
+            "basis": "现有docker-compose和file-preview能力",
+            "falsifier": "运行态预览或对象写入失败"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "项目附件直接创建BOUND记录",
+            "reason": "项目ID在上传入口已知，避免产生孤儿TEMP文件",
+            "source": "用户确认的项目页签场景"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "对象写入和元数据写入双写不一致",
+            "mitigation": "元数据失败删除刚写对象并记录审计"
+          },
+          {
+            "risk": "kkFileView无法访问签名MinIO地址",
+            "mitigation": "运行态检查和可恢复预览错误"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认按可复用持久附件平台方案进入实施",
+          "confirmed_at": "2026-08-18T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-18-project-attachments-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只追加V45",
+          "不改变临时file-preview",
+          "不暴露对象键",
+          "只复用公开AttachmentPort和UiFilePreview"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/attachment/**",
+            "status": "candidate-new",
+            "responsibility": "持久附件模块",
+            "evidence": "当前平台目录没有attachment模块，REQ-20260814-022规划了该能力"
+          },
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V45__persistent_project_attachments.sql",
+            "status": "candidate-new",
+            "responsibility": "附件元数据表",
+            "evidence": "当前迁移最高版本V44"
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+            "status": "existing",
+            "responsibility": "项目访问授权和业务适配",
+            "evidence": "现有项目详情服务"
+          },
+          {
+            "path": "web/src/views/ProjectView.vue",
+            "status": "existing",
+            "responsibility": "项目详情页签",
+            "evidence": "现有概览/计划/风险/成员/角色/设置页签"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "附件平台与公开契约可独立测试",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R5"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "MinioStorageService提供put/presignedUrl/delete",
+              "KkFileViewUrlBuilder已有可信源校验"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/attachment/**",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V45__persistent_project_attachments.sql"
+              ],
+              "modify": [
+                "pom.xml",
+                "server/src/platform/boot/pom.xml",
+                "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/model/**",
+                "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/service/KkFileViewUrlBuilder.java"
+              ],
+              "test": [
+                "server/src/platform/attachment/src/test/**",
+                "server/src/platform/file-preview/src/test/**"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "MinioStorageService",
+                "FilePreviewUrlProvider"
+              ],
+              "produces": [
+                "AttachmentPort",
+                "AttachmentItem",
+                "AttachmentLink"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "追加V45表和中文字段注释",
+                "command": "node scripts/check-flyway-migrations.mjs",
+                "expected": "迁移检查通过",
+                "evidence": "命令退出码和迁移数量"
+              },
+              {
+                "id": "T1-S2",
+                "action": "实现上传、列表、预览、下载、删除服务",
+                "command": "mvn -pl :ccb-attachment -am test",
+                "expected": "附件测试通过",
+                "evidence": "Surefire测试结果"
+              }
+            ],
+            "acceptance_checks": [
+              "空文件/超限/类型拒绝",
+              "元数据失败清理对象",
+              "租户和业务范围隔离"
+            ],
+            "risks": [
+              "双写一致性"
+            ],
+            "rollback": "删除新增模块源代码并按部署策略保留V45",
+            "stop_conditions": [
+              "需要修改Minio公共实现",
+              "无法清理孤儿对象"
+            ],
+            "escalation_conditions": [
+              "需要新的独立权限节点"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "项目附件接口遵循项目权限",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "ProjectService已有requireProjectAccess和requireAction"
+            ],
+            "files": {
+              "create": [
+                "docs/integration/attachment-module-contract.md"
+              ],
+              "modify": [
+                "server/src/platform/system/pom.xml",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+                "governance/modules.yaml",
+                "docs/architecture/MODULES.md"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "AttachmentPort"
+              ],
+              "produces": [
+                "GET/POST/DELETE /api/project/{projectId}/attachments",
+                "GET preview/download endpoints"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "接入公开附件模块依赖",
+                "command": "mvn -pl :ccb-system -am test",
+                "expected": "system模块可编译",
+                "evidence": "Maven输出"
+              },
+              {
+                "id": "T2-S2",
+                "action": "增加项目附件路由和权限校验",
+                "command": "mvn -pl :ccb-attachment,:ccb-system -am test",
+                "expected": "项目附件权限测试通过",
+                "evidence": "ProjectServiceTest"
+              }
+            ],
+            "acceptance_checks": [
+              "项目成员可读",
+              "项目负责人或更新权限可写",
+              "非成员和跨租户拒绝",
+              "不返回对象键"
+            ],
+            "risks": [
+              "项目权限与附件接口边界"
+            ],
+            "rollback": "恢复项目服务和依赖改动，保留V45",
+            "stop_conditions": [
+              "需要直接写附件表"
+            ],
+            "escalation_conditions": [
+              "现有权限编码不足"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "项目详情附件页签可用",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R5"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "ProjectView已有页签和加载遮罩",
+              "UiFilePreview已支持短时URL"
+            ],
+            "files": {
+              "create": [
+                "web/src/api/attachments.ts",
+                "web/src/types/attachments.ts"
+              ],
+              "modify": [
+                "web/src/api/project.ts",
+                "web/src/types/project.ts",
+                "web/src/views/ProjectView.vue",
+                "web/src/styles.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "项目附件列表/上传/预览/下载/删除API",
+                "UiFilePreview"
+              ],
+              "produces": [
+                "项目附件页签和操作状态"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "添加附件API和类型",
+                "command": "npm --prefix web run build",
+                "expected": "TypeScript通过",
+                "evidence": "构建输出"
+              },
+              {
+                "id": "T3-S2",
+                "action": "添加页签、列表、上传和预览交互",
+                "command": "npm --prefix web run build",
+                "expected": "Vite构建通过",
+                "evidence": "构建输出和浏览器DOM"
+              }
+            ],
+            "acceptance_checks": [
+              "空/加载/失败状态",
+              "上传成功刷新",
+              "预览弹窗",
+              "下载和删除",
+              "375px无横向溢出"
+            ],
+            "risks": [
+              "短时链接失效和移动端表格滚动"
+            ],
+            "rollback": "恢复前端附件文件和页签改动",
+            "stop_conditions": [
+              "必须改公共预览组件契约"
+            ],
+            "escalation_conditions": [
+              "需要新增全局主题或权限组件"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "完成集成验收和收敛证据",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "input_facts": [
+              "T1-T3测试和构建结果"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260818-032-project-attachments/*.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "附件API",
+                "项目详情页签"
+              ],
+              "produces": [
+                "执行/观测/收敛证据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "运行迁移、治理、后端和前端检查",
+                "command": "node scripts/check-flyway-migrations.mjs; node scripts/check-all-governance.mjs; git diff --check",
+                "expected": "无阻塞失败或记录环境限制",
+                "evidence": "命令退出码"
+              },
+              {
+                "id": "T4-S2",
+                "action": "浏览器验证成员和非成员路径",
+                "command": "desktop and 375px browser acceptance",
+                "expected": "上传、刷新、预览、下载、删除和拒绝状态可观察",
+                "evidence": "DOM/API/控制台结果"
+              }
+            ],
+            "acceptance_checks": [
+              "桌面和移动端",
+              "项目权限",
+              "对象键不泄露",
+              "V45不修改历史"
+            ],
+            "risks": [
+              "本地MinIO/kkFileView运行环境"
+            ],
+            "rollback": "关闭入口并保留V45证据",
+            "stop_conditions": [
+              "跨项目访问或对象键泄露"
+            ],
+            "escalation_conditions": [
+              "外部服务不可用导致运行态不可观测"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "项目接口消费附件公开契约"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "前端消费项目附件HTTP契约"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "集成验收依赖完整前后端实现"
+          }
+        ],
+        "parallel_groups": [],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "command": "mvn -pl :ccb-attachment,:ccb-system -am test; npm --prefix web run build; node scripts/check-flyway-migrations.mjs; git diff --check",
+            "expected": "全部通过，或仅保留已记录的环境/分支限制"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认按该计划进入代码实施",
+          "confirmed_at": "2026-08-18T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "项目详情附件页签",
+          "附件平台对象和元数据"
+        ],
+        "state_variable_candidates": [
+          "attachmentList",
+          "uploading",
+          "previewUrl",
+          "downloadUrl",
+          "error"
+        ],
+        "interface_candidates": [
+          "AttachmentPort",
+          "project attachment HTTP API"
+        ],
+        "sensor_candidates": [
+          "unit tests",
+          "Flyway",
+          "API responses",
+          "browser DOM",
+          "MinIO object state"
+        ],
+        "actuator_candidates": [
+          "attachment upload/bind",
+          "preview/download link",
+          "logical delete"
+        ],
+        "disturbance_candidates": [
+          "MinIO unavailable",
+          "kkFileView cannot reach signed URL",
+          "cross-tenant request",
+          "duplicate upload"
+        ],
+        "delay_candidates": [
+          "multipart upload",
+          "short-lived URL generation",
+          "browser iframe load"
+        ],
+        "assumptions": [
+          {
+            "text": "MinIO和kkFileView已按本地docker配置可达",
+            "basis": "现有docker-compose和file-preview能力",
+            "falsifier": "运行态对象写入或预览失败"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MinIO服务\", \"kkFileView服务\", \"MySQL/Flyway\", \"浏览器和前端调用方\"], \"inside\": [\"ccb-attachment元数据与MinIO对象\", \"ccb-system项目附件授权和HTTP适配\", \"ProjectView项目附件页签\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"真实MinIO网络\"], \"id\": \"S1\", \"independence\": \"测试断言与服务实现分离\", \"method\": \"单元测试和mock存储调用\", \"target\": \"AttachmentService\"}",
+      "{\"blind_spots\": [\"真实数据库凭据\"], \"id\": \"S2\", \"independence\": \"脚本读取迁移文件\", \"method\": \"check-flyway-migrations.mjs\", \"target\": \"V45迁移\"}",
+      "{\"blind_spots\": [\"未覆盖的角色组合\"], \"id\": \"S3\", \"independence\": \"认证主体和返回状态观测\", \"method\": \"ProjectServiceTest和API响应\", \"target\": \"项目权限\"}",
+      "{\"blind_spots\": [\"非Chromium布局\"], \"id\": \"S4\", \"independence\": \"渲染结果和控制台观测\", \"method\": \"Vite构建和浏览器DOM\", \"target\": \"前端附件页签\"}",
+      "{\"blind_spots\": [\"生产网络拓扑\"], \"id\": \"S5\", \"independence\": \"真实服务响应和对象状态\", \"method\": \"MinIO/kkFileView/浏览器链路\", \"target\": \"上传预览运行态\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"追加V45并实现对象/元数据生命周期\", \"authority\": \"当前需求writable_paths\", \"id\": \"A1\", \"impact_radius\": \"新platform/attachment模块\", \"rollback\": \"恢复新增代码并保留V45\", \"target\": \"附件平台\"}",
+      "{\"action\": \"增加项目范围附件路由和AttachmentPort调用\", \"authority\": \"当前需求writable_paths\", \"id\": \"A2\", \"impact_radius\": \"platform/system项目域\", \"rollback\": \"移除项目附件路由和依赖\", \"target\": \"项目接口\"}",
+      "{\"action\": \"增加附件页签、上传、预览和删除状态\", \"authority\": \"当前需求writable_paths\", \"id\": \"A3\", \"impact_radius\": \"ProjectView和样式\", \"rollback\": \"恢复前端附件页签改动\", \"target\": \"项目详情\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"上传/下载失败\", \"source\": \"MinIO不可用\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"预览iframe失败\", \"source\": \"kkFileView无法访问签名地址\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"范围发现检查失败\", \"source\": \"licon分支历史范围文件\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"现有put/presignedUrl/delete源码\", \"falsifier\": \"测试发现必须修改基础设施公共实现\", \"text\": \"MinIOStorageService已有方法足以支撑附件对象生命周期\"}",
+      "{\"evidence\": \"ProjectService.requireAction/requireProjectAccess源码\", \"falsifier\": \"权限测试无法区分上传删除\", \"text\": \"项目现有权限编码可复用项目更新权限\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S5\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S2\", \"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "附件平台与公开契约可独立测试",
+      "requirements": [
+        "R2",
+        "R3",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "MinioStorageService提供put/presignedUrl/delete",
+        "KkFileViewUrlBuilder已有可信源校验"
+      ],
+      "write_scope": [
+        "pom.xml",
+        "server/src/platform/boot/pom.xml",
+        "server/src/platform/attachment/**",
+        "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/model/**",
+        "server/src/platform/file-preview/src/main/java/com/ccb/filepreview/service/KkFileViewUrlBuilder.java",
+        "server/src/platform/file-preview/src/test/**",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V45__persistent_project_attachments.sql"
+      ],
+      "invariants": [
+        "对象键只在附件服务内部",
+        "V45追加",
+        "临时file-preview行为不变"
+      ],
+      "interface_contracts": [
+        "FilePreviewUrlProvider",
+        "AttachmentPort/AttachmentItem/AttachmentLink"
+      ],
+      "non_goals": [
+        "不修改MinioStorageService",
+        "不增加业务权限节点"
+      ],
+      "action_bounds": [
+        "新增ccb-attachment Maven模块和V45",
+        "公开最小模型与端口",
+        "复用现有MinIO和kkFileView适配"
+      ],
+      "acceptance": [
+        "空文件/超限/类型拒绝",
+        "对象写入和元数据失败清理",
+        "租户业务范围隔离",
+        "附件测试通过"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "mvn -pl :ccb-attachment -am test退出码",
+        "Flyway检查退出码"
+      ],
+      "rollback": "移除T1新增代码并保留V45回退策略",
+      "stop_conditions": [
+        "需要修改基础设施公共实现",
+        "无法清理对象"
+      ],
+      "escalation_conditions": [
+        "必须引入新的权限体系"
+      ],
+      "status": "completed",
+      "evidence": ["execution-T1.json", "observation-T1.json"],
+      "updated_at": "2026-08-18T04:00:00+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "项目附件接口遵循项目权限",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "ProjectService已有requireProjectAccess和requireAction"
+      ],
+      "write_scope": [
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        "docs/integration/attachment-module-contract.md",
+        "server/src/platform/system/pom.xml",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+      ],
+      "invariants": [
+        "项目服务不读附件表",
+        "所有接口带项目和租户范围",
+        "对象键不出现在响应"
+      ],
+      "interface_contracts": [
+        "AttachmentPort",
+        "项目附件HTTP API"
+      ],
+      "non_goals": [
+        "不修改项目成员模型",
+        "不支持业务模块绕过项目权限"
+      ],
+      "action_bounds": [
+        "system依赖attachment公开契约",
+        "增加项目范围Controller适配和测试"
+      ],
+      "acceptance": [
+        "成员读",
+        "负责人/更新权限写",
+        "非成员和跨租户拒绝",
+        "项目删除处理附件"
+      ],
+      "evidence_required": [
+        "ProjectServiceTest",
+        "Maven输出",
+        "API错误响应"
+      ],
+      "rollback": "移除项目附件路由和依赖，保留V45元数据",
+      "stop_conditions": [
+        "需要直接写附件表"
+      ],
+      "escalation_conditions": [
+        "现有权限编码不足"
+      ],
+      "status": "completed",
+      "evidence": ["execution-T2.json", "observation-T2.json"],
+      "updated_at": "2026-08-18T04:00:00+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "项目详情附件页签可用",
+      "requirements": [
+        "R1",
+        "R3",
+        "R5"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "ProjectView已有页签和加载状态",
+        "UiFilePreview支持短时URL"
+      ],
+      "write_scope": [
+        "web/src/api/attachments.ts",
+        "web/src/api/project.ts",
+        "web/src/types/attachments.ts",
+        "web/src/types/project.ts",
+        "web/src/views/ProjectView.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "前端不拼接外部预览地址",
+        "保存当前项目详情上下文",
+        "移动端无横向溢出"
+      ],
+      "interface_contracts": [
+        "项目附件HTTP API",
+        "UiFilePreview"
+      ],
+      "non_goals": [
+        "不修改公共预览组件",
+        "不新增全局主题"
+      ],
+      "action_bounds": [
+        "增加附件类型/API",
+        "在项目风险后新增附件页签",
+        "上传/列表/预览/下载/删除状态"
+      ],
+      "acceptance": [
+        "空/加载/失败状态",
+        "上传成功刷新",
+        "预览弹窗",
+        "下载和删除",
+        "桌面和375px布局"
+      ],
+      "evidence_required": [
+        "前端构建输出",
+        "浏览器DOM/API/控制台结果",
+        "实际diff"
+      ],
+      "rollback": "恢复前端附件API、类型、页签和样式",
+      "stop_conditions": [
+        "必须改变公共UI组件契约"
+      ],
+      "escalation_conditions": [
+        "需要改变现有页签路由语义"
+      ],
+      "status": "completed_with_browser_gap",
+      "evidence": ["execution-T3.json", "observation-T3.json"],
+      "updated_at": "2026-08-18T04:00:00+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "完成集成验收和收敛证据",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "T1-T3输出和测试结果"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260818-032-project-attachments/*.json"
+      ],
+      "invariants": [
+        "范围内修改",
+        "V43/V44不变",
+        "无对象键泄露"
+      ],
+      "interface_contracts": [
+        "附件API",
+        "项目详情附件页签"
+      ],
+      "non_goals": [
+        "不扩展未批准附件功能"
+      ],
+      "action_bounds": [
+        "运行自动化检查和真实浏览器路径",
+        "记录执行/观测/验证证据"
+      ],
+      "acceptance": [
+        "后端测试",
+        "前端构建",
+        "Flyway",
+        "治理",
+        "成员/非成员浏览器路径"
+      ],
+      "evidence_required": [
+        "命令退出码",
+        "API结果",
+        "DOM和控制台",
+        "范围审计"
+      ],
+      "rollback": "保留证据并关闭附件入口",
+      "stop_conditions": [
+        "跨项目访问",
+        "对象键泄露",
+        "预览白屏"
+      ],
+      "escalation_conditions": [
+        "外部服务不可用导致关键路径不可观测"
+      ],
+      "status": "partially_completed",
+      "evidence": ["execution-T4.json", "observation-T4.json", "convergence.json"],
+      "updated_at": "2026-08-18T04:00:00+00:00"
+    }
+  ],
+  "feedback": [
+    {"id": "F1", "status": "open", "text": "需要在具备登录态、MinIO和kkFileView的本地运行环境完成附件上传、刷新、预览、下载、删除及非成员拒绝验收", "source": "observation-T4.json"},
+    {"id": "F2", "status": "open", "text": "仓库治理 Skill 门禁和 origin/licon 范围发现受现有仓库/分支状态影响，未在本任务范围内修改", "source": "observation-T4.json"}
+  ],
+  "samples": [
+    {"id": "S1", "status": "completed", "evidence": "execution-T1.json/observation-T1.json"},
+    {"id": "S2", "status": "completed", "evidence": "execution-T2.json/observation-T2.json"},
+    {"id": "S3", "status": "completed_with_browser_gap", "evidence": "execution-T3.json/observation-T3.json"},
+    {"id": "S4", "status": "open", "evidence": "execution-T4.json/observation-T4.json"}
+  ]
+}

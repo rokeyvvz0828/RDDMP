@@ -1,0 +1,26 @@
+{
+  "task_id": "T1-T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V41__project_plan_group_colors.sql", "purpose": "Add nullable color_key with Chinese column comment"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "Persist, normalize, and whitelist plan group palette keys"},
+    {"path_or_resource": "web/src/views/ProjectView.vue", "purpose": "Reuse paletteOptions in group form and add palette row classes"},
+    {"path_or_resource": "web/src/styles.css", "purpose": "Render palette-specific group and plan row accents and picker"}
+  ],
+  "requirements_addressed": ["分组颜色可新建/编辑并持久化", "空颜色兼容 ocean", "非法颜色服务端拒绝", "分组及所属计划按色区分"],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 41 migration(s)."},
+    {"command": "node node_modules/vue-tsc/bin/vue-tsc.js --noEmit", "exit_code": 0, "salient_output": "TypeScript/Vue type check passed."},
+    {"command": "npm run build", "exit_code": 0, "salient_output": "Vite production build completed."},
+    {"command": "mvn -pl :ccb-system -am -DskipTests package", "exit_code": 0, "salient_output": "All modules compiled and packaged."},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors; Git emitted only existing line-ending warnings."}
+  ],
+  "invariants_checked": [
+    {"invariant": "Flyway is append-only", "result": "pass", "evidence": "V41 is additive and migration checker passed"},
+    {"invariant": "permissions, tenant and project access remain server-side", "result": "pass", "evidence": "Existing requireAction/requireProjectAccess/audit paths unchanged"},
+    {"invariant": "frontend reuses registered palette keys", "result": "pass", "evidence": "ProjectView imports paletteOptions and PaletteKey"}
+  ],
+  "disturbances": ["npm exec syntax initially printed tsc help; direct vue-tsc invocation passed", "full Maven tests blocked by Java 25/Byte Buddy incompatibility"],
+  "unresolved_items": ["Run full Maven tests in JDK 17-compatible environment", "Repository skill check still requires existing SKILL.md frontmatter remediation"],
+  "recommended_next": "Converged for scoped implementation; rerun blocked checks in CI/JDK17"
+}

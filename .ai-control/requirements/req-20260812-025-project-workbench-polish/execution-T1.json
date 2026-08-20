@@ -1,0 +1,14 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path": "web/src/views/ProjectView.vue", "purpose": "Separate project navigation from detail refresh and preserve active tab after mutations"},
+    {"path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "Apply default child plan rule for null or blank legacy values"},
+    {"path": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "purpose": "Cover legacy null child rule generation"}
+  ],
+  "requirements_addressed": ["保存或删除计划、成员、角色后保持当前页签", "历史项目子计划编号使用默认规则"],
+  "commands": [{"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test", "exit_code": 0, "salient_output": "ProjectServiceTest: 6 tests passed; system module: 11 tests passed"}],
+  "invariants_checked": ["server-generated plan_code remains authoritative", "tenant and permission service paths unchanged"],
+  "unresolved_items": ["Runtime database migration state was not inspected because Docker pipe access was denied"],
+  "recommended_next": "observe"
+}

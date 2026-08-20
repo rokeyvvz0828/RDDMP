@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260817-031-project-risk-drawer-comments",
+  "phase": "modeling",
+  "plant_boundary": {"inside": ["项目详情项目风险页签", "风险评论接口", "风险右侧抽屉"], "outside": ["项目访问范围", "独立评论权限", "通知和附件"]},
+  "state_variables": ["riskMode", "riskForm", "riskComments", "riskCommentsLoading", "riskCommentSubmitting", "V44 migration state"],
+  "interfaces": ["GET /api/project/{projectId}/risks/{riskId}/comments", "POST /api/project/{projectId}/risks/{riskId}/comments", "PUT /api/project/{projectId}/risks/{riskId}"],
+  "sensors": ["ProjectServiceTest", "npm build", "Flyway migration check", "actuator health", "browser DOM/screenshot/console"],
+  "actuators": ["ProjectService comment persistence", "ProjectView drawer mode", "comment API calls"],
+  "disturbances": ["existing uncommitted worktree changes", "V43 already applied before V44", "browser write confirmation policy"],
+  "delays": ["backend restart and Flyway execution", "comment loading request"],
+  "assumptions": [{"text": "现有项目成员头像对象可由MinIO预签名服务生成", "basis": "ProjectService.members现有实现", "falsifier": "运行态评论作者头像接口失败"}, {"text": "风险列表的项目查看权限可作为评论访问范围", "basis": "用户确认所有可进入风险页面的用户可发表", "falsifier": "非成员接口成功"}]
+}
