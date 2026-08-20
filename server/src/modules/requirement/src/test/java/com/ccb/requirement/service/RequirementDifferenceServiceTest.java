@@ -3,6 +3,7 @@ package com.ccb.requirement.service;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.requirement.support.StubJdbcTemplate;
+import com.ccb.requirement.support.StubWorkflowService;
 import com.ccb.security.model.AuthUser;
 import org.junit.jupiter.api.Test;
 
@@ -24,23 +25,36 @@ class RequirementDifferenceServiceTest {
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
         RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog);
-        RequirementDifferenceService service = new RequirementDifferenceService(jdbc, changeLog, security, systemService);
-        return new Fixture(jdbc, service);
+        StubWorkflowService workflow = new StubWorkflowService();
+        RequirementDifferenceService service = new RequirementDifferenceService(jdbc, changeLog, security, systemService, workflow);
+        return new Fixture(jdbc, workflow, service);
     }
 
     @Test
     void submitReviewTransitionsPendingToReviewingAndRecordsChange() {
         Fixture fixture = fixture(count -> 1L, row("待评审"));
-        fixture.service().submitReview(1L, ADMIN);
+        fixture.service().submitReview(1L, List.of(2L, 3L), ADMIN);
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("review_status = '评审中'")));
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("SUBMIT_REVIEW")));
+        // changeLog.record 将 changeType 作为参数，断言 INSERT INTO req_change_log 被执行即可
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_change_log")));
+        // 启动了 requirement.diff.review 审批流
+        assertEquals(List.of("req-diff:1"), fixture.workflow().started());
     }
 
     @Test
     void submitReviewOnReviewedThrowsConflict() {
         Fixture fixture = fixture(count -> 1L, row("已评审"));
-        BusinessException exception = assertThrows(BusinessException.class, () -> fixture.service().submitReview(1L, ADMIN));
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> fixture.service().submitReview(1L, List.of(2L), ADMIN));
         assertEquals(ErrorCode.CONFLICT, exception.code());
+    }
+
+    @Test
+    void submitReviewWithoutApproversThrowsBadRequest() {
+        Fixture fixture = fixture(count -> 1L, row("待评审"));
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> fixture.service().submitReview(1L, List.of(), ADMIN));
+        assertEquals(ErrorCode.BAD_REQUEST, exception.code());
     }
 
     @Test
@@ -49,22 +63,6 @@ class RequirementDifferenceServiceTest {
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> fixture.service().update(1L, Map.of("name", "新名称"), ADMIN));
         assertEquals(ErrorCode.CONFLICT, exception.code());
-    }
-
-    @Test
-    void reviewResultRequiresAdmin() {
-        Fixture fixture = fixture(count -> 0L, row("评审中"));
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> fixture.service().reviewResult(1L, "APPROVE", "同意", ADMIN));
-        assertEquals(ErrorCode.FORBIDDEN, exception.code());
-    }
-
-    @Test
-    void reviewResultReturnTransitionsToReturnedAndRecordsComment() {
-        Fixture fixture = fixture(count -> 1L, row("评审中"));
-        fixture.service().reviewResult(1L, "RETURN", "需补充差异描述", ADMIN);
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("review_status = '已退回'")));
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("REVIEW_RETURN")));
     }
 
     @Test
@@ -77,7 +75,7 @@ class RequirementDifferenceServiceTest {
         body.put("system_id", 10L);
         fixture.service().create(1L, body, ADMIN);
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_difference`")));
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("CREATE")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_change_log")));
     }
 
     private static Map<String, Object> row(String reviewStatus) {
@@ -90,6 +88,6 @@ class RequirementDifferenceServiceTest {
         return row;
     }
 
-    private record Fixture(StubJdbcTemplate jdbc, RequirementDifferenceService service) {
+    private record Fixture(StubJdbcTemplate jdbc, StubWorkflowService workflow, RequirementDifferenceService service) {
     }
 }

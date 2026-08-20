@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Download, Plus, Refresh, UploadFilled } from '@element-plus/icons-vue'
@@ -24,20 +24,22 @@ import {
   deleteProject,
   deleteSystem,
   differenceChanges,
+  listDifferenceApprovalLogs,
   downloadTemplate,
   fetchRequirementEnums,
   legacyChanges,
   legacyStageLogs,
   listBaselineItems,
+  listLegacyReviewers,
   listBaselines,
   listDifferences,
   listLegacy,
   listProjectMembers,
   listProjects,
+  listReviewers,
   listSystems,
   previewImport,
   removeProjectMember,
-  reviewResult,
   stageTransition,
   submitReview,
   updateDifference,
@@ -51,6 +53,7 @@ import type {
   ImportPreviewReport,
   LegacyRequirement,
   ProjectMember,
+  RequirementApprovalLog,
   RequirementBaseline,
   RequirementDifference,
   RequirementEnums,
@@ -58,6 +61,7 @@ import type {
   RequirementSystem,
   StageLogRow
 } from '../types/requirements'
+import type { RequirementReviewer } from '../api/requirements'
 
 const route = useRoute()
 const router = useRouter()
@@ -302,38 +306,42 @@ async function removeDifference(row: RequirementDifference) {
 
 async function submitDifferenceReview(row: RequirementDifference) {
   try {
-    await submitReview(row.id)
-    ElMessage.success('已提交评审（评审处理接入后由审批结果回写）')
-    await loadDifferences()
+    const reviewers = (await listReviewers()).data.data
+    if (!reviewers || reviewers.length === 0) {
+      ElMessage.warning('当前没有可选审批人，请先为相关用户配置 requirement:diff:review 权限或统筹角色')
+      return
+    }
+    submitReviewTarget.value = row
+    submitReviewApprovers.value = []
+    submitReviewOptions.value = reviewers
+    submitReviewDialogVisible.value = true
   } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '提交评审失败'))
+    ElMessage.error(apiErrorMessage(error, '加载审批人失败'))
   }
 }
 
-const reviewDialogVisible = ref(false)
-const reviewSaving = ref(false)
-const reviewTarget = ref<RequirementDifference | null>(null)
-const reviewForm = reactive<{ decision: 'APPROVE' | 'RETURN'; comment: string }>({ decision: 'APPROVE', comment: '' })
+const submitReviewDialogVisible = ref(false)
+const submitReviewSaving = ref(false)
+const submitReviewTarget = ref<RequirementDifference | null>(null)
+const submitReviewApprovers = ref<number[]>([])
+const submitReviewOptions = ref<RequirementReviewer[]>([])
 
-function openReview(row: RequirementDifference) {
-  reviewTarget.value = row
-  reviewForm.decision = 'APPROVE'
-  reviewForm.comment = ''
-  reviewDialogVisible.value = true
-}
-
-async function saveReview() {
-  if (!reviewTarget.value) return
-  reviewSaving.value = true
+async function confirmSubmitReview() {
+  if (!submitReviewTarget.value) return
+  if (submitReviewApprovers.value.length === 0) {
+    ElMessage.warning('请选择至少一位审批人')
+    return
+  }
+  submitReviewSaving.value = true
   try {
-    await reviewResult(reviewTarget.value.id, reviewForm)
-    reviewDialogVisible.value = false
-    ElMessage.success('评审处理完成')
+    await submitReview(submitReviewTarget.value.id, submitReviewApprovers.value)
+    submitReviewDialogVisible.value = false
+    ElMessage.success('已提交评审，等待审批人处理')
     await loadDifferences()
   } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '评审处理失败'))
+    ElMessage.error(apiErrorMessage(error, '提交评审失败'))
   } finally {
-    reviewSaving.value = false
+    submitReviewSaving.value = false
   }
 }
 
@@ -388,6 +396,42 @@ async function openChangeLogs(bizType: 'NEW_PROJECT_DIFF' | 'LEGACY_REQUIREMENT'
     changeLogDialogVisible.value = true
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '修改记录加载失败'))
+  }
+}
+
+// 审批记录（差异专属，独立于修改记录，直接读工作流 wf_task_action）
+const approvalLogDialogVisible = ref(false)
+const approvalLogs = ref<RequirementApprovalLog[]>([])
+const approvalLogTitle = ref('审批记录')
+const approvalLogsLoading = ref(false)
+
+const approvalActionLabels: Record<string, string> = {
+  APPROVE: '通过', REJECT: '驳回', ADD_SIGN: '加签', CC: '抄送'
+}
+const approvalTaskTypeLabels: Record<string, string> = {
+  APPROVAL: '审批', CC: '抄送', ADD_SIGN: '加签'
+}
+const approvalTaskStatusLabels: Record<string, string> = {
+  PENDING: '待处理', APPROVED: '已通过', REJECTED: '已驳回', CANCELLED: '已取消', SENT: '已送达'
+}
+
+function approvalActionTagType(action: string): 'success' | 'warning' | 'info' | 'primary' {
+  if (action === 'APPROVE') return 'success'
+  if (action === 'REJECT') return 'warning'
+  return 'info'
+}
+
+async function openApprovalLogs(row: RequirementDifference) {
+  approvalLogTitle.value = `审批记录：${row.requirement_no || row.name}`
+  approvalLogDialogVisible.value = true
+  approvalLogs.value = []
+  approvalLogsLoading.value = true
+  try {
+    approvalLogs.value = (await listDifferenceApprovalLogs(row.id)).data.data
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '审批记录加载失败'))
+  } finally {
+    approvalLogsLoading.value = false
   }
 }
 
@@ -519,28 +563,348 @@ async function removeLegacy(row: LegacyRequirement) {
   }
 }
 
+// 预览
+const legacyPreviewVisible = ref(false)
+const legacyPreviewRow = ref<LegacyRequirement | null>(null)
+const legacyPreviewActiveTab = ref('')
+
+// 预览：通用字段置顶 + 阶段字段按 tab 切换
+const legacyPreviewCommonFields = computed(() => {
+  const row = legacyPreviewRow.value
+  if (!row) return []
+  const fields: Array<{ key: string; label: string; value: string; span: number }> = []
+  for (const f of COMMON_FIELDS) {
+    const raw = (row as any)[f.key]
+    if (raw === null || raw === undefined || raw === '') continue
+    let value = String(raw)
+    fields.push({ key: f.key, label: f.label, value, span: COMMON_FULL_WIDTH_KEYS.has(f.key) ? 2 : 1 })
+  }
+  return fields
+})
+
+const legacyPreviewStageGroups = computed(() => {
+  const row = legacyPreviewRow.value
+  if (!row) return []
+  const groups: Array<{ title: string; fields: Array<{ key: string; label: string; value: string; span: number }> }> = []
+  // 阶段状态行
+  const stageStatusFields: Array<{ key: string; label: string; value: string; span: number }> = []
+  for (const stage of LEGACY_STAGE_ORDER) {
+    const statusKey = STAGE_FIELD_MAP[stage]
+    const raw = (row as any)[statusKey]
+    if (raw !== null && raw !== undefined && raw !== '') {
+      stageStatusFields.push({ key: statusKey, label: `${stageLabel(stage)}状态`, value: String(raw), span: 1 })
+    }
+  }
+  if (stageStatusFields.length > 0) groups.push({ title: '阶段状态', fields: stageStatusFields })
+  // 各阶段字段
+  for (const stage of LEGACY_STAGE_ORDER) {
+    const stageFields = STAGE_FIELD_GROUPS[stage] || []
+    const fields: Array<{ key: string; label: string; value: string; span: number }> = []
+    for (const f of stageFields) {
+      const raw = (row as any)[f.key]
+      if (raw === null || raw === undefined || raw === '') continue
+      let value = String(raw)
+      fields.push({ key: f.key, label: f.label, value, span: isTextArea(f.key) || f.key === 'content_summary' || f.key === 'regulation_desc' ? 2 : 1 })
+    }
+    if (fields.length > 0) {
+      groups.push({ title: `${stageLabel(stage)}阶段`, fields })
+    }
+  }
+  return groups
+})
+
+function openLegacyPreview(row: LegacyRequirement) {
+  legacyPreviewRow.value = row
+  legacyPreviewActiveTab.value = ''
+  legacyPreviewVisible.value = true
+  // 首个 tab
+  nextTick(() => {
+    if (legacyPreviewStageGroups.value.length > 0 && !legacyPreviewActiveTab.value) {
+      legacyPreviewActiveTab.value = legacyPreviewStageGroups.value[0].title
+    }
+  })
+}
+
+// 差异预览（新建项目差异点）
+const diffPreviewVisible = ref(false)
+const diffPreviewRow = ref<RequirementDifference | null>(null)
+const diffPreviewFields = computed(() => {
+  const row = diffPreviewRow.value
+  if (!row) return []
+  const labels = fieldLabels.value
+  const entries: Array<{ label: string; value: string }> = []
+  for (const [key, raw] of Object.entries(row)) {
+    if (['id', 'tenant_id', 'deleted', 'created_by', 'updated_by', 'created_at', 'updated_at', 'import_batch_id', 'baseline_id', 'workflow_instance_id', 'reviewed_by', 'reviewed_at'].includes(key)) continue
+    if (raw === null || raw === undefined || raw === '') continue
+    let value = String(raw)
+    if (key === 'source') {
+      value = value === 'IMPORT' ? '导入' : '在线填写'
+    } else if (key === 'system_id') {
+      const sys = systems.value.find(s => s.id === Number(raw))
+      value = sys ? `${sys.system_code} ${sys.system_name}` : value
+    } else if (key === 'is_special') {
+      value = value === '是' || value === 'true' ? '是' : '否'
+    }
+    entries.push({ label: labels[key] || key, value })
+  }
+  return entries
+})
+
+function openDiffPreview(row: RequirementDifference) {
+  diffPreviewRow.value = row
+  diffPreviewVisible.value = true
+}
+
 const stageDialogVisible = ref(false)
 const stageSaving = ref(false)
 const stageTarget = ref<LegacyRequirement | null>(null)
-const stageForm = reactive<{ stage: string; action: 'START' | 'COMPLETE' | 'BACK'; comment: string }>({ stage: 'PROPOSE', action: 'START', comment: '' })
+const stageReviewers = ref<Array<{ id: number; username: string; display_name: string }>>([])
+const stageReviewersLoading = ref(false)
+const stageForm = reactive<{ stage: string; action: 'START' | 'COMPLETE' | 'BACK'; comment: string; approverIds: number[] }>({ stage: 'PROPOSE', action: 'START', comment: '', approverIds: [] })
 const stageLogs = ref<StageLogRow[]>([])
 const stageLogDialogVisible = ref(false)
+const stageLogTarget = ref<LegacyRequirement | null>(null)
 
-function openStage(row: LegacyRequirement) {
+// 阶段中文 + 6 阶段顺序
+const LEGACY_STAGE_ORDER = ['PROPOSE', 'DOCKING', 'WORKLOAD', 'PROJECT', 'SOFT', 'LAUNCH']
+const stageStatusTagType = (s: string): 'info' | 'warning' | 'primary' | 'success' => {
+  if (s === '未开始') return 'info'
+  if (s === '审批中') return 'warning'
+  if (s === '进行中') return 'primary'
+  if (s === '已完成') return 'success'
+  return 'info'
+}
+
+// 阶段子状态列名映射（中文 → 后端字段名）
+const STAGE_FIELD_MAP: Record<string, string> = {
+  PROPOSE: 'propose_stage_status', DOCKING: 'docking_stage_status', WORKLOAD: 'workload_stage_status',
+  PROJECT: 'project_stage_status', SOFT: 'soft_stage_status', LAUNCH: 'launch_stage_status'
+}
+
+// 阶段 → 字段分组（编辑时仅展示 current_stage + 通用段）
+// 标签严格按 Excel 列头完整文字（含括号说明）
+const STAGE_FIELD_GROUPS: Record<string, Array<{ key: string; label: string; placeholder?: string }>> = {
+  PROPOSE: [
+    { key: 'seq_no', label: '序号（原则上此列序号不能重复）', placeholder: '1' },
+    { key: 'legacy_doc_name', label: '业需文档名称', placeholder: '【蒙商银行】业务需求说明书XXX项目-业务小组-YYYY-MM-DD' },
+    { key: 'requirement_no', label: '需求编号（来自蒙商维普系统）', placeholder: 'JG-W0332C-240507-001' },
+    { key: 'requirement_name', label: '需求名称', placeholder: 'ATM渠道跨行转账类交易上送完整对手方姓名' },
+    { key: 'content_summary', label: '需求内容简述', placeholder: '简要描述需求内容' },
+    { key: 'propose_dept', label: '需求提出部门', placeholder: '运营管理部' },
+    { key: 'proposer', label: '需求提出人及电话', placeholder: '谢斌 13800000000' },
+    { key: 'monshang_ba', label: '蒙商BA', placeholder: '' },
+    { key: 'monshang_architect', label: '蒙商架构', placeholder: '' },
+    { key: 'expected_launch_date', label: '业务期望上线时间', placeholder: '2024年6月底前' },
+    { key: 'regulator', label: '外部监管单位（监管需求必填）', placeholder: '中国银联股份有限公司' },
+    { key: 'regulation_doc_no', label: '监管文件名称+文号（监管需求必填）', placeholder: '《关于开展ATM渠道跨行转账类交易规范性改造的函》' },
+    { key: 'regulation_desc', label: '监管文件内容描述（监管需求必填）', placeholder: '描述监管文件核心要求...' },
+    { key: 'regulation_launch_date', label: '监管要求上线时间（监管需求必填）', placeholder: '2024年6月底前' },
+    { key: 'requirement_received_date', label: '业需入手日', placeholder: '5月22日' },
+    { key: 'requirement_type', label: '需求类型（监管需求/业务需求/技术需求）' },
+    { key: 'regulation_category', label: '监管分类（监管需求必填：国家级监管/地方级监管/处罚整改）' },
+    { key: 'business_group', label: '业务组（原六小组）', placeholder: '渠道运营小组' },
+    { key: 'sub_group', label: '分组', placeholder: '支付结算组' }
+  ],
+  DOCKING: [
+    { key: 'jinke_contact', label: '金科对接人及电话（业务统筹组）', placeholder: '朱琳 13800000000' },
+    { key: 'need_jinke_arch_decision', label: '是否需要金科架构决策' },
+    { key: 'jinke_architect', label: '金科架构人员', placeholder: '瞿真' },
+    { key: 'ba_review_date', label: '业需评审完成日', placeholder: '6月11日' }
+  ],
+  WORKLOAD: [
+    { key: 'workload_date', label: '工作量评估完成日', placeholder: '不涉及' }
+  ],
+  PROJECT: [
+    { key: 'finance_project_date', label: '财务立项完成日（任务书）', placeholder: '不涉及' },
+    { key: 'soft_doc_name', label: '软需文档名称', placeholder: '附件3：【蒙商银行】需求规格说明书XXX-V0.3(发布稿)' },
+    { key: 'owner_conglomerate', label: '主责事业群（金科事业群/蒙商保留）', placeholder: '上海事业群' },
+    { key: 'owner_system', label: '主责物理子系统编号+名称 示例：W05810+现金管理', placeholder: 'W0332C+银联CUPS业务子系统' },
+    { key: 'owner_contact', label: '主责项目组联系人及电话', placeholder: '瞿真 13800000000' },
+    { key: 'involve_cooperation', label: '是否涉及金科引入组件协同（是/否）' },
+    { key: 'coord_conglomerate', label: '协同事业群 示例：1.XX事业群 2.XX事业群 3.保留项目组', placeholder: '成都事业群' },
+    { key: 'coord_system', label: '协同系统名称 示例：1.W0101Z+对公资金证明 2.XX编号+XX系统名称', placeholder: 'WP106A+ATM自助渠道' }
+  ],
+  SOFT: [
+    { key: 'soft_submit_date', label: '软需提交日', placeholder: '5月23日' },
+    { key: 'soft_review_date', label: '软需评审完成日', placeholder: '6月11日' }
+  ],
+  LAUNCH: [
+    { key: 'planned_launch_date', label: '计划上线时间', placeholder: '6月27日' },
+    { key: 'actual_launch_date', label: '实际上线时间', placeholder: '6月27日' },
+    { key: 'launch_mode', label: '上线形式（常规版本/紧急版本）' }
+  ]
+}
+
+// 通用字段（所有阶段都展示，在每个阶段都可以修改）
+// 标签严格按 Excel 列头完整文字（含括号说明）
+const COMMON_FIELDS: Array<{ key: string; label: string; placeholder?: string }> = [
+  { key: 'requirement_status', label: '需求状态' },
+  { key: 'remark', label: '备注', placeholder: '【0611】713前投产，纳入建设合同' },
+  { key: 'change_involved', label: '是否涉及需求变更(是/否)' },
+  { key: 'change_info', label: '需求变更信息（需求变更：至少包括1.谁发起变更;2.变更内容3.发起变更阶段）', placeholder: '谁发起变更/变更内容/发起变更阶段' },
+  { key: 'change_review_conclusion', label: '变更评审结论（评审通过/评审不通过）' },
+  { key: 'change_conclusion_status', label: '变更结论及状态（审核通过/评估工作量/蒙商立项完成）' },
+  { key: 'change_remark', label: '需求变更备注' },
+  { key: 'not_project_developed', label: '未立项已开发' }
+]
+
+// 通用字段是否长文本（占2列）
+const COMMON_FULL_WIDTH_KEYS = new Set(['remark', 'change_info', 'change_remark'])
+
+// 编辑时只展示当前阶段的字段 + 通用字段
+const currentStageFields = computed(() => {
+  const stage = legacyForm.current_stage as string || 'PROPOSE'
+  return STAGE_FIELD_GROUPS[stage] || []
+})
+
+// 字段类型判断（用于动态渲染表单控件）
+const DATE_FIELDS = new Set([
+  'expected_launch_date', 'regulation_launch_date', 'requirement_received_date',
+  'ba_review_date', 'workload_date', 'finance_project_date', 'soft_submit_date',
+  'soft_review_date', 'planned_launch_date', 'actual_launch_date'
+])
+const TEXTAREA_FIELDS = new Set(['content_summary', 'regulation_desc'])
+const ENUM_FIELD_MAP: Record<string, keyof typeof options.value> = {
+  requirement_type: 'requirementTypes',
+  regulation_category: 'regulationCategories',
+  need_jinke_arch_decision: 'yesNo',
+  involve_cooperation: 'yesNo',
+  launch_mode: 'launchModes',
+  change_involved: 'yesNo',
+  change_review_conclusion: 'changeReviewConclusions',
+  change_conclusion_status: 'changeConclusionStatuses',
+  not_project_developed: 'yesNo'
+}
+
+function isTextField(key: string) { return !DATE_FIELDS.has(key) && !ENUM_FIELD_MAP[key] }
+function isDateField(key: string) { return DATE_FIELDS.has(key) }
+function isEnumField(key: string) { return !!ENUM_FIELD_MAP[key] }
+function isTextArea(key: string) { return TEXTAREA_FIELDS.has(key) }
+function getOptionsForField(key: string) {
+  const optKey = ENUM_FIELD_MAP[key]
+  return optKey ? (options.value[optKey] as string[] || []) : []
+}
+
+// 阶段必填字段（与后端 LEGACY_STAGE_REQUIRED_FIELDS 对齐）
+const STAGE_REQUIRED_FIELDS: Record<string, string[]> = {
+  PROPOSE: ['legacy_doc_name', 'requirement_no', 'requirement_name', 'content_summary', 'propose_dept', 'proposer', 'business_group'],
+  DOCKING: ['jinke_contact', 'ba_review_date'],
+  WORKLOAD: ['workload_date'],
+  PROJECT: ['finance_project_date', 'soft_doc_name', 'owner_conglomerate', 'owner_system', 'owner_contact'],
+  SOFT: ['soft_submit_date', 'soft_review_date'],
+  LAUNCH: ['planned_launch_date', 'launch_mode']
+}
+
+function isStageRequired(key: string, stage: string) {
+  return STAGE_REQUIRED_FIELDS[stage]?.includes(key) || false
+}
+function isRequiredField(key: string) {
+  for (const stage of Object.keys(STAGE_REQUIRED_FIELDS)) {
+    if (STAGE_REQUIRED_FIELDS[stage].includes(key)) return true
+  }
+  return false
+}
+
+// 当前选中阶段的子状态（未开始/审批中/进行中/已完成）
+const currentStageSubStatus = computed<string>(() => {
+  const row = stageTarget.value
+  if (!row) return '未开始'
+  const field = STAGE_FIELD_MAP[stageForm.stage]
+  return (row[field] as string) || '未开始'
+})
+
+// 动作智能过滤：按当前阶段子状态决定可选项
+const availableActions = computed<Array<{ value: 'START' | 'COMPLETE' | 'BACK'; label: string; disabled?: boolean; reason?: string }>>(() => {
+  const s = currentStageSubStatus.value
+  if (s === '审批中') {
+    return [
+      { value: 'START', label: '启动（未开始→进行中）', disabled: true, reason: '审批进行中' },
+      { value: 'COMPLETE', label: '完成（进行中→已完成）', disabled: true, reason: '审批进行中' },
+      { value: 'BACK', label: '回退（进行中→未开始）', disabled: true, reason: '审批进行中' }
+    ]
+  }
+  if (s === '未开始') {
+    return [
+      { value: 'START', label: '启动（未开始→进行中）' },
+      { value: 'COMPLETE', label: '完成（进行中→已完成）', disabled: true, reason: '未开始不可完成' },
+      { value: 'BACK', label: '回退（进行中→未开始）', disabled: true, reason: '未开始无需回退' }
+    ]
+  }
+  if (s === '进行中') {
+    return [
+      { value: 'START', label: '启动（未开始→进行中）', disabled: true, reason: '已启动' },
+      { value: 'COMPLETE', label: '完成（进行中→已完成）' },
+      { value: 'BACK', label: '回退（进行中→未开始）' }
+    ]
+  }
+  if (s === '已完成') {
+    return [
+      { value: 'START', label: '启动（未开始→进行中）', disabled: true, reason: '阶段已完成' },
+      { value: 'COMPLETE', label: '完成（进行中→已完成）', disabled: true, reason: '阶段已完成' },
+      { value: 'BACK', label: '回退（进行中→未开始）', disabled: true, reason: '已完成不可回退' }
+    ]
+  }
+  return []
+})
+
+// 二维联动状态映射（与后端 RequirementEnums.LEGACY_STAGE_ACTION_TO_REQ_STATUS 对齐）
+const STAGE_ACTION_TO_REQ_STATUS: Record<string, string> = {
+  'PROPOSE:START': '需求分析', 'PROPOSE:COMPLETE': '业需修订',
+  'DOCKING:START': '业需修订', 'DOCKING:COMPLETE': '业需评审通过',
+  'WORKLOAD:START': '业需评审通过', 'WORKLOAD:COMPLETE': '业需评审通过',
+  'PROJECT:START': '立项中', 'PROJECT:COMPLETE': '软需编制',
+  'SOFT:START': '软需编制', 'SOFT:COMPLETE': '软需评审通过',
+  'LAUNCH:START': '软需评审通过', 'LAUNCH:COMPLETE': '已投产',
+  'DOCKING:BACK': '需求分析', 'WORKLOAD:BACK': '业需修订',
+  'PROJECT:BACK': '业需评审通过', 'SOFT:BACK': '立项中', 'LAUNCH:BACK': '软需编制'
+}
+
+// 联动预览：选定 stage + action 后预测 requirement_status 变化
+const linkedRequirementStatus = computed<string | null>(() => {
+  const row = stageTarget.value
+  if (!row) return null
+  const key = `${stageForm.stage}:${stageForm.action}`
+  return STAGE_ACTION_TO_REQ_STATUS[key] || null
+})
+
+async function openStage(row: LegacyRequirement) {
   stageTarget.value = row
   stageForm.stage = row.current_stage
   stageForm.action = 'START'
   stageForm.comment = ''
+  stageForm.approverIds = []
   stageDialogVisible.value = true
+  // 加载可选审批人：优先调存量接口，失败降级到差异接口（避免后端未重启时 404）
+  stageReviewers.value = []
+  stageReviewersLoading.value = true
+  try {
+    try {
+      stageReviewers.value = (await listLegacyReviewers(row.id)).data.data
+    } catch (legacyError) {
+      // 降级到差异评审 reviewers（口径：requirement:diff:review 权限或 REQUIREMENT_COORDINATOR 或 admin）
+      stageReviewers.value = (await listReviewers()).data.data
+    }
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '审批人加载失败'))
+  } finally {
+    stageReviewersLoading.value = false
+  }
+  // 按子状态自动选择首个可用动作
+  const first = availableActions.value.find(a => !a.disabled)
+  if (first) stageForm.action = first.value
 }
 
 async function saveStage() {
   if (!stageTarget.value) return
+  if (!stageForm.approverIds || stageForm.approverIds.length === 0) {
+    ElMessage.error('请至少选择一个审批人')
+    return
+  }
   stageSaving.value = true
   try {
     await stageTransition(stageTarget.value.id, stageForm)
     stageDialogVisible.value = false
-    ElMessage.success('阶段已推进')
+    ElMessage.success('阶段推进审批已发起，等待审批人处理')
     await loadLegacy()
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '阶段推进失败'))
@@ -550,12 +914,23 @@ async function saveStage() {
 }
 
 async function showStageLogs(row: LegacyRequirement) {
+  stageLogTarget.value = row
   try {
     stageLogs.value = (await legacyStageLogs(row.id)).data.data
     stageLogDialogVisible.value = true
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '阶段记录加载失败'))
   }
+}
+
+// 阶段记录里的审批结果映射
+const stageApprovalResultLabels: Record<string, string> = { PENDING: '审批中', APPROVED: '通过', REJECTED: '驳回', MANUAL: '手工' }
+
+function stageApprovalResultTagType(s?: string | null): 'success' | 'warning' | 'info' | 'primary' {
+  if (s === 'APPROVED') return 'success'
+  if (s === 'REJECTED') return 'warning'
+  if (s === 'PENDING') return 'primary'
+  return 'info'
 }
 
 // ---------------- 系统清单 ----------------
@@ -681,7 +1056,11 @@ function canEditDiff(row: RequirementDifference) {
         </UiToolbar>
         <UiDataTable :data="differences" :loading="differencesLoading" row-key="id" border>
           <el-table-column prop="seq_no" label="序号" width="60" />
-          <el-table-column prop="requirement_no" label="需求编号" min-width="130" />
+          <el-table-column label="需求编号" min-width="130">
+            <template #default="scope">
+              <el-button link type="primary" class="req-link-cell" @click="openDiffPreview(scope.row)">{{ scope.row.requirement_no || '-' }}</el-button>
+            </template>
+          </el-table-column>
           <el-table-column prop="name" label="名称" min-width="220" show-overflow-tooltip />
           <el-table-column prop="category" label="分类" width="90" />
           <el-table-column prop="difference_type" label="差异类型" min-width="150" show-overflow-tooltip />
@@ -689,13 +1068,13 @@ function canEditDiff(row: RequirementDifference) {
           <el-table-column label="差异状态" width="110"><template #default="scope"><UiStatusTag :value="scope.row.review_status" /></template></el-table-column>
           <el-table-column label="开发状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.dev_status" /></template></el-table-column>
           <el-table-column label="测试状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.test_status" /></template></el-table-column>
-          <el-table-column label="操作" width="330" fixed="right">
+          <el-table-column label="操作" width="380" fixed="right">
             <template #default="scope">
               <el-button link type="primary" @click="openChangeLogs('NEW_PROJECT_DIFF', scope.row.id, `修改记录：${scope.row.name}`)">修改记录</el-button>
+              <el-button v-if="scope.row.workflow_instance_id" link type="primary" @click="openApprovalLogs(scope.row)">审批记录</el-button>
               <el-button v-if="canEditDiff(scope.row)" link type="primary" @click="openDiffEdit(scope.row)">编辑</el-button>
               <el-button v-if="canEditDiff(scope.row)" link type="danger" @click="removeDifference(scope.row)">删除</el-button>
               <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDifferenceReview(scope.row)">提交评审</el-button>
-              <el-button v-if="scope.row.review_status === '评审中'" link type="success" @click="openReview(scope.row)">评审处理</el-button>
             </template>
           </el-table-column>
         </UiDataTable>
@@ -717,7 +1096,11 @@ function canEditDiff(row: RequirementDifference) {
         </template>
       </UiToolbar>
       <UiDataTable :data="legacyRows" :loading="legacyLoading" row-key="id" border>
-        <el-table-column prop="requirement_no" label="需求编号" min-width="180" />
+        <el-table-column label="需求编号" min-width="180">
+          <template #default="scope">
+            <el-button link type="primary" class="req-link-cell" @click="openLegacyPreview(scope.row)">{{ scope.row.requirement_no || '-' }}</el-button>
+          </template>
+        </el-table-column>
         <el-table-column prop="requirement_name" label="需求名称" min-width="220" show-overflow-tooltip />
         <el-table-column prop="business_group" label="业务组" width="110" />
         <el-table-column label="当前阶段" width="120"><template #default="scope"><UiStatusTag :value="stageLabel(scope.row.current_stage)" /></template></el-table-column>
@@ -734,6 +1117,41 @@ function canEditDiff(row: RequirementDifference) {
         </el-table-column>
       </UiDataTable>
       <UiPagination v-model:page="legacyPage" v-model:page-size="legacySize" :total="legacyTotal" @update:page="loadLegacy" @update:page-size="loadLegacy" />
+
+      <!-- 需求预览 -->
+      <el-dialog v-model="legacyPreviewVisible" :title="`需求预览：${legacyPreviewRow?.requirement_no || ''}`" width="min(900px, calc(100vw - 24px))" top="6vh">
+        <div v-if="legacyPreviewRow">
+          <div class="req-preview-header">
+            <span class="req-preview-title">{{ legacyPreviewRow.requirement_name }}</span>
+            <el-tag size="small">{{ stageLabel(legacyPreviewRow.current_stage) }}</el-tag>
+            <el-tag v-if="legacyPreviewRow.requirement_status" size="small" type="info">{{ legacyPreviewRow.requirement_status }}</el-tag>
+            <el-tag size="small" :type="legacyPreviewRow.source === 'IMPORT' ? 'warning' : 'success'">{{ legacyPreviewRow.source === 'IMPORT' ? '导入' : '在线填写' }}</el-tag>
+          </div>
+          <!-- 通用信息（始终可见） -->
+          <div v-if="legacyPreviewCommonFields.length" class="req-preview-common">
+            <div class="req-section-title">通用信息（每个阶段均可修改）</div>
+            <el-descriptions :column="2" border size="small">
+              <el-descriptions-item v-for="f in legacyPreviewCommonFields" :key="f.key" :label="f.label" :span="f.span">
+                <span class="req-preview-value">{{ f.value }}</span>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+          <!-- 阶段字段（tab 切换） -->
+          <el-tabs v-if="legacyPreviewStageGroups.length" v-model="legacyPreviewActiveTab" type="border-card">
+            <el-tab-pane v-for="g in legacyPreviewStageGroups" :key="g.title" :label="g.title" :name="g.title">
+              <el-descriptions :column="2" border size="small">
+                <el-descriptions-item v-for="f in g.fields" :key="f.key" :label="f.label" :span="f.span">
+                  <span class="req-preview-value">{{ f.value }}</span>
+                </el-descriptions-item>
+              </el-descriptions>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
+        <template #footer>
+          <el-button @click="legacyPreviewVisible = false">关闭</el-button>
+          <el-button type="primary" @click="legacyPreviewVisible = false; legacyPreviewRow && openLegacyEdit(legacyPreviewRow)">编辑</el-button>
+        </template>
+      </el-dialog>
     </div>
 
     <!-- 系统清单 -->
@@ -817,13 +1235,19 @@ function canEditDiff(row: RequirementDifference) {
       </el-form>
     </UiFormDrawer>
 
-    <!-- 评审处理 -->
-    <el-dialog v-model="reviewDialogVisible" title="评审处理（审批流接入前为模拟处理）" width="min(480px, calc(100vw - 24px))">
+    <!-- 提交评审：选择审批人 -->
+    <el-dialog v-model="submitReviewDialogVisible" title="提交评审" width="min(480px, calc(100vw - 24px))">
       <el-form label-position="top">
-        <el-form-item label="评审结论" required><el-radio-group v-model="reviewForm.decision"><el-radio value="APPROVE">评审通过</el-radio><el-radio value="RETURN">退回</el-radio></el-radio-group></el-form-item>
-        <el-form-item label="评审意见"><el-input v-model="reviewForm.comment" type="textarea" :rows="3" :placeholder="reviewForm.decision === 'RETURN' ? '退回意见必填' : ''" /></el-form-item>
+        <el-form-item v-if="submitReviewTarget" label="差异点">
+          <span>{{ submitReviewTarget.name }}（{{ submitReviewTarget.requirement_no || '-' }}）</span>
+        </el-form-item>
+        <el-form-item label="审批人" required>
+          <el-select v-model="submitReviewApprovers" multiple filterable placeholder="选择一位或多位审批人" style="width: 100%">
+            <el-option v-for="item in submitReviewOptions" :key="item.id" :label="`${item.display_name}（${item.username}）`" :value="item.id" />
+          </el-select>
+        </el-form-item>
       </el-form>
-      <template #footer><el-button @click="reviewDialogVisible = false">取消</el-button><el-button type="primary" :loading="reviewSaving" @click="saveReview">提交</el-button></template>
+      <template #footer><el-button @click="submitReviewDialogVisible = false">取消</el-button><el-button type="primary" :loading="submitReviewSaving" @click="confirmSubmitReview">提交</el-button></template>
     </el-dialog>
 
     <!-- 基线列表 -->
@@ -871,58 +1295,124 @@ function canEditDiff(row: RequirementDifference) {
 
     <!-- 存量需求表单 -->
     <UiFormDrawer v-model="legacyFormVisible" :title="legacyForm.id ? '编辑存量需求' : '新增存量需求'" :loading="legacySaving" width="min(820px, calc(100vw - 24px))" @submit="saveLegacy">
+      <!-- 阶段时序条 -->
+      <div v-if="legacyForm.current_stage" class="req-stage-overview">
+        <div class="req-stage-track">
+          <div v-for="s in LEGACY_STAGE_ORDER" :key="s" class="req-stage-node" :class="{ 'req-stage-active': s === legacyForm.current_stage }">
+            <span class="req-stage-name">{{ stageLabel(s) }}</span>
+            <el-tag size="small" :type="stageStatusTagType(((legacyForm as any)[STAGE_FIELD_MAP[s]] as string) || '未开始')">{{ ((legacyForm as any)[STAGE_FIELD_MAP[s]] as string) || '未开始' }}</el-tag>
+          </div>
+        </div>
+        <div class="req-stage-summary">
+          当前阶段：<strong>{{ stageLabel(String((legacyForm as any).current_stage || 'PROPOSE')) }}</strong>
+        </div>
+      </div>
+
+      <!-- 当前阶段字段 + 通用信息 -->
       <el-form label-position="top" class="req-form-grid">
-        <el-form-item label="需求编号" required><el-input v-model="legacyForm.requirement_no" placeholder="维普需求编号，如 JG-W0332C-240507-001" /></el-form-item>
-        <el-form-item label="需求名称" required><el-input v-model="legacyForm.requirement_name" /></el-form-item>
-        <el-form-item label="业务组" required><el-input v-model="legacyForm.business_group" /></el-form-item>
-        <el-form-item label="需求类型"><el-select v-model="legacyForm.requirement_type" clearable style="width: 100%"><el-option v-for="item in options.requirementTypes || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="监管分类"><el-select v-model="legacyForm.regulation_category" clearable style="width: 100%"><el-option v-for="item in options.regulationCategories || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="需求状态"><el-select v-model="legacyForm.requirement_status" clearable style="width: 100%"><el-option v-for="item in options.requirementStatuses || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="业需文档名称"><el-input v-model="legacyForm.legacy_doc_name" /></el-form-item>
-        <el-form-item label="需求提出部门"><el-input v-model="legacyForm.propose_dept" /></el-form-item>
-        <el-form-item label="需求提出人及电话"><el-input v-model="legacyForm.proposer" placeholder="虚构姓名 13800000000" /></el-form-item>
-        <el-form-item label="需求内容简述" class="req-span-2"><el-input v-model="legacyForm.content_summary" type="textarea" :rows="2" /></el-form-item>
-        <el-form-item label="蒙商 BA"><el-input v-model="legacyForm.monshang_ba" /></el-form-item>
-        <el-form-item label="蒙商架构"><el-input v-model="legacyForm.monshang_architect" /></el-form-item>
-        <el-form-item label="业需入手日"><el-date-picker v-model="legacyForm.requirement_received_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="业需评审完成日"><el-date-picker v-model="legacyForm.ba_review_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="工作量评估完成日"><el-date-picker v-model="legacyForm.workload_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="财务立项完成日"><el-date-picker v-model="legacyForm.finance_project_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="软需文档名称"><el-input v-model="legacyForm.soft_doc_name" /></el-form-item>
-        <el-form-item label="主责事业群"><el-input v-model="legacyForm.owner_conglomerate" /></el-form-item>
-        <el-form-item label="主责物理子系统"><el-input v-model="legacyForm.owner_system" placeholder="编号+名称" /></el-form-item>
-        <el-form-item label="软需提交日"><el-date-picker v-model="legacyForm.soft_submit_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="软需评审完成日"><el-date-picker v-model="legacyForm.soft_review_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="计划上线时间"><el-date-picker v-model="legacyForm.planned_launch_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="实际上线时间"><el-date-picker v-model="legacyForm.actual_launch_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="上线形式"><el-select v-model="legacyForm.launch_mode" clearable style="width: 100%"><el-option v-for="item in options.launchModes || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="备注" class="req-span-2"><el-input v-model="legacyForm.remark" type="textarea" :rows="2" /></el-form-item>
-        <el-form-item label="是否涉及需求变更"><el-select v-model="legacyForm.change_involved" style="width: 100%"><el-option v-for="item in options.yesNo || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="变更评审结论"><el-select v-model="legacyForm.change_review_conclusion" clearable style="width: 100%"><el-option v-for="item in options.changeReviewConclusions || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="变更结论及状态"><el-select v-model="legacyForm.change_conclusion_status" clearable style="width: 100%"><el-option v-for="item in options.changeConclusionStatuses || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="需求变更信息" class="req-span-2"><el-input v-model="legacyForm.change_info" type="textarea" :rows="2" placeholder="谁发起变更/变更内容/发起变更阶段" /></el-form-item>
+        <template v-if="currentStageFields.length">
+          <div class="req-section-title">{{ stageLabel(String((legacyForm as any).current_stage || 'PROPOSE')) }}阶段字段</div>
+          <template v-for="f in currentStageFields" :key="f.key">
+            <el-form-item :label="f.label" :required="isStageRequired(f.key, String((legacyForm as any).current_stage || 'PROPOSE'))">
+              <el-input v-if="isTextField(f.key)" v-model="(legacyForm as any)[f.key]" :type="isTextArea(f.key) ? 'textarea' : 'text'" :rows="isTextArea(f.key) ? 2 : undefined" :placeholder="f.placeholder" />
+              <el-date-picker v-else-if="isDateField(f.key)" v-model="(legacyForm as any)[f.key]" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+              <el-select v-else-if="isEnumField(f.key)" v-model="(legacyForm as any)[f.key]" :clearable="!isRequiredField(f.key)" style="width: 100%">
+                <el-option v-for="item in getOptionsForField(f.key)" :key="item" :label="item" :value="item" />
+              </el-select>
+              <el-input v-else v-model="(legacyForm as any)[f.key]" :placeholder="f.placeholder" />
+            </el-form-item>
+          </template>
+        </template>
+
+        <!-- 通用信息（每个阶段都可以修改） -->
+        <div class="req-section-title">通用信息（每个阶段都可修改）</div>
+        <template v-for="f in COMMON_FIELDS" :key="f.key">
+          <el-form-item :label="f.label">
+            <el-input v-if="f.key === 'requirement_status'" :model-value="(legacyForm as any)[f.key] || '需求分析'" disabled placeholder="由阶段推进审批自动维护" />
+            <el-select v-else-if="f.key === 'change_involved'" v-model="(legacyForm as any)[f.key]" style="width: 100%"><el-option v-for="item in options.yesNo || []" :key="item" :label="item" :value="item" /></el-select>
+            <el-select v-else-if="f.key === 'change_review_conclusion'" v-model="(legacyForm as any)[f.key]" clearable style="width: 100%"><el-option v-for="item in options.changeReviewConclusions || []" :key="item" :label="item" :value="item" /></el-select>
+            <el-select v-else-if="f.key === 'change_conclusion_status'" v-model="(legacyForm as any)[f.key]" clearable style="width: 100%"><el-option v-for="item in options.changeConclusionStatuses || []" :key="item" :label="item" :value="item" /></el-select>
+            <el-input v-else-if="COMMON_FULL_WIDTH_KEYS.has(f.key)" v-model="(legacyForm as any)[f.key]" type="textarea" :rows="2" :placeholder="f.placeholder" />
+            <el-select v-else-if="f.key === 'not_project_developed'" v-model="(legacyForm as any)[f.key]" style="width: 100%"><el-option v-for="item in options.yesNo || []" :key="item" :label="item" :value="item" /></el-select>
+            <el-input v-else v-model="(legacyForm as any)[f.key]" :placeholder="f.placeholder" />
+          </el-form-item>
+        </template>
       </el-form>
     </UiFormDrawer>
 
     <!-- 阶段推进 -->
-    <el-dialog v-model="stageDialogVisible" title="阶段推进（状态确认，不走审批流）" width="min(480px, calc(100vw - 24px))">
-      <el-form label-position="top">
-        <el-form-item label="阶段" required><el-select v-model="stageForm.stage" style="width: 100%"><el-option v-for="stage in options.legacyStages || []" :key="stage" :label="stageLabel(stage)" :value="stage" /></el-select></el-form-item>
-        <el-form-item label="动作" required><el-radio-group v-model="stageForm.action"><el-radio value="START">启动（未开始→进行中）</el-radio><el-radio value="COMPLETE">完成（进行中→已完成）</el-radio><el-radio value="BACK">回退（进行中→未开始）</el-radio></el-radio-group></el-form-item>
+    <el-dialog v-model="stageDialogVisible" title="阶段推进审批" width="min(620px, calc(100vw - 24px))">
+      <div v-if="stageTarget" class="req-stage-overview">
+        <div class="req-stage-track">
+          <div v-for="s in LEGACY_STAGE_ORDER" :key="s" class="req-stage-node" :class="{ 'req-stage-active': s === stageTarget.current_stage, 'req-stage-selected': s === stageForm.stage }">
+            <span class="req-stage-name">{{ stageLabel(s) }}</span>
+            <el-tag size="small" :type="stageStatusTagType((stageTarget[STAGE_FIELD_MAP[s]] as string) || '未开始')">{{ (stageTarget[STAGE_FIELD_MAP[s]] as string) || '未开始' }}</el-tag>
+          </div>
+        </div>
+        <div class="req-stage-summary">
+          当前阶段：<strong>{{ stageLabel(stageTarget.current_stage) }}</strong> · 需求状态：<el-tag size="small" type="info">{{ stageTarget.requirement_status || '需求分析' }}</el-tag>
+          <span v-if="stageTarget.workflow_instance_id" class="req-stage-inst"> · 审批实例 #{{ stageTarget.workflow_instance_id }}</span>
+        </div>
+      </div>
+      <el-form label-position="top" class="req-stage-form">
+        <el-form-item label="阶段" required>
+          <el-select v-model="stageForm.stage" style="width: 100%">
+            <el-option v-for="stage in options.legacyStages || []" :key="stage" :label="stageLabel(stage)" :value="stage" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="动作" required>
+          <el-radio-group v-model="stageForm.action">
+            <el-radio v-for="a in availableActions" :key="a.value" :value="a.value" :disabled="a.disabled">{{ a.label }}<span v-if="a.disabled" class="req-action-reason">（{{ a.reason }}）</span></el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="审批人" required>
+          <el-select v-model="stageForm.approverIds" multiple filterable placeholder="选择审批人（可多选）" style="width: 100%" :loading="stageReviewersLoading">
+            <el-option v-for="r in stageReviewers" :key="r.id" :label="r.display_name || r.username" :value="r.id" />
+          </el-select>
+          <div class="req-form-hint">审批人可在工作流中心对该阶段推进进行 APPROVE/REJECT；REJECTED 阶段保持发起前状态。</div>
+        </el-form-item>
+        <el-form-item label="联动预览">
+          <div class="req-linkage-preview">
+            需求状态：<span class="req-old-value">{{ stageTarget?.requirement_status || '需求分析' }}</span>
+            → <span class="req-new-value">{{ linkedRequirementStatus || '不变' }}</span>
+            <span v-if="!linkedRequirementStatus" class="req-form-hint">（当前动作不触发联动）</span>
+          </div>
+        </el-form-item>
         <el-form-item label="说明"><el-input v-model="stageForm.comment" type="textarea" :rows="2" /></el-form-item>
       </el-form>
-      <template #footer><el-button @click="stageDialogVisible = false">取消</el-button><el-button type="primary" :loading="stageSaving" @click="saveStage">确认</el-button></template>
+      <template #footer>
+        <el-button @click="stageDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="stageSaving" @click="saveStage">发起审批</el-button>
+      </template>
     </el-dialog>
 
     <!-- 阶段记录 -->
-    <el-dialog v-model="stageLogDialogVisible" title="阶段流转记录" width="min(680px, calc(100vw - 24px))">
+    <el-dialog v-model="stageLogDialogVisible" title="阶段流转记录" width="min(860px, calc(100vw - 24px))">
+      <div v-if="stageLogTarget" class="req-stage-overview">
+        <div class="req-stage-track">
+          <div v-for="s in LEGACY_STAGE_ORDER" :key="s" class="req-stage-node" :class="{ 'req-stage-active': s === stageLogTarget.current_stage }">
+            <span class="req-stage-name">{{ stageLabel(s) }}</span>
+            <el-tag size="small" :type="stageStatusTagType((stageLogTarget[STAGE_FIELD_MAP[s]] as string) || '未开始')">{{ (stageLogTarget[STAGE_FIELD_MAP[s]] as string) || '未开始' }}</el-tag>
+          </div>
+        </div>
+        <div class="req-stage-summary">
+          当前阶段：<strong>{{ stageLabel(stageLogTarget.current_stage) }}</strong> · 需求状态：<el-tag size="small" type="info">{{ stageLogTarget.requirement_status || '需求分析' }}</el-tag>
+        </div>
+      </div>
       <el-table :data="stageLogs" border size="small">
         <el-table-column label="阶段" min-width="160"><template #default="scope">{{ stageLabel(scope.row.to_stage) }}</template></el-table-column>
-        <el-table-column prop="from_status" label="原状态" width="100" />
-        <el-table-column prop="to_status" label="新状态" width="100" />
-        <el-table-column prop="operator_name" label="推进人" width="130" />
-        <el-table-column prop="comment" label="说明" min-width="160" />
-        <el-table-column prop="created_at" label="时间" width="170" />
+        <el-table-column prop="from_status" label="原状态" width="90" />
+        <el-table-column prop="to_status" label="新状态" width="90" />
+        <el-table-column label="审批结果" width="100">
+          <template #default="scope">
+            <el-tag v-if="scope.row.approval_result" size="small" :type="stageApprovalResultTagType(scope.row.approval_result)">{{ stageApprovalResultLabels[scope.row.approval_result] || scope.row.approval_result }}</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="operator_name" label="推进人" width="120" />
+        <el-table-column prop="comment" label="说明" min-width="180" show-overflow-tooltip />
+        <el-table-column label="审批实例" width="120"><template #default="scope">{{ scope.row.workflow_instance_id ? `#${scope.row.workflow_instance_id}` : '-' }}</template></el-table-column>
+        <el-table-column prop="created_at" label="时间" width="160" />
       </el-table>
     </el-dialog>
 
@@ -936,6 +1426,42 @@ function canEditDiff(row: RequirementDifference) {
         <el-table-column label="旧值" min-width="150"><template #default="scope"><span class="req-old-value">{{ scope.row.old_value || '-' }}</span></template></el-table-column>
         <el-table-column label="新值" min-width="150"><template #default="scope"><span class="req-new-value">{{ scope.row.new_value || '-' }}</span></template></el-table-column>
       </el-table>
+    </el-dialog>
+
+    <!-- 审批记录 -->
+    <el-dialog v-model="approvalLogDialogVisible" :title="approvalLogTitle" width="min(900px, calc(100vw - 24px))">
+      <el-empty v-if="!approvalLogsLoading && approvalLogs.length === 0" description="暂无审批记录（差异未走审批流或工作流未产生动作）" />
+      <el-table v-else v-loading="approvalLogsLoading" :data="approvalLogs" border size="small">
+        <el-table-column prop="created_at" label="审批时间" width="170" />
+        <el-table-column label="审批人" width="140"><template #default="scope">{{ scope.row.operator_name || scope.row.operator_id || '-' }}</template></el-table-column>
+        <el-table-column label="审批结果" width="100"><template #default="scope"><el-tag size="small" :type="approvalActionTagType(scope.row.action_code)">{{ approvalActionLabels[scope.row.action_code] || scope.row.action_code }}</el-tag></template></el-table-column>
+        <el-table-column label="任务类型" width="90"><template #default="scope">{{ approvalTaskTypeLabels[scope.row.task_type] || scope.row.task_type || '-' }}</template></el-table-column>
+        <el-table-column label="审批对象" width="140"><template #default="scope">{{ scope.row.assignee_name || '-' }}</template></el-table-column>
+        <el-table-column label="任务状态" width="100"><template #default="scope">{{ approvalTaskStatusLabels[scope.row.task_status] || scope.row.task_status || '-' }}</template></el-table-column>
+        <el-table-column label="目标用户" width="120"><template #default="scope">{{ scope.row.target_user_name || (scope.row.action_code === 'ADD_SIGN' ? '-' : '—') }}</template></el-table-column>
+        <el-table-column label="审批意见" min-width="200"><template #default="scope"><span>{{ scope.row.comment || '-' }}</span></template></el-table-column>
+      </el-table>
+      <template #footer><el-button @click="approvalLogDialogVisible = false">关闭</el-button></template>
+    </el-dialog>
+
+    <!-- 差异预览 -->
+    <el-dialog v-model="diffPreviewVisible" :title="`差异预览：${diffPreviewRow?.requirement_no || ''}`" width="min(820px, calc(100vw - 24px))" top="6vh">
+      <div v-if="diffPreviewRow">
+        <div class="req-preview-header">
+          <span class="req-preview-title">{{ diffPreviewRow.name }}</span>
+          <el-tag v-if="diffPreviewRow.review_status" size="small" :type="diffPreviewRow.review_status === '已评审' ? 'success' : (diffPreviewRow.review_status === '已退回' ? 'warning' : 'info')">{{ diffPreviewRow.review_status }}</el-tag>
+          <el-tag size="small" :type="diffPreviewRow.source === 'IMPORT' ? 'warning' : 'success'">{{ diffPreviewRow.source === 'IMPORT' ? '导入' : '在线填写' }}</el-tag>
+        </div>
+        <el-descriptions :column="2" border size="small" class="req-preview-desc">
+          <el-descriptions-item v-for="item in diffPreviewFields" :key="item.label" :label="item.label" :span="['solution', 'difference_desc', 'monshang_practice', 'jinke_practice', 'decision_conclusion', 'review_comment'].includes(item.label) ? 2 : 1">
+            <span class="req-preview-value">{{ item.value }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="diffPreviewVisible = false">关闭</el-button>
+        <el-button v-if="canEditDiff(diffPreviewRow as RequirementDifference)" type="primary" @click="diffPreviewVisible = false; diffPreviewRow && openDiffEdit(diffPreviewRow)">编辑</el-button>
+      </template>
     </el-dialog>
 
     <!-- 系统表单 -->
@@ -1004,6 +1530,34 @@ function canEditDiff(row: RequirementDifference) {
 .req-new-value {
   color: var(--el-color-success);
 }
+.req-link-cell {
+  padding: 0;
+  font-weight: 500;
+}
+.req-preview-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--el-fill-color-light);
+  border-radius: 6px;
+}
+.req-preview-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin-right: 4px;
+  word-break: break-all;
+}
+.req-preview-desc {
+  margin-bottom: 8px;
+}
+.req-preview-value {
+  word-break: break-all;
+  white-space: pre-wrap;
+}
 .muted {
   color: var(--el-text-color-secondary);
 }
@@ -1032,5 +1586,88 @@ function canEditDiff(row: RequirementDifference) {
   .ui-toolbar {
     flex-wrap: wrap;
   }
+}
+
+/* 阶段推进 / 阶段记录 顶部时序条 */
+.req-stage-overview {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--el-fill-color-light, #f5f7fa);
+  border-radius: 6px;
+}
+.req-stage-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.req-stage-node {
+  flex: 1 1 14%;
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--el-bg-color, #fff);
+  border: 1px solid var(--el-border-color, #e4e7ed);
+  border-radius: 4px;
+  align-items: flex-start;
+}
+.req-stage-node.req-stage-active {
+  border-color: var(--el-color-primary, #409eff);
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.18);
+}
+.req-stage-node.req-stage-selected {
+  background: var(--el-color-primary-light-9, #ecf5ff);
+}
+.req-stage-name {
+  font-weight: 500;
+  font-size: 13px;
+}
+.req-stage-summary {
+  font-size: 13px;
+  color: var(--el-text-color-regular, #606266);
+}
+.req-stage-inst {
+  color: var(--el-text-color-secondary, #909399);
+}
+.req-stage-form .req-form-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary, #909399);
+  margin-top: 4px;
+}
+.req-action-reason {
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 12px;
+  margin-left: 4px;
+}
+.req-linkage-preview {
+  font-size: 13px;
+  line-height: 24px;
+}
+.req-linkage-preview .req-old-value {
+  color: var(--el-text-color-secondary, #909399);
+  text-decoration: line-through;
+  margin: 0 4px;
+}
+.req-linkage-preview .req-new-value {
+  color: var(--el-color-success, #67c23a);
+  font-weight: 500;
+  margin: 0 4px;
+}
+.req-section-title {
+  grid-column: span 2;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--el-text-color-primary, #303133);
+  margin: 12px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+.req-preview-common {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--el-fill-color-lighter, #fafafa);
+  border-radius: 4px;
 }
 </style>

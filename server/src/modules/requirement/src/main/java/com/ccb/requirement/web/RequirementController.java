@@ -160,16 +160,20 @@ public class RequirementController {
 
     @PostMapping("/differences/{id}/submit-review")
     @PreAuthorize("hasAuthority('requirement:project:update')")
-    public ApiResponse<Map<String, Object>> submitReview(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(differenceService.submitReview(id, user), TraceId.getOrCreate());
+    public ApiResponse<Map<String, Object>> submitReview(@PathVariable long id,
+                                                         @RequestBody Map<String, Object> body,
+                                                         @AuthenticationPrincipal AuthUser user) {
+        @SuppressWarnings("unchecked")
+        List<Number> raw = (List<Number>) body.get("approverIds");
+        List<Long> approverIds = raw == null ? List.of()
+                : raw.stream().map(Number::longValue).toList();
+        return ApiResponse.success(differenceService.submitReview(id, approverIds, user), TraceId.getOrCreate());
     }
 
-    @PostMapping("/differences/{id}/review-result")
-    @PreAuthorize("hasAuthority('requirement:diff:review')")
-    public ApiResponse<Map<String, Object>> reviewResult(@PathVariable long id, @RequestBody Map<String, String> body,
-                                                         @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(differenceService.reviewResult(id, body.get("decision"), body.get("comment"), user),
-                TraceId.getOrCreate());
+    @GetMapping("/reviewers")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:update')")
+    public ApiResponse<List<Map<String, Object>>> reviewers(@AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(differenceService.reviewers(user), TraceId.getOrCreate());
     }
 
     @GetMapping("/differences/{id}/changes")
@@ -177,6 +181,13 @@ public class RequirementController {
     public ApiResponse<List<Map<String, Object>>> differenceChanges(@PathVariable long id,
                                                                     @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(differenceService.changes(id, user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/differences/{id}/approval-logs")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    public ApiResponse<List<Map<String, Object>>> approvalLogs(@PathVariable long id,
+                                                              @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(differenceService.approvalLogs(id, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/baselines")

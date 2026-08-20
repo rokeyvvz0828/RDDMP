@@ -8,9 +8,12 @@ import com.ccb.security.model.AuthUser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.ccb.workflow.event.WorkflowInstanceCompletedEvent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -35,15 +38,18 @@ public class WorkflowService {
     private final FlowableWorkflowService flowableWorkflowService;
     private final WorkflowMonitorService workflowMonitorService;
     private final WorkflowNodeLabelResolver nodeLabelResolver;
+    private final ApplicationEventPublisher eventPublisher;
 
     public WorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper, FlowableWorkflowService flowableWorkflowService,
-                           WorkflowMonitorService workflowMonitorService, WorkflowNodeLabelResolver nodeLabelResolver) {
+                           WorkflowMonitorService workflowMonitorService, WorkflowNodeLabelResolver nodeLabelResolver,
+                           ApplicationEventPublisher eventPublisher) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.validator = new WorkflowDefinitionValidator(objectMapper);
         this.flowableWorkflowService = flowableWorkflowService;
         this.workflowMonitorService = workflowMonitorService;
         this.nodeLabelResolver = nodeLabelResolver;
+        this.eventPublisher = eventPublisher;
     }
 
     public PageResult<Map<String, Object>> definitions(PageQuery pageQuery, AuthUser user) {
@@ -132,10 +138,33 @@ public class WorkflowService {
         Map<String, Object> definition = jdbc.queryForMap("SELECT d.current_version, v.definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND v.status = 'PUBLISHED'", definitionId, user.tenantId());
         WorkflowDefinitionValidator.WorkflowGraph graph = validator.parse(String.valueOf(definition.get("definition_json")));
         long instanceId = nextId();
-        jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id) VALUES (?, ?, ?, ?, ?, 'RUNNING', ?)", instanceId, user.tenantId(), definitionId, definition.get("current_version"), requireText(businessKey, "业务单号"), user.id());
+        String variablesJson = serializeVariables(variables);
+        jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES (?, ?, ?, ?, ?, 'RUNNING', ?, ?)", instanceId, user.tenantId(), definitionId, definition.get("current_version"), requireText(businessKey, "业务单号"), user.id(), variablesJson);
         advanceFromNode(instanceId, user.tenantId(), user.id(), graph, "start");
         audit(user, "workflow.instance.start");
         return jdbc.queryForMap("SELECT id, definition_id, version_no, business_key, status FROM wf_instance WHERE id = ? AND tenant_id = ?", instanceId, user.tenantId());
+    }
+
+    /** 把启动变量序列化成 JSON；null 或空 map 返回 NULL，便于回写时 publishCompletedEvent 解析。 */
+    private String serializeVariables(Map<String, Object> variables) {
+        if (variables == null || variables.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(variables);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "流程变量序列化失败：" + e.getMessage());
+        }
+    }
+
+    /** 读取流程实例的启动变量；解析失败返回空节点，不阻断审批人解析。 */
+    private JsonNode loadInstanceVariables(long instanceId, long tenantId) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT variables_json FROM wf_instance WHERE id = ? AND tenant_id = ?", instanceId, tenantId);
+        if (rows.isEmpty() || rows.get(0).get("variables_json") == null) return objectMapper.nullNode();
+        try {
+            return objectMapper.readTree(String.valueOf(rows.get(0).get("variables_json")));
+        } catch (JsonProcessingException ignored) {
+            return objectMapper.nullNode();
+        }
     }
 
     public void terminate(long instanceId, String reason, AuthUser user) {
@@ -235,6 +264,7 @@ public class WorkflowService {
         if (REJECT.equals(normalizedAction)) {
             cancelPendingInstanceTasks(instanceId, user.tenantId(), taskId);
             jdbc.update("UPDATE wf_instance SET status = 'REJECTED' WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", instanceId, user.tenantId());
+            publishCompletedEvent(instanceId, user.tenantId(), "REJECTED");
             audit(user, "workflow.task.reject");
             return;
         }
@@ -279,6 +309,7 @@ public class WorkflowService {
             if (next == null) throw new BusinessException(ErrorCode.CONFLICT, "流程下一节点不存在");
             if ("END".equals(next.type())) {
                 jdbc.update("UPDATE wf_instance SET status = 'APPROVED' WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", instanceId, tenantId);
+                publishCompletedEvent(instanceId, tenantId, "APPROVED");
                 return;
             }
             if ("CC".equals(next.type())) {
@@ -297,7 +328,8 @@ public class WorkflowService {
     }
 
     private void createApprovalTasks(long instanceId, long tenantId, long starterId, WorkflowDefinitionValidator.WorkflowNode node) {
-        List<Assignee> assignees = resolveAssignees(node.config(), tenantId, starterId);
+        JsonNode variables = loadInstanceVariables(instanceId, tenantId);
+        List<Assignee> assignees = resolveAssignees(node.config(), variables, tenantId, starterId);
         String groupKey = UUID.randomUUID().toString();
         String assigneeType = node.config().path("assigneeType").asText("USER").toUpperCase();
         for (Assignee assignee : assignees) {
@@ -305,9 +337,45 @@ public class WorkflowService {
         }
     }
 
-    private List<Assignee> resolveAssignees(JsonNode config, long tenantId, long starterId) {
+    /** 流程实例进入终态时发布事件，业务模块可监听并回写业务字段。 */
+    private void publishCompletedEvent(long instanceId, long tenantId, String status) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT business_key, variables_json FROM wf_instance WHERE tenant_id = ? AND id = ?",
+                tenantId, instanceId);
+        if (rows.isEmpty()) return;
+        Map<String, Object> row = rows.get(0);
+        String businessKey = String.valueOf(row.get("business_key"));
+        JsonNode variables = null;
+        Object raw = row.get("variables_json");
+        if (raw != null) {
+            try {
+                variables = objectMapper.readTree(String.valueOf(raw));
+            } catch (JsonProcessingException ignored) {
+                // 变量解析失败不影响事件发布
+            }
+        }
+        eventPublisher.publishEvent(new WorkflowInstanceCompletedEvent(tenantId, instanceId, businessKey, status, variables));
+    }
+
+    private List<Assignee> resolveAssignees(JsonNode config, JsonNode variables, long tenantId, long starterId) {
         String type = config.path("assigneeType").asText("").toUpperCase();
         if ("STARTER".equals(type)) return List.of(findActiveUser(starterId, tenantId));
+        if ("VARIABLE".equals(type)) {
+            // 动态审批人：从启动变量 variables 里读取审批人 ID 列表
+            // 变量名由 config.assigneeVariable 指定，默认 approverIds
+            String variableName = config.path("assigneeVariable").asText("approverIds");
+            List<Long> ids = ids(variables.path(variableName));
+            if (ids.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "未指定审批人，变量缺失：" + variableName);
+            String placeholders = placeholders(ids.size());
+            List<Object> args = new ArrayList<>();
+            args.add(tenantId);
+            args.addAll(ids);
+            String sql = "SELECT u.id, u.display_name FROM sys_user u WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1 AND u.id IN (" + placeholders + ") ORDER BY u.id";
+            List<Assignee> result = jdbc.query(sql, args.toArray(), (rs, rowNum) -> new Assignee(rs.getLong("id"), rs.getString("display_name")));
+            if (result.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "审批人不存在或已停用");
+            if (result.size() != new HashSet<>(ids).size()) throw new BusinessException(ErrorCode.BAD_REQUEST, "部分审批人不存在或已停用");
+            return result;
+        }
         List<Long> ids = ids(config.path("assigneeIds"));
         if (ids.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "审批节点未配置审批人");
         String placeholders = placeholders(ids.size());

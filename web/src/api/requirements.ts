@@ -6,6 +6,7 @@ import type {
   LegacyRequirement,
   PageEnvelope,
   ProjectMember,
+  RequirementApprovalLog,
   RequirementBaseline,
   RequirementDifference,
   RequirementEnums,
@@ -80,16 +81,26 @@ export function deleteDifference(id: number) {
   return http.delete<ApiResponse<void>>(`/requirements/differences/${id}`)
 }
 
-export function submitReview(id: number) {
-  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/submit-review`)
+export interface RequirementReviewer {
+  id: number
+  username: string
+  display_name: string
 }
 
-export function reviewResult(id: number, data: { decision: 'APPROVE' | 'RETURN'; comment?: string }) {
-  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/review-result`, data)
+export function listReviewers() {
+  return http.get<ApiResponse<RequirementReviewer[]>>('/requirements/reviewers')
+}
+
+export function submitReview(id: number, approverIds: number[]) {
+  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/submit-review`, { approverIds })
 }
 
 export function differenceChanges(id: number) {
   return http.get<ApiResponse<ChangeLogRow[]>>(`/requirements/differences/${id}/changes`)
+}
+
+export function listDifferenceApprovalLogs(id: number) {
+  return http.get<ApiResponse<RequirementApprovalLog[]>>(`/requirements/differences/${id}/approval-logs`)
 }
 
 export function listBaselines(projectId: number) {
@@ -177,8 +188,12 @@ export function deleteLegacy(id: number) {
   return http.delete<ApiResponse<void>>(`/requirements/legacy/${id}`)
 }
 
-export function stageTransition(id: number, data: { stage: string; action: 'START' | 'COMPLETE' | 'BACK'; comment?: string }) {
+export function stageTransition(id: number, data: { stage: string; action: 'START' | 'COMPLETE' | 'BACK'; comment?: string; approverIds: number[] }) {
   return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/stage`, data)
+}
+
+export function listLegacyReviewers(id: number) {
+  return http.get<ApiResponse<RequirementReviewer[]>>(`/requirements/legacy/${id}/reviewers`)
 }
 
 export function legacyStageLogs(id: number) {

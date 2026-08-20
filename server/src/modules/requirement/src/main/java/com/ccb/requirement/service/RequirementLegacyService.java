@@ -5,6 +5,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.workflow.service.WorkflowService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +20,7 @@ import com.ccb.requirement.support.RequirementIds;
 import com.ccb.requirement.support.RequirementSql;
 import com.ccb.requirement.support.RequirementValues;
 
-/** 存量项目常态化需求：8 阶段字段维护、阶段状态推进（不走审批流）与业务组数据范围。 */
+/** 存量项目常态化需求：8 阶段字段维护、阶段状态推进（接入审批流 legacy.stage.transition）与业务组数据范围。 */
 @Service
 public class RequirementLegacyService {
     private static final List<String> LEGACY_FIELDS = List.of(
@@ -59,12 +60,15 @@ public class RequirementLegacyService {
     private final JdbcTemplate jdbc;
     private final RequirementChangeLogService changeLog;
     private final RequirementSecurityService security;
+    private final WorkflowService workflowService;
 
     public RequirementLegacyService(JdbcTemplate jdbc, RequirementChangeLogService changeLog,
-                                    RequirementSecurityService security) {
+                                    RequirementSecurityService security,
+                                    WorkflowService workflowService) {
         this.jdbc = jdbc;
         this.changeLog = changeLog;
         this.security = security;
+        this.workflowService = workflowService;
     }
 
     public PageResult<Map<String, Object>> list(String businessGroup, String stage, String stageStatus,
@@ -169,34 +173,95 @@ public class RequirementLegacyService {
         changeLog.record("LEGACY_REQUIREMENT", id, "DELETE", "deleted", "0", "1", user, "ONLINE");
     }
 
-    /** 阶段推进：未开始→进行中→已完成；已完成不可回退，进行中可回退到未开始；全程留痕。 */
+    /**
+     * 阶段推进审批：未开始/进行中 → 审批中 → 进行中/已完成/未开始。
+     * 不直接写最终状态：先启动 legacy.stage.transition 审批流，
+     * 业务阶段列置为"审批中"并落 workflow_instance_id；
+     * 审批结果由 RequirementWorkflowListener 幂等回写。
+     * "审批中"阶段拒绝再次发起，避免并发审批。
+     * 发起人必须指定审批人（approverIds），写入流程变量供 VARIABLE 类型审批节点解析。
+     */
     @Transactional
-    public Map<String, Object> stageTransition(long id, String stage, String action, String comment, AuthUser user) {
+    public Map<String, Object> stageTransition(long id, String stage, String action, String comment,
+                                                List<Long> approverIds, AuthUser user) {
         Map<String, Object> row = row(id, user);
         security.requireLegacyAccess(user, String.valueOf(row.get("business_group")));
         if (!RequirementEnums.LEGACY_STAGES.contains(stage)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "阶段不在受控枚举内：" + stage);
         }
+        if (approverIds == null || approverIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "至少选择一个审批人");
+        }
+        // 阶段必填字段校验：从 PROPOSE 到目标 stage 的所有阶段必填字段都要完成
+        validateStageFieldsReady(row, stage);
         String column = RequirementEnums.LEGACY_STAGE_COLUMNS.get(stage);
         String fromStatus = String.valueOf(row.get(column));
+        if ("审批中".equals(fromStatus)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "当前阶段处于审批中，禁止重复发起");
+        }
+        // 仍按原状态机校验目标动作合法性（避免审批通过后写入非法状态）
         String toStatus = nextStatus(fromStatus, action);
         String oldStage = String.valueOf(row.get("current_stage"));
-        jdbc.update("UPDATE req_legacy_requirement SET " + RequirementSql.quote(column) + " = ?, current_stage = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                toStatus, stage, user.id(), user.tenantId(), id);
+
+        long definitionId = lookupDefinitionId(user.tenantId(), "legacy.stage.transition");
+        String businessKey = "req-legacy:" + id + ":" + stage + ":" + action.toUpperCase();
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("requirementId", id);
+        variables.put("stage", stage);
+        variables.put("action", action.toUpperCase());
+        variables.put("fromStatus", fromStatus);
+        variables.put("toStatus", toStatus);
+        variables.put("submitterId", user.id());
+        variables.put("submitterName", user.displayName());
+        variables.put("comment", comment == null ? "" : comment);
+        variables.put("approverIds", approverIds);
+        Map<String, Object> instance = workflowService.start(definitionId, businessKey, variables, user);
+        long instanceId = ((Number) instance.get("id")).longValue();
+        jdbc.update("UPDATE req_legacy_requirement SET " + RequirementSql.quote(column)
+                        + " = '审批中', workflow_instance_id = ?, current_stage = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
+                String.valueOf(instanceId), stage, user.id(), user.tenantId(), id);
         long logId = RequirementIds.next();
         jdbc.update("""
-                INSERT INTO req_stage_log (id, tenant_id, requirement_id, from_stage, to_stage, from_status, to_status, operator_id, operator_name, comment, deleted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                """, logId, user.tenantId(), id, oldStage, stage, fromStatus, toStatus,
-                user.id(), user.displayName(), comment);
-        changeLog.record("LEGACY_REQUIREMENT", id, "STAGE_TRANSITION", column, fromStatus, toStatus, user, "ONLINE");
+                INSERT INTO req_stage_log (id, tenant_id, requirement_id, from_stage, to_stage, from_status, to_status, operator_id, operator_name, comment, approval_result, workflow_instance_id, deleted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                """, logId, user.tenantId(), id, oldStage, stage, fromStatus, "审批中",
+                user.id(), user.displayName(), "发起审批：" + action, "PENDING", String.valueOf(instanceId));
+        changeLog.record("LEGACY_REQUIREMENT", id, "STAGE_TRANSITION", column, fromStatus, "审批中", user, "ONLINE");
         return get(id, user);
+    }
+
+    /** 阶段推进可选审批人：能编辑存量需求的人 + 协调员 + 管理员。 */
+    public List<Map<String, Object>> reviewers(AuthUser user) {
+        return jdbc.queryForList("""
+                SELECT DISTINCT u.id, u.username, u.display_name
+                FROM sys_user u
+                LEFT JOIN sys_user_role ur ON ur.user_id = u.id AND ur.tenant_id = u.tenant_id
+                LEFT JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id
+                LEFT JOIN sys_role_permission rp ON rp.role_id = r.id AND rp.tenant_id = r.tenant_id
+                LEFT JOIN sys_menu_permission mp ON mp.id = rp.permission_id AND mp.tenant_id = rp.tenant_id
+                WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1
+                  AND (mp.permission_code = 'requirement:legacy:update'
+                       OR r.role_code = 'REQUIREMENT_COORDINATOR'
+                       OR u.id = 1)
+                ORDER BY u.id
+                """, user.tenantId());
+    }
+
+    /** 按流程编码取已发布流程定义 id；不存在或未发布抛业务异常。 */
+    private long lookupDefinitionId(long tenantId, String code) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id FROM wf_definition WHERE tenant_id = ? AND code = ? AND status = 'PUBLISHED' AND deleted = 0",
+                tenantId, code);
+        if (rows.isEmpty()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "流程定义未发布：" + code);
+        }
+        return ((Number) rows.get(0).get("id")).longValue();
     }
 
     public List<Map<String, Object>> stageLogs(long id, AuthUser user) {
         get(id, user);
         return jdbc.queryForList("""
-                SELECT from_stage, to_stage, from_status, to_status, operator_id, operator_name, comment, created_at
+                SELECT from_stage, to_stage, from_status, to_status, operator_id, operator_name, comment, approval_result, workflow_instance_id, created_at
                 FROM req_stage_log WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0
                 ORDER BY created_at DESC, id DESC
                 """, user.tenantId(), id);
@@ -215,6 +280,38 @@ public class RequirementLegacyService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "存量需求不存在");
         }
         return rows.get(0);
+    }
+
+    /**
+     * 阶段推进前的必填字段校验：仅校验当前阶段（含）之前所有阶段的必填字段。
+     * 即从 PROPOSE 到 currentStage 为止的必填字段都必须非空；目标阶段及之后的字段不校验。
+     * 这样 PROPOSE→DOCKING 只校验 PROPOSE 字段；DOCKING→WORKLOAD 校验 PROPOSE+DOCKING 字段。
+     * 缺失字段会拼接中文标签列表抛 BAD_REQUEST，前端可直接展示。
+     */
+    private void validateStageFieldsReady(Map<String, Object> row, String targetStage) {
+        List<String> missing = new ArrayList<>();
+        // 找到 currentStage 在 LEGACY_STAGES 中的位置
+        String currentStage = String.valueOf(row.get("current_stage"));
+        int currentIdx = RequirementEnums.LEGACY_STAGES.indexOf(currentStage);
+        if (currentIdx < 0) currentIdx = 0;
+        // 校验从 PROPOSE 到 currentStage 为止的所有阶段必填字段
+        for (int i = 0; i <= currentIdx && i < RequirementEnums.LEGACY_STAGES.size(); i++) {
+            String stage = RequirementEnums.LEGACY_STAGES.get(i);
+            List<String> fields = RequirementEnums.LEGACY_STAGE_REQUIRED_FIELDS.get(stage);
+            if (fields == null) continue;
+            for (String field : fields) {
+                Object v = row.get(field);
+                if (v == null || (v instanceof String s && s.isBlank())) {
+                    String label = RequirementEnums.FIELD_LABELS.getOrDefault(field, field);
+                    missing.add(label);
+                }
+            }
+        }
+        if (!missing.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "以下字段必填，完成后方可推进阶段：" +
+                            String.join("、", missing));
+        }
     }
 
     private String nextStatus(String fromStatus, String action) {

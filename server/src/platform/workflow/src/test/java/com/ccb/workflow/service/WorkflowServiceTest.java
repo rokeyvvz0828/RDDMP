@@ -19,7 +19,7 @@ class WorkflowServiceTest {
                 "definition_json", "{\"schemaVersion\":2,\"nodes\":[],\"edges\":[]}"
         ));
         var flowable = new RecordingFlowableWorkflowService();
-        var service = new WorkflowService(jdbc, new ObjectMapper(), flowable, null, null);
+        var service = new WorkflowService(jdbc, new ObjectMapper(), flowable, null, null, event -> { });
 
         service.updateDefinition(9001L, "demo", "演示流程", "{\"schemaVersion\":2}",
                 new AuthUser(1L, 1L, "admin", "", "管理员", 1L, true));

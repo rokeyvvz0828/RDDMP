@@ -5,6 +5,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.workflow.service.WorkflowService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,14 +44,17 @@ public class RequirementDifferenceService {
     private final RequirementChangeLogService changeLog;
     private final RequirementSecurityService security;
     private final RequirementSystemService systemService;
+    private final WorkflowService workflowService;
 
     public RequirementDifferenceService(JdbcTemplate jdbc, RequirementChangeLogService changeLog,
                                         RequirementSecurityService security,
-                                        RequirementSystemService systemService) {
+                                        RequirementSystemService systemService,
+                                        WorkflowService workflowService) {
         this.jdbc = jdbc;
         this.changeLog = changeLog;
         this.security = security;
         this.systemService = systemService;
+        this.workflowService = workflowService;
     }
 
     public PageResult<Map<String, Object>> list(long projectId, String reviewStatus, String devStatus,
@@ -136,56 +140,98 @@ public class RequirementDifferenceService {
     }
 
     /**
-     * 提交评审：待评审/已退回 → 评审中。
-     * 审批流（requirement.diff.review）接入后，此处将启动平台流程并按审批结果回写；
-     * 当前审批引擎未接入，先完成业务状态流转与留痕（workflow_instance_id 已预留）。
+     * 提交评审：待评审/已退回 → 评审中，并启动审批流（requirement.diff.review）。
+     * 业务字段先改为"评审中"并锁定；审批人在工作流中心 APPROVE/REJECT 后，
+     * 由 RequirementWorkflowListener 接收 WorkflowInstanceCompletedEvent 幂等回写"已评审/已退回"。
      */
     @Transactional
-    public Map<String, Object> submitReview(long id, AuthUser user) {
+    public Map<String, Object> submitReview(long id, List<Long> approverIds, AuthUser user) {
         Map<String, Object> row = row(id, user);
         security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
         String status = String.valueOf(row.get("review_status"));
         if (!"待评审".equals(status) && !"已退回".equals(status)) {
             throw new BusinessException(ErrorCode.CONFLICT, "当前状态不可提交评审：" + status);
         }
-        jdbc.update("UPDATE req_difference SET review_status = '评审中', review_comment = NULL, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                user.id(), user.tenantId(), id);
+        if (approverIds == null || approverIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择审批人");
+        }
+        // 启动审批流，businessKey 编码业务单号；variables 携带 approverIds 供 VARIABLE 审批节点解析
+        long definitionId = lookupDefinitionId(user.tenantId(), "requirement.diff.review");
+        String businessKey = "req-diff:" + id;
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("differenceId", id);
+        variables.put("submitterId", user.id());
+        variables.put("submitterName", user.displayName());
+        variables.put("approverIds", approverIds);
+        Map<String, Object> instance = workflowService.start(definitionId, businessKey, variables, user);
+        long instanceId = ((Number) instance.get("id")).longValue();
+        jdbc.update("UPDATE req_difference SET review_status = '评审中', review_comment = NULL, workflow_instance_id = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
+                instanceId, user.id(), user.tenantId(), id);
         changeLog.record("NEW_PROJECT_DIFF", id, "SUBMIT_REVIEW", "review_status", status, "评审中", user, "ONLINE");
         return get(id, user);
     }
 
-    /**
-     * 评审结果处理（临时模拟审批回调）：评审中 → 已评审（锁定）或已退回。
-     * 仅统筹/管理员可执行；审批流接入后由流程生命周期事件幂等回写替代。
-     */
-    @Transactional
-    public Map<String, Object> reviewResult(long id, String decision, String comment, AuthUser user) {
-        if (!security.isAdmin(user)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅统筹/管理员可执行评审处理");
+    /** 可选审批人列表：有差异评审权限（requirement:diff:review）或需求统筹管理员角色的启用用户。 */
+    public List<Map<String, Object>> reviewers(AuthUser user) {
+        return jdbc.queryForList("""
+                SELECT DISTINCT u.id, u.username, u.display_name
+                FROM sys_user u
+                LEFT JOIN sys_user_role ur ON ur.user_id = u.id AND ur.tenant_id = u.tenant_id
+                LEFT JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id
+                LEFT JOIN sys_role_permission rp ON rp.role_id = r.id AND rp.tenant_id = r.tenant_id
+                LEFT JOIN sys_menu_permission mp ON mp.id = rp.permission_id AND mp.tenant_id = rp.tenant_id
+                WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1
+                  AND (mp.permission_code = 'requirement:diff:review'
+                       OR r.role_code = 'REQUIREMENT_COORDINATOR'
+                       OR u.id = 1)
+                ORDER BY u.id
+                """, user.tenantId());
+    }
+
+    /** 按流程编码取已发布流程定义 id；不存在或未发布抛业务异常。 */
+    private long lookupDefinitionId(long tenantId, String code) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id FROM wf_definition WHERE tenant_id = ? AND code = ? AND status = 'PUBLISHED' AND deleted = 0",
+                tenantId, code);
+        if (rows.isEmpty()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "流程定义未发布：" + code);
         }
-        Map<String, Object> row = row(id, user);
-        String status = String.valueOf(row.get("review_status"));
-        if (!"评审中".equals(status)) {
-            throw new BusinessException(ErrorCode.CONFLICT, "仅评审中的差异可处理评审结果");
-        }
-        if ("APPROVE".equalsIgnoreCase(decision)) {
-            jdbc.update("UPDATE req_difference SET review_status = '已评审', review_comment = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                    comment, user.id(), user.id(), user.tenantId(), id);
-            changeLog.record("NEW_PROJECT_DIFF", id, "REVIEW_PASS", "review_status", status, "已评审", user, "ONLINE");
-        } else if ("RETURN".equalsIgnoreCase(decision)) {
-            jdbc.update("UPDATE req_difference SET review_status = '已退回', review_comment = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                    comment, user.id(), user.id(), user.tenantId(), id);
-            changeLog.record("NEW_PROJECT_DIFF", id, "REVIEW_RETURN", "review_status", status, "已退回", user, "ONLINE");
-            changeLog.record("NEW_PROJECT_DIFF", id, "REVIEW_RETURN", "review_comment", null, comment, user, "ONLINE");
-        } else {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "评审结论必须为 APPROVE 或 RETURN");
-        }
-        return get(id, user);
+        return ((Number) rows.get(0).get("id")).longValue();
     }
 
     public List<Map<String, Object>> changes(long id, AuthUser user) {
         get(id, user);
         return changeLog.list("NEW_PROJECT_DIFF", id, user);
+    }
+
+    /**
+     * 审批记录：按差异关联的 workflow_instance_id 查 wf_task_action，
+     * 返回审批人、审批动作、意见、目标用户（加签场景）、任务类型、时间。
+     * workflow_instance_id 为空或非数字（stub）时返回空列表，不进入工作流中心。
+     */
+    public List<Map<String, Object>> approvalLogs(long id, AuthUser user) {
+        Map<String, Object> row = row(id, user);
+        security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
+        Object raw = row.get("workflow_instance_id");
+        if (raw == null) return List.of();
+        long instanceId;
+        try {
+            instanceId = Long.parseLong(String.valueOf(raw).trim());
+        } catch (NumberFormatException e) {
+            return List.of();  // 兼容 V39 种子里的 stub 字符串（如 WF-LEGACY-STUB-xxx）
+        }
+        return jdbc.queryForList("""
+                SELECT a.id, a.action_code, a.operator_id, u.display_name AS operator_name,
+                       a.target_user_id, tu.display_name AS target_user_name,
+                       a.comment, a.created_at,
+                       t.task_type, t.assignee_name, t.status AS task_status, t.node_id
+                FROM wf_task_action a
+                LEFT JOIN sys_user u  ON u.id = a.operator_id AND u.tenant_id = a.tenant_id
+                LEFT JOIN sys_user tu ON tu.id = a.target_user_id AND tu.tenant_id = a.tenant_id
+                LEFT JOIN wf_task t   ON t.id = a.task_id AND t.tenant_id = a.tenant_id
+                WHERE a.tenant_id = ? AND a.instance_id = ?
+                ORDER BY a.created_at, a.id
+                """, user.tenantId(), instanceId);
     }
 
     Map<String, Object> row(long id, AuthUser user) {

@@ -58,12 +58,28 @@ export interface RequirementDifference {
   review_comment?: string | null
   reviewed_by?: number | null
   reviewed_at?: string | null
+  workflow_instance_id?: string | number | null
   dev_status: string
   test_status: string
   baseline_id?: number | null
   source?: string
   created_at?: string
   updated_at?: string
+}
+
+export interface RequirementApprovalLog {
+  id: number
+  action_code: string
+  operator_id: number
+  operator_name?: string
+  target_user_id?: number | null
+  target_user_name?: string | null
+  comment?: string | null
+  created_at: string
+  task_type?: string
+  assignee_name?: string | null
+  task_status?: string
+  node_id?: string | null
 }
 
 export interface RequirementBaseline {
@@ -144,6 +160,8 @@ export interface StageLogRow {
   operator_id: number
   operator_name?: string
   comment?: string
+  approval_result?: string | null
+  workflow_instance_id?: string | null
   created_at: string
 }
 

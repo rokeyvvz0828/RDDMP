@@ -76,10 +76,19 @@ public class RequirementLegacyController {
     @PostMapping("/legacy/{id}/stage")
     @PreAuthorize("hasAuthority('requirement:legacy:update')")
     public ApiResponse<Map<String, Object>> stageTransition(@PathVariable long id,
-                                                            @RequestBody Map<String, String> body,
+                                                            @RequestBody Map<String, Object> body,
                                                             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(legacyService.stageTransition(id, body.get("stage"), body.get("action"),
-                body.get("comment"), user), TraceId.getOrCreate());
+        @SuppressWarnings("unchecked")
+        List<Long> approverIds = (List<Long>) body.get("approverIds");
+        return ApiResponse.success(legacyService.stageTransition(id,
+                (String) body.get("stage"), (String) body.get("action"),
+                (String) body.get("comment"), approverIds, user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/legacy/{id}/reviewers")
+    @PreAuthorize("hasAnyAuthority('requirement:legacy:update','requirement:legacy:read')")
+    public ApiResponse<List<Map<String, Object>>> legacyReviewers(@AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(legacyService.reviewers(user), TraceId.getOrCreate());
     }
 
     @GetMapping("/legacy/{id}/stage-logs")
