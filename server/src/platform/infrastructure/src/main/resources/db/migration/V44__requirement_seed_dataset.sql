@@ -81,64 +81,64 @@ INSERT INTO req_legacy_requirement
 
 -- 三、wf_instance 审批流实例数据（关联审批中场景）
 -- 需求 5002：风控规则前置改造（PROPOSE 阶段审批中）
-INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES
-(70001, 1, 900000000000011, 1, 'req-legacy:5002:PROPOSE:START', 'RUNNING', 1002,
- '{"approverIds":[1001]}');
+INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, deleted, starter_id, variables_json, created_at) VALUES
+(70001, 1, 900000000000011, 1, 'req-legacy:5002:PROPOSE:START', 'RUNNING', 0, 1002,
+ '{"approverIds":[1001]}', '2026-08-10 09:00:00');
 
 -- 需求 5006：贷后预警7级改造（PROJECT 阶段审批中）
-INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES
-(70002, 1, 900000000000011, 1, 'req-legacy:5006:PROJECT:START', 'RUNNING', 1002,
- '{"approverIds":[1001]}');
+INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, deleted, starter_id, variables_json, created_at) VALUES
+(70002, 1, 900000000000011, 1, 'req-legacy:5006:PROJECT:START', 'RUNNING', 0, 1002,
+ '{"approverIds":[1001]}', '2026-08-12 10:00:00');
 
 -- 需求 5010：信用卡分期24期产品上线（DOCKING 阶段审批中）
-INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES
-(70003, 1, 900000000000011, 1, 'req-legacy:5010:DOCKING:START', 'RUNNING', 1005,
- '{"approverIds":[1001]}');
+INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, deleted, starter_id, variables_json, created_at) VALUES
+(70003, 1, 900000000000011, 1, 'req-legacy:5010:DOCKING:START', 'RUNNING', 0, 1005,
+ '{"approverIds":[1001]}', '2026-08-14 14:00:00');
 
 -- 需求 5012：信用卡分期2.0投产（LAUNCH 阶段审批中）
-INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES
-(70004, 1, 900000000000011, 1, 'req-legacy:5012:LAUNCH:START', 'RUNNING', 1005,
- '{"approverIds":[1001]}');
+INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, deleted, starter_id, variables_json, created_at) VALUES
+(70004, 1, 900000000000011, 1, 'req-legacy:5012:LAUNCH:START', 'RUNNING', 0, 1005,
+ '{"approverIds":[1001]}', '2026-08-15 09:00:00');
 
 -- 需求 5015：对公跨境报文ISO 20022升级（SOFT 阶段审批中）
-INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES
-(70005, 1, 900000000000011, 1, 'req-legacy:5015:SOFT:START', 'RUNNING', 1007,
- '{"approverIds":[1001]}');
+INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, deleted, starter_id, variables_json, created_at) VALUES
+(70005, 1, 900000000000011, 1, 'req-legacy:5015:SOFT:START', 'RUNNING', 0, 1007,
+ '{"approverIds":[1001]}', '2026-08-16 10:00:00');
 
 -- 需求 5020：手机银行5.0上线（LAUNCH 阶段审批中）
-INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES
-(70006, 1, 900000000000011, 1, 'req-legacy:5020:LAUNCH:START', 'RUNNING', 1009,
- '{"approverIds":[1001]}');
+INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, deleted, starter_id, variables_json, created_at) VALUES
+(70006, 1, 900000000000011, 1, 'req-legacy:5020:LAUNCH:START', 'RUNNING', 0, 1009,
+ '{"approverIds":[1001]}', '2026-08-17 14:00:00');
 
 -- 差异 4002：风控规则触发节点差异（评审中）
-INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES
-(70007, 1, 900000000000010, 1, 'req-diff:4002', 'RUNNING', 1004,
- '{"approverIds":[1001]}');
+INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, deleted, starter_id, variables_json, created_at) VALUES
+(70007, 1, 900000000000010, 1, 'req-diff:4002', 'RUNNING', 0, 1004,
+ '{"approverIds":[1001]}', '2026-08-05 10:00:00');
 
 -- 差异 4022：跨境反洗钱校验差异（评审中）
-INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES
-(70008, 1, 900000000000010, 1, 'req-diff:4022', 'RUNNING', 1009,
- '{"approverIds":[1001]}');
+INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, deleted, starter_id, variables_json, created_at) VALUES
+(70008, 1, 900000000000010, 1, 'req-diff:4022', 'RUNNING', 0, 1009,
+ '{"approverIds":[1001]}', '2026-08-13 11:00:00');
 
 -- 四、wf_task 待办任务（关联以上审批实例）
-INSERT INTO wf_task (id, tenant_id, instance_id, node_id, node_label, task_type, assignee_id, status, created_at) VALUES
-(80001, 1, 70001, 'approval-1', '需求提出审批', 'APPROVAL', 1001, 'PENDING', '2026-08-10 09:00:00'),
-(80002, 1, 70002, 'approval-1', '立项审批',     'APPROVAL', 1001, 'PENDING', '2026-08-12 10:00:00'),
-(80003, 1, 70003, 'approval-1', '需求对接审批', 'APPROVAL', 1001, 'PENDING', '2026-08-14 14:00:00'),
-(80004, 1, 70004, 'approval-1', '投产审批',     'APPROVAL', 1001, 'PENDING', '2026-08-15 09:00:00'),
-(80005, 1, 70005, 'approval-1', '软需审批',     'APPROVAL', 1001, 'PENDING', '2026-08-16 10:00:00'),
-(80006, 1, 70006, 'approval-1', '投产审批',     'APPROVAL', 1001, 'PENDING', '2026-08-17 14:00:00'),
-(80007, 1, 70007, 'approval-1', '差异评审',     'APPROVAL', 1001, 'PENDING', '2026-08-05 10:00:00'),
-(80008, 1, 70008, 'approval-1', '差异评审',     'APPROVAL', 1001, 'PENDING', '2026-08-13 11:00:00');
+INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, assignee_id, status, created_at) VALUES
+(80001, 1, 70001, 'approval-1', 'approval-1', 'APPROVAL', 1001, 'PENDING', '2026-08-10 09:00:00'),
+(80002, 1, 70002, 'approval-1', 'approval-1', 'APPROVAL', 1001, 'PENDING', '2026-08-12 10:00:00'),
+(80003, 1, 70003, 'approval-1', 'approval-1', 'APPROVAL', 1001, 'PENDING', '2026-08-14 14:00:00'),
+(80004, 1, 70004, 'approval-1', 'approval-1', 'APPROVAL', 1001, 'PENDING', '2026-08-15 09:00:00'),
+(80005, 1, 70005, 'approval-1', 'approval-1', 'APPROVAL', 1001, 'PENDING', '2026-08-16 10:00:00'),
+(80006, 1, 70006, 'approval-1', 'approval-1', 'APPROVAL', 1001, 'PENDING', '2026-08-17 14:00:00'),
+(80007, 1, 70007, 'approval-1', 'approval-1', 'APPROVAL', 1001, 'PENDING', '2026-08-05 10:00:00'),
+(80008, 1, 70008, 'approval-1', 'approval-1', 'APPROVAL', 1001, 'PENDING', '2026-08-13 11:00:00');
 
 -- 五、wf_task_action 审批动作记录（已完成的审批动作）
-INSERT INTO wf_task_action (id, tenant_id, task_id, action, actor_id, actor_name, comment, created_at) VALUES
+INSERT INTO wf_task_action (id, tenant_id, instance_id, task_id, action_code, operator_id, target_user_id, comment, created_at) VALUES
 -- 已通过的审批
-(90001, 1, 80001, 'APPROVE', 1001, '张统筹', '同意推进', '2026-08-10 10:00:00'),
-(90002, 1, 80002, 'APPROVE', 1001, '张统筹', '同意立项', '2026-08-12 11:00:00'),
-(90003, 1, 80007, 'APPROVE', 1001, '张统筹', '评审通过', '2026-08-05 11:00:00'),
+(90001, 1, 70001, 80001, 'APPROVE', 1001, NULL, '同意推进', '2026-08-10 10:00:00'),
+(90002, 1, 70002, 80002, 'APPROVE', 1001, NULL, '同意立项', '2026-08-12 11:00:00'),
+(90003, 1, 70007, 80007, 'APPROVE', 1001, NULL, '评审通过', '2026-08-05 11:00:00'),
 -- 已驳回的审批
-(90004, 1, 80008, 'REJECT', 1001, '张统筹', '差异描述需补充外币折算口径', '2026-08-13 12:00:00');
+(90004, 1, 70008, 80008, 'REJECT',  1001, NULL, '差异描述需补充外币折算口径', '2026-08-13 12:00:00');
 
 -- 六、存量需求回填 workflow_instance_id（关联 wf_instance）
 UPDATE req_legacy_requirement SET workflow_instance_id = '70001' WHERE id = 5002;
