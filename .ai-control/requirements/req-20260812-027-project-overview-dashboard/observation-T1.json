@@ -1,0 +1,11 @@
+{
+  "task_id": "T1",
+  "status": "observed",
+  "checks": [
+    {"command": "npm --prefix web run build", "result": "blocked", "evidence": "vue-tsc passed; Vite failed with esbuild spawn EPERM in the managed Windows environment"},
+    {"command": "web\\node_modules\\.bin\\vue-tsc.cmd --noEmit", "result": "passed", "evidence": "executed from web directory with project tsconfig"},
+    {"command": "git diff --check", "result": "passed", "evidence": "no whitespace errors"}
+  ],
+  "feedback": [{"severity": "P2", "message": "Vite production build could not spawn esbuild; requires a less restricted local shell or CI runner."}],
+  "residual_risks": ["No browser screenshot or runtime interaction validation in this turn"]
+}

@@ -9,6 +9,7 @@
 | 组合根 | `server/src/platform/boot` | Spring Boot 启动、模块装配、统一 Web 与观测入口 |
 | 平台 | `server/src/platform/infrastructure` | MySQL/Flyway、MinIO 与基础设施适配 |
 | 平台 | `server/src/platform/file-preview` | 受控文件上传、预览源校验与 kkFileView 适配 |
+| 平台 | `server/src/platform/attachment` | 持久附件元数据、MinIO 对象生命周期与受控预览下载 |
 | 平台 | `server/src/platform/security` | JWT、认证、会话、RBAC 与安全过滤器 |
 | 平台 | `server/src/platform/system` | 组织、用户、角色、菜单、参数、站内消息通知和系统管理 |
 | 平台 | `server/src/platform/workflow` | 流程模型、BPMN 编译、运行服务与监控 |
@@ -28,6 +29,7 @@
 - `web/src/modules/delivery-showcase` 是纯前端虚构交付示范模块，使用本地 mock 数据沉淀列表、表单、详情、审批和可视化样式，不拥有后端业务数据。
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
+- `com.ccb.attachment.model` 提供持久附件公开契约，业务模块只能通过 `AttachmentPort` 访问附件，不得读取附件表或对象键。
 - `com.ccb.system.notification` 与 `web/src/api/notifications.ts` 提供租户隔离的站内消息发布和当前用户消息中心契约，业务模块不得直接写通知表。
 - 其余业务页面的归属以 `modules.yaml` 中列出的精确路径为准。
 

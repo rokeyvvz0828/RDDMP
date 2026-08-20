@@ -1,0 +1,40 @@
+{
+  "task_id": "T1/T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V43__project_risk_management.sql", "purpose": "新增项目风险表、项目风险编号规则字段、参数示例和 CRUD 权限"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java", "purpose": "暴露项目风险查询、新增、修改、删除接口"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "实现风险编号、参数/组织校验、项目/租户范围、权限、审计和风险 CRUD"},
+    {"path_or_resource": "web/src/api/project.ts", "purpose": "增加项目风险 API 调用"},
+    {"path_or_resource": "web/src/types/project.ts", "purpose": "增加项目风险和参数选项类型"},
+    {"path_or_resource": "web/src/views/ProjectView.vue", "purpose": "新增项目风险页签、列表、三段式表单和操作状态"},
+    {"path_or_resource": "web/src/styles.css", "purpose": "增加风险表格局部滚动、三段表单和移动端布局"},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "purpose": "覆盖服务端生成风险编号和无效参数拒绝"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am test -DskipTests", "exit_code": 0, "salient_output": "ccb-system BUILD SUCCESS"},
+    {"command": "mvn -pl :ccb-system -am test -Dnet.bytebuddy.experimental=true", "exit_code": 0, "salient_output": "19 tests run, 0 failures, 0 errors"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite build succeeded"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 43 migration(s)"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "no whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "后端编译和单元测试", "result": "pass", "evidence": "ccb-system 19 tests passed", "limitations": ["使用 net.bytebuddy.experimental=true 兼容当前 JDK 25" ]},
+    {"check": "前端类型检查和生产构建", "result": "pass", "evidence": "vue-tsc --noEmit && vite build exit code 0", "limitations": ["Vite 输出存在既有 chunk size warning" ]},
+    {"check": "迁移与差异检查", "result": "pass", "evidence": "43 migrations and git diff --check passed", "limitations": []}
+  ],
+  "diff_summary": ["风险编号由服务端按项目规则生成", "枚举和组织字段数据驱动", "项目成员读取、负责人或超级管理员维护", "项目风险页签和三段式表单完成"],
+  "invariants_checked": [
+    {"invariant": "租户和项目范围隔离", "result": "pass", "evidence": "所有风险查询和写入带 tenant_id/project_id，服务端执行项目访问校验"},
+    {"invariant": "客户端不能控制风险编号", "result": "pass", "evidence": "新增风险测试验证客户端 risk_code 被忽略"},
+    {"invariant": "Flyway 只追加", "result": "pass", "evidence": "V43 为新增迁移，迁移检查通过"}
+  ],
+  "disturbances": [
+    {"event": "默认 JDK 25 与 Byte Buddy 1.15.11 不兼容", "impact": "默认完整 Maven 测试失败，实验兼容参数下复验通过"},
+    {"event": "运行态数据库尚未确认执行 V43", "impact": "浏览器只能验收页签、空状态和移动端布局，不能在运行态提交风险表单"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["启动已执行 V43 的后端和数据库后，需要补一次风险新增、编辑、删除及权限浏览器验收"],
+  "recommended_next": "observe"
+}

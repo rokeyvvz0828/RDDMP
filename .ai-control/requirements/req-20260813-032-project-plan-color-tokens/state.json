@@ -1,0 +1,97 @@
+﻿{
+    "schema_version":  1,
+    "revision":  18,
+    "requirement_id":  "REQ-20260813-032",
+    "control_prefix":  "req-20260813-032-project-plan-color-tokens",
+    "objective":  "Persist semantic plan-group color tokens and render them from the active system theme.",
+    "phase":  "verified_with_limits",
+    "phase_history":  [
+                          {
+                              "from":  null,
+                              "to":  "baseline",
+                              "evidence":  "User requires plan group colors to follow the active system theme and persist after save.",
+                              "recorded_at":  "2026-08-13T15:00:00+08:00"
+                          },
+                          {
+                              "from":  "baseline",
+                              "to":  "modeling",
+                              "evidence":  "Use semantic color tokens instead of persisting system palette identifiers.",
+                              "recorded_at":  "2026-08-13T15:01:00+08:00"
+                          },
+                          {
+                              "from":  "modeling",
+                              "to":  "planning",
+                              "evidence":  "Add V42 legacy normalization, server-side token validation, and CSS-variable rendering.",
+                              "recorded_at":  "2026-08-13T15:02:00+08:00"
+                          },
+                          {
+                              "from":  "planning",
+                              "to":  "executing",
+                              "evidence":  "Scoped implementation and regression tests are present.",
+                              "recorded_at":  "2026-08-13T15:10:00+08:00"
+                          },
+                          {
+                              "from":  "executing",
+                              "to":  "observing",
+                              "evidence":  "Flyway and diff checks passed.",
+                              "recorded_at":  "2026-08-13T15:20:00+08:00"
+                          },
+                          {
+                              "from":  "observing",
+                              "to":  "correcting",
+                              "evidence":  "User reported false save failure feedback and requested color-only swatches.",
+                              "recorded_at":  "2026-08-13T16:00:00+08:00"
+                          },
+                          {
+                              "from":  "correcting",
+                              "to":  "verified_with_limits",
+                              "evidence":  "Save success now depends on the API success code, tolerates incomplete success payloads, and preserves a saved-but-refresh-failed warning. Project management restores Element Plus native tab-pane visibility rules after removing forced display overrides. Project ID changes reload details; tab query changes only synchronize the active tab and no longer trigger a detail reload or clear content, preventing blank tab pages. Frontend build, Vue typecheck, backend package, Flyway, and diff checks passed; browser acceptance remains pending.",
+                              "recorded_at":  "2026-08-13T18:40:00+08:00"
+                          },
+                          {
+                              "from":  "verified_with_limits",
+                              "to":  "correcting",
+                              "evidence":  "User reported that project detail tab pages still become blank and the loading overlay is absent after tab clicks.",
+                              "recorded_at":  "2026-08-13T19:10:00+08:00"
+                          },
+                          {
+                              "from":  "correcting",
+                              "to":  "verified_with_limits",
+                              "evidence":  "Switched project tabs to native v-model/tab-change handling, isolated route synchronization, and added stable tab loading timing and detail-route loading fallback. Removed CSS rules that overrode Element Plus pane visibility. Browser acceptance verified overview, plans, members, roles, and settings panes render content and route query synchronization works; frontend build and diff checks passed.",
+                              "recorded_at":  "2026-08-13T19:45:00+08:00"
+                          }
+                      ],
+    "requirements":  [
+                         "Persist semantic color tokens",
+                         "Render group colors from active theme variables",
+                         "Normalize legacy system palette identifiers",
+                         "Return the saved token and refresh detail state",
+                         "Keep permissions, tenant boundaries, and audit behavior"
+                     ],
+    "invariants":  [
+                       "Flyway remains append-only with V42",
+                       "The database stores semantic tokens, never system palette identifiers",
+                       "Server-side validation and audit remain mandatory"
+                   ],
+    "tasks":  [
+                  {
+                      "id":  "T1",
+                      "status":  "verified",
+                      "goal":  "Service and database compatibility"
+                  },
+                  {
+                      "id":  "T2",
+                      "status":  "verified",
+                      "goal":  "Frontend theme linkage and save response handling"
+                  },
+                  {
+                      "id":  "T3",
+                      "status":  "verified_with_limits",
+                      "goal":  "Independent verification and convergence"
+                  }
+              ],
+    "open_risks":  [
+                       "Mockito tests need JDK 17 or compatible Byte Buddy."
+                   ],
+    "updated_at":  "2026-08-13T19:45:00+08:00"
+}

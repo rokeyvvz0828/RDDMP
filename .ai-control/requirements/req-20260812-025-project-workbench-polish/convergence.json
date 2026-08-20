@@ -1,0 +1,18 @@
+{
+  "baseline_revision": "REQ-20260812-025 revision 1",
+  "requirement_results": [
+    {"id": "overview-facts", "result": "implemented", "task_ids": ["T2"], "evidence": ["ProjectView already renders facts; CSS no longer hides them"], "limitations": ["No authenticated browser screenshot"]},
+    {"id": "calendar-density", "result": "implemented", "task_ids": ["T2"], "evidence": ["calendar cells set to 112px and labels compacted", "frontend build passed"], "limitations": ["No visual browser sample"]},
+    {"id": "fixed-operation-column", "result": "implemented", "task_ids": ["T2"], "evidence": ["fixed wrappers and cells use opaque theme background with stacking layer"], "limitations": ["No horizontal-scroll browser sample"]},
+    {"id": "child-plan-number", "result": "implemented", "task_ids": ["T1", "T3"], "evidence": ["6 ProjectService tests passed including null legacy rule"], "limitations": ["Live database migration state not observable"]},
+    {"id": "tab-retention", "result": "implemented", "task_ids": ["T1"], "evidence": ["mutations call refreshSelectedProject rather than openProject"], "limitations": ["No live mutation flow"]}
+  ],
+  "task_results": [{"id": "T1", "status": "verified"}, {"id": "T2", "status": "verified"}, {"id": "T3", "status": "verified"}],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": 0},
+  "regression_checks": ["mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test: pass", "npm --prefix web run build: pass", "git diff --check: pass"],
+  "invariant_results": ["No schema migration changed", "Existing permission and tenant predicates retained"],
+  "scope_audit": {"within_scope": true, "unexpected_changes": ["Existing unrelated worktree changes remain untouched"]},
+  "residual_risks": ["Runtime verification requires Docker/backend/frontend services and authenticated browser session", "Repository skill checker reports pre-existing CRLF frontmatter issue"],
+  "gate_result": "return-to-observing",
+  "route_reason": "Automated checks pass, but live service and browser evidence are unavailable in the current environment."
+}

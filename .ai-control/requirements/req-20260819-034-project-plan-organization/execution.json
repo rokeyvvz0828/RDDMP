@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "topic": "project-plan-organization",
+  "phase": "observing",
+  "recorded_at": "2026-08-19T17:06:00+08:00",
+  "tasks": [
+    {"id": "T1", "status": "completed", "owner": "subagent-1", "scope": ["web/src/views/ProjectView.vue", "web/src/styles.css", "web/src/types/project.ts", "web/src/api/project.ts", "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java", "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "server/src/platform/infrastructure/src/main/resources/db/migration/V49__*.sql"], "result": "阶段计划入口、编号生成、主计划归属和后端测试已完成"},
+    {"id": "T2", "status": "completed", "owner": "subagent-2", "scope": ["web/src/views/ProjectView.vue", "web/src/styles.css", "web/src/types/project.ts", "web/src/api/project.ts"], "result": "项目组织架构页签已完成，兼容 members/roles 历史查询参数"},
+    {"id": "T3", "status": "completed", "owner": "main-agent", "scope": ["integration review", "tests", "migration check", "service health"], "result": "已完成范围复核、迁移执行、后端重启和健康检查"}
+  ],
+  "constraints_checked": ["不读取或输出 .env", "不修改生产数据", "保留工作区既有无关改动", "Flyway 只追加"],
+  "commands": [
+    {"command": "node_modules\\.bin\\vue-tsc.cmd --noEmit", "result": "passed"},
+    {"command": "mvn -pl :ccb-system -am test '-Dnet.bytebuddy.experimental=true'", "result": "passed; 22 tests"},
+    {"command": "mvn -DskipTests package", "result": "passed after stopping the jar-locking backend process"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 49 migrations"},
+    {"command": "git diff --check", "result": "passed"},
+    {"command": "GET /actuator/health", "result": "HTTP 200"}
+  ],
+  "database": {"migration": "V49 applied successfully to local ccb_platform_licon after repairing its failed attempt record", "business_data_changed": "only legacy stage-plan group_name values were normalized to stage codes"},
+  "open_items": ["npm run build 未能在本环境完成：此前 Vite/esbuild spawn EPERM；vue-tsc 已通过", "后端重启后浏览器自动审查拒绝再次访问 localhost，未完成刷新后的浏览器复验"]
+}

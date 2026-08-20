@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "observed",
+  "recorded_at": "2026-08-17T11:04:31+08:00",
+  "observations": [
+    {
+      "scenario": "Project detail overview desktop",
+      "result": "passed",
+      "evidence": "Fresh load of /projects/910000000003001?tab=overview at 1280x720 showed no project calendar text or .el-calendar DOM; the overview contained 主计划甘特图 and 子计划甘特图, each with one rendered canvas."
+    },
+    {
+      "scenario": "Main and child chart semantics",
+      "result": "passed",
+      "evidence": "The main chart displayed month labels (2026年8月, 2026年9月, 2026年10月). The child chart displayed weekly labels (第31周 onward), with 主计划 rows above 子计划 rows and visible status/progress bars."
+    },
+    {
+      "scenario": "Chart-local overflow",
+      "result": "passed",
+      "evidence": "At 1280px viewport the child chart scroll container measured clientWidth 894 and scrollWidth 1034 while body/document scrollWidth remained 1280, proving overflow stayed inside the chart container."
+    },
+    {
+      "scenario": "Fresh browser console",
+      "result": "passed",
+      "evidence": "A fresh page load contained only normal Vite connecting/connected debug messages and no runtime error."
+    }
+  ],
+  "coverage_note": "The in-app browser session could not be resized and remained 1280x720 even when a mobile size was requested; mobile runtime sampling is therefore unavailable. Responsive CSS and chart-local scroll rules were checked statically.",
+  "residual_risks": ["Verify at 375x812, 390x844 and 430x932 in a resizable browser before production release."]
+}

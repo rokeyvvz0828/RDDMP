@@ -1,0 +1,40 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {"inside": ["project service", "project workbench", "V38 migration", "local MySQL"], "environment": ["browser", "Node/Vite", "Spring Boot runtime"]},
+  "state_variables": ["plan_number_rule", "next_plan_sequence", "plan_code", "plan_progress", "calendar_month"],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "settings form rule", "transitions": ["validate rule", "persist pm_project.plan_number_rule", "reload detail"], "outputs": ["settings tab value"]},
+    {"requirement_id": "R2", "input": "plan creation request", "transitions": ["lock project row", "render rule", "insert plan", "increment sequence"], "outputs": ["server-generated plan_code"]},
+    {"requirement_id": "R3", "input": "active plan progress values", "transitions": ["AVG(progress)"], "outputs": ["plan_progress on project card and detail"]},
+    {"requirement_id": "R4", "input": "plan start/end dates", "transitions": ["derive visible month cells"], "outputs": ["Chinese monthly calendar items"]}
+  ],
+  "interfaces": [
+    {"name": "project REST API", "producers": ["ProjectController"], "consumers": ["ProjectView"], "invariant": "tenant and permission checks remain server-side"},
+    {"name": "project plan schema", "producers": ["V38 migration"], "consumers": ["ProjectService"], "invariant": "unique plan code is scoped by tenant and project"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "backend contract", "method": "focused Maven tests", "blind_spots": ["production load"], "independence": "test runner"},
+    {"id": "S2", "target": "frontend contract", "method": "vue-tsc and Vite build", "blind_spots": ["all viewport interactions"], "independence": "build runner"},
+    {"id": "S3", "target": "runtime and browser", "method": "health endpoint and DOM flow", "blind_spots": ["multi-user concurrency"], "independence": "running service and browser"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "plan persistence", "action": "Flyway migration and service SQL", "authority": "task scope", "impact_radius": "project plan records", "rollback": "retain append-only migration and disable new settings path"},
+    {"id": "A2", "target": "project UI", "action": "settings, progress and calendar rendering", "authority": "task scope", "impact_radius": "project workbench", "rollback": "revert task-scoped frontend files"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S2", "S3"], "observable": "yes"}
+  ],
+  "disturbances": [{"source": "stale backend process", "effect": "old SQL remains active", "detectable": true, "controllable": true}, {"source": "legacy null plan_code", "effect": "old plans display fallback", "detectable": true, "controllable": true}],
+  "delays": [{"source": "service restart", "consequence": "runtime may lag source changes", "sampling_rule": "health check and browser reload after restart"}],
+  "assumptions": [{"text": "local services use the task database", "evidence": "health and Flyway V38 log", "falsifier": "migration version differs"}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "settings API and form"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "server-side sequence allocation"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "AVG progress projection"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "derived calendar rendering"}
+  ],
+  "model_status": "ready"
+}

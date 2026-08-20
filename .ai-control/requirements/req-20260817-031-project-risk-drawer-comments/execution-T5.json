@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260817-031-project-risk-drawer-comments",
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path": "web/src/views/ProjectView.vue", "purpose": "按入口裁剪风险模式、评论使用悬浮用户资料卡"},
+    {"path": "web/src/styles.css", "purpose": "风险操作列单行紧凑布局"},
+    {"path": "docs/engineering-control/designs/2026-08-17-project-risk-drawer-comments-design.md", "purpose": "记录入口模式修订3"}
+  ],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "result": "vue-tsc和Vite构建通过；保留既有chunk体积及Rollup注释警告"},
+    {"command": "git diff --check", "exit_code": 0, "result": "通过；仅有既有LF/CRLF提示"}
+  ],
+  "invariants_checked": [
+    {"invariant": "风险操作权限和接口不变", "result": "仅调整入口上下文、显隐和样式"},
+    {"invariant": "评论资料来自现有UiUserIdentity", "result": "未新增组件或接口字段"}
+  ],
+  "unresolved_items": ["评论发表接口未重复提交测试数据", "任务范围检查仍受licon分支命名规则阻塞"],
+  "recommended_next": "observe"
+}

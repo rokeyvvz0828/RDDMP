@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260817-026-project-detail-tabs",
+  "system_boundary": {"input": "Vue Router route.fullPath and route.query.tab", "state": "Pinia tabs store plus ProjectView activeTab", "output": "global UiTabs selection and project detail content"},
+  "causal_path": ["ProjectView changes query.tab", "AppLayout observes route.fullPath", "canonical project path is used as global tab key", "ProjectView keeps the selected internal tab"],
+  "invariants": ["one global tab per project detail route", "internal tab query remains unchanged", "UiTabs contract remains unchanged"],
+  "sensors": ["tabsStore.tabs length and paths", "route.query.tab after refresh", "frontend build", "browser tab clicks"],
+  "actuator": "AppLayout canonical tab path and stale query-tab cleanup"
+}

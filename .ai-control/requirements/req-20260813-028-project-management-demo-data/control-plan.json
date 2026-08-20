@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {"id": "T1", "goal": "登记项目表白名单并补充 mock 数据", "write_scope": ["mock/mock-data.json", "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java"], "acceptance": ["JSON 可解析", "所有项目表允许同步", "关系数据引用存在的演示用户和组织"], "rollback": "恢复本轮两个文件", "stop_conditions": ["出现生产数据", "schema 字段不匹配"]},
+    {"id": "T2", "goal": "重启本地后端验证项目数据", "write_scope": [".ai-control/requirements/req-20260813-028-project-management-demo-data/*.json"], "acceptance": ["mock sync success", "project API 返回项目和计划树"], "rollback": "停止本地服务并移除本轮 mock 行", "stop_conditions": ["Flyway 失败", "项目接口无法返回新增数据"]}
+  ],
+  "dependency_edges": ["T1 -> T2"],
+  "required_checks": ["JSON parse", "Maven package", "runtime API query", "git diff --check"]
+}

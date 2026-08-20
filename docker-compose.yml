@@ -29,7 +29,7 @@ services:
     command: server /data --console-address ":9001"
 
   kkfileview:
-    image: ${KK_FILE_VIEW_IMAGE:-keking/kkfileview:5.0.1}
+    image: keking/kkfileview:latest
     container_name: ccb-platform-kkfileview
     restart: unless-stopped
     environment:
@@ -37,15 +37,11 @@ services:
       KK_BASE_URL: ${KK_FILE_VIEW_BASE_URL:?KK_FILE_VIEW_BASE_URL must be set}
       KK_TRUST_HOST: ${KK_FILE_VIEW_TRUST_HOST:?KK_FILE_VIEW_TRUST_HOST must be set}
       KK_NOT_TRUST_HOST: ${KK_FILE_VIEW_NOT_TRUST_HOST:?KK_FILE_VIEW_NOT_TRUST_HOST must be set}
-      KK_OFFICE_PREVIEW_TYPE: pdf
       KK_PDF_DOWNLOAD_DISABLE: "true"
       KK_PDF_PRINT_DISABLE: "true"
       KK_CACHE_CLEAN_ENABLED: "true"
     ports:
       - "${KK_FILE_VIEW_PORT:-8012}:8012"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-      - "${KK_FILE_VIEW_HOST_ALIAS:-minio.local}:host-gateway"
 
 volumes:
   ccb-platform-mysql-data:

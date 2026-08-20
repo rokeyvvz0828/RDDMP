@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260813-030", "status": "ready", "document": "docs/requirements/REQ-20260813-030-project-plan-groups/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "rokeyvvz0828", "module": "platform/system", "module_owner": "rokeyvvz0828", "branch": "feat/REQ-20260813-030-project-plan-groups", "worktree": "D:/ai_project/ccb_rd"},
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/project/**",
+      "web/src/api/project.ts",
+      "web/src/types/project.ts",
+      "web/src/views/ProjectView.vue",
+      "web/src/styles.css",
+      "docs/requirements/REQ-20260813-030-project-plan-groups/**",
+      "docs/engineering-control/designs/2026-08-13-project-plan-groups-design.md",
+      "docs/engineering-control/plans/2026-08-13-project-plan-groups-implementation-plan.md",
+      ".ai-control/requirements/req-20260813-030-project-plan-groups/*.json"
+    ],
+    "read_only_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V40__project_plan_groups.sql"]},
+  "required_tests": [
+    {"name": "api", "command": "mvn -pl :ccb-system -am test", "expected": "分组API测试通过"},
+    {"name": "permission", "command": "mvn -pl :ccb-system -am test", "expected": "权限和项目归属测试通过"},
+    {"name": "backend", "command": "mvn -pl :ccb-system -am test", "expected": "project tests pass"},
+    {"name": "frontend", "command": "npm --prefix web run build", "expected": "vite build succeeds"},
+    {"name": "diff", "command": "git diff --check", "expected": "no whitespace errors"}
+  ],
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "public_capability_change": {"required": true, "issue": "REQ-20260813-030", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["ProjectServiceTest", "前端构建"]},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "risk": {"level": "normal", "items": ["拖拽浏览器兼容性", "保留前序未提交改动"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260813-030-project-plan-groups", "acceptance_evidence": [".ai-control/requirements/req-20260813-030-project-plan-groups/state.json", ".ai-control/requirements/req-20260813-030-project-plan-groups/execution-T1.json", ".ai-control/requirements/req-20260813-030-project-plan-groups/observation-T1.json", ".ai-control/requirements/req-20260813-030-project-plan-groups/convergence.json"], "rollback": "revert the new migration and scoped source changes"}
+}
