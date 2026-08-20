@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260820-036",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260820-036-test-management-scaffold/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/test-management",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260820-036-test-management-scaffold",
+    "worktree": "/Volumes/GuanMac/Code/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260820-036-test-management-scaffold/**",
+      ".ai-control/requirements/req-20260820-036-test-management-scaffold/*.json",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      ".github/CODEOWNERS",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V51__test_management_menu.sql",
+      "web/src/router/index.ts",
+      "web/src/modules/test-management/**"
+    ],
+    "read_only_paths": [
+      "server/src/shared/common/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/stores/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/styles.css",
+      "mock/mock-data.json"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260820-036",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["node scripts/check-all-governance.mjs", "npm --prefix web run build", "管理员现有 Sidebar 与新三级菜单浏览器回归"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V51__test_management_menu.sql"],
+    "compatibility_and_rollback": "只追加测试管理菜单和权限；已应用后通过后续补偿迁移停用，不修改 V51。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "flyway", "command": "node scripts/check-flyway-migrations.mjs"},
+    {"name": "api", "command": "验证 /api/auth/routes 返回测试管理三级菜单树"},
+    {"name": "permission", "command": "验证管理员角色获得测试管理菜单与 create/read/update/delete 权限种子"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-036-test-management-scaffold/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"},
+    {"name": "browser", "command": "验证桌面及 375x812、390x844、430x932 的菜单、空状态和 CRUD 占位交互"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["新增业务模块边界", "三级动态菜单深度", "Flyway 菜单与权限初始化", "移动端深层 Sidebar 可达性"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260820-036-test-management-scaffold",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260820-036-test-management-scaffold/execution-T1.json",
+      ".ai-control/requirements/req-20260820-036-test-management-scaffold/observation-T1.json",
+      ".ai-control/requirements/req-20260820-036-test-management-scaffold/convergence.json"
+    ],
+    "release_verification": ["管理员登录后逐层展开测试管理并抽查所有叶子路由", "验证 Flyway schema version 为 51"],
+    "rollback": "回退本需求提交；数据库已应用时追加补偿迁移停用测试管理菜单和权限。"
+  }
+}

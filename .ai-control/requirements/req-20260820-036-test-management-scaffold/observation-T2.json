@@ -1,0 +1,16 @@
+{
+  "sample_label": "T1 真实浏览器与响应式采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "independence": "同一 Codex 上下文；使用真实应用会话和浏览器布局引擎观测，不是独立人工复核。",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "浏览器 DOM 与导航", "result": "pass", "raw_evidence": "Sidebar 展开测试管理后显示 5 个二级目录；应用组装测试显示 7 个三级页面；营业日管理显示日历概览、日历安排、跑批需求、测试环境管理；测试环境路径可直接访问", "limitation": ["其余同构叶子由数据库/API 计数和同一动态路由覆盖"]},
+    {"requirement_id": "R2", "sensor": "浏览器 CRUD 与状态转换", "result": "pass", "raw_evidence": "完成测试环境记录新增、编辑、关键词无结果、清空筛选和删除确认取消；取消后记录仍存在", "limitation": ["为避免无必要的数据删除，未在浏览器确认最终删除；删除执行分支由同一内存过滤函数实现"]},
+    {"requirement_id": "R3", "sensor": "浏览器 viewport 与 scrollWidth", "result": "pass", "raw_evidence": "1280x800 显示桌面表格；375x812、390x844、430x932 显示移动卡片；四个视口 scrollWidth 均等于 clientWidth；移动端导航抽屉可展示三级菜单", "limitation": []},
+    {"requirement_id": "R3", "sensor": "浏览器控制台", "result": "pass", "raw_evidence": "修复取消删除处理后，在复验时间窗内 warning/error 数量为 0", "limitation": []}
+  ],
+  "feedback": ["营业日管理已按用户补充固定为二级目录，其四个页面均为三级叶子。"],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "accepted"
+}

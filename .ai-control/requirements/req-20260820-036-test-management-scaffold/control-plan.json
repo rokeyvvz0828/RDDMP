@@ -1,0 +1,36 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "交付可运行、可导航、可响应式验收的测试管理三级菜单与通用空白 CRUD 列表。",
+      "requirement_ids": ["R1", "R2", "R3"],
+      "prerequisites": ["ready 需求与任务范围", "开发准入检查通过", "用户补充营业日管理三级菜单已入基线"],
+      "input_facts": ["Sidebar 消费 /api/auth/routes", "UiRouteMenuNode 递归 children", "四个测试域同构，营业日管理有四个独立叶子", "当前最大 Flyway 版本为 50"],
+      "write_scope": ["docs/requirements/REQ-20260820-036-test-management-scaffold/**", ".ai-control/requirements/req-20260820-036-test-management-scaffold/*.json", "governance/modules.yaml", "docs/architecture/MODULES.md", ".github/CODEOWNERS", "server/src/platform/infrastructure/src/main/resources/db/migration/V51__test_management_menu.sql", "web/src/router/index.ts", "web/src/modules/test-management/**"],
+      "invariants": ["现有菜单与路由兼容", "不修改公共 UI", "不新增真实业务表/API", "Flyway 历史文件不变", "移动端无整页横向滚动"],
+      "interface_contracts": ["RouteNode 字段和动态菜单树兼容", "test-management/:domain/:section 唯一映射 catalog"],
+      "non_goals": ["业务持久化", "正式测试字段", "公共组件重构"],
+      "action_bounds": ["只新增 V51", "用单一通用页面复用 32 个入口", "五个领域目录仅存放各自 catalog", "只登记必要治理元数据"],
+      "acceptance_checks": ["32 个三级菜单数据库计数和唯一 URL", "前端构建通过", "新增编辑删除筛选空状态浏览器可用", "四种视口无横向溢出", "治理和任务范围检查通过"],
+      "evidence_required": ["真实 diff", "命令退出码", "数据库查询", "浏览器路径、视口和交互结果"],
+      "rollback": "恢复 T1 前分支状态；已应用迁移时追加补偿迁移停用新增菜单和权限。",
+      "stop_conditions": ["需要修改任务范围外公共组件", "发现现有动态菜单不支持三级", "必须新增真实业务 API 才能满足本轮验收"],
+      "escalation_conditions": ["需要改变现有 RouteNode 契约", "需要删除或修改历史迁移", "用户要求将占位 CRUD 升级为正式业务能力"]
+    }
+  ],
+  "dependency_edges": [],
+  "parallel_groups": [["T1"]],
+  "integration_points": [{"after_tasks": ["T1"], "checks": ["治理", "Flyway", "前端构建", "本地数据库和浏览器验收"]}],
+  "sampling_plan": [
+    {"label": "T1 自动化采样", "trigger": "实现与构建完成", "observer": "当前上下文非独立自动化检查", "sensors": ["S1", "S2", "S4"], "requirement_ids": ["R1", "R2", "R3"]},
+    {"label": "T1 运行采样", "trigger": "后端应用 V51 且前端热更新完成", "observer": "当前上下文浏览器观察，标记非独立", "sensors": ["S1", "S2", "S3"], "requirement_ids": ["R1", "R2", "R3"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S2"]},
+    {"requirement_id": "R3", "task_ids": ["T1"], "sensor_ids": ["S3", "S4"]}
+  ],
+  "plan_status": "ready"
+}

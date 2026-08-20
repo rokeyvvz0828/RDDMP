@@ -1,0 +1,40 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "governance/modules.yaml, docs/architecture/MODULES.md, .github/CODEOWNERS", "purpose": "登记 business/test-management 模块边界与所有权"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V51__test_management_menu.sql", "purpose": "追加三级菜单、管理员菜单授权和叶子 CRUD 动作权限"},
+    {"path_or_resource": "web/src/router/index.ts", "purpose": "注册测试管理 domain/section 动态叶子路由"},
+    {"path_or_resource": "web/src/modules/test-management/**", "purpose": "构建五个领域目录、32 页目录映射及响应式通用内存 CRUD 列表"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3"],
+  "commands": [
+    {"command": "mvn test", "exit_code": 0, "salient_output": "10 模块 BUILD SUCCESS；65 tests，0 failures，0 errors"},
+    {"command": "mvn -pl :ccb-boot -am package -DskipTests", "exit_code": 0, "salient_output": "后端及 V51 资源打包成功"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit 与 Vite 生产构建成功；仅保留既有大 chunk 提示"},
+    {"command": "node scripts/check-development-entry.mjs --require-plugin", "exit_code": 0, "salient_output": "Development entry check passed"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 51 migrations"},
+    {"command": "node scripts/check-governance.mjs", "exit_code": 0, "salient_output": "Governance check passed for 13 modules"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "当前需求的治理、Skill 与准入子检查通过；聚合门禁在历史 .ai-control 台账格式检查处提前退出，本需求目录无违规项"},
+    {"command": "node scripts/check-module-boundaries.mjs", "exit_code": 1, "salient_output": "既有 platform/system 与 platform/boot 对 platform/attachment 的依赖未在治理清单声明；不属于本需求写范围"},
+    {"command": "node scripts/check-codex-scope.mjs --base HEAD --head HEAD --working-tree --scope docs/requirements/REQ-20260820-036-test-management-scaffold/codex-task-scope.yaml", "exit_code": 0, "salient_output": "Codex scope check passed for 21 changed files"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白字符错误"}
+  ],
+  "runtime_changes": [
+    "重启本地后端并由 Flyway 将 ccb_platform 从 v50 迁移至 v51",
+    "保留 Vite 前端开发服务并由热更新加载测试管理模块",
+    "未建设测试管理业务表或正式业务 API"
+  ],
+  "invariants_checked": [
+    {"invariant": "Flyway 只追加", "result": "pass", "evidence": "仅新增 V51，迁移静态检查及运行态应用均通过"},
+    {"invariant": "动态 Sidebar 契约保持", "result": "pass", "evidence": "/api/auth/routes 返回既有字段结构和 38 个测试管理节点"},
+    {"invariant": "避免 32 份重复页面", "result": "pass", "evidence": "五个目录 catalog 由一个 TestManagementList.vue 统一承载"},
+    {"invariant": "页面明确为临时数据", "result": "pass", "evidence": "页头和工具栏均标注模块骨架及临时数据"}
+  ],
+  "disturbances": [
+    {"event": "macOS 默认 java 命令未找到 JRE", "impact": "首次 Maven 命令未启动", "resolution": "显式使用 Homebrew OpenJDK 17 后完整构建与测试通过"},
+    {"event": "删除确认取消最初产生未处理 Promise 警告", "impact": "浏览器控制台出现一次 warning/error", "resolution": "显式处理取消分支，复验后新增 warning/error 为 0"}
+  ],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

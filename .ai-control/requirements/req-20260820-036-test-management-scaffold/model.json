@@ -1,0 +1,54 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["Flyway 菜单与权限种子", "/api/auth/routes 动态菜单契约", "递归 UiRouteMenuNode", "Vue Router", "test-management 业务模块"],
+    "environment": ["MySQL 8.4 本地数据库", "管理员 JWT 会话", "桌面及手机浏览器"]
+  },
+  "state_variables": [
+    {"name": "menu_tree_state", "owner": "platform/system", "valid_values": ["missing", "seeded", "visible"]},
+    {"name": "route_state", "owner": "frontend/application", "valid_values": ["unmatched", "matched", "rendered"]},
+    {"name": "placeholder_records", "owner": "test-management page memory", "valid_values": ["empty", "filtered-empty", "populated"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "管理员登录并展开测试管理", "transitions": ["V51 初始化菜单和角色授权", "/api/auth/routes 返回 children 树", "UiRouteMenuNode 递归渲染", "Vue Router 匹配 domain/section"], "outputs": ["五个二级目录和 32 个可导航三级页面"]},
+    {"requirement_id": "R2", "input": "用户在叶子页面执行筛选或 CRUD 占位操作", "transitions": ["路由元数据解析", "页面内存列表变化", "桌面表格或移动卡片重绘"], "outputs": ["空状态、记录列表和确认反馈"]},
+    {"requirement_id": "R3", "input": "主题、布局和视口变化", "transitions": ["公共组件布局", "模块语义 CSS 媒体查询"], "outputs": ["无页面级横向溢出的可达界面"]}
+  ],
+  "interfaces": [
+    {"name": "RouteNode tree", "producers": ["platform/system /api/auth/routes"], "consumers": ["auth store", "UiRouteMenuNode", "AppLayout"], "invariant": "routePath、menuName、icon 和 children 保持兼容"},
+    {"name": "test management route catalog", "producers": ["五个领域 catalog.ts"], "consumers": ["TestManagementList.vue", "Vue Router"], "invariant": "每个 domain/section 组合唯一且有中文名称"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "菜单结构与权限", "method": "迁移静态检查、MySQL 菜单计数和 /api/auth/routes 响应", "blind_spots": ["非管理员自定义角色授权"], "independence": "直接观测数据库和服务端输出"},
+    {"id": "S2", "target": "路由和 CRUD 占位", "method": "TypeScript/Vite 构建及真实浏览器交互", "blind_spots": ["刷新持久化不在范围"], "independence": "运行时观察前端输出"},
+    {"id": "S3", "target": "响应式与主题", "method": "四种视口、浅深主题、scrollWidth 浏览器探针", "blind_spots": ["真实 iOS 低功耗模式"], "independence": "浏览器布局引擎直接测量"},
+    {"id": "S4", "target": "模块和任务边界", "method": "治理及 codex scope 脚本", "blind_spots": [], "independence": "仓库自动门禁"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "菜单树", "action": "追加 V51 菜单与权限迁移", "authority": "已批准任务范围", "impact_radius": "本地及部署数据库新增测试管理菜单", "rollback": "回退提交；已应用数据库追加补偿迁移"},
+    {"id": "A2", "target": "路由与页面", "action": "新增 test-management 模块并登记动态路由", "authority": "已批准任务范围", "impact_radius": "前端测试管理路径", "rollback": "回退需求提交"},
+    {"id": "A3", "target": "模块所有权", "action": "登记 modules.yaml、MODULES.md 和 CODEOWNERS", "authority": "已批准架构范围", "impact_radius": "治理元数据", "rollback": "回退需求提交"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3", "S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "本地服务仍运行旧构建", "effect": "浏览器看不到新路由或菜单", "detectable": true, "controllable": true},
+    {"source": "全新数据库 V24/Flowable 顺序", "effect": "完整本地重建启动失败", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "登录后菜单缓存在 auth store", "consequence": "应用迁移后当前会话仍显示旧菜单", "sampling_rule": "重启后端并重新登录再采样"}
+  ],
+  "assumptions": [
+    {"text": "递归菜单支持三级", "evidence": "UiRouteMenuNode 递归 children", "falsifier": "浏览器三级目录不可用"},
+    {"text": "前端通配业务路由不与现有路由冲突", "evidence": "test-management 前缀当前不存在", "falsifier": "router 解析到 fallback 或其他组件"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "进入 planning"}
+  ],
+  "model_status": "ready"
+}

@@ -1,0 +1,33 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1"], "evidence": ["Flyway v51 运行态应用", "数据库/API 均确认 38 个节点和 32 个叶子", "真实 Sidebar 展开及营业日页面导航通过"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T1"], "evidence": ["通用列表新增、编辑、筛选、空状态和删除确认浏览器验收通过", "Vue 类型检查和生产构建通过"], "limitations": ["本轮按范围仅提供页面内存态数据，不做刷新持久化"]},
+    {"id": "R3", "result": "pass", "task_ids": ["T1"], "evidence": ["治理和范围门禁通过", "桌面与三个移动视口无页面级横向溢出", "移动端三级菜单可用且控制台复验无异常"], "limitations": []}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["65 个 Maven 测试通过", "前端生产构建通过", "V51、API、权限与浏览器运行态验收通过"]}
+  ],
+  "feedback_summary": {"total": 1, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "T1-automation", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "T1-browser", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "完整 Maven 测试", "result": "pass", "evidence": "65 tests，0 failures，0 errors"},
+    {"check": "前端生产构建", "result": "pass", "evidence": "vue-tsc 与 Vite exit code 0"},
+    {"check": "开发准入、当前模块治理、Flyway、scope、diff", "result": "pass", "evidence": "全部 exit code 0"},
+    {"check": "聚合治理门禁", "result": "baseline-blocked", "evidence": "失败项均位于本需求范围外：历史 .ai-control 台账格式及既有 platform/attachment 依赖声明"}
+  ],
+  "invariant_results": [
+    {"invariant": "追加迁移、动态菜单契约、模块边界与临时数据声明", "result": "pass", "evidence": "迁移/API/治理/页面联合观测"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "默认 Java 不可用", "result": "pass", "evidence": "显式使用项目所需 OpenJDK 17 后构建和测试通过"},
+    {"disturbance": "取消删除 Promise 警告", "result": "pass", "evidence": "修复后真实浏览器复验时间窗内无 warning/error"}
+  ],
+  "residual_risks": ["占位数据不会跨页面刷新持久化，这是本轮明确非目标", "Vite 输出仍有仓库既有大 chunk 提示", "仓库聚合治理门禁仍有本需求之前已存在的台账格式和依赖声明问题"],
+  "gate_result": "accepted",
+  "route_reason": "R1-R3 的自动化、数据库、API、权限、真实浏览器和响应式证据闭环，无阻断缺口。"
+}

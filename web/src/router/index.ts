@@ -10,6 +10,7 @@ import AiView from '../views/AiView.vue'
 import ComponentShowcaseView from '../views/ComponentShowcaseView.vue'
 import DeliveryShowcaseModule from '../modules/delivery-showcase/DeliveryShowcaseModule.vue'
 import ProjectView from '../views/ProjectView.vue'
+import TestManagementList from '../modules/test-management/TestManagementList.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -31,7 +32,8 @@ const router = createRouter({
         { path: 'workflow/:section', name: 'workflow', component: WorkflowView, props: true },
         { path: 'ai/:section', name: 'ai', component: AiView, props: true },
         { path: 'components', name: 'components', component: ComponentShowcaseView, meta: { title: '组件示例' } },
-        { path: 'delivery-showcase', name: 'delivery-showcase', component: DeliveryShowcaseModule, meta: { title: '交付示范中心' } }
+        { path: 'delivery-showcase', name: 'delivery-showcase', component: DeliveryShowcaseModule, meta: { title: '交付示范中心' } },
+        { path: 'test-management/:domain/:section', name: 'test-management-list', component: TestManagementList }
       ]
     },
     { path: '/:pathMatch(.*)*', redirect: '/dashboard' }
