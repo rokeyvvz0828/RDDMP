@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/pom.xml 与 AGENTS.md",
+      "purpose": "建立独立 ccb-architecture 业务模块及局部边界"
+    },
+    {
+      "path_or_resource": "pom.xml 与 server/src/platform/boot/pom.xml",
+      "purpose": "加入 reactor dependencyManagement、module 和 Boot 组合依赖"
+    },
+    {
+      "path_or_resource": "governance/modules.yaml、docs/architecture/MODULES.md 与 CODEOWNERS",
+      "purpose": "登记 business/architecture、依赖方向和所有权"
+    },
+    {
+      "path_or_resource": "com.ccb.system.capability、web/src/modules/architecture 与集成契约边界文件",
+      "purpose": "让治理清单引用的未来实现边界真实存在，不实现领域逻辑"
+    }
+  ],
+  "requirements_addressed": ["R11"],
+  "commands": [
+    {
+      "command": "mvn -Dmaven.repo.local=<host-cache> -o -pl :ccb-architecture -am test -DskipTests",
+      "exit_code": 0,
+      "salient_output": "ccb-platform/common/infrastructure/security/system/architecture 全部 SUCCESS"
+    },
+    {
+      "command": "node scripts/check-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "Governance check passed for 12 module(s)."
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs",
+      "exit_code": 0,
+      "salient_output": "Module boundary check passed for 9 Maven module(s)."
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope <current> --base origin/main --head HEAD",
+      "exit_code": 0,
+      "salient_output": "Codex scope check passed for REQ-20260812-021; 37 changed file(s)."
+    },
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin && node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "入口通过；Flyway 34 migrations 通过"
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit_code": 0,
+      "salient_output": "无差异格式错误，仅 Git 行尾提示"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Maven reactor 装配",
+      "result": "pass",
+      "evidence": "ccb-architecture 作为第 6/6 模块成功解析并完成 test 生命周期（tests skipped）",
+      "limitations": ["T1 尚无业务源代码和测试；依赖缓存下载经历网络低速扰动"]
+    },
+    {
+      "check": "模块与依赖治理",
+      "result": "pass",
+      "evidence": "12 个治理模块、9 个 Maven 模块通过，platform/shared 无 architecture 反向依赖",
+      "limitations": []
+    },
+    {
+      "check": "授权范围",
+      "result": "pass",
+      "evidence": "origin/main...HEAD 的 37 个变更文件均被当前 scope 覆盖",
+      "limitations": ["未使用 --working-tree，因为仓库已有与本需求无关的未跟踪 .dsh/ 和 docs/original/"]
+    }
+  ],
+  "diff_summary": [
+    "新增独立 business/architecture 空模块，不把领域实现放入 platform",
+    "Boot 仅作为 composition 依赖 architecture",
+    "system 只登记无业务语义的 capability 公开包，具体契约留给 T2",
+    "未实现启停用和动态表单"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "platform/shared 不反向依赖 architecture",
+      "result": "pass",
+      "evidence": "module-boundaries 退出 0"
+    },
+    {
+      "invariant": "保留现有模块和包名",
+      "result": "pass",
+      "evidence": "只追加 ccb-architecture；既有模块路径和 artifact 未修改"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "沙箱 Maven 本地仓库与主机缓存隔离，Testcontainers 核心包下载极慢",
+      "impact": "先出现依赖解析失败；通过同一代理断点续传并校验 SHA-1 后离线复验通过"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "T2 才实现 com.ccb.system.capability 的实际接口和私有实现"
+  ],
+  "recommended_next": "observe"
+}

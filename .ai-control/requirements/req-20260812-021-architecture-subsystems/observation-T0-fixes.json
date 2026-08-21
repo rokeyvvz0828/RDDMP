@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "sample_label": "T0 两项阻塞修复独立复验",
+  "task_ids": ["T0"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {
+      "requirement_id": "R11",
+      "sensor": "S8 development-entry 当前桌面状态正向运行",
+      "result": "pass",
+      "raw_evidence": "Development entry check passed；退出码 0",
+      "limitation": ["未来 Codex CLI 输出结构变化需要重新采样"]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S8 缺少 enabled config 的隔离负向运行",
+      "result": "pass",
+      "raw_evidence": "CONFIG_REQUIRED_NEGATIVE_OK exit=1；仅有非匹配目录和旧 CLI 时被拒绝",
+      "limitation": ["未遍历所有可能的 TOML 格式变体"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S5 全部 ready scope 的未来 Flyway 版本全局分组",
+      "result": "pass",
+      "raw_evidence": "V35-V40 每个版本恰有一个需求 Owner；architecture=35-37、platform=38-39、release=40",
+      "limitation": ["并行主干合入后必须再次运行"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S5 origin/main 实际树与迁移 diff",
+      "result": "pass",
+      "raw_evidence": "origin/main 最高 V34，V35-V37 空闲；T0 未修改任何 V1-V34 SQL",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S8/S10 治理、Flyway、scope 字段与分支",
+      "result": "pass",
+      "raw_evidence": "governance 11 modules、Flyway 34 migrations、scope/Owner、branch 和 0/0 基线均通过",
+      "limitation": ["full scope checker 需等 T1 登记 business/architecture 后执行"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "多个 Codex CLI 版本对 plugin list/--json 的支持不同，但桌面 config+cache 双证据已提供稳定替代传感器"
+  ],
+  "coverage_gaps": [
+    "T1 之后才可验证 full scope 与新模块治理登记",
+    "合并前仍需重扫并行迁移占用"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

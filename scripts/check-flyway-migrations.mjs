@@ -7,8 +7,16 @@ const migrationDirectory = 'server/src/platform/infrastructure/src/main/resource
 const absoluteDirectory = path.join(root, migrationDirectory);
 const violations = [];
 const versions = new Map();
+const allowedSqlCallbacks = new Set([
+  'beforeMigrate__ensure_flowable_event_registry_metadata.sql',
+]);
+const callbacks = [];
 
 for (const file of fs.readdirSync(absoluteDirectory).filter((name) => name.endsWith('.sql'))) {
+  if (allowedSqlCallbacks.has(file)) {
+    callbacks.push(file);
+    continue;
+  }
   const match = file.match(/^V(\d+)__([a-z0-9_]+)\.sql$/i);
   if (!match) {
     violations.push(`${file}: expected V<number>__description.sql`);
@@ -41,4 +49,4 @@ if (violations.length) {
   console.error(`Flyway migration check failed:\n${violations.join('\n')}`);
   process.exit(1);
 }
-console.log(`Flyway migration check passed for ${versions.size} migration(s)${base ? ` against ${base}` : ''}.`);
+console.log(`Flyway migration check passed for ${versions.size} migration(s) and ${callbacks.length} approved callback(s)${base ? ` against ${base}` : ''}.`);

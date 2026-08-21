@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0002",
+  "decision": "escalate",
+  "decision_reason": "仓库入口脚本和 CLI 安装均不在当前 writable_paths；伪造 JSON 输出或跳过强制命令会绕过准入。",
+  "dynamic_pattern": "sensor-fault",
+  "causal_assessment": {
+    "hypothesis": "治理脚本要求的 plugin list JSON 契约没有被当前 Windows CLI 版本提供",
+    "supporting_evidence": ["0.110.0 不支持 plugin list", "0.136.0 不支持 plugin list --json"],
+    "falsifier": "官方入口命令在相同环境退出码 0"
+  },
+  "control_action": {
+    "gain": "zero",
+    "target": "development-entry 测量链",
+    "write_scope": [],
+    "invariants": ["不改 scope 外 scripts", "不使用包装器伪造插件输出", "不把 Skill 文件存在冒充脚本通过"],
+    "impact_limit": "冻结 T1 及后续产品代码",
+    "rollback": "无需回滚；没有环境安装或脚本修改",
+    "correction_check": ["node scripts/check-development-entry.mjs --require-plugin 退出码 0"],
+    "route": "planning"
+  },
+  "resolution": "escalated",
+  "residual_risk": ["CLI 升级可能改变其他命令行为，需由治理 Owner 给出受支持版本"]
+}

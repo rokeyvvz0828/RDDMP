@@ -1,0 +1,60 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V79__notification_user_archive.sql",
+      "purpose": "Add recipient-scoped archived_at state and an active/archive query index"
+    },
+    {
+      "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system",
+      "purpose": "Implement ALL, UNREAD and ARCHIVED views plus archive, restore and archive-all-read commands"
+    },
+    {
+      "path_or_resource": "docs/integration/system-notification-contract.md",
+      "purpose": "Document archive lifecycle, authentication scope and legacy unreadOnly compatibility"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-system -am test",
+      "exit_code": 0,
+      "salient_output": "Seven-module reactor BUILD SUCCESS; ccb-system ran 41 tests including 13 SystemNotificationServiceTest cases with zero failures."
+    },
+    {
+      "command": "Local backend startup with Flyway",
+      "exit_code": 0,
+      "salient_output": "V79 notification user archive applied successfully and schema advanced from V78 to V79."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Recipient archive lifecycle and SQL scope",
+      "result": "pass",
+      "evidence": "Focused tests cover view filters, unread conflict, idempotent archive/restore, bulk conditions and authenticated tenant/user arguments.",
+      "limitations": []
+    }
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Shared notification and recipient records are never physically deleted",
+      "result": "pass",
+      "evidence": "V79 is additive and service mutations only set or clear sys_user_notification.archived_at."
+    },
+    {
+      "invariant": "Archive is scoped to authenticated tenant and recipient",
+      "result": "pass",
+      "evidence": "Controller derives AuthUser identity and service mutation predicates include tenant_id and user_id."
+    },
+    {
+      "invariant": "Restore preserves read state and legacy unreadOnly remains compatible",
+      "result": "pass",
+      "evidence": "Restore clears only archived_at; NotificationView resolution retains the legacy query path."
+    }
+  ],
+  "disturbances": ["The originally planned V47 migration number was already occupied, so the additive migration was safely renumbered to V79 before execution."],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

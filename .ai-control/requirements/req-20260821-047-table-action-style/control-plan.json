@@ -1,0 +1,171 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Make requirement difference, legacy requirement and system catalog action columns compact and consistently layered without changing business behavior",
+      "requirement_ids": ["R1", "R2", "R4"],
+      "prerequisites": [],
+      "input_facts": [
+        "RequirementsView owns fixed action columns currently sized 380, 300 and 150 pixels",
+        "All target action handlers and visibility conditions already exist and the file has no pre-existing product diff",
+        "DeliveryProjectList proves the direct-actions plus more-menu pattern with Element Plus"
+      ],
+      "write_scope": ["web/src/views/RequirementsView.vue"],
+      "invariants": [
+        "Do not add or modify business handler bodies",
+        "Keep workflow_instance_id, review_status and canEditDiff eligibility semantics unchanged",
+        "Keep confirmations, API calls, success/error messages and refresh behavior unchanged",
+        "Do not modify UiDataTable or global styles"
+      ],
+      "interface_contracts": [
+        "Direct buttons and dropdown entries invoke the same existing handler with the same row",
+        "Edit and delete remain jointly gated by canEditDiff",
+        "Submit review remains directly visible only for pending or returned rows"
+      ],
+      "non_goals": [
+        "No requirement page data or form refactor",
+        "No complete mobile card implementation",
+        "No API, permission or backend change"
+      ],
+      "action_bounds": [
+        "Change only Element Plus icon imports, three operation-column templates and widths, and RequirementsView scoped action CSS",
+        "Use only already installed Element Plus controls and icons"
+      ],
+      "acceptance_checks": [
+        "Requirement difference fixed operation width is no more than 280 pixels",
+        "Legacy and system low-frequency/destructive actions are in more menus and still call original handlers",
+        "Focused diff contains no function-body, request, data, permission or state changes",
+        "git diff --check passes for RequirementsView"
+      ],
+      "evidence_required": [
+        "Task-start handler baseline",
+        "Actual scoped diff",
+        "git diff --check exit code",
+        "Invariant review of original conditions and handler calls"
+      ],
+      "rollback": "Restore only the T1 icon import, action templates, widths and scoped action CSS in RequirementsView.vue",
+      "stop_conditions": [
+        "Any business handler, API, permission, state or shared style must change",
+        "A concurrent edit appears in RequirementsView.vue"
+      ],
+      "escalation_conditions": [
+        "Existing handlers cannot be safely invoked by a dropdown entry",
+        "A full mobile requirement-list redesign is required"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "Make logical and physical subsystem action presentation identical on desktop and mobile without changing permissions or commands",
+      "requirement_ids": ["R3", "R4"],
+      "prerequisites": [],
+      "input_facts": [
+        "Both architecture pages already expose showDetail, editRecord and command handlers",
+        "canUpdate and canDelete own current action visibility",
+        "architecture.css is the module-local style owner and all three files have no pre-existing product diff"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/LogicalSubsystemPage.vue",
+        "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+        "web/src/modules/architecture/architecture.css"
+      ],
+      "invariants": [
+        "Do not modify showDetail, editRecord, command or remove handler bodies",
+        "Keep canUpdate and canDelete semantics unchanged",
+        "Keep delete confirmation and request flow unchanged",
+        "Do not modify UiDataTable fixed-column styles"
+      ],
+      "interface_contracts": [
+        "Desktop and mobile actions invoke the current row's existing handlers",
+        "More remains visible only when canDelete is true",
+        "Delete remains routed through command and the existing confirmation"
+      ],
+      "non_goals": [
+        "No architecture form, API, type or data change",
+        "No public component or global CSS change"
+      ],
+      "action_bounds": [
+        "Change only Element Plus icon imports, desktop/mobile action templates, fixed widths and architecture-local action CSS",
+        "Keep mobile cards at no more than three top-level action entries"
+      ],
+      "acceptance_checks": [
+        "Logical and physical desktop action templates have matching labels, icons and structure",
+        "Mobile card actions have matching labels and standard icons",
+        "Focused diff contains no handler, request or permission changes",
+        "git diff --check passes for all three architecture files"
+      ],
+      "evidence_required": [
+        "Task-start handler baseline",
+        "Actual scoped diff",
+        "git diff --check exit code",
+        "Invariant review of canUpdate, canDelete and command wiring"
+      ],
+      "rollback": "Restore only the T2 icon imports, action templates, widths and architecture-local CSS rules",
+      "stop_conditions": [
+        "Architecture API, permission computation, command handler or UiDataTable must change",
+        "A concurrent edit appears in any T2 file"
+      ],
+      "escalation_conditions": [
+        "A shared fixed-column defect requires a separate public capability task"
+      ]
+    }
+  ],
+  "dependency_edges": [],
+  "parallel_groups": [["T1", "T2"]],
+  "integration_points": [
+    {
+      "after_tasks": ["T1"],
+      "checks": [
+        "Inspect RequirementsView scoped diff for business invariants",
+        "Run RequirementsView git diff --check"
+      ]
+    },
+    {
+      "after_tasks": ["T2"],
+      "checks": [
+        "Inspect architecture scoped diff for permission and handler invariants",
+        "Run architecture git diff --check",
+        "Run npm --prefix web run build"
+      ]
+    },
+    {
+      "after_tasks": ["T1", "T2"],
+      "checks": [
+        "Run frontend production build",
+        "Run governance and scope checks with known rokey/worktree deviations reported",
+        "Verify desktop/mobile and light/dark browser presentation"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1 focused source sample",
+      "trigger": "T1 execution report is available",
+      "observer": "Main agent source sensor",
+      "sensors": ["S1"],
+      "requirement_ids": ["R1", "R2", "R4"]
+    },
+    {
+      "label": "T2 integrated build and source sample",
+      "trigger": "T2 execution report is available",
+      "observer": "Compiler and source sensors",
+      "sensors": ["S1", "S2"],
+      "requirement_ids": ["R3", "R4"]
+    },
+    {
+      "label": "Final rendered browser sample",
+      "trigger": "T1 and T2 source/build checks pass",
+      "observer": "Rendered browser sensor",
+      "sensors": ["S3"],
+      "requirement_ids": ["R1", "R2", "R3", "R4"]
+    }
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S2", "S3"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S1", "S2", "S3"]},
+    {"requirement_id": "R3", "task_ids": ["T2"], "sensor_ids": ["S1", "S2", "S3"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S2", "S3"]}
+  ],
+  "plan_status": "ready"
+}

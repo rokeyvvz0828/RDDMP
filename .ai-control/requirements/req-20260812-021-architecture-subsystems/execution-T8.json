@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "task_id": "T8",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "MockDataInitializer", "purpose": "为两张 arch 表增加白名单、显式租户和同租户引用预校验"},
+    {"path_or_resource": "MockDataInitializerTest", "purpose": "覆盖触发条件、事务、租户根、引用、团队快照、参数和幂等"},
+    {"path_or_resource": "mock-data.json", "purpose": "增加 2 条逻辑和 3 条物理虚构演示记录"}
+  ],
+  "requirements_addressed": ["R8", "R12", "R13"],
+  "commands": [
+    {"command": "mvn -pl :ccb-infrastructure -am -Dtest=MockDataInitializerTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "11/11 通过；真实数据集解析并校验 124 行"},
+    {"command": "mvn -pl :ccb-infrastructure -am test", "exit_code": 0, "salient_output": "common 2/2、infrastructure 14/14 通过"},
+    {"command": "PowerShell ConvertFrom-Json row count sensor", "exit_code": 0, "salient_output": "version 2026.08.15.1；logical=2；physical=3；missingTenant=0；missingSnapshot=0"},
+    {"command": "scope, module boundary and diff checks", "exit_code": 0, "salient_output": "3 files in scope；9 modules passed；无 whitespace 错误"}
+  ],
+  "local_checks": [
+    {"check": "受信任入口", "result": "pass", "evidence": "@Profile(local)、enabled=true 条件和 @Transactional 由反射锁定", "limitations": ["真实 Boot 启停由 T10 复验"]},
+    {"check": "租户和引用", "result": "pass", "evidence": "缺失/非正 tenant、无活动根组织、跨租户逻辑、错误参数均 fail-closed", "limitations": []},
+    {"check": "团队快照与可空人员", "result": "pass", "evidence": "团队必须为活动同租户组织且显式快照与组织名一致；owner/contact 接受 null", "limitations": []},
+    {"check": "虚构数据", "result": "pass", "evidence": "仅使用既有 MOCK 组织和人员及新增虚构架构名称，未抄录旧截图业务记录", "limitations": []}
+  ],
+  "diff_summary": [
+    "通用 Mock 初始化器仅对 arch 表增加受控校验，不改变其他表 upsert 语义",
+    "数据集新增 architecture catalog 项和 5 条显式租户虚构记录",
+    "失败仍由现有单事务整体回滚，不引入默认租户或生产 seed"
+  ],
+  "invariants_checked": [
+    {"invariant": "非 local 或未开启不运行", "result": "pass", "evidence": "Spring profile/property 注解精确断言"},
+    {"invariant": "不补 tenant 或快照", "result": "pass", "evidence": "缺失字段直接失败；代码不写入替代值"},
+    {"invariant": "重复同步幂等", "result": "pass", "evidence": "同一 arch 数据集连续运行两次，仍走主键 upsert"},
+    {"invariant": "参数属于当前租户分类", "result": "pass", "evidence": "配置与分类按 tenant/category/code 联合校验"}
+  ],
+  "disturbances": [
+    {"event": "重复运行测试最初复用了已耗尽输入流", "impact": "修正为每次返回新资源流后 11/11 通过"},
+    {"event": "ResourceLoader 被误当成函数式接口", "impact": "改用 Spring DefaultResourceLoader，最终编译和测试通过"},
+    {"event": "用户已有未跟踪 .dsh/** 与 docs/original/**", "impact": "未读取、未修改、未暂存"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实 local Boot 首启/重启和非 local 禁用由 T10 测量"],
+  "implementation_commit": "3ded28c",
+  "recommended_next": "observe"
+}

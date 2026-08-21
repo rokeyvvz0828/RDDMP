@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0003",
+  "decision": "accept",
+  "decision_reason": "原计划要求 T0 先通过 full scope，但 full scope 又要求 T1 才登记的模块存在，循环依赖可稳定复现。",
+  "dynamic_pattern": "systemic",
+  "causal_assessment": {
+    "hypothesis": "scope 全量校验放置在模块登记之前造成依赖环",
+    "supporting_evidence": ["T0 full scope 返回 Unknown assignment module", "T1 原先依赖 T0"],
+    "falsifier": "T0 不调用 full scope 且 T1 登记后仍无明确 full scope stop condition"
+  },
+  "control_action": {
+    "gain": "low",
+    "target": "T0/T1 任务顺序",
+    "write_scope": ["当前需求人类计划", "当前前缀 control-plan.json", "当前前缀 handoff.json"],
+    "invariants": ["T2 前 full scope 必须退出 0", "不改变业务需求、scope 范围或产品代码"],
+    "impact_limit": "仅当前需求计划元数据",
+    "rollback": "恢复 planning revision 2",
+    "correction_check": ["T0 只验证 scope 解锁字段", "T1 登记模块后运行 full scope", "T1 scope 失败时停止 T2", "JSON 与 diff-check 通过"],
+    "route": "observing"
+  },
+  "resolution": "verified",
+  "residual_risk": ["T1 尚未实际执行，full scope 最终结果仍待实施时验证"]
+}

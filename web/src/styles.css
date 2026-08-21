@@ -140,18 +140,23 @@ a { color: inherit; text-decoration: none; }
 .notification-drawer__header > div { min-width: 0; display: flex; align-items: baseline; gap: 10px; }
 .notification-drawer__header strong { font-size: 17px; }
 .notification-drawer__header span { color: var(--muted); font-size: 12px; }
+.notification-drawer__actions { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
 .notification-tabs { padding: 0 20px; }
 .notification-tabs .el-tabs__header { margin: 0; }
+.notification-tabs .el-tabs__nav { width: 100%; }
+.notification-tabs .el-tabs__item { flex: 1 1 0; justify-content: center; padding: 0 8px; }
 .notification-tabs .el-tabs__content { display: none; }
 .notification-filter { display: flex; min-width: 0; flex-direction: column; gap: 7px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
 .notification-filter__select { width: 100%; }
 .notification-filter__error { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; color: var(--danger); font-size: 12px; }
 .notification-list { min-height: 260px; max-height: calc(100dvh - 194px); overflow-y: auto; }
 .notification-failure { padding: 16px; }
-.notification-item { position: relative; width: 100%; min-height: 118px; display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; gap: 12px; padding: 18px 20px; border: 0; border-bottom: 1px solid var(--line); background: var(--panel-bg); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.notification-item { position: relative; width: 100%; min-height: 118px; display: grid; grid-template-columns: minmax(0, 1fr) 40px; border-bottom: 1px solid var(--line); background: var(--panel-bg); color: var(--text); }
 .notification-item:hover { background: var(--panel-muted); }
 .notification-item.is-unread { background: color-mix(in srgb, var(--brand) 7%, var(--panel-bg)); }
 .notification-item.is-unread::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand); }
+.notification-item__main { min-width: 0; min-height: 118px; display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; align-items: start; gap: 12px; padding: 18px 6px 18px 20px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.notification-item__main:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .notification-item__icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, var(--panel-bg)); }
 .notification-item.is-success .notification-item__icon { color: var(--success); background: color-mix(in srgb, var(--success) 12%, var(--panel-bg)); }
 .notification-item.is-warning .notification-item__icon { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, var(--panel-bg)); }
@@ -164,6 +169,9 @@ a { color: inherit; text-decoration: none; }
 .notification-item__content { display: -webkit-box; overflow: hidden; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .notification-item__body small { color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .notification-item__action { align-self: center; color: var(--muted); }
+.notification-item__controls { display: flex; align-items: center; justify-content: center; padding-right: 8px; }
+.notification-item__controls .el-button { color: var(--muted); }
+.notification-item__controls .el-button:hover { color: var(--brand); background: var(--panel-bg); }
 .notification-list__more { display: flex; justify-content: center; padding: 12px; }
 .avatar { width: 28px; height: 28px; display: grid; place-items: center; background: var(--brand); color: white; font-size: 12px; font-weight: 700; border-radius: 50%; }
 .avatar-dialog__hint { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
@@ -1831,7 +1839,9 @@ body,
   .notification-tabs { padding: 0 14px; }
   .notification-filter { padding: 10px 14px; }
   .notification-list { max-height: calc(100dvh - 196px); }
-  .notification-item { grid-template-columns: 32px minmax(0, 1fr) 16px; gap: 9px; padding: 14px; }
+  .notification-item { grid-template-columns: minmax(0, 1fr) 38px; }
+  .notification-item__main { grid-template-columns: 32px minmax(0, 1fr) 16px; gap: 9px; padding: 14px 4px 14px 14px; }
+  .notification-item__controls { padding-right: 6px; }
   .notification-item__meta { flex-direction: column; gap: 3px; }
 }
 

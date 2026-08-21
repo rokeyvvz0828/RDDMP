@@ -1,0 +1,63 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/views/RequirementsView.vue",
+      "purpose": "Add standard action icons, compact three fixed columns, group low-frequency actions in more menus and add page-local action spacing"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R4"],
+  "commands": [
+    {
+      "command": "git diff --check -- web/src/views/RequirementsView.vue",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors"
+    },
+    {
+      "command": "git diff -U0 -- web/src/views/RequirementsView.vue",
+      "exit_code": 0,
+      "salient_output": "56 insertions and 16 deletions limited to icon import, three action templates/widths and req-table-actions CSS"
+    },
+    {
+      "command": "rg target handlers and visibility conditions in RequirementsView.vue",
+      "exit_code": 0,
+      "salient_output": "All 11 existing target handlers and workflow_instance_id/review_status/canEditDiff conditions remain present"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Focused source and whitespace review",
+      "result": "pass",
+      "evidence": "git diff --check exited 0 and focused diff contains no function-body change",
+      "limitations": ["Production build and rendered browser checks remain for integrated observation"]
+    }
+  ],
+  "diff_summary": [
+    "Requirement difference action width changed from 380 to 280 with record/review/submit direct and edit/delete in more",
+    "Legacy requirement action width changed from 300 to 240 with stage advance/change history direct and remaining actions in more",
+    "System catalog action width changed from 150 to 160 with edit direct and delete in more",
+    "Added page-local non-wrapping flex spacing and standard Element Plus icons"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Business handler bodies remain unchanged",
+      "result": "pass",
+      "evidence": "Focused diff contains no script function-body changes"
+    },
+    {
+      "invariant": "Difference visibility conditions remain unchanged",
+      "result": "pass",
+      "evidence": "workflow_instance_id, pending/returned review status and canEditDiff expressions are retained verbatim"
+    },
+    {
+      "invariant": "Existing confirmations, requests and refresh behavior remain unchanged",
+      "result": "pass",
+      "evidence": "Only existing handlers are referenced from the new entry points; handler implementations are outside the diff"
+    }
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Compiler and runtime browser verification are pending after T2 integration"],
+  "recommended_next": "observe"
+}

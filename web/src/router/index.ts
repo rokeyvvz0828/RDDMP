@@ -8,6 +8,7 @@ import ParameterView from '../views/ParameterView.vue'
 import RolePermissionView from '../views/RolePermissionView.vue'
 import WorkflowView from '../views/WorkflowView.vue'
 import AiView from '../views/AiView.vue'
+import RequirementsView from '../views/RequirementsView.vue'
 import ComponentShowcaseView from '../views/ComponentShowcaseView.vue'
 import ProjectView from '../views/ProjectView.vue'
 import DeliveryShowcaseModule from '../modules/delivery-showcase/DeliveryShowcaseModule.vue'
@@ -200,7 +201,11 @@ const router = createRouter({
             permission: 'release:application:view',
             menuPath: '/release/applications'
           }
-        }
+        },
+        { path: 'requirements', redirect: '/requirements/new-project' },
+        { path: 'requirements/:section', name: 'requirements', component: RequirementsView, props: true, meta: { title: '需求管理平台' } },
+        { path: 'architecture/logical-subsystems', name: 'architecture-logical-subsystems', component: () => import('../modules/architecture/LogicalSubsystemPage.vue'), meta: { title: '逻辑子系统' } },
+        { path: 'architecture/physical-subsystems', name: 'architecture-physical-subsystems', component: () => import('../modules/architecture/PhysicalSubsystemPage.vue'), meta: { title: '物理子系统' } },
       ]
     },
     {

@@ -1,0 +1,45 @@
+{
+  "feedback_id": "F-0004",
+  "decision": "accept",
+  "decision_reason": "空 MySQL 8.4 可重复证明已发布 V24 缺少 Flowable Liquibase 元数据前置；用户于 2026-08-15 批准扩大 scope 后，因果来源获得精确 callback 执行器。",
+  "dynamic_pattern": "systemic",
+  "causal_assessment": {
+    "hypothesis": "V24 假定 Flowable schema update 已创建元数据表，但 V20 未创建且 Boot 明确关闭 schema update",
+    "supporting_evidence": [
+      "原始空库测试稳定在 V24 首次 ALTER 时失败",
+      "V20 SQL 无 FLW_EV_DATABASECHANGELOG/LOCK",
+      "application.yml flowable.database-schema-update=false"
+    ],
+    "falsifier": "不预置外部表且不执行 callback 的空库可以连续通过 V24"
+  },
+  "control_action": {
+    "gain": "low",
+    "target": "V24 空库前置而非历史迁移本身",
+    "write_scope": [
+      "beforeMigrate__ensure_flowable_event_registry_metadata.sql",
+      "scripts/check-flyway-migrations.mjs",
+      "EmptyDatabaseMigrationBaselineMySqlTest.java"
+    ],
+    "invariants": [
+      "V1-V34 不修改",
+      "callback 不写 flyway_schema_history",
+      "只触及两张 Flowable Liquibase 元数据表和 ID=1 锁记录",
+      "已越过 V24 的库重复运行幂等"
+    ],
+    "impact_limit": "所有 Flyway migrate 启动，但 SQL 影响限定为两张元数据表",
+    "rollback": "保留兼容 callback；只有替代机制保证新库越过 V24 后才移除",
+    "correction_check": [
+      "空库 V1-V34 通过",
+      "V24 后重复 migrate 为 0",
+      "callback 不进入 schema history",
+      "V24 无 diff",
+      "Flyway 和 commit scope 检查通过"
+    ],
+    "route": "observing"
+  },
+  "resolution": "verified",
+  "residual_risk": [
+    "Flyway 当前版本对 MySQL 8.4 给出未正式测试提示，但真实迁移通过",
+    "仓库既有 CRLF repo-skill 治理传感器问题仍需独立需求"
+  ]
+}

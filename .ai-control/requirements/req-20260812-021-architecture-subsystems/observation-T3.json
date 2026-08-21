@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "sample_label": "T3 数据模型与迁移纠偏后独立观察",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 architecture 全模块测试与仓储 SQL",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-architecture -am test：architecture 8/8、依赖模块 23/23 通过；逻辑分页/详情/写入/软删除 SQL 全部显式 tenant",
+      "limitation": ["逻辑 service/HTTP 尚属 T4"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S5 Testcontainers MySQL 组合外键",
+      "result": "pass",
+      "raw_evidence": "information_schema 显示物理 tenant_id+logical_subsystem_id 引用逻辑 tenant_id+id；跨租户物理插入失败",
+      "limitation": ["服务并发时序由 T5 测量"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S5 Testcontainers 唯一约束",
+      "result": "pass",
+      "raw_evidence": "逻辑/物理 tenant+code、tenant+name 四个唯一索引列准确；逻辑软删除后复用 code 插入失败",
+      "limitation": ["服务层 uppercase/格式校验由 T4/T5 测量"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S1 父锁与引用计数仓储测试",
+      "result": "pass",
+      "raw_evidence": "lockLogical 使用 SELECT id,deleted ... FOR UPDATE 且不排除软删除；活动子计数限定 tenant/deleted=0",
+      "limitation": ["删除保护事务编排由 T4/T5 测量"]
+    },
+    {
+      "requirement_id": "R12",
+      "sensor": "S5 information_schema 与 S10 源码扫描",
+      "result": "pass",
+      "raw_evidence": "两表 tenant_id IS_NULLABLE=NO/COLUMN_DEFAULT=NULL；仓储入口全部要求 tenantId；命令记录无 tenant 字段",
+      "limitation": ["HTTP 客户端同名字段和 AuthUser 注入由 T4/T5 测量"]
+    },
+    {
+      "requirement_id": "R13",
+      "sensor": "S5 V36 列约束",
+      "result": "pass",
+      "raw_evidence": "business_group_name/owner_user_id/contact_user_id 可空；responsible_team_org_id 和 responsible_team_name_snapshot 非空且无默认",
+      "limitation": ["团队有效性和快照来源由 T5 service 测量"]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S8/S10 模块边界与提交范围",
+      "result": "pass",
+      "raw_evidence": "module-boundaries 9 Maven modules；commit-diff scope 71 files；Flyway 36 migrations + 1 callback；architecture main 负向扫描无 sys_/wf_/biz_form 私有表访问",
+      "limitation": ["working-tree scope 会包含用户已有 .dsh/** 和 docs/original/**，commit diff 已隔离"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "Flyway 对 MySQL 8.4 输出高于已测试 8.1 的版本提示，但两组真实迁移和约束断言均通过",
+    "用户已有 scope 外未跟踪目录只影响 working-tree scope，不影响提交差异范围"
+  ],
+  "coverage_gaps": [
+    "T4/T5 尚需验证服务校验、HTTP、平台引用、审计和并发事务",
+    "T7 尚需验证菜单、权限和参数目录迁移"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,132 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260816-001",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260816-001-requirement-management-platform/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "zbx",
+    "module": "business/requirement",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260816-001-requirement-management-platform",
+    "worktree": "/Users/zbx/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260816-001-requirement-management-platform/**",
+      "docs/engineering-control/designs/2026-08-16-requirement-management-platform-design.md",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      ".github/CODEOWNERS",
+      "pom.xml",
+      "server/src/platform/boot/pom.xml",
+      "server/src/modules/requirement/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V67__requirement_management_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V68__requirement_management_seed.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V69__seed_requirement_workflow_definitions.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V70__legacy_requirement_workflow_instance_id.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V71__requirement_demo_dataset.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V72__requirement_workflow_dynamic_approver.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V73__stage_log_add_approval_result.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V74__legacy_add_seq_no.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V75__requirement_seed_dataset.sql",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+      "web/src/api/requirements.ts",
+      "web/src/types/requirements.ts",
+      "web/src/views/RequirementsView.vue",
+      "web/src/router/index.ts",
+      "mock/mock-data.json",
+      ".ai-control/requirements/req-20260816-001-requirement-management-platform/*.json"
+    ],
+    "read_only_paths": [
+      "docs/demand*/**",
+      "server/src/shared/common/**",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/storage/**",
+      "server/src/platform/infrastructure/src/test/**",
+      "server/src/platform/security/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/file-preview/**",
+      "server/src/platform/system/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/components/ui/**",
+      "docs/integration/**",
+      "docs/requirements/REQ-20260814-021-release-management/**",
+      "docs/requirements/REQ-20260814-022-platform-business-integration/**",
+      "design-h5.md"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260816-001",
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "governance module and dependency checks",
+      "mvn test",
+      "npm --prefix web run build",
+      "Flyway migration checks",
+      "existing delivery-showcase and system pages regression"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V67__requirement_management_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V68__requirement_management_seed.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V69__seed_requirement_workflow_definitions.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V70__legacy_requirement_workflow_instance_id.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V71__requirement_demo_dataset.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V72__requirement_workflow_dynamic_approver.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V73__stage_log_add_approval_result.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V74__legacy_add_seq_no.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V75__requirement_seed_dataset.sql"
+    ],
+    "compatibility_and_rollback": "Only add new req_* tables, menus and permissions; existing platform and business tables remain untouched. Rollback stops using new tables and disables the new menu; published baseline snapshots are retained."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only-with-desensitization"
+  },
+  "required_tests": [
+    {"name": "requirement-module-tests", "command": "mvn -pl :ccb-requirement -am test"},
+    {"name": "full-backend-tests", "command": "mvn test"},
+    {"name": "api", "command": "focused API verification for project/difference CRUD, import, review submission, baseline and legacy requirement stage transition"},
+    {"name": "permission", "command": "focused permission verification: anonymous 401, forbidden 403, authorized success, project group data scope"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260816-001-requirement-management-platform/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"},
+    {"name": "browser", "command": "desktop and 375/390/430 mobile viewport acceptance for difference entry/import, review approval, baseline, legacy stage transition and change-record dialog"}
+  ],
+  "risk": {
+    "level": "important",
+    "items": [
+      "new business module and governance/module boundary changes requiring owner approval",
+      "append-only Flyway migrations for new schema and menus",
+      "Excel parsing, validation and transactional import",
+      "workflow approval integration with role routing and idempotent status callback",
+      "server-side RBAC, data scope and audit for protected writes",
+      "desensitization of customer names and personal data in mock and demo data"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260816-001-requirement-management-platform",
+    "control_justification": "new business module with database, workflow approval, import/export, cross-layer frontend and governance boundary changes",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260816-001-requirement-management-platform/execution-T1.json",
+      ".ai-control/requirements/req-20260816-001-requirement-management-platform/observation-T1.json",
+      ".ai-control/requirements/req-20260816-001-requirement-management-platform/convergence.json"
+    ],
+    "release_verification": [],
+    "rollback": "Revert this requirement's commits, disable the new menu, and retain additive req_* tables for controlled rollback."
+  }
+}

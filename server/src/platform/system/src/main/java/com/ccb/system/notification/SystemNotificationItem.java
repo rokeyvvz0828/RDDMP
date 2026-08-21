@@ -15,5 +15,6 @@ public record SystemNotificationItem(
         String actionPath,
         boolean read,
         LocalDateTime readAt,
+        LocalDateTime archivedAt,
         LocalDateTime createdAt) {
 }

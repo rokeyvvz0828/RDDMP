@@ -1,0 +1,672 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260821-047-table-action-style",
+  "handoff_status": "approved",
+  "created_at": "2026-08-21T11:57:11+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260821-047-table-action-style",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-21-table-action-style-design.md",
+    "objective": "Unify requirement and architecture table action columns with the repository's latest primary, frequent and more-action hierarchy while removing excessive fixed-column whitespace.",
+    "users": [
+      "Requirement users reviewing records, advancing stages and maintaining requirement data",
+      "Architecture users viewing, editing and deleting logical or physical subsystems"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "Requirement difference rows must keep record and review actions visible, keep submit-review visible when eligible, and move edit and delete into a more-actions menu.",
+        "acceptance": [
+          "Change history is always visible and approval history is visible only when a workflow instance exists",
+          "Submit review is directly visible only for pending or returned rows",
+          "Edit and delete retain canEditDiff visibility and invoke their existing handlers from the more menu",
+          "The fixed action column is no wider than 280 pixels"
+        ],
+        "priority": "must",
+        "source": "User approved option 1 on 2026-08-21.",
+        "counterexample": [
+          "Reviewed rows retain a 380-pixel mostly empty action column",
+          "Edit or delete becomes available for a non-editable row",
+          "Submit review is hidden inside a low-frequency menu"
+        ]
+      },
+      {
+        "id": "R2",
+        "statement": "Legacy requirement and system catalog rows must separate frequent actions from low-frequency or destructive actions without changing behavior.",
+        "acceptance": [
+          "Legacy rows show stage advance and change history directly and place stage history, edit and delete in more actions",
+          "System rows show edit directly and place delete in more actions",
+          "Existing handlers, confirmations and error messages remain in use"
+        ],
+        "priority": "must",
+        "source": "Approved option 1 and existing delivery-showcase hierarchy.",
+        "counterexample": [
+          "All five legacy actions remain flat in one row",
+          "Delete loses its confirmation or permission condition"
+        ]
+      },
+      {
+        "id": "R3",
+        "statement": "Logical and physical subsystem tables must use the same detail, edit and more-actions presentation with standard icons and spacing.",
+        "acceptance": [
+          "Detail is always visible with a view icon",
+          "Edit is visible only with canUpdate and uses an edit icon",
+          "More is visible only with delete permission and contains the existing delete command",
+          "Desktop and mobile labels and icon semantics remain consistent"
+        ],
+        "priority": "must",
+        "source": "User requested both merged branches to follow current common styles.",
+        "counterexample": [
+          "The two architecture pages use different action markup",
+          "Permission-hidden actions leave empty placeholders"
+        ]
+      },
+      {
+        "id": "R4",
+        "statement": "Action containers must remain compact, non-wrapping and readable across fixed-column scrolling, themes and required desktop/mobile viewports.",
+        "acceptance": [
+          "Adjacent Element Plus buttons have stable gaps and no inherited left margin",
+          "UiDataTable continues to own fixed-column background, shadow and hover behavior",
+          "The 1280x800 desktop viewport has no clipped action labels or excessive action-column whitespace",
+          "The 375x812, 390x844 and 430x932 viewports have no page-level horizontal overflow and architecture mobile cards expose reachable actions"
+        ],
+        "priority": "must",
+        "source": "design-h5.md and frontend UI integration contract.",
+        "counterexample": [
+          "Buttons wrap to two lines in one row",
+          "Fixed-column content becomes transparent during horizontal scrolling",
+          "The page width exceeds the mobile viewport"
+        ]
+      }
+    ],
+    "invariants": [
+      "No backend, API, database, permission or audit behavior changes",
+      "Every action retains its existing visibility condition, confirmation and handler",
+      "No business handler is added or modified; dropdown entries only invoke existing handlers",
+      "UiDataTable remains the owner of fixed-column foundation styles",
+      "No new dependency or public UI component is introduced"
+    ],
+    "constraints": [
+      "Use Vue 3, TypeScript, Element Plus and existing semantic theme variables",
+      "Modify only the requirement page, architecture module pages, architecture local CSS and current-task governance artifacts",
+      "Do not modify web/src/components/ui or web/src/styles.css",
+      "Implementation requires a ready requirement scope and a separately approved implementation plan"
+    ],
+    "non_goals": [
+      "Refactoring the complete requirement management page",
+      "Adding complete mobile card lists to requirement management",
+      "Migrating action columns in unrelated modules",
+      "Creating a public UiTableActions component",
+      "Changing workflow, stage or deletion behavior"
+    ],
+    "selected_approach": {
+      "name": "Module-local primary, frequent and more-action hierarchy",
+      "reason": "It directly reuses the delivery showcase interaction pattern, fixes excessive width and flat action lists, and avoids broad public-component regression.",
+      "alternatives": [
+        {
+          "name": "Width-only adjustment",
+          "rejected_because": "Rows with many eligible actions would still wrap or crowd and the hierarchy problem would remain."
+        },
+        {
+          "name": "New shared UiTableActions component",
+          "rejected_because": "It would require a public frontend capability change and regression across unrelated modules."
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "Requirement difference, legacy requirement and system catalog action columns",
+          "Logical and physical subsystem desktop and mobile action presentation",
+          "Module-local action spacing and responsive styles",
+          "Frontend build and browser viewport verification"
+        ],
+        "outside": [
+          "Backend services, APIs, database and permissions",
+          "Shared UI components and global styles",
+          "Unrelated business modules",
+          "Full requirement mobile-card redesign"
+        ]
+      },
+      "components": [
+        {
+          "name": "RequirementsView",
+          "responsibility": "Reorder requirement actions, route low-frequency actions through dropdown commands and provide local compact action styles.",
+          "depends_on": [
+            "UiDataTable",
+            "Element Plus buttons and dropdowns",
+            "existing action handlers"
+          ]
+        },
+        {
+          "name": "LogicalSubsystemPage",
+          "responsibility": "Render standard detail, edit and more actions for logical subsystems.",
+          "depends_on": [
+            "architecture permissions",
+            "existing detail/edit/delete handlers"
+          ]
+        },
+        {
+          "name": "PhysicalSubsystemPage",
+          "responsibility": "Render the same standard action structure for physical subsystems.",
+          "depends_on": [
+            "architecture permissions",
+            "existing detail/edit/delete handlers"
+          ]
+        },
+        {
+          "name": "architecture.css",
+          "responsibility": "Apply module-local non-wrapping action spacing without duplicating fixed-column foundation styles.",
+          "depends_on": [
+            "semantic theme variables",
+            "UiDataTable global fixed-column behavior"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "Existing UI action handlers",
+          "producer": "Requirement and architecture pages",
+          "consumers": [
+            "direct link buttons",
+            "Element Plus dropdown commands"
+          ],
+          "contract": "Moving an action into a dropdown changes only its entry point; the same handler, conditions, confirmation and API call remain authoritative."
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "Current row state and authenticated frontend permission set",
+          "transitions": [
+            "derive visible actions",
+            "render direct high-frequency actions",
+            "render eligible low-frequency actions in more menu",
+            "invoke existing handler"
+          ],
+          "output": "The same business operation with a compact and consistent action presentation"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "An action request fails",
+        "behavior": "Keep the row state and use the existing handler's error message without optimistic success.",
+        "recovery": "Retry the action or refresh the list."
+      },
+      {
+        "condition": "No permission exists for a conditional action",
+        "behavior": "Do not render the action or an empty menu placeholder.",
+        "recovery": "An administrator grants the existing permission; no new permission is introduced."
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "Frontend visibility remains an experience layer and does not replace backend authorization",
+        "No identity, permission or request payload changes"
+      ],
+      "performance": [
+        "No additional request, watcher or dependency",
+        "Dropdown rendering is local to the existing row"
+      ],
+      "compatibility": [
+        "Existing routes, types, APIs and handlers remain compatible",
+        "UiDataTable global fixed-column behavior remains unchanged"
+      ],
+      "operations": [
+        "Pure frontend rollback by reverting the affected page and local CSS files",
+        "No migration, configuration or deployment-order dependency"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3"
+        ],
+        "signal": "Every direct and menu action remains visible only in its original state and invokes the original handler.",
+        "method": "Static diff inspection plus real browser clicks across representative row states."
+      },
+      {
+        "requirement_ids": [
+          "R4"
+        ],
+        "signal": "No clipped labels, excessive operation-column whitespace, fixed-column bleed-through or page-level mobile overflow.",
+        "method": "Browser screenshots and DOM width checks at 1280x800, 375x812, 390x844 and 430x932 in light and dark themes."
+      },
+      {
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4"
+        ],
+        "signal": "Frontend type checking and production bundling succeed.",
+        "method": "npm --prefix web run build and git diff --check."
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "The requested optimization is limited to table action presentation and does not require a full requirement-management mobile card redesign.",
+        "basis": "The user explicitly highlighted the operation column and asked both merged branches to follow the latest common style.",
+        "falsifier": "The user requests complete mobile list restructuring or broader page redesign."
+      }
+    ],
+    "unknowns": [],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "Use module-local action hierarchy and styles without adding a public component.",
+        "reason": "Smallest compatible scope with lower regression cost.",
+        "source": "User confirmed option 1 on 2026-08-21."
+      },
+      {
+        "id": "D2",
+        "decision": "Move low-frequency and destructive actions into more menus while retaining high-frequency actions directly.",
+        "reason": "Matches delivery-showcase and design-h5 operation hierarchy.",
+        "source": "Approved design discussion."
+      }
+    ],
+    "risks": [
+      {
+        "risk": "A row-state combination exposes more direct actions than the selected fixed width supports.",
+        "impact": "Labels may clip or wrap.",
+        "mitigation": "Cover pending, returned, in-review and reviewed rows in desktop browser verification before fixing the final width."
+      },
+      {
+        "risk": "A dropdown command is wired to the wrong existing handler.",
+        "impact": "The user may trigger an unintended action.",
+        "mitigation": "Use typed command unions and click every migrated menu item in browser verification."
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User reviewed and confirmed design revision 1 on 2026-08-21, then clarified that implementation must only adjust styles and action-entry presentation without changing business logic.",
+      "confirmed_at": "2026-08-21T11:57:11+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-21-table-action-style-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "Only styles and action-entry presentation may change",
+      "No business handler, API, data, permission, state, confirmation, backend, shared UI or global style change",
+      "Preserve unrelated worktree changes",
+      "Report the user-mandated rokey branch as a known governance deviation instead of falsifying branch metadata"
+    ],
+    "file_map": [
+      {
+        "path": "web/src/views/RequirementsView.vue",
+        "status": "existing",
+        "responsibility": "Three requirement action columns",
+        "evidence": "Source inspection"
+      },
+      {
+        "path": "web/src/modules/architecture/LogicalSubsystemPage.vue",
+        "status": "existing",
+        "responsibility": "Logical subsystem actions",
+        "evidence": "Source inspection"
+      },
+      {
+        "path": "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+        "status": "existing",
+        "responsibility": "Physical subsystem actions",
+        "evidence": "Source inspection"
+      },
+      {
+        "path": "web/src/modules/architecture/architecture.css",
+        "status": "existing",
+        "responsibility": "Architecture-local action styles",
+        "evidence": "Source inspection"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "Compact and layer requirement-management actions without business changes",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R4"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "Existing handlers, conditions and module-local styles were confirmed by read-only source inspection"
+        ],
+        "files": {
+          "create": [],
+          "modify": [
+            "web/src/views/RequirementsView.vue"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [
+            "Existing requirement handlers and visibility conditions",
+            "Element Plus action controls"
+          ],
+          "produces": [
+            "req-table-actions container",
+            "Compact columns and more menus"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T1-S1",
+            "action": "Record scoped template and handler baseline",
+            "command": "git diff -- web/src/views/RequirementsView.vue; rg -n \"function (openChangeLogs|openApprovalLogs|submitDifferenceReview|openDiffEdit|removeDifference|openStage|showStageLogs|openLegacyEdit|removeLegacy|openSystemEdit|removeSystem)\" web/src/views/RequirementsView.vue",
+            "expected": "No pre-existing scoped change and all handlers exist",
+            "evidence": "Baseline diff and handler list"
+          },
+          {
+            "id": "T1-S2",
+            "action": "Change only imports, action templates, widths and local action CSS",
+            "command": null,
+            "expected": "Original conditions and handlers are preserved while columns become compact",
+            "evidence": "Scoped source diff"
+          },
+          {
+            "id": "T1-S3",
+            "action": "Run focused static review",
+            "command": "git diff --check -- web/src/views/RequirementsView.vue; git diff -- web/src/views/RequirementsView.vue",
+            "expected": "No whitespace, function-body, API or state change",
+            "evidence": "Exit code and reviewed diff"
+          }
+        ],
+        "acceptance_checks": [
+          "Difference eligibility is unchanged",
+          "Legacy and system actions invoke original handlers",
+          "Columns are compact and non-wrapping"
+        ],
+        "risks": [
+          "Variable visible action count can pressure width"
+        ],
+        "rollback": "Restore only T1 import, template, width and local CSS changes",
+        "stop_conditions": [
+          "Any business handler, API, permission, state or shared style must change"
+        ],
+        "escalation_conditions": [
+          "A full mobile redesign or shared component change is required"
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "Align logical and physical subsystem action presentation without permission or command changes",
+        "requirement_ids": [
+          "R3",
+          "R4"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "Existing handlers, conditions and module-local styles were confirmed by read-only source inspection"
+        ],
+        "files": {
+          "create": [],
+          "modify": [
+            "web/src/modules/architecture/LogicalSubsystemPage.vue",
+            "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+            "web/src/modules/architecture/architecture.css"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [
+            "showDetail, editRecord and command handlers",
+            "canUpdate and canDelete conditions"
+          ],
+          "produces": [
+            "architecture-table-actions container",
+            "Consistent desktop/mobile icons and spacing"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T2-S1",
+            "action": "Record scoped templates and handler baseline",
+            "command": "git diff -- web/src/modules/architecture/LogicalSubsystemPage.vue web/src/modules/architecture/PhysicalSubsystemPage.vue web/src/modules/architecture/architecture.css; rg -n \"function (showDetail|editRecord|command)\" web/src/modules/architecture/LogicalSubsystemPage.vue web/src/modules/architecture/PhysicalSubsystemPage.vue",
+            "expected": "No pre-existing scoped change and handlers exist",
+            "evidence": "Baseline diff and handler list"
+          },
+          {
+            "id": "T2-S2",
+            "action": "Change only icon imports, action templates, widths and module-local CSS",
+            "command": null,
+            "expected": "Two pages are visually identical and permission conditions stay unchanged",
+            "evidence": "Scoped source diff"
+          },
+          {
+            "id": "T2-S3",
+            "action": "Run focused static review",
+            "command": "git diff --check -- web/src/modules/architecture/LogicalSubsystemPage.vue web/src/modules/architecture/PhysicalSubsystemPage.vue web/src/modules/architecture/architecture.css; git diff -- web/src/modules/architecture/LogicalSubsystemPage.vue web/src/modules/architecture/PhysicalSubsystemPage.vue web/src/modules/architecture/architecture.css",
+            "expected": "No whitespace, handler, request or permission change",
+            "evidence": "Exit code and reviewed diff"
+          }
+        ],
+        "acceptance_checks": [
+          "Desktop templates are consistent",
+          "Mobile actions remain reachable",
+          "Delete confirmation remains unchanged"
+        ],
+        "risks": [
+          "Icons require more width than current 144 pixels"
+        ],
+        "rollback": "Restore only T2 imports, templates, widths and local CSS",
+        "stop_conditions": [
+          "API, permission, command handler or UiDataTable must change"
+        ],
+        "escalation_conditions": [
+          "A shared fixed-column defect requires a separate task"
+        ]
+      },
+      {
+        "id": "T3",
+        "goal": "Verify build, scope, responsive visuals and unchanged eligibility",
+        "requirement_ids": [
+          "R4"
+        ],
+        "prerequisites": [
+          "T1",
+          "T2"
+        ],
+        "input_facts": [
+          "Existing handlers, conditions and module-local styles were confirmed by read-only source inspection"
+        ],
+        "files": {
+          "create": [
+            ".ai-control/requirements/req-20260821-047-table-action-style/execution-T1.json",
+            ".ai-control/requirements/req-20260821-047-table-action-style/execution-T2.json",
+            ".ai-control/requirements/req-20260821-047-table-action-style/observation-T1.json",
+            ".ai-control/requirements/req-20260821-047-table-action-style/observation-T2.json",
+            ".ai-control/requirements/req-20260821-047-table-action-style/convergence.json"
+          ],
+          "modify": [],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [
+            "T1 and T2 frontend outputs"
+          ],
+          "produces": [
+            "Build, governance and browser evidence"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T3-S1",
+            "action": "Review final scoped diff for business invariants",
+            "command": "git diff -- web/src/views/RequirementsView.vue web/src/modules/architecture/LogicalSubsystemPage.vue web/src/modules/architecture/PhysicalSubsystemPage.vue web/src/modules/architecture/architecture.css",
+            "expected": "Only imports, templates, widths and local CSS changed",
+            "evidence": "Final scoped diff review"
+          },
+          {
+            "id": "T3-S2",
+            "action": "Run static, build, scope and governance checks",
+            "command": "git diff --check; npm --prefix web run build; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260821-047-table-action-style/codex-task-scope.yaml --working-tree; node scripts/check-all-governance.mjs",
+            "expected": "Build passes; scope reports the known rokey branch deviation and governance reports no new task-induced violation",
+            "evidence": "Command exit codes"
+          },
+          {
+            "id": "T3-S3",
+            "action": "Verify desktop/mobile and light/dark themes",
+            "command": "Use in-app browser at http://127.0.0.1:5173 with backend http://127.0.0.1:8080",
+            "expected": "No overflow, overlap, fixed-column bleed or changed action eligibility",
+            "evidence": "Screenshots, DOM widths, console and click results"
+          }
+        ],
+        "acceptance_checks": [
+          "Build passes",
+          "No business logic changed",
+          "Required viewports and themes pass"
+        ],
+        "risks": [
+          "Authentication or test data may limit browser evidence"
+        ],
+        "rollback": "Apply T1 and T2 rollbacks and remove uncommitted evidence",
+        "stop_conditions": [
+          "Build fails, eligibility changes, overflow remains or runtime evidence is unavailable"
+        ],
+        "escalation_conditions": [
+          "New test data, permissions or backend changes are required"
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T3",
+        "reason": "Verification consumes requirement output"
+      },
+      {
+        "from": "T2",
+        "to": "T3",
+        "reason": "Verification consumes architecture output"
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T1",
+        "T2"
+      ],
+      [
+        "T3"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T1",
+          "T2"
+        ],
+        "command": "git diff --check; npm --prefix web run build",
+        "expected": "Static and production build checks pass"
+      },
+      {
+        "after_tasks": [
+          "T1",
+          "T2",
+          "T3"
+        ],
+        "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260821-047-table-action-style/codex-task-scope.yaml --working-tree; node scripts/check-all-governance.mjs",
+        "expected": "Task paths are reviewed against scope; the known rokey branch and unrelated-worktree deviations are reported honestly, with no new task-induced governance violation"
+      },
+      {
+        "after_tasks": [
+          "T1",
+          "T2",
+          "T3"
+        ],
+        "command": "Authenticated browser verification at 1280x800, 375x812, 390x844 and 430x932",
+        "expected": "Five target lists pass visual and unchanged-behavior checks"
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R1",
+        "task_ids": [
+          "T1"
+        ]
+      },
+      {
+        "requirement_id": "R2",
+        "task_ids": [
+          "T1"
+        ]
+      },
+      {
+        "requirement_id": "R3",
+        "task_ids": [
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R4",
+        "task_ids": [
+          "T1",
+          "T2",
+          "T3"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User explicitly confirmed implementation of plan revision 1 on 2026-08-21 and reiterated that only styles and action-entry presentation may change.",
+      "confirmed_at": "2026-08-21T12:56:36+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "Five action templates, fixed widths and module-local CSS"
+    ],
+    "state_variable_candidates": [
+      "Row state",
+      "Permission set",
+      "Visible action count",
+      "Viewport",
+      "Theme",
+      "Scroll position"
+    ],
+    "interface_candidates": [
+      "Existing handlers",
+      "Element Plus controls",
+      "UiDataTable fixed column"
+    ],
+    "sensor_candidates": [
+      "Scoped diff",
+      "Vite build",
+      "DOM width",
+      "Screenshots",
+      "Console",
+      "Network",
+      "Click result"
+    ],
+    "actuator_candidates": [
+      "Template grouping",
+      "Icons",
+      "Column widths",
+      "Local flex/gap/white-space CSS"
+    ],
+    "disturbance_candidates": [
+      "Variable action count",
+      "Long labels",
+      "Dark theme",
+      "Dirty worktree",
+      "Missing auth/data"
+    ],
+    "delay_candidates": [
+      "Vite update",
+      "Dropdown render",
+      "List request"
+    ],
+    "assumptions": [
+      {
+        "text": "Dropdown entries can invoke the original handler with the current row",
+        "basis": "Existing repository patterns",
+        "falsifier": "Runtime verification loses the row or changes eligibility"
+      }
+    ]
+  }
+}

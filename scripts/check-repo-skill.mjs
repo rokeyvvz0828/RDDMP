@@ -11,7 +11,7 @@ if (!fs.existsSync(skillFile)) violations.push('missing repository skill SKILL.m
 if (!fs.existsSync(agentFile)) violations.push('missing repository skill agents/openai.yaml');
 
 if (fs.existsSync(skillFile)) {
-  const source = fs.readFileSync(skillFile, 'utf8');
+  const source = fs.readFileSync(skillFile, 'utf8').replace(/\r\n?/g, '\n');
   const frontmatter = source.match(/^---\n([\s\S]*?)\n---/);
   if (!frontmatter) violations.push('SKILL.md must start with YAML frontmatter');
   if (!/^name:\s*rddmp-delivery-engineer\s*$/m.test(frontmatter?.[1] || '')) violations.push('SKILL.md name is invalid');

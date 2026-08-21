@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "sample_label": "T2 平台安全引用、审计和 V35 独立复验",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {
+      "requirement_id": "R4",
+      "sensor": "S3 引用查询 SQL 与 DTO 测试",
+      "result": "pass",
+      "raw_evidence": "用户 tenant/deleted/status、参数分类与配置 tenant/status/deleted 均为固定条件；输出 record 字段最小",
+      "limitation": ["跨租户真实 API 留到架构 options 集成"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S3 审计命令与事务传播反射测试",
+      "result": "pass",
+      "raw_evidence": "AuthUser 是唯一租户/操作者来源；success REQUIRED，failure REQUIRES_NEW；错误和 trace 限长",
+      "limitation": ["业务服务尚未接入"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S3 用户/参数查询聚焦测试",
+      "result": "pass",
+      "raw_evidence": "phone 映射、LIKE 转义、分页、activeOnly 与 code/label 参数投影通过",
+      "limitation": ["V37 前无六类初始参数"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S5 真实 MySQL V35 增量兼容",
+      "result": "pass",
+      "raw_evidence": "trace varchar(64) nullable default NULL；索引 tenant_id,trace_id；旧 INSERT 省略列成功",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S8 system 全量 reactor 与治理",
+      "result": "pass",
+      "raw_evidence": "23 tests、Flyway 35、module-boundaries 9、governance 12、scope 49 files 全部退出 0",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "本地 Maven 缓存缺 Surefire provider，补齐后聚焦与全量复验通过",
+    "首次 MySQL 命令行引号错误未触及既有业务库，标准输入重试通过"
+  ],
+  "coverage_gaps": [
+    "统一审计的业务调用闭环由 T4/T5/T10 覆盖",
+    "六类参数真实目录由 T7/T10 覆盖"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

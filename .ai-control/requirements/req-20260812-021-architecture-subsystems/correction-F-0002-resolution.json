@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0002",
+  "decision": "accept",
+  "decision_reason": "入口脚本只尝试 PATH 中旧 CLI，无法观测当前桌面端已启用插件；该传感器故障可在已授权治理脚本内修复。",
+  "dynamic_pattern": "sensor-fault",
+  "causal_assessment": {
+    "hypothesis": "CLI 版本和桌面插件状态发现路径不一致导致假阴性",
+    "supporting_evidence": ["PATH Codex 0.110 不支持 plugin list", "桌面 config enabled 且缓存 manifest/Skill 完整", "当前会话已加载插件 Skills"],
+    "falsifier": "桌面 config 未启用或缓存 manifest/核心 Skill 缺失"
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "scripts/check-development-entry.mjs 插件状态传感器",
+    "write_scope": ["scripts/check-development-entry.mjs"],
+    "invariants": ["required-plugin 未安装必须退出 1", "不输出 config 内容", "不依赖单独缓存目录放行"],
+    "impact_limit": "研发入口检查",
+    "rollback": "恢复修复前脚本并保持编码停止",
+    "correction_check": ["真实桌面状态退出 0", "隔离无 enabled config 状态退出 1", "governance 检查通过"],
+    "route": "observing"
+  },
+  "resolution": "verified",
+  "residual_risk": ["未来 config TOML 或 plugin manifest 格式变化需更新传感器"]
+}

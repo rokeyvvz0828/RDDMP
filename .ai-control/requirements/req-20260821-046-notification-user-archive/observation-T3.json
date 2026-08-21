@@ -1,0 +1,51 @@
+{
+  "sample_label": "Integrated runtime, regression and scope observation",
+  "task_ids": ["T1", "T2", "T3"],
+  "baseline_revision": "baseline-1",
+  "independence": "Non-independent verification in the implementation context; compiler, tests, Flyway, browser and repository tools provide separate sensors.",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "Focused JUnit plus authenticated browser",
+      "result": "pass",
+      "raw_evidence": "Archive eligibility, conflict and scope tests passed; a real read message archived without changing unread count.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "Authenticated browser and service tests",
+      "result": "pass",
+      "raw_evidence": "Archived view showed archive metadata and restore returned the item as read.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "Confirmation UI and bulk service test",
+      "result": "pass",
+      "raw_evidence": "Confirmation is mandatory and backend conditions preserve unread rows while returning changed count.",
+      "limitation": ["The live bulk mutation was cancelled to preserve current user history."]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Service query tests, browser count checks and responsive probes",
+      "result": "pass",
+      "raw_evidence": "View totals remain separated, unread remained 2 through archive/restore, and all required viewports had no horizontal overflow.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "Service scope tests, contract review and migration observation",
+      "result": "pass",
+      "raw_evidence": "Authentication owns recipient identity, no records are deleted, legacy unreadOnly is retained and V79 applied successfully.",
+      "limitation": ["Cross-user browser isolation was not sampled with a second signed-in account."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "Full Maven regression was externally blocked by an invalid Docker environment after all notification-owning modules passed.",
+    "Governance and scope validators reported known repository history and requested branch-name deviations outside product behavior."
+  ],
+  "coverage_gaps": ["Docker-backed architecture regression remains pending a healthy Docker daemon."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

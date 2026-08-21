@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "task_id": "T0",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "scripts/check-development-entry.mjs",
+      "purpose": "兼容 CLI JSON 与桌面 config/cache 插件状态，并保留严格未安装失败语义"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260812-021-architecture-subsystems/** 与当前设计/计划/控制产物",
+      "purpose": "把当前实现迁移改为主干连续的 V35-V37，并记录用户授权"
+    },
+    {
+      "path_or_resource": "REQ-20260814-022 与 REQ-20260814-021 的精确需求/scope/设计/计划版本引用",
+      "purpose": "把尚未落地的迁移顺延为 V38-V39 与 V40，消除文档冲突"
+    }
+  ],
+  "requirements_addressed": ["R8", "R11"],
+  "commands": [
+    {
+      "command": "node --check scripts/check-development-entry.mjs",
+      "exit_code": 0,
+      "salient_output": "脚本语法通过"
+    },
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed."
+    },
+    {
+      "command": "隔离 RDDMP_CODEX_HOME + Codex 0.110.0 负向执行 development-entry --require-plugin",
+      "exit_code": 1,
+      "salient_output": "未安装/未启用插件被拒绝；NEGATIVE_ENTRY_CHECK_OK exit=1"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "Flyway migration check passed for 34 migration(s)."
+    },
+    {
+      "command": "node scripts/check-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "Governance check passed for 11 module(s)."
+    },
+    {
+      "command": "解析三份 scope 并断言 migration_files",
+      "exit_code": 0,
+      "salient_output": "MIGRATION_ALLOCATION_OK architecture=V35-V37 platform=V38-V39 release=V40"
+    },
+    {
+      "command": "git ls-tree origin/main migration + 最高版本断言",
+      "exit_code": 0,
+      "salient_output": "MAIN_MIGRATION_SLOTS_OK highest=V34 V35-V37=free"
+    },
+    {
+      "command": "git grep origin/main 预留菜单/权限/参数 ID",
+      "exit_code": 0,
+      "salient_output": "RESERVED_IDS_OK no matches"
+    },
+    {
+      "command": "scope/branch/main divergence 断言",
+      "exit_code": 0,
+      "salient_output": "HEAD...origin/main=0/0；SCOPE_BRANCH_OK feat/REQ-20260812-021-architecture-subsystems"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无差异格式错误；仅报告 Git 行尾转换提示"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "开发入口正向兼容",
+      "result": "pass",
+      "evidence": "当前桌面 config 明确 enabled，版本缓存 manifest 与核心 Skill 完整，入口退出 0",
+      "limitations": ["未来 CLI JSON 结构变化仍需回归"]
+    },
+    {
+      "check": "开发入口负向防误放行",
+      "result": "pass",
+      "evidence": "隔离空 Codex home 与旧 CLI 时退出 1",
+      "limitations": ["未枚举所有损坏 manifest 组合"]
+    },
+    {
+      "check": "迁移版本实际连续性",
+      "result": "pass",
+      "evidence": "最新 origin/main 最高 V34；本需求 V35-V37；两个未实施需求顺延到 V38-V40",
+      "limitations": ["合并前必须再次 fetch 并扫描并行占用"]
+    },
+    {
+      "check": "范围与分支",
+      "result": "pass",
+      "evidence": "用户授权写入面已记录，当前分支正确且与 origin/main 0/0",
+      "limitations": ["full scope check 仍按计划在 T1 登记模块后运行"]
+    }
+  ],
+  "diff_summary": [
+    "没有创建占位迁移，也没有实现其他需求的业务表",
+    "开发入口仅增加安装状态发现兼容，不降低 required-plugin 失败条件",
+    "迁移版本按实际落地主干顺序重新分配，业务设计不变"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "未安装或未启用插件不能通过入口",
+      "result": "pass",
+      "evidence": "隔离负向检查退出 1"
+    },
+    {
+      "invariant": "不修改已发布 Flyway 迁移",
+      "result": "pass",
+      "evidence": "V1-V34 未修改，Flyway 检查 34 个迁移通过"
+    },
+    {
+      "invariant": "迁移版本和 ID 不与目标主干冲突",
+      "result": "pass",
+      "evidence": "origin/main V35-V37 与预留 ID 均无匹配"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "桌面 app CLI、PATH CLI 和插件状态存储不一致",
+      "impact": "入口必须使用 CLI 或 config+cache 的完整证据，而不能依赖单一可执行文件"
+    }
+  ],
+  "assumptions_falsified": [
+    "尚未实施需求文档预留的 Flyway 版本必须等待其先合入"
+  ],
+  "unresolved_items": [
+    "T1 登记 business/architecture 后运行 full scope check",
+    "合并前重新扫描 V35-V37 与稳定 ID"
+  ],
+  "recommended_next": "observe"
+}

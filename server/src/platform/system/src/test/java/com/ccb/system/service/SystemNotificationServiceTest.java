@@ -1,15 +1,20 @@
 package com.ccb.system.service;
 
 import com.ccb.common.exception.BusinessException;
+import com.ccb.common.exception.ErrorCode;
+import com.ccb.common.api.PageQuery;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.notification.NotificationArchiveResult;
 import com.ccb.system.notification.NotificationLevel;
 import com.ccb.system.notification.NotificationPublishCommand;
+import com.ccb.system.notification.NotificationView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,6 +26,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -77,7 +83,93 @@ class SystemNotificationServiceTest {
         service.markAllRead(user);
 
         verify(jdbc).update(contains("notification_id = ?"), any(LocalDateTime.class), eq(1L), eq(7L), eq(88L));
-        verify(jdbc).update(contains("user_id = ? AND is_read = 0"), any(LocalDateTime.class), eq(1L), eq(7L));
+        verify(jdbc).update(contains("user_id = ? AND is_read = 0 AND archived_at IS NULL"), any(LocalDateTime.class), eq(1L), eq(7L));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void notificationViewsApplyConsistentArchiveFilters() {
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+
+        service.list(new PageQuery(1, 20), NotificationView.ALL, null, user);
+        service.list(new PageQuery(1, 20), NotificationView.UNREAD, null, user);
+        service.list(new PageQuery(1, 20), NotificationView.ARCHIVED, null, user);
+
+        verify(jdbc, atLeastOnce()).queryForObject(contains("un.archived_at IS NULL"), eq(Long.class), any(Object[].class));
+        verify(jdbc, atLeastOnce()).queryForObject(contains("un.archived_at IS NULL AND un.is_read = 0"), eq(Long.class), any(Object[].class));
+        verify(jdbc, atLeastOnce()).queryForObject(contains("un.archived_at IS NOT NULL"), eq(Long.class), any(Object[].class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void moduleSummaryUsesSelectedArchiveView() {
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+
+        service.modules(NotificationView.ARCHIVED, user);
+
+        verify(jdbc).query(contains("un.archived_at IS NOT NULL"), any(RowMapper.class), eq(1L), eq(7L));
+    }
+
+    @Test
+    void unreadCountExcludesArchivedRows() {
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(2L);
+
+        assertEquals(2L, service.unreadCount(user).count());
+
+        verify(jdbc).queryForObject(contains("archived_at IS NULL"), eq(Long.class), eq(1L), eq(7L));
+    }
+
+    @Test
+    void archiveRejectsUnreadNotification() {
+        when(jdbc.update(contains("SET archived_at = ?"), any(LocalDateTime.class), eq(1L), eq(7L), eq(88L))).thenReturn(0);
+        when(jdbc.queryForObject(contains("SELECT is_read"), eq(Boolean.class), eq(1L), eq(7L), eq(88L))).thenReturn(false);
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> service.archive(88L, user));
+
+        assertEquals(ErrorCode.CONFLICT, exception.code());
+        assertEquals("请先阅读消息后再归档", exception.getMessage());
+    }
+
+    @Test
+    void archiveAndRestoreAreScopedToAuthenticatedRecipient() {
+        when(jdbc.update(contains("SET archived_at = ?"), any(LocalDateTime.class), eq(1L), eq(7L), eq(88L))).thenReturn(1);
+
+        service.archive(88L, user);
+        service.restore(88L, user);
+
+        verify(jdbc).update(contains("is_read = 1 AND archived_at IS NULL"), any(LocalDateTime.class), eq(1L), eq(7L), eq(88L));
+        verify(jdbc).update(contains("SET archived_at = NULL"), eq(1L), eq(7L), eq(88L));
+    }
+
+    @Test
+    void repeatedArchiveIsIdempotent() {
+        when(jdbc.update(contains("SET archived_at = ?"), any(LocalDateTime.class), eq(1L), eq(7L), eq(88L))).thenReturn(0);
+        when(jdbc.queryForObject(contains("SELECT is_read"), eq(Boolean.class), eq(1L), eq(7L), eq(88L))).thenReturn(true);
+
+        service.archive(88L, user);
+
+        verify(jdbc).queryForObject(contains("SELECT is_read"), eq(Boolean.class), eq(1L), eq(7L), eq(88L));
+    }
+
+    @Test
+    void archiveReadOnlyChangesActiveReadNotifications() {
+        when(jdbc.update(contains("is_read = 1 AND archived_at IS NULL"), any(LocalDateTime.class), eq(1L), eq(7L))).thenReturn(3);
+
+        NotificationArchiveResult result = service.archiveRead(user);
+
+        assertEquals(3, result.changed());
+    }
+
+    @Test
+    void notificationViewPreservesLegacyUnreadOnlyAndRejectsUnknownValues() {
+        assertEquals(NotificationView.ALL, NotificationView.resolve(null, false));
+        assertEquals(NotificationView.UNREAD, NotificationView.resolve(null, true));
+        assertEquals(NotificationView.ARCHIVED, NotificationView.resolve("archived", false));
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> NotificationView.resolve("deleted", false));
+        assertEquals(ErrorCode.BAD_REQUEST, exception.code());
+        assertEquals("通知视图参数不正确", exception.getMessage());
     }
 
     private NotificationPublishCommand command(List<Long> recipients, String actionPath) {

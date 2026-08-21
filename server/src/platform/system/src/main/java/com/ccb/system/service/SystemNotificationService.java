@@ -5,13 +5,16 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.model.SystemPage;
+import com.ccb.system.notification.NotificationArchiveResult;
 import com.ccb.system.notification.NotificationLevel;
 import com.ccb.system.notification.NotificationModuleSummary;
 import com.ccb.system.notification.NotificationPublishCommand;
 import com.ccb.system.notification.NotificationReadAllResult;
 import com.ccb.system.notification.NotificationUnreadCount;
+import com.ccb.system.notification.NotificationView;
 import com.ccb.system.notification.SystemNotificationItem;
 import com.ccb.system.notification.SystemNotificationPublisher;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,22 +81,22 @@ public class SystemNotificationService implements SystemNotificationPublisher {
         return notificationId;
     }
 
-    public SystemPage<SystemNotificationItem> list(PageQuery pageQuery, boolean unreadOnly, String moduleCode, AuthUser user) {
-        String unreadFilter = unreadOnly ? " AND un.is_read = 0" : "";
+    public SystemPage<SystemNotificationItem> list(PageQuery pageQuery, NotificationView view, String moduleCode, AuthUser user) {
+        String viewFilter = viewFilter(view);
         String normalizedModule = optionalModuleCode(moduleCode);
         String moduleFilter = normalizedModule == null ? "" : " AND n.module_code = ?";
         List<Object> queryArgs = new ArrayList<>(List.of(user.tenantId(), user.id()));
         if (normalizedModule != null) queryArgs.add(normalizedModule);
         long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id WHERE un.tenant_id = ? AND un.user_id = ?" + unreadFilter + moduleFilter,
+                "SELECT COUNT(*) FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id WHERE un.tenant_id = ? AND un.user_id = ?" + viewFilter + moduleFilter,
                 Long.class,
                 queryArgs.toArray());
         queryArgs.add((pageQuery.page() - 1) * pageQuery.size());
         queryArgs.add(pageQuery.size());
         List<SystemNotificationItem> items = jdbc.query(
-                "SELECT n.id, n.title, n.content, n.notification_level, n.source_name, n.module_code, n.module_name, n.business_type, n.business_key, n.action_path, un.is_read, un.read_at, n.created_at " +
+                "SELECT n.id, n.title, n.content, n.notification_level, n.source_name, n.module_code, n.module_name, n.business_type, n.business_key, n.action_path, un.is_read, un.read_at, un.archived_at, n.created_at " +
                         "FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id " +
-                        "WHERE un.tenant_id = ? AND un.user_id = ?" + unreadFilter + moduleFilter +
+                        "WHERE un.tenant_id = ? AND un.user_id = ?" + viewFilter + moduleFilter +
                         " ORDER BY n.created_at DESC, n.id DESC LIMIT ?, ?",
                 (resultSet, rowNum) -> new SystemNotificationItem(
                         resultSet.getLong("id"),
@@ -108,21 +111,22 @@ public class SystemNotificationService implements SystemNotificationPublisher {
                         resultSet.getString("action_path"),
                         resultSet.getBoolean("is_read"),
                         resultSet.getTimestamp("read_at") == null ? null : resultSet.getTimestamp("read_at").toLocalDateTime(),
+                        resultSet.getTimestamp("archived_at") == null ? null : resultSet.getTimestamp("archived_at").toLocalDateTime(),
                         resultSet.getTimestamp("created_at").toLocalDateTime()),
                 queryArgs.toArray());
         return new SystemPage<>(items, total, pageQuery.page(), pageQuery.size());
     }
 
-    public List<NotificationModuleSummary> modules(AuthUser user) {
+    public List<NotificationModuleSummary> modules(NotificationView view, AuthUser user) {
         return jdbc.query(
-                "SELECT n.module_code, n.module_name, COUNT(*) AS total_count, SUM(CASE WHEN un.is_read = 0 THEN 1 ELSE 0 END) AS unread_count FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id WHERE un.tenant_id = ? AND un.user_id = ? GROUP BY n.module_code, n.module_name ORDER BY MAX(n.created_at) DESC, n.module_code",
+                "SELECT n.module_code, n.module_name, COUNT(*) AS total_count, SUM(CASE WHEN un.is_read = 0 THEN 1 ELSE 0 END) AS unread_count FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id WHERE un.tenant_id = ? AND un.user_id = ?" + viewFilter(view) + " GROUP BY n.module_code, n.module_name ORDER BY MAX(n.created_at) DESC, n.module_code",
                 (resultSet, rowNum) -> new NotificationModuleSummary(resultSet.getString("module_code"), resultSet.getString("module_name"), resultSet.getLong("total_count"), resultSet.getLong("unread_count")),
                 user.tenantId(), user.id());
     }
 
     public NotificationUnreadCount unreadCount(AuthUser user) {
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_user_notification WHERE tenant_id = ? AND user_id = ? AND is_read = 0",
+                "SELECT COUNT(*) FROM sys_user_notification WHERE tenant_id = ? AND user_id = ? AND is_read = 0 AND archived_at IS NULL",
                 Long.class,
                 user.tenantId(),
                 user.id());
@@ -132,7 +136,7 @@ public class SystemNotificationService implements SystemNotificationPublisher {
     @Transactional
     public void markRead(long notificationId, AuthUser user) {
         jdbc.update(
-                "UPDATE sys_user_notification SET is_read = 1, read_at = COALESCE(read_at, ?) WHERE tenant_id = ? AND user_id = ? AND notification_id = ? AND is_read = 0",
+                "UPDATE sys_user_notification SET is_read = 1, read_at = COALESCE(read_at, ?) WHERE tenant_id = ? AND user_id = ? AND notification_id = ? AND is_read = 0 AND archived_at IS NULL",
                 now(),
                 user.tenantId(),
                 user.id(),
@@ -142,11 +146,68 @@ public class SystemNotificationService implements SystemNotificationPublisher {
     @Transactional
     public NotificationReadAllResult markAllRead(AuthUser user) {
         int changed = jdbc.update(
-                "UPDATE sys_user_notification SET is_read = 1, read_at = ? WHERE tenant_id = ? AND user_id = ? AND is_read = 0",
+                "UPDATE sys_user_notification SET is_read = 1, read_at = ? WHERE tenant_id = ? AND user_id = ? AND is_read = 0 AND archived_at IS NULL",
                 now(),
                 user.tenantId(),
                 user.id());
         return new NotificationReadAllResult(changed);
+    }
+
+    @Transactional
+    public void archive(long notificationId, AuthUser user) {
+        if (archiveReadNotification(notificationId, user) > 0) return;
+
+        Boolean read;
+        try {
+            read = jdbc.queryForObject(
+                    "SELECT is_read FROM sys_user_notification WHERE tenant_id = ? AND user_id = ? AND notification_id = ?",
+                    Boolean.class,
+                    user.tenantId(),
+                    user.id(),
+                    notificationId);
+        } catch (EmptyResultDataAccessException exception) {
+            return;
+        }
+        if (Boolean.FALSE.equals(read)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "请先阅读消息后再归档");
+        }
+        archiveReadNotification(notificationId, user);
+    }
+
+    @Transactional
+    public void restore(long notificationId, AuthUser user) {
+        jdbc.update(
+                "UPDATE sys_user_notification SET archived_at = NULL WHERE tenant_id = ? AND user_id = ? AND notification_id = ? AND archived_at IS NOT NULL",
+                user.tenantId(),
+                user.id(),
+                notificationId);
+    }
+
+    @Transactional
+    public NotificationArchiveResult archiveRead(AuthUser user) {
+        int changed = jdbc.update(
+                "UPDATE sys_user_notification SET archived_at = ? WHERE tenant_id = ? AND user_id = ? AND is_read = 1 AND archived_at IS NULL",
+                now(),
+                user.tenantId(),
+                user.id());
+        return new NotificationArchiveResult(changed);
+    }
+
+    private int archiveReadNotification(long notificationId, AuthUser user) {
+        return jdbc.update(
+                "UPDATE sys_user_notification SET archived_at = ? WHERE tenant_id = ? AND user_id = ? AND notification_id = ? AND is_read = 1 AND archived_at IS NULL",
+                now(),
+                user.tenantId(),
+                user.id(),
+                notificationId);
+    }
+
+    private String viewFilter(NotificationView view) {
+        return switch (view == null ? NotificationView.ALL : view) {
+            case ALL -> " AND un.archived_at IS NULL";
+            case UNREAD -> " AND un.archived_at IS NULL AND un.is_read = 0";
+            case ARCHIVED -> " AND un.archived_at IS NOT NULL";
+        };
     }
 
     private ValidatedNotification validate(NotificationPublishCommand command) {

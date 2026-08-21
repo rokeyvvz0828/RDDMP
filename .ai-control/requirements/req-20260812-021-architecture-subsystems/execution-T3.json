@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "V36__create_architecture_subsystems.sql",
+      "purpose": "创建逻辑/物理子系统表、永久唯一键、租户安全组合父外键和查询索引"
+    },
+    {
+      "path_or_resource": "com.ccb.architecture.model",
+      "purpose": "固定逻辑/物理命令、查询、持久化记录和父锁快照类型"
+    },
+    {
+      "path_or_resource": "ArchitectureSubsystemRepository",
+      "purpose": "只访问 arch_ 表的 tenant-explicit 分页、读写、永久唯一、软删除和父锁 SQL"
+    },
+    {
+      "path_or_resource": "ArchitectureMigrationMySqlTest 与 ArchitectureSubsystemRepositoryTest",
+      "purpose": "真实 MySQL schema/约束和仓储 SQL 传感器"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R5", "R12", "R13"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am '-Dtest=ArchitectureMigrationMySqlTest,ArchitectureSubsystemRepositoryTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exit_code": 0,
+      "salient_output": "6 tests passed；空库执行 36 migrations 到 V36；同库 V35 到 V36 仅执行 1 个版本；仓储 4/4 通过"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs --base origin/main --head HEAD",
+      "exit_code": 0,
+      "salient_output": "36 migrations and 1 approved callback passed"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无 whitespace 错误"
+    },
+    {
+      "command": "V36/architecture 源码负向 rg",
+      "exit_code": 1,
+      "salient_output": "未发现 tenant 默认值、包含 deleted 的唯一键、非组合父外键、sys_/wf_/biz_form 私有表访问"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "空库与 V35 增量迁移",
+      "result": "pass",
+      "evidence": "Testcontainers MySQL 8.4 两条迁移测试通过",
+      "limitations": ["Flyway 对 MySQL 8.4 输出高于已测试 8.1 的版本提示"]
+    },
+    {
+      "check": "数据库租户与永久唯一约束",
+      "result": "pass",
+      "evidence": "information_schema 断言 tenant 无默认、四个唯一键、tenant+logical 组合外键；跨租户物理插入和删除后复用编号均失败",
+      "limitations": []
+    },
+    {
+      "check": "仓储租户、筛选和父锁",
+      "result": "pass",
+      "evidence": "4 个 Mockito 测试验证 tenant/deleted、LIKE 转义、固定筛选、软删除和 SELECT id,deleted FOR UPDATE",
+      "limitations": ["服务事务与真实并发由 T4/T5 测量"]
+    },
+    {
+      "check": "完整 working-tree scope",
+      "result": "blocked-by-baseline",
+      "evidence": "用户已有未跟踪 .dsh/** 和 docs/original/** 会被 scope checker 报告；T3 文件均位于已批准 architecture/V36 路径",
+      "limitations": ["提交后在 commit diff 上复验 scope"]
+    }
+  ],
+  "diff_summary": [
+    "两表 tenant_id 均 NOT NULL 且无 DEFAULT",
+    "逻辑表 tenant+id 作为组合父键目标，物理表以 tenant+logical_subsystem_id 引用",
+    "编号和名称唯一键不含 deleted，软删除后不可复用",
+    "父锁专用投影显式返回 deleted，支持后续 400/409 并发语义",
+    "仓储 SQL 只访问 arch_logical_subsystem 和 arch_physical_subsystem"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "tenant 无默认且所有仓储操作显式限定 tenant",
+      "result": "pass",
+      "evidence": "V36 information_schema 与仓储 SQL/参数断言"
+    },
+    {
+      "invariant": "永久唯一不含 deleted",
+      "result": "pass",
+      "evidence": "四个唯一索引列断言和删除后重复插入失败"
+    },
+    {
+      "invariant": "物理父引用租户安全",
+      "result": "pass",
+      "evidence": "组合外键列为 tenant_id,logical_subsystem_id，跨租户插入失败"
+    },
+    {
+      "invariant": "业务模块不直接访问平台私有表",
+      "result": "pass",
+      "evidence": "architecture main 源码负向扫描无 sys_/wf_/biz_form"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "T3R 已先修复 V24 空库前置",
+      "impact": "原阻塞解除，V36 得到真实可执行测量"
+    },
+    {
+      "event": "用户已有 scope 外未跟踪目录",
+      "impact": "working-tree scope 噪声，提交后使用 commit diff 隔离"
+    }
+  ],
+  "assumptions_falsified": [
+    "只返回完整 LogicalSubsystem 无法观察加锁后父记录是否已软删除；已增加 LogicalSubsystemLock.deleted 专用投影"
+  ],
+  "unresolved_items": [
+    "服务层字段校验、平台引用、审计和 HTTP 错误语义由 T4/T5 实施",
+    "真实父子并发时序由 T5 Testcontainers 事务测试验证"
+  ],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,80 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Deliver the additive archive schema and authenticated backend archive contract",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": [],
+      "input_facts": ["V78 is the latest migration at preflight", "SystemNotificationService owns current notification queries and mutations", "AuthUser already supplies tenant and user identity"],
+      "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V79__notification_user_archive.sql", "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationView.java", "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationArchiveResult.java", "server/src/platform/system/src/main/java/com/ccb/system/notification/SystemNotificationItem.java", "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java", "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java", "server/src/platform/system/src/test/java/com/ccb/system/service/SystemNotificationServiceTest.java", "docs/integration/system-notification-contract.md"],
+      "invariants": ["Never delete sys_notification or sys_user_notification", "Every user query and mutation includes authenticated tenant and user scope", "Restore preserves read state", "Legacy unreadOnly remains compatible"],
+      "interface_contracts": ["GET list and modules accept ALL, UNREAD, ARCHIVED", "Archive unread returns conflict", "Archive, restore and bulk commands are idempotent", "Bulk returns actual changed count"],
+      "non_goals": ["Physical deletion", "Administrator archive", "Automatic retention", "Notification publication changes"],
+      "action_bounds": ["Only add V79 and modify the listed notification contract files", "Do not edit historical Flyway migrations", "Do not change shared exception or security infrastructure"],
+      "acceptance_checks": ["Focused service tests assert view predicates and identity parameters", "Unread archive raises ErrorCode.CONFLICT with explicit message", "Focused Maven tests pass"],
+      "evidence_required": ["Actual diff", "Focused Maven command and exit code", "SQL predicate and parameter assertions", "Migration content"],
+      "rollback": "Revert T1 Java, tests and contract while retaining additive V79 if already applied",
+      "stop_conditions": ["V79 becomes occupied", "Local schema is incompatible with V26", "Implementation requires physical deletion"],
+      "escalation_conditions": ["Public publish contract must change", "Cross-user administration is required", "Schema rollback would be destructive"]
+    },
+    {
+      "id": "T2",
+      "goal": "Deliver three notification views with single archive, restore and confirmed bulk archive interactions",
+      "requirement_ids": ["R1", "R2", "R3", "R4"],
+      "prerequisites": ["T1"],
+      "input_facts": ["UiNotificationCenter owns all notification drawer state", "The drawer already has ALL and UNREAD tabs, module filtering and one-second unread polling", "Element Plus icon buttons and confirm dialogs are available"],
+      "write_scope": ["web/src/types/notification.ts", "web/src/api/notifications.ts", "web/src/components/ui/UiNotificationCenter.vue", "web/src/styles.css"],
+      "invariants": ["Polling remains unread-count only", "Notification item navigation remains available", "Archive action never appears for unread items", "Icon actions have tooltip and aria-label"],
+      "interface_contracts": ["Frontend uses view=ALL|UNREAD|ARCHIVED", "Archive and restore refresh list and module state after success", "Bulk action confirms and shows actual changed count"],
+      "non_goals": ["Multi-select notification management", "New component framework", "Automatic archive after read"],
+      "action_bounds": ["Modify only notification-specific type, API, component and scoped global styles", "Use stop propagation for row action buttons", "Do not alter application navigation architecture"],
+      "acceptance_checks": ["Frontend production build succeeds", "Three tabs and view-specific empty states render", "Archive and restore buttons do not trigger row navigation", "375px through desktop layouts have no overlap"],
+      "evidence_required": ["Actual diff", "Frontend build command and exit code", "Desktop and mobile browser screenshots", "Console and network observations"],
+      "rollback": "Revert T2 frontend changes; T1 remains backward compatible",
+      "stop_conditions": ["T1 contract differs from the approved interface", "Target frontend files gain conflicting concurrent changes", "Mobile usability requires unrelated global navigation changes"],
+      "escalation_conditions": ["A new UI dependency is required", "Archive must become multi-select", "Global drawer architecture must change"]
+    },
+    {
+      "id": "T3",
+      "goal": "Apply V79 locally and verify the integrated authenticated archive workflow and regressions",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["Local frontend is expected on port 5173", "Local backend is expected on port 8080", "The in-app browser can reuse an authenticated session"],
+      "write_scope": [".ai-control/requirements/req-20260821-046-notification-user-archive/*.json"],
+      "invariants": ["Do not clear business data", "Do not bypass Flyway history", "Do not claim independent review from the same execution context"],
+      "interface_contracts": ["Runtime API responses match T1", "Rendered interactions match T2"],
+      "non_goals": ["Production deployment", "Physical cleanup of test notifications", "Git commit or push"],
+      "action_bounds": ["Restart local services using repository commands", "Use only non-production local data", "Record exact evidence and residual gaps"],
+      "acceptance_checks": ["Flyway V79 is applied and health/API endpoints respond", "Archive, conflict, restore and bulk flows behave correctly", "Full Maven, frontend build, governance, scope and diff checks pass"],
+      "evidence_required": ["Flyway and API evidence", "Browser screenshots and network/console results", "Full verification command exit codes", "Scope audit"],
+      "rollback": "Revert product code and keep additive V79; restore test notifications through the public restore API",
+      "stop_conditions": ["Authentication or local database is unavailable", "V79 fails", "Cross-tenant or cross-user mutation is observed", "An unowned regression cannot be isolated"],
+      "escalation_conditions": ["Production access is needed", "Business data must be deleted", "Security boundary must be relaxed"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "Frontend consumes the finalized archive API"},
+    {"from": "T2", "to": "T3", "reason": "Integrated runtime verification requires both backend and frontend"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["Run focused ccb-system tests", "Review public notification contract"]},
+    {"after_tasks": ["T1", "T2"], "checks": ["Run frontend build and diff check"]},
+    {"after_tasks": ["T1", "T2", "T3"], "checks": ["Run full regression, governance, scope and browser checks"]}
+  ],
+  "sampling_plan": [
+    {"label": "Backend contract sample", "trigger": "T1 execution report", "observer": "Main agent with repeatable test sensors; independent review pending", "sensors": ["S1", "S2", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5"]},
+    {"label": "Frontend integration sample", "trigger": "T2 execution report", "observer": "Main agent with compiler and browser sensors; independent review pending", "sensors": ["S3", "S4", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4"]},
+    {"label": "Final runtime sample", "trigger": "T3 execution report", "observer": "Main agent with heterogeneous runtime sensors; independent human review pending", "sensors": ["S1", "S2", "S3", "S4", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2", "S4"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S3", "S4"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S3", "S4"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2", "S4"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S2", "S5"]}
+  ],
+  "plan_status": "ready"
+}

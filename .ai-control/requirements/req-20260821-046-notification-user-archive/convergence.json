@@ -1,0 +1,79 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["Focused service tests verify eligibility, conflict, idempotency and authenticated recipient scope.", "Authenticated browser archive removed one read item from ALL without navigation or unread-count change."],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["ARCHIVED is pageable and module-filtered by the backend contract.", "Browser restore returned the archived item to ALL and retained unread count 2."],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["Bulk SQL conditions and changed count are covered by focused tests.", "The UI requires explicit confirmation and explains that unread notifications are unaffected."],
+      "limitations": ["Live bulk confirmation was cancelled to avoid moving the user's existing read history."]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["ALL, UNREAD and ARCHIVED query/module predicates are covered by tests.", "Desktop and 375x812, 390x844 and 430x932 rendered checks had no horizontal overflow, overlap or console errors."],
+      "limitations": []
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": ["Archive endpoints derive identity from AuthUser and mutations never delete shared records.", "V79 applied successfully and legacy unreadOnly compatibility is retained."],
+      "limitations": ["A second authenticated browser user was unavailable; cross-recipient isolation is verified at the service SQL boundary."]
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["V79 applied and the seven-module focused reactor passed with 13 archive service tests."]},
+    {"id": "T2", "status": "verified", "evidence": ["Frontend production build and desktop/mobile rendered interactions passed."]},
+    {"id": "T3", "status": "verified_with_external_gap", "evidence": ["Integrated lifecycle, console, responsive and diff checks passed; full backend reached only an unrelated Docker Testcontainers blocker."]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [{"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}],
+  "regression_checks": [
+    {"check": "Notification backend focused reactor", "result": "pass", "evidence": "BUILD SUCCESS; ccb-system 41 tests, SystemNotificationServiceTest 13 tests."},
+    {"check": "Frontend production build", "result": "pass", "evidence": "vue-tsc and Vite build succeeded."},
+    {"check": "Full Maven reactor", "result": "externally_blocked", "evidence": "All modules through requirement passed; four architecture Testcontainers cases failed before execution because Docker was invalid."},
+    {"check": "Whitespace", "result": "pass", "evidence": "git diff --check exited 0."},
+    {"check": "Repository governance", "result": "pre_existing_deviation", "evidence": "Current module, skill and development entry checks passed; historical ledgers outside REQ-046 fail layout validation."},
+    {"check": "Scope validator", "result": "accepted_deviation", "evidence": "Product changes follow the approved file list; only the user-required rokey branch name fails the naming rule."}
+  ],
+  "invariant_results": [
+    {"invariant": "Archive never physically deletes shared notification or recipient evidence", "result": "pass", "evidence": "Only archived_at is mutated."},
+    {"invariant": "Archived notifications are read and restore retains read state", "result": "pass", "evidence": "Unread archive conflicts and restore leaves is_read/read_at unchanged."},
+    {"invariant": "All queries and mutations are authenticated tenant/user scoped", "result": "pass", "evidence": "Service tests assert predicates and API request bodies carry no identity selectors."},
+    {"invariant": "One-second unread polling remains lightweight", "result": "pass", "evidence": "Polling continues to call unread count and does not reload ARCHIVED each second."}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": [],
+    "preserved_unrelated_changes": ["Attachment/file-preview/mock initializer changes", "Architecture page changes", "RequirementsView.vue and REQ-047 work"]
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Migration number collision", "result": "pass", "evidence": "Migration was renumbered from occupied V47 to unused V79 before application."},
+    {"disturbance": "Browser action bubbling", "result": "pass", "evidence": "Archive and restore actions do not navigate the business route."},
+    {"disturbance": "Required mobile widths", "result": "pass", "evidence": "No document/article overflow or tab clipping at all three required sizes."}
+  ],
+  "residual_risks": [
+    "Docker-backed architecture regression needs rerun when Docker Desktop is healthy.",
+    "Repository-wide AI-control governance has historical failures outside this requirement.",
+    "The user-required rokey branch does not match the scope validator's feature branch naming convention.",
+    "The worktree contains unrelated user changes that were preserved."
+  ],
+  "gate_result": "not_converged",
+  "route_reason": "All five product requirements have focused test, migration, build and authenticated browser evidence with zero observed product deviations, but high-assurance convergence remains open until the Docker-backed full reactor and repository governance/scope gates can pass or receive explicit owner disposition."
+}
