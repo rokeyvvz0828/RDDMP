@@ -1,0 +1,118 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+      "purpose": "真实流程提交、附件绑定、撤回终止、审批轮次和附件查询"
+    },
+    {
+      "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+      "purpose": "提交、撤回、当前轮次、附件列表和附件删除业务接口"
+    },
+    {
+      "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/integration",
+      "purpose": "发布侧轮次持久化、生命周期消费和附件访问策略"
+    },
+    {
+      "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+      "purpose": "提交失败、成功、附件、应急窗口和撤回测试"
+    },
+    {
+      "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/integration",
+      "purpose": "重复/过期事件、制品准出、退回、撤回和附件访问测试"
+    }
+  ],
+  "requirements_addressed": ["R9", "R10", "R11", "R12", "R16", "R18"],
+  "commands": [
+    {
+      "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am -Dtest=ReleaseSubmissionServiceTest,ReleaseWorkflowLifecycleConsumerTest,ReleaseAttachmentAccessPolicyTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "14 focused T5 tests passed"
+    },
+    {
+      "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test",
+      "exit_code": 0,
+      "salient_output": "ccb-release 42 tests and all required reactor modules passed"
+    },
+    {
+      "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn test",
+      "exit_code": 0,
+      "salient_output": "all 11 reactor modules passed"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "13-module governance, 10-module boundary and 39-migration checks passed"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "工作流提交原子性",
+      "result": "pass",
+      "evidence": "流程启动失败测试验证未写入流程结果或推进业务状态；成功路径保存定义、版本、实例、轮次和64位摘要",
+      "limitations": ["真实 MySQL 跨模块事务回滚在 T8 隔离库验收"]
+    },
+    {
+      "check": "生命周期幂等与活动轮次",
+      "result": "pass",
+      "evidence": "重复事件、过期轮次、通过、退回和撤回终止测试全部通过",
+      "limitations": ["调度器真实重试和数据库唯一键组合在 T8 验收"]
+    },
+    {
+      "check": "附件与应急约束",
+      "result": "pass",
+      "evidence": "非归属附件、缺测试报告、无承接窗口、附件绑定和访问策略测试全部通过",
+      "limitations": ["对象存储上传/预览的浏览器链路在 T7/T8 验收"]
+    },
+    {
+      "check": "模块私有数据边界",
+      "result": "pass",
+      "evidence": "发布主代码未访问 wf_* 或 att_* 私表，治理与 Maven 模块边界检查通过",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "提交时重算场景和冲突令牌，绑定持久附件并通过固定流程编码启动真实流程",
+    "流程启动成功后保存轮次身份和摘要并置为审批中，启动失败由同一事务回滚",
+    "撤回先终止真实流程，业务状态由生命周期终止事件更新",
+    "生命周期回执按事件和订阅者幂等，只有最新活动轮次可以改变申请",
+    "审批通过才置为制品准出，应急申请按完成时间确定承接窗口并刷新投产候选",
+    "附件读取和删除由发布业务访问策略及申请状态共同控制"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "发布模块不写工作流或附件私表",
+      "result": "pass",
+      "evidence": "只调用公开 Gateway/Consumer/Policy 契约，边界扫描无私表命中"
+    },
+    {
+      "invariant": "工作流是审批事实唯一来源",
+      "result": "pass",
+      "evidence": "业务模块只保存实例关联和生命周期投影，不生成任务、节点、意见或签名"
+    },
+    {
+      "invariant": "只有活动轮次事件修改申请",
+      "result": "pass",
+      "evidence": "轮次、实例、摘要、业务单号和最新轮次均校验，重复/过期测试通过"
+    },
+    {
+      "invariant": "应急提交需要测试报告和可承接窗口",
+      "result": "pass",
+      "evidence": "服务端强制校验及失败路径测试通过"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "本机默认 Java 26 超出当前 Mockito/Byte Buddy 支持范围",
+      "impact": "首次全依赖测试在 ccb-infrastructure 前置测试停止；切换仓库指定 JDK 17 后同一测试及全仓测试通过"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实 MySQL、已发布流程、对象存储和生命周期调度的端到端证据由 T8 隔离验收提供",
+    "项目成员权限仍按批准范围延期，当前只执行租户、RBAC、申请人和实体状态校验",
+    "业务详情中的流程进度与操作区一致性由 T7 前端和 T8 浏览器验证"
+  ],
+  "recommended_next": "observe"
+}

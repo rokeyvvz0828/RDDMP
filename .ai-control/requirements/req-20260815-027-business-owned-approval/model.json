@@ -1,0 +1,107 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "WorkflowService single-task projection and existing decision authorization",
+      "WorkflowController and web workflow API contract",
+      "Release shared Mock Repository, business detail and embedded approval panel",
+      "Dashboard, TaskCenterView, WorkflowView and Vue Router navigation",
+      "V37 workflow menu migration and workflow integration contract"
+    ],
+    "environment": [
+      "Authenticated platform security context",
+      "Flowable runtime and existing signature service",
+      "MySQL 8.4 and Flyway startup",
+      "Dynamic menu cache and current browser login session",
+      "Future formal release, project, subsystem, delivery-unit and requirement modules"
+    ]
+  },
+  "state_variables": [
+    {"name": "workflow_task_state", "owner": "platform/workflow", "valid_values": ["PENDING", "SENT", "APPROVED", "REJECTED", "RETURNED", "CANCELLED"]},
+    {"name": "workflow_instance_state", "owner": "platform/workflow", "valid_values": ["RUNNING", "APPROVED", "REJECTED", "RETURNED", "TERMINATED"]},
+    {"name": "task_actionability", "owner": "platform/workflow", "valid_values": ["actionable", "read-only", "forbidden", "missing"]},
+    {"name": "release_business_state", "owner": "release Mock Repository", "valid_values": ["loaded", "missing", "failed", "updated-after-decision"]},
+    {"name": "approval_panel_state", "owner": "release frontend", "valid_values": ["loading", "actionable", "read-only", "forbidden", "conflict", "submitting", "failed"]},
+    {"name": "task_center_state", "owner": "frontend/application", "valid_values": ["pending", "done", "loading", "empty", "failed", "forbidden"]},
+    {"name": "workflow_menu_state", "owner": "platform/infrastructure", "valid_values": ["legacy-visible", "definitions-and-monitor-only"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "User opens a release application business route", "transitions": ["Resolve complete application from release Repository", "Load workflow progress and optional task context", "Render approval panel only after business success"], "outputs": ["One page contains complete release details and authorized approval controls"]},
+    {"requirement_id": "R2", "input": "Application list, dashboard, task center, notification or H5 action_path", "transitions": ["Validate internal path", "Attach taskId or instanceId using Router query", "Resolve applicationCode route"], "outputs": ["Final URL is /release/applications/:applicationCode"]},
+    {"requirement_id": "R3", "input": "User views dashboard or task center", "transitions": ["Load inbox/done projections", "Filter by current project", "Navigate selected row"], "outputs": ["Aggregation lists contain details navigation and no decision controls"]},
+    {"requirement_id": "R4", "input": "User enters workflow management", "transitions": ["Route to definitions or monitor", "Render configuration/monitoring branches only"], "outputs": ["No workflow-owned business approval surface"]},
+    {"requirement_id": "R5", "input": "Authenticated GET for one task ID", "transitions": ["Query task and instance by tenant", "Compare current assignee and state", "Resolve node action policy and signature requirement"], "outputs": ["WorkflowTaskContext with business route, node, actions and actionable flag"]},
+    {"requirement_id": "R6", "input": "Task context query or decision command", "transitions": ["Use server authentication tenant/user", "Check entity assignee and status", "Check allowed action and current-login signature", "Atomically update or reject"], "outputs": ["Valid action succeeds once; denied, stale and duplicate actions fail safely"]},
+    {"requirement_id": "R7", "input": "Successful decision response", "transitions": ["Keep current business route", "Reload task context and workflow detail", "Synchronize release Mock projection and audit display"], "outputs": ["Current page becomes updated or read-only without generic redirect"]},
+    {"requirement_id": "R8", "input": "Historical inbox, done or review URL", "transitions": ["Match explicit compatibility route", "Resolve business key when possible", "Replace with task center, business detail or dashboard"], "outputs": ["No blank page, 404, redirect loop or generic approval page"]},
+    {"requirement_id": "R9", "input": "Flyway applies V37", "transitions": ["Delete role links for menu IDs 202 and 204", "Delete menu rows", "Leave workflow APIs and other menus unchanged"], "outputs": ["Dynamic menu exposes definitions and monitor only"]},
+    {"requirement_id": "R10", "input": "Desktop or required phone viewport", "transitions": ["Render table or mobile task cards", "Reflow business details and approval actions", "Constrain local scrolling"], "outputs": ["Details and permitted actions remain reachable without page-level horizontal overflow"]}
+  ],
+  "interfaces": [
+    {"name": "workflow_task_context", "producers": ["WorkflowService", "WorkflowController"], "consumers": ["ReleaseApprovalPanel"], "invariant": "Tenant, current assignee, state, action policy and signature requirement are derived server-side"},
+    {"name": "workflow_task_decision", "producers": ["platform/workflow"], "consumers": ["ReleaseApprovalPanel"], "invariant": "Existing endpoint remains authoritative and rejects stale or unauthorized actions"},
+    {"name": "workflow_task_projection", "producers": ["WorkflowService inbox/done"], "consumers": ["DashboardView", "TaskCenterView"], "invariant": "business_key and safe action_path identify the owning business route"},
+    {"name": "release_business_route", "producers": ["release module"], "consumers": ["router", "dashboard", "task center", "notifications"], "invariant": "Application code is the stable path segment and task/instance identifiers are query parameters"},
+    {"name": "release_repository", "producers": ["release repository.ts"], "consumers": ["ReleaseManagementPrototype", "ReleaseApplicationDetailPage"], "invariant": "One deterministic session state supplies all release views and route refresh reconstruction"},
+    {"name": "workflow_menu_migration", "producers": ["V37 Flyway"], "consumers": ["auth route tree"], "invariant": "Only menu IDs 202 and 204 and their role links are removed"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Workflow context and decision authorization", "method": "Java 17 JUnit workflow module tests", "blind_spots": ["Browser rendering", "Production database state"], "independence": "Executes service logic and SQL-adapter assertions outside Vue"},
+    {"id": "S2", "target": "Frontend contracts and route/component composition", "method": "vue-tsc and Vite production build plus targeted source assertions", "blind_spots": ["Runtime layout", "Live authorization response"], "independence": "Static compiler and bundler do not share JUnit assumptions"},
+    {"id": "S3", "target": "End-to-end navigation, approval states and responsive interaction", "method": "Authenticated in-app browser interaction, network/console capture, screenshots and scrollWidth measurements", "blind_spots": ["Production persistence", "Unconfigured external notifications"], "independence": "Observes rendered runtime behavior rather than source structure"},
+    {"id": "S4", "target": "Flyway ordering and dynamic menu result", "method": "Migration checker, backend Flyway startup and post-login menu observation", "blind_spots": ["Databases not exercised locally"], "independence": "Database and menu-state evidence is separate from frontend build"},
+    {"id": "S5", "target": "Scope and repository invariants", "method": "Governance checks, git diff --check and explicit writable-path audit", "blind_spots": ["The user-selected rokey branch intentionally fails generic branch regex"], "independence": "Repository policy checks do not infer product behavior"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Workflow task context and decision checks", "action": "Modify authorized WorkflowService/Controller/API/test files", "authority": "REQ-20260815-027 writable scope and platform owner approval", "impact_radius": "Public workflow task capability", "rollback": "Remove new context endpoint and restore modified methods/tests"},
+    {"id": "A2", "target": "Release business-owned approval experience", "action": "Add shared Repository, business detail page and approval panel; redirect release entries", "authority": "Release module writable scope", "impact_radius": "Configuration-management frontend prototype", "rollback": "Remove new files and restore local state/drawer behavior"},
+    {"id": "A3", "target": "Task aggregation and workflow UI ownership", "action": "Add TaskCenterView and modify dashboard, WorkflowView, router, titles and scoped styles", "authority": "Frontend application writable scope", "impact_radius": "Shared authenticated navigation", "rollback": "Remove task center and restore prior routes/view branches"},
+    {"id": "A4", "target": "Workflow menu visibility", "action": "Append V37 deleting role links and menus 202/204", "authority": "Infrastructure migration writable scope and owner approval", "impact_radius": "All users after migration", "rollback": "Use a later forward migration to restore rows"},
+    {"id": "A5", "target": "Public workflow documentation", "action": "Update workflow-module-contract.md", "authority": "Current requirement writable scope", "impact_radius": "Platform consumers", "rollback": "Restore previous contract if implementation is rolled back"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S2", "S3", "S4"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R9", "sensor_ids": ["S1", "S4", "S5"], "observable": "yes"},
+    {"requirement_id": "R10", "sensor_ids": ["S2", "S3"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Existing dirty worktree", "effect": "Baseline and new diffs overlap in authorized files", "detectable": true, "controllable": true},
+    {"source": "Historical action_path and business-key fixtures", "effect": "A task may navigate to an application absent from Mock facts", "detectable": true, "controllable": true},
+    {"source": "Concurrent task completion", "effect": "Context becomes stale between query and decision", "detectable": true, "controllable": true},
+    {"source": "Dynamic menu cache", "effect": "Removed menus remain visible until authentication hydrate", "detectable": true, "controllable": true},
+    {"source": "Default Java 26", "effect": "Byte Buddy/Maven tests can fail outside supported Java 17", "detectable": true, "controllable": true},
+    {"source": "Local database and port availability", "effect": "Runtime and migration sensors may be temporarily unavailable", "detectable": true, "controllable": true},
+    {"source": "Future formal business modules", "effect": "Mock Repository remains a temporary data owner", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "Workflow decision transaction and lifecycle dispatch", "consequence": "Immediate UI refresh can observe changing task/instance state", "sampling_rule": "Await decision response, then reload context and workflow detail before asserting"},
+    {"source": "Menu migration and login cache", "consequence": "Current session can show pre-V37 routes", "sampling_rule": "Restart backend if needed and re-login before menu observation"},
+    {"source": "Vue route transitions and Element Plus rendering", "consequence": "Early screenshot can capture incomplete layout", "sampling_rule": "Wait for loading indicators and network requests to settle"}
+  ],
+  "assumptions": [
+    {"text": "Published node actionPolicy can determine business-page actions", "evidence": "Workflow model adapter, validator and designer already persist allowedActions", "falsifier": "A valid release workflow task has no resolvable policy or compatible default"},
+    {"text": "Single-task projection can authorize by tenant, task ID, current assignee and task state", "evidence": "Existing inbox and decision SQL use these keys", "falsifier": "Required business entity authorization is not represented by the workflow task"},
+    {"text": "Release Mock can reconstruct full details for approved fictional business keys", "evidence": "Existing applications have unique code fields and are generated deterministically", "falsifier": "Runtime task business keys cannot be mapped to any approved fixture"},
+    {"text": "Existing application shell supports the required phone widths", "evidence": "Current design-h5 contract and responsive shell styles", "falsifier": "Browser measurement finds shell-level overflow outside feature scope"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A2 with S2/S3"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A2/A3 with S2/S3"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A3 with S2/S3"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A3/A4 with S3/S4"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "A1 with S1/S2"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "A1 with S1/S3"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "A1/A2 with S1/S3"},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "A3 with S2/S3"},
+    {"requirement_id": "R9", "observable": "yes", "controllable": "yes", "action": "A4 with S4/S5"},
+    {"requirement_id": "R10", "observable": "yes", "controllable": "yes", "action": "A2/A3 with S2/S3"}
+  ],
+  "model_status": "ready"
+}

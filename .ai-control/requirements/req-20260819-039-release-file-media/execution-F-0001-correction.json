@@ -1,0 +1,39 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "defer",
+  "decision_reason": "The missing pre-V46 restore point is a genuine process deviation, but it cannot be recreated after the successful append-only migration. Product and data checks show no loss, and a verified post-V46 recovery point contains the accepted new schema and test records.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "The first backup command selected the container default database instead of the active DB_URL database.",
+    "supporting_evidence": [
+      "The first backup target did not match ccb_platform_req034_runtime2_20260818.",
+      "The mismatch was discovered only after Flyway V46 had completed."
+    ],
+    "falsifier": "A pre-V46 dump header or restore log naming ccb_platform_req034_runtime2_20260818 would disprove the mismatch, but none exists."
+  },
+  "control_action": {
+    "gain": "zero-product-write",
+    "target": "Local migration recovery procedure",
+    "write_scope": [
+      ".ai-control/requirements/req-20260819-039-release-file-media/*.json"
+    ],
+    "invariants": [
+      "Do not roll back or rewrite the successfully executed V46 migration",
+      "Do not delete the real-flow test records",
+      "Do not modify unrelated repository files"
+    ],
+    "impact_limit": "Evidence and future migration procedure only; no product, schema or business-data write",
+    "rollback": "Not applicable to the historical backup miss; retain the verified post-V46 backup unchanged",
+    "correction_check": [
+      "Post-V46 backup restores 100 tables with matching release row counts",
+      "Flyway schema history reports V46 success",
+      "Full backend tests, real API flow and browser flow pass",
+      "For future migrations, compare backup database name to DB_URL and restore-verify before Flyway startup"
+    ],
+    "route": "verifying"
+  },
+  "resolution": "deferred",
+  "residual_risk": [
+    "Recovery cannot return the actual runtime database to its exact pre-V46 state; the verified post-V46 backup is the earliest valid recovery point"
+  ]
+}

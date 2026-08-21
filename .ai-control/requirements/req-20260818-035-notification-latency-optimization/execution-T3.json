@@ -1,0 +1,123 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260818-035-notification-latency-optimization/execution-T3.json",
+      "purpose": "Record integration, latency, capacity, governance and runtime verification evidence without changing product code"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+  "commands": [
+    {
+      "command": "mvn test",
+      "exit_code": 0,
+      "salient_output": "Full backend test suite passed. Focused workflow tests passed 47 tests and release tests passed 51 tests."
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc and Vite production build passed."
+    },
+    {
+      "command": "20 authenticated real application create-and-submit runs with browser bell observation",
+      "exit_code": 0,
+      "salient_output": "Applications SQ-202608-024 through SQ-202608-043 created real workflow instances. All 40 lifecycle deliveries reached DELIVERED at attempt_count=1. Submit-response-to-bell P95 was approximately 945ms and maximum was 1027ms."
+    },
+    {
+      "command": "node /private/tmp/req035-load-test.mjs",
+      "exit_code": 2,
+      "salient_output": "200 clients completed 12000/12000 authenticated requests over about 60 seconds with zero errors. Latency p50=109.63ms, p95=221.407ms, p99=343.717ms, max=420.491ms; the required p95 <= 200ms capacity gate failed."
+    },
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed."
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "Failed only on five pre-existing invalid .ai-control artifacts belonging to requirements 029, 032 and 033; no REQ-20260818-035 governance defect was reported."
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-035-notification-latency-optimization/codex-task-scope.yaml --working-tree",
+      "exit_code": 1,
+      "salient_output": "Scope checker rejected the existing rokey branch name because its generic policy expects feature/REQ-*; the user explicitly required development on rokey."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Normal-path event-to-bell latency",
+      "result": "pass",
+      "evidence": "20 real workflow submissions measured approximately 945ms P95 and 1027ms maximum against the 2000ms P95 objective.",
+      "limitations": ["Commit time is proxied by the submit response, which occurs immediately after transaction commit."]
+    },
+    {
+      "check": "Durable immediate delivery and compensation",
+      "result": "pass",
+      "evidence": "All 40 real lifecycle deliveries completed DELIVERED on the first attempt; focused and full tests cover rollback suppression, isolated after-commit dispatch, atomic claim, retry, DEAD and stale-claim recovery.",
+      "limitations": ["Crash recovery remains test-driven because forcibly terminating the local process between consumer success and persistence would not provide deterministic timing."]
+    },
+    {
+      "check": "Notification-center foreground behavior",
+      "result": "pass",
+      "evidence": "Authenticated browser showed real configuration-management notifications, updated the bell during sampling, displayed the business module filter and emitted no console errors; build and component contracts cover visible-only self-scheduling, shared in-flight requests and 2s/5s/15s backoff.",
+      "limitations": ["The in-app browser did not expose raw resource-timing entries, so exact hidden-tab and injected-failure request timestamps rely on lifecycle contract inspection plus browser regression evidence."]
+    },
+    {
+      "check": "Approximately 200 foreground users",
+      "result": "fail",
+      "evidence": "12000/12000 requests returned HTTP 200 with no pool exhaustion, but response-time P95 was 221.407ms against the required 200ms.",
+      "limitations": ["The authenticated endpoint includes the pre-existing security identity resolution path; its cost is not isolated from the notification query in this end-to-end load result."]
+    }
+  ],
+  "diff_summary": [
+    "T3 made no product-code changes.",
+    "The two-second user-visible latency objective passed with approximately 1.055 seconds of P95 headroom.",
+    "Capacity was stable and error-free at 200 clients, but API P95 exceeded the separate 200ms gate by 21.407ms."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Performance targets are not relaxed to claim completion",
+      "result": "pass",
+      "evidence": "R7 remains failed at 221.407ms rather than being rounded below the 200ms threshold."
+    },
+    {
+      "invariant": "Verification uses local non-production data and authenticated test identities",
+      "result": "pass",
+      "evidence": "All workflow and load samples used the isolated local runtime database and local admin identity."
+    },
+    {
+      "invariant": "No product file changes are made during T3",
+      "result": "pass",
+      "evidence": "Only requirement control evidence is recorded in T3."
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "The isolated runtime database contained V44 schema while Flyway history ended at V43, and a fresh database could not migrate past pre-existing V24 Flowable-table ordering.",
+      "impact": "Runtime verification used the isolated database with SPRING_FLYWAY_ENABLED=false; no migration file was modified."
+    },
+    {
+      "event": "JWT-authenticated requests initially failed because AuthService.me() generated MinIO avatar presigned URLs while local MinIO credentials were invalid.",
+      "impact": "The backend was restarted with the existing local MinIO credentials; product security code remained untouched."
+    },
+    {
+      "event": "Governance and scope checks include pre-existing repository state outside requirement 035.",
+      "impact": "Five unrelated invalid control artifacts and the explicitly requested rokey branch name prevent clean global-check exit codes."
+    }
+  ],
+  "assumptions_falsified": [
+    "The existing authenticated unread-count endpoint does not meet the assumed p95 <= 200ms threshold under the confirmed 200-client load; observed p95 was 221.407ms."
+  ],
+  "unresolved_items": [
+    "R7 response-time P95 remains 21.407ms above the 200ms must-requirement threshold.",
+    "The likely high-cost authentication identity and avatar-presigning path is under server/src/platform/security/**, which is explicitly read-only for REQ-20260818-035 and requires separate authorization before correction."
+  ],
+  "recommended_next": "observe"
+}

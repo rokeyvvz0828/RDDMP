@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260817-033-release-search-suggestions",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-17-release-search-suggestions-design.md",
+  "objective": "Replace the four release-management free-text list searches with selection-only fuzzy suggestion controls whose choices come from real records in the current project or window scope.",
+  "users": [
+    "Configuration administrators locate release windows by code or name.",
+    "Release users locate applications by application code or subsystem.",
+    "Production managers locate baseline entries and current versions by subsystem, delivery unit or artifact version."
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Release windows, applications, production baselines and current production versions must use one consistent selection-only fuzzy search control.",
+      "acceptance": ["all four pages expose the same search-select interaction", "mouse and keyboard selection work", "candidate labels distinguish records with secondary information"],
+      "priority": "must",
+      "source": "User limited the change to configuration management and confirmed the shared suggestion-select design on 2026-08-17.",
+      "counterexample": ["only one release page has suggestions", "same-name options cannot be distinguished", "a plain el-input remains the list search control"]
+    },
+    {
+      "id": "R2",
+      "statement": "The control must show the first 20 scoped options on empty focus and perform case-insensitive substring matching across each page's declared searchable fields.",
+      "acceptance": ["empty focus shows at most 20 options", "code, name and version fragments match", "matching is case insensitive", "candidate ordering follows the existing data source"],
+      "priority": "must",
+      "source": "User confirmed empty-focus options and fuzzy matching on 2026-08-17.",
+      "counterexample": ["only prefix matching works", "more than 20 options render", "AUTH does not match auth"]
+    },
+    {
+      "id": "R3",
+      "statement": "Temporary typed text must never change the main list; only selecting a real option applies a search and clearing the option restores the full list under other filters.",
+      "acceptance": ["unselected text is discarded on blur", "nonexistent text does not empty or query the main list", "selection filters to the selected record", "clear restores the list"],
+      "priority": "must",
+      "source": "User explicitly rejected free-text searching because unrecognized input should not return results.",
+      "counterexample": ["Enter submits arbitrary text", "typing alone changes pagination or rows", "clearing leaves the old query active"]
+    },
+    {
+      "id": "R4",
+      "statement": "Candidates must use complete current scope data: local loaded window, baseline and production records, and a debounced project-scoped remote application query using the existing list API.",
+      "acceptance": ["application suggestions can include records outside the current main-table page", "other three pages avoid extra suggestion API calls", "project or window changes invalidate stale selections", "remote responses cannot overwrite newer queries"],
+      "priority": "must",
+      "source": "Engineering analysis of current data sources and the user-approved no-new-endpoint approach.",
+      "counterexample": ["application suggestions only use current page", "old-project candidates remain after switching", "a slow old response replaces newer suggestions"]
+    },
+    {
+      "id": "R5",
+      "statement": "Suggestion loading, no-match and failure states must be explicit without blocking or mutating the existing main list, and the control must fit the current desktop toolbars.",
+      "acceptance": ["loading and no-match states are distinct", "remote failure is recoverable by retrying input", "toolbars and dropdown text do not overlap at supported desktop sizes", "frontend type-check and production build pass"],
+      "priority": "must",
+      "source": "User approved the recommended interaction and existing frontend quality constraints.",
+      "counterexample": ["remote failure appears as a normal empty result", "dropdown text breaks the toolbar", "candidate failure clears the main list"]
+    }
+  ],
+  "invariants": [
+    "search selection never mutates business data",
+    "existing tenant, project and release-window scopes remain authoritative",
+    "application main-list pagination remains server-side",
+    "no database migration or permission change is introduced",
+    "unrelated rokey worktree changes remain untouched",
+    "mobile remains outside the current release-management scope"
+  ],
+  "constraints": [
+    "Vue 3, TypeScript and Element Plus",
+    "reuse existing release list APIs",
+    "current project context remains mocked",
+    "maximum 20 rendered suggestions",
+    "approximately 300ms debounce for remote application suggestions"
+  ],
+  "non_goals": [
+    "platform-wide search controls",
+    "global full-text search or a shared search backend",
+    "free-text submission, option creation or search history",
+    "changes to status and artifact-type filters",
+    "changes to backend sorting or data-scope semantics"
+  ],
+  "selected_approach": {
+    "name": "release-local shared suggestion selector with mixed local and remote providers",
+    "reason": "It keeps all four interactions consistent, reuses existing APIs and avoids a new backend abstraction when only applications need remote suggestions.",
+    "alternatives": [
+      {"name": "independent per-page implementations", "rejected_because": "selection, blur and clear behavior would be duplicated and drift"},
+      {"name": "unified backend suggestion endpoint", "rejected_because": "the additional public API and model are disproportionate to one remote data source"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["release-local search-select component and option model", "four release list integrations", "debounced application candidate query", "frontend tests and browser verification"],
+      "outside": ["other platform modules", "new backend APIs or database changes", "mobile adaptation", "global search indexing"]
+    },
+    "components": [
+      {"name": "ReleaseSearchSelect", "responsibility": "render and manage temporary fuzzy input, real option selection, clear, loading and no-match states", "depends_on": ["Element Plus el-select"]},
+      {"name": "ReleaseSearchOption", "responsibility": "provide a stable value, primary label, secondary description and searchable keywords", "depends_on": []},
+      {"name": "release list pages", "responsibility": "map scoped records to options and apply only stable selected values", "depends_on": ["ReleaseSearchSelect", "existing page records"]},
+      {"name": "ReleaseManagementPrototype", "responsibility": "provide project-scoped debounced application candidate lookup without changing the main list during typing", "depends_on": ["listReleaseApplications", "project context"]}
+    ],
+    "interfaces": [
+      {"name": "ReleaseSearchSelect props and events", "producer": "release-local component", "consumers": ["window view", "application view", "baseline view", "current production view"], "contract": "stable selected value changes only on option selection or clear; temporary input is separate"},
+      {"name": "existing application list API", "producer": "release backend", "consumers": ["application candidate provider", "application main list"], "contract": "tenant and project scoped fuzzy list query with page and size"}
+    ],
+    "data_flows": [
+      {"input": "focus or temporary search text", "transitions": ["load or filter scoped options", "limit to 20", "render labels and descriptions"], "output": "candidate dropdown without main-list mutation"},
+      {"input": "real option selection", "transitions": ["emit stable value", "resolve selected record", "apply local exact filter or application-code query"], "output": "main list restricted to the selected record"},
+      {"input": "project, window or data refresh", "transitions": ["rebuild candidates", "validate selected value", "clear when invalid"], "output": "scope-correct candidates and list"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "remote application suggestions fail", "behavior": "preserve the main list and selected value while showing a candidate-load failure", "recovery": "retry on the next input"},
+    {"condition": "an older remote response arrives after a newer query", "behavior": "ignore the stale response", "recovery": "retain the latest candidate result"},
+    {"condition": "the selected record disappears after scope refresh", "behavior": "clear the selection and restore the list", "recovery": "choose from the refreshed options"},
+    {"condition": "temporary text is blurred without selection", "behavior": "discard it without emitting a selected-value change", "recovery": "focus and choose a real option"}
+  ],
+  "quality_attributes": {
+    "security": ["all remote candidates retain existing authentication and tenant/project enforcement", "no client-side expansion of data scope"],
+    "performance": ["20-option render cap", "300ms remote debounce", "linear local filtering", "stale response suppression"],
+    "compatibility": ["no API response changes", "existing list filters and pagination remain", "component is private to release management"],
+    "operations": ["no backend redeploy required for API compatibility", "revert is frontend-only and needs no data compensation"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2", "R3"], "signal": "shared component consistently limits, filters, selects, clears and rejects free text", "method": "component tests plus authenticated browser interaction on all four pages"},
+    {"requirement_ids": ["R3", "R4"], "signal": "typing does not change rows and application candidates can come from outside the current page", "method": "request spies and page integration tests"},
+    {"requirement_ids": ["R4", "R5"], "signal": "scope changes, stale responses and failures recover without corrupting list state", "method": "controlled async tests and browser checks"},
+    {"requirement_ids": ["R1", "R5"], "signal": "the modified frontend remains type-safe and visually stable", "method": "vue-tsc, Vite build and desktop viewport inspection"}
+  ],
+  "assumptions": [
+    {"text": "the current 200-window load is complete enough for the prototype project", "basis": "the window page currently requests page 1 size 200", "falsifier": "a project contains more than 200 selectable windows"},
+    {"text": "production baseline and current production APIs return complete current-scope records", "basis": "the current pages perform local keyword filtering on the returned arrays", "falsifier": "either API becomes paginated or truncated"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "Only the four configuration-management list searches are in scope", "reason": "the user explicitly limited the change to configuration management", "source": "User confirmation on 2026-08-17."},
+    {"id": "D2", "decision": "Only real selected candidates may query the main list", "reason": "unrecognized free text should not produce a result", "source": "User decision on 2026-08-17."},
+    {"id": "D3", "decision": "Empty focus shows the first 20 options", "reason": "users can browse without typing while keeping the dropdown bounded", "source": "User confirmation on 2026-08-17."},
+    {"id": "D4", "decision": "Use a release-local shared component with a remote application provider and local providers elsewhere", "reason": "consistent UI with no unnecessary backend endpoint", "source": "User approved the recommended design on 2026-08-17."}
+  ],
+  "risks": [
+    {"risk": "remote suggestion and main-list requests race", "impact": "stale candidates or unexpected rows", "mitigation": "keep separate states and ignore stale candidate responses"},
+    {"risk": "same subsystem produces many application candidates", "impact": "ambiguous options", "mitigation": "show unique application code with subsystem and status as secondary text"},
+    {"risk": "a currently local source becomes paginated", "impact": "candidate coverage becomes incomplete", "mitigation": "contract tests expose truncation and the affected provider can evolve to remote mode"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User reviewed the landed design and explicitly requested execution on 2026-08-17.",
+    "confirmed_at": "2026-08-17T22:38:00+08:00"
+  }
+}

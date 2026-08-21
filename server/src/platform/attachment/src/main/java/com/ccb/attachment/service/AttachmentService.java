@@ -1,188 +1,174 @@
 package com.ccb.attachment.service;
 
-import com.ccb.attachment.model.AttachmentItem;
-import com.ccb.attachment.model.AttachmentLink;
-import com.ccb.attachment.model.AttachmentPort;
-import com.ccb.common.api.PageQuery;
-import com.ccb.common.api.PageResult;
+import com.ccb.attachment.config.AttachmentProperties;
+import com.ccb.attachment.integration.AttachmentBindingCommand;
+import com.ccb.attachment.integration.AttachmentGateway;
+import com.ccb.attachment.integration.AttachmentItem;
+import com.ccb.attachment.integration.AttachmentOperation;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.filepreview.model.FilePreviewUrlProvider;
 import com.ccb.infrastructure.storage.MinioStorageService;
+import com.ccb.security.model.AuthUser;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** 持久附件服务：先写对象，再写元数据；元数据失败时清理已写对象。 */
 @Service
-public class AttachmentService implements AttachmentPort {
-    private static final long MAX_FILE_SIZE = 100L * 1024 * 1024;
-    private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv",
-            "png", "jpg", "jpeg", "gif", "zip", "rar"
-    );
-
+public class AttachmentService implements AttachmentGateway {
     private final JdbcTemplate jdbc;
     private final MinioStorageService storage;
     private final FilePreviewUrlProvider previewUrlProvider;
+    private final AttachmentAccessPolicyRegistry policies;
+    private final AttachmentProperties properties;
 
-    public AttachmentService(JdbcTemplate jdbc, MinioStorageService storage, FilePreviewUrlProvider previewUrlProvider) {
+    public AttachmentService(JdbcTemplate jdbc, MinioStorageService storage, FilePreviewUrlProvider previewUrlProvider,
+                             AttachmentAccessPolicyRegistry policies, AttachmentProperties properties) {
         this.jdbc = jdbc;
         this.storage = storage;
         this.previewUrlProvider = previewUrlProvider;
+        this.policies = policies;
+        this.properties = properties;
     }
 
-    @Override
     @Transactional
-    public AttachmentItem uploadAndBind(String businessType, long businessId, MultipartFile file, long tenantId, long uploaderId) {
-        validateScope(businessType, businessId, tenantId, uploaderId);
-        FileData fileData = validateFile(file);
-        String objectKey = "attachments/" + tenantId + "/" + businessType + "/" + businessId + "/"
-                + UUID.randomUUID() + "." + fileData.extension();
+    public AttachmentItem upload(MultipartFile file, AuthUser user) {
+        if (file == null || file.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择附件");
+        if (file.getSize() > properties.getMaxFileSizeBytes()) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件大小超过限制");
+        String fileName = safeFileName(file.getOriginalFilename());
+        String extension = extension(fileName);
+        String objectKey = "attachments/" + user.tenantId() + "/" + UUID.randomUUID();
         try {
-            storage.put(objectKey, file.getInputStream(), file.getSize(), fileData.contentType());
-            long id = nextId();
-            jdbc.update("INSERT INTO sys_attachment (id, tenant_id, business_type, business_id, file_name, content_type, file_size, object_key, uploader_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    id, tenantId, businessType, businessId, fileData.fileName(), fileData.contentType(), file.getSize(), objectKey, uploaderId);
-            return findRequired(id, businessType, businessId, tenantId);
-        } catch (IOException exception) {
-            deleteQuietly(objectKey);
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "无法读取上传文件");
-        } catch (RuntimeException exception) {
-            deleteQuietly(objectKey);
+            storage.put(objectKey, file.getInputStream(), file.getSize(), file.getContentType());
+        } catch (BusinessException exception) {
             throw exception;
+        } catch (Exception exception) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "附件读取失败");
         }
-    }
-
-    @Override
-    public PageResult<AttachmentItem> list(String businessType, long businessId, long tenantId, PageQuery pageQuery, String keyword) {
-        validateBusinessScope(businessType, businessId, tenantId);
-        PageQuery query = pageQuery == null ? new PageQuery(1, 20) : pageQuery;
-        String normalizedKeyword = normalizeKeyword(keyword);
-        StringBuilder where = new StringBuilder(" WHERE business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0");
-        List<Object> arguments = new ArrayList<>(List.of(businessType, businessId, tenantId));
-        if (!normalizedKeyword.isBlank()) {
-            where.append(" AND file_name LIKE ?");
-            arguments.add("%" + normalizedKeyword + "%");
-        }
-
-        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_attachment" + where, Long.class, arguments.toArray());
-        long offset = Math.max(0L, (query.page() - 1L) * query.size());
-        List<Object> pageArguments = new ArrayList<>(arguments);
-        pageArguments.add(query.size());
-        pageArguments.add(offset);
-        List<AttachmentItem> records = jdbc.query("SELECT id, file_name, content_type, file_size, uploader_id, created_at FROM sys_attachment"
-                        + where + " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
-                this::mapItem, pageArguments.toArray());
-        return new PageResult<>(records, total == null ? 0L : total, query.page(), query.size());
-    }
-
-    @Override
-    public AttachmentLink preview(long attachmentId, String businessType, long businessId, long tenantId) {
-        AttachmentRow row = findRow(attachmentId, businessType, businessId, tenantId);
-        return new AttachmentLink(row.id(), row.fileName(), previewUrlProvider.build(storage.presignedUrl(row.objectKey())));
-    }
-
-    @Override
-    public AttachmentLink download(long attachmentId, String businessType, long businessId, long tenantId) {
-        AttachmentRow row = findRow(attachmentId, businessType, businessId, tenantId);
-        return new AttachmentLink(row.id(), row.fileName(), storage.presignedUrl(row.objectKey()));
+        long id = nextId();
+        jdbc.update("INSERT INTO att_file (id, tenant_id, file_name, content_type, file_size, object_key, file_extension, status, uploader_id, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ? SECOND))",
+                id, user.tenantId(), fileName, file.getContentType(), file.getSize(), objectKey, extension, user.id(), properties.getTempRetention().toSeconds());
+        audit(id, user, "UPLOAD", null, null, fileName);
+        return get(id, user);
     }
 
     @Override
     @Transactional
-    public void delete(long attachmentId, String businessType, long businessId, long tenantId) {
-        AttachmentRow row = findRow(attachmentId, businessType, businessId, tenantId);
-        storage.delete(row.objectKey());
-        jdbc.update("UPDATE sys_attachment SET deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0",
-                attachmentId, businessType, businessId, tenantId);
+    public void bind(AttachmentBindingCommand command, AuthUser operator) {
+        if (command == null || command.attachmentId() <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不能为空");
+        String businessType = requireText(command.businessType(), "业务类型", 64);
+        String businessKey = requireText(command.businessKey(), "业务主键", 128);
+        Map<String, Object> row = row(command.attachmentId(), operator.tenantId());
+        if ("BOUND".equals(row.get("status"))) {
+            if (businessType.equals(row.get("business_type")) && businessKey.equals(row.get("business_key"))) return;
+            throw new BusinessException(ErrorCode.CONFLICT, "附件已绑定到其他业务");
+        }
+        if (!"TEMP".equals(row.get("status")) || ((Number) row.get("uploader_id")).longValue() != operator.id()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "只能绑定当前用户上传的临时附件");
+        }
+        int changed = jdbc.update("UPDATE att_file SET status = 'BOUND', business_type = ?, business_key = ?, project_ref = ?, bound_at = CURRENT_TIMESTAMP, expires_at = '9999-12-31 23:59:59' WHERE id = ? AND tenant_id = ? AND status = 'TEMP' AND uploader_id = ?",
+                businessType, businessKey, optional(command.projectRef(), 64), command.attachmentId(), operator.tenantId(), operator.id());
+        if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "附件状态已变化，请刷新后重试");
+        audit(command.attachmentId(), operator, "BIND", businessType, businessKey, null);
     }
 
-    private AttachmentItem findRequired(long id, String businessType, long businessId, long tenantId) {
-        AttachmentItem item = jdbc.query("SELECT id, file_name, content_type, file_size, uploader_id, created_at FROM sys_attachment WHERE id = ? AND business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0",
-                rs -> rs.next() ? new AttachmentItem(rs.getLong("id"), rs.getString("file_name"), rs.getString("content_type"),
-                        rs.getLong("file_size"), rs.getLong("uploader_id"), null, formatTimestamp(rs.getTimestamp("created_at"))) : null,
-                id, businessType, businessId, tenantId);
-        if (item == null) throw new BusinessException(ErrorCode.INTERNAL_ERROR, "附件元数据保存失败");
-        return item;
+    @Override
+    public AttachmentItem get(long attachmentId, AuthUser operator) {
+        Map<String, Object> row = authorizedRow(attachmentId, AttachmentOperation.READ, operator);
+        return item(row);
     }
 
-    private AttachmentRow findRow(long id, String businessType, long businessId, long tenantId) {
-        validateBusinessScope(businessType, businessId, tenantId);
-        AttachmentRow row = jdbc.query("SELECT id, file_name, object_key FROM sys_attachment WHERE id = ? AND business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0",
-                rs -> rs.next() ? new AttachmentRow(rs.getLong("id"), rs.getString("file_name"), rs.getString("object_key")) : null,
-                id, businessType, businessId, tenantId);
-        if (row == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在");
+    public String preview(long attachmentId, AuthUser operator) {
+        Map<String, Object> row = authorizedRow(attachmentId, AttachmentOperation.PREVIEW, operator);
+        return previewUrlProvider.previewUrl(storage.presignedUrl(String.valueOf(row.get("object_key"))));
+    }
+
+    public String download(long attachmentId, AuthUser operator) {
+        Map<String, Object> row = authorizedRow(attachmentId, AttachmentOperation.DOWNLOAD, operator);
+        return storage.presignedUrl(String.valueOf(row.get("object_key")));
+    }
+
+    @Transactional
+    public void deleteTemp(long attachmentId, AuthUser operator) {
+        Map<String, Object> row = row(attachmentId, operator.tenantId());
+        if (!"TEMP".equals(row.get("status")) || ((Number) row.get("uploader_id")).longValue() != operator.id()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "只能删除当前用户上传的临时附件");
+        }
+        markDeleted(row, operator, "DELETE_TEMP");
+    }
+
+    @Override
+    @Transactional
+    public void deleteBound(long attachmentId, String businessType, String businessKey, AuthUser operator) {
+        Map<String, Object> row = row(attachmentId, operator.tenantId());
+        if (!"BOUND".equals(row.get("status")) || !businessType.equals(row.get("business_type")) || !businessKey.equals(row.get("business_key"))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "附件业务绑定不匹配");
+        }
+        policies.requireAccess(businessType, businessKey, AttachmentOperation.DELETE, operator);
+        markDeleted(row, operator, "DELETE_BOUND");
+    }
+
+    private void markDeleted(Map<String, Object> row, AuthUser operator, String operation) {
+        long id = ((Number) row.get("id")).longValue();
+        jdbc.update("UPDATE att_file SET status = 'DELETED', deleted_at = CURRENT_TIMESTAMP, cleanup_status = 'PENDING' WHERE id = ? AND tenant_id = ? AND status <> 'DELETED'", id, operator.tenantId());
+        audit(id, operator, operation, value(row.get("business_type")), value(row.get("business_key")), null);
+    }
+
+    private Map<String, Object> authorizedRow(long id, AttachmentOperation operation, AuthUser user) {
+        Map<String, Object> row = row(id, user.tenantId());
+        String status = String.valueOf(row.get("status"));
+        if ("TEMP".equals(status)) {
+            if (((Number) row.get("uploader_id")).longValue() != user.id()) throw new BusinessException(ErrorCode.FORBIDDEN, "无权访问该临时附件");
+        } else if ("BOUND".equals(status)) {
+            policies.requireAccess(String.valueOf(row.get("business_type")), String.valueOf(row.get("business_key")), operation, user);
+        } else {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在或已删除");
+        }
         return row;
     }
 
-    private FileData validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择非空文件");
-        if (file.getSize() > MAX_FILE_SIZE) throw new BusinessException(ErrorCode.BAD_REQUEST, "文件不能超过100MB");
-        String fileName = normalizeFileName(file.getOriginalFilename());
-        String extension = extensionOf(fileName);
-        if (!ALLOWED_EXTENSIONS.contains(extension)) throw new BusinessException(ErrorCode.BAD_REQUEST, "不支持该文件类型");
-        String contentType = file.getContentType();
-        if (contentType == null || contentType.isBlank() || contentType.length() > 255 || contentType.contains("\r") || contentType.contains("\n")) contentType = "application/octet-stream";
-        return new FileData(fileName, extension, contentType);
+    Map<String, Object> row(long id, long tenantId) {
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, tenant_id, file_name, content_type, file_size, object_key, file_extension, status, uploader_id, business_type, business_key, project_ref, created_at FROM att_file WHERE id = ? AND tenant_id = ?", id, tenantId);
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在");
+        return rows.get(0);
     }
 
-    private String normalizeFileName(String original) {
-        String value = original == null ? "" : original.trim().replace('\\', '/');
-        value = value.substring(value.lastIndexOf('/') + 1);
-        if (value.isBlank() || value.length() > 255 || value.contains("\r") || value.contains("\n")) throw new BusinessException(ErrorCode.BAD_REQUEST, "文件名无效");
-        return value;
+    private AttachmentItem item(Map<String, Object> row) {
+        Object created = row.get("created_at");
+        LocalDateTime createdAt = created instanceof Timestamp timestamp ? timestamp.toLocalDateTime() : null;
+        return new AttachmentItem(((Number) row.get("id")).longValue(), String.valueOf(row.get("file_name")), value(row.get("content_type")),
+                ((Number) row.get("file_size")).longValue(), value(row.get("file_extension")), String.valueOf(row.get("status")),
+                value(row.get("business_type")), value(row.get("business_key")), value(row.get("project_ref")),
+                ((Number) row.get("uploader_id")).longValue(), createdAt);
     }
 
-    private String extensionOf(String fileName) {
-        int dot = fileName.lastIndexOf('.');
-        if (dot <= 0 || dot == fileName.length() - 1) return "";
-        return fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+    private void audit(long attachmentId, AuthUser user, String operation, String businessType, String businessKey, String detail) {
+        jdbc.update("INSERT INTO att_operation_log (id, tenant_id, attachment_id, operation_code, operator_id, business_type, business_key, detail_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                nextId(), user.tenantId(), attachmentId, operation, user.id(), businessType, businessKey, detail);
     }
 
-    private String normalizeKeyword(String keyword) {
-        if (keyword == null) return "";
-        String value = keyword.trim();
-        return value.length() > 100 ? value.substring(0, 100) : value;
+    private String safeFileName(String name) {
+        String value = name == null ? "attachment" : name.replace('\\', '/');
+        value = value.substring(value.lastIndexOf('/') + 1).trim();
+        return value.isEmpty() ? "attachment" : value.substring(0, Math.min(value.length(), 255));
     }
-
-    private AttachmentItem mapItem(ResultSet rs, int rowNum) throws SQLException {
-        return new AttachmentItem(rs.getLong("id"), rs.getString("file_name"), rs.getString("content_type"),
-                rs.getLong("file_size"), rs.getLong("uploader_id"), null, formatTimestamp(rs.getTimestamp("created_at")));
+    private String extension(String name) {
+        int index = name.lastIndexOf('.');
+        if (index < 0 || index == name.length() - 1) return null;
+        String extension = name.substring(index + 1).toLowerCase(Locale.ROOT);
+        return extension.substring(0, Math.min(extension.length(), 32));
     }
-
-    private void validateScope(String businessType, long businessId, long tenantId, long userId) {
-        validateBusinessScope(businessType, businessId, tenantId);
-        if (userId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "上传人无效");
-    }
-
-    private void validateBusinessScope(String businessType, long businessId, long tenantId) {
-        if (businessType == null || !businessType.matches("[A-Z][A-Z0-9_]{0,31}")) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件业务类型无效");
-        if (businessId <= 0 || tenantId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件业务范围无效");
-    }
-
+    private String requireText(String value, String label, int max) { String normalized = value == null ? "" : value.trim(); if (normalized.isEmpty() || normalized.length() > max) throw new BusinessException(ErrorCode.BAD_REQUEST, label + "无效"); return normalized; }
+    private String optional(String value, int max) { return value == null || value.isBlank() ? null : value.trim().substring(0, Math.min(value.trim().length(), max)); }
+    private String value(Object value) { return value == null ? null : String.valueOf(value); }
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }
-
-    private String formatTimestamp(Timestamp timestamp) { return timestamp == null ? null : timestamp.toLocalDateTime().format(DATE_TIME); }
-
-    private void deleteQuietly(String objectKey) {
-        try { storage.delete(objectKey); } catch (RuntimeException ignored) { }
-    }
-
-    private record FileData(String fileName, String extension, String contentType) { }
-    private record AttachmentRow(long id, String fileName, String objectKey) { }
 }

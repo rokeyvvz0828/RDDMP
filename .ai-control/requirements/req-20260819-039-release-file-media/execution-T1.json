@@ -1,0 +1,40 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V46__release_file_media.sql", "purpose": "Add and backfill stable item identity on application, relation and production rows"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java", "purpose": "Add file-media and unified delivery-item contracts with old constructor compatibility"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java", "purpose": "Persist and query item type, path and stable item key"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/ReleaseSchemaContractTest.java", "purpose": "Lock append-only V46 schema behavior"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java", "purpose": "Lock item-key-aware persistence SQL"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R6", "R7", "R8"],
+  "commands": [
+    {"command": "mvn -pl :ccb-release -am -Dtest=ReleaseSchemaContractTest,ReleaseApplicationPersistenceContractTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 1, "salient_output": "Expected red phase: 8 tests, 3 failures for missing V46 and old delivery-code SQL"},
+    {"command": "mvn -pl :ccb-release -am -Dtest=ReleaseSchemaContractTest,ReleaseApplicationPersistenceContractTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "8 tests run, 0 failures, BUILD SUCCESS"},
+    {"command": "mvn -pl :ccb-release -am -DskipTests compile", "exit_code": 0, "salient_output": "All eight reactor projects compiled, BUILD SUCCESS"},
+    {"command": "git diff --check -- <T1 paths>", "exit_code": 0, "salient_output": "No whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "Schema and persistence focused tests", "result": "pass", "evidence": "8 tests passed with exit code 0", "limitations": ["V46 has not yet been applied to the local MySQL database"]},
+    {"check": "Release dependency compile", "result": "pass", "evidence": "Eight-project reactor BUILD SUCCESS", "limitations": ["T2-T5 behavior is not implemented yet"]},
+    {"check": "Scoped whitespace check", "result": "pass", "evidence": "git diff --check exit code 0", "limitations": ["The release module files were already untracked, so Git cannot show a historical line diff"]}
+  ],
+  "diff_summary": [
+    "Added append-only V46 with non-destructive backfill, item-key indexes and type-sensitive CHECK constraints",
+    "Extended request and response contracts with fileMedia while preserving old Java constructors",
+    "Changed application conflict SQL and relationship persistence to stable item keys"
+  ],
+  "invariants_checked": [
+    {"invariant": "V38 and V39 remain unchanged", "result": "pass", "evidence": "Only V46 was added"},
+    {"invariant": "Ordinary Java call sites remain source-compatible", "result": "pass", "evidence": "Release reactor compile and focused tests passed"},
+    {"invariant": "No business rows are deleted", "result": "pass", "evidence": "Schema contract rejects DELETE FROM rel_ and V46 contains only ALTER/UPDATE backfill"},
+    {"invariant": "Only file media can have null artifact versions", "result": "pass", "evidence": "V46 CHECK constraints distinguish DELIVERY_UNIT and FILE_MEDIA"}
+  ],
+  "disturbances": [
+    {"event": "All existing release-module T1 files are untracked in the dirty rokey worktree", "impact": "Historical Git diff attribution is unavailable; existing file contents were preserved and edited locally"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["MySQL 8.4 execution of V46 is deliberately deferred until the protected backup gate in T6"],
+  "recommended_next": "observe"
+}

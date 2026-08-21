@@ -1,0 +1,29 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/release/components/ReleaseApplicationView.vue", "purpose": "版本申请筛选、列表和受控操作入口"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseApplicationDrawer.vue", "purpose": "版本申请新增编辑、校验和场景展示"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseConflictDialog.vue", "purpose": "重复版本和未完成申请冲突提示"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseDetailDrawer.vue", "purpose": "申请详情、流程轮次、流转记录和签署展示"},
+    {"path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue", "purpose": "统一会话状态和申请动作编排"}
+  ],
+  "requirements_addressed": ["R2", "R3", "R4"],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite build passed; 2345 modules transformed"}
+  ],
+  "local_checks": [
+    {"check": "版本申请浏览器主路径", "result": "pass", "evidence": "列表、表单校验、冲突弹框、详情流程和当前身份签署均可复验", "limitations": ["仅使用前端会话 Mock，不验证真实工作流和持久化"]},
+    {"check": "冲突阻断信息", "result": "pass", "evidence": "AUTH-SVC 重复版本显示历史版本、本次版本、状态和 REL-202609-007", "limitations": []}
+  ],
+  "diff_summary": ["新增版本申请完整交互", "操作列收敛为详情和受控动作", "详情展示审批进度和电子签署结果"],
+  "invariants_checked": [
+    {"invariant": "场景自动派生", "result": "pass", "evidence": "表单只展示自动判定场景和流程编码"},
+    {"invariant": "单申请单只含一个物理子系统和至少一个交付单元", "result": "pass", "evidence": "表单结构和提交校验共同限制"},
+    {"invariant": "列表与详情共享会话状态", "result": "pass", "evidence": "详情直接读取壳层 applications 对象"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实申请、工作流、附件和签名接口按原型边界延期"],
+  "recommended_next": "observe"
+}

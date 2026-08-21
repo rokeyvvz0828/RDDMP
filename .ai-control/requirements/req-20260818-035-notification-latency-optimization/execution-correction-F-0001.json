@@ -1,0 +1,48 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "escalate",
+  "decision_reason": "The measured R7 deviation is reproducible and high confidence, but the smallest plausible correction surface is server/src/platform/security/**, which REQ-20260818-035 explicitly marks read-only. Correcting it without a new authorized requirement or scope revision would violate the approved module boundary.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "JwtAuthenticationFilter calls AuthService.me() twice per authenticated request, and AuthService.me() hydrates identity data and generates an avatar presigned URL, adding sufficient fixed overhead to push the unread-count endpoint above 200ms P95 under 200-client load.",
+    "supporting_evidence": [
+      "JwtAuthenticationFilter.java calls authService.me(user) separately for roles and permissions.",
+      "AuthService.java builds AuthMe with storage.presignedUrl(user.avatarObjectKey()).",
+      "The load test had zero request errors, MySQL Max_used_connections of 21 and Threads_running of 2, which does not indicate notification-query or connection-pool saturation.",
+      "JWT requests failed before valid MinIO credentials were restored, confirming that ordinary authenticated API requests currently depend on avatar URL generation."
+    ],
+    "falsifier": "Request profiling or an authorized A/B implementation shows that removing duplicate identity hydration and per-request avatar presigning does not reduce the identical load-test P95, or demonstrates that the unread-count SQL itself dominates latency."
+  },
+  "control_action": {
+    "gain": "low until authorization and profiling, then medium for a bounded correction",
+    "target": "Authenticated-request identity hydration in JwtAuthenticationFilter and AuthService",
+    "write_scope": [
+      "server/src/platform/security/src/main/java/com/ccb/security/web/JwtAuthenticationFilter.java",
+      "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+      "corresponding platform/security tests",
+      "a separately approved requirement and codex-task-scope.yaml"
+    ],
+    "invariants": [
+      "Do not weaken JWT validation, tenant isolation, role or permission enforcement.",
+      "Do not remove the avatar URL from the explicit /auth/me response contract.",
+      "Do not introduce SSE, WebSocket, cache, queue, schema or index changes under the notification-latency requirement.",
+      "Keep the existing notification endpoint and DTO unchanged."
+    ],
+    "impact_limit": "Only eliminate duplicate or unnecessary identity enrichment on ordinary authenticated requests; do not redesign authorization or notification delivery.",
+    "rollback": "Restore the pre-correction security filter and AuthService implementation from the bounded correction diff.",
+    "correction_check": [
+      "Run all platform security and full backend tests.",
+      "Verify /api/auth/me still returns the expected roles, permissions and avatar URL.",
+      "Verify authenticated tenant and permission enforcement on representative protected endpoints.",
+      "Rerun /private/tmp/req035-load-test.mjs with 200 clients and 60 rounds; require zero errors and P95 <= 200ms.",
+      "Repeat at least 20 event-to-bell runs and retain P95 <= 2s."
+    ],
+    "route": "new authorized requirement or explicit scope revision, then planning and executing"
+  },
+  "resolution": "escalated",
+  "residual_risk": [
+    "R7 remains 21.407ms above its response-time P95 threshold in the measured local environment.",
+    "The primary two-second event-to-bell objective is already satisfied at approximately 945ms P95 and is not blocked functionally by this capacity deviation.",
+    "No convergence report may claim pass while F-0001 remains escalated."
+  ]
+}

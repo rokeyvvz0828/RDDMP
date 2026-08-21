@@ -1,0 +1,32 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [{
+    "id": "T1",
+    "goal": "Render a dedicated release-window row and a stable responsive five-metric row.",
+    "requirement_ids": ["R1", "R2", "R3", "R4"],
+    "prerequisites": [],
+    "input_facts": ["Current template renders six direct summary children", "Current desktop CSS defines only five tracks", "selectedWindow and summary expose all required values", "Frontend and backend services are running"],
+    "write_scope": ["web/src/modules/release/components/ReleaseBaselineView.vue", "web/src/modules/release/release-prototype.css", ".ai-control/requirements/req-20260820-043-release-baseline-summary-layout/*.json"],
+    "invariants": ["No state, metric, permission, API or backend changes", "No nested cards or new dependencies", "Unrelated dirty work remains untouched", "No commit or push"],
+    "interface_contracts": ["selectedWindow lookup remains unchanged", "summary shape and metric semantics remain unchanged", "CSS selectors remain local to release-ledger-summary"],
+    "non_goals": ["No toolbar or table redesign", "No other release view changes", "No global theme change", "No new dependency"],
+    "action_bounds": ["Adjust only baseline summary markup/classes and corresponding local CSS", "Use five desktop columns, two narrow columns and one phone column"],
+    "acceptance_checks": ["Dedicated window row contains code, name and status", "Five metrics align in one equal desktop row", "Responsive two-/one-column layout has no overlap or overflow", "No-window behavior and business logic remain unchanged", "Frontend build and diff checks pass"],
+    "evidence_required": ["Actual scoped source excerpts", "Build and diff command results", "Desktop and responsive runtime evidence or explicit authentication limitation", "Frontend and backend service probes"],
+    "rollback": "Restore only the baseline summary markup block and corresponding local CSS rules.",
+    "stop_conditions": ["A third product file becomes necessary", "A required window field is absent", "An unrelated build failure cannot be isolated"],
+    "escalation_conditions": ["User requests metric or interaction changes", "The pattern must be generalized to other pages"]
+  }],
+  "dependency_edges": [],
+  "parallel_groups": [["T1"]],
+  "integration_points": [{"after_tasks": ["T1"], "checks": ["Run npm run build", "Run git diff --check", "Probe frontend and backend services", "Inspect desktop and responsive layout when authenticated"]}],
+  "sampling_plan": [{"label": "T1 implementation sample", "trigger": "T1 execution report", "observer": "independent runtime observer", "sensors": ["S1", "S2", "S3", "S4"], "requirement_ids": ["R1", "R2", "R3", "R4"]}],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R3", "task_ids": ["T1"], "sensor_ids": ["S2"]},
+    {"requirement_id": "R4", "task_ids": ["T1"], "sensor_ids": ["S1", "S3", "S4"]}
+  ],
+  "plan_status": "ready"
+}

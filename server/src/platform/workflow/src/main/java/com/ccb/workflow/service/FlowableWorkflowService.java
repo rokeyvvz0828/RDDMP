@@ -5,6 +5,7 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.workflow.model.WorkflowDefinitionModel;
 import com.ccb.workflow.model.WorkflowNodeModel;
+import com.ccb.workflow.integration.WorkflowLifecycleEventType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.flowable.engine.RepositoryService;
@@ -14,6 +15,7 @@ import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.task.api.Task;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,9 @@ public class FlowableWorkflowService {
     private final BpmnModelCompiler compiler;
     private final WorkflowAssigneeResolver assigneeResolver;
     private final WorkflowAuditService auditService;
+    private WorkflowLifecycleEventService lifecycleEvents;
+    private WorkflowSignatureService signatureService;
+    private WorkflowTaskAssignmentPublisher taskAssignments;
 
     public FlowableWorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper,
                                    RepositoryService repositoryService, RuntimeService runtimeService,
@@ -53,6 +58,21 @@ public class FlowableWorkflowService {
         this.modelValidator = new WorkflowModelValidator(objectMapper);
         this.modelAdapter = new WorkflowModelAdapter(objectMapper);
         this.compiler = new BpmnModelCompiler(objectMapper);
+    }
+
+    @Autowired(required = false)
+    void setLifecycleEvents(WorkflowLifecycleEventService lifecycleEvents) {
+        this.lifecycleEvents = lifecycleEvents;
+    }
+
+    @Autowired(required = false)
+    void setSignatureService(WorkflowSignatureService signatureService) {
+        this.signatureService = signatureService;
+    }
+
+    @Autowired(required = false)
+    void setTaskAssignments(WorkflowTaskAssignmentPublisher taskAssignments) {
+        this.taskAssignments = taskAssignments;
     }
 
     public boolean isEnterpriseDefinition(String definitionJson) {
@@ -148,12 +168,19 @@ public class FlowableWorkflowService {
 
     @Transactional
     public void decide(long taskId, String action, String comment, Long targetUserId, List<Long> ccUserIds, AuthUser user) {
+        decide(taskId, action, comment, targetUserId, ccUserIds, false, user);
+    }
+
+    @Transactional
+    public void decide(long taskId, String action, String comment, Long targetUserId, List<Long> ccUserIds,
+                       boolean signatureConfirmed, AuthUser user) {
         Map<String, Object> appTask = findPendingTask(taskId, user);
         String normalized = requireText(action, "审批动作").toUpperCase(Locale.ROOT);
         if (!Set.of("APPROVE", "REJECT", "RETURN", "ADD_SIGN", "CC", "TRANSFER", "DELEGATE").contains(normalized)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "不支持的审批动作: " + normalized);
         }
         long instanceId = ((Number) appTask.get("instance_id")).longValue();
+        if (signatureService != null) signatureService.confirmIfRequired(taskId, normalized, comment, signatureConfirmed, user);
         String flowableTaskId = String.valueOf(appTask.get("flowable_task_id"));
         Task flowableTask = taskService.createTaskQuery().taskId(flowableTaskId).singleResult();
         if (flowableTask == null && !Set.of("ADD_SIGN", "CC").contains(normalized)) throw new BusinessException(ErrorCode.CONFLICT, "流程任务已结束或不存在");
@@ -167,7 +194,7 @@ public class FlowableWorkflowService {
         if ("ADD_SIGN".equals(normalized)) {
             long target = requireTarget(targetUserId);
             ensureActiveUser(target, user.tenantId());
-            insertAddSignTask(appTask, target, user.tenantId());
+            insertAddSignTask(appTask, target, user);
             recordAction(appTask, normalized, user, target, comment, Map.of("targetUserId", target));
             auditService.record(user, "TASK_ADD_SIGN", definitionId(appTask), versionNo(appTask), instanceId, taskId, comment, Map.of("targetUserId", target));
             return;
@@ -178,6 +205,7 @@ public class FlowableWorkflowService {
             if ("TRANSFER".equals(normalized)) taskService.setAssignee(flowableTaskId, String.valueOf(target));
             else taskService.delegateTask(flowableTaskId, String.valueOf(target));
             jdbc.update("UPDATE wf_task SET assignee_id = ?, assignee_name = (SELECT display_name FROM sys_user WHERE id = ? AND tenant_id = ?) WHERE id = ? AND tenant_id = ? AND status = 'PENDING'", target, target, user.tenantId(), taskId, user.tenantId());
+            assigned(user.tenantId(), instanceId, taskId, target, user.id());
             recordAction(appTask, normalized, user, target, comment, Map.of("targetUserId", target));
             auditService.record(user, "TASK_" + normalized, definitionId(appTask), versionNo(appTask), instanceId, taskId, comment, Map.of("targetUserId", target));
             return;
@@ -189,11 +217,14 @@ public class FlowableWorkflowService {
             jdbc.update("UPDATE wf_task SET status = ?, comment = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND status = 'PENDING'", "REJECT".equals(normalized) ? "REJECTED" : "RETURNED", comment, taskId, user.tenantId());
             jdbc.update("UPDATE wf_task SET status = 'CANCELLED', completed_at = CURRENT_TIMESTAMP WHERE instance_id = ? AND tenant_id = ? AND id <> ? AND status = 'PENDING'", instanceId, user.tenantId(), taskId);
             jdbc.update("UPDATE wf_instance SET status = ? WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", "REJECT".equals(normalized) ? "REJECTED" : "RETURNED", instanceId, user.tenantId());
+            emit(instanceId, "REJECT".equals(normalized) ? WorkflowLifecycleEventType.REJECTED : WorkflowLifecycleEventType.RETURNED, user);
         } else {
             taskService.complete(flowableTaskId);
             jdbc.update("UPDATE wf_task SET status = 'APPROVED', comment = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND status = 'PENDING'", comment, taskId, user.tenantId());
             syncTasks(instanceId, definitionId(appTask), versionNo(appTask), flowableTask.getProcessInstanceId(), user.tenantId(), user);
             refreshInstanceStatus(instanceId, user.tenantId());
+            String status = jdbc.queryForObject("SELECT status FROM wf_instance WHERE id = ? AND tenant_id = ?", String.class, instanceId, user.tenantId());
+            if ("APPROVED".equals(status)) emit(instanceId, WorkflowLifecycleEventType.APPROVED, user);
         }
         recordAction(appTask, normalized, user, null, comment, Map.of());
         auditService.record(user, "TASK_" + normalized, definitionId(appTask), versionNo(appTask), instanceId, taskId, comment, Map.of());
@@ -239,8 +270,10 @@ public class FlowableWorkflowService {
                 for (WorkflowAssigneeResolver.ResolvedAssignee assignee : assignees) {
                     Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM wf_task WHERE tenant_id = ? AND flowable_task_id = ? AND assignee_id = ?", Integer.class, tenantId, task.getId(), assignee.id());
                     if (exists != null && exists > 0) continue;
+                    long taskId = nextId();
                     jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, assignee_type, assignee_name, assignee_id, status, flowable_task_id, action_key) VALUES (?, ?, ?, ?, ?, 'APPROVAL', ?, ?, ?, ?, 'PENDING', ?, ?)",
-                            nextId(), tenantId, instanceId, sourceNodeId, sourceNodeId, task.getId(), nodeModel.config().path("assigneeType").asText("USER"), assignee.name(), assignee.id(), task.getId(), sourceNodeId);
+                            taskId, tenantId, instanceId, sourceNodeId, sourceNodeId, task.getId(), nodeModel.config().path("assigneeType").asText("USER"), assignee.name(), assignee.id(), task.getId(), sourceNodeId);
+                    assigned(tenantId, instanceId, taskId, assignee.id(), operator == null ? 0 : operator.id());
                 }
             }
         } while (progressed);
@@ -277,6 +310,10 @@ public class FlowableWorkflowService {
         } else if (!String.valueOf(user.id()).equals(task.getAssignee())) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "当前用户不是该流程任务的审批人");
         }
+    }
+
+    private void emit(long instanceId, WorkflowLifecycleEventType type, AuthUser user) {
+        if (lifecycleEvents != null) lifecycleEvents.emit(instanceId, type, user);
     }
 
     private Map<String, Object> findPendingTask(long taskId, AuthUser user) {
@@ -336,9 +373,15 @@ public class FlowableWorkflowService {
         }
     }
 
-    private void insertAddSignTask(Map<String, Object> task, long targetUserId, long tenantId) {
+    private void insertAddSignTask(Map<String, Object> task, long targetUserId, AuthUser operator) {
+        long taskId = nextId();
         jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, parent_task_id, assignee_type, assignee_name, assignee_id, status) SELECT ?, instance_id, instance_id, task_key, node_id, 'ADD_SIGN', ?, id, 'USER', (SELECT display_name FROM sys_user WHERE id = ? AND tenant_id = ?), ?, 'PENDING' FROM wf_task WHERE id = ? AND tenant_id = ?",
-                nextId(), UUID.randomUUID().toString(), targetUserId, tenantId, targetUserId, task.get("id"), tenantId);
+                taskId, UUID.randomUUID().toString(), targetUserId, operator.tenantId(), targetUserId, task.get("id"), operator.tenantId());
+        assigned(operator.tenantId(), ((Number) task.get("instance_id")).longValue(), taskId, targetUserId, operator.id());
+    }
+
+    private void assigned(long tenantId, long instanceId, long taskId, long assigneeId, long operatorId) {
+        if (taskAssignments != null) taskAssignments.assigned(tenantId, instanceId, taskId, assigneeId, operatorId);
     }
 
     private void recordAction(Map<String, Object> task, String action, AuthUser user, Long target, String comment, Map<String, Object> payload) {

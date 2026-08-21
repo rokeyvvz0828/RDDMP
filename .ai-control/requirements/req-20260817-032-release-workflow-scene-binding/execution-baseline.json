@@ -1,0 +1,67 @@
+{
+  "objective": "Allow configuration administrators to bind each release approval scenario to a published workflow per project while preserving submission determinism, auditability, and workflow history.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Configuration management must expose five fixed approval scenarios whose published-workflow bindings are isolated by tenant and project.",
+      "acceptance": ["Project switching loads the corresponding bindings", "Each project and scene has at most one binding", "Users select a published workflow instead of typing a code"],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": ["Project A overwrites project B", "A workflow code must be memorized", "The binding page edits workflow graphs"]
+    },
+    {
+      "id": "R2",
+      "statement": "Projects may save partial bindings, while submission must fail atomically only when its resolved scenario is unbound or references a non-published definition.",
+      "acceptance": ["Unconfigured scenes are visibly marked", "Configured scenes remain usable", "A failed submission creates no round, instance, or status transition"],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": ["A missing emergency binding blocks regular submission", "A failed start leaves a STARTING round"]
+    },
+    {
+      "id": "R3",
+      "statement": "The release backend must resolve the project-scene binding by workflow definition ID and freeze the actual definition version and instance on every submitted round.",
+      "acceptance": ["New submissions use the binding committed at submission time", "Existing submissions retain their original definition version after rebinding", "The application payload cannot choose a workflow"],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": ["Rebinding reroutes an active instance", "A client-supplied definition ID controls submission"]
+    },
+    {
+      "id": "R4",
+      "statement": "Binding changes must require a reason, preserve before and after values with operator and time, enforce tenant and project scope, and reject stale writes.",
+      "acceptance": ["Create, update, and unbind history is queryable", "Stale row versions are rejected", "Cross-project and cross-tenant access is denied"],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": ["Only the final binding is retained", "Concurrent updates silently overwrite each other"]
+    },
+    {
+      "id": "R5",
+      "statement": "Only never-published definitions with no instances and no active business binding may be deleted, and an actively bound definition may not be archived.",
+      "acceptance": ["A pure draft can be soft-deleted", "A formerly published draft cannot be deleted", "Any historical instance blocks deletion", "Archive reports active project-scene references"],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": ["Unpublish then delete bypasses history protection", "Archiving a bound definition breaks future submissions"]
+    }
+  ],
+  "invariants": ["Release scenario selection is server-authoritative", "Running instances retain their original definition and version", "All definitions and bindings are tenant scoped", "Project context remains a stable interface while mocked", "Flyway migrations are append-only", "Unrelated rokey changes remain untouched"],
+  "constraints": ["Implement on local rokey", "Java 17 and Spring Boot 3.4.4", "MySQL 8.4 and Flyway", "Vue 3, TypeScript, Element Plus", "Preserve the existing workflow lifecycle callback boundary"],
+  "non_goals": ["Platform-wide generic scenario center", "Workflow graph editing from configuration management", "Manual workflow choice on a release application", "Automatic approval graph generation", "Release scenario classification changes"],
+  "assumptions": [
+    {"text": "The current project reference remains stable during this implementation", "basis": "Existing project-context store contract", "falsifier": "The project module changes canonical identifiers without a mapping"},
+    {"text": "Workflow definition IDs are stable across versions", "basis": "Existing wf_definition and wf_version schema", "falsifier": "Version publication replaces the definition row"}
+  ],
+  "unknowns": [
+    {"question": "Whether another concurrent migration will claim V43 before integration", "impact": "The migration version may need renumbering without semantic change", "owner": "implementation", "blocking": false}
+  ],
+  "decisions": [
+    {"question": "Where is scene binding configured", "options": ["Configuration management", "Workflow definition authoring"], "selected": "Configuration management", "blocking": false, "source": "User confirmed"},
+    {"question": "What do binding changes affect", "options": ["Future submissions only", "Running submissions"], "selected": "Future submissions only", "blocking": false, "source": "User confirmed"}
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "Project-scoped API results and five fixed UI rows", "candidate_sensor": "Backend tests plus browser inspection"},
+    {"requirement_id": "R2", "observable": "Atomic failure state for unbound and invalid scenes", "candidate_sensor": "Submission service tests and database assertions"},
+    {"requirement_id": "R3", "observable": "Persisted round definition ID, version, and instance before and after rebinding", "candidate_sensor": "Integration tests and SQL probes"},
+    {"requirement_id": "R4", "observable": "History rows and stale-write response", "candidate_sensor": "Service/API tests and SQL probes"},
+    {"requirement_id": "R5", "observable": "Delete/archive outcomes under publication, instance, and active-reference states", "candidate_sensor": "Workflow lifecycle tests"}
+  ],
+  "baseline_status": "ready"
+}

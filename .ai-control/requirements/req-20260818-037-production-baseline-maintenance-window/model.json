@@ -1,0 +1,64 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["ReleaseBaselineView window and result-maintenance state", "ReleaseProductionService single and batch result update path", "ReleaseProductionServiceTest fixed-clock boundary tests"],
+    "environment": ["Release window persistence", "Authenticated user tenant", "Browser clock", "Spring transaction manager", "Existing dirty rokey worktree"]
+  },
+  "state_variables": [
+    {"name": "selected_window", "owner": "ReleaseBaselineView", "valid_values": ["none", "unfinished", "finished", "invalid-time"]},
+    {"name": "frontend_maintainable", "owner": "ReleaseBaselineView", "valid_values": ["true", "false"]},
+    {"name": "entry_result", "owner": "ReleaseProductionService", "valid_values": ["RELEASED", "SUCCEEDED", "FAILED", "NOT_DEPLOYED"]},
+    {"name": "server_window_gate", "owner": "ReleaseProductionService", "valid_values": ["before-end", "at-or-after-end", "window-missing"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Window list with productionEnd and statusLabel", "transitions": ["Compare frontend time", "Format end time and unavailable reason", "Render custom selectable option"], "outputs": ["Two-line window option with reason"]},
+    {"requirement_id": "R2", "input": "Selected window plus baseline entries", "transitions": ["Derive selected-window eligibility", "Combine with RELEASED entry state", "Gate selection and action handlers"], "outputs": ["Visible baseline with unavailable maintenance controls"]},
+    {"requirement_id": "R3", "input": "Current time and productionEnd", "transitions": ["Frontend minute refresh", "Server Clock comparison using isBefore"], "outputs": ["Denied before end and allowed at exact boundary"]},
+    {"requirement_id": "R4", "input": "Single or batch result command", "transitions": ["Lock tenant entry", "Load owning tenant window", "Apply server gate", "Run existing update and audit only when allowed"], "outputs": ["Conflict without writes or maintained result"]},
+    {"requirement_id": "R5", "input": "Entry of any versionType", "transitions": ["Eligibility ignores versionType", "Existing result, row-version and field validation remain"], "outputs": ["Uniform gate and compatible result semantics"]}
+  ],
+  "interfaces": [
+    {"name": "ReleaseWindowDto", "producers": ["Existing release window API"], "consumers": ["ReleaseBaselineView"], "invariant": "productionEnd is an ISO local date-time in the business timezone"},
+    {"name": "ReleaseWindowStore.findById", "producers": ["ReleaseWindowStore"], "consumers": ["ReleaseProductionService"], "invariant": "Lookup is scoped by window id and authenticated tenant id"},
+    {"name": "Production result commands", "producers": ["ReleaseProductionController"], "consumers": ["ReleaseProductionService"], "invariant": "Client does not declare maintenance eligibility"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Server boundary, no-write rejection and result regression", "method": "Fixed-Clock JUnit/Mockito tests plus ccb-release reactor tests", "blind_spots": ["Database transaction rollback is inferred from Spring transactional semantics rather than a real DB mutation in focused unit tests"], "independence": "Directly observes service outputs and persistence collaborator calls"},
+    {"id": "S2", "target": "Dropdown reason, view-only state and maintenance actuators", "method": "Authenticated desktop browser DOM, geometry, click behavior and console observation", "blind_spots": ["Exact future minute boundary may be represented by controlled source/test evidence rather than waiting in real time"], "independence": "Observes rendered runtime behavior rather than implementation intent"},
+    {"id": "S3", "target": "Type compatibility and broader regressions", "method": "Vue TypeScript/Vite production build, full release tests and git diff checks", "blind_spots": ["Build cannot prove visual wording"], "independence": "Compiler and regression suite have different failure assumptions from browser inspection"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Production result write preconditions", "action": "Inject ReleaseWindowStore and Clock and add a bounded window-end check before existing update logic", "authority": "REQ-20260818-037 server write scope", "impact_radius": "Single and batch production-result service paths", "rollback": "Restore service constructor and remove the gate plus focused tests"},
+    {"id": "A2", "target": "Baseline maintenance UI", "action": "Derive window eligibility, render reasons and gate all local maintenance actuators", "authority": "REQ-20260818-037 frontend write scope", "impact_radius": "ReleaseBaselineView only", "rollback": "Restore original option and isMaintainable behavior"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S2", "S3"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Client clock skew", "effect": "UI can disagree temporarily with server eligibility", "detectable": true, "controllable": false},
+    {"source": "Window schedule edited after page load", "effect": "Displayed reason can be stale until refresh", "detectable": true, "controllable": true},
+    {"source": "Backend process not restarted", "effect": "Browser uses old service behavior", "detectable": true, "controllable": true},
+    {"source": "Unrelated dirty worktree changes", "effect": "Broad diff and governance output contain baseline noise", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "Frontend minute timer", "consequence": "Eligibility changes up to one minute after the boundary", "sampling_rule": "Sample after one timer tick or page refresh"},
+    {"source": "Backend rebuild and restart", "consequence": "Runtime may lag source changes", "sampling_rule": "Verify process start time and API behavior before browser acceptance"}
+  ],
+  "assumptions": [
+    {"text": "Existing LocalDateTime JSON parses consistently in the browser.", "evidence": "The same productionEnd field is already formatted in ReleaseWindowView.", "falsifier": "A valid API timestamp produces Invalid Date in ReleaseBaselineView."},
+    {"text": "Entry.windowId points to a same-tenant window.", "evidence": "Entries are generated from assigned release applications and store tenant id.", "falsifier": "A production entry exists without a tenant window match."},
+    {"text": "Batch writes roll back on a later validation exception.", "evidence": "The public batch service method is annotated @Transactional.", "falsifier": "Integration data shows partial persistence after a failed batch."}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Use A2 and observe with S2/S3"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Use A2 and observe with S2/S3"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and observe with S1/S2/S3"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Use A1 and observe with S1/S3"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "Keep versionType outside eligibility and run S1/S2/S3"}
+  ],
+  "model_status": "ready"
+}

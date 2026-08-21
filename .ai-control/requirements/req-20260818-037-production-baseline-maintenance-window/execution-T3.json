@@ -1,0 +1,43 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar", "purpose": "打包并运行包含本需求后端门禁的本地验证 JAR"},
+    {"path_or_resource": ".ai-control/requirements/req-20260818-037-production-baseline-maintenance-window", "purpose": "记录集成检查、环境扰动和未覆盖项"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {"command": "mvn -pl :ccb-boot -am -DskipTests package", "exit_code": 0, "salient_output": "11/11 Reactor modules SUCCESS; boot JAR repackaged"},
+    {"command": "mvn -pl :ccb-release -am test", "exit_code": 0, "salient_output": "8/8 Reactor SUCCESS; ccb-release 54 tests, zero failures/errors"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite build passed; 2363 modules transformed"},
+    {"command": "curl http://127.0.0.1:8080/actuator/health", "exit_code": 0, "salient_output": "{\"status\":\"UP\"} on new backend PID 43285"},
+    {"command": "in-app browser open /release and select 投产基线", "exit_code": 0, "salient_output": "Page loaded but API state showed 没有该操作的查看权限; batch button disabled; no baseline payload rendered"},
+    {"command": "read-only MySQL schema/account inspection", "exit_code": 0, "salient_output": "Database contains admin only, no release:* permissions, and rel_release_window/rel_production_entry tables are absent"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "Module/repository/development checks passed; six unrelated historical ledger filenames rejected"},
+    {"command": "node scripts/check-codex-scope.mjs --scope ... --working-tree", "exit_code": 1, "salient_output": "Rejected user-selected branch rokey because checker requires <type>/REQ-..."},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "Integrated compilation and regression", "result": "pass", "evidence": "Backend full release reactor and frontend production build passed twice", "limitations": []},
+    {"check": "New backend process identity and health", "result": "pass", "evidence": "PID 43285 runs newly packaged JAR and actuator reports UP", "limitations": ["Flyway and mock synchronization were disabled because the existing migration history is incompatible"]},
+    {"check": "Authenticated browser acceptance", "result": "blocked", "evidence": "admin receives release view permission denial; database has no release tables or configured release-authorized account", "limitations": ["Dropdown reason, visible baseline rows and checkbox/action state could not be measured against real API data"]}
+  ],
+  "diff_summary": [
+    "No additional product change was made during integration",
+    "Backend and frontend automated checks remained green",
+    "Browser acceptance stopped at pre-existing permission/schema boundary"
+  ],
+  "invariants_checked": [
+    {"invariant": "No database or role mutation for verification", "result": "pass", "evidence": "All database probes were SELECT-only; Flyway and mock synchronization disabled"},
+    {"invariant": "Existing dirty rokey worktree remains untouched outside approved product/control files", "result": "pass", "evidence": "No unrelated file was reverted or edited by this task"},
+    {"invariant": "Known governance and branch failures are disclosed", "result": "pass", "evidence": "Raw failing categories recorded in this report"}
+  ],
+  "disturbances": [
+    {"event": "Flyway V35-V39 checksums differ and applied V40/V41 are absent locally", "impact": "Normal local profile startup fails validation"},
+    {"event": "Existing database lacks attachment/workflow/release tables expected by current code", "impact": "Backend can start with Flyway disabled but scheduled jobs error and release APIs cannot supply data"},
+    {"event": "Existing admin has no release operation permissions and no zhangwei account exists in this database", "impact": "Authenticated browser cannot observe target baseline component with real data"}
+  ],
+  "assumptions_falsified": ["A current unfinished window exists in the configured local database", "An existing authenticated release-authorized account is available for browser verification"],
+  "unresolved_items": ["Repair or replace the local verification database, configure release permissions, then rerun T3 browser acceptance"],
+  "recommended_next": "escalate"
+}

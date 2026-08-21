@@ -1,0 +1,45 @@
+{
+  "task_id": "T8",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource":"ccb_platform_acceptance_027","purpose":"仅通过正式 API 和工作流建立隔离验收事实，Flyway 到 V39"},
+    {"path_or_resource":"local backend and frontend runtime","purpose":"运行真实 API、工作流、投产结果、统计和响应式浏览器验收"},
+    {"path_or_resource":".ai-control/requirements/req-20260814-021-release-management","purpose":"记录最终执行、观测和收敛证据"}
+  ],
+  "requirements_addressed": ["R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13","R14","R15","R16","R17","R18","R19","R20","R21"],
+  "commands": [
+    {"command":"node scripts/check-all-governance.mjs","exit_code":0,"salient_output":"All governance, module-boundary and 39 Flyway migration checks passed"},
+    {"command":"mvn -pl :ccb-release -am test","exit_code":0,"salient_output":"Release module 43 tests passed with dependencies"},
+    {"command":"mvn test","exit_code":0,"salient_output":"All 11 reactor modules succeeded"},
+    {"command":"npm --prefix web run build","exit_code":0,"salient_output":"Production build passed; 2358 modules transformed"},
+    {"command":"git diff --check","exit_code":0,"salient_output":"No whitespace errors"},
+    {"command":"curl http://127.0.0.1:8080/actuator/health and http://127.0.0.1:5173/release","exit_code":0,"salient_output":"Backend status UP and frontend HTTP 200"}
+  ],
+  "local_checks": [
+    {"check":"隔离数据库","result":"pass","evidence":"运行进程 DB_URL 指向 127.0.0.1:13306/ccb_platform_acceptance_027，Flyway V39","limitations":[]},
+    {"check":"真实业务链路","result":"pass","evidence":"WIN-202608-002 下通过正式页面/API 创建 SQ-202608-002、003、004，提交并完成真实流程审批；003 登记投产成功","limitations":["错误项目标识的 SQ-202608-001 仅作为隔离库审计对照，未据此增加兼容逻辑"]},
+    {"check":"持久化一致性","result":"pass","evidence":"刷新后申请状态、流程日志、签名、投产结果、生产版本和统计保持一致","limitations":[]},
+    {"check":"响应式验收","result":"pass","evidence":"1280x800 业务视图和 375x812、390x844、430x932 手机视口通过，页面无横向溢出","limitations":[]},
+    {"check":"Mock 边界","result":"pass","evidence":"业务 Mock 禁用符号无匹配，仅项目、物理子系统和交付单元选择源含 Mock","limitations":["上游模块接入后需替换选择源"]}
+  ],
+  "diff_summary": [
+    "完成配置管理模块从窗口、申请、审批、附件、投产基线、生产版本到统计的真实后端闭环",
+    "真实验收记录全部通过业务 API 和工作流创建，没有直接插入 release 业务表",
+    "完成桌面和三个手机视口验收并复跑全仓构建、测试和治理门禁"
+  ],
+  "invariants_checked": [
+    {"invariant":"不连接原始 ccb_platform","result":"pass","evidence":"运行进程 DB_URL 明确为 ccb_platform_acceptance_027"},
+    {"invariant":"不直接插入验收业务记录","result":"pass","evidence":"窗口、申请、审批和投产结果均由页面/API 流程创建"},
+    {"invariant":"审批与投产事实分离","result":"pass","evidence":"多个 RELEASED 申请中只有显式登记 SUCCEEDED 的 AUTH-SDK 成为生产版本"},
+    {"invariant":"最终 P0/P1 为零","result":"pass","evidence":"T8 独立观测未发现阻塞偏差"}
+  ],
+  "disturbances": [
+    {"event":"沙箱内 localhost curl 被网络策略拒绝","impact":"使用批准的本机网络探针后后端 UP、前端 200；归类为传感器环境限制而非产品故障"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "项目上下文、物理子系统和交付单元仍为批准的临时 Mock 选择源",
+    "Vite 产物有大 chunk 警告，未观察到当前工作流性能或功能偏差"
+  ],
+  "recommended_next": "observe"
+}

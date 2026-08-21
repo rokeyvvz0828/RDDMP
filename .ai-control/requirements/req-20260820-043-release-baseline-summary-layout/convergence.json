@@ -1,0 +1,40 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1"], "evidence": ["Final DOM structure has a dedicated window row with windowCode, windowName and statusLabel", "Production build passes"], "limitations": ["Authenticated business-page screenshot was unavailable because the current browser session is logged out."]},
+    {"id": "R2", "result": "pass", "task_ids": ["T1"], "evidence": ["Five metric children are contained by a repeat(5, minmax(0, 1fr)) desktop grid", "The prior six-child/five-track mismatch no longer exists"], "limitations": ["Final computed browser geometry awaits the user's refreshed authenticated page."]},
+    {"id": "R3", "result": "pass", "task_ids": ["T1"], "evidence": ["760px rule defines two metric columns and deterministic fifth-item span", "430px rule defines one column and resets right/bottom borders", "All grid items use min-width 0 and long window text uses ellipsis"], "limitations": ["Responsive verification is source-contract based rather than an authenticated runtime screenshot."]},
+    {"id": "R4", "result": "pass", "task_ids": ["T1"], "evidence": ["Two independent production builds exited 0", "Scoped diff check is clean", "No script, API, permission or backend code changed", "Frontend returned 200 and backend health returned UP"], "limitations": []}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["Implementation stayed within the two approved product files", "Observation found no deviations", "Two build/service samples recorded zero P0-P3 errors"]}
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Frontend production build sample 1", "result": "pass", "evidence": "2362 modules transformed; Vite build completed in 4.25s."},
+    {"check": "Frontend production build sample 2", "result": "pass", "evidence": "2362 modules transformed; Vite build completed in 4.52s."},
+    {"check": "Whitespace and service probes", "result": "pass", "evidence": "git diff --check exited 0; frontend HTTP 200; backend status UP."}
+  ],
+  "invariant_results": [
+    {"invariant": "Selection, summary values, permissions and APIs remain unchanged", "result": "pass", "evidence": "Only the existing summary template block and its local CSS were modified."},
+    {"invariant": "No nested cards or dependencies", "result": "pass", "evidence": "One bordered summary container remains; package files are untouched."},
+    {"invariant": "Unrelated worktree changes remain untouched", "result": "pass", "evidence": "Writes were limited to approved product files and requirement-control artifacts."}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "Long window name", "result": "pass", "evidence": "Window text container has min-width 0 and auxiliary name has overflow ellipsis while the status tag is non-shrinking."},
+    {"disturbance": "Expired browser authentication", "result": "controlled-degradation", "evidence": "Build, source-contract and service sensors remain valid; absence of authenticated screenshots is disclosed rather than hidden."}
+  ],
+  "residual_risks": ["The user should refresh an authenticated production-baseline page for final visual acceptance; browser-authenticated screenshots were not available in this run."],
+  "gate_result": "pass",
+  "route_reason": "R1-R4 have a verified task, scoped implementation evidence, two zero-error samples, passing builds and healthy services; no feedback remains open and the visual authentication limitation is disclosed."
+}

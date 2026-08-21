@@ -1,0 +1,27 @@
+{
+  "task_id": "T8",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/release/components/ReleaseBaselineView.vue", "purpose": "Maintain production outcomes against window clearance candidates"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseCurrentProductionView.vue", "purpose": "Show cross-window current production versions"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseAnalyticsView.vue", "purpose": "Render reconciled metrics, charts and drill-down"},
+    {"path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue", "purpose": "Wire production commands and projections into shared state"},
+    {"path_or_resource": "web/src/modules/release/release-prototype.css", "purpose": "Style baseline, production and analytics views"}
+  ],
+  "requirements_addressed": ["R1", "R5", "R7", "R8", "R9", "R12", "R14"],
+  "commands": [
+    {"command": "npm run build (workdir web, after integrated implementation)", "exit_code": 0, "salient_output": "Vue type checking and Vite production build passed"}
+  ],
+  "local_checks": [
+    {"check": "Production projection and analytics rendering", "result": "pass", "evidence": "Production view displayed AUTH-SVC v2.6.1-hotfix and analytics rendered four nonblank canvases", "limitations": ["Formal persisted audit history is outside scope"]}
+  ],
+  "diff_summary": ["Replaced ambiguous baseline behavior with window-scoped production outcomes", "Added a current production projection", "Recorded before/after/operator/reason/time for corrections", "Updated analytics to the new facts"],
+  "invariants_checked": [
+    {"invariant": "Only production success updates current production", "result": "pass", "evidence": "Current production view consumes successful history and excludes clearance, failure and not-produced results"},
+    {"invariant": "Latest candidate is selected by approval completion time", "result": "pass", "evidence": "Window entries are ordered by approvedAt rather than version text"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Analytics provides practical filters and drill-down; dedicated clickable system, unit and requirement chart series can be expanded in the formal module if stricter navigation is required"],
+  "recommended_next": "observe"
+}

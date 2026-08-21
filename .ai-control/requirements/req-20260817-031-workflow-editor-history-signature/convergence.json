@@ -1,0 +1,118 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T3", "T5"],
+      "evidence": [
+        "WorkflowDefinitionLifecycleTest passed 4/4.",
+        "Real API/MySQL publish, mandatory archive reason, blocked new start, existing-instance completion, restore and draft deletion paths passed."
+      ],
+      "limitations": ["Local authenticated MySQL clone rather than production."]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T2", "T5"],
+      "evidence": [
+        "Single-edge insertion changed graph 3 nodes/2 edges to 4 nodes/3 edges and preserved the original successor.",
+        "Multi-edge add-from-node left 5/5 unchanged; selecting a concrete edge produced 6/6 and rewired only that branch."
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T2", "T5"],
+      "evidence": [
+        "Chromium measurements at 1280x720, 375x812, 390x844 and 430x932 reported zero page horizontal overflow and visible footer/save actions.",
+        "Vue TypeScript and production build passed."
+      ],
+      "limitations": ["Non-Chromium browser engines were not sampled."]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T3", "T5"],
+      "evidence": [
+        "Current design, historical versions and update records tabs rendered against real API data.",
+        "Historical graph opened read-only; persisted events showed operation, version, operator, reason and timestamp."
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T3", "T5"],
+      "evidence": [
+        "WorkflowSignatureServiceTest passed 4/4.",
+        "Approval-node inspector visibly rendered need-electronic-signature as Yes/No and kept false as the default."
+      ],
+      "limitations": ["External CA is outside the approved baseline."]
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T4", "T5"],
+      "evidence": [
+        "Flyway migration check passed for 40 migrations without modifying V34.",
+        "V42 produced definition mismatch 0 and version mismatch 0; mock initializer test preserves model_schema_version."
+      ],
+      "limitations": ["Future external metadata writers remain outside this module."]
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["Focused tests and real lifecycle/history runtime flow passed."]},
+    {"id": "T2", "status": "verified", "evidence": ["Graph mutation probes and responsive browser checks passed."]},
+    {"id": "T3", "status": "verified", "evidence": ["History/lifecycle/signature UI checks and frontend build passed."]},
+    {"id": "T4", "status": "verified", "evidence": ["Migration, mock synchronization and MySQL aggregate checks passed."]},
+    {"id": "T5", "status": "verified", "evidence": ["952-line guarded patch applied to original rokey; 13 product files byte-match and focused integration checks passed."]}
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Full JDK 17 Maven reactor", "result": "pass", "evidence": "BUILD SUCCESS; workflow 35 tests and release 43 tests passed."},
+    {"check": "Original rokey focused backend tests", "result": "pass", "evidence": "8 tests, 0 failures and 0 errors."},
+    {"check": "Original rokey frontend typecheck and production build", "result": "pass", "evidence": "vue-tsc passed and Vite built 2358 modules."},
+    {"check": "Repository module and migration gates", "result": "pass", "evidence": "10 Maven module boundaries and 40 Flyway migrations passed."},
+    {"check": "Diff integrity", "result": "pass", "evidence": "git diff --check passed and all 13 back-written product files byte-match the isolated verified state."}
+  ],
+  "invariant_results": [
+    {"invariant": "Active instances retain their bound version and deployment.", "result": "pass", "evidence": "Archived-definition running instance remained processable; restore kept version and deployment unchanged."},
+    {"invariant": "Backend remains the authority for tenant access and signature identity.", "result": "pass", "evidence": "Lifecycle/history controller derives AuthUser and signature service tests enforce current authenticated user confirmation."},
+    {"invariant": "Flyway migrations remain append-only.", "result": "pass", "evidence": "V42 was added and V34 was not modified."},
+    {"invariant": "Unrelated rokey work is preserved and no remote action occurs.", "result": "pass", "evidence": "File-scoped patch was used; no commit or push command was run."}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "Original rokey contains substantial unrelated dirty work.",
+      "result": "pass",
+      "evidence": "Patch was generated from original-current to isolated-current, passed git apply --check, then all 13 target files were byte-compared."
+    },
+    {
+      "disturbance": "Aggregate governance script stops on unrelated invalid REQ-20260816-029 ledger.",
+      "result": "controlled",
+      "evidence": "Relevant repository governance, Skill, development-entry, module-boundary and Flyway checks were run independently and passed; unrelated ledger was not altered."
+    }
+  ],
+  "residual_risks": [
+    "Existing non-blocking Vite bundle-size and PURE-comment warnings remain.",
+    "Production authorization configuration, production migration duration and non-Chromium browsers were not sampled.",
+    "The unrelated REQ-20260816-029 ledger continues to block the aggregate governance wrapper."
+  ],
+  "gate_result": "pass",
+  "route_reason": "All six must requirements have task, implementation and heterogeneous evidence coverage; all five tasks are verified; two consecutive standard-mode samples have zero P0-P3 errors; scoped regressions and invariants pass."
+}

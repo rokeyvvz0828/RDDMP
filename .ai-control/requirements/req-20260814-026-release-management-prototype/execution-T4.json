@@ -1,0 +1,28 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/release/components/ReleaseBaselineView.vue", "purpose": "基线批次、复合定位和版本替代链"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseAnalyticsView.vue", "purpose": "统一指标、四类图表、下钻和导出占位"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseChart.vue", "purpose": "ECharts 生命周期和点击事件封装"},
+    {"path_or_resource": "web/src/modules/release/release-prototype.css", "purpose": "受限于原型页面的桌面布局和主题样式"}
+  ],
+  "requirements_addressed": ["R2", "R4"],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "production build passed"}
+  ],
+  "local_checks": [
+    {"check": "基线替代链", "result": "pass", "evidence": "AUTH-SVC 展示 v2.5.2、v2.6.0、v2.6.1，且只有 v2.6.1 标记最新版本", "limitations": []},
+    {"check": "统计图表和下钻", "result": "pass", "evidence": "四个非空图表渲染；点击窗口柱图后下钻为 WIN-2026-09 的 5 张申请", "limitations": ["导出仅提供明确占位说明"]},
+    {"check": "替代链运行日志复验", "result": "pass", "evidence": "2026-08-14T06:14:25.649Z 后打开替代链无新增 error 或 warning", "limitations": []}
+  ],
+  "diff_summary": ["新增两类基线批次和版本替代链", "新增四个统计图表和明细下钻", "修复 Vue 代理对象克隆错误"],
+  "invariants_checked": [
+    {"invariant": "批次号、物理子系统和交付单元定位明细", "result": "pass", "evidence": "基线展开区明确展示复合定位规则"},
+    {"invariant": "指标、图表和下钻使用同一 Mock 状态", "result": "pass", "evidence": "ReleaseAnalyticsView 统一调用 buildReleaseMetrics 和 applications"}
+  ],
+  "disturbances": [{"event": "早期替代链操作触发 Vue proxy DataCloneError", "impact": "已改为逐项普通对象复制并完成无新增日志复验"}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["正式 Excel 导出不属于本原型"],
+  "recommended_next": "observe"
+}

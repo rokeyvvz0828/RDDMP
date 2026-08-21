@@ -1,0 +1,30 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java", "purpose": "Validate and materialize file media, use stable keys for conflict and additional facts, split response content"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java", "purpose": "Permit file-only submission and include stable file facts in digest and variables"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java", "purpose": "Cover file-only, mixed, validation, conflict and additional rules"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java", "purpose": "Cover file-only workflow submission"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R8"],
+  "commands": [
+    {"command": "mvn ... -Dtest=ReleaseApplicationServiceTest,ReleaseSubmissionServiceTest test", "exit_code": 1, "salient_output": "Expected red phase: fileItemKey missing"},
+    {"command": "mvn ... -Dtest=ReleaseApplicationServiceTest,ReleaseSubmissionServiceTest test", "exit_code": 0, "salient_output": "17 tests, 0 failures"},
+    {"command": "mvn ... -Dtest=ReleaseSchemaContractTest,ReleaseApplicationPersistenceContractTest,ReleaseApplicationServiceTest,ReleaseSubmissionServiceTest test", "exit_code": 0, "salient_output": "25 tests, 0 failures"}
+  ],
+  "local_checks": [
+    {"check": "T2 focused behavior tests", "result": "pass", "evidence": "17/17 tests passed", "limitations": ["Production behavior begins in T3"]},
+    {"check": "T1+T2 regression", "result": "pass", "evidence": "25/25 tests passed", "limitations": ["Real database remains at V45 until T6"]}
+  ],
+  "diff_summary": ["Added trim-only path validation with control-character and length rejection", "Generated FILE SHA-256 item keys and fixed server metadata", "Made conflict, additional relation, digest and workflow variables file-aware"],
+  "invariants_checked": [
+    {"invariant": "Ordinary delivery behavior remains compatible", "result": "pass", "evidence": "Existing application and submission tests pass with UNIT keys"},
+    {"invariant": "Client cannot supply file metadata or version", "result": "pass", "evidence": "FileMediaInput contains only filePath; service creates fixed FILE snapshot"},
+    {"invariant": "Emergency and window rules remain unchanged", "result": "pass", "evidence": "Existing scenario tests pass"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Conflict UI rendering is T4"],
+  "recommended_next": "observe"
+}

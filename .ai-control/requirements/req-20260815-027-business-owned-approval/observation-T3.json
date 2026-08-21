@@ -1,0 +1,22 @@
+{
+  "sample_label": "T3 task aggregation and workflow ownership sample",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R2", "sensor": "Browser route probes and source route assertions", "result": "pass", "raw_evidence": "Dashboard, task center and historical review routes converge on /release/applications/:applicationCode; old inbox and done routes converge on task-center tabs", "limitation": ["A live numeric workflow task was not available for authenticated redirect sampling"]},
+    {"requirement_id": "R3", "sensor": "Desktop/mobile browser snapshots and source API scan", "result": "pass", "raw_evidence": "Task center renders paginated pending/done lists with only 查看详情 at 1280, 375, 390 and 430 pixel widths; no decision API is consumed", "limitation": []},
+    {"requirement_id": "R4", "sensor": "WorkflowView source scan plus browser DOM snapshot", "result": "pass", "raw_evidence": "No inbox/done/decision/start symbols or 发起审批 text remain; visible definition actions are edit/view, publish, unpublish and delete", "limitation": ["Historical menu rows remain until T4 migration"]},
+    {"requirement_id": "R8", "sensor": "Historical URL browser probes", "result": "pass", "raw_evidence": "/workflow/inbox -> pending tab, /workflow/done -> done tab and /workflow/review/TASK-103 -> /release/applications/REL-202609-001 without generic approval rendering", "limitation": []},
+    {"requirement_id": "R10", "sensor": "Viewport overflow probes plus production build", "result": "pass", "raw_evidence": "documentElement.scrollWidth equals clientWidth for release detail and task center at 1280x800, 375x812, 390x844 and 430x932; vue-tsc/Vite build exits 0", "limitation": ["Final light/dark visual pass remains for T5"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Current runtime database has not yet applied the planned V37 menu migration", "impact": "Sidebar still lists historical inbox and done entries although their routes safely redirect"}
+  ],
+  "coverage_gaps": [
+    "Live successful, forbidden and stale decision behavior remains assigned to T5",
+    "This observation used repeatable build, source and browser sensors in the same Codex task rather than an organizationally separate reviewer"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

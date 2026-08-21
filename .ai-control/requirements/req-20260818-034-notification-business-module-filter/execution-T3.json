@@ -1,0 +1,36 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java", "purpose": "配置管理启动审批时显式声明 release / 配置管理"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java", "purpose": "断言板块、业务类型和详情路由"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java", "purpose": "更新生命周期上下文契约"},
+    {"path_or_resource": "docs/integration/system-notification-contract.md", "purpose": "说明板块、来源、业务类型、筛选和计数语义"},
+    {"path_or_resource": "docs/integration/workflow-module-contract.md", "purpose": "规定新工作流显式提供板块并界定旧流程兼容"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R5"],
+  "commands": [
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-boot -am test", "exit_code": 0, "salient_output": "release 51 tests passed；全 Reactor BUILD SUCCESS"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白或补丁格式错误"},
+    {"command": "rg -n 'MODULE_CODE|MODULE_NAME|moduleCode=release|GET /api/notifications/modules' server/src/modules/release docs/integration", "exit_code": 0, "salient_output": "实现、测试和两份契约字段一致"}
+  ],
+  "local_checks": [
+    {"check": "配置管理工作流上下文", "result": "pass", "evidence": "ReleaseSubmissionServiceTest 捕获命令并断言 release、配置管理、release_application 和原详情路由", "limitations": []},
+    {"check": "配置管理既有业务规则回归", "result": "pass", "evidence": "ccb-release 51 tests passed", "limitations": ["真实提交流程留待集成环境"]},
+    {"check": "公共契约字段顺序和语义", "result": "pass", "evidence": "文档示例与 NotificationPublishCommand 当前签名逐项对照", "limitations": []}
+  ],
+  "diff_summary": [
+    "配置管理新增固定板块常量并写入工作流上下文",
+    "业务类型 release_application、窗口、附件、状态流和路由未改变",
+    "通知和工作流接入契约同步业务板块及服务端筛选规则"
+  ],
+  "invariants_checked": [
+    {"invariant": "配置管理业务类型不变", "result": "pass", "evidence": "测试断言 businessType=release_application"},
+    {"invariant": "详情路由不变", "result": "pass", "evidence": "测试断言 /release/applications/SQ-001"},
+    {"invariant": "配置管理不直接写平台通知或工作流表", "result": "pass", "evidence": "仍仅调用 WorkflowBusinessGateway"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实流程提交与通知展示将在 T4 集成验收中覆盖"],
+  "recommended_next": "observe"
+}

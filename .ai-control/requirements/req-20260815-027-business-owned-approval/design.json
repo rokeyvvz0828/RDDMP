@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260815-027-business-owned-approval",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-15-business-owned-approval-design.md",
+  "objective": "Move release approval decisions into the complete release-application business detail while keeping workflow as the authoritative task, permission, signature and audit platform.",
+  "users": [
+    "approvers entering from dashboard, task center, notification or H5 links",
+    "release applicants reviewing form details and workflow progress",
+    "workflow administrators configuring and monitoring processes"
+  ],
+  "requirements": [
+    {"id": "R1", "statement": "The release business detail owns the approval interface.", "acceptance": ["Full application context and current-task actions render on one page"], "priority": "must", "source": "User-reported approval context split", "counterexample": ["Approval can be submitted from a generic workflow dialog without release details"]},
+    {"id": "R2", "statement": "All release detail and approval entries use one stable business route.", "acceptance": ["Application list, inbox, done, notification and H5 resolve to /release/applications/:applicationCode"], "priority": "must", "source": "User-selected option 1", "counterexample": ["A pending task opens /workflow/review/:taskId"]},
+    {"id": "R3", "statement": "Dashboard and task center aggregate and navigate but never approve.", "acceptance": ["Pending and done lists contain only business navigation actions"], "priority": "must", "source": "Confirmed responsibility boundary", "counterexample": ["Task center shows approve, reject or return controls"]},
+    {"id": "R4", "statement": "Workflow management contains definitions and monitoring only.", "acceptance": ["Inbox and done menus are absent", "WorkflowView exposes no business approval action"], "priority": "must", "source": "User explicitly requested removal", "counterexample": ["Workflow menu still contains pending approval"]},
+    {"id": "R5", "statement": "The workflow platform exposes current-user task context for business pages.", "acceptance": ["Single-task response includes business route, node, status, allowed actions, signature requirement and actionable result"], "priority": "must", "source": "Confirmed architecture", "counterexample": ["Business page scans the entire inbox to infer task permission"]},
+    {"id": "R6", "statement": "Task context and decisions enforce authorization and state on the server.", "acceptance": ["Wrong assignee, completed, missing and duplicate actions are rejected", "Current-login identity controls signature"], "priority": "must", "source": "Repository security invariant", "counterexample": ["Changing taskId in the URL exposes approval capability"]},
+    {"id": "R7", "statement": "A successful decision refreshes the current business page in place.", "acceptance": ["Application status, workflow progress and audit log update without navigating away"], "priority": "must", "source": "Confirmed user flow", "counterexample": ["Approval redirects to a generic workflow list"]},
+    {"id": "R8", "statement": "Historical workflow URLs degrade safely.", "acceptance": ["Old inbox and done routes reach task center", "Old review route reaches business detail when possible or dashboard otherwise"], "priority": "must", "source": "Compatibility design", "counterexample": ["An old task link renders a blank or generic approval page"]},
+    {"id": "R9", "statement": "Workflow inbox and done menus are removed by a forward migration while APIs remain.", "acceptance": ["Menus 202 and 204 and their role links are absent after migration", "Inbox, done and decision endpoints remain available"], "priority": "must", "source": "User confirmed removal", "counterexample": ["Existing Flyway files are edited or task APIs are deleted"]},
+    {"id": "R10", "statement": "Business-owned approval is responsive on desktop and required phone viewports.", "acceptance": ["Complete form and permitted actions remain reachable at 1280x800, 375x812, 390x844 and 430x932", "No page-level horizontal overflow"], "priority": "must", "source": "RDDMP H5 contract", "counterexample": ["Mobile users must horizontally scroll the page to approve"]}
+  ],
+  "invariants": [
+    "Release management owns release business data and rendering",
+    "Workflow owns task state, assignee, allowed actions, signatures and audit",
+    "Workbench surfaces never duplicate business approval forms",
+    "Frontend visibility never replaces server authorization",
+    "A workflow action path is an internal absolute business path",
+    "Published Flyway migrations are immutable"
+  ],
+  "constraints": [
+    "Develop directly on local rokey",
+    "Current release data remains a replaceable Mock Provider",
+    "Preserve existing workflow inbox, done, decision and monitoring APIs",
+    "Use Vue 3, TypeScript, Element Plus and existing dependencies",
+    "Use a new V37 forward migration for menu removal",
+    "Meet desktop and 375x812, 390x844 and 430x932 acceptance viewports"
+  ],
+  "non_goals": [
+    "Formal release-management persistence",
+    "Business DTO rendering inside workflow management",
+    "Quick approval from dashboard or task center",
+    "Deleting workflow task projection or decision APIs",
+    "A separate mobile application"
+  ],
+  "selected_approach": {
+    "name": "Business-owned release detail route with embedded approval panel",
+    "reason": "It preserves complete decision context, stable deep links and clear ownership while reusing platform task authorization and decision services.",
+    "alternatives": [
+      {"name": "Query-driven detail drawer", "rejected_because": "Refresh, browser history, deep links and long mobile content remain weak."},
+      {"name": "Workflow dynamically hosts business components", "rejected_because": "Workflow would continue owning business presentation and create cross-module coupling."}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["release business detail and approval panel", "workbench task center", "workflow task-context endpoint", "workflow menu removal and route compatibility"],
+      "outside": ["formal release backend", "project, subsystem, delivery-unit and requirement integrations", "external signature"]
+    },
+    "components": [
+      {"name": "ReleaseApplicationDetailPage", "responsibility": "Render full release application, workflow progress and conditional approval UI", "depends_on": ["ReleaseApplicationProvider", "WorkflowTaskContext", "WorkflowTaskDecision"]},
+      {"name": "ReleaseApprovalPanel", "responsibility": "Collect comment, current-login signature and permitted decision", "depends_on": ["WorkflowTaskContext", "WorkflowTaskDecision"]},
+      {"name": "TaskCenterView", "responsibility": "Paginate pending and done projections and navigate to business paths", "depends_on": ["Workflow inbox and done APIs"]},
+      {"name": "WorkflowView", "responsibility": "Manage definitions and monitor instances only", "depends_on": ["Workflow definition and monitor APIs"]},
+      {"name": "WorkflowTaskContext", "responsibility": "Project a single task and current-user action capability", "depends_on": ["workflow task, instance, signature configuration and authentication"]},
+      {"name": "V37 menu migration", "responsibility": "Remove inbox and done menu entries and role links", "depends_on": ["sys_menu", "sys_role_menu"]}
+    ],
+    "interfaces": [
+      {"name": "release_business_route", "producer": "release module", "consumers": ["dashboard", "task center", "notifications", "workflow business context"], "contract": "/release/applications/:applicationCode where applicationCode equals business_key"},
+      {"name": "workflow_task_context", "producer": "platform/workflow", "consumers": ["ReleaseApplicationDetailPage"], "contract": "Returns current-user task status, business context, actions, signature requirement and actionable flag"},
+      {"name": "workflow_task_decision", "producer": "platform/workflow", "consumers": ["ReleaseApprovalPanel"], "contract": "Server-authorized decision using current login identity and existing audit/signature behavior"},
+      {"name": "workflow_task_projection", "producer": "platform/workflow", "consumers": ["DashboardView", "TaskCenterView"], "contract": "Pending and done rows include stable business_key and safe action_path"}
+    ],
+    "data_flows": [
+      {"input": "pending task projection", "transitions": ["validate internal action_path", "append taskId", "load release application", "load task context"], "output": "complete actionable business detail"},
+      {"input": "approval decision", "transitions": ["validate comment and signature", "server checks assignee/state/action", "record workflow action", "refresh business and progress"], "output": "updated read-only or next-node business detail"},
+      {"input": "done task projection", "transitions": ["validate internal action_path", "append instanceId", "load release application and workflow history"], "output": "read-only historical business detail"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Business application is missing or fails to load", "behavior": "Do not render approval controls; show explicit business error", "recovery": "Retry or return to application/task list"},
+    {"condition": "Task is missing, completed or stale", "behavior": "Keep business detail and show read-only stale-task state", "recovery": "Refresh workflow progress"},
+    {"condition": "Current user is not the assignee", "behavior": "Do not expose action capability and reject decisions with 403", "recovery": "Return to task center or use authorized identity"},
+    {"condition": "Decision conflicts with newer state", "behavior": "Preserve entered comment and report conflict without local success mutation", "recovery": "Reload context and decide again if still allowed"},
+    {"condition": "Historical action path cannot identify release business", "behavior": "Redirect to dashboard with explanation", "recovery": "Locate the task from task center"}
+  ],
+  "quality_attributes": {
+    "security": ["Server validates tenant, assignee, task state, action and current-login signature", "Business detail must load before approval", "action_path remains an internal absolute path"],
+    "performance": ["Dashboard loads five items per group", "Task center is paginated", "Business page queries one task rather than scanning inbox"],
+    "compatibility": ["Inbox, done and decision APIs remain", "Old workflow routes redirect safely", "Menu rollback uses a new forward migration"],
+    "operations": ["Workflow monitor remains the technical audit surface", "Log stale-task, denied-decision and route-conversion failures"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2", "R3", "R7", "R8", "R10"], "signal": "All entry points reach one responsive business page and permitted actions complete in place", "method": "Desktop and three-phone browser interaction including refresh, back and stale task"},
+    {"requirement_ids": ["R4", "R9"], "signal": "Workflow menu and page expose definitions and monitoring only", "method": "Flyway data assertion, fresh login navigation and route checks"},
+    {"requirement_ids": ["R5", "R6"], "signal": "Single-task context and decisions distinguish valid, denied, completed and missing tasks", "method": "Workflow module Java tests and HTTP integration checks"},
+    {"requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"], "signal": "Repository and integration regressions are absent", "method": "Java 17 Maven tests, frontend build, governance, Flyway and diff checks"}
+  ],
+  "assumptions": [
+    {"text": "Workflow business_key equals the stable release application code", "basis": "Existing business integration contract and tests use business keys and release action paths", "falsifier": "Formal release API uses an unrelated mutable identifier"},
+    {"text": "Existing workflow decision and signature semantics can be reused unchanged", "basis": "Current service validates pending tasks and current-login signature", "falsifier": "Business-owned UI requires an action not represented by the published workflow action contract"},
+    {"text": "Current release mock provider can resolve applicationCode across the business route", "basis": "Mock applications already have unique code fields", "falsifier": "Route refresh cannot recreate the selected application from deterministic state"}
+  ],
+  "unknowns": [
+    {"question": "When will the formal release detail API replace the mock provider?", "impact": "Durable cross-session approval state remains unproven", "owner": "release management module owner", "blocking": false},
+    {"question": "When will notifications expose the same action_path navigation?", "impact": "Notification acceptance remains a later integration check", "owner": "platform notification owner", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "Use an independent business-owned release detail route", "reason": "Stable deep links and complete decision context", "source": "User selected option 1"},
+    {"id": "D2", "decision": "Remove workflow inbox and done menus", "reason": "Workflow management is configuration and monitoring only", "source": "User explicitly confirmed removal"},
+    {"id": "D3", "decision": "Keep workbench task lists navigation-only", "reason": "Prevents a second generic approval surface", "source": "Confirmed user-flow design"},
+    {"id": "D4", "decision": "Keep task authorization, signature and decision in workflow backend", "reason": "Preserves platform security and audit ownership", "source": "Confirmed architecture design"},
+    {"id": "D5", "decision": "Keep release business data behind a mock provider for this implementation", "reason": "Formal owning modules are not yet available", "source": "Existing approved module boundary"}
+  ],
+  "risks": [
+    {"risk": "Historical action paths point to old workflow pages", "impact": "Tasks fail to reach business context", "mitigation": "Provide route compatibility and safe business-path conversion"},
+    {"risk": "Mock state resets across routes", "impact": "Prototype decisions can appear inconsistent after navigation", "mitigation": "Use a shared deterministic session repository and disclose non-persistence"},
+    {"risk": "Single-task context leaks another user's task", "impact": "Authorization and business metadata exposure", "mitigation": "Filter by tenant and current user and repeat all checks at decision time"},
+    {"risk": "Menu migration breaks bookmarked URLs", "impact": "Users encounter stale links", "mitigation": "Keep redirect routes and restore menus only by a forward migration if rolled back"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User confirmed removing workflow inbox/done, selected option 1, and approved the user-flow, architecture/interface, page-state and acceptance sections.",
+    "confirmed_at": "2026-08-15T11:23:38+08:00"
+  }
+}

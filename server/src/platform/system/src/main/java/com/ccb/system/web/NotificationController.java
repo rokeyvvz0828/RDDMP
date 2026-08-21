@@ -6,6 +6,7 @@ import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.model.SystemPage;
 import com.ccb.system.notification.NotificationReadAllResult;
+import com.ccb.system.notification.NotificationModuleSummary;
 import com.ccb.system.notification.NotificationUnreadCount;
 import com.ccb.system.notification.SystemNotificationItem;
 import com.ccb.system.service.SystemNotificationService;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -33,8 +36,14 @@ public class NotificationController {
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(defaultValue = "false") boolean unreadOnly,
+            @RequestParam(required = false) String moduleCode,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.list(new PageQuery(page, size), unreadOnly, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.list(new PageQuery(page, size), unreadOnly, moduleCode, user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/modules")
+    public ApiResponse<List<NotificationModuleSummary>> modules(@AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.modules(user), TraceId.getOrCreate());
     }
 
     @GetMapping("/unread-count")

@@ -1,0 +1,82 @@
+{
+  "sample_label": "T3 integration latency and 200-client capacity sample",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1/S2 real workflow submission, lifecycle-delivery database state and browser bell observation",
+      "result": "pass",
+      "raw_evidence": "20 real events produced 40/40 DELIVERED lifecycle rows at attempt_count=1. Submit-response-to-bell samples were 142, 93, 938, 862, 744, 691, 664, 599, 525, 471, 404, 338, 264, 164, 92, 53, 1027, 945, 917 and 773ms; P95 was approximately 945ms and maximum was 1027ms.",
+      "limitation": ["The submit response immediately follows transaction commit and is used as a conservative observable proxy for commit time."]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S1 workflow lifecycle tests and real first-attempt delivery records",
+      "result": "pass",
+      "raw_evidence": "Tests verify no dispatch before commit, no dispatch on rollback and notification-consumer failure isolation; the full backend suite passed.",
+      "limitation": ["Rollback and consumer-failure paths are deterministic test evidence rather than destructive browser scenarios."]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1 concurrent claim tests plus 40 real lifecycle deliveries",
+      "result": "pass",
+      "raw_evidence": "Atomic PENDING/RETRY to DISPATCHING claim tests passed and all sampled real deliveries completed once at attempt_count=1 without duplicate notification effects.",
+      "limitation": ["A real process crash between consumer success and status persistence was not injected; existing idempotency is covered by tests."]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S1 immediate-failure, scheduled-retry, fifth-attempt-DEAD and stale-DISPATCHING recovery tests",
+      "result": "pass",
+      "raw_evidence": "Focused workflow tests passed immediate failure return to PENDING, scheduled compensation, five-attempt DEAD semantics and updated_at-based stale claim recovery.",
+      "limitation": ["No long-duration wall-clock recovery test was required because the same transitions are tested against controlled timestamps."]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S2 authenticated browser regression plus S5 frontend build and component lifecycle inspection",
+      "result": "pass",
+      "raw_evidence": "The foreground bell updated during real event sampling, the open drawer showed real configuration-management notifications, and no browser errors occurred. The component uses visibility cancellation, immediate focus/visibility/drawer refresh, one shared unread request and one shared polling cycle; list and module reloads are conditional on an open drawer and changed count.",
+      "limitation": ["The in-app browser sandbox did not expose raw resource timing, so hidden-tab request suppression is corroborated by lifecycle code structure rather than timestamped network export."]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S5 frontend build and polling failure-state inspection",
+      "result": "pass",
+      "raw_evidence": "The build passed with failure delays fixed at 2000, 5000 and 15000ms; silent polling catches do not toast, and success/focus/visibility restoration resets failure state to the one-second base.",
+      "limitation": ["Injected network-failure timestamps were not exported from the browser sandbox."]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S3 200-client authenticated unread-count load for 60 rounds plus backend/MySQL health observation",
+      "result": "fail",
+      "raw_evidence": "12000/12000 requests completed with zero errors and all returned HTTP 200. Latency p50=109.63ms, p95=221.407ms, p99=343.717ms and max=420.491ms. MySQL Max_used_connections=21, Threads_connected=12 and Threads_running=2; no application errors or connection-pool exhaustion occurred.",
+      "limitation": ["The end-to-end endpoint measurement includes authentication identity resolution and avatar URL presigning in addition to the unread-count query."]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R7",
+      "expected": "Two hundred authenticated clients complete 60 one-second polling rounds with zero errors and unread-count API response-time P95 <= 200ms, without connection-pool exhaustion or application errors.",
+      "observed": "All 12000 requests succeeded with no pool or application errors, but response-time P95 was 221.407ms, exceeding the threshold by 21.407ms.",
+      "reproduction": "Run node /private/tmp/req035-load-test.mjs against the local authenticated backend with 200 clients and 60 rounds.",
+      "evidence": "Load summary: clients=200, rounds=60, completedRequests=12000, errors=0, statuses.200=12000, p95=221.407ms; MySQL Max_used_connections=21 and Threads_running=2.",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "One local-machine sample measures the complete authenticated request path and does not isolate per-layer CPU or I/O cost.",
+      "causal_hypothesis": "Hypothesis: JwtAuthenticationFilter invokes AuthService.me() repeatedly for each request, and identity hydration including MinIO avatar URL presigning contributes enough fixed cost to push endpoint P95 above 200ms.",
+      "correction_check": "After an authorized bounded authentication-path optimization, rerun the identical 200-client, 60-round script and require zero errors plus P95 <= 200ms.",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    "Local JWT requests initially failed due to invalid MinIO credentials used by avatar URL generation; the runtime was restarted with the existing local credentials before sampling.",
+    "The isolated database required Flyway to be disabled because of pre-existing migration-history/order inconsistencies unrelated to requirement 035.",
+    "Global governance reports five pre-existing invalid control artifacts, and the generic scope checker rejects the user-required rokey branch name."
+  ],
+  "coverage_gaps": [
+    "Raw hidden-tab and injected-failure browser request timestamps are unavailable from the in-app browser resource-timing sandbox; lifecycle structure and browser regression provide the available evidence.",
+    "Per-layer profiling of the authentication path cannot be added under this requirement because server/src/platform/security/** is explicitly read-only."
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

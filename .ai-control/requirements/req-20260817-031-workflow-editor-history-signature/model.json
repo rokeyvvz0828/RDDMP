@@ -1,0 +1,94 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "WorkflowController authenticated definition and task endpoints",
+      "WorkflowService and FlowableWorkflowService lifecycle and runtime orchestration",
+      "WorkflowAuditService and WorkflowSignatureService immutable evidence writes",
+      "wf_definition, wf_version, wf_audit_event and wf_signature platform-owned state",
+      "WorkflowView, WorkflowDesigner, WorkflowNodeInspector and typed workflow API client",
+      "MockDataInitializer, mock-data.json and append-only Flyway workflow metadata repair"
+    ],
+    "environment": [
+      "authenticated browser session",
+      "MySQL 8.4 runtime and local rddmp-local-mysql data",
+      "Flowable engine tables and deployment/runtime services",
+      "original dirty rokey worktree and concurrent user edits",
+      "JDK 17 Maven and Node/Vite build runtime"
+    ]
+  },
+  "state_variables": [
+    {"name":"definition_status","owner":"wf_definition through WorkflowService","valid_values":["DRAFT","PUBLISHED","ARCHIVED"]},
+    {"name":"definition_current_version","owner":"wf_definition and wf_version","valid_values":["positive published version","draft successor version"]},
+    {"name":"bound_instance_version","owner":"workflow application instance and Flowable deployment","valid_values":["immutable definition_id + version_no + deployment_id"]},
+    {"name":"definition_history","owner":"wf_version and wf_audit_event","valid_values":["ordered immutable snapshots and definition events"]},
+    {"name":"designer_graph","owner":"WorkflowDesigner local Vue Flow state","valid_values":["connected validated node and edge graph"]},
+    {"name":"signature_required","owner":"published definition_json approval node config","valid_values":[true,false]},
+    {"name":"signature_evidence","owner":"wf_signature","valid_values":["one immutable authenticated evidence row per controlled decision"]},
+    {"name":"model_schema_version","owner":"wf_definition and wf_version metadata","valid_values":[2]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"authenticated delete, archive, restore or start request","transitions":["tenant-scoped definition lookup","expected-state and reason validation","definition state update","definition audit write or published-only start lookup"],"outputs":["draft hidden","published archived","archived restored","new start blocked while active instances remain executable"]},
+    {"requirement_id":"R2","input":"right-click add from a selected node","transitions":["snapshot outgoing edges","append or single-edge replacement","atomic Vue Flow nodes/edges assignment","sync graph model and backend validation"],"outputs":["connected new user task with original successor preserved or unchanged multi-branch graph"]},
+    {"requirement_id":"R3","input":"open designer at a supported viewport","transitions":["Element Plus dialog layout","flex body sizing","independent content/canvas scrolling"],"outputs":["reachable title/footer actions and no page-level horizontal overflow"]},
+    {"requirement_id":"R4","input":"open definition current/history/events view","transitions":["tenant-scoped versions/events query","typed API mapping","read-only graph rendering or event rendering"],"outputs":["ordered versions, historical graph and operator/reason/time update records"]},
+    {"requirement_id":"R5","input":"configure signature and submit approve, reject or return","transitions":["boolean node config frozen in version","instance-bound config lookup","authenticated confirmation validation","task action and immutable signature transaction"],"outputs":["unsigned controlled action rejected or signed action completed with evidence"]},
+    {"requirement_id":"R6","input":"Flyway migration and local mock synchronization","transitions":["V42 JSON schema metadata repair","allowed-column filtering","mock definition upsert"],"outputs":["zero definition/version rows whose root schemaVersion is 2 but metadata differs"]}
+  ],
+  "interfaces": [
+    {"name":"definition_lifecycle_http","producers":["WorkflowController","WorkflowService"],"consumers":["web workflow API","WorkflowView"],"invariant":"tenant identity comes from authentication and archive/restore reason is mandatory"},
+    {"name":"definition_history_http","producers":["WorkflowController","WorkflowService","wf_version","wf_audit_event"],"consumers":["web workflow API","WorkflowView"],"invariant":"historical definition_json is immutable and cross-tenant data is invisible"},
+    {"name":"workflow_graph_model","producers":["WorkflowDesigner"],"consumers":["WorkflowView save","backend model validator","Flowable compiler"],"invariant":"single-flow tasks keep valid connectivity and original successor is not lost"},
+    {"name":"signature_contract","producers":["WorkflowNodeInspector","WorkflowSignatureService"],"consumers":["published definition version","task completion service","wf_signature"],"invariant":"requirement is read from bound version and signer identity is server-authenticated"},
+    {"name":"schema_metadata_sync","producers":["V42","MockDataInitializer","mock-data.json"],"consumers":["wf_definition","wf_version","workflow model readers"],"invariant":"root JSON schemaVersion 2 implies metadata model_schema_version 2"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"definition lifecycle and history service behavior","method":"JDK 17 focused Maven tests with JDBC/Mockito assertions","blind_spots":["browser button state","real MySQL collation differences"],"independence":"direct service and SQL interaction without frontend"},
+    {"id":"S2","target":"authenticated lifecycle, history and graph save behavior","method":"real backend browser flow plus API responses and database rows","blind_spots":["production authorization configuration"],"independence":"runtime path independent of unit-test mocks"},
+    {"id":"S3","target":"graph typing and responsive editor layout","method":"Vite production build, saved graph counts, screenshots and DOM overflow measurements","blind_spots":["unlisted browser engines"],"independence":"compiler plus rendered browser geometry"},
+    {"id":"S4","target":"server-authoritative internal signing","method":"WorkflowSignatureServiceTest plus unsigned/signed API calls and wf_signature aggregate query","blind_spots":["external CA semantics are outside scope"],"independence":"service test and persistent runtime evidence use different observation paths"},
+    {"id":"S5","target":"schema metadata consistency","method":"Flyway validate, MockDataInitializerTest and MySQL mismatch aggregate queries before and after app startup","blind_spots":["future external import jobs"],"independence":"migration history, unit test and database aggregate are distinct sensors"},
+    {"id":"S6","target":"repository integration safety","method":"governance, scope, full Maven, frontend build and git diff checks","blind_spots":["remote CI environment differences"],"independence":"static governance and full build regression"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"definition lifecycle and history state transitions","action":"modify workflow services, controller, audit query and focused tests","authority":"REQ-031 workflow server write scope","impact_radius":"shared platform workflow definitions, not Flowable tables","rollback":"revert T1 files; retain immutable audit rows"},
+    {"id":"A2","target":"designer graph and dialog geometry","action":"modify WorkflowDesigner graph replacement and scoped workflow dialog styles","authority":"REQ-031 web write scope","impact_radius":"workflow administration view only","rollback":"revert T2 frontend files and discard unsaved graph"},
+    {"id":"A3","target":"lifecycle/history/signature user interface","action":"modify typed API, WorkflowView and approval-node inspector","authority":"REQ-031 web write scope","impact_radius":"workflow administration UI and existing signature boolean presentation","rollback":"revert T3 files; backend remains compatible"},
+    {"id":"A4","target":"schema metadata repair and mock synchronization","action":"add V42 and update initializer allowlist, test and mock data","authority":"REQ-031 infrastructure and mock write scope","impact_radius":"workflow schema metadata only","rollback":"revert application/mock changes and retain executed corrective migration"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S2"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S2","S3"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S3"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S1","S2"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S4","S2"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S5","S6"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"concurrent edits in original rokey","effect":"verified files may no longer apply cleanly","detectable":true,"controllable":false},
+    {"source":"local Flyway V40/V41 history","effect":"migration number collision if an older number is used","detectable":true,"controllable":true},
+    {"source":"default JDK 26 Mockito self-attach behavior","effect":"false-negative backend tests","detectable":true,"controllable":true},
+    {"source":"occupied development ports or stale servers","effect":"browser observes the wrong build","detectable":true,"controllable":true},
+    {"source":"existing dirty rokey release and workflow integration changes","effect":"baseline behavior differs from origin/main","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"full Maven reactor tests","consequence":"slow feedback after cross-module changes","sampling_rule":"use focused tests after each backend task and full tests only at integration"},
+    {"source":"Flyway and mock synchronization during application startup","consequence":"sampling before startup completes can miss reintroduced metadata","sampling_rule":"query after migration and again after application readiness"},
+    {"source":"browser hot reload and old authenticated tabs","consequence":"screenshots may reflect stale assets or session state","sampling_rule":"verify server ports/build hash and reload before each viewport sample"}
+  ],
+  "assumptions": [
+    {"text":"wf_definition.status accepts ARCHIVED","evidence":"schema and queries use a string status with explicit PUBLISHED checks","falsifier":"database constraint inspection or migration execution rejects ARCHIVED"},
+    {"text":"all new starts pass through a published-state lookup","evidence":"observed WorkflowService and FlowableWorkflowService start paths","falsifier":"repository search finds a public direct RuntimeService start path"},
+    {"text":"existing V35 signing reads the instance-bound definition version","evidence":"WorkflowSignatureService resolves task context and version definition_json","falsifier":"focused test shows current mutable definition changes signing behavior"},
+    {"text":"V42 is free in the target branch","evidence":"worktree files stop at V39 and local database history uses V40/V41 only","falsifier":"latest target branch or Flyway history contains a different V42"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"A1 with S1/S2 sampling"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"A2 with S2/S3 sampling"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"A2 with S3 viewport sampling"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"A1 and A3 with S1/S2 sampling"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"A3 while preserving existing service enforcement, sampled by S4"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"A4 with S5/S6 sampling"}
+  ],
+  "model_status": "ready"
+}

@@ -1,0 +1,21 @@
+{
+  "sample_label": "T2 frontend polling completion sample",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S5 frontend production build plus polling constants", "result": "pass", "raw_evidence": "Build exited 0; base interval is 1000ms and fixed 15000ms setInterval is absent", "limitation": ["End-to-end P95 remains T3"]},
+    {"requirement_id": "R5", "sensor": "S2 browser drawer plus lifecycle contract inspection", "result": "pass", "raw_evidence": "Authenticated drawer loaded without console errors; shared request/cycle guards, visibility cancellation and focus/drawer immediate paths are present", "limitation": ["Browser sandbox did not expose network resource timestamps; hidden-tab traffic is deferred to T3"]},
+    {"requirement_id": "R6", "sensor": "S2/S5 static interval mapping and build", "result": "pass", "raw_evidence": "Failure intervals are exactly 2000, 5000 and 15000ms; silent catch returns failure state and only explicit loads request a toast", "limitation": ["Injected runtime failure timing remains T3"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    "Performance resource timing is unavailable in the in-app browser read-only evaluation scope.",
+    "The component already had unrelated dirty-worktree changes; T2 retained the template and modified only polling script behavior."
+  ],
+  "coverage_gaps": [
+    "Direct hidden-tab network suppression and exact runtime backoff timestamps need an alternative T3 sensor.",
+    "R1 event-to-bell P95 needs real workflow events in T3."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

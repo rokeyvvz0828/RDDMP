@@ -1,0 +1,68 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T2", "T5", "T6"], "evidence": ["Browser shows complete application facts and actionable approval on one business page", "Direct business entry and taskId entry expose the same permitted actions", "Frontend production build passed"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T2", "T3", "T5", "T6"], "evidence": ["List and task center converge on /release/applications/:applicationCode", "Business-list navigation does not depend on a Mock task ID", "Historical review route resolves safely"], "limitations": []},
+    {"id": "R3", "result": "pass", "task_ids": ["T3", "T5"], "evidence": ["Pending/done task center supports filtering and pagination", "Browser snapshot contains only 查看详情 actions"], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T3", "T4", "T5"], "evidence": ["WorkflowView business approval/start symbol scan returned no matches", "Sidebar retains only 流程定义 and 流程监控"], "limitations": []},
+    {"id": "R5", "result": "pass", "task_ids": ["T1", "T2", "T5", "T6"], "evidence": ["Current assignee receives actionable task context", "Direct business entry resolves the authenticated user's pending task without scanning inbox", "No current-user task returns an empty read-only context"], "limitations": []},
+    {"id": "R6", "result": "pass", "task_ids": ["T1", "T5", "T6"], "evidence": ["Workflow task context, business resolution and decision JUnit tests passed", "Server revalidates tenant, assignee, task state and allowed action"], "limitations": []},
+    {"id": "R7", "result": "pass", "task_ids": ["T2", "T5"], "evidence": ["WorkflowSignatureService tests passed", "Approval panel submits only current-login confirmation and server records authenticated signer identity"], "limitations": ["The isolated browser demo task did not require a signature; deterministic source and unit sensors cover the configured-signature path"]},
+    {"id": "R8", "result": "pass", "task_ids": ["T3", "T4", "T5"], "evidence": ["Inbox/done compatibility routes redirect to task-center tabs", "Published workflow contract matches Java and TypeScript APIs"], "limitations": []},
+    {"id": "R9", "result": "pass", "task_ids": ["T1", "T4", "T5"], "evidence": ["V37 and Mock source remove menu IDs and all grants 202/204", "Database and browser probes retain definitions/monitor only"], "limitations": ["Original local schema contains cross-branch Flyway history; repository source checker and isolated runtime were used"]},
+    {"id": "R10", "result": "pass", "task_ids": ["T2", "T3", "T5", "T6"], "evidence": ["1280x800 and 375x812, 390x844, 430x932 geometry checks have no horizontal overflow", "Direct-entry approval at 390x844 has scrollWidth=clientWidth and all actions remain present", "Action buttons remain within panel and dark-theme computed colors switch correctly"], "limitations": []}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["28-test workflow regression includes task context, projection and signature coverage"]},
+    {"id": "T2", "status": "verified", "evidence": ["Shared release repository, stable detail route and embedded panel passed build and browser checks"]},
+    {"id": "T3", "status": "verified", "evidence": ["Task center, dashboard navigation, responsibility boundary and historical routes passed"]},
+    {"id": "T4", "status": "verified", "evidence": ["F-0001 correction kept removed menus and grants absent after Mock synchronization"]},
+    {"id": "T5", "status": "verified", "evidence": ["Integrated test, build, governance, database and four-viewport sample S-0006 has zero errors"]},
+    {"id": "T6", "status": "verified", "evidence": ["12 focused workflow tests, frontend build, direct/taskId browser paths and 390x844 geometry passed"]}
+  ],
+  "feedback_summary": {
+    "total": 1,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0004", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0005", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0006", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0007", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Workflow Java 17 reactor tests", "result": "pass", "evidence": "28 workflow tests and dependency-module tests passed with zero failures/errors"},
+    {"check": "Frontend production build", "result": "pass", "evidence": "vue-tsc and Vite build exited 0; existing bundle-size warning only"},
+    {"check": "Repository governance and Flyway", "result": "pass", "evidence": "All governance checks and 37-migration source validation passed"},
+    {"check": "Source and whitespace assertions", "result": "pass", "evidence": "Workflow business action scan and obsolete Mock grant scan were empty; git diff --check passed"},
+    {"check": "Desktop/H5 runtime", "result": "pass", "evidence": "Task navigation, direct business entry, business-owned controls, light/dark theme and four viewport geometry passed"}
+  ],
+  "invariant_results": [
+    {"invariant": "Release owns business facts; workflow owns task authority", "result": "pass", "evidence": "Business page renders Mock repository facts while server task context exclusively determines actionability"},
+    {"invariant": "Task aggregation does not approve", "result": "pass", "evidence": "Dashboard and task center contain navigation only"},
+    {"invariant": "Workflow management remains configuration and monitoring", "result": "pass", "evidence": "No inbox/done/decision/start UI remains in WorkflowView or sidebar"},
+    {"invariant": "No production access, commit or push", "result": "pass", "evidence": "Only local services and isolated Mock database were used; worktree remains uncommitted"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Cross-branch local Flyway history", "result": "pass", "evidence": "Cloned current local data to ccb_platform_acceptance_027, applied missing branch structures there and left original schema untouched"},
+    {"disturbance": "Post-Flyway Mock synchronization", "result": "pass", "evidence": "Corrected fixture no longer recreates menu grants 202/204"},
+    {"disturbance": "Sandbox build output restrictions", "result": "pass", "evidence": "Explicitly authorized local Maven and Vite runs completed successfully"}
+  ],
+  "residual_risks": [
+    "The user-selected branch rokey does not match the governance branch-name regex; the scope checker reports this openly.",
+    "The original ccb_platform database retains unrelated cross-branch V35-V41 migration history; no Flyway repair or original-schema mutation was performed.",
+    "Release application persistence and project/subsystem integration remain approved Mock implementations until their formal modules are connected.",
+    "The production bundle still emits the pre-existing large-chunk warning."
+  ],
+  "gate_result": "pass",
+  "route_reason": "All R1-R10 must requirements have task, implementation and heterogeneous sensor evidence; T1-T6 are verified, F-0001 is closed, final P0/P1 are zero, and remaining issues are disclosed non-product risks."
+}

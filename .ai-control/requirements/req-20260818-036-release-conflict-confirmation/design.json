@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-036-release-conflict-confirmation",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-release-conflict-confirmation-design.md",
+  "objective": "Make duplicate-application confirmation a single collection-level action that closes immediately and is requested again only when conflict facts change.",
+  "users": ["Release applicants submitting a new application that overlaps an existing application in the same production window"],
+  "requirements": [
+    {"id": "R1", "statement": "The create-new confirmation must appear as the primary footer action beside defer handling.", "acceptance": ["The footer renders defer first and create-new second with primary styling"], "priority": "must", "source": "User correction on 2026-08-18", "counterexample": ["Create-new remains inside each historical-application card"]},
+    {"id": "R2", "statement": "Confirming create-new must close the dialog immediately and submit with the current conflict token without duplicate clicks.", "acceptance": ["The dialog closes before the submit request finishes", "The submit request contains the confirmed token", "Loading prevents duplicate confirmation"], "priority": "must", "source": "User correction on 2026-08-18", "counterexample": ["The dialog remains visible after confirmation", "A second click starts another submit"]},
+    {"id": "R3", "statement": "An unchanged confirmed conflict must not reopen the dialog; only a changed server token may require confirmation again.", "acceptance": ["A same-token 409 shows its actual error with the dialog closed", "A changed-token 409 refreshes facts and reopens the dialog"], "priority": "must", "source": "User correction and approved recommended design on 2026-08-18", "counterexample": ["Every 409 is treated as a duplicate conflict"]},
+    {"id": "R4", "statement": "Existing cancel-old, edit-old and defer actions must remain compatible.", "acceptance": ["Card-level cancel and edit remain available according to allowedActions", "Defer closes without submission"], "priority": "must", "source": "Existing behavior preserved by user-approved bounded fix", "counterexample": ["The fix removes or changes existing card-level actions"]}
+  ],
+  "invariants": ["Backend conflict-token validation remains authoritative", "No unrelated dirty-worktree change is overwritten", "Existing permission and application-state rules remain unchanged"],
+  "constraints": ["Modify only the two authorized Vue files", "Reuse Vue 3 and Element Plus patterns", "Do not change API, backend, schema or dependencies", "Remain on local rokey branch"],
+  "non_goals": ["Persisting conflict confirmation across page reloads", "Changing conflict matching rules", "Adding mobile-specific layout work", "Changing cancel-old or edit-old semantics"],
+  "selected_approach": {"name": "Transient confirmed conflict token with direct submit", "reason": "The submit API already validates the token, so this removes the redundant create-new resolution round trip and distinguishes changed conflicts from unrelated 409 responses.", "alternatives": [{"name": "Persist confirmation on the backend", "rejected_because": "It requires schema and lifecycle changes beyond this defect."}, {"name": "Only close the dialog", "rejected_because": "The broad 409 handler would still reopen it."}]},
+  "architecture": {
+    "boundary": {"inside": ["Release conflict dialog footer", "Pending submission confirmed-token state", "Submit 409 conflict-token comparison"], "outside": ["Release backend", "Release API types", "Database", "Workflow", "Mobile-specific redesign"]},
+    "components": [
+      {"name": "ReleaseConflictDialog", "responsibility": "Render conflict facts, card-specific actions and one collection-level create-new confirmation.", "depends_on": ["Element Plus dialog and buttons"]},
+      {"name": "ReleaseManagementPrototype", "responsibility": "Retain the confirmed token for the current pending application and route submit outcomes correctly.", "depends_on": ["Existing release API functions"]}
+    ],
+    "interfaces": [
+      {"name": "choose event", "producer": "ReleaseConflictDialog", "consumers": ["ReleaseManagementPrototype.chooseConflict"], "contract": "CREATE_NEW is collection-level and carries no historical item; CANCEL_OLD and EDIT_OLD carry the selected historical item."},
+      {"name": "submit conflictToken", "producer": "ReleaseManagementPrototype", "consumers": ["Existing submitReleaseApplication API"], "contract": "A token confirms exactly the currently observed conflict facts; a different returned token requires new confirmation."}
+    ],
+    "data_flows": [
+      {"input": "User confirms create-new with current conflict report", "transitions": ["store confirmed token", "close dialog", "submit saved application", "compare token only if submit returns 409"], "output": "Application enters review, actual non-conflict error is shown, or changed conflicts are reopened"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Submission returns 409 with unchanged conflict token", "behavior": "Keep the conflict dialog closed and show the original business error.", "recovery": "User resolves the reported business issue and retries within the current application context."},
+    {"condition": "Submission returns 409 with a changed conflict token", "behavior": "Refresh the application and conflict report, clear prior confirmation and reopen the dialog.", "recovery": "User reviews the changed facts and confirms again."}
+  ],
+  "quality_attributes": {"security": ["No permission or identity behavior changes"], "performance": ["CREATE_NEW removes one redundant resolution request"], "compatibility": ["Existing API and card actions remain compatible"], "operations": ["Actual submission errors remain visible instead of being masked as duplicate conflicts"]},
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2"], "signal": "Footer order and immediate close are visible and one submit request carries the token.", "method": "Desktop browser interaction plus request observation."},
+    {"requirement_ids": ["R3", "R4"], "signal": "Same-token errors do not reopen, changed-token errors do, and existing actions remain.", "method": "Focused code contract, production build and browser regression."}
+  ],
+  "assumptions": [{"text": "The existing conflict token changes whenever conflict facts relevant to confirmation change.", "basis": "The backend recomputes and compares the token before submission.", "falsifier": "A relevant conflict fact changes while the returned token remains identical."}],
+  "unknowns": [],
+  "decisions": [{"id": "D1", "decision": "Use the existing token as a transient confirmation and reopen only on token change.", "reason": "It directly addresses both reported defects without backend changes.", "source": "User approved the recommended design and requested development on 2026-08-18."}],
+  "risks": [{"risk": "An unrelated 409 may previously have been hidden behind the conflict dialog.", "impact": "After the fix a real business error becomes visible.", "mitigation": "Use apiErrorMessage and keep the saved draft available for correction."}],
+  "approval": {"status": "approved", "evidence": "The user approved the recommended footer and token-comparison design by replying '开发'.", "confirmed_at": "2026-08-18T14:23:30+08:00"}
+}

@@ -1,0 +1,59 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": ["ReleaseApplicationStore direct relation lookup","ReleaseApplicationService history aggregation","ReleaseApplicationController read endpoint","Release API client","ReleaseApplicationDetailPage history state and section"],
+    "environment": ["MySQL release tables","Spring Security and tenant AuthUser","Vue Router and HTTP client","Existing dirty rokey worktree","Local authenticated browser"]
+  },
+  "state_variables": [
+    {"name":"current_characteristic","owner":"Release application","valid_values":["STANDARD","ADDITIONAL"]},
+    {"name":"active_item_keys","owner":"rel_application_delivery","valid_values":["empty","one-or-more"]},
+    {"name":"related_history","owner":"ReleaseApplicationService","valid_values":["empty","one-or-more"]},
+    {"name":"history_request_state","owner":"ReleaseApplicationDetailPage","valid_values":["idle","loading","loaded","error"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"Authenticated current application code","transitions":["Load tenant application","Check ADDITIONAL","Query persisted relations matching active items"],"outputs":["Direct history list or empty"]},
+    {"requirement_id":"R2","input":"Related historical IDs","transitions":["Load tenant applications","Read current fields and status","Map flat DTO"],"outputs":["Complete live history summaries"]},
+    {"requirement_id":"R3","input":"Historical and current active deliveries","transitions":["Reuse itemChanges/versionChanges","Drop empty changes","Deduplicate by history ID"],"outputs":["Grouped current changes"]},
+    {"requirement_id":"R4","input":"Mapped history summaries","transitions":["Sort by approvedAt then createdAt and code","Render router links"],"outputs":["Stable linked summaries without attachments"]},
+    {"requirement_id":"R5","input":"Authenticated user and application code","transitions":["Controller permission check","Service tenant lookup","Store tenant predicates"],"outputs":["Authorized tenant-only response"]},
+    {"requirement_id":"R6","input":"Independent history request","transitions":["Set local loading","Capture local error or data","Retry only history"],"outputs":["Usable main detail and approval panel"]}
+  ],
+  "interfaces": [
+    {"name":"Persisted additional lineage","producers":["persistAdditionalRelations"],"consumers":["findRelatedHistoryIds"],"invariant":"Only relation_type ADDITIONAL for the current tenant and application is consumed."},
+    {"name":"GET related-history","producers":["ReleaseApplicationController"],"consumers":["ReleaseApplicationDetailPage"],"invariant":"Flat list, no attachments or recursive conflicts."}
+  ],
+  "sensors": [
+    {"id":"S1","target":"Store SQL and service aggregation boundaries","method":"Focused JUnit/Mockito and persistence contract tests","blind_spots":["Browser layout"],"independence":"Automated backend assertions"},
+    {"id":"S2","target":"Permission annotation and API type compatibility","method":"Controller security test and frontend build","blind_spots":["Runtime data quality"],"independence":"Reflection and compiler checks"},
+    {"id":"S3","target":"Additional-only loading, empty, error, link and responsive behavior","method":"Authenticated browser DOM, network, console and geometry checks","blind_spots":["Authentication or empty local data may limit scenarios"],"independence":"Runtime UI observation"},
+    {"id":"S4","target":"Approved scope and regression","method":"Scope, governance and git diff checks","blind_spots":["Product semantics"],"independence":"Repository checks"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"Direct history data path","action":"Add one Store query, flat DTO, Service aggregator and protected Controller endpoint","authority":"Approved business/release scope","impact_radius":"Additive release read path","rollback":"Remove additive backend surfaces"},
+    {"id":"A2","target":"Approval reference presentation","action":"Add API DTO/call and isolated additional-only section with scoped CSS","authority":"Approved release frontend scope","impact_radius":"One detail page","rollback":"Remove local frontend surfaces"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S1","S2","S3"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S1"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S1","S2","S3"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S1","S2"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S2","S3"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"Legacy stale relations","effect":"Rows may reference inactive current items","detectable":true,"controllable":true},
+    {"source":"Dirty rokey worktree","effect":"Global diff contains unrelated changes","detectable":true,"controllable":false},
+    {"source":"Expired authentication or cleared test data","effect":"Browser scenarios may be unavailable","detectable":true,"controllable":false}
+  ],
+  "delays": [{"source":"Independent history response and Vite reload","consequence":"Brief loading state or stale browser sample","sampling_rule":"Wait for network idle and current module before geometry checks"}],
+  "assumptions": [{"text":"Current active-item filtering is sufficient to discard stale relation revisions.","evidence":"Application updates deactivate old delivery rows before inserting new active rows.","falsifier":"A stale relation item key also matches a semantically replaced active item incorrectly."}],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"A1/A2 with S1/S3"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"A1/A2 with S1/S2/S3"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"A1 with S1"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"A1/A2 with S1/S3"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"A1 with S1/S2"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"A2 with S2/S3"}
+  ],
+  "model_status": "ready"
+}

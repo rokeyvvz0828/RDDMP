@@ -1,0 +1,31 @@
+{
+  "sample_label": "integrated-runtime initial sample",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    { "requirement_id": "R1", "sensor": "S1 build and S3 four-page control presence", "result": "pass", "raw_evidence": "Production build passed and all four list toolbars render ReleaseSearchSelect.", "limitation": ["Three remaining pages still require full interaction sampling."] },
+    { "requirement_id": "R2", "sensor": "S3 application candidate browser check", "result": "fail", "raw_evidence": "AUTH is the subsystem code of SQ-202608-002, but typing AUTH rendered no matching option; exact application code did match.", "limitation": ["Observed against the current local backend and isolated rokey database."] },
+    { "requirement_id": "R3", "sensor": "S3 application row count", "result": "pass", "raw_evidence": "The application table remained at 3 rows during unselected AUTH and exact-code typing.", "limitation": [] },
+    { "requirement_id": "R4", "sensor": "S4 runtime plus backend predicate inspection", "result": "fail", "raw_evidence": "Candidate request is current-project scoped and debounced, but ReleaseApplicationStore.findPage searches application_code and subsystem_name only.", "limitation": [] },
+    { "requirement_id": "R5", "sensor": "S1 build, S2 checks and S3 UI state", "result": "pass", "raw_evidence": "Build and whitespace checks passed; no-match state was explicit and the main table was preserved.", "limitation": ["Final visual matrix remains after correction."] }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R2",
+      "expected": "Typing a subsystem code fragment such as AUTH returns the corresponding real application candidate.",
+      "observed": "AUTH produced no matching candidate while SQ-202608-002 visibly has subsystem code AUTH.",
+      "reproduction": "Open 配置管理 > 版本申请, focus the search selector, type AUTH, and wait for the 300ms candidate request.",
+      "evidence": "Browser no-match state plus ReleaseApplicationStore.findPage predicate at lines 44-47 omitting subsystem_code.",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "Current local MySQL/backend only.",
+      "causal_hypothesis": "The existing SQL keyword predicate omits subsystem_code.",
+      "correction_check": "Add subsystem_code LIKE to the predicate, run the release persistence contract test, restart backend, and repeat AUTH browser search.",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [],
+  "coverage_gaps": ["Baseline and production list runtime matrix remains after correction."],
+  "error_counts": { "P0": 0, "P1": 1, "P2": 0, "P3": 0 },
+  "observation_status": "complete"
+}

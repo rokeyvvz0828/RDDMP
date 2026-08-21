@@ -1,0 +1,50 @@
+{
+  "sample_label": "T4 通知板块筛选与运行态集成采样",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "认证 API 与通知抽屉 DOM/截图",
+      "result": "pass",
+      "raw_evidence": "release 通知返回 moduleCode=release、moduleName=配置管理、sourceName=审批中心、businessType=release_application；页面显示配置管理 · 审批中心",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "下拉模糊检索与服务端列表请求",
+      "result": "pass",
+      "raw_evidence": "板块选项为配置管理 4、交付示范中心 2、系统管理 1；输入配置只保留配置管理，选中后列表总数为 4；unknown_module 返回空页",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "读状态 API 与页面计数",
+      "result": "pass",
+      "raw_evidence": "全局/配置管理未读从 7/4 变为单条已读后的 6/3，再经全局全部已读变为 0/0；选择板块时铃铛不变",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "登录用户范围内 modules/list API",
+      "result": "pass",
+      "raw_evidence": "接口不接收 userId；板块聚合与列表均来自 admin 可见的 7 条接收记录；未知板块 code=0,total=0",
+      "limitation": ["隔离库仅有单租户样本，跨租户由 T1 SQL 和单元测试覆盖"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "浏览器 DOM 溢出测量、截图与控制台日志",
+      "result": "pass",
+      "raw_evidence": "1280x720、375x812、390x844、430x932 的 body、drawer、header、filter、tabs、list 均 overflowX=false；长标题换行且操作可达；console error/warn=[]",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "隔离运行库必须基于 ccb_platform_rokey_20260817；ccb_platform 的 Flyway 历史与实际 V35+ 表结构漂移",
+    "默认 Java 26 造成 Mockito/Byte Buddy 传感器失效，使用项目规定 Java 17 后恢复"
+  ],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

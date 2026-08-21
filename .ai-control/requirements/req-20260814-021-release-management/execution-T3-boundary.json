@@ -1,0 +1,32 @@
+{
+  "task_id": "T3",
+  "status": "boundary-invalid",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application", "purpose": "实现版本申请模型、场景、持久化、冲突、状态和接口的可测首版"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application", "purpose": "覆盖版本场景、快照、冲突、所有权和状态规则"}
+  ],
+  "requirements_addressed": ["R3", "R5", "R6", "R7", "R8", "R18"],
+  "commands": [
+    {"command": "mvn -pl :ccb-release -am -DskipTests compile", "exit_code": 0, "salient_output": "16 ccb-release source files compiled"},
+    {"command": "mvn -pl :ccb-release -am test", "exit_code": 0, "salient_output": "ccb-release 17 tests and dependency reactor passed"}
+  ],
+  "local_checks": [
+    {"check": "版本申请规则测试", "result": "pass", "evidence": "Scenario and application tests passed", "limitations": ["Persistence revision-history invariant is not yet representable by V38 child-table keys"]},
+    {"check": "不可变历史结构复核", "result": "fail", "evidence": "Current store must DELETE rel_application_delivery and rel_application_requirement before reinsertion", "limitations": []}
+  ],
+  "diff_summary": [
+    "首版已具备真实申请 CRUD、服务端场景判定、完整冲突事实和状态操作",
+    "发现编辑明细历史需要 V38 增加申请修订号与活动标记，超出当前 T3 写入范围"
+  ],
+  "invariants_checked": [
+    {"invariant": "Snapshots persist ID, code, name and artifact type", "result": "pass", "evidence": "Create capture assertions passed"},
+    {"invariant": "History is never overwritten or physically deleted", "result": "fail", "evidence": "ReleaseApplicationStore.update currently executes DELETE for two normalized child tables"},
+    {"invariant": "Applicant identity comes from AuthUser", "result": "pass", "evidence": "Create and ownership tests passed"}
+  ],
+  "disturbances": [
+    {"event": "V38 child-table uniqueness models only one mutable snapshot per application", "impact": "T3 cannot satisfy immutable revision history without expanding schema write scope"}
+  ],
+  "assumptions_falsified": ["Existing V38 child keys are sufficient for immutable application edit history"],
+  "unresolved_items": ["Add application_revision and active markers to delivery, requirement and attachment relations, then update stores and schema contract"],
+  "recommended_next": "replan"
+}

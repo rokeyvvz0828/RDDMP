@@ -1,0 +1,77 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["platform/system notification publisher, persistence and APIs", "platform/workflow business context and lifecycle persistence", "platform/boot workflow notification bridge", "business/release workflow start", "shared Vue notification drawer", "append-only Flyway and local mock synchronization"],
+    "environment": ["authenticated users", "MySQL 8.4", "Element Plus runtime", "existing running workflow instances", "dirty rokey working tree"]
+  },
+  "state_variables": [
+    {"name":"notification_module_metadata","owner":"platform/system","valid_values":["complete","legacy-backfilled"]},
+    {"name":"workflow_module_context","owner":"platform/workflow","valid_values":["explicit","legacy-null-resolved"]},
+    {"name":"global_unread_count","owner":"platform/system","valid_values":["non-negative integer"]},
+    {"name":"scoped_unread_count","owner":"platform/system","valid_values":["non-negative integer for selected module"]},
+    {"name":"notification_filter","owner":"UiNotificationCenter","valid_values":["all modules","returned moduleCode"]},
+    {"name":"notification_request_generation","owner":"UiNotificationCenter","valid_values":["latest response wins"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"business module publishes or starts workflow","transitions":["module metadata validation","notification/workflow persistence","DTO projection","drawer rendering"],"outputs":["module · source and unchanged business identity"]},
+    {"requirement_id":"R2","input":"release workflow start","transitions":["WorkflowBusinessContext","wf_instance","wf_lifecycle_event or wf_task projection","boot notification bridge"],"outputs":["module-aware task and result notification"]},
+    {"requirement_id":"R3","input":"user selects module and all/unread state","transitions":["reset page","send moduleCode/unreadOnly","authenticated SQL predicates","render response"],"outputs":["server-filtered notification page"]},
+    {"requirement_id":"R4","input":"drawer open or read-state update","transitions":["global unread query","module aggregate query","read write","authoritative refresh"],"outputs":["independent global and scoped counts"]},
+    {"requirement_id":"R5","input":"legacy notification or running workflow","transitions":["Flyway known mapping or deterministic fallback","nullable workflow compatibility resolver","normal notification projection"],"outputs":["readable, actionable module-aware legacy result"]},
+    {"requirement_id":"R6","input":"authenticated notification/module query","transitions":["derive tenant/user from AuthUser","join sys_user_notification","apply optional module filter"],"outputs":["only current-user data or empty unknown-module page"]},
+    {"requirement_id":"R7","input":"drawer at desktop or required mobile viewport","transitions":["load/filter/error states","responsive selector layout","long-text wrapping"],"outputs":["reachable controls without page overflow"]}
+  ],
+  "interfaces": [
+    {"name":"NotificationPublishCommand","producers":["platform/system"],"consumers":["boot bridge","direct publishers"],"invariant":"module, source and business object remain distinct and validated"},
+    {"name":"WorkflowBusinessContext","producers":["platform/workflow"],"consumers":["release module","workflow persistence and lifecycle"],"invariant":"new business-owned workflows provide explicit module metadata"},
+    {"name":"notification list/modules APIs","producers":["platform/system"],"consumers":["UiNotificationCenter"],"invariant":"all records and counts are current-tenant/current-user scoped"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"notification and workflow contract behavior","method":"focused JUnit tests with captured SQL, DTO and publish commands","blind_spots":["real MySQL migration execution","rendered browser layout"],"independence":"server-side executable assertions"},
+    {"id":"S2","target":"legacy backfill and schema completeness","method":"Flyway execution plus MySQL before/after count and mapping queries","blind_spots":["frontend behavior"],"independence":"database runtime observation"},
+    {"id":"S3","target":"authenticated filters, options and counts","method":"real HTTP responses for two users/modules and unknown module","blind_spots":["visual overflow"],"independence":"running API observation"},
+    {"id":"S4","target":"frontend contract integrity","method":"vue-tsc and Vite production build","blind_spots":["runtime semantics and layout"],"independence":"static compiler/build sensor"},
+    {"id":"S5","target":"drawer display, interactions and responsive layout","method":"authenticated browser actions, screenshots, DOM overflow and console checks","blind_spots":["unexercised backend branches"],"independence":"end-user runtime observation"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"notification schema, contract and queries","action":"append migration and modify platform/system plus tests","authority":"REQ-20260818-034 writable paths","impact_radius":"shared notification platform","rollback":"revert app code; retain additive migrated data"},
+    {"id":"A2","target":"workflow module context propagation","action":"modify workflow records/services and boot bridge","authority":"REQ writable workflow/boot paths","impact_radius":"business-owned workflow integration","rollback":"revert code; retain nullable columns"},
+    {"id":"A3","target":"release workflow start metadata","action":"add release module constants and context values","authority":"REQ writable release paths","impact_radius":"configuration-management submissions","rollback":"revert scoped release changes"},
+    {"id":"A4","target":"notification drawer state and layout","action":"modify types, API, Vue component and scoped CSS","authority":"REQ writable web paths","impact_radius":"global authenticated shell","rollback":"revert four frontend files"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S1","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S1","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S1","S2","S3"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R7","sensor_ids":["S4","S5"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"dirty rokey worktree","effect":"overlapping edits or noisy scope checks","detectable":true,"controllable":false},
+    {"source":"parallel Flyway additions","effect":"candidate V44 collision","detectable":true,"controllable":true},
+    {"source":"legacy null workflow context","effect":"missing module in post-change notification","detectable":true,"controllable":true},
+    {"source":"polling and stale HTTP responses","effect":"count/list drift","detectable":true,"controllable":true}
+  ],
+  "delays": [
+    {"source":"15-second unread polling","consequence":"background refresh can race with filter/read actions","sampling_rule":"sample after authoritative post-write refresh and again after one poll interval"},
+    {"source":"60-second workflow notification reconciliation","consequence":"task notification may appear after immediate submission sampling","sampling_rule":"prefer assignment event, then wait for reconciliation only when required"},
+    {"source":"Flyway application startup","consequence":"API sampling before migration is invalid","sampling_rule":"wait for backend health and verify schema version before API checks"}
+  ],
+  "assumptions": [
+    {"text":"each new business workflow has one owning module","evidence":"approved product design and current release ownership","falsifier":"a valid workflow requires multiple module classifications"},
+    {"text":"mark-all-read remains global","evidence":"existing API and approved design","falsifier":"user requests filtered mark-all"},
+    {"text":"known legacy types cover current persisted examples","evidence":"migration and mock-data inspection","falsifier":"database sampling finds an unmappable type"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"A1-A4 with S1/S3/S5"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"A2-A3 with S1/S3"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"A1/A4 with S1/S3/S5"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"A1/A4 with S1/S3/S5"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"A1/A2 with S1/S2/S3"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"A1/A4 with S1/S3"},
+    {"requirement_id":"R7","observable":"yes","controllable":"yes","action":"A4 with S4/S5"}
+  ],
+  "model_status": "ready"
+}

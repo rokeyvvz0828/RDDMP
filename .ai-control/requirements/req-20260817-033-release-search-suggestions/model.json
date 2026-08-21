@@ -1,0 +1,228 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "ReleaseSearchSelect release-local component",
+      "ReleaseWindowView local window filtering",
+      "ReleaseApplicationView stable selection and list-query events",
+      "ReleaseBaselineView local baseline-entry filtering",
+      "ReleaseCurrentProductionView local production-entry filtering",
+      "ReleaseManagementPrototype application candidate provider",
+      "ReleaseApplicationStore existing keyword predicate"
+    ],
+    "environment": [
+      "Element Plus el-select",
+      "existing listReleaseApplications API",
+      "project context store",
+      "existing release page status and artifact filters",
+      "dirty rokey worktree changes outside the task write scope"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "temporary_search_text",
+      "owner": "ReleaseSearchSelect",
+      "valid_values": ["empty", "uncommitted query text"]
+    },
+    {
+      "name": "stable_selected_value",
+      "owner": "each release list view",
+      "valid_values": ["undefined", "real option value"]
+    },
+    {
+      "name": "suggestion_state",
+      "owner": "local view or ReleaseManagementPrototype",
+      "valid_values": ["idle", "loading", "loaded", "empty", "failed"]
+    },
+    {
+      "name": "application_candidate_generation",
+      "owner": "ReleaseManagementPrototype",
+      "valid_values": ["monotonically increasing request sequence"]
+    },
+    {
+      "name": "main_list_query",
+      "owner": "existing view filtering or ReleaseManagementPrototype",
+      "valid_values": ["other filters only", "exact selected record plus other filters"]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "user focuses, types into, selects from or clears one of the four list search controls",
+      "transitions": ["shared selector manages temporary text", "view maps real records to one option contract", "selection emits a stable value"],
+      "outputs": ["consistent selection-only fuzzy search interaction on all four pages"]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "empty focus or case-insensitive code, name or version fragment",
+      "transitions": ["local provider performs substring matching or remote provider queries existing API", "candidate output is limited to 20"],
+      "outputs": ["at most 20 scoped matching options in existing source order"]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "temporary text, real option selection or clear action",
+      "transitions": ["temporary text remains internal to selector", "selection updates stable value", "clear removes stable value"],
+      "outputs": ["main list changes only for selection or clear and remains governed by other filters"]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "current project/window data or remote application query",
+      "transitions": ["local views map complete loaded arrays", "application provider debounces project-scoped API call", "request generation rejects stale responses", "scope refresh validates selected value"],
+      "outputs": ["scope-correct candidates without stale project or window selections"]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "candidate loading, no match, failure or long candidate text",
+      "transitions": ["selector renders explicit candidate state", "failure remains isolated from main-list state", "module CSS constrains primary and secondary text"],
+      "outputs": ["recoverable and readable toolbar/dropdown state with a valid production build"]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "ReleaseSearchSelect props and events",
+      "producers": ["ReleaseSearchSelect"],
+      "consumers": ["four release list views"],
+      "invariant": "update:modelValue is emitted only for a real option selection or clear; search carries temporary text separately"
+    },
+    {
+      "name": "ReleaseSearchOption",
+      "producers": ["release types and four option mappers"],
+      "consumers": ["ReleaseSearchSelect"],
+      "invariant": "value is stable and label, description and keywords are derived from the same real scoped record"
+    },
+    {
+      "name": "listReleaseApplications",
+      "producers": ["existing release API module and backend"],
+      "consumers": ["application main-list loader", "application candidate provider"],
+      "invariant": "candidate requests use independent loading/error/results and fixed page 1 size 20 without mutating main-list pagination"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "shared component and all call-site contracts",
+      "method": "npx vue-tsc --noEmit and npm run build",
+      "blind_spots": ["runtime focus, blur and dropdown behavior", "network request ordering"],
+      "independence": "Vue and TypeScript compiler validation"
+    },
+    {
+      "id": "S2",
+      "target": "absence of legacy free-text list search controls and unauthorized changes",
+      "method": "targeted rg, git diff and git diff --check",
+      "blind_spots": ["visual behavior", "server response semantics"],
+      "independence": "static repository inspection"
+    },
+    {
+      "id": "S3",
+      "target": "focus, fuzzy typing, selection, clear, blur and scope invalidation on all four pages",
+      "method": "authenticated browser interaction at /release with row and option observations",
+      "blind_spots": ["rare network races not induced during the run"],
+      "independence": "rendered browser behavior"
+    },
+    {
+      "id": "S4",
+      "target": "application candidate/main-list request separation and stale-response suppression",
+      "method": "browser network and UI observations during rapid application search input",
+      "blind_spots": ["backend behavior outside the exercised project"],
+      "independence": "runtime request and table-state observation"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "selection-only interaction contract",
+      "action": "add the release-local selector, option type and scoped styles",
+      "authority": "write access to web/src/modules/release",
+      "impact_radius": "release module only",
+      "rollback": "remove the new component/type/style block"
+    },
+    {
+      "id": "A2",
+      "target": "three local list filters",
+      "action": "replace keyword state with real selected IDs and record-derived option mappings",
+      "authority": "write access to the three release view files",
+      "impact_radius": "window, baseline and current-production list toolbars",
+      "rollback": "restore each view's prior keyword ref and computed includes filter"
+    },
+    {
+      "id": "A3",
+      "target": "application suggestion and main-list separation",
+      "action": "add debounced candidate state/provider and route only selected application code into the existing list query",
+      "authority": "write access to ReleaseApplicationView and ReleaseManagementPrototype",
+      "impact_radius": "application list search only",
+      "rollback": "restore the existing keyword watcher and remove candidate state"
+    },
+    {
+      "id": "A4",
+      "target": "application candidate subsystem-code coverage",
+      "action": "include subsystem_code in the existing parameterized keyword predicate and add a focused persistence contract test",
+      "authority": "write access to server/src/modules/release under the ready release-management requirement",
+      "impact_radius": "release application list keyword matching only",
+      "rollback": "remove the additional OR predicate and focused test assertion"
+    }
+  ],
+  "measurements": [
+    { "requirement_id": "R1", "sensor_ids": ["S1", "S3"], "observable": "yes" },
+    { "requirement_id": "R2", "sensor_ids": ["S3"], "observable": "yes" },
+    { "requirement_id": "R3", "sensor_ids": ["S3", "S4"], "observable": "yes" },
+    { "requirement_id": "R4", "sensor_ids": ["S3", "S4"], "observable": "yes" },
+    { "requirement_id": "R5", "sensor_ids": ["S1", "S2", "S3"], "observable": "yes" }
+  ],
+  "disturbances": [
+    {
+      "source": "project or window switch",
+      "effect": "previous selection or candidates may become invalid",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "remote request latency and reordering",
+      "effect": "older application candidates could overwrite newer results",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "unrelated dirty rokey changes",
+      "effect": "diff or build failures may have pre-existing causes",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "300ms application candidate debounce plus network latency",
+      "consequence": "candidate results arrive after temporary input changes",
+      "sampling_rule": "observe only the latest generation after debounce and response completion"
+    },
+    {
+      "source": "Vue render cycle",
+      "consequence": "immediate DOM counts may precede selection update",
+      "sampling_rule": "wait for the next rendered stable state before comparing rows"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "window, baseline and current-production arrays are complete for their current scope",
+      "evidence": "their existing implementations already perform all keyword filtering locally; windows are explicitly loaded with size 200 and the other APIs return arrays",
+      "falsifier": "runtime responses report truncation or pagination beyond loaded arrays"
+    },
+    {
+      "text": "applicationCode is a stable unique value for exact application selection",
+      "evidence": "existing row key, detail route and API path all use applicationCode",
+      "falsifier": "one tenant returns duplicate application codes"
+    },
+    {
+      "text": "Element Plus el-select does not commit arbitrary filter text as modelValue without allow-create",
+      "evidence": "the component's model values originate from el-option and existing code uses the same library behavior",
+      "falsifier": "browser verification observes unlisted text in modelValue"
+    }
+  ],
+  "control_assessment": [
+    { "requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "implement shared selector and four integrations" },
+    { "requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "limit local and remote options to 20 and verify fragments" },
+    { "requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "separate temporary input from stable selected values" },
+    { "requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "use complete local sources and generation-guarded remote candidates" },
+    { "requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "add explicit candidate states and constrained module styling" }
+  ],
+  "model_status": "ready"
+}

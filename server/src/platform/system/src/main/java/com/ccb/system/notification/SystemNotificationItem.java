@@ -8,6 +8,8 @@ public record SystemNotificationItem(
         String content,
         NotificationLevel level,
         String sourceName,
+        String moduleCode,
+        String moduleName,
         String businessType,
         String businessKey,
         String actionPath,

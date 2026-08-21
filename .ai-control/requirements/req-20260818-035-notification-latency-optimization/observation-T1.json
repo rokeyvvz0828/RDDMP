@@ -1,0 +1,22 @@
+{
+  "sample_label": "T1 backend delivery completion sample",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1/S5 focused compilation and dispatch tests", "result": "pass", "raw_evidence": "11 focused lifecycle tests passed; dispatchEvent exists and is invoked by afterCommit", "limitation": ["End-to-end browser latency remains for T3"]},
+    {"requirement_id": "R2", "sensor": "S1 commit/rollback/exception tests", "result": "pass", "raw_evidence": "Commit callback dispatches once, rollback dispatches zero times, immediate exception does not escape event creation", "limitation": ["Transaction synchronization is simulated at service level"]},
+    {"requirement_id": "R3", "sensor": "S1 claim update-count and consumer-call assertions", "result": "pass", "raw_evidence": "Denied claim returns processed count 0 and consumer call count 0; successful claim consumes once", "limitation": ["Real MySQL blocking race remains for T3 runtime sampling"]},
+    {"requirement_id": "R4", "sensor": "S1 failure/recovery/DEAD assertions", "result": "pass", "raw_evidence": "Immediate failure becomes PENDING at attempt 1, stale DISPATCHING recovers, attempt 5 becomes DEAD", "limitation": ["Process crash represented by stale persisted state"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    "The expected immediate-failure test emits a WARN stack trace while still passing; this is an intentional operational signal, not a product deviation.",
+    "Target source files are untracked in the pre-existing dirty worktree, so normal git diff cannot independently show their baseline delta."
+  ],
+  "coverage_gaps": [
+    "R1 two-second end-to-end timing is deferred to T3.",
+    "Real MySQL immediate/scheduler concurrency is not reproduced by the JdbcTemplate stub."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

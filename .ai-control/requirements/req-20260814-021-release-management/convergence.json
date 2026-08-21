@@ -1,0 +1,78 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {"id":"R1","result":"pass","task_ids":["T1","T8"],"evidence":["ccb-release module and 43 tests pass","rel_* ownership and governance checks pass"],"limitations":[]},
+    {"id":"R2","result":"pass","task_ids":["T6","T7","T8"],"evidence":["Five views use persistent APIs and survive refresh"],"limitations":[]},
+    {"id":"R3","result":"pass","task_ids":["T3","T6","T8"],"evidence":["Persisted selector snapshots and Mock boundary scan pass"],"limitations":["Upstream selector providers remain Mock by approval"]},
+    {"id":"R4","result":"pass","task_ids":["T2","T6","T8"],"evidence":["Window rule/audit tests and real WIN-202608-002 pass"],"limitations":[]},
+    {"id":"R5","result":"pass","task_ids":["T3","T6","T8"],"evidence":["Application validation tests and three real applications pass"],"limitations":[]},
+    {"id":"R6","result":"pass","task_ids":["T3","T6","T8"],"evidence":["Server scenario boundary tests pass; frontend submits no authoritative type/workflow"],"limitations":[]},
+    {"id":"R7","result":"pass","task_ids":["T3","T6","T8"],"evidence":["Conflict facts/actions and revision-history tests pass"],"limitations":[]},
+    {"id":"R8","result":"pass","task_ids":["T2","T3","T6","T8"],"evidence":["Optimistic locking, state and audit tests pass"],"limitations":[]},
+    {"id":"R9","result":"pass","task_ids":["T5","T7","T8"],"evidence":["Real applications start published workflows and retain instance/round"],"limitations":[]},
+    {"id":"R10","result":"pass","task_ids":["T5","T7","T8"],"evidence":["Direct business-detail approval uses real current task and matching progress"],"limitations":[]},
+    {"id":"R11","result":"pass","task_ids":["T5","T7","T8"],"evidence":["Lifecycle tests pass and scheduled event changes IN_REVIEW to RELEASED once"],"limitations":["Lifecycle propagation is asynchronous"]},
+    {"id":"R12","result":"pass","task_ids":["T5","T7","T8"],"evidence":["Persistent attachment authorization/binding tests pass"],"limitations":[]},
+    {"id":"R13","result":"pass","task_ids":["T4","T7","T8"],"evidence":["Production baseline uses latest released candidate facts"],"limitations":[]},
+    {"id":"R14","result":"pass","task_ids":["T4","T7","T8"],"evidence":["Deployment result validation/audit tests and AUTH-SDK success pass"],"limitations":[]},
+    {"id":"R15","result":"pass","task_ids":["T4","T7","T8"],"evidence":["Current production returns successful AUTH-SDK 2026.08.15.3"],"limitations":[]},
+    {"id":"R16","result":"pass","task_ids":["T4","T5","T7","T8"],"evidence":["Emergency receiving-window deterministic tests pass"],"limitations":["Browser acceptance used regular applications"]},
+    {"id":"R17","result":"pass","task_ids":["T4","T7","T8"],"evidence":["MySQL analytics query, summary and drill-down facts agree"],"limitations":[]},
+    {"id":"R18","result":"pass","task_ids":["T2","T3","T4","T5","T6","T8"],"evidence":["Controller security, tenant and entity checks pass"],"limitations":["Project-member provider remains deferred by approved Mock boundary"]},
+    {"id":"R19","result":"pass","task_ids":["T1","T8"],"evidence":["All governance checks and 39 Flyway migrations pass on isolated schema"],"limitations":[]},
+    {"id":"R20","result":"pass","task_ids":["T8"],"evidence":["Acceptance window/applications/workflows/results created through real business paths"],"limitations":[]},
+    {"id":"R21","result":"pass","task_ids":["T7","T8"],"evidence":["Desktop plus 375x812, 390x844 and 430x932 pass without page overflow"],"limitations":[]}
+  ],
+  "task_results": [
+    {"id":"T1","status":"verified","evidence":["Module, schema and governance sample passed"]},
+    {"id":"T2","status":"verified","evidence":["Window rules and security sample passed"]},
+    {"id":"T3","status":"verified","evidence":["Application scenario, conflict and history sample passed"]},
+    {"id":"T4","status":"verified","evidence":["Production and analytics service sample passed"]},
+    {"id":"T5","status":"verified","evidence":["Workflow and attachment lifecycle sample passed"]},
+    {"id":"T6","status":"verified","evidence":["Formal window/application frontend sample passed"]},
+    {"id":"T7","status":"verified","evidence":["Business approval, production, analytics and responsive sample passed"]},
+    {"id":"T8","status":"verified","evidence":["Final real API and full regression sample passed"]}
+  ],
+  "feedback_summary": {"total":0,"accepted_open":0,"escalated":0,"deferred_by_severity":{"P2":0,"P3":0}},
+  "sample_trend": [
+    {"sample_id":"S-0001","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0002","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0003","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0004","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0005","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0006","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0007","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0008","P0":0,"P1":0,"P2":0,"P3":0,"score":0}
+  ],
+  "regression_checks": [
+    {"check":"Repository governance","result":"pass","evidence":"All module, ownership and 39 migration checks exited 0"},
+    {"check":"Focused release reactor","result":"pass","evidence":"ccb-release 43 tests passed"},
+    {"check":"Full Maven reactor","result":"pass","evidence":"All 11 modules succeeded"},
+    {"check":"Frontend production build","result":"pass","evidence":"vue-tsc and Vite build exited 0"},
+    {"check":"Runtime health","result":"pass","evidence":"Backend UP and frontend HTTP 200"},
+    {"check":"Diff hygiene","result":"pass","evidence":"git diff --check passed and release source contains no zero-byte files"}
+  ],
+  "invariant_results": [
+    {"invariant":"Workflow owns task authority and release owns business state","result":"pass","evidence":"Workflow event drives RELEASED state; frontend only refetches"},
+    {"invariant":"Approval and production success remain separate","result":"pass","evidence":"Only explicit SUCCEEDED candidates become current production"},
+    {"invariant":"History is append-only","result":"pass","evidence":"Revision, workflow round and deployment audit tests pass"},
+    {"invariant":"Acceptance never uses original database","result":"pass","evidence":"Runtime DB_URL is ccb_platform_acceptance_027"},
+    {"invariant":"Business Mock is absent","result":"pass","evidence":"Forbidden-symbol scan has no matches"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance":"Delayed workflow lifecycle event","result":"pass","evidence":"Scheduling enabled, event delivered once, UI finite polling observes RELEASED"},
+    {"disturbance":"MySQL 8.4 DISTINCT ordering behavior","result":"pass","evidence":"Projection subquery and regression test pass"},
+    {"disturbance":"Sandbox localhost probe restriction","result":"pass","evidence":"Independent host-level process and health probes confirm services"}
+  ],
+  "residual_risks": [
+    "Project context, physical-subsystem and delivery-unit providers are temporary frontend Mock sources until their owning modules are delivered",
+    "Asynchronous workflow state propagation may take several seconds; the detail page retries for at most 8 seconds and can be manually refreshed",
+    "Frontend bundle-size warning remains a performance optimization opportunity, not a correctness failure"
+  ],
+  "gate_result": "pass",
+  "route_reason": "All 21 must requirements have task, implementation and final sensor evidence; eight samples have P0/P1 zero, all regression gates pass, and no open feedback remains"
+}

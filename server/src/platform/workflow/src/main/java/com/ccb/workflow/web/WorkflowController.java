@@ -44,6 +44,40 @@ public class WorkflowController {
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
+    @PostMapping("/definitions/{id}/archive")
+    @PreAuthorize("hasAnyAuthority('system:admin','workflow:access:delete')")
+    public ApiResponse<Void> archive(@PathVariable long id, @RequestBody Map<String, String> body,
+                                     @AuthenticationPrincipal AuthUser user) {
+        service.archiveDefinition(id, body.get("reason"), user);
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
+
+    @PostMapping("/definitions/{id}/restore")
+    @PreAuthorize("hasAnyAuthority('system:admin','workflow:access:delete')")
+    public ApiResponse<Void> restore(@PathVariable long id, @RequestBody Map<String, String> body,
+                                     @AuthenticationPrincipal AuthUser user) {
+        service.restoreDefinition(id, body.get("reason"), user);
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
+
+    @GetMapping("/definitions/{id}/versions")
+    public ApiResponse<List<Map<String, Object>>> definitionVersions(@PathVariable long id,
+                                                                     @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.definitionVersions(id, user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/definitions/{id}/versions/{versionNo}")
+    public ApiResponse<Map<String, Object>> definitionVersion(@PathVariable long id, @PathVariable int versionNo,
+                                                               @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.definitionVersion(id, versionNo, user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/definitions/{id}/events")
+    public ApiResponse<List<Map<String, Object>>> definitionEvents(@PathVariable long id,
+                                                                   @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.definitionEvents(id, user), TraceId.getOrCreate());
+    }
+
     @PostMapping("/definitions")
     public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, String> body, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.createDefinition(body.get("code"), body.get("name"), body.getOrDefault("definitionJson", "{}"), user), TraceId.getOrCreate());
@@ -127,9 +161,22 @@ public class WorkflowController {
         return ApiResponse.success(service.done(new PageQuery(page, size), user), TraceId.getOrCreate());
     }
 
+    @GetMapping("/tasks/{id}/context")
+    public ApiResponse<Map<String, Object>> taskContext(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.taskContext(id, user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/tasks/current-context")
+    public ApiResponse<Map<String, Object>> currentTaskContext(
+            @RequestParam String businessType,
+            @RequestParam String businessKey,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.currentTaskContext(businessType, businessKey, user), TraceId.getOrCreate());
+    }
+
     @PostMapping("/tasks/{id}/decision")
     public ApiResponse<Void> decide(@PathVariable long id, @RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) {
-        service.decide(id, String.valueOf(body.get("action")), body.get("comment") == null ? null : String.valueOf(body.get("comment")), longValue(body.get("targetUserId")), longList(body.get("ccUserIds")), user);
+        service.decide(id, String.valueOf(body.get("action")), body.get("comment") == null ? null : String.valueOf(body.get("comment")), longValue(body.get("targetUserId")), longList(body.get("ccUserIds")), Boolean.TRUE.equals(body.get("signatureConfirmed")), user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 

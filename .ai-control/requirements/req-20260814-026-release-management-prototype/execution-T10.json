@@ -1,0 +1,33 @@
+{
+  "task_id": "T10",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype", "purpose": "Preserve revision-2 model, task, execution, observation and convergence evidence independently from revision 1"},
+    {"path_or_resource": "local frontend and backend processes", "purpose": "Provide runtime endpoints for browser verification"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R14"],
+  "commands": [
+    {"command": "npm run build (workdir web)", "exit_code": 0, "salient_output": "Vue type checking and Vite production build passed; existing bundle-size warning only"},
+    {"command": "node scripts/check-development-entry.mjs --require-plugin", "exit_code": 0, "salient_output": "Development entry and plugin checks passed"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "All repository governance checks passed"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration validation passed"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors"},
+    {"command": "JAVA_HOME=<installed-java-17> PATH=<java-17-and-system-path> mvn --batch-mode test", "exit_code": 0, "salient_output": "All 10 reactor modules passed; workflow 23 tests and attachment 7 tests passed"}
+  ],
+  "local_checks": [
+    {"check": "Desktop release prototype", "result": "pass", "evidence": "1280x800 clean browser pass covered all five views, emergency fields, production and analytics without console errors", "limitations": ["Browser observation was performed in the main implementation context"]},
+    {"check": "Responsive release and review pages", "result": "pass", "evidence": "375x812, 390x844 and 430x932 document widths equaled viewport widths; review actions remained reachable", "limitations": ["Device-browser chrome was not emulated"]},
+    {"check": "Backend platform regression", "result": "pass", "evidence": "Full Maven reactor passed under Java 17", "limitations": ["Initial Java 26 run failed because the current Byte Buddy dependency does not support Java 26"]}
+  ],
+  "diff_summary": ["Recorded revision-2 evidence separately from revision 1", "Verified frontend, governance, migration, backend and browser behavior", "Preserved all existing uncommitted platform work"],
+  "invariants_checked": [
+    {"invariant": "Revision 2 remains frontend-only at the release-module boundary", "result": "pass", "evidence": "Release requirement product changes are in web/src/modules/release and router registration; backend platform changes belong to the separately scoped platform task"},
+    {"invariant": "No commit or push is performed", "result": "pass", "evidence": "Worktree remains dirty on local rokey and no Git integration command was run"}
+  ],
+  "disturbances": [
+    {"event": "The default Java 26 runtime caused a Byte Buddy compatibility failure", "impact": "The reactor was rerun under the repository-compatible installed Java 17 and passed"}
+  ],
+  "assumptions_falsified": ["The default host Java runtime is suitable for this repository's current Byte Buddy version"],
+  "unresolved_items": ["Browser acceptance is strong runtime evidence but not an independently staffed review", "Formal project, subsystem, delivery-unit and requirement services remain replaceable mock providers by design"],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,71 @@
+{
+  "sample_label": "REQ-032 integrated workflow binding observation",
+  "task_ids": ["T1", "T2", "T3", "T4", "T5"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "Release binding tests, authenticated APIs, and in-app browser DOM/geometry",
+      "result": "pass",
+      "raw_evidence": "Five fixed scenes rendered; P-RDDMP-UPGRADE displayed 1/5 configured and another project displayed 0/5; published candidates require real deployments; the 857px table had 857px scroll width and no console errors.",
+      "limitation": ["Project context remains intentionally mocked."]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "Release submission tests plus authenticated HTTP and database probes",
+      "result": "pass",
+      "raw_evidence": "An unbound submission returned 409 and created no approval round; configured REGULAR submission entered IN_REVIEW; partial scene configuration remained valid.",
+      "limitation": ["Disposable local business data only."]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "Cross-module integration tests plus two real release submissions around a rebind",
+      "result": "pass",
+      "raw_evidence": "SQ-202608-001 retained deployed Flow A, while SQ-202608-002 submitted after rebinding froze deployed Flow B; frontend request contracts do not expose a selectable workflow definition.",
+      "limitation": ["Approval completion was not required to prove binding immutability."]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Binding service/security tests, authenticated API conflict probes, history API, and browser history display",
+      "result": "pass-with-nonblocking-deviation",
+      "raw_evidence": "Bind, rebind, unbind, required reasons, before/after history, operator identity, project isolation, and stale row-version 409 all worked; browser showed the persisted operation time but it was approximately eight hours behind Asia/Shanghai.",
+      "limitation": ["The application currently serializes timezone-less LocalDateTime values and the database container session uses UTC."]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "Workflow lifecycle tests plus authenticated archive/delete API probes",
+      "result": "pass",
+      "raw_evidence": "Actively bound archive returned 409, formerly published draft deletion returned 409, and a pure never-published draft deletion returned 200.",
+      "limitation": []
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R4",
+      "expected": "Audit operation times display according to the platform business timezone Asia/Shanghai.",
+      "observed": "The binding history displayed 2026-08-17 08:50:52 for an operation performed around 16:50 local time.",
+      "reproduction": "Create or update a binding while MySQL runs with a UTC session, then open approval workflow configuration history.",
+      "evidence": "Authenticated browser DOM showed 2026-08-17 08:50:52; application-local.yml declares serverTimezone=Asia/Shanghai but V43 and many platform migrations rely on database CURRENT_TIMESTAMP while APIs expose LocalDateTime without an offset.",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "The exact impact across every existing platform table was not exhaustively sampled.",
+      "causal_hypothesis": "The JDBC connection timezone parses values as Shanghai but does not force the MySQL session timezone, so CURRENT_TIMESTAMP is evaluated in the UTC container session and loses zone context in DATETIME/LocalDateTime.",
+      "correction_check": "Define one platform timestamp contract, configure the database session and JSON serialization consistently, then verify binding history and representative existing module timestamps around a known instant.",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Legacy published workflow seed rows had no Flowable deployment.",
+      "classification": "corrected-disturbance",
+      "evidence": "Initial runtime submission failed; deployed-candidate filtering was added and the focused 3-test suite plus two real submissions passed."
+    }
+  ],
+  "coverage_gaps": [
+    "Production authorization roles and migration duration were not sampled.",
+    "Project management, physical subsystem, and delivery-unit source modules are not yet available and remain behind the approved mock interfaces.",
+    "Platform-wide timestamp normalization remains outside this module-specific implementation."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,16 @@
+{
+  "sample_label":"T1 菜单迁移与后端权限契约采样",
+  "task_ids":["T1"],
+  "baseline_revision":"baseline-1",
+  "measurements":[
+    {"requirement_id":"R1","sensor":"S1 schema contract","result":"pass","raw_evidence":"V45 包含六个唯一子路由、菜单 ID 610-615 和各自 view 权限","limitation":["尚未观察运行时动态菜单树"]},
+    {"requirement_id":"R3","sensor":"S2 controller security reflection tests","result":"pass","raw_evidence":"baseline/view+update 与 production-version/view 分离；窗口写操作未放宽","limitation":[]},
+    {"requirement_id":"R4","sensor":"S1 migration compatibility assertions","result":"pass","raw_evidence":"原 6011 角色被复制授予 6016，动作关系重建 child/parent sys_role_menu","limitation":["真实存量行数待 Flyway 后查询"]},
+    {"requirement_id":"R5","sensor":"S1 source contract review","result":"pass","raw_evidence":"子权限 menu_id 指向真实子菜单，现有 saveRolePermissions 可继续沿 parent_id=600 补父目录","limitation":[]}
+  ],
+  "feedback":[],
+  "disturbances":[],
+  "coverage_gaps":["真实数据库和浏览器角色矩阵待集成采样"],
+  "error_counts":{"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status":"complete"
+}

@@ -9,12 +9,13 @@
 | 组合根 | `server/src/platform/boot` | Spring Boot 启动、模块装配、统一 Web 与观测入口 |
 | 平台 | `server/src/platform/infrastructure` | MySQL/Flyway、MinIO 与基础设施适配 |
 | 平台 | `server/src/platform/file-preview` | 受控文件上传、预览源校验与 kkFileView 适配 |
-| 平台 | `server/src/platform/attachment` | 持久附件元数据、MinIO 对象生命周期与受控预览下载 |
+| 平台 | `server/src/platform/attachment` | 持久业务附件、绑定授权、下载预览与孤立文件清理 |
 | 平台 | `server/src/platform/security` | JWT、认证、会话、RBAC 与安全过滤器 |
 | 平台 | `server/src/platform/system` | 组织、用户、角色、菜单、参数、站内消息通知和系统管理 |
 | 平台 | `server/src/platform/workflow` | 流程模型、BPMN 编译、运行服务与监控 |
 | 公共 | `server/src/shared/common` | 统一响应、分页、异常和 trace，不拥有业务数据 |
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
+| 业务 | `server/src/modules/release` | 投产窗口、版本申请、审批关联、投产基线、生产版本和统计分析 |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
 
@@ -25,6 +26,7 @@
 - `web/src/api/{system,workflow,ai}.ts` 是相应后端域的请求入口。
 - `web/src/components/workflow` 和 `WorkflowView.vue` 属于 workflow。
 - `web/src/modules/delivery-showcase` 是纯前端虚构交付示范模块，使用本地 mock 数据沉淀列表、表单、详情、审批和可视化样式，不拥有后端业务数据。
+- `web/src/modules/release` 与 `web/src/api/release.ts` 属于配置管理业务模块；仅项目、物理子系统和交付单元选择源可以临时使用前端 Mock，业务状态必须来自 `ccb-release`。
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
 - `com.ccb.attachment.model` 提供持久附件公开契约，业务模块只能通过 `AttachmentPort` 访问附件，不得读取附件表或对象键。

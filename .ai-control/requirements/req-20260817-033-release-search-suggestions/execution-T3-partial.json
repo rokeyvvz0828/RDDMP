@@ -1,0 +1,37 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    { "path_or_resource": "web/src/modules/release/components/ReleaseApplicationView.vue", "purpose": "Apply main-list query only from a stable selected application code." },
+    { "path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue", "purpose": "Provide isolated debounced project-scoped application candidates with stale-response suppression." }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    { "command": "cd web && npm run build", "exit_code": 0, "salient_output": "2362 modules transformed; production build completed with only the existing chunk-size warning." },
+    { "command": "rg -n <el-input.*release-search-input web/src/modules/release/components", "exit_code": 1, "salient_output": "No legacy release list search input remains." },
+    { "command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors." }
+  ],
+  "local_checks": [
+    { "check": "Application temporary input isolation", "result": "pass", "evidence": "Browser row count remained 3 while typing candidate text.", "limitations": [] },
+    { "check": "Empty focus and exact application code candidate", "result": "pass", "evidence": "Empty focus showed 3 real candidates; SQ-202608-002 returned the exact AUTH application.", "limitations": [] },
+    { "check": "Subsystem code candidate", "result": "fail", "evidence": "Typing AUTH produced the explicit no-match state although AUTH is visible on SQ-202608-002.", "limitations": ["Backend SQL inspection was required to locate the cause."] }
+  ],
+  "diff_summary": [
+    "Separated candidate request state from main-list pagination/loading/error state.",
+    "Added 300ms debounce, request generation guard, lifecycle cleanup and project reset.",
+    "Replaced the final plain list search input with ReleaseSearchSelect."
+  ],
+  "invariants_checked": [
+    { "invariant": "Typing does not change the main list", "result": "pass", "evidence": "Browser table remained at 3 rows during AUTH and exact-code input." },
+    { "invariant": "Candidate failures do not clear the main list", "result": "pass", "evidence": "No-match candidate state left all 3 rows visible." },
+    { "invariant": "Candidate lookup covers declared subsystem code", "result": "fail", "evidence": "Existing backend predicate omits subsystem_code." }
+  ],
+  "disturbances": [
+    { "event": "Initial sandboxed Vite build could not write node_modules/.vite-temp.", "impact": "The build was rerun with approved write access and passed." }
+  ],
+  "assumptions_falsified": [
+    "The existing application keyword API did not search every declared candidate keyword field; subsystem_code was missing."
+  ],
+  "unresolved_items": ["Add subsystem_code to the existing release application keyword predicate and rerun the failed browser check."],
+  "recommended_next": "observe"
+}

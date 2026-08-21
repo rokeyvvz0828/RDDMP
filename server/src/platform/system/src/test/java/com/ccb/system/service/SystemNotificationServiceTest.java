@@ -84,6 +84,8 @@ class SystemNotificationServiceTest {
         return new NotificationPublishCommand(
                 1L,
                 "event-001",
+                "delivery",
+                "交付管理",
                 "DELIVERY",
                 "PRJ-001",
                 recipients,

@@ -1,0 +1,3324 @@
+{
+  "schema_version": 4,
+  "revision": 31,
+  "created_at": "2026-08-14T05:12:03+00:00",
+  "updated_at": "2026-08-14T06:41:47+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User selected interactive frontend prototype option 1, requested local rokey implementation, and explicitly confirmed the landed revision.；计划确认=User explicitly approved implementation plan revision 1 by replying: 开始画原型吧。",
+      "recorded_at": "2026-08-14T05:12:03+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "已批准需求和实施交接包导入成功，需求基准门禁通过",
+      "recorded_at": "2026-08-14T05:12:53+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "五条必须需求均具备可判别传感器和授权执行器，模型状态 ready",
+      "recorded_at": "2026-08-14T05:14:44+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "任务写入边界、依赖、传感器、回滚和升级条件完整，计划状态 ready",
+      "recorded_at": "2026-08-14T05:16:36+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3-T5 执行报告已记录，最终输出具备构建、浏览器和范围传感器",
+      "recorded_at": "2026-08-14T06:36:59+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "全部任务 verified，观察报告无反馈且第一次采样 P0/P1 为零",
+      "recorded_at": "2026-08-14T06:40:19+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "标准模式两次采样 P0/P1=0；全部任务 verified；最终 gate PASS",
+      "recorded_at": "2026-08-14T06:41:47+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User selected interactive frontend prototype option 1, requested local rokey implementation, and explicitly confirmed the landed revision.；计划确认=User explicitly approved implementation plan revision 1 by replying: 开始画原型吧。",
+        "recorded_at": "2026-08-14T05:12:03+00:00",
+        "data": {
+          "objective": "Deliver a discoverable desktop-only interactive frontend prototype for release windows, version applications, workflow progress, baselines and analytics using fictional session mock data without backend or database changes.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Provide one configuration-management entry with window, application, baseline and analytics views.",
+              "priority": "must",
+              "acceptance": [
+                "All four views are reachable after login",
+                "View switching preserves module context"
+              ],
+              "source": "User-selected prototype option",
+              "counterexample": [
+                "A view is reachable only by typing a hidden URL",
+                "Switching views resets the selected project context"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Use one fictional data model for all lists, details, workflow progress, baselines and charts.",
+              "priority": "must",
+              "acceptance": [
+                "Session operations update dependent views",
+                "Reset restores deterministic initial data"
+              ],
+              "source": "REQ-20260814-021",
+              "counterexample": [
+                "The application count differs between the list and analytics",
+                "Reset keeps records created earlier in the session"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Demonstrate scenario derivation, conflict handling and core application actions without claiming persistence.",
+              "priority": "must",
+              "acceptance": [
+                "Conflict dialog names delivery units, versions and application numbers",
+                "Prototype status remains explicit"
+              ],
+              "source": "REQ-20260814-021",
+              "counterexample": [
+                "The user manually selects the derived scenario",
+                "A toast claims a durable server save"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Reuse existing RDDMP UI and theme patterns and cover asynchronous display states.",
+              "priority": "must",
+              "acceptance": [
+                "Loading, empty, failure, forbidden, submitting, readonly, conflict and long-text states are visible",
+                "Desktop light and dark themes remain readable"
+              ],
+              "source": "Repository frontend contract",
+              "counterexample": [
+                "A failure renders an empty white panel",
+                "Long content covers the operation column"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Keep the prototype reversible and isolated from Java, Flyway and platform-private services.",
+              "priority": "must",
+              "acceptance": [
+                "No server or migration file changes",
+                "Removing the module, route and menu injection fully rolls back the prototype"
+              ],
+              "source": "User-selected frontend-only boundary",
+              "counterexample": [
+                "The prototype requires a Flyway menu seed",
+                "Removing the route leaves backend or database artifacts"
+              ]
+            }
+          ],
+          "invariants": [
+            "One application contains one physical subsystem and at least one delivery unit",
+            "Scenario is derived rather than directly selected",
+            "Charts and detail views derive from the same session mock data",
+            "Prototype operations never imply durable persistence"
+          ],
+          "constraints": [
+            "Vue 3, TypeScript, Vite, Element Plus and existing dependencies only",
+            "Desktop-only acceptance exception inherited from REQ-20260814-021",
+            "No Java, Flyway, real workflow, attachment, notification or external access changes",
+            "Development occurs on local rokey as explicitly requested"
+          ],
+          "non_goals": [
+            "Formal ccb-release backend module",
+            "Database schema or menu migration",
+            "Persistent uploads, exports or application data",
+            "Production authorization and workflow integration",
+            "Mobile business UI"
+          ],
+          "assumptions": [
+            "Existing authentication routes can append a uniquely keyed prototype node without replacing server menus",
+            "Existing shared UI and ECharts dependencies cover the prototype",
+            "The formal release module will later replace session Mock operations through stable APIs"
+          ],
+          "unknowns": [],
+          "decisions": [
+            "Use a single configuration-management entry with four in-module views",
+            "Use frontend-only session Mock and explicit prototype labeling",
+            "Do not modify backend or database",
+            "Validate desktop only",
+            "Implement directly on local rokey per user instruction"
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "Four views and session updates remain consistent.",
+              "method": "Desktop browser path acceptance and deterministic reset checks."
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "signal": "Scenario, conflict and application actions produce visible expected states.",
+              "method": "Browser interaction with regular, additional, blocked and emergency mock records."
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "Build succeeds and UI states are readable in both themes.",
+              "method": "Vue production build plus browser console and screenshot inspection."
+            },
+            {
+              "requirement_ids": [
+                "R5"
+              ],
+              "signal": "Diff remains within the declared frontend and task-document paths.",
+              "method": "Task-scope governance check and git diff audit."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已通过代码、路由、共享组件和验证命令完成系统边界与传感器复核",
+        "recorded_at": "2026-08-14T05:14:27+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "web/src/modules/release frontend prototype",
+              "web/src/router/index.ts /release registration",
+              "web/src/stores/auth.ts prototype menu composition",
+              "session-owned release windows, applications and baselines"
+            ],
+            "environment": [
+              "backend-provided authenticated RouteNode list",
+              "existing RDDMP shared UI components",
+              "Element Plus and ECharts runtime",
+              "Vite development and production build",
+              "desktop browser light and dark themes"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "active_view",
+              "owner": "ReleaseManagementPrototype",
+              "valid_values": [
+                "windows",
+                "applications",
+                "baselines",
+                "analytics"
+              ]
+            },
+            {
+              "name": "demo_state",
+              "owner": "ReleaseManagementPrototype",
+              "valid_values": [
+                "normal",
+                "loading",
+                "empty",
+                "error",
+                "forbidden"
+              ]
+            },
+            {
+              "name": "windows",
+              "owner": "ReleaseManagementPrototype",
+              "valid_values": [
+                "deterministic fictional window collection"
+              ]
+            },
+            {
+              "name": "applications",
+              "owner": "ReleaseManagementPrototype",
+              "valid_values": [
+                "deterministic fictional application collection",
+                "session-updated collection"
+              ]
+            },
+            {
+              "name": "baselines",
+              "owner": "ReleaseManagementPrototype",
+              "valid_values": [
+                "deterministic fictional batch collection",
+                "session-updated collection"
+              ]
+            },
+            {
+              "name": "overlay_state",
+              "owner": "ReleaseManagementPrototype and child components",
+              "valid_values": [
+                "closed",
+                "form",
+                "conflict",
+                "detail",
+                "lineage",
+                "confirmation"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "authenticated routes and /release navigation",
+              "transitions": [
+                "filter offline backend routes",
+                "append deduplicated prototype node",
+                "resolve Vue route",
+                "switch in-module view"
+              ],
+              "outputs": [
+                "one visible configuration-management entry",
+                "four reachable views"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "deterministic Mock factory or session action",
+              "transitions": [
+                "clone initial state",
+                "update one state owner",
+                "derive list, detail, baseline and metrics"
+              ],
+              "outputs": [
+                "cross-view consistent values",
+                "deterministic reset"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "application draft and historical session records",
+              "transitions": [
+                "validate fields",
+                "derive scenario",
+                "detect conflicts",
+                "resolve or block",
+                "apply lifecycle action"
+              ],
+              "outputs": [
+                "explicit scenario",
+                "conflict dialog",
+                "session-only list/detail update"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "view state, theme and desktop viewport",
+              "transitions": [
+                "render shared UI patterns",
+                "bound tables and overlays",
+                "resize charts",
+                "show async state"
+              ],
+              "outputs": [
+                "readable desktop UI",
+                "explicit loading/empty/error/forbidden states",
+                "no console error"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "scoped product diff",
+              "transitions": [
+                "build",
+                "governance scope check",
+                "git path audit",
+                "remove module route and menu injection for rollback"
+              ],
+              "outputs": [
+                "frontend-only change",
+                "reversible prototype"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "prototype_route_node",
+              "producers": [
+                "prototype-route.ts"
+              ],
+              "consumers": [
+                "auth.ts",
+                "UiRouteMenuNode"
+              ],
+              "invariant": "Append exactly once by routePath and preserve every server node"
+            },
+            {
+              "name": "release_prototype_state",
+              "producers": [
+                "mock.ts",
+                "ReleaseManagementPrototype"
+              ],
+              "consumers": [
+                "four release views"
+              ],
+              "invariant": "One session state is the sole data source and reset is deterministic"
+            },
+            {
+              "name": "application_decision",
+              "producers": [
+                "scenario and conflict pure functions"
+              ],
+              "consumers": [
+                "ReleaseApplicationDrawer",
+                "ReleaseConflictDialog",
+                "ReleaseManagementPrototype"
+              ],
+              "invariant": "Scenario is derived and conflicts name unit, versions and application number"
+            },
+            {
+              "name": "release_metrics",
+              "producers": [
+                "buildReleaseMetrics"
+              ],
+              "consumers": [
+                "ReleaseAnalyticsView"
+              ],
+              "invariant": "Cards, charts and drill-down derive from the same filtered records"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Type and bundle integrity",
+              "method": "npm --prefix web run build",
+              "blind_spots": [
+                "Runtime interaction correctness",
+                "visual overlap"
+              ],
+              "independence": "Compiler and bundler output"
+            },
+            {
+              "id": "S2",
+              "target": "Navigation and core user paths",
+              "method": "Real browser role/text/DOM interaction at /release",
+              "blind_spots": [
+                "Unexercised combinations"
+              ],
+              "independence": "Runtime UI observation"
+            },
+            {
+              "id": "S3",
+              "target": "Cross-view data consistency",
+              "method": "Compare visible list, detail, baseline and chart/drill-down counts before and after actions",
+              "blind_spots": [
+                "Formal backend persistence is outside scope"
+              ],
+              "independence": "Observed derived values"
+            },
+            {
+              "id": "S4",
+              "target": "Desktop visual and theme behavior",
+              "method": "Screenshots, scrollWidth measurement and console inspection at 1280x800 and 1440x900 in both themes",
+              "blind_spots": [
+                "Mobile UI is an approved non-goal"
+              ],
+              "independence": "Browser pixels, DOM geometry and console"
+            },
+            {
+              "id": "S5",
+              "target": "Scope and rollback boundary",
+              "method": "node scripts/check-all-governance.mjs plus git diff --name-only and git diff --check",
+              "blind_spots": [
+                "Manual future commits outside this task"
+              ],
+              "independence": "Repository governance and Git metadata"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Mock domain and derivations",
+              "action": "Create types.ts and mock.ts within release module",
+              "authority": "REQ-20260814-026 writable paths",
+              "impact_radius": "release prototype only",
+              "rollback": "Delete new files"
+            },
+            {
+              "id": "A2",
+              "target": "Navigation",
+              "action": "Register /release and append one deduplicated prototype RouteNode",
+              "authority": "REQ-20260814-026 writable paths",
+              "impact_radius": "frontend router and auth menu composition",
+              "rollback": "Remove route import/child and prototype append"
+            },
+            {
+              "id": "A3",
+              "target": "Business interaction UI",
+              "action": "Create scoped Vue components and CSS",
+              "authority": "REQ-20260814-026 writable paths",
+              "impact_radius": "release prototype route",
+              "rollback": "Delete web/src/modules/release"
+            },
+            {
+              "id": "A4",
+              "target": "Observed deviations",
+              "action": "Apply limited fixes inside the current task write scope and rerun affected sensors",
+              "authority": "REQ-20260814-026 writable paths",
+              "impact_radius": "single release component or route composition",
+              "rollback": "Restore pre-fix diff hunk"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "backend route ordering or duplicate /release data",
+              "effect": "duplicate or misplaced menu entry",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "long Chinese names, versions and application numbers",
+              "effect": "table or overlay overlap",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "rapid duplicate clicks",
+              "effect": "duplicate session applications or actions",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "local backend authentication availability",
+              "effect": "browser route cannot be reached after login",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "simulated submitting state",
+              "consequence": "Immediate sampling can occur before state update",
+              "sampling_rule": "Wait for loading indicator to disappear before comparing state"
+            },
+            {
+              "source": "ECharts resize",
+              "consequence": "Initial screenshot can capture an unpainted canvas",
+              "sampling_rule": "Wait for chart render and verify nonblank canvas pixels"
+            },
+            {
+              "source": "auth hydrate",
+              "consequence": "Menu can be sampled before routes load",
+              "sampling_rule": "Wait for authenticated layout and menu text before inspection"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Appending a uniquely keyed RouteNode preserves server menus",
+              "evidence": "auth.ts currently replaces routes with a newly filtered array",
+              "falsifier": "Browser inspection shows duplicate or missing server routes"
+            },
+            {
+              "text": "Existing dependencies cover the prototype",
+              "evidence": "Element Plus and ECharts are installed and used by delivery-showcase",
+              "falsifier": "A required approved interaction cannot be built without another package"
+            },
+            {
+              "text": "The current authenticated local environment can reach /release",
+              "evidence": "Existing app uses the same router and auth hydrate path",
+              "falsifier": "Local backend or login remains unavailable during runtime acceptance"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Implement route node, route and shell then sample build and browser"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Centralize state and compare cross-view outputs"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Implement pure decisions and exercise representative browser paths"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Reuse shared UI and correct scoped CSS from geometry evidence"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Enforce task paths and audit the final diff"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "开发前计划已与已验证模型对账，五个串行任务覆盖全部必须需求",
+        "recorded_at": "2026-08-14T05:16:17+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "建立类型安全、可复位且跨视图一致的 Mock 状态与唯一原型菜单节点",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "RouteNode 由 web/src/types/auth.ts 定义",
+                "auth.hydrate 在服务端菜单返回后生成新数组",
+                "当前前端构建命令可直接测量类型和打包"
+              ],
+              "write_scope": [
+                "web/src/modules/release/types.ts",
+                "web/src/modules/release/mock.ts",
+                "web/src/modules/release/prototype-route.ts",
+                "web/src/stores/auth.ts"
+              ],
+              "invariants": [
+                "所有数据虚构",
+                "服务端路由节点不被覆盖或修改",
+                "重复 hydrate 不产生重复 /release"
+              ],
+              "interface_contracts": [
+                "createReleasePrototypeRoute 返回合法 RouteNode",
+                "createReleasePrototypeState 返回深度独立状态",
+                "场景、冲突和指标函数为纯函数"
+              ],
+              "non_goals": [
+                "不注册 Vue 页面",
+                "不修改后端菜单或数据库"
+              ],
+              "action_bounds": [
+                "只创建 release 领域文件并在 auth.ts 追加去重节点",
+                "不修改公共 RouteNode 类型"
+              ],
+              "acceptance_checks": [
+                "生产构建通过",
+                "重置结果确定且深度独立",
+                "菜单组合保留全部服务端路由"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "npm --prefix web run build 退出码",
+                "菜单去重代码证据"
+              ],
+              "rollback": "删除三个新文件并移除 auth.ts 原型节点追加。",
+              "stop_conditions": [
+                "必须修改 RouteNode 公共契约",
+                "服务端菜单被原型逻辑覆盖"
+              ],
+              "escalation_conditions": [
+                "需要后端菜单或数据库变更"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "交付可发现的四视图模块壳层和投产窗口完整交互",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "共享工具栏、表格、状态和空状态组件可读复用",
+                "router/index.ts 使用直接组件路由",
+                "T1 提供唯一状态和菜单节点"
+              ],
+              "write_scope": [
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/components/ReleaseWindowView.vue",
+                "web/src/modules/release/release-prototype.css",
+                "web/src/router/index.ts"
+              ],
+              "invariants": [
+                "模块导航在错误状态仍可见",
+                "窗口编码和项目只读",
+                "所有样式限制在 release-prototype-page"
+              ],
+              "interface_contracts": [
+                "/release 渲染 ReleaseManagementPrototype",
+                "ReleaseWindowView 只通过 props/events 读写状态"
+              ],
+              "non_goals": [
+                "不实现申请、基线和统计内部组件",
+                "不修改 AppLayout 或全局样式"
+              ],
+              "action_bounds": [
+                "注册一个路由",
+                "创建壳层、窗口组件和作用域 CSS"
+              ],
+              "acceptance_checks": [
+                "菜单和直接路由均可进入",
+                "四个视图按钮稳定",
+                "窗口筛选、编辑、开关和纳基提示可复位",
+                "异步状态明确"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "前端构建",
+                "浏览器路由和窗口视图证据"
+              ],
+              "rollback": "删除壳层、窗口组件和 CSS，并移除 /release 路由。",
+              "stop_conditions": [
+                "必须修改 AppLayout 或公共 UI 才能显示"
+              ],
+              "escalation_conditions": [
+                "现有组件无法表达批准的状态"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "交付版本申请列表、表单、冲突判断、状态动作和流程详情",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "REQ-20260814-021 已固定业务规则",
+                "T1 纯函数和 T2 会话状态是唯一数据源"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseApplicationView.vue",
+                "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+                "web/src/modules/release/components/ReleaseConflictDialog.vue",
+                "web/src/modules/release/components/ReleaseDetailDrawer.vue",
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "invariants": [
+                "场景自动派生",
+                "一张申请只有一个物理子系统和至少一个交付单元",
+                "同一操作重复点击不产生重复记录",
+                "列表与详情共享对象状态"
+              ],
+              "interface_contracts": [
+                "表单通过 save 事件提交草稿",
+                "冲突弹框返回明确 decision",
+                "详情动作由壳层统一更新状态"
+              ],
+              "non_goals": [
+                "不调用真实申请、工作流、附件或签名接口",
+                "不跨刷新持久化"
+              ],
+              "action_bounds": [
+                "仅创建四个申请组件并扩展壳层和作用域 CSS"
+              ],
+              "acceptance_checks": [
+                "常规、追加、阻断和应急样例可复验",
+                "校验失败保留输入",
+                "长文本不覆盖操作列",
+                "详情流程和列表状态一致"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "前端构建",
+                "代表场景浏览器操作证据"
+              ],
+              "rollback": "删除四个申请组件并恢复壳层到 T2 状态。",
+              "stop_conditions": [
+                "出现重复记录或跨视图状态分叉"
+              ],
+              "escalation_conditions": [
+                "新产品决策与 REQ-20260814-021 冲突"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "交付基线批次、替代链、统一统计指标、图表和下钻",
+              "requirement_ids": [
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "ECharts 已存在且交付示范中心提供生命周期模式",
+                "T3 申请状态可驱动基线和指标"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseBaselineView.vue",
+                "web/src/modules/release/components/ReleaseAnalyticsView.vue",
+                "web/src/modules/release/components/ReleaseChart.vue",
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "invariants": [
+                "批次、物理子系统和交付单元唯一定位明细",
+                "替代历史不因最新指针变化消失",
+                "指标、图表和下钻使用同一派生数据"
+              ],
+              "interface_contracts": [
+                "ReleaseChart 接收 option/height/ariaLabel",
+                "图表点击只改变下钻筛选",
+                "导出仅展示占位说明"
+              ],
+              "non_goals": [
+                "不生成真实 Excel",
+                "不新增依赖或服务端统计"
+              ],
+              "action_bounds": [
+                "创建三个组件并扩展壳层和作用域 CSS"
+              ],
+              "acceptance_checks": [
+                "基线与替代链可追溯",
+                "指标与下钻数量一致",
+                "空数据不显示空白画布",
+                "ECharts 卸载无控制台错误"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "前端构建",
+                "图表非空和数据交叉核对证据"
+              ],
+              "rollback": "删除三个组件并移除壳层挂载。",
+              "stop_conditions": [
+                "需要新依赖或第二份硬编码指标数据"
+              ],
+              "escalation_conditions": [
+                "用户要求真实导出、持久化或服务端聚合"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "完成范围、构建、治理和桌面运行验收并形成证据",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T4"
+              ],
+              "input_facts": [
+                "全部产品代码已可运行测量",
+                "任务范围定义了构建、治理、diff 和浏览器传感器"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260814-026-release-management-prototype/execution-T1.json",
+                ".ai-control/requirements/req-20260814-026-release-management-prototype/observation-T1.json",
+                ".ai-control/requirements/req-20260814-026-release-management-prototype/convergence.json"
+              ],
+              "invariants": [
+                "不修改产品代码扩大范围",
+                "证据区分构建、运行和浏览器验收",
+                "无独立观察时明确限制"
+              ],
+              "interface_contracts": [
+                "自动检查返回原始退出码",
+                "浏览器证据记录路径、视口、操作、控制台和几何结果"
+              ],
+              "non_goals": [
+                "不提交、不推送、不合并",
+                "不声称正式后端完成"
+              ],
+              "action_bounds": [
+                "运行检查、启动现有服务、浏览器测量并写当前前缀证据"
+              ],
+              "acceptance_checks": [
+                "构建、治理和 diff 检查通过",
+                "1280x800 与 1440x900 核心路径无重叠和页面溢出",
+                "浅深主题和状态无控制台错误",
+                "实际 diff 全部在授权范围"
+              ],
+              "evidence_required": [
+                "命令退出码",
+                "浏览器截图和 DOM/控制台结果",
+                "最终文件清单和范围审计"
+              ],
+              "rollback": "回退 REQ-20260814-026 的产品和证据文件，不执行数据库动作。",
+              "stop_conditions": [
+                "构建失败",
+                "页面白屏",
+                "控制台错误未解决",
+                "范围越界"
+              ],
+              "escalation_conditions": [
+                "需要后端、数据库或公共组件变更",
+                "本地认证环境无法恢复"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "壳层消费 Mock 状态和菜单节点"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "申请组件挂载到壳层并共享状态"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "基线和统计依赖申请状态"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "最终验收需要完整四视图"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "npm --prefix web run build",
+                "检查 /release 菜单去重代码"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "checks": [
+                "npm --prefix web run build",
+                "四视图共享状态检查"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "node scripts/check-all-governance.mjs",
+                "git diff --check",
+                "桌面浏览器验收"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "执行前基线",
+              "trigger": "进入 executing",
+              "observer": "主 Agent",
+              "sensors": [
+                "S1",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "T1-T4 集成采样",
+              "trigger": "完整原型实现报告生成",
+              "observer": "观察上下文",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "最终桌面验收",
+              "trigger": "所有自动检查和浏览器路径完成",
+              "observer": "独立观察者或明确标记非独立观察",
+              "sensors": [
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T3 版本申请、冲突和流程详情实现完成并通过构建与浏览器主路径验证",
+        "recorded_at": "2026-08-14T06:33:14+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseApplicationView.vue",
+              "purpose": "版本申请筛选、列表和受控操作入口"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+              "purpose": "版本申请新增编辑、校验和场景展示"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseConflictDialog.vue",
+              "purpose": "重复版本和未完成申请冲突提示"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseDetailDrawer.vue",
+              "purpose": "申请详情、流程轮次、流转记录和签署展示"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue",
+              "purpose": "统一会话状态和申请动作编排"
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite build passed; 2345 modules transformed"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "版本申请浏览器主路径",
+              "result": "pass",
+              "evidence": "列表、表单校验、冲突弹框、详情流程和当前身份签署均可复验",
+              "limitations": [
+                "仅使用前端会话 Mock，不验证真实工作流和持久化"
+              ]
+            },
+            {
+              "check": "冲突阻断信息",
+              "result": "pass",
+              "evidence": "AUTH-SVC 重复版本显示历史版本、本次版本、状态和 REL-202609-007",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "新增版本申请完整交互",
+            "操作列收敛为详情和受控动作",
+            "详情展示审批进度和电子签署结果"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "场景自动派生",
+              "result": "pass",
+              "evidence": "表单只展示自动判定场景和流程编码"
+            },
+            {
+              "invariant": "单申请单只含一个物理子系统和至少一个交付单元",
+              "result": "pass",
+              "evidence": "表单结构和提交校验共同限制"
+            },
+            {
+              "invariant": "列表与详情共享会话状态",
+              "result": "pass",
+              "evidence": "详情直接读取壳层 applications 对象"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实申请、工作流、附件和签名接口按原型边界延期"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T4 基线替代链、四类图表和下钻完成；代理对象克隆错误已修复并复验",
+        "recorded_at": "2026-08-14T06:34:38+00:00",
+        "data": {
+          "task_id": "T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseBaselineView.vue",
+              "purpose": "基线批次、复合定位和版本替代链"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseAnalyticsView.vue",
+              "purpose": "统一指标、四类图表、下钻和导出占位"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseChart.vue",
+              "purpose": "ECharts 生命周期和点击事件封装"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/release-prototype.css",
+              "purpose": "受限于原型页面的桌面布局和主题样式"
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "production build passed"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "基线替代链",
+              "result": "pass",
+              "evidence": "AUTH-SVC 展示 v2.5.2、v2.6.0、v2.6.1，且只有 v2.6.1 标记最新版本",
+              "limitations": []
+            },
+            {
+              "check": "统计图表和下钻",
+              "result": "pass",
+              "evidence": "四个非空图表渲染；点击窗口柱图后下钻为 WIN-2026-09 的 5 张申请",
+              "limitations": [
+                "导出仅提供明确占位说明"
+              ]
+            },
+            {
+              "check": "替代链运行日志复验",
+              "result": "pass",
+              "evidence": "2026-08-14T06:14:25.649Z 后打开替代链无新增 error 或 warning",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "新增两类基线批次和版本替代链",
+            "新增四个统计图表和明细下钻",
+            "修复 Vue 代理对象克隆错误"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "批次号、物理子系统和交付单元定位明细",
+              "result": "pass",
+              "evidence": "基线展开区明确展示复合定位规则"
+            },
+            {
+              "invariant": "指标、图表和下钻使用同一 Mock 状态",
+              "result": "pass",
+              "evidence": "ReleaseAnalyticsView 统一调用 buildReleaseMetrics 和 applications"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "早期替代链操作触发 Vue proxy DataCloneError",
+              "impact": "已改为逐项普通对象复制并完成无新增日志复验"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "正式 Excel 导出不属于本原型"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T5 构建、全量治理、diff、桌面分辨率、主题和异常状态验收完成",
+        "recorded_at": "2026-08-14T06:36:22+00:00",
+        "data": {
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "docs/requirements/REQ-20260814-026-release-management-prototype",
+              "purpose": "需求、范围和验收证据"
+            },
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype",
+              "purpose": "闭环工程控制账本和报告"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc passed; Vite built 2345 modules"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 0,
+              "salient_output": "All repository governance checks passed"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "no whitespace errors"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260814-026-release-management-prototype/codex-task-scope.yaml --working-tree",
+              "exit_code": 1,
+              "salient_output": "branch policy rejects user-selected local branch rokey"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "桌面浏览器 1440x900",
+              "result": "pass",
+              "evidence": "四视图、抽屉、弹框、图表和替代链可用且无页面级溢出",
+              "limitations": []
+            },
+            {
+              "check": "桌面浏览器 1280x800",
+              "result": "pass",
+              "evidence": "documentWidth=1280, bodyWidth=1280, horizontalOverflow=false",
+              "limitations": []
+            },
+            {
+              "check": "浅色和深色主题",
+              "result": "pass",
+              "evidence": "theme=light/dark 均可切换，深色 body background rgb(19,35,43)，无横向溢出",
+              "limitations": []
+            },
+            {
+              "check": "异常状态",
+              "result": "pass",
+              "evidence": "loading mask、空数据、加载失败和无权限状态均明确呈现",
+              "limitations": []
+            },
+            {
+              "check": "真实 diff 范围审计",
+              "result": "pass",
+              "evidence": "产品改动仅在 release 模块、router/index.ts 和 stores/auth.ts，文档和账本位于本需求目录",
+              "limitations": [
+                "专项范围脚本的分支命名门禁不支持用户明确指定的 rokey 分支"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "完成构建、治理、浏览器和范围验收",
+            "补齐可追踪工程证据"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "不修改 Java、Flyway 和数据库",
+              "result": "pass",
+              "evidence": "git status 和路径审计无 server 或 migration 变更"
+            },
+            {
+              "invariant": "原型不暗示持久化",
+              "result": "pass",
+              "evidence": "页头、表单和导出弹框均明确标注 Mock 会话边界"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "沙箱内首次 Vite 构建无法写 web/node_modules/.vite-temp",
+              "impact": "以获准的工作区构建重跑并通过"
+            },
+            {
+              "event": "全新数据库启动暴露现有 Flowable/Flyway 顺序冲突",
+              "impact": "不属于前端原型范围，未修改后端或迁移"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "专项范围脚本要求规范功能分支，而本次按用户要求保留 rokey",
+            "正式后端空库迁移顺序需由平台任务另行处理"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "独立采样覆盖 R1-R5；未观察到阻塞性产品偏差",
+        "recorded_at": "2026-08-14T06:39:18+00:00",
+        "data": {
+          "sample_label": "配置管理原型最终独立采样",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "浏览器菜单与四视图路径",
+              "result": "pass",
+              "raw_evidence": "配置管理菜单唯一可见，投产窗口、版本申请、基线管理、统计分析均可切换",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "列表、详情、基线和统计交叉核对",
+              "result": "pass",
+              "raw_evidence": "8 张申请、2 个基线批次、5 条基线明细和图表下钻均来自同一会话状态",
+              "limitation": [
+                "刷新后按设计恢复 Mock 初始数据"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "申请表单与冲突路径",
+              "result": "pass",
+              "raw_evidence": "场景自动判定；AUTH-SVC 重复 v2.7.0 被 REL-202609-007 阻断并展示可复制申请单号",
+              "limitation": [
+                "未调用真实审批服务"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "生产构建、桌面几何、主题和运行日志",
+              "result": "pass",
+              "raw_evidence": "构建退出码 0；1280x800 无页面级溢出；浅深主题可读；修复后替代链无新增控制台错误",
+              "limitation": [
+                "本需求明确不验收移动端"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "git 路径和全量治理审计",
+              "result": "pass",
+              "raw_evidence": "无 Java、Flyway、数据库变更；全量治理和 git diff --check 退出码 0",
+              "limitation": [
+                "专项范围脚本仅因用户指定 rokey 不符合规范分支正则而退出 1"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "专项范围脚本与用户指定分支策略不兼容",
+              "impact": "不影响产品 diff 范围判定；作为治理例外披露"
+            },
+            {
+              "event": "既有空库迁移顺序问题",
+              "impact": "正式后端无法作为本前端原型的运行传感器"
+            }
+          ],
+          "coverage_gaps": [
+            "真实工作流、附件、通知、后端持久化和数据库迁移均为批准的非目标"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "R1-R5 追踪、任务、回归、不变量、范围和残余风险审计完成",
+        "recorded_at": "2026-08-14T06:40:43+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T5"
+              ],
+              "evidence": [
+                "唯一菜单入口和四个可达视图的浏览器证据"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "统一 Mock 状态驱动列表、详情、基线、指标和下钻"
+              ],
+              "limitations": [
+                "仅当前页面会话"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T5"
+              ],
+              "evidence": [
+                "自动场景、字段校验、版本冲突和申请动作均已复验"
+              ],
+              "limitations": [
+                "真实工作流和持久化不在范围内"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "生产构建通过，1280x800 与 1440x900、浅深主题和全状态验收通过"
+              ],
+              "limitations": [
+                "移动端明确延期"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T5"
+              ],
+              "evidence": [
+                "git 路径审计无后端和数据库改动，全量治理通过"
+              ],
+              "limitations": [
+                "专项范围脚本不接受用户指定 rokey 分支"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "类型安全 Mock 和菜单注入构建通过"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "壳层、路由和窗口视图构建及浏览器验证通过"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "版本申请、冲突和流程详情浏览器验证通过"
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "基线、替代链、图表和下钻验证通过"
+              ]
+            },
+            {
+              "id": "T5",
+              "status": "verified",
+              "evidence": [
+                "构建、治理、diff、桌面主题和状态验收通过"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "npm --prefix web run build",
+              "result": "pass",
+              "evidence": "退出码 0，2345 modules transformed"
+            },
+            {
+              "check": "node scripts/check-all-governance.mjs",
+              "result": "pass",
+              "evidence": "All repository governance checks passed"
+            },
+            {
+              "check": "git diff --check",
+              "result": "pass",
+              "evidence": "退出码 0"
+            },
+            {
+              "check": "桌面浏览器核心路径",
+              "result": "pass",
+              "evidence": "四视图、表单、冲突、流程、基线、图表、状态和主题通过"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "一个申请单只包含一个物理子系统和至少一个交付单元",
+              "result": "pass",
+              "evidence": "表单结构和提交校验"
+            },
+            {
+              "invariant": "场景自动派生",
+              "result": "pass",
+              "evidence": "派生函数和只读场景展示"
+            },
+            {
+              "invariant": "图表和详情使用同一会话 Mock",
+              "result": "pass",
+              "evidence": "统一 state 和派生指标"
+            },
+            {
+              "invariant": "原型不暗示持久化",
+              "result": "pass",
+              "evidence": "页面、表单和导出提示均声明会话边界"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Vue 代理对象不能 structuredClone",
+              "result": "pass",
+              "evidence": "改用普通对象复制后替代链无新增日志"
+            },
+            {
+              "disturbance": "1280x800 受限桌面宽度",
+              "result": "pass",
+              "evidence": "documentWidth 和 bodyWidth 均为 1280，无页面级横向溢出"
+            }
+          ],
+          "residual_risks": [
+            "用户指定 rokey 分支与专项范围脚本的规范分支正则不一致",
+            "正式后端空库启动存在既有 Flowable/Flyway 迁移顺序问题",
+            "本原型不验证真实持久化、工作流、附件、通知和导出服务"
+          ],
+          "gate_result": "pass",
+          "route_reason": "五条 must 需求均具备任务、实现和异质验收证据；两次采样 P0/P1 为零，范围与不变量保持稳定"
+        }
+      }
+    ]
+  },
+  "objective": "Deliver a discoverable desktop-only interactive frontend prototype for release windows, version applications, workflow progress, baselines and analytics using fictional session mock data without backend or database changes.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Provide one configuration-management entry with window, application, baseline and analytics views.",
+      "priority": "must",
+      "acceptance": [
+        "All four views are reachable after login",
+        "View switching preserves module context"
+      ],
+      "source": "User-selected prototype option",
+      "counterexample": [
+        "A view is reachable only by typing a hidden URL",
+        "Switching views resets the selected project context"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Use one fictional data model for all lists, details, workflow progress, baselines and charts.",
+      "priority": "must",
+      "acceptance": [
+        "Session operations update dependent views",
+        "Reset restores deterministic initial data"
+      ],
+      "source": "REQ-20260814-021",
+      "counterexample": [
+        "The application count differs between the list and analytics",
+        "Reset keeps records created earlier in the session"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Demonstrate scenario derivation, conflict handling and core application actions without claiming persistence.",
+      "priority": "must",
+      "acceptance": [
+        "Conflict dialog names delivery units, versions and application numbers",
+        "Prototype status remains explicit"
+      ],
+      "source": "REQ-20260814-021",
+      "counterexample": [
+        "The user manually selects the derived scenario",
+        "A toast claims a durable server save"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Reuse existing RDDMP UI and theme patterns and cover asynchronous display states.",
+      "priority": "must",
+      "acceptance": [
+        "Loading, empty, failure, forbidden, submitting, readonly, conflict and long-text states are visible",
+        "Desktop light and dark themes remain readable"
+      ],
+      "source": "Repository frontend contract",
+      "counterexample": [
+        "A failure renders an empty white panel",
+        "Long content covers the operation column"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Keep the prototype reversible and isolated from Java, Flyway and platform-private services.",
+      "priority": "must",
+      "acceptance": [
+        "No server or migration file changes",
+        "Removing the module, route and menu injection fully rolls back the prototype"
+      ],
+      "source": "User-selected frontend-only boundary",
+      "counterexample": [
+        "The prototype requires a Flyway menu seed",
+        "Removing the route leaves backend or database artifacts"
+      ]
+    }
+  ],
+  "invariants": [
+    "One application contains one physical subsystem and at least one delivery unit",
+    "Scenario is derived rather than directly selected",
+    "Charts and detail views derive from the same session mock data",
+    "Prototype operations never imply durable persistence"
+  ],
+  "constraints": [
+    "Vue 3, TypeScript, Vite, Element Plus and existing dependencies only",
+    "Desktop-only acceptance exception inherited from REQ-20260814-021",
+    "No Java, Flyway, real workflow, attachment, notification or external access changes",
+    "Development occurs on local rokey as explicitly requested"
+  ],
+  "non_goals": [
+    "Formal ccb-release backend module",
+    "Database schema or menu migration",
+    "Persistent uploads, exports or application data",
+    "Production authorization and workflow integration",
+    "Mobile business UI"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260814-026-release-management-prototype/handoff.json",
+    "imported_at": "2026-08-14T05:12:03+00:00",
+    "topic": "req-20260814-026-release-management-prototype",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260814-026-release-management-prototype",
+      "handoff_status": "approved",
+      "created_at": "2026-08-14T13:00:03+08:00",
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-14-release-management-prototype-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Only modify declared writable paths",
+          "Frontend-only session Mock with no server or database changes",
+          "Use existing Vue, Element Plus, ECharts and shared UI dependencies",
+          "Desktop-only acceptance at 1280x800 and 1440x900",
+          "Prototype behavior must not imply durable persistence"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/release/types.ts",
+            "status": "candidate-new",
+            "responsibility": "Release domain and UI state types",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/mock.ts",
+            "status": "candidate-new",
+            "responsibility": "Deterministic fictional data and pure derivations",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/prototype-route.ts",
+            "status": "candidate-new",
+            "responsibility": "Prototype RouteNode factory",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/ReleaseManagementPrototype.vue",
+            "status": "candidate-new",
+            "responsibility": "Module shell and session state owner",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseWindowView.vue",
+            "status": "candidate-new",
+            "responsibility": "Window view and actions",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseApplicationView.vue",
+            "status": "candidate-new",
+            "responsibility": "Application list and actions",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+            "status": "candidate-new",
+            "responsibility": "Application form and validation",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseConflictDialog.vue",
+            "status": "candidate-new",
+            "responsibility": "Conflict decisions",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseDetailDrawer.vue",
+            "status": "candidate-new",
+            "responsibility": "Detail, workflow and audit",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseBaselineView.vue",
+            "status": "candidate-new",
+            "responsibility": "Baseline and lineage",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseAnalyticsView.vue",
+            "status": "candidate-new",
+            "responsibility": "Metrics and drill-down",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseChart.vue",
+            "status": "candidate-new",
+            "responsibility": "ECharts lifecycle wrapper",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/modules/release/release-prototype.css",
+            "status": "candidate-new",
+            "responsibility": "Scoped prototype styles",
+            "evidence": "Approved design section 5"
+          },
+          {
+            "path": "web/src/router/index.ts",
+            "status": "existing",
+            "responsibility": "Register /release",
+            "evidence": "Repository inspection"
+          },
+          {
+            "path": "web/src/stores/auth.ts",
+            "status": "existing",
+            "responsibility": "Append the prototype menu node",
+            "evidence": "Repository inspection"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Create type-safe deterministic Mock state and a deduplicated prototype menu node",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R5"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "RouteNode exists in web/src/types/auth.ts",
+              "auth.hydrate filters server routes"
+            ],
+            "files": {
+              "create": [
+                "web/src/modules/release/types.ts",
+                "web/src/modules/release/mock.ts",
+                "web/src/modules/release/prototype-route.ts"
+              ],
+              "modify": [
+                "web/src/stores/auth.ts"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "RouteNode"
+              ],
+              "produces": [
+                "createReleasePrototypeRoute()",
+                "createReleasePrototypeState()",
+                "deriveApplicationScenario()",
+                "detectReleaseConflicts()",
+                "buildReleaseMetrics()"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Run frontend build baseline",
+                "command": "npm --prefix web run build",
+                "expected": "Exit code 0",
+                "evidence": "Build output"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Implement types and deterministic Mock",
+                "command": null,
+                "expected": "All business values are typed unions",
+                "evidence": "Diff review"
+              },
+              {
+                "id": "T1-S3",
+                "action": "Implement pure derivations",
+                "command": null,
+                "expected": "All views consume one state model",
+                "evidence": "Type check"
+              },
+              {
+                "id": "T1-S4",
+                "action": "Append one deduplicated menu node",
+                "command": null,
+                "expected": "Repeated hydrate has one /release entry",
+                "evidence": "Browser inspection"
+              },
+              {
+                "id": "T1-S5",
+                "action": "Run local build",
+                "command": "npm --prefix web run build",
+                "expected": "Exit code 0",
+                "evidence": "Build output"
+              }
+            ],
+            "acceptance_checks": [
+              "Reset is deterministic",
+              "Server routes are preserved",
+              "No server file changes"
+            ],
+            "risks": [
+              "Shared auth route composition regression"
+            ],
+            "rollback": "Delete new domain files and remove the prototype append from auth.ts.",
+            "stop_conditions": [
+              "RouteNode cannot represent the entry",
+              "Server route content is mutated"
+            ],
+            "escalation_conditions": [
+              "Backend menu or shared type change is required"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Deliver module shell, route and release-window interactions",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "Shared toolbar, table, status and empty components exist",
+              "Router children use component imports"
+            ],
+            "files": {
+              "create": [
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/components/ReleaseWindowView.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "modify": [
+                "web/src/router/index.ts"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "createReleasePrototypeState()",
+                "shared UI components"
+              ],
+              "produces": [
+                "ReleaseWindowView events",
+                "module navigation and reset"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Register /release and four-view shell",
+                "command": null,
+                "expected": "Route and menu render the module",
+                "evidence": "Browser route inspection"
+              },
+              {
+                "id": "T2-S2",
+                "action": "Implement window list and states",
+                "command": null,
+                "expected": "All demo states are explicit",
+                "evidence": "Browser state inspection"
+              },
+              {
+                "id": "T2-S3",
+                "action": "Implement window edit and baseline confirmations",
+                "command": null,
+                "expected": "Session data updates and resets",
+                "evidence": "Browser interaction"
+              },
+              {
+                "id": "T2-S4",
+                "action": "Run local build",
+                "command": "npm --prefix web run build",
+                "expected": "Exit code 0",
+                "evidence": "Build output"
+              }
+            ],
+            "acceptance_checks": [
+              "Entry is visible once",
+              "Window actions are resettable",
+              "Navigation remains in error states"
+            ],
+            "risks": [
+              "Window table overflow"
+            ],
+            "rollback": "Remove shell, window component, CSS and route.",
+            "stop_conditions": [
+              "AppLayout or global style must change"
+            ],
+            "escalation_conditions": [
+              "Shared UI cannot express required states"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Deliver applications, conflicts, lifecycle actions and workflow detail",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "REQ-20260814-021 defines the business rules",
+              "All operations are session-only"
+            ],
+            "files": {
+              "create": [
+                "web/src/modules/release/components/ReleaseApplicationView.vue",
+                "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+                "web/src/modules/release/components/ReleaseConflictDialog.vue",
+                "web/src/modules/release/components/ReleaseDetailDrawer.vue"
+              ],
+              "modify": [
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "scenario and conflict derivations",
+                "session state"
+              ],
+              "produces": [
+                "application events",
+                "save draft event",
+                "conflict decision",
+                "detail actions"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Implement list, filters and action hierarchy",
+                "command": null,
+                "expected": "Long content does not cover actions",
+                "evidence": "Desktop screenshot"
+              },
+              {
+                "id": "T3-S2",
+                "action": "Implement grouped form and validation",
+                "command": null,
+                "expected": "Invalid fields block action near the field",
+                "evidence": "Browser interaction"
+              },
+              {
+                "id": "T3-S3",
+                "action": "Implement conflict paths",
+                "command": null,
+                "expected": "Unit, versions and application number are explicit",
+                "evidence": "Browser interaction"
+              },
+              {
+                "id": "T3-S4",
+                "action": "Implement detail and workflow records",
+                "command": null,
+                "expected": "List and detail stay synchronized",
+                "evidence": "Browser interaction"
+              },
+              {
+                "id": "T3-S5",
+                "action": "Run local build",
+                "command": "npm --prefix web run build",
+                "expected": "Exit code 0",
+                "evidence": "Build output"
+              }
+            ],
+            "acceptance_checks": [
+              "Representative scenarios are reproducible",
+              "Duplicate clicks are idempotent",
+              "Invalid forms keep input"
+            ],
+            "risks": [
+              "Cross-view state divergence"
+            ],
+            "rollback": "Delete application components and revert shell integration.",
+            "stop_conditions": [
+              "State invariants break or records duplicate"
+            ],
+            "escalation_conditions": [
+              "A new product decision conflicts with REQ-20260814-021"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "Deliver baselines, lineage, analytics and drill-down",
+            "requirement_ids": [
+              "R2",
+              "R4"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "ECharts is already installed",
+              "DeliveryChart shows the lifecycle pattern"
+            ],
+            "files": {
+              "create": [
+                "web/src/modules/release/components/ReleaseBaselineView.vue",
+                "web/src/modules/release/components/ReleaseAnalyticsView.vue",
+                "web/src/modules/release/components/ReleaseChart.vue"
+              ],
+              "modify": [
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "session state",
+                "buildReleaseMetrics()"
+              ],
+              "produces": [
+                "batch selection",
+                "lineage selection",
+                "chart drill-down"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "Implement baseline batches and details",
+                "command": null,
+                "expected": "Composite keys identify unique details",
+                "evidence": "Browser inspection"
+              },
+              {
+                "id": "T4-S2",
+                "action": "Implement ordered lineage",
+                "command": null,
+                "expected": "History remains and latest is labeled",
+                "evidence": "Browser interaction"
+              },
+              {
+                "id": "T4-S3",
+                "action": "Implement metrics, charts and drill-down",
+                "command": null,
+                "expected": "Metrics match row counts",
+                "evidence": "Cross-check notes"
+              },
+              {
+                "id": "T4-S4",
+                "action": "Implement export placeholder",
+                "command": null,
+                "expected": "No fake download occurs",
+                "evidence": "Browser interaction"
+              },
+              {
+                "id": "T4-S5",
+                "action": "Run local build",
+                "command": "npm --prefix web run build",
+                "expected": "Exit code 0",
+                "evidence": "Build output"
+              }
+            ],
+            "acceptance_checks": [
+              "Lineage is traceable",
+              "Charts handle empty data",
+              "No dependency added"
+            ],
+            "risks": [
+              "Chart lifecycle and sizing"
+            ],
+            "rollback": "Delete baseline and analytics components and remove their mounts.",
+            "stop_conditions": [
+              "A new dependency or duplicated metric source is required"
+            ],
+            "escalation_conditions": [
+              "Real export or server aggregation is requested"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "Prove scope, build health and desktop usability",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T4"
+            ],
+            "input_facts": [
+              "Task scope requires build, governance, diff and desktop browser evidence"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260814-026-release-management-prototype/execution-T1.json",
+                ".ai-control/requirements/req-20260814-026-release-management-prototype/observation-T1.json",
+                ".ai-control/requirements/req-20260814-026-release-management-prototype/convergence.json"
+              ],
+              "modify": [],
+              "test": [
+                "web/src/modules/release/**",
+                "web/src/router/index.ts",
+                "web/src/stores/auth.ts"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "complete /release path"
+              ],
+              "produces": [
+                "build evidence",
+                "governance evidence",
+                "browser evidence",
+                "scope audit"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "Run production build",
+                "command": "npm --prefix web run build",
+                "expected": "Exit code 0",
+                "evidence": "Build output"
+              },
+              {
+                "id": "T5-S2",
+                "action": "Run governance and diff checks",
+                "command": "node scripts/check-all-governance.mjs",
+                "expected": "All governance checks pass",
+                "evidence": "Governance output"
+              },
+              {
+                "id": "T5-S3",
+                "action": "Exercise core paths in two desktop viewports",
+                "command": null,
+                "expected": "No overlap or unreachable actions",
+                "evidence": "Screenshots and DOM measurements"
+              },
+              {
+                "id": "T5-S4",
+                "action": "Exercise states and themes",
+                "command": null,
+                "expected": "No console errors",
+                "evidence": "Console and screenshots"
+              },
+              {
+                "id": "T5-S5",
+                "action": "Write execution and convergence evidence",
+                "command": null,
+                "expected": "Evidence accurately separates levels",
+                "evidence": "Task JSON files"
+              }
+            ],
+            "acceptance_checks": [
+              "Automated commands pass",
+              "Core paths are clicked",
+              "Diff stays in scope"
+            ],
+            "risks": [
+              "Local service or authentication blocks browser acceptance"
+            ],
+            "rollback": "Revert all REQ-20260814-026 product and evidence files.",
+            "stop_conditions": [
+              "Build failure",
+              "Blank page",
+              "Console error",
+              "Scope violation"
+            ],
+            "escalation_conditions": [
+              "Backend or database change is needed",
+              "Independent owner review is required"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "The shell and window view consume the typed Mock state and prototype menu node."
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Application components are mounted by the established module shell and share its session state."
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "Baseline and analytics views derive results from application actions and shared state."
+          },
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "Integrated browser acceptance requires all four views and interactions to be complete."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ],
+          [
+            "T5"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Frontend build succeeds"
+          },
+          {
+            "after_tasks": [
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Integrated module build succeeds"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "All governance checks pass"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "git diff --check",
+            "expected": "No whitespace errors"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T5"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User explicitly approved implementation plan revision 1 by replying: 开始画原型吧。",
+          "confirmed_at": "2026-08-14T13:00:03+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "web/src/modules/release/**",
+          "web/src/router/index.ts prototype route",
+          "web/src/stores/auth.ts prototype menu composition"
+        ],
+        "state_variable_candidates": [
+          "active view",
+          "demo state",
+          "windows",
+          "applications",
+          "baselines",
+          "filters",
+          "selected object",
+          "open overlays"
+        ],
+        "interface_candidates": [
+          "RouteNode factory",
+          "Mock state factory",
+          "scenario derivation",
+          "conflict detection",
+          "metric derivation",
+          "component events"
+        ],
+        "sensor_candidates": [
+          "Vue build",
+          "governance checks",
+          "git diff audit",
+          "browser DOM and console",
+          "desktop screenshots",
+          "scrollWidth"
+        ],
+        "actuator_candidates": [
+          "session state updates",
+          "view switching",
+          "filters",
+          "overlay controls",
+          "reset",
+          "theme switching"
+        ],
+        "disturbance_candidates": [
+          "server menu ordering",
+          "long text",
+          "duplicate clicks",
+          "chart resize",
+          "dark theme"
+        ],
+        "delay_candidates": [
+          "simulated async work",
+          "ECharts resize",
+          "route hydration",
+          "drawer transitions"
+        ],
+        "assumptions": [
+          {
+            "text": "A unique frontend RouteNode can be appended without mutating server routes.",
+            "basis": "Current auth store assigns a filtered array.",
+            "falsifier": "Menu duplication or server route mutation."
+          },
+          {
+            "text": "Existing dependencies cover all prototype controls.",
+            "basis": "Element Plus and ECharts are installed.",
+            "falsifier": "A required interaction needs a new package."
+          },
+          {
+            "text": "One session state drives all views.",
+            "basis": "Approved prototype design.",
+            "falsifier": "A view requires duplicated source data."
+          }
+        ]
+      },
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260814-026-release-management-prototype",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-14-release-management-prototype-design.md",
+        "approval": {
+          "status": "approved",
+          "evidence": "User selected interactive frontend prototype option 1, requested local rokey implementation, and explicitly confirmed the landed revision.",
+          "confirmed_at": "2026-08-14T13:00:03+08:00"
+        },
+        "objective": "Deliver a discoverable desktop-only interactive frontend prototype for release windows, version applications, workflow progress, baselines and analytics using fictional session mock data without backend or database changes.",
+        "users": [
+          "project developers",
+          "test reviewers",
+          "configuration administrators",
+          "workflow approvers"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Provide one configuration-management entry with window, application, baseline and analytics views.",
+            "priority": "must",
+            "acceptance": [
+              "All four views are reachable after login",
+              "View switching preserves module context"
+            ],
+            "source": "User-selected prototype option",
+            "counterexample": [
+              "A view is reachable only by typing a hidden URL",
+              "Switching views resets the selected project context"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Use one fictional data model for all lists, details, workflow progress, baselines and charts.",
+            "priority": "must",
+            "acceptance": [
+              "Session operations update dependent views",
+              "Reset restores deterministic initial data"
+            ],
+            "source": "REQ-20260814-021",
+            "counterexample": [
+              "The application count differs between the list and analytics",
+              "Reset keeps records created earlier in the session"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Demonstrate scenario derivation, conflict handling and core application actions without claiming persistence.",
+            "priority": "must",
+            "acceptance": [
+              "Conflict dialog names delivery units, versions and application numbers",
+              "Prototype status remains explicit"
+            ],
+            "source": "REQ-20260814-021",
+            "counterexample": [
+              "The user manually selects the derived scenario",
+              "A toast claims a durable server save"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Reuse existing RDDMP UI and theme patterns and cover asynchronous display states.",
+            "priority": "must",
+            "acceptance": [
+              "Loading, empty, failure, forbidden, submitting, readonly, conflict and long-text states are visible",
+              "Desktop light and dark themes remain readable"
+            ],
+            "source": "Repository frontend contract",
+            "counterexample": [
+              "A failure renders an empty white panel",
+              "Long content covers the operation column"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Keep the prototype reversible and isolated from Java, Flyway and platform-private services.",
+            "priority": "must",
+            "acceptance": [
+              "No server or migration file changes",
+              "Removing the module, route and menu injection fully rolls back the prototype"
+            ],
+            "source": "User-selected frontend-only boundary",
+            "counterexample": [
+              "The prototype requires a Flyway menu seed",
+              "Removing the route leaves backend or database artifacts"
+            ]
+          }
+        ],
+        "invariants": [
+          "One application contains one physical subsystem and at least one delivery unit",
+          "Scenario is derived rather than directly selected",
+          "Charts and detail views derive from the same session mock data",
+          "Prototype operations never imply durable persistence"
+        ],
+        "constraints": [
+          "Vue 3, TypeScript, Vite, Element Plus and existing dependencies only",
+          "Desktop-only acceptance exception inherited from REQ-20260814-021",
+          "No Java, Flyway, real workflow, attachment, notification or external access changes",
+          "Development occurs on local rokey as explicitly requested"
+        ],
+        "non_goals": [
+          "Formal ccb-release backend module",
+          "Database schema or menu migration",
+          "Persistent uploads, exports or application data",
+          "Production authorization and workflow integration",
+          "Mobile business UI"
+        ],
+        "selected_approach": {
+          "name": "Module-owned session mock with frontend prototype route injection",
+          "reason": "It validates discoverability and complete interaction while keeping the prototype reversible and independent from backend delivery.",
+          "alternatives": [
+            {
+              "name": "Flyway-backed prototype menu",
+              "rejected_because": "Introduces a database change and conflicts with the formal module migration boundary."
+            },
+            {
+              "name": "Direct URL only",
+              "rejected_because": "Cannot validate platform navigation and module discoverability."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "release prototype module",
+              "session mock state",
+              "four desktop views",
+              "route registration",
+              "prototype menu node"
+            ],
+            "outside": [
+              "server",
+              "database",
+              "platform services",
+              "mobile UI"
+            ]
+          },
+          "implementation_scope": {
+            "frontend": [
+              "web/src/modules/release/**",
+              "web/src/router/index.ts",
+              "web/src/stores/auth.ts"
+            ],
+            "documentation": [
+              "REQ-20260814-026 requirement, task scope, design, plan and control evidence"
+            ],
+            "server": "read_only"
+          },
+          "components": [
+            {
+              "name": "prototype-shell",
+              "responsibility": "Own module navigation, project context and session state",
+              "depends_on": [
+                "mock-domain"
+              ]
+            },
+            {
+              "name": "window-view",
+              "responsibility": "Present release windows and baseline readiness interactions",
+              "depends_on": [
+                "prototype-shell"
+              ]
+            },
+            {
+              "name": "application-view",
+              "responsibility": "Present application list, form, conflicts, details and actions",
+              "depends_on": [
+                "prototype-shell"
+              ]
+            },
+            {
+              "name": "baseline-view",
+              "responsibility": "Present batches, current versions and lineage",
+              "depends_on": [
+                "prototype-shell"
+              ]
+            },
+            {
+              "name": "analytics-view",
+              "responsibility": "Derive metrics, charts and drill-down from session data",
+              "depends_on": [
+                "prototype-shell"
+              ]
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "fictional initial dataset",
+              "transitions": [
+                "clone into session state",
+                "derive filters and metrics"
+              ],
+              "output": "consistent four-view prototype"
+            },
+            {
+              "input": "application form",
+              "transitions": [
+                "validate",
+                "derive scenario",
+                "detect conflicts",
+                "save or submit session record"
+              ],
+              "output": "updated list, detail and analytics"
+            },
+            {
+              "input": "window baseline action",
+              "transitions": [
+                "check blockers",
+                "confirm",
+                "update mock batch and application status"
+              ],
+              "output": "updated baseline and lineage"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "demo loading, empty, failure or forbidden mode",
+            "behavior": "Show an explicit scoped state without breaking module navigation.",
+            "recovery": "Switch to normal mode or reset data."
+          },
+          {
+            "condition": "application validation or conflict",
+            "behavior": "Preserve entered values and show field or conflict-specific feedback.",
+            "recovery": "Correct fields, cancel the conflicting application or acknowledge an allowed additional scenario."
+          },
+          {
+            "condition": "duplicate action",
+            "behavior": "Disable submitting controls and avoid duplicate session records.",
+            "recovery": "Use the updated current state."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Use fictional session data only",
+            "Do not access platform-private services or production systems"
+          ],
+          "performance": [
+            "Render charts and tables without blocking the desktop interaction path",
+            "Dispose chart instances when components unmount"
+          ],
+          "compatibility": [
+            "No page-level horizontal overflow at 1280x800 and 1440x900",
+            "Light and dark theme readability",
+            "Scoped CSS and no new dependency"
+          ],
+          "operations": [
+            "Deterministic resettable mock state",
+            "No browser console errors on core paths",
+            "Removing the module route and menu injection fully rolls back the prototype"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "Four views and session updates remain consistent.",
+            "method": "Desktop browser path acceptance and deterministic reset checks."
+          },
+          {
+            "requirement_ids": [
+              "R3"
+            ],
+            "signal": "Scenario, conflict and application actions produce visible expected states.",
+            "method": "Browser interaction with regular, additional, blocked and emergency mock records."
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "Build succeeds and UI states are readable in both themes.",
+            "method": "Vue production build plus browser console and screenshot inspection."
+          },
+          {
+            "requirement_ids": [
+              "R5"
+            ],
+            "signal": "Diff remains within the declared frontend and task-document paths.",
+            "method": "Task-scope governance check and git diff audit."
+          }
+        ],
+        "assumptions": [
+          "Existing authentication routes can append a uniquely keyed prototype node without replacing server menus",
+          "Existing shared UI and ECharts dependencies cover the prototype",
+          "The formal release module will later replace session Mock operations through stable APIs"
+        ],
+        "unknowns": [],
+        "decisions": [
+          "Use a single configuration-management entry with four in-module views",
+          "Use frontend-only session Mock and explicit prototype labeling",
+          "Do not modify backend or database",
+          "Validate desktop only",
+          "Implement directly on local rokey per user instruction"
+        ],
+        "risks": [
+          {
+            "risk": "Prototype menu injection touches shared auth route composition",
+            "mitigation": "Use a pure uniquely keyed helper and preserve all server routes."
+          },
+          {
+            "risk": "Users may mistake session actions for persistence",
+            "mitigation": "Show persistent prototype labeling and reset behavior."
+          },
+          {
+            "risk": "Dense dialogs may overflow",
+            "mitigation": "Use bounded drawers and dialogs and verify desktop viewports."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"backend-provided authenticated RouteNode list\", \"existing RDDMP shared UI components\", \"Element Plus and ECharts runtime\", \"Vite development and production build\", \"desktop browser light and dark themes\"], \"inside\": [\"web/src/modules/release frontend prototype\", \"web/src/router/index.ts /release registration\", \"web/src/stores/auth.ts prototype menu composition\", \"session-owned release windows, applications and baselines\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Runtime interaction correctness\", \"visual overlap\"], \"id\": \"S1\", \"independence\": \"Compiler and bundler output\", \"method\": \"npm --prefix web run build\", \"target\": \"Type and bundle integrity\"}",
+      "{\"blind_spots\": [\"Unexercised combinations\"], \"id\": \"S2\", \"independence\": \"Runtime UI observation\", \"method\": \"Real browser role/text/DOM interaction at /release\", \"target\": \"Navigation and core user paths\"}",
+      "{\"blind_spots\": [\"Formal backend persistence is outside scope\"], \"id\": \"S3\", \"independence\": \"Observed derived values\", \"method\": \"Compare visible list, detail, baseline and chart/drill-down counts before and after actions\", \"target\": \"Cross-view data consistency\"}",
+      "{\"blind_spots\": [\"Mobile UI is an approved non-goal\"], \"id\": \"S4\", \"independence\": \"Browser pixels, DOM geometry and console\", \"method\": \"Screenshots, scrollWidth measurement and console inspection at 1280x800 and 1440x900 in both themes\", \"target\": \"Desktop visual and theme behavior\"}",
+      "{\"blind_spots\": [\"Manual future commits outside this task\"], \"id\": \"S5\", \"independence\": \"Repository governance and Git metadata\", \"method\": \"node scripts/check-all-governance.mjs plus git diff --name-only and git diff --check\", \"target\": \"Scope and rollback boundary\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Create types.ts and mock.ts within release module\", \"authority\": \"REQ-20260814-026 writable paths\", \"id\": \"A1\", \"impact_radius\": \"release prototype only\", \"rollback\": \"Delete new files\", \"target\": \"Mock domain and derivations\"}",
+      "{\"action\": \"Register /release and append one deduplicated prototype RouteNode\", \"authority\": \"REQ-20260814-026 writable paths\", \"id\": \"A2\", \"impact_radius\": \"frontend router and auth menu composition\", \"rollback\": \"Remove route import/child and prototype append\", \"target\": \"Navigation\"}",
+      "{\"action\": \"Create scoped Vue components and CSS\", \"authority\": \"REQ-20260814-026 writable paths\", \"id\": \"A3\", \"impact_radius\": \"release prototype route\", \"rollback\": \"Delete web/src/modules/release\", \"target\": \"Business interaction UI\"}",
+      "{\"action\": \"Apply limited fixes inside the current task write scope and rerun affected sensors\", \"authority\": \"REQ-20260814-026 writable paths\", \"id\": \"A4\", \"impact_radius\": \"single release component or route composition\", \"rollback\": \"Restore pre-fix diff hunk\", \"target\": \"Observed deviations\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"duplicate or misplaced menu entry\", \"source\": \"backend route ordering or duplicate /release data\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"table or overlay overlap\", \"source\": \"long Chinese names, versions and application numbers\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"duplicate session applications or actions\", \"source\": \"rapid duplicate clicks\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"browser route cannot be reached after login\", \"source\": \"local backend authentication availability\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"auth.ts currently replaces routes with a newly filtered array\", \"falsifier\": \"Browser inspection shows duplicate or missing server routes\", \"text\": \"Appending a uniquely keyed RouteNode preserves server menus\"}",
+      "{\"evidence\": \"Element Plus and ECharts are installed and used by delivery-showcase\", \"falsifier\": \"A required approved interaction cannot be built without another package\", \"text\": \"Existing dependencies cover the prototype\"}",
+      "{\"evidence\": \"Existing app uses the same router and auth hydrate path\", \"falsifier\": \"Local backend or login remains unavailable during runtime acceptance\", \"text\": \"The current authenticated local environment can reach /release\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立类型安全、可复位且跨视图一致的 Mock 状态与唯一原型菜单节点",
+      "requirements": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "RouteNode 由 web/src/types/auth.ts 定义",
+        "auth.hydrate 在服务端菜单返回后生成新数组",
+        "当前前端构建命令可直接测量类型和打包"
+      ],
+      "write_scope": [
+        "web/src/modules/release/types.ts",
+        "web/src/modules/release/mock.ts",
+        "web/src/modules/release/prototype-route.ts",
+        "web/src/stores/auth.ts"
+      ],
+      "invariants": [
+        "所有数据虚构",
+        "服务端路由节点不被覆盖或修改",
+        "重复 hydrate 不产生重复 /release"
+      ],
+      "interface_contracts": [
+        "createReleasePrototypeRoute 返回合法 RouteNode",
+        "createReleasePrototypeState 返回深度独立状态",
+        "场景、冲突和指标函数为纯函数"
+      ],
+      "non_goals": [
+        "不注册 Vue 页面",
+        "不修改后端菜单或数据库"
+      ],
+      "action_bounds": [
+        "只创建 release 领域文件并在 auth.ts 追加去重节点",
+        "不修改公共 RouteNode 类型"
+      ],
+      "acceptance": [
+        "生产构建通过",
+        "重置结果确定且深度独立",
+        "菜单组合保留全部服务端路由"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "npm --prefix web run build 退出码",
+        "菜单去重代码证据"
+      ],
+      "rollback": "删除三个新文件并移除 auth.ts 原型节点追加。",
+      "stop_conditions": [
+        "必须修改 RouteNode 公共契约",
+        "服务端菜单被原型逻辑覆盖"
+      ],
+      "escalation_conditions": [
+        "需要后端菜单或数据库变更"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-14T05:17:16+00:00",
+          "text": "进入执行阶段，开始基线构建与 Mock 领域实现"
+        },
+        {
+          "recorded_at": "2026-08-14T05:21:45+00:00",
+          "text": "T1 产品改动完成，npm --prefix web run build 退出码 0"
+        },
+        {
+          "recorded_at": "2026-08-14T05:22:02+00:00",
+          "text": "生产构建通过且 diff 仅包含 T1 授权路径；最终浏览器观测仍由 T5 复核"
+        }
+      ],
+      "updated_at": "2026-08-14T05:22:02+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "交付可发现的四视图模块壳层和投产窗口完整交互",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "共享工具栏、表格、状态和空状态组件可读复用",
+        "router/index.ts 使用直接组件路由",
+        "T1 提供唯一状态和菜单节点"
+      ],
+      "write_scope": [
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "web/src/modules/release/components/ReleaseWindowView.vue",
+        "web/src/modules/release/release-prototype.css",
+        "web/src/router/index.ts"
+      ],
+      "invariants": [
+        "模块导航在错误状态仍可见",
+        "窗口编码和项目只读",
+        "所有样式限制在 release-prototype-page"
+      ],
+      "interface_contracts": [
+        "/release 渲染 ReleaseManagementPrototype",
+        "ReleaseWindowView 只通过 props/events 读写状态"
+      ],
+      "non_goals": [
+        "不实现申请、基线和统计内部组件",
+        "不修改 AppLayout 或全局样式"
+      ],
+      "action_bounds": [
+        "注册一个路由",
+        "创建壳层、窗口组件和作用域 CSS"
+      ],
+      "acceptance": [
+        "菜单和直接路由均可进入",
+        "四个视图按钮稳定",
+        "窗口筛选、编辑、开关和纳基提示可复位",
+        "异步状态明确"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "前端构建",
+        "浏览器路由和窗口视图证据"
+      ],
+      "rollback": "删除壳层、窗口组件和 CSS，并移除 /release 路由。",
+      "stop_conditions": [
+        "必须修改 AppLayout 或公共 UI 才能显示"
+      ],
+      "escalation_conditions": [
+        "现有组件无法表达批准的状态"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-14T05:22:17+00:00",
+          "text": "T1 已验证，开始实现模块壳层、路由和投产窗口视图"
+        },
+        {
+          "recorded_at": "2026-08-14T05:25:22+00:00",
+          "text": "T2 路由、壳层和窗口视图实现完成，前端生产构建退出码 0"
+        },
+        {
+          "recorded_at": "2026-08-14T05:25:29+00:00",
+          "text": "构建通过且写入范围符合 T2；最终视觉与交互由 T5 复核"
+        }
+      ],
+      "updated_at": "2026-08-14T05:25:29+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "交付版本申请列表、表单、冲突判断、状态动作和流程详情",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "REQ-20260814-021 已固定业务规则",
+        "T1 纯函数和 T2 会话状态是唯一数据源"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseApplicationView.vue",
+        "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+        "web/src/modules/release/components/ReleaseConflictDialog.vue",
+        "web/src/modules/release/components/ReleaseDetailDrawer.vue",
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "web/src/modules/release/release-prototype.css"
+      ],
+      "invariants": [
+        "场景自动派生",
+        "一张申请只有一个物理子系统和至少一个交付单元",
+        "同一操作重复点击不产生重复记录",
+        "列表与详情共享对象状态"
+      ],
+      "interface_contracts": [
+        "表单通过 save 事件提交草稿",
+        "冲突弹框返回明确 decision",
+        "详情动作由壳层统一更新状态"
+      ],
+      "non_goals": [
+        "不调用真实申请、工作流、附件或签名接口",
+        "不跨刷新持久化"
+      ],
+      "action_bounds": [
+        "仅创建四个申请组件并扩展壳层和作用域 CSS"
+      ],
+      "acceptance": [
+        "常规、追加、阻断和应急样例可复验",
+        "校验失败保留输入",
+        "长文本不覆盖操作列",
+        "详情流程和列表状态一致"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "前端构建",
+        "代表场景浏览器操作证据"
+      ],
+      "rollback": "删除四个申请组件并恢复壳层到 T2 状态。",
+      "stop_conditions": [
+        "出现重复记录或跨视图状态分叉"
+      ],
+      "escalation_conditions": [
+        "新产品决策与 REQ-20260814-021 冲突"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-14T05:25:37+00:00",
+          "text": "T2 已验证，开始实现版本申请、冲突和流程详情"
+        },
+        {
+          "recorded_at": "2026-08-14T06:33:31+00:00",
+          "text": "T3 输出可由构建和浏览器冲突、流程、签署路径独立测量"
+        },
+        {
+          "recorded_at": "2026-08-14T06:33:53+00:00",
+          "text": "构建通过；表单校验、阻断冲突、审批进度和当前身份签署浏览器复验通过"
+        }
+      ],
+      "updated_at": "2026-08-14T06:33:53+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "交付基线批次、替代链、统一统计指标、图表和下钻",
+      "requirements": [
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "ECharts 已存在且交付示范中心提供生命周期模式",
+        "T3 申请状态可驱动基线和指标"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseBaselineView.vue",
+        "web/src/modules/release/components/ReleaseAnalyticsView.vue",
+        "web/src/modules/release/components/ReleaseChart.vue",
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "web/src/modules/release/release-prototype.css"
+      ],
+      "invariants": [
+        "批次、物理子系统和交付单元唯一定位明细",
+        "替代历史不因最新指针变化消失",
+        "指标、图表和下钻使用同一派生数据"
+      ],
+      "interface_contracts": [
+        "ReleaseChart 接收 option/height/ariaLabel",
+        "图表点击只改变下钻筛选",
+        "导出仅展示占位说明"
+      ],
+      "non_goals": [
+        "不生成真实 Excel",
+        "不新增依赖或服务端统计"
+      ],
+      "action_bounds": [
+        "创建三个组件并扩展壳层和作用域 CSS"
+      ],
+      "acceptance": [
+        "基线与替代链可追溯",
+        "指标与下钻数量一致",
+        "空数据不显示空白画布",
+        "ECharts 卸载无控制台错误"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "前端构建",
+        "图表非空和数据交叉核对证据"
+      ],
+      "rollback": "删除三个组件并移除壳层挂载。",
+      "stop_conditions": [
+        "需要新依赖或第二份硬编码指标数据"
+      ],
+      "escalation_conditions": [
+        "用户要求真实导出、持久化或服务端聚合"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-14T06:34:16+00:00",
+          "text": "T3 已验证，开始收敛基线、替代链、统计图表和下钻证据"
+        },
+        {
+          "recorded_at": "2026-08-14T06:35:15+00:00",
+          "text": "T4 输出可由替代链 DOM、图表画布、点击下钻和运行日志独立测量"
+        },
+        {
+          "recorded_at": "2026-08-14T06:35:42+00:00",
+          "text": "基线替代链、最新版本标识、四个非空图表、下钻和导出占位复验通过且无新增日志"
+        }
+      ],
+      "updated_at": "2026-08-14T06:35:42+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "完成范围、构建、治理和桌面运行验收并形成证据",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T4"
+      ],
+      "input_facts": [
+        "全部产品代码已可运行测量",
+        "任务范围定义了构建、治理、diff 和浏览器传感器"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260814-026-release-management-prototype/execution-T1.json",
+        ".ai-control/requirements/req-20260814-026-release-management-prototype/observation-T1.json",
+        ".ai-control/requirements/req-20260814-026-release-management-prototype/convergence.json"
+      ],
+      "invariants": [
+        "不修改产品代码扩大范围",
+        "证据区分构建、运行和浏览器验收",
+        "无独立观察时明确限制"
+      ],
+      "interface_contracts": [
+        "自动检查返回原始退出码",
+        "浏览器证据记录路径、视口、操作、控制台和几何结果"
+      ],
+      "non_goals": [
+        "不提交、不推送、不合并",
+        "不声称正式后端完成"
+      ],
+      "action_bounds": [
+        "运行检查、启动现有服务、浏览器测量并写当前前缀证据"
+      ],
+      "acceptance": [
+        "构建、治理和 diff 检查通过",
+        "1280x800 与 1440x900 核心路径无重叠和页面溢出",
+        "浅深主题和状态无控制台错误",
+        "实际 diff 全部在授权范围"
+      ],
+      "evidence_required": [
+        "命令退出码",
+        "浏览器截图和 DOM/控制台结果",
+        "最终文件清单和范围审计"
+      ],
+      "rollback": "回退 REQ-20260814-026 的产品和证据文件，不执行数据库动作。",
+      "stop_conditions": [
+        "构建失败",
+        "页面白屏",
+        "控制台错误未解决",
+        "范围越界"
+      ],
+      "escalation_conditions": [
+        "需要后端、数据库或公共组件变更",
+        "本地认证环境无法恢复"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-14T06:36:02+00:00",
+          "text": "开始汇总构建、治理、范围、主题、状态和桌面几何验收证据"
+        },
+        {
+          "recorded_at": "2026-08-14T06:36:41+00:00",
+          "text": "全部产品输出可由最终构建、治理、浏览器和路径传感器独立复验"
+        },
+        {
+          "recorded_at": "2026-08-14T06:39:59+00:00",
+          "text": "最终构建、治理、diff、1280x800/1440x900、浅深主题和异常状态采样通过"
+        }
+      ],
+      "updated_at": "2026-08-14T06:39:59+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "S-0001 产品与浏览器完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "构建、四视图、冲突、流程、替代链、图表、状态、主题和 1280x800 几何检查通过",
+      "recorded_at": "2026-08-14T06:39:39+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "S-0002 最终回归与范围采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "生产构建、全量治理、git diff、无新增控制台错误和最终路径审计通过",
+      "recorded_at": "2026-08-14T06:41:04+00:00"
+    }
+  ]
+}

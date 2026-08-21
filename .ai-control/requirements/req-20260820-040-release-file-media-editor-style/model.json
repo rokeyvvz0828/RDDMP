@@ -1,0 +1,54 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["ReleaseApplicationDrawer file-media DOM", "File-media local CSS rules", "Existing add/remove bindings"],
+    "environment": ["Element Plus default styles", "Release drawer container", "Vite frontend runtime", "Viewport and theme/density settings"]
+  },
+  "state_variables": [
+    {"name": "file_media_enabled", "owner": "ReleaseApplicationDrawer draft.contentTypes", "valid_values": ["enabled", "disabled"]},
+    {"name": "file_media_rows", "owner": "ReleaseApplicationDrawer draft.fileMedia", "valid_values": ["one or more rows while enabled"]},
+    {"name": "viewport_width", "owner": "Browser", "valid_values": ["375", "390", "430", "desktop"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "File media enabled", "transitions": ["Render title/action markup", "Apply local typography and button styles"], "outputs": ["Compact field hierarchy"]},
+    {"requirement_id": "R2", "input": "One or multiple file rows", "transitions": ["Render indexed rows", "Apply stable three-column grid"], "outputs": ["Aligned row controls"]},
+    {"requirement_id": "R3", "input": "Required viewport and long path", "transitions": ["Input column shrinks through minmax", "Side columns remain fixed compact widths"], "outputs": ["Reachable controls without document overflow"]},
+    {"requirement_id": "R4", "input": "Checkbox, add, delete and path input actions", "transitions": ["Reuse existing handlers and v-model", "Build TypeScript and render runtime"], "outputs": ["Unchanged row-state and payload behavior"]}
+  ],
+  "interfaces": [
+    {"name": "draft.fileMedia", "producers": ["toggleContentTypes", "addFileMedia", "removeFileMedia", "input v-model"], "consumers": ["validate", "save payload"], "invariant": "The visual change does not alter its shape or handlers."},
+    {"name": "file-media local CSS", "producers": ["release-prototype.css"], "consumers": ["ReleaseApplicationDrawer markup"], "invariant": "Selectors remain scoped to the file-media editor."}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Type and production-build compatibility", "method": "npm --prefix web run build", "blind_spots": ["Visual alignment"], "independence": "Compiler and bundler output"},
+    {"id": "S2", "target": "R1-R3 rendered hierarchy, alignment and overflow", "method": "Authenticated browser screenshots and DOM geometry at desktop and three mobile viewports", "blind_spots": ["Unopened themes"], "independence": "Direct runtime rendering"},
+    {"id": "S3", "target": "R4 add/delete behavior", "method": "Browser row-count checks before and after add/delete", "blind_spots": ["Backend submission not changed by this task"], "independence": "Direct interaction state"},
+    {"id": "S4", "target": "Approved write boundary", "method": "Scoped diff and git diff --check", "blind_spots": ["Pre-existing untracked content attribution"], "independence": "Filesystem diff"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "File-media DOM hierarchy", "action": "Adjust only local markup and classes while retaining bindings", "authority": "Approved workspace write", "impact_radius": "One editor block", "rollback": "Restore the block to its pre-task markup"},
+    {"id": "A2", "target": "File-media visual layout", "action": "Replace only local editor CSS and mobile override", "authority": "Approved workspace write", "impact_radius": "File-media editor and review-path rules kept separate", "rollback": "Restore the pre-task local rules"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S2"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S3", "S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Element Plus default button margins and sizes", "effect": "Local alignment may drift", "detectable": true, "controllable": true},
+    {"source": "Existing dirty rokey worktree", "effect": "Global diff contains unrelated work", "detectable": true, "controllable": false},
+    {"source": "Authentication session", "effect": "Browser may redirect to login", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "Vite hot update and drawer transition", "consequence": "Immediate measurements can sample stale or animated geometry", "sampling_rule": "Wait for page load and drawer transition before measurement"}
+  ],
+  "assumptions": [{"text": "Local markup and CSS are sufficient.", "evidence": "The full defect surface is isolated in the inspected component and stylesheet.", "falsifier": "Runtime computed styles identify an unavoidable global rule."}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and S2"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and S2"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Use A2 and S2"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Freeze handlers and verify with S1/S3/S4"}
+  ],
+  "model_status": "ready"
+}

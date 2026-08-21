@@ -1,0 +1,108 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/requirements/REQ-20260815-027-business-owned-approval/codex-task-scope.yaml",
+      "purpose": "Publish final API, permission and control-ledger acceptance evidence"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260815-027-business-owned-approval/*.json",
+      "purpose": "Record integrated execution, observation and convergence evidence"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"],
+  "commands": [
+    {
+      "command": "JAVA_HOME=Java17 mvn -pl :ccb-workflow -am test",
+      "exit_code": 0,
+      "salient_output": "Workflow reactor passed; ccb-workflow ran 28 tests with zero failures or errors"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "Vue type check and Vite production build passed; only the existing large-chunk warning remains"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "Module, repository skill, development entry, AI control, boundary and 37-migration Flyway checks passed"
+    },
+    {
+      "command": "Source ownership assertions and git diff --check",
+      "exit_code": 0,
+      "salient_output": "WorkflowView has no inbox, done, start or decision symbols; Mock has no 202/204 grants; diff whitespace check passed"
+    },
+    {
+      "command": "Browser desktop, H5, task-center and theme acceptance",
+      "exit_code": 0,
+      "salient_output": "Task center navigates only; release detail embeds actionable approval; 1280, 375, 390 and 430 widths have no horizontal overflow; dark theme renders correctly"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Business-owned approval navigation",
+      "result": "pass",
+      "evidence": "Task center exposes only 查看详情 and opens /release/applications/SQ-001?taskId=900000000000205",
+      "limitations": ["Runtime task-to-release binding was seeded only in the isolated acceptance database because formal release persistence remains Mock by approved scope"]
+    },
+    {
+      "check": "Complete context and server-owned actionability",
+      "result": "pass",
+      "evidence": "The business page renders application, delivery unit, attachment, progress, logs and server-projected approval actions; list entry without taskId is read-only",
+      "limitations": []
+    },
+    {
+      "check": "Responsive H5",
+      "result": "pass",
+      "evidence": "375x812, 390x844 and 430x932 measurements report scrollWidth equal to clientWidth and all action buttons remain inside the approval panel",
+      "limitations": []
+    },
+    {
+      "check": "Workflow responsibility boundary",
+      "result": "pass",
+      "evidence": "Sidebar keeps only 流程定义 and 流程监控; workflow management source contains no business start or approval controls",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "Integrated final authorization, routing, menu, contract and responsive checks",
+    "Used a cloned acceptance database to avoid mutating the cross-branch local schema",
+    "Preserved the user-required rokey branch and disclosed its governance naming deviation"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "No production access or real data",
+      "result": "pass",
+      "evidence": "All runtime checks used local Mock data and ccb_platform_acceptance_027"
+    },
+    {
+      "invariant": "No commit or push",
+      "result": "pass",
+      "evidence": "Local rokey remains ahead of origin and the worktree remains uncommitted"
+    },
+    {
+      "invariant": "Frontend visibility does not replace backend authorization",
+      "result": "pass",
+      "evidence": "Task context and decision endpoints revalidate tenant, assignee, state, actions and signature requirements; JUnit regression passes"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Existing ccb_platform database contains different cross-branch V35-V37 history",
+      "impact": "Created a non-production cloned acceptance database and applied missing current-branch structures there; original database and Flyway history were not changed"
+    },
+    {
+      "event": "Sandbox initially blocked Maven and Vite output directories",
+      "impact": "Both commands were rerun with explicit local build permission and passed"
+    }
+  ],
+  "assumptions_falsified": [
+    "The pre-existing local database could not exercise the final task-center API because its recorded migration history did not contain the current branch columns"
+  ],
+  "unresolved_items": [
+    "The user-directed branch name rokey does not satisfy the repository standard branch regex",
+    "The original local ccb_platform schema still has cross-branch Flyway drift; no repair was performed"
+  ],
+  "recommended_next": "observe"
+}

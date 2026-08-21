@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260815-028-shell-tabs-header-consolidation",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-15-shell-tabs-header-consolidation-design.md",
+  "objective": "Remove duplicate desktop page titles and one shell row by placing existing route tabs inside the application header while preserving mobile behavior and all tab operations.",
+  "users": [
+    "Desktop users switching repeatedly among workbench, system, workflow and release-management pages",
+    "Phone users who need the current compact sticky header and tab row to remain operable"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Desktop renders route tabs inside the application header and does not render the duplicate breadcrumb or separate tab row.",
+      "acceptance": ["The current page title appears once in the shell", "Business content moves upward by the removed row height"],
+      "priority": "must",
+      "source": "User highlighted duplicate breadcrumb and tabs and confirmed option 1",
+      "counterexample": ["User management remains visible in both breadcrumb and tabs"]
+    },
+    {
+      "id": "R2",
+      "statement": "Project selection, sidebar toggle, inline tabs and global header actions remain simultaneously usable on desktop.",
+      "acceptance": ["Header controls do not overlap", "Tab overflow does not displace fixed-side controls"],
+      "priority": "must",
+      "source": "Existing shell workflow and selected consolidation approach",
+      "counterexample": ["Opening several tabs hides the account menu or project selector"]
+    },
+    {
+      "id": "R3",
+      "statement": "Existing tab navigation and context-menu behavior is unchanged.",
+      "acceptance": ["Switch, close, refresh, close others and close all retain their current semantics"],
+      "priority": "must",
+      "source": "Existing UiTabs contract",
+      "counterexample": ["Moving the tabs resets tabsStore or makes dashboard closable"]
+    },
+    {
+      "id": "R4",
+      "statement": "Phone viewports retain the independent sticky tab row and current-page title.",
+      "acceptance": ["375x812, 390x844 and 430x932 remain usable without page horizontal overflow"],
+      "priority": "must",
+      "source": "User-confirmed option 1 and existing mobile contract",
+      "counterexample": ["All phone tabs are compressed into the 56px global header"]
+    }
+  ],
+  "invariants": [
+    "tabsStore remains the sole route-tab state source",
+    "UiTabs remains responsible for tab commands and context menu",
+    "Project context and global account actions remain visible and usable",
+    "No page-level horizontal overflow is introduced"
+  ],
+  "constraints": [
+    "Use existing Vue 3, Element Plus and shell components",
+    "Do not add dependencies",
+    "Preserve desktop and required phone viewport behavior",
+    "Keep changes inside AppLayout, UiTabs styling and focused verification artifacts"
+  ],
+  "non_goals": [
+    "Changing route-tab persistence or caching",
+    "Redesigning sidebar, top-navigation mode or business pages",
+    "Removing multi-tab navigation"
+  ],
+  "selected_approach": {
+    "name": "Desktop inline header tabs with mobile independent tabs",
+    "reason": "It removes both duplicated information and a full desktop shell row while preserving multi-task navigation and mobile ergonomics.",
+    "alternatives": [
+      {"name": "Keep two rows and weaken breadcrumb", "rejected_because": "It retains unnecessary vertical space and partial duplication."},
+      {"name": "Remove tabs and keep breadcrumb", "rejected_because": "It removes an established repeated-work navigation capability."}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["desktop AppLayout header composition", "responsive UiTabs placement", "shell tab layout CSS"],
+      "outside": ["tabsStore behavior", "route metadata", "business page layout", "backend APIs"]
+    },
+    "components": [
+      {"name": "AppLayout", "responsibility": "Mount UiTabs inline on desktop and below the header on mobile", "depends_on": ["route", "theme", "tabsStore"]},
+      {"name": "UiTabs", "responsibility": "Render and operate the same route tabs in either shell placement", "depends_on": ["tabsStore", "router"]},
+      {"name": "shell styles", "responsibility": "Constrain inline tab width, height, overflow and mobile fallback", "depends_on": ["existing breakpoints and theme tokens"]}
+    ],
+    "interfaces": [
+      {"name": "UiTabs props", "producer": "AppLayout", "consumers": ["UiTabs"], "contract": "currentPath remains route.fullPath regardless of visual placement"}
+    ],
+    "data_flows": [
+      {"input": "route.fullPath and tabsStore.tabs", "transitions": ["open current route tab", "choose desktop or mobile mount point", "render one UiTabs instance"], "output": "one authoritative tab strip with unchanged commands"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Inline tabs exceed available desktop width", "behavior": "The tab region shrinks and uses built-in tab navigation without overlapping fixed controls", "recovery": "Close tabs or use the tab navigation controls"},
+    {"condition": "Viewport crosses the mobile breakpoint", "behavior": "Inline tabs are replaced by the independent sticky tab row", "recovery": "Responsive layout updates automatically"}
+  ],
+  "quality_attributes": {
+    "security": ["No authorization or data boundary changes"],
+    "performance": ["No additional requests or duplicated tab state"],
+    "compatibility": ["Preserve all tab commands and required phone viewports"],
+    "operations": ["Build, browser geometry and console checks provide observable evidence"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2"], "signal": "Desktop title is not duplicated, content moves upward and fixed header controls remain usable", "method": "Browser inspection at desktop width with multiple open tabs"},
+    {"requirement_ids": ["R3"], "signal": "All tab commands retain existing outcomes", "method": "Switch, close, refresh and context-menu browser interactions"},
+    {"requirement_ids": ["R4"], "signal": "Mobile retains separate tabs and has no horizontal page overflow", "method": "375x812, 390x844 and 430x932 geometry and interaction checks"},
+    {"requirement_ids": ["R1", "R2", "R3", "R4"], "signal": "No type, build or whitespace regression", "method": "npm run build and git diff --check"}
+  ],
+  "assumptions": [
+    {"text": "Element Plus tab navigation can operate inside a flex child constrained by min-width zero", "basis": "Existing UiTabs uses Element Plus card tabs and flex sizing", "falsifier": "Browser evidence shows tabs expanding beyond the assigned middle region"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "Merge tabs into the desktop header and preserve an independent mobile tab row", "reason": "Removes repetition and vertical waste without harming mobile ergonomics", "source": "User confirmed option 1"}
+  ],
+  "risks": [
+    {"risk": "Project selector, tabs and account controls compete for width", "impact": "Header overlap at medium desktop widths", "mitigation": "Keep side controls fixed, make tabs min-width zero and verify overflow behavior"},
+    {"risk": "Responsive conditional rendering creates two active tab instances", "impact": "Duplicate listeners or visible strips", "mitigation": "Render mutually exclusive desktop and mobile instances from the existing mobileView state"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User reviewed the landed design, confirmed it, and explicitly directed implementation.",
+    "confirmed_at": "2026-08-16T10:50:41+08:00"
+  }
+}

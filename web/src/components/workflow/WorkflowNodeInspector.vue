@@ -12,7 +12,15 @@ const edgeSourceLabel = computed(() => props.nodes.find(node => node.id === edge
 const edgeTargetLabel = computed(() => props.nodes.find(node => node.id === edgeDraft.target)?.label || edgeDraft.target)
 const edgeSourceNode = computed(() => props.nodes.find(node => node.id === edgeDraft.source) || null)
 const isConditionalEdge = computed(() => edgeSourceNode.value?.type === 'CONDITION')
-function syncDraft(node: WorkflowNodeModel | null) { if (!node) return; draft.id = node.id; draft.type = node.type; draft.label = node.label; draft.position = { ...node.position }; draft.config = JSON.parse(JSON.stringify(node.config || {})) }
+function syncDraft(node: WorkflowNodeModel | null) {
+  if (!node) return
+  draft.id = node.id
+  draft.type = node.type
+  draft.label = node.label
+  draft.position = { ...node.position }
+  draft.config = JSON.parse(JSON.stringify(node.config || {}))
+  if (node.type === 'APPROVAL') draft.config.signatureRequired = Boolean(draft.config.signatureRequired)
+}
 function syncEdge(edge: WorkflowEdgeModel | null) {
   if (!edge) return
   edgeDraft.id = edge.id
@@ -58,6 +66,7 @@ watch(() => props.edge, syncEdge, { deep: true, immediate: true })
           <el-form-item v-if="draft.config.assigneeType === 'ROLE'" label="审批角色" required><el-select v-model="draft.config.assigneeIds" multiple filterable collapse-tags :disabled="readonly" placeholder="请选择审批角色" @change="update"><el-option v-for="role in roles" :key="role.id" :label="role.role_name" :value="role.id" /></el-select></el-form-item>
           <el-form-item label="审批规则" required><el-radio-group v-model="draft.config.mode" :disabled="readonly" @change="update"><el-radio value="ANY">任一人同意</el-radio><el-radio value="ALL">全部同意</el-radio></el-radio-group></el-form-item>
           <el-form-item label="无审批人时"><el-radio-group v-model="draft.config.emptyAssigneeAction" :disabled="readonly" @change="update"><el-radio value="ERROR">启动时报错</el-radio><el-radio value="WAIT">等待补充人员</el-radio></el-radio-group></el-form-item>
+          <el-form-item label="需要电子签名"><el-radio-group v-model="draft.config.signatureRequired" :disabled="readonly" @change="update"><el-radio-button :value="true">是</el-radio-button><el-radio-button :value="false">否</el-radio-button></el-radio-group></el-form-item>
         </template>
         <template v-else-if="node.type === 'CC'"><el-form-item label="抄送用户" required><el-select v-model="draft.config.userIds" multiple filterable collapse-tags :disabled="readonly" placeholder="请选择抄送用户" @change="update"><el-option v-for="user in users" :key="user.id" :label="`${user.display_name}（${user.username}）`" :value="user.id" /></el-select></el-form-item></template>
         <template v-else-if="node.type === 'CONDITION'"><el-alert type="info" :closable="false" show-icon title="条件写在出边上，并设置一条默认分支。" /></template>

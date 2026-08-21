@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "topic": "req-20260814-022-platform-business-integration",
-  "handoff_status": "awaiting-user-approval",
+  "handoff_status": "approved",
   "created_at": "2026-08-14T11:04:00+08:00",
   "design": {
     "schema_version": 1,
@@ -673,10 +673,10 @@
   "implementation_plan": {
     "plan_revision": 1,
     "human_document": "docs/engineering-control/plans/2026-08-14-platform-business-integration-implementation-plan.md",
-    "plan_status": "draft",
+    "plan_status": "ready",
     "global_constraints": [
       "Implement platform capabilities only; do not implement or commit REQ-20260814-021 release-management business code in this plan.",
-      "Create isolated branch feat/REQ-20260814-022-platform-business-integration and an independent worktree from latest origin/main before product implementation.",
+      "Use rokey after fast-forwarding it to latest origin/main, as explicitly requested by the user, while preserving existing uncommitted prototype changes.",
       "Use Java 17; do not use system Java 26.",
       "Append Flyway V35 and V36 only; do not modify V1 through V34.",
       "Preserve workflow startup by definitionId, workflow designer, inbox, done, notification, and temporary file-preview compatibility.",
@@ -684,7 +684,7 @@
       "Signer identity comes only from AuthUser; clients cannot submit signerId, tenantId, or dataDigest.",
       "Mock project data is presentation-only and cannot grant backend authorization.",
       "Write only paths allowed by docs/requirements/REQ-20260814-022-platform-business-integration/codex-task-scope.yaml.",
-      "Each task requires focused verification and a separate commit checkpoint."
+      "Each task requires focused verification and a diff checkpoint; do not commit or push unless the user separately requests it."
     ],
     "file_map": [
       {
@@ -1574,31 +1574,38 @@
     "dependency_edges": [
       {
         "from": "T1",
-        "to": "T2"
+        "to": "T2",
+        "reason": "Lifecycle events depend on the stable workflow business context introduced by T1."
       },
       {
         "from": "T2",
-        "to": "T3"
+        "to": "T3",
+        "reason": "Signature evidence must participate in the workflow transition and lifecycle-event transaction established by T2."
       },
       {
         "from": "T3",
-        "to": "T5"
+        "to": "T5",
+        "reason": "The workbench and approval experience consume the enriched task and signature context completed by T3."
       },
       {
         "from": "T2",
-        "to": "T6"
+        "to": "T6",
+        "reason": "Final convergence must verify durable lifecycle delivery and compatibility from T2."
       },
       {
         "from": "T3",
-        "to": "T6"
+        "to": "T6",
+        "reason": "Final convergence must verify signature enforcement and immutable evidence from T3."
       },
       {
         "from": "T4",
-        "to": "T6"
+        "to": "T6",
+        "reason": "Final convergence must verify the complete persistent attachment lifecycle from T4."
       },
       {
         "from": "T5",
-        "to": "T6"
+        "to": "T6",
+        "reason": "Final convergence must verify the dashboard workbench and replaceable Mock project context from T5."
       }
     ],
     "parallel_groups": [
@@ -1773,9 +1780,9 @@
       }
     ],
     "approval": {
-      "status": "pending_review",
-      "evidence": "The implementation plan is landed for user review; no approval has been claimed.",
-      "confirmed_at": null
+      "status": "approved",
+      "evidence": "User explicitly requested coding to begin, directed platform capabilities to be completed before the configuration-management module, required latest main to be pulled first, and selected direct development on rokey.",
+      "confirmed_at": "2026-08-14T23:33:08+08:00"
     }
   },
   "control_seed": {

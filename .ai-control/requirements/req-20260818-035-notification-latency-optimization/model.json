@@ -1,0 +1,91 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "Workflow lifecycle event persistence and transaction completion",
+      "Workflow lifecycle delivery claim, consumption, retry and recovery",
+      "System notification unread-count query",
+      "UiNotificationCenter polling and drawer refresh lifecycle"
+    ],
+    "environment": [
+      "MySQL 8.4 transaction and row-update semantics",
+      "Spring transaction synchronization and scheduler",
+      "Browser visibility, focus and timer scheduling",
+      "Authenticated local users and existing release workflow consumers"
+    ]
+  },
+  "state_variables": [
+    {"name": "delivery_status", "owner": "platform/workflow", "valid_values": ["PENDING", "RETRY", "DISPATCHING", "DELIVERED", "DEAD"]},
+    {"name": "delivery_attempt_count", "owner": "platform/workflow", "valid_values": ["0 through 5"]},
+    {"name": "delivery_updated_at", "owner": "platform/workflow", "valid_values": ["database timestamp"]},
+    {"name": "unread_count", "owner": "platform/system", "valid_values": ["non-negative integer"]},
+    {"name": "document_visibility", "owner": "browser", "valid_values": ["visible", "hidden"]},
+    {"name": "count_request_state", "owner": "UiNotificationCenter", "valid_values": ["idle", "in-flight"]},
+    {"name": "poll_failure_level", "owner": "UiNotificationCenter", "valid_values": ["0", "1", "2", "3+"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Committed lifecycle event", "transitions": ["after-commit trigger", "event-specific atomic claim", "notification persistence", "visible one-second unread poll"], "outputs": ["Bell count updates with P95 <= 2 seconds"]},
+    {"requirement_id": "R2", "input": "Commit, rollback or consumer exception", "transitions": ["transaction synchronization outcome", "isolated immediate dispatch"], "outputs": ["Commit may notify, rollback does not notify, notification failure does not change workflow result"]},
+    {"requirement_id": "R3", "input": "Immediate and scheduled candidates for one delivery", "transitions": ["conditional status update", "only update-count 1 may consume", "idempotent persistence"], "outputs": ["One normal-race consumer call and one business effect"]},
+    {"requirement_id": "R4", "input": "Consumer failure or interrupted DISPATCHING row", "transitions": ["error state update", "scheduled compensation", "updated_at stale recovery", "attempt threshold"], "outputs": ["Delivery eventually succeeds or reaches DEAD after five attempts"]},
+    {"requirement_id": "R5", "input": "Visible, hidden, focused or drawer-open browser state", "transitions": ["timer scheduling/cancellation", "shared in-flight request", "count comparison"], "outputs": ["Polling only while visible and conditional drawer refresh"]},
+    {"requirement_id": "R6", "input": "Consecutive unread-count failures and later recovery", "transitions": ["failure-level increment", "2/5/15 second backoff", "success/foreground reset"], "outputs": ["Bounded silent retry load and one-second recovered polling"]},
+    {"requirement_id": "R7", "input": "200 visible authenticated clients", "transitions": ["approximately 200 count queries per second", "indexed tenant/user/unread lookup"], "outputs": ["60-second run has zero errors and API P95 <= 200ms"]}
+  ],
+  "interfaces": [
+    {"name": "lifecycle event transaction", "producers": ["WorkflowLifecycleEventService callers"], "consumers": ["WorkflowLifecycleEventService"], "invariant": "Event and delivery rows are committed together before dispatch"},
+    {"name": "event-specific dispatch", "producers": ["WorkflowLifecycleEventService afterCommit"], "consumers": ["WorkflowLifecycleDispatcher"], "invariant": "Exceptions never alter the committed workflow result"},
+    {"name": "delivery claim", "producers": ["Immediate and scheduled dispatcher entry points"], "consumers": ["WorkflowLifecycleConsumer"], "invariant": "Only a conditional update count of one authorizes consumption"},
+    {"name": "GET /api/notifications/unread-count", "producers": ["platform/system"], "consumers": ["UiNotificationCenter"], "invariant": "Response is authenticated tenant/user global unread total and schema is unchanged"},
+    {"name": "browser lifecycle events", "producers": ["document and window"], "consumers": ["UiNotificationCenter"], "invariant": "Hidden state cancels periodic polling and foreground restoration refreshes immediately"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Transaction and delivery state-machine behavior for R2-R4", "method": "Focused JUnit tests with captured SQL update counts, states and consumer-call counters", "blind_spots": ["Real MySQL lock scheduling timing"], "independence": "Deterministic service-level assertions independent from browser behavior"},
+    {"id": "S2", "target": "Frontend polling lifecycle for R5-R6", "method": "Authenticated browser Network and Console observation across visible, hidden, focus and drawer states", "blind_spots": ["Long-duration browser throttling outside sampled session"], "independence": "Direct browser runtime observation independent from Java unit tests"},
+    {"id": "S3", "target": "End-to-end notification latency for R1", "method": "At least 20 timestamped real workflow event-to-bell runs", "blind_spots": ["Rare failure/recovery paths are excluded from normal-path percentile"], "independence": "Crosses backend persistence, API and browser polling"},
+    {"id": "S4", "target": "Unread-count capacity for R7", "method": "200-client 60-second authenticated load run measuring errors and response percentiles", "blind_spots": ["Production-scale network and database differences"], "independence": "Runtime load sensor independent from source inspection"},
+    {"id": "S5", "target": "Compatibility for R1-R6", "method": "Workflow Maven regression, full Maven test and frontend production build", "blind_spots": ["Environment-specific production behavior"], "independence": "Compiler and repository regression suites"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Backend dispatch delay and race/recovery state", "action": "Modify WorkflowLifecycleEventService and WorkflowLifecycleDispatcher with direct tests", "authority": "REQ-20260818-035 scope authorization", "impact_radius": "Shared platform workflow lifecycle deliveries", "rollback": "Revert only T1 service and test changes; scheduler remains"},
+    {"id": "A2", "target": "Frontend notification observation delay and retry load", "action": "Modify UiNotificationCenter polling lifecycle only", "authority": "REQ-20260818-035 scope authorization", "impact_radius": "Authenticated global notification center", "rollback": "Restore prior 15-second interval implementation"},
+    {"id": "A3", "target": "Verification evidence", "action": "Run focused/full tests, browser probes, latency samples and local load test", "authority": "Local non-production verification permission", "impact_radius": "Local test runtime only", "rollback": "Stop test processes and retain no product data changes beyond test notifications"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S3", "S5"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Existing dirty worktree and parallel user changes", "effect": "Target files or baseline tests may change during execution", "detectable": true, "controllable": false},
+    {"source": "Scheduler and immediate dispatch race", "effect": "Duplicate consumer invocation without atomic claim", "detectable": true, "controllable": true},
+    {"source": "Consumer exception or process interruption", "effect": "Delayed or replayed delivery", "detectable": true, "controllable": true},
+    {"source": "Browser timer throttling and slow network", "effect": "Polling delay or overlapping request risk", "detectable": true, "controllable": false},
+    {"source": "Local database and connection-pool capacity", "effect": "Load latency or errors", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "Existing scheduled lifecycle scan", "consequence": "Up to approximately five seconds before notification persistence", "sampling_rule": "Compare event-specific dispatch with scheduler-only baseline"},
+    {"source": "Existing frontend interval", "consequence": "Up to approximately fifteen seconds before bell refresh", "sampling_rule": "Observe count-request cadence in browser Network"},
+    {"source": "New one-second self-scheduled poll", "consequence": "Response duration plus one second defines steady-state cadence", "sampling_rule": "Measure from request completion to next request start"},
+    {"source": "Failure backoff", "consequence": "Failure paths intentionally exceed the normal two-second target", "sampling_rule": "Evaluate separately from normal-path P95"}
+  ],
+  "assumptions": [
+    {"text": "Lifecycle consumers are short-running and idempotent", "evidence": "Current notification event key and release receipt tracking", "falsifier": "A consumer performs long external I/O or duplicates effects on replay"},
+    {"text": "The existing unread index supports 200 QPS", "evidence": "Index starts with tenant_id, user_id and is_read", "falsifier": "Required 60-second load run exceeds 200ms P95 or has errors"},
+    {"text": "A 60-second stale threshold exceeds normal consumer duration", "evidence": "Current consumers perform local database work", "falsifier": "Focused timing shows legitimate execution approaches 60 seconds"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and measure with S3/S5"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Use A1 and measure with S1/S5"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Use A1 and measure with S1/S5"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Use A1 and measure with S1/S5"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "Use A2 and measure with S2/S5"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "Use A2 and measure with S2/S5"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "Use A3 and measure with S4; replan if capacity fails"}
+  ],
+  "model_status": "ready"
+}

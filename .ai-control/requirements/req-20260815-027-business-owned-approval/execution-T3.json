@@ -1,0 +1,48 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/TaskCenterView.vue", "purpose": "Aggregate pending and completed workflow tasks with project filtering, pagination and detail-only navigation"},
+    {"path_or_resource": "web/src/views/DashboardView.vue", "purpose": "Navigate recent pending and completed items to stable business detail routes and expose task-center tab links"},
+    {"path_or_resource": "web/src/views/WorkflowView.vue", "purpose": "Restrict workflow management to definitions, publication and instance monitoring"},
+    {"path_or_resource": "web/src/router/index.ts", "purpose": "Register task center and release detail routes while converting historical workflow addresses"},
+    {"path_or_resource": "web/src/views/AppLayout.vue", "purpose": "Resolve titles for the task center and release business detail"},
+    {"path_or_resource": "web/src/styles.css", "purpose": "Provide scoped desktop and mobile task-center layouts without horizontal overflow"},
+    {"path_or_resource": "web/src/modules/release/ReleaseWorkflowReviewPage.vue", "purpose": "Convert the historical generic review route into a safe business-detail redirect"}
+  ],
+  "requirements_addressed": ["R2", "R3", "R4", "R8", "R10"],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite production build completed; only existing bundle-size warnings"},
+    {"command": "rg -n \"listWorkflowInbox|listWorkflowDone|decideWorkflowTask|startWorkflow|发起审批\" web/src/views/WorkflowView.vue", "exit_code": 1, "salient_output": "No matches"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No tracked whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "Frontend production build", "result": "pass", "evidence": "vue-tsc and Vite build exit 0", "limitations": ["Existing Vite bundle-size warning remains"]},
+    {"check": "Workflow responsibility source assertion", "result": "pass", "evidence": "WorkflowView contains no inbox, done, decision, generic start API or visible start-approval text", "limitations": []},
+    {"check": "Historical route behavior", "result": "pass", "evidence": "/workflow/inbox and /workflow/done redirect to task-center tabs; prototype and numeric old review routes resolve to business detail or fail safely", "limitations": ["Numeric live task resolution depends on an authenticated backend task"]},
+    {"check": "Desktop and mobile browser rendering", "result": "pass", "evidence": "Release detail and task center rendered without horizontal overflow at 1280x800, 375x812, 390x844 and 430x932; task cards expose only 查看详情", "limitations": ["Live decision mutation remains for T5"]}
+  ],
+  "diff_summary": [
+    "Pending and completed work now share a dedicated navigation-only task center",
+    "Dashboard task rows and View All links converge on stable business detail and task-center routes",
+    "Workflow management no longer renders inbox, done, approval decisions or generic process-start controls",
+    "Historical workflow URLs redirect without loops and unsafe action paths fail closed",
+    "Responsive task-center cards keep the only action, 查看详情, visible without horizontal overflow"
+  ],
+  "invariants_checked": [
+    {"invariant": "Dashboard and task center navigate only", "result": "pass", "evidence": "Neither view imports or calls decideWorkflowTask; rendered task cards expose only 查看详情"},
+    {"invariant": "Workflow management retains definitions, configuration and monitoring", "result": "pass", "evidence": "Browser snapshot shows only flow graph edit/view, publish, unpublish, delete and monitor capabilities"},
+    {"invariant": "Historical routes do not loop or render generic approval", "result": "pass", "evidence": "Old inbox/done URLs terminate at task-center tabs and old review uses a one-way business-detail resolver"},
+    {"invariant": "Unsafe action_path never becomes navigation", "result": "pass", "evidence": "Dashboard and task center reject protocol-relative, backslash, newline and malformed encoded targets before route resolution"}
+  ],
+  "disturbances": [
+    {"event": "The running database still exposes historical inbox and done menu rows", "impact": "Expected until the append-only V37 migration in T4 is applied"},
+    {"event": "RDDMP path requires escalated build execution to write Vite temporary files", "impact": "Build completed successfully with approved filesystem escalation"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Database menu cleanup and workflow contract synchronization are intentionally assigned to T4",
+    "Live authenticated approval behavior remains for T5 integration verification"
+  ],
+  "recommended_next": "observe"
+}

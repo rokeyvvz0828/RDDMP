@@ -1,0 +1,83 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["Production build passed and authenticated browser checks confirmed the same ReleaseSearchSelect interaction on all four configuration-management lists."],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["Case-insensitive code, name and version fragment checks passed; empty focus returned scoped candidates; slice(0, 20) statically enforces the candidate cap."],
+      "limitations": ["The current isolated test data contains fewer than 20 records per list, so the cap is verified statically rather than with an over-cap runtime fixture."]
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["Typing left all four main lists unchanged; selecting filtered by a real record id/code; clearing restored the list under remaining filters."],
+      "limitations": []
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": ["Application candidates use a debounced project-scoped page-1/size-20 API request with generation guards; local lists use complete loaded scope; project switching invalidated stale selection."],
+      "limitations": ["Local network latency was low, so stale-response suppression is additionally supported by static generation-guard inspection."]
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": ["Loading, no-match and failure states remain isolated from main-list data; desktop browser inspection showed no overlap; build, backend package and whitespace checks passed; final console was clean."],
+      "limitations": ["Mobile remains outside the approved scope."]
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["Vue type checking and static selection-only contract checks passed."]},
+    {"id": "T2", "status": "verified", "evidence": ["Three local-data list integrations passed compiler, exact-selection, clear and scope invalidation checks."]},
+    {"id": "T3", "status": "verified", "evidence": ["Frontend production build, focused backend contract test, complete backend package, health check and four-page browser matrix passed."]}
+  ],
+  "feedback_summary": {
+    "total": 1,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0004", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Frontend production build", "result": "pass", "evidence": "npm run build completed after transforming 2362 modules; only the existing chunk-size warning remained."},
+    {"check": "Release persistence contract", "result": "pass", "evidence": "ReleaseApplicationPersistenceContractTest ran 2 tests with 0 failures and 0 errors."},
+    {"check": "Backend reactor package", "result": "pass", "evidence": "mvn -pl :ccb-boot -am -DskipTests package completed successfully for all 11 modules."},
+    {"check": "Runtime health and static hygiene", "result": "pass", "evidence": "Backend actuator reports UP and git diff --check reports no whitespace errors."}
+  ],
+  "invariant_results": [
+    {"invariant": "Temporary text never mutates main-list state", "result": "pass", "evidence": "Browser row counts remained stable during unselected typing on all four pages."},
+    {"invariant": "Existing project, window, pagination and independent filter scopes remain authoritative", "result": "pass", "evidence": "Exact selected identifiers compose with existing filters, and scope switching clears stale selected identifiers."},
+    {"invariant": "No schema, permission, dependency or public shared-component change", "result": "pass", "evidence": "Implementation is release-module-local; backend correction changes only the existing parameterized keyword predicate and its focused test."},
+    {"invariant": "Unrelated rokey worktree changes remain untouched", "result": "pass", "evidence": "No reset, cleanup, commit, merge or push was performed; implementation stayed within the approved release search files and control artifacts."}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Existing browser tab handle became stale", "result": "pass", "evidence": "Verification continued in a fresh controlled localhost tab with the same authenticated session."},
+    {"disturbance": "Initial backend predicate omitted subsystem_code", "result": "pass", "evidence": "Focused predicate correction, contract test, direct API result and repeated browser AUTH search all passed."}
+  ],
+  "residual_risks": [
+    "The current window page assumes its existing 200-record load is complete enough for local suggestions; a future paginated/truncated API would require a remote provider.",
+    "The runtime fixture did not exceed 20 records, although both local and remote paths enforce the 20-option cap in code."
+  ],
+  "gate_result": "pass",
+  "route_reason": "All must requirements have verified task and sensor coverage, all tasks are verified, accepted feedback is closed, the final sample has zero errors, and regression, scope and invariant checks pass."
+}

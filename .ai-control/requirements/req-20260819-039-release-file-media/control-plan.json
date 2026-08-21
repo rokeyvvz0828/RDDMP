@@ -1,0 +1,183 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Establish the compatible unified delivery-item schema, model and application persistence contract.",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R6", "R7", "R8"],
+      "prerequisites": [],
+      "input_facts": ["V38/V39 identify rows by delivery_unit_code", "V45 is the current local Flyway schema", "Existing delivery rows require UNIT key backfill"],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V46__release_file_media.sql",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/ReleaseSchemaContractTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java"
+      ],
+      "invariants": ["V38/V39 remain unchanged", "Existing ordinary delivery rows remain readable", "Only file-media rows may have a null artifact version"],
+      "interface_contracts": ["DeliveryItemType distinguishes DELIVERY_UNIT and FILE_MEDIA", "item_key is UNIT:<code> or FILE:<sha256(trimmed-path)>", "Create and update requests retain deliveries and add fileMedia"],
+      "non_goals": ["No service business-rule changes", "No local database migration execution"],
+      "action_bounds": ["Modify only migration, application model, application Store and their contract tests"],
+      "acceptance_checks": ["Schema contract proves all three tables are migrated and backfilled", "Persistence SQL uses item_type, file_path and item_key", "Focused tests and release compile pass"],
+      "evidence_required": ["Scoped diff", "Focused Maven command and exit code", "Compile command and exit code"],
+      "rollback": "Revert scoped source changes before V46 is applied; after application, use a later compensating migration.",
+      "stop_conditions": ["Existing duplicate rows cannot be backfilled uniquely", "V46 collides with origin/main", "A required consumer lies outside approved scope"],
+      "escalation_conditions": ["Existing data must be deleted", "Fixed FILE mapping or path identity must change"]
+    },
+    {
+      "id": "T2",
+      "goal": "Implement file-path validation, conflict identity, additional-release recognition and workflow digest behavior.",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R8"],
+      "prerequisites": ["T1"],
+      "input_facts": ["Application service owns create/update/conflict rules", "Submission service rebuilds the workflow digest"],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java"
+      ],
+      "invariants": ["Approval remains whole-application", "Emergency and window rules remain unchanged", "Ordinary delivery conflict behavior remains compatible"],
+      "interface_contracts": ["Paths are trim-only normalized, max 1024 and reject controls", "Conflict and additional identity uses item_key", "Workflow digest contains stable sorted paths"],
+      "non_goals": ["No production baseline changes", "No frontend changes"],
+      "action_bounds": ["Modify application orchestration and focused tests only"],
+      "acceptance_checks": ["Delivery-only, file-only and mixed requests validate", "Duplicate and invalid paths fail server-side", "Same path conflicts and different paths do not", "Submission digest is deterministic"],
+      "evidence_required": ["Scoped diff", "Focused service-test output", "Regression evidence for ordinary deliveries"],
+      "rollback": "Revert scoped Java and tests while retaining the backward-compatible T1 schema.",
+      "stop_conditions": ["Conflict identity is also produced outside approved release files", "Workflow contract requires platform workflow changes"],
+      "escalation_conditions": ["Path normalization policy must change", "Approval granularity must change"]
+    },
+    {
+      "id": "T3",
+      "goal": "Carry each file path independently through production baseline, result maintenance, current production and history.",
+      "requirement_ids": ["R4", "R6", "R7", "R8"],
+      "prerequisites": ["T2"],
+      "input_facts": ["Production identity currently uses subsystem and delivery code", "Multiple FILE rows require entry-id history"],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/production/model/ProductionModels.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/production/persistence/ReleaseProductionStore.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/production/service/ReleaseProductionService.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/production/web/ReleaseProductionController.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/production/service/ReleaseProductionServiceTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/production/web/ReleaseProductionControllerSecurityTest.java"
+      ],
+      "invariants": ["Existing production result and audit semantics remain", "Old ordinary history endpoint remains available", "Authorization remains server-side"],
+      "interface_contracts": ["Baseline/current records expose item type and file path", "Production identity uses item_key", "New entry-id history endpoint distinguishes FILE rows"],
+      "non_goals": ["No application form UI", "No analytics changes"],
+      "action_bounds": ["Modify release production model, Store, service, controller and focused tests"],
+      "acceptance_checks": ["Two paths create two baseline rows", "Updating one path leaves the other unchanged", "Successful path appears in current production", "History recalculates after result reversal", "Unauthorized entry history is rejected"],
+      "evidence_required": ["Scoped diff", "Focused production test output", "Controller security test output"],
+      "rollback": "Revert scoped production Java before retaining file-media production rows.",
+      "stop_conditions": ["Production identity has an unmodeled consumer outside scope", "Entry-id authorization cannot be derived from existing rules"],
+      "escalation_conditions": ["Existing public production routes must be removed", "Production audit semantics must change"]
+    },
+    {
+      "id": "T4",
+      "goal": "Provide a complete mixed-content application create, edit, detail and conflict-confirmation frontend flow.",
+      "requirement_ids": ["R1", "R2", "R5", "R9", "R10"],
+      "prerequisites": ["T3"],
+      "input_facts": ["ReleaseApplicationDrawer owns application editing", "ReleaseManagementPrototype owns save and conflict retries"],
+      "write_scope": [
+        "web/src/api/release.ts",
+        "web/src/modules/release/types.ts",
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+        "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+        "web/src/modules/release/components/ReleaseApplicationView.vue",
+        "web/src/modules/release/components/ReleaseConflictDialog.vue",
+        "web/src/modules/release/release-prototype.css"
+      ],
+      "invariants": ["Project, subsystem and delivery-unit selectors remain frontend mock-backed", "Existing save, submit and conflict actions remain reachable"],
+      "interface_contracts": ["API DTO exposes fileMedia separately", "UI permits both content types", "File rows collect one path and no version"],
+      "non_goals": ["No baseline/current-production or analytics UI", "No shared component refactor"],
+      "action_bounds": ["Modify scoped release API, application pages, components and styles"],
+      "acceptance_checks": ["Only-file and mixed payloads are emitted correctly", "Add/remove path actions work", "Conflict dialog identifies paths", "Frontend build passes"],
+      "evidence_required": ["Scoped diff", "Frontend build output", "Desktop and mobile DOM evidence for application flow"],
+      "rollback": "Revert scoped Vue, TypeScript and CSS; backend remains ordinary-request compatible.",
+      "stop_conditions": ["Required shared UI change lies outside read-only component scope", "Existing dirty edits overlap semantically and cannot be preserved"],
+      "escalation_conditions": ["Product behavior needs mutually exclusive content types", "Mock master-data policy must change"]
+    },
+    {
+      "id": "T5",
+      "goal": "Expose file media correctly in baseline, current production and analytics across backend and frontend.",
+      "requirement_ids": ["R6", "R7", "R9", "R10"],
+      "prerequisites": ["T4"],
+      "input_facts": ["Reporting currently counts delivery codes", "Downstream UI assumes every row has a version"],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/reporting/model/ReleaseAnalyticsModels.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/reporting/persistence/ReleaseAnalyticsStore.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/reporting/service/ReleaseAnalyticsService.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/reporting/persistence/ReleaseAnalyticsStoreTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/reporting/service/ReleaseAnalyticsServiceTest.java",
+        "web/src/api/release.ts",
+        "web/src/modules/release/components/ReleaseBaselineView.vue",
+        "web/src/modules/release/components/ReleaseCurrentProductionView.vue",
+        "web/src/modules/release/components/ReleaseAnalyticsView.vue",
+        "web/src/modules/release/release-prototype.css"
+      ],
+      "invariants": ["Ordinary counts and labels remain meaningful", "Baseline result controls remain item-specific", "Old ordinary history route remains usable"],
+      "interface_contracts": ["Analytics distinguishes deliveryUnitCount and fileMediaCount", "File rows show path and no-version label", "File history uses entry-id route"],
+      "non_goals": ["No workflow changes", "No unrelated dashboard changes"],
+      "action_bounds": ["Modify release reporting and three downstream release views only"],
+      "acceptance_checks": ["Analytics SQL counts item types by item_key", "Baseline and current views render independent paths", "File history opens by entry ID", "Frontend build and focused reporting tests pass"],
+      "evidence_required": ["Scoped diff", "Focused reporting test output", "Frontend build output", "Downstream browser screenshots"],
+      "rollback": "Revert scoped reporting and view changes while retaining backend data compatibility.",
+      "stop_conditions": ["An analytics consumer outside approved scope requires a breaking contract", "Existing baseline identity differs from modeled schema"],
+      "escalation_conditions": ["Business wants combined rather than separate counts", "History API compatibility must be broken"]
+    },
+    {
+      "id": "T6",
+      "goal": "Apply the protected local migration and verify the complete real API and responsive browser workflow.",
+      "requirement_ids": ["R8", "R10"],
+      "prerequisites": ["T5"],
+      "input_facts": ["Local database is at V45", "Backend must be stopped before backup and V46 startup", "Mock business data must remain disabled"],
+      "write_scope": [
+        ".ai-control/requirements/req-20260819-039-release-file-media/*.json"
+      ],
+      "invariants": ["No existing test data is deleted", "Secrets are never printed", "MOCK_DATA_ENABLED remains false", "No file path is accessed on disk"],
+      "interface_contracts": ["Flyway reaches V46", "Real API can create, submit, approve and deploy a mixed application", "Required viewports remain usable"],
+      "non_goals": ["No production access", "No automatic commit or push"],
+      "action_bounds": ["Stop local backend, create and verify database backup, restart services, execute required checks and browser tests"],
+      "acceptance_checks": ["Backup is verified before migration", "Flyway V46 applies", "Focused, module, full backend, frontend, governance and scope checks are recorded", "Real API flow passes", "375x812, 390x844, 430x932, 1280x800 and 1440x900 browser checks pass"],
+      "evidence_required": ["Backup verification without secrets", "Service startup and health evidence", "All command exit codes", "API facts", "Screenshots and DOM measurements"],
+      "rollback": "Stop the new application version; preserve backup and use a later compensating migration if schema recovery is required.",
+      "stop_conditions": ["Backup cannot be created or verified", "Migration validation fails", "Existing data violates new uniqueness constraints", "Real workflow prerequisite is unavailable"],
+      "escalation_conditions": ["Any existing data must be modified manually", "A destructive recovery action is required"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2"},
+    {"from": "T2", "to": "T3"},
+    {"from": "T3", "to": "T4"},
+    {"from": "T4", "to": "T5"},
+    {"from": "T5", "to": "T6"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"], ["T5"], ["T6"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["Schema and persistence contract tests", "Release compile"]},
+    {"after_tasks": ["T3"], "checks": ["Focused release backend tests"]},
+    {"after_tasks": ["T5"], "checks": ["Release module tests", "Frontend build"]},
+    {"after_tasks": ["T6"], "checks": ["Full backend tests", "Real API flow", "Required viewport browser flow", "Governance and scope checks"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 contract sample", "trigger": "T1 execution report", "observer": "independent observer", "sensors": ["S1", "S3", "S7"], "requirement_ids": ["R1", "R2", "R3", "R4", "R6", "R7", "R8"]},
+    {"label": "T2 behavior sample", "trigger": "T2 execution report", "observer": "independent observer", "sensors": ["S1", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R8"]},
+    {"label": "T3 production sample", "trigger": "T3 execution report", "observer": "independent observer", "sensors": ["S2", "S5"], "requirement_ids": ["R4", "R6", "R7", "R8"]},
+    {"label": "T4 application UI sample", "trigger": "T4 execution report", "observer": "independent observer", "sensors": ["S4", "S6"], "requirement_ids": ["R1", "R2", "R5", "R9", "R10"]},
+    {"label": "T5 downstream sample", "trigger": "T5 execution report", "observer": "independent observer", "sensors": ["S2", "S4", "S5", "S6"], "requirement_ids": ["R6", "R7", "R9", "R10"]},
+    {"label": "T6 convergence sample", "trigger": "T6 execution report", "observer": "independent observer", "sensors": ["S3", "S5", "S6", "S7"], "requirement_ids": ["R8", "R10"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T4"], "sensor_ids": ["S1", "S4", "S5", "S6"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2", "T4"], "sensor_ids": ["S1", "S5", "S6"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S3", "S5"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2", "S3", "S5"]},
+    {"requirement_id": "R5", "task_ids": ["T2", "T4"], "sensor_ids": ["S1", "S5", "S6"]},
+    {"requirement_id": "R6", "task_ids": ["T1", "T3", "T5"], "sensor_ids": ["S2", "S5", "S6"]},
+    {"requirement_id": "R7", "task_ids": ["T1", "T3", "T5"], "sensor_ids": ["S2", "S5", "S6"]},
+    {"requirement_id": "R8", "task_ids": ["T1", "T2", "T3", "T6"], "sensor_ids": ["S1", "S2", "S3", "S4", "S7"]},
+    {"requirement_id": "R9", "task_ids": ["T4", "T5"], "sensor_ids": ["S4", "S5", "S6"]},
+    {"requirement_id": "R10", "task_ids": ["T4", "T5", "T6"], "sensor_ids": ["S6"]}
+  ],
+  "plan_status": "ready"
+}

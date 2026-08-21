@@ -1,0 +1,56 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["ReleaseBaselineView summary DOM", "release-ledger-summary local CSS", "Existing selectedWindow and summary bindings"],
+    "environment": ["Element Plus tag styles", "Release page content width", "Vite frontend runtime", "Viewport and authentication state"]
+  },
+  "state_variables": [
+    {"name": "selected_window", "owner": "ReleaseBaselineView selectedWindow", "valid_values": ["undefined", "ReleaseWindowDto"]},
+    {"name": "desktop_metric_columns", "owner": "release-ledger-summary__metrics CSS", "valid_values": ["5"]},
+    {"name": "responsive_metric_columns", "owner": "CSS media queries", "valid_values": ["2", "1"]},
+    {"name": "horizontal_overflow", "owner": "Browser layout", "valid_values": ["false"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "selectedWindow exists", "transitions": ["Render dedicated window row", "Apply shrinkable text and fixed status styles"], "outputs": ["Distinct readable window context"]},
+    {"requirement_id": "R2", "input": "Five summary values", "transitions": ["Render metric container", "Apply five-column desktop grid"], "outputs": ["One equal-width metric row"]},
+    {"requirement_id": "R3", "input": "Narrow or phone viewport", "transitions": ["Apply two- or one-column media rule", "Reset separators for wrapped rows"], "outputs": ["No overlap or horizontal overflow"]},
+    {"requirement_id": "R4", "input": "Existing selectedWindow and summary values", "transitions": ["Change markup grouping and CSS only", "Run type/build and scoped diff sensors"], "outputs": ["Unchanged business behavior"]}
+  ],
+  "interfaces": [
+    {"name": "selectedWindow", "producers": ["windows and windowId computed lookup"], "consumers": ["Summary window row"], "invariant": "No selection or data-loading behavior changes."},
+    {"name": "summary", "producers": ["Existing entries computed aggregation"], "consumers": ["Five metric cells"], "invariant": "Metric values, order and semantics remain unchanged."},
+    {"name": "release-ledger-summary CSS contract", "producers": ["release-prototype.css"], "consumers": ["ReleaseBaselineView markup"], "invariant": "Selectors remain scoped to the baseline summary."}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Type and production-build compatibility", "method": "npm run build", "blind_spots": ["Visual alignment"], "independence": "Compiler and bundler output"},
+    {"id": "S2", "target": "R1-R3 DOM hierarchy, grid columns, separators and overflow", "method": "Authenticated browser screenshots and DOM geometry at desktop, 760px and 430px", "blind_spots": ["Authentication may block runtime page access"], "independence": "Direct runtime rendering"},
+    {"id": "S3", "target": "R4 approved write boundary", "method": "Scoped source inspection and git diff --check", "blind_spots": ["Files are currently untracked within a dirty worktree"], "independence": "Filesystem evidence"},
+    {"id": "S4", "target": "Service availability", "method": "Frontend HTTP status and backend actuator health", "blind_spots": ["Does not verify authenticated content"], "independence": "Runtime endpoint probes"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Baseline summary DOM hierarchy", "action": "Split only the existing summary block into window and metrics layers", "authority": "Approved workspace write", "impact_radius": "One summary block", "rollback": "Restore the pre-task summary markup"},
+    {"id": "A2", "target": "Baseline summary layout", "action": "Replace only release-ledger-summary rules and responsive overrides", "authority": "Approved workspace write", "impact_radius": "One summary component", "rollback": "Restore the pre-task summary CSS rules"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2"], "observable": "partial"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S3", "S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Long window names", "effect": "Window text can compete with the status tag", "detectable": true, "controllable": true},
+    {"source": "Existing dirty rokey worktree", "effect": "Global diff contains unrelated changes and release files are untracked", "detectable": true, "controllable": false},
+    {"source": "Expired browser authentication", "effect": "Runtime visual sensors may redirect to login", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "Vite hot update and browser repaint", "consequence": "Immediate screenshots can sample stale layout", "sampling_rule": "Reload or wait for the updated module before measuring"}
+  ],
+  "assumptions": [{"text": "The two approved files fully control the summary defect.", "evidence": "The complete markup and CSS mismatch were found there.", "falsifier": "Runtime inspection identifies a required third-file change."}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and S2/S3"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and S2/S3"},
+    {"requirement_id": "R3", "observable": "partial", "controllable": "yes", "action": "Use A2 and S2; record authentication limitation if direct page access remains blocked"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Freeze data logic and verify with S1/S3/S4"}
+  ],
+  "model_status": "ready"
+}

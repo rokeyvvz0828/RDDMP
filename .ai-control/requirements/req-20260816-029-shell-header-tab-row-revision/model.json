@@ -1,0 +1,63 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["AppLayout side/top/mixed shell composition", "collapse and project control ordering", "single UiTabs mount", "header/tab responsive CSS"],
+    "environment": ["Vue Router route.fullPath", "Pinia theme, projectContext and tabsStore", "Element Plus tab layout", "browser viewport and media query"]
+  },
+  "state_variables": [
+    {"name":"layout","owner":"theme store","valid_values":["side","top","mixed"]},
+    {"name":"sidebarCollapsed","owner":"theme store","valid_values":["true","false"]},
+    {"name":"mobileView","owner":"AppLayout","valid_values":["true","false"]},
+    {"name":"openTabs","owner":"tabsStore","valid_values":["ordered route tab collection"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"Desktop layout with side navigation","transitions":["AppLayout renders collapse control","AppLayout renders project selector immediately after it"],"outputs":["collapse rectangle is left of project rectangle"]},
+    {"requirement_id":"R2","input":"Desktop viewport with tabs enabled","transitions":["AppLayout completes the global header","AppLayout mounts one UiTabs sibling below it","breadcrumb remains absent"],"outputs":["full-width independent tab row"]},
+    {"requirement_id":"R3","input":"Tab switch, close, refresh or context-menu command","transitions":["UiTabs receives unchanged route.fullPath","existing router and tabsStore methods execute"],"outputs":["unchanged route and tab outcomes"]},
+    {"requirement_id":"R4","input":"Viewport at or below 760px","transitions":["mobileView resolves true","existing title and sticky tab CSS remains active","project selector remains in drawer"],"outputs":["usable mobile shell without horizontal overflow"]},
+    {"requirement_id":"R5","input":"Side, top or mixed desktop layout with multiple tabs","transitions":["global controls render in their layout-owned header","tabs render in a separate row","empty app-header is suppressed where it has no controls"],"outputs":["stable controls and no page-level overflow"]}
+  ],
+  "interfaces": [
+    {"name":"UiTabs currentPath","producers":["AppLayout route.fullPath"],"consumers":["UiTabs"],"invariant":"Mount movement does not alter the active route path"},
+    {"name":"sidebar collapse action","producers":["AppLayout collapse button"],"consumers":["theme store"],"invariant":"Only layouts with side navigation expose the control"},
+    {"name":"project selection","producers":["AppLayout project selector"],"consumers":["projectContext store"],"invariant":"Control relocation does not change selected project state"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"Type/build validity and authorized diff","method":"Vite production build plus focused git diff check","blind_spots":["runtime geometry and interaction"],"independence":"Compiler and Git checks"},
+    {"id":"S2","target":"Desktop DOM order, parent relationship, rectangles and overflow","method":"Browser evaluation in side/top/mixed layouts","blind_spots":["mobile behavior"],"independence":"Direct runtime DOM measurement"},
+    {"id":"S3","target":"Tab command behavior","method":"Browser switch, direct close, refresh, close others and close all","blind_spots":["full browser restart persistence"],"independence":"Direct user-path interaction"},
+    {"id":"S4","target":"Mobile title, tabs, drawer project selector and overflow","method":"Browser checks at 375x812, 390x844 and 430x932","blind_spots":["unlisted browser chrome differences"],"independence":"Runtime viewport measurement"},
+    {"id":"S5","target":"Runtime JavaScript regressions","method":"Fresh browser console sample after final reload","blind_spots":["unvisited routes"],"independence":"Runtime log capture"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"AppLayout control order and UiTabs mount","action":"Modify template ordering and layout conditions inside AppLayout.vue","authority":"User-approved write scope","impact_radius":"Application shell markup","rollback":"Restore pre-task template ordering and mount conditions"},
+    {"id":"A2","target":"Header and tab-row geometry","action":"Remove inline-tab overrides and adjust shell flex/responsive selectors in styles.css","authority":"User-approved write scope","impact_radius":"Application shell styles","rollback":"Restore pre-task shell selectors"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S2"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S1","S2"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S1","S3","S5"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S4","S5"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S2","S5"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"Existing dirty worktree","effect":"Target files contain unrelated approved edits","detectable":true,"controllable":false},
+    {"source":"Layout mode changes","effect":"Global control owner and app-header necessity differ","detectable":true,"controllable":true},
+    {"source":"Multiple route tabs and viewport changes","effect":"Tab row overflow and sticky behavior vary","detectable":true,"controllable":true}
+  ],
+  "delays": [
+    {"source":"Vue HMR and responsive/store updates","consequence":"Immediate samples may observe prior DOM","sampling_rule":"Reload or wait for concrete route/layout state before measuring"}
+  ],
+  "assumptions": [
+    {"text":"The standalone ui-tabs-bar styles remain valid below app-header","evidence":"The component already owns full-row background, border and min-height","falsifier":"Runtime geometry shows width or sticky regression"},
+    {"text":"Top and mixed layouts can suppress an empty secondary header without route-state effects","evidence":"Header state is global controls only; tabsStore and router are external","falsifier":"Removing the empty header breaks a required control or content offset"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"Use A1 and measure with S2"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"Use A1/A2 and measure with S1/S2"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"Keep UiTabs unchanged and measure with S1/S3/S5"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"Preserve mobile rules and measure with S4/S5"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"Use layout conditions and measure side/top/mixed with S2/S5"}
+  ],
+  "model_status": "ready"
+}

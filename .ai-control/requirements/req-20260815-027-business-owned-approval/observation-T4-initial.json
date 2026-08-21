@@ -1,0 +1,33 @@
+{
+  "sample_label": "T4 initial migration and runtime menu sample",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R4", "sensor": "Migration source and retained-menu database query", "result": "pass", "raw_evidence": "Menu IDs 201 and 203 remain; V37 targets only 202 and 204", "limitation": []},
+    {"requirement_id": "R8", "sensor": "Contract/source comparison", "result": "pass", "raw_evidence": "Contract preserves task APIs and routes historical workflow pages to task aggregation or business detail", "limitation": []},
+    {"requirement_id": "R9", "sensor": "Post-start database query", "result": "fail", "raw_evidence": "sys_menu count for 202/204 is 0, but sys_role_menu count for 202/204 is 4 after Mock data synchronization", "limitation": ["Runtime schema has unrelated cross-branch migration history; query directly measures final data state"]}
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R9",
+      "expected": "Menu IDs 202/204 and every role-menu relation to them remain absent after application startup",
+      "observed": "Mock data synchronization recreates four role-menu relations after cleanup, leaving orphan rows",
+      "reproduction": "Start backend with Mock data enabled, then query sys_role_menu WHERE menu_id IN (202,204)",
+      "evidence": "Runtime query result role_links=4; mock/mock-data.json contains two role grants for each removed menu",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "Measured in local Mock-enabled profile; production profiles without Mock data do not execute this writer",
+      "causal_hypothesis": "The fixture retains obsolete grants and synchronizes after Flyway",
+      "correction_check": "Remove the four fixture grants, restart Mock synchronization, and assert both menu and role-link counts are zero while 201/203 remain",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    {"event": "The local main schema contains migration versions from another branch", "impact": "Fresh Flyway application could not be observed on that schema, but the final data invariant was measured independently"}
+  ],
+  "coverage_gaps": [
+    "A clean-database full migration is blocked by an existing V1 .env quoting issue outside this requirement; static Flyway validation remains available"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-041-release-application-semantic-tags",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-20-release-application-semantic-tags-design.md",
+  "objective": "Unify the version type, application characteristic, and status columns as compact semantic tags without changing business behavior.",
+  "users": [
+    "Configuration-management users scanning the release application list"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "All three columns must use compact tags with consistent dimensions and alignment.",
+      "acceptance": [
+        "Version type, application characteristic, and status render through UiStatusTag",
+        "Tags share the same height, typography, radius, and cell alignment"
+      ],
+      "priority": "must",
+      "source": "User selected option one after reviewing the three-column screenshot.",
+      "counterexample": [
+        "Ordinary applications remain unframed text",
+        "One of the three columns uses a different tag size"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Existing semantic colors for version type and status must remain unchanged.",
+      "acceptance": [
+        "Regular, urgent, and emergency versions retain info, warning, and danger tones",
+        "Draft, in-review, released, returned, and withdrawn statuses retain their existing tones"
+      ],
+      "priority": "must",
+      "source": "Existing ReleaseApplicationView mappings and confirmed option-one design.",
+      "counterexample": [
+        "A status changes color meaning",
+        "A new color mapping is introduced"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Application characteristic must display either Ordinary Application or Additional Application as a semantic tag.",
+      "acceptance": [
+        "Ordinary applications display 普通申请 with info tone",
+        "Additional applications display 追加申请 with warning tone"
+      ],
+      "priority": "must",
+      "source": "User selected the unified semantic-tag option.",
+      "counterexample": [
+        "Ordinary remains displayed as 普通 bare text",
+        "Both characteristic values use the same warning tone"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "The presentation change must not alter release application data or behavior.",
+      "acceptance": [
+        "No API, state, filter, permission, or backend files change",
+        "Frontend production build passes"
+      ],
+      "priority": "must",
+      "source": "Scoped visual-design invariant.",
+      "counterexample": [
+        "The characteristic data value changes",
+        "Filtering or list behavior changes"
+      ]
+    }
+  ],
+  "invariants": [
+    "ReleaseApplicationDto values remain unchanged",
+    "Existing version and status tone functions remain unchanged",
+    "Unrelated dirty-worktree changes remain untouched"
+  ],
+  "constraints": [
+    "Modify only the release application list presentation",
+    "Reuse UiStatusTag and existing Element Plus semantic tones",
+    "Remain on rokey and do not commit or push"
+  ],
+  "non_goals": [
+    "Redesign global status tags",
+    "Change detail pages or other release views",
+    "Add new status types or filters"
+  ],
+  "selected_approach": {
+    "name": "Unified semantic tags",
+    "reason": "It provides the strongest scanning consistency while reusing the existing component and color mappings.",
+    "alternatives": [
+      {
+        "name": "Layered tag treatments",
+        "rejected_because": "It introduces a second local visual rule for application characteristics."
+      },
+      {
+        "name": "Muted ordinary text",
+        "rejected_because": "It preserves the current text-versus-tag inconsistency."
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "ReleaseApplicationView characteristic-cell rendering"
+      ],
+      "outside": [
+        "API contracts",
+        "Backend",
+        "Other release pages",
+        "Global theme"
+      ]
+    },
+    "components": [
+      {
+        "name": "ReleaseApplicationView",
+        "responsibility": "Render the three table semantics with consistent compact tags.",
+        "depends_on": [
+          "UiStatusTag",
+          "ReleaseApplicationDto"
+        ]
+      },
+      {
+        "name": "UiStatusTag",
+        "responsibility": "Provide existing small plain semantic-tag presentation.",
+        "depends_on": [
+          "Element Plus el-tag"
+        ]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "Release application row presentation",
+        "producer": "ReleaseApplicationDto",
+        "consumers": [
+          "ReleaseApplicationView table"
+        ],
+        "contract": "Presentation mappings do not mutate row data or request state."
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "versionType, characteristic, and status values",
+        "transitions": [
+          "Map values to existing labels and semantic tones",
+          "Render UiStatusTag"
+        ],
+        "output": "Aligned semantic labels in the release application list"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "Characteristic is not ADDITIONAL",
+      "behavior": "Render 普通申请 with info tone, matching current fallback semantics.",
+      "recovery": "No recovery is required."
+    },
+    {
+      "condition": "The longer ordinary label approaches the column width",
+      "behavior": "Keep the existing compact tag and column width; verify it remains single-line.",
+      "recovery": "Increase only the affected column width if browser evidence proves clipping."
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "No authorization or data-access changes"
+    ],
+    "performance": [
+      "One existing lightweight tag component per row adds no meaningful cost"
+    ],
+    "compatibility": [
+      "No API, state, or saved-data changes"
+    ],
+    "operations": [
+      "No migration, configuration, or deployment changes"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "signal": "All three columns use aligned small tags with the confirmed labels and tones.",
+      "method": "Source assertion and authenticated browser inspection of representative rows."
+    },
+    {
+      "requirement_ids": [
+        "R4"
+      ],
+      "signal": "Frontend compiles and no behavioral files change.",
+      "method": "npm production build, scoped diff audit, and git diff check."
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "The requested overall design applies only to the three columns shown in the release application list screenshot.",
+      "basis": "The user explicitly referenced the left and right neighboring columns.",
+      "falsifier": "The user requests the same treatment on detail or analytics pages."
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "Use the unified semantic-tag approach for all three columns.",
+      "reason": "It removes mixed text and tag presentation while preserving semantic colors.",
+      "source": "User selected option one."
+    },
+    {
+      "id": "D2",
+      "decision": "Display 普通申请 instead of 普通.",
+      "reason": "It is symmetric with 追加申请 and clearer as a characteristic label.",
+      "source": "Confirmed option-one proposal."
+    }
+  ],
+  "risks": [
+    {
+      "risk": "普通申请 uses more horizontal space than 普通.",
+      "impact": "The 100px characteristic column could become visually tight.",
+      "mitigation": "Use the existing small tag and verify single-line fit in the browser."
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "The user selected option one for the integrated three-column design on 2026-08-20.",
+    "confirmed_at": "2026-08-20T09:53:24+08:00"
+  }
+}

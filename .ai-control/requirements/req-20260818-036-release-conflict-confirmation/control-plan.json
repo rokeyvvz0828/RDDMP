@@ -1,0 +1,35 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [{
+    "id": "T1",
+    "goal": "Correct duplicate-application confirmation hierarchy and token-aware submission behavior.",
+    "requirement_ids": ["R1", "R2", "R3", "R4"],
+    "prerequisites": [],
+    "input_facts": ["ReleaseSubmitRequest already accepts conflictToken", "Backend submission accepts unchanged conflicts when the token matches", "CREATE_NEW conflict resolution currently returns the same report", "The current frontend reopens the dialog for every HTTP 409"],
+    "write_scope": ["web/src/modules/release/components/ReleaseConflictDialog.vue", "web/src/modules/release/ReleaseManagementPrototype.vue", ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/execution-T1.json", ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/observation-T1.json", ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/convergence.json"],
+    "invariants": ["Backend conflict-token validation remains authoritative", "Cancel-old, edit-old and defer behavior remain", "No unrelated dirty-worktree change is overwritten"],
+    "interface_contracts": ["CREATE_NEW choose event is collection-level", "CANCEL_OLD and EDIT_OLD choose events carry the historical application", "Only a changed server token can invalidate current confirmation"],
+    "non_goals": ["No API, backend, database, permission, dependency or mobile-specific change", "No persisted confirmation across refresh"],
+    "action_bounds": ["Modify only the dialog event/template and page pending/submit conflict branches", "Use existing Element Plus buttons and release API functions", "Do not refactor unrelated release-page logic"],
+    "acceptance_checks": ["Footer order and primary style match R1", "Dialog closes before token-bearing submit completes", "Repeated clicks cannot create overlapping confirms", "Same-token 409 does not reopen", "Changed-token 409 refreshes and reopens", "Cancel-old, edit-old and defer remain", "Frontend build passes"],
+    "evidence_required": ["Focused diff", "Frontend build exit code", "git diff --check", "Desktop browser path and console/network result", "Governance and scope-check results with unrelated baseline failures disclosed"],
+    "rollback": "Restore only the modified sections of the two Vue files from the T1 pre-change snapshot.",
+    "stop_conditions": ["A backend or API contract change becomes necessary", "A user or process changes either target file during implementation", "The local runtime cannot produce a duplicate conflict after three setup attempts"],
+    "escalation_conditions": ["Confirmation must persist across page reloads", "A new public error-code contract is required", "Mobile-specific redesign is reintroduced"]
+  }],
+  "dependency_edges": [],
+  "parallel_groups": [["T1"]],
+  "integration_points": [{"after_tasks": ["T1"], "checks": ["Frontend production build", "Authenticated desktop duplicate-application browser flow", "Scope and whitespace audit"]}],
+  "sampling_plan": [
+    {"label": "T1 implementation sample", "trigger": "T1 execution report recorded", "observer": "independent observation pass", "sensors": ["S1", "S2"], "requirement_ids": ["R1", "R2", "R3", "R4"]},
+    {"label": "Final convergence sample", "trigger": "T1 verified and regression checks complete", "observer": "convergence verifier", "sensors": ["S1", "S2"], "requirement_ids": ["R1", "R2", "R3", "R4"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R3", "task_ids": ["T1"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R4", "task_ids": ["T1"], "sensor_ids": ["S1", "S2"]}
+  ],
+  "plan_status": "ready"
+}

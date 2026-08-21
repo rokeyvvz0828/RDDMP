@@ -1,0 +1,68 @@
+{
+  "baseline_revision": "baseline-1-design-revision-2",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T7", "T8", "T10"], "evidence": ["Five reachable views observed at /release", "Frontend production build passed"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T6", "T7", "T10"], "evidence": ["Regular, urgent and emergency types render separately from additional characteristic"], "limitations": []},
+    {"id": "R3", "result": "pass", "task_ids": ["T6", "T7", "T10"], "evidence": ["Window options show four minute-precision times, state and disabled reason"], "limitations": ["Boundary date is deterministic mock time"]},
+    {"id": "R4", "result": "pass", "task_ids": ["T6", "T7", "T10"], "evidence": ["Emergency form hides window, type and requirements and requires description plus test report"], "limitations": []},
+    {"id": "R5", "result": "pass", "task_ids": ["T6", "T7", "T8", "T10"], "evidence": ["Selected delivery units show latest successful production version, type and time"], "limitations": []},
+    {"id": "R6", "result": "pass", "task_ids": ["T6", "T7", "T10"], "evidence": ["Conflict dialog exposes historical business snapshot without attachments and status-dependent choices"], "limitations": ["Representative status paths sampled"]},
+    {"id": "R7", "result": "pass", "task_ids": ["T6", "T8", "T9", "T10"], "evidence": ["Approval is labeled 制品准出 and does not update current production"], "limitations": []},
+    {"id": "R8", "result": "pass", "task_ids": ["T6", "T8", "T10"], "evidence": ["Window baseline maintains clearance, success, failure and not-produced with correction audit"], "limitations": ["Audit is session-only"]},
+    {"id": "R9", "result": "pass", "task_ids": ["T6", "T8", "T10"], "evidence": ["Current production shows the latest effective successful version and excludes other outcomes"], "limitations": []},
+    {"id": "R10", "result": "pass", "task_ids": ["T6", "T7", "T9", "T10"], "evidence": ["Emergency has no manual window and uses current or nearest future assignment at approval"], "limitations": ["Clock and persistence are mocked"]},
+    {"id": "R11", "result": "pass", "task_ids": ["T9", "T10"], "evidence": ["One /workflow/review/:taskId route supports details, signature, approve, reject and return", "Three required phone widths have no page-level overflow"], "limitations": ["Task authorization is deterministic mock behavior"]},
+    {"id": "R12", "result": "pass", "task_ids": ["T6", "T8", "T10"], "evidence": ["Four nonblank charts and reconciled window, system, unit, requirement, type, clearance and outcome metrics render"], "limitations": ["Dedicated clickable system, unit and requirement chart series remain a formal-module expansion risk"]},
+    {"id": "R13", "result": "pass", "task_ids": ["T7", "T9", "T10"], "evidence": ["Normal page omits debug toolbar; development query retains explicit debug states; clean console has no errors"], "limitations": ["Not every debug combination was re-clicked in the final clean pass"]},
+    {"id": "R14", "result": "pass", "task_ids": ["T6", "T7", "T8", "T9", "T10"], "evidence": ["Frontend build, governance, Flyway, diff and Java 17 Maven reactor passed", "Desktop and three phone viewports passed geometry checks"], "limitations": ["Java 26 is incompatible with the repository's current Byte Buddy dependency"]}
+  ],
+  "task_results": [
+    {"id": "T6", "status": "verified", "evidence": ["Domain integration builds and cross-view projections pass"]},
+    {"id": "T7", "status": "verified", "evidence": ["Five-view, window, application and conflict browser paths pass"]},
+    {"id": "T8", "status": "verified", "evidence": ["Production baseline, current production and analytics render consistently"]},
+    {"id": "T9", "status": "verified", "evidence": ["Unified desktop/H5 review path and actions pass"]},
+    {"id": "T10", "status": "verified", "evidence": ["Automated, backend, browser and corrected governance gates pass"]}
+  ],
+  "feedback_summary": {
+    "total": 1,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "npm --prefix web run build", "result": "pass", "evidence": "vue-tsc and Vite exited 0"},
+    {"check": "node scripts/check-all-governance.mjs", "result": "pass", "evidence": "All repository governance checks passed after F-0001 correction"},
+    {"check": "node scripts/check-flyway-migrations.mjs", "result": "pass", "evidence": "36 migrations passed validation"},
+    {"check": "git diff --check", "result": "pass", "evidence": "Exit code 0"},
+    {"check": "Java 17 Maven reactor", "result": "pass", "evidence": "All 10 modules passed; workflow 23 tests and attachment 7 tests passed"},
+    {"check": "Desktop and responsive browser acceptance", "result": "pass", "evidence": "1280x800 and 375x812, 390x844, 430x932 paths render and operate without page-level overflow"}
+  ],
+  "invariant_results": [
+    {"invariant": "Approval completion means artifact clearance only", "result": "pass", "evidence": "Clearance and production result are separate facts and views"},
+    {"invariant": "Only successful production history drives current production", "result": "pass", "evidence": "Current production is a pure successful-history projection"},
+    {"invariant": "One application contains one subsystem and at least one delivery unit", "result": "pass", "evidence": "Application validation and data model enforce the relationship"},
+    {"invariant": "Revision-1 convergence evidence is preserved", "result": "pass", "evidence": "Revision-1 model, plan, state and convergence remain under accepted execution-revision-1-* archive names"},
+    {"invariant": "No commit or push is performed", "result": "pass", "evidence": "Work remains local and uncommitted on rokey"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Default Java 26 runtime", "result": "pass", "evidence": "Repository-compatible Java 17 reactor passed; mismatch is documented"},
+    {"disturbance": "Ledger filename governance restriction", "result": "pass", "evidence": "F-0001 accepted, corrected with filename-only moves, and closed by rerunning the original governance sensor"},
+    {"disturbance": "Existing separately scoped platform changes", "result": "pass", "evidence": "Release requirement scope is isolated in its authorized frontend and evidence paths without reverting platform work"}
+  ],
+  "residual_risks": [
+    "Project context, physical subsystems, delivery units, requirements and workflow tasks remain replaceable Mock providers until their owning modules are connected",
+    "Browser observation was performed in the main implementation context rather than by an independent reviewer",
+    "The formal module should decide whether system, delivery-unit and requirement drill-down require dedicated clickable chart series beyond the current reconciled filters and rows",
+    "The repository should continue using Java 17 until Byte Buddy and the declared toolchain support a newer runtime"
+  ],
+  "gate_result": "pass",
+  "route_reason": "All 14 must requirements have verified task and sensor evidence; two standard-mode samples have P0/P1 zero; the sole accepted feedback is closed; automated, backend and responsive runtime checks pass."
+}

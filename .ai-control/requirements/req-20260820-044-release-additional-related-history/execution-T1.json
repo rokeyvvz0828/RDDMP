@@ -1,0 +1,31 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java", "purpose": "Add the flat related-history response contract."},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java", "purpose": "Query tenant-scoped direct ADDITIONAL relations for active item keys."},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java", "purpose": "Aggregate live, deduplicated and sorted historical application summaries."},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java", "purpose": "Expose the permission-protected read endpoint."},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application", "purpose": "Cover persistence, service aggregation and controller authorization."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {"command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl server/src/modules/release -am test", "exit_code": 0, "salient_output": "ccb-release: 73 tests, 0 failures, 0 errors; reactor BUILD SUCCESS."}
+  ],
+  "local_checks": [
+    {"check": "Release backend reactor", "result": "pass", "evidence": "All release and dependency modules passed under Java 17.", "limitations": ["No production database was modified for the test suite."]}
+  ],
+  "diff_summary": [
+    "Added one additive flat read endpoint for direct related history.",
+    "Filtered by tenant, relation type and active current item keys.",
+    "Mapped live status and recomputed changes without attachments or recursive payloads."
+  ],
+  "invariants_checked": [
+    {"invariant": "Tenant and release view permission are enforced.", "result": "pass", "evidence": "Persistence predicates and controller security test passed."},
+    {"invariant": "Existing release behavior and schema remain unchanged.", "result": "pass", "evidence": "Additive implementation, no migration, full release reactor passed."}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

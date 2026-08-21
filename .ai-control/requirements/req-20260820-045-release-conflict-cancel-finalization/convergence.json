@@ -1,0 +1,160 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "partial",
+      "task_ids": ["T2"],
+      "evidence": ["compiled dialog contract enforces preflight, IN_REVIEW, owner and permission guards"],
+      "limitations": ["required desktop and mobile live UI evidence is unavailable because browser localhost access was denied"]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": ["dedicated /conflict-cancel frontend and controller contracts", "service validation and authority tests pass", "running endpoint is security protected"],
+      "limitations": ["no authenticated live request capture"]
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["CANCEL_REQUESTED command and CANCELLED lifecycle tests pass", "application remains IN_REVIEW before termination in service tests"],
+      "limitations": ["live Flowable termination was not executed during final sampling"]
+    },
+    {
+      "id": "R4",
+      "result": "partial",
+      "task_ids": ["T1", "T2"],
+      "evidence": ["WITHDRAW_REQUESTED to WITHDRAWN regression passes", "normal frontend /withdraw handler remains"],
+      "limitations": ["required live edit and resubmit after withdrawal were not sampled"]
+    },
+    {
+      "id": "R5",
+      "result": "partial",
+      "task_ids": ["T2"],
+      "evidence": ["compiled 2000 ms polling and IN_REVIEW continuation gate contracts are present"],
+      "limitations": ["live pending cancellation and button enablement timing were not sampled"]
+    },
+    {
+      "id": "R6",
+      "result": "partial",
+      "task_ids": ["T1", "T2"],
+      "evidence": ["CANCELLED update, submit and attachment mutation tests pass", "frontend cancellation copy states permanent read-only outcome"],
+      "limitations": ["required live cancelled detail rendering was not sampled"]
+    },
+    {
+      "id": "R7",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["gateway failure propagation test passes without premature CANCELLED transition"],
+      "limitations": ["transaction rollback uses the production Spring transaction boundary but the failure sensor is Mockito based"]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": ["78 release tests and 152 dependency/release tests pass", "independent focused backend sample passes"]
+    },
+    {
+      "id": "T2",
+      "status": "verified",
+      "evidence": ["frontend production build passes twice", "exact cancel, withdrawal and polling contract checks pass", "rebuilt backend and frontend services report HTTP 200"]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {
+      "check": "Java 17 release and dependency suite",
+      "result": "pass",
+      "evidence": "152 tests, 0 failures, 0 errors; ccb-release 78 tests"
+    },
+    {
+      "check": "independent focused state-machine suite",
+      "result": "pass",
+      "evidence": "36 tests, 0 failures, 0 errors"
+    },
+    {
+      "check": "frontend production build",
+      "result": "pass",
+      "evidence": "vue-tsc and Vite build passed; 2362 modules transformed"
+    },
+    {
+      "check": "development entry and whitespace",
+      "result": "pass",
+      "evidence": "development entry, global git diff --check and scoped diff check passed"
+    },
+    {
+      "check": "repository governance",
+      "result": "blocked-external",
+      "evidence": "module, skill and development checks pass; layout fails on eight pre-existing files belonging to other requirements"
+    },
+    {
+      "check": "scope governance",
+      "result": "blocked-approved-deviation",
+      "evidence": "scope checker rejects branch rokey; user explicitly required implementation on rokey"
+    },
+    {
+      "check": "required browser flow",
+      "result": "blocked-external",
+      "evidence": "in-app browser security policy denied access to 127.0.0.1:5173"
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "CANCELLED never coexists with a deliberately retained actionable task",
+      "result": "pass",
+      "evidence": "business state changes only from the workflow TERMINATED consumer"
+    },
+    {
+      "invariant": "application remains IN_REVIEW until workflow termination is confirmed",
+      "result": "pass",
+      "evidence": "service and lifecycle tests pass"
+    },
+    {
+      "invariant": "normal withdrawal remains WITHDRAWN",
+      "result": "pass",
+      "evidence": "backend lifecycle regression and frontend handler contract pass"
+    },
+    {
+      "invariant": "tenant, owner, permission and optimistic locking checks remain enforced",
+      "result": "pass",
+      "evidence": "service validation and controller authority tests pass"
+    }
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "backend process initially restarted without the existing local environment",
+      "result": "pass",
+      "evidence": "failed process served no traffic; service recovered with unchanged .env and local profile, then reported health UP"
+    },
+    {
+      "disturbance": "large dirty rokey worktree",
+      "result": "pass",
+      "evidence": "no reset, clean, checkout, commit or unrelated edit was performed; scoped checks pass"
+    }
+  ],
+  "residual_risks": [
+    "desktop and mobile conflict dialog behavior and layout require a user-authorized localhost browser sample",
+    "authenticated end-to-end workflow cancellation and normal withdrawal edit/resubmit remain unobserved in the live UI",
+    "repository governance remains red because of eight pre-existing ledger filenames outside REQ-20260820-045",
+    "scope governance remains red by design because the user required branch rokey"
+  ],
+  "gate_result": "blocked",
+  "route_reason": "Implementation and automated regression evidence pass with zero observed deviations, but the required live browser flow is unavailable and repository/scope release checks remain externally blocked; full convergence cannot be declared."
+}

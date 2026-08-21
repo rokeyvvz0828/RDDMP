@@ -1,0 +1,103 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3", "T4"],
+      "evidence": ["V44 字段和历史回填验证通过", "release API 保持 businessType=release_application 并返回 release/配置管理", "浏览器显示配置管理 · 审批中心"],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": ["工作流 38 个测试通过", "boot 通知桥 3 个测试通过", "配置管理提交与生命周期目标测试 12 个通过"],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T4"],
+      "evidence": ["认证模块选项接口返回三个当前用户可见板块", "模糊输入配置只出现配置管理（4）", "选中 release 后服务端列表仅返回 4 条配置管理通知"],
+      "limitations": []
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T4"],
+      "evidence": ["全局/配置管理未读 7/4 -> 6/3 -> 0/0", "选择配置管理时铃铛保持全局 7，未读页签显示 4"],
+      "limitations": []
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["V44 在 V35-V43 匹配克隆库执行成功", "6 个字段、索引和全部历史数据回填核对通过", "旧流程回退路径由工作流和通知桥测试覆盖"],
+      "limitations": ["本机 ccb_platform 存在既存 Flyway 历史漂移，部署该环境前需先修复基线"]
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T1", "T4"],
+      "evidence": ["列表和板块聚合使用认证用户，不接受客户端 userId", "unknown_module 返回 code=0,total=0", "SystemNotificationService 5 个测试通过"],
+      "limitations": ["运行库是单租户样本，跨租户隔离由 SQL 约束和单元测试覆盖"]
+    },
+    {
+      "id": "R7",
+      "result": "pass",
+      "task_ids": ["T4"],
+      "evidence": ["1280x720、375x812、390x844、430x932 全部无横向溢出", "长标题换行、筛选和操作按钮可达", "页面 console error/warn 为空"],
+      "limitations": []
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["平台通知 5 个测试、迁移结构和 API 运行验证通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["工作流 38 个测试和通知桥 3 个测试通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["配置管理 51 个测试及接入契约核对通过"]},
+    {"id": "T4", "status": "verified", "evidence": ["前端生产构建、认证接口、路由和四种视口验证通过"]}
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0004", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Java 17 全量 Maven 测试", "result": "pass", "evidence": "11 个 Reactor 模块 BUILD SUCCESS，共 124 tests passed"},
+    {"check": "前端生产构建", "result": "pass", "evidence": "vue-tsc --noEmit 与 Vite build 通过"},
+    {"check": "V44 迁移运行验证", "result": "pass", "evidence": "匹配 rokey 的克隆库执行成功，空回填计数均为 0"},
+    {"check": "认证接口与浏览器集成", "result": "pass", "evidence": "筛选、计数、读状态、路由、响应式和控制台检查全部通过"},
+    {"check": "补丁格式", "result": "pass", "evidence": "git diff --check 无输出"}
+  ],
+  "invariant_results": [
+    {"invariant": "platform/system 保持通知和读状态数据所有者", "result": "pass", "evidence": "业务模块仅经公共通知/工作流契约接入"},
+    {"invariant": "租户和当前用户隔离保持", "result": "pass", "evidence": "服务查询从 AuthUser tenantId/userId 构造范围"},
+    {"invariant": "通知幂等键不变", "result": "pass", "evidence": "唯一键和发布查重仍使用 tenantId+businessType+eventId"},
+    {"invariant": "内部详情路由保持", "result": "pass", "evidence": "通知点击进入 /release/applications/SQ-202608-001"},
+    {"invariant": "全部已读保持全板块语义", "result": "pass", "evidence": "read-all 后三个板块未读均为 0"},
+    {"invariant": "已发布 Flyway 文件未修改", "result": "pass", "evidence": "本需求仅新增 V44"},
+    {"invariant": "无关 rokey 变更受保护", "result": "pass", "evidence": "未执行 reset、clean、checkout 或还原"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "默认 Maven 使用 Java 26", "result": "pass", "evidence": "切换项目基线 Java 17 后全量测试通过"},
+    {"disturbance": "沙箱阻止本机数据库和构建目录访问", "result": "pass", "evidence": "获准后仅连接隔离库并完成相同命令"},
+    {"disturbance": "手工 MySQL CLI 默认字符集", "result": "pass", "evidence": "使用 utf8mb4 后配置管理 HEX=E9858DE7BDAEE7AEA1E79086，页面中文正确"},
+    {"disturbance": "主库迁移历史漂移", "result": "pass", "evidence": "改用与本地 rokey V35-V43 匹配的隔离克隆，V44 完整执行"}
+  ],
+  "residual_risks": [
+    "本机 ccb_platform 的 Flyway 历史与实际表结构不一致；该既存环境在正式继续迁移前需要单独治理"
+  ],
+  "gate_result": "pass",
+  "route_reason": "七项 must 需求均有任务、修改和运行传感器证据；四个任务已验证，四次采样 P0-P3 均为零，全量回归和运行验收通过"
+}

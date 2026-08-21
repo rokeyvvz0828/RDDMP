@@ -1,0 +1,126 @@
+{
+  "task_id": "T1-T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration and WorkflowBusinessIntegrationService.java",
+      "purpose": "Expose tenant-scoped published and deployed workflow candidates, start by definition ID, and provide active-reference lifecycle protection."
+    },
+    {
+      "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/workflow and V43__release_workflow_scene_binding.sql",
+      "purpose": "Persist five project-scoped scene bindings with optimistic locking, audit history, permissions, and workflow reference reporting."
+    },
+    {
+      "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java and related release application persistence",
+      "purpose": "Resolve the server-derived scene binding and freeze the actual definition ID, version, and instance on each approval round."
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseWorkflowBindingView.vue and release API/types/navigation/styles",
+      "purpose": "Provide project-aware approval workflow configuration, history, unbind, reasoned updates, and explicit partial state."
+    },
+    {
+      "path_or_resource": "isolated database ccb_platform_rokey_20260817",
+      "purpose": "Apply V43 and create disposable deployed workflows, bindings, windows, and applications for integrated verification without modifying ccb_platform."
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "Maven workflow module test suite",
+      "exit_code": 0,
+      "salient_output": "38 workflow tests passed, including 3 WorkflowBusinessIntegrationService tests and 6 lifecycle tests."
+    },
+    {
+      "command": "Maven release module test suite",
+      "exit_code": 0,
+      "salient_output": "48 release tests passed, including binding, submission, schema, security, lifecycle, production, and analytics coverage."
+    },
+    {
+      "command": "Focused cross-module integration tests",
+      "exit_code": 0,
+      "salient_output": "3 focused integration tests passed after excluding undeployed legacy definitions from published candidates."
+    },
+    {
+      "command": "npm run build",
+      "exit_code": 0,
+      "salient_output": "Vue TypeScript and Vite production build completed successfully."
+    },
+    {
+      "command": "Maven backend package build and git diff --check",
+      "exit_code": 0,
+      "salient_output": "Backend package completed and no whitespace errors were reported."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Project-scoped binding API and browser workflow",
+      "result": "pass",
+      "evidence": "Five fixed scenes rendered; project P-RDDMP-UPGRADE showed 1/5 configured while another project showed 0/5; bind, rebind, stale-write rejection, history, unbind, and project switching were exercised.",
+      "limitations": ["Project context and physical subsystem/delivery-unit catalogs remain intentionally mocked until their owning modules are integrated."]
+    },
+    {
+      "check": "Submission workflow immutability",
+      "result": "pass",
+      "evidence": "SQ-202608-001 remained frozen to deployed Flow A after rebinding, while SQ-202608-002 used deployed Flow B; both entered IN_REVIEW and persisted separate workflow identities.",
+      "limitations": ["The verification used disposable definitions and applications in the isolated database."]
+    },
+    {
+      "check": "Negative and lifecycle paths",
+      "result": "pass",
+      "evidence": "Unbound submission returned 409 without an approval round; stale binding update returned 409; actively bound archive returned 409; pure draft deletion returned 200; formerly published draft deletion returned 409.",
+      "limitations": []
+    },
+    {
+      "check": "Migration and runtime health",
+      "result": "pass",
+      "evidence": "Flyway validated 41 migrations with schema at V43; backend health was UP; browser console errors were zero and the final binding table had no horizontal overflow.",
+      "limitations": ["Local runtime only; no production migration-duration measurement."]
+    }
+  ],
+  "diff_summary": [
+    "Configuration management now owns five fixed project approval scenes and binds each scene to a published, deployed workflow definition.",
+    "Release submission resolves bindings server-side and rejects only the submitted unconfigured or invalid scene atomically.",
+    "Approval rounds retain immutable workflow definition, version, and instance identity across later rebinding.",
+    "Binding updates require reasons, support optimistic locking, preserve history, and protect referenced definitions from destructive lifecycle actions.",
+    "The frontend exposes configuration and history without allowing workflow graph editing or manual workflow-code input."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Running applications retain their original workflow definition and version.",
+      "result": "pass",
+      "evidence": "Two real applications submitted before and after rebinding retained Flow A and Flow B respectively."
+    },
+    {
+      "invariant": "All bindings and candidates are tenant and project scoped.",
+      "result": "pass",
+      "evidence": "Project switching returned isolated 1/5 and 0/5 states and backend queries include tenant and project scope."
+    },
+    {
+      "invariant": "Flyway changes are append-only and the original database remains untouched.",
+      "result": "pass",
+      "evidence": "Only V43 was applied to ccb_platform_rokey_20260817; no destructive migration or original ccb_platform operation was performed."
+    },
+    {
+      "invariant": "Unrelated rokey work remains untouched and no commit or push occurs.",
+      "result": "pass",
+      "evidence": "The dirty worktree was preserved; no reset, commit, or push command was run."
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Legacy seeded definitions were marked PUBLISHED but had no Flowable deployment.",
+      "impact": "Initial submission failed with Flowable workflow definition missing; candidate and requirePublished queries were bounded to require definition and version deployment IDs, then focused tests and runtime submission passed."
+    },
+    {
+      "event": "Database CURRENT_TIMESTAMP follows the UTC container session while the application exposes timezone-less LocalDateTime values.",
+      "impact": "Binding-history timestamps display about eight hours behind Shanghai time; the same platform convention affects multiple modules and requires a central time contract rather than a release-only offset."
+    }
+  ],
+  "assumptions_falsified": [
+    "PUBLISHED status alone does not guarantee that a legacy workflow can be started; a valid Flowable deployment is also required."
+  ],
+  "unresolved_items": [
+    "Platform-wide database session and JSON timestamp semantics should be normalized centrally; the current module does not apply a local +8-hour workaround."
+  ],
+  "recommended_next": "observe"
+}

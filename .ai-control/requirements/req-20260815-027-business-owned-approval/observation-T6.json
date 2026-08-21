@@ -1,0 +1,22 @@
+{
+  "sample_label": "T6 direct business-entry approval sample",
+  "task_ids": ["T6"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "Browser DOM on stable business URL", "result": "pass", "raw_evidence": "Direct /release/applications/SQ-001 renders full application facts and 同意、不通过、退回修改", "limitation": []},
+    {"requirement_id": "R2", "sensor": "List navigation source and runtime URL", "result": "pass", "raw_evidence": "ReleaseDetailDrawer opens the stable application URL without a Mock taskId", "limitation": []},
+    {"requirement_id": "R5", "sensor": "JUnit plus isolated-database browser probe", "result": "pass", "raw_evidence": "Authenticated business lookup resolves the pending task; no pending task returns empty read-only context", "limitation": []},
+    {"requirement_id": "R6", "sensor": "SQL constraint audit and task-context regression", "result": "pass", "raw_evidence": "Tenant, assignee, business identity, running instance and pending task are server constrained before the existing authorization projection", "limitation": []},
+    {"requirement_id": "R10", "sensor": "390x844 DOM geometry", "result": "pass", "raw_evidence": "scrollWidth=clientWidth=390 and all three approval buttons are present", "limitation": []}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Prototype used business_type=release while runtime data uses release_application", "impact": "The first browser sample was read-only; contract and caller were corrected and the second sample passed"}
+  ],
+  "coverage_gaps": [
+    "Observation was performed in the same Codex task and is not organizationally independent",
+    "Formal release persistence remains approved Mock scope"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

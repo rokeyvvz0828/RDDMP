@@ -1,0 +1,130 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T4", "T6"],
+      "evidence": ["Mixed SQ-202608-051 persisted one delivery unit and two file-media paths", "Browser form enabled and retained both content sections"],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T2", "T4", "T6"],
+      "evidence": ["Multiple path-only rows persisted independently", "Empty, trim-duplicate, over-1024 and control-character paths returned 400"],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T6"],
+      "evidence": ["Real responses and rows use fixed FILE metadata with null version"],
+      "limitations": []
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3", "T6"],
+      "evidence": ["Path A conflicted while distinct paths remained independent in conflict, baseline, current production and history"],
+      "limitations": []
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T2", "T4", "T6"],
+      "evidence": ["SQ-202608-052 was classified ADDITIONAL and referenced only released SQ-202608-051 path A", "Conflict confirmation regression tests passed"],
+      "limitations": []
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T1", "T3", "T5", "T6"],
+      "evidence": ["SQ-202608-053 produced two baseline rows and maintaining entry 1787133209782422 left 1787133209783408 unchanged"],
+      "limitations": []
+    },
+    {
+      "id": "R7",
+      "result": "pass",
+      "task_ids": ["T1", "T3", "T5", "T6"],
+      "evidence": ["Current production contains only the successful file path with no fabricated version", "Entry-specific history returned the maintained path"],
+      "limitations": []
+    },
+    {
+      "id": "R8",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3", "T6"],
+      "evidence": ["V46 success is recorded in flyway_schema_history", "Existing rows were retained and backfilled as DELIVERY_UNIT", "All 11 Maven reactor modules passed"],
+      "limitations": ["F-0001 records that the actual database has a verified post-V46 recovery backup but no verified pre-V46 restore point"]
+    },
+    {
+      "id": "R9",
+      "result": "pass",
+      "task_ids": ["T4", "T5", "T6"],
+      "evidence": ["Detail, conflict, baseline, current-production and analytics pages render path and no-version state", "Analytics reported 0 delivery units and 2 file-media items for the isolated project"],
+      "limitations": []
+    },
+    {
+      "id": "R10",
+      "result": "pass",
+      "task_ids": ["T4", "T5", "T6"],
+      "evidence": ["375x812, 390x844, 430x932, 1280x800 and 1440x900 DOM checks showed no page horizontal overflow and reachable actions"],
+      "limitations": []
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["Schema and persistence contracts passed; append-only V46 structure verified"]},
+    {"id": "T2", "status": "verified", "evidence": ["Validation, conflict, additional-release and workflow digest tests passed"]},
+    {"id": "T3", "status": "verified", "evidence": ["Production and authorization tests passed with entry-specific identity"]},
+    {"id": "T4", "status": "verified", "evidence": ["Mixed editor, detail, list and conflict flow built and rendered correctly"]},
+    {"id": "T5", "status": "verified", "evidence": ["Baseline, current-production and analytics backend/frontend checks passed"]},
+    {"id": "T6", "status": "verified", "evidence": ["V46, full regression, real API workflow and five responsive viewports verified"]}
+  ],
+  "feedback_summary": {
+    "total": 1,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 1, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0004", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0005", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0006", "P0": 0, "P1": 0, "P2": 1, "P3": 0, "score": 5}
+  ],
+  "regression_checks": [
+    {"check": "Release focused and module tests", "result": "pass", "evidence": "Release module ran 65 tests with no failures"},
+    {"check": "Full JDK 17 Maven reactor", "result": "pass", "evidence": "All 11 modules passed; BUILD SUCCESS"},
+    {"check": "Frontend production build", "result": "pass", "evidence": "vue-tsc and Vite build exited 0"},
+    {"check": "Development entry", "result": "pass", "evidence": "Plugin-aware development entry check exited 0"},
+    {"check": "Whitespace", "result": "pass", "evidence": "git diff --check exited 0"},
+    {"check": "Repository governance", "result": "deferred", "evidence": "Product governance checks pass; global layout check is blocked by six unrelated historical ledger filenames"},
+    {"check": "Automated scope", "result": "deferred", "evidence": "Checker rejects the user-approved rokey branch before path analysis; manual audit found no task-attributable writes outside the approved scope"}
+  ],
+  "invariant_results": [
+    {"invariant": "Approval remains whole-application", "result": "pass", "evidence": "Real mixed application completed the existing two-node workflow"},
+    {"invariant": "File media has no artifact version", "result": "pass", "evidence": "Database/API/UI all represent file-media version as null or 无版本号"},
+    {"invariant": "FILE metadata is fixed and path is identity", "result": "pass", "evidence": "Real conflict and independent baseline rows use path-level item keys"},
+    {"invariant": "Authorization and optimistic locking remain server-authoritative", "result": "pass", "evidence": "Production controller security and rowVersion tests passed"},
+    {"invariant": "No filesystem access from entered paths", "result": "pass", "evidence": "No filesystem integration was added; paths remain persisted text"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Append-only migration on existing data", "result": "pass", "evidence": "V46 succeeded and retained/backfilled all pre-existing ordinary rows"},
+    {"disturbance": "Long paths and small viewports", "result": "pass", "evidence": "Five responsive viewport measurements and screenshots showed no page-level overflow"},
+    {"disturbance": "Existing dirty rokey worktree", "result": "pass", "evidence": "Unrelated files were preserved and no commit, push, reset or cleanup occurred"}
+  ],
+  "residual_risks": [
+    "F-0001: the actual database has no verified pre-V46 restore point; the verified post-V46 backup is the current recovery point",
+    "Repository-wide governance remains red because six unrelated historical ledger files use unsupported names",
+    "Automated scope verification cannot run on the user-mandated rokey branch even though task writes were manually audited",
+    "Browser acceptance reused a current authenticated local session rather than a clean external environment"
+  ],
+  "gate_result": "pass",
+  "route_reason": "All ten must requirements and six bounded tasks have final test, real API, database and browser evidence; P0/P1 are zero and the sole P2 process deviation is explicitly deferred with containment"
+}

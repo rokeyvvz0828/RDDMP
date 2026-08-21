@@ -1,0 +1,46 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T2", "T5"], "evidence": ["唯一菜单入口和四个可达视图的浏览器证据"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T1", "T3", "T4", "T5"], "evidence": ["统一 Mock 状态驱动列表、详情、基线、指标和下钻"], "limitations": ["仅当前页面会话"]},
+    {"id": "R3", "result": "pass", "task_ids": ["T3", "T5"], "evidence": ["自动场景、字段校验、版本冲突和申请动作均已复验"], "limitations": ["真实工作流和持久化不在范围内"]},
+    {"id": "R4", "result": "pass", "task_ids": ["T2", "T3", "T4", "T5"], "evidence": ["生产构建通过，1280x800 与 1440x900、浅深主题和全状态验收通过"], "limitations": ["移动端明确延期"]},
+    {"id": "R5", "result": "pass", "task_ids": ["T1", "T5"], "evidence": ["git 路径审计无后端和数据库改动，全量治理通过"], "limitations": ["专项范围脚本不接受用户指定 rokey 分支"]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["类型安全 Mock 和菜单注入构建通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["壳层、路由和窗口视图构建及浏览器验证通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["版本申请、冲突和流程详情浏览器验证通过"]},
+    {"id": "T4", "status": "verified", "evidence": ["基线、替代链、图表和下钻验证通过"]},
+    {"id": "T5", "status": "verified", "evidence": ["构建、治理、diff、桌面主题和状态验收通过"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "npm --prefix web run build", "result": "pass", "evidence": "退出码 0，2345 modules transformed"},
+    {"check": "node scripts/check-all-governance.mjs", "result": "pass", "evidence": "All repository governance checks passed"},
+    {"check": "git diff --check", "result": "pass", "evidence": "退出码 0"},
+    {"check": "桌面浏览器核心路径", "result": "pass", "evidence": "四视图、表单、冲突、流程、基线、图表、状态和主题通过"}
+  ],
+  "invariant_results": [
+    {"invariant": "一个申请单只包含一个物理子系统和至少一个交付单元", "result": "pass", "evidence": "表单结构和提交校验"},
+    {"invariant": "场景自动派生", "result": "pass", "evidence": "派生函数和只读场景展示"},
+    {"invariant": "图表和详情使用同一会话 Mock", "result": "pass", "evidence": "统一 state 和派生指标"},
+    {"invariant": "原型不暗示持久化", "result": "pass", "evidence": "页面、表单和导出提示均声明会话边界"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "Vue 代理对象不能 structuredClone", "result": "pass", "evidence": "改用普通对象复制后替代链无新增日志"},
+    {"disturbance": "1280x800 受限桌面宽度", "result": "pass", "evidence": "documentWidth 和 bodyWidth 均为 1280，无页面级横向溢出"}
+  ],
+  "residual_risks": [
+    "用户指定 rokey 分支与专项范围脚本的规范分支正则不一致",
+    "正式后端空库启动存在既有 Flowable/Flyway 迁移顺序问题",
+    "本原型不验证真实持久化、工作流、附件、通知和导出服务"
+  ],
+  "gate_result": "pass",
+  "route_reason": "五条 must 需求均具备任务、实现和异质验收证据；两次采样 P0/P1 为零，范围与不变量保持稳定"
+}

@@ -1,0 +1,38 @@
+{
+  "sample_label": "T2 工作流板块传播完成采样",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "WorkflowSystemNotificationBridgeTest",
+      "result": "pass",
+      "raw_evidence": "带 -am 重建依赖后 3 tests passed，断言 release / 配置管理 / release_application",
+      "limitation": ["未连接真实 MySQL"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "工作流字段静态传播扫描与聚焦测试",
+      "result": "pass",
+      "raw_evidence": "wf_instance 写入、wf_lifecycle_event 写入和加载、通知桥接投影均包含 business_module_code/business_module_name；workflow 38 tests passed",
+      "limitation": ["未模拟多个外部业务模块"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "兼容分支代码路径与全上游重建测试",
+      "result": "pass",
+      "raw_evidence": "已知旧业务类型映射固定模块；未知类型生成 business_ 前缀合法编码并记录 warning；Reactor BUILD SUCCESS",
+      "limitation": ["运行中旧实例将在数据库集成观测中复验"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "不带 -am 的单模块测试读取本地仓库旧 SNAPSHOT，产生 NoSuchMethodError",
+      "impact": "分类为 sensor-fault；使用 -am 重建上游后同一测试通过"
+    }
+  ],
+  "coverage_gaps": ["真实 MySQL V44 迁移和运行中旧实例通知尚未采样"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

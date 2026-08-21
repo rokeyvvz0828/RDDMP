@@ -1,0 +1,56 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/window/model", "purpose": "定义投产窗口实体、命令、响应和状态"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/window/persistence/ReleaseWindowStore.java", "purpose": "持久化窗口、项目范围锁、乐观锁和字段级审计"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/window/service/ReleaseWindowService.java", "purpose": "执行窗口校验、编码生成、状态和可选性规则"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/window/web/ReleaseWindowController.java", "purpose": "提供真实窗口 REST API 和 RBAC"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/window", "purpose": "覆盖规则、租户、并发、审计和权限"}
+  ],
+  "requirements_addressed": ["R4", "R8", "R18"],
+  "commands": [
+    {
+      "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test",
+      "exit_code": 0,
+      "salient_output": "Eight reactor modules succeeded; ccb-release 9 tests passed; dependency-chain total 61 tests passed"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "All module, Maven, Flyway and AI-control governance checks passed"
+    },
+    {
+      "command": "rg SQL ownership scans under com/ccb/release/window",
+      "exit_code": 0,
+      "salient_output": "Only rel_release_window and rel_window_change_log are referenced"
+    }
+  ],
+  "local_checks": [
+    {"check": "投产窗口服务与接口权限测试", "result": "pass", "evidence": "ReleaseWindowServiceTest 7 tests and controller security test 1 test passed", "limitations": ["尚未执行真实 MySQL 并发压力测试"]},
+    {"check": "模块回归", "result": "pass", "evidence": "Maven reactor 61 tests, 0 failures", "limitations": []},
+    {"check": "SQL 所有权", "result": "pass", "evidence": "窗口包只访问计划允许的两张表", "limitations": []}
+  ],
+  "diff_summary": [
+    "新增窗口分页、详情、新增、修改和常规申请开关接口",
+    "服务端生成 WIN-yyyyMM-流水号并校验四个分钟精度时间和完整周期不重叠",
+    "窗口状态派生为未开始、申报中、紧急申报期、投产中、已关闭并返回不可选原因",
+    "项目和编码不可修改，修改使用 rowVersion 并逐字段记录前后值、操作人和原因",
+    "所有查询和写入绑定当前 AuthUser 租户，接口按 release:window:* 权限控制"
+  ],
+  "invariants_checked": [
+    {"invariant": "Tenant and RBAC checks are server-side", "result": "pass", "evidence": "tenant-bound SQL, cross-tenant rejection test and method PreAuthorize assertions passed"},
+    {"invariant": "Window updates use rowVersion and append audit", "result": "pass", "evidence": "stale version, concurrent update and field-change capture assertions passed"},
+    {"invariant": "Windows are not deleted or disabled", "result": "pass", "evidence": "No delete/status route or persistence operation exists; only regular submission switch is exposed"},
+    {"invariant": "Only release window tables are accessed", "result": "pass", "evidence": "SQL ownership scan found no other rel_* table"}
+  ],
+  "disturbances": [
+    {"event": "Initial update lock order differed from create lock order", "impact": "Updated implementation to lock project range before row re-lock and version recheck, reducing deadlock risk"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Formal project-member authorization remains deferred per approved scope",
+    "Real MySQL migration and HTTP persistence acceptance remain scheduled for T8"
+  ],
+  "recommended_next": "observe"
+}

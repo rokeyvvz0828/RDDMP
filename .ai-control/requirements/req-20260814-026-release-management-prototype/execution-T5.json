@@ -1,0 +1,34 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "docs/requirements/REQ-20260814-026-release-management-prototype", "purpose": "需求、范围和验收证据"},
+    {"path_or_resource": ".ai-control/requirements/req-20260814-026-release-management-prototype", "purpose": "闭环工程控制账本和报告"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc passed; Vite built 2345 modules"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "All repository governance checks passed"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "no whitespace errors"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260814-026-release-management-prototype/codex-task-scope.yaml --working-tree", "exit_code": 1, "salient_output": "branch policy rejects user-selected local branch rokey"}
+  ],
+  "local_checks": [
+    {"check": "桌面浏览器 1440x900", "result": "pass", "evidence": "四视图、抽屉、弹框、图表和替代链可用且无页面级溢出", "limitations": []},
+    {"check": "桌面浏览器 1280x800", "result": "pass", "evidence": "documentWidth=1280, bodyWidth=1280, horizontalOverflow=false", "limitations": []},
+    {"check": "浅色和深色主题", "result": "pass", "evidence": "theme=light/dark 均可切换，深色 body background rgb(19,35,43)，无横向溢出", "limitations": []},
+    {"check": "异常状态", "result": "pass", "evidence": "loading mask、空数据、加载失败和无权限状态均明确呈现", "limitations": []},
+    {"check": "真实 diff 范围审计", "result": "pass", "evidence": "产品改动仅在 release 模块、router/index.ts 和 stores/auth.ts，文档和账本位于本需求目录", "limitations": ["专项范围脚本的分支命名门禁不支持用户明确指定的 rokey 分支"]}
+  ],
+  "diff_summary": ["完成构建、治理、浏览器和范围验收", "补齐可追踪工程证据"],
+  "invariants_checked": [
+    {"invariant": "不修改 Java、Flyway 和数据库", "result": "pass", "evidence": "git status 和路径审计无 server 或 migration 变更"},
+    {"invariant": "原型不暗示持久化", "result": "pass", "evidence": "页头、表单和导出弹框均明确标注 Mock 会话边界"}
+  ],
+  "disturbances": [
+    {"event": "沙箱内首次 Vite 构建无法写 web/node_modules/.vite-temp", "impact": "以获准的工作区构建重跑并通过"},
+    {"event": "全新数据库启动暴露现有 Flowable/Flyway 顺序冲突", "impact": "不属于前端原型范围，未修改后端或迁移"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["专项范围脚本要求规范功能分支，而本次按用户要求保留 rokey", "正式后端空库迁移顺序需由平台任务另行处理"],
+  "recommended_next": "observe"
+}

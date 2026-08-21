@@ -1,0 +1,42 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java", "purpose": "Add event-specific REQUIRES_NEW dispatch, atomic claims, immediate compensation and stale-claim recovery"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java", "purpose": "Trigger event-specific dispatch after transaction commit while isolating failures"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java", "purpose": "Cover transaction propagation, claims, event targeting, compensation, recovery and DEAD behavior"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleEventServiceTest.java", "purpose": "Cover commit, rollback, no-transaction and immediate-failure behavior"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "Baseline: 2 dispatcher tests passed."},
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest,WorkflowLifecycleEventServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 1, "salient_output": "Expected pre-implementation compile failures for dispatchEvent and setDispatcher; one AuthUser fixture mismatch was corrected."},
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest,WorkflowLifecycleEventServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "After implementation: 10 focused tests passed."},
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test", "exit_code": 0, "salient_output": "46 workflow-module tests passed."},
+    {"command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowLifecycleDispatcherTest,WorkflowLifecycleEventServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "After adding REQUIRES_NEW: 11 focused tests passed."}
+  ],
+  "local_checks": [
+    {"check": "Transaction boundary", "result": "pass", "evidence": "Commit callback test, rollback test and REQUIRES_NEW annotation assertion pass", "limitations": ["No real MySQL commit-race integration test yet"]},
+    {"check": "Atomic claim and normal-race exclusion", "result": "pass", "evidence": "Claim update-count 0 prevents consumer invocation; event dispatch processes one claimed row", "limitations": ["Deterministic JdbcTemplate stub does not reproduce database lock scheduling"]},
+    {"check": "Failure and recovery", "result": "pass", "evidence": "Immediate failure returns PENDING; stale DISPATCHING recovery and fifth-failure DEAD tests pass", "limitations": ["Process termination is represented by persisted stale state"]},
+    {"check": "Workflow regression", "result": "pass", "evidence": "Maven reported 46 tests, 0 failures", "limitations": ["Full repository regression remains T3"]}
+  ],
+  "diff_summary": [
+    "Both event-specific and scheduled dispatch now claim PENDING/RETRY rows through DISPATCHING before consumption.",
+    "Event-specific dispatch runs in a new transaction after the event transaction commits.",
+    "Immediate failures are contained and returned to PENDING; scheduled failures retain retry/DEAD behavior.",
+    "Scheduled runs recover DISPATCHING rows older than the bounded configurable threshold."
+  ],
+  "invariants_checked": [
+    {"invariant": "Event rows commit before immediate dispatch", "result": "pass", "evidence": "Transaction synchronization only calls dispatch in afterCommit"},
+    {"invariant": "Notification failure does not change business result", "result": "pass", "evidence": "Immediate dispatcher exception is caught and event creation returns normally"},
+    {"invariant": "Scheduler and retry compatibility remain", "result": "pass", "evidence": "Existing retry and DEAD tests plus workflow module regression pass"},
+    {"invariant": "No schema or public event-contract change", "result": "pass", "evidence": "Only authorized service/test files changed; existing columns and consumer interface reused"}
+  ],
+  "disturbances": [
+    {"event": "Target workflow files were initially untracked in the dirty worktree, so ordinary git diff did not show their content.", "impact": "Evidence uses direct file inspection, tests and scoped status instead of assuming an empty diff."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Real runtime event-to-notification timing and MySQL concurrency remain for T3."],
+  "recommended_next": "observe"
+}

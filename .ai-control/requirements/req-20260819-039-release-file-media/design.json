@@ -1,0 +1,358 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260819-039-release-file-media",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-19-release-file-media-design.md",
+  "objective": "Allow one release application to carry ordinary delivery units and multiple path-only file-media items through approval, conflict detection, production baseline and current-production views without changing existing delivery-unit behavior.",
+  "users": [
+    "Release applicants registering ordinary artifacts and file paths in one application.",
+    "Approvers reviewing complete mixed release application details.",
+    "Production managers maintaining deployment results per file path.",
+    "Readers querying current production file-media records and release analytics."
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "A release application must support simultaneously selected DELIVERY_UNIT and FILE_MEDIA content types, with at least one populated item.",
+      "acceptance": ["Delivery-only, file-only and mixed applications persist and restore the same selected content types."],
+      "priority": "must",
+      "source": "User selected option 2 and confirmed the page design.",
+      "counterexample": ["The UI forces file media and ordinary delivery units into mutually exclusive applications."]
+    },
+    {
+      "id": "R2",
+      "statement": "FILE_MEDIA must support multiple records containing only one file path each and no artifact version.",
+      "acceptance": ["Two distinct paths can be saved in one application; empty, duplicate, oversized or control-character paths are rejected."],
+      "priority": "must",
+      "source": "User confirmed multiple path-only file-media records.",
+      "counterexample": ["A file-media row requires or derives a version number."]
+    },
+    {
+      "id": "R3",
+      "statement": "The server must map each FILE_MEDIA item to fixed delivery unit FILE, name 文件介质 and artifact type FILE while preserving the selected physical subsystem.",
+      "acceptance": ["The client submits only paths and the server creates immutable fixed metadata for each file item."],
+      "priority": "must",
+      "source": "User request and confirmed data design.",
+      "counterexample": ["A client can persist a file-media item under a non-FILE delivery unit."]
+    },
+    {
+      "id": "R4",
+      "statement": "Normalized file path must be the business identity for uniqueness, conflicts, production baseline and production history.",
+      "acceptance": ["Same-window equal paths conflict, distinct paths remain independent, and multiple FILE rows do not overwrite one another."],
+      "priority": "must",
+      "source": "User confirmed path-level conflict and baseline behavior.",
+      "counterexample": ["All file paths conflict only because their delivery unit code is FILE."]
+    },
+    {
+      "id": "R5",
+      "statement": "A previously released equal path must make a later same-window application an additional application while retaining the existing conflict resolution actions.",
+      "acceptance": ["Conflict details include file paths and the new request can cancel old, edit old or continue creating according to existing permissions."],
+      "priority": "must",
+      "source": "User confirmed the business rules section.",
+      "counterexample": ["File-media conflicts omit historical application details or cannot continue after explicit confirmation."]
+    },
+    {
+      "id": "R6",
+      "statement": "Each approved file path must become an independently maintainable production baseline entry.",
+      "acceptance": ["Changing one path result does not alter another path from the same application."],
+      "priority": "must",
+      "source": "User confirmed independent baseline rows.",
+      "counterexample": ["One result update changes all FILE paths in the application."]
+    },
+    {
+      "id": "R7",
+      "statement": "Successful FILE_MEDIA entries must appear in current production by physical subsystem and normalized path with no version number.",
+      "acceptance": ["Current production shows path, latest successful deployment time and source application, and recalculates after a result reversal."],
+      "priority": "must",
+      "source": "User explicitly confirmed inclusion in current production.",
+      "counterexample": ["Successful file media disappears from current production or displays a fabricated version."]
+    },
+    {
+      "id": "R8",
+      "statement": "Existing ordinary delivery-unit behavior, authorization, workflow status, revision history, audit and stored data must remain compatible.",
+      "acceptance": ["Existing delivery applications remain readable and editable after migration and unauthorized operations remain rejected server-side."],
+      "priority": "must",
+      "source": "Confirmed compatibility design and repository invariants.",
+      "counterexample": ["Existing delivery records fail to load because new file fields are absent."]
+    },
+    {
+      "id": "R9",
+      "statement": "Application detail, conflict, baseline, current production and analytics views must render FILE_MEDIA using its path and item type.",
+      "acceptance": ["No related page renders a blank version code or treats a file path as an ordinary delivery-unit version."],
+      "priority": "must",
+      "source": "User confirmed associated-page design.",
+      "counterexample": ["Only the create form supports file media while downstream views remain unaware of it."]
+    },
+    {
+      "id": "R10",
+      "statement": "The mixed application flow must remain usable without page-level overflow at desktop and required mobile viewports.",
+      "acceptance": ["The drawer and actions are usable at 375x812, 390x844, 430x932 and desktop viewports."],
+      "priority": "must",
+      "source": "Confirmed verification design and design-h5.md.",
+      "counterexample": ["Long file paths cover delete or submit actions on mobile."]
+    }
+  ],
+  "invariants": [
+    "One application belongs to one project and one physical subsystem.",
+    "Approval remains whole-application rather than per delivery item.",
+    "File media never has an artifact version.",
+    "FILE is fixed metadata while path is the file-media business identity.",
+    "Emergency-window assignment and workflow rules remain unchanged.",
+    "Server-side authorization, optimistic locking, revision history and audit remain authoritative."
+  ],
+  "constraints": [
+    "Java 17, Spring Boot 3.4.4, Vue 3, TypeScript and existing module boundaries must be preserved.",
+    "Flyway migrations are append-only and existing V38/V39 scripts cannot be edited.",
+    "Project, physical subsystem and ordinary delivery-unit option sources remain frontend mocks.",
+    "No production access, secret reads or external filesystem access is permitted.",
+    "Frontend must reuse existing release form and delivery-showcase responsive patterns."
+  ],
+  "non_goals": [
+    "Reading, uploading, validating or previewing the real file behind a path.",
+    "Adding file version, checksum, size, host, environment or directory browsing.",
+    "Building project, subsystem or delivery-unit master data services.",
+    "Changing workflow definitions, window policy, version-type policy or menu permissions.",
+    "Refactoring unrelated release or platform modules."
+  ],
+  "selected_approach": {
+    "name": "Extend the unified release delivery-item model",
+    "reason": "File media shares the existing application, approval and production state machine; a stable item key allows path-level identity without duplicating transactions and audit behavior.",
+    "alternatives": [
+      {
+        "name": "Separate application and production tables for file media",
+        "rejected_because": "It duplicates conflict, baseline, result maintenance and analytics logic and raises consistency risk."
+      },
+      {
+        "name": "Separate write table with a unified projection",
+        "rejected_because": "It requires additional projection and cross-table transaction complexity without enough benefit for the current scope."
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "Release application UI and API DTOs",
+        "Release application validation, persistence and conflict identity",
+        "Production baseline and current-production persistence and queries",
+        "Release analytics item-type support",
+        "Append-only release schema migration and focused tests"
+      ],
+      "outside": [
+        "Workflow platform internals",
+        "System authorization model",
+        "Attachment platform",
+        "Master-data services",
+        "Actual filesystem or storage access"
+      ]
+    },
+    "components": [
+      {
+        "name": "ReleaseApplicationDrawer",
+        "responsibility": "Edit selected content types, ordinary deliveries and dynamic file-path rows with responsive validation.",
+        "depends_on": ["Release API DTOs", "Existing release form styles"]
+      },
+      {
+        "name": "ReleaseApplicationService",
+        "responsibility": "Normalize paths, generate immutable file metadata and stable item keys, validate and resolve conflict/additional semantics.",
+        "depends_on": ["ReleaseApplicationStore", "ReleaseScenarioPolicy"]
+      },
+      {
+        "name": "ReleaseApplicationStore",
+        "responsibility": "Persist revisioned unified delivery items and query conflicts by stable item key.",
+        "depends_on": ["V46 schema"]
+      },
+      {
+        "name": "ReleaseProductionService and Store",
+        "responsibility": "Create independent file baseline entries, maintain results and calculate current production by subsystem and item key.",
+        "depends_on": ["Release application delivery items", "V46 schema"]
+      },
+      {
+        "name": "Release analytics",
+        "responsibility": "Include FILE item type in aggregates and drill-down rows without fabricating versions.",
+        "depends_on": ["Release production entries"]
+      },
+      {
+        "name": "Flyway V46",
+        "responsibility": "Add and backfill item identity fields, nullable file-only version support and compatible unique indexes.",
+        "depends_on": ["Existing V38 and V39 schema"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "Release application write DTO",
+        "producer": "Release application UI",
+        "consumers": ["ReleaseApplicationService"],
+        "contract": "Preserve deliveries and add fileMedia containing path-only records; server owns fixed FILE metadata."
+      },
+      {
+        "name": "Release item read DTOs",
+        "producer": "Release backend",
+        "consumers": ["Application detail", "Conflict dialog", "Baseline", "Current production", "Analytics"],
+        "contract": "Expose itemType and filePath so consumers choose path or version rendering explicitly."
+      },
+      {
+        "name": "Stable item key",
+        "producer": "ReleaseApplicationService",
+        "consumers": ["Application persistence", "Conflict query", "Production persistence and queries"],
+        "contract": "UNIT:<code> for ordinary items and FILE:<SHA-256(trimmed-path)> for file media."
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "Ordinary deliveries plus zero or more file paths",
+        "transitions": ["validate", "normalize", "generate stable key", "persist revision", "check same-window conflicts"],
+        "output": "A draft or submitted mixed release application"
+      },
+      {
+        "input": "Approved mixed application",
+        "transitions": ["create independent baseline candidates", "maintain per-item result", "recalculate successful production record"],
+        "output": "Audited baseline rows and current production records"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "No ordinary delivery and no file-media path",
+      "behavior": "Reject save or submit with a field-level business message and no partial write.",
+      "recovery": "Add at least one item and retry."
+    },
+    {
+      "condition": "Invalid or duplicate file path",
+      "behavior": "Reject before persistence and identify the invalid path.",
+      "recovery": "Correct or remove the path and retry."
+    },
+    {
+      "condition": "Same-window path conflict",
+      "behavior": "Return full conflict facts without starting workflow approval.",
+      "recovery": "Cancel old, edit old or explicitly continue creating."
+    },
+    {
+      "condition": "Conflict facts changed after confirmation",
+      "behavior": "Reject the stale conflict token.",
+      "recovery": "Reload conflict facts and decide again."
+    },
+    {
+      "condition": "V46 migration or backfill fails",
+      "behavior": "Stop backend startup and preserve the database for diagnosis.",
+      "recovery": "Restore backup if needed, correct with an append-only migration and restart."
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "Treat paths as escaped business text and never execute or resolve them on the server.",
+      "Retain existing server-side RBAC, entity authorization and audit for every write."
+    ],
+    "performance": [
+      "Index fixed-length item keys rather than 1024-character paths.",
+      "Keep conflict and production queries tenant-, window-, status- and item-key bounded."
+    ],
+    "compatibility": [
+      "Preserve existing deliveries DTO semantics and backfill every old row as DELIVERY_UNIT.",
+      "Allow null artifact version only for FILE_MEDIA."
+    ],
+    "operations": [
+      "Run V46 against a backed-up isolated database and verify repeat startup.",
+      "Keep mock synchronization disabled while validating manually created release data.",
+      "Never downgrade Flyway; use a later compensating migration for schema recovery."
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": ["R1", "R2", "R3", "R8"],
+      "signal": "Application service and persistence tests pass for delivery-only, file-only, mixed, invalid and migrated records.",
+      "method": "Focused ccb-release unit and schema contract tests."
+    },
+    {
+      "requirement_ids": ["R4", "R5"],
+      "signal": "Equal path conflicts and additional detection are stable while distinct paths remain independent.",
+      "method": "Conflict service tests and real submit API flow."
+    },
+    {
+      "requirement_ids": ["R6", "R7"],
+      "signal": "Each path has an independent baseline result and current-production history recalculates correctly.",
+      "method": "Production service tests and real approval/deployment API flow."
+    },
+    {
+      "requirement_ids": ["R9", "R10"],
+      "signal": "Every related view renders file media by path without overflow or fabricated version text.",
+      "method": "Frontend production build and browser checks at desktop, 375x812, 390x844 and 430x932."
+    },
+    {
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"],
+      "signal": "Repository governance, scope, full Maven tests and frontend build pass with no unresolved negative feedback.",
+      "method": "Governance scripts, scope check, mvn test, npm build and convergence review."
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "A file path is an internal business identifier and does not need filesystem resolution.",
+      "basis": "The user requested path-only storage and no file upload behavior.",
+      "falsifier": "A later requirement asks the platform to verify, read or deploy the referenced file directly."
+    },
+    {
+      "text": "Path case and slash differences can denote distinct targets, so normalization trims only surrounding whitespace.",
+      "basis": "No target operating-system or shared-storage canonicalization rule was requested.",
+      "falsifier": "A platform-wide canonical path convention is supplied."
+    },
+    {
+      "text": "Fixed FILE metadata does not require a corresponding option in the frontend master-data mock.",
+      "basis": "The server owns fixed file-media metadata.",
+      "falsifier": "The future master-data service requires referential validation for every delivery-unit snapshot."
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "Ordinary delivery units and file media may coexist in one application.",
+      "reason": "The user selected option 2.",
+      "source": "User confirmation on 2026-08-19."
+    },
+    {
+      "id": "D2",
+      "decision": "File media supports multiple path-only records and no version number.",
+      "reason": "This is the explicitly confirmed business input.",
+      "source": "User confirmation on 2026-08-19."
+    },
+    {
+      "id": "D3",
+      "decision": "Conflict, baseline and production identity is path-level while fixed delivery metadata remains FILE.",
+      "reason": "Different file paths must not overwrite or conflict with one another.",
+      "source": "User confirmation on 2026-08-19."
+    },
+    {
+      "id": "D4",
+      "decision": "Extend the existing unified delivery-item model.",
+      "reason": "It reuses the current workflow, audit and production state machine with the smallest coherent persistence change.",
+      "source": "User selected approach 1 on 2026-08-19."
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Existing code assumes delivery_unit_code uniquely identifies every application and production item.",
+      "impact": "Multiple FILE paths could overwrite, conflict or share results.",
+      "mitigation": "Introduce and consistently use a stable item key, then regress every code-based query."
+    },
+    {
+      "risk": "Nullable artifact versions leak into ordinary delivery behavior.",
+      "impact": "Invalid ordinary deliveries or blank downstream displays.",
+      "mitigation": "Enforce null only for FILE_MEDIA in service validation and tests."
+    },
+    {
+      "risk": "Unique-key migration fails on existing data.",
+      "impact": "Backend startup fails and release data becomes unavailable.",
+      "mitigation": "Back up and validate V46 on the isolated local database, stop on failure and never skip Flyway."
+    },
+    {
+      "risk": "Mixed application content overflows the mobile drawer.",
+      "impact": "Users cannot review paths or reach actions.",
+      "mitigation": "Use vertical responsive sections, wrap long paths and verify all required viewports."
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "The user approved all four design sections and, after the persisted design was presented for review, explicitly requested implementation to start.",
+    "confirmed_at": "2026-08-19T16:31:00+08:00"
+  }
+}

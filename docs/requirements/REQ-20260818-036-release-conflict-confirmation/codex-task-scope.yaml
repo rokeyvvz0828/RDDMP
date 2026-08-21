@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260818-036",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260818-036-release-conflict-confirmation/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/release",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/release/components/ReleaseConflictDialog.vue",
+      "web/src/modules/release/ReleaseManagementPrototype.vue",
+      "docs/requirements/REQ-20260818-036-release-conflict-confirmation/**",
+      "docs/engineering-control/designs/2026-08-18-release-conflict-confirmation-design.md",
+      "docs/engineering-control/plans/2026-08-18-release-conflict-confirmation-implementation-plan.md",
+      ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/api/release.ts",
+      "web/src/modules/release/release-prototype.css",
+      "web/src/modules/delivery-showcase/**",
+      "server/src/modules/release/**",
+      "server/src/platform/**",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": ["frontend-build", "release-conflict-browser-flow"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "No data or schema change. Revert the two Vue-file changes."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-release-application-metadata"
+  },
+  "required_tests": [
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "release-conflict-browser-flow", "command": "desktop browser verifies footer placement, immediate close, successful submit, unchanged-token suppression and changed-token reopen behavior"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260818-036-release-conflict-confirmation/codex-task-scope.yaml --working-tree"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": [
+      "The worktree contains unrelated uncommitted release-module changes that must be preserved.",
+      "A broad 409 handler can incorrectly reopen the duplicate dialog for unrelated business conflicts."
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260818-036-release-conflict-confirmation",
+    "control_justification": "The change modifies a user submission flow and conflict-state behavior.",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/execution-T1.json",
+      ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/observation-T1.json",
+      ".ai-control/requirements/req-20260818-036-release-conflict-confirmation/convergence.json"
+    ],
+    "release_verification": ["frontend-build", "release-conflict-browser-flow", "governance", "scope"],
+    "rollback": "Revert only REQ-20260818-036 changes in ReleaseConflictDialog.vue and ReleaseManagementPrototype.vue."
+  }
+}

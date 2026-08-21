@@ -1,0 +1,29 @@
+{
+  "sample_label": "T7 formal approval production and analytics sample",
+  "task_ids": ["T7"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id":"R2","sensor":"S5 production build plus browser refresh","result":"pass","raw_evidence":"Five release views query backend APIs and retain accepted facts after refresh","limitation":["Upstream selector sources remain approved Mock"]},
+    {"requirement_id":"R9","sensor":"S6 workflow instance and task API trace","result":"pass","raw_evidence":"Submitted applications store and expose real workflow instance, definition version and round","limitation":[]},
+    {"requirement_id":"R10","sensor":"S6 business-detail approval interaction","result":"pass","raw_evidence":"Progress and approval panel display the same current task and round; direct list entry can approve without fabricated task ID","limitation":[]},
+    {"requirement_id":"R11","sensor":"S4 lifecycle event record plus application refetch","result":"pass","raw_evidence":"Scheduled event changed active application from IN_REVIEW to RELEASED once; stale/duplicate behavior remains covered by six lifecycle tests","limitation":["Event propagation is asynchronous"]},
+    {"requirement_id":"R12","sensor":"S4 attachment integration tests and emergency form inspection","result":"pass","raw_evidence":"Persistent attachment IDs are validated and test-report attachment is enforced for emergency submission","limitation":["Artifact binary upload is intentionally absent"]},
+    {"requirement_id":"R13","sensor":"S6 production baseline browser/API cross-check","result":"pass","raw_evidence":"Released application units appear as traceable candidates selected by approval completion ordering","limitation":[]},
+    {"requirement_id":"R14","sensor":"S6 deployment-result command and audit response","result":"pass","raw_evidence":"AUTH-SDK was maintained as SUCCEEDED through the real page/API and result rules are covered by five tests","limitation":[]},
+    {"requirement_id":"R15","sensor":"S6 current-production browser/API cross-check","result":"pass","raw_evidence":"AUTH-SDK current production version is 2026.08.15.3 and is derived from successful deployment facts","limitation":[]},
+    {"requirement_id":"R16","sensor":"S4 release production and submission tests","result":"pass","raw_evidence":"Emergency receiving-window derivation is server-side and no manual emergency window authority exists","limitation":["Acceptance records exercised regular flow; emergency assignment has focused automated coverage"]},
+    {"requirement_id":"R17","sensor":"S4 MySQL query plus summary/drill-down browser comparison","result":"pass","raw_evidence":"Window, subsystem, delivery-unit, requirement and result counts match persisted acceptance records; MySQL DISTINCT ordering succeeds","limitation":[]},
+    {"requirement_id":"R21","sensor":"S6 viewport geometry and phone approval interaction","result":"pass","raw_evidence":"375x812, 390x844 and 430x932 have no page horizontal overflow; 390x844 completed signature and approval","limitation":["No separate native or mobile application is in scope"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event":"Lifecycle event remained pending before scheduling was enabled","classification":"deviation-corrected-before-sample","evidence":"After enabling scheduling, the event dispatched once and the application became RELEASED"},
+    {"event":"MySQL 8.4 DISTINCT/ORDER BY rejection","classification":"deviation-corrected-before-sample","evidence":"Projection subquery and regression test produce successful analytics responses"}
+  ],
+  "coverage_gaps": [
+    "Formal project-member authorization remains deferred with the approved project-context Mock boundary",
+    "Emergency browser submission was not used to create acceptance records; server validation and receiving-window behavior are covered by focused tests"
+  ],
+  "error_counts": {"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status": "complete"
+}

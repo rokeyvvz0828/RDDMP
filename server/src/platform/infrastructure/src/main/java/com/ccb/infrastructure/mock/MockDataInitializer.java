@@ -196,7 +196,7 @@ public class MockDataInitializer implements ApplicationRunner {
         result.put("ai_provider", set("id", "tenant_id", "provider_code", "provider_name", "endpoint", "status", "deleted", "created_at"));
         result.put("ai_model", set("id", "tenant_id", "provider_id", "model_code", "model_name", "capabilities", "credential_secret", "status", "deleted", "created_at"));
         result.put("ai_route", set("id", "tenant_id", "capability", "model_id", "priority", "status", "deleted", "created_at"));
-        result.put("wf_definition", set("id", "tenant_id", "code", "name", "status", "current_version", "deleted", "created_at", "updated_at"));
+        result.put("wf_definition", set("id", "tenant_id", "code", "name", "status", "current_version", "model_schema_version", "deleted", "created_at", "updated_at"));
         result.put("wf_version", set("id", "tenant_id", "definition_id", "version_no", "definition_json", "model_schema_version", "status", "created_at"));
         result.put("wf_instance", set("id", "tenant_id", "definition_id", "version_no", "business_key", "status", "deleted", "starter_id", "variables_json", "created_at"));
         result.put("wf_task", set("id", "tenant_id", "instance_id", "task_key", "node_id", "task_type", "task_group_key", "parent_task_id", "assignee_type", "assignee_name", "assignee_id", "status", "comment", "completed_at", "created_at"));

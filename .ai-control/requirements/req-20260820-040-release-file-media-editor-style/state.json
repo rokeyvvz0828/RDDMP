@@ -1,0 +1,1420 @@
+{
+  "schema_version": 4,
+  "revision": 7,
+  "created_at": "2026-08-20T01:14:59+00:00",
+  "updated_at": "2026-08-20T01:18:34+00:00",
+  "mode": "light",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user explicitly confirmed the landed option-1 design and direct implementation on 2026-08-20.；计划确认=The user confirmed direct planning and implementation after reviewing design revision 1.",
+      "recorded_at": "2026-08-20T01:14:59+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "R1-R4 are stable, measurable and have no blocking unknowns",
+      "recorded_at": "2026-08-20T01:17:22+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "R1-R4 are observable through build/browser/diff sensors and controllable through two local actuators",
+      "recorded_at": "2026-08-20T01:17:58+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "T1 has complete write scope, invariants, acceptance checks, evidence and rollback; implementation authorized by user confirmation",
+      "recorded_at": "2026-08-20T01:18:34+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user explicitly confirmed the landed option-1 design and direct implementation on 2026-08-20.；计划确认=The user confirmed direct planning and implementation after reviewing design revision 1.",
+        "recorded_at": "2026-08-20T01:14:59+00:00",
+        "data": {
+          "objective": "Make the file-media editor visually consistent with the surrounding release-application form without changing any business behavior.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "The file-media title and add action must use the same compact field hierarchy as surrounding form controls.",
+              "acceptance": [
+                "The title no longer appears as a section heading",
+                "The add-path action shares the title row and uses a compact icon-and-text button"
+              ],
+              "priority": "must",
+              "source": "User selected option 1 and confirmed the landed design on 2026-08-20.",
+              "counterexample": [
+                "The title remains substantially larger than form labels",
+                "The add button remains visually detached and oversized"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Every path row must use a stable index-input-delete layout with aligned control heights and consistent spacing.",
+              "acceptance": [
+                "Single and multiple rows align to the same three columns",
+                "Index, input and delete control remain vertically centered"
+              ],
+              "priority": "must",
+              "source": "Visual defect shown in the user screenshot.",
+              "counterexample": [
+                "The row number is visually dominant",
+                "The delete button does not align with the input"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "The compact layout must remain usable without page-level horizontal overflow on required mobile and desktop viewports.",
+              "acceptance": [
+                "375x812, 390x844, 430x932 and desktop have no document horizontal overflow",
+                "Path input and delete action remain reachable"
+              ],
+              "priority": "must",
+              "source": "Existing responsive release-module quality constraint.",
+              "counterexample": [
+                "A long path widens the drawer",
+                "The delete action is clipped on mobile"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Existing file-media state, validation and payload behavior must remain unchanged.",
+              "acceptance": [
+                "Selecting file media still creates the first row",
+                "Add and delete change only the intended row count",
+                "Frontend build passes without API type changes"
+              ],
+              "priority": "must",
+              "source": "Scoped visual-fix invariant.",
+              "counterexample": [
+                "The fix changes validation or payload",
+                "Adding or deleting a path no longer works"
+              ]
+            }
+          ],
+          "invariants": [
+            "File-media behavior and payload remain unchanged",
+            "Existing Element Plus and design-token conventions are reused",
+            "Unrelated dirty-worktree changes remain untouched",
+            "Control dimensions remain stable"
+          ],
+          "constraints": [
+            "Modify only file-media markup in ReleaseApplicationDrawer.vue and local rules in release-prototype.css",
+            "Remain on rokey",
+            "Do not add dependencies"
+          ],
+          "non_goals": [
+            "Redesign the full drawer",
+            "Change delivery-unit or attachment presentation",
+            "Change backend APIs or validation",
+            "Add file browsing, cards or instructional copy"
+          ],
+          "assumptions": [
+            {
+              "text": "The issue is visual hierarchy rather than workflow behavior.",
+              "basis": "The user selected the standard-form-row option.",
+              "falsifier": "The user requests a workflow change."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use compact standard-form-row without a panel.",
+              "reason": "Matches adjacent controls.",
+              "source": "User confirmation."
+            },
+            {
+              "id": "D2",
+              "decision": "Keep a lower-emphasis icon-and-text add action.",
+              "reason": "Clear without competing with primary actions.",
+              "source": "Selected option 1."
+            },
+            {
+              "id": "D3",
+              "decision": "Retain compact circular danger delete icon.",
+              "reason": "Existing row-action convention.",
+              "source": "Current UI and confirmed scope."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "Coherent field hierarchy and stable row alignment.",
+              "method": "Desktop browser with one and multiple rows."
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "signal": "Required viewports have reachable controls and no horizontal overflow.",
+              "method": "Screenshots and DOM geometry."
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "Add/delete and build remain valid.",
+              "method": "Browser interaction, npm build and git diff check."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Approved option-1 design reviewed against current component, screenshot and passing frontend baseline",
+        "recorded_at": "2026-08-20T01:17:01+00:00",
+        "data": {
+          "objective": "The file-media editor presents a coherent compact form-field hierarchy on desktop and mobile while preserving existing entry behavior.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "The file-media title and add action must use the same compact field hierarchy as surrounding form controls.",
+              "acceptance": [
+                "The title no longer appears as a section heading",
+                "The add action shares the title row with compact emphasis"
+              ],
+              "priority": "must",
+              "source": "Approved design revision 1",
+              "counterexample": [
+                "The title remains oversized",
+                "The add action remains visually detached"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Every path row must use a stable aligned index-input-delete layout.",
+              "acceptance": [
+                "Single and multiple rows share the same columns",
+                "All row controls remain vertically centered"
+              ],
+              "priority": "must",
+              "source": "Approved design revision 1",
+              "counterexample": [
+                "Side columns dominate or misalign with the input"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "The layout must remain usable without page horizontal overflow on required mobile and desktop viewports.",
+              "acceptance": [
+                "375x812, 390x844, 430x932 and desktop have no document horizontal overflow",
+                "Input and delete action remain reachable"
+              ],
+              "priority": "must",
+              "source": "Approved design revision 1",
+              "counterexample": [
+                "Long paths widen the drawer",
+                "Mobile clips row actions"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Existing file-media state, validation and payload behavior must remain unchanged.",
+              "acceptance": [
+                "Selecting file media creates the first row",
+                "Add and delete update only the intended row count",
+                "Frontend build passes without API changes"
+              ],
+              "priority": "must",
+              "source": "Approved design revision 1",
+              "counterexample": [
+                "The visual fix changes payload or breaks add/delete"
+              ]
+            }
+          ],
+          "invariants": [
+            "draft.fileMedia and ReleaseApplicationWrite remain unchanged",
+            "Existing handlers and validation remain authoritative",
+            "Unrelated dirty work remains untouched",
+            "No dependency, backend, database, commit or push changes"
+          ],
+          "constraints": [
+            "Product edits limited to ReleaseApplicationDrawer.vue and release-prototype.css",
+            "Use existing Element Plus controls and CSS variables",
+            "Remain on rokey"
+          ],
+          "non_goals": [
+            "Redesign the full drawer",
+            "Change other form sections",
+            "Change backend or validation",
+            "Add panels, file browsing or instructional copy"
+          ],
+          "assumptions": [
+            {
+              "text": "The defect is localized to file-media markup and CSS.",
+              "basis": "Read-only inspection locates the full surface in one template line and CSS lines 339-354.",
+              "falsifier": "Browser inspection proves a global layout rule causes the defect."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "Which visual structure should be used?",
+              "options": [
+                "Compact standard form row",
+                "Grouped panel",
+                "One form item per path"
+              ],
+              "selected": "Compact standard form row",
+              "blocking": false,
+              "source": "User selected option 1 and confirmed design revision 1."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "Title/add hierarchy and computed dimensions",
+              "candidate_sensor": "Authenticated browser screenshot and DOM styles"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "Row grid columns and control alignment for one and multiple rows",
+              "candidate_sensor": "Browser geometry measurements"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "Document overflow and control bounds at required viewports",
+              "candidate_sensor": "Browser scrollWidth/clientWidth and bounding boxes"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "Row-count changes and successful type/build checks",
+              "candidate_sensor": "Browser interaction plus npm production build"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Component/CSS boundary, handlers, build sensor and browser geometry sensors verified from current workspace",
+        "recorded_at": "2026-08-20T01:17:38+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ReleaseApplicationDrawer file-media DOM",
+              "File-media local CSS rules",
+              "Existing add/remove bindings"
+            ],
+            "environment": [
+              "Element Plus default styles",
+              "Release drawer container",
+              "Vite frontend runtime",
+              "Viewport and theme/density settings"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "file_media_enabled",
+              "owner": "ReleaseApplicationDrawer draft.contentTypes",
+              "valid_values": [
+                "enabled",
+                "disabled"
+              ]
+            },
+            {
+              "name": "file_media_rows",
+              "owner": "ReleaseApplicationDrawer draft.fileMedia",
+              "valid_values": [
+                "one or more rows while enabled"
+              ]
+            },
+            {
+              "name": "viewport_width",
+              "owner": "Browser",
+              "valid_values": [
+                "375",
+                "390",
+                "430",
+                "desktop"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "File media enabled",
+              "transitions": [
+                "Render title/action markup",
+                "Apply local typography and button styles"
+              ],
+              "outputs": [
+                "Compact field hierarchy"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "One or multiple file rows",
+              "transitions": [
+                "Render indexed rows",
+                "Apply stable three-column grid"
+              ],
+              "outputs": [
+                "Aligned row controls"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Required viewport and long path",
+              "transitions": [
+                "Input column shrinks through minmax",
+                "Side columns remain fixed compact widths"
+              ],
+              "outputs": [
+                "Reachable controls without document overflow"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Checkbox, add, delete and path input actions",
+              "transitions": [
+                "Reuse existing handlers and v-model",
+                "Build TypeScript and render runtime"
+              ],
+              "outputs": [
+                "Unchanged row-state and payload behavior"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "draft.fileMedia",
+              "producers": [
+                "toggleContentTypes",
+                "addFileMedia",
+                "removeFileMedia",
+                "input v-model"
+              ],
+              "consumers": [
+                "validate",
+                "save payload"
+              ],
+              "invariant": "The visual change does not alter its shape or handlers."
+            },
+            {
+              "name": "file-media local CSS",
+              "producers": [
+                "release-prototype.css"
+              ],
+              "consumers": [
+                "ReleaseApplicationDrawer markup"
+              ],
+              "invariant": "Selectors remain scoped to the file-media editor."
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Type and production-build compatibility",
+              "method": "npm --prefix web run build",
+              "blind_spots": [
+                "Visual alignment"
+              ],
+              "independence": "Compiler and bundler output"
+            },
+            {
+              "id": "S2",
+              "target": "R1-R3 rendered hierarchy, alignment and overflow",
+              "method": "Authenticated browser screenshots and DOM geometry at desktop and three mobile viewports",
+              "blind_spots": [
+                "Unopened themes"
+              ],
+              "independence": "Direct runtime rendering"
+            },
+            {
+              "id": "S3",
+              "target": "R4 add/delete behavior",
+              "method": "Browser row-count checks before and after add/delete",
+              "blind_spots": [
+                "Backend submission not changed by this task"
+              ],
+              "independence": "Direct interaction state"
+            },
+            {
+              "id": "S4",
+              "target": "Approved write boundary",
+              "method": "Scoped diff and git diff --check",
+              "blind_spots": [
+                "Pre-existing untracked content attribution"
+              ],
+              "independence": "Filesystem diff"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "File-media DOM hierarchy",
+              "action": "Adjust only local markup and classes while retaining bindings",
+              "authority": "Approved workspace write",
+              "impact_radius": "One editor block",
+              "rollback": "Restore the block to its pre-task markup"
+            },
+            {
+              "id": "A2",
+              "target": "File-media visual layout",
+              "action": "Replace only local editor CSS and mobile override",
+              "authority": "Approved workspace write",
+              "impact_radius": "File-media editor and review-path rules kept separate",
+              "rollback": "Restore the pre-task local rules"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Element Plus default button margins and sizes",
+              "effect": "Local alignment may drift",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Existing dirty rokey worktree",
+              "effect": "Global diff contains unrelated work",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Authentication session",
+              "effect": "Browser may redirect to login",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite hot update and drawer transition",
+              "consequence": "Immediate measurements can sample stale or animated geometry",
+              "sampling_rule": "Wait for page load and drawer transition before measurement"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Local markup and CSS are sufficient.",
+              "evidence": "The full defect surface is isolated in the inspected component and stylesheet.",
+              "falsifier": "Runtime computed styles identify an unavoidable global rule."
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1/A2 and S2"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1/A2 and S2"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A2 and S2"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Freeze handlers and verify with S1/S3/S4"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Single bounded task covers R1-R4 with two product files, rollback and browser/build sensors",
+        "recorded_at": "2026-08-20T01:18:19+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Unify the file-media field hierarchy and path-row layout without behavior changes.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Current markup is localized in ReleaseApplicationDrawer.vue",
+                "Current layout rules are localized in release-prototype.css",
+                "Baseline frontend build passes",
+                "Existing add/remove handlers are functional"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+                "web/src/modules/release/release-prototype.css",
+                ".ai-control/requirements/req-20260820-040-release-file-media-editor-style/*.json"
+              ],
+              "invariants": [
+                "No state, validation, payload, API or backend changes",
+                "Existing handlers and icons remain",
+                "Unrelated dirty work remains untouched",
+                "No commit or push"
+              ],
+              "interface_contracts": [
+                "draft.fileMedia shape remains unchanged",
+                "addFileMedia and removeFileMedia signatures remain unchanged",
+                "CSS selectors remain local to file-media editor"
+              ],
+              "non_goals": [
+                "No full-drawer redesign",
+                "No other field changes",
+                "No global theme change",
+                "No new dependency"
+              ],
+              "action_bounds": [
+                "Adjust only file-media editor markup/classes and corresponding local CSS",
+                "Use stable grid dimensions and existing semantic tokens"
+              ],
+              "acceptance_checks": [
+                "Compact title/action hierarchy",
+                "Single and multiple rows align",
+                "Required viewports have no page overflow or clipped action",
+                "Add/delete still change the intended row count",
+                "Frontend build and diff checks pass"
+              ],
+              "evidence_required": [
+                "Actual scoped diff",
+                "Build and diff command results",
+                "Desktop and mobile screenshots",
+                "DOM overflow and control geometry",
+                "Interactive row-count evidence",
+                "Console error check"
+              ],
+              "rollback": "Restore only the file-media markup block and corresponding local CSS rules.",
+              "stop_conditions": [
+                "A global theme/shared component/business-state change becomes necessary",
+                "Baseline add/delete behavior is broken"
+              ],
+              "escalation_conditions": [
+                "User requests workflow, validation or other form changes",
+                "Mobile fix requires changing global drawer layout"
+              ]
+            }
+          ],
+          "dependency_edges": [],
+          "parallel_groups": [
+            [
+              "T1"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Run npm --prefix web run build",
+                "Run git diff --check",
+                "Run desktop and required mobile browser checks"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 final UI sample",
+              "trigger": "T1 execution report",
+              "observer": "independent runtime observer",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [],
+    "observing": [],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "The file-media editor presents a coherent compact form-field hierarchy on desktop and mobile while preserving existing entry behavior.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "The file-media title and add action must use the same compact field hierarchy as surrounding form controls.",
+      "acceptance": [
+        "The title no longer appears as a section heading",
+        "The add action shares the title row with compact emphasis"
+      ],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": [
+        "The title remains oversized",
+        "The add action remains visually detached"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Every path row must use a stable aligned index-input-delete layout.",
+      "acceptance": [
+        "Single and multiple rows share the same columns",
+        "All row controls remain vertically centered"
+      ],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": [
+        "Side columns dominate or misalign with the input"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "The layout must remain usable without page horizontal overflow on required mobile and desktop viewports.",
+      "acceptance": [
+        "375x812, 390x844, 430x932 and desktop have no document horizontal overflow",
+        "Input and delete action remain reachable"
+      ],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": [
+        "Long paths widen the drawer",
+        "Mobile clips row actions"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Existing file-media state, validation and payload behavior must remain unchanged.",
+      "acceptance": [
+        "Selecting file media creates the first row",
+        "Add and delete update only the intended row count",
+        "Frontend build passes without API changes"
+      ],
+      "priority": "must",
+      "source": "Approved design revision 1",
+      "counterexample": [
+        "The visual fix changes payload or breaks add/delete"
+      ]
+    }
+  ],
+  "invariants": [
+    "draft.fileMedia and ReleaseApplicationWrite remain unchanged",
+    "Existing handlers and validation remain authoritative",
+    "Unrelated dirty work remains untouched",
+    "No dependency, backend, database, commit or push changes"
+  ],
+  "constraints": [
+    "Product edits limited to ReleaseApplicationDrawer.vue and release-prototype.css",
+    "Use existing Element Plus controls and CSS variables",
+    "Remain on rokey"
+  ],
+  "non_goals": [
+    "Redesign the full drawer",
+    "Change other form sections",
+    "Change backend or validation",
+    "Add panels, file browsing or instructional copy"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-040-release-file-media-editor-style/handoff.json",
+    "imported_at": "2026-08-20T01:14:59+00:00",
+    "topic": "req-20260820-040-release-file-media-editor-style",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260820-040-release-file-media-editor-style",
+      "handoff_status": "approved",
+      "created_at": "2026-08-20T09:10:43+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260820-040-release-file-media-editor-style",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-20-release-file-media-editor-style-design.md",
+        "objective": "Make the file-media editor visually consistent with the surrounding release-application form without changing any business behavior.",
+        "users": [
+          "Release applicants entering one or more file-media paths in the artifact-registration step"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "The file-media title and add action must use the same compact field hierarchy as surrounding form controls.",
+            "acceptance": [
+              "The title no longer appears as a section heading",
+              "The add-path action shares the title row and uses a compact icon-and-text button"
+            ],
+            "priority": "must",
+            "source": "User selected option 1 and confirmed the landed design on 2026-08-20.",
+            "counterexample": [
+              "The title remains substantially larger than form labels",
+              "The add button remains visually detached and oversized"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Every path row must use a stable index-input-delete layout with aligned control heights and consistent spacing.",
+            "acceptance": [
+              "Single and multiple rows align to the same three columns",
+              "Index, input and delete control remain vertically centered"
+            ],
+            "priority": "must",
+            "source": "Visual defect shown in the user screenshot.",
+            "counterexample": [
+              "The row number is visually dominant",
+              "The delete button does not align with the input"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "The compact layout must remain usable without page-level horizontal overflow on required mobile and desktop viewports.",
+            "acceptance": [
+              "375x812, 390x844, 430x932 and desktop have no document horizontal overflow",
+              "Path input and delete action remain reachable"
+            ],
+            "priority": "must",
+            "source": "Existing responsive release-module quality constraint.",
+            "counterexample": [
+              "A long path widens the drawer",
+              "The delete action is clipped on mobile"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Existing file-media state, validation and payload behavior must remain unchanged.",
+            "acceptance": [
+              "Selecting file media still creates the first row",
+              "Add and delete change only the intended row count",
+              "Frontend build passes without API type changes"
+            ],
+            "priority": "must",
+            "source": "Scoped visual-fix invariant.",
+            "counterexample": [
+              "The fix changes validation or payload",
+              "Adding or deleting a path no longer works"
+            ]
+          }
+        ],
+        "invariants": [
+          "File-media behavior and payload remain unchanged",
+          "Existing Element Plus and design-token conventions are reused",
+          "Unrelated dirty-worktree changes remain untouched",
+          "Control dimensions remain stable"
+        ],
+        "constraints": [
+          "Modify only file-media markup in ReleaseApplicationDrawer.vue and local rules in release-prototype.css",
+          "Remain on rokey",
+          "Do not add dependencies"
+        ],
+        "non_goals": [
+          "Redesign the full drawer",
+          "Change delivery-unit or attachment presentation",
+          "Change backend APIs or validation",
+          "Add file browsing, cards or instructional copy"
+        ],
+        "selected_approach": {
+          "name": "Compact standard form row",
+          "reason": "It matches the surrounding form hierarchy with the smallest change surface and no nested panel.",
+          "alternatives": [
+            {
+              "name": "Grouped bordered panel",
+              "rejected_because": "It adds visual weight and an unnecessary container."
+            },
+            {
+              "name": "One form item per path",
+              "rejected_because": "It consumes too much vertical space."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "File-media title/action markup",
+              "Path-row layout and responsive CSS"
+            ],
+            "outside": [
+              "Release state model",
+              "API payload",
+              "Backend",
+              "Other form sections",
+              "Global theme"
+            ]
+          },
+          "components": [
+            {
+              "name": "ReleaseApplicationDrawer",
+              "responsibility": "Expose a compact semantic title/action row and stable path rows while retaining handlers.",
+              "depends_on": [
+                "Element Plus",
+                "addFileMedia",
+                "removeFileMedia"
+              ]
+            },
+            {
+              "name": "release-prototype.css",
+              "responsibility": "Define hierarchy, spacing, stable columns and mobile constraints.",
+              "depends_on": [
+                "Existing CSS variables"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "File-media editor state",
+              "producer": "ReleaseApplicationDrawer draft",
+              "consumers": [
+                "Existing save and submit flow"
+              ],
+              "contract": "Markup and CSS do not alter draft.fileMedia or ReleaseApplicationWrite."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "Checkbox and path-row actions",
+              "transitions": [
+                "Reuse existing handlers",
+                "Render compact field layout"
+              ],
+              "output": "Unchanged payload with improved presentation"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Path validation fails",
+            "behavior": "Keep existing warning and submission behavior.",
+            "recovery": "User corrects the path."
+          },
+          {
+            "condition": "Mobile width is constrained",
+            "behavior": "Input shrinks and delete remains visible.",
+            "recovery": "No special action required."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "No authorization change"
+          ],
+          "performance": [
+            "Static local CSS only"
+          ],
+          "compatibility": [
+            "No state, API, database or saved-data change"
+          ],
+          "operations": [
+            "No migration or configuration"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "Coherent field hierarchy and stable row alignment.",
+            "method": "Desktop browser with one and multiple rows."
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "signal": "Required viewports have reachable controls and no horizontal overflow.",
+            "method": "Screenshots and DOM geometry."
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "Add/delete and build remain valid.",
+            "method": "Browser interaction, npm build and git diff check."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "The issue is visual hierarchy rather than workflow behavior.",
+            "basis": "The user selected the standard-form-row option.",
+            "falsifier": "The user requests a workflow change."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use compact standard-form-row without a panel.",
+            "reason": "Matches adjacent controls.",
+            "source": "User confirmation."
+          },
+          {
+            "id": "D2",
+            "decision": "Keep a lower-emphasis icon-and-text add action.",
+            "reason": "Clear without competing with primary actions.",
+            "source": "Selected option 1."
+          },
+          {
+            "id": "D3",
+            "decision": "Retain compact circular danger delete icon.",
+            "reason": "Existing row-action convention.",
+            "source": "Current UI and confirmed scope."
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Element Plus defaults affect alignment.",
+            "impact": "Theme or density variation.",
+            "mitigation": "Dedicated local classes and browser checks."
+          },
+          {
+            "risk": "Three columns become cramped on mobile.",
+            "impact": "Input or delete clipping.",
+            "mitigation": "minmax input and fixed compact side columns."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user explicitly confirmed the landed option-1 design and direct implementation on 2026-08-20.",
+          "confirmed_at": "2026-08-20T09:10:43+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-20-release-file-media-editor-style-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Only local file-media markup and CSS",
+          "No behavior, API, dependency, commit or push changes",
+          "Protect unrelated dirty work",
+          "Verify desktop and three mobile viewports"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+            "status": "existing",
+            "responsibility": "File-media editor structure",
+            "evidence": "Current line 197"
+          },
+          {
+            "path": "web/src/modules/release/release-prototype.css",
+            "status": "existing",
+            "responsibility": "File-media layout and responsive rules",
+            "evidence": "Current lines 339-354"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Unify the file-media field hierarchy and path-row layout without behavior changes.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "The editor markup is localized in ReleaseApplicationDrawer.vue line 197",
+              "The corresponding CSS is localized at release-prototype.css lines 339-354",
+              "Existing handlers already implement required behavior"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-040-release-file-media-editor-style/execution-T1.json",
+                ".ai-control/requirements/req-20260820-040-release-file-media-editor-style/observation-T1.json",
+                ".ai-control/requirements/req-20260820-040-release-file-media-editor-style/convergence.json"
+              ],
+              "modify": [
+                "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "draft.fileMedia",
+                "addFileMedia()",
+                "removeFileMedia(id)",
+                "file.filePath"
+              ],
+              "produces": [
+                "Compact local title/action row",
+                "Stable responsive index-input-delete rows"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Record current visual failure signals",
+                "command": null,
+                "expected": "Screenshot and DOM reproduce hierarchy, weight and alignment defects",
+                "evidence": "Baseline screenshot and dimensions"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Adjust only the file-media local markup",
+                "command": null,
+                "expected": "Existing state and handlers remain unchanged",
+                "evidence": "Scoped template diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "Implement compact stable desktop/mobile CSS",
+                "command": null,
+                "expected": "Single and multiple rows align without overflow",
+                "evidence": "Scoped CSS diff and DOM geometry"
+              },
+              {
+                "id": "T1-S4",
+                "action": "Run frontend production build",
+                "command": "npm --prefix web run build",
+                "expected": "vue-tsc and Vite exit 0",
+                "evidence": "Build summary"
+              },
+              {
+                "id": "T1-S5",
+                "action": "Verify browser interaction and required viewports",
+                "command": null,
+                "expected": "Add/delete work, controls align, no console errors or horizontal overflow",
+                "evidence": "Screenshots, row counts, DOM measurements and console"
+              },
+              {
+                "id": "T1-S6",
+                "action": "Run whitespace and scope audit",
+                "command": "git diff --check",
+                "expected": "Exit 0 and product changes limited to two approved files",
+                "evidence": "Command output and scoped diff"
+              }
+            ],
+            "acceptance_checks": [
+              "Compact title/action row",
+              "Stable single and multi-row alignment",
+              "No required viewport overflow",
+              "Unchanged add/delete and payload behavior",
+              "Build and diff checks pass"
+            ],
+            "risks": [
+              "Element Plus default spacing",
+              "Narrow mobile columns"
+            ],
+            "rollback": "Restore only the local file-media markup and corresponding CSS rules.",
+            "stop_conditions": [
+              "A global theme or business-state change is required",
+              "Existing add/delete behavior is already broken before the edit"
+            ],
+            "escalation_conditions": [
+              "User requests workflow or validation changes",
+              "Global drawer changes are necessary"
+            ]
+          }
+        ],
+        "dependency_edges": [],
+        "parallel_groups": [
+          [
+            "T1"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Build exits 0"
+          },
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "git diff --check",
+            "expected": "No whitespace errors"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user confirmed direct planning and implementation after reviewing design revision 1.",
+          "confirmed_at": "2026-08-20T09:10:43+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "ReleaseApplicationDrawer file-media DOM and local CSS"
+        ],
+        "state_variable_candidates": [
+          "Content type selection",
+          "Path-row count",
+          "Path text",
+          "Viewport width",
+          "Drawer scroll"
+        ],
+        "interface_candidates": [
+          "Existing toggle, add, remove, v-model and submit contracts"
+        ],
+        "sensor_candidates": [
+          "Frontend build",
+          "Scoped diff",
+          "Browser screenshots",
+          "DOM geometry",
+          "Horizontal overflow",
+          "Console errors"
+        ],
+        "actuator_candidates": [
+          "Local markup classes",
+          "CSS grid columns",
+          "Spacing",
+          "Typography",
+          "Button presentation"
+        ],
+        "disturbance_candidates": [
+          "Element Plus button defaults",
+          "Theme and density",
+          "Long paths",
+          "Multiple rows",
+          "Narrow viewports"
+        ],
+        "delay_candidates": [
+          "Vite hot update",
+          "Drawer transition",
+          "Viewport reflow"
+        ],
+        "assumptions": [
+          {
+            "text": "Local markup and CSS are sufficient.",
+            "basis": "The defect is localized and current handlers already work.",
+            "falsifier": "Browser measurement proves a global layout rule is the cause."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Element Plus default styles\", \"Release drawer container\", \"Vite frontend runtime\", \"Viewport and theme/density settings\"], \"inside\": [\"ReleaseApplicationDrawer file-media DOM\", \"File-media local CSS rules\", \"Existing add/remove bindings\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Visual alignment\"], \"id\": \"S1\", \"independence\": \"Compiler and bundler output\", \"method\": \"npm --prefix web run build\", \"target\": \"Type and production-build compatibility\"}",
+      "{\"blind_spots\": [\"Unopened themes\"], \"id\": \"S2\", \"independence\": \"Direct runtime rendering\", \"method\": \"Authenticated browser screenshots and DOM geometry at desktop and three mobile viewports\", \"target\": \"R1-R3 rendered hierarchy, alignment and overflow\"}",
+      "{\"blind_spots\": [\"Backend submission not changed by this task\"], \"id\": \"S3\", \"independence\": \"Direct interaction state\", \"method\": \"Browser row-count checks before and after add/delete\", \"target\": \"R4 add/delete behavior\"}",
+      "{\"blind_spots\": [\"Pre-existing untracked content attribution\"], \"id\": \"S4\", \"independence\": \"Filesystem diff\", \"method\": \"Scoped diff and git diff --check\", \"target\": \"Approved write boundary\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Adjust only local markup and classes while retaining bindings\", \"authority\": \"Approved workspace write\", \"id\": \"A1\", \"impact_radius\": \"One editor block\", \"rollback\": \"Restore the block to its pre-task markup\", \"target\": \"File-media DOM hierarchy\"}",
+      "{\"action\": \"Replace only local editor CSS and mobile override\", \"authority\": \"Approved workspace write\", \"id\": \"A2\", \"impact_radius\": \"File-media editor and review-path rules kept separate\", \"rollback\": \"Restore the pre-task local rules\", \"target\": \"File-media visual layout\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Local alignment may drift\", \"source\": \"Element Plus default button margins and sizes\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Global diff contains unrelated work\", \"source\": \"Existing dirty rokey worktree\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Browser may redirect to login\", \"source\": \"Authentication session\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"The full defect surface is isolated in the inspected component and stylesheet.\", \"falsifier\": \"Runtime computed styles identify an unavoidable global rule.\", \"text\": \"Local markup and CSS are sufficient.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Unify the file-media field hierarchy and path-row layout without behavior changes.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Current markup is localized in ReleaseApplicationDrawer.vue",
+        "Current layout rules are localized in release-prototype.css",
+        "Baseline frontend build passes",
+        "Existing add/remove handlers are functional"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+        "web/src/modules/release/release-prototype.css",
+        ".ai-control/requirements/req-20260820-040-release-file-media-editor-style/*.json"
+      ],
+      "invariants": [
+        "No state, validation, payload, API or backend changes",
+        "Existing handlers and icons remain",
+        "Unrelated dirty work remains untouched",
+        "No commit or push"
+      ],
+      "interface_contracts": [
+        "draft.fileMedia shape remains unchanged",
+        "addFileMedia and removeFileMedia signatures remain unchanged",
+        "CSS selectors remain local to file-media editor"
+      ],
+      "non_goals": [
+        "No full-drawer redesign",
+        "No other field changes",
+        "No global theme change",
+        "No new dependency"
+      ],
+      "action_bounds": [
+        "Adjust only file-media editor markup/classes and corresponding local CSS",
+        "Use stable grid dimensions and existing semantic tokens"
+      ],
+      "acceptance": [
+        "Compact title/action hierarchy",
+        "Single and multiple rows align",
+        "Required viewports have no page overflow or clipped action",
+        "Add/delete still change the intended row count",
+        "Frontend build and diff checks pass"
+      ],
+      "evidence_required": [
+        "Actual scoped diff",
+        "Build and diff command results",
+        "Desktop and mobile screenshots",
+        "DOM overflow and control geometry",
+        "Interactive row-count evidence",
+        "Console error check"
+      ],
+      "rollback": "Restore only the file-media markup block and corresponding local CSS rules.",
+      "stop_conditions": [
+        "A global theme/shared component/business-state change becomes necessary",
+        "Baseline add/delete behavior is broken"
+      ],
+      "escalation_conditions": [
+        "User requests workflow, validation or other form changes",
+        "Mobile fix requires changing global drawer layout"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-08-20T01:18:19+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

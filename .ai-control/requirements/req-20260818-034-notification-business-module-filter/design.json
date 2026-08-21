@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260818-034-notification-business-module-filter",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-notification-business-module-filter-design.md",
+  "objective": "Add an explicit business-module dimension to platform notifications so users can identify and server-filter configuration-management and future module messages without changing global unread semantics.",
+  "users": [
+    "Approvers identify and filter configuration-management tasks in the global notification drawer.",
+    "Applicants distinguish approval-result notifications from different business modules.",
+    "Future business modules publish module-aware notifications through platform contracts."
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Notifications must persist and return a stable module code and display name independently from source name, business type and business key.",
+      "acceptance": ["configuration-management workflow notifications contain release and 配置管理", "the UI shows 配置管理 · 审批中心", "businessType remains release_application"],
+      "priority": "must",
+      "source": "User selected option 1 and confirmed separate module and source semantics on 2026-08-18.",
+      "counterexample": ["all workflow notifications only show 审批中心", "the frontend derives the module from actionPath"]
+    },
+    {
+      "id": "R2",
+      "statement": "New business-owned workflows must explicitly carry module metadata through instance and lifecycle context into system notifications.",
+      "acceptance": ["release submissions provide release and 配置管理", "workflow lifecycle notifications preserve module metadata", "future modules do not require frontend mappings"],
+      "priority": "must",
+      "source": "User confirmed explicit workflow-context propagation and compatibility design on 2026-08-18.",
+      "counterexample": ["the workflow notification bridge permanently hardcodes every businessType mapping", "new workflows silently omit module metadata"]
+    },
+    {
+      "id": "R3",
+      "statement": "The notification drawer must provide a searchable business-module selector that performs server-side filtering across all and unread views.",
+      "acceptance": ["default is all modules", "selecting release resets to page one and returns only release notifications", "clearing restores all modules", "options only include modules visible to the current user"],
+      "priority": "must",
+      "source": "User explicitly requested module filtering and confirmed the interaction on 2026-08-18.",
+      "counterexample": ["only the currently loaded 20 records are filtered", "module options expose another user's modules"]
+    },
+    {
+      "id": "R4",
+      "statement": "Global and filtered unread counts must remain distinct and internally consistent.",
+      "acceptance": ["the bell always shows the user's global unread count", "the unread tab shows the selected module's unread count", "mark-read operations refresh both scopes"],
+      "priority": "must",
+      "source": "User confirmed the count rules on 2026-08-18.",
+      "counterexample": ["selecting a module changes the bell badge to a module-only count", "filtered unread count is inferred from the current page"]
+    },
+    {
+      "id": "R5",
+      "statement": "An append-only migration and runtime compatibility path must preserve existing notifications and running workflows.",
+      "acceptance": ["known legacy business types receive the agreed module mapping", "unknown legacy rows receive a deterministic fallback", "running pre-change workflows can complete and notify", "published migrations remain unchanged"],
+      "priority": "must",
+      "source": "User confirmed migration and compatibility rules on 2026-08-18.",
+      "counterexample": ["legacy notifications disappear", "a running workflow fails because module metadata is absent", "V26 or V35 is edited"]
+    },
+    {
+      "id": "R6",
+      "statement": "Module queries and options must preserve authenticated tenant and user isolation and define explicit empty and failure behavior.",
+      "acceptance": ["unknown module codes return an empty page", "module aggregation starts from the current user's notification rows", "module-option failure does not destroy the unfiltered list"],
+      "priority": "must",
+      "source": "Existing notification security contract and user-confirmed server-side filtering.",
+      "counterexample": ["the client submits a user id", "the server returns all tenant modules before client filtering"]
+    },
+    {
+      "id": "R7",
+      "statement": "The shared notification drawer must remain usable on desktop and required mobile viewports with module filtering, long text, loading, empty and failure states.",
+      "acceptance": ["no drawer or page horizontal overflow at 375x812, 390x844, 430x932 and desktop", "selector, tabs and notification actions remain reachable", "long module names and business keys remain readable"],
+      "priority": "must",
+      "source": "RDDMP frontend and mobile design constraints.",
+      "counterexample": ["the selector clips the unread tab", "the drawer requires page-level horizontal scrolling"]
+    }
+  ],
+  "invariants": [
+    "platform/system remains the notification and read-state data owner",
+    "notification queries remain tenant- and current-user-scoped",
+    "notification idempotency remains tenantId plus businessType plus eventId",
+    "action paths remain internal routes",
+    "global mark-all-read retains its existing all-module scope",
+    "published Flyway migrations remain immutable",
+    "unrelated rokey worktree changes remain untouched"
+  ],
+  "constraints": [
+    "Java 17, Spring Boot 3.4.4 and MySQL 8.4",
+    "Vue 3, TypeScript and Element Plus",
+    "public platform notification and workflow contracts change in one requirement",
+    "append-only migration with legacy backfill",
+    "desktop and 375x812, 390x844 and 430x932 browser verification"
+  ],
+  "non_goals": [
+    "external notification channels or WebSocket delivery",
+    "notification templates, preferences, attachments, deletion or bulk operations",
+    "business-module administration UI",
+    "project-level notification filtering",
+    "approval-rule or business-route changes"
+  ],
+  "selected_approach": {
+    "name": "explicit notification module metadata with workflow-context propagation and server-side filtering",
+    "reason": "It keeps module, source and business-object semantics separate, supports correct pagination and user isolation, and scales to future business modules without frontend mappings.",
+    "alternatives": [
+      {"name": "frontend businessType mapping", "rejected_because": "it couples the shared UI to every business type and cannot correctly filter server pagination"},
+      {"name": "actionPath inference", "rejected_because": "routes may be absent or change and do not form a reliable data contract"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["system notification publish/query contracts", "workflow business-context propagation", "release workflow metadata", "append-only migration and mock data", "shared notification drawer display and filtering", "integration contracts and tests"],
+      "outside": ["external channels", "notification preference and template systems", "module administration", "project filtering", "approval business rules"]
+    },
+    "components": [
+      {"name": "SystemNotificationPublisher", "responsibility": "validate and publish module-aware notifications through the platform public contract", "depends_on": ["authenticated business context"]},
+      {"name": "SystemNotificationService", "responsibility": "persist module metadata and perform user-scoped list, aggregation, count and read operations", "depends_on": ["sys_notification", "sys_user_notification"]},
+      {"name": "WorkflowBusinessContext", "responsibility": "carry originating business-module metadata through workflow persistence and lifecycle events", "depends_on": ["business module submission"]},
+      {"name": "WorkflowSystemNotificationBridge", "responsibility": "translate workflow task and result events into module-aware notifications", "depends_on": ["workflow lifecycle context", "SystemNotificationPublisher"]},
+      {"name": "UiNotificationCenter", "responsibility": "render module and source, manage status and module filters, pagination, counts and recoverable states", "depends_on": ["notification APIs", "Element Plus"]},
+      {"name": "V44 candidate migration", "responsibility": "add module metadata and indexes and backfill existing notifications and workflow context", "depends_on": ["current integrated migration sequence"]}
+    ],
+    "interfaces": [
+      {"name": "NotificationPublishCommand", "producer": "platform/system", "consumers": ["workflow notification bridge", "direct business publishers"], "contract": "requires valid moduleCode and moduleName in addition to existing notification fields"},
+      {"name": "GET /api/notifications", "producer": "platform/system", "consumers": ["UiNotificationCenter"], "contract": "optional moduleCode and unreadOnly filters are applied within the authenticated user's scope"},
+      {"name": "GET /api/notifications/modules", "producer": "platform/system", "consumers": ["UiNotificationCenter"], "contract": "returns only current-user modules with total and unread counts ordered by latest notification"},
+      {"name": "WorkflowBusinessContext", "producer": "platform/workflow", "consumers": ["release and future business modules", "workflow lifecycle services"], "contract": "new business-owned flows explicitly provide stable module code and display name"}
+    ],
+    "data_flows": [
+      {"input": "release application workflow start", "transitions": ["attach release module context", "persist workflow instance", "emit task or lifecycle event", "publish system notification"], "output": "configuration-management notification displaying 配置管理 · 审批中心"},
+      {"input": "notification drawer open or module selection", "transitions": ["load user-visible modules", "apply moduleCode and unreadOnly server filters", "return page and scoped counts"], "output": "correct filtered list with independent global unread badge"},
+      {"input": "legacy data migration and old running workflow", "transitions": ["map known business types", "apply deterministic fallback", "preserve existing routes and keys"], "output": "readable and actionable module-aware legacy notification"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "missing or invalid module metadata on publish", "behavior": "reject the command without partial notification writes", "recovery": "caller supplies a valid stable module code and display name"},
+    {"condition": "unknown module filter", "behavior": "return an empty user-scoped page and zero scoped count", "recovery": "clear or select a returned module option"},
+    {"condition": "module-option request fails", "behavior": "keep the unfiltered notification list usable and show a recoverable selector error", "recovery": "retry module loading"},
+    {"condition": "legacy workflow context lacks module metadata", "behavior": "use the controlled compatibility resolver and record a warning", "recovery": "new workflow rounds persist explicit metadata"},
+    {"condition": "read-state write succeeds but count refresh fails", "behavior": "retain the authoritative write and show a refresh error", "recovery": "reload global and module counts"}
+  ],
+  "quality_attributes": {
+    "security": ["all lists, options and counts are tenant- and current-user-scoped", "client identity is never accepted", "module filter cannot widen access", "existing internal-route validation remains"],
+    "performance": ["server-side indexed module filtering", "grouped module options over current-user rows", "existing bounded pagination", "no loading of all notifications for client filtering"],
+    "compatibility": ["existing API paths and read behavior remain", "response fields are additive", "legacy data is backfilled", "running workflows use compatibility fallback", "application rollback keeps additive columns"],
+    "operations": ["monitor blank metadata, compatibility warnings and aggregation latency", "verify migration version against current integration head before implementation", "audit continues without notification body content"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R3", "R4", "R6"], "signal": "module display, list filters, user options and global/scoped counts match persisted data", "method": "system service and controller tests plus authenticated API checks"},
+    {"requirement_ids": ["R2", "R5"], "signal": "new and legacy workflows generate correct module-aware task and result notifications", "method": "workflow, boot bridge and release integration tests with migrated data"},
+    {"requirement_ids": ["R5"], "signal": "legacy rows are fully populated without changing historical migrations", "method": "MySQL 8.4 Flyway execution and before/after mapping queries"},
+    {"requirement_ids": ["R3", "R4", "R6", "R7"], "signal": "the drawer remains usable through filtering, read updates, failures and long text at all required viewports", "method": "frontend build, component tests and authenticated desktop/mobile browser verification"},
+    {"requirement_ids": ["R1", "R2", "R5"], "signal": "public contracts and all repository call sites remain compatible", "method": "focused Maven modules, full Maven test suite, governance and scope checks"}
+  ],
+  "assumptions": [
+    {"text": "business modules know their stable module code and display name when starting a workflow or publishing a notification", "basis": "module ownership and user-confirmed explicit metadata approach", "falsifier": "a required publisher has no deterministic owning module"},
+    {"text": "mark-all-read remains global across module filters", "basis": "the user did not request a semantic change and existing API is global", "falsifier": "the user requires filtered mark-all-read"},
+    {"text": "historical module names remain frozen on notifications", "basis": "notification content is fixed at first publish under the current contract", "falsifier": "a later requirement demands retroactive module renaming"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "Add explicit moduleCode and moduleName fields while retaining sourceName and businessType", "reason": "the concepts serve different user and system semantics", "source": "User selected option 1 on 2026-08-18."},
+    {"id": "D2", "decision": "Display module and source together as 配置管理 · 审批中心", "reason": "users need both ownership and trigger context", "source": "User confirmed the presented display design on 2026-08-18."},
+    {"id": "D3", "decision": "Include a searchable server-backed module filter in this requirement", "reason": "future module growth makes visual labeling alone insufficient", "source": "User explicitly requested filtering on 2026-08-18."},
+    {"id": "D4", "decision": "Keep the bell global and make the unread-tab count module-scoped", "reason": "global awareness and filtered work context are separate", "source": "User confirmed the interaction and count rules on 2026-08-18."},
+    {"id": "D5", "decision": "Propagate module metadata through workflow context and use fallback only for legacy data", "reason": "new modules remain explicit without making the bridge own business mappings", "source": "User confirmed data propagation and compatibility on 2026-08-18."}
+  ],
+  "risks": [
+    {"risk": "public publish command call sites are missed", "impact": "compile failure or notifications without module metadata", "mitigation": "search all constructors and run focused plus full Maven tests"},
+    {"risk": "workflow persistence propagation omits a layer", "impact": "task or result notifications lose the originating module", "mitigation": "end-to-end contract tests from release submission through lifecycle notification"},
+    {"risk": "legacy mapping misclassifies notifications", "impact": "users filter into the wrong module", "mitigation": "before/after counts and sampled known-type assertions"},
+    {"risk": "global and scoped counts drift after read actions", "impact": "the drawer shows conflicting unread numbers", "mitigation": "reload authoritative global and module aggregates after writes"},
+    {"risk": "parallel migration takes V44", "impact": "Flyway version collision", "mitigation": "recheck the integrated migration head before implementation and renumber only this unexecuted migration"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User reviewed the landed design and explicitly confirmed development on 2026-08-18.",
+    "confirmed_at": "2026-08-18T09:17:37+08:00"
+  }
+}

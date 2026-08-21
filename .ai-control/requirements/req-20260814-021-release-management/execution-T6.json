@@ -1,0 +1,120 @@
+{
+  "task_id": "T6",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/api/release.ts",
+      "purpose": "投产窗口、版本申请、冲突、工作流轮次、附件和后续生产视图的正式 REST DTO 与调用"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/release-master-data.mock.ts",
+      "purpose": "仅保留物理子系统和交付单元选择快照"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue",
+      "purpose": "真实窗口和申请单查询、分页、写入、提交、撤回、取消、附件删除及冲突编排"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseWindowView.vue",
+      "purpose": "真实窗口 DTO、分钟时间、可用性、常规申请开关和全状态页面"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseApplicationView.vue",
+      "purpose": "真实申请单分页、筛选、状态和操作入口"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+      "purpose": "选择器 Mock 快照、正式写入 DTO、附件上传、生产版本提示和服务端场景提示"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseConflictDialog.vue",
+      "purpose": "展示服务端历史申请完整业务快照并执行服务端允许的冲突动作"
+    }
+  ],
+  "requirements_addressed": ["R2", "R3", "R4", "R5", "R6", "R7", "R8", "R18"],
+  "commands": [
+    {
+      "command": "npm run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc and Vite production build passed; 2352 modules transformed"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors"
+    },
+    {
+      "command": "rg old release repository, prototype state, frontend conflict/scenario/workflow derivation and debug symbols in T6 surfaces",
+      "exit_code": 1,
+      "salient_output": "No forbidden business-state Mock symbols found; the only Mock import is release-master-data.mock.ts for subsystem/delivery selectors"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "正式窗口与申请单数据源",
+      "result": "pass",
+      "evidence": "页面查询、分页、创建、更新、提交、撤回、取消和冲突处理均调用 web/src/api/release.ts",
+      "limitations": ["真实网络及数据库持久化在 T8 隔离库验收"]
+    },
+    {
+      "check": "409 可恢复性",
+      "result": "pass",
+      "evidence": "提交 409 时重新查询服务端冲突并保持抽屉和待提交附件；保存成功前不关闭抽屉",
+      "limitations": ["并发 409 的浏览器交互在 T8 复验"]
+    },
+    {
+      "check": "Mock 边界",
+      "result": "pass",
+      "evidence": "T6 页面链路无 useReleaseRepository、createReleasePrototypeState、前端冲突或流程判定；仅物理子系统/交付单元和项目上下文按批准范围使用 Mock",
+      "limitations": []
+    },
+    {
+      "check": "前端类型与生产构建",
+      "result": "pass",
+      "evidence": "vue-tsc --noEmit and vite build exited 0",
+      "limitations": ["现有 bundle size warning 不属于本任务行为偏差"]
+    }
+  ],
+  "diff_summary": [
+    "投产窗口和版本申请从旧内存仓库切换到服务端分页与持久写入",
+    "重复申请弹框直接消费服务端冲突令牌、历史快照和允许动作",
+    "草稿保存、提交审批、撤回、取消、重新提交和附件删除均使用乐观锁版本",
+    "服务端错误、403、409、加载和提交中状态保留在正式页面",
+    "生产基线、生产版本和统计入口暂不读取旧 Mock，等待 T7 正式接口视图"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "服务端决定场景、状态和权限",
+      "result": "pass",
+      "evidence": "前端只展示估算提示，写入不提交版本类型、特征或流程编码，提交后使用服务端响应"
+    },
+    {
+      "invariant": "只有三个选择来源允许 Mock",
+      "result": "pass",
+      "evidence": "项目 store 及 release-master-data.mock.ts 是唯一 Mock 来源"
+    },
+    {
+      "invariant": "可恢复冲突不丢失用户输入",
+      "result": "pass",
+      "evidence": "冲突处理期间抽屉不销毁，pendingSubmission 保存服务端草稿身份和临时附件引用"
+    },
+    {
+      "invariant": "不覆盖无关前端改动",
+      "result": "pass",
+      "evidence": "修改限制在 T6 列出的 release API 和组件"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "受限沙箱不允许 Vite 写入 web/node_modules/.vite-temp",
+      "impact": "首次构建在 vue-tsc 通过后因 EPERM 停止；按批准权限在同一工作区重跑后完整构建通过"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实 API 网络、403/409 交互和截图必须使用 ccb_platform_acceptance_027，在 T8 验收",
+    "生产基线、生产版本、统计和业务详情审批由 T7 接续，当前不回退到业务 Mock",
+    "正式项目成员授权按批准范围延期，当前项目上下文仍为前端 Mock"
+  ],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,115 @@
+{
+  "task_id": "T1-T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java and WorkflowController.java",
+      "purpose": "Add tenant-scoped archive, restore, draft-only deletion, version history and definition event APIs."
+    },
+    {
+      "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java and WorkflowSignatureServiceTest.java",
+      "purpose": "Cover lifecycle state transitions, immutable history and existing internal signature enforcement."
+    },
+    {
+      "path_or_resource": "web/src/api/workflow.ts, WorkflowView.vue, WorkflowDesigner.vue, WorkflowNodeInspector.vue and web/src/styles.css",
+      "purpose": "Expose lifecycle/history actions, read-only historical graphs, atomic node insertion, responsive editor layout and explicit signature Yes/No."
+    },
+    {
+      "path_or_resource": "V42__repair_workflow_schema_versions_after_mock_sync.sql, MockDataInitializer.java, MockDataInitializerTest.java and mock/mock-data.json",
+      "purpose": "Repair schema-version metadata append-only and preserve it during mock synchronization."
+    },
+    {
+      "path_or_resource": "original local rokey worktree",
+      "purpose": "Apply the 13 verified REQ-031 product files through a generated 952-line patch after git apply --check."
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+  "commands": [
+    {
+      "command": "JDK 17 Maven focused WorkflowDefinitionLifecycleTest and WorkflowSignatureServiceTest",
+      "exit_code": 0,
+      "salient_output": "8 tests run, 0 failures, 0 errors; BUILD SUCCESS in original rokey."
+    },
+    {
+      "command": "JDK 17 full Maven reactor test with Byte Buddy agent",
+      "exit_code": 0,
+      "salient_output": "Full reactor BUILD SUCCESS; workflow 35 tests and release 43 tests passed in the byte-identical isolated implementation."
+    },
+    {
+      "command": "vue-tsc --noEmit and vite build --configLoader runner",
+      "exit_code": 0,
+      "salient_output": "Type check passed; 2358 modules transformed and production build completed in original rokey."
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs and check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "10 Maven module boundaries and 40 Flyway migrations passed."
+    },
+    {
+      "command": "git apply --check /private/tmp/req031-backwrite.patch then git apply",
+      "exit_code": 0,
+      "salient_output": "Patch sha256 8c7c32fa78dcda26cacc4e702a099ecf5d062fd58e40e2d8fc8423ed0dc0fff0 applied without conflict; all 13 product files matched the isolated worktree byte-for-byte afterward."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Real lifecycle API and MySQL flow",
+      "result": "pass",
+      "evidence": "Draft create/delete, publish, mandatory archive reason, archive/start blocking, existing-instance approval, restore, history and event persistence were exercised against ccb_platform_req031.",
+      "limitations": ["Isolated local MySQL clone, not production data."]
+    },
+    {
+      "check": "Designer interaction and responsive rendering",
+      "result": "pass",
+      "evidence": "Single-edge insertion rewired 3/2 to 4/3; selected multi-edge insertion rewired 5/5 to 6/6; 1280x720, 375x812, 390x844 and 430x932 had zero page overflow and visible footer actions.",
+      "limitations": ["Chromium browser only."]
+    },
+    {
+      "check": "Schema metadata repair",
+      "result": "pass",
+      "evidence": "V42 applied to isolated clone; definition and version mismatch aggregates both returned zero and mock synchronization preserves model_schema_version.",
+      "limitations": ["Future external import writers remain outside this requirement."]
+    }
+  ],
+  "diff_summary": [
+    "Published definitions now archive/restore with mandatory reasons while only drafts can be deleted.",
+    "Definition versions and update records are visible, with historical graphs rendered read-only.",
+    "Node insertion automatically reconnects zero/single outgoing paths and requires explicit branch selection for multiple paths.",
+    "Workflow editor actions remain reachable across desktop and requested mobile-width viewports.",
+    "Approval-node signature configuration now displays explicit Yes/No without weakening server enforcement.",
+    "V42 and mock synchronization keep schemaVersion 2 metadata aligned."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Running instances remain bound to the original version and deployment.",
+      "result": "pass",
+      "evidence": "An instance started before archive completed approval while the definition remained archived; restore kept one version and the same deployment id."
+    },
+    {
+      "invariant": "Flyway migrations are append-only.",
+      "result": "pass",
+      "evidence": "V34 was not modified and the repository Flyway check passed with new V42."
+    },
+    {
+      "invariant": "Original rokey unrelated changes are preserved and no commit or push occurs.",
+      "result": "pass",
+      "evidence": "Only the 13 REQ-031 product files were applied; branch remains rokey with its prior dirty files and no Git commit/push command was run."
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "check-all-governance stopped on invalid pre-existing REQ-20260816-029 implementation-plan.json.",
+      "impact": "Aggregate governance script could not complete; repository governance, Skill, development-entry, module-boundary and Flyway checks were run independently and passed."
+    },
+    {
+      "event": "Default JDK Mockito self-attachment is incompatible in this environment.",
+      "impact": "Tests were run with JDK 17 and the existing Byte Buddy agent as the calibrated repository test sensor."
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Existing Vite bundle-size and PURE-comment warnings remain non-blocking and predate this requirement.",
+    "The unrelated REQ-20260816-029 ledger remains invalid and was intentionally not modified."
+  ],
+  "recommended_next": "observe"
+}

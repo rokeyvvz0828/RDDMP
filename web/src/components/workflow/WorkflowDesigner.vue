@@ -32,6 +32,19 @@ const contextStyle = computed(() => ({ left: `${contextMenu.left}px`, top: `${co
 function cloneGraph(graph: WorkflowGraph): WorkflowGraph { return JSON.parse(JSON.stringify(graph)) as WorkflowGraph }
 function edgeModel(edge: DesignerEdge): WorkflowEdgeModel { return (edge.data?.model || { id: edge.id, source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle, targetHandle: edge.targetHandle }) as WorkflowEdgeModel }
 function edgeDisplayLabel(edge: WorkflowEdgeModel): string | undefined { return edge.label?.trim() || undefined }
+function designerEdge(edge: WorkflowEdgeModel): DesignerEdge {
+  return {
+    id: edge.id,
+    type: 'smoothstep',
+    source: edge.source,
+    target: edge.target,
+    sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'),
+    targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left'),
+    label: edgeDisplayLabel(edge),
+    markerEnd: MarkerType.ArrowClosed,
+    data: { model: edge }
+  }
+}
 function fitResponsiveGraph() {
   void nextTick(() => void nextTick(() => {
     layoutGraph(false)
@@ -122,23 +135,61 @@ function currentCanvasPosition(type: WorkflowNodeType): { x: number; y: number }
   const center = screenToFlowCoordinate({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
   return { x: center.x - size.width / 2, y: center.y - size.height / 2 }
 }
-function addNode(type: WorkflowNodeType, parentId?: string) {
+function addNode(type: WorkflowNodeType, parentId?: string, selectedEdgeId?: string) {
   if (props.readonly) return
   const labels: Record<WorkflowNodeType, string> = { START: '发起', APPROVAL: '用户任务', CC: '抄送', CONDITION: '条件网关', PARALLEL_SPLIT: '并行分支', PARALLEL_JOIN: '并行汇聚', END: '结束' }
-  const config: WorkflowNodeConfig = type === 'APPROVAL' ? { assigneeType: 'USER', assigneeIds: [], mode: 'ANY', emptyAssigneeAction: 'ERROR', actionPolicy: { allowedActions: ['APPROVE', 'REJECT', 'ADD_SIGN', 'CC'] } } : type === 'CC' ? { userIds: [] } : {}
+  const config: WorkflowNodeConfig = type === 'APPROVAL' ? { assigneeType: 'USER', assigneeIds: [], mode: 'ANY', emptyAssigneeAction: 'ERROR', signatureRequired: false, actionPolicy: { allowedActions: ['APPROVE', 'REJECT', 'ADD_SIGN', 'CC'] } } : type === 'CC' ? { userIds: [] } : {}
   const id = newId(type)
   const parent = parentId ? flowNodes.value.find(node => node.id === parentId) : undefined
-  if (parent && isSingleFlowTask(parent.data.node.type) && flowEdges.value.some(edge => edge.source === parent.id)) {
-    ElMessage.warning('当前审批或抄送节点已有出边，请先通过网关配置后续节点')
+  if (parent?.data.node.type === 'END') {
+    ElMessage.warning('结束节点后不能继续添加节点')
     return
   }
-  const position = parent ? { x: parent.position.x + (layoutDirection.value === 'LR' ? 280 : 0), y: parent.position.y + (layoutDirection.value === 'TB' ? 170 : 0) } : currentCanvasPosition(type)
-  const node: WorkflowNodeModel = { id, type, label: labels[type], position, config }
-  flowNodes.value = [...flowNodes.value, { id, type: 'workflow', position: { ...node.position }, data: { node, selected: false, readonly: Boolean(props.readonly), layoutDirection: layoutDirection.value } }]
-  if (parent && parent.data.node.type !== 'END') {
-    const edge: WorkflowEdgeModel = { id: `edge-${Date.now()}`, source: parent.id, target: id, sourceHandle: layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right', targetHandle: layoutDirection.value === 'TB' ? 'target-top' : 'target-left', label: null, condition: null, default: false }
-    flowEdges.value = [...flowEdges.value, { id: edge.id, type: 'smoothstep', source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle || (layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right'), targetHandle: edge.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left'), markerEnd: MarkerType.ArrowClosed, data: { model: edge } }]
+  const outgoing = parent ? flowEdges.value.filter(edge => edge.source === parent.id) : []
+  if (parent && outgoing.length > 1 && !selectedEdgeId) {
+    ElMessage.warning('当前节点有多条后续连线，请右键选择具体连线后插入节点')
+    return
   }
+  const replacedEdge = selectedEdgeId
+    ? outgoing.find(edge => edge.id === selectedEdgeId)
+    : outgoing.length === 1 ? outgoing[0] : undefined
+  if (selectedEdgeId && !replacedEdge) {
+    ElMessage.warning('所选连线已变化，请重新选择')
+    return
+  }
+  const successor = replacedEdge ? flowNodes.value.find(node => node.id === replacedEdge.target) : undefined
+  const position = parent
+    ? successor
+      ? { x: (parent.position.x + successor.position.x) / 2, y: (parent.position.y + successor.position.y) / 2 }
+      : { x: parent.position.x + (layoutDirection.value === 'LR' ? 280 : 0), y: parent.position.y + (layoutDirection.value === 'TB' ? 170 : 0) }
+    : currentCanvasPosition(type)
+  const node: WorkflowNodeModel = { id, type, label: labels[type], position, config }
+  const nextNode: DesignerNode = { id, type: 'workflow', position: { ...node.position }, data: { node, selected: false, readonly: Boolean(props.readonly), layoutDirection: layoutDirection.value } }
+  let nextEdges = flowEdges.value
+  if (parent) {
+    const firstEdge: WorkflowEdgeModel = replacedEdge
+      ? { ...edgeModel(replacedEdge), target: id, targetHandle: layoutDirection.value === 'TB' ? 'target-top' : 'target-left' }
+      : { id: `edge-${Date.now()}-in`, source: parent.id, target: id, sourceHandle: layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right', targetHandle: layoutDirection.value === 'TB' ? 'target-top' : 'target-left', label: null, condition: null, default: false }
+    nextEdges = replacedEdge
+      ? flowEdges.value.map(edge => edge.id === replacedEdge.id ? designerEdge(firstEdge) : edge)
+      : [...flowEdges.value, designerEdge(firstEdge)]
+    if (replacedEdge) {
+      const original = edgeModel(replacedEdge)
+      const secondEdge: WorkflowEdgeModel = {
+        id: `edge-${Date.now()}-out`,
+        source: id,
+        target: original.target,
+        sourceHandle: layoutDirection.value === 'TB' ? 'source-bottom' : 'source-right',
+        targetHandle: original.targetHandle || (layoutDirection.value === 'TB' ? 'target-top' : 'target-left'),
+        label: null,
+        condition: null,
+        default: false
+      }
+      nextEdges = [...nextEdges, designerEdge(secondEdge)]
+    }
+  }
+  flowNodes.value = [...flowNodes.value, nextNode]
+  flowEdges.value = nextEdges
   selectNode(id)
   syncToModel()
 }
@@ -198,7 +249,12 @@ function handleContextAction(action: 'edit' | 'copy' | 'delete' | 'add') {
   if (action === 'edit') { if (contextMenu.kind === 'node') selectNode(id); else selectEdge(id); return }
   if (action === 'copy') copyNode(id)
   if (action === 'delete') { if (contextMenu.kind === 'edge') { selectedEdgeId.value = id } else { selectedId.value = id; selectedEdgeId.value = null }; deleteSelected() }
-  if (action === 'add') addNode('APPROVAL', id)
+  if (action === 'add') {
+    if (contextMenu.kind === 'edge') {
+      const edge = flowEdges.value.find(item => item.id === id)
+      if (edge) addNode('APPROVAL', edge.source, edge.id)
+    } else addNode('APPROVAL', id)
+  }
 }
 function closeContextMenu() { contextMenu.visible = false }
 function toggleFullscreen() { isFullscreen.value = !isFullscreen.value; closeContextMenu(); emit('fullscreen', isFullscreen.value) }
@@ -265,7 +321,7 @@ defineExpose({ selectNode, layoutGraph })
       <div v-if="contextMenu.visible" class="workflow-context-menu" :style="contextStyle" @click.stop>
         <button type="button" @click="handleContextAction('edit')"><el-icon><EditPen /></el-icon>编辑配置</button>
         <button v-if="contextMenu.kind === 'node'" type="button" @click="handleContextAction('copy')"><el-icon><Plus /></el-icon>复制节点</button>
-        <button v-if="contextMenu.kind === 'node'" type="button" @click="handleContextAction('add')"><el-icon><TopRight /></el-icon>从此处添加节点</button>
+        <button type="button" @click="handleContextAction('add')"><el-icon><TopRight /></el-icon>{{ contextMenu.kind === 'node' ? '从此处添加节点' : '在此连线插入节点' }}</button>
         <button type="button" class="is-danger" @click="handleContextAction('delete')"><el-icon><Delete /></el-icon>删除{{ contextMenu.kind === 'node' ? '节点' : '连线' }}</button>
       </div>
       <div class="workflow-designer__hint">拖拽节点调整位置，点击连线编辑条件；右键节点或连线打开操作菜单</div>

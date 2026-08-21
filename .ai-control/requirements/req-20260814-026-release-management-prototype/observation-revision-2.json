@@ -1,0 +1,33 @@
+{
+  "sample_label": "revision-2 integrated implementation",
+  "task_ids": ["T6", "T7", "T8", "T9", "T10"],
+  "baseline_revision": "baseline-1-design-revision-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1 build plus S2 route/view interaction", "result": "pass", "raw_evidence": "The clean /release page exposed production windows, applications, production baseline, current production and analytics; production build passed", "limitation": []},
+    {"requirement_id": "R2", "sensor": "S1 type checking and S2 visible application semantics", "result": "pass", "raw_evidence": "Visible types are regular, urgent and emergency while additional is shown as a separate derived characteristic", "limitation": []},
+    {"requirement_id": "R3", "sensor": "S2 window option inspection", "result": "pass", "raw_evidence": "Window choices expose code, name, four minute-precision times, state and disabled explanation; invalid windows are disabled", "limitation": ["Boundary behavior uses the deterministic mock business date"]},
+    {"requirement_id": "R4", "sensor": "S2 emergency and non-emergency form paths", "result": "pass", "raw_evidence": "Emergency form hides window, version type and requirement IDs and shows required emergency description and test report; non-emergency retains window-derived type", "limitation": []},
+    {"requirement_id": "R5", "sensor": "S2/S4 selected-unit context", "result": "pass", "raw_evidence": "Delivery unit rows display latest successful production version, type and production time, with explicit empty text when absent", "limitation": []},
+    {"requirement_id": "R6", "sensor": "S2 conflict dialog and S4 shared conflict facts", "result": "pass", "raw_evidence": "Conflict dialog shows the historical application business snapshot without attachments and actions vary by historical state", "limitation": ["Representative draft, in-review and cleared paths were inspected rather than every status permutation"]},
+    {"requirement_id": "R7", "sensor": "S2 workflow completion and S4 production projection comparison", "result": "pass", "raw_evidence": "Approval result is labeled 制品准出 and does not alter current production until a production-success result exists", "limitation": []},
+    {"requirement_id": "R8", "sensor": "S2 production baseline interaction", "result": "pass", "raw_evidence": "Window view lists latest cleared candidates and supports cleared, success, failure and not-produced results with before/after/operator/reason/time audit", "limitation": ["Audit persistence is session-only by approved prototype scope"]},
+    {"requirement_id": "R9", "sensor": "S2/S4 current production view", "result": "pass", "raw_evidence": "Current production displayed AUTH-SVC v2.6.1-hotfix from the latest effective success and excludes cleared, failed and not-produced records", "limitation": []},
+    {"requirement_id": "R10", "sensor": "S2/S4 emergency approval facts", "result": "pass", "raw_evidence": "Emergency form has no manually selectable window; approval assigns the current production window or nearest future window and submit is blocked when neither exists", "limitation": ["No formal clock service is involved in the mock"]},
+    {"requirement_id": "R11", "sensor": "S2/S3 responsive review route", "result": "pass", "raw_evidence": "/workflow/review/:taskId shows complete details, current-login signer and approve, reject and return actions; three phone widths have no page-level horizontal overflow", "limitation": ["Authorization is represented by deterministic mock task facts"]},
+    {"requirement_id": "R12", "sensor": "S2/S4 analytics view", "result": "pass", "raw_evidence": "Analytics renders four nonblank charts and reconciled metrics for windows, systems, units, requirements, applications, types, clearance and outcomes", "limitation": ["Current practical drill-down emphasizes window, version type, artifact type and outcome; dedicated clickable system/unit/requirement chart series are a residual prototype expansion risk"]},
+    {"requirement_id": "R13", "sensor": "S2/S3 normal and debug page inspection", "result": "pass", "raw_evidence": "Normal /release omits the mock/state toolbar while development debug controls remain query-gated; clean browser console has no errors or warnings", "limitation": ["Not all debug exception combinations were re-clicked in the final clean tab"]},
+    {"requirement_id": "R14", "sensor": "S1/S3/S5/S6 automated and runtime checks", "result": "pass", "raw_evidence": "Frontend build, governance, Flyway, diff and Java 17 Maven reactor passed; desktop and 375x812, 390x844, 430x932 views had no page-level horizontal overflow", "limitation": ["Java 26 is unsupported by the current Byte Buddy dependency; Java 17 is the passing repository-compatible runtime"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"source": "Default Java 26 runtime", "effect": "Initial Maven run failed at Byte Buddy compatibility; the same reactor passed under installed Java 17", "classification": "environment runtime mismatch"},
+    {"source": "Existing platform changes in the same dirty worktree", "effect": "Repository-wide diff is broader than REQ-20260814-026, so scope conclusions distinguish release paths from the separately approved platform task", "classification": "parallel approved work"}
+  ],
+  "coverage_gaps": [
+    "Browser observation was performed in the same main implementation context and is not a fully independent reviewer",
+    "Formal persistence, server authorization, concurrency and external integrations are approved non-goals",
+    "Some exceptional debug permutations and dedicated system/unit/requirement chart-click drill-down were not all re-exercised in the final clean pass"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

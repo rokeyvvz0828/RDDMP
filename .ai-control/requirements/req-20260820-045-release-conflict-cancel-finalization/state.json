@@ -1,0 +1,3186 @@
+{
+  "schema_version": 4,
+  "revision": 25,
+  "created_at": "2026-08-20T08:02:49+00:00",
+  "updated_at": "2026-08-20T08:42:57+00:00",
+  "mode": "standard",
+  "phase": "verifying",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user reviewed the written revision 1 and requested implementation on 2026-08-20.；计划确认=User reviewed plan revision 1 and requested implementation on 2026-08-20.",
+      "recorded_at": "2026-08-20T08:02:49+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Baseline gate passed with R1-R7 and measurable intents",
+      "recorded_at": "2026-08-20T08:04:38+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Model gate passed: R1-R7 observable and controllable within business-release scope",
+      "recorded_at": "2026-08-20T08:10:07+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Planning gate passed: R1-R7 covered with T1 then T2 and task-level sensors",
+      "recorded_at": "2026-08-20T08:11:50+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 implementation report recorded with measurable output",
+      "recorded_at": "2026-08-20T08:19:13+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 verified; T2 remains planned",
+      "recorded_at": "2026-08-20T08:21:52+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 execution report recorded and output is independently measurable",
+      "recorded_at": "2026-08-20T08:35:52+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1 and T2 verified; two zero-error samples recorded; no actionable feedback remains",
+      "recorded_at": "2026-08-20T08:39:13+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=The user reviewed the written revision 1 and requested implementation on 2026-08-20.；计划确认=User reviewed plan revision 1 and requested implementation on 2026-08-20.",
+        "recorded_at": "2026-08-20T08:02:49+00:00",
+        "data": {
+          "objective": "Cancel an owned in-review blocking application from the additional-application conflict dialog into the permanent read-only CANCELLED state after workflow termination, without changing normal withdrawal semantics.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "The conflict dialog must show cancel only for an owned IN_REVIEW blocker when the user has release:application:withdraw permission.",
+              "acceptance": [
+                "The action is absent for other owners and non-IN_REVIEW states",
+                "The action label is cancel rather than withdraw"
+              ],
+              "priority": "must",
+              "source": "User-confirmed scope on 2026-08-20",
+              "counterexample": [
+                "Another user's blocker exposes cancel",
+                "A withdrawn or cancelled blocker exposes cancel"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Conflict cancellation must use a distinct server command with tenant, owner, permission, state, row-version, round, and reason validation.",
+              "acceptance": [
+                "The conflict dialog does not call the normal withdraw endpoint",
+                "Invalid ownership, state, version, round, or reason is rejected"
+              ],
+              "priority": "must",
+              "source": "Approved approach",
+              "counterexample": [
+                "The existing withdraw endpoint receives conflict cancellation"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "The application must become CANCELLED only after its workflow termination event is consumed from a CANCEL_REQUESTED round.",
+              "acceptance": [
+                "The command changes the round from IN_REVIEW to CANCEL_REQUESTED",
+                "TERMINATED maps CANCEL_REQUESTED to application CANCELLED and round TERMINATED",
+                "No active approval task remains after CANCELLED"
+              ],
+              "priority": "must",
+              "source": "User-confirmed final state and workflow consistency design",
+              "counterexample": [
+                "The application is CANCELLED before workflow termination",
+                "A CANCELLED application still has an actionable approval task"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Normal list withdrawal must remain WITHDRAW_REQUESTED to WITHDRAWN and retain edit and resubmit behavior.",
+              "acceptance": [
+                "The normal withdraw endpoint and UI remain available",
+                "A normal terminated withdrawal ends in WITHDRAWN",
+                "WITHDRAWN remains editable and resubmittable"
+              ],
+              "priority": "must",
+              "source": "Explicit user scope exclusion",
+              "counterexample": [
+                "Normal withdrawal ends in CANCELLED",
+                "WITHDRAWN becomes read-only"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Continue must remain disabled while any blocker is IN_REVIEW or its conflict cancellation is pending.",
+              "acceptance": [
+                "The action displays a cancel-processing state",
+                "Two-second polling keeps continue disabled until blockers leave IN_REVIEW"
+              ],
+              "priority": "must",
+              "source": "Existing conflict gate plus confirmed cancellation semantics",
+              "counterexample": [
+                "A new application proceeds while old workflow termination is pending"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "CANCELLED applications must be permanently read-only in UI and server mutation paths.",
+              "acceptance": [
+                "No edit or resubmit control is available",
+                "Update, save, submit, resubmit, attachment add, and attachment delete attempts are rejected server-side"
+              ],
+              "priority": "must",
+              "source": "Explicit user requirement",
+              "counterexample": [
+                "A cancelled application can be edited, saved, resubmitted, or have attachments changed"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "A synchronous workflow termination failure must not leave the application prematurely CANCELLED.",
+              "acceptance": [
+                "The cancel command fails visibly",
+                "Transactional state and event writes roll back",
+                "The dialog remains blocked and can retry after refresh"
+              ],
+              "priority": "must",
+              "source": "Consistency constraint",
+              "counterexample": [
+                "Termination fails but the business application is already CANCELLED"
+              ]
+            }
+          ],
+          "invariants": [
+            "CANCELLED never coexists with an actionable workflow task for the application",
+            "The application remains IN_REVIEW until workflow termination is confirmed",
+            "Normal withdrawal continues to end in WITHDRAWN",
+            "Tenant isolation, ownership checks, permissions, and optimistic locking remain enforced"
+          ],
+          "constraints": [
+            "Reuse the existing workflow termination gateway and lifecycle dispatch",
+            "Do not add a database migration or a new permission key",
+            "Poll only while the conflict dialog is open",
+            "Protect unrelated dirty changes on local rokey"
+          ],
+          "non_goals": [
+            "Change normal list withdrawal, cancellation, or resubmission",
+            "Cancel another user's application",
+            "Change conflict matching or additional-application classification",
+            "Backfill existing WITHDRAWN records to CANCELLED"
+          ],
+          "assumptions": [
+            {
+              "text": "The workflow termination gateway throws on synchronous failure so the transaction can roll back.",
+              "basis": "Existing ReleaseSubmissionService withdrawal implementation",
+              "falsifier": "The gateway returns failure without throwing"
+            },
+            {
+              "text": "Termination lifecycle events identify the current release round.",
+              "basis": "Existing ReleaseWorkflowLifecycleConsumer matching logic",
+              "falsifier": "A termination event cannot be matched to tenant, application, and round"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use a distinct conflict-cancel endpoint and CANCEL_REQUESTED round intent.",
+              "reason": "Separate permanent cancellation from recoverable normal withdrawal.",
+              "source": "User approved recommended approach on 2026-08-20"
+            },
+            {
+              "id": "D2",
+              "decision": "Finalize CANCELLED only from the workflow TERMINATED event.",
+              "reason": "Prevent a cancelled business record from retaining an active approval task.",
+              "source": "Approved design"
+            },
+            {
+              "id": "D3",
+              "decision": "Reuse release:application:withdraw authority for the owned in-review conflict shortcut.",
+              "reason": "Preserve current eligibility and avoid permission migration.",
+              "source": "Current product behavior and approved scope"
+            },
+            {
+              "id": "D4",
+              "decision": "Leave normal withdrawal mapped to WITHDRAWN.",
+              "reason": "Explicit user requirement.",
+              "source": "User confirmation"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "signal": "Conflict dialog calls only the new command, shows correct labels, and gates continuation through polling",
+              "method": "Frontend build, focused interaction checks, and browser verification"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R7"
+              ],
+              "signal": "Service and lifecycle tests prove cancel-intent validation, termination, rollback, and CANCELLED finalization",
+              "method": "JUnit/Mockito release module tests"
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "Existing withdrawal tests plus new regression test end in WITHDRAWN and permit resubmit",
+              "method": "Backend regression tests and browser smoke test"
+            },
+            {
+              "requirement_ids": [
+                "R6"
+              ],
+              "signal": "All cancelled mutation paths reject and detail renders read-only",
+              "method": "Backend mutation tests and browser detail verification"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Approved design R1-R7 reviewed; no blocking unknowns",
+        "recorded_at": "2026-08-20T08:04:28+00:00",
+        "data": {
+          "objective": "追加申请冲突弹框可以把本人审批中的旧申请可靠终止为永久只读的已取消，同时普通撤回继续形成可恢复的已撤回。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "冲突弹框仅为本人审批中的合资格阻塞申请提供取消操作。",
+              "acceptance": [
+                "本人 IN_REVIEW 且有撤回权限时显示取消申请",
+                "其他用户或其他状态不显示"
+              ],
+              "priority": "must",
+              "source": "用户确认的落盘设计",
+              "counterexample": [
+                "其他用户申请暴露取消操作"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "冲突取消必须通过独立受保护命令执行完整服务端校验。",
+              "acceptance": [
+                "冲突弹框不调用普通撤回接口",
+                "租户、所有者、状态、行版本、轮次或原因无效时拒绝"
+              ],
+              "priority": "must",
+              "source": "已批准设计方案",
+              "counterexample": [
+                "直接 API 可以绕过所有者或状态校验"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "申请只能在取消意图对应的工作流终止事件完成后进入 CANCELLED。",
+              "acceptance": [
+                "命令先形成 CANCEL_REQUESTED",
+                "终止事件形成 CANCELLED 和 TERMINATED",
+                "已取消后不存在可审批任务"
+              ],
+              "priority": "must",
+              "source": "用户确认与一致性约束",
+              "counterexample": [
+                "工作流仍活动时申请已取消"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "普通撤回继续形成 WITHDRAWN 并保留编辑和重新提交能力。",
+              "acceptance": [
+                "普通撤回仍使用原接口",
+                "终止后状态为 WITHDRAWN",
+                "已撤回仍可编辑和重新提交"
+              ],
+              "priority": "must",
+              "source": "用户明确排除范围",
+              "counterexample": [
+                "普通撤回被转换成 CANCELLED"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "取消处理中和存在审批中阻塞项时继续申请保持禁用。",
+              "acceptance": [
+                "显示取消处理中",
+                "2 秒轮询确认退出 IN_REVIEW 后才恢复继续"
+              ],
+              "priority": "must",
+              "source": "现有门禁与用户确认",
+              "counterexample": [
+                "终止未完成时允许保存或提交新申请"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "CANCELLED 申请必须在前端和服务端永久只读。",
+              "acceptance": [
+                "详情无编辑和重新提交入口",
+                "更新、提交、重新提交及附件变更均被拒绝"
+              ],
+              "priority": "must",
+              "source": "用户明确要求",
+              "counterexample": [
+                "已取消申请仍可保存或修改附件"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "工作流终止失败不得提前形成已取消终态。",
+              "acceptance": [
+                "接口返回失败",
+                "取消意图和事件写入回滚",
+                "弹框保持阻塞并可刷新重试"
+              ],
+              "priority": "must",
+              "source": "一致性约束",
+              "counterexample": [
+                "终止失败但申请已变为 CANCELLED"
+              ]
+            }
+          ],
+          "invariants": [
+            "CANCELLED 不与可审批活动任务并存",
+            "工作流终止确认前申请保持 IN_REVIEW",
+            "普通撤回终态保持 WITHDRAWN",
+            "租户、所有者、权限和乐观锁校验始终由服务端执行"
+          ],
+          "constraints": [
+            "仅修改 business/release 授权路径",
+            "不修改工作流平台、数据库迁移、权限数据和依赖",
+            "使用 Java 17 与现有 Vue 3/Element Plus 模式",
+            "保护本地 rokey 现有未提交修改",
+            "用户指定 rokey 与规范分支名的偏差必须如实报告"
+          ],
+          "non_goals": [
+            "改变普通撤回或普通取消",
+            "取消其他用户申请",
+            "改变冲突匹配和追加判定",
+            "转换存量 WITHDRAWN 数据"
+          ],
+          "assumptions": [
+            {
+              "text": "工作流终止同步失败会抛异常并触发事务回滚",
+              "basis": "现有普通撤回实现",
+              "falsifier": "建模或测试发现网关吞掉失败"
+            },
+            {
+              "text": "终止事件可以唯一匹配当前审批轮次",
+              "basis": "现有生命周期消费者匹配逻辑",
+              "falsifier": "测试发现无法定位当前轮次"
+            },
+            {
+              "text": "现有 CANCELLED 状态保护覆盖全部写入口",
+              "basis": "ensureEditable 与附件状态检查",
+              "falsifier": "任一取消后写操作测试成功"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "冲突取消如何与普通撤回区分",
+              "options": [
+                "独立取消意图",
+                "立即取消再终止",
+                "撤回后再取消"
+              ],
+              "selected": "独立取消意图",
+              "blocking": false,
+              "source": "用户批准方案 1"
+            },
+            {
+              "question": "是否创建隔离 worktree",
+              "options": [
+                "新建 worktree",
+                "沿用当前 rokey"
+              ],
+              "selected": "沿用当前 rokey",
+              "blocking": false,
+              "source": "用户明确要求基于本地 rokey 验证"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "按钮显示条件和权限",
+              "candidate_sensor": "浏览器角色/状态矩阵"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "端点、服务校验和 HTTP 错误",
+              "candidate_sensor": "Controller 与 Service 测试"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "轮次、申请和审批任务终态",
+              "candidate_sensor": "生命周期测试与浏览器工作流结果"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "普通撤回终态与可编辑性",
+              "candidate_sensor": "回归测试与浏览器列表操作"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "取消中按钮和继续门禁",
+              "candidate_sensor": "2 秒轮询交互检查"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "所有取消后写入口拒绝",
+              "candidate_sensor": "服务测试与详情页检查"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "终止异常后的事务状态",
+              "candidate_sensor": "网关异常单元测试"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Release cancellation state, interfaces, sensors and actuators verified from local rokey",
+        "recorded_at": "2026-08-20T08:09:57+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "release conflict dialog",
+              "release application HTTP/service/store",
+              "release workflow lifecycle consumer",
+              "release application and round state"
+            ],
+            "environment": [
+              "workflow termination gateway and lifecycle dispatch",
+              "local MySQL/auth/browser",
+              "unrelated dirty rokey changes"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "application_status",
+              "owner": "business/release",
+              "valid_values": [
+                "IN_REVIEW",
+                "CANCELLED",
+                "WITHDRAWN"
+              ]
+            },
+            {
+              "name": "round_status",
+              "owner": "business/release",
+              "valid_values": [
+                "IN_REVIEW",
+                "CANCEL_REQUESTED",
+                "WITHDRAW_REQUESTED",
+                "TERMINATED"
+              ]
+            },
+            {
+              "name": "continue_gate",
+              "owner": "ReleaseConflictDialog",
+              "valid_values": [
+                "enabled",
+                "blocked",
+                "refresh-error"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "user, permission and blocker state",
+              "transitions": [
+                "preflight",
+                "owner/status/permission eligibility"
+              ],
+              "outputs": [
+                "cancel action visibility"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "code, rowVersion, reason and authenticated user",
+              "transitions": [
+                "RBAC",
+                "tenant/owner/state/version/round validation"
+              ],
+              "outputs": [
+                "CANCEL_REQUESTED or 400/403/409"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "valid conflict cancel",
+              "transitions": [
+                "round to CANCEL_REQUESTED",
+                "terminate workflow",
+                "consume TERMINATED",
+                "application to CANCELLED",
+                "round to TERMINATED"
+              ],
+              "outputs": [
+                "cancelled application without active task"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "normal withdraw",
+              "transitions": [
+                "WITHDRAW_REQUESTED",
+                "terminate",
+                "consume TERMINATED",
+                "application to WITHDRAWN"
+              ],
+              "outputs": [
+                "editable withdrawn application"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "cancel request and conflict polling",
+              "transitions": [
+                "set pending code",
+                "poll every two seconds",
+                "test IN_REVIEW blockers"
+              ],
+              "outputs": [
+                "processing state and continue gate"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "mutation against CANCELLED",
+              "transitions": [
+                "UI action eligibility",
+                "server status guards"
+              ],
+              "outputs": [
+                "read-only UI and rejected mutation"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "termination gateway exception",
+              "transitions": [
+                "exception propagation",
+                "transaction rollback",
+                "recoverable UI error"
+              ],
+              "outputs": [
+                "application not prematurely cancelled"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "POST /api/release/applications/{code}/conflict-cancel",
+              "producers": [
+                "ReleaseApplicationController"
+              ],
+              "consumers": [
+                "web release API"
+              ],
+              "invariant": "accepted command remains IN_REVIEW until lifecycle finalization"
+            },
+            {
+              "name": "WorkflowTerminateCommand",
+              "producers": [
+                "ReleaseSubmissionService"
+              ],
+              "consumers": [
+                "workflow gateway"
+              ],
+              "invariant": "instance, business key, round and reason are preserved"
+            },
+            {
+              "name": "TERMINATED event",
+              "producers": [
+                "workflow platform"
+              ],
+              "consumers": [
+                "ReleaseWorkflowLifecycleConsumer"
+              ],
+              "invariant": "round intent selects CANCELLED or WITHDRAWN"
+            },
+            {
+              "name": "conflict preview",
+              "producers": [
+                "release preflight"
+              ],
+              "consumers": [
+                "release page and dialog"
+              ],
+              "invariant": "any IN_REVIEW blocker disables continue"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "command validation and rollback",
+              "method": "ReleaseSubmissionServiceTest and controller security test",
+              "blind_spots": [
+                "real event delay"
+              ],
+              "independence": "direct service observation"
+            },
+            {
+              "id": "S2",
+              "target": "termination mapping",
+              "method": "ReleaseWorkflowLifecycleConsumerTest",
+              "blind_spots": [
+                "real event loss"
+              ],
+              "independence": "direct lifecycle injection"
+            },
+            {
+              "id": "S3",
+              "target": "CANCELLED write protection",
+              "method": "application/submission service tests",
+              "blind_spots": [
+                "future unlisted mutation paths"
+              ],
+              "independence": "per-entry service calls"
+            },
+            {
+              "id": "S4",
+              "target": "frontend contract",
+              "method": "production build and scoped search",
+              "blind_spots": [
+                "runtime auth and async behavior"
+              ],
+              "independence": "compiler/static sensor"
+            },
+            {
+              "id": "S5",
+              "target": "eligibility, pending gate, terminal states and layout",
+              "method": "desktop/mobile authenticated browser, network and console",
+              "blind_spots": [
+                "unconstructed concurrency"
+              ],
+              "independence": "runtime end-to-end sensor"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "cancel command and round intent",
+              "action": "modify release controller/service/store",
+              "authority": "REQ-20260820-045 writable paths",
+              "impact_radius": "release application submission",
+              "rollback": "restore endpoint, command and store together"
+            },
+            {
+              "id": "A2",
+              "target": "termination final state",
+              "action": "modify release lifecycle consumer",
+              "authority": "REQ-20260820-045 writable paths",
+              "impact_radius": "release lifecycle mapping",
+              "rollback": "remove CANCEL_REQUESTED branch with A1"
+            },
+            {
+              "id": "A3",
+              "target": "conflict UI semantics",
+              "action": "modify release API/page/dialog",
+              "authority": "REQ-20260820-045 writable paths",
+              "impact_radius": "release conflict flow",
+              "rollback": "restore client, handler and event/copy together"
+            },
+            {
+              "id": "A4",
+              "target": "observability",
+              "action": "add focused tests and run build/browser checks",
+              "authority": "local test permissions",
+              "impact_radius": "tests and local runtime",
+              "rollback": "remove scoped test additions"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "dirty rokey worktree",
+              "effect": "global checks include unrelated signals",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "asynchronous workflow event",
+              "effect": "pending delay or event loss",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "row version concurrency",
+              "effect": "409 response",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "local auth/service/data",
+              "effect": "browser path unavailable",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "termination to lifecycle event",
+              "consequence": "temporary IN_REVIEW/CANCEL_REQUESTED",
+              "sampling_rule": "keep gate and poll until final state or explicit timeout"
+            },
+            {
+              "source": "two-second frontend polling",
+              "consequence": "UI detects final state up to about two seconds later",
+              "sampling_rule": "wait at least one polling interval"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "termination errors propagate",
+              "evidence": "existing transactional withdraw calls gateway directly",
+              "falsifier": "focused test shows swallowed error"
+            },
+            {
+              "text": "round status accepts CANCEL_REQUESTED",
+              "evidence": "JDBC string storage and no Java enum conversion",
+              "falsifier": "schema contract exposes a CHECK constraint"
+            },
+            {
+              "text": "CANCELLED is already non-editable",
+              "evidence": "existing editable and attachment guards",
+              "falsifier": "a focused mutation test succeeds"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3+A4"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A4"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2+A4"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2+A4"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3+A4"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A3+A4"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A3+A4"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1 backend contract and T2 frontend integration bounded, serial and fully measurable",
+        "recorded_at": "2026-08-20T08:11:42+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "实现工作流终止后永久取消的后端状态机，并证明普通撤回不回归。",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "withdraw 形成 WITHDRAW_REQUESTED 并保持申请 IN_REVIEW",
+                "TERMINATED 当前把 WITHDRAW_REQUESTED 映射为 WITHDRAWN",
+                "CANCELLED 已被现有编辑和附件状态守卫排除",
+                "round_status 使用字符串存储"
+              ],
+              "write_scope": [
+                "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowStore.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumer.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java"
+              ],
+              "invariants": [
+                "工作流终止确认前申请保持 IN_REVIEW",
+                "普通撤回终态保持 WITHDRAWN",
+                "所有者、权限、行版本和状态由服务端校验",
+                "不修改 platform/workflow 和数据库"
+              ],
+              "interface_contracts": [
+                "POST /api/release/applications/{code}/conflict-cancel 接收 rowVersion 和必填 reason",
+                "成功响应为 status=IN_REVIEW、operationStatus=CANCEL_REQUESTED",
+                "CANCEL_REQUESTED+TERMINATED -> CANCELLED",
+                "WITHDRAW_REQUESTED+TERMINATED -> WITHDRAWN"
+              ],
+              "non_goals": [
+                "改变普通撤回接口",
+                "新增权限或迁移",
+                "修改工作流平台",
+                "提交或清理 rokey"
+              ],
+              "action_bounds": [
+                "仅增加冲突取消命令、两项条件状态更新和生命周期映射",
+                "仅增加直接覆盖新行为和回归的测试",
+                "不重构申请或工作流包结构"
+              ],
+              "acceptance_checks": [
+                "新命令成功时只形成 CANCEL_REQUESTED 并调用 terminate",
+                "无效所有者、状态、版本、轮次和原因被拒绝",
+                "终止异常不提前形成 CANCELLED",
+                "生命周期把取消意图形成 CANCELLED、普通撤回形成 WITHDRAWN",
+                "CANCELLED 更新、提交、重新提交和附件变更被拒绝",
+                "release 模块测试通过"
+              ],
+              "evidence_required": [
+                "任务实际 diff",
+                "聚焦测试红灯与绿灯命令、退出码和关键断言",
+                "完整 release 模块测试摘要",
+                "范围外扰动和未决项"
+              ],
+              "rollback": "同时恢复端点、service 命令、store 状态方法、生命周期分支和对应测试。",
+              "stop_conditions": [
+                "round_status 不接受 CANCEL_REQUESTED",
+                "终止异常不能回滚",
+                "事件不能匹配当前轮次",
+                "范围内文件出现无法保留的并行修改"
+              ],
+              "escalation_conditions": [
+                "需要修改工作流平台、迁移或权限数据",
+                "普通撤回存在与设计冲突的未建模消费者"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "让冲突弹框调用永久取消命令并完成桌面、移动端集成验收。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "弹框已校验 preflight、owner、IN_REVIEW 和撤回权限",
+                "页面已有 2 秒轮询和继续门禁",
+                "现有响应式卡片动作区和底部栏可复用"
+              ],
+              "write_scope": [
+                "web/src/api/release.ts",
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/components/ReleaseConflictDialog.vue"
+              ],
+              "invariants": [
+                "普通列表撤回继续调用 /withdraw",
+                "仍有 IN_REVIEW 阻塞项时继续申请禁用",
+                "关闭弹框停止轮询并保留原表单",
+                "桌面和移动不新增横向滚动"
+              ],
+              "interface_contracts": [
+                "cancelBlockedReleaseApplication 调用 /conflict-cancel",
+                "弹框输出 cancel 事件并接受 cancellingCode",
+                "显示取消申请/取消处理中",
+                "终止后通过原预检恢复继续"
+              ],
+              "non_goals": [
+                "修改公共 UI、全局样式、路由或权限 store",
+                "改变冲突匹配或普通撤回",
+                "创建新的弹层结构"
+              ],
+              "action_bounds": [
+                "仅替换冲突专用 API、处理函数、状态名、事件和文案",
+                "复用现有轮询、错误恢复和布局",
+                "只在授权三文件内修改"
+              ],
+              "acceptance_checks": [
+                "本人审批中阻塞项显示取消，其他用户或状态不显示",
+                "取消中继续申请禁用，终止后恢复",
+                "旧申请最终 CANCELLED 且详情只读",
+                "普通列表撤回最终 WITHDRAWN 且可编辑重新提交",
+                "前端构建通过",
+                "1440x900 和 390x844 浏览器路径无重叠溢出、网络或控制台错误"
+              ],
+              "evidence_required": [
+                "任务实际 diff",
+                "前端构建命令与退出码",
+                "静态旧文案搜索结果",
+                "浏览器角色、申请单号、视口、请求状态和截图",
+                "扰动与剩余风险"
+              ],
+              "rollback": "同时恢复 release API、页面处理函数/状态和弹框事件/属性/文案，并与 T1 回退同步。",
+              "stop_conditions": [
+                "T1 接口不符合契约",
+                "本地认证或服务无法验证",
+                "无法建立审批中冲突测试数据",
+                "范围内文件出现无法保留的并行修改"
+              ],
+              "escalation_conditions": [
+                "需要公共 UI、全局样式、路由、平台工作流或数据库修改",
+                "移动布局需要超出本需求的重构"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 消费 T1 的新增端点和状态终态契约。"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "运行聚焦后端测试",
+                "运行 ccb-release 完整测试",
+                "独立检查取消与普通撤回状态映射"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "运行前端生产构建",
+                "执行桌面与移动浏览器验收",
+                "执行治理、范围和 diff 检查并区分 rokey 既有扰动"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 完成采样",
+              "trigger": "T1 返回执行报告",
+              "observer": "主 Agent 独立复验",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "T2 与集成采样",
+              "trigger": "T2 构建和浏览器流程完成",
+              "observer": "主 Agent 运行态复验",
+              "sensors": [
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "最终收敛采样",
+              "trigger": "全部任务 verified 且无未关闭反馈",
+              "observer": "收敛验收",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 implemented; focused 36 and release 78 tests pass",
+        "recorded_at": "2026-08-20T08:18:56+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+              "purpose": "add transactional conflict cancel command"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+              "purpose": "expose protected conflict-cancel endpoint"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowStore.java",
+              "purpose": "persist cancel intent and terminal status"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumer.java",
+              "purpose": "map cancel termination to CANCELLED while retaining withdrawal"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+              "purpose": "test command, failure and write guards"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java",
+              "purpose": "test both termination mappings"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+              "purpose": "test CANCELLED update rejection"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java",
+              "purpose": "test endpoint authority"
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3",
+            "R4",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "focused four-class Maven test before implementation",
+              "exit_code": 1,
+              "salient_output": "expected red: 12 compile errors only for missing conflictCancel, markCancelRequested and markCancelled"
+            },
+            {
+              "command": "focused four-class Maven test after implementation",
+              "exit_code": 0,
+              "salient_output": "36 tests, 0 failures, 0 errors; BUILD SUCCESS"
+            },
+            {
+              "command": "JAVA_HOME=Java17 mvn -pl :ccb-release -am test",
+              "exit_code": 0,
+              "salient_output": "152 dependency/release tests; ccb-release 78 tests; 0 failures/errors; BUILD SUCCESS"
+            },
+            {
+              "command": "git diff --check -- T1 scoped files",
+              "exit_code": 0,
+              "salient_output": "no whitespace errors"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "cancel command and failure paths",
+              "result": "pass",
+              "evidence": "ReleaseSubmissionServiceTest passes and proves no direct markCancelled",
+              "limitations": [
+                "Mockito does not execute a real transaction manager"
+              ]
+            },
+            {
+              "check": "cancel and withdrawal lifecycle mapping",
+              "result": "pass",
+              "evidence": "ReleaseWorkflowLifecycleConsumerTest passes for CANCELLED and WITHDRAWN",
+              "limitations": [
+                "real Flowable event is deferred to T2"
+              ]
+            },
+            {
+              "check": "write guards and authority",
+              "result": "pass",
+              "evidence": "CANCELLED update/submit/attachment and controller authority tests pass",
+              "limitations": [
+                "frontend read-only is deferred to T2"
+              ]
+            },
+            {
+              "check": "release regression",
+              "result": "pass",
+              "evidence": "ccb-release 78 tests pass",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "new /conflict-cancel command returns IN_REVIEW/CANCEL_REQUESTED",
+            "new CANCEL_REQUESTED round and CANCELLED application transitions",
+            "lifecycle intent split preserves normal withdrawal",
+            "focused regression coverage added"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "application stays IN_REVIEW before termination",
+              "result": "pass",
+              "evidence": "service test asserts IN_REVIEW and never markCancelled"
+            },
+            {
+              "invariant": "normal withdrawal remains WITHDRAWN",
+              "result": "pass",
+              "evidence": "withdraw lifecycle regression passes"
+            },
+            {
+              "invariant": "server validates owner/version/state/reason",
+              "result": "pass",
+              "evidence": "invalid input tests pass"
+            },
+            {
+              "invariant": "no platform or database change",
+              "result": "pass",
+              "evidence": "all changed surfaces are in business/release"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "all scoped business/release files are untracked on rokey",
+              "impact": "Git has no historical file diff; local patches and sensors protect existing content"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "real workflow/browser verification remains in T2",
+            "global scope checks include pre-existing dirty work"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 implementation, build, regression and service evidence recorded with browser limitation disclosed",
+        "recorded_at": "2026-08-20T08:35:14+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/release.ts",
+              "purpose": "add the dedicated conflict cancellation API while preserving normal withdrawal"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue",
+              "purpose": "orchestrate permanent conflict cancellation, polling and continuation gating"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseConflictDialog.vue",
+              "purpose": "expose owned in-review cancellation with permanent-state copy and disabled continuation"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite production build passed; 2362 modules transformed"
+            },
+            {
+              "command": "scoped conflict withdrawal-semantic search",
+              "exit_code": 1,
+              "salient_output": "no stale conflict references found; rg exit 1 denotes zero matches"
+            },
+            {
+              "command": "scoped cancel and normal-withdraw contract searches",
+              "exit_code": 0,
+              "salient_output": "new conflict-cancel API and cancel bindings found; normal /withdraw handler remains"
+            },
+            {
+              "command": "JAVA_HOME=Java17 mvn -pl :ccb-release -am test",
+              "exit_code": 0,
+              "salient_output": "152 dependency and release tests passed; ccb-release 78 tests; BUILD SUCCESS"
+            },
+            {
+              "command": "JAVA_HOME=Java17 mvn -pl :ccb-boot -am package -DskipTests",
+              "exit_code": 0,
+              "salient_output": "boot JAR rebuilt with the updated release module; BUILD SUCCESS"
+            },
+            {
+              "command": "local backend restart with existing .env and local profile",
+              "exit_code": 0,
+              "salient_output": "Java 17 backend started on port 8080; 44 Flyway migrations validated; schema version 46"
+            },
+            {
+              "command": "curl health and unauthenticated endpoint probes",
+              "exit_code": 0,
+              "salient_output": "actuator health UP; both conflict-cancel and normal withdraw are security protected with HTTP 401"
+            },
+            {
+              "command": "git diff --check -- web/src/api/release.ts web/src/modules/release/ReleaseManagementPrototype.vue web/src/modules/release/components/ReleaseConflictDialog.vue",
+              "exit_code": 0,
+              "salient_output": "no scoped whitespace errors"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "dedicated conflict cancel contract",
+              "result": "pass",
+              "evidence": "the conflict handler calls cancelBlockedReleaseApplication and the API targets /conflict-cancel",
+              "limitations": [
+                "authenticated browser network capture was blocked by local-browser access policy"
+              ]
+            },
+            {
+              "check": "conflict action eligibility and continuation gate",
+              "result": "pass",
+              "evidence": "component requires preflight, IN_REVIEW, matching requester and permission; any IN_REVIEW blocker disables continue; polling interval remains 2000 ms",
+              "limitations": [
+                "desktop and mobile visual interaction were not available"
+              ]
+            },
+            {
+              "check": "permanent cancellation semantics",
+              "result": "pass",
+              "evidence": "button, prompt, pending and success copy consistently use cancellation and warn that the old application cannot be edited",
+              "limitations": [
+                "final read-only detail was verified by backend mutation tests and source contract, not a live browser"
+              ]
+            },
+            {
+              "check": "normal withdrawal regression",
+              "result": "pass",
+              "evidence": "normal list handler still calls withdrawReleaseApplication and the complete release test suite preserves WITHDRAWN mapping",
+              "limitations": [
+                "live list withdrawal was not executed"
+              ]
+            },
+            {
+              "check": "build and running service",
+              "result": "pass",
+              "evidence": "frontend production build passed and the rebuilt backend reports health UP on port 8080",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "added a conflict-only cancellation API call",
+            "renamed conflict-only state, handlers, props and events from withdrawal to cancellation semantics",
+            "kept two-second polling and continuation blocking until the old application leaves IN_REVIEW",
+            "preserved the normal list withdrawal API and handler"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "normal withdrawal continues to end in WITHDRAWN",
+              "result": "pass",
+              "evidence": "normal frontend handler remains and backend regression tests pass"
+            },
+            {
+              "invariant": "conflict cancellation is available only to the owner with permission while IN_REVIEW",
+              "result": "pass",
+              "evidence": "both parent handler and dialog component enforce owner, status and permission guards"
+            },
+            {
+              "invariant": "continue remains disabled while termination is pending",
+              "result": "pass",
+              "evidence": "IN_REVIEW remains the gate and conflict state is refreshed every two seconds"
+            },
+            {
+              "invariant": "no unrelated frontend or platform surface was modified by T2",
+              "result": "pass",
+              "evidence": "T2 writes are limited to the three planned frontend files"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "in-app browser localhost access was denied by browser security policy",
+              "impact": "desktop and mobile live interaction evidence could not be collected"
+            },
+            {
+              "event": "the first direct JAR restart omitted the existing local profile environment",
+              "impact": "startup failed before serving traffic; the service was immediately recovered using the existing .env and local profile without changing configuration"
+            },
+            {
+              "event": "the rokey worktree contains extensive unrelated existing changes and release files are untracked",
+              "impact": "verification uses scoped searches, builds and tests rather than a historical Git diff"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "desktop 1440x900 and mobile 390x844 browser interaction remain unobserved because localhost browser access was denied",
+            "authenticated network capture and live final read-only detail remain unobserved"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Independent rerun: 20 tests pass; schema accepts string round status; no T1 deviation",
+        "recorded_at": "2026-08-20T08:21:20+00:00",
+        "data": {
+          "sample_label": "T1 completion sample",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 focused service and authority rerun",
+              "result": "pass",
+              "raw_evidence": "20 independently rerun tests passed; endpoint authority and invalid owner/state/version/reason checks passed",
+              "limitation": [
+                "local Mockito environment"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1+S2 cancellation command and lifecycle injection",
+              "result": "pass",
+              "raw_evidence": "service retains IN_REVIEW/CANCEL_REQUESTED; lifecycle test maps CANCEL_REQUESTED to CANCELLED",
+              "limitation": [
+                "real workflow event deferred to T2"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S2 withdrawal regression",
+              "result": "pass",
+              "raw_evidence": "WITHDRAW_REQUESTED termination still invokes markWithdrawn and records WITHDRAWN",
+              "limitation": [
+                "frontend editability deferred to T2"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S3 mutation tests",
+              "result": "pass",
+              "raw_evidence": "CANCELLED update, submit and attachment delete are rejected before mutation",
+              "limitation": [
+                "frontend detail deferred to T2"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1 gateway failure test",
+              "result": "pass",
+              "raw_evidence": "termination exception propagates and no CANCEL_REQUESTED event or markCancelled call occurs",
+              "limitation": [
+                "transaction rollback itself relies on Spring @Transactional integration"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "business/release source files are untracked on rokey",
+              "impact": "No historical Git diff; observation relies on repeatable tests, exact code facts and scoped checks"
+            }
+          ],
+          "coverage_gaps": [
+            "Real workflow task termination and browser behavior are intentionally sampled after T2"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Independent T2 sample: build and 36 focused tests pass; no deviation observed; browser coverage limitation recorded",
+        "recorded_at": "2026-08-20T08:38:05+00:00",
+        "data": {
+          "sample_label": "T2 completion sample",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S3 frontend compile plus exact eligibility contract inspection",
+              "result": "pass",
+              "raw_evidence": "Vue production build passed; dialog requires preflight, IN_REVIEW, matching requester ID and withdrawal permission before rendering 取消申请",
+              "limitation": [
+                "desktop and mobile live rendering could not be sampled because localhost browser access was denied"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 focused authority/service tests plus running endpoint probe",
+              "result": "pass",
+              "raw_evidence": "36 focused backend tests passed; frontend calls /conflict-cancel; rebuilt running service protects both new and old endpoints with HTTP 401 when unauthenticated",
+              "limitation": [
+                "no authenticated browser network capture"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 focused service and lifecycle rerun",
+              "result": "pass",
+              "raw_evidence": "ReleaseSubmissionServiceTest and ReleaseWorkflowLifecycleConsumerTest independently reran successfully within the 36-test sample",
+              "limitation": [
+                "no live application was cancelled during this sample"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 withdrawal lifecycle regression plus frontend contract search",
+              "result": "pass",
+              "raw_evidence": "normal withdrawReleaseApplication and /withdraw handler remain; lifecycle regression maps withdrawal to WITHDRAWN; focused suite passed",
+              "limitation": [
+                "live edit and resubmit after withdrawal were not sampled"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S3 compiled continuation gate and polling contract",
+              "result": "pass",
+              "raw_evidence": "any IN_REVIEW conflict yields 前一申请仍在审批中，请先取消, disables 继续申请, and schedules conflict refresh after 2000 ms",
+              "limitation": [
+                "visual pending-state timing was not sampled"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1 backend mutation tests plus S3 compiled frontend state contract",
+              "result": "pass",
+              "raw_evidence": "CANCELLED update, submit and attachment mutations are rejected in passing tests; dialog warns that cancellation is permanent and application status labels render 已取消",
+              "limitation": [
+                "live cancelled detail view was not sampled"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1 focused gateway failure regression",
+              "result": "pass",
+              "raw_evidence": "the 36-test focused rerun includes gateway failure propagation without premature CANCELLED transition",
+              "limitation": [
+                "real synchronous gateway outage was not injected into the running service"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "in-app browser security policy denied access to 127.0.0.1:5173",
+              "impact": "live desktop, mobile, authenticated network and final detail evidence are unavailable; this is a sensor limitation rather than an observed product deviation"
+            },
+            {
+              "event": "rokey contains extensive pre-existing dirty and untracked work",
+              "impact": "observation used scoped repeatable sensors and did not clean or normalize the worktree"
+            }
+          ],
+          "coverage_gaps": [
+            "desktop 1440x900 conflict dialog interaction and layout",
+            "mobile 390x844 conflict dialog interaction and layout",
+            "authenticated live cancellation through workflow termination to CANCELLED",
+            "live normal withdrawal followed by edit and resubmit"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final audit: implementation and automated checks pass; required browser flow and repository release gates remain externally blocked",
+        "recorded_at": "2026-08-20T08:42:57+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "partial",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "compiled dialog contract enforces preflight, IN_REVIEW, owner and permission guards"
+              ],
+              "limitations": [
+                "required desktop and mobile live UI evidence is unavailable because browser localhost access was denied"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "dedicated /conflict-cancel frontend and controller contracts",
+                "service validation and authority tests pass",
+                "running endpoint is security protected"
+              ],
+              "limitations": [
+                "no authenticated live request capture"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "CANCEL_REQUESTED command and CANCELLED lifecycle tests pass",
+                "application remains IN_REVIEW before termination in service tests"
+              ],
+              "limitations": [
+                "live Flowable termination was not executed during final sampling"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "partial",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "WITHDRAW_REQUESTED to WITHDRAWN regression passes",
+                "normal frontend /withdraw handler remains"
+              ],
+              "limitations": [
+                "required live edit and resubmit after withdrawal were not sampled"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "partial",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "compiled 2000 ms polling and IN_REVIEW continuation gate contracts are present"
+              ],
+              "limitations": [
+                "live pending cancellation and button enablement timing were not sampled"
+              ]
+            },
+            {
+              "id": "R6",
+              "result": "partial",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "CANCELLED update, submit and attachment mutation tests pass",
+                "frontend cancellation copy states permanent read-only outcome"
+              ],
+              "limitations": [
+                "required live cancelled detail rendering was not sampled"
+              ]
+            },
+            {
+              "id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "gateway failure propagation test passes without premature CANCELLED transition"
+              ],
+              "limitations": [
+                "transaction rollback uses the production Spring transaction boundary but the failure sensor is Mockito based"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "78 release tests and 152 dependency/release tests pass",
+                "independent focused backend sample passes"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "frontend production build passes twice",
+                "exact cancel, withdrawal and polling contract checks pass",
+                "rebuilt backend and frontend services report HTTP 200"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Java 17 release and dependency suite",
+              "result": "pass",
+              "evidence": "152 tests, 0 failures, 0 errors; ccb-release 78 tests"
+            },
+            {
+              "check": "independent focused state-machine suite",
+              "result": "pass",
+              "evidence": "36 tests, 0 failures, 0 errors"
+            },
+            {
+              "check": "frontend production build",
+              "result": "pass",
+              "evidence": "vue-tsc and Vite build passed; 2362 modules transformed"
+            },
+            {
+              "check": "development entry and whitespace",
+              "result": "pass",
+              "evidence": "development entry, global git diff --check and scoped diff check passed"
+            },
+            {
+              "check": "repository governance",
+              "result": "blocked-external",
+              "evidence": "module, skill and development checks pass; layout fails on eight pre-existing files belonging to other requirements"
+            },
+            {
+              "check": "scope governance",
+              "result": "blocked-approved-deviation",
+              "evidence": "scope checker rejects branch rokey; user explicitly required implementation on rokey"
+            },
+            {
+              "check": "required browser flow",
+              "result": "blocked-external",
+              "evidence": "in-app browser security policy denied access to 127.0.0.1:5173"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "CANCELLED never coexists with a deliberately retained actionable task",
+              "result": "pass",
+              "evidence": "business state changes only from the workflow TERMINATED consumer"
+            },
+            {
+              "invariant": "application remains IN_REVIEW until workflow termination is confirmed",
+              "result": "pass",
+              "evidence": "service and lifecycle tests pass"
+            },
+            {
+              "invariant": "normal withdrawal remains WITHDRAWN",
+              "result": "pass",
+              "evidence": "backend lifecycle regression and frontend handler contract pass"
+            },
+            {
+              "invariant": "tenant, owner, permission and optimistic locking checks remain enforced",
+              "result": "pass",
+              "evidence": "service validation and controller authority tests pass"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "backend process initially restarted without the existing local environment",
+              "result": "pass",
+              "evidence": "failed process served no traffic; service recovered with unchanged .env and local profile, then reported health UP"
+            },
+            {
+              "disturbance": "large dirty rokey worktree",
+              "result": "pass",
+              "evidence": "no reset, clean, checkout, commit or unrelated edit was performed; scoped checks pass"
+            }
+          ],
+          "residual_risks": [
+            "desktop and mobile conflict dialog behavior and layout require a user-authorized localhost browser sample",
+            "authenticated end-to-end workflow cancellation and normal withdrawal edit/resubmit remain unobserved in the live UI",
+            "repository governance remains red because of eight pre-existing ledger filenames outside REQ-20260820-045",
+            "scope governance remains red by design because the user required branch rokey"
+          ],
+          "gate_result": "blocked",
+          "route_reason": "Implementation and automated regression evidence pass with zero observed deviations, but the required live browser flow is unavailable and repository/scope release checks remain externally blocked; full convergence cannot be declared."
+        }
+      }
+    ]
+  },
+  "objective": "追加申请冲突弹框可以把本人审批中的旧申请可靠终止为永久只读的已取消，同时普通撤回继续形成可恢复的已撤回。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "冲突弹框仅为本人审批中的合资格阻塞申请提供取消操作。",
+      "acceptance": [
+        "本人 IN_REVIEW 且有撤回权限时显示取消申请",
+        "其他用户或其他状态不显示"
+      ],
+      "priority": "must",
+      "source": "用户确认的落盘设计",
+      "counterexample": [
+        "其他用户申请暴露取消操作"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "冲突取消必须通过独立受保护命令执行完整服务端校验。",
+      "acceptance": [
+        "冲突弹框不调用普通撤回接口",
+        "租户、所有者、状态、行版本、轮次或原因无效时拒绝"
+      ],
+      "priority": "must",
+      "source": "已批准设计方案",
+      "counterexample": [
+        "直接 API 可以绕过所有者或状态校验"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "申请只能在取消意图对应的工作流终止事件完成后进入 CANCELLED。",
+      "acceptance": [
+        "命令先形成 CANCEL_REQUESTED",
+        "终止事件形成 CANCELLED 和 TERMINATED",
+        "已取消后不存在可审批任务"
+      ],
+      "priority": "must",
+      "source": "用户确认与一致性约束",
+      "counterexample": [
+        "工作流仍活动时申请已取消"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "普通撤回继续形成 WITHDRAWN 并保留编辑和重新提交能力。",
+      "acceptance": [
+        "普通撤回仍使用原接口",
+        "终止后状态为 WITHDRAWN",
+        "已撤回仍可编辑和重新提交"
+      ],
+      "priority": "must",
+      "source": "用户明确排除范围",
+      "counterexample": [
+        "普通撤回被转换成 CANCELLED"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "取消处理中和存在审批中阻塞项时继续申请保持禁用。",
+      "acceptance": [
+        "显示取消处理中",
+        "2 秒轮询确认退出 IN_REVIEW 后才恢复继续"
+      ],
+      "priority": "must",
+      "source": "现有门禁与用户确认",
+      "counterexample": [
+        "终止未完成时允许保存或提交新申请"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "CANCELLED 申请必须在前端和服务端永久只读。",
+      "acceptance": [
+        "详情无编辑和重新提交入口",
+        "更新、提交、重新提交及附件变更均被拒绝"
+      ],
+      "priority": "must",
+      "source": "用户明确要求",
+      "counterexample": [
+        "已取消申请仍可保存或修改附件"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "工作流终止失败不得提前形成已取消终态。",
+      "acceptance": [
+        "接口返回失败",
+        "取消意图和事件写入回滚",
+        "弹框保持阻塞并可刷新重试"
+      ],
+      "priority": "must",
+      "source": "一致性约束",
+      "counterexample": [
+        "终止失败但申请已变为 CANCELLED"
+      ]
+    }
+  ],
+  "invariants": [
+    "CANCELLED 不与可审批活动任务并存",
+    "工作流终止确认前申请保持 IN_REVIEW",
+    "普通撤回终态保持 WITHDRAWN",
+    "租户、所有者、权限和乐观锁校验始终由服务端执行"
+  ],
+  "constraints": [
+    "仅修改 business/release 授权路径",
+    "不修改工作流平台、数据库迁移、权限数据和依赖",
+    "使用 Java 17 与现有 Vue 3/Element Plus 模式",
+    "保护本地 rokey 现有未提交修改",
+    "用户指定 rokey 与规范分支名的偏差必须如实报告"
+  ],
+  "non_goals": [
+    "改变普通撤回或普通取消",
+    "取消其他用户申请",
+    "改变冲突匹配和追加判定",
+    "转换存量 WITHDRAWN 数据"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-045-release-conflict-cancel-finalization/handoff.json",
+    "imported_at": "2026-08-20T08:02:49+00:00",
+    "topic": "req-20260820-045-release-conflict-cancel-finalization",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260820-045-release-conflict-cancel-finalization",
+      "handoff_status": "approved",
+      "created_at": "2026-08-20T15:59:12+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260820-045-release-conflict-cancel-finalization",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-20-release-conflict-cancel-finalization-design.md",
+        "objective": "Cancel an owned in-review blocking application from the additional-application conflict dialog into the permanent read-only CANCELLED state after workflow termination, without changing normal withdrawal semantics.",
+        "users": [
+          "Release applicants resolving their own in-review blocker while creating or saving an additional application"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "The conflict dialog must show cancel only for an owned IN_REVIEW blocker when the user has release:application:withdraw permission.",
+            "acceptance": [
+              "The action is absent for other owners and non-IN_REVIEW states",
+              "The action label is cancel rather than withdraw"
+            ],
+            "priority": "must",
+            "source": "User-confirmed scope on 2026-08-20",
+            "counterexample": [
+              "Another user's blocker exposes cancel",
+              "A withdrawn or cancelled blocker exposes cancel"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Conflict cancellation must use a distinct server command with tenant, owner, permission, state, row-version, round, and reason validation.",
+            "acceptance": [
+              "The conflict dialog does not call the normal withdraw endpoint",
+              "Invalid ownership, state, version, round, or reason is rejected"
+            ],
+            "priority": "must",
+            "source": "Approved approach",
+            "counterexample": [
+              "The existing withdraw endpoint receives conflict cancellation"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "The application must become CANCELLED only after its workflow termination event is consumed from a CANCEL_REQUESTED round.",
+            "acceptance": [
+              "The command changes the round from IN_REVIEW to CANCEL_REQUESTED",
+              "TERMINATED maps CANCEL_REQUESTED to application CANCELLED and round TERMINATED",
+              "No active approval task remains after CANCELLED"
+            ],
+            "priority": "must",
+            "source": "User-confirmed final state and workflow consistency design",
+            "counterexample": [
+              "The application is CANCELLED before workflow termination",
+              "A CANCELLED application still has an actionable approval task"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Normal list withdrawal must remain WITHDRAW_REQUESTED to WITHDRAWN and retain edit and resubmit behavior.",
+            "acceptance": [
+              "The normal withdraw endpoint and UI remain available",
+              "A normal terminated withdrawal ends in WITHDRAWN",
+              "WITHDRAWN remains editable and resubmittable"
+            ],
+            "priority": "must",
+            "source": "Explicit user scope exclusion",
+            "counterexample": [
+              "Normal withdrawal ends in CANCELLED",
+              "WITHDRAWN becomes read-only"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Continue must remain disabled while any blocker is IN_REVIEW or its conflict cancellation is pending.",
+            "acceptance": [
+              "The action displays a cancel-processing state",
+              "Two-second polling keeps continue disabled until blockers leave IN_REVIEW"
+            ],
+            "priority": "must",
+            "source": "Existing conflict gate plus confirmed cancellation semantics",
+            "counterexample": [
+              "A new application proceeds while old workflow termination is pending"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "CANCELLED applications must be permanently read-only in UI and server mutation paths.",
+            "acceptance": [
+              "No edit or resubmit control is available",
+              "Update, save, submit, resubmit, attachment add, and attachment delete attempts are rejected server-side"
+            ],
+            "priority": "must",
+            "source": "Explicit user requirement",
+            "counterexample": [
+              "A cancelled application can be edited, saved, resubmitted, or have attachments changed"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "A synchronous workflow termination failure must not leave the application prematurely CANCELLED.",
+            "acceptance": [
+              "The cancel command fails visibly",
+              "Transactional state and event writes roll back",
+              "The dialog remains blocked and can retry after refresh"
+            ],
+            "priority": "must",
+            "source": "Consistency constraint",
+            "counterexample": [
+              "Termination fails but the business application is already CANCELLED"
+            ]
+          }
+        ],
+        "invariants": [
+          "CANCELLED never coexists with an actionable workflow task for the application",
+          "The application remains IN_REVIEW until workflow termination is confirmed",
+          "Normal withdrawal continues to end in WITHDRAWN",
+          "Tenant isolation, ownership checks, permissions, and optimistic locking remain enforced"
+        ],
+        "constraints": [
+          "Reuse the existing workflow termination gateway and lifecycle dispatch",
+          "Do not add a database migration or a new permission key",
+          "Poll only while the conflict dialog is open",
+          "Protect unrelated dirty changes on local rokey"
+        ],
+        "non_goals": [
+          "Change normal list withdrawal, cancellation, or resubmission",
+          "Cancel another user's application",
+          "Change conflict matching or additional-application classification",
+          "Backfill existing WITHDRAWN records to CANCELLED"
+        ],
+        "selected_approach": {
+          "name": "Distinct cancel intent with lifecycle finalization",
+          "reason": "It keeps workflow and business state consistent while preserving normal withdrawal semantics.",
+          "alternatives": [
+            {
+              "name": "Immediately set CANCELLED then terminate",
+              "rejected_because": "Termination failure can leave a cancelled application with an active approval task."
+            },
+            {
+              "name": "Withdraw then invoke normal cancel",
+              "rejected_because": "It creates a transient editable WITHDRAWN state and an extra row-version race."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "Conflict cancel command",
+              "Release round intent",
+              "Workflow termination mapping",
+              "Conflict dialog action and polling",
+              "Cancelled write protection verification"
+            ],
+            "outside": [
+              "Normal withdrawal behavior",
+              "Workflow engine internals",
+              "Conflict matching rules",
+              "Permission schema"
+            ]
+          },
+          "components": [
+            {
+              "name": "ReleaseApplicationController",
+              "responsibility": "Expose the conflict-cancel command under existing withdrawal authority",
+              "depends_on": [
+                "ReleaseSubmissionService"
+              ]
+            },
+            {
+              "name": "ReleaseSubmissionService",
+              "responsibility": "Validate, mark CANCEL_REQUESTED, terminate workflow, and record the request event",
+              "depends_on": [
+                "ReleaseWorkflowStore",
+                "ReleaseWorkflowGateway"
+              ]
+            },
+            {
+              "name": "ReleaseWorkflowStore",
+              "responsibility": "Perform optimistic round and application state transitions",
+              "depends_on": [
+                "Spring JDBC"
+              ]
+            },
+            {
+              "name": "ReleaseWorkflowLifecycleConsumer",
+              "responsibility": "Map terminated workflow intent to CANCELLED or WITHDRAWN",
+              "depends_on": [
+                "ReleaseWorkflowStore",
+                "ReleaseApplicationStore"
+              ]
+            },
+            {
+              "name": "ReleaseManagementPrototype",
+              "responsibility": "Invoke conflict cancellation and retain the continue gate until completion",
+              "depends_on": [
+                "Release API",
+                "ReleaseConflictDialog"
+              ]
+            },
+            {
+              "name": "ReleaseConflictDialog",
+              "responsibility": "Render cancel eligibility, pending state, and blocked continuation",
+              "depends_on": [
+                "Conflict report"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "POST /api/release/applications/{code}/conflict-cancel",
+              "producer": "ReleaseApplicationController",
+              "consumers": [
+                "ReleaseManagementPrototype"
+              ],
+              "contract": "Accept rowVersion and required reason, mark cancellation intent, request workflow termination, and return WorkflowActionResult while application remains IN_REVIEW."
+            },
+            {
+              "name": "Workflow TERMINATED lifecycle event",
+              "producer": "Workflow platform",
+              "consumers": [
+                "ReleaseWorkflowLifecycleConsumer"
+              ],
+              "contract": "CANCEL_REQUESTED maps to CANCELLED; WITHDRAW_REQUESTED remains mapped to WITHDRAWN."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "Owned IN_REVIEW blocker plus cancellation reason",
+              "transitions": [
+                "Validate",
+                "Round IN_REVIEW to CANCEL_REQUESTED",
+                "Terminate workflow",
+                "Consume TERMINATED",
+                "Application IN_REVIEW to CANCELLED",
+                "Round to TERMINATED",
+                "Poll conflict report"
+              ],
+              "output": "Read-only cancelled old application and unblocked continuation"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Ownership, status, row version, or round changed",
+            "behavior": "Return conflict and keep continue disabled",
+            "recovery": "Refresh blockers and retry if still eligible"
+          },
+          {
+            "condition": "Workflow termination throws synchronously",
+            "behavior": "Rollback cancellation intent and return an error",
+            "recovery": "Keep blocker active and allow retry"
+          },
+          {
+            "condition": "Lifecycle event is delayed",
+            "behavior": "Keep IN_REVIEW and show cancellation processing",
+            "recovery": "Continue two-second polling while dialog remains open"
+          },
+          {
+            "condition": "Cancelled mutation is attempted",
+            "behavior": "Reject server-side regardless of UI state",
+            "recovery": "Reload the read-only detail"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Retain authentication, tenant isolation, owner checks, permission checks, and optimistic locking"
+          ],
+          "performance": [
+            "No background poll outside the open dialog",
+            "No additional full-table query"
+          ],
+          "compatibility": [
+            "Normal withdraw API and state machine remain unchanged",
+            "New endpoint is additive",
+            "No schema migration"
+          ],
+          "operations": [
+            "CANCEL_REQUESTED round state and request/lifecycle events expose pending and completed cancellation"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R5"
+            ],
+            "signal": "Conflict dialog calls only the new command, shows correct labels, and gates continuation through polling",
+            "method": "Frontend build, focused interaction checks, and browser verification"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R7"
+            ],
+            "signal": "Service and lifecycle tests prove cancel-intent validation, termination, rollback, and CANCELLED finalization",
+            "method": "JUnit/Mockito release module tests"
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "Existing withdrawal tests plus new regression test end in WITHDRAWN and permit resubmit",
+            "method": "Backend regression tests and browser smoke test"
+          },
+          {
+            "requirement_ids": [
+              "R6"
+            ],
+            "signal": "All cancelled mutation paths reject and detail renders read-only",
+            "method": "Backend mutation tests and browser detail verification"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "The workflow termination gateway throws on synchronous failure so the transaction can roll back.",
+            "basis": "Existing ReleaseSubmissionService withdrawal implementation",
+            "falsifier": "The gateway returns failure without throwing"
+          },
+          {
+            "text": "Termination lifecycle events identify the current release round.",
+            "basis": "Existing ReleaseWorkflowLifecycleConsumer matching logic",
+            "falsifier": "A termination event cannot be matched to tenant, application, and round"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use a distinct conflict-cancel endpoint and CANCEL_REQUESTED round intent.",
+            "reason": "Separate permanent cancellation from recoverable normal withdrawal.",
+            "source": "User approved recommended approach on 2026-08-20"
+          },
+          {
+            "id": "D2",
+            "decision": "Finalize CANCELLED only from the workflow TERMINATED event.",
+            "reason": "Prevent a cancelled business record from retaining an active approval task.",
+            "source": "Approved design"
+          },
+          {
+            "id": "D3",
+            "decision": "Reuse release:application:withdraw authority for the owned in-review conflict shortcut.",
+            "reason": "Preserve current eligibility and avoid permission migration.",
+            "source": "Current product behavior and approved scope"
+          },
+          {
+            "id": "D4",
+            "decision": "Leave normal withdrawal mapped to WITHDRAWN.",
+            "reason": "Explicit user requirement.",
+            "source": "User confirmation"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Termination event is delayed or lost",
+            "impact": "The blocker remains IN_REVIEW/CANCEL_REQUESTED and continuation stays disabled",
+            "mitigation": "Expose processing state, retain event logs, poll while open, and use existing lifecycle replay operations"
+          },
+          {
+            "risk": "A partial rollback removes only one side of the new state mapping",
+            "impact": "CANCEL_REQUESTED rounds may never converge",
+            "mitigation": "Treat endpoint, store transition, lifecycle mapping, and UI call as one rollback unit"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "The user reviewed the written revision 1 and requested implementation on 2026-08-20.",
+          "confirmed_at": "2026-08-20T15:42:19+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-20-release-conflict-cancel-finalization-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Permanent conflict cancellation must not change normal withdrawal",
+          "Application stays IN_REVIEW until workflow termination",
+          "No platform, migration, permission, dependency, commit, push, cleanup or unrelated revert",
+          "Use Java 17 and preserve dirty rokey changes",
+          "Record user-required rokey as a governance naming deviation"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+            "status": "existing",
+            "responsibility": "Orchestrate workflow-backed cancellation",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+            "status": "existing",
+            "responsibility": "Adapt protected HTTP command",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowStore.java",
+            "status": "existing",
+            "responsibility": "Persist conditional release states",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumer.java",
+            "status": "existing",
+            "responsibility": "Finalize release state from workflow lifecycle",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+            "status": "existing",
+            "responsibility": "Verify the scoped behavior",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+            "status": "existing",
+            "responsibility": "Verify the scoped behavior",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java",
+            "status": "existing",
+            "responsibility": "Verify the scoped behavior",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java",
+            "status": "existing",
+            "responsibility": "Verify the scoped behavior",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "web/src/api/release.ts",
+            "status": "existing",
+            "responsibility": "Expose release HTTP clients",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "web/src/modules/release/ReleaseManagementPrototype.vue",
+            "status": "existing",
+            "responsibility": "Render and orchestrate conflict cancellation",
+            "evidence": "Inspected existing implementation on local rokey"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseConflictDialog.vue",
+            "status": "existing",
+            "responsibility": "Render and orchestrate conflict cancellation",
+            "evidence": "Inspected existing implementation on local rokey"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Implement workflow-backed permanent conflict cancellation and preserve normal withdrawal.",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "withdraw uses WITHDRAW_REQUESTED and leaves application IN_REVIEW",
+              "TERMINATED maps normal withdrawal to WITHDRAWN",
+              "CANCELLED is excluded from existing editable states",
+              "round status is a string"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowStore.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumer.java"
+              ],
+              "test": [
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "Workflow termination gateway",
+                "StateActionRequest",
+                "TERMINATED lifecycle event"
+              ],
+              "produces": [
+                "conflictCancel service and HTTP endpoint",
+                "markCancelRequested and markCancelled",
+                "CANCEL_REQUESTED to CANCELLED mapping"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add focused failing service, authorization, lifecycle and cancelled mutation tests.",
+                "command": null,
+                "expected": "Tests express cancel finalization and withdrawal regression.",
+                "evidence": "Named test methods and assertions."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Run focused tests before implementation.",
+                "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=ReleaseSubmissionServiceTest,ReleaseWorkflowLifecycleConsumerTest,ReleaseApplicationServiceTest,ReleaseApplicationControllerSecurityTest test",
+                "expected": "New contract fails for missing implementation only.",
+                "evidence": "Exit code and first relevant failure."
+              },
+              {
+                "id": "T1-S3",
+                "action": "Implement the conditional stores, transactional command, protected endpoint and lifecycle mapping.",
+                "command": null,
+                "expected": "Cancellation remains IN_REVIEW until termination then becomes CANCELLED; withdrawal remains WITHDRAWN.",
+                "evidence": "Scoped diff and tests."
+              },
+              {
+                "id": "T1-S4",
+                "action": "Run release regression tests.",
+                "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test",
+                "expected": "BUILD SUCCESS and zero failures.",
+                "evidence": "Exit code and test summary."
+              },
+              {
+                "id": "T1-S5",
+                "action": "Check scoped diff.",
+                "command": "git diff --check -- server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowStore.java server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumer.java server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java",
+                "expected": "No whitespace errors.",
+                "evidence": "Exit code."
+              }
+            ],
+            "acceptance_checks": [
+              "Cancel command validates owner, state, version, round and reason",
+              "CANCEL_REQUESTED terminates to CANCELLED",
+              "WITHDRAW_REQUESTED still terminates to WITHDRAWN",
+              "CANCELLED mutations fail",
+              "Termination failure does not prematurely cancel"
+            ],
+            "risks": [
+              "Delayed lifecycle event",
+              "Withdrawal regression"
+            ],
+            "rollback": "Remove endpoint, command, store methods, mapping and tests together.",
+            "stop_conditions": [
+              "Round status rejects CANCEL_REQUESTED",
+              "Termination failure cannot roll back",
+              "Lifecycle cannot match round",
+              "Concurrent scoped edits cannot be preserved"
+            ],
+            "escalation_conditions": [
+              "Platform workflow, migration or permission data change is required",
+              "Normal withdrawal has conflicting undocumented behavior"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Connect the conflict dialog to permanent cancellation and verify the complete flow.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "Dialog eligibility already checks preflight, owner, IN_REVIEW and withdrawal permission",
+              "Page polls every two seconds and blocks continue",
+              "Existing responsive layout is reused"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/release.ts",
+                "web/src/modules/release/ReleaseManagementPrototype.vue",
+                "web/src/modules/release/components/ReleaseConflictDialog.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "POST /release/applications/{code}/conflict-cancel"
+              ],
+              "produces": [
+                "cancelBlockedReleaseApplication",
+                "cancel event and cancellingCode prop",
+                "permanent cancellation UI copy"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Run frontend baseline build.",
+                "command": "npm --prefix web run build",
+                "expected": "Build succeeds.",
+                "evidence": "Exit code."
+              },
+              {
+                "id": "T2-S2",
+                "action": "Add the client command and switch only the conflict flow, event, state and copy.",
+                "command": null,
+                "expected": "Conflict uses /conflict-cancel; list withdrawal keeps /withdraw and polling remains.",
+                "evidence": "Scoped diff."
+              },
+              {
+                "id": "T2-S3",
+                "action": "Run frontend build and scoped stale-copy search.",
+                "command": "npm --prefix web run build",
+                "expected": "Build succeeds without stale conflict withdrawal semantics.",
+                "evidence": "Build and search output."
+              },
+              {
+                "id": "T2-S4",
+                "action": "Verify desktop 1440x900 and mobile 390x844 with authenticated local browser.",
+                "command": "Use in-app browser at http://127.0.0.1:5173 and backend http://127.0.0.1:8080",
+                "expected": "Eligibility, pending gate, CANCELLED read-only, continuation and normal WITHDRAWN regression pass.",
+                "evidence": "Application codes, role, request statuses and screenshots."
+              },
+              {
+                "id": "T2-S5",
+                "action": "Run integrated checks and scoped diff.",
+                "command": "git diff --check -- web/src/api/release.ts web/src/modules/release/ReleaseManagementPrototype.vue web/src/modules/release/components/ReleaseConflictDialog.vue",
+                "expected": "No scoped whitespace errors.",
+                "evidence": "Exit codes and file list."
+              }
+            ],
+            "acceptance_checks": [
+              "Only owned IN_REVIEW blockers expose cancel",
+              "Pending cancel blocks continue",
+              "Cancelled detail is read-only",
+              "Normal withdrawal remains editable and resubmittable",
+              "Desktop and mobile controls remain usable"
+            ],
+            "risks": [
+              "Local auth or data may block browser evidence",
+              "Async termination delay"
+            ],
+            "rollback": "Restore client, page handler/state and dialog event/prop/copy with T1 rollback.",
+            "stop_conditions": [
+              "T1 contract differs",
+              "Local services prevent verification",
+              "No valid conflict data",
+              "Concurrent scoped edits cannot be preserved"
+            ],
+            "escalation_conditions": [
+              "Shared UI, global style, router, workflow platform or database change is required",
+              "Mobile layout needs out-of-scope restructuring"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Frontend integration consumes the backend endpoint and final-state contract produced by T1."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Contents/Home mvn -pl :ccb-release -am test",
+            "expected": "BUILD SUCCESS with zero failures"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Production build succeeds"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "No new violation; branch deviation is reported honestly"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-045-release-conflict-cancel-finalization/codex-task-scope.yaml --working-tree",
+            "expected": "Task and pre-existing dirty-worktree deviations are separated"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "Authenticated desktop/mobile browser verification",
+            "expected": "Cancel finalization and withdrawal regression pass"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User reviewed plan revision 1 and requested implementation on 2026-08-20.",
+          "confirmed_at": "2026-08-20T15:59:12+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Release application, release round, workflow termination lifecycle and conflict dialog"
+        ],
+        "state_variable_candidates": [
+          "Application IN_REVIEW/CANCELLED/WITHDRAWN",
+          "Round IN_REVIEW/CANCEL_REQUESTED/WITHDRAW_REQUESTED/TERMINATED",
+          "Frontend cancellation pending and continue gate"
+        ],
+        "interface_candidates": [
+          "Conflict cancel HTTP command",
+          "WorkflowTerminateCommand",
+          "TERMINATED event",
+          "Conflict preflight"
+        ],
+        "sensor_candidates": [
+          "JUnit assertions",
+          "Events",
+          "HTTP status",
+          "Polling",
+          "Button state",
+          "Browser network and console"
+        ],
+        "actuator_candidates": [
+          "Round transition",
+          "Workflow termination",
+          "Lifecycle transition",
+          "Frontend gate"
+        ],
+        "disturbance_candidates": [
+          "Concurrent version change",
+          "Delayed or duplicate event",
+          "Gateway error",
+          "Local auth/service failure",
+          "Dirty worktree"
+        ],
+        "delay_candidates": [
+          "Workflow termination delay",
+          "Two-second polling delay"
+        ],
+        "assumptions": [
+          {
+            "text": "Termination throws on synchronous failure",
+            "basis": "Existing withdrawal",
+            "falsifier": "Gateway reports failure without throwing"
+          },
+          {
+            "text": "Events identify current round",
+            "basis": "Existing matching",
+            "falsifier": "Termination cannot match round"
+          },
+          {
+            "text": "CANCELLED guards cover all mutations",
+            "basis": "Existing edit and attachment guards",
+            "falsifier": "A cancelled mutation succeeds"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"workflow termination gateway and lifecycle dispatch\", \"local MySQL/auth/browser\", \"unrelated dirty rokey changes\"], \"inside\": [\"release conflict dialog\", \"release application HTTP/service/store\", \"release workflow lifecycle consumer\", \"release application and round state\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"real event delay\"], \"id\": \"S1\", \"independence\": \"direct service observation\", \"method\": \"ReleaseSubmissionServiceTest and controller security test\", \"target\": \"command validation and rollback\"}",
+      "{\"blind_spots\": [\"real event loss\"], \"id\": \"S2\", \"independence\": \"direct lifecycle injection\", \"method\": \"ReleaseWorkflowLifecycleConsumerTest\", \"target\": \"termination mapping\"}",
+      "{\"blind_spots\": [\"future unlisted mutation paths\"], \"id\": \"S3\", \"independence\": \"per-entry service calls\", \"method\": \"application/submission service tests\", \"target\": \"CANCELLED write protection\"}",
+      "{\"blind_spots\": [\"runtime auth and async behavior\"], \"id\": \"S4\", \"independence\": \"compiler/static sensor\", \"method\": \"production build and scoped search\", \"target\": \"frontend contract\"}",
+      "{\"blind_spots\": [\"unconstructed concurrency\"], \"id\": \"S5\", \"independence\": \"runtime end-to-end sensor\", \"method\": \"desktop/mobile authenticated browser, network and console\", \"target\": \"eligibility, pending gate, terminal states and layout\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"modify release controller/service/store\", \"authority\": \"REQ-20260820-045 writable paths\", \"id\": \"A1\", \"impact_radius\": \"release application submission\", \"rollback\": \"restore endpoint, command and store together\", \"target\": \"cancel command and round intent\"}",
+      "{\"action\": \"modify release lifecycle consumer\", \"authority\": \"REQ-20260820-045 writable paths\", \"id\": \"A2\", \"impact_radius\": \"release lifecycle mapping\", \"rollback\": \"remove CANCEL_REQUESTED branch with A1\", \"target\": \"termination final state\"}",
+      "{\"action\": \"modify release API/page/dialog\", \"authority\": \"REQ-20260820-045 writable paths\", \"id\": \"A3\", \"impact_radius\": \"release conflict flow\", \"rollback\": \"restore client, handler and event/copy together\", \"target\": \"conflict UI semantics\"}",
+      "{\"action\": \"add focused tests and run build/browser checks\", \"authority\": \"local test permissions\", \"id\": \"A4\", \"impact_radius\": \"tests and local runtime\", \"rollback\": \"remove scoped test additions\", \"target\": \"observability\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"global checks include unrelated signals\", \"source\": \"dirty rokey worktree\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"pending delay or event loss\", \"source\": \"asynchronous workflow event\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"409 response\", \"source\": \"row version concurrency\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"browser path unavailable\", \"source\": \"local auth/service/data\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"existing transactional withdraw calls gateway directly\", \"falsifier\": \"focused test shows swallowed error\", \"text\": \"termination errors propagate\"}",
+      "{\"evidence\": \"JDBC string storage and no Java enum conversion\", \"falsifier\": \"schema contract exposes a CHECK constraint\", \"text\": \"round status accepts CANCEL_REQUESTED\"}",
+      "{\"evidence\": \"existing editable and attachment guards\", \"falsifier\": \"a focused mutation test succeeds\", \"text\": \"CANCELLED is already non-editable\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S4\", \"S5\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S5\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S2\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S4\", \"S5\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S1\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "实现工作流终止后永久取消的后端状态机，并证明普通撤回不回归。",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "withdraw 形成 WITHDRAW_REQUESTED 并保持申请 IN_REVIEW",
+        "TERMINATED 当前把 WITHDRAW_REQUESTED 映射为 WITHDRAWN",
+        "CANCELLED 已被现有编辑和附件状态守卫排除",
+        "round_status 使用字符串存储"
+      ],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowStore.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumer.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseApplicationControllerSecurityTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java"
+      ],
+      "invariants": [
+        "工作流终止确认前申请保持 IN_REVIEW",
+        "普通撤回终态保持 WITHDRAWN",
+        "所有者、权限、行版本和状态由服务端校验",
+        "不修改 platform/workflow 和数据库"
+      ],
+      "interface_contracts": [
+        "POST /api/release/applications/{code}/conflict-cancel 接收 rowVersion 和必填 reason",
+        "成功响应为 status=IN_REVIEW、operationStatus=CANCEL_REQUESTED",
+        "CANCEL_REQUESTED+TERMINATED -> CANCELLED",
+        "WITHDRAW_REQUESTED+TERMINATED -> WITHDRAWN"
+      ],
+      "non_goals": [
+        "改变普通撤回接口",
+        "新增权限或迁移",
+        "修改工作流平台",
+        "提交或清理 rokey"
+      ],
+      "action_bounds": [
+        "仅增加冲突取消命令、两项条件状态更新和生命周期映射",
+        "仅增加直接覆盖新行为和回归的测试",
+        "不重构申请或工作流包结构"
+      ],
+      "acceptance": [
+        "新命令成功时只形成 CANCEL_REQUESTED 并调用 terminate",
+        "无效所有者、状态、版本、轮次和原因被拒绝",
+        "终止异常不提前形成 CANCELLED",
+        "生命周期把取消意图形成 CANCELLED、普通撤回形成 WITHDRAWN",
+        "CANCELLED 更新、提交、重新提交和附件变更被拒绝",
+        "release 模块测试通过"
+      ],
+      "evidence_required": [
+        "任务实际 diff",
+        "聚焦测试红灯与绿灯命令、退出码和关键断言",
+        "完整 release 模块测试摘要",
+        "范围外扰动和未决项"
+      ],
+      "rollback": "同时恢复端点、service 命令、store 状态方法、生命周期分支和对应测试。",
+      "stop_conditions": [
+        "round_status 不接受 CANCEL_REQUESTED",
+        "终止异常不能回滚",
+        "事件不能匹配当前轮次",
+        "范围内文件出现无法保留的并行修改"
+      ],
+      "escalation_conditions": [
+        "需要修改工作流平台、迁移或权限数据",
+        "普通撤回存在与设计冲突的未建模消费者"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-20T08:12:28+00:00",
+          "text": "Execution pre-sample started on scoped backend files"
+        },
+        {
+          "recorded_at": "2026-08-20T08:19:06+00:00",
+          "text": "T1 output ready for independent measurement"
+        },
+        {
+          "recorded_at": "2026-08-20T08:21:43+00:00",
+          "text": "Independent T1 observation found zero deviations"
+        }
+      ],
+      "updated_at": "2026-08-20T08:21:43+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "让冲突弹框调用永久取消命令并完成桌面、移动端集成验收。",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "弹框已校验 preflight、owner、IN_REVIEW 和撤回权限",
+        "页面已有 2 秒轮询和继续门禁",
+        "现有响应式卡片动作区和底部栏可复用"
+      ],
+      "write_scope": [
+        "web/src/api/release.ts",
+        "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "web/src/modules/release/components/ReleaseConflictDialog.vue"
+      ],
+      "invariants": [
+        "普通列表撤回继续调用 /withdraw",
+        "仍有 IN_REVIEW 阻塞项时继续申请禁用",
+        "关闭弹框停止轮询并保留原表单",
+        "桌面和移动不新增横向滚动"
+      ],
+      "interface_contracts": [
+        "cancelBlockedReleaseApplication 调用 /conflict-cancel",
+        "弹框输出 cancel 事件并接受 cancellingCode",
+        "显示取消申请/取消处理中",
+        "终止后通过原预检恢复继续"
+      ],
+      "non_goals": [
+        "修改公共 UI、全局样式、路由或权限 store",
+        "改变冲突匹配或普通撤回",
+        "创建新的弹层结构"
+      ],
+      "action_bounds": [
+        "仅替换冲突专用 API、处理函数、状态名、事件和文案",
+        "复用现有轮询、错误恢复和布局",
+        "只在授权三文件内修改"
+      ],
+      "acceptance": [
+        "本人审批中阻塞项显示取消，其他用户或状态不显示",
+        "取消中继续申请禁用，终止后恢复",
+        "旧申请最终 CANCELLED 且详情只读",
+        "普通列表撤回最终 WITHDRAWN 且可编辑重新提交",
+        "前端构建通过",
+        "1440x900 和 390x844 浏览器路径无重叠溢出、网络或控制台错误"
+      ],
+      "evidence_required": [
+        "任务实际 diff",
+        "前端构建命令与退出码",
+        "静态旧文案搜索结果",
+        "浏览器角色、申请单号、视口、请求状态和截图",
+        "扰动与剩余风险"
+      ],
+      "rollback": "同时恢复 release API、页面处理函数/状态和弹框事件/属性/文案，并与 T1 回退同步。",
+      "stop_conditions": [
+        "T1 接口不符合契约",
+        "本地认证或服务无法验证",
+        "无法建立审批中冲突测试数据",
+        "范围内文件出现无法保留的并行修改"
+      ],
+      "escalation_conditions": [
+        "需要公共 UI、全局样式、路由、平台工作流或数据库修改",
+        "移动布局需要超出本需求的重构"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-20T08:22:33+00:00",
+          "text": "Frontend baseline build and scoped pre-sample started"
+        },
+        {
+          "recorded_at": "2026-08-20T08:35:33+00:00",
+          "text": "T2 implementation complete; frontend build, release regression and service health pass; browser coverage limitation disclosed"
+        },
+        {
+          "recorded_at": "2026-08-20T08:38:49+00:00",
+          "text": "Independent frontend build, 36 focused backend tests, exact contract checks and running service health pass; no code deviation observed; live browser coverage limitation retained as residual risk"
+        }
+      ],
+      "updated_at": "2026-08-20T08:38:49+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 completion sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "20 focused tests pass; cancel and withdrawal mappings inspected; no round_status CHECK constraint",
+      "recorded_at": "2026-08-20T08:21:34+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 independent completion sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Frontend build and 36 focused backend tests pass; exact cancel/withdraw/polling contracts present; health UP; browser localhost sensor denied and recorded as coverage gap",
+      "recorded_at": "2026-08-20T08:38:26+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "final integration sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "152 dependency/release tests and frontend build pass; frontend/backend health 200; scoped and global diff checks pass; no implementation deviation observed; required browser flow blocked by localhost policy; governance and scope failures are pre-existing/intentional external constraints",
+      "recorded_at": "2026-08-20T08:41:30+00:00"
+    }
+  ]
+}

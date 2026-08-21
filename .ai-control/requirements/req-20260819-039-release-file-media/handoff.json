@@ -1,0 +1,444 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260819-039-release-file-media",
+  "handoff_status": "approved",
+  "created_at": "2026-08-19T16:31:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260819-039-release-file-media",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-19-release-file-media-design.md",
+    "objective": "Allow one release application to carry ordinary delivery units and multiple path-only file-media items through approval, conflict detection, production baseline and current-production views without changing existing delivery-unit behavior.",
+    "users": [
+      "Release applicants registering ordinary artifacts and file paths in one application.",
+      "Approvers reviewing complete mixed release application details.",
+      "Production managers maintaining deployment results per file path.",
+      "Readers querying current production file-media records and release analytics."
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "A release application must support simultaneously selected DELIVERY_UNIT and FILE_MEDIA content types, with at least one populated item.",
+        "acceptance": ["Delivery-only, file-only and mixed applications persist and restore the same selected content types."],
+        "priority": "must",
+        "source": "User selected option 2 and confirmed the page design.",
+        "counterexample": ["The UI forces file media and ordinary delivery units into mutually exclusive applications."]
+      },
+      {
+        "id": "R2",
+        "statement": "FILE_MEDIA must support multiple records containing only one file path each and no artifact version.",
+        "acceptance": ["Two distinct paths can be saved in one application; empty, duplicate, oversized or control-character paths are rejected."],
+        "priority": "must",
+        "source": "User confirmed multiple path-only file-media records.",
+        "counterexample": ["A file-media row requires or derives a version number."]
+      },
+      {
+        "id": "R3",
+        "statement": "The server must map each FILE_MEDIA item to fixed delivery unit FILE, name 文件介质 and artifact type FILE while preserving the selected physical subsystem.",
+        "acceptance": ["The client submits only paths and the server creates immutable fixed metadata for each file item."],
+        "priority": "must",
+        "source": "User request and confirmed data design.",
+        "counterexample": ["A client can persist a file-media item under a non-FILE delivery unit."]
+      },
+      {
+        "id": "R4",
+        "statement": "Normalized file path must be the business identity for uniqueness, conflicts, production baseline and production history.",
+        "acceptance": ["Same-window equal paths conflict, distinct paths remain independent, and multiple FILE rows do not overwrite one another."],
+        "priority": "must",
+        "source": "User confirmed path-level conflict and baseline behavior.",
+        "counterexample": ["All file paths conflict only because their delivery unit code is FILE."]
+      },
+      {
+        "id": "R5",
+        "statement": "A previously released equal path must make a later same-window application an additional application while retaining the existing conflict resolution actions.",
+        "acceptance": ["Conflict details include file paths and the new request can cancel old, edit old or continue creating according to existing permissions."],
+        "priority": "must",
+        "source": "User confirmed the business rules section.",
+        "counterexample": ["File-media conflicts omit historical application details or cannot continue after explicit confirmation."]
+      },
+      {
+        "id": "R6",
+        "statement": "Each approved file path must become an independently maintainable production baseline entry.",
+        "acceptance": ["Changing one path result does not alter another path from the same application."],
+        "priority": "must",
+        "source": "User confirmed independent baseline rows.",
+        "counterexample": ["One result update changes all FILE paths in the application."]
+      },
+      {
+        "id": "R7",
+        "statement": "Successful FILE_MEDIA entries must appear in current production by physical subsystem and normalized path with no version number.",
+        "acceptance": ["Current production shows path, latest successful deployment time and source application, and recalculates after a result reversal."],
+        "priority": "must",
+        "source": "User explicitly confirmed inclusion in current production.",
+        "counterexample": ["Successful file media disappears from current production or displays a fabricated version."]
+      },
+      {
+        "id": "R8",
+        "statement": "Existing ordinary delivery-unit behavior, authorization, workflow status, revision history, audit and stored data must remain compatible.",
+        "acceptance": ["Existing delivery applications remain readable and editable after migration and unauthorized operations remain rejected server-side."],
+        "priority": "must",
+        "source": "Confirmed compatibility design and repository invariants.",
+        "counterexample": ["Existing delivery records fail to load because new file fields are absent."]
+      },
+      {
+        "id": "R9",
+        "statement": "Application detail, conflict, baseline, current production and analytics views must render FILE_MEDIA using its path and item type.",
+        "acceptance": ["No related page renders a blank version code or treats a file path as an ordinary delivery-unit version."],
+        "priority": "must",
+        "source": "User confirmed associated-page design.",
+        "counterexample": ["Only the create form supports file media while downstream views remain unaware of it."]
+      },
+      {
+        "id": "R10",
+        "statement": "The mixed application flow must remain usable without page-level overflow at desktop and required mobile viewports.",
+        "acceptance": ["The drawer and actions are usable at 375x812, 390x844, 430x932 and desktop viewports."],
+        "priority": "must",
+        "source": "Confirmed verification design and design-h5.md.",
+        "counterexample": ["Long file paths cover delete or submit actions on mobile."]
+      }
+    ],
+    "invariants": [
+      "One application belongs to one project and one physical subsystem.",
+      "Approval remains whole-application rather than per delivery item.",
+      "File media never has an artifact version.",
+      "FILE is fixed metadata while path is the file-media business identity.",
+      "Emergency-window assignment and workflow rules remain unchanged.",
+      "Server-side authorization, optimistic locking, revision history and audit remain authoritative."
+    ],
+    "constraints": [
+      "Java 17, Spring Boot 3.4.4, Vue 3, TypeScript and existing module boundaries must be preserved.",
+      "Flyway migrations are append-only and existing V38/V39 scripts cannot be edited.",
+      "Project, physical subsystem and ordinary delivery-unit option sources remain frontend mocks.",
+      "No production access, secret reads or external filesystem access is permitted.",
+      "Frontend must reuse existing release form and delivery-showcase responsive patterns."
+    ],
+    "non_goals": [
+      "Reading, uploading, validating or previewing the real file behind a path.",
+      "Adding file version, checksum, size, host, environment or directory browsing.",
+      "Building project, subsystem or delivery-unit master data services.",
+      "Changing workflow definitions, window policy, version-type policy or menu permissions.",
+      "Refactoring unrelated release or platform modules."
+    ],
+    "selected_approach": {
+      "name": "Extend the unified release delivery-item model",
+      "reason": "File media shares the existing application, approval and production state machine; a stable item key allows path-level identity without duplicating transactions and audit behavior.",
+      "alternatives": [
+        {"name": "Separate application and production tables for file media", "rejected_because": "It duplicates conflict, baseline, result maintenance and analytics logic and raises consistency risk."},
+        {"name": "Separate write table with a unified projection", "rejected_because": "It requires additional projection and cross-table transaction complexity without enough benefit for the current scope."}
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": ["Release application UI and API DTOs", "Release application validation, persistence and conflict identity", "Production baseline and current-production persistence and queries", "Release analytics item-type support", "Append-only release schema migration and focused tests"],
+        "outside": ["Workflow platform internals", "System authorization model", "Attachment platform", "Master-data services", "Actual filesystem or storage access"]
+      },
+      "components": [
+        {"name": "ReleaseApplicationDrawer", "responsibility": "Edit content types, ordinary deliveries and dynamic file-path rows with responsive validation.", "depends_on": ["Release API DTOs", "Existing release form styles"]},
+        {"name": "ReleaseApplicationService", "responsibility": "Normalize paths, generate immutable file metadata and stable item keys, validate and resolve conflict/additional semantics.", "depends_on": ["ReleaseApplicationStore", "ReleaseScenarioPolicy"]},
+        {"name": "ReleaseApplicationStore", "responsibility": "Persist revisioned unified delivery items and query conflicts by stable item key.", "depends_on": ["V46 schema"]},
+        {"name": "ReleaseProductionService and Store", "responsibility": "Create independent file baseline entries, maintain results and calculate current production by subsystem and item key.", "depends_on": ["Release application delivery items", "V46 schema"]},
+        {"name": "Release analytics", "responsibility": "Count delivery units and file-media items separately without fabricating versions.", "depends_on": ["Release production entries"]},
+        {"name": "Flyway V46", "responsibility": "Add and backfill item identity fields, nullable file-only version support and compatible unique indexes.", "depends_on": ["Existing V38 and V39 schema"]}
+      ],
+      "interfaces": [
+        {"name": "Release application write DTO", "producer": "Release application UI", "consumers": ["ReleaseApplicationService"], "contract": "Preserve deliveries and add fileMedia containing path-only records; server owns fixed FILE metadata."},
+        {"name": "Release item read DTOs", "producer": "Release backend", "consumers": ["Application detail", "Conflict dialog", "Baseline", "Current production", "Analytics"], "contract": "Expose itemType and filePath so consumers choose path or version rendering explicitly."},
+        {"name": "Stable item key", "producer": "ReleaseApplicationService", "consumers": ["Application persistence", "Conflict query", "Production persistence and queries"], "contract": "UNIT:<code> for ordinary items and FILE:<SHA-256(trimmed-path)> for file media."}
+      ],
+      "data_flows": [
+        {"input": "Ordinary deliveries plus zero or more file paths", "transitions": ["validate", "normalize", "generate stable key", "persist revision", "check same-window conflicts"], "output": "A draft or submitted mixed release application"},
+        {"input": "Approved mixed application", "transitions": ["create independent baseline candidates", "maintain per-item result", "recalculate successful production record"], "output": "Audited baseline rows and current production records"}
+      ]
+    },
+    "error_handling": [
+      {"condition": "No ordinary delivery and no file-media path", "behavior": "Reject save or submit with a field-level business message and no partial write.", "recovery": "Add at least one item and retry."},
+      {"condition": "Invalid or duplicate file path", "behavior": "Reject before persistence and identify the invalid path.", "recovery": "Correct or remove the path and retry."},
+      {"condition": "Same-window path conflict", "behavior": "Return full conflict facts without starting workflow approval.", "recovery": "Cancel old, edit old or explicitly continue creating."},
+      {"condition": "Conflict facts changed after confirmation", "behavior": "Reject the stale conflict token.", "recovery": "Reload conflict facts and decide again."},
+      {"condition": "V46 migration or backfill fails", "behavior": "Stop backend startup and preserve the database for diagnosis.", "recovery": "Restore backup if needed, correct with an append-only migration and restart."}
+    ],
+    "quality_attributes": {
+      "security": ["Treat paths as escaped business text and never execute or resolve them on the server.", "Retain existing server-side RBAC, entity authorization and audit for every write."],
+      "performance": ["Index fixed-length item keys rather than 1024-character paths.", "Keep conflict and production queries tenant-, window-, status- and item-key bounded."],
+      "compatibility": ["Preserve existing deliveries DTO semantics and backfill every old row as DELIVERY_UNIT.", "Allow null artifact version only for FILE_MEDIA."],
+      "operations": ["Run V46 against a backed-up isolated database and verify repeat startup.", "Keep mock synchronization disabled while validating manually created release data.", "Never downgrade Flyway; use a later compensating migration for schema recovery."]
+    },
+    "verification_strategy": [
+      {"requirement_ids": ["R1", "R2", "R3", "R8"], "signal": "Application and persistence tests pass for delivery-only, file-only, mixed, invalid and migrated records.", "method": "Focused ccb-release unit and schema contract tests."},
+      {"requirement_ids": ["R4", "R5"], "signal": "Equal path conflicts and additional detection are stable while distinct paths remain independent.", "method": "Conflict service tests and real submit API flow."},
+      {"requirement_ids": ["R6", "R7"], "signal": "Each path has an independent baseline result and current-production history recalculates correctly.", "method": "Production service tests and real approval/deployment API flow."},
+      {"requirement_ids": ["R9", "R10"], "signal": "Every related view renders file media by path without overflow or fabricated version text.", "method": "Frontend build and browser checks at required viewports."},
+      {"requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"], "signal": "Governance, scope, full tests and runtime checks pass with no unresolved negative feedback.", "method": "Governance scripts, scope check, mvn test, npm build and convergence review."}
+    ],
+    "assumptions": [
+      {"text": "A file path is an internal business identifier and does not need filesystem resolution.", "basis": "The user requested path-only storage and no file upload behavior.", "falsifier": "A later requirement asks the platform to verify, read or deploy the referenced file directly."},
+      {"text": "Path case and slash differences can denote distinct targets, so normalization trims only surrounding whitespace.", "basis": "No target operating-system canonicalization rule was requested.", "falsifier": "A platform-wide canonical path convention is supplied."},
+      {"text": "Fixed FILE metadata does not require a corresponding frontend mock option.", "basis": "The server owns fixed file-media metadata.", "falsifier": "Future master data requires referential validation for every snapshot."}
+    ],
+    "unknowns": [],
+    "decisions": [
+      {"id": "D1", "decision": "Ordinary delivery units and file media may coexist in one application.", "reason": "The user selected option 2.", "source": "User confirmation on 2026-08-19."},
+      {"id": "D2", "decision": "File media supports multiple path-only records and no version number.", "reason": "This is the explicitly confirmed business input.", "source": "User confirmation on 2026-08-19."},
+      {"id": "D3", "decision": "Conflict, baseline and production identity is path-level while fixed delivery metadata remains FILE.", "reason": "Different file paths must not overwrite or conflict with one another.", "source": "User confirmation on 2026-08-19."},
+      {"id": "D4", "decision": "Extend the existing unified delivery-item model.", "reason": "It reuses the current workflow, audit and production state machine with the smallest coherent persistence change.", "source": "User selected approach 1 on 2026-08-19."}
+    ],
+    "risks": [
+      {"risk": "Existing code assumes delivery_unit_code uniquely identifies every item.", "impact": "Multiple FILE paths could overwrite, conflict or share results.", "mitigation": "Introduce and consistently use a stable item key, then regress every code-based query."},
+      {"risk": "Nullable artifact versions leak into ordinary delivery behavior.", "impact": "Invalid ordinary deliveries or blank downstream displays.", "mitigation": "Enforce null only for FILE_MEDIA in service validation and tests."},
+      {"risk": "Unique-key migration fails on existing data.", "impact": "Backend startup fails and release data becomes unavailable.", "mitigation": "Back up and validate V46 on the isolated local database, stop on failure and never skip Flyway."},
+      {"risk": "Mixed application content overflows the mobile drawer.", "impact": "Users cannot review paths or reach actions.", "mitigation": "Use vertical responsive sections, wrap long paths and verify all required viewports."}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "The user approved all four design sections and, after the persisted design was presented for review, explicitly requested implementation to start.",
+      "confirmed_at": "2026-08-19T16:31:00+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-19-release-file-media-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "Use the existing dirty rokey worktree without resetting, switching or committing unrelated changes.",
+      "Create append-only V46 and never edit executed migrations.",
+      "Keep FILE fixed, path-only and versionless; trim only surrounding whitespace.",
+      "Preserve one project and one subsystem per application, whole-application approval and existing RBAC/audit.",
+      "Never resolve a file path or access external filesystem/storage.",
+      "Keep MOCK_DATA_ENABLED=false during runtime verification."
+    ],
+    "file_map": [
+      {"path": "server/src/platform/infrastructure/src/main/resources/db/migration/V46__release_file_media.sql", "status": "candidate-new", "responsibility": "Add, backfill and index unified item identity for application, relation and production rows.", "evidence": "V38/V39 own the current schema."},
+      {"path": "server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java", "status": "existing", "responsibility": "Define file input, unified internal item and split response contracts.", "evidence": "Current release application DTO owner."},
+      {"path": "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java", "status": "existing", "responsibility": "Persist revisioned item identity and query conflicts/relations by item key.", "evidence": "Current application SQL owner."},
+      {"path": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java", "status": "existing", "responsibility": "Normalize paths, validate items, generate keys and resolve conflict/additional behavior.", "evidence": "Current create/update/conflict orchestrator."},
+      {"path": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java", "status": "existing", "responsibility": "Revalidate mixed items and include paths in workflow digest.", "evidence": "Current submit validation and digest owner."},
+      {"path": "server/src/modules/release/src/main/java/com/ccb/release/production", "status": "existing", "responsibility": "Maintain independent baseline and history by item key.", "evidence": "Current production domain owner."},
+      {"path": "server/src/modules/release/src/main/java/com/ccb/release/reporting", "status": "existing", "responsibility": "Count ordinary and file-media items separately.", "evidence": "Current release analytics owner."},
+      {"path": "web/src/api/release.ts", "status": "existing", "responsibility": "Expose file-media and production item contracts to Vue.", "evidence": "Current release API client owner."},
+      {"path": "web/src/modules/release/components/ReleaseApplicationDrawer.vue", "status": "existing", "responsibility": "Edit mixed content types and dynamic path rows.", "evidence": "Current application form owner."},
+      {"path": "web/src/modules/release", "status": "existing", "responsibility": "Render file media consistently in detail, conflict, baseline, production and analytics views.", "evidence": "Current release UI module."}
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "Establish the unified delivery-item schema, model and persistence contract with backward-compatible ordinary rows.",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R6", "R7", "R8"],
+        "prerequisites": [],
+        "input_facts": ["V39 uniqueness uses delivery_unit_code.", "Production and relation tables also use delivery_unit_code identity.", "ArtifactType lacks FILE and versions are non-null."],
+        "files": {
+          "create": ["server/src/platform/infrastructure/src/main/resources/db/migration/V46__release_file_media.sql"],
+          "modify": ["server/src/modules/release/src/main/java/com/ccb/release/application/model/ReleaseApplicationModels.java", "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java"],
+          "test": ["server/src/modules/release/src/test/java/com/ccb/release/ReleaseSchemaContractTest.java", "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationPersistenceContractTest.java"]
+        },
+        "interfaces": {
+          "consumes": ["V38/V39 application delivery, relation and production schema"],
+          "produces": ["DeliveryItemType", "ArtifactType.FILE", "FileMediaInput", "FileMediaSnapshot", "DeliverySnapshot.itemType/filePath/itemKey", "V46 item-key schema"]
+        },
+        "steps": [
+          {"id": "T1-S1", "action": "Add failing V46 and persistence SQL contract tests.", "command": null, "expected": "Tests express fields, backfill, keys, no-delete and item-key SQL.", "evidence": "Changed test assertions."},
+          {"id": "T1-S2", "action": "Run focused tests before implementation.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseSchemaContractTest,ReleaseApplicationPersistenceContractTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "Fails because V46 and fields do not exist.", "evidence": "Exit code and first failing assertion."},
+          {"id": "T1-S3", "action": "Create V46 with backfill, nullable file-only version, constraints and item-key indexes on three tables.", "command": null, "expected": "Migration preserves rows and removes delivery-code uniqueness assumptions.", "evidence": "Migration diff and schema contract."},
+          {"id": "T1-S4", "action": "Extend models and Store mappings while retaining old constructors.", "command": null, "expected": "Unified items read/write item type, path and key; conflicts and relations use key.", "evidence": "Compile and SQL contract."},
+          {"id": "T1-S5", "action": "Run focused tests and compile.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseSchemaContractTest,ReleaseApplicationPersistenceContractTest -Dsurefire.failIfNoSpecifiedTests=false test && env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -DskipTests compile", "expected": "All focused tests pass and release modules compile.", "evidence": "Maven summaries."}
+        ],
+        "acceptance_checks": ["Existing rows backfill to DELIVERY_UNIT and UNIT keys.", "Multiple FILE keys can coexist in one revision.", "Relations and production sources distinguish paths.", "Only file items permit null artifact version."],
+        "risks": ["DDL key replacement on existing data.", "Record constructor compatibility."],
+        "rollback": "Revert code before migration execution; after V46 use a later compensating migration only when no file data exists.",
+        "stop_conditions": ["Duplicate existing rows prevent unique backfill.", "MySQL rejects constraints.", "A newer migration already uses V46."],
+        "escalation_conditions": ["Deleting existing data is required.", "Fixed FILE mapping or path normalization must change."]
+      },
+      {
+        "id": "T2",
+        "goal": "Implement path validation, stable conflict identity, file additional semantics and workflow digest compatibility.",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R8"],
+        "prerequisites": ["T1"],
+        "input_facts": ["Create/update and submit currently require non-empty deliveries.", "Conflict tokens use code/version.", "Additional detection requires version changes."],
+        "files": {
+          "create": [],
+          "modify": ["server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java", "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java"],
+          "test": ["server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java", "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java"]
+        },
+        "interfaces": {
+          "consumes": ["T1 unified item model and Store item-key queries"],
+          "produces": ["Trim-only path normalization", "FILE:SHA-256 keys", "path-aware conflict token", "stable mixed-item workflow digest"]
+        },
+        "steps": [
+          {"id": "T2-S1", "action": "Add failing service tests for file-only, mixed, invalid, duplicate, conflict, additional and digest cases.", "command": null, "expected": "Tests cover normal, boundary and stale-token paths.", "evidence": "Named JUnit cases."},
+          {"id": "T2-S2", "action": "Run focused application and submission tests.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseApplicationServiceTest,ReleaseSubmissionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "New file tests fail while old cases compile.", "evidence": "Maven failure summary."},
+          {"id": "T2-S3", "action": "Implement unified input validation, fixed metadata, response splitting and item-key conflict queries.", "command": null, "expected": "Delivery-only, file-only and mixed applications persist with explicit validation.", "evidence": "Service tests."},
+          {"id": "T2-S4", "action": "Implement path-aware additional relations, stable tokens and workflow digest.", "command": null, "expected": "Released equal paths trigger additional flow without fabricated versions.", "evidence": "Conflict and digest assertions."},
+          {"id": "T2-S5", "action": "Run focused and full release module tests.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test", "expected": "All release module tests pass.", "evidence": "Maven reactor summary."}
+        ],
+        "acceptance_checks": ["Invalid paths cause zero writes.", "Same-window same path conflicts and changed facts invalidate token.", "Released equal path marks additional.", "Digest includes sorted paths and remains stable."],
+        "risks": ["Digest changes affect workflow integration.", "Conflict relation uniqueness for multiple paths."],
+        "rollback": "Revert T2 services and tests while retaining unused T1 columns.",
+        "stop_conditions": ["Workflow digest cannot add item type compatibly.", "Additional flow cannot represent file repeat."],
+        "escalation_conditions": ["User requires different normalization.", "File repeat should not be additional."]
+      },
+      {
+        "id": "T3",
+        "goal": "Maintain independent production baseline, current production and history for each file path.",
+        "requirement_ids": ["R4", "R6", "R7", "R8"],
+        "prerequisites": ["T2"],
+        "input_facts": ["Production source and candidate identity currently uses delivery_unit_code.", "History route cannot distinguish multiple FILE paths."],
+        "files": {
+          "create": [],
+          "modify": ["server/src/modules/release/src/main/java/com/ccb/release/production/model/ProductionModels.java", "server/src/modules/release/src/main/java/com/ccb/release/production/persistence/ReleaseProductionStore.java", "server/src/modules/release/src/main/java/com/ccb/release/production/service/ReleaseProductionService.java", "server/src/modules/release/src/main/java/com/ccb/release/production/web/ReleaseProductionController.java"],
+          "test": ["server/src/modules/release/src/test/java/com/ccb/release/production/service/ReleaseProductionServiceTest.java", "server/src/modules/release/src/test/java/com/ccb/release/production/web/ReleaseProductionControllerSecurityTest.java"]
+        },
+        "interfaces": {
+          "consumes": ["T2 unified DeliverySnapshot item identity"],
+          "produces": ["Entry.itemType/filePath/itemKey", "GET /api/release/production-versions/entries/{entryId}/history", "item-key current/history queries"]
+        },
+        "steps": [
+          {"id": "T3-S1", "action": "Add failing production and security tests for independent paths, replacement, current/history and tenant isolation.", "command": null, "expected": "Tests distinguish two FILE paths from one application.", "evidence": "JUnit test names and assertions."},
+          {"id": "T3-S2", "action": "Run focused production tests.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseProductionServiceTest,ReleaseProductionControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "New item-key cases fail.", "evidence": "Maven failure summary."},
+          {"id": "T3-S3", "action": "Extend Entry, Store SQL and service candidate synchronization to item keys.", "command": null, "expected": "Each path has independent candidate and result state.", "evidence": "Service and SQL assertions."},
+          {"id": "T3-S4", "action": "Add tenant-secured entry-id history endpoint and preserve old ordinary endpoint.", "command": null, "expected": "History resolves subsystem and item key from authorized anchor entry.", "evidence": "Controller security tests."},
+          {"id": "T3-S5", "action": "Run focused and release module regression.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test", "expected": "All release tests pass, including result gate and batch maintenance.", "evidence": "Maven summary."}
+        ],
+        "acceptance_checks": ["Two paths never share active candidate or result.", "Current production recalculates per subsystem and path.", "History does not leak cross-tenant entries.", "Old ordinary history remains compatible."],
+        "risks": ["Current-production SQL grouping changes.", "Route mapping conflict."],
+        "rollback": "Revert T3 Java only before file production data exists; keep V46 fields.",
+        "stop_conditions": ["Current query cannot preserve ordinary ordering.", "Spring routes conflict.", "A separate result-log table is required."],
+        "escalation_conditions": ["Path identity must cross subsystems.", "Partial approval is required."]
+      },
+      {
+        "id": "T4",
+        "goal": "Deliver mixed application editing, detail and conflict interaction on desktop and mobile.",
+        "requirement_ids": ["R1", "R2", "R5", "R9", "R10"],
+        "prerequisites": ["T3"],
+        "input_facts": ["Drawer currently manages only deliveries.", "Prototype already preserves confirmed conflict token.", "Detail/list/conflict render only deliveries."],
+        "files": {
+          "create": [],
+          "modify": ["web/src/api/release.ts", "web/src/modules/release/components/ReleaseApplicationDrawer.vue", "web/src/modules/release/ReleaseManagementPrototype.vue", "web/src/modules/release/ReleaseApplicationDetailPage.vue", "web/src/modules/release/components/ReleaseApplicationView.vue", "web/src/modules/release/components/ReleaseConflictDialog.vue", "web/src/modules/release/release-prototype.css"],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": ["T2 fileMedia DTO", "T3 production item fields", "Existing conflict token protocol"],
+          "produces": ["ReleaseItemTypeCode", "ReleaseFileMediaDto/Input", "Responsive dynamic file rows", "Path-aware detail and conflict views"]
+        },
+        "steps": [
+          {"id": "T4-S1", "action": "Extend TypeScript contracts and introduce component references to expose current compile gaps.", "command": "npm --prefix web run build", "expected": "Fails only on incomplete fileMedia/itemType handling.", "evidence": "TypeScript diagnostics."},
+          {"id": "T4-S2", "action": "Implement checkbox content types, dynamic path rows, validation and destructive clear confirmation.", "command": null, "expected": "Three application combinations produce correct payloads.", "evidence": "Component diff and later browser flow."},
+          {"id": "T4-S3", "action": "Restore editing and preserve conflict-token single-confirm submission behavior.", "command": null, "expected": "Reopen restores both types and continue-create does not reopen dialog.", "evidence": "Browser action trace."},
+          {"id": "T4-S4", "action": "Render file paths in detail, list and conflict dialog with no fabricated version.", "command": null, "expected": "All application-facing views distinguish item types.", "evidence": "Screenshots and DOM assertions."},
+          {"id": "T4-S5", "action": "Add responsive styles and run build/diff checks.", "command": "npm --prefix web run build && git diff --check -- web/src/api/release.ts web/src/modules/release", "expected": "Vite build passes and no whitespace errors remain.", "evidence": "Build output."}
+        ],
+        "acceptance_checks": ["Three combinations edit and restore.", "Type removal never silently drops data.", "Duplicate paths are visible before submit.", "Conflict continue action confirms once.", "Long paths do not hide actions."],
+        "risks": ["Drawer destroy-on-close state loss.", "Mobile path overflow.", "Conflict regression."],
+        "rollback": "Revert T4 frontend; backend accepts old requests without fileMedia.",
+        "stop_conditions": ["Element Plus selection cannot safely restore after cancel.", "Public UI components must change."],
+        "escalation_conditions": ["Bulk paste, path upload or separate mobile page is requested."]
+      },
+      {
+        "id": "T5",
+        "goal": "Render file media correctly in baseline, current production, history and analytics.",
+        "requirement_ids": ["R6", "R7", "R9", "R10"],
+        "prerequisites": ["T4"],
+        "input_facts": ["Downstream views assume artifactVersion is always present.", "Analytics counts by delivery_unit_code and labels only delivery units."],
+        "files": {
+          "create": [],
+          "modify": ["server/src/modules/release/src/main/java/com/ccb/release/reporting/model/ReleaseAnalyticsModels.java", "server/src/modules/release/src/main/java/com/ccb/release/reporting/persistence/ReleaseAnalyticsStore.java", "server/src/modules/release/src/main/java/com/ccb/release/reporting/service/ReleaseAnalyticsService.java", "web/src/api/release.ts", "web/src/modules/release/components/ReleaseBaselineView.vue", "web/src/modules/release/components/ReleaseCurrentProductionView.vue", "web/src/modules/release/components/ReleaseAnalyticsView.vue", "web/src/modules/release/release-prototype.css"],
+          "test": ["server/src/modules/release/src/test/java/com/ccb/release/reporting/persistence/ReleaseAnalyticsStoreTest.java", "server/src/modules/release/src/test/java/com/ccb/release/reporting/service/ReleaseAnalyticsServiceTest.java"]
+        },
+        "interfaces": {
+          "consumes": ["T3 production item DTO and entry-id history"],
+          "produces": ["Summary.fileMediaCount", "Optional production artifactVersion", "Path-aware baseline/current/history UI"]
+        },
+        "steps": [
+          {"id": "T5-S1", "action": "Add failing analytics tests for separate ordinary/file counts and stable application-level drilldown.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am -Dtest=ReleaseAnalyticsStoreTest,ReleaseAnalyticsServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "New count assertions fail.", "evidence": "Test output."},
+          {"id": "T5-S2", "action": "Implement backend item-type counts without duplicating application drilldown rows.", "command": null, "expected": "Summary returns deliveryUnitCount and fileMediaCount accurately.", "evidence": "Analytics tests."},
+          {"id": "T5-S3", "action": "Render path/no-version in baseline and current production and switch history to entryId.", "command": null, "expected": "File rows are searchable and history remains isolated.", "evidence": "Browser and API trace."},
+          {"id": "T5-S4", "action": "Update analytics labels and counts for delivery content.", "command": null, "expected": "UI displays ordinary and file counts separately.", "evidence": "Rendered DOM."},
+          {"id": "T5-S5", "action": "Run release tests and frontend build.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test && npm --prefix web run build", "expected": "All release tests and Vite build pass.", "evidence": "Maven and Vite summaries."}
+        ],
+        "acceptance_checks": ["File path is searchable in baseline/current.", "No-version text is explicit.", "History isolates by item key.", "Analytics counts are correct and drilldown pagination is not duplicated."],
+        "risks": ["Nullable version TypeScript errors.", "Application drilldown multiplication."],
+        "rollback": "Revert T5 display/reporting before relying on new history UI.",
+        "stop_conditions": ["Statistics cannot preserve application-level pagination.", "Batch selection keys collide."],
+        "escalation_conditions": ["New path/type chart dimensions or exports are requested."]
+      },
+      {
+        "id": "T6",
+        "goal": "Execute V46 safely and converge through real API and responsive browser verification.",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"],
+        "prerequisites": ["T5"],
+        "input_facts": ["Local infrastructure is running.", "Backend uses an isolated local schema.", "Mock synchronization must stay disabled."],
+        "files": {
+          "create": [".ai-control/requirements/req-20260819-039-release-file-media/execution-T6.json", ".ai-control/requirements/req-20260819-039-release-file-media/observation-T6.json", ".ai-control/requirements/req-20260819-039-release-file-media/convergence.json"],
+          "modify": [],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": ["T1-T5 implementation", "Local MySQL/MinIO/kkFileView", "Browser session"],
+          "produces": ["V46 runtime evidence", "Real mixed application flow", "Desktop/mobile evidence", "Convergence decision"]
+        },
+        "steps": [
+          {"id": "T6-S1", "action": "Run development entry, governance, full Maven, frontend build and diff checks.", "command": "node scripts/check-development-entry.mjs --require-plugin && node scripts/check-all-governance.mjs && git diff --check && env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test && npm --prefix web run build", "expected": "All pass except the documented rokey branch naming exception.", "evidence": "Exit codes and summaries."},
+          {"id": "T6-S2", "action": "Stop backend and create a non-empty local SQL backup without exposing environment values.", "command": "set -a; source ./.env; set +a; DB_NAME=${DB_URL%%\\?*}; DB_NAME=${DB_NAME##*/}; docker exec -e MYSQL_PWD=\"$DB_PASSWORD\" rddmp-local-mysql mysqldump -u\"$DB_USERNAME\" --single-transaction --no-tablespaces --skip-triggers \"$DB_NAME\" > /private/tmp/rddmp-req039-before-v46.sql; test -s /private/tmp/rddmp-req039-before-v46.sql", "expected": "Backup exists and no secret or data body is printed.", "evidence": "Exit code and file size only."},
+          {"id": "T6-S3", "action": "Package and start backend with local profile and mock disabled, then check health.", "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-boot -am package -DskipTests; set -a; source ./.env; set +a; export MOCK_DATA_ENABLED=false; $JAVA_HOME/bin/java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local", "expected": "Flyway reaches V46 and /actuator/health is UP.", "evidence": "Flyway/start logs and health JSON."},
+          {"id": "T6-S4", "action": "Start Vite on 127.0.0.1 and verify HTTP 200.", "command": "npm --prefix web run dev -- --host 127.0.0.1", "expected": "Frontend responds at http://127.0.0.1:5173.", "evidence": "Vite ready line and HTTP headers."},
+          {"id": "T6-S5", "action": "Run real create, conflict, submit, approval, baseline, production-history and analytics flow.", "command": null, "expected": "Backend facts remain consistent through the entire mixed application lifecycle.", "evidence": "Sanitized API status/IDs and state assertions."},
+          {"id": "T6-S6", "action": "Verify desktop and 375x812, 390x844, 430x932 browser paths including overflow and console.", "command": null, "expected": "Core actions are reachable, scrollWidth does not exceed viewport and no console errors occur.", "evidence": "Screenshots, DOM measurements and console sample."},
+          {"id": "T6-S7", "action": "Run scope check and convergence review without altering unrelated changes.", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260819-039-release-file-media/codex-task-scope.yaml --working-tree; git status --short", "expected": "Only documented rokey branch exception and scoped task files are attributable to this work.", "evidence": "Scope report and convergence ledger."}
+        ],
+        "acceptance_checks": ["V46 applies with backup and health UP.", "Real mixed application completes approval and production flow.", "R1-R10 each has a repeatable signal.", "Required viewports have no overflow or inaccessible actions.", "No high-priority feedback remains."],
+        "risks": ["DDL on existing local data.", "Dirty-worktree attribution.", "Old app incompatibility after file data exists."],
+        "rollback": "Stop new services and restore prior build; restore isolated DB backup only before new file data is retained, otherwise use a compensating migration.",
+        "stop_conditions": ["No verified backup.", "V46 fails.", "Cross-tenant data is visible.", "Path triggers filesystem access.", "Core mobile action is inaccessible.", "Full tests fail."],
+        "escalation_conditions": ["Manual test data must be deleted or changed.", "New permission/workflow is required.", "Task changes cannot be separated from concurrent user edits."]
+      }
+    ],
+    "dependency_edges": [
+      {"from": "T1", "to": "T2", "reason": "Application validation and conflict logic require the unified item model, persistence fields and item-key queries."},
+      {"from": "T2", "to": "T3", "reason": "Production synchronization consumes normalized unified items and their stable item keys from the application domain."},
+      {"from": "T3", "to": "T4", "reason": "The frontend contract must match the finalized application and production response shapes, including entry-id history."},
+      {"from": "T4", "to": "T5", "reason": "Downstream views share the TypeScript item contracts established by the application-facing frontend task."},
+      {"from": "T5", "to": "T6", "reason": "Runtime migration and end-to-end verification require all backend and frontend behavior to be implemented and locally tested first."}
+    ],
+    "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"], ["T5"], ["T6"]],
+    "integration_checks": [
+      {"after_tasks": ["T1"], "command": "Focused schema and persistence tests", "expected": "V46 and item-key contracts pass."},
+      {"after_tasks": ["T2"], "command": "mvn -pl :ccb-release -am test", "expected": "Application, submission and existing release tests pass."},
+      {"after_tasks": ["T3"], "command": "Focused production and security tests", "expected": "Independent paths, history and permissions pass."},
+      {"after_tasks": ["T4"], "command": "npm --prefix web run build", "expected": "Application-facing TypeScript contracts compile."},
+      {"after_tasks": ["T5"], "command": "mvn -pl :ccb-release -am test && npm --prefix web run build", "expected": "Downstream views and analytics pass regression."},
+      {"after_tasks": ["T6"], "command": "mvn test plus real API and browser flow", "expected": "All requirements converge with health UP and no unresolved high-priority feedback."}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T1", "T2", "T4", "T6"]},
+      {"requirement_id": "R2", "task_ids": ["T1", "T2", "T4", "T6"]},
+      {"requirement_id": "R3", "task_ids": ["T1", "T2", "T6"]},
+      {"requirement_id": "R4", "task_ids": ["T1", "T2", "T3", "T6"]},
+      {"requirement_id": "R5", "task_ids": ["T2", "T4", "T6"]},
+      {"requirement_id": "R6", "task_ids": ["T1", "T3", "T5", "T6"]},
+      {"requirement_id": "R7", "task_ids": ["T1", "T3", "T5", "T6"]},
+      {"requirement_id": "R8", "task_ids": ["T1", "T2", "T3", "T6"]},
+      {"requirement_id": "R9", "task_ids": ["T4", "T5", "T6"]},
+      {"requirement_id": "R10", "task_ids": ["T4", "T5", "T6"]}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "After reviewing the persisted six-task plan and its V46/local-database/rokey risks, the user explicitly instructed execution to start.",
+      "confirmed_at": "2026-08-19T16:47:13+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["Application item input and revision", "Conflict identity", "Workflow digest", "Production candidate and result", "Current history", "Analytics and related Vue views"],
+    "state_variable_candidates": ["item_type", "file_path", "item_key", "artifact_version", "application_status", "conflict_token", "active_candidate", "production_result", "current_success_record"],
+    "interface_candidates": ["Application create/update/detail/conflicts/submit", "Production baseline/update/current/history", "Analytics summary/drilldown", "Vue release API DTO"],
+    "sensor_candidates": ["Schema contract tests", "Service tests", "Controller security tests", "SQL assertions", "Full Maven", "Vite build", "Flyway logs", "Health endpoint", "Real API flow", "Browser dimensions and console"],
+    "actuator_candidates": ["V46 DDL", "Model/Store/Service changes", "API DTO changes", "Application drawer and downstream view changes", "Service restart"],
+    "disturbance_candidates": ["Dirty-worktree concurrent edits", "Unexpected existing rows", "New origin migration", "MySQL locks/constraints", "Long paths", "Browser cache", "Test-account permissions"],
+    "delay_candidates": ["Full Maven", "Flyway DDL", "Cold service start", "Workflow progression", "Notification refresh", "Browser animation"],
+    "assumptions": [
+      {"text": "Path is text-only identity.", "basis": "Confirmed scope.", "falsifier": "Runtime needs filesystem access."},
+      {"text": "Trim is the only normalization.", "basis": "Confirmed design.", "falsifier": "A canonical path rule is supplied."},
+      {"text": "FILE does not require master-data lookup.", "basis": "Server-owned fixed metadata.", "falsifier": "Referential validation becomes mandatory."},
+      {"text": "The isolated DB user can migrate and dump the schema.", "basis": "Current backend connects and Flyway validates.", "falsifier": "Backup or DDL permission is denied."}
+    ]
+  }
+}

@@ -1,0 +1,916 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260814-026-release-management-prototype",
+  "handoff_status": "approved",
+  "created_at": "2026-08-14T23:17:24+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260814-026-release-management-prototype",
+    "design_revision": 2,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-14-release-management-prototype-design.md",
+    "objective": "Revise the interactive configuration-management prototype so approval means artifact clearance, production results determine the current production version, and the complete workflow is usable on desktop and H5 without backend or database changes.",
+    "users": [
+      "project developers creating version applications",
+      "workflow approvers reviewing and signing tasks",
+      "configuration administrators querying cleared versions",
+      "production managers maintaining production outcomes",
+      "project managers reviewing current production versions and analytics"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "Provide production-window, version-application, production-baseline, production-version and analytics views under one configuration-management entry.",
+        "acceptance": [
+          "All five views are reachable after login",
+          "Switching views preserves module context and uses one mock fact model"
+        ],
+        "priority": "must",
+        "source": "User optimization item 1 and selected option 1",
+        "counterexample": [
+          "Production baseline and current production version remain merged in one ambiguous view"
+        ]
+      },
+      {
+        "id": "R2",
+        "statement": "Separate version type from application characteristic.",
+        "acceptance": [
+          "Version types are regular, urgent and emergency",
+          "Additional is a derived read-only characteristic and maps to additional workflow codes"
+        ],
+        "priority": "must",
+        "source": "User-confirmed terminology and additional handling",
+        "counterexample": [
+          "Additional regular appears as a user-selectable version type"
+        ]
+      },
+      {
+        "id": "R3",
+        "statement": "Show rich production-window eligibility and prevent invalid selection.",
+        "acceptance": [
+          "Each option shows code, name, four minute-precision timestamps, status and disabled reason",
+          "Closed, pre-declaration and already-producing windows cannot receive non-emergency applications",
+          "Declaration start defaults to the first day of the current month at 00:00"
+        ],
+        "priority": "must",
+        "source": "User optimization items 4 and 9",
+        "counterexample": [
+          "A closed window looks selectable",
+          "Window periods omit time-of-day"
+        ]
+      },
+      {
+        "id": "R4",
+        "statement": "Drive application fields and validation from the emergency choice and derived version type.",
+        "acceptance": [
+          "Emergency hides window, derived version type and requirement number",
+          "Emergency requires a description and at least one test-report attachment",
+          "Non-emergency requires at least one requirement and derives regular or urgent from window dates"
+        ],
+        "priority": "must",
+        "source": "User optimization items 3, 5 and 7",
+        "counterexample": [
+          "Emergency remains selectable from the automatic type field",
+          "An emergency application submits without a test report"
+        ]
+      },
+      {
+        "id": "R5",
+        "statement": "Show the latest successful production version for every selected delivery unit.",
+        "acceptance": [
+          "The form displays version, version type and production time from current production data",
+          "No successful history produces an explicit empty value"
+        ],
+        "priority": "must",
+        "source": "User optimization item 6",
+        "counterexample": [
+          "The form shows the latest approved version as if it were deployed"
+        ]
+      },
+      {
+        "id": "R6",
+        "statement": "Present duplicate applications with a complete business snapshot and status-dependent user choices.",
+        "acceptance": [
+          "The dialog includes all original business information except attachments",
+          "Draft, returned and withdrawn records allow cancel, edit or create",
+          "In-review records allow create and require withdrawal before old-record edit or cancel",
+          "Cleared records only allow creating an additional application"
+        ],
+        "priority": "must",
+        "source": "User optimization item 10 and confirmed conflict rules",
+        "counterexample": [
+          "The system silently blocks all duplicates",
+          "The dialog exposes old attachments"
+        ]
+      },
+      {
+        "id": "R7",
+        "statement": "Treat workflow approval completion as artifact clearance only.",
+        "acceptance": [
+          "Approved applications and their delivery units enter the selected window as cleared candidates",
+          "Approval alone does not update the current production version",
+          "Workflow code is selected from version type and additional characteristic"
+        ],
+        "priority": "must",
+        "source": "User optimization item 1 and explicit rename from pending confirmation to artifact clearance",
+        "counterexample": [
+          "An approval event immediately marks the version as deployed"
+        ]
+      },
+      {
+        "id": "R8",
+        "statement": "Maintain actual production outcomes in a window-scoped production baseline.",
+        "acceptance": [
+          "The view lists the latest cleared candidate per subsystem and delivery unit by approval completion time",
+          "Outcomes are artifact-cleared, succeeded, failed and not-produced",
+          "Outcome corrections require reason and retain before value, after value, operator and time"
+        ],
+        "priority": "must",
+        "source": "User optimization item 1 and correction confirmation",
+        "counterexample": [
+          "The candidate is chosen by lexical version comparison",
+          "A production result changes without an audit reason"
+        ]
+      },
+      {
+        "id": "R9",
+        "statement": "Provide a cross-window current production-version projection derived only from successful production history.",
+        "acceptance": [
+          "Each subsystem and delivery unit shows latest successful version, type, production date and source window",
+          "Reversing a success recalculates the previous valid successful version"
+        ],
+        "priority": "must",
+        "source": "User optimization item 2 and correction confirmation",
+        "counterexample": [
+          "A failed or merely cleared version appears as the current production version"
+        ]
+      },
+      {
+        "id": "R10",
+        "statement": "Assign emergency applications to a production window at approval completion.",
+        "acceptance": [
+          "Approval within a production window assigns that window",
+          "Otherwise the nearest future window is assigned and remains fixed",
+          "Draft can be saved but submission is blocked when no current or future window can receive it"
+        ],
+        "priority": "must",
+        "source": "User optimization item 8 and final no-window confirmation",
+        "counterexample": [
+          "The user manually selects an emergency window",
+          "An emergency application is approved with no resolvable window"
+        ]
+      },
+      {
+        "id": "R11",
+        "statement": "Provide one responsive workflow review route for release approvals.",
+        "acceptance": [
+          "The route is /workflow/review/:taskId with businessType and businessId",
+          "The current valid assignee can view details and approve, reject, return and confirm signature",
+          "The same route uses desktop and H5 layouts without changing business behavior"
+        ],
+        "priority": "must",
+        "source": "User optimization item 11 and approved platform integration design",
+        "counterexample": [
+          "H5 uses a second route with different approval rules",
+          "A non-assignee can execute an action"
+        ]
+      },
+      {
+        "id": "R12",
+        "statement": "Provide consistent analytics with multi-dimensional drill-down.",
+        "acceptance": [
+          "Metrics cover windows, subsystems, delivery units, requirements, applications, version types, clearance and production outcomes",
+          "Charts and drill-down rows reconcile with the same mock facts"
+        ],
+        "priority": "must",
+        "source": "User optimization item 12 and prior report requirements",
+        "counterexample": [
+          "Analytics counts differ from the application or production-baseline views"
+        ]
+      },
+      {
+        "id": "R13",
+        "statement": "Keep prototype controls out of the normal business interface while preserving development-state testing.",
+        "acceptance": [
+          "The duplicate current-project, mock and state toolbar is absent from the normal page",
+          "Development-only debug mode can still show loading, empty, failure, forbidden and reset states"
+        ],
+        "priority": "must",
+        "source": "Browser comment and user confirmation",
+        "counterexample": [
+          "Normal users see a Mock state selector above the business page"
+        ]
+      },
+      {
+        "id": "R14",
+        "statement": "Keep revision 2 frontend-only, responsive, reversible and shaped for future formal APIs.",
+        "acceptance": [
+          "No Java, Flyway or real platform-service implementation changes",
+          "Desktop and 375x812, 390x844 and 430x932 paths have no page-level horizontal overflow",
+          "Removing revision-2 frontend changes restores revision 1"
+        ],
+        "priority": "must",
+        "source": "Approved prototype boundary and RDDMP H5 contract",
+        "counterexample": [
+          "The prototype writes database state",
+          "The H5 approval page requires horizontal page scrolling"
+        ]
+      }
+    ],
+    "invariants": [
+      "One application belongs to one project and one physical subsystem and contains at least one delivery unit",
+      "A delivery unit has exactly one artifact type: image or binary",
+      "Artifact files are not uploaded to the configuration-management module",
+      "Approval completion means artifact clearance and never implies successful production",
+      "Only a valid successful production history record can drive the current production version",
+      "Latest window candidate is selected by approval completion time rather than version-string ordering",
+      "Emergency window assignment is fixed after approval completion",
+      "Workflow and signature identity are validated by the server in the formal implementation",
+      "Prototype operations never claim durable persistence"
+    ],
+    "constraints": [
+      "Vue 3, TypeScript, Vite, Element Plus, ECharts and existing dependencies only",
+      "No server, database, Flyway, real workflow, notification, attachment storage or external-system changes",
+      "Use fictional project, subsystem, delivery-unit, requirement, task and attachment metadata",
+      "Attachment limit is 20MB per file and 10 files per application",
+      "Version values are required and may not contain spaces; semantic ordering is out of scope",
+      "Acceptance viewports are 375x812, 390x844, 430x932 and 1280x800 or larger",
+      "Development remains on local rokey as requested"
+    ],
+    "non_goals": [
+      "Formal configuration-management backend and database schema",
+      "Real project-management, R&D-management, requirement-management or test-defect integration",
+      "Artifact repository or artifact binary upload",
+      "Independent mobile application or separate H5 route",
+      "External digital signature or certificate authority",
+      "Semantic version comparison and automatic production-result detection",
+      "Meeting workbench or batch approval"
+    ],
+    "selected_approach": {
+      "name": "Unified domain mock with two-level baseline projections and one responsive approval route",
+      "reason": "It makes clearance, actual production and current production versions independently observable while preserving a direct path to formal APIs and avoiding duplicated Web/H5 rules.",
+      "alternatives": [
+        {
+          "name": "Add production flags to the old baseline view",
+          "rejected_because": "It continues to mix cleared candidates, window outcomes and current production state and cannot safely recalculate history."
+        },
+        {
+          "name": "Separate Web and H5 approval routes",
+          "rejected_because": "It duplicates task permissions, state transitions and signature behavior and creates drift risk."
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "release prototype domain types and session repository",
+          "five module views",
+          "duplicate-application interaction",
+          "production outcome and current-version projections",
+          "responsive workflow review prototype route",
+          "development-only debug entry"
+        ],
+        "outside": [
+          "Java services and database",
+          "real workflow and signature implementation",
+          "real attachments and external systems",
+          "formal project, subsystem, delivery-unit and requirement providers"
+        ]
+      },
+      "components": [
+        {
+          "name": "release-prototype-repository",
+          "responsibility": "Own deterministic session facts and atomic mock commands",
+          "depends_on": []
+        },
+        {
+          "name": "project-context-provider",
+          "responsibility": "Expose the current fixed mock project through a replaceable contract",
+          "depends_on": []
+        },
+        {
+          "name": "window-view",
+          "responsibility": "Present four timestamps, eligibility, state and regular-application switch",
+          "depends_on": [
+            "release-prototype-repository"
+          ]
+        },
+        {
+          "name": "application-view",
+          "responsibility": "Present list, form, type derivation, latest production version and duplicate decisions",
+          "depends_on": [
+            "release-prototype-repository",
+            "project-context-provider"
+          ]
+        },
+        {
+          "name": "production-baseline-view",
+          "responsibility": "Maintain window-scoped candidate production outcomes and audit",
+          "depends_on": [
+            "release-prototype-repository"
+          ]
+        },
+        {
+          "name": "current-production-view",
+          "responsibility": "Project latest valid successful production per subsystem and delivery unit",
+          "depends_on": [
+            "release-prototype-repository"
+          ]
+        },
+        {
+          "name": "analytics-view",
+          "responsibility": "Derive metrics, charts and drill-down from the same facts",
+          "depends_on": [
+            "release-prototype-repository"
+          ]
+        },
+        {
+          "name": "workflow-review-page",
+          "responsibility": "Render one task and shared actions using responsive desktop/H5 layouts",
+          "depends_on": [
+            "release-prototype-repository"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "WindowQuery",
+          "producer": "formal release module",
+          "consumers": [
+            "window-view",
+            "application-view"
+          ],
+          "contract": "Return window timestamps, status, selectable and disabledReason within current project scope."
+        },
+        {
+          "name": "ApplicationCommand",
+          "producer": "formal release module",
+          "consumers": [
+            "application-view"
+          ],
+          "contract": "Save, submit, withdraw, cancel and resubmit with requestId and dataVersion."
+        },
+        {
+          "name": "ConflictQuery",
+          "producer": "formal release module",
+          "consumers": [
+            "application-view"
+          ],
+          "contract": "Return complete historical business snapshots excluding attachments and explicit allowed actions."
+        },
+        {
+          "name": "WorkflowLifecycle",
+          "producer": "platform workflow",
+          "consumers": [
+            "formal release module"
+          ],
+          "contract": "Deliver lifecycle events at least once; release consumes idempotently by eventId, application code and workflow round."
+        },
+        {
+          "name": "ProductionLedgerCommand",
+          "producer": "formal release module",
+          "consumers": [
+            "production-baseline-view"
+          ],
+          "contract": "Update outcome with reason, requestId and dataVersion and retain audit."
+        },
+        {
+          "name": "CurrentProductionQuery",
+          "producer": "formal release module",
+          "consumers": [
+            "application-view",
+            "current-production-view"
+          ],
+          "contract": "Return latest valid successful production metadata for delivery units."
+        },
+        {
+          "name": "WorkflowReviewRoute",
+          "producer": "platform workflow frontend",
+          "consumers": [
+            "workflow approvers"
+          ],
+          "contract": "Use /workflow/review/:taskId?businessType=release&businessId=... and server-validated actions."
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "non-emergency application draft",
+          "transitions": [
+            "resolve eligible window",
+            "derive regular or urgent type",
+            "load current production versions",
+            "detect duplicates",
+            "map workflow code",
+            "save or submit"
+          ],
+          "output": "application and workflow round"
+        },
+        {
+          "input": "emergency application draft",
+          "transitions": [
+            "validate description and test report",
+            "verify a current or future window exists",
+            "submit emergency workflow",
+            "assign window at approval completion"
+          ],
+          "output": "fixed-window cleared candidates"
+        },
+        {
+          "input": "workflow approval event",
+          "transitions": [
+            "deduplicate event",
+            "mark application cleared",
+            "update latest window candidates by approvedAt"
+          ],
+          "output": "artifact-cleared production-ledger entries"
+        },
+        {
+          "input": "production outcome correction",
+          "transitions": [
+            "check permission and dataVersion",
+            "append audit",
+            "recalculate latest valid successful history"
+          ],
+          "output": "updated production baseline and current production version"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "Field validation fails",
+        "behavior": "Show field-local errors and preserve all entered data.",
+        "recovery": "Correct the fields and retry."
+      },
+      {
+        "condition": "No current or future window can receive an emergency application",
+        "behavior": "Allow draft save but block submit with a window-maintenance message.",
+        "recovery": "Create an eligible production window and resubmit."
+      },
+      {
+        "condition": "A duplicate application exists",
+        "behavior": "Show the historical business snapshot and only status-allowed decisions.",
+        "recovery": "Choose cancel, edit or create as permitted."
+      },
+      {
+        "condition": "Concurrent dataVersion conflict returns 409",
+        "behavior": "Do not overwrite server state; preserve local changes and show the conflicting current state.",
+        "recovery": "Reload and explicitly reapply the change."
+      },
+      {
+        "condition": "Business rule validation returns 422",
+        "behavior": "Map rule code to the affected field or delivery unit.",
+        "recovery": "Correct input and retry."
+      },
+      {
+        "condition": "Authorization fails with 403",
+        "behavior": "Show forbidden state and remove write actions.",
+        "recovery": "Return to an authorized view or obtain access."
+      },
+      {
+        "condition": "Task is already processed or expired with 410",
+        "behavior": "Render read-only detail and the current task result.",
+        "recovery": "Return to inbox or business detail."
+      },
+      {
+        "condition": "A command is clicked repeatedly",
+        "behavior": "Disable pending controls and reuse the same idempotency key.",
+        "recovery": "Render the command's final returned state."
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "Use fictional data only in the prototype",
+        "Formal write actions require authentication, RBAC, project scope, entity authorization and audit",
+        "Formal workflow and signature actors come only from the authenticated server context"
+      ],
+      "performance": [
+        "Derive analytics from normalized mock facts without duplicate metric stores",
+        "Formal latest-production lookups must support batch queries",
+        "Dispose ECharts instances when views unmount"
+      ],
+      "compatibility": [
+        "Keep existing overdue workflow codes while displaying urgent-version terminology",
+        "Use one route and action contract for Web and H5",
+        "No page-level horizontal overflow at required desktop and mobile viewports",
+        "Support light and dark themes without new dependencies"
+      ],
+      "operations": [
+        "Keep normal business UI free of debug controls",
+        "Provide deterministic development-only state reset",
+        "Formal implementation monitors workflow event retries, emergency assignment failures, production corrections and projection recalculation"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4"
+        ],
+        "signal": "Five views, window eligibility, version naming and field linkage match the confirmed rules.",
+        "method": "Vue build plus desktop browser application paths."
+      },
+      {
+        "requirement_ids": [
+          "R5",
+          "R6"
+        ],
+        "signal": "Latest successful production metadata and complete duplicate snapshots are visible with correct actions.",
+        "method": "Deterministic mock scenarios and browser interaction."
+      },
+      {
+        "requirement_ids": [
+          "R7",
+          "R8",
+          "R9",
+          "R10"
+        ],
+        "signal": "Clearance, production outcome, rollback projection and emergency assignment remain consistent across views.",
+        "method": "Cross-view state assertions and browser regression paths."
+      },
+      {
+        "requirement_ids": [
+          "R11"
+        ],
+        "signal": "A valid pending task is actionable and an expired task is read-only on desktop and H5.",
+        "method": "Browser acceptance at 1280x800, 375x812, 390x844 and 430x932."
+      },
+      {
+        "requirement_ids": [
+          "R12",
+          "R13",
+          "R14"
+        ],
+        "signal": "Analytics reconcile, debug controls stay isolated and the diff remains frontend-only.",
+        "method": "Metric cross-check, debug-mode checks, governance scope audit, git diff check and browser console inspection."
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "Current project, subsystem and delivery-unit providers can remain mocked for this prototype revision.",
+        "basis": "User explicitly deferred those platform integrations.",
+        "falsifier": "The prototype is required to enforce real project or entity permissions."
+      },
+      {
+        "text": "The platform workflow will expose code-based startup, lifecycle events, inbox/done projection and internal signature as separately designed.",
+        "basis": "Approved platform-business-integration design.",
+        "falsifier": "The platform contract is rejected or its stable workflow-code interface changes."
+      },
+      {
+        "text": "Existing frontend dependencies can support responsive review and analytics without a new package.",
+        "basis": "Revision 1 already uses Element Plus and ECharts.",
+        "falsifier": "An approved interaction cannot be implemented with current dependencies."
+      }
+    ],
+    "unknowns": [],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "Use separate production-baseline and current-production views.",
+        "reason": "Window outcomes and cross-window production truth have different ownership and lifecycles.",
+        "source": "User selected option 1."
+      },
+      {
+        "id": "D2",
+        "decision": "Approval completion means artifact clearance only.",
+        "reason": "Approved artifacts may still fail or not enter production.",
+        "source": "User optimization item 1 and explicit terminology confirmation."
+      },
+      {
+        "id": "D3",
+        "decision": "Display urgent version while retaining overdue workflow codes.",
+        "reason": "Business terminology changes without breaking established workflow mappings.",
+        "source": "User optimization item 5."
+      },
+      {
+        "id": "D4",
+        "decision": "Treat additional as a derived application characteristic.",
+        "reason": "It affects workflow risk handling but is not a version category.",
+        "source": "User confirmation."
+      },
+      {
+        "id": "D5",
+        "decision": "Assign emergency applications to a window at approval completion and then freeze assignment.",
+        "reason": "Emergency users should not manually choose a window, while production accounting still needs one.",
+        "source": "User optimization item 8 and confirmations."
+      },
+      {
+        "id": "D6",
+        "decision": "Let the user decide how to handle duplicate applications within status constraints.",
+        "reason": "Duplicates need warning and traceability but should not impose one universal resolution.",
+        "source": "User optimization item 10."
+      },
+      {
+        "id": "D7",
+        "decision": "Use one responsive workflow-review route for Web and H5.",
+        "reason": "Permissions, actions and task state remain consistent across layouts.",
+        "source": "User optimization item 11 and confirmed recommendation."
+      },
+      {
+        "id": "D8",
+        "decision": "Remove prototype controls from normal UI and expose them only through a development entry.",
+        "reason": "Business users do not need Mock or state controls.",
+        "source": "Browser comment and confirmation."
+      }
+    ],
+    "risks": [
+      {
+        "risk": "Revision-1 convergence evidence may be mistaken for revision-2 completion.",
+        "impact": "Unimplemented behavior could be reported as delivered.",
+        "mitigation": "Mark revision-1 evidence as historical and create a new plan, execution and observation cycle for revision 2."
+      },
+      {
+        "risk": "Duplicated stored baseline and analytics values can diverge.",
+        "impact": "Views report contradictory production versions.",
+        "mitigation": "Store normalized facts and derive candidates, current production and metrics."
+      },
+      {
+        "risk": "Emergency assignment may race with window changes.",
+        "impact": "An approved application has no stable accounting window.",
+        "mitigation": "Check availability before submit and perform atomic server-side assignment at approval completion in the formal implementation."
+      },
+      {
+        "risk": "The complete conflict snapshot is dense on H5.",
+        "impact": "Actions or critical history become unreadable.",
+        "mitigation": "Use summary cards, expandable sections and a bounded scrolling dialog while excluding attachments."
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User confirmed the final architecture and interface section, then explicitly deferred the project-lifecycle expansion and instructed completion of the currently designed revision-2 scope.",
+      "confirmed_at": "2026-08-14T23:17:24+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 2,
+    "human_document": "docs/engineering-control/plans/2026-08-14-release-management-prototype-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "Only modify paths authorized by REQ-20260814-026",
+      "Keep release revision 2 frontend-only and use fictional session data",
+      "Do not add dependencies, backend code, database migrations or real external integrations",
+      "Preserve revision 1 evidence and record revision 2 independently"
+    ],
+    "file_map": [
+      {
+        "path": "web/src/modules/release/types.ts",
+        "status": "existing",
+        "responsibility": "Release application, clearance, production and review domain types",
+        "evidence": "Revision 1 release module inspection and approved revision 2 design"
+      },
+      {
+        "path": "web/src/modules/release/mock.ts",
+        "status": "existing",
+        "responsibility": "Single fictional fact set and pure release projections",
+        "evidence": "Revision 1 release module inspection and approved revision 2 design"
+      },
+      {
+        "path": "web/src/modules/release/ReleaseManagementPrototype.vue",
+        "status": "existing",
+        "responsibility": "Five-view shell and session-state owner",
+        "evidence": "Revision 1 release module inspection"
+      },
+      {
+        "path": "web/src/modules/release/components/ReleaseCurrentProductionView.vue",
+        "status": "candidate-new",
+        "responsibility": "Cross-window current production-version projection",
+        "evidence": "Approved revision 2 requirement R9"
+      },
+      {
+        "path": "web/src/modules/release/ReleaseWorkflowReviewPage.vue",
+        "status": "candidate-new",
+        "responsibility": "Responsive Web and H5 release approval experience",
+        "evidence": "Approved revision 2 requirement R11"
+      },
+      {
+        "path": "web/src/router/index.ts",
+        "status": "existing",
+        "responsibility": "Release and workflow-review route registration",
+        "evidence": "Existing authenticated child-route structure"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T6",
+        "goal": "Rebuild the release mock domain around artifact clearance and actual production facts",
+        "requirement_ids": ["R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14"],
+        "prerequisites": [],
+        "input_facts": ["Revision 1 state is owned by types.ts and mock.ts", "Revision 2 design separates clearance, production outcome and current production"],
+        "files": {"create": [], "modify": ["web/src/modules/release/types.ts", "web/src/modules/release/mock.ts"], "test": []},
+        "interfaces": {"consumes": ["revision 1 session state"], "produces": ["window eligibility", "version-type derivation", "conflict snapshots", "production projections"]},
+        "steps": [
+          {"id": "T6-S1", "action": "Replace old scenario and baseline types with revision 2 facts and derivations", "command": null, "expected": "One deterministic fact model expresses all approved states", "evidence": "TypeScript diff and build output"},
+          {"id": "T6-S2", "action": "Run the frontend production build", "command": "npm --prefix web run build", "expected": "Exit code 0", "evidence": "Compiler and bundler summary"}
+        ],
+        "acceptance_checks": ["Approval never directly creates a production success", "Current production is derived only from valid successful history", "Emergency window assignment is deterministic"],
+        "risks": ["Domain replacement affects every release view"],
+        "rollback": "Restore revision 1 types.ts and mock.ts together.",
+        "stop_conditions": ["A real backend or shared platform type becomes required"],
+        "escalation_conditions": ["The approved business rules cannot be represented by normalized frontend facts"]
+      },
+      {
+        "id": "T7",
+        "goal": "Deliver five-view navigation, rich window eligibility and emergency-first application interactions",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R10", "R13", "R14"],
+        "prerequisites": ["T6"],
+        "input_facts": ["T6 owns the revised domain model", "The normal page must not expose mock controls"],
+        "files": {"create": [], "modify": ["web/src/modules/release/ReleaseManagementPrototype.vue", "web/src/modules/release/components/ReleaseWindowView.vue", "web/src/modules/release/components/ReleaseApplicationView.vue", "web/src/modules/release/components/ReleaseApplicationDrawer.vue", "web/src/modules/release/components/ReleaseConflictDialog.vue", "web/src/modules/release/components/ReleaseDetailDrawer.vue", "web/src/modules/release/release-prototype.css"], "test": []},
+        "interfaces": {"consumes": ["T6 domain derivations"], "produces": ["five-view shell", "application save and conflict actions", "debug-only state controls"]},
+        "steps": [
+          {"id": "T7-S1", "action": "Update the shell, window and application components to revision 2 behavior", "command": null, "expected": "Normal, urgent, emergency and duplicate paths are reachable", "evidence": "Component diff and browser interaction"},
+          {"id": "T7-S2", "action": "Run build and whitespace checks", "command": "npm --prefix web run build", "expected": "Exit code 0", "evidence": "Build output"}
+        ],
+        "acceptance_checks": ["Normal page omits debug toolbar", "Emergency hides window, type and requirements", "Conflict actions depend on historical status"],
+        "risks": ["Dense window and conflict information can overflow small viewports"],
+        "rollback": "Restore the revision 1 shell, application components and scoped CSS as one unit.",
+        "stop_conditions": ["The shared AppLayout or global CSS must be changed"],
+        "escalation_conditions": ["Approved interactions cannot fit the existing authenticated shell"]
+      },
+      {
+        "id": "T8",
+        "goal": "Implement window production baselines, current production versions and reconciled analytics",
+        "requirement_ids": ["R1", "R5", "R7", "R8", "R9", "R12", "R14"],
+        "prerequisites": ["T7"],
+        "input_facts": ["T6 provides production-history derivations", "T7 owns one shared session state"],
+        "files": {"create": ["web/src/modules/release/components/ReleaseCurrentProductionView.vue"], "modify": ["web/src/modules/release/components/ReleaseBaselineView.vue", "web/src/modules/release/components/ReleaseAnalyticsView.vue", "web/src/modules/release/ReleaseManagementPrototype.vue", "web/src/modules/release/release-prototype.css"], "test": []},
+        "interfaces": {"consumes": ["window production entries", "current production projection", "release metrics"], "produces": ["production-result audit commands", "production history details", "analytics drill-down"]},
+        "steps": [
+          {"id": "T8-S1", "action": "Implement production baseline, current production and analytics views", "command": null, "expected": "Clearance, production outcome and current production are independently visible", "evidence": "View diff and cross-view browser comparison"},
+          {"id": "T8-S2", "action": "Run the frontend production build", "command": "npm --prefix web run build", "expected": "Exit code 0", "evidence": "Build output"}
+        ],
+        "acceptance_checks": ["Production result corrections require a reason and retain audit values", "Failed and not-produced versions never become current production", "Charts and rows derive from the same facts"],
+        "risks": ["A writable current-version copy would drift from history"],
+        "rollback": "Remove the current-production view and restore the revision 1 baseline and analytics views.",
+        "stop_conditions": ["Current production cannot be derived from production history"],
+        "escalation_conditions": ["Core behavior requires server persistence"]
+      },
+      {
+        "id": "T9",
+        "goal": "Deliver one responsive Web and H5 release workflow review route",
+        "requirement_ids": ["R7", "R10", "R11", "R13", "R14"],
+        "prerequisites": ["T8"],
+        "input_facts": ["The authenticated router supports hidden child routes", "Current-login signature behavior is fixed by the approved design"],
+        "files": {"create": ["web/src/modules/release/ReleaseWorkflowReviewPage.vue"], "modify": ["web/src/modules/release/types.ts", "web/src/modules/release/mock.ts", "web/src/modules/release/components/ReleaseApplicationView.vue", "web/src/modules/release/components/ReleaseDetailDrawer.vue", "web/src/modules/release/release-prototype.css", "web/src/router/index.ts"], "test": []},
+        "interfaces": {"consumes": ["taskId", "businessType", "businessId", "mock task and login identity"], "produces": ["approve", "reject", "return", "current-login signature confirmation"]},
+        "steps": [
+          {"id": "T9-S1", "action": "Register and implement the unified review route and approval interactions", "command": null, "expected": "Desktop and H5 share route and business behavior", "evidence": "Route diff and responsive browser interaction"},
+          {"id": "T9-S2", "action": "Run the frontend production build", "command": "npm --prefix web run build", "expected": "Exit code 0", "evidence": "Build output"}
+        ],
+        "acceptance_checks": ["Only a valid current assignee can operate", "Signature is required when configured", "Mobile actions remain reachable without page overflow"],
+        "risks": ["A fixed mobile action bar can obscure content"],
+        "rollback": "Delete the review page and remove its route and review links.",
+        "stop_conditions": ["A separate unauthenticated or H5-only route is required"],
+        "escalation_conditions": ["Real workflow or signature APIs become necessary for prototype acceptance"]
+      },
+      {
+        "id": "T10",
+        "goal": "Complete automated, governance, responsive-browser and convergence verification",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R14"],
+        "prerequisites": ["T9"],
+        "input_facts": ["T6 through T9 produce a runnable final frontend state", "Revision 2 requires independent evidence from revision 1"],
+        "files": {"create": [".ai-control/requirements/req-20260814-026-release-management-prototype/state-revision-2.json", ".ai-control/requirements/req-20260814-026-release-management-prototype/observation-revision-2.json", ".ai-control/requirements/req-20260814-026-release-management-prototype/convergence-revision-2.json"], "modify": [".ai-control/requirements/req-20260814-026-release-management-prototype/handoff.json"], "test": []},
+        "interfaces": {"consumes": ["final release prototype", "governance checks", "browser runtime"], "produces": ["revision 2 execution, observation and convergence evidence"]},
+        "steps": [
+          {"id": "T10-S1", "action": "Run build, governance, migration and diff checks", "command": "npm --prefix web run build", "expected": "All declared checks pass", "evidence": "Command outputs and exit codes"},
+          {"id": "T10-S2", "action": "Exercise desktop and mobile release and review paths", "command": null, "expected": "Required views and actions render without page-level overflow or console errors", "evidence": "Browser DOM, canvas and interaction observations"}
+        ],
+        "acceptance_checks": ["All R1-R14 have traceable evidence", "Standard-mode sample and gate requirements pass", "No product commit or push is performed"],
+        "risks": ["Browser observation shares the main implementation context and is not fully independent"],
+        "rollback": "Remove only revision 2 evidence files; leave revision 1 evidence unchanged.",
+        "stop_conditions": ["Build, governance, runtime or scope checks fail"],
+        "escalation_conditions": ["Acceptance requires backend, database or shared-platform expansion"]
+      }
+    ],
+    "content": "# 配置管理交互式前端原型修订 2 实施计划\n\n> 执行要求：使用 `$control-engineering` 逐任务实施。开发前计划是候选控制输入，必须先完成需求基准复核和系统建模，不得直接跳到执行阶段。\n\n**目标：** 将现有配置管理 Mock 原型修订为“审批只代表制品准出、投产结果决定生产版本”的五视图业务原型，并提供 Web/H5 共用的审批链接。\n\n**架构：** 保留 `web/src/modules/release` 的前端会话仓储边界，将旧基线批次模型改为规范化的窗口候选、投产历史和当前生产版本派生模型。模块页面、申请抽屉、冲突弹框、投产基线、生产版本、统计和审批页共用同一状态与纯派生函数；后端、数据库和平台真实服务保持只读。\n\n**技术栈：** Vue 3、TypeScript 5.7、Vite 6、Element Plus 2.9、ECharts 5.6、Vue Router 4、现有 `web/src/components/ui`。\n\n## 状态与来源\n\n- 计划修订：2\n- 设计修订：2\n- 需求：`REQ-20260814-026`\n- 设计文档：`docs/engineering-control/designs/2026-08-14-release-management-prototype-design.md`\n- 需求文档：`docs/requirements/REQ-20260814-026-release-management-prototype/requirement.md`\n- 状态：等待用户批准\n- 历史边界：修订 1 的 `T1-T5`、execution、observation 和 convergence 只作为旧原型证据；修订 2 从 `T6` 开始记录。\n\n## 全局约束\n\n- 只修改当前任务 `codex-task-scope.yaml` 中的 `writable_paths`。\n- 不修改 Java、数据库、Flyway、真实菜单、平台工作流、附件、通知、项目管理、研发管理和测试管理。\n- 项目、物理子系统、交付单元、需求、审批任务和附件均使用虚构会话 Mock。\n- 不新增 npm 包，不修改共享 UI、全局样式或应用壳层。\n- 版本号必填且禁止空格，不比较语义版本大小。\n- 版本类型固定为常规、紧急、应急；追加是申请特征，不是版本类型。\n- 审批完成只产生制品准出；只有投产成功更新生产版本。\n- 窗口候选按审批完成时间判断最新，不按版本字符串排序。\n- 普通页面不得显示 Mock、状态选择和恢复数据工具；仅 `import.meta.env.DEV && route.query.debug === '1'` 显示开发调试入口。\n- 审批统一路由为 `/workflow/review/:taskId?businessType=release&businessId=...`，不创建 H5 专属路由。\n- 验收视口为 `375x812`、`390x844`、`430x932`、`1280x800` 及以上，并检查浅色、深色主题。\n- SIT/UAT、投产演练、首次投产、重保期、质保期和项目阶段管理明确为本计划非目标。\n\n## 文件职责地图\n\n| 文件 | 状态 | 修订 2 职责 |\n|---|---|---|\n| `web/src/modules/release/types.ts` | existing-untracked | 版本类型、申请特征、窗口资格、申请、流程、投产明细、生产版本、统计和审批任务类型 |\n| `web/src/modules/release/mock.ts` | existing-untracked | 唯一虚构事实集、会话克隆和纯派生/命令辅助函数 |\n| `web/src/modules/release/ReleaseManagementPrototype.vue` | existing-untracked | 五视图壳层、会话状态所有权、跨视图业务动作和开发调试入口 |\n| `web/src/modules/release/components/ReleaseWindowView.vue` | existing-untracked | 窗口列表、四个时间、状态、资格说明、编辑和常规开关 |\n| `web/src/modules/release/components/ReleaseApplicationView.vue` | existing-untracked | 申请列表、筛选、状态操作和审批入口 |\n| `web/src/modules/release/components/ReleaseApplicationDrawer.vue` | existing-untracked | 应急选择、窗口选择、类型派生、单元版本、需求、测试报告和校验 |\n| `web/src/modules/release/components/ReleaseConflictDialog.vue` | existing-untracked | 历史申请业务快照和取消旧单、编辑旧单、新建决策 |\n| `web/src/modules/release/components/ReleaseDetailDrawer.vue` | existing-untracked | 申请详情、流程轮次、准出结果、附件和审计 |\n| `web/src/modules/release/components/ReleaseBaselineView.vue` | existing-untracked | 改造为按窗口维护投产结果的“投产基线”视图 |\n| `web/src/modules/release/components/ReleaseCurrentProductionView.vue` | candidate-new | 跨窗口当前生产版本、来源窗口和历史轨迹 |\n| `web/src/modules/release/components/ReleaseAnalyticsView.vue` | existing-untracked | 新口径指标、图表和多维下钻 |\n| `web/src/modules/release/components/ReleaseChart.vue` | existing-untracked | 保持模块 ECharts 生命周期封装 |\n| `web/src/modules/release/ReleaseWorkflowReviewPage.vue` | candidate-new | Web/H5 共用审批详情、签署和审批动作 |\n| `web/src/modules/release/release-prototype.css` | existing-untracked | 五视图、弹层、审批页和规定视口的模块作用域样式 |\n| `web/src/modules/release/prototype-route.ts` | existing-untracked | 保持唯一配置管理原型菜单节点 |\n| `web/src/router/index.ts` | existing | 注册 `/release` 和无菜单的统一审批路由 |\n| `web/src/stores/auth.ts` | existing | 保持服务端菜单不变并去重追加原型入口 |\n\n## 任务依赖与并行策略\n\n```text\nT6 领域事实与派生模型\n  -> T7 五视图壳层、窗口和申请交互\n      -> T8 投产基线、生产版本和统计\n          -> T9 Web/H5 统一审批链接\n              -> T10 集成、浏览器观测和收敛验收\n```\n\n全部任务串行。`types.ts`、`mock.ts`、模块壳层和 CSS 是共享写入面，无法证明并行安全。\n\n## 需求覆盖\n\n| 需求 | 任务 |\n|---|---|\n| R1 五视图 | T7、T8 |\n| R2 版本类型与追加分离 | T6、T7 |\n| R3 窗口资格 | T6、T7 |\n| R4 申请字段联动 | T6、T7 |\n| R5 最近生产版本 | T6、T7、T8 |\n| R6 重复申请决策 | T6、T7 |\n| R7 审批只准出 | T6、T8、T9 |\n| R8 投产基线 | T6、T8 |\n| R9 生产版本 | T6、T8 |\n| R10 应急归窗 | T6、T7、T9 |\n| R11 响应式审批 | T9、T10 |\n| R12 统计下钻 | T6、T8 |\n| R13 调试隔离与全状态 | T7、T9、T10 |\n| R14 前端边界与响应式 | T6-T10 |\n\n---\n\n### T6：重建类型安全的制品准出与投产事实模型\n\n**需求映射：** R2、R3、R4、R5、R6、R7、R8、R9、R10、R12、R14\n\n**前置任务：** 无\n\n**文件：**\n- 修改：`web/src/modules/release/types.ts`\n- 修改：`web/src/modules/release/mock.ts`\n\n**接口：**\n- 消费：现有 `createReleasePrototypeState()` 及组件使用的会话状态。\n- 产出：\n  - `ReleaseVersionType = '常规版本' | '紧急版本' | '应急版本'`\n  - `ReleaseApplicationCharacteristic = '普通申请' | '追加申请'`\n  - `ReleaseProductionResult = '制品准出' | '投产成功' | '投产失败' | '未投产'`\n  - `evaluateWindowEligibility(window, businessDate): ReleaseWindowEligibility`\n  - `deriveVersionType(input): ReleaseVersionType`\n  - `workflowCodeFor(versionType, characteristic): string`\n  - `findCurrentProductionVersion(state, subsystemCode, deliveryUnitCode): ReleaseCurrentProductionVersion | undefined`\n  - `buildWindowProductionEntries(state, windowId): ReleaseWindowProductionEntry[]`\n  - `updateProductionResult(state, command): void`\n  - `assignEmergencyWindow(state, approvedAt): ReleaseWindow | undefined`\n  - `detectReleaseConflicts(draft, state): ReleaseConflict[]`\n  - `buildReleaseMetrics(state, windowId?): ReleaseMetrics`\n\n- [ ] **步骤 1：建立修订 1 构建基准**\n\n  运行：`npm --prefix web run build`\n\n  预期：退出码为 0；若失败，记录错误并停止，不能把既有故障归因于修订 2。\n\n  证据：构建退出码和首个错误（如有）。\n\n- [ ] **步骤 2：替换旧场景和基线类型**\n\n  将 `ReleaseScenario`、`审批通过/已纳入基线` 和 `ReleaseBaselineBatch` 迁移为版本类型、申请特征、`制品准出`、窗口投产明细、投产历史和当前生产版本。`ReleaseApplication.windowId/windowName` 对应急草稿和审批中记录允许为空，审批完成的应急 Mock 必须已有固定归窗。\n\n  预期：类型中不再存在 `追加常规`、`超期常规`、`超期追加`、`审批通过`、`已纳入基线`。\n\n  证据：`rg -n \"追加常规|超期常规|超期追加|审批通过|已纳入基线\" web/src/modules/release/types.ts web/src/modules/release/mock.ts` 无旧业务值命中。\n\n- [ ] **步骤 3：建立确定性事实数据**\n\n  窗口时间改为 `YYYY-MM-DD HH:mm`；至少提供关闭、当前可申报、截止后投产前和未来未开始窗口。提供常规、紧急、应急、普通、追加、草稿、审批中、退回、撤回、取消和制品准出申请，以及成功、失败、未投产和历史回算样例。\n\n  预期：所有页面事实来自 `createReleasePrototypeState()` 的深克隆；同一交付单元至少有两次成功历史用于回算。\n\n  证据：类型检查和数据差异审阅。\n\n- [ ] **步骤 4：实现纯派生与受控命令辅助函数**\n\n  窗口资格返回 `selectable` 和 `disabledReason`；常规/紧急按申报截止与投产开始判定；候选按 `approvedAt`；生产版本只取最新有效成功历史；结果更正追加前后值、原因、操作人和时间；应急归窗按审批完成时间选择当前投产窗口，否则选择最近未来窗口。\n\n  预期：版本字符串不参与候选排序；应急无可承接窗口时返回 `undefined`；结果从成功改为失败后派生到上一条成功记录。\n\n  证据：调用点审阅、TypeScript 编译和 T8 浏览器交叉验证。\n\n- [ ] **步骤 5：实现完整冲突快照与允许动作**\n\n  `ReleaseConflict` 包含原申请除附件外的业务快照及 `allowedActions`。草稿/退回/撤回允许取消、编辑、新建；审批中只允许新建并提示先撤回；制品准出只允许新建且新单派生追加特征。\n\n  预期：冲突检测不直接替用户取消或阻断新建，附件不进入快照。\n\n  证据：类型检查和 T7 冲突弹框浏览器路径。\n\n- [ ] **步骤 6：局部回归**\n\n  运行：`npm --prefix web run build && git diff --check`\n\n  预期：两条检查退出码均为 0。\n\n  证据：命令退出码。\n\n**验收检查：** 旧场景值消失；Mock 能表达全部新状态；生产版本可由历史回算；无后端文件变化。\n\n**风险：** 类型重构会使全部现有 release 组件暂时编译失败。\n\n**回滚：** 恢复 `types.ts` 和 `mock.ts` 到修订 1 内容；不影响路由和其他模块。\n\n**停止条件：** 新模型必须依赖后端或共享平台类型才能编译；需求规则无法用规范化事实表达。\n\n**升级条件：** 需要修改 `web/src/types/**`、共享 UI 或新增依赖。\n\n---\n\n### T7：完成五视图壳层、窗口资格和版本申请交互\n\n**需求映射：** R1、R2、R3、R4、R5、R6、R10、R13、R14\n\n**前置任务：** T6\n\n**文件：**\n- 修改：`web/src/modules/release/ReleaseManagementPrototype.vue`\n- 修改：`web/src/modules/release/components/ReleaseWindowView.vue`\n- 修改：`web/src/modules/release/components/ReleaseApplicationView.vue`\n- 修改：`web/src/modules/release/components/ReleaseApplicationDrawer.vue`\n- 修改：`web/src/modules/release/components/ReleaseConflictDialog.vue`\n- 修改：`web/src/modules/release/components/ReleaseDetailDrawer.vue`\n- 修改：`web/src/modules/release/release-prototype.css`\n\n**接口：**\n- 消费：T6 的状态、窗口资格、类型派生、当前生产版本和冲突接口。\n- 产出：五视图导航；`saveApplication(draft, mode)`；冲突决策事件 `resolve(action, conflict)`；开发调试入口。\n\n- [ ] **步骤 1：移除正常页面调试工具并建立五视图导航**\n\n  删除顶部“当前项目 / Mock 原型 / 状态”工具条。视图键改为 `windows | applications | production-baseline | current-production | analytics`。仅开发环境且 URL 含 `?debug=1` 时显示状态切换和恢复数据工具。\n\n  预期：普通 `/release` 首屏直接展示业务内容；刷新和切换视图不出现重复项目工具条。\n\n  证据：桌面浏览器普通 URL 与 debug URL 对照截图。\n\n- [ ] **步骤 2：改造窗口列表和编辑弹框**\n\n  列表及详情显示四个精确到分钟的时间、状态、常规开关、可选性和禁用原因。新增窗口的申报开始默认当前业务月 1 日 `00:00`；编辑仍要求原因并展示前后值。\n\n  预期：关闭、未到申报时间和已进入投产的窗口均有文字状态；时间不再只显示日期。\n\n  证据：窗口列表、详情和编辑弹框浏览器检查。\n\n- [ ] **步骤 3：重构申请基础字段联动**\n\n  表单第一项使用“是否应急版本”二元控件。非应急显示丰富窗口选择和只读版本类型；应急隐藏窗口、版本类型和需求编号，显示应急说明和测试报告区域。普通/紧急附件选填，应急至少一份 `TEST_REPORT`，原型通过选择虚构报告完成绑定演示。\n\n  预期：应急与非应急切换不会留下隐藏字段参与错误校验；无可承接窗口时草稿可保存、提交被字段级提示阻止。\n\n  证据：常规、紧急、应急三条表单路径。\n\n- [ ] **步骤 4：展示交付单元最近生产版本**\n\n  每个交付单元编辑行固定展示最近成功版本、版本类型和投产时间；无记录时显示“暂无生产版本”。版本输入禁止空格，制品类型保持受控且只读。\n\n  预期：展示值来自 T6 当前生产版本派生，不取最新审批申请。\n\n  证据：AUTH-SVC 有历史版本与新单元无历史版本的对照检查。\n\n- [ ] **步骤 5：改造冲突弹框和动作状态**\n\n  使用分区摘要展示历史申请除附件外的全部业务字段，提供复制申请单号。按 `allowedActions` 显示取消旧申请、修改旧申请、创建新申请；取消原因必填；审批中旧单编辑/取消入口提示先撤回；制品准出新建自动产生追加特征及原因摘要。\n\n  预期：弹框不会统一阻断新建；选择编辑旧单关闭新建抽屉并打开对应旧单；附件名称不显示。\n\n  证据：草稿、审批中、制品准出三种冲突路径。\n\n- [ ] **步骤 6：更新列表和详情语义**\n\n  列表筛选使用版本类型、申请特征和新状态；详情将“基线结果”改为“投产结果”，审批完成显示制品准出，交付单元显示当前候选/投产结果，流程轮次和签名记录保持。\n\n  预期：页面不再出现“审批即纳基”文案。\n\n  证据：`rg -n \"审批通过后.*基线|自动纳基|已纳入基线|超期常规|追加常规\" web/src/modules/release` 无旧逻辑文案命中。\n\n- [ ] **步骤 7：局部构建与桌面检查**\n\n  运行：`npm --prefix web run build && git diff --check`\n\n  预期：退出码均为 0；`1280x800` 下五视图导航、窗口和申请路径无控制台错误。\n\n  证据：构建结果、浏览器控制台和截图。\n\n**验收检查：** R1-R6、R10、R13 的页面行为可见；表单失败保留输入；正常页面无调试工具。\n\n**风险：** 丰富窗口选项和冲突快照会增加抽屉/弹框高度。\n\n**回滚：** 恢复六个组件、模块壳层和 CSS 到修订 1；T6 类型必须同步回滚。\n\n**停止条件：** 需要修改 AppLayout 或全局 CSS 才能移除工具条或保持页面可用。\n\n**升级条件：** 现有 Element Plus 弹层无法在规定视口容纳核心操作。\n\n---\n\n### T8：实现投产基线、生产版本和新统计口径\n\n**需求映射：** R1、R5、R7、R8、R9、R12、R14\n\n**前置任务：** T7\n\n**文件：**\n- 修改：`web/src/modules/release/components/ReleaseBaselineView.vue`\n- 新建：`web/src/modules/release/components/ReleaseCurrentProductionView.vue`\n- 修改：`web/src/modules/release/components/ReleaseAnalyticsView.vue`\n- 修改：`web/src/modules/release/ReleaseManagementPrototype.vue`\n- 修改：`web/src/modules/release/release-prototype.css`\n\n**接口：**\n- 消费：`buildWindowProductionEntries()`、`updateProductionResult()`、`findCurrentProductionVersion()`、`buildReleaseMetrics()`。\n- 产出：投产结果命令事件 `update-result(command)`；生产版本历史详情；窗口/系统/单元/类型/需求/结果下钻。\n\n- [ ] **步骤 1：将旧基线页面改为投产基线**\n\n  顶部先选投产窗口，列表按物理子系统和交付单元展示最新准出候选、来源申请、审批时间、版本类型和当前投产结果。历史候选在详情中可追溯，不显示旧批次纳基按钮。\n\n  预期：同窗口同单元仅当前最新候选出现在主列表，旧候选仍可展开查看。\n\n  证据：存在追加版本的交付单元候选排序检查。\n\n- [ ] **步骤 2：实现投产结果维护与审计**\n\n  投产管理弹框提供制品准出、投产成功、投产失败、未投产单选；结果变化必须填写原因并二次确认。提交后追加前值、后值、操作人和时间，更新列表和详情。\n\n  预期：空原因不能提交；重复确认不追加重复记录；成功改失败后触发生产版本回算。\n\n  证据：成功、失败、未投产及成功撤销四条会话路径。\n\n- [ ] **步骤 3：新增生产版本视图**\n\n  按物理子系统和交付单元展示最近有效投产成功版本、制品类型、版本类型、投产时间和来源窗口；支持关键字、系统和制品类型筛选，详情展示成功历史及被更正记录。\n\n  预期：制品准出、失败和未投产不会成为当前生产版本；无成功历史有明确空状态。\n\n  证据：更正前后当前生产版本对照。\n\n- [ ] **步骤 4：更新统计指标与下钻**\n\n  指标覆盖窗口、物理子系统、交付单元、去重需求、申请、制品准出及三类投产结果；图表维度使用版本类型、申请状态、投产结果和窗口规模；下钻支持窗口、系统、单元、版本类型、需求和结果。\n\n  预期：图表点击后的明细数量与指标一致；旧“基线批次/纳基数量”文案消失。\n\n  证据：逐项交叉核对派生数量和下钻行数。\n\n- [ ] **步骤 5：局部构建与跨视图一致性检查**\n\n  运行：`npm --prefix web run build && git diff --check`\n\n  预期：退出码均为 0；修改投产结果后，投产基线、生产版本、申请详情和统计同时变化。\n\n  证据：构建结果和跨视图浏览器记录。\n\n**验收检查：** 审批只准出；生产版本只由成功历史派生；结果更正可回算；统计与事实一致。\n\n**风险：** 若把当前生产版本存成第二份可写状态，会与历史事实发生漂移。\n\n**回滚：** 删除 `ReleaseCurrentProductionView.vue`，恢复旧基线/统计组件、模块导航和 T6 数据模型。\n\n**停止条件：** 当前生产版本无法完全由投产历史派生，或跨视图更新需要复制状态。\n\n**升级条件：** 需要真实服务端分页或持久化才能展示核心原型行为。\n\n---\n\n### T9：交付 Web/H5 共用的审批详情和动作\n\n**需求映射：** R7、R10、R11、R13、R14\n\n**前置任务：** T8\n\n**文件：**\n- 新建：`web/src/modules/release/ReleaseWorkflowReviewPage.vue`\n- 修改：`web/src/modules/release/types.ts`\n- 修改：`web/src/modules/release/mock.ts`\n- 修改：`web/src/modules/release/components/ReleaseApplicationView.vue`\n- 修改：`web/src/modules/release/components/ReleaseDetailDrawer.vue`\n- 修改：`web/src/modules/release/release-prototype.css`\n- 修改：`web/src/router/index.ts`\n\n**接口：**\n- 消费：路由参数 `taskId`、查询参数 `businessType` 和 `businessId`；Mock 当前登录人和任务状态。\n- 产出：无菜单路由 `workflow/review/:taskId`；动作 `approve | reject | return`；当前身份确认签署。\n\n- [ ] **步骤 1：注册统一审批路由和入口**\n\n  在现有认证布局下注册 `/workflow/review/:taskId`，不追加菜单节点。审批中的申请列表和详情显示“审核”链接，构造 `businessType=release&businessId=<id>`。\n\n  预期：有效链接可直接刷新；非审批中申请不显示审核入口。\n\n  证据：路由解析和菜单列表检查。\n\n- [ ] **步骤 2：实现任务权限和失效状态 Mock**\n\n  任务仅在当前登录人为待办人且状态为待处理时可操作。错误 `taskId` 显示不存在，已处理任务显示只读结果，非当前待办人显示无权限；原型只模拟服务端结论，不以按钮隐藏冒充授权。\n\n  预期：有效、已处理、过期/不存在、无权限四种链接都有明确页面结果。\n\n  证据：四组 URL 浏览器检查。\n\n- [ ] **步骤 3：实现审批详情、签署和动作**\n\n  页面展示申请摘要、物理子系统、交付单元、版本、需求或应急说明、附件、流程进度和历史意见。要求签名的任务必须先点击“使用当前登录身份确认签署”；同意、拒绝、退回要求审批意见并二次确认，提交中防重复。\n\n  预期：未签署不能提交；成功动作将任务变为只读，并把申请/轮次更新为对应 Mock 状态；应急审批完成后执行归窗并生成制品准出候选。\n\n  证据：同意、拒绝、退回和重复点击路径。\n\n- [ ] **步骤 4：实现响应式布局**\n\n  桌面使用完整信息区和侧边/底部动作；`760px` 以下使用业务卡片、纵向流程、局部附件滚动和可达的底部操作栏，拒绝和退回进入更多操作。页面根节点不横向滚动。\n\n  预期：`375x812`、`390x844`、`430x932` 下标题、状态、长编号和操作不重叠；底部操作不遮挡最后一段内容。\n\n  证据：三种手机视口截图、`scrollWidth <= innerWidth` 和实际点击记录。\n\n- [ ] **步骤 5：局部构建与路由检查**\n\n  运行：`npm --prefix web run build && git diff --check`\n\n  预期：退出码均为 0；审批路由不出现在配置管理菜单子项中。\n\n  证据：构建结果、路由和菜单检查。\n\n**验收检查：** 同一路由覆盖 Web/H5；任务动作、签署、过期和无权限状态可复验；审批完成只产生准出。\n\n**风险：** 固定底部操作区可能遮挡移动端详情；Mock 身份状态可能与现有登录用户显示不一致。\n\n**回滚：** 删除审批页，移除审批路由和入口，恢复相关类型、Mock 和样式。\n\n**停止条件：** 审批路由必须绕过现有认证布局才能访问，或移动端需要修改全局壳层。\n\n**升级条件：** 需要平台真实任务 API、签名服务或共享工作流组件变更。\n\n---\n\n### T10：执行治理、构建和响应式浏览器收敛验收\n\n**需求映射：** R1-R14\n\n**前置任务：** T9\n\n**文件：**\n- 修改：`.ai-control/requirements/req-20260814-026-release-management-prototype/state.json`\n- 修改：`.ai-control/requirements/req-20260814-026-release-management-prototype/model.json`\n- 修改：`.ai-control/requirements/req-20260814-026-release-management-prototype/control-plan.json`\n- 新建：`.ai-control/requirements/req-20260814-026-release-management-prototype/execution-T6.json`\n- 新建：`.ai-control/requirements/req-20260814-026-release-management-prototype/execution-T7.json`\n- 新建：`.ai-control/requirements/req-20260814-026-release-management-prototype/execution-T8.json`\n- 新建：`.ai-control/requirements/req-20260814-026-release-management-prototype/execution-T9.json`\n- 新建：`.ai-control/requirements/req-20260814-026-release-management-prototype/execution-T10.json`\n- 新建：`.ai-control/requirements/req-20260814-026-release-management-prototype/observation-revision-2.json`\n- 修改：`.ai-control/requirements/req-20260814-026-release-management-prototype/convergence.json`\n- 修改：`docs/requirements/REQ-20260814-026-release-management-prototype/codex-task-scope.yaml`\n\n**接口：**\n- 消费：完整 `/release` 和 `/workflow/review/:taskId` 用户路径。\n- 产出：修订 2 的构建、治理、范围、浏览器、截图、控制台和收敛证据。\n\n- [ ] **步骤 1：运行静态与治理检查**\n\n  运行：`npm --prefix web run build`\n\n  运行：`node scripts/check-all-governance.mjs`\n\n  运行：`git diff --check`\n\n  预期：三条命令退出码均为 0。\n\n  证据：完整退出码和关键汇总。\n\n- [ ] **步骤 2：启动隔离服务并验证可达**\n\n  启动现有 Mock API 和 Vite，使用未占用端口；验证 `/release` 与有效审批链接均返回页面，静态资源无 404。\n\n  预期：登录后配置管理入口唯一；刷新两个路由均不落入 404 或登录循环。\n\n  证据：服务进程、HTTP 状态和浏览器地址。\n\n- [ ] **步骤 3：验收桌面核心路径**\n\n  在 `1280x800` 或更大视口依次检查五视图、窗口状态、常规/紧急/应急表单、最近生产版本、三类冲突、制品准出、投产结果更正、生产版本回算、统计下钻和有效/失效审批。\n\n  预期：各结果符合 R1-R13；控制台无 error；页面无文字遮挡和整体横向溢出。\n\n  证据：操作清单、截图、控制台和 DOM 测量。\n\n- [ ] **步骤 4：验收手机审批和关键业务视图**\n\n  在 `375x812`、`390x844`、`430x932` 检查版本申请列表/表单、冲突弹框、投产结果弹框和审批详情/动作。测量 `document.documentElement.scrollWidth <= window.innerWidth`，检查底部操作可达。\n\n  预期：三种视口均无页面级横向溢出、遮挡或被截断操作；桌面行为未改变。\n\n  证据：每个视口截图、像素/DOM 测量和点击结果。\n\n- [ ] **步骤 5：验收主题和开发状态**\n\n  检查浅色、深色、长编号、长名称、加载、空、失败、无权限、只读、提交中、重复点击和 `?debug=1`；普通 URL 不显示调试入口。\n\n  预期：状态有文字，不只依赖颜色；调试入口隔离正确。\n\n  证据：主题和状态截图、控制台结果。\n\n- [ ] **步骤 6：记录修订 2 控制证据并复跑最终门禁**\n\n  将 T6-T10 实际 diff、命令和结果写入当前前缀账本；独立观测明确修订 1/2 证据边界。再次运行构建、治理和 diff 检查。\n\n  预期：14 条 must 均有可复验信号，P0/P1 反馈为 0，范围无越界后才允许标记 converged。\n\n  证据：execution、observation、convergence 和最终命令结果。\n\n**验收检查：** 自动检查通过；指定桌面/手机路径已真实操作；范围和需求覆盖完整；旧证据未冒充新证据。\n\n**风险：** 本上下文执行与观测不构成完全独立复核；浏览器登录会话或端口可能受本地环境扰动。\n\n**回滚：** 回退 T6-T9 的前端改动并保留失败证据；不删除修订 1 历史记录，不执行数据库操作。\n\n**停止条件：** 构建失败、治理失败、白屏、控制台错误、权限越界、页面级横向溢出或需求规则出现矛盾。\n\n**升级条件：** 必须修改后端、数据库、共享平台、全局 CSS 或引入新依赖才能通过验收。\n\n## 控制模型种子\n\n以下信息均为 `hypotheses-only`，导入后由 `$model-engineering-system` 复核：\n\n- 被控边界候选：`web/src/modules/release/**`、`web/src/router/index.ts`、`web/src/stores/auth.ts` 和当前需求前缀账本。\n- 状态变量候选：当前视图、调试状态、窗口、申请、审批轮次、投产历史、窗口候选、生产版本投影、筛选、弹层和审批任务。\n- 接口候选：窗口资格、版本类型派生、冲突快照、应急归窗、投产结果命令、生产版本派生、统计派生和审批路由。\n- 传感器候选：Vue/TypeScript 构建、治理检查、diff 检查、浏览器 DOM、控制台、截图、`scrollWidth` 和跨视图数量核对。\n- 执行器候选：会话仓储命令、表单提交、冲突决策、投产结果更正、审批动作、导航和开发状态切换。\n- 扰动候选：修订 1 旧状态残留、长中文与长编号、窗口边界时间、重复点击、ECharts 重绘、抽屉动画、主题、登录会话和端口占用。\n- 时延候选：模拟提交、路由加载、图表 resize、弹层过渡和浏览器服务启动。\n- 假设候选：当前依赖足以完成响应式审批；会话 Mock 可完整表达正式接口形状；共享应用壳层已支持规定手机视口。\n\n## 高风险动作与回退\n\n- 高风险写入为 `types.ts`/`mock.ts` 的领域模型替换、共享 `router/index.ts` 的审批路由追加和 `auth.ts` 的菜单组合保持。\n- 不修改服务端、数据库、真实权限和平台公共代码，因此回退只涉及当前前端原型和任务账本。\n- 若应用壳层手机适配不足，停止并升级，不在本任务中顺手修改 `AppLayout.vue` 或全局 CSS。\n- 若正式平台契约与当前候选接口不一致，只在 Mock Repository 边界记录差异，不扩大本任务实现真实后端。\n",
+    "task_order": [
+      "T6",
+      "T7",
+      "T8",
+      "T9",
+      "T10"
+    ],
+    "dependency_edges": [
+      {"from": "T6", "to": "T7", "reason": "The views consume the revised domain facts"},
+      {"from": "T7", "to": "T8", "reason": "Baseline and production views share the application shell state"},
+      {"from": "T8", "to": "T9", "reason": "Review completion updates clearance and production candidates"},
+      {"from": "T9", "to": "T10", "reason": "Final verification requires the complete responsive route set"}
+    ],
+    "parallel_groups": [["T6"], ["T7"], ["T8"], ["T9"], ["T10"]],
+    "integration_checks": [
+      {"after_tasks": ["T7", "T8", "T9"], "command": "npm --prefix web run build", "expected": "Vue type checking and Vite production build exit 0"},
+      {"after_tasks": ["T10"], "command": "node scripts/check-all-governance.mjs", "expected": "All governance checks pass"},
+      {"after_tasks": ["T10"], "command": "git diff --check", "expected": "No whitespace errors"}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T7", "T8", "T10"]},
+      {"requirement_id": "R2", "task_ids": ["T6", "T7", "T10"]},
+      {"requirement_id": "R3", "task_ids": ["T6", "T7", "T10"]},
+      {"requirement_id": "R4", "task_ids": ["T6", "T7", "T10"]},
+      {"requirement_id": "R5", "task_ids": ["T6", "T7", "T8", "T10"]},
+      {"requirement_id": "R6", "task_ids": ["T6", "T7", "T10"]},
+      {"requirement_id": "R7", "task_ids": ["T6", "T8", "T9", "T10"]},
+      {"requirement_id": "R8", "task_ids": ["T6", "T8", "T10"]},
+      {"requirement_id": "R9", "task_ids": ["T6", "T8", "T10"]},
+      {"requirement_id": "R10", "task_ids": ["T6", "T7", "T9", "T10"]},
+      {"requirement_id": "R11", "task_ids": ["T9", "T10"]},
+      {"requirement_id": "R12", "task_ids": ["T6", "T8", "T10"]},
+      {"requirement_id": "R13", "task_ids": ["T7", "T9", "T10"]},
+      {"requirement_id": "R14", "task_ids": ["T6", "T7", "T8", "T9", "T10"]}
+    ],
+    "requirements_covered": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6",
+      "R7",
+      "R8",
+      "R9",
+      "R10",
+      "R11",
+      "R12",
+      "R13",
+      "R14"
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User explicitly instructed Codex to begin coding, complete platform capabilities before the release module, and develop directly on the local rokey branch.",
+      "confirmed_at": "2026-08-15T01:03:37+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "web/src/modules/release/**",
+      "web/src/router/index.ts",
+      "web/src/stores/auth.ts",
+      "current requirement-prefixed control ledger"
+    ],
+    "state_variable_candidates": [
+      "active view",
+      "debug state",
+      "windows",
+      "applications",
+      "approval rounds",
+      "production history",
+      "window candidates",
+      "current production projection",
+      "filters",
+      "dialogs",
+      "workflow review task"
+    ],
+    "interface_candidates": [
+      "window eligibility",
+      "version-type derivation",
+      "conflict snapshot",
+      "emergency assignment",
+      "production-result command",
+      "current-production projection",
+      "analytics derivation",
+      "workflow review route"
+    ],
+    "sensor_candidates": [
+      "Vue TypeScript build",
+      "governance check",
+      "git diff check",
+      "browser DOM and console",
+      "screenshots",
+      "scrollWidth measurement",
+      "cross-view count reconciliation"
+    ],
+    "actuator_candidates": [
+      "session repository commands",
+      "form submit",
+      "conflict decision",
+      "production correction",
+      "workflow action",
+      "navigation",
+      "development state switch"
+    ],
+    "disturbance_candidates": [
+      "revision-1 state residue",
+      "long labels",
+      "window boundary timestamps",
+      "duplicate clicks",
+      "ECharts resize",
+      "drawer animation",
+      "theme",
+      "login session",
+      "port occupation"
+    ],
+    "delay_candidates": [
+      "mock submission",
+      "route load",
+      "chart resize",
+      "overlay transition",
+      "service startup"
+    ],
+    "assumptions": [
+      "existing dependencies support responsive review",
+      "session mock can express formal API shapes",
+      "application shell supports required phone viewports"
+    ]
+  }
+}

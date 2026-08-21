@@ -1,0 +1,43 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["Backend standard/direct relation tests passed.", "Authenticated additional and standard browser comparison passed."], "limitations": ["No empty additional real-data sample exists."]},
+    {"id": "R2", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["Backend mapping tests passed.", "Real history card showed all approved fields and live status."], "limitations": []},
+    {"id": "R3", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["Active-item filtering, grouping and recomputation tests passed."], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["Stable ordering tests passed.", "Historical detail link navigation passed."], "limitations": []},
+    {"id": "R5", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["Tenant-scoped persistence contract and controller security test passed."], "limitations": []},
+    {"id": "R6", "result": "pass", "task_ids": ["T2", "T3"], "evidence": ["History uses independent state/catch/retry and production build passed.", "Approval remained visible and all tested viewports had no overflow or console errors."], "limitations": ["Runtime single-endpoint blocking was not supported by the browser capability set."]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["Java 17 release reactor: 73 tests passed."]},
+    {"id": "T2", "status": "verified", "evidence": ["Frontend production build and responsive browser checks passed."]},
+    {"id": "T3", "status": "verified", "evidence": ["Health UP, real-data browser flow, diff and scope audit completed."]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Release reactor under Java 17", "result": "pass", "evidence": "73 tests, zero failures/errors."},
+    {"check": "Frontend production build", "result": "pass", "evidence": "vue-tsc and Vite build completed."},
+    {"check": "Tracked diff whitespace", "result": "pass", "evidence": "git diff --check returned no output."}
+  ],
+  "invariant_results": [
+    {"invariant": "Persisted ADDITIONAL relations remain the lineage source.", "result": "pass", "evidence": "Store query and real relation-backed UI sample."},
+    {"invariant": "Historical status is read live and attachments are not embedded.", "result": "pass", "evidence": "Service tests and flat browser payload presentation."},
+    {"invariant": "Approval behavior and unrelated dirty changes remain unchanged.", "result": "pass", "evidence": "Approval panel present; no unrelated reset or refactor performed."}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "Wrong default JDK", "result": "pass", "evidence": "Sensor recalibrated to the backend's Java 17 runtime and full reactor passed."},
+    {"disturbance": "Dirty rokey worktree", "result": "pass", "evidence": "Only approved product files and REQ-044 evidence were used; unrelated changes were preserved."}
+  ],
+  "residual_risks": [
+    "The current local real dataset does not contain an additional application with zero direct relations.",
+    "Eight unrelated historical ledger files keep the repository-wide AI-control layout check red.",
+    "An accidental startup against devsec_platform created a Flyway history table and failed V2 immediately; that unrelated database was not used further or cleaned destructively."
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R6 have task, automated and runtime evidence; all tasks are verified, both samples have zero P0/P1, and approved-scope invariants hold."
+}

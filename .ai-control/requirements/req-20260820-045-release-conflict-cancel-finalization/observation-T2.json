@@ -1,0 +1,75 @@
+{
+  "sample_label": "T2 completion sample",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S3 frontend compile plus exact eligibility contract inspection",
+      "result": "pass",
+      "raw_evidence": "Vue production build passed; dialog requires preflight, IN_REVIEW, matching requester ID and withdrawal permission before rendering 取消申请",
+      "limitation": ["desktop and mobile live rendering could not be sampled because localhost browser access was denied"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S1 focused authority/service tests plus running endpoint probe",
+      "result": "pass",
+      "raw_evidence": "36 focused backend tests passed; frontend calls /conflict-cancel; rebuilt running service protects both new and old endpoints with HTTP 401 when unauthenticated",
+      "limitation": ["no authenticated browser network capture"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1 focused service and lifecycle rerun",
+      "result": "pass",
+      "raw_evidence": "ReleaseSubmissionServiceTest and ReleaseWorkflowLifecycleConsumerTest independently reran successfully within the 36-test sample",
+      "limitation": ["no live application was cancelled during this sample"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S1 withdrawal lifecycle regression plus frontend contract search",
+      "result": "pass",
+      "raw_evidence": "normal withdrawReleaseApplication and /withdraw handler remain; lifecycle regression maps withdrawal to WITHDRAWN; focused suite passed",
+      "limitation": ["live edit and resubmit after withdrawal were not sampled"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S3 compiled continuation gate and polling contract",
+      "result": "pass",
+      "raw_evidence": "any IN_REVIEW conflict yields 前一申请仍在审批中，请先取消, disables 继续申请, and schedules conflict refresh after 2000 ms",
+      "limitation": ["visual pending-state timing was not sampled"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S1 backend mutation tests plus S3 compiled frontend state contract",
+      "result": "pass",
+      "raw_evidence": "CANCELLED update, submit and attachment mutations are rejected in passing tests; dialog warns that cancellation is permanent and application status labels render 已取消",
+      "limitation": ["live cancelled detail view was not sampled"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S1 focused gateway failure regression",
+      "result": "pass",
+      "raw_evidence": "the 36-test focused rerun includes gateway failure propagation without premature CANCELLED transition",
+      "limitation": ["real synchronous gateway outage was not injected into the running service"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "in-app browser security policy denied access to 127.0.0.1:5173",
+      "impact": "live desktop, mobile, authenticated network and final detail evidence are unavailable; this is a sensor limitation rather than an observed product deviation"
+    },
+    {
+      "event": "rokey contains extensive pre-existing dirty and untracked work",
+      "impact": "observation used scoped repeatable sensors and did not clean or normalize the worktree"
+    }
+  ],
+  "coverage_gaps": [
+    "desktop 1440x900 conflict dialog interaction and layout",
+    "mobile 390x844 conflict dialog interaction and layout",
+    "authenticated live cancellation through workflow termination to CANCELLED",
+    "live normal withdrawal followed by edit and resubmit"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

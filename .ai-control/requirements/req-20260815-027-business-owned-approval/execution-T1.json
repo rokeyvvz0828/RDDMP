@@ -1,0 +1,43 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "purpose": "Add secure single-task context, action policy filtering and RETURN compatibility validation"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java", "purpose": "Expose authenticated task-context endpoint"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTaskContextTest.java", "purpose": "Cover valid, completed, forbidden, missing, unsafe-path and action-policy behavior"},
+    {"path_or_resource": "web/src/api/workflow.ts", "purpose": "Publish WorkflowTaskContext and query client"}
+  ],
+  "requirements_addressed": ["R5", "R6", "R9"],
+  "commands": [
+    {"command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am test", "exit_code": 0, "salient_output": "Baseline: workflow 23 tests passed; final: workflow 28 tests passed, reactor BUILD SUCCESS"},
+    {"command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowServiceTaskContextTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 1, "salient_output": "Expected pre-implementation failure: WorkflowService.taskContext was missing"},
+    {"command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow -am -Dtest=WorkflowServiceTaskContextTest,WorkflowTaskProjectionTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "7 focused tests passed"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite production build completed; only existing bundle-size warnings"},
+    {"command": "git diff --check -- <T1 files>", "exit_code": 0, "salient_output": "No whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "Single-task context authorization", "result": "pass", "evidence": "Five new JUnit tests cover current assignee, completed task, wrong assignee, missing task, unsafe path and disallowed action", "limitations": ["HTTP runtime is deferred to integrated browser/API acceptance"]},
+    {"check": "Workflow regression", "result": "pass", "evidence": "28 workflow tests and all upstream module tests passed on Java 17", "limitations": ["Full reactor test remains for T5"]},
+    {"check": "Frontend public client compatibility", "result": "pass", "evidence": "TypeScript check and Vite build exit 0", "limitations": ["No consumer page exists until T2"]}
+  ],
+  "diff_summary": [
+    "Task context returns stable business/task fields, server-filtered allowed actions, signature requirement and actionable flag",
+    "Unsafe or missing business paths fail closed; another assignee receives FORBIDDEN; completed own tasks are read-only",
+    "Decision validates task context and node policy before mutation and the compatibility path handles RETURN",
+    "Existing inbox, done, decision and monitor APIs remain present"
+  ],
+  "invariants_checked": [
+    {"invariant": "Tenant and current user come from AuthUser", "result": "pass", "evidence": "Controller accepts AuthenticationPrincipal and service SQL binds user.tenantId/user.id"},
+    {"invariant": "Frontend does not decide authorization", "result": "pass", "evidence": "WorkflowTaskContext allowed_actions/actionable are produced in WorkflowService"},
+    {"invariant": "Existing public APIs remain compatible", "result": "pass", "evidence": "Workflow regression and frontend build pass"}
+  ],
+  "disturbances": [
+    {"event": "WorkflowService.java and workflow.ts already had uncommitted platform-integration changes before T1", "impact": "Git diff totals include pre-existing authorized work; no prior changes were reverted"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Runtime HTTP and browser authorization behavior will be sampled after the release consumer exists",
+    "Vite reports existing large bundle warnings, not a T1 failure"
+  ],
+  "recommended_next": "observe"
+}

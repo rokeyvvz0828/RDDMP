@@ -6,6 +6,7 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.model.SystemPage;
 import com.ccb.system.notification.NotificationLevel;
+import com.ccb.system.notification.NotificationModuleSummary;
 import com.ccb.system.notification.NotificationPublishCommand;
 import com.ccb.system.notification.NotificationReadAllResult;
 import com.ccb.system.notification.NotificationUnreadCount;
@@ -22,10 +23,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
 
 @Service
 public class SystemNotificationService implements SystemNotificationPublisher {
     private static final int MAX_RECIPIENTS = 500;
+    private static final Pattern MODULE_CODE = Pattern.compile("[a-z][a-z0-9_-]{0,63}");
 
     private final JdbcTemplate jdbc;
 
@@ -41,10 +44,12 @@ public class SystemNotificationService implements SystemNotificationPublisher {
 
         long notificationId = nextId();
         jdbc.update(
-                "INSERT INTO sys_notification (id, tenant_id, event_id, business_type, business_key, title, content, notification_level, source_name, action_path, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = id",
+                "INSERT INTO sys_notification (id, tenant_id, event_id, module_code, module_name, business_type, business_key, title, content, notification_level, source_name, action_path, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = id",
                 notificationId,
                 notification.tenantId(),
                 notification.eventId(),
+                notification.moduleCode(),
+                notification.moduleName(),
                 notification.businessType(),
                 notification.businessKey(),
                 notification.title(),
@@ -73,17 +78,22 @@ public class SystemNotificationService implements SystemNotificationPublisher {
         return notificationId;
     }
 
-    public SystemPage<SystemNotificationItem> list(PageQuery pageQuery, boolean unreadOnly, AuthUser user) {
+    public SystemPage<SystemNotificationItem> list(PageQuery pageQuery, boolean unreadOnly, String moduleCode, AuthUser user) {
         String unreadFilter = unreadOnly ? " AND un.is_read = 0" : "";
+        String normalizedModule = optionalModuleCode(moduleCode);
+        String moduleFilter = normalizedModule == null ? "" : " AND n.module_code = ?";
+        List<Object> queryArgs = new ArrayList<>(List.of(user.tenantId(), user.id()));
+        if (normalizedModule != null) queryArgs.add(normalizedModule);
         long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_user_notification un WHERE un.tenant_id = ? AND un.user_id = ?" + unreadFilter,
+                "SELECT COUNT(*) FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id WHERE un.tenant_id = ? AND un.user_id = ?" + unreadFilter + moduleFilter,
                 Long.class,
-                user.tenantId(),
-                user.id());
+                queryArgs.toArray());
+        queryArgs.add((pageQuery.page() - 1) * pageQuery.size());
+        queryArgs.add(pageQuery.size());
         List<SystemNotificationItem> items = jdbc.query(
-                "SELECT n.id, n.title, n.content, n.notification_level, n.source_name, n.business_type, n.business_key, n.action_path, un.is_read, un.read_at, n.created_at " +
+                "SELECT n.id, n.title, n.content, n.notification_level, n.source_name, n.module_code, n.module_name, n.business_type, n.business_key, n.action_path, un.is_read, un.read_at, n.created_at " +
                         "FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id " +
-                        "WHERE un.tenant_id = ? AND un.user_id = ?" + unreadFilter +
+                        "WHERE un.tenant_id = ? AND un.user_id = ?" + unreadFilter + moduleFilter +
                         " ORDER BY n.created_at DESC, n.id DESC LIMIT ?, ?",
                 (resultSet, rowNum) -> new SystemNotificationItem(
                         resultSet.getLong("id"),
@@ -91,17 +101,23 @@ public class SystemNotificationService implements SystemNotificationPublisher {
                         resultSet.getString("content"),
                         NotificationLevel.valueOf(resultSet.getString("notification_level")),
                         resultSet.getString("source_name"),
+                        resultSet.getString("module_code"),
+                        resultSet.getString("module_name"),
                         resultSet.getString("business_type"),
                         resultSet.getString("business_key"),
                         resultSet.getString("action_path"),
                         resultSet.getBoolean("is_read"),
                         resultSet.getTimestamp("read_at") == null ? null : resultSet.getTimestamp("read_at").toLocalDateTime(),
                         resultSet.getTimestamp("created_at").toLocalDateTime()),
-                user.tenantId(),
-                user.id(),
-                (pageQuery.page() - 1) * pageQuery.size(),
-                pageQuery.size());
+                queryArgs.toArray());
         return new SystemPage<>(items, total, pageQuery.page(), pageQuery.size());
+    }
+
+    public List<NotificationModuleSummary> modules(AuthUser user) {
+        return jdbc.query(
+                "SELECT n.module_code, n.module_name, COUNT(*) AS total_count, SUM(CASE WHEN un.is_read = 0 THEN 1 ELSE 0 END) AS unread_count FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id WHERE un.tenant_id = ? AND un.user_id = ? GROUP BY n.module_code, n.module_name ORDER BY MAX(n.created_at) DESC, n.module_code",
+                (resultSet, rowNum) -> new NotificationModuleSummary(resultSet.getString("module_code"), resultSet.getString("module_name"), resultSet.getLong("total_count"), resultSet.getLong("unread_count")),
+                user.tenantId(), user.id());
     }
 
     public NotificationUnreadCount unreadCount(AuthUser user) {
@@ -151,6 +167,8 @@ public class SystemNotificationService implements SystemNotificationPublisher {
         return new ValidatedNotification(
                 command.tenantId(),
                 required(command.eventId(), 128, "事件标识"),
+                requiredModuleCode(command.moduleCode()),
+                required(command.moduleName(), 128, "业务板块名称"),
                 required(command.businessType(), 64, "业务类型"),
                 required(command.businessKey(), 128, "业务主键"),
                 List.copyOf(recipients),
@@ -191,6 +209,17 @@ public class SystemNotificationService implements SystemNotificationPublisher {
         return normalized;
     }
 
+    private String requiredModuleCode(String value) {
+        String normalized = required(value, 64, "业务板块编码");
+        if (!MODULE_CODE.matcher(normalized).matches()) throw badRequest("业务板块编码格式不正确");
+        return normalized;
+    }
+
+    private String optionalModuleCode(String value) {
+        if (value == null || value.isBlank()) return null;
+        return requiredModuleCode(value);
+    }
+
     private void audit(ValidatedNotification notification, long notificationId) {
         jdbc.update(
                 "INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, request_path, success) VALUES (?, ?, ?, 'system:notification:publish', 'SYSTEM', ?, 1)",
@@ -215,6 +244,8 @@ public class SystemNotificationService implements SystemNotificationPublisher {
     private record ValidatedNotification(
             long tenantId,
             String eventId,
+            String moduleCode,
+            String moduleName,
             String businessType,
             String businessKey,
             List<Long> recipientUserIds,

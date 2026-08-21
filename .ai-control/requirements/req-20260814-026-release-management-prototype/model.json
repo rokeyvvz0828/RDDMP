@@ -1,0 +1,109 @@
+{
+  "baseline_revision": "baseline-1-design-revision-2",
+  "plant_boundary": {
+    "inside": [
+      "web/src/modules/release revision-2 session domain and views",
+      "web/src/router/index.ts release and workflow-review routes",
+      "revision-2 requirement and control evidence"
+    ],
+    "environment": [
+      "authenticated AppLayout and current login identity",
+      "Element Plus, ECharts, Vue Router and semantic theme variables",
+      "Vite production build and local browser runtime",
+      "mock project, subsystem, delivery-unit, requirement and workflow providers"
+    ]
+  },
+  "state_variables": [
+    {"name": "active_view", "owner": "ReleaseManagementPrototype", "valid_values": ["windows", "applications", "production-baseline", "current-production", "analytics"]},
+    {"name": "release_facts", "owner": "createReleasePrototypeState", "valid_values": ["deterministic fictional session state", "session-updated state"]},
+    {"name": "application_state", "owner": "release application commands", "valid_values": ["草稿", "审批中", "已退回", "已撤回", "已取消", "制品准出"]},
+    {"name": "production_result", "owner": "production result command", "valid_values": ["制品准出", "投产成功", "投产失败", "未投产"]},
+    {"name": "review_task_state", "owner": "ReleaseWorkflowReviewPage mock task projection", "valid_values": ["待处理", "已同意", "已拒绝", "已退回", "不存在", "无权限"]},
+    {"name": "debug_state", "owner": "ReleaseManagementPrototype", "valid_values": ["hidden", "loading", "empty", "error", "forbidden", "normal"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "authenticated /release navigation", "transitions": ["resolve route", "render five-view shell", "switch active view"], "outputs": ["five reachable configuration-management views"]},
+    {"requirement_id": "R2", "input": "application input and prior applications", "transitions": ["derive regular, urgent or emergency type", "derive normal or additional characteristic"], "outputs": ["separate visible version type and read-only characteristic"]},
+    {"requirement_id": "R3", "input": "window timestamps and business date", "transitions": ["evaluate declaration and production boundaries", "build option state and reason"], "outputs": ["rich selectable or disabled window option"]},
+    {"requirement_id": "R4", "input": "emergency toggle and application fields", "transitions": ["show or hide dependent fields", "validate requirements, description and report"], "outputs": ["valid emergency or non-emergency draft"]},
+    {"requirement_id": "R5", "input": "selected delivery unit and production history", "transitions": ["filter valid successes", "select latest production time"], "outputs": ["latest successful production version or explicit empty value"]},
+    {"requirement_id": "R6", "input": "draft delivery units and historical applications", "transitions": ["detect same-window unit conflict", "snapshot business fields", "derive status-dependent actions"], "outputs": ["non-blocking conflict decision dialog without attachments"]},
+    {"requirement_id": "R7", "input": "workflow completion", "transitions": ["resolve stable workflow code", "mark application and units cleared"], "outputs": ["artifact-clearance candidate without production success"]},
+    {"requirement_id": "R8", "input": "window and cleared candidates", "transitions": ["select latest candidate by approval time", "apply audited production-result correction"], "outputs": ["window-scoped production baseline and audit trail"]},
+    {"requirement_id": "R9", "input": "effective production history", "transitions": ["retain valid successes", "select latest success per subsystem and unit"], "outputs": ["cross-window current production version"]},
+    {"requirement_id": "R10", "input": "emergency approval completion time", "transitions": ["find current production window", "otherwise find nearest future window", "freeze assignment"], "outputs": ["assigned window or blocked submission reason"]},
+    {"requirement_id": "R11", "input": "review route task and current login identity", "transitions": ["resolve task authorization", "confirm signature", "execute approve, reject or return"], "outputs": ["responsive read or action result on one route"]},
+    {"requirement_id": "R12", "input": "shared release fact set and filters", "transitions": ["derive metrics", "render charts", "apply drill-down filter"], "outputs": ["reconciled metrics, charts and detail rows"]},
+    {"requirement_id": "R13", "input": "normal or debug URL and display state", "transitions": ["gate debug controls by development query", "render explicit async state"], "outputs": ["clean normal UI and testable development states"]},
+    {"requirement_id": "R14", "input": "scoped frontend diff and target viewport", "transitions": ["type-check and bundle", "render responsive layouts", "run governance and diff checks"], "outputs": ["reversible frontend-only prototype without page overflow"]}
+  ],
+  "interfaces": [
+    {"name": "release_session_repository", "producers": ["mock.ts"], "consumers": ["all release views", "workflow review page"], "invariant": "One fact owner drives lists, details, projections and analytics"},
+    {"name": "window_eligibility", "producers": ["evaluateWindowEligibility"], "consumers": ["application drawer", "window view"], "invariant": "Eligibility and disabled reason derive from all four minute-precision timestamps"},
+    {"name": "production_projection", "producers": ["production history derivations"], "consumers": ["application drawer", "production baseline", "current production", "analytics"], "invariant": "Only effective successful production records drive current production"},
+    {"name": "workflow_review_route", "producers": ["router/index.ts", "application review links"], "consumers": ["ReleaseWorkflowReviewPage"], "invariant": "One authenticated route preserves businessType, businessId and taskId"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Type safety and bundle integrity", "method": "npm --prefix web run build", "blind_spots": ["runtime interaction and visual behavior"], "independence": "Vue TypeScript compiler and Vite bundler"},
+    {"id": "S2", "target": "Business routes and interactions", "method": "Browser interaction at /release and /workflow/review/:taskId", "blind_spots": ["unexercised mock combinations", "formal persistence outside scope"], "independence": "Observed runtime DOM and action state"},
+    {"id": "S3", "target": "Responsive and theme presentation", "method": "Browser screenshots, console inspection and scrollWidth comparison at desktop and three phone viewports", "blind_spots": ["device-specific browser chrome"], "independence": "Pixels, DOM geometry and console output"},
+    {"id": "S4", "target": "Cross-view data consistency", "method": "Compare application, baseline, current production and analytics values after session actions", "blind_spots": ["real concurrent server writes"], "independence": "Runtime projections from the shared facts"},
+    {"id": "S5", "target": "Repository and governance integrity", "method": "governance scripts, Flyway check and git diff --check", "blind_spots": ["future changes after sampling"], "independence": "Repository metadata and policy scripts"},
+    {"id": "S6", "target": "Platform regression", "method": "Full Maven reactor test under Java 17", "blind_spots": ["external production integrations"], "independence": "Backend unit and module test suites"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Release fact model", "action": "Modify types.ts and mock.ts inside the release module", "authority": "REQ-20260814-026 writable scope", "impact_radius": "release prototype", "rollback": "Restore revision 1 domain files together"},
+    {"id": "A2", "target": "Release business UI", "action": "Modify scoped release Vue components and CSS", "authority": "REQ-20260814-026 writable scope", "impact_radius": "/release and its overlays", "rollback": "Restore revision 1 release views"},
+    {"id": "A3", "target": "Review navigation", "action": "Add one authenticated hidden child route and release review links", "authority": "REQ-20260814-026 writable scope", "impact_radius": "frontend router and release views", "rollback": "Remove the review route and links"},
+    {"id": "A4", "target": "Observed frontend deviation", "action": "Apply a limited change within the current task write scope and rerun affected sensors", "authority": "approved task scope", "impact_radius": "one release component or derivation", "rollback": "Restore the affected hunk"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R9", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R10", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R11", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R12", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R13", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R14", "sensor_ids": ["S1", "S3", "S5", "S6"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Existing uncommitted platform work", "effect": "Repository-wide diff contains changes outside the release requirement", "detectable": true, "controllable": false},
+    {"source": "Java 26 default runtime", "effect": "Byte Buddy rejects the unsupported class-file version", "detectable": true, "controllable": true},
+    {"source": "Local authentication and dev-server state", "effect": "Routes can redirect or reload during browser sampling", "detectable": true, "controllable": true},
+    {"source": "Long Chinese labels, versions and dialog content", "effect": "Small viewports can overflow or obscure actions", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "Vite route and component loading", "consequence": "Immediate measurement can observe an intermediate layout", "sampling_rule": "Wait for the target heading and stable document dimensions"},
+    {"source": "ECharts rendering and resize", "consequence": "Canvas can be blank at first paint", "sampling_rule": "Wait for charts and verify nonblank canvases"},
+    {"source": "Mock submit and overlay transitions", "consequence": "Duplicate clicks or early screenshots can sample transient state", "sampling_rule": "Wait for submit and transition completion before measuring"}
+  ],
+  "assumptions": [
+    {"text": "The release mock repository is the sole fact owner for revision 2", "evidence": "All five views consume state and derivations from the release module", "falsifier": "A view contains an independent mutable copy of production facts"},
+    {"text": "Java 17 is the supported backend verification runtime", "evidence": "The Maven reactor passes under the installed Java 17 while Java 26 fails only at Byte Buddy compatibility", "falsifier": "Project toolchain or CI declares Java 26 as required"},
+    {"text": "Existing UI dependencies can express the approved responsive review flow", "evidence": "The final page renders and operates at all three required phone viewports", "falsifier": "A required action remains unreachable without changing shared shell code"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Use A2 and sample S1/S2"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and sample S1/S2"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and sample S2/S4"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and sample S1/S2"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and sample S2/S4"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and sample S2/S4"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "Use A1/A2/A3 and sample S2/S4"},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and sample S2/S4"},
+    {"requirement_id": "R9", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and sample S2/S4"},
+    {"requirement_id": "R10", "observable": "yes", "controllable": "yes", "action": "Use A1/A2/A3 and sample S2/S4"},
+    {"requirement_id": "R11", "observable": "yes", "controllable": "yes", "action": "Use A3 and sample S2/S3"},
+    {"requirement_id": "R12", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 and sample S2/S4"},
+    {"requirement_id": "R13", "observable": "yes", "controllable": "yes", "action": "Use A2/A3 and sample S2/S3"},
+    {"requirement_id": "R14", "observable": "yes", "controllable": "yes", "action": "Use A1-A4 and sample S1/S3/S5/S6"}
+  ],
+  "model_status": "ready"
+}

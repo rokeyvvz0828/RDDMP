@@ -1,0 +1,492 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Deliver module-aware notification persistence, publishing, server filtering and user module aggregates.",
+      "requirement_ids": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Paths and current behavior were verified during design and plan inspection."
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V44__notification_business_module.sql",
+        "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationModuleSummary.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationPublishCommand.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/notification/SystemNotificationItem.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "mock/mock-data.json",
+        "server/src/platform/system/src/test/java/com/ccb/system/service/SystemNotificationServiceTest.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java"
+      ],
+      "invariants": [
+        "Preserve authenticated tenant/user isolation.",
+        "Preserve notification idempotency, internal routing and global mark-all semantics.",
+        "Protect unrelated rokey changes."
+      ],
+      "interface_contracts": [
+        "AuthUser",
+        "PageQuery",
+        "existing notification tables",
+        "module-aware NotificationPublishCommand",
+        "module-filtered list API",
+        "current-user module summary API"
+      ],
+      "non_goals": [
+        "No external channels, templates, preferences, project filters or module administration.",
+        "No unrelated refactor or historical migration edit."
+      ],
+      "action_bounds": [
+        "Modify only listed task files and direct tests.",
+        "Stop before expanding public behavior beyond approved design."
+      ],
+      "acceptance_checks": [
+        "Invalid module metadata is rejected atomically.",
+        "Unknown modules return an empty page.",
+        "Module summaries expose only current-user rows.",
+        "Global unread semantics remain unchanged."
+      ],
+      "evidence_required": [
+        "Actual diff for task scope",
+        "Commands with exit codes and key assertions",
+        "Detected disturbances and unresolved assumptions"
+      ],
+      "rollback": "Revert code and mock changes; retain executed additive columns and values.",
+      "stop_conditions": [
+        "V44 is occupied",
+        "Legacy data cannot be deterministically mapped"
+      ],
+      "escalation_conditions": [
+        "Idempotency or mark-all semantics must change",
+        "A runtime module registry is required"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "Propagate module metadata through workflow persistence, lifecycle events and the notification bridge.",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "Paths and current behavior were verified during design and plan inspection."
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/integration/WorkflowSystemNotificationBridgeTest.java"
+      ],
+      "invariants": [
+        "Preserve authenticated tenant/user isolation.",
+        "Preserve notification idempotency, internal routing and global mark-all semantics.",
+        "Protect unrelated rokey changes."
+      ],
+      "interface_contracts": [
+        "T1 notification command",
+        "T1 workflow columns",
+        "module-aware WorkflowBusinessContext",
+        "module-aware task/result notifications",
+        "legacy-only fallback"
+      ],
+      "non_goals": [
+        "No external channels, templates, preferences, project filters or module administration.",
+        "No unrelated refactor or historical migration edit."
+      ],
+      "action_bounds": [
+        "Modify only listed task files and direct tests.",
+        "Stop before expanding public behavior beyond approved design."
+      ],
+      "acceptance_checks": [
+        "Instance and lifecycle metadata match.",
+        "Pending and result notifications preserve module data.",
+        "Old running workflows remain processable."
+      ],
+      "evidence_required": [
+        "Actual diff for task scope",
+        "Commands with exit codes and key assertions",
+        "Detected disturbances and unresolved assumptions"
+      ],
+      "rollback": "Revert workflow/bridge code; retain additive nullable columns.",
+      "stop_conditions": [
+        "An external context caller is outside scope",
+        "Running schema differs from V35"
+      ],
+      "escalation_conditions": [
+        "Fallback needs private business data",
+        "A module registry is required"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "Make configuration management explicitly declare release / 配置管理 and synchronize public contracts.",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "Paths and current behavior were verified during design and plan inspection."
+      ],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+        "docs/integration/system-notification-contract.md",
+        "docs/integration/workflow-module-contract.md",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java"
+      ],
+      "invariants": [
+        "Preserve authenticated tenant/user isolation.",
+        "Preserve notification idempotency, internal routing and global mark-all semantics.",
+        "Protect unrelated rokey changes."
+      ],
+      "interface_contracts": [
+        "T2 WorkflowBusinessContext",
+        "release module context",
+        "updated integration contracts"
+      ],
+      "non_goals": [
+        "No external channels, templates, preferences, project filters or module administration.",
+        "No unrelated refactor or historical migration edit."
+      ],
+      "action_bounds": [
+        "Modify only listed task files and direct tests.",
+        "Stop before expanding public behavior beyond approved design."
+      ],
+      "acceptance_checks": [
+        "Release approval context is release / 配置管理.",
+        "release_application and the detail route remain unchanged.",
+        "Documentation matches Java signatures."
+      ],
+      "evidence_required": [
+        "Actual diff for task scope",
+        "Commands with exit codes and key assertions",
+        "Detected disturbances and unresolved assumptions"
+      ],
+      "rollback": "Revert release context and contract changes.",
+      "stop_conditions": [
+        "The workflow-start owner changed",
+        "Concurrent changes conflict"
+      ],
+      "escalation_conditions": [
+        "Module identity becomes runtime configured",
+        "An application belongs to multiple modules"
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "Deliver notification module display, searchable filtering, scoped counts and responsive states.",
+      "requirement_ids": [
+        "R1",
+        "R3",
+        "R4",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1",
+        "T3"
+      ],
+      "input_facts": [
+        "Paths and current behavior were verified during design and plan inspection."
+      ],
+      "write_scope": [
+        "web/src/types/notification.ts",
+        "web/src/api/notifications.ts",
+        "web/src/components/ui/UiNotificationCenter.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "Preserve authenticated tenant/user isolation.",
+        "Preserve notification idempotency, internal routing and global mark-all semantics.",
+        "Protect unrelated rokey changes."
+      ],
+      "interface_contracts": [
+        "T1 notification fields and APIs",
+        "TypeScript module summary",
+        "getNotificationModules()",
+        "responsive module-aware drawer"
+      ],
+      "non_goals": [
+        "No external channels, templates, preferences, project filters or module administration.",
+        "No unrelated refactor or historical migration edit."
+      ],
+      "action_bounds": [
+        "Modify only listed task files and direct tests.",
+        "Stop before expanding public behavior beyond approved design."
+      ],
+      "acceptance_checks": [
+        "配置管理 · 审批中心 is visible.",
+        "All/unread filters are server-backed.",
+        "Bell is global and unread tab is scoped.",
+        "Option failure leaves unfiltered data usable.",
+        "Required viewports do not overflow."
+      ],
+      "evidence_required": [
+        "Actual diff for task scope",
+        "Commands with exit codes and key assertions",
+        "Detected disturbances and unresolved assumptions"
+      ],
+      "rollback": "Revert frontend types, API, component and scoped CSS.",
+      "stop_conditions": [
+        "Backend differs from frozen contract",
+        "Two-module authenticated data is unavailable"
+      ],
+      "escalation_conditions": [
+        "Filter persistence or filtered mark-all is requested",
+        "Module administration is requested"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "Workflow persistence and bridge publishing consume the notification module contract and migration columns produced by T1."
+    },
+    {
+      "from": "T1",
+      "to": "T4",
+      "reason": "The notification drawer consumes the module-aware list and module-summary APIs produced by T1."
+    },
+    {
+      "from": "T2",
+      "to": "T3",
+      "reason": "Configuration management can only pass module metadata after WorkflowBusinessContext is extended by T2."
+    },
+    {
+      "from": "T3",
+      "to": "T4",
+      "reason": "Browser verification requires configuration management to generate real module-aware notifications."
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ],
+    [
+      "T3"
+    ],
+    [
+      "T4"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1"
+      ],
+      "checks": [
+        "Focused system/infrastructure tests and first discrete sample."
+      ]
+    },
+    {
+      "after_tasks": [
+        "T2",
+        "T3"
+      ],
+      "checks": [
+        "Focused workflow/boot/release tests and backend contract sample."
+      ]
+    },
+    {
+      "after_tasks": [
+        "T4"
+      ],
+      "checks": [
+        "Frontend build and authenticated responsive browser sample."
+      ]
+    },
+    {
+      "after_tasks": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "checks": [
+        "Full Maven tests, migration checks, governance/scope audit and final verification."
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1 platform sample",
+      "trigger": "T1 execution report",
+      "observer": "main Agent using S1 and S2",
+      "sensors": [
+        "S1",
+        "S2"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ]
+    },
+    {
+      "label": "backend integration sample",
+      "trigger": "T2 and T3 complete",
+      "observer": "main Agent using S1 and S3",
+      "sensors": [
+        "S1",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R5",
+        "R6"
+      ]
+    },
+    {
+      "label": "frontend runtime sample",
+      "trigger": "T4 complete",
+      "observer": "main Agent using S3, S4 and S5",
+      "sensors": [
+        "S3",
+        "S4",
+        "S5"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R3",
+        "R4",
+        "R6",
+        "R7"
+      ]
+    },
+    {
+      "label": "final convergence sample",
+      "trigger": "all tasks verified",
+      "observer": "independent verification context or clearly marked non-independent main Agent",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S3",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T1",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S3",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T1",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S3",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "task_ids": [
+        "T1",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "task_ids": [
+        "T4"
+      ],
+      "sensor_ids": [
+        "S4",
+        "S5"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

@@ -1,0 +1,59 @@
+{
+  "sample_label": "T1 final implementation observation",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "Live desktop browser geometry and DOM inspection",
+      "result": "pass",
+      "raw_evidence": "The conflict dialog footer contained 暂不处理 at x=1011.5 followed by primary 仍创建新申请 at x=1111.5; both had y=489.14 and height=32. No CREATE_NEW action remained in a historical card.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "Live end-to-end duplicate submission using SQ-202608-044",
+      "result": "pass",
+      "raw_evidence": "After one 仍创建新申请 action, all dialogs were gone after the normal transition and SQ-202608-044 changed from 草稿 to 审批中 at 2026-08-18 06:45. The confirmation button used resolving/loading state during submission.",
+      "limitation": ["The DOM node remained present briefly during the Element Plus close transition; it was removed after submission completed."]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "Token-aware branch inspection plus TypeScript production build",
+      "result": "pass",
+      "raw_evidence": "submitSavedApplication compares refreshed report.conflictToken against confirmedConflictToken. It reopens only when applications exist and the token changed; an unchanged-token 409 falls through to the original apiErrorMessage while conflictOpen stays false. vue-tsc and Vite production build passed.",
+      "limitation": ["The changed-token branch was not triggered by mutating concurrent server conflict facts during this observation."]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Template and handler regression inspection",
+      "result": "pass",
+      "raw_evidence": "CANCEL_OLD and EDIT_OLD remain card-level and require a selected conflict; defer still closes through update:modelValue=false; the existing resolveReleaseConflict branches remain unchanged.",
+      "limitation": ["Cancel-old and edit-old were inspected rather than executed to avoid modifying unrelated historical applications."]
+    },
+    {
+      "requirement_id": "R1-R4",
+      "sensor": "Frontend build, diff check and browser console",
+      "result": "pass",
+      "raw_evidence": "npm --prefix web run build exited 0 with 2362 modules transformed; git diff --check exited 0; browser console contained no warning or error entries.",
+      "limitation": ["The Vite build retains the repository's existing large-chunk warning."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "Full governance remains red because six unrelated historical requirement directories use filenames rejected by check-ai-control-layout.mjs.",
+      "classification": "baseline failure outside T1 scope"
+    },
+    {
+      "event": "The scope checker rejects branch rokey before evaluating file paths.",
+      "classification": "user-selected branch versus repository generic branch policy"
+    }
+  ],
+  "coverage_gaps": [
+    "No concurrent server mutation was introduced solely to force a changed conflict token.",
+    "Historical cancel/edit actions were preserved by source inspection and build rather than destructive browser execution."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

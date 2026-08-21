@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0002",
+  "decision": "reject",
+  "decision_reason": "F-0002 has the same expectation, observation, evidence, severity, causal hypothesis, and correction check as F-0001. It was introduced only to satisfy the state-machine route needed to record correcting-stage provenance and is therefore a duplicate rather than a second product deviation.",
+  "dynamic_pattern": "sensor-fault",
+  "causal_assessment": {
+    "hypothesis": "The feedback is duplicate bookkeeping rather than an independent defect.",
+    "supporting_evidence": ["F-0001 and F-0002 describe the same timestamp, page, reproduction, cause, and correction check."],
+    "falsifier": "F-0002 reproduces on a different timestamp contract or has an independently actionable cause."
+  },
+  "control_action": {
+    "gain": "zero",
+    "target": "Duplicate feedback entry",
+    "write_scope": [],
+    "invariants": ["Do not count one observed deviation twice."],
+    "impact_limit": "Control ledger only.",
+    "rollback": "No product action was applied.",
+    "correction_check": ["Confirm F-0001 remains the single disclosed platform timestamp residual risk."],
+    "route": "verifying"
+  },
+  "resolution": "verified",
+  "residual_risk": []
+}

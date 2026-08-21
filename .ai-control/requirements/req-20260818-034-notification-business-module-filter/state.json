@@ -1,0 +1,3880 @@
+{
+  "schema_version": 4,
+  "revision": 40,
+  "created_at": "2026-08-18T01:27:15+00:00",
+  "updated_at": "2026-08-18T02:28:14+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User reviewed the landed design and explicitly confirmed development on 2026-08-18.；计划确认=User explicitly approved the landed implementation plan and continued rokey execution on 2026-08-18.",
+      "recorded_at": "2026-08-18T01:27:15+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Approved baseline imported; seven must requirements and repository boundaries reviewed",
+      "recorded_at": "2026-08-18T01:28:11+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Model ready; all seven must requirements observable and controllable",
+      "recorded_at": "2026-08-18T01:29:57+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Control plan ready; task scopes, dependencies, sensors, rollback and escalation conditions validated",
+      "recorded_at": "2026-08-18T01:31:36+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 has measurable diff and focused test evidence",
+      "recorded_at": "2026-08-18T01:37:51+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 verified with zero feedback; T2 prerequisites satisfied",
+      "recorded_at": "2026-08-18T01:39:31+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 execution report recorded; implementation is independently measurable",
+      "recorded_at": "2026-08-18T01:47:35+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 verified with zero feedback; T3 prerequisites satisfied",
+      "recorded_at": "2026-08-18T01:50:04+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 execution report recorded; release context and contracts are independently measurable",
+      "recorded_at": "2026-08-18T01:52:28+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T3 verified with zero feedback; T4 prerequisites satisfied",
+      "recorded_at": "2026-08-18T01:54:18+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T4 execution report recorded; responsive and runtime sensors ready",
+      "recorded_at": "2026-08-18T02:26:11+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "All four tasks verified; final convergence audit can begin",
+      "recorded_at": "2026-08-18T02:26:29+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Convergence gate passed with all tasks verified and four zero-error samples",
+      "recorded_at": "2026-08-18T02:28:14+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User reviewed the landed design and explicitly confirmed development on 2026-08-18.；计划确认=User explicitly approved the landed implementation plan and continued rokey execution on 2026-08-18.",
+        "recorded_at": "2026-08-18T01:27:15+00:00",
+        "data": {
+          "objective": "Add an explicit business-module dimension to platform notifications so users can identify and server-filter configuration-management and future module messages without changing global unread semantics.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Notifications must persist and return a stable module code and display name independently from source name, business type and business key.",
+              "acceptance": [
+                "configuration-management workflow notifications contain release and 配置管理",
+                "the UI shows 配置管理 · 审批中心",
+                "businessType remains release_application"
+              ],
+              "priority": "must",
+              "source": "User selected option 1 and confirmed separate module and source semantics on 2026-08-18.",
+              "counterexample": [
+                "all workflow notifications only show 审批中心",
+                "the frontend derives the module from actionPath"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "New business-owned workflows must explicitly carry module metadata through instance and lifecycle context into system notifications.",
+              "acceptance": [
+                "release submissions provide release and 配置管理",
+                "workflow lifecycle notifications preserve module metadata",
+                "future modules do not require frontend mappings"
+              ],
+              "priority": "must",
+              "source": "User confirmed explicit workflow-context propagation and compatibility design on 2026-08-18.",
+              "counterexample": [
+                "the workflow notification bridge permanently hardcodes every businessType mapping",
+                "new workflows silently omit module metadata"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "The notification drawer must provide a searchable business-module selector that performs server-side filtering across all and unread views.",
+              "acceptance": [
+                "default is all modules",
+                "selecting release resets to page one and returns only release notifications",
+                "clearing restores all modules",
+                "options only include modules visible to the current user"
+              ],
+              "priority": "must",
+              "source": "User explicitly requested module filtering and confirmed the interaction on 2026-08-18.",
+              "counterexample": [
+                "only the currently loaded 20 records are filtered",
+                "module options expose another user's modules"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Global and filtered unread counts must remain distinct and internally consistent.",
+              "acceptance": [
+                "the bell always shows the user's global unread count",
+                "the unread tab shows the selected module's unread count",
+                "mark-read operations refresh both scopes"
+              ],
+              "priority": "must",
+              "source": "User confirmed the count rules on 2026-08-18.",
+              "counterexample": [
+                "selecting a module changes the bell badge to a module-only count",
+                "filtered unread count is inferred from the current page"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "An append-only migration and runtime compatibility path must preserve existing notifications and running workflows.",
+              "acceptance": [
+                "known legacy business types receive the agreed module mapping",
+                "unknown legacy rows receive a deterministic fallback",
+                "running pre-change workflows can complete and notify",
+                "published migrations remain unchanged"
+              ],
+              "priority": "must",
+              "source": "User confirmed migration and compatibility rules on 2026-08-18.",
+              "counterexample": [
+                "legacy notifications disappear",
+                "a running workflow fails because module metadata is absent",
+                "V26 or V35 is edited"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "Module queries and options must preserve authenticated tenant and user isolation and define explicit empty and failure behavior.",
+              "acceptance": [
+                "unknown module codes return an empty page",
+                "module aggregation starts from the current user's notification rows",
+                "module-option failure does not destroy the unfiltered list"
+              ],
+              "priority": "must",
+              "source": "Existing notification security contract and user-confirmed server-side filtering.",
+              "counterexample": [
+                "the client submits a user id",
+                "the server returns all tenant modules before client filtering"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "The shared notification drawer must remain usable on desktop and required mobile viewports with module filtering, long text, loading, empty and failure states.",
+              "acceptance": [
+                "no drawer or page horizontal overflow at 375x812, 390x844, 430x932 and desktop",
+                "selector, tabs and notification actions remain reachable",
+                "long module names and business keys remain readable"
+              ],
+              "priority": "must",
+              "source": "RDDMP frontend and mobile design constraints.",
+              "counterexample": [
+                "the selector clips the unread tab",
+                "the drawer requires page-level horizontal scrolling"
+              ]
+            }
+          ],
+          "invariants": [
+            "platform/system remains the notification and read-state data owner",
+            "notification queries remain tenant- and current-user-scoped",
+            "notification idempotency remains tenantId plus businessType plus eventId",
+            "action paths remain internal routes",
+            "global mark-all-read retains its existing all-module scope",
+            "published Flyway migrations remain immutable",
+            "unrelated rokey worktree changes remain untouched"
+          ],
+          "constraints": [
+            "Java 17, Spring Boot 3.4.4 and MySQL 8.4",
+            "Vue 3, TypeScript and Element Plus",
+            "public platform notification and workflow contracts change in one requirement",
+            "append-only migration with legacy backfill",
+            "desktop and 375x812, 390x844 and 430x932 browser verification"
+          ],
+          "non_goals": [
+            "external notification channels or WebSocket delivery",
+            "notification templates, preferences, attachments, deletion or bulk operations",
+            "business-module administration UI",
+            "project-level notification filtering",
+            "approval-rule or business-route changes"
+          ],
+          "assumptions": [
+            {
+              "text": "business modules know their stable module code and display name when starting a workflow or publishing a notification",
+              "basis": "module ownership and user-confirmed explicit metadata approach",
+              "falsifier": "a required publisher has no deterministic owning module"
+            },
+            {
+              "text": "mark-all-read remains global across module filters",
+              "basis": "the user did not request a semantic change and existing API is global",
+              "falsifier": "the user requires filtered mark-all-read"
+            },
+            {
+              "text": "historical module names remain frozen on notifications",
+              "basis": "notification content is fixed at first publish under the current contract",
+              "falsifier": "a later requirement demands retroactive module renaming"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Add explicit moduleCode and moduleName fields while retaining sourceName and businessType",
+              "reason": "the concepts serve different user and system semantics",
+              "source": "User selected option 1 on 2026-08-18."
+            },
+            {
+              "id": "D2",
+              "decision": "Display module and source together as 配置管理 · 审批中心",
+              "reason": "users need both ownership and trigger context",
+              "source": "User confirmed the presented display design on 2026-08-18."
+            },
+            {
+              "id": "D3",
+              "decision": "Include a searchable server-backed module filter in this requirement",
+              "reason": "future module growth makes visual labeling alone insufficient",
+              "source": "User explicitly requested filtering on 2026-08-18."
+            },
+            {
+              "id": "D4",
+              "decision": "Keep the bell global and make the unread-tab count module-scoped",
+              "reason": "global awareness and filtered work context are separate",
+              "source": "User confirmed the interaction and count rules on 2026-08-18."
+            },
+            {
+              "id": "D5",
+              "decision": "Propagate module metadata through workflow context and use fallback only for legacy data",
+              "reason": "new modules remain explicit without making the bridge own business mappings",
+              "source": "User confirmed data propagation and compatibility on 2026-08-18."
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R6"
+              ],
+              "signal": "module display, list filters, user options and global/scoped counts match persisted data",
+              "method": "system service and controller tests plus authenticated API checks"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R5"
+              ],
+              "signal": "new and legacy workflows generate correct module-aware task and result notifications",
+              "method": "workflow, boot bridge and release integration tests with migrated data"
+            },
+            {
+              "requirement_ids": [
+                "R5"
+              ],
+              "signal": "legacy rows are fully populated without changing historical migrations",
+              "method": "MySQL 8.4 Flyway execution and before/after mapping queries"
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R6",
+                "R7"
+              ],
+              "signal": "the drawer remains usable through filtering, read updates, failures and long text at all required viewports",
+              "method": "frontend build, component tests and authenticated desktop/mobile browser verification"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "signal": "public contracts and all repository call sites remain compatible",
+              "method": "focused Maven modules, full Maven test suite, governance and scope checks"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Repository interfaces, persisted fields, tests, runtime sensors, writable actuators and disturbances verified",
+        "recorded_at": "2026-08-18T01:29:44+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "platform/system notification publisher, persistence and APIs",
+              "platform/workflow business context and lifecycle persistence",
+              "platform/boot workflow notification bridge",
+              "business/release workflow start",
+              "shared Vue notification drawer",
+              "append-only Flyway and local mock synchronization"
+            ],
+            "environment": [
+              "authenticated users",
+              "MySQL 8.4",
+              "Element Plus runtime",
+              "existing running workflow instances",
+              "dirty rokey working tree"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "notification_module_metadata",
+              "owner": "platform/system",
+              "valid_values": [
+                "complete",
+                "legacy-backfilled"
+              ]
+            },
+            {
+              "name": "workflow_module_context",
+              "owner": "platform/workflow",
+              "valid_values": [
+                "explicit",
+                "legacy-null-resolved"
+              ]
+            },
+            {
+              "name": "global_unread_count",
+              "owner": "platform/system",
+              "valid_values": [
+                "non-negative integer"
+              ]
+            },
+            {
+              "name": "scoped_unread_count",
+              "owner": "platform/system",
+              "valid_values": [
+                "non-negative integer for selected module"
+              ]
+            },
+            {
+              "name": "notification_filter",
+              "owner": "UiNotificationCenter",
+              "valid_values": [
+                "all modules",
+                "returned moduleCode"
+              ]
+            },
+            {
+              "name": "notification_request_generation",
+              "owner": "UiNotificationCenter",
+              "valid_values": [
+                "latest response wins"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "business module publishes or starts workflow",
+              "transitions": [
+                "module metadata validation",
+                "notification/workflow persistence",
+                "DTO projection",
+                "drawer rendering"
+              ],
+              "outputs": [
+                "module · source and unchanged business identity"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "release workflow start",
+              "transitions": [
+                "WorkflowBusinessContext",
+                "wf_instance",
+                "wf_lifecycle_event or wf_task projection",
+                "boot notification bridge"
+              ],
+              "outputs": [
+                "module-aware task and result notification"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "user selects module and all/unread state",
+              "transitions": [
+                "reset page",
+                "send moduleCode/unreadOnly",
+                "authenticated SQL predicates",
+                "render response"
+              ],
+              "outputs": [
+                "server-filtered notification page"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "drawer open or read-state update",
+              "transitions": [
+                "global unread query",
+                "module aggregate query",
+                "read write",
+                "authoritative refresh"
+              ],
+              "outputs": [
+                "independent global and scoped counts"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "legacy notification or running workflow",
+              "transitions": [
+                "Flyway known mapping or deterministic fallback",
+                "nullable workflow compatibility resolver",
+                "normal notification projection"
+              ],
+              "outputs": [
+                "readable, actionable module-aware legacy result"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "authenticated notification/module query",
+              "transitions": [
+                "derive tenant/user from AuthUser",
+                "join sys_user_notification",
+                "apply optional module filter"
+              ],
+              "outputs": [
+                "only current-user data or empty unknown-module page"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "drawer at desktop or required mobile viewport",
+              "transitions": [
+                "load/filter/error states",
+                "responsive selector layout",
+                "long-text wrapping"
+              ],
+              "outputs": [
+                "reachable controls without page overflow"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "NotificationPublishCommand",
+              "producers": [
+                "platform/system"
+              ],
+              "consumers": [
+                "boot bridge",
+                "direct publishers"
+              ],
+              "invariant": "module, source and business object remain distinct and validated"
+            },
+            {
+              "name": "WorkflowBusinessContext",
+              "producers": [
+                "platform/workflow"
+              ],
+              "consumers": [
+                "release module",
+                "workflow persistence and lifecycle"
+              ],
+              "invariant": "new business-owned workflows provide explicit module metadata"
+            },
+            {
+              "name": "notification list/modules APIs",
+              "producers": [
+                "platform/system"
+              ],
+              "consumers": [
+                "UiNotificationCenter"
+              ],
+              "invariant": "all records and counts are current-tenant/current-user scoped"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "notification and workflow contract behavior",
+              "method": "focused JUnit tests with captured SQL, DTO and publish commands",
+              "blind_spots": [
+                "real MySQL migration execution",
+                "rendered browser layout"
+              ],
+              "independence": "server-side executable assertions"
+            },
+            {
+              "id": "S2",
+              "target": "legacy backfill and schema completeness",
+              "method": "Flyway execution plus MySQL before/after count and mapping queries",
+              "blind_spots": [
+                "frontend behavior"
+              ],
+              "independence": "database runtime observation"
+            },
+            {
+              "id": "S3",
+              "target": "authenticated filters, options and counts",
+              "method": "real HTTP responses for two users/modules and unknown module",
+              "blind_spots": [
+                "visual overflow"
+              ],
+              "independence": "running API observation"
+            },
+            {
+              "id": "S4",
+              "target": "frontend contract integrity",
+              "method": "vue-tsc and Vite production build",
+              "blind_spots": [
+                "runtime semantics and layout"
+              ],
+              "independence": "static compiler/build sensor"
+            },
+            {
+              "id": "S5",
+              "target": "drawer display, interactions and responsive layout",
+              "method": "authenticated browser actions, screenshots, DOM overflow and console checks",
+              "blind_spots": [
+                "unexercised backend branches"
+              ],
+              "independence": "end-user runtime observation"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "notification schema, contract and queries",
+              "action": "append migration and modify platform/system plus tests",
+              "authority": "REQ-20260818-034 writable paths",
+              "impact_radius": "shared notification platform",
+              "rollback": "revert app code; retain additive migrated data"
+            },
+            {
+              "id": "A2",
+              "target": "workflow module context propagation",
+              "action": "modify workflow records/services and boot bridge",
+              "authority": "REQ writable workflow/boot paths",
+              "impact_radius": "business-owned workflow integration",
+              "rollback": "revert code; retain nullable columns"
+            },
+            {
+              "id": "A3",
+              "target": "release workflow start metadata",
+              "action": "add release module constants and context values",
+              "authority": "REQ writable release paths",
+              "impact_radius": "configuration-management submissions",
+              "rollback": "revert scoped release changes"
+            },
+            {
+              "id": "A4",
+              "target": "notification drawer state and layout",
+              "action": "modify types, API, Vue component and scoped CSS",
+              "authority": "REQ writable web paths",
+              "impact_radius": "global authenticated shell",
+              "rollback": "revert four frontend files"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "dirty rokey worktree",
+              "effect": "overlapping edits or noisy scope checks",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "parallel Flyway additions",
+              "effect": "candidate V44 collision",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "legacy null workflow context",
+              "effect": "missing module in post-change notification",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "polling and stale HTTP responses",
+              "effect": "count/list drift",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "15-second unread polling",
+              "consequence": "background refresh can race with filter/read actions",
+              "sampling_rule": "sample after authoritative post-write refresh and again after one poll interval"
+            },
+            {
+              "source": "60-second workflow notification reconciliation",
+              "consequence": "task notification may appear after immediate submission sampling",
+              "sampling_rule": "prefer assignment event, then wait for reconciliation only when required"
+            },
+            {
+              "source": "Flyway application startup",
+              "consequence": "API sampling before migration is invalid",
+              "sampling_rule": "wait for backend health and verify schema version before API checks"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "each new business workflow has one owning module",
+              "evidence": "approved product design and current release ownership",
+              "falsifier": "a valid workflow requires multiple module classifications"
+            },
+            {
+              "text": "mark-all-read remains global",
+              "evidence": "existing API and approved design",
+              "falsifier": "user requests filtered mark-all"
+            },
+            {
+              "text": "known legacy types cover current persisted examples",
+              "evidence": "migration and mock-data inspection",
+              "falsifier": "database sampling finds an unmappable type"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1-A4 with S1/S3/S5"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2-A3 with S1/S3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A4 with S1/S3/S5"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A4 with S1/S3/S5"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A2 with S1/S2/S3"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A4 with S1/S3"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A4 with S4/S5"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Four serial controlled tasks reconciled against model; seven must requirements covered by sensors and rollback boundaries",
+        "recorded_at": "2026-08-18T01:31:19+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Deliver module-aware notification persistence, publishing, server filtering and user module aggregates.",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Paths and current behavior were verified during design and plan inspection."
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V44__notification_business_module.sql",
+                "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationModuleSummary.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationPublishCommand.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/notification/SystemNotificationItem.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java",
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+                "mock/mock-data.json",
+                "server/src/platform/system/src/test/java/com/ccb/system/service/SystemNotificationServiceTest.java",
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java"
+              ],
+              "invariants": [
+                "Preserve authenticated tenant/user isolation.",
+                "Preserve notification idempotency, internal routing and global mark-all semantics.",
+                "Protect unrelated rokey changes."
+              ],
+              "interface_contracts": [
+                "AuthUser",
+                "PageQuery",
+                "existing notification tables",
+                "module-aware NotificationPublishCommand",
+                "module-filtered list API",
+                "current-user module summary API"
+              ],
+              "non_goals": [
+                "No external channels, templates, preferences, project filters or module administration.",
+                "No unrelated refactor or historical migration edit."
+              ],
+              "action_bounds": [
+                "Modify only listed task files and direct tests.",
+                "Stop before expanding public behavior beyond approved design."
+              ],
+              "acceptance_checks": [
+                "Invalid module metadata is rejected atomically.",
+                "Unknown modules return an empty page.",
+                "Module summaries expose only current-user rows.",
+                "Global unread semantics remain unchanged."
+              ],
+              "evidence_required": [
+                "Actual diff for task scope",
+                "Commands with exit codes and key assertions",
+                "Detected disturbances and unresolved assumptions"
+              ],
+              "rollback": "Revert code and mock changes; retain executed additive columns and values.",
+              "stop_conditions": [
+                "V44 is occupied",
+                "Legacy data cannot be deterministically mapped"
+              ],
+              "escalation_conditions": [
+                "Idempotency or mark-all semantics must change",
+                "A runtime module registry is required"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Propagate module metadata through workflow persistence, lifecycle events and the notification bridge.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "Paths and current behavior were verified during design and plan inspection."
+              ],
+              "write_scope": [
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/integration/WorkflowSystemNotificationBridgeTest.java"
+              ],
+              "invariants": [
+                "Preserve authenticated tenant/user isolation.",
+                "Preserve notification idempotency, internal routing and global mark-all semantics.",
+                "Protect unrelated rokey changes."
+              ],
+              "interface_contracts": [
+                "T1 notification command",
+                "T1 workflow columns",
+                "module-aware WorkflowBusinessContext",
+                "module-aware task/result notifications",
+                "legacy-only fallback"
+              ],
+              "non_goals": [
+                "No external channels, templates, preferences, project filters or module administration.",
+                "No unrelated refactor or historical migration edit."
+              ],
+              "action_bounds": [
+                "Modify only listed task files and direct tests.",
+                "Stop before expanding public behavior beyond approved design."
+              ],
+              "acceptance_checks": [
+                "Instance and lifecycle metadata match.",
+                "Pending and result notifications preserve module data.",
+                "Old running workflows remain processable."
+              ],
+              "evidence_required": [
+                "Actual diff for task scope",
+                "Commands with exit codes and key assertions",
+                "Detected disturbances and unresolved assumptions"
+              ],
+              "rollback": "Revert workflow/bridge code; retain additive nullable columns.",
+              "stop_conditions": [
+                "An external context caller is outside scope",
+                "Running schema differs from V35"
+              ],
+              "escalation_conditions": [
+                "Fallback needs private business data",
+                "A module registry is required"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Make configuration management explicitly declare release / 配置管理 and synchronize public contracts.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "Paths and current behavior were verified during design and plan inspection."
+              ],
+              "write_scope": [
+                "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+                "docs/integration/system-notification-contract.md",
+                "docs/integration/workflow-module-contract.md",
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java"
+              ],
+              "invariants": [
+                "Preserve authenticated tenant/user isolation.",
+                "Preserve notification idempotency, internal routing and global mark-all semantics.",
+                "Protect unrelated rokey changes."
+              ],
+              "interface_contracts": [
+                "T2 WorkflowBusinessContext",
+                "release module context",
+                "updated integration contracts"
+              ],
+              "non_goals": [
+                "No external channels, templates, preferences, project filters or module administration.",
+                "No unrelated refactor or historical migration edit."
+              ],
+              "action_bounds": [
+                "Modify only listed task files and direct tests.",
+                "Stop before expanding public behavior beyond approved design."
+              ],
+              "acceptance_checks": [
+                "Release approval context is release / 配置管理.",
+                "release_application and the detail route remain unchanged.",
+                "Documentation matches Java signatures."
+              ],
+              "evidence_required": [
+                "Actual diff for task scope",
+                "Commands with exit codes and key assertions",
+                "Detected disturbances and unresolved assumptions"
+              ],
+              "rollback": "Revert release context and contract changes.",
+              "stop_conditions": [
+                "The workflow-start owner changed",
+                "Concurrent changes conflict"
+              ],
+              "escalation_conditions": [
+                "Module identity becomes runtime configured",
+                "An application belongs to multiple modules"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "Deliver notification module display, searchable filtering, scoped counts and responsive states.",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1",
+                "T3"
+              ],
+              "input_facts": [
+                "Paths and current behavior were verified during design and plan inspection."
+              ],
+              "write_scope": [
+                "web/src/types/notification.ts",
+                "web/src/api/notifications.ts",
+                "web/src/components/ui/UiNotificationCenter.vue",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "Preserve authenticated tenant/user isolation.",
+                "Preserve notification idempotency, internal routing and global mark-all semantics.",
+                "Protect unrelated rokey changes."
+              ],
+              "interface_contracts": [
+                "T1 notification fields and APIs",
+                "TypeScript module summary",
+                "getNotificationModules()",
+                "responsive module-aware drawer"
+              ],
+              "non_goals": [
+                "No external channels, templates, preferences, project filters or module administration.",
+                "No unrelated refactor or historical migration edit."
+              ],
+              "action_bounds": [
+                "Modify only listed task files and direct tests.",
+                "Stop before expanding public behavior beyond approved design."
+              ],
+              "acceptance_checks": [
+                "配置管理 · 审批中心 is visible.",
+                "All/unread filters are server-backed.",
+                "Bell is global and unread tab is scoped.",
+                "Option failure leaves unfiltered data usable.",
+                "Required viewports do not overflow."
+              ],
+              "evidence_required": [
+                "Actual diff for task scope",
+                "Commands with exit codes and key assertions",
+                "Detected disturbances and unresolved assumptions"
+              ],
+              "rollback": "Revert frontend types, API, component and scoped CSS.",
+              "stop_conditions": [
+                "Backend differs from frozen contract",
+                "Two-module authenticated data is unavailable"
+              ],
+              "escalation_conditions": [
+                "Filter persistence or filtered mark-all is requested",
+                "Module administration is requested"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Workflow persistence and bridge publishing consume the notification module contract and migration columns produced by T1."
+            },
+            {
+              "from": "T1",
+              "to": "T4",
+              "reason": "The notification drawer consumes the module-aware list and module-summary APIs produced by T1."
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Configuration management can only pass module metadata after WorkflowBusinessContext is extended by T2."
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "Browser verification requires configuration management to generate real module-aware notifications."
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Focused system/infrastructure tests and first discrete sample."
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "Focused workflow/boot/release tests and backend contract sample."
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "Frontend build and authenticated responsive browser sample."
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "checks": [
+                "Full Maven tests, migration checks, governance/scope audit and final verification."
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 platform sample",
+              "trigger": "T1 execution report",
+              "observer": "main Agent using S1 and S2",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "backend integration sample",
+              "trigger": "T2 and T3 complete",
+              "observer": "main Agent using S1 and S3",
+              "sensors": [
+                "S1",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "frontend runtime sample",
+              "trigger": "T4 complete",
+              "observer": "main Agent using S3, S4 and S5",
+              "sensors": [
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "final convergence sample",
+              "trigger": "all tasks verified",
+              "observer": "independent verification context or clearly marked non-independent main Agent",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T4"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 implemented within scope; 12 focused tests passed",
+        "recorded_at": "2026-08-18T01:37:20+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "V44__notification_business_module.sql",
+              "purpose": "add module metadata, indexes and legacy backfill"
+            },
+            {
+              "path_or_resource": "platform/system notification models, service and controller",
+              "purpose": "publish, return, filter and aggregate module-aware notifications"
+            },
+            {
+              "path_or_resource": "MockDataInitializer and mock-data.json",
+              "purpose": "keep local notification rows compatible with the new schema"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R4",
+            "R5",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-system,:ccb-infrastructure -am test",
+              "exit_code": 0,
+              "salient_output": "12 focused tests passed; reactor build success"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "system and infrastructure focused tests",
+              "result": "pass",
+              "evidence": "Maven exit code 0; infrastructure 7 and system 5 tests passed",
+              "limitations": [
+                "migration not yet executed against isolated MySQL",
+                "workflow and frontend consumers not yet updated"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "added candidate V44 migration",
+            "added module code/name to notification command and item",
+            "added authenticated module-filtered list and module summaries",
+            "updated local mock notification columns and rows"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "notification idempotency key remains tenant/businessType/eventId",
+              "result": "pass",
+              "evidence": "existing lookup and unique-key logic unchanged"
+            },
+            {
+              "invariant": "queries remain authenticated tenant/user scoped",
+              "result": "pass",
+              "evidence": "list and module aggregate start from tenant/user-filtered sys_user_notification"
+            },
+            {
+              "invariant": "published migrations remain unchanged",
+              "result": "pass",
+              "evidence": "only V44 added"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "workflow and frontend consumers are dirty/untracked from prior work",
+              "impact": "consumer updates must preserve existing content in T2-T4"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "execute V44 on isolated MySQL during integration verification",
+            "update all public command consumers in T2"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 diff inspected; focused workflow, release and bridge tests passed",
+        "recorded_at": "2026-08-18T01:47:09+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java",
+              "purpose": "在工作流业务上下文中增加独立业务板块编码和名称"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+              "purpose": "校验并持久化业务板块元数据"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+              "purpose": "将业务板块元数据写入生命周期事件"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+              "purpose": "投递生命周期事件时恢复业务板块上下文"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java",
+              "purpose": "待审批和结果通知显式透传业务板块并兼容旧流程"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+              "purpose": "验证工作流实例板块字段持久化"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+              "purpose": "验证生命周期投递保留板块元数据"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/src/test/java/com/ccb/boot/integration/WorkflowSystemNotificationBridgeTest.java",
+              "purpose": "验证通知命令的板块、业务类型和路由"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "git diff --check && rg -n 'new WorkflowBusinessContext|new NotificationPublishCommand' server/src -g '*.java'",
+              "exit_code": 0,
+              "salient_output": "静态检查通过，所有直接构造调用已枚举"
+            },
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow,:ccb-boot,:ccb-release -am test",
+              "exit_code": 1,
+              "salient_output": "产品模块测试通过；boot 测试夹具 Map.of 超过 10 项导致 testCompile 失败"
+            },
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-boot -am test",
+              "exit_code": 0,
+              "salient_output": "workflow 38、release 51、boot 3 个测试全部通过，Reactor BUILD SUCCESS"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "工作流板块元数据编译与单元测试",
+              "result": "pass",
+              "evidence": "ccb-workflow 38 tests passed",
+              "limitations": [
+                "尚未执行真实 MySQL 迁移和认证 API 检查"
+              ]
+            },
+            {
+              "check": "通知桥接板块透传",
+              "result": "pass",
+              "evidence": "WorkflowSystemNotificationBridgeTest 3 tests passed and asserts release / 配置管理 / release_application",
+              "limitations": [
+                "旧未知业务类型回退仅由代码路径审查覆盖"
+              ]
+            },
+            {
+              "check": "配置管理消费者兼容",
+              "result": "pass",
+              "evidence": "ccb-release 51 tests passed",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "工作流实例和生命周期事件携带 moduleCode/moduleName",
+            "待审批与审批结果通知透传板块元数据",
+            "旧运行中流程缺少元数据时映射已知业务并对未知类型生成合法确定性编码"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "租户和当前用户隔离保持不变",
+              "result": "pass",
+              "evidence": "所有工作流查询仍带 tenant_id，通知收件人仍取任务处理人与流程发起人"
+            },
+            {
+              "invariant": "通知幂等事件标识保持不变",
+              "result": "pass",
+              "evidence": "workflow-task 与 workflow-lifecycle eventId 生成规则未变"
+            },
+            {
+              "invariant": "业务类型和详情路由保持不变",
+              "result": "pass",
+              "evidence": "桥接测试断言 release_application 和 /release/applications/SQ-001"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "首次 Maven 测试被沙箱阻止写入 target",
+              "impact": "改用批准权限重跑，未影响产品结论"
+            },
+            {
+              "event": "boot 测试夹具 Map.of 超过 Java API 项数上限",
+              "impact": "改为 Map.ofEntries 后复跑通过"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实 MySQL V44 迁移和运行中旧流程验证留待集成观测"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Release context explicitly carries release / 配置管理; release suite and contract checks passed",
+        "recorded_at": "2026-08-18T01:51:54+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+              "purpose": "配置管理启动审批时显式声明 release / 配置管理"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+              "purpose": "断言板块、业务类型和详情路由"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java",
+              "purpose": "更新生命周期上下文契约"
+            },
+            {
+              "path_or_resource": "docs/integration/system-notification-contract.md",
+              "purpose": "说明板块、来源、业务类型、筛选和计数语义"
+            },
+            {
+              "path_or_resource": "docs/integration/workflow-module-contract.md",
+              "purpose": "规定新工作流显式提供板块并界定旧流程兼容"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-boot -am test",
+              "exit_code": 0,
+              "salient_output": "release 51 tests passed；全 Reactor BUILD SUCCESS"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白或补丁格式错误"
+            },
+            {
+              "command": "rg -n 'MODULE_CODE|MODULE_NAME|moduleCode=release|GET /api/notifications/modules' server/src/modules/release docs/integration",
+              "exit_code": 0,
+              "salient_output": "实现、测试和两份契约字段一致"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "配置管理工作流上下文",
+              "result": "pass",
+              "evidence": "ReleaseSubmissionServiceTest 捕获命令并断言 release、配置管理、release_application 和原详情路由",
+              "limitations": []
+            },
+            {
+              "check": "配置管理既有业务规则回归",
+              "result": "pass",
+              "evidence": "ccb-release 51 tests passed",
+              "limitations": [
+                "真实提交流程留待集成环境"
+              ]
+            },
+            {
+              "check": "公共契约字段顺序和语义",
+              "result": "pass",
+              "evidence": "文档示例与 NotificationPublishCommand 当前签名逐项对照",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "配置管理新增固定板块常量并写入工作流上下文",
+            "业务类型 release_application、窗口、附件、状态流和路由未改变",
+            "通知和工作流接入契约同步业务板块及服务端筛选规则"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "配置管理业务类型不变",
+              "result": "pass",
+              "evidence": "测试断言 businessType=release_application"
+            },
+            {
+              "invariant": "详情路由不变",
+              "result": "pass",
+              "evidence": "测试断言 /release/applications/SQ-001"
+            },
+            {
+              "invariant": "配置管理不直接写平台通知或工作流表",
+              "result": "pass",
+              "evidence": "仍仅调用 WorkflowBusinessGateway"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实流程提交与通知展示将在 T4 集成验收中覆盖"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T4 frontend diff, production build, authenticated API and browser runtime evidence recorded",
+        "recorded_at": "2026-08-18T02:26:11+00:00",
+        "data": {
+          "task_id": "T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/types/notification.ts",
+              "purpose": "增加通知板块字段和板块汇总类型"
+            },
+            {
+              "path_or_resource": "web/src/api/notifications.ts",
+              "purpose": "增加板块选项接口和服务端 moduleCode 查询参数"
+            },
+            {
+              "path_or_resource": "web/src/components/ui/UiNotificationCenter.vue",
+              "purpose": "实现板块展示、模糊筛选、双重未读计数和加载失败状态"
+            },
+            {
+              "path_or_resource": "web/src/styles.css",
+              "purpose": "适配桌面和移动端通知筛选及长文本布局"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R4",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "npm run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 与 Vite production build 通过，2362 modules transformed"
+            },
+            {
+              "command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test",
+              "exit_code": 0,
+              "salient_output": "11 个 Reactor 模块 BUILD SUCCESS，共 124 tests passed"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白或补丁格式错误"
+            },
+            {
+              "command": "authenticated notification API and browser runtime checks",
+              "exit_code": 0,
+              "salient_output": "板块筛选、全局/板块计数、单条已读、全部已读、业务跳转和四种视口均通过"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "板块展示与服务端筛选",
+              "result": "pass",
+              "evidence": "抽屉显示配置管理 · 审批中心；输入配置仅出现配置管理（4），选中后只返回 4 条 release 消息",
+              "limitations": []
+            },
+            {
+              "check": "全局与板块未读计数",
+              "result": "pass",
+              "evidence": "初始全局 7/配置管理 4；读一条后 6/3；全部已读后全局与各板块均为 0",
+              "limitations": []
+            },
+            {
+              "check": "响应式布局",
+              "result": "pass",
+              "evidence": "1280x720、375x812、390x844、430x932 均无页面、抽屉、筛选、页签或列表横向溢出",
+              "limitations": []
+            },
+            {
+              "check": "内部路由",
+              "result": "pass",
+              "evidence": "点击通知进入 /release/applications/SQ-202608-001，铃铛从 7 降为 6",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "通知抽屉增加可搜索业务板块下拉框并使用服务端过滤",
+            "通知来源展示为板块名称与来源名称组合",
+            "铃铛保持全局未读，未读页签按选中板块计数",
+            "补充加载失败、并发请求保护和移动端布局"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "铃铛保持全局未读语义",
+              "result": "pass",
+              "evidence": "选择配置管理后铃铛仍为 7，未读页签为 4"
+            },
+            {
+              "invariant": "全部已读保持全局语义",
+              "result": "pass",
+              "evidence": "read-all changed=6 后全部板块未读均为 0"
+            },
+            {
+              "invariant": "内部业务路由保持可用",
+              "result": "pass",
+              "evidence": "通知点击成功进入版本申请详情"
+            },
+            {
+              "invariant": "无关 rokey 修改不被覆盖",
+              "result": "pass",
+              "evidence": "仅追加本需求文件，未执行 reset、clean 或还原"
+            }
+          ],
+          "disturbances": [
+            "默认 Maven 使用 Java 26，现有 Byte Buddy 不支持；切换项目基线 Java 17 后全量测试通过",
+            "手工 MySQL CLI 首次未声明 utf8mb4 导致隔离库中文乱码；明确客户端字符集后字节与页面展示正确"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1 focused tests and scope checks observed no deviation; runtime DB/API gaps deferred to integration",
+        "recorded_at": "2026-08-18T01:38:38+00:00",
+        "data": {
+          "sample_label": "T1 platform sample",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 focused compilation and tests",
+              "result": "pass",
+              "raw_evidence": "ccb-system compiled and 5 tests passed with module-aware command/item",
+              "limitation": [
+                "all downstream consumers are measured in T2/T3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 SQL and service tests",
+              "result": "pass",
+              "raw_evidence": "module predicate is applied server-side in count and page queries",
+              "limitation": [
+                "real HTTP sampled after backend integration"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 service regression",
+              "result": "pass",
+              "raw_evidence": "global unread and mark-all methods remain separate and unchanged",
+              "limitation": [
+                "frontend count synchronization is T4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1 plus migration inspection",
+              "result": "pass",
+              "raw_evidence": "only V44 added; known mappings and deterministic fallback present; Mock initializer tests passed",
+              "limitation": [
+                "S2 isolated MySQL execution deferred to integration"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1 query inspection and tests",
+              "result": "pass",
+              "raw_evidence": "list and module aggregation require tenantId and userId before module filtering",
+              "limitation": [
+                "cross-user HTTP sampling deferred"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "source": "dirty rokey consumers",
+              "effect": "full-reactor compilation intentionally deferred until T2/T3 update public constructors"
+            }
+          ],
+          "coverage_gaps": [
+            "V44 real MySQL execution",
+            "authenticated HTTP and cross-user isolation"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 independent bridge test passed after rebuilding upstream modules; propagation scan complete",
+        "recorded_at": "2026-08-18T01:49:00+00:00",
+        "data": {
+          "sample_label": "T2 工作流板块传播完成采样",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "WorkflowSystemNotificationBridgeTest",
+              "result": "pass",
+              "raw_evidence": "带 -am 重建依赖后 3 tests passed，断言 release / 配置管理 / release_application",
+              "limitation": [
+                "未连接真实 MySQL"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "工作流字段静态传播扫描与聚焦测试",
+              "result": "pass",
+              "raw_evidence": "wf_instance 写入、wf_lifecycle_event 写入和加载、通知桥接投影均包含 business_module_code/business_module_name；workflow 38 tests passed",
+              "limitation": [
+                "未模拟多个外部业务模块"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "兼容分支代码路径与全上游重建测试",
+              "result": "pass",
+              "raw_evidence": "已知旧业务类型映射固定模块；未知类型生成 business_ 前缀合法编码并记录 warning；Reactor BUILD SUCCESS",
+              "limitation": [
+                "运行中旧实例将在数据库集成观测中复验"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "不带 -am 的单模块测试读取本地仓库旧 SNAPSHOT，产生 NoSuchMethodError",
+              "impact": "分类为 sensor-fault；使用 -am 重建上游后同一测试通过"
+            }
+          ],
+          "coverage_gaps": [
+            "真实 MySQL V44 迁移和运行中旧实例通知尚未采样"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 release submission and lifecycle tests passed; public contracts inspected",
+        "recorded_at": "2026-08-18T01:53:35+00:00",
+        "data": {
+          "sample_label": "T3 配置管理显式板块接入采样",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "ReleaseSubmissionServiceTest",
+              "result": "pass",
+              "raw_evidence": "捕获的 WorkflowStartDefinitionCommand 断言 moduleCode=release、moduleName=配置管理、businessType=release_application",
+              "limitation": [
+                "未通过浏览器创建真实申请"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "配置管理提交与生命周期目标测试",
+              "result": "pass",
+              "raw_evidence": "ReleaseSubmissionServiceTest 6、ReleaseWorkflowLifecycleConsumerTest 6，合计 12 tests passed",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "公开契约与 Java 签名对照",
+              "result": "pass",
+              "raw_evidence": "通知示例包含 moduleCode/moduleName 且字段顺序匹配；工作流契约明确旧流程回退边界",
+              "limitation": [
+                "未执行外部模块接入示例编译"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "真实审批提交通知在 T4 运行时集成验收中覆盖"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "Authenticated API, desktop/mobile browser, console, build and full Java 17 regression sampling complete",
+        "recorded_at": "2026-08-18T02:26:28+00:00",
+        "data": {
+          "sample_label": "T4 通知板块筛选与运行态集成采样",
+          "task_ids": [
+            "T4"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "认证 API 与通知抽屉 DOM/截图",
+              "result": "pass",
+              "raw_evidence": "release 通知返回 moduleCode=release、moduleName=配置管理、sourceName=审批中心、businessType=release_application；页面显示配置管理 · 审批中心",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "下拉模糊检索与服务端列表请求",
+              "result": "pass",
+              "raw_evidence": "板块选项为配置管理 4、交付示范中心 2、系统管理 1；输入配置只保留配置管理，选中后列表总数为 4；unknown_module 返回空页",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "读状态 API 与页面计数",
+              "result": "pass",
+              "raw_evidence": "全局/配置管理未读从 7/4 变为单条已读后的 6/3，再经全局全部已读变为 0/0；选择板块时铃铛不变",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "登录用户范围内 modules/list API",
+              "result": "pass",
+              "raw_evidence": "接口不接收 userId；板块聚合与列表均来自 admin 可见的 7 条接收记录；未知板块 code=0,total=0",
+              "limitation": [
+                "隔离库仅有单租户样本，跨租户由 T1 SQL 和单元测试覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "浏览器 DOM 溢出测量、截图与控制台日志",
+              "result": "pass",
+              "raw_evidence": "1280x720、375x812、390x844、430x932 的 body、drawer、header、filter、tabs、list 均 overflowX=false；长标题换行且操作可达；console error/warn=[]",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "隔离运行库必须基于 ccb_platform_rokey_20260817；ccb_platform 的 Flyway 历史与实际 V35+ 表结构漂移",
+            "默认 Java 26 造成 Mockito/Byte Buddy 传感器失效，使用项目规定 Java 17 后恢复"
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final requirement trace, full Java 17 regression, V44 clone migration, authenticated API and responsive browser evidence audited",
+        "recorded_at": "2026-08-18T02:28:14+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "V44 字段和历史回填验证通过",
+                "release API 保持 businessType=release_application 并返回 release/配置管理",
+                "浏览器显示配置管理 · 审批中心"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "工作流 38 个测试通过",
+                "boot 通知桥 3 个测试通过",
+                "配置管理提交与生命周期目标测试 12 个通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "evidence": [
+                "认证模块选项接口返回三个当前用户可见板块",
+                "模糊输入配置只出现配置管理（4）",
+                "选中 release 后服务端列表仅返回 4 条配置管理通知"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "evidence": [
+                "全局/配置管理未读 7/4 -> 6/3 -> 0/0",
+                "选择配置管理时铃铛保持全局 7，未读页签显示 4"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "V44 在 V35-V43 匹配克隆库执行成功",
+                "6 个字段、索引和全部历史数据回填核对通过",
+                "旧流程回退路径由工作流和通知桥测试覆盖"
+              ],
+              "limitations": [
+                "本机 ccb_platform 存在既存 Flyway 历史漂移，部署该环境前需先修复基线"
+              ]
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "evidence": [
+                "列表和板块聚合使用认证用户，不接受客户端 userId",
+                "unknown_module 返回 code=0,total=0",
+                "SystemNotificationService 5 个测试通过"
+              ],
+              "limitations": [
+                "运行库是单租户样本，跨租户隔离由 SQL 约束和单元测试覆盖"
+              ]
+            },
+            {
+              "id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T4"
+              ],
+              "evidence": [
+                "1280x720、375x812、390x844、430x932 全部无横向溢出",
+                "长标题换行、筛选和操作按钮可达",
+                "页面 console error/warn 为空"
+              ],
+              "limitations": []
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "平台通知 5 个测试、迁移结构和 API 运行验证通过"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "工作流 38 个测试和通知桥 3 个测试通过"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "配置管理 51 个测试及接入契约核对通过"
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "前端生产构建、认证接口、路由和四种视口验证通过"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0004",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Java 17 全量 Maven 测试",
+              "result": "pass",
+              "evidence": "11 个 Reactor 模块 BUILD SUCCESS，共 124 tests passed"
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "vue-tsc --noEmit 与 Vite build 通过"
+            },
+            {
+              "check": "V44 迁移运行验证",
+              "result": "pass",
+              "evidence": "匹配 rokey 的克隆库执行成功，空回填计数均为 0"
+            },
+            {
+              "check": "认证接口与浏览器集成",
+              "result": "pass",
+              "evidence": "筛选、计数、读状态、路由、响应式和控制台检查全部通过"
+            },
+            {
+              "check": "补丁格式",
+              "result": "pass",
+              "evidence": "git diff --check 无输出"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "platform/system 保持通知和读状态数据所有者",
+              "result": "pass",
+              "evidence": "业务模块仅经公共通知/工作流契约接入"
+            },
+            {
+              "invariant": "租户和当前用户隔离保持",
+              "result": "pass",
+              "evidence": "服务查询从 AuthUser tenantId/userId 构造范围"
+            },
+            {
+              "invariant": "通知幂等键不变",
+              "result": "pass",
+              "evidence": "唯一键和发布查重仍使用 tenantId+businessType+eventId"
+            },
+            {
+              "invariant": "内部详情路由保持",
+              "result": "pass",
+              "evidence": "通知点击进入 /release/applications/SQ-202608-001"
+            },
+            {
+              "invariant": "全部已读保持全板块语义",
+              "result": "pass",
+              "evidence": "read-all 后三个板块未读均为 0"
+            },
+            {
+              "invariant": "已发布 Flyway 文件未修改",
+              "result": "pass",
+              "evidence": "本需求仅新增 V44"
+            },
+            {
+              "invariant": "无关 rokey 变更受保护",
+              "result": "pass",
+              "evidence": "未执行 reset、clean、checkout 或还原"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "默认 Maven 使用 Java 26",
+              "result": "pass",
+              "evidence": "切换项目基线 Java 17 后全量测试通过"
+            },
+            {
+              "disturbance": "沙箱阻止本机数据库和构建目录访问",
+              "result": "pass",
+              "evidence": "获准后仅连接隔离库并完成相同命令"
+            },
+            {
+              "disturbance": "手工 MySQL CLI 默认字符集",
+              "result": "pass",
+              "evidence": "使用 utf8mb4 后配置管理 HEX=E9858DE7BDAEE7AEA1E79086，页面中文正确"
+            },
+            {
+              "disturbance": "主库迁移历史漂移",
+              "result": "pass",
+              "evidence": "改用与本地 rokey V35-V43 匹配的隔离克隆，V44 完整执行"
+            }
+          ],
+          "residual_risks": [
+            "本机 ccb_platform 的 Flyway 历史与实际表结构不一致；该既存环境在正式继续迁移前需要单独治理"
+          ],
+          "gate_result": "pass",
+          "route_reason": "七项 must 需求均有任务、修改和运行传感器证据；四个任务已验证，四次采样 P0-P3 均为零，全量回归和运行验收通过"
+        }
+      }
+    ]
+  },
+  "objective": "Add an explicit business-module dimension to platform notifications so users can identify and server-filter configuration-management and future module messages without changing global unread semantics.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Notifications must persist and return a stable module code and display name independently from source name, business type and business key.",
+      "acceptance": [
+        "configuration-management workflow notifications contain release and 配置管理",
+        "the UI shows 配置管理 · 审批中心",
+        "businessType remains release_application"
+      ],
+      "priority": "must",
+      "source": "User selected option 1 and confirmed separate module and source semantics on 2026-08-18.",
+      "counterexample": [
+        "all workflow notifications only show 审批中心",
+        "the frontend derives the module from actionPath"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "New business-owned workflows must explicitly carry module metadata through instance and lifecycle context into system notifications.",
+      "acceptance": [
+        "release submissions provide release and 配置管理",
+        "workflow lifecycle notifications preserve module metadata",
+        "future modules do not require frontend mappings"
+      ],
+      "priority": "must",
+      "source": "User confirmed explicit workflow-context propagation and compatibility design on 2026-08-18.",
+      "counterexample": [
+        "the workflow notification bridge permanently hardcodes every businessType mapping",
+        "new workflows silently omit module metadata"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "The notification drawer must provide a searchable business-module selector that performs server-side filtering across all and unread views.",
+      "acceptance": [
+        "default is all modules",
+        "selecting release resets to page one and returns only release notifications",
+        "clearing restores all modules",
+        "options only include modules visible to the current user"
+      ],
+      "priority": "must",
+      "source": "User explicitly requested module filtering and confirmed the interaction on 2026-08-18.",
+      "counterexample": [
+        "only the currently loaded 20 records are filtered",
+        "module options expose another user's modules"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Global and filtered unread counts must remain distinct and internally consistent.",
+      "acceptance": [
+        "the bell always shows the user's global unread count",
+        "the unread tab shows the selected module's unread count",
+        "mark-read operations refresh both scopes"
+      ],
+      "priority": "must",
+      "source": "User confirmed the count rules on 2026-08-18.",
+      "counterexample": [
+        "selecting a module changes the bell badge to a module-only count",
+        "filtered unread count is inferred from the current page"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "An append-only migration and runtime compatibility path must preserve existing notifications and running workflows.",
+      "acceptance": [
+        "known legacy business types receive the agreed module mapping",
+        "unknown legacy rows receive a deterministic fallback",
+        "running pre-change workflows can complete and notify",
+        "published migrations remain unchanged"
+      ],
+      "priority": "must",
+      "source": "User confirmed migration and compatibility rules on 2026-08-18.",
+      "counterexample": [
+        "legacy notifications disappear",
+        "a running workflow fails because module metadata is absent",
+        "V26 or V35 is edited"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "Module queries and options must preserve authenticated tenant and user isolation and define explicit empty and failure behavior.",
+      "acceptance": [
+        "unknown module codes return an empty page",
+        "module aggregation starts from the current user's notification rows",
+        "module-option failure does not destroy the unfiltered list"
+      ],
+      "priority": "must",
+      "source": "Existing notification security contract and user-confirmed server-side filtering.",
+      "counterexample": [
+        "the client submits a user id",
+        "the server returns all tenant modules before client filtering"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "The shared notification drawer must remain usable on desktop and required mobile viewports with module filtering, long text, loading, empty and failure states.",
+      "acceptance": [
+        "no drawer or page horizontal overflow at 375x812, 390x844, 430x932 and desktop",
+        "selector, tabs and notification actions remain reachable",
+        "long module names and business keys remain readable"
+      ],
+      "priority": "must",
+      "source": "RDDMP frontend and mobile design constraints.",
+      "counterexample": [
+        "the selector clips the unread tab",
+        "the drawer requires page-level horizontal scrolling"
+      ]
+    }
+  ],
+  "invariants": [
+    "platform/system remains the notification and read-state data owner",
+    "notification queries remain tenant- and current-user-scoped",
+    "notification idempotency remains tenantId plus businessType plus eventId",
+    "action paths remain internal routes",
+    "global mark-all-read retains its existing all-module scope",
+    "published Flyway migrations remain immutable",
+    "unrelated rokey worktree changes remain untouched"
+  ],
+  "constraints": [
+    "Java 17, Spring Boot 3.4.4 and MySQL 8.4",
+    "Vue 3, TypeScript and Element Plus",
+    "public platform notification and workflow contracts change in one requirement",
+    "append-only migration with legacy backfill",
+    "desktop and 375x812, 390x844 and 430x932 browser verification"
+  ],
+  "non_goals": [
+    "external notification channels or WebSocket delivery",
+    "notification templates, preferences, attachments, deletion or bulk operations",
+    "business-module administration UI",
+    "project-level notification filtering",
+    "approval-rule or business-route changes"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260818-034-notification-business-module-filter/handoff.json",
+    "imported_at": "2026-08-18T01:27:15+00:00",
+    "topic": "req-20260818-034-notification-business-module-filter",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260818-034-notification-business-module-filter",
+      "handoff_status": "approved",
+      "created_at": "2026-08-18T09:17:37+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260818-034-notification-business-module-filter",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-18-notification-business-module-filter-design.md",
+        "objective": "Add an explicit business-module dimension to platform notifications so users can identify and server-filter configuration-management and future module messages without changing global unread semantics.",
+        "users": [
+          "Approvers identify and filter configuration-management tasks in the global notification drawer.",
+          "Applicants distinguish approval-result notifications from different business modules.",
+          "Future business modules publish module-aware notifications through platform contracts."
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Notifications must persist and return a stable module code and display name independently from source name, business type and business key.",
+            "acceptance": [
+              "configuration-management workflow notifications contain release and 配置管理",
+              "the UI shows 配置管理 · 审批中心",
+              "businessType remains release_application"
+            ],
+            "priority": "must",
+            "source": "User selected option 1 and confirmed separate module and source semantics on 2026-08-18.",
+            "counterexample": [
+              "all workflow notifications only show 审批中心",
+              "the frontend derives the module from actionPath"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "New business-owned workflows must explicitly carry module metadata through instance and lifecycle context into system notifications.",
+            "acceptance": [
+              "release submissions provide release and 配置管理",
+              "workflow lifecycle notifications preserve module metadata",
+              "future modules do not require frontend mappings"
+            ],
+            "priority": "must",
+            "source": "User confirmed explicit workflow-context propagation and compatibility design on 2026-08-18.",
+            "counterexample": [
+              "the workflow notification bridge permanently hardcodes every businessType mapping",
+              "new workflows silently omit module metadata"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "The notification drawer must provide a searchable business-module selector that performs server-side filtering across all and unread views.",
+            "acceptance": [
+              "default is all modules",
+              "selecting release resets to page one and returns only release notifications",
+              "clearing restores all modules",
+              "options only include modules visible to the current user"
+            ],
+            "priority": "must",
+            "source": "User explicitly requested module filtering and confirmed the interaction on 2026-08-18.",
+            "counterexample": [
+              "only the currently loaded 20 records are filtered",
+              "module options expose another user's modules"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Global and filtered unread counts must remain distinct and internally consistent.",
+            "acceptance": [
+              "the bell always shows the user's global unread count",
+              "the unread tab shows the selected module's unread count",
+              "mark-read operations refresh both scopes"
+            ],
+            "priority": "must",
+            "source": "User confirmed the count rules on 2026-08-18.",
+            "counterexample": [
+              "selecting a module changes the bell badge to a module-only count",
+              "filtered unread count is inferred from the current page"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "An append-only migration and runtime compatibility path must preserve existing notifications and running workflows.",
+            "acceptance": [
+              "known legacy business types receive the agreed module mapping",
+              "unknown legacy rows receive a deterministic fallback",
+              "running pre-change workflows can complete and notify",
+              "published migrations remain unchanged"
+            ],
+            "priority": "must",
+            "source": "User confirmed migration and compatibility rules on 2026-08-18.",
+            "counterexample": [
+              "legacy notifications disappear",
+              "a running workflow fails because module metadata is absent",
+              "V26 or V35 is edited"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "Module queries and options must preserve authenticated tenant and user isolation and define explicit empty and failure behavior.",
+            "acceptance": [
+              "unknown module codes return an empty page",
+              "module aggregation starts from the current user's notification rows",
+              "module-option failure does not destroy the unfiltered list"
+            ],
+            "priority": "must",
+            "source": "Existing notification security contract and user-confirmed server-side filtering.",
+            "counterexample": [
+              "the client submits a user id",
+              "the server returns all tenant modules before client filtering"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "The shared notification drawer must remain usable on desktop and required mobile viewports with module filtering, long text, loading, empty and failure states.",
+            "acceptance": [
+              "no drawer or page horizontal overflow at 375x812, 390x844, 430x932 and desktop",
+              "selector, tabs and notification actions remain reachable",
+              "long module names and business keys remain readable"
+            ],
+            "priority": "must",
+            "source": "RDDMP frontend and mobile design constraints.",
+            "counterexample": [
+              "the selector clips the unread tab",
+              "the drawer requires page-level horizontal scrolling"
+            ]
+          }
+        ],
+        "invariants": [
+          "platform/system remains the notification and read-state data owner",
+          "notification queries remain tenant- and current-user-scoped",
+          "notification idempotency remains tenantId plus businessType plus eventId",
+          "action paths remain internal routes",
+          "global mark-all-read retains its existing all-module scope",
+          "published Flyway migrations remain immutable",
+          "unrelated rokey worktree changes remain untouched"
+        ],
+        "constraints": [
+          "Java 17, Spring Boot 3.4.4 and MySQL 8.4",
+          "Vue 3, TypeScript and Element Plus",
+          "public platform notification and workflow contracts change in one requirement",
+          "append-only migration with legacy backfill",
+          "desktop and 375x812, 390x844 and 430x932 browser verification"
+        ],
+        "non_goals": [
+          "external notification channels or WebSocket delivery",
+          "notification templates, preferences, attachments, deletion or bulk operations",
+          "business-module administration UI",
+          "project-level notification filtering",
+          "approval-rule or business-route changes"
+        ],
+        "selected_approach": {
+          "name": "explicit notification module metadata with workflow-context propagation and server-side filtering",
+          "reason": "It keeps module, source and business-object semantics separate, supports correct pagination and user isolation, and scales to future business modules without frontend mappings.",
+          "alternatives": [
+            {
+              "name": "frontend businessType mapping",
+              "rejected_because": "it couples the shared UI to every business type and cannot correctly filter server pagination"
+            },
+            {
+              "name": "actionPath inference",
+              "rejected_because": "routes may be absent or change and do not form a reliable data contract"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "system notification publish/query contracts",
+              "workflow business-context propagation",
+              "release workflow metadata",
+              "append-only migration and mock data",
+              "shared notification drawer display and filtering",
+              "integration contracts and tests"
+            ],
+            "outside": [
+              "external channels",
+              "notification preference and template systems",
+              "module administration",
+              "project filtering",
+              "approval business rules"
+            ]
+          },
+          "components": [
+            {
+              "name": "SystemNotificationPublisher",
+              "responsibility": "validate and publish module-aware notifications through the platform public contract",
+              "depends_on": [
+                "authenticated business context"
+              ]
+            },
+            {
+              "name": "SystemNotificationService",
+              "responsibility": "persist module metadata and perform user-scoped list, aggregation, count and read operations",
+              "depends_on": [
+                "sys_notification",
+                "sys_user_notification"
+              ]
+            },
+            {
+              "name": "WorkflowBusinessContext",
+              "responsibility": "carry originating business-module metadata through workflow persistence and lifecycle events",
+              "depends_on": [
+                "business module submission"
+              ]
+            },
+            {
+              "name": "WorkflowSystemNotificationBridge",
+              "responsibility": "translate workflow task and result events into module-aware notifications",
+              "depends_on": [
+                "workflow lifecycle context",
+                "SystemNotificationPublisher"
+              ]
+            },
+            {
+              "name": "UiNotificationCenter",
+              "responsibility": "render module and source, manage status and module filters, pagination, counts and recoverable states",
+              "depends_on": [
+                "notification APIs",
+                "Element Plus"
+              ]
+            },
+            {
+              "name": "V44 candidate migration",
+              "responsibility": "add module metadata and indexes and backfill existing notifications and workflow context",
+              "depends_on": [
+                "current integrated migration sequence"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "NotificationPublishCommand",
+              "producer": "platform/system",
+              "consumers": [
+                "workflow notification bridge",
+                "direct business publishers"
+              ],
+              "contract": "requires valid moduleCode and moduleName in addition to existing notification fields"
+            },
+            {
+              "name": "GET /api/notifications",
+              "producer": "platform/system",
+              "consumers": [
+                "UiNotificationCenter"
+              ],
+              "contract": "optional moduleCode and unreadOnly filters are applied within the authenticated user's scope"
+            },
+            {
+              "name": "GET /api/notifications/modules",
+              "producer": "platform/system",
+              "consumers": [
+                "UiNotificationCenter"
+              ],
+              "contract": "returns only current-user modules with total and unread counts ordered by latest notification"
+            },
+            {
+              "name": "WorkflowBusinessContext",
+              "producer": "platform/workflow",
+              "consumers": [
+                "release and future business modules",
+                "workflow lifecycle services"
+              ],
+              "contract": "new business-owned flows explicitly provide stable module code and display name"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "release application workflow start",
+              "transitions": [
+                "attach release module context",
+                "persist workflow instance",
+                "emit task or lifecycle event",
+                "publish system notification"
+              ],
+              "output": "configuration-management notification displaying 配置管理 · 审批中心"
+            },
+            {
+              "input": "notification drawer open or module selection",
+              "transitions": [
+                "load user-visible modules",
+                "apply moduleCode and unreadOnly server filters",
+                "return page and scoped counts"
+              ],
+              "output": "correct filtered list with independent global unread badge"
+            },
+            {
+              "input": "legacy data migration and old running workflow",
+              "transitions": [
+                "map known business types",
+                "apply deterministic fallback",
+                "preserve existing routes and keys"
+              ],
+              "output": "readable and actionable module-aware legacy notification"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "missing or invalid module metadata on publish",
+            "behavior": "reject the command without partial notification writes",
+            "recovery": "caller supplies a valid stable module code and display name"
+          },
+          {
+            "condition": "unknown module filter",
+            "behavior": "return an empty user-scoped page and zero scoped count",
+            "recovery": "clear or select a returned module option"
+          },
+          {
+            "condition": "module-option request fails",
+            "behavior": "keep the unfiltered notification list usable and show a recoverable selector error",
+            "recovery": "retry module loading"
+          },
+          {
+            "condition": "legacy workflow context lacks module metadata",
+            "behavior": "use the controlled compatibility resolver and record a warning",
+            "recovery": "new workflow rounds persist explicit metadata"
+          },
+          {
+            "condition": "read-state write succeeds but count refresh fails",
+            "behavior": "retain the authoritative write and show a refresh error",
+            "recovery": "reload global and module counts"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "all lists, options and counts are tenant- and current-user-scoped",
+            "client identity is never accepted",
+            "module filter cannot widen access",
+            "existing internal-route validation remains"
+          ],
+          "performance": [
+            "server-side indexed module filtering",
+            "grouped module options over current-user rows",
+            "existing bounded pagination",
+            "no loading of all notifications for client filtering"
+          ],
+          "compatibility": [
+            "existing API paths and read behavior remain",
+            "response fields are additive",
+            "legacy data is backfilled",
+            "running workflows use compatibility fallback",
+            "application rollback keeps additive columns"
+          ],
+          "operations": [
+            "monitor blank metadata, compatibility warnings and aggregation latency",
+            "verify migration version against current integration head before implementation",
+            "audit continues without notification body content"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4",
+              "R6"
+            ],
+            "signal": "module display, list filters, user options and global/scoped counts match persisted data",
+            "method": "system service and controller tests plus authenticated API checks"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R5"
+            ],
+            "signal": "new and legacy workflows generate correct module-aware task and result notifications",
+            "method": "workflow, boot bridge and release integration tests with migrated data"
+          },
+          {
+            "requirement_ids": [
+              "R5"
+            ],
+            "signal": "legacy rows are fully populated without changing historical migrations",
+            "method": "MySQL 8.4 Flyway execution and before/after mapping queries"
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R4",
+              "R6",
+              "R7"
+            ],
+            "signal": "the drawer remains usable through filtering, read updates, failures and long text at all required viewports",
+            "method": "frontend build, component tests and authenticated desktop/mobile browser verification"
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R5"
+            ],
+            "signal": "public contracts and all repository call sites remain compatible",
+            "method": "focused Maven modules, full Maven test suite, governance and scope checks"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "business modules know their stable module code and display name when starting a workflow or publishing a notification",
+            "basis": "module ownership and user-confirmed explicit metadata approach",
+            "falsifier": "a required publisher has no deterministic owning module"
+          },
+          {
+            "text": "mark-all-read remains global across module filters",
+            "basis": "the user did not request a semantic change and existing API is global",
+            "falsifier": "the user requires filtered mark-all-read"
+          },
+          {
+            "text": "historical module names remain frozen on notifications",
+            "basis": "notification content is fixed at first publish under the current contract",
+            "falsifier": "a later requirement demands retroactive module renaming"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Add explicit moduleCode and moduleName fields while retaining sourceName and businessType",
+            "reason": "the concepts serve different user and system semantics",
+            "source": "User selected option 1 on 2026-08-18."
+          },
+          {
+            "id": "D2",
+            "decision": "Display module and source together as 配置管理 · 审批中心",
+            "reason": "users need both ownership and trigger context",
+            "source": "User confirmed the presented display design on 2026-08-18."
+          },
+          {
+            "id": "D3",
+            "decision": "Include a searchable server-backed module filter in this requirement",
+            "reason": "future module growth makes visual labeling alone insufficient",
+            "source": "User explicitly requested filtering on 2026-08-18."
+          },
+          {
+            "id": "D4",
+            "decision": "Keep the bell global and make the unread-tab count module-scoped",
+            "reason": "global awareness and filtered work context are separate",
+            "source": "User confirmed the interaction and count rules on 2026-08-18."
+          },
+          {
+            "id": "D5",
+            "decision": "Propagate module metadata through workflow context and use fallback only for legacy data",
+            "reason": "new modules remain explicit without making the bridge own business mappings",
+            "source": "User confirmed data propagation and compatibility on 2026-08-18."
+          }
+        ],
+        "risks": [
+          {
+            "risk": "public publish command call sites are missed",
+            "impact": "compile failure or notifications without module metadata",
+            "mitigation": "search all constructors and run focused plus full Maven tests"
+          },
+          {
+            "risk": "workflow persistence propagation omits a layer",
+            "impact": "task or result notifications lose the originating module",
+            "mitigation": "end-to-end contract tests from release submission through lifecycle notification"
+          },
+          {
+            "risk": "legacy mapping misclassifies notifications",
+            "impact": "users filter into the wrong module",
+            "mitigation": "before/after counts and sampled known-type assertions"
+          },
+          {
+            "risk": "global and scoped counts drift after read actions",
+            "impact": "the drawer shows conflicting unread numbers",
+            "mitigation": "reload authoritative global and module aggregates after writes"
+          },
+          {
+            "risk": "parallel migration takes V44",
+            "impact": "Flyway version collision",
+            "mitigation": "recheck the integrated migration head before implementation and renumber only this unexecuted migration"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User reviewed the landed design and explicitly confirmed development on 2026-08-18.",
+          "confirmed_at": "2026-08-18T09:17:37+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-18-notification-business-module-filter-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Use only REQ-20260818-034 writable paths and preserve unrelated rokey changes.",
+          "Keep authenticated tenant/user scope and global unread/mark-all semantics.",
+          "Use append-only Flyway and recheck V44 before implementation.",
+          "Verify desktop and 375x812, 390x844, 430x932."
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V44__notification_business_module.sql",
+            "status": "candidate-new",
+            "responsibility": "Schema, indexes and backfill.",
+            "evidence": "Approved R1/R2/R5."
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+            "status": "existing",
+            "responsibility": "Notification data operations.",
+            "evidence": "Repository inspection."
+          },
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java",
+            "status": "existing",
+            "responsibility": "Workflow module context.",
+            "evidence": "Repository inspection."
+          },
+          {
+            "path": "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java",
+            "status": "existing",
+            "responsibility": "Workflow notification composition.",
+            "evidence": "Repository inspection."
+          },
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+            "status": "existing",
+            "responsibility": "Release workflow start.",
+            "evidence": "Repository inspection."
+          },
+          {
+            "path": "web/src/components/ui/UiNotificationCenter.vue",
+            "status": "existing",
+            "responsibility": "Notification drawer UX.",
+            "evidence": "Repository inspection."
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Deliver module-aware notification persistence, publishing, server filtering and user module aggregates.",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "Paths and current behavior were verified during design and plan inspection."
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V44__notification_business_module.sql",
+                "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationModuleSummary.java"
+              ],
+              "modify": [
+                "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationPublishCommand.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/notification/SystemNotificationItem.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java",
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+                "mock/mock-data.json"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/service/SystemNotificationServiceTest.java",
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "AuthUser",
+                "PageQuery",
+                "existing notification tables"
+              ],
+              "produces": [
+                "module-aware NotificationPublishCommand",
+                "module-filtered list API",
+                "current-user module summary API"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add failing validation, persistence, filter, aggregate, isolation and mock-schema tests.",
+                "command": null,
+                "expected": "Tests fail only for missing module behavior.",
+                "evidence": "Focused assertions and exit code."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Add the append-only migration, legacy mappings, models, service queries and controller endpoints.",
+                "command": null,
+                "expected": "Notification rows are complete and all queries remain current-user scoped.",
+                "evidence": "SQL and Java diff."
+              },
+              {
+                "id": "T1-S3",
+                "action": "Run focused system and infrastructure tests.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-system,:ccb-infrastructure -am test",
+                "expected": "Zero failures.",
+                "evidence": "Maven exit code 0."
+              }
+            ],
+            "acceptance_checks": [
+              "Invalid module metadata is rejected atomically.",
+              "Unknown modules return an empty page.",
+              "Module summaries expose only current-user rows.",
+              "Global unread semantics remain unchanged."
+            ],
+            "risks": [
+              "Migration collision",
+              "Legacy misclassification",
+              "SQL parameter regression"
+            ],
+            "rollback": "Revert code and mock changes; retain executed additive columns and values.",
+            "stop_conditions": [
+              "V44 is occupied",
+              "Legacy data cannot be deterministically mapped"
+            ],
+            "escalation_conditions": [
+              "Idempotency or mark-all semantics must change",
+              "A runtime module registry is required"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Propagate module metadata through workflow persistence, lifecycle events and the notification bridge.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "Paths and current behavior were verified during design and plan inspection."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java"
+              ],
+              "test": [
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/integration/WorkflowSystemNotificationBridgeTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 notification command",
+                "T1 workflow columns"
+              ],
+              "produces": [
+                "module-aware WorkflowBusinessContext",
+                "module-aware task/result notifications",
+                "legacy-only fallback"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Add failing context persistence, lifecycle propagation, bridge and legacy tests.",
+                "command": null,
+                "expected": "Every missing propagation layer is observable.",
+                "evidence": "Focused assertions."
+              },
+              {
+                "id": "T2-S2",
+                "action": "Implement context validation, SQL projections, event propagation and bridge publishing.",
+                "command": null,
+                "expected": "New flows are explicit and only legacy nulls use fallback.",
+                "evidence": "Constructor search and SQL diff."
+              },
+              {
+                "id": "T2-S3",
+                "action": "Run workflow and boot tests.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-workflow,:ccb-boot -am test",
+                "expected": "Zero failures.",
+                "evidence": "Maven exit code 0."
+              }
+            ],
+            "acceptance_checks": [
+              "Instance and lifecycle metadata match.",
+              "Pending and result notifications preserve module data.",
+              "Old running workflows remain processable."
+            ],
+            "risks": [
+              "Projection omission",
+              "Fallback expansion",
+              "Missed constructor"
+            ],
+            "rollback": "Revert workflow/bridge code; retain additive nullable columns.",
+            "stop_conditions": [
+              "An external context caller is outside scope",
+              "Running schema differs from V35"
+            ],
+            "escalation_conditions": [
+              "Fallback needs private business data",
+              "A module registry is required"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Make configuration management explicitly declare release / 配置管理 and synchronize public contracts.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R5"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "Paths and current behavior were verified during design and plan inspection."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+                "docs/integration/system-notification-contract.md",
+                "docs/integration/workflow-module-contract.md"
+              ],
+              "test": [
+                "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+                "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T2 WorkflowBusinessContext"
+              ],
+              "produces": [
+                "release module context",
+                "updated integration contracts"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Add release workflow-context assertions and update affected constructors.",
+                "command": null,
+                "expected": "Tests require moduleCode, moduleName and unchanged businessType.",
+                "evidence": "Captured command assertions."
+              },
+              {
+                "id": "T3-S2",
+                "action": "Add release module constants and update both public contracts.",
+                "command": null,
+                "expected": "No release business rule, state or route changes.",
+                "evidence": "Scoped diff."
+              },
+              {
+                "id": "T3-S3",
+                "action": "Run release tests.",
+                "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn -pl :ccb-release -am test",
+                "expected": "Zero failures.",
+                "evidence": "Maven exit code 0."
+              }
+            ],
+            "acceptance_checks": [
+              "Release approval context is release / 配置管理.",
+              "release_application and the detail route remain unchanged.",
+              "Documentation matches Java signatures."
+            ],
+            "risks": [
+              "Concurrent release edits",
+              "Contract drift"
+            ],
+            "rollback": "Revert release context and contract changes.",
+            "stop_conditions": [
+              "The workflow-start owner changed",
+              "Concurrent changes conflict"
+            ],
+            "escalation_conditions": [
+              "Module identity becomes runtime configured",
+              "An application belongs to multiple modules"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "Deliver notification module display, searchable filtering, scoped counts and responsive states.",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1",
+              "T3"
+            ],
+            "input_facts": [
+              "Paths and current behavior were verified during design and plan inspection."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/types/notification.ts",
+                "web/src/api/notifications.ts",
+                "web/src/components/ui/UiNotificationCenter.vue",
+                "web/src/styles.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 notification fields and APIs"
+              ],
+              "produces": [
+                "TypeScript module summary",
+                "getNotificationModules()",
+                "responsive module-aware drawer"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "Extend TypeScript models and API functions.",
+                "command": null,
+                "expected": "Frontend names and optional filter semantics match backend.",
+                "evidence": "Type/API diff."
+              },
+              {
+                "id": "T4-S2",
+                "action": "Implement module option state, stale-response protection, count refresh and recoverable errors.",
+                "command": null,
+                "expected": "Filter changes reset pagination and preserve global counts.",
+                "evidence": "Component state-flow inspection."
+              },
+              {
+                "id": "T4-S3",
+                "action": "Render module · source, searchable selector and responsive scoped styles.",
+                "command": null,
+                "expected": "Desktop is compact and mobile has no overflow.",
+                "evidence": "Template/CSS diff."
+              },
+              {
+                "id": "T4-S4",
+                "action": "Build and perform authenticated browser verification with two module datasets.",
+                "command": "npm --prefix web run build; browser verification at desktop, 375x812, 390x844 and 430x932",
+                "expected": "Build, filtering, counts, reads, routing, errors and layout pass.",
+                "evidence": "Exit code, screenshots, DOM overflow and console checks."
+              }
+            ],
+            "acceptance_checks": [
+              "配置管理 · 审批中心 is visible.",
+              "All/unread filters are server-backed.",
+              "Bell is global and unread tab is scoped.",
+              "Option failure leaves unfiltered data usable.",
+              "Required viewports do not overflow."
+            ],
+            "risks": [
+              "Polling race",
+              "Shared drawer regression",
+              "Long-label overflow"
+            ],
+            "rollback": "Revert frontend types, API, component and scoped CSS.",
+            "stop_conditions": [
+              "Backend differs from frozen contract",
+              "Two-module authenticated data is unavailable"
+            ],
+            "escalation_conditions": [
+              "Filter persistence or filtered mark-all is requested",
+              "Module administration is requested"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Workflow persistence and bridge publishing consume the notification module contract and migration columns produced by T1."
+          },
+          {
+            "from": "T1",
+            "to": "T4",
+            "reason": "The notification drawer consumes the module-aware list and module-summary APIs produced by T1."
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Configuration management can only pass module metadata after WorkflowBusinessContext is extended by T2."
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "Browser verification requires configuration management to generate real module-aware notifications."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "env JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn test",
+            "expected": "Zero backend failures."
+          },
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Frontend build succeeds."
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "command": "node scripts/check-all-governance.mjs; git diff --check",
+            "expected": "Requirement changes and whitespace pass; unrelated historical failures are separated."
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "command": "isolated MySQL 8.4 and authenticated browser verification",
+            "expected": "Migration, filters, counts, reads, routing and required viewports pass."
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T1",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User explicitly approved the landed implementation plan and continued rokey execution on 2026-08-18.",
+          "confirmed_at": "2026-08-18T09:20:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "notification persistence/APIs",
+          "workflow context/lifecycle",
+          "boot bridge",
+          "release start",
+          "notification drawer",
+          "migration"
+        ],
+        "state_variable_candidates": [
+          "module completeness",
+          "global/scoped unread counts",
+          "selected module",
+          "pagination/request generation",
+          "migration version"
+        ],
+        "interface_candidates": [
+          "NotificationPublishCommand",
+          "WorkflowBusinessContext",
+          "notification list/modules APIs",
+          "workflow lifecycle",
+          "release submit"
+        ],
+        "sensor_candidates": [
+          "JUnit",
+          "Maven",
+          "Flyway queries",
+          "API responses",
+          "Vite build",
+          "browser DOM/screenshots/console",
+          "governance/scope"
+        ],
+        "actuator_candidates": [
+          "SQL migration",
+          "Java contracts/services",
+          "query predicates",
+          "legacy resolver",
+          "Vue state/CSS"
+        ],
+        "disturbance_candidates": [
+          "dirty rokey worktree",
+          "migration collision",
+          "legacy null context",
+          "polling/stale requests"
+        ],
+        "delay_candidates": [
+          "15-second polling",
+          "60-second reconciliation",
+          "network and Flyway startup"
+        ],
+        "assumptions": [
+          {
+            "text": "New workflows have one owning module.",
+            "basis": "Approved design.",
+            "falsifier": "A valid workflow belongs to multiple modules."
+          },
+          {
+            "text": "Mark-all-read remains global.",
+            "basis": "Approved compatibility rule.",
+            "falsifier": "User requests filtered mark-all."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"authenticated users\", \"MySQL 8.4\", \"Element Plus runtime\", \"existing running workflow instances\", \"dirty rokey working tree\"], \"inside\": [\"platform/system notification publisher, persistence and APIs\", \"platform/workflow business context and lifecycle persistence\", \"platform/boot workflow notification bridge\", \"business/release workflow start\", \"shared Vue notification drawer\", \"append-only Flyway and local mock synchronization\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"real MySQL migration execution\", \"rendered browser layout\"], \"id\": \"S1\", \"independence\": \"server-side executable assertions\", \"method\": \"focused JUnit tests with captured SQL, DTO and publish commands\", \"target\": \"notification and workflow contract behavior\"}",
+      "{\"blind_spots\": [\"frontend behavior\"], \"id\": \"S2\", \"independence\": \"database runtime observation\", \"method\": \"Flyway execution plus MySQL before/after count and mapping queries\", \"target\": \"legacy backfill and schema completeness\"}",
+      "{\"blind_spots\": [\"visual overflow\"], \"id\": \"S3\", \"independence\": \"running API observation\", \"method\": \"real HTTP responses for two users/modules and unknown module\", \"target\": \"authenticated filters, options and counts\"}",
+      "{\"blind_spots\": [\"runtime semantics and layout\"], \"id\": \"S4\", \"independence\": \"static compiler/build sensor\", \"method\": \"vue-tsc and Vite production build\", \"target\": \"frontend contract integrity\"}",
+      "{\"blind_spots\": [\"unexercised backend branches\"], \"id\": \"S5\", \"independence\": \"end-user runtime observation\", \"method\": \"authenticated browser actions, screenshots, DOM overflow and console checks\", \"target\": \"drawer display, interactions and responsive layout\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"append migration and modify platform/system plus tests\", \"authority\": \"REQ-20260818-034 writable paths\", \"id\": \"A1\", \"impact_radius\": \"shared notification platform\", \"rollback\": \"revert app code; retain additive migrated data\", \"target\": \"notification schema, contract and queries\"}",
+      "{\"action\": \"modify workflow records/services and boot bridge\", \"authority\": \"REQ writable workflow/boot paths\", \"id\": \"A2\", \"impact_radius\": \"business-owned workflow integration\", \"rollback\": \"revert code; retain nullable columns\", \"target\": \"workflow module context propagation\"}",
+      "{\"action\": \"add release module constants and context values\", \"authority\": \"REQ writable release paths\", \"id\": \"A3\", \"impact_radius\": \"configuration-management submissions\", \"rollback\": \"revert scoped release changes\", \"target\": \"release workflow start metadata\"}",
+      "{\"action\": \"modify types, API, Vue component and scoped CSS\", \"authority\": \"REQ writable web paths\", \"id\": \"A4\", \"impact_radius\": \"global authenticated shell\", \"rollback\": \"revert four frontend files\", \"target\": \"notification drawer state and layout\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"overlapping edits or noisy scope checks\", \"source\": \"dirty rokey worktree\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"candidate V44 collision\", \"source\": \"parallel Flyway additions\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"missing module in post-change notification\", \"source\": \"legacy null workflow context\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"count/list drift\", \"source\": \"polling and stale HTTP responses\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"approved product design and current release ownership\", \"falsifier\": \"a valid workflow requires multiple module classifications\", \"text\": \"each new business workflow has one owning module\"}",
+      "{\"evidence\": \"existing API and approved design\", \"falsifier\": \"user requests filtered mark-all\", \"text\": \"mark-all-read remains global\"}",
+      "{\"evidence\": \"migration and mock-data inspection\", \"falsifier\": \"database sampling finds an unmappable type\", \"text\": \"known legacy types cover current persisted examples\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Deliver module-aware notification persistence, publishing, server filtering and user module aggregates.",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Paths and current behavior were verified during design and plan inspection."
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V44__notification_business_module.sql",
+        "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationModuleSummary.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationPublishCommand.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/notification/SystemNotificationItem.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "mock/mock-data.json",
+        "server/src/platform/system/src/test/java/com/ccb/system/service/SystemNotificationServiceTest.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java"
+      ],
+      "invariants": [
+        "Preserve authenticated tenant/user isolation.",
+        "Preserve notification idempotency, internal routing and global mark-all semantics.",
+        "Protect unrelated rokey changes."
+      ],
+      "interface_contracts": [
+        "AuthUser",
+        "PageQuery",
+        "existing notification tables",
+        "module-aware NotificationPublishCommand",
+        "module-filtered list API",
+        "current-user module summary API"
+      ],
+      "non_goals": [
+        "No external channels, templates, preferences, project filters or module administration.",
+        "No unrelated refactor or historical migration edit."
+      ],
+      "action_bounds": [
+        "Modify only listed task files and direct tests.",
+        "Stop before expanding public behavior beyond approved design."
+      ],
+      "acceptance": [
+        "Invalid module metadata is rejected atomically.",
+        "Unknown modules return an empty page.",
+        "Module summaries expose only current-user rows.",
+        "Global unread semantics remain unchanged."
+      ],
+      "evidence_required": [
+        "Actual diff for task scope",
+        "Commands with exit codes and key assertions",
+        "Detected disturbances and unresolved assumptions"
+      ],
+      "rollback": "Revert code and mock changes; retain executed additive columns and values.",
+      "stop_conditions": [
+        "V44 is occupied",
+        "Legacy data cannot be deterministically mapped"
+      ],
+      "escalation_conditions": [
+        "Idempotency or mark-all semantics must change",
+        "A runtime module registry is required"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T01:32:19+00:00",
+          "text": "V44 available; platform/system target files unchanged; dirty workflow/web surfaces recorded as disturbance"
+        },
+        {
+          "recorded_at": "2026-08-18T01:37:37+00:00",
+          "text": "Implementation report recorded; focused tests passed"
+        },
+        {
+          "recorded_at": "2026-08-18T01:39:16+00:00",
+          "text": "S-0001: 12 focused tests passed, zero observed deviations; integration DB/API checks scheduled"
+        }
+      ],
+      "updated_at": "2026-08-18T01:39:16+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Propagate module metadata through workflow persistence, lifecycle events and the notification bridge.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "Paths and current behavior were verified during design and plan inspection."
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleEventService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowLifecycleDispatcher.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowLifecycleDispatcherTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/integration/WorkflowSystemNotificationBridgeTest.java"
+      ],
+      "invariants": [
+        "Preserve authenticated tenant/user isolation.",
+        "Preserve notification idempotency, internal routing and global mark-all semantics.",
+        "Protect unrelated rokey changes."
+      ],
+      "interface_contracts": [
+        "T1 notification command",
+        "T1 workflow columns",
+        "module-aware WorkflowBusinessContext",
+        "module-aware task/result notifications",
+        "legacy-only fallback"
+      ],
+      "non_goals": [
+        "No external channels, templates, preferences, project filters or module administration.",
+        "No unrelated refactor or historical migration edit."
+      ],
+      "action_bounds": [
+        "Modify only listed task files and direct tests.",
+        "Stop before expanding public behavior beyond approved design."
+      ],
+      "acceptance": [
+        "Instance and lifecycle metadata match.",
+        "Pending and result notifications preserve module data.",
+        "Old running workflows remain processable."
+      ],
+      "evidence_required": [
+        "Actual diff for task scope",
+        "Commands with exit codes and key assertions",
+        "Detected disturbances and unresolved assumptions"
+      ],
+      "rollback": "Revert workflow/bridge code; retain additive nullable columns.",
+      "stop_conditions": [
+        "An external context caller is outside scope",
+        "Running schema differs from V35"
+      ],
+      "escalation_conditions": [
+        "Fallback needs private business data",
+        "A module registry is required"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T01:39:47+00:00",
+          "text": "T1 verified; workflow module columns and notification contract available"
+        },
+        {
+          "recorded_at": "2026-08-18T01:47:24+00:00",
+          "text": "T2 implementation report recorded with passing focused tests"
+        },
+        {
+          "recorded_at": "2026-08-18T01:49:41+00:00",
+          "text": "S-0002 has zero P0-P3 feedback; focused and bridge tests passed"
+        }
+      ],
+      "updated_at": "2026-08-18T01:49:41+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Make configuration management explicitly declare release / 配置管理 and synchronize public contracts.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "Paths and current behavior were verified during design and plan inspection."
+      ],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+        "docs/integration/system-notification-contract.md",
+        "docs/integration/workflow-module-contract.md",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/integration/ReleaseWorkflowLifecycleConsumerTest.java"
+      ],
+      "invariants": [
+        "Preserve authenticated tenant/user isolation.",
+        "Preserve notification idempotency, internal routing and global mark-all semantics.",
+        "Protect unrelated rokey changes."
+      ],
+      "interface_contracts": [
+        "T2 WorkflowBusinessContext",
+        "release module context",
+        "updated integration contracts"
+      ],
+      "non_goals": [
+        "No external channels, templates, preferences, project filters or module administration.",
+        "No unrelated refactor or historical migration edit."
+      ],
+      "action_bounds": [
+        "Modify only listed task files and direct tests.",
+        "Stop before expanding public behavior beyond approved design."
+      ],
+      "acceptance": [
+        "Release approval context is release / 配置管理.",
+        "release_application and the detail route remain unchanged.",
+        "Documentation matches Java signatures."
+      ],
+      "evidence_required": [
+        "Actual diff for task scope",
+        "Commands with exit codes and key assertions",
+        "Detected disturbances and unresolved assumptions"
+      ],
+      "rollback": "Revert release context and contract changes.",
+      "stop_conditions": [
+        "The workflow-start owner changed",
+        "Concurrent changes conflict"
+      ],
+      "escalation_conditions": [
+        "Module identity becomes runtime configured",
+        "An application belongs to multiple modules"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T01:50:18+00:00",
+          "text": "T2 verified; release context and contract synchronization proceeding"
+        },
+        {
+          "recorded_at": "2026-08-18T01:52:14+00:00",
+          "text": "T3 implementation report recorded with release test and contract evidence"
+        },
+        {
+          "recorded_at": "2026-08-18T01:54:03+00:00",
+          "text": "S-0003 has zero P0-P3 feedback; release context and contracts passed"
+        }
+      ],
+      "updated_at": "2026-08-18T01:54:03+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "Deliver notification module display, searchable filtering, scoped counts and responsive states.",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1",
+        "T3"
+      ],
+      "input_facts": [
+        "Paths and current behavior were verified during design and plan inspection."
+      ],
+      "write_scope": [
+        "web/src/types/notification.ts",
+        "web/src/api/notifications.ts",
+        "web/src/components/ui/UiNotificationCenter.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "Preserve authenticated tenant/user isolation.",
+        "Preserve notification idempotency, internal routing and global mark-all semantics.",
+        "Protect unrelated rokey changes."
+      ],
+      "interface_contracts": [
+        "T1 notification fields and APIs",
+        "TypeScript module summary",
+        "getNotificationModules()",
+        "responsive module-aware drawer"
+      ],
+      "non_goals": [
+        "No external channels, templates, preferences, project filters or module administration.",
+        "No unrelated refactor or historical migration edit."
+      ],
+      "action_bounds": [
+        "Modify only listed task files and direct tests.",
+        "Stop before expanding public behavior beyond approved design."
+      ],
+      "acceptance": [
+        "配置管理 · 审批中心 is visible.",
+        "All/unread filters are server-backed.",
+        "Bell is global and unread tab is scoped.",
+        "Option failure leaves unfiltered data usable.",
+        "Required viewports do not overflow."
+      ],
+      "evidence_required": [
+        "Actual diff for task scope",
+        "Commands with exit codes and key assertions",
+        "Detected disturbances and unresolved assumptions"
+      ],
+      "rollback": "Revert frontend types, API, component and scoped CSS.",
+      "stop_conditions": [
+        "Backend differs from frozen contract",
+        "Two-module authenticated data is unavailable"
+      ],
+      "escalation_conditions": [
+        "Filter persistence or filtered mark-all is requested",
+        "Module administration is requested"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-18T01:54:33+00:00",
+          "text": "T1 and T3 verified; frontend notification module display and filtering begins"
+        },
+        {
+          "recorded_at": "2026-08-18T02:26:11+00:00",
+          "text": "T4 implemented and independently measurable"
+        },
+        {
+          "recorded_at": "2026-08-18T02:26:29+00:00",
+          "text": "All T4 measurements passed with zero feedback"
+        }
+      ],
+      "updated_at": "2026-08-18T02:26:29+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 platform sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "12 focused tests passed; no T1 deviations; MySQL/API checks deferred to integration",
+      "recorded_at": "2026-08-18T01:39:02+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "S-0002 T2 workflow module propagation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Workflow bridge 3 tests passed with upstream rebuild; workflow and release focused suites passed; no product deviation observed",
+      "recorded_at": "2026-08-18T01:49:21+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "S-0003 T3 release explicit module context",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Release target tests 12 passed; contract and Java field semantics match; no deviation observed",
+      "recorded_at": "2026-08-18T01:53:49+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "T4 runtime and responsive sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "V44 clone migration complete; API count transitions 7/4 -> 6/3 -> 0/0; 4 viewports overflow-free; console clean; builds pass",
+      "recorded_at": "2026-08-18T02:26:29+00:00"
+    }
+  ]
+}

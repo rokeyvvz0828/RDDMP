@@ -1,0 +1,53 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    { "path_or_resource": "web/src/modules/release/components/ReleaseSearchSelect.vue", "purpose": "Add selection-only local/remote fuzzy suggestion interaction." },
+    { "path_or_resource": "web/src/modules/release/types.ts", "purpose": "Define the stable ReleaseSearchOption contract." },
+    { "path_or_resource": "web/src/modules/release/release-prototype.css", "purpose": "Constrain selector and primary/secondary option presentation." }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R5"],
+  "commands": [
+    {
+      "command": "cd web && npx vue-tsc --noEmit",
+      "exit_code": 0,
+      "salient_output": "Vue and TypeScript type-check completed with no errors."
+    },
+    {
+      "command": "rg -n allow-create|slice\\(0, 20\\)|update:modelValue|emit\\('search' web/src/modules/release/components/ReleaseSearchSelect.vue",
+      "exit_code": 0,
+      "salient_output": "Found the 20-option limit and separate model/search emissions; no allow-create occurrence was present."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Vue component contract type-check",
+      "result": "pass",
+      "evidence": "vue-tsc exited 0",
+      "limitations": ["Runtime focus and blur semantics remain for browser observation after call-site integration."]
+    },
+    {
+      "check": "Selection-only static contract",
+      "result": "pass",
+      "evidence": "Component limits visible options with slice(0, 20), separates search from update:modelValue, and does not enable allow-create.",
+      "limitations": ["Static inspection does not prove Element Plus runtime event order."]
+    }
+  ],
+  "diff_summary": [
+    "Added a release-local Element Plus selector with local keyword filtering and remote search events.",
+    "Added stable option value, primary label, secondary description and searchable keyword fields.",
+    "Added semantic, truncating dropdown styles within the release module."
+  ],
+  "invariants_checked": [
+    { "invariant": "No arbitrary free-text option creation", "result": "pass", "evidence": "No allow-create attribute or synthetic option path exists." },
+    { "invariant": "At most 20 options render", "result": "pass", "evidence": "visibleOptions always ends with slice(0, 20)." },
+    { "invariant": "Temporary input is not the stable model", "result": "pass", "evidence": "search updates local query and emits search only; model emission occurs in change()." },
+    { "invariant": "Release-only styling", "result": "pass", "evidence": "All new selectors use release-prefixed classes in release-prototype.css." }
+  ],
+  "disturbances": [
+    { "event": "The entire release frontend module is pre-existing untracked work in the rokey worktree.", "impact": "git diff does not show a HEAD-relative patch for these files; evidence uses pre-edit reads, targeted status, static checks and build output." }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Browser runtime behavior will be sampled after the component has real call sites."],
+  "recommended_next": "observe"
+}

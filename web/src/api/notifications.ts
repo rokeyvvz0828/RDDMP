@@ -1,9 +1,15 @@
 import http from './http'
 import type { ApiResponse } from '../types/auth'
-import type { NotificationPage } from '../types/notification'
+import type { NotificationModuleSummary, NotificationPage } from '../types/notification'
 
-export function getNotifications(page = 1, size = 20, unreadOnly = false) {
-  return http.get<ApiResponse<NotificationPage>>('/notifications', { params: { page, size, unreadOnly } })
+export function getNotifications(page = 1, size = 20, unreadOnly = false, moduleCode?: string) {
+  return http.get<ApiResponse<NotificationPage>>('/notifications', {
+    params: { page, size, unreadOnly, moduleCode: moduleCode || undefined }
+  })
+}
+
+export function getNotificationModules() {
+  return http.get<ApiResponse<NotificationModuleSummary[]>>('/notifications/modules')
 }
 
 export function getNotificationUnreadCount() {

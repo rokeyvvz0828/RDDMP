@@ -5,6 +5,8 @@ import java.util.List;
 public record NotificationPublishCommand(
         long tenantId,
         String eventId,
+        String moduleCode,
+        String moduleName,
         String businessType,
         String businessKey,
         List<Long> recipientUserIds,
