@@ -15,7 +15,7 @@ CREATE TEMPORARY TABLE tmp_test_management_menu (
     icon VARCHAR(128) NOT NULL,
     sort_no INT NOT NULL,
     is_leaf TINYINT NOT NULL
-);
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 INSERT INTO tmp_test_management_menu
     (id, parent_id, menu_name, route_name, route_path, permission_code, icon, sort_no, is_leaf)
