@@ -10,11 +10,17 @@
     {"requirement": "R5", "result": "通过浏览器页面快照确认存在项目组织架构页签，成员和角色合并展示"},
     {"requirement": "R6", "result": "ProjectServiceTest 22/22 通过；服务端使用项目行 FOR UPDATE 保护阶段计划编号生成"},
     {"requirement": "runtime", "result": "Docker 依赖容器运行，后端 health HTTP 200，前端入口 HTTP 200"},
-    {"requirement": "migration", "result": "Flyway V49 success=1，迁移文件检查通过 49 个"}
+    {"requirement": "migration", "result": "Flyway V49 success=1，迁移文件检查通过 49 个"},
+    {"requirement": "T4 UI contract", "result": "静态复核通过：项目阶段操作为新增阶段；阶段行操作为新增主计划和删除该行；旧阶段计划弹窗、类型、处理函数及可见文案均已移除；概览时间轴无维护操作"},
+    {"requirement": "T4 type and whitespace", "result": "vue-tsc --noEmit 和 git diff --check 通过"},
+    {"requirement": "T5 row action gate", "result": "静态复核通过：新增主计划按钮仅在 row.id 存在且属于本次新增行集合时渲染；项目切换、删除新行和请求失败均不会遗留错误解锁状态"},
+    {"requirement": "T5 validation", "result": "vue-tsc --noEmit 和 git diff --check 通过；Vite/esbuild 构建仍被环境 spawn EPERM 阻断"},
+    {"requirement": "T6 date range", "result": "静态复核通过：项目计划弹窗只展示一个 daterange 控件；选择结果同步为 planned_start_date/planned_end_date，主计划仍校验完整时间范围，子计划保持可选"},
+    {"requirement": "T6 validation", "result": "vue-tsc --noEmit 和 git diff --check 通过；Vite/esbuild 构建仍被环境 spawn EPERM 阻断"}
   ],
   "feedback": [
     {"severity": "P2", "text": "V49 首次执行因唯一索引回填顺序失败，已修正迁移并在本地库清理失败历史后成功重跑"},
     {"severity": "P2", "text": "生产前端构建和重启后的浏览器复验仍受环境 spawn EPERM/浏览器安全策略影响，不能提升为完整交付证据"}
   ],
-  "conclusion": "需求代码和本地数据库迁移已收敛；保留前端生产构建与重启后浏览器复验风险，等待环境允许后补验。"
+  "conclusion": "T6 代码和静态检查已完成；保留前端生产构建被 spawn EPERM 阻断及桌面/375px 浏览器复验缺口，不能提升为完整运行验收。"
 }

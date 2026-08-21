@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "control_prefix": "req-20260813-028-project-management-demo-data",
+  "phase": "observed",
+  "observed_at": "2026-08-21T09:05:11+08:00",
+  "independent": false,
+  "measurements": [
+    {"name": "dataset_structure", "result": "passed", "value": "JSON parses; dataset version 2026.08.20.1; 2 projects, 12 stage rows, 9 plans, 5 roles, 7 members, 3 risks, 3 comments, 5 project organizations, and 3 attachment records"},
+    {"name": "cross_table_references", "result": "passed", "value": "Plan group IDs, plan parent IDs, risk comment IDs, and member project organization IDs all resolve within the mock dataset"},
+    {"name": "backend_build", "result": "passed", "value": "ccb-boot reactor package completed successfully"},
+    {"name": "mock_initializer_tests", "result": "passed", "value": "8 tests passed across ccb-common and ccb-infrastructure"},
+    {"name": "migration_check", "result": "passed", "value": "50 migration files checked"},
+    {"name": "project_feature_invariants", "result": "passed", "value": "Seven plan phases are present; all main plans have dates; child plans remain within parent ranges; same-stage main plans are sequential; risk next sequences follow seeded risk codes"},
+    {"name": "backend_health", "result": "passed", "value": "GET /actuator/health returned HTTP 200 with status UP"},
+    {"name": "mock_sync_runtime", "result": "passed", "value": "Startup log reported dataset=rddmp-local-platform version=2026.08.20.1 rows=204"},
+    {"name": "project_api_runtime", "result": "passed", "value": "Admin-scoped local test token queried 2 target projects; RDDMP-PLATFORM detail returned plans=33/groups=18/risks=2/members=4/roles=3/orgs=4/attachments=4 and RDDMP-DATA returned plans=3/groups=4/risks=1/members=3/roles=2/orgs=2/attachments=1"}
+  ],
+  "feedback": [
+    {"severity": "P2", "text": "文档中的 mock 用户 password 登录仍返回 HTTP 401，未修改本地密码或数据库行；运行态查询使用短时本地签名测试令牌完成"},
+    {"severity": "P2", "text": "附件仅提供数据库元数据和 mock object_key，未向 MinIO 上传对应对象，预览/下载需要对象存储中的本地演示文件"},
+    {"severity": "P2", "text": "check-all-governance 的仓库 Skill 子检查受现有 CRLF 格式与 LF-only 正则不兼容影响，未改动该治理文件"}
+  ],
+  "conclusion": "本地项目管理 Mock 数据和同步器白名单已完成，并通过结构、引用、测试、构建、后端重启和项目 API 查询；附件对象存储及真实演示账号登录仍有本地环境限制。"
+}

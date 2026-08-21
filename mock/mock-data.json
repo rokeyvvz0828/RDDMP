@@ -1,6 +1,6 @@
 {
   "datasetKey": "rddmp-local-platform",
-  "datasetVersion": "2026.08.17.1",
+  "datasetVersion": "2026.08.20.1",
   "description": "RDDMP 本地研发演示数据。所有数据均为虚构内容，使用高位保留 ID。",
   "catalog": [
     {
@@ -14,10 +14,10 @@
     {
       "module": "project-management",
       "name": "项目管理",
-      "features": ["项目工作台", "项目计划", "项目成员", "项目角色", "项目日历", "计划统计"],
+      "features": ["项目工作台", "项目计划", "项目成员", "项目角色", "项目日历", "计划统计", "项目风险", "风险评论", "项目组织", "项目附件"],
       "entry": "/projects",
       "dataStrategy": "database",
-      "tables": ["pm_project", "pm_project_plan", "pm_project_role", "pm_project_member", "pm_project_member_role", "pm_project_plan_org"]
+      "tables": ["pm_project", "pm_project_plan_group", "pm_project_plan", "pm_project_role", "pm_project_member", "pm_project_member_role", "pm_project_plan_org", "pm_project_risk", "pm_project_risk_comment", "pm_project_org", "sys_attachment"]
     },
     {
       "module": "workflow",
@@ -181,21 +181,41 @@
       "table": "pm_project",
       "keyColumns": ["id"],
       "rows": [
-        {"id": 910000000003001, "tenant_id": 1, "project_code": "RDDMP-PLATFORM", "project_name": "平台能力升级项目", "description": "围绕平台基础能力、权限治理和交付质量开展的阶段性升级项目。", "status": "RUNNING", "plan_number_rule": "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule": "{PARENT_CODE}-S{SEQ:3}", "next_plan_sequence": 4, "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-10-31", "created_by": 910000000000001, "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-12 16:30:00", "deleted": 0},
-        {"id": 910000000003002, "tenant_id": 1, "project_code": "RDDMP-DATA", "project_name": "数据治理专项", "description": "建立数据标准、质量检查和运营分析机制，支撑后续业务模块接入。", "status": "PLANNING", "plan_number_rule": "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule": "{PARENT_CODE}-S{SEQ:3}", "next_plan_sequence": 3, "owner_id": 910000000000002, "planned_start_date": "2026-09-01", "planned_end_date": "2026-12-15", "created_by": 910000000000002, "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-12 15:20:00", "deleted": 0}
+        {"id": 910000000003001, "tenant_id": 1, "project_code": "RDDMP-PLATFORM", "project_name": "平台能力升级项目", "description": "围绕平台基础能力、权限治理和交付质量开展的阶段性升级项目。", "status": "RUNNING", "plan_number_rule": "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule": "{PARENT_CODE}-S{SEQ:3}", "risk_number_rule": "{PROJECT_CODE}-R{SEQ:3}", "next_plan_sequence": 4, "next_risk_sequence": 3, "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-10-31", "created_by": 910000000000001, "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-12 16:30:00", "deleted": 0},
+        {"id": 910000000003002, "tenant_id": 1, "project_code": "RDDMP-DATA", "project_name": "数据治理专项", "description": "建立数据标准、质量检查和运营分析机制，支撑后续业务模块接入。", "status": "PLANNING", "plan_number_rule": "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule": "{PARENT_CODE}-S{SEQ:3}", "risk_number_rule": "{PROJECT_CODE}-R{SEQ:3}", "next_plan_sequence": 3, "next_risk_sequence": 2, "owner_id": 910000000000002, "planned_start_date": "2026-09-01", "planned_end_date": "2026-12-15", "created_by": 910000000000002, "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-12 15:20:00", "deleted": 0}
+      ]
+    },
+    {
+      "table": "pm_project_plan_group",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003601, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_INITIATION", "group_name": "1-1", "color_key": "brand", "description": "完成项目立项、范围确认和启动准备。", "sort_no": 10, "created_at": "2026-08-01 09:05:00", "updated_at": "2026-08-01 09:05:00", "deleted": 0},
+        {"id": 910000000003602, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_REQUIREMENT", "group_name": "2-1", "color_key": "accent", "description": "完成需求梳理和业务方案确认。", "sort_no": 10, "created_at": "2026-08-01 09:06:00", "updated_at": "2026-08-01 09:06:00", "deleted": 0},
+        {"id": 910000000003603, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_DESIGN_DEVELOPMENT", "group_name": "3-1", "color_key": "success", "description": "完成核心设计、研发实施和联调。", "sort_no": 10, "created_at": "2026-08-01 09:07:00", "updated_at": "2026-08-01 09:07:00", "deleted": 0},
+        {"id": 910000000003604, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_DESIGN_DEVELOPMENT", "group_name": "3-2", "color_key": "warning", "description": "补充第二条同阶段主计划，验证横向顺序排期。", "sort_no": 20, "created_at": "2026-08-01 09:08:00", "updated_at": "2026-08-01 09:08:00", "deleted": 0},
+        {"id": 910000000003605, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_DATA_MIGRATION", "group_name": "4-1", "color_key": "danger", "description": "完成数据迁移准备和演练。", "sort_no": 10, "created_at": "2026-08-01 09:09:00", "updated_at": "2026-08-01 09:09:00", "deleted": 0},
+        {"id": 910000000003606, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_TEST_ACCEPTANCE", "group_name": "5-1", "color_key": "brand", "description": "完成测试、验收和问题闭环。", "sort_no": 10, "created_at": "2026-08-01 09:11:00", "updated_at": "2026-08-01 09:11:00", "deleted": 0},
+        {"id": 910000000003607, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_TRAINING_PRODUCTION_REHEARSAL", "group_name": "6-1", "color_key": "accent", "description": "完成培训和投产演练。", "sort_no": 10, "created_at": "2026-08-01 09:12:00", "updated_at": "2026-08-01 09:12:00", "deleted": 0},
+        {"id": 910000000003608, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_PRODUCTION_LAUNCH", "group_name": "7-1", "color_key": "muted", "description": "完成投产上线和运行观察。", "sort_no": 10, "created_at": "2026-08-01 09:13:00", "updated_at": "2026-08-01 09:13:00", "deleted": 0},
+        {"id": 910000000003611, "tenant_id": 1, "project_id": 910000000003002, "phase": "PLAN_INITIATION", "group_name": "1-1", "color_key": "brand", "description": "完成数据治理专项立项。", "sort_no": 10, "created_at": "2026-08-10 10:01:00", "updated_at": "2026-08-10 10:01:00", "deleted": 0},
+        {"id": 910000000003612, "tenant_id": 1, "project_id": 910000000003002, "phase": "PLAN_REQUIREMENT", "group_name": "2-1", "color_key": "accent", "description": "完成数据标准和质量需求分析。", "sort_no": 10, "created_at": "2026-08-10 10:02:00", "updated_at": "2026-08-10 10:02:00", "deleted": 0},
+        {"id": 910000000003613, "tenant_id": 1, "project_id": 910000000003002, "phase": "PLAN_DESIGN_DEVELOPMENT", "group_name": "3-1", "color_key": "success", "description": "完成质量规则设计和配置开发。", "sort_no": 10, "created_at": "2026-08-10 10:03:00", "updated_at": "2026-08-10 10:03:00", "deleted": 0},
+        {"id": 910000000003614, "tenant_id": 1, "project_id": 910000000003002, "phase": "PLAN_TEST_ACCEPTANCE", "group_name": "5-1", "color_key": "warning", "description": "完成数据质量验收。", "sort_no": 10, "created_at": "2026-08-10 10:04:00", "updated_at": "2026-08-10 10:04:00", "deleted": 0}
       ]
     },
     {
       "table": "pm_project_plan",
       "keyColumns": ["id"],
       "rows": [
-        {"id": 910000000003101, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 0, "plan_name": "平台升级总体计划", "plan_code": "RDDMP-PLATFORM-P001", "next_child_plan_sequence": 3, "description": "平台升级项目主计划，统筹需求、研发和验收工作。", "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-10-31", "progress": 62, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-01 09:10:00", "updated_at": "2026-08-12 16:30:00", "deleted": 0},
-        {"id": 910000000003102, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 910000000003101, "plan_name": "需求与方案确认", "plan_code": "RDDMP-PLATFORM-P001-S001", "next_child_plan_sequence": 1, "description": "完成平台升级范围、验收标准和技术方案确认。", "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-08-15", "progress": 100, "status": "COMPLETED", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-01 09:20:00", "updated_at": "2026-08-15 17:00:00", "deleted": 0},
-        {"id": 910000000003103, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 910000000003101, "plan_name": "核心能力开发", "plan_code": "RDDMP-PLATFORM-P001-S002", "next_child_plan_sequence": 1, "description": "完成公共组件、权限和项目管理能力开发。", "owner_id": 910000000000002, "planned_start_date": "2026-08-16", "planned_end_date": "2026-09-30", "progress": 70, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 20, "created_at": "2026-08-16 09:00:00", "updated_at": "2026-08-30 14:00:00", "deleted": 0},
-        {"id": 910000000003104, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 0, "plan_name": "上线验收计划", "plan_code": "RDDMP-PLATFORM-P002", "next_child_plan_sequence": 2, "description": "完成上线前验证、培训和投产准备。", "owner_id": 910000000000003, "planned_start_date": "2026-10-01", "planned_end_date": "2026-10-31", "progress": 15, "status": "NOT_STARTED", "phase": "PLAN_TEST_ACCEPTANCE", "sort_no": 20, "created_at": "2026-08-02 10:00:00", "updated_at": "2026-08-12 10:00:00", "deleted": 0},
-        {"id": 910000000003201, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 0, "plan_name": "数据治理总体计划", "plan_code": "RDDMP-DATA-P001", "next_child_plan_sequence": 3, "description": "数据治理专项主计划。", "owner_id": 910000000000002, "planned_start_date": "2026-09-01", "planned_end_date": "2026-12-15", "progress": 18, "status": "IN_PROGRESS", "phase": "PLAN_REQUIREMENT", "sort_no": 10, "created_at": "2026-09-01 09:00:00", "updated_at": "2026-09-05 11:00:00", "deleted": 0},
-        {"id": 910000000003202, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 910000000003201, "plan_name": "数据标准梳理", "plan_code": "RDDMP-DATA-P001-S001", "next_child_plan_sequence": 1, "description": "梳理核心业务数据标准和编码规则。", "owner_id": 910000000000001, "planned_start_date": "2026-09-01", "planned_end_date": "2026-09-20", "progress": 35, "status": "IN_PROGRESS", "phase": "PLAN_REQUIREMENT", "sort_no": 10, "created_at": "2026-09-01 09:10:00", "updated_at": "2026-09-05 11:00:00", "deleted": 0},
-        {"id": 910000000003203, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 910000000003201, "plan_name": "质量规则配置", "plan_code": "RDDMP-DATA-P001-S002", "next_child_plan_sequence": 1, "description": "配置数据质量检查规则并准备试运行。", "owner_id": 910000000000003, "planned_start_date": "2026-09-21", "planned_end_date": "2026-10-15", "progress": 0, "status": "BLOCKED", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 20, "created_at": "2026-09-21 09:10:00", "updated_at": "2026-09-25 10:00:00", "deleted": 0}
+        {"id": 910000000003101, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 0, "plan_name": "平台升级总体计划", "plan_code": "RDDMP-PLATFORM-P001", "next_child_plan_sequence": 3, "description": "平台升级项目主计划，统筹需求、研发和验收工作。", "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-09-14", "progress": 62, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-01 09:10:00", "updated_at": "2026-08-12 16:30:00", "deleted": 0},
+        {"id": 910000000003102, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 910000000003101, "plan_name": "需求与方案确认", "plan_code": "RDDMP-PLATFORM-P001-S001", "next_child_plan_sequence": 1, "description": "完成平台升级范围、验收标准和技术方案确认。", "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-08-15", "progress": 100, "status": "COMPLETED", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-01 09:20:00", "updated_at": "2026-08-15 17:00:00", "deleted": 0},
+        {"id": 910000000003103, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 910000000003101, "plan_name": "核心能力开发", "plan_code": "RDDMP-PLATFORM-P001-S002", "next_child_plan_sequence": 1, "description": "完成公共组件、权限和项目管理能力开发。", "owner_id": 910000000000002, "planned_start_date": "2026-08-16", "planned_end_date": "2026-09-14", "progress": 70, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 20, "created_at": "2026-08-16 09:00:00", "updated_at": "2026-08-30 14:00:00", "deleted": 0},
+        {"id": 910000000003104, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003606, "parent_id": 0, "plan_name": "上线验收计划", "plan_code": "RDDMP-PLATFORM-P002", "next_child_plan_sequence": 2, "description": "完成上线前验证、培训和投产准备。", "owner_id": 910000000000003, "planned_start_date": "2026-10-01", "planned_end_date": "2026-10-31", "progress": 15, "status": "NOT_STARTED", "phase": "PLAN_TEST_ACCEPTANCE", "sort_no": 20, "created_at": "2026-08-02 10:00:00", "updated_at": "2026-08-12 10:00:00", "deleted": 0},
+        {"id": 910000000003105, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 0, "plan_name": "迁移演练计划", "plan_code": "RDDMP-PLATFORM-P003", "next_child_plan_sequence": 2, "description": "验证迁移脚本、回退方案和演练结果。", "owner_id": 910000000000004, "planned_start_date": "2026-09-15", "planned_end_date": "2026-09-30", "progress": 28, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 30, "created_at": "2026-08-03 10:00:00", "updated_at": "2026-08-20 10:00:00", "deleted": 0},
+        {"id": 910000000003106, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 910000000003105, "plan_name": "迁移脚本演练", "plan_code": "RDDMP-PLATFORM-P003-S001", "next_child_plan_sequence": 1, "description": "完成迁移脚本在演示环境的验证。", "owner_id": 910000000000002, "planned_start_date": "2026-09-15", "planned_end_date": "2026-09-20", "progress": 40, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-03 10:10:00", "updated_at": "2026-08-20 10:00:00", "deleted": 0},
+        {"id": 910000000003201, "tenant_id": 1, "project_id": 910000000003002, "group_id": 910000000003612, "parent_id": 0, "plan_name": "数据治理总体计划", "plan_code": "RDDMP-DATA-P001", "next_child_plan_sequence": 3, "description": "数据治理专项主计划。", "owner_id": 910000000000002, "planned_start_date": "2026-09-01", "planned_end_date": "2026-12-15", "progress": 18, "status": "IN_PROGRESS", "phase": "PLAN_REQUIREMENT", "sort_no": 10, "created_at": "2026-09-01 09:00:00", "updated_at": "2026-09-05 11:00:00", "deleted": 0},
+        {"id": 910000000003202, "tenant_id": 1, "project_id": 910000000003002, "group_id": 910000000003612, "parent_id": 910000000003201, "plan_name": "数据标准梳理", "plan_code": "RDDMP-DATA-P001-S001", "next_child_plan_sequence": 1, "description": "梳理核心业务数据标准和编码规则。", "owner_id": 910000000000001, "planned_start_date": "2026-09-01", "planned_end_date": "2026-09-20", "progress": 35, "status": "IN_PROGRESS", "phase": "PLAN_REQUIREMENT", "sort_no": 10, "created_at": "2026-09-01 09:10:00", "updated_at": "2026-09-05 11:00:00", "deleted": 0},
+        {"id": 910000000003203, "tenant_id": 1, "project_id": 910000000003002, "group_id": 910000000003612, "parent_id": 910000000003201, "plan_name": "质量规则配置", "plan_code": "RDDMP-DATA-P001-S002", "next_child_plan_sequence": 1, "description": "配置数据质量检查规则并准备试运行。", "owner_id": 910000000000003, "planned_start_date": "2026-09-21", "planned_end_date": "2026-10-15", "progress": 0, "status": "BLOCKED", "phase": "PLAN_REQUIREMENT", "sort_no": 20, "created_at": "2026-09-21 09:10:00", "updated_at": "2026-09-25 10:00:00", "deleted": 0}
       ]
     },
     {
@@ -213,13 +233,13 @@
       "table": "pm_project_member",
       "keyColumns": ["id"],
       "rows": [
-        {"id": 910000000003501, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000001, "status": 1, "joined_at": "2026-08-01 09:00:00", "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-01 09:00:00", "deleted": 0},
-        {"id": 910000000003502, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000002, "status": 1, "joined_at": "2026-08-01 09:05:00", "created_at": "2026-08-01 09:05:00", "updated_at": "2026-08-01 09:05:00", "deleted": 0},
-        {"id": 910000000003503, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000003, "status": 1, "joined_at": "2026-08-01 09:10:00", "created_at": "2026-08-01 09:10:00", "updated_at": "2026-08-01 09:10:00", "deleted": 0},
-        {"id": 910000000003504, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000004, "status": 1, "joined_at": "2026-08-01 09:15:00", "created_at": "2026-08-01 09:15:00", "updated_at": "2026-08-01 09:15:00", "deleted": 0},
-        {"id": 910000000003505, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000002, "status": 1, "joined_at": "2026-08-10 10:00:00", "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-10 10:00:00", "deleted": 0},
-        {"id": 910000000003506, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000001, "status": 1, "joined_at": "2026-08-10 10:05:00", "created_at": "2026-08-10 10:05:00", "updated_at": "2026-08-10 10:05:00", "deleted": 0},
-        {"id": 910000000003507, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000003, "status": 1, "joined_at": "2026-08-10 10:10:00", "created_at": "2026-08-10 10:10:00", "updated_at": "2026-08-10 10:10:00", "deleted": 0}
+        {"id": 910000000003501, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000001, "org_id": 910000000003701, "status": 1, "joined_at": "2026-08-01 09:00:00", "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-01 09:00:00", "deleted": 0},
+        {"id": 910000000003502, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000002, "org_id": 910000000003702, "status": 1, "joined_at": "2026-08-01 09:05:00", "created_at": "2026-08-01 09:05:00", "updated_at": "2026-08-01 09:05:00", "deleted": 0},
+        {"id": 910000000003503, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000003, "org_id": 910000000003703, "status": 1, "joined_at": "2026-08-01 09:10:00", "created_at": "2026-08-01 09:10:00", "updated_at": "2026-08-01 09:10:00", "deleted": 0},
+        {"id": 910000000003504, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000004, "org_id": 910000000003702, "status": 1, "joined_at": "2026-08-01 09:15:00", "created_at": "2026-08-01 09:15:00", "updated_at": "2026-08-01 09:15:00", "deleted": 0},
+        {"id": 910000000003505, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000002, "org_id": 910000000003711, "status": 1, "joined_at": "2026-08-10 10:00:00", "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-10 10:00:00", "deleted": 0},
+        {"id": 910000000003506, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000001, "org_id": 910000000003712, "status": 1, "joined_at": "2026-08-10 10:05:00", "created_at": "2026-08-10 10:05:00", "updated_at": "2026-08-10 10:05:00", "deleted": 0},
+        {"id": 910000000003507, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000003, "org_id": 910000000003712, "status": 1, "joined_at": "2026-08-10 10:10:00", "created_at": "2026-08-10 10:10:00", "updated_at": "2026-08-10 10:10:00", "deleted": 0}
       ]
     },
     {
@@ -245,6 +265,44 @@
         {"plan_id": 910000000003104, "org_id": 910000000000003, "party_type": "LEAD", "tenant_id": 1, "created_at": "2026-08-02 10:00:00"},
         {"plan_id": 910000000003201, "org_id": 910000000000001, "party_type": "LEAD", "tenant_id": 1, "created_at": "2026-09-01 09:00:00"},
         {"plan_id": 910000000003201, "org_id": 910000000000002, "party_type": "COOPERATING", "tenant_id": 1, "created_at": "2026-09-01 09:00:00"}
+      ]
+    },
+    {
+      "table": "pm_project_risk",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003801, "tenant_id": 1, "project_id": 910000000003001, "risk_code": "RDDMP-PLATFORM-R001", "occurred_date": "2026-08-18", "project_phase": "EXECUTION", "urgency": "HIGH", "report_level": "L1", "current_status": "PROCESSING", "proposer_org_id": 910000000000002, "proposer_subsystem": "研发平台", "proposer_contact_name": "演示研发工程师", "proposer_contact_phone": "13800000002", "involved_org_id": 910000000000003, "involved_subsystem": "质量验证", "problem_description": "核心能力联调环境的测试数据刷新不稳定，可能影响验收排期。", "expected_resolution_date": "2026-09-05", "suggested_solution": "增加每日数据快照并安排专人核对刷新结果。", "current_handler_name": "演示研发工程师", "current_handler_phone": "13800000002", "progress_description": "已完成问题复现，正在验证快照恢复方案。", "attention_level": "HIGH", "problem_nature": "环境稳定性", "problem_domain": "测试数据", "pmo_contact": "演示产品经理 / 13800000001", "escalation_level": "YES", "current_problem_level": "P2", "planned_resolution_date": "2026-09-03", "actual_resolution_date": null, "resolution_solution": null, "created_by": 910000000000001, "created_at": "2026-08-18 10:00:00", "updated_at": "2026-08-20 14:00:00", "deleted": 0},
+        {"id": 910000000003802, "tenant_id": 1, "project_id": 910000000003001, "risk_code": "RDDMP-PLATFORM-R002", "occurred_date": "2026-08-12", "project_phase": "EXECUTION", "urgency": "MEDIUM", "report_level": "L2", "current_status": "OPEN", "proposer_org_id": 910000000000003, "proposer_subsystem": "质量平台", "proposer_contact_name": "演示测试负责人", "proposer_contact_phone": "13800000003", "involved_org_id": 910000000000002, "involved_subsystem": "部署流水线", "problem_description": "部分回归用例尚未完成自动化改造，人工执行耗时较长。", "expected_resolution_date": "2026-09-20", "suggested_solution": "按高风险用例优先级补齐自动化脚本。", "current_handler_name": "演示测试负责人", "current_handler_phone": "13800000003", "progress_description": null, "attention_level": "MEDIUM", "problem_nature": "交付效率", "problem_domain": "测试自动化", "pmo_contact": "演示产品经理 / 13800000001", "escalation_level": "NO", "current_problem_level": "P3", "planned_resolution_date": "2026-09-15", "actual_resolution_date": null, "resolution_solution": null, "created_by": 910000000000001, "created_at": "2026-08-12 15:00:00", "updated_at": "2026-08-12 15:00:00", "deleted": 0},
+        {"id": 910000000003803, "tenant_id": 1, "project_id": 910000000003002, "risk_code": "RDDMP-DATA-R001", "occurred_date": "2026-09-08", "project_phase": "INITIATION", "urgency": "LOW", "report_level": "L3", "current_status": "RESOLVED", "proposer_org_id": 910000000000001, "proposer_subsystem": "数据标准", "proposer_contact_name": "演示产品经理", "proposer_contact_phone": "13800000001", "involved_org_id": 910000000000002, "involved_subsystem": "数据治理", "problem_description": "部分历史字段缺少业务口径说明。", "expected_resolution_date": "2026-09-12", "suggested_solution": "组织业务和研发完成字段口径会审。", "current_handler_name": "演示研发工程师", "current_handler_phone": "13800000002", "progress_description": "已完成口径会审并更新数据字典。", "attention_level": "LOW", "problem_nature": "需求澄清", "problem_domain": "数据标准", "pmo_contact": "演示产品经理 / 13800000001", "escalation_level": "NO", "current_problem_level": "P3", "planned_resolution_date": "2026-09-12", "actual_resolution_date": "2026-09-11", "resolution_solution": "完成数据字典补充并由业务负责人确认。", "created_by": 910000000000002, "created_at": "2026-09-08 09:00:00", "updated_at": "2026-09-11 16:00:00", "deleted": 0}
+      ]
+    },
+    {
+      "table": "pm_project_risk_comment",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003851, "tenant_id": 1, "project_id": 910000000003001, "risk_id": 910000000003801, "user_id": 910000000000001, "comment_text": "请在本周联调评审会上确认快照恢复方案的验证结果。", "created_at": "2026-08-19 09:30:00", "updated_at": "2026-08-19 09:30:00", "deleted": 0},
+        {"id": 910000000003852, "tenant_id": 1, "project_id": 910000000003001, "risk_id": 910000000003801, "user_id": 910000000000002, "comment_text": "已补充恢复脚本，预计明天完成第二轮验证。", "created_at": "2026-08-20 14:00:00", "updated_at": "2026-08-20 14:00:00", "deleted": 0},
+        {"id": 910000000003853, "tenant_id": 1, "project_id": 910000000003002, "risk_id": 910000000003803, "user_id": 910000000000002, "comment_text": "数据字典已更新，风险关闭依据已归档。", "created_at": "2026-09-11 16:10:00", "updated_at": "2026-09-11 16:10:00", "deleted": 0}
+      ]
+    },
+    {
+      "table": "pm_project_org",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003701, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 0, "org_code": "PLATFORM-PMO", "org_name": "平台升级项目组", "sort_no": 10, "status": 1, "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-01 09:00:00", "deleted": 0},
+        {"id": 910000000003702, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 910000000003701, "org_code": "PLATFORM-DEV", "org_name": "研发实施组", "sort_no": 10, "status": 1, "created_at": "2026-08-01 09:01:00", "updated_at": "2026-08-01 09:01:00", "deleted": 0},
+        {"id": 910000000003703, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 910000000003701, "org_code": "PLATFORM-QA", "org_name": "质量验收组", "sort_no": 20, "status": 1, "created_at": "2026-08-01 09:02:00", "updated_at": "2026-08-01 09:02:00", "deleted": 0},
+        {"id": 910000000003711, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 0, "org_code": "DATA-PMO", "org_name": "数据治理项目组", "sort_no": 10, "status": 1, "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-10 10:00:00", "deleted": 0},
+        {"id": 910000000003712, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 910000000003711, "org_code": "DATA-STANDARD", "org_name": "数据标准组", "sort_no": 10, "status": 1, "created_at": "2026-08-10 10:01:00", "updated_at": "2026-08-10 10:01:00", "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_attachment",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003901, "tenant_id": 1, "business_type": "PROJECT", "business_id": 910000000003001, "file_name": "平台升级项目实施方案.pdf", "content_type": "application/pdf", "file_size": 284672, "object_key": "mock/project/910000000003001/platform-plan.pdf", "uploader_id": 910000000000001, "created_at": "2026-08-02 11:00:00", "updated_at": "2026-08-02 11:00:00", "deleted": 0},
+        {"id": 910000000003902, "tenant_id": 1, "business_type": "PROJECT", "business_id": 910000000003001, "file_name": "验收问题跟踪表.xlsx", "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "file_size": 93612, "object_key": "mock/project/910000000003001/acceptance-issues.xlsx", "uploader_id": 910000000000003, "created_at": "2026-08-18 16:20:00", "updated_at": "2026-08-18 16:20:00", "deleted": 0},
+        {"id": 910000000003903, "tenant_id": 1, "business_type": "PROJECT", "business_id": 910000000003002, "file_name": "数据标准目录.docx", "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "file_size": 148320, "object_key": "mock/project/910000000003002/data-standard.docx", "uploader_id": 910000000000002, "created_at": "2026-09-05 13:30:00", "updated_at": "2026-09-05 13:30:00", "deleted": 0}
       ]
     },
     {
