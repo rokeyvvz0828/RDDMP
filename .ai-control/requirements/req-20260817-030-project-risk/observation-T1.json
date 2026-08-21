@@ -1,0 +1,27 @@
+{
+  "sample_label": "项目风险功能最终采样",
+  "task_ids": ["T1/T2"],
+  "baseline_revision": "req-20260817-030-project-risk-revision-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "前端 DOM 快照", "result": "pass", "raw_evidence": "项目风险页签位于项目计划之后，列表表头和中文空状态可见", "limitation": ["当前运行数据库未执行 V43，未展示运行态风险记录"]},
+    {"requirement_id": "R2", "sensor": "前端 DOM/源码构建", "result": "pass", "raw_evidence": "三段表单包含问题上报、进展描述、升级与解决字段，vue-tsc 和 Vite 构建通过", "limitation": ["运行态无新增风险权限，未提交表单"]},
+    {"requirement_id": "R3", "sensor": "后端单元测试", "result": "pass", "raw_evidence": "风险编号生成和客户端编号忽略测试通过", "limitation": ["未连接真实数据库验证 V43 执行结果"]},
+    {"requirement_id": "R4", "sensor": "服务测试与代码范围检查", "result": "pass", "raw_evidence": "参数校验测试通过，Flyway 检查和 git diff --check 通过", "limitation": ["权限矩阵的运行态接口验证待数据库迁移后执行"]},
+    {"requirement_id": "R5", "sensor": "浏览器移动视口", "result": "pass", "raw_evidence": "375x812 视口下风险页签可见，window.innerWidth=375、document.documentElement.scrollWidth=360", "limitation": ["表单弹窗未在运行态打开"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    "运行数据库和 V43 迁移状态不可观测",
+    "后端旧构建进程锁定 JAR，停止后新构建成功；临时启动因当前 shell 未提供 DB_PASSWORD 被 MySQL 拒绝，未执行 V43"
+  ],
+  "coverage_gaps": ["真实数据库迁移后的风险新增、编辑、删除、权限拒绝和三段表单提交"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "incomplete",
+  "runtime_attempt": {
+    "build_command": "mvn -pl :ccb-boot -am package -DskipTests",
+    "build_result": "pass",
+    "service_probe": "failed",
+    "failure": "Access denied for user 'ccb'@'172.25.0.1' (using password: NO)",
+    "security_boundary": "未读取或猜测 .env、DB_PASSWORD、JWT_SECRET"
+  }
+}

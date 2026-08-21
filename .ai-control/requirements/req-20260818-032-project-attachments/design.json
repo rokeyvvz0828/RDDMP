@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260818-032-project-attachments",
+  "topic": "project-attachments",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-18-project-attachments-design.md",
+  "approval": {"status": "approved", "evidence": "用户确认采用可复用持久附件平台 + 项目附件页签方案", "confirmed_at": "2026-08-18T00:00:00+08:00"},
+  "objective": "项目详情支持持久附件上传、列表、在线预览、下载和受控删除",
+  "requirements": [
+    {"id": "R1", "statement": "项目详情显示附件页签", "priority": "must"},
+    {"id": "R2", "statement": "附件持久保存并绑定项目", "priority": "must"},
+    {"id": "R3", "statement": "附件支持 kkFileView 预览和短时下载", "priority": "must"},
+    {"id": "R4", "statement": "附件遵循项目成员、负责人和超级管理员权限", "priority": "must"},
+    {"id": "R5", "statement": "迁移、构建、测试和浏览器验收通过", "priority": "must"}
+  ],
+  "invariants": ["tenant_id + business_type + business_id范围", "对象键只在服务端", "V45追加且V43/V44不变", "临时file-preview语义不变"],
+  "constraints": ["保持com.ccb包名", "业务模块只能依赖公开AttachmentPort", "前端复用UiFilePreview", "项目权限服务端校验"],
+  "non_goals": ["版本管理", "全文检索", "分片上传", "外部分享", "匿名上传"],
+  "selected_approach": {"name": "独立持久附件平台 + 项目详情适配", "reason": "为后续业务复用附件生命周期，避免项目模块直接管理对象键"},
+  "architecture": {"attachment_owner": "ccb-attachment", "project_owner": "ccb-system project", "frontend_owner": "frontend/application", "preview_adapter": "ccb-file-preview FilePreviewUrlProvider"},
+  "risks": ["双写一致性", "项目访问边界", "kkFileView访问MinIO地址", "模块依赖和迁移组合"],
+  "verification_strategy": ["AttachmentServiceTest", "ProjectServiceTest", "Flyway check", "Vue build", "desktop/375px browser" ]
+}

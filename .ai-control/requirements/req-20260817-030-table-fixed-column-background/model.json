@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260817-030-table-fixed-column-background",
+  "plant_boundary": {
+    "inside": ["UiDataTable global styles", "Element Plus table rendering", "browser theme state"],
+    "outside": ["business page logic", "backend", "database", "authorization"]
+  },
+  "state_variables": ["horizontal scroll position", "fixed-cell background", "row hover state", "theme"],
+  "causal_paths": [
+    {"input": "horizontal table scroll", "transitions": ["non-fixed cells move beneath sticky cells", "fixed cells paint semantic background"], "output": "fixed-column content remains legible"}
+  ],
+  "sensors": ["computed background color", "DOM fixed-column classes", "browser screenshots", "frontend build exit code"],
+  "actuators": ["scoped CSS selectors in web/src/styles.css"],
+  "disturbances": ["Element Plus selector changes", "light/dark theme", "hover and striped row precedence"],
+  "assumptions": [
+    {"text": "Element Plus 2.14 sticky fixed columns use el-table-fixed-column--left/right classes", "basis": "installed dependency source inspection", "falsifier": "rendered DOM lacks those classes"}
+  ]
+}

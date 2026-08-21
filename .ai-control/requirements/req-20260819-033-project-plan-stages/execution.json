@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "topic": "project-plan-stages",
+  "phase": "observing",
+  "recorded_at": "2026-08-20T10:53:01+08:00",
+  "tasks": [
+    {
+      "id": "T1",
+      "status": "completed",
+      "scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V46__project_plan_stages.sql",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+      ],
+      "changes": [
+        "追加 pm_project_plan_group.phase、阶段唯一约束和索引",
+        "兼容回填历史计划、分组及七个 PLAN_PHASE 参数，并保证新增参数关联 PLAN_PHASE 类别",
+        "服务端校验分组阶段、子计划阶段继承/一致性以及主计划归组时的后代同步",
+        "补齐阶段和归组同步的 Mockito 契约测试"
+      ],
+      "commands": [
+        {"command": "mvn -pl :ccb-system -am test \"-Dnet.bytebuddy.experimental=true\"", "result": "passed; 22 tests, 0 failures, 0 errors"},
+        {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 46 migrations"}
+      ]
+    },
+    {
+      "id": "T2",
+      "status": "completed",
+      "scope": ["web/src/types/project.ts", "web/src/views/ProjectView.vue", "web/src/styles.css", "mock/mock-data.json"],
+      "changes": [
+        "计划视图组织为阶段、分组、主计划、子计划四级树",
+        "分组创建/编辑提交阶段，主计划整行拖拽到分组，子计划不可作为拖拽源",
+        "补充阶段行、分组色阶和拖拽状态样式，保留现有计划字段和操作权限"
+      ],
+      "commands": [
+        {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite production build"},
+        {"command": "git diff --check", "result": "passed"}
+      ]
+    },
+    {
+      "id": "T3",
+      "status": "completed",
+      "scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V47__project_plan_fixed_stages.sql",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+        "web/src/types/project.ts",
+        "web/src/views/ProjectView.vue",
+        "mock/mock-data.json"
+      ],
+      "changes": [
+        "固定PLAN_PHASE七阶段，停用其他阶段并将非法历史计划/分组归入立项",
+        "移除项目级pm_project.phase的查询、写入、页面展示、类型和Mock字段",
+        "主计划未传阶段时服务端默认PLAN_INITIATION，子计划继续继承父计划阶段",
+        "同步修正分组阶段测试和当前任务文档"
+      ],
+      "commands": [
+        {"command": "mvn -pl :ccb-system -am test \"-Dnet.bytebuddy.experimental=true\"", "result": "passed; 22 tests, 0 failures, 0 errors"},
+        {"command": "mvn test \"-Dnet.bytebuddy.experimental=true\"", "result": "passed; full reactor including workflow, ai and boot"},
+        {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite production build; sandbox EPERM后授权重跑"},
+        {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 47 migrations"},
+        {"command": "git diff --check", "result": "passed"}
+      ]
+    },
+    {
+      "id": "T4",
+      "status": "completed",
+      "scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V46__project_plan_stages.sql"],
+      "changes": [
+        "修复历史已删除分组阶段为空导致的 NOT NULL 迁移失败",
+        "兼容本地 V46 已完成结构变更但数据回填失败后的重试场景",
+        "清理本地 Flyway V46 失败历史记录后成功执行 V46/V47"
+      ],
+      "commands": [
+        {"command": "mvn -DskipTests package", "result": "passed; boot JAR rebuilt"},
+        {"command": "java -jar ccb-boot-0.1.0-SNAPSHOT.jar", "result": "passed; Flyway migrated schema from 45 to 47; backend started on 8080"},
+        {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 47 migrations"},
+        {"command": "docker read-only verification", "result": "passed; seven PLAN_PHASE entries enabled, project phase column absent, plan/group phase columns present"}
+      ]
+    },
+    {
+      "id": "T5",
+      "status": "completed",
+      "scope": ["web/src/views/ProjectView.vue", "web/src/styles.css"],
+      "changes": [
+        "将项目计划页从阶段/分组/计划树表格改为阶段纵轴、月份横轴的主计划时间轴",
+        "主计划按日期绘制可点击时间条，同一阶段内多个主计划分层展示，未排期主计划保留为可点击条目",
+        "新增主计划子计划弹框，保留子计划新增/编辑/删除及主计划编辑/删除操作；新增分组维护入口",
+        "补充局部横向滚动、主题变量、状态进度和移动端弹框布局",
+        "按后端计划接口契约移除计划和计划分组操作入口的负责人前置条件，项目成员只需具备对应计划权限即可新增、编辑、删除和归组"
+      ],
+      "commands": [
+        {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite production build; sandbox EPERM后在授权环境重跑通过"},
+        {"command": "git diff --check", "result": "passed"}
+      ]
+    },
+    {
+      "id": "T6",
+      "status": "completed",
+      "scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V48__repair_plan_phase_parameters.sql",
+        "docs/requirements/REQ-20260819-033-project-plan-stages/codex-task-scope.yaml"
+      ],
+      "changes": [
+        "定位 V47 使用 INSERT IGNORE 复用 V37 参数 ID 导致 PLAN_INITIATION、PLAN_REQUIREMENT、PLAN_DESIGN_DEVELOPMENT 缺失的问题",
+        "追加 V48，启用已有固定阶段并使用当前最大参数 ID 之后的安全序号补齐缺失阶段，不删除历史参数或业务计划"
+      ],
+      "commands": [
+        {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 48 migrations"},
+        {"command": "mvn -pl :ccb-system -am test \"-Dnet.bytebuddy.experimental=true\"", "result": "passed; 22 tests, 0 failures, 0 errors"},
+        {"command": "docker ps --format ...", "result": "environment blocked; Docker Desktop engine pipe access denied"},
+        {"command": "mvn -DskipTests package", "result": "passed; boot executable JAR rebuilt with 48 infrastructure resources"},
+        {"command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local with .env process environment", "result": "passed; backend PID 22316, health HTTP 200, Flyway applied V48 and schema reached v48"},
+        {"command": "git diff --check", "result": "passed"}
+      ]
+    },
+    {
+      "id": "T7",
+      "status": "completed",
+      "scope": ["web/src/views/ProjectView.vue", "web/src/styles.css"],
+      "changes": [
+        "将项目计划时间轴从阶段单行调整为阶段、分组、主计划三列结构",
+        "同一阶段的每个分组独占一行，分组标签和分组色阶在时间轴中可见",
+        "分组内主计划按开始日期、排序号和编号排序，并在月份横轴上按日期横向排列"
+      ],
+      "commands": [
+        {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite production build completed in authorized environment; existing Rollup chunk-size warnings only"},
+        {"command": "git diff --check", "result": "passed"}
+      ]
+    },
+    {
+      "id": "T8",
+      "status": "completed",
+      "scope": ["web/src/styles.css"],
+      "changes": [
+        "为阶段时间轴中的每个分组行增加横向分隔线，分隔分组标签和计划轨道",
+        "阶段最后一个分组去除重复底线，保持阶段边界整洁"
+      ],
+      "commands": [
+        {"command": "node_modules\\.bin\\vue-tsc.cmd --noEmit", "result": "passed; executed from web directory"},
+        {"command": "git diff --check", "result": "passed"},
+        {"command": "npm --prefix web run build", "result": "not_run_after_change; execution approval service rejected the request while attempting to start the authorized build; previous full production build passed before this CSS-only change"}
+      ]
+    },
+    {
+      "id": "T9",
+      "status": "completed",
+      "scope": ["web/src/views/ProjectView.vue", "web/src/styles.css"],
+      "changes": [
+        "新增项目组织架构页签，将项目成员和项目角色合并到同一页签内的两个维护区块",
+        "保留成员、角色原有新增、编辑、删除操作及负责人和权限条件",
+        "旧的members/roles查询参数兼容映射到organization，桌面端并排、移动端上下布局"
+      ],
+      "commands": [
+        {"command": "git diff --check", "result": "passed"},
+        {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite production build completed in authorized environment; existing dependency annotation and chunk-size warnings only"}
+      ]
+    },
+    {
+      "id": "T10",
+      "status": "completed",
+      "scope": ["server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "web/src/views/ProjectView.vue", "web/src/styles.css"],
+      "changes": [
+        "阶段计划标题增加按权限显示的删除入口，确认后调用现有删除接口并刷新项目详情；删除仅解除计划分组，不删除主计划和子计划",
+        "主计划新增在项目行锁内跳过已被历史计划占用的编号，修复 next_plan_sequence 落后导致的唯一索引冲突",
+        "补充项目序号落后时自动跳过已占用主计划编号的服务层回归测试"
+      ],
+      "commands": [
+        {"command": "mvn -pl :ccb-system -am test \"-Dnet.bytebuddy.experimental=true\"", "result": "passed; 25 tests, 0 failures, 0 errors"},
+        {"command": "npm run build", "result": "passed; vue-tsc and Vite production build; existing dependency annotation and chunk-size warnings only"},
+        {"command": "git diff --check", "result": "passed"},
+        {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed; executable Boot JAR rebuilt after stopping the old process"},
+        {"command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local with .env process environment", "result": "passed; backend restarted, connected to ccb_platform_licon, schema 50 up to date, health HTTP 200"},
+        {"command": "local browser project plan page and 375x812 viewport check", "result": "passed; configured groups show delete buttons, visible delete buttons 4, scrollWidth equals clientWidth 360"}
+      ]
+    },
+    {
+      "id": "T11",
+      "status": "completed",
+      "scope": [
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+        "web/src/views/ProjectView.vue"
+      ],
+      "changes": [
+        "主计划新增和编辑均强制要求计划开始、计划结束时间，前后端同步校验并在表单显示必填标记",
+        "同阶段主计划按开始时间、结束时间、排序号和编号稳定排序，使多个主计划按时间顺序横向落位",
+        "保留历史缺少日期主计划的未排期展示，不擅自改写存量业务数据"
+      ],
+      "commands": [
+        {"command": "mvn -pl :ccb-system -am test \"-Dnet.bytebuddy.experimental=true\"", "result": "passed; 26 tests, 0 failures, 0 errors"},
+        {"command": "npm run build", "result": "passed; vue-tsc and Vite production build; existing dependency annotation and chunk-size warnings only"},
+        {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 50 migrations"},
+        {"command": "git diff --check", "result": "passed"},
+        {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed; executable Boot JAR rebuilt"},
+        {"command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local with .env process environment", "result": "passed; backend restarted, schema 50 up to date, health HTTP 200; .env content was not printed or modified"},
+        {"command": "local browser main-plan form check", "result": "passed; plan start and plan end fields display required markers"}
+      ]
+    },
+    {
+      "id": "T12",
+      "status": "completed",
+      "scope": [
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+        "web/src/types/project.ts",
+        "web/src/views/ProjectView.vue"
+      ],
+      "changes": [
+        "服务端按同组主计划创建时间和编号建立序列，要求后建主计划开始日期严格晚于前一个主计划结束日期",
+        "服务端同时校验编辑后的同组主计划完整序列，防止修改日期破坏既有顺序",
+        "前端新增同组主计划顺序提交前校验，并补充计划创建时间类型"
+      ],
+      "commands": [
+        {"command": "mvn -pl :ccb-system -am test \"-Dnet.bytebuddy.experimental=true\"", "result": "passed; 27 tests, 0 failures, 0 errors"},
+        {"command": "npm --prefix web run build", "result": "passed in authorized environment; vue-tsc and Vite production build; existing chunk-size warnings only"},
+        {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed; executable Boot JAR rebuilt"},
+        {"command": "java -jar ... --spring.profiles.active=local --spring.config.import=optional:file:.env[.properties]", "result": "passed; application loaded .env through Spring import, backend reached 8080 and health HTTP 200; .env content was not printed or modified"}
+      ]
+    },
+    {
+      "id": "T13",
+      "status": "completed",
+      "scope": ["web/src/views/ProjectView.vue", "web/src/styles.css"],
+      "changes": [
+        "修复阶段计划月份网格与主计划时间条使用不同轨道宽度导致的日期压缩",
+        "按月份数量设置时间轴第三列最小宽度，保证表头、月份网格和主计划结束位置使用同一坐标系"
+      ],
+      "commands": [
+        {"command": "npm --prefix web run build", "result": "passed in authorized environment; vue-tsc and Vite production build; existing Rollup annotation and chunk-size warnings only"},
+        {"command": "git diff --check", "result": "passed"},
+        {"command": "local project API and date-axis calculation", "result": "passed; project 1-1 plan 2222 ends 2027-08-31, 13-month axis uses 1456px minimum track and the end coordinate reaches the axis end"}
+      ]
+    }
+  ],
+  "constraints_checked": [
+    "未修改 V43-V45 历史迁移",
+    "未修改 server/src/shared、公共 UI、安全和 .env",
+    "Flyway 变更为追加 V46/V47/V48，未执行生产数据库操作；V47按用户确认移除pm_project.phase；V48仅修复固定计划阶段参数种子"
+  ],
+  "disturbances": [
+    "JDK 25 运行目标测试需要 -Dnet.bytebuddy.experimental=true",
+    "沙箱首次运行 Vite/esbuild 和范围脚本时返回 spawn EPERM，授权重跑构建成功；范围脚本再次执行仍因Windows启动git子进程EPERM失败，当前工作区同时含多个历史任务改动，未将其解释为范围通过或违规",
+    "本次 Boot 首次重打包受旧 Java 进程锁定 JAR 影响，停止已确认的两个残留后端进程后重打包成功；.env 直接导入需要使用 Spring properties 扩展名提示，最终启动验证通过"
+  ],
+  "open_items": [
+    "历史主计划缺少日期时继续显示未排期，未批量补写存量数据",
+    "完整拖拽归组和刷新持久化回归仍需单独验收",
+    "治理总检查和当前任务范围脚本仍受仓库既有问题及 Windows git 子进程限制影响"
+  ]
+}

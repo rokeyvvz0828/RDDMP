@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V36__repair_project_management_menu.sql", "purpose": "修复项目管理菜单 ID 冲突并重新挂接权限节点"},
+    {"path_or_resource": "docs/requirements/REQ-20260811-021-project-management/codex-task-scope.yaml", "purpose": "登记 V36 迁移范围"}
+  ],
+  "requirements_addressed": ["项目管理动态菜单可见", "超级管理员可进入项目工作台"],
+  "commands": [
+    {"command": "mvn -pl :ccb-boot -am -DskipTests package", "exit_code": 0, "salient_output": "BUILD SUCCESS"},
+    {"command": "java -jar ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local", "exit_code": 0, "salient_output": "Tomcat started on port 8080; Flyway migrated to v36"}
+  ],
+  "local_checks": [
+    {"check": "actuator health", "result": "passed", "evidence": "HTTP 200"},
+    {"check": "Flyway migration", "result": "passed", "evidence": "36 migrations validated; schema at v36"},
+    {"check": "browser project workbench", "result": "passed", "evidence": "项目管理 menu visible; /projects displays empty state without permission alert"}
+  ],
+  "diff_summary": ["新增 V36 修复菜单初始化冲突", "更新任务范围和控制账本"],
+  "invariants_checked": ["V35 未修改", "前端 5173 未停止", "未手工执行 SQL 迁移"],
+  "disturbances": ["V35 使用已被交付示范中心占用的菜单 ID 500"],
+  "assumptions_falsified": [],
+  "unresolved_items": ["当前数据库没有项目业务数据，未执行项目创建/计划/成员 CRUD 浏览器流程"],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,15 @@
+{
+  "sample_label": "T1 backend and runtime observation",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1 focused Maven test", "result": "pass", "raw_evidence": "ProjectServiceTest passed", "limitation": ["validation edge cases are not exhaustive"]},
+    {"requirement_id": "R2", "sensor": "S1 test + S3 browser", "result": "pass after correction", "raw_evidence": "browser saved plan returned RDC-2026-X01-2026; client plan_code was ignored", "limitation": ["one sequential create observed"]},
+    {"requirement_id": "R3", "sensor": "S3 browser DOM", "result": "pass", "raw_evidence": "project card and detail displayed 26% actual plan progress", "limitation": ["aggregate based on existing local data"]}
+  ],
+  "feedback": [{"requirement_id": "R2", "expected": "plan save succeeds", "observed": "initial stale runtime failed with SQL parameter 15", "reproduction": "create plan from project plans tab before restart", "evidence": "backend log SQLException No value specified for parameter 15", "severity": "P1", "confidence": "high", "sensor_limit": "old runtime artifact was active", "causal_hypothesis": "insert SQL had 15 placeholders for 14 arguments", "correction_check": "focused test, packaged restart and browser create succeeded", "classification": "deviation"}],
+  "disturbances": [{"source": "stale backend process", "effect": "old implementation served", "detection": "backend log and health process check", "mitigation": "package and restart with .env environment"}],
+  "coverage_gaps": ["concurrency and invalid rule boundary tests are not full load coverage"],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

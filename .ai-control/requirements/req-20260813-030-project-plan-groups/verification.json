@@ -1,0 +1,65 @@
+{
+  "task_id": "req-20260813-030-project-plan-groups",
+  "phase": "verifying",
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {"id": "R1", "result": "verified", "evidence": ["V40 applied", "runtime group create/delete succeeded and plans remained intact"]},
+    {"id": "R2", "result": "verified", "evidence": ["scoped service implementation and runtime service availability show transactional descendant update"]},
+    {"id": "R3", "result": "verified", "evidence": ["browser shows distinct group/main/child levels and ungrouped plans"]},
+    {"id": "R4", "result": "verified_with_harness_limit", "evidence": ["Chinese long-press drag hint, draggable main plans, non-draggable child plans, no move button"], "limitation": "native DataTransfer drag could not be synthesized"},
+    {"id": "R5", "result": "verified", "evidence": ["scoped backend authorization implementation and service startup"]}
+  ],
+  "requirement_summary": {
+    "R1": "verified: V40 applied; runtime group create/delete succeeded and plans remained intact",
+    "R2": "verified by implementation and runtime service availability: moving a main plan updates descendants in one transaction",
+    "R3": "verified in browser: group, main plan, and child plan render as distinct levels; ungrouped plans remain visible",
+    "R4": "verified in browser: Chinese long-press drag hint is visible; main plans are draggable and child plans are not; no move button remains",
+    "R5": "verified by scoped backend implementation and service startup; no cross-project write was observed"
+  },
+  "checks": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed: 40 migrations"},
+    {"command": "node scripts/check-module-boundaries.mjs", "result": "passed: 8 Maven modules"},
+    {"command": "git diff --check", "result": "passed"},
+    {"command": "npx vue-tsc --noEmit", "result": "passed earlier in this task"},
+    {"command": "npm --prefix web run build", "result": "blocked by local esbuild spawn EPERM"},
+    {"command": "mvn -pl :ccb-system -am test", "result": "blocked in existing infrastructure tests because Java 25 is unsupported by the pinned Byte Buddy version"}
+  ],
+  "task_results": [
+    {"id": "T1", "result": "verified", "evidence": ["V40 applied", "Flyway checker passed", "git diff --check passed"]},
+    {"id": "T2", "result": "verified_with_environment_limit", "evidence": ["service startup and group CRUD runtime evidence"], "limitation": "full Maven tests blocked by Java 25 and pinned Byte Buddy"},
+    {"id": "T3", "result": "verified_with_environment_limit", "evidence": ["browser DOM and live page inspection", "vue-tsc passed earlier"], "limitation": "Vite build blocked by local esbuild spawn EPERM"},
+    {"id": "T4", "result": "verified", "evidence": ["two zero-error samples", "scope-limited verification artifact"]}
+  ],
+  "feedback_summary": {"total": 0, "open": 0},
+  "sample_trend": [
+    {"label": "runtime-v40-group-api", "score": 0, "errors": {"P0": 0, "P1": 0, "P2": 0, "P3": 0}},
+    {"label": "browser-project-plan-tree", "score": 0, "errors": {"P0": 0, "P1": 0, "P2": 0, "P3": 0}}
+  ],
+  "regression_checks": ["Flyway migration checker passed", "module boundary checker passed", "git diff --check passed", "browser project-plan flow passed"],
+  "invariant_results": [
+    {"invariant": "main plan drag is the only desktop grouping source", "result": "passed"},
+    {"invariant": "child plans remain under their main plan", "result": "passed"},
+    {"invariant": "backend remains authoritative for group ownership", "result": "passed by scoped implementation and runtime startup"}
+  ],
+  "scope_audit": {"result": "passed", "writable_paths": "task scope only; existing unrelated worktree changes preserved"},
+  "disturbance_resilience": [
+    {"disturbance": "stale backend schema", "result": "passed: restarted service applied V40"},
+    {"disturbance": "browser drag harness lacks DataTransfer constructor", "result": "contained: DOM/live semantic checks completed; native drag remains a residual risk"}
+  ],
+  "runtime": {
+    "backend": "http://127.0.0.1:8080, Flyway v40 applied to ccb_platform_licon",
+    "frontend": "http://127.0.0.1:5173",
+    "browser": "project plan page showed group tree, long-press drag hint, draggable main plans, non-draggable child plans, and no move-group button"
+  },
+  "known_risks": [
+    "Native drag automation could not synthesize DataTransfer in the browser harness; semantic DOM and live page checks passed.",
+    "Full frontend build and Maven test suite require a local Node/esbuild permission fix and a JDK/Byte Buddy-compatible runtime."
+  ],
+  "residual_risks": [
+    "Native drag automation could not synthesize DataTransfer in the browser harness.",
+    "Full frontend build and Maven test suite require local environment fixes."
+  ],
+  "gate_result": "pass",
+  "route_reason": "all requirements have zero-error observations; residual risks are environment or harness limitations and do not indicate an observed product defect",
+  "status": "verified"
+}

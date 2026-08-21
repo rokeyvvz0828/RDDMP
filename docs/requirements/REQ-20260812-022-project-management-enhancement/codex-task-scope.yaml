@@ -1,0 +1,26 @@
+{
+  "requirement": {"id": "REQ-20260812-022", "status": "ready", "document": "docs/requirements/REQ-20260812-022-project-management-enhancement/requirement.md", "codex_allowed": true},
+  "assignment": {"module": "platform/system", "developer": "rokeyvvz0828", "module_owner": "rokeyvvz0828", "branch": "licon"},
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__project_management_enhancement.sql",
+      "server/src/platform/system/src/main/java/com/ccb/system/project/**",
+      "server/src/platform/system/src/test/java/com/ccb/system/project/**",
+      "web/src/api/project.ts",
+      "web/src/types/project.ts",
+      "web/src/views/ProjectView.vue",
+      "docs/requirements/REQ-20260812-022-project-management-enhancement/**",
+      "docs/engineering-control/designs/2026-08-12-project-management-enhancement-design.md",
+      "docs/engineering-control/plans/2026-08-12-project-management-enhancement-implementation-plan.md",
+      ".ai-control/requirements/req-20260812-022-project-management-enhancement/**"
+    ],
+    "read_only_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V37__project_management_enhancement.sql"]},
+  "required_tests": [
+    {"name": "backend", "command": "mvn -pl :ccb-system -am test", "expected": "project tests pass"},
+    {"name": "frontend", "command": "npm --prefix web run build", "expected": "vite build succeeds"},
+    {"name": "diff", "command": "git diff --check", "expected": "no whitespace errors"}
+  ]
+}

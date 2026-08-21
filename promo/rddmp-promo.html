@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RDDMP | 工程交付平台宣传片</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Microsoft YaHei", "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #07131f; color: #e9f5fb; }
+    main { width: min(1180px, 94vw); padding: 24px 0 36px; }
+    .stage { position: relative; overflow: hidden; aspect-ratio: 16 / 9; border: 1px solid #24445a; background: #081521; box-shadow: 0 24px 80px rgba(0,0,0,.42); }
+    canvas { display: block; width: 100%; height: 100%; }
+    .hud { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 16px; color: #8eabbc; font-size: 13px; }
+    .hud strong { color: #f2fbff; font-size: 15px; }
+    .actions { display: flex; gap: 8px; }
+    button { border: 1px solid #2d6681; border-radius: 5px; padding: 9px 14px; color: #ecfbff; background: #103348; cursor: pointer; font: inherit; }
+    button:hover { background: #164863; }
+    button:disabled { cursor: wait; opacity: .55; }
+    .note { margin: 11px 0 0; color: #718b9d; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="stage"><canvas id="film" width="1280" height="720"></canvas></div>
+    <div class="hud"><strong id="status">RDDMP · 工程交付平台</strong><span id="timer">预览模式</span><div class="actions"><button id="play">播放预览</button><button id="record">生成 WebM</button></div></div>
+    <p class="note">科技概念型宣传片：组织、权限、流程、项目与 AI 能力由同一套交付底座连接。视频录制完成后会自动下载。</p>
+  </main>
+  <script>
+    const canvas = document.getElementById('film');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const playButton = document.getElementById('play');
+    const recordButton = document.getElementById('record');
+    const statusText = document.getElementById('status');
+    const timerText = document.getElementById('timer');
+    const DURATION = 12;
+    let startAt = 0;
+    let playing = false;
+    let recorder = null;
+    let chunks = [];
+
+    const colors = { ink: '#e9f5fb', muted: '#87a4b6', cyan: '#55e7ff', blue: '#4b8dff', green: '#54dfa8', amber: '#ffc36b', grid: 'rgba(95, 173, 207, .11)', panel: 'rgba(10, 32, 48, .86)' };
+    const scenes = [
+      { from: 0, to: 2, title: '研发交付，需要一套共同的语言', sub: '从组织协作，到流程落地，再到项目结果', key: 'RDDMP' },
+      { from: 2, to: 4, title: '让组织与权限，清晰可见', sub: '组织树、账号体系、角色权限，构成交付底座', key: '组织 · 账号 · 权限' },
+      { from: 4, to: 6, title: '让审批流程，真正流动起来', sub: '可视化设计，连接 Flowable 运行引擎', key: '同意 · 拒绝 · 加签 · 抄送' },
+      { from: 6, to: 8, title: '让项目计划，变成可追踪的进度', sub: '主计划、子计划、成员与角色，在同一张图上协作', key: '项目 · 计划 · 进度' },
+      { from: 8, to: 10, title: '让 AI 成为平台的统一能力入口', sub: '模型配置、能力路由与审计，按接入规范服务后续模块', key: '模型 · 路由 · 能力' },
+      { from: 10, to: 12, title: '工程交付，从分散走向协同', sub: 'RDDMP · 工程交付平台', key: '更清晰 · 更可控 · 更高效' }
+    ];
+
+    function sceneAt(t) { return scenes.findIndex(s => t >= s.from && t < s.to) || scenes.length - 1; }
+    function clamp(v, a = 0, b = 1) { return Math.max(a, Math.min(b, v)); }
+    function ease(v) { return v < .5 ? 2 * v * v : 1 - Math.pow(-2 * v + 2, 2) / 2; }
+    function text(value, x, y, size, color = colors.ink, align = 'left', weight = 400) { ctx.font = `${weight} ${size}px "Microsoft YaHei", sans-serif`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(value, x, y); }
+    function line(x1, y1, x2, y2, color = colors.cyan, width = 2, alpha = 1) { ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); }
+    function rounded(x, y, w, h, r, fill, stroke = null, width = 1) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = width; ctx.stroke(); } }
+    function dot(x, y, r, fill, glow = false) { ctx.save(); if (glow) { ctx.shadowColor = fill; ctx.shadowBlur = 18; } ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+
+    function background(t) {
+      ctx.fillStyle = '#07131f'; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = colors.grid; ctx.lineWidth = 1;
+      const drift = (t * 18) % 48;
+      for (let x = -48 + drift; x < W + 48; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 0; y < H; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(85, 231, 255, .22)'; ctx.strokeRect(40, 40, W - 80, H - 80);
+      text('RDDMP / R&D DELIVERY MANAGEMENT PLATFORM', 62, 64, 13, colors.muted, 'left', 600);
+      text('SINGLE-TENANT FOUNDATION', W - 62, 64, 11, colors.muted, 'right', 400);
+      line(62, H - 63, W - 62, H - 63, colors.grid, 1);
+      text('ENGINEERING DELIVERY', 62, H - 39, 11, colors.muted, 'left', 600);
+      text('01 / 06', W - 62, H - 39, 11, colors.muted, 'right', 600);
+    }
+
+    function network(t, cx, cy, count = 12, radius = 210, color = colors.cyan) {
+      const nodes = []; for (let i = 0; i < count; i++) { const a = i / count * Math.PI * 2 + t * .12; nodes.push([cx + Math.cos(a) * radius * (0.7 + .2 * Math.sin(i * 2)), cy + Math.sin(a) * radius * .52]); }
+      nodes.forEach((p, i) => { const q = nodes[(i + 1) % nodes.length]; line(p[0], p[1], q[0], q[1], color, 1, .5); if (i % 2 === 0) line(p[0], p[1], cx, cy, colors.blue, 1, .35); dot(p[0], p[1], i % 3 === 0 ? 5 : 3, i % 3 === 0 ? color : colors.blue, true); });
+      dot(cx, cy, 30 + Math.sin(t * 2) * 2, color, true); text('EP', cx, cy, 18, '#07131f', 'center', 800);
+    }
+
+    function flow(t, x, y) {
+      const nodes = [{ x, y, label: '发起' }, { x: x + 190, y: y - 96, label: '用户任务' }, { x: x + 190, y: y + 96, label: '条件分支' }, { x: x + 380, y, label: '完成' }];
+      line(nodes[0].x + 52, nodes[0].y, nodes[1].x - 58, nodes[1].y, colors.cyan, 3, .8); line(nodes[0].x + 52, nodes[0].y, nodes[2].x - 58, nodes[2].y, colors.blue, 3, .8); line(nodes[1].x + 58, nodes[1].y, nodes[3].x - 52, nodes[3].y, colors.green, 3, .8); line(nodes[2].x + 58, nodes[2].y, nodes[3].x - 52, nodes[3].y, colors.amber, 3, .8);
+      nodes.forEach((n, i) => { const shape = i === 2 ? 'diamond' : 'round'; ctx.save(); ctx.fillStyle = i === 0 ? colors.blue : i === 3 ? colors.green : colors.panel; ctx.strokeStyle = i === 2 ? colors.amber : colors.cyan; ctx.lineWidth = 2; ctx.beginPath(); if (shape === 'diamond') { ctx.moveTo(n.x, n.y - 34); ctx.lineTo(n.x + 48, n.y); ctx.lineTo(n.x, n.y + 34); ctx.lineTo(n.x - 48, n.y); } else ctx.roundRect(n.x - 58, n.y - 34, 116, 68, 14); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); text(n.label, n.x, n.y, 15, colors.ink, 'center', 600); });
+      const pulse = (t * 120) % 1; const px = nodes[0].x + (nodes[3].x - nodes[0].x) * pulse; dot(px, y, 5, colors.ink, true);
+    }
+
+    function dashboard(t, x, y) {
+      rounded(x, y, 500, 258, 14, colors.panel, '#2d6681');
+      text('项目计划 / 平台能力升级', x + 28, y + 34, 17, colors.ink, 'left', 600); text('当前进度', x + 460, y + 34, 12, colors.muted, 'right');
+      const bars = [['需求与方案确认', 1, colors.green], ['核心能力开发', .7, colors.cyan], ['上线验收计划', .15, colors.amber]];
+      bars.forEach((b, i) => { const yy = y + 82 + i * 52; text(b[0], x + 28, yy, 13, colors.muted); rounded(x + 190, yy - 7, 240, 12, 6, '#173246'); rounded(x + 190, yy - 7, 240 * b[1], 12, 6, b[2]); text(`${Math.round(b[1] * 100)}%`, x + 458, yy, 13, b[2], 'right', 700); });
+      line(x + 28, y + 220, x + 472, y + 220, colors.grid); text('主计划', x + 28, y + 240, 11, colors.muted); text('子计划', x + 156, y + 240, 11, colors.muted); text('成员', x + 285, y + 240, 11, colors.muted); text('角色', x + 402, y + 240, 11, colors.muted);
+    }
+
+    function aiOrbit(t, cx, cy) { const labels = ['模型配置', '能力路由', '统一入口', '审计记录']; labels.forEach((label, i) => { const a = t * .35 + i * Math.PI / 2; const x = cx + Math.cos(a) * 190, y = cy + Math.sin(a) * 118; line(cx, cy, x, y, i % 2 ? colors.blue : colors.cyan, 1, .6); rounded(x - 62, y - 19, 124, 38, 19, colors.panel, i % 2 ? colors.blue : colors.cyan); text(label, x, y, 13, colors.ink, 'center', 600); }); dot(cx, cy, 66, colors.blue, true); text('AI', cx, cy, 26, colors.ink, 'center', 800); }
+
+    function draw(t) {
+      background(t); const index = sceneAt(t); const s = scenes[index]; const p = clamp((t - s.from) / (s.to - s.from)); const intro = ease(clamp(p * 3));
+      if (index === 0) { network(t, W / 2, H / 2 - 8, 16, 255); text(s.title, W / 2, 560, 34, colors.ink, 'center', 700); text(s.sub, W / 2, 603, 17, colors.muted, 'center'); }
+      if (index === 1) { network(t, 970, 330, 11, 150, colors.blue); rounded(105, 190, 590, 330, 16, colors.panel, '#2d6681'); text(s.title, 150, 255, 33, colors.ink, 'left', 700); text(s.sub, 150, 310, 17, colors.muted); const orgs = [['平台总部', colors.cyan], ['技术中心', colors.blue], ['交付中心', colors.green], ['质量中心', colors.amber]]; orgs.forEach((o, i) => { const yy = 390 + i * 47; line(160, yy, 210, yy, o[1], 2); dot(218, yy, 5, o[1], true); text(o[0], 242, yy, 16, colors.ink); text(i === 0 ? '组织节点' : '角色与权限', 455, yy, 12, colors.muted); }); }
+      if (index === 2) { flow(t, 170, 360); text(s.title, W / 2, 150, 33, colors.ink, 'center', 700); text(s.sub, W / 2, 198, 17, colors.muted, 'center'); text(s.key, W / 2, 594, 15, colors.cyan, 'center', 600); }
+      if (index === 3) { dashboard(t, 110, 190); network(t, 910, 335, 10, 155, colors.green); text(s.title, 910, 542, 27, colors.ink, 'center', 700); text(s.sub, 910, 580, 14, colors.muted, 'center'); }
+      if (index === 4) { aiOrbit(t, W / 2, 330); text(s.title, W / 2, 130, 33, colors.ink, 'center', 700); text(s.sub, W / 2, 180, 17, colors.muted, 'center'); text(s.key, W / 2, 604, 15, colors.cyan, 'center', 600); }
+      if (index === 5) { const scale = .8 + .2 * intro; network(t, W / 2, 310, 18, 255 * scale, colors.cyan); text('RDDMP', W / 2, 500, 56, colors.ink, 'center', 800); text('工程交付平台', W / 2, 555, 24, colors.cyan, 'center', 600); text(s.key, W / 2, 606, 16, colors.muted, 'center'); }
+      const fade = p < .08 ? 1 - p / .08 : p > .92 ? (1 - p) / .08 : 1; if (fade < 1) { ctx.fillStyle = `rgba(7,19,31,${1 - fade})`; ctx.fillRect(0, 0, W, H); }
+      statusText.textContent = s.title; timerText.textContent = playing ? `${Math.min(DURATION, t).toFixed(1)} / ${DURATION}s` : '预览模式';
+    }
+
+    function frame(now) { if (!playing) return; const t = (now - startAt) / 1000; draw(t); if (t < DURATION) requestAnimationFrame(frame); else { playing = false; playButton.disabled = false; recordButton.disabled = false; timerText.textContent = '播放完成'; } }
+    function play() { if (playing) return; playing = true; startAt = performance.now(); playButton.disabled = true; recordButton.disabled = true; requestAnimationFrame(frame); }
+    function beginRecord() { if (!canvas.captureStream || !window.MediaRecorder) { alert('当前浏览器不支持 WebM 录制，请使用最新版 Chrome 或 Edge。'); return; } chunks = []; const stream = canvas.captureStream(30); recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' }); recorder.ondataavailable = e => e.data.size && chunks.push(e.data); recorder.onstop = async () => { const blob = new Blob(chunks, { type: 'video/webm' }); const saved = await fetch('/upload', { method: 'POST', headers: { 'Content-Type': 'video/webm' }, body: blob }).then(response => response.ok).catch(() => false); if (saved) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'rddmp-tech-promo.webm'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); statusText.textContent = '宣传片已生成'; timerText.textContent = '已保存 WebM'; } else { statusText.textContent = '宣传片生成失败'; timerText.textContent = '本机保存失败'; } }; recorder.start(250); playing = true; startAt = performance.now(); playButton.disabled = true; recordButton.disabled = true; requestAnimationFrame(frame); setTimeout(() => recorder?.state === 'recording' && recorder.stop(), DURATION * 1000 + 250); }
+    playButton.addEventListener('click', play); recordButton.addEventListener('click', beginRecord); draw(0);
+  </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "topic": "project-plan-stages",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-19-project-plan-stages-design.md",
+  "objective": "将项目计划组织为固定七阶段、分组、主计划和子计划四级树，移除项目级阶段字段，并保持计划字段、编号和权限兼容。",
+  "users": ["项目负责人维护项目计划", "项目成员查看项目计划", "超级管理员维护所有项目计划"],
+  "requirements": [
+    {"id": "R1", "statement": "计划阶段由PLAN_PHASE参数管理提供七个阶段并按参数顺序展示。", "acceptance": ["options接口返回七阶段或明确的参数维护结果", "页面不硬编码阶段列表"], "priority": "must", "source": "用户确认的设计方案", "counterexample": ["页面固定写死阶段", "计划阶段无参数校验"]},
+    {"id": "R2", "statement": "计划分组归属一个阶段并在该阶段下展示。", "acceptance": ["创建分组必须选择阶段", "不同阶段允许同名分组"], "priority": "must", "source": "用户确认的设计方案", "counterexample": ["分组只能挂在项目下", "分组阶段丢失"]},
+    {"id": "R3", "statement": "项目计划树为阶段、分组、主计划、子计划四级结构。", "acceptance": ["主计划和子计划仍显示当前字段", "刷新后层级稳定"], "priority": "must", "source": "用户原始需求", "counterexample": ["计划平铺", "子计划脱离主计划"]},
+    {"id": "R4", "statement": "主计划拖入分组时主计划及全部子计划一起移动并同步阶段。", "acceptance": ["整行拖拽主计划成功", "子孙计划归组和阶段一致", "子计划不能作为拖拽源"], "priority": "must", "source": "用户原始需求与已确认方案", "counterexample": ["只移动主计划", "前端成功但服务端未更新"]},
+    {"id": "R5", "statement": "服务端校验阶段、项目、分组、父子计划和日期范围。", "acceptance": ["非法阶段和跨项目分组拒绝", "子计划阶段不一致拒绝", "现有日期规则保留"], "priority": "must", "source": "工程约束", "counterexample": ["仅前端校验", "跨租户读取"]},
+    {"id": "R6", "statement": "V46/V47兼容迁移历史计划和分组，固定七个计划阶段并移除项目级阶段字段，且不修改历史迁移。", "acceptance": ["V46/V47追加并含中文注释", "项目响应不返回项目级phase/phase_name", "V43-V46文件未修改", "迁移检查通过"], "priority": "must", "source": "用户最新确认与项目治理规则", "counterexample": ["修改已发布迁移", "删除计划或分组数据", "项目接口继续依赖已删除字段"]}
+  ],
+  "invariants": ["租户和项目范围校验", "计划字段和编号规则兼容", "分组删除不删除计划", "Flyway只追加", "后端权限不能由前端替代", "PLAN_PHASE仅允许固定七阶段"],
+  "constraints": ["Spring Boot 3.x", "JDK 17", "MyBatis-Plus/MySQL 8", "Vue 3/TypeScript/Element Plus", "只修改任务范围文件"],
+  "non_goals": ["独立阶段实体CRUD", "计划编号规则重构", "项目成员角色权限重构", "移动端专用计划模型"],
+  "selected_approach": {"name": "复用固定计划参数并给分组增加阶段归属", "reason": "沿用现有PLAN_PHASE、项目options和计划phase字段，移除重复的项目级phase字段，迁移和接口影响可控。", "alternatives": [{"name": "独立项目阶段表", "rejected_because": "与参数管理重复且扩大权限和数据模型范围"}, {"name": "仅前端临时分组", "rejected_because": "无法保证刷新、跨客户端和服务端一致性"}]},
+  "architecture": {
+    "boundary": {"inside": ["V46/V47项目计划阶段迁移", "ProjectService计划/分组契约", "ProjectView计划树和项目表单"], "outside": ["附件、流程、成员角色和公共UI组件内部实现"]},
+    "components": [{"name": "V46/V47", "responsibility": "阶段参数、分组阶段字段兼容迁移和项目级phase清理", "depends_on": ["V45 schema"]}, {"name": "ProjectService", "responsibility": "阶段和层级校验、归组同步，且不读写项目级phase", "depends_on": ["PLAN_PHASE参数", "项目权限"]}, {"name": "ProjectView", "responsibility": "四级树和分组阶段交互，项目及计划表单移除重复阶段字段", "depends_on": ["project options/detail API"]}],
+    "interfaces": [{"name": "project detail", "producer": "ProjectService", "consumers": ["ProjectView"], "contract": "plans包含phase_name，plan_groups包含phase和phase_name"}, {"name": "plan group write", "producer": "ProjectView", "consumers": ["ProjectService"], "contract": "创建/更新分组必须提交有效phase"}, {"name": "move plan group", "producer": "ProjectView", "consumers": ["ProjectService"], "contract": "group_id为空或同项目有效分组ID"}],
+    "data_flows": [{"input": "PLAN_PHASE参数、计划和分组", "transitions": ["V46回填历史数据", "V47固定七阶段并移除项目phase", "服务端校验", "项目详情返回", "前端生成四级树"], "output": "阶段内分组及计划树"}]
+  },
+  "error_handling": [{"condition": "阶段参数无效", "behavior": "返回中文400业务错误", "recovery": "修正参数或重新选择阶段"}, {"condition": "跨项目分组或父计划", "behavior": "服务端拒绝写入", "recovery": "重新选择当前项目节点"}, {"condition": "迁移失败", "behavior": "Flyway停止启动", "recovery": "修复V47后重试，不修改历史迁移"}],
+  "quality_attributes": {"security": ["租户/项目范围和权限服务端校验"], "performance": ["阶段一次options查询，归组单事务"], "compatibility": ["保留历史计划阶段和分组", "保留现有计划字段、编号和权限"], "operations": ["V46/V47可审计、应用回退保留计划和分组数据"]},
+  "verification_strategy": [{"requirement_ids": ["R1", "R2", "R5"], "signal": "后端阶段和分组契约测试", "method": "ProjectServiceTest"}, {"requirement_ids": ["R3", "R4"], "signal": "树形页面和拖拽请求", "method": "前端构建与浏览器验收"}, {"requirement_ids": ["R6"], "signal": "V46/V47追加、项目字段移除及迁移检查", "method": "check-flyway-migrations.mjs、后端测试、前端构建和git diff"}],
+  "assumptions": [{"text": "PLAN_PHASE参数可继续由参数管理维护并按id排序", "basis": "现有ProjectService.phaseOptions", "falsifier": "参数接口无法返回顺序或状态"}],
+  "unknowns": [],
+  "decisions": [{"id": "D1", "decision": "阶段复用PLAN_PHASE参数管理", "reason": "避免重复阶段实体", "source": "用户确认"}, {"id": "D2", "decision": "分组增加phase并作为阶段下一级", "reason": "持久化四级层级", "source": "用户确认"}],
+  "risks": [{"risk": "历史分组阶段缺失", "impact": "旧数据无法直接归入阶段", "mitigation": "V46按主计划阶段回填，无值使用PLAN_INITIATION，V47再次校正非法值"}, {"risk": "阶段不一致导致拖拽失败", "impact": "用户误以为移动未生效", "mitigation": "拖拽目标显示阶段，服务端同步后代并返回中文错误"}, {"risk": "V47移除项目级phase后旧客户端仍提交该字段", "impact": "旧客户端请求可能产生未知字段但不应影响新接口", "mitigation": "新后端忽略项目phase输入，前端和Mock同步移除，保留风险project_phase契约"}],
+  "approval": {"status": "approved", "evidence": "用户确认采用参数管理阶段和分组阶段归属方案", "confirmed_at": "2026-08-19T00:00:00+08:00"}
+}

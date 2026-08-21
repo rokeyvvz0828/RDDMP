@@ -1,0 +1,11 @@
+{
+  "requirement_id": "REQ-20260813-032",
+  "control_prefix": "req-20260813-032-project-plan-color-tokens",
+  "gate": "VERIFIED_WITH_LIMITS",
+  "decision": "Scoped implementation converged for code review; save feedback and color-only swatches are corrected. Backend unit tests still require a compatible local JDK/Byte Buddy pair.",
+  "covered_requirements": ["Semantic group color storage", "Theme-dependent rendering", "Legacy color normalization", "Save response validation and refresh"],
+  "evidence": ["execution-T1.json", "observation-T1.json", "Frontend typecheck/build passed", "Backend skip-test package passed", "Flyway migration check passed for 42 migrations", "git diff --check passed"],
+  "regression": {"permission": "Existing server-side action checks retained", "tenant": "Tenant predicates retained", "audit": "Create/update audit calls retained", "theme": "CSS variables resolve from active palette and appearance"},
+  "residual_risk": ["Maven tests need JDK 17 or compatible Byte Buddy", "Browser-level save and theme-switch acceptance was not run"],
+  "rollback": "Revert the scoped V42 migration and scoped source/test changes; V41 remains untouched."
+}

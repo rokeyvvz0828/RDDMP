@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "topic": "project-organization",
+  "phase": "observing",
+  "recorded_at": "2026-08-19T17:50:00+08:00",
+  "scope": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V50__project_organization.sql",
+    "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+    "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+    "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+    "web/src/api/project.ts",
+    "web/src/types/project.ts",
+    "web/src/views/ProjectView.vue",
+    "web/src/styles.css"
+  ],
+  "changes": [
+    "新增独立项目组织树及组织节点增删改接口",
+    "项目成员增加所属项目组织字段并支持机构过滤",
+    "项目角色支持直接关联当前项目有效成员",
+    "项目删除时同步逻辑删除项目组织节点",
+    "修正项目组织树新增、编辑、删除入口与成员权限的一致性",
+    "编辑项目组织时排除当前节点及其下级节点，避免形成环"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am test \"-Dnet.bytebuddy.experimental=true\"", "result": "passed; 24 tests, 0 failures, 0 errors"},
+    {"command": "node_modules\\.bin\\vue-tsc.cmd --noEmit", "result": "passed"},
+    {"command": "npm run build", "result": "passed; Vite production build completed with existing chunk-size and dependency annotation warnings"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 50 migrations"},
+    {"command": "git diff --check", "result": "passed"},
+    {"command": "mvn -DskipTests package", "result": "blocked at spring-boot repackage because the currently running backend locks ccb-boot-0.1.0-SNAPSHOT.jar; all modules compiled before repackage"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "failed; repository skill metadata check reports pre-existing SKILL.md frontmatter/name/description issues"},
+    {"command": "npm run dev -- --host 127.0.0.1", "result": "sandbox spawn EPERM on first attempt; rerun with approved local-process escalation started Vite and HTTP 200"}
+  ]
+}

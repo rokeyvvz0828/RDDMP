@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "status": "completed",
+  "scope": [
+    "governance/modules.yaml",
+    "docs/architecture/MODULES.md",
+    "docs/integration/attachment-module-contract.md",
+    "server/src/platform/system/pom.xml",
+    "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+    "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+    "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+  ],
+  "actions": [
+    "新增项目附件列表、上传、预览、下载和删除接口",
+    "所有入口复用项目读取/更新权限、成员范围和租户范围校验",
+    "项目删除时清理绑定附件并记录上传/删除审计"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-attachment,:ccb-system -am test", "result": "passed", "evidence": "system 22 tests passed"},
+    {"command": "mvn -pl :ccb-boot -am -DskipTests package", "result": "passed", "evidence": "boot composition and packaging passed on second run"}
+  ],
+  "invariants_checked": ["project service does not access attachment table directly", "attachment response omits object_key", "cross-project attachment id is scoped by project and tenant"],
+  "open_risks": ["non-member API rejection has automated service coverage but no live API session evidence"]
+}

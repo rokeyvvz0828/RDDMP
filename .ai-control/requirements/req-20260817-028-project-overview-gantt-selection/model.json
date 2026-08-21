@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260817-028-project-overview-gantt-selection",
+  "phase": "modeling",
+  "system_boundary": {"input": "mainGanttRows and selectedMasterPlanId", "output": "one selected child Gantt view", "owner": "web/src/views/ProjectView.vue"},
+  "invariants": ["no API/database change", "selected child rows are descendants of selected main plan", "page-level overflow remains absent"],
+  "sensors": ["build", "diff check", "browser click and DOM/chart labels"],
+  "actuators": ["ECharts main chart click listener", "selected child rows computed state", "overview layout CSS"],
+  "uncertainties": ["ECharts custom series dataIndex event payload after redraw"],
+  "decision": "Use the custom series dataIndex to select the main row and redraw only the child chart."
+}

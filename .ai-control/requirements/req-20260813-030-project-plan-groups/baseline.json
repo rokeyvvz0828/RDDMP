@@ -1,0 +1,24 @@
+{
+  "objective":"项目计划页可持久化维护项目级分组，主计划移动时全部后代计划保持同组。",
+  "requirements":[
+    {"id":"R1","statement":"分组属于项目且可新建、重命名和删除，删除只将计划移入未分组。","acceptance":["分组CRUD成功且刷新保持","删除分组后计划仍存在并显示在未分组"],"priority":"must","source":"用户确认的设计","counterexample":["删除分组导致计划被删除"]},
+    {"id":"R2","statement":"主计划移动到分组时主计划和全部后代计划的分组归属在一个事务内同步更新。","acceptance":["多层子计划移动后group_id全部一致","刷新后关系不丢失"],"priority":"must","source":"用户确认的设计","counterexample":["子计划留在旧分组"]},
+    {"id":"R3","statement":"计划页面呈现分组、主计划、子计划三级层级，已有计划默认未分组。","acceptance":["分组和计划节点可区分","存量计划显示于未分组"],"priority":"must","source":"用户确认的设计","counterexample":["分组被伪装成计划父节点"]},
+    {"id":"R4","statement":"桌面端可拖动主计划进行分组，移动端提供移动到分组操作，并显示中文提示。","acceptance":["页面出现可以拖动主计划进行分组","桌面拖拽和移动端菜单均调用移动接口"],"priority":"must","source":"用户确认","counterexample":["只更新前端状态"]},
+    {"id":"R5","statement":"服务端校验租户、项目访问、计划修改权限和主计划归属。","acceptance":["跨项目、子计划和无权请求被拒绝"],"priority":"must","source":"工程约束","counterexample":["构造请求可移动其他项目计划"]}
+  ],
+  "invariants":["parent_id层级和计划编号保持不变","tenant_id边界保持","Flyway只追加V40","前端不替代后端授权"],
+  "constraints":["Spring Boot 3/JDK 17/MySQL/Flyway","Vue 3/TypeScript/Element Plus","只修改任务范围允许文件","中文界面"],
+  "non_goals":["分组嵌套","跨项目移动","新增独立权限码","重新设计计划表单"],
+  "assumptions":[{"text":"现有项目计划接口可兼容新增group字段","basis":"只读代码查询","falsifier":"前端构建或API类型冲突"}],
+  "unknowns":[],
+  "decisions":[{"id":"D1","decision":"采用项目级平面分组和group_id","reason":"用户确认","source":"用户确认消息"}],
+  "measurement_intents":[
+    {"requirement_id":"R1","observable":"分组CRUD、刷新保持和删除后计划未丢失","candidate_sensor":"后端测试、数据库断言和浏览器验收"},
+    {"requirement_id":"R2","observable":"主计划及全部后代group_id一致","candidate_sensor":"后端事务测试和数据库查询"},
+    {"requirement_id":"R3","observable":"分组/主计划/子计划三级树及未分组区域","candidate_sensor":"前端构建和浏览器截图"},
+    {"requirement_id":"R4","observable":"中文拖拽提示、桌面拖拽和移动菜单","candidate_sensor":"浏览器桌面/移动视口验收"},
+    {"requirement_id":"R5","observable":"跨项目、子计划和无权请求被拒绝","candidate_sensor":"后端API/权限测试"}
+  ],
+  "baseline_status":"ready"
+}

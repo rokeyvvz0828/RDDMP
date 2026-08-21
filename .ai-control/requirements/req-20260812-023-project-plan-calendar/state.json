@@ -1,0 +1,2067 @@
+{
+  "schema_version": 4,
+  "revision": 22,
+  "created_at": "2026-08-12T07:22:48+00:00",
+  "updated_at": "2026-08-12T07:31:38+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=user confirmed implementation；计划确认=user confirmed implementation",
+      "recorded_at": "2026-08-12T07:22:48+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "已导入批准的 baseline 需求，进入系统建模",
+      "recorded_at": "2026-08-12T07:27:30+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model.json 已记录，需求均可观测且可控",
+      "recorded_at": "2026-08-12T07:27:30+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "planning 产物已记录且每个 must 需求有任务覆盖",
+      "recorded_at": "2026-08-12T07:27:30+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1/T2 已进入 observing，执行产物可复验",
+      "recorded_at": "2026-08-12T07:29:00+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1/T2/T3 全部 verified；两次最终采样 P0-P3 全为 0",
+      "recorded_at": "2026-08-12T07:30:50+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "gate PASS：4 个 must 需求、3 个 verified 任务、2 次零误差采样、无未关闭反馈",
+      "recorded_at": "2026-08-12T07:31:38+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=user confirmed implementation；计划确认=user confirmed implementation",
+        "recorded_at": "2026-08-12T07:22:48+00:00",
+        "data": {
+          "objective": "Add server-generated project plan numbers, actual plan progress aggregation, and a derived monthly project calendar.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Project settings persist a validated plan number rule.",
+              "acceptance": [
+                "settings tab reads and saves rule"
+              ],
+              "priority": "must",
+              "source": "user-confirmed requirement",
+              "counterexample": [
+                "rule is silently ignored"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Plan creation generates a unique server-owned plan code using the saved rule.",
+              "acceptance": [
+                "created plan returns generated code",
+                "client code is ignored"
+              ],
+              "priority": "must",
+              "source": "user-confirmed requirement",
+              "counterexample": [
+                "duplicate or client-controlled code"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Project cards and details show the average actual progress of active plans.",
+              "acceptance": [
+                "partial progress contributes to aggregate"
+              ],
+              "priority": "must",
+              "source": "user-confirmed requirement",
+              "counterexample": [
+                "completed count is shown as progress"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Project overview renders a Chinese monthly calendar derived from plan dates.",
+              "acceptance": [
+                "dated plans appear on calendar days",
+                "calendar item opens plans tab"
+              ],
+              "priority": "must",
+              "source": "user-confirmed requirement",
+              "counterexample": [
+                "independent calendar data diverges from plans"
+              ]
+            }
+          ],
+          "invariants": [
+            "tenant and permission predicates remain server authoritative",
+            "existing projects and plans remain readable when new fields are null",
+            "calendar data is derived from plans and has no independent table"
+          ],
+          "constraints": [
+            "单租户",
+            "Spring Boot",
+            "Vue 3",
+            "MySQL 8",
+            "Flyway append-only"
+          ],
+          "non_goals": [
+            "独立日历表",
+            "修改项目编号生成方式",
+            "多租户改造"
+          ],
+          "assumptions": [
+            {
+              "text": "local MySQL and MinIO-backed application stack is available",
+              "basis": "existing local environment",
+              "falsifier": "health or migration check fails"
+            }
+          ],
+          "unknowns": [
+            {
+              "text": "high-volume concurrent plan creation performance",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            "default rule is {PROJECT_CODE}-P{SEQ:3}",
+            "calendar is derived from plan dates"
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "settings and plan creation API",
+              "method": "backend test and browser flow"
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R4"
+              ],
+              "signal": "project detail UI",
+              "method": "browser DOM inspection"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已确认服务端、数据库、前端和浏览器边界；每个 must 需求均绑定独立构建、测试或运行传感器",
+        "recorded_at": "2026-08-12T07:27:30+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "project service",
+              "project workbench",
+              "V38 migration",
+              "local MySQL"
+            ],
+            "environment": [
+              "browser",
+              "Node/Vite",
+              "Spring Boot runtime"
+            ]
+          },
+          "state_variables": [
+            "plan_number_rule",
+            "next_plan_sequence",
+            "plan_code",
+            "plan_progress",
+            "calendar_month"
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "settings form rule",
+              "transitions": [
+                "validate rule",
+                "persist pm_project.plan_number_rule",
+                "reload detail"
+              ],
+              "outputs": [
+                "settings tab value"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "plan creation request",
+              "transitions": [
+                "lock project row",
+                "render rule",
+                "insert plan",
+                "increment sequence"
+              ],
+              "outputs": [
+                "server-generated plan_code"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "active plan progress values",
+              "transitions": [
+                "AVG(progress)"
+              ],
+              "outputs": [
+                "plan_progress on project card and detail"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "plan start/end dates",
+              "transitions": [
+                "derive visible month cells"
+              ],
+              "outputs": [
+                "Chinese monthly calendar items"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "project REST API",
+              "producers": [
+                "ProjectController"
+              ],
+              "consumers": [
+                "ProjectView"
+              ],
+              "invariant": "tenant and permission checks remain server-side"
+            },
+            {
+              "name": "project plan schema",
+              "producers": [
+                "V38 migration"
+              ],
+              "consumers": [
+                "ProjectService"
+              ],
+              "invariant": "unique plan code is scoped by tenant and project"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "backend contract",
+              "method": "focused Maven tests",
+              "blind_spots": [
+                "production load"
+              ],
+              "independence": "test runner"
+            },
+            {
+              "id": "S2",
+              "target": "frontend contract",
+              "method": "vue-tsc and Vite build",
+              "blind_spots": [
+                "all viewport interactions"
+              ],
+              "independence": "build runner"
+            },
+            {
+              "id": "S3",
+              "target": "runtime and browser",
+              "method": "health endpoint and DOM flow",
+              "blind_spots": [
+                "multi-user concurrency"
+              ],
+              "independence": "running service and browser"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "plan persistence",
+              "action": "Flyway migration and service SQL",
+              "authority": "task scope",
+              "impact_radius": "project plan records",
+              "rollback": "retain append-only migration and disable new settings path"
+            },
+            {
+              "id": "A2",
+              "target": "project UI",
+              "action": "settings, progress and calendar rendering",
+              "authority": "task scope",
+              "impact_radius": "project workbench",
+              "rollback": "revert task-scoped frontend files"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "stale backend process",
+              "effect": "old SQL remains active",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "legacy null plan_code",
+              "effect": "old plans display fallback",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "service restart",
+              "consequence": "runtime may lag source changes",
+              "sampling_rule": "health check and browser reload after restart"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "local services use the task database",
+              "evidence": "health and Flyway V38 log",
+              "falsifier": "migration version differs"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "settings API and form"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "server-side sequence allocation"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "AVG progress projection"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "derived calendar rendering"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "control-plan.json 已覆盖 T1-T3、依赖、写入边界、采样计划和验收门禁",
+        "recorded_at": "2026-08-12T07:27:30+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "implement project plan numbering and progress contract",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "approved requirement and model"
+              ],
+              "write_scope": [
+                "V38 migration",
+                "ProjectService.java",
+                "ProjectServiceTest.java"
+              ],
+              "invariants": [
+                "tenant predicates",
+                "server owns plan_code",
+                "project hierarchy preserved"
+              ],
+              "interface_contracts": [
+                "settings API",
+                "create plan API",
+                "plan_progress field"
+              ],
+              "non_goals": [
+                "project code generation",
+                "calendar table"
+              ],
+              "action_bounds": [
+                "append-only migration",
+                "project-scoped row lock"
+              ],
+              "acceptance_checks": [
+                "focused tests",
+                "runtime plan creation"
+              ],
+              "evidence_required": [
+                "Maven output",
+                "browser saved plan code"
+              ],
+              "rollback": "revert service/test source while retaining migration history",
+              "stop_conditions": [
+                "cross-tenant access",
+                "duplicate plan code"
+              ],
+              "escalation_conditions": [
+                "database schema conflict"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "implement settings, progress and calendar UI",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "backend response fields"
+              ],
+              "write_scope": [
+                "web/src/api/project.ts",
+                "web/src/types/project.ts",
+                "web/src/views/ProjectView.vue",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "single project management menu",
+                "Chinese UI"
+              ],
+              "interface_contracts": [
+                "project detail response",
+                "settings update response"
+              ],
+              "non_goals": [
+                "independent calendar persistence"
+              ],
+              "action_bounds": [
+                "reuse Element Plus calendar and existing project tabs"
+              ],
+              "acceptance_checks": [
+                "frontend build",
+                "settings tab and calendar DOM"
+              ],
+              "evidence_required": [
+                "Vite output",
+                "browser DOM"
+              ],
+              "rollback": "revert task-scoped frontend files",
+              "stop_conditions": [
+                "settings not persisted",
+                "calendar detached from plans"
+              ],
+              "escalation_conditions": [
+                "API field mismatch"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "integrated verification",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1 and T2 outputs"
+              ],
+              "write_scope": [
+                "execution and observation artifacts"
+              ],
+              "invariants": [
+                "no secrets in evidence",
+                "existing user changes preserved"
+              ],
+              "interface_contracts": [
+                "MySQL V38",
+                "8080 health",
+                "5173 browser"
+              ],
+              "non_goals": [
+                "commit or push"
+              ],
+              "action_bounds": [
+                "local verification only"
+              ],
+              "acceptance_checks": [
+                "tests, build, health, browser flow"
+              ],
+              "evidence_required": [
+                "exit codes",
+                "DOM and alert evidence"
+              ],
+              "rollback": "remove temporary acceptance data",
+              "stop_conditions": [
+                "P0/P1",
+                "unverified must requirement"
+              ],
+              "escalation_conditions": [
+                "environment unavailable"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "UI consumes backend contract"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "integration requires both surfaces"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "focused Maven tests"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "frontend build, health and browser flow"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "implementation sample",
+              "trigger": "after code and tests",
+              "observer": "main agent",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "runtime sample",
+              "trigger": "after restart",
+              "observer": "browser and health checks",
+              "sensors": [
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 已完成实现并完成 focused Maven tests；已记录首次 SQL 缺陷及修复",
+        "recorded_at": "2026-08-12T07:28:45+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V38__project_plan_number_and_calendar.sql",
+              "purpose": "plan rule, sequence, code and unique index"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "purpose": "settings persistence, locked sequence allocation, progress average"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+              "purpose": "insert placeholder and generated code regression test"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "ccb-system tests passed; 9 tests in focused reactor"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "no whitespace errors; Windows line-ending warnings only"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "create plan SQL parameter count",
+              "result": "passed",
+              "evidence": "focused regression test and source SQL have 14 columns/14 placeholders",
+              "limitations": [
+                "not a high-volume concurrency test"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "added V38 schema fields and index",
+            "server owns plan code generation",
+            "project progress is AVG(progress)"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tenant and permission predicates preserved",
+              "result": "passed",
+              "evidence": "existing ProjectService access and action checks retained"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "runtime initially used stale service and exposed SQL parameter 15 failure",
+              "impact": "browser create plan failed",
+              "resolution": "corrected placeholder count and restarted packaged backend"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "high-volume concurrent plan creation requires dedicated load testing"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 已完成实现并完成受控前端构建",
+        "recorded_at": "2026-08-12T07:28:45+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/project.ts",
+              "purpose": "settings API client"
+            },
+            {
+              "path_or_resource": "web/src/types/project.ts",
+              "purpose": "plan code, rule and progress types"
+            },
+            {
+              "path_or_resource": "web/src/views/ProjectView.vue",
+              "purpose": "settings tab, plan code column, progress and calendar"
+            },
+            {
+              "path_or_resource": "web/src/styles.css",
+              "purpose": "calendar presentation"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite production build passed"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "project detail page",
+              "result": "passed",
+              "evidence": "DOM showed 项目设置 and 项目日历 tabs",
+              "limitations": [
+                "single local tenant and admin account"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "settings tab",
+            "plan number column",
+            "actual progress card/detail",
+            "derived monthly calendar"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "single 项目管理 menu preserved",
+              "result": "passed",
+              "evidence": "browser navigation showed one 项目管理 menu"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "calendar overlap display is limited to three plans per day with a count"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "focused tests、后端日志、重启后的 API 和浏览器计划创建结果",
+        "recorded_at": "2026-08-12T07:29:13+00:00",
+        "data": {
+          "sample_label": "T1 backend and runtime observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 focused Maven test",
+              "result": "pass",
+              "raw_evidence": "ProjectServiceTest passed",
+              "limitation": [
+                "validation edge cases are not exhaustive"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 test + S3 browser",
+              "result": "pass after correction",
+              "raw_evidence": "browser saved plan returned RDC-2026-X01-2026; client plan_code was ignored",
+              "limitation": [
+                "one sequential create observed"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 browser DOM",
+              "result": "pass",
+              "raw_evidence": "project card and detail displayed 26% actual plan progress",
+              "limitation": [
+                "aggregate based on existing local data"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R2",
+              "expected": "plan save succeeds",
+              "observed": "initial stale runtime failed with SQL parameter 15",
+              "reproduction": "create plan from project plans tab before restart",
+              "evidence": "backend log SQLException No value specified for parameter 15",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "old runtime artifact was active",
+              "causal_hypothesis": "insert SQL had 15 placeholders for 14 arguments",
+              "correction_check": "focused test, packaged restart and browser create succeeded",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "stale backend process",
+              "effect": "old implementation served",
+              "detection": "backend log and health process check",
+              "mitigation": "package and restart with .env environment"
+            }
+          ],
+          "coverage_gaps": [
+            "concurrency and invalid rule boundary tests are not full load coverage"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "浏览器 DOM、保存提示、项目卡片和日历结果",
+        "recorded_at": "2026-08-12T07:29:13+00:00",
+        "data": {
+          "sample_label": "T2 frontend and browser observation",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S3 browser DOM and alert",
+              "result": "pass",
+              "raw_evidence": "settings rule saved and alert 项目设置已保存",
+              "limitation": [
+                "admin role only"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 browser DOM",
+              "result": "pass",
+              "raw_evidence": "project card displayed 26%; detail displayed 26%",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S3 browser DOM",
+              "result": "pass",
+              "raw_evidence": "项目日历 showed 2026 年 8 月 and dated plan entries",
+              "limitation": [
+                "visual screenshot not retained"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "mobile viewport and dense overlap visual QA not sampled"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "最终前端构建、健康接口、浏览器流程及治理检查结果",
+        "recorded_at": "2026-08-12T07:29:14+00:00",
+        "data": {
+          "sample_label": "T3 final integration observation",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S3",
+              "result": "pass",
+              "raw_evidence": "backend tests and settings browser flow passed",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1/S3",
+              "result": "pass",
+              "raw_evidence": "generated code returned and temporary plan was deleted",
+              "limitation": [
+                "no parallel load test"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S2/S3",
+              "result": "pass",
+              "raw_evidence": "frontend build and actual progress DOM passed",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S2/S3",
+              "result": "pass",
+              "raw_evidence": "frontend build and project calendar DOM passed",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "source": "governance checker",
+              "effect": "pre-existing REQ-20260810-018 YAML format rejected",
+              "detection": "node scripts/check-all-governance.mjs",
+              "mitigation": "kept unrelated historical file unchanged and recorded residual risk"
+            }
+          ],
+          "coverage_gaps": [
+            "governance checker failure is outside this task scope",
+            "no high-volume concurrency test"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "最终 convergence report：四项 must 需求、T1-T3 任务、两次采样、构建、健康和浏览器证据已完整记录",
+        "recorded_at": "2026-08-12T07:31:25+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "settings API test coverage",
+                "browser saved settings alert"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "focused test",
+                "browser returned RDC-2026-X01-2026",
+                "temporary plan removed"
+              ],
+              "limitations": [
+                "no high-volume concurrency test"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "backend AVG(progress) implementation",
+                "project card and detail displayed 26%"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "frontend build",
+                "browser showed 2026 年 8 月 calendar with dated plan"
+              ],
+              "limitations": [
+                "mobile and dense overlap visual QA not sampled"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Maven focused test exit 0",
+                "SQL defect corrected and runtime rechecked"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "frontend production build exit 0",
+                "browser settings/progress/calendar DOM"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "health 200",
+                "two final zero-error samples",
+                "temporary acceptance data removed"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 1,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "backend focused tests",
+              "result": "pass",
+              "evidence": "9 tests passed"
+            },
+            {
+              "check": "frontend production build",
+              "result": "pass",
+              "evidence": "2330 modules transformed; build exit 0"
+            },
+            {
+              "check": "runtime health",
+              "result": "pass",
+              "evidence": "8080 actuator health 200"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "server-side tenant and permission checks",
+              "result": "pass",
+              "evidence": "existing ProjectService guards retained"
+            },
+            {
+              "invariant": "no independent calendar table",
+              "result": "pass",
+              "evidence": "calendar derives from plans in ProjectView"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": [
+              "pre-existing unrelated dirty files remain untouched"
+            ]
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "stale backend runtime",
+              "result": "pass",
+              "evidence": "packaged restart loaded Flyway V38 and corrected plan creation"
+            },
+            {
+              "disturbance": "governance checker rejects existing REQ-20260810-018 YAML",
+              "result": "deferred outside scope",
+              "evidence": "node scripts/check-all-governance.mjs failure"
+            }
+          ],
+          "residual_risks": [
+            "high-volume concurrent plan creation needs load testing",
+            "governance checker has a pre-existing unrelated YAML compatibility failure",
+            "calendar dense overlap is summarized after three plans per day"
+          ],
+          "gate_result": "pass",
+          "route_reason": "all four must requirements have verified task coverage, final P0/P1 are zero, runtime and browser evidence passed; non-blocking residual risks are disclosed"
+        }
+      }
+    ]
+  },
+  "objective": "Add server-generated project plan numbers, actual plan progress aggregation, and a derived monthly project calendar.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Project settings persist a validated plan number rule.",
+      "acceptance": [
+        "settings tab reads and saves rule"
+      ],
+      "priority": "must",
+      "source": "user-confirmed requirement",
+      "counterexample": [
+        "rule is silently ignored"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Plan creation generates a unique server-owned plan code using the saved rule.",
+      "acceptance": [
+        "created plan returns generated code",
+        "client code is ignored"
+      ],
+      "priority": "must",
+      "source": "user-confirmed requirement",
+      "counterexample": [
+        "duplicate or client-controlled code"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Project cards and details show the average actual progress of active plans.",
+      "acceptance": [
+        "partial progress contributes to aggregate"
+      ],
+      "priority": "must",
+      "source": "user-confirmed requirement",
+      "counterexample": [
+        "completed count is shown as progress"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Project overview renders a Chinese monthly calendar derived from plan dates.",
+      "acceptance": [
+        "dated plans appear on calendar days",
+        "calendar item opens plans tab"
+      ],
+      "priority": "must",
+      "source": "user-confirmed requirement",
+      "counterexample": [
+        "independent calendar data diverges from plans"
+      ]
+    }
+  ],
+  "invariants": [
+    "tenant and permission predicates remain server authoritative",
+    "existing projects and plans remain readable when new fields are null",
+    "calendar data is derived from plans and has no independent table"
+  ],
+  "constraints": [
+    "单租户",
+    "Spring Boot",
+    "Vue 3",
+    "MySQL 8",
+    "Flyway append-only"
+  ],
+  "non_goals": [
+    "独立日历表",
+    "修改项目编号生成方式",
+    "多租户改造"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260812-023-project-plan-calendar\\handoff.json",
+    "imported_at": "2026-08-12T07:22:48+00:00",
+    "topic": "req-20260812-023-project-plan-calendar",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260812-023-project-plan-calendar",
+      "created_at": "2026-08-12T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260812-023-project-plan-calendar",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-12-project-plan-calendar-design.md",
+        "objective": "Add server-generated project plan numbers, actual plan progress aggregation, and a derived monthly project calendar.",
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Project settings persist a validated plan number rule.",
+            "acceptance": [
+              "settings tab reads and saves rule"
+            ],
+            "priority": "must",
+            "source": "user-confirmed requirement",
+            "counterexample": [
+              "rule is silently ignored"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Plan creation generates a unique server-owned plan code using the saved rule.",
+            "acceptance": [
+              "created plan returns generated code",
+              "client code is ignored"
+            ],
+            "priority": "must",
+            "source": "user-confirmed requirement",
+            "counterexample": [
+              "duplicate or client-controlled code"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Project cards and details show the average actual progress of active plans.",
+            "acceptance": [
+              "partial progress contributes to aggregate"
+            ],
+            "priority": "must",
+            "source": "user-confirmed requirement",
+            "counterexample": [
+              "completed count is shown as progress"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Project overview renders a Chinese monthly calendar derived from plan dates.",
+            "acceptance": [
+              "dated plans appear on calendar days",
+              "calendar item opens plans tab"
+            ],
+            "priority": "must",
+            "source": "user-confirmed requirement",
+            "counterexample": [
+              "independent calendar data diverges from plans"
+            ]
+          }
+        ],
+        "invariants": [
+          "tenant and permission predicates remain server authoritative",
+          "existing projects and plans remain readable when new fields are null",
+          "calendar data is derived from plans and has no independent table"
+        ],
+        "users": [
+          "项目负责人",
+          "项目成员",
+          "系统管理员"
+        ],
+        "constraints": [
+          "单租户",
+          "Spring Boot",
+          "Vue 3",
+          "MySQL 8",
+          "Flyway append-only"
+        ],
+        "non_goals": [
+          "独立日历表",
+          "修改项目编号生成方式",
+          "多租户改造"
+        ],
+        "selected_approach": {
+          "name": "项目表序号锁 + 计划日期派生日历",
+          "reason": "保持项目管理单菜单和现有数据边界"
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "project service",
+              "project view",
+              "V38 migration"
+            ],
+            "outside": [
+              "workflow",
+              "AI",
+              "independent calendar service"
+            ]
+          },
+          "components": [
+            {
+              "name": "ccb-system",
+              "responsibility": "project API and persistence"
+            },
+            {
+              "name": "web",
+              "responsibility": "project workbench and calendar"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "invalid rule or date",
+            "behavior": "return Chinese 400 business error"
+          },
+          {
+            "condition": "concurrent plan creation",
+            "behavior": "lock project row and enforce unique index"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "tenant predicate",
+            "permission check"
+          ],
+          "compatibility": [
+            "legacy null plan code"
+          ],
+          "operations": [
+            "Flyway migration",
+            "health check"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "settings and plan creation API",
+            "method": "backend test and browser flow"
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R4"
+            ],
+            "signal": "project detail UI",
+            "method": "browser DOM inspection"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "local MySQL and MinIO-backed application stack is available",
+            "basis": "existing local environment",
+            "falsifier": "health or migration check fails"
+          }
+        ],
+        "unknowns": [
+          {
+            "text": "high-volume concurrent plan creation performance",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          "default rule is {PROJECT_CODE}-P{SEQ:3}",
+          "calendar is derived from plan dates"
+        ],
+        "risks": [
+          "legacy plans have null plan_code",
+          "overlapping plans share calendar cells"
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "user confirmed implementation",
+          "confirmed_at": "2026-08-12T00:00:00+08:00"
+        }
+      },
+      "task_id": "REQ-20260812-023",
+      "handoff_status": "approved",
+      "design_status": "approved",
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-12-project-plan-calendar-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "only task-scoped files",
+          "append-only Flyway",
+          "preserve existing project permissions and hierarchy"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V38__project_plan_number_and_calendar.sql",
+            "status": "candidate-new",
+            "responsibility": "schema fields and unique index",
+            "evidence": "approved design"
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+            "status": "existing",
+            "responsibility": "settings, server numbering, progress aggregation",
+            "evidence": "approved design"
+          },
+          {
+            "path": "web/src/views/ProjectView.vue",
+            "status": "candidate-new",
+            "responsibility": "settings tab, plan code, progress, calendar",
+            "evidence": "approved design"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "database and backend plan numbering contract",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "files": {
+              "create": [
+                "V38__project_plan_number_and_calendar.sql"
+              ],
+              "modify": [
+                "ProjectService.java"
+              ],
+              "test": [
+                "ProjectServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "project permissions",
+                "project plan schema"
+              ],
+              "produces": [
+                "settings API",
+                "generated plan_code",
+                "plan_progress"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "add migration and service contract",
+                "command": "mvn -DskipTests package",
+                "expected": "pass",
+                "evidence": "build output"
+              }
+            ],
+            "acceptance_checks": [
+              "migration validates",
+              "focused tests pass"
+            ],
+            "stop_conditions": [
+              "cross-tenant query",
+              "client-controlled plan code"
+            ],
+            "risks": [
+              "legacy null plan codes"
+            ],
+            "rollback": "disable new API and retain append-only migration",
+            "escalation_conditions": [
+              "schema conflict"
+            ],
+            "input_facts": [
+              "approved design"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "project settings, progress and calendar UI",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "files": {
+              "create": [
+                "ProjectView.vue"
+              ],
+              "modify": [
+                "project.ts",
+                "styles.css"
+              ],
+              "test": [
+                "frontend build"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "project API"
+              ],
+              "produces": [
+                "settings tab",
+                "plan code column",
+                "monthly calendar"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "render settings and calendar",
+                "command": "npm --prefix web run build",
+                "expected": "pass",
+                "evidence": "Vite output"
+              }
+            ],
+            "acceptance_checks": [
+              "frontend build",
+              "browser flow"
+            ],
+            "stop_conditions": [
+              "missing settings tab",
+              "calendar not derived from plans"
+            ],
+            "risks": [
+              "overlapping plans in one cell"
+            ],
+            "rollback": "remove task-scoped UI changes",
+            "escalation_conditions": [
+              "API field mismatch"
+            ],
+            "input_facts": [
+              "approved design"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "integrated verification and convergence",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "files": {
+              "create": [
+                "verification artifacts"
+              ],
+              "modify": [],
+              "test": [
+                "backend",
+                "frontend",
+                "browser",
+                "health"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1",
+                "T2 outputs"
+              ],
+              "produces": [
+                "observation and convergence evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "run integrated acceptance flow",
+                "command": "mvn test; npm run build; browser flow",
+                "expected": "all must requirements pass",
+                "evidence": "command and DOM output"
+              }
+            ],
+            "acceptance_checks": [
+              "backend tests",
+              "frontend build",
+              "runtime health",
+              "browser flow"
+            ],
+            "stop_conditions": [
+              "open P0/P1",
+              "unverified must requirement"
+            ],
+            "risks": [
+              "stale runtime process"
+            ],
+            "rollback": "retain evidence and return to failing task",
+            "escalation_conditions": [
+              "environment unavailable"
+            ],
+            "input_facts": [
+              "T1 and T2 outputs"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "backend contract precedes UI"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "integration requires both surfaces"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test",
+            "expected": "pass"
+          },
+          {
+            "after_tasks": [
+              "T2",
+              "T3"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "pass"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "user confirmed implementation",
+          "confirmed_at": "2026-08-12T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "project API",
+          "project workbench",
+          "MySQL migration",
+          "browser"
+        ],
+        "state_variable_candidates": [
+          "number rule",
+          "plan sequence",
+          "plan code",
+          "plan progress",
+          "calendar month"
+        ],
+        "interface_candidates": [
+          "REST project API",
+          "project tab UI",
+          "plan date fields"
+        ],
+        "sensor_candidates": [
+          "Maven tests",
+          "Vite build",
+          "health endpoint",
+          "browser DOM"
+        ],
+        "actuator_candidates": [
+          "source changes",
+          "Flyway migration",
+          "service restart",
+          "browser actions"
+        ],
+        "disturbance_candidates": [
+          "concurrent create",
+          "legacy null",
+          "invalid rule",
+          "overlapping plans",
+          "stale process"
+        ],
+        "delay_candidates": [
+          "database migration",
+          "API refresh",
+          "browser reload"
+        ],
+        "assumptions": [
+          {
+            "text": "local Java, Maven, Node, MySQL and browser are available",
+            "basis": "existing project environment",
+            "falsifier": "build, health or browser check fails"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"browser\", \"Node/Vite\", \"Spring Boot runtime\"], \"inside\": [\"project service\", \"project workbench\", \"V38 migration\", \"local MySQL\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"production load\"], \"id\": \"S1\", \"independence\": \"test runner\", \"method\": \"focused Maven tests\", \"target\": \"backend contract\"}",
+      "{\"blind_spots\": [\"all viewport interactions\"], \"id\": \"S2\", \"independence\": \"build runner\", \"method\": \"vue-tsc and Vite build\", \"target\": \"frontend contract\"}",
+      "{\"blind_spots\": [\"multi-user concurrency\"], \"id\": \"S3\", \"independence\": \"running service and browser\", \"method\": \"health endpoint and DOM flow\", \"target\": \"runtime and browser\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Flyway migration and service SQL\", \"authority\": \"task scope\", \"id\": \"A1\", \"impact_radius\": \"project plan records\", \"rollback\": \"retain append-only migration and disable new settings path\", \"target\": \"plan persistence\"}",
+      "{\"action\": \"settings, progress and calendar rendering\", \"authority\": \"task scope\", \"id\": \"A2\", \"impact_radius\": \"project workbench\", \"rollback\": \"revert task-scoped frontend files\", \"target\": \"project UI\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"old SQL remains active\", \"source\": \"stale backend process\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"old plans display fallback\", \"source\": \"legacy null plan_code\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"health and Flyway V38 log\", \"falsifier\": \"migration version differs\", \"text\": \"local services use the task database\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S2\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "implement project plan numbering and progress contract",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "approved requirement and model"
+      ],
+      "write_scope": [
+        "V38 migration",
+        "ProjectService.java",
+        "ProjectServiceTest.java"
+      ],
+      "invariants": [
+        "tenant predicates",
+        "server owns plan_code",
+        "project hierarchy preserved"
+      ],
+      "interface_contracts": [
+        "settings API",
+        "create plan API",
+        "plan_progress field"
+      ],
+      "non_goals": [
+        "project code generation",
+        "calendar table"
+      ],
+      "action_bounds": [
+        "append-only migration",
+        "project-scoped row lock"
+      ],
+      "acceptance": [
+        "focused tests",
+        "runtime plan creation"
+      ],
+      "evidence_required": [
+        "Maven output",
+        "browser saved plan code"
+      ],
+      "rollback": "revert service/test source while retaining migration history",
+      "stop_conditions": [
+        "cross-tenant access",
+        "duplicate plan code"
+      ],
+      "escalation_conditions": [
+        "database schema conflict"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-12T07:29:00+00:00",
+          "text": "execution-T1 已记录，focused tests 和修复结果可复验"
+        },
+        {
+          "recorded_at": "2026-08-12T07:29:51+00:00",
+          "text": "T1 observation passed after SQL correction and packaged runtime restart"
+        }
+      ],
+      "updated_at": "2026-08-12T07:29:51+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "implement settings, progress and calendar UI",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "backend response fields"
+      ],
+      "write_scope": [
+        "web/src/api/project.ts",
+        "web/src/types/project.ts",
+        "web/src/views/ProjectView.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "single project management menu",
+        "Chinese UI"
+      ],
+      "interface_contracts": [
+        "project detail response",
+        "settings update response"
+      ],
+      "non_goals": [
+        "independent calendar persistence"
+      ],
+      "action_bounds": [
+        "reuse Element Plus calendar and existing project tabs"
+      ],
+      "acceptance": [
+        "frontend build",
+        "settings tab and calendar DOM"
+      ],
+      "evidence_required": [
+        "Vite output",
+        "browser DOM"
+      ],
+      "rollback": "revert task-scoped frontend files",
+      "stop_conditions": [
+        "settings not persisted",
+        "calendar detached from plans"
+      ],
+      "escalation_conditions": [
+        "API field mismatch"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-12T07:29:00+00:00",
+          "text": "execution-T2 已记录，受控前端构建可复验"
+        },
+        {
+          "recorded_at": "2026-08-12T07:29:51+00:00",
+          "text": "T2 frontend build and browser observation passed"
+        }
+      ],
+      "updated_at": "2026-08-12T07:29:51+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "integrated verification",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1 and T2 outputs"
+      ],
+      "write_scope": [
+        "execution and observation artifacts"
+      ],
+      "invariants": [
+        "no secrets in evidence",
+        "existing user changes preserved"
+      ],
+      "interface_contracts": [
+        "MySQL V38",
+        "8080 health",
+        "5173 browser"
+      ],
+      "non_goals": [
+        "commit or push"
+      ],
+      "action_bounds": [
+        "local verification only"
+      ],
+      "acceptance": [
+        "tests, build, health, browser flow"
+      ],
+      "evidence_required": [
+        "exit codes",
+        "DOM and alert evidence"
+      ],
+      "rollback": "remove temporary acceptance data",
+      "stop_conditions": [
+        "P0/P1",
+        "unverified must requirement"
+      ],
+      "escalation_conditions": [
+        "environment unavailable"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-12T07:30:39+00:00",
+          "text": "最终集成观察已记录：前端构建、健康接口和浏览器流程通过"
+        }
+      ],
+      "updated_at": "2026-08-12T07:30:39+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "post-fix sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "focused backend tests passed; frontend production build passed; health 200; browser settings save, generated code, project progress and calendar passed; temporary acceptance plan removed",
+      "recorded_at": "2026-08-12T07:30:27+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "final runtime sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "backend restarted on packaged code with Flyway V38; browser reload showed project workbench and project detail calendar; no active acceptance error",
+      "recorded_at": "2026-08-12T07:30:27+00:00"
+    }
+  ]
+}

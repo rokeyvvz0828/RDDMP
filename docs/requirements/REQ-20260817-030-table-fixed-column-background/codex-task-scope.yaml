@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260817-030",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260817-030-table-fixed-column-background/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "frontend/application",
+    "module_owner": "rokeyvvz0828",
+    "branch": "fix/REQ-20260817-030-table-fixed-column-background",
+    "worktree": "/private/tmp/rddmp-fix-table-fixed-column"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/styles.css",
+      "docs/requirements/REQ-20260817-030-table-fixed-column-background/**",
+      ".ai-control/requirements/req-20260817-030-table-fixed-column-background/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/**",
+      "web/node_modules/element-plus/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260817-030",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["frontend-build", "fixed-column-browser-flow"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "not-applicable"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "fixed-column-browser-flow", "command": "desktop browser checks for left/right fixed columns, hover, and light/dark themes"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": ["shared table styling can affect multiple frontend pages"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260817-030-table-fixed-column-background",
+    "control_justification": "shared frontend styling change affecting all UiDataTable fixed columns",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260817-030-table-fixed-column-background/execution-T1.json",
+      ".ai-control/requirements/req-20260817-030-table-fixed-column-background/observation-T1.json",
+      ".ai-control/requirements/req-20260817-030-table-fixed-column-background/convergence.json"
+    ],
+    "release_verification": ["frontend-build", "fixed-column-browser-flow"],
+    "rollback": "revert the scoped fixed-column rules in web/src/styles.css"
+  }
+}

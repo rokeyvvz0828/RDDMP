@@ -29,6 +29,7 @@
 - `web/src/modules/release` 与 `web/src/api/release.ts` 属于配置管理业务模块；仅项目、物理子系统和交付单元选择源可以临时使用前端 Mock，业务状态必须来自 `ccb-release`。
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
+- `com.ccb.attachment.model` 提供持久附件公开契约，业务模块只能通过 `AttachmentPort` 访问附件，不得读取附件表或对象键。
 - `com.ccb.system.notification` 与 `web/src/api/notifications.ts` 提供租户隔离的站内消息发布和当前用户消息中心契约，业务模块不得直接写通知表。
 - 其余业务页面的归属以 `modules.yaml` 中列出的精确路径为准。
 

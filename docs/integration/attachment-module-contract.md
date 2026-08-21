@@ -21,3 +21,4 @@
 - `web/src/api/attachments.ts`
 
 预览继续复用 `FilePreviewUrlProvider` 和 kkFileView 的可信源校验；不支持预览的业务材料仍可在授权后取得短时下载地址。
+

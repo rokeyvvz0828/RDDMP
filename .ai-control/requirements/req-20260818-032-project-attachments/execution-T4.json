@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "task_id": "T4",
+  "status": "partially_completed",
+  "scope": [".ai-control/requirements/req-20260818-032-project-attachments/*.json"],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed", "evidence": "45 migrations checked"},
+    {"command": "git diff --check", "result": "passed", "evidence": "no whitespace errors"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "blocked_by_existing_repository_issue", "evidence": "repository skill check rejects existing rddmp-delivery-engineer/SKILL.md YAML frontmatter/name/description"},
+    {"command": "node scripts/check-codex-scope.mjs --discover --base origin/licon --head HEAD", "result": "blocked_by_branch_state", "evidence": "changed codex-task-scope.yaml count is 0 because current changes are uncommitted and origin/licon has no committed diff"},
+    {"command": "docker ps", "result": "blocked_by_local_docker_permission", "evidence": "Docker Desktop pipe access denied"}
+  ],
+  "browser": {"status": "not_completed", "reason": "available frontend session was unauthenticated; no credentials or sensitive environment files were read"},
+  "runtime_diagnosis": {
+    "symptom": "GET /api/project/1/attachments timed out while unauthenticated workbench returned 401 promptly",
+    "cause": "8080 was served by an older process started on 2026-08-17; the current target JAR was not the verified executable fat JAR, and the replacement process cannot be started from this shell because required secret environment variables are absent",
+    "action": "Stopped PID 35036 and rebuilt ccb-boot with nested dependencies including ccb-attachment",
+    "verification": "mvn -pl :ccb-boot -am -DskipTests package passed; target JAR was repackaged with BOOT-INF dependencies; rebuilt backend started as PID 4244; Flyway applied V45; direct and 5173/5174 proxy probes returned 401 immediately without authentication",
+    "remaining": "Run authenticated attachment list/upload/preview/download/delete checks"
+  },
+  "open_feedback": ["Run authenticated member/non-member attachment list/upload/preview/download/delete acceptance"]
+}

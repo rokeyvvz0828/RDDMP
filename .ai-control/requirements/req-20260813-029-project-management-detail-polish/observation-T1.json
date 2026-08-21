@@ -1,0 +1,60 @@
+{
+  "task_id": "T1",
+  "status": "observed",
+  "checks": [
+    {
+      "command": "npm --prefix web run build",
+      "result": "passed",
+      "evidence": "vue-tsc passed; Vite transformed 2337 modules and completed production build with exit code 0."
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "evidence": "No whitespace errors reported."
+    },
+    {
+      "command": "Browser: open http://127.0.0.1:5173/projects/910000000003001 and reload",
+      "result": "passed",
+      "evidence": "URL remained /projects/910000000003001 after reload; project title and project calendar were present."
+    },
+    {
+      "command": "Browser: inspect overview geometry at desktop and 390px viewport",
+      "result": "passed",
+      "evidence": "Desktop calendar x=673, description y=1198 below calendar; narrow viewport had no calendar/description overlap."
+    },
+    {
+      "command": "Browser: open project edit selector",
+      "result": "passed",
+      "evidence": "User options displayed names and usernames, including 演示产品经理（mock.product）."
+    },
+    {
+      "command": "Browser: inspect overview at 1280x720",
+      "result": "passed",
+      "evidence": "Project information panel rendered beside the calendar with six labeled fact fields."
+    },
+    {
+      "command": "Browser: inspect overview at 390x844",
+      "result": "passed",
+      "evidence": "Information panel and calendar stacked without overlap; document scrollWidth was 375px for a 390px viewport."
+    },
+    {
+      "command": "Browser: click first project card from /projects",
+      "result": "passed",
+      "evidence": "Navigated directly to /projects/910000000003001 with project detail rendered and no new console errors."
+    },
+    {
+      "command": "Browser: inspect project loading source and detail route placeholder",
+      "result": "passed",
+      "evidence": "Project list and overview use contextual Element Plus loading overlays; detail-route transition renders the dedicated project-detail-loading container."
+    },
+    {
+      "command": "Browser: inspect final overview at 1280x720 and 390x844",
+      "result": "passed",
+      "evidence": "Desktop calendar x=700,y=278,w=523,h=1004 beside the left summary; mobile calendar and information panel stacked with scrollWidth 375px for a 390px viewport."
+    }
+  ],
+  "feedback": [],
+  "residual_risks": [
+    "The production bundle still emits the existing large-chunk and Rollup annotation warnings."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 4,
+  "revision": 2,
+  "created_at": "2026-08-12T00:00:00+08:00",
+  "updated_at": "2026-08-12T16:08:00+08:00",
+  "mode": "standard",
+  "phase": "converged",
+  "control_prefix": "req-20260812-024-project-overview-plan-layout",
+  "objective": "Refine project overview, child plan numbering, and fixed plan table columns",
+  "requirements": [
+    "Overview only shows description and calendar in a horizontal desktop layout",
+    "Child plan numbers extend parent plan numbers with an independent sequence",
+    "Fixed columns do not expose scrolled table content"
+  ],
+  "tasks": {"T1": "verified", "T2": "verified", "T3": "verified"},
+  "evidence": [
+    "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test: BUILD SUCCESS, 10 ccb-system tests passed",
+    "npm --prefix web run build: vue-tsc and Vite production build passed",
+    "git diff --check: passed",
+    "browser: project overview contains only description and calendar; settings explains main and child rules; plan table renders operation column"
+  ],
+  "known_risks": [
+    "Vite emits existing dependency annotation and bundle-size warnings",
+    "Fixed-column visual behavior was validated through shared CSS and rendered table DOM; no production data was changed"
+  ]
+}
