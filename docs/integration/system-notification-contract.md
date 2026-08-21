@@ -2,7 +2,7 @@
 
 ## 能力边界
 
-`platform/system` 统一拥有站内消息数据和用户已读状态。需求、研发、测试、版本、迁移、投产、工作流及后续业务模块只能通过 `com.ccb.system.notification.SystemNotificationPublisher` 发布消息，不得直接读写 `sys_notification` 或 `sys_user_notification`。
+`platform/system` 统一拥有站内消息数据以及用户已读、归档状态。需求、研发、测试、版本、迁移、投产、工作流及后续业务模块只能通过 `com.ccb.system.notification.SystemNotificationPublisher` 发布消息，不得直接读写 `sys_notification` 或 `sys_user_notification`。
 
 当前能力仅提供站内消息和定时刷新，不发送短信、邮件、企业微信或浏览器推送。通知动作只允许使用 `/` 开头的应用内路由，不接受外部 URL。
 
@@ -72,10 +72,13 @@ public class DeliveryService {
 
 前端统一通过 `web/src/api/notifications.ts` 调用：
 
-- `GET /api/notifications`：当前用户消息分页，可用 `unreadOnly=true` 筛选未读，并可用 `moduleCode` 按业务板块服务端筛选；未知合法编码返回空分页。
-- `GET /api/notifications/modules`：当前用户可见的业务板块及各板块消息总数、未读数。
+- `GET /api/notifications`：当前用户消息分页。`view` 支持 `ALL`、`UNREAD`、`ARCHIVED`，默认 `ALL`；未传 `view` 时保留旧 `unreadOnly=true` 未读筛选兼容。可用 `moduleCode` 按业务板块服务端筛选，未知合法编码返回空分页。
+- `GET /api/notifications/modules`：按可选 `view` 返回当前用户可见的业务板块及各板块消息总数、未读数。
 - `GET /api/notifications/unread-count`：当前用户未读数。
 - `PATCH /api/notifications/{id}/read`：仅更新当前用户的该条消息。
 - `PATCH /api/notifications/read-all`：仅更新当前用户的全部未读消息。
+- `PATCH /api/notifications/{id}/archive`：仅归档当前用户已读且未归档的该条消息；未读消息返回 409 和明确提示，重复归档幂等。
+- `PATCH /api/notifications/{id}/restore`：恢复当前用户的该条归档消息并保持已读，重复恢复幂等。
+- `PATCH /api/notifications/archive-read`：归档当前用户全部未归档的已读消息，返回实际变更数量，未读消息不受影响。
 
-接口从认证主体读取租户和用户，不接受客户端身份参数。业务板块聚合也从当前用户的通知关联数据开始查询，不暴露其他用户或租户的板块。铃铛角标使用全局未读数；板块筛选只影响分页总数和未读页签计数；`read-all` 仍标记当前用户全部板块的消息。业务页面需要刷新通知状态时，应复用消息中心能力，不自行查询通知表。
+接口从认证主体读取租户和用户，不接受客户端身份参数。归档仅设置 `sys_user_notification.archived_at`，不删除共享通知、接收关系或发布审计；恢复只清空归档时间，不修改已读状态。业务板块聚合也从当前用户的通知关联数据开始查询，不暴露其他用户或租户的板块。铃铛角标、`ALL` 和 `UNREAD` 只统计未归档消息；`ARCHIVED` 只统计已归档消息。`read-all` 仍标记当前用户全部板块的活动消息，不自动归档。业务页面需要刷新通知状态时，应复用消息中心能力，不自行查询通知表。

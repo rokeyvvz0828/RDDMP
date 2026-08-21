@@ -1,0 +1,44 @@
+{
+  "sample_label": "Final corrected source, build and rendered browser sample",
+  "task_ids": ["T1", "T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 focused final diff, S2 production build and S3 rendered desktop browser",
+      "result": "pass",
+      "raw_evidence": "Difference action width is 280px; existing workflow_instance_id, pending/returned and canEditDiff gates are retained; final vue-tsc/Vite build exited 0.",
+      "limitation": ["Current test rows do not simultaneously expose every workflow state, so visibility conditions are additionally verified from the focused final diff."]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S1 focused final diff and S3 rendered desktop browser",
+      "result": "pass",
+      "raw_evidence": "Legacy action containers measured 215px with Stage advance, Change history and More; system containers measured 135px with Edit and More; More opened to the existing menu command and no button overflow was observed.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1 source comparison and S3 rendered desktop/mobile browser",
+      "result": "pass",
+      "raw_evidence": "Logical and physical subsystem desktop actions both measured 189px and render Detail, Edit and More; mobile card footers measured 321/336/376px at the required viewports and expose matching actions with zero button overflow.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S2 production build plus S3 desktop/mobile/light/dark browser probes",
+      "result": "pass",
+      "raw_evidence": "At 1280x800 all target action containers are nowrap with scrollWidth equal to rendered width. At 375x812, 390x844 and 430x932 across all three requirement routes, a 220px horizontal gesture leaves root scrollLeft=0, app-shell x=0 and HTML scrollWidth equal to viewport. Architecture mobile cards remain fully visible. Dark mode renders the physical action row at 189px with semantic colors and no overflow.",
+      "limitation": ["Requirement tables continue using the repository's intentional internal 680px mobile table scroll surface; the corrected page boundary prevents that width from shifting the application shell."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "The final Vite build passes with the repository's existing large-chunk warning.",
+    "Scope validation cannot pass on the user-required rokey branch because the repository enforces type/REQ-YYYYMMDD-NNN-short-name.",
+    "Repository-wide governance remains blocked by pre-existing historical AI-control topic, legacy-file and BOM errors outside this task."
+  ],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

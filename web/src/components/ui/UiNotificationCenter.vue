@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Bell, CircleCheckFilled, CircleCloseFilled, InfoFilled, Refresh, Right, WarningFilled } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { getNotificationModules, getNotifications, getNotificationUnreadCount, markAllNotificationsRead, markNotificationRead } from '../../api/notifications'
+import { Bell, CircleCheck, CircleCheckFilled, CircleCloseFilled, FolderAdd, InfoFilled, Refresh, RefreshLeft, Right, WarningFilled } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { archiveNotification, archiveReadNotifications, getNotificationModules, getNotifications, getNotificationUnreadCount, markAllNotificationsRead, markNotificationRead, restoreNotification } from '../../api/notifications'
 import { apiErrorMessage } from '../../api/error'
-import type { NotificationLevel, NotificationModuleSummary, SystemNotification } from '../../types/notification'
+import type { NotificationLevel, NotificationModuleSummary, NotificationView, SystemNotification } from '../../types/notification'
 import UiEmptyState from './UiEmptyState.vue'
 
 const router = useRouter()
 const open = ref(false)
-const activeView = ref<'all' | 'unread'>('all')
+const activeView = ref<NotificationView>('ALL')
 const items = ref<SystemNotification[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -23,6 +23,8 @@ const failed = ref(false)
 const modulesLoading = ref(false)
 const modulesFailed = ref(false)
 const markingAll = ref(false)
+const archivingRead = ref(false)
+const pendingNotificationId = ref<number | null>(null)
 let pollTimer: number | null = null
 let unreadCountRequest: Promise<UnreadRefreshResult> | null = null
 let pollingCycle: Promise<void> | null = null
@@ -43,7 +45,7 @@ interface UnreadRefreshResult {
 const hasMore = computed(() => items.value.length < total.value)
 const badgeValue = computed(() => unreadCount.value > 99 ? '99+' : unreadCount.value)
 const scopedUnreadCount = computed(() => {
-  if (!selectedModuleCode.value) return unreadCount.value
+  if (activeView.value === 'ARCHIVED' || !selectedModuleCode.value) return unreadCount.value
   return moduleOptions.value.find(item => item.moduleCode === selectedModuleCode.value)?.unreadCount ?? 0
 })
 
@@ -102,7 +104,7 @@ function runPollingCycle() {
     if (disposed || document.visibilityState !== 'visible') return
     if (result.success) {
       pollFailureCount = 0
-      if (result.changed && open.value && suppressPollingDrawerRefresh === 0) {
+      if (result.changed && open.value && activeView.value !== 'ARCHIVED' && suppressPollingDrawerRefresh === 0) {
         await Promise.all([loadNotifications(), loadModules()])
       }
       schedulePoll(POLL_INTERVAL_MS)
@@ -126,9 +128,12 @@ async function loadModules(silent = true) {
   const requestVersion = ++moduleRequestVersion
   modulesLoading.value = true
   try {
-    const result = (await getNotificationModules()).data.data
+    const result = (await getNotificationModules(activeView.value)).data.data
     if (requestVersion !== moduleRequestVersion) return
     moduleOptions.value = result
+    if (selectedModuleCode.value && !result.some(item => item.moduleCode === selectedModuleCode.value)) {
+      selectedModuleCode.value = ''
+    }
     modulesFailed.value = false
   } catch (error) {
     if (requestVersion !== moduleRequestVersion) return
@@ -142,7 +147,6 @@ async function loadModules(silent = true) {
 async function loadNotifications(reset = true) {
   const requestVersion = ++listRequestVersion
   const moduleCode = selectedModuleCode.value
-  const unreadOnly = activeView.value === 'unread'
   if (reset) {
     loading.value = true
     page.value = 1
@@ -154,7 +158,7 @@ async function loadNotifications(reset = true) {
   }
   try {
     const nextPage = reset ? 1 : page.value + 1
-    const result = (await getNotifications(nextPage, 20, unreadOnly, moduleCode)).data.data
+    const result = (await getNotifications(nextPage, 20, activeView.value, moduleCode)).data.data
     if (requestVersion !== listRequestVersion) return
     items.value = reset ? result.records : [...items.value, ...result.records]
     total.value = result.total
@@ -194,7 +198,7 @@ async function readNotification(item: SystemNotification) {
       await markNotificationRead(item.id)
       item.read = true
       unreadCount.value = Math.max(0, unreadCount.value - 1)
-      if (activeView.value === 'unread') {
+      if (activeView.value === 'UNREAD') {
         items.value = items.value.filter(current => current.id !== item.id)
         total.value = Math.max(0, total.value - 1)
       }
@@ -228,13 +232,76 @@ async function readAll() {
   }
 }
 
+async function archiveOne(item: SystemNotification) {
+  if (!item.read || archivingRead.value || pendingNotificationId.value !== null) return
+  pendingNotificationId.value = item.id
+  suppressPollingDrawerRefresh++
+  try {
+    await archiveNotification(item.id)
+    await Promise.all([loadNotifications(), loadModules(false), refreshUnreadCount()])
+    ElMessage.success('消息已归档')
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '消息归档失败'))
+  } finally {
+    suppressPollingDrawerRefresh--
+    pendingNotificationId.value = null
+  }
+}
+
+async function restoreOne(item: SystemNotification) {
+  if (archivingRead.value || pendingNotificationId.value !== null) return
+  pendingNotificationId.value = item.id
+  suppressPollingDrawerRefresh++
+  try {
+    await restoreNotification(item.id)
+    await Promise.all([loadNotifications(), loadModules(false), refreshUnreadCount()])
+    ElMessage.success('消息已恢复到全部消息')
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '消息恢复失败'))
+  } finally {
+    suppressPollingDrawerRefresh--
+    pendingNotificationId.value = null
+  }
+}
+
+async function archiveAllRead() {
+  if (archivingRead.value || pendingNotificationId.value !== null) return
+  try {
+    await ElMessageBox.confirm(
+      '归档后，已读消息将从“全部”移到“已归档”，未读消息不受影响。',
+      '归档全部已读消息',
+      { confirmButtonText: '归档已读', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+
+  archivingRead.value = true
+  suppressPollingDrawerRefresh++
+  try {
+    const changed = (await archiveReadNotifications()).data.data.changed
+    await Promise.all([loadNotifications(), loadModules(false), refreshUnreadCount()])
+    if (changed > 0) ElMessage.success(`已归档 ${changed} 条已读消息`)
+    else ElMessage.info('暂无可归档的已读消息')
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '批量归档失败'))
+  } finally {
+    suppressPollingDrawerRefresh--
+    archivingRead.value = false
+  }
+}
+
 function formatTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
 }
 
-watch([activeView, selectedModuleCode], () => {
+watch(activeView, () => {
+  if (open.value) void Promise.all([loadNotifications(), loadModules()])
+})
+
+watch(selectedModuleCode, () => {
   if (open.value) void loadNotifications()
 })
 
@@ -279,13 +346,21 @@ onBeforeUnmount(() => {
       <template #header>
         <div class="notification-drawer__header">
           <div><strong>消息通知</strong><span>{{ unreadCount }} 条未读</span></div>
-          <el-button text :loading="markingAll" :disabled="unreadCount === 0" @click="readAll">全部已读</el-button>
+          <span v-if="activeView !== 'ARCHIVED'" class="notification-drawer__actions">
+            <el-tooltip content="归档全部已读" placement="bottom">
+              <el-button text circle :icon="FolderAdd" :loading="archivingRead" :disabled="pendingNotificationId !== null" aria-label="归档全部已读消息" @click="archiveAllRead" />
+            </el-tooltip>
+            <el-tooltip content="全部标记为已读" placement="bottom">
+              <el-button text circle :icon="CircleCheck" :loading="markingAll" :disabled="unreadCount === 0 || pendingNotificationId !== null || archivingRead" aria-label="全部标记为已读" @click="readAll" />
+            </el-tooltip>
+          </span>
         </div>
       </template>
 
       <el-tabs v-model="activeView" class="notification-tabs">
-        <el-tab-pane label="全部" name="all" />
-        <el-tab-pane :label="`未读 ${scopedUnreadCount}`" name="unread" />
+        <el-tab-pane label="全部" name="ALL" />
+        <el-tab-pane :label="`未读 ${scopedUnreadCount}`" name="UNREAD" />
+        <el-tab-pane label="已归档" name="ARCHIVED" />
       </el-tabs>
 
       <div class="notification-filter">
@@ -318,17 +393,31 @@ onBeforeUnmount(() => {
             <template #action><el-button :icon="Refresh" @click="loadNotifications()">重新加载</el-button></template>
           </UiEmptyState>
         </div>
-        <UiEmptyState v-else-if="!loading && !items.length" :title="activeView === 'unread' ? '没有未读消息' : '暂无消息'" :description="activeView === 'unread' ? '当前消息都已处理。' : '业务通知将在这里集中展示。'" />
-        <button v-for="item in items" v-else :key="item.id" type="button" class="notification-item" :class="[`is-${item.level.toLowerCase()}`, { 'is-unread': !item.read }]" @click="readNotification(item)">
-          <span class="notification-item__icon"><el-icon :size="18"><component :is="levelMeta[item.level].icon" /></el-icon></span>
-          <span class="notification-item__body">
-            <span class="notification-item__meta"><b>{{ item.moduleName }} · {{ item.sourceName }}</b><time>{{ formatTime(item.createdAt) }}</time></span>
-            <strong>{{ item.title }}</strong>
-            <span class="notification-item__content">{{ item.content }}</span>
-            <small>{{ levelMeta[item.level].label }} · {{ item.businessKey }}</small>
+        <UiEmptyState
+          v-else-if="!loading && !items.length"
+          :title="activeView === 'UNREAD' ? '没有未读消息' : activeView === 'ARCHIVED' ? '暂无已归档消息' : '暂无消息'"
+          :description="activeView === 'UNREAD' ? '当前消息都已处理。' : activeView === 'ARCHIVED' ? '归档后的已读消息会显示在这里。' : '业务通知将在这里集中展示。'"
+        />
+        <article v-for="item in items" v-else :key="item.id" class="notification-item" :class="[`is-${item.level.toLowerCase()}`, { 'is-unread': !item.read }]">
+          <button type="button" class="notification-item__main" @click="readNotification(item)">
+            <span class="notification-item__icon"><el-icon :size="18"><component :is="levelMeta[item.level].icon" /></el-icon></span>
+            <span class="notification-item__body">
+              <span class="notification-item__meta"><b>{{ item.moduleName }} · {{ item.sourceName }}</b><time>{{ formatTime(item.createdAt) }}</time></span>
+              <strong>{{ item.title }}</strong>
+              <span class="notification-item__content">{{ item.content }}</span>
+              <small>{{ levelMeta[item.level].label }} · {{ item.businessKey }}<template v-if="item.archivedAt"> · 归档于 {{ formatTime(item.archivedAt) }}</template></small>
+            </span>
+            <span v-if="item.actionPath" class="notification-item__action"><el-icon><Right /></el-icon></span>
+          </button>
+          <span class="notification-item__controls">
+            <el-tooltip v-if="activeView === 'ARCHIVED'" content="恢复到全部消息" placement="left">
+              <el-button text circle :icon="RefreshLeft" :loading="pendingNotificationId === item.id" :disabled="pendingNotificationId !== null && pendingNotificationId !== item.id" aria-label="恢复到全部消息" @click.stop="restoreOne(item)" />
+            </el-tooltip>
+            <el-tooltip v-else-if="item.read" content="归档消息" placement="left">
+              <el-button text circle :icon="FolderAdd" :loading="pendingNotificationId === item.id" :disabled="pendingNotificationId !== null && pendingNotificationId !== item.id" aria-label="归档消息" @click.stop="archiveOne(item)" />
+            </el-tooltip>
           </span>
-          <span v-if="item.actionPath" class="notification-item__action"><el-icon><Right /></el-icon></span>
-        </button>
+        </article>
         <div v-if="hasMore" class="notification-list__more">
           <el-button text :loading="loadingMore" @click="loadNotifications(false)">加载更多</el-button>
         </div>

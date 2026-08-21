@@ -292,7 +292,7 @@ public class MockDataInitializer implements ApplicationRunner {
         result.put("pm_project_member", set("id", "tenant_id", "project_id", "user_id", "status", "joined_at", "created_at", "updated_at", "deleted"));
         result.put("pm_project_member_role", set("tenant_id", "member_id", "role_id"));
         result.put("pm_project_plan_org", set("plan_id", "org_id", "party_type", "tenant_id", "created_at"));
-        result.put("sys_notification", set("id", "tenant_id", "event_id", "business_type", "business_key", "title", "content", "notification_level", "source_name", "action_path", "created_by", "created_at"));
+        result.put("sys_notification", set("id", "tenant_id", "event_id", "module_code", "module_name", "business_type", "business_key", "title", "content", "notification_level", "source_name", "action_path", "created_by", "created_at"));
         result.put("sys_user_notification", set("notification_id", "tenant_id", "user_id", "is_read", "read_at", "created_at"));
         result.put("ai_provider", set("id", "tenant_id", "provider_code", "provider_name", "endpoint", "status", "deleted", "created_at"));
         result.put("ai_model", set("id", "tenant_id", "provider_id", "model_code", "model_name", "capabilities", "credential_secret", "status", "deleted", "created_at"));

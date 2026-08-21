@@ -1,0 +1,48 @@
+{
+  "sample_label": "Backend archive contract and migration observation",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "independence": "Non-independent verification in the implementation context; focused tests and runtime Flyway provide heterogeneous sensors.",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "SystemNotificationServiceTest and service SQL inspection",
+      "result": "pass",
+      "raw_evidence": "Unread archive returns explicit conflict, read archive is idempotent, and recipient-scoped predicates are asserted.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "Focused service tests",
+      "result": "pass",
+      "raw_evidence": "ARCHIVED queries and restore behavior are covered; restore changes archived_at only.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "Focused service tests",
+      "result": "pass",
+      "raw_evidence": "Bulk update requires is_read = 1 and archived_at IS NULL and returns the actual changed count.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Query predicate and module summary tests",
+      "result": "pass",
+      "raw_evidence": "ALL and UNREAD exclude archives while ARCHIVED and its module summary include only archives.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "Controller/service contract review and Flyway runtime",
+      "result": "pass",
+      "raw_evidence": "No archive API accepts client tenant/user identity; V79 applied without deleting or rewriting notification data.",
+      "limitation": ["A separate authenticated second-user browser session was unavailable; isolation is covered at the service SQL boundary."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

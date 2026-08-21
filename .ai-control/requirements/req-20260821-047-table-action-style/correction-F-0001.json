@@ -1,0 +1,33 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "The required 390x844 browser probe reproducibly moved the document root and application shell horizontally.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "The requirement page boundary does not clip the global mobile table minimum width.",
+    "supporting_evidence": [
+      "The global mobile rule gives UiDataTable a 680px minimum width.",
+      "Before correction, a horizontal gesture changed root scrollLeft from 0 to 122 and app-shell x to -122."
+    ],
+    "falsifier": "If page-local overflow clipping does not keep root scrollLeft at 0 at all required mobile viewports, this hypothesis is insufficient."
+  },
+  "control_action": {
+    "gain": "low",
+    "target": "RequirementsView page-local horizontal overflow boundary",
+    "write_scope": ["web/src/views/RequirementsView.vue"],
+    "invariants": [
+      "Do not change business handlers, API calls, data, permissions or action visibility conditions.",
+      "Keep the repository's global mobile table minimum width and internal table scrolling policy unchanged."
+    ],
+    "impact_limit": "Add one page-local overflow-x declaration only.",
+    "rollback": "Remove overflow-x: hidden from .requirements-page.",
+    "correction_check": [
+      "Repeat horizontal gestures at 375x812, 390x844 and 430x932 and assert root scrollLeft remains 0.",
+      "Recheck action button overflow and desktop width metrics.",
+      "Run git diff --check and npm run build."
+    ],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": []
+}

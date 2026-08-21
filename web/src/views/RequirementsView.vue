@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, Download, Plus, Refresh, UploadFilled } from '@element-plus/icons-vue'
+import { ArrowDown, Clock, Delete, Download, Edit, MoreFilled, Plus, Promotion, Refresh, Tickets, UploadFilled } from '@element-plus/icons-vue'
 import UiDataTable from '../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../components/ui/UiFormDrawer.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
@@ -1068,13 +1068,22 @@ function canEditDiff(row: RequirementDifference) {
           <el-table-column label="差异状态" width="110"><template #default="scope"><UiStatusTag :value="scope.row.review_status" /></template></el-table-column>
           <el-table-column label="开发状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.dev_status" /></template></el-table-column>
           <el-table-column label="测试状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.test_status" /></template></el-table-column>
-          <el-table-column label="操作" width="380" fixed="right">
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="scope">
-              <el-button link type="primary" @click="openChangeLogs('NEW_PROJECT_DIFF', scope.row.id, `修改记录：${scope.row.name}`)">修改记录</el-button>
-              <el-button v-if="scope.row.workflow_instance_id" link type="primary" @click="openApprovalLogs(scope.row)">审批记录</el-button>
-              <el-button v-if="canEditDiff(scope.row)" link type="primary" @click="openDiffEdit(scope.row)">编辑</el-button>
-              <el-button v-if="canEditDiff(scope.row)" link type="danger" @click="removeDifference(scope.row)">删除</el-button>
-              <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDifferenceReview(scope.row)">提交评审</el-button>
+              <div class="req-table-actions">
+                <el-button link type="primary" @click="openChangeLogs('NEW_PROJECT_DIFF', scope.row.id, `修改记录：${scope.row.name}`)"><el-icon><Clock /></el-icon>修改记录</el-button>
+                <el-button v-if="scope.row.workflow_instance_id" link type="primary" @click="openApprovalLogs(scope.row)"><el-icon><Tickets /></el-icon>审批记录</el-button>
+                <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDifferenceReview(scope.row)"><el-icon><Promotion /></el-icon>提交评审</el-button>
+                <el-dropdown v-if="canEditDiff(scope.row)" @command="(command: string) => command === 'edit' ? openDiffEdit(scope.row) : removeDifference(scope.row)">
+                  <el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="edit"><el-icon><Edit /></el-icon>编辑</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided><el-icon><Delete /></el-icon>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
             </template>
           </el-table-column>
         </UiDataTable>
@@ -1106,13 +1115,22 @@ function canEditDiff(row: RequirementDifference) {
         <el-table-column label="当前阶段" width="120"><template #default="scope"><UiStatusTag :value="stageLabel(scope.row.current_stage)" /></template></el-table-column>
         <el-table-column label="需求状态" width="120"><template #default="scope"><span>{{ scope.row.requirement_status || '-' }}</span></template></el-table-column>
         <el-table-column label="来源" width="90"><template #default="scope"><span>{{ scope.row.source === 'IMPORT' ? '导入' : '在线填写' }}</span></template></el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" @click="openChangeLogs('LEGACY_REQUIREMENT', scope.row.id, `修改记录：${scope.row.requirement_name}`)">修改记录</el-button>
-            <el-button link type="primary" @click="showStageLogs(scope.row)">阶段记录</el-button>
-            <el-button link type="primary" @click="openStage(scope.row)">阶段推进</el-button>
-            <el-button link type="primary" @click="openLegacyEdit(scope.row)">编辑</el-button>
-            <el-button link type="danger" @click="removeLegacy(scope.row)">删除</el-button>
+            <div class="req-table-actions">
+              <el-button link type="primary" @click="openStage(scope.row)"><el-icon><Promotion /></el-icon>阶段推进</el-button>
+              <el-button link type="primary" @click="openChangeLogs('LEGACY_REQUIREMENT', scope.row.id, `修改记录：${scope.row.requirement_name}`)"><el-icon><Clock /></el-icon>修改记录</el-button>
+              <el-dropdown @command="(command: string) => command === 'stage-logs' ? showStageLogs(scope.row) : command === 'edit' ? openLegacyEdit(scope.row) : removeLegacy(scope.row)">
+                <el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="stage-logs"><el-icon><Tickets /></el-icon>阶段记录</el-dropdown-item>
+                    <el-dropdown-item command="edit"><el-icon><Edit /></el-icon>编辑</el-dropdown-item>
+                    <el-dropdown-item command="delete" divided><el-icon><Delete /></el-icon>删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </UiDataTable>
@@ -1171,10 +1189,19 @@ function canEditDiff(row: RequirementDifference) {
         <el-table-column prop="business_domain" label="业务领域" min-width="120" />
         <el-table-column prop="source_type" label="引入/保留" width="110" />
         <el-table-column label="状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.status" /></template></el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" @click="openSystemEdit(scope.row)">编辑</el-button>
-            <el-button link type="danger" @click="removeSystem(scope.row)">删除</el-button>
+            <div class="req-table-actions">
+              <el-button link type="primary" @click="openSystemEdit(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button>
+              <el-dropdown @command="() => removeSystem(scope.row)">
+                <el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="delete"><el-icon><Delete /></el-icon>删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </UiDataTable>
@@ -1491,6 +1518,7 @@ function canEditDiff(row: RequirementDifference) {
 <style scoped>
 .requirements-page {
   min-width: 0;
+  overflow-x: hidden;
 }
 .requirements-tabs {
   margin-bottom: 12px;
@@ -1533,6 +1561,19 @@ function canEditDiff(row: RequirementDifference) {
 .req-link-cell {
   padding: 0;
   font-weight: 500;
+}
+.req-table-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.req-table-actions .el-button {
+  margin-left: 0;
+}
+.req-table-actions .el-dropdown {
+  display: inline-flex;
+  align-items: center;
 }
 .req-preview-header {
   display: flex;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { Delete, Filter, MoreFilled, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { Delete, Edit, Filter, MoreFilled, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UiDataTable from '../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../components/ui/UiEmptyState.vue'
@@ -175,12 +175,23 @@ watch(canList, allowed => {
         <el-table-column label="负责团队" min-width="130"><template #default="scope"><div class="architecture-team-cell"><span>{{ scope.row.responsibleTeamDisplayName }}</span><UiStatusTag v-if="!scope.row.responsibleTeamValid" :value="false" :labels="{ false: '已失效' }" tone="warning" /></div></template></el-table-column>
         <el-table-column label="负责人" width="90"><template #default="scope">{{ scope.row.ownerDisplayName || '—' }}</template></el-table-column>
         <el-table-column label="最后更新" width="125"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
-        <el-table-column label="操作" width="144" fixed="right"><template #default="scope"><el-button link type="primary" @click="showDetail(scope.row)">详情</el-button><el-button v-if="canUpdate" link type="primary" @click="editRecord(scope.row)">编辑</el-button><el-dropdown v-if="canDelete" @command="command($event, scope.row)"><el-button link type="info">更多</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="delete"><el-icon><Delete /></el-icon>删除</el-dropdown-item></el-dropdown-menu></template></el-dropdown></template></el-table-column>
+        <el-table-column label="操作" width="214" fixed="right">
+          <template #default="scope">
+            <div class="architecture-table-actions">
+              <el-button link type="primary" @click="showDetail(scope.row)"><el-icon><View /></el-icon>详情</el-button>
+              <el-button v-if="canUpdate" link type="primary" @click="editRecord(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button>
+              <el-dropdown v-if="canDelete" @command="command($event, scope.row)">
+                <el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button>
+                <template #dropdown><el-dropdown-menu><el-dropdown-item command="delete"><el-icon><Delete /></el-icon>删除</el-dropdown-item></el-dropdown-menu></template>
+              </el-dropdown>
+            </div>
+          </template>
+        </el-table-column>
         <template #footer><div class="architecture-table-footer"><span>共 {{ total }} 条记录</span><el-pagination :current-page="page" :page-size="pageSize" :total="total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @current-change="changePage" @size-change="changePageSize" /></div></template>
       </UiDataTable>
 
       <div v-if="rows.length || loading" v-loading="loading" class="architecture-mobile-list" :class="{ 'is-loading': loading }">
-        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code }} · {{ row.shortName }}</small></div><UiStatusTag v-if="!row.responsibleTeamValid" :value="false" :labels="{ false: '团队失效' }" tone="warning" /></header><dl><div><dt>所属逻辑子系统</dt><dd>{{ row.logicalSubsystemName }}</dd></div><div><dt>所属事业群</dt><dd>{{ row.businessGroupName || '—' }}</dd></div><div><dt>负责团队</dt><dd>{{ row.responsibleTeamDisplayName }}</dd></div><div><dt>负责人</dt><dd>{{ row.ownerDisplayName || '—' }}</dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)">查看详情</el-button><el-button v-if="canUpdate" link type="primary" @click="editRecord(row)">编辑</el-button><el-dropdown v-if="canDelete" @command="command($event, row)"><el-button link type="info">更多操作<el-icon><MoreFilled /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="delete">删除</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
+        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code }} · {{ row.shortName }}</small></div><UiStatusTag v-if="!row.responsibleTeamValid" :value="false" :labels="{ false: '团队失效' }" tone="warning" /></header><dl><div><dt>所属逻辑子系统</dt><dd>{{ row.logicalSubsystemName }}</dd></div><div><dt>所属事业群</dt><dd>{{ row.businessGroupName || '—' }}</dd></div><div><dt>负责团队</dt><dd>{{ row.responsibleTeamDisplayName }}</dd></div><div><dt>负责人</dt><dd>{{ row.ownerDisplayName || '—' }}</dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button v-if="canUpdate" link type="primary" @click="editRecord(row)"><el-icon><Edit /></el-icon>编辑</el-button><el-dropdown v-if="canDelete" @command="command($event, row)"><el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="delete"><el-icon><Delete /></el-icon>删除</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
         <div class="architecture-table-footer"><el-pagination :current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="changePage" /></div>
       </div>
       <UiEmptyState v-if="!loading && !rows.length" title="暂无物理子系统" description="调整筛选条件，或新建第一条物理子系统。"><template #action><el-button v-if="canCreate" type="primary" @click="createRecord">新建物理子系统</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>

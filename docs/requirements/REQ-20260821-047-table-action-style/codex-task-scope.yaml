@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260821-047",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260821-047-table-action-style/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "frontend/application",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/views/RequirementsView.vue",
+      "web/src/modules/architecture/LogicalSubsystemPage.vue",
+      "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+      "web/src/modules/architecture/architecture.css",
+      "docs/requirements/REQ-20260821-047-table-action-style/**",
+      "docs/engineering-control/designs/2026-08-21-table-action-style-design.md",
+      "docs/engineering-control/plans/2026-08-21-table-action-style-implementation-plan.md",
+      ".ai-control/requirements/req-20260821-047-table-action-style/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/styles.css",
+      "web/src/api/**",
+      "web/src/types/**",
+      "design-h5.md",
+      "docs/integration/frontend-ui-contract.md"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/**",
+      "web/src/components/ui/**",
+      "web/src/styles.css",
+      ".ai-control/original/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": ["Existing row permissions, state conditions, handlers, confirmations and API calls remain unchanged"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "not-applicable"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "pass"},
+    {"name": "api", "command": "review the scoped diff and confirm no API import, request or payload changes", "expected": "no API contract change"},
+    {"name": "permission", "command": "review the scoped diff and browser states for unchanged v-if, canEditDiff, canUpdate and canDelete conditions", "expected": "no permission or state eligibility change"},
+    {"name": "scoped-diff", "command": "git diff --check -- web/src/views/RequirementsView.vue web/src/modules/architecture/LogicalSubsystemPage.vue web/src/modules/architecture/PhysicalSubsystemPage.vue web/src/modules/architecture/architecture.css", "expected": "pass"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260821-047-table-action-style/codex-task-scope.yaml --working-tree", "expected": "task files are within writable_paths; the user-mandated rokey branch and unrelated pre-existing changes are reported as known governance deviations"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "no new violation caused by this task"},
+    {"name": "browser", "command": "browser acceptance at 1280x800, 375x812, 390x844 and 430x932 in light and dark themes", "expected": "compact readable actions without overflow and with unchanged action eligibility"}
+  ],
+  "risk": {
+    "level": "low",
+    "items": [
+      "Row-state combinations can expose different action counts and must be checked before finalizing widths",
+      "The user-mandated rokey branch does not match the repository feature-branch naming rule and causes the scope checker to report a known deviation",
+      "The dirty rokey worktree contains unrelated attachment, file-preview, infrastructure and notification changes that must remain untouched"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260821-047-table-action-style",
+    "control_justification": "The task changes user-visible actions across two frontend business modules and requires responsive browser verification, while preserving all business behavior.",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260821-047-table-action-style/execution-T1.json",
+      ".ai-control/requirements/req-20260821-047-table-action-style/execution-T2.json",
+      ".ai-control/requirements/req-20260821-047-table-action-style/observation-T1.json",
+      ".ai-control/requirements/req-20260821-047-table-action-style/observation-T2.json",
+      ".ai-control/requirements/req-20260821-047-table-action-style/convergence.json"
+    ],
+    "release_verification": ["Verify requirement and architecture action columns after frontend deployment"],
+    "rollback": "Restore the four scoped frontend files; no database or business-data compensation is required."
+  }
+}

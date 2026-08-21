@@ -1,0 +1,81 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "Local MySQL schema",
+      "purpose": "Apply forward-only V79 migration"
+    },
+    {
+      "path_or_resource": "Local backend on 8080 and frontend on 5173",
+      "purpose": "Exercise authenticated integrated notification lifecycle"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "mvn test",
+      "exit_code": 1,
+      "salient_output": "Notification, workflow, release and other modules passed; four unrelated architecture Testcontainers tests failed because Docker Desktop returned an invalid daemon environment."
+    },
+    {
+      "command": "mvn -pl :ccb-system -am test",
+      "exit_code": 0,
+      "salient_output": "BUILD SUCCESS with seven modules and zero failures."
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "Production build succeeded."
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "Module, repository skill and development entry checks passed; layout check reported only pre-existing historical ledger defects outside REQ-046."
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260821-046-notification-user-archive/codex-task-scope.yaml --working-tree",
+      "exit_code": 1,
+      "salient_output": "Rejected the user-required rokey branch name because the validator requires <type>/REQ-YYYYMMDD-NNN-short-name."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Runtime migration and authenticated lifecycle",
+      "result": "pass",
+      "evidence": "Flyway reached V79 and browser archive/restore/count behavior matched the API contract.",
+      "limitations": []
+    },
+    {
+      "check": "Repository-wide backend regression",
+      "result": "blocked",
+      "evidence": "The suite reached ccb-architecture after all notification-owning modules passed, then Docker Testcontainers initialization failed.",
+      "limitations": ["Four unrelated MySQL Testcontainers cases were not executed because the local Docker daemon was unavailable."]
+    }
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "No business data is cleared during verification",
+      "result": "pass",
+      "evidence": "The only archived browser test item was restored and bulk confirmation was cancelled."
+    },
+    {
+      "invariant": "Unrelated worktree changes remain untouched",
+      "result": "pass",
+      "evidence": "Existing attachment, file preview, mock initializer, architecture and requirements changes were preserved."
+    }
+  ],
+  "disturbances": [
+    "Docker Desktop was not a valid Testcontainers environment during the full Maven run.",
+    "Repository governance contains historical invalid and mismatched AI-control ledgers outside this task.",
+    "The requested rokey branch intentionally violates the repository's feature-branch naming validator."
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Repository-wide Docker-backed architecture tests require a healthy Docker daemon."],
+  "recommended_next": "observe"
+}

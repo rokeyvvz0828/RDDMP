@@ -1,4 +1,5 @@
 export type NotificationLevel = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR'
+export type NotificationView = 'ALL' | 'UNREAD' | 'ARCHIVED'
 
 export interface SystemNotification {
   id: number
@@ -13,6 +14,7 @@ export interface SystemNotification {
   actionPath: string | null
   read: boolean
   readAt: string | null
+  archivedAt: string | null
   createdAt: string
 }
 

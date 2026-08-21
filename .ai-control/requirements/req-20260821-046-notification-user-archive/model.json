@@ -1,0 +1,75 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "sys_user_notification recipient state",
+      "SystemNotificationService authenticated queries and mutations",
+      "NotificationController HTTP adaptation",
+      "notification API client and UiNotificationCenter drawer"
+    ],
+    "environment": [
+      "MySQL 8.4 and Flyway",
+      "authenticated browser session",
+      "notification publishers and legacy unreadOnly clients"
+    ]
+  },
+  "state_variables": [
+    {"name": "recipient_read_state", "owner": "sys_user_notification", "valid_values": ["UNREAD_ACTIVE", "READ_ACTIVE"]},
+    {"name": "recipient_archive_state", "owner": "sys_user_notification.archived_at", "valid_values": ["ACTIVE", "ARCHIVED"]},
+    {"name": "notification_view", "owner": "UiNotificationCenter and NotificationController", "valid_values": ["ALL", "UNREAD", "ARCHIVED"]},
+    {"name": "notification_counts", "owner": "SystemNotificationService", "valid_values": ["active totals", "active unread totals", "archived totals"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Authenticated user archives one read active notification", "transitions": ["controller binds authenticated user", "service verifies recipient row and read state", "service sets archived_at for that tenant and user"], "outputs": ["notification leaves ALL and UNREAD for that user only", "shared notification remains"]},
+    {"requirement_id": "R2", "input": "Authenticated user selects ARCHIVED or restores an archived notification", "transitions": ["view filter selects archived_at IS NOT NULL", "restore clears archived_at for that tenant and user without changing read fields"], "outputs": ["archived page is pageable and filterable", "restored notification returns to ALL as read"]},
+    {"requirement_id": "R3", "input": "Authenticated user confirms archive-all-read", "transitions": ["service updates rows scoped by tenant and user", "update condition requires is_read = 1 and archived_at IS NULL"], "outputs": ["actual changed count", "unread rows remain active"]},
+    {"requirement_id": "R4", "input": "List, module, or unread-count query", "transitions": ["service applies one view predicate", "module and paging queries share the view predicate", "polling calls unread-count only"], "outputs": ["consistent totals and module options", "archived rows excluded from badge"]},
+    {"requirement_id": "R5", "input": "Authenticated API call or legacy unreadOnly query", "transitions": ["identity comes from AuthUser", "view defaults from view then legacy unreadOnly", "mutation never deletes notification or recipient rows"], "outputs": ["cross-scope rows unchanged", "legacy clients remain compatible", "audit evidence remains durable"]}
+  ],
+  "interfaces": [
+    {"name": "GET /api/notifications", "producers": ["NotificationController", "SystemNotificationService"], "consumers": ["UiNotificationCenter", "legacy clients"], "invariant": "Explicit view wins; absent view preserves unreadOnly behavior; identity is authenticated"},
+    {"name": "notification archive commands", "producers": ["NotificationController", "SystemNotificationService"], "consumers": ["UiNotificationCenter"], "invariant": "No tenant or user request parameters and no physical deletion"},
+    {"name": "sys_user_notification archive state", "producers": ["V79 migration", "SystemNotificationService"], "consumers": ["notification list, module, count and mutation queries"], "invariant": "Archived rows are read; restore preserves read state"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Service SQL predicates, identity scope and transition behavior", "method": "Focused JUnit and Mockito tests with SQL and parameter assertions", "blind_spots": ["Real Flyway execution", "Browser event propagation"], "independence": "Direct service contract observation"},
+    {"id": "S2", "target": "Schema compatibility and full Java regression", "method": "Flyway application startup plus focused and full Maven tests", "blind_spots": ["Visual layout"], "independence": "Runtime database and compiled backend path"},
+    {"id": "S3", "target": "Type-safe frontend API and component template", "method": "vue-tsc and Vite production build", "blind_spots": ["Authenticated runtime data", "Responsive visual behavior"], "independence": "Frontend compiler and bundler"},
+    {"id": "S4", "target": "Archive, restore, bulk action, filters, counts, polling and responsive layout", "method": "Authenticated in-app browser checks at desktop and mobile viewports with network and console inspection", "blind_spots": ["Other recipients unless a second account is available"], "independence": "Rendered browser and HTTP behavior"},
+    {"id": "S5", "target": "Repository scope and policy conformance", "method": "Governance, scope and git diff checks", "blind_spots": ["Runtime semantics"], "independence": "Static repository governance tooling"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Persistent recipient archive state", "action": "Add nullable archived_at and supporting index through V79", "authority": "Approved task scope and platform owner approval", "impact_radius": "sys_user_notification schema", "rollback": "Retain additive nullable column and index while reverting product code"},
+    {"id": "A2", "target": "Authenticated notification queries and transitions", "action": "Modify platform/system DTO, service, controller and focused tests", "authority": "Approved task scope", "impact_radius": "Notification public API and current recipient rows", "rollback": "Revert only REQ-20260821-046 Java changes"},
+    {"id": "A3", "target": "Notification center interaction", "action": "Modify notification types, API client, drawer and scoped styles", "authority": "Approved task scope", "impact_radius": "Global notification drawer", "rollback": "Revert only REQ-20260821-046 frontend changes"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S3", "S4"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S3", "S4"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S2", "S5"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Unrelated dirty worktree changes", "effect": "Scope noise or accidental overwrite", "detectable": true, "controllable": true},
+    {"source": "Concurrent Flyway migration allocation", "effect": "V79 version collision", "detectable": true, "controllable": true},
+    {"source": "Existing one-second unread polling", "effect": "Concurrent refresh may reorder drawer state", "detectable": true, "controllable": true},
+    {"source": "Authentication or local database unavailable", "effect": "Browser and migration sensors unavailable", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "One-second foreground polling", "consequence": "Drawer refresh can occur shortly after an archive action", "sampling_rule": "Suppress polling refresh during explicit operations and sample after requests settle"},
+    {"source": "Flyway index creation", "consequence": "Backend startup can take longer than a normal restart", "sampling_rule": "Wait for startup completion and verify flyway history before API sampling"}
+  ],
+  "assumptions": [
+    {"text": "Current V26 and V44 schema matches the local MySQL structure", "evidence": "Current backend starts successfully and migrations through V78 are present", "falsifier": "V79 startup reports missing or incompatible sys_user_notification columns"},
+    {"text": "Existing notification drawer is the only frontend consumer requiring archive UI", "evidence": "Repository search finds notification API consumption in UiNotificationCenter", "falsifier": "Build or search reveals another consumer relying on the changed TypeScript signature"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Implement T1 then sample service and runtime behavior"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Implement T1 and T2 then sample browser behavior"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Implement scoped bulk command and confirmed UI action"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Use shared view predicates and verify counts across API and browser"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "Bind all operations to AuthUser and retain legacy parameter handling"}
+  ],
+  "model_status": "ready"
+}
