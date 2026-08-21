@@ -1,0 +1,51 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["V52 schema/menu/permission migration", "test-management backend module", "system user directory public contract", "business-day Vue views and API"],
+    "environment": ["MySQL 8.4", "RDDMP JWT/RBAC", "RDDMP current-tenant users", "desktop/mobile browser", "untrusted XLSX"]
+  },
+  "state_variables": [
+    {"name": "environment_state", "owner": "business/test-management", "valid_values": ["active", "disabled", "deleted"]},
+    {"name": "schedule_state", "owner": "business/test-management", "valid_values": ["absent", "stored", "overwritten", "deleted"]},
+    {"name": "requirement_adoption", "owner": "business/test-management", "valid_values": ["PENDING", "ACCEPTED", "REJECTED"]},
+    {"name": "active_view", "owner": "frontend URL", "valid_values": ["overview", "schedule", "requirements", "environments"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "管理员进入营业日管理并切换顶部导航", "transitions": ["V52 将 614 设为叶子", "router 读取 view query", "页面按视图加载"], "outputs": ["单一 Sidebar 入口与可深链四视图"]},
+    {"requirement_id": "R2", "input": "用户维护环境、日历和跑批需求", "transitions": ["后端权限/租户/字段/引用校验", "事务写入 owner 表", "业务审计"], "outputs": ["可刷新持久化记录与明确反馈"]},
+    {"requirement_id": "R3", "input": "提出人选择或 XLSX 导入导出", "transitions": ["UserDirectoryPort 查询有效用户", "POI 限额解析或生成"], "outputs": ["RDDMP 用户身份与可打开工作簿"]},
+    {"requirement_id": "R4", "input": "月份、环境和视口变化", "transitions": ["服务端月范围查询", "前端构造 42 格", "响应式表格/卡片"], "outputs": ["可用月历和无页面级溢出"]}
+  ],
+  "interfaces": [
+    {"name": "UserDirectoryPort", "producers": ["platform/system"], "consumers": ["business/test-management"], "invariant": "只读、租户隔离、只返回有效未删除用户"},
+    {"name": "/api/test-management/business-days", "producers": ["business/test-management"], "consumers": ["business-day Vue module"], "invariant": "ApiResponse/PageResult、snake_case 字段、服务端授权"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "数据库、权限、租户和业务规则", "method": "服务单元测试、Flyway 运行和 API 负向测试", "blind_spots": ["生产历史数据不存在"], "independence": "数据库和 HTTP 直接观测"},
+    {"id": "S2", "target": "用户目录与 XLSX", "method": "契约测试、文件往返测试", "blind_spots": ["极端第三方 Excel 方言"], "independence": "独立解析生成产物"},
+    {"id": "S3", "target": "导航、CRUD、月历和响应式", "method": "Vue build 与真实浏览器交互", "blind_spots": ["真实移动设备特定输入法"], "independence": "浏览器布局引擎直接观测"},
+    {"id": "S4", "target": "模块和任务边界", "method": "治理、模块、scope 和 diff 检查", "blind_spots": [], "independence": "仓库自动门禁"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "schema/menu/permissions", "action": "追加 V52", "authority": "ready scope", "impact_radius": "测试管理和管理员预置授权", "rollback": "补偿迁移"},
+    {"id": "A2", "target": "user directory", "action": "新增只读公开端口和 system 适配器", "authority": "用户指定使用 RDDMP 用户", "impact_radius": "新增契约，不改变现有接口", "rollback": "回退需求提交"},
+    {"id": "A3", "target": "backend/frontend module", "action": "新增 API、服务、页面和路由", "authority": "ready scope", "impact_radius": "营业日管理路径", "rollback": "回退需求提交"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S3", "S4"], "observable": "yes"}
+  ],
+  "assumptions": [
+    {"text": "RDDMP 有效用户足以作为提出人目录", "evidence": "sys_user 已含姓名、组织、手机号和状态", "falsifier": "用户管理数据缺少提出人所需展示字段"},
+    {"text": "RADAR 营业日范围即四个 TestCalendarPage 顶部视图", "evidence": "用户原菜单补充与 RADAR 页面一致", "falsifier": "用户要求纳入独立环境信息模块"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "execute"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "execute"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "execute"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "execute"}
+  ],
+  "model_status": "ready"
+}

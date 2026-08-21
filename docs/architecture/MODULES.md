@@ -15,7 +15,8 @@
 | 平台 | `server/src/platform/workflow` | 流程模型、BPMN 编译、运行服务与监控 |
 | 公共 | `server/src/shared/common` | 统一响应、分页、异常和 trace，不拥有业务数据 |
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
-| 业务前端 | `web/src/modules/test-management` | 测试管理三级导航、领域页面和后续测试业务能力 |
+| 业务 | `server/src/modules/test-management` | 测试管理营业日环境、日历安排、跑批需求和业务审计 |
+| 业务前端 | `web/src/modules/test-management` | 测试管理导航、领域页面和营业日管理交互 |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
 
@@ -26,11 +27,12 @@
 - `web/src/api/{system,workflow,ai}.ts` 是相应后端域的请求入口。
 - `web/src/components/workflow` 和 `WorkflowView.vue` 属于 workflow。
 - `web/src/modules/delivery-showcase` 是纯前端虚构交付示范模块，使用本地 mock 数据沉淀列表、表单、详情、审批和可视化样式，不拥有后端业务数据。
-- `web/src/modules/test-management` 是测试管理业务前端模块；首期只提供三级菜单和空白 CRUD 列表脚手架，后续业务数据、API 和审计由独立需求接入。
+- `web/src/modules/test-management` 是测试管理业务前端模块；营业日管理由独立后端模块持久化，其四个视图使用页面顶部导航，其余测试域暂保留空白列表脚手架。
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
 - `com.ccb.attachment.model` 提供持久附件公开契约，业务模块只能通过 `AttachmentPort` 访问附件，不得读取附件表或对象键。
 - `com.ccb.system.notification` 与 `web/src/api/notifications.ts` 提供租户隔离的站内消息发布和当前用户消息中心契约，业务模块不得直接写通知表。
+- `com.ccb.system.model.UserDirectoryPort` 提供租户隔离的有效用户只读目录；业务模块保存用户主键但不得直接读取系统用户表。
 - 其余业务页面的归属以 `modules.yaml` 中列出的精确路径为准。
 
 公共前端能力变更需要说明现有页面回归范围。后续目录重构必须独立立项，保持路由、类型、接口和业务逻辑兼容。

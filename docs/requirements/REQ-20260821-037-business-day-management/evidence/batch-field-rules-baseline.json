@@ -1,0 +1,107 @@
+{
+  "objective": "让营业日管理各写入入口执行一致的跑批字段规则，并让三个桌面列表按用户指定方式拆列和居中显示。",
+  "requirements": [
+    {
+      "id": "R-BATCH-1",
+      "statement": "日历安排关闭跑批时必须清空并忽略批处理类型、跑批时间、涉及系统和验证内容。",
+      "acceptance": ["保存后四个跑批字段为空，重新打开表单不反显过期值。"],
+      "priority": "must",
+      "source": "已批准设计修订 2",
+      "counterexample": ["关闭跑批后仍持久化系统或验证内容。"]
+    },
+    {
+      "id": "R-BATCH-2",
+      "statement": "跑批需求固定按跑批处理，不显示是否跑批开关，后端不接受 has_batch=false 绕过跑批校验。",
+      "acceptance": ["需求表单无是否跑批开关。", "客户端传 has_batch=false 时仍按跑批规则校验和保存。"],
+      "priority": "must",
+      "source": "用户确认按 RADAR 复刻",
+      "counterexample": ["跑批需求可以被保存为无跑批。"]
+    },
+    {
+      "id": "R-BATCH-3",
+      "statement": "翻数必须选择为有效跑批类型，但跑批时间、涉及系统和验证内容均为选填。",
+      "acceptance": ["三项均空的翻数安排和需求可保存。", "已填写的时间、系统和验证内容仍执行格式、数量与长度校验。"],
+      "priority": "must",
+      "source": "用户明确确认",
+      "counterexample": ["翻数因时间、系统或验证内容为空而无法提交。"]
+    },
+    {
+      "id": "R-BATCH-4",
+      "statement": "全量、增量和初始化必须填写跑批时间、至少一个涉及系统和验证内容。",
+      "acceptance": ["分别缺少三个字段时，前端字段旁和后端响应均给出对应错误。"],
+      "priority": "must",
+      "source": "用户确认的 RADAR 字段矩阵",
+      "counterexample": ["非翻数记录缺少任一后续字段仍保存成功。"]
+    },
+    {
+      "id": "R-BATCH-5",
+      "statement": "手工新增、编辑和 Excel 导入必须经过同一后端字段矩阵。",
+      "acceptance": ["合法翻数空字段可导入。", "非翻数缺少必填字段时整批导入失败并回滚。"],
+      "priority": "must",
+      "source": "RDDMP 服务端校验和原子导入规约",
+      "counterexample": ["页面拒绝的数据可以通过导入写入。"]
+    },
+    {
+      "id": "R-LIST-1",
+      "statement": "日历安排和跑批需求桌面列表必须把测试环境、自然日期、营业日期显示为三个独立列。",
+      "acceptance": ["两个表格均有独立的测试环境、自然日期、营业日期表头。", "测试环境单元格不再包含自然日期。"],
+      "priority": "must",
+      "source": "用户新增反馈",
+      "counterexample": ["继续使用环境 / 日期组合列。"]
+    },
+    {
+      "id": "R-LIST-2",
+      "statement": "测试环境、日历安排和跑批需求三个桌面表格的表头和单元格内容必须居中。",
+      "acceptance": ["表头文本、普通文本、标签、复合身份信息和操作按钮组均在各自单元格内居中。", "移动卡片保持原信息层级且页面无横向溢出。"],
+      "priority": "must",
+      "source": "用户新增反馈与 RDDMP 移动端约束",
+      "counterexample": ["表头居中但复合单元格仍靠左。", "手机卡片被整体居中或产生横向滚动。"]
+    }
+  ],
+  "invariants": [
+    "批处理类型只允许全量、增量、初始化、翻数。",
+    "选填字段存在非空值时仍执行格式、数量、长度、去空和去重校验。",
+    "租户隔离、RBAC、审计、环境有效性和导入整批回滚保持不变。"
+  ],
+  "constraints": [
+    "仅修改当前需求 writable_paths。",
+    "不修改数据库结构、公开 API 字段、筛选和导出契约。",
+    "保持 Java 17、Vue 3、Element Plus 和现有模块边界。",
+    "测试管理模块新增关键逻辑前保留说明性注释，修改文件保留文件头注释。"
+  ],
+  "non_goals": ["新增跑批类型。", "连接外部系统目录。", "改变需求评审或同步日历安排规则。", "修改公共 UI 组件或新增数据库迁移。"],
+  "assumptions": [
+    {
+      "text": "现有工作簿导入保存路径最终调用 BusinessDayService。",
+      "basis": "只读工程勘察",
+      "falsifier": "建模发现导入存在绕开服务校验的独立写库路径。"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "question": "跑批需求是否允许关闭跑批？",
+      "options": ["固定跑批", "允许关闭"],
+      "selected": "固定跑批",
+      "blocking": false,
+      "source": "用户确认"
+    },
+    {
+      "question": "翻数豁免哪些字段必填？",
+      "options": ["时间、系统、验证内容", "仅时间和系统"],
+      "selected": "时间、系统、验证内容",
+      "blocking": false,
+      "source": "用户确认"
+    }
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R-BATCH-1", "observable": "关闭跑批后的持久化字段", "candidate_sensor": "服务层测试和浏览器编辑回显"},
+    {"requirement_id": "R-BATCH-2", "observable": "需求表单控件与后端 has_batch=false 行为", "candidate_sensor": "服务层测试和浏览器 DOM"},
+    {"requirement_id": "R-BATCH-3", "observable": "翻数空后续字段保存结果", "candidate_sensor": "服务层正向测试和浏览器提交"},
+    {"requirement_id": "R-BATCH-4", "observable": "非翻数三个字段的逐项错误", "candidate_sensor": "服务层负向测试和表单校验"},
+    {"requirement_id": "R-BATCH-5", "observable": "手工与工作簿入口的一致校验结果", "candidate_sensor": "工作簿专项测试"},
+    {"requirement_id": "R-LIST-1", "observable": "两个表格的独立表头和单元格内容", "candidate_sensor": "真实浏览器 DOM"},
+    {"requirement_id": "R-LIST-2", "observable": "桌面计算样式与移动视口溢出", "candidate_sensor": "真实浏览器计算样式和多视口截图"}
+  ],
+  "baseline_status": "ready"
+}

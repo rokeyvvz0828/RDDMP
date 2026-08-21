@@ -1,0 +1,77 @@
+{
+  "baseline_revision": "batch-field-rules-baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "BusinessDayService 日历安排与跑批需求写入状态转换",
+      "BusinessDayWorkbookService 工作簿解析及其 importSchedules 调用",
+      "CalendarScheduleList 与 BatchRequirementList 表单状态和校验",
+      "CalendarScheduleList、BatchRequirementList、TestEnvironmentList 桌面表格",
+      "business-day.css 模块局部样式"
+    ],
+    "environment": ["MySQL 持久化", "Element Plus 表单和表格", "真实桌面与手机浏览器", "当前用户与环境目录"]
+  },
+  "state_variables": [
+    {"name": "schedule_has_batch", "owner": "BusinessDayService", "valid_values": ["true", "false"]},
+    {"name": "batch_type", "owner": "BusinessDayService", "valid_values": ["全量", "增量", "初始化", "翻数", "null"]},
+    {"name": "dependent_batch_fields", "owner": "BusinessDayService", "valid_values": ["required-valid", "optional-empty", "optional-valid", "invalid"]},
+    {"name": "requirement_has_batch", "owner": "BusinessDayService", "valid_values": ["true"]},
+    {"name": "desktop_table_alignment", "owner": "business-day.css", "valid_values": ["center"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R-BATCH-1", "input": "日历安排 has_batch=false", "transitions": ["服务端规范化标志", "清空四个跑批字段", "事务写入"], "outputs": ["返回和重读记录的四字段为空"]},
+    {"requirement_id": "R-BATCH-2", "input": "跑批需求请求（包括 has_batch=false）", "transitions": ["服务端强制 has_batch=true", "应用跑批字段矩阵", "事务写入"], "outputs": ["记录始终为跑批或返回字段错误"]},
+    {"requirement_id": "R-BATCH-3", "input": "batch_type=翻数且后续字段为空或非空", "transitions": ["类型校验", "空值豁免", "非空值格式和限额校验"], "outputs": ["合法记录保存或非法非空值报错"]},
+    {"requirement_id": "R-BATCH-4", "input": "全量、增量或初始化", "transitions": ["类型校验", "时间必填及格式校验", "至少一个系统校验", "验证内容必填及长度校验"], "outputs": ["完整记录保存或对应字段错误"]},
+    {"requirement_id": "R-BATCH-5", "input": "手工请求或 XLSX 行", "transitions": ["表单/API 或工作簿解析", "共同调用 BusinessDayService 保存方法", "统一字段矩阵", "事务提交或回滚"], "outputs": ["各入口一致的保存或拒绝结果"]},
+    {"requirement_id": "R-LIST-1", "input": "日历安排或跑批需求列表数据", "transitions": ["Vue 表格列映射", "环境、自然日期、营业日期分别渲染"], "outputs": ["三个独立表头和对应单元格"]},
+    {"requirement_id": "R-LIST-2", "input": "三个桌面列表及移动卡片", "transitions": ["模块局部表格样式居中", "移动媒体查询隐藏桌面表格并保留卡片布局"], "outputs": ["桌面单元格居中且移动页面无横向溢出"]}
+  ],
+  "interfaces": [
+    {"name": "schedule/requirement write payload", "producers": ["Vue 表单", "BusinessDayWorkbookService", "直接 API 调用方"], "consumers": ["BusinessDayService"], "invariant": "字段名不变；跑批需求 has_batch 在服务端固定为 true"},
+    {"name": "schedule list row", "producers": ["BusinessDayService 查询"], "consumers": ["两个 Vue 列表和导出"], "invariant": "环境、自然日期和营业日期保持独立字段"}
+  ],
+  "sensors": [
+    {"id": "S-SERVICE", "target": "跑批字段矩阵和服务端持久化参数", "method": "JDK 17 BusinessDayService 单元测试", "blind_spots": ["真实浏览器字段提示"], "independence": "直接执行服务层规则并校验异常或 JDBC 参数"},
+    {"id": "S-WORKBOOK", "target": "XLSX 与手工入口一致性和事务回滚", "method": "目标模块工作簿测试与导入调用链断言", "blind_spots": ["用户选择文件交互"], "independence": "从工作簿解析入口采样"},
+    {"id": "S-BUILD", "target": "Java 与 Vue 静态集成", "method": "JDK 17 Maven 测试和 Vue 生产构建", "blind_spots": ["视觉对齐"], "independence": "由编译器和测试运行器给出退出码"},
+    {"id": "S-BROWSER", "target": "表单联动、独立列、计算样式与响应式布局", "method": "真实浏览器桌面及手机视口 DOM、计算样式、控制台和截图检查", "blind_spots": ["未构造的历史脏数据"], "independence": "观察运行应用，不依赖源码推断"}
+  ],
+  "actuators": [
+    {"id": "A-SERVICE", "target": "BusinessDayService 字段规范化与校验", "action": "集中提取并复用跑批字段规则", "authority": "当前任务 writable_paths", "impact_radius": "测试管理服务模块", "rollback": "仅回退本任务局部补丁"},
+    {"id": "A-FORM", "target": "两个 Vue 表单", "action": "动态 required 校验、清理错误状态和固定需求跑批标志", "authority": "当前任务 writable_paths", "impact_radius": "营业日管理页面", "rollback": "仅回退两个组件补丁"},
+    {"id": "A-TABLE", "target": "三个桌面表格", "action": "拆分列并应用模块局部居中样式", "authority": "当前任务 writable_paths", "impact_radius": "营业日管理桌面列表", "rollback": "仅回退列表与 CSS 补丁"},
+    {"id": "A-TEST", "target": "目标模块测试", "action": "增加字段矩阵与入口一致性回归断言", "authority": "当前任务 writable_paths", "impact_radius": "测试代码", "rollback": "删除本任务新增断言"}
+  ],
+  "measurements": [
+    {"requirement_id": "R-BATCH-1", "sensor_ids": ["S-SERVICE", "S-BROWSER"], "observable": "yes"},
+    {"requirement_id": "R-BATCH-2", "sensor_ids": ["S-SERVICE", "S-BROWSER"], "observable": "yes"},
+    {"requirement_id": "R-BATCH-3", "sensor_ids": ["S-SERVICE", "S-WORKBOOK", "S-BROWSER"], "observable": "yes"},
+    {"requirement_id": "R-BATCH-4", "sensor_ids": ["S-SERVICE", "S-WORKBOOK", "S-BROWSER"], "observable": "yes"},
+    {"requirement_id": "R-BATCH-5", "sensor_ids": ["S-SERVICE", "S-WORKBOOK"], "observable": "yes"},
+    {"requirement_id": "R-LIST-1", "sensor_ids": ["S-BROWSER"], "observable": "yes"},
+    {"requirement_id": "R-LIST-2", "sensor_ids": ["S-BROWSER"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "本地 JDK 默认版本为 26", "effect": "Mockito/ByteBuddy 测试可能产生与代码无关的失败", "detectable": true, "controllable": true},
+    {"source": "工作区已有未提交功能代码", "effect": "全量 diff 含用户/前序任务改动", "detectable": true, "controllable": false},
+    {"source": "本地服务进程可能仍运行旧 jar", "effect": "浏览器采样与源码不一致", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "后端 jar 重建与重启", "consequence": "修改后立即浏览器采样会命中旧逻辑", "sampling_rule": "JDK 17 打包成功、确认新进程健康后再验收"},
+    {"source": "Vue HMR", "consequence": "首个 DOM 样本可能仍是旧组件", "sampling_rule": "等待页面重载并检查构建时间后采样"}
+  ],
+  "assumptions": [
+    {"text": "工作簿导入统一调用 saveSchedule", "evidence": "BusinessDayService.importSchedules 循环调用私有 saveSchedule，WorkbookService 只负责解析", "falsifier": "发现独立 JDBC 写入路径"},
+    {"text": "模块 CSS 可覆盖 Element Plus 表格内部对齐且不影响移动卡片", "evidence": "桌面表格使用 business-day-table，760px 以下隐藏该表格", "falsifier": "真实浏览器计算样式或移动溢出不满足"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R-BATCH-1", "observable": "yes", "controllable": "yes", "action": "A-SERVICE+A-FORM"},
+    {"requirement_id": "R-BATCH-2", "observable": "yes", "controllable": "yes", "action": "A-SERVICE+A-FORM"},
+    {"requirement_id": "R-BATCH-3", "observable": "yes", "controllable": "yes", "action": "A-SERVICE+A-FORM+A-TEST"},
+    {"requirement_id": "R-BATCH-4", "observable": "yes", "controllable": "yes", "action": "A-SERVICE+A-FORM+A-TEST"},
+    {"requirement_id": "R-BATCH-5", "observable": "yes", "controllable": "yes", "action": "A-SERVICE+A-TEST"},
+    {"requirement_id": "R-LIST-1", "observable": "yes", "controllable": "yes", "action": "A-TABLE"},
+    {"requirement_id": "R-LIST-2", "observable": "yes", "controllable": "yes", "action": "A-TABLE"}
+  ],
+  "model_status": "ready"
+}

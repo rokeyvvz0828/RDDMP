@@ -1,0 +1,22 @@
+{
+  "requirement": "REQ-20260821-037",
+  "objective": "将 RADAR 营业日管理的四个业务视图迁移为 RDDMP 原生的持久化、权限化和响应式模块。",
+  "scope": ["单一 Sidebar 入口与顶部导航", "测试环境 CRUD", "日历安排 CRUD/导入导出", "跑批需求 CRUD/评审/导出", "42 格月历概览", "RDDMP 用户目录契约", "业务审计"],
+  "non_goals": ["RADAR 动态字段配置", "外部系统目录", "采纳后自动同步日历", "流程与通知"],
+  "decisions": [
+    "四个视图使用 query 参数 view 深链接，Sidebar 只指向 /test-management/business-day。",
+    "business/test-management 新增独立 Maven 模块，数据表以 tm_ 前缀归属该模块。",
+    "platform/system 暴露最小只读 UserDirectoryPort；测试管理不读取 sys_user 私有表。",
+    "涉及系统保存为 JSON 字符串，由服务端规范化为最多 30 个、每项最多 80 字的有序去重列表。",
+    "测试环境使用语义 theme token，不复制 RADAR 的任意色值依赖。",
+    "同环境同自然日日历安排按自然键覆盖；环境删除采用引用保护和逻辑删除。",
+    "XLSX 使用模块内 Apache POI，限制 5MB/2000 行；不引入前端表格依赖。",
+    "所有写操作写入模块自有审计表，并保留 created_by/updated_by。",
+    "导入模板改用 RADAR 的 8 列中文表头和两条示例；解析按表头别名映射，同时接受 RADAR 与已发布 RDDMP 旧表头。",
+    "导入日期在 XLSX 信任边界统一规范化，兼容 Excel 日期对象/序列、紧凑日期、常见分隔符和中文日期，写入服务仍只接受规范格式。",
+    "概览移除摘要卡片和常驻侧栏，复刻 RADAR 的月历工具栏、七列环境行及当日详情弹窗；移动端保留 RDDMP 的两列重排和无页面溢出约束。"
+  ],
+  "risks": ["V51 菜单从目录变叶子需用追加迁移兼容", "用户目录是新增公开契约", "XLSX 文件是不可信输入", "Excel 日期序列与本地时区转换易产生一天偏差", "日历跨月 42 格易有边界错误"],
+  "approval_evidence": "用户明确要求参考 RADAR 复刻营业日管理全部前后端功能，并指定手工系统输入与 RDDMP 用户提出人。",
+  "human_document": "docs/requirements/REQ-20260821-037-business-day-management/requirement.md"
+}

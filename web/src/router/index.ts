@@ -11,6 +11,7 @@ import ComponentShowcaseView from '../views/ComponentShowcaseView.vue'
 import DeliveryShowcaseModule from '../modules/delivery-showcase/DeliveryShowcaseModule.vue'
 import ProjectView from '../views/ProjectView.vue'
 import TestManagementList from '../modules/test-management/TestManagementList.vue'
+import BusinessDayManagement from '../modules/test-management/business-day/BusinessDayManagement.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -33,6 +34,11 @@ const router = createRouter({
         { path: 'ai/:section', name: 'ai', component: AiView, props: true },
         { path: 'components', name: 'components', component: ComponentShowcaseView, meta: { title: '组件示例' } },
         { path: 'delivery-showcase', name: 'delivery-showcase', component: DeliveryShowcaseModule, meta: { title: '交付示范中心' } },
+        { path: 'test-management/business-day', name: 'business-day-management', component: BusinessDayManagement, meta: { title: '营业日管理' } },
+        { path: 'test-management/business-day/calendar-overview', redirect: '/test-management/business-day' },
+        { path: 'test-management/business-day/calendar-schedule', redirect: { path: '/test-management/business-day', query: { view: 'schedule' } } },
+        { path: 'test-management/business-day/batch-requirements', redirect: { path: '/test-management/business-day', query: { view: 'requirements' } } },
+        { path: 'test-management/business-day/test-environments', redirect: { path: '/test-management/business-day', query: { view: 'environments' } } },
         { path: 'test-management/:domain/:section', name: 'test-management-list', component: TestManagementList }
       ]
     },

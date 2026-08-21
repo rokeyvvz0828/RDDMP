@@ -1,0 +1,28 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/BusinessDayService.java", "purpose": "集中规范化并校验跑批字段矩阵"},
+    {"path_or_resource": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/BusinessDayServiceTest.java", "purpose": "覆盖关闭跑批、固定需求跑批、翻数豁免和非翻数必填"}
+  ],
+  "requirements_addressed": ["R-BATCH-1", "R-BATCH-2", "R-BATCH-3", "R-BATCH-4", "R-BATCH-5"],
+  "commands": [
+    {"command": "JDK17 mvn -pl :ccb-test-management -am -Dtest=BusinessDayServiceTest test（实现前）", "exit_code": 1, "salient_output": "测试编译失败：BatchFields 和 batchFields 尚不存在"},
+    {"command": "JDK17 mvn -pl :ccb-test-management -am -Dtest=BusinessDayServiceTest,BusinessDayWorkbookServiceTest test", "exit_code": 0, "salient_output": "Tests run: 10, Failures: 0, Errors: 0"},
+    {"command": "JDK17 mvn test", "exit_code": 0, "salient_output": "11 个 reactor 模块 BUILD SUCCESS；76 tests passed"},
+    {"command": "JDK17 mvn -DskipTests package", "exit_code": 0, "salient_output": "ccb-boot 可执行 jar 构建成功"}
+  ],
+  "local_checks": [
+    {"check": "字段矩阵目标测试", "result": "pass", "evidence": "关闭跑批清空四字段；翻数空后续字段成功；非法翻数时间失败；非翻数缺任一后续字段失败", "limitations": []},
+    {"check": "导入调用链", "result": "pass", "evidence": "BusinessDayService.importSchedules 继续逐行复用 saveSchedule；工作簿 4 项测试通过", "limitations": ["未在浏览器上传真实文件，避免产生本地业务数据"]}
+  ],
+  "diff_summary": ["新增单一 BatchFields 规范化入口", "跑批需求服务端固定 has_batch=true", "补充六项服务边界测试"],
+  "invariants_checked": [
+    {"invariant": "公开 API 字段和数据库结构不变", "result": "pass", "evidence": "仅复用现有字段且无迁移"},
+    {"invariant": "导入事务和环境、用户、审计校验不变", "result": "pass", "evidence": "调用链未调整且完整 Maven 通过"}
+  ],
+  "disturbances": [{"event": "默认 JDK 26 与 Mockito 不兼容", "impact": "所有 Maven 传感器显式使用仓库要求的 JDK 17"}],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

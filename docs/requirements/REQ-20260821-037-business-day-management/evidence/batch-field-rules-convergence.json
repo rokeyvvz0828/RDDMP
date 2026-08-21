@@ -1,0 +1,42 @@
+{
+  "baseline_revision": "batch-field-rules-baseline-1",
+  "requirement_results": [
+    {"id": "R-BATCH-1", "result": "pass", "task_ids": ["T5", "T6"], "evidence": ["服务测试证明 has_batch=false 清空四字段", "日历表单关闭跑批载荷清空且浏览器联动通过"], "limitations": []},
+    {"id": "R-BATCH-2", "result": "pass", "task_ids": ["T5", "T6"], "evidence": ["persistRequirement 固定 has_batch=true", "需求登记弹窗中是否跑批 switch 数量为0"], "limitations": []},
+    {"id": "R-BATCH-3", "result": "pass", "task_ids": ["T5", "T6"], "evidence": ["翻数空后三项及非法非空时间服务测试通过", "两个真实表单翻数状态仅保留业务日期类错误"], "limitations": []},
+    {"id": "R-BATCH-4", "result": "pass", "task_ids": ["T5", "T6"], "evidence": ["增量缺时间、系统、验证内容的三个负向服务断言通过", "浏览器切回增量恢复三项必填标记和字段错误"], "limitations": []},
+    {"id": "R-BATCH-5", "result": "pass", "task_ids": ["T5"], "evidence": ["importSchedules 继续复用 saveSchedule 单一入口", "工作簿4测试、目标模块10测试及完整Maven76测试通过"], "limitations": ["未在浏览器上传真实文件，避免制造业务数据"]},
+    {"id": "R-LIST-1", "result": "pass", "task_ids": ["T6"], "evidence": ["两个桌面表头均含测试环境、自然日期、营业日期", "环境单元格仅单行环境名称且无色块"], "limitations": []},
+    {"id": "R-LIST-2", "result": "pass", "task_ids": ["T6"], "evidence": ["三表 table-layout=auto 且内容驱动列宽", "有数据表全部表头和单元格计算样式 center", "1280桌面和375/390/430三个手机视口无页面级溢出，操作组单行"], "limitations": ["需求表当前无数据行，单元格规则由共享模块CSS和另外两张有数据表交叉验证"]}
+  ],
+  "task_results": [
+    {"id": "T5", "status": "verified", "evidence": ["JDK17目标10测试与完整Maven通过", "后端健康接口UP"]},
+    {"id": "T6", "status": "verified", "evidence": ["Vue类型检查和生产构建通过", "真实浏览器桌面、表单和九个手机页面样本通过"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "JDK17完整 Maven 测试", "result": "pass", "evidence": "11个reactor模块BUILD SUCCESS，76测试通过"},
+    {"check": "Vue生产构建", "result": "pass", "evidence": "vue-tsc --noEmit 与 vite build 退出码0"},
+    {"check": "运行健康和浏览器路径", "result": "pass", "evidence": "8080 actuator health UP；5173页面可访问；本模块无console error"}
+  ],
+  "invariant_results": [
+    {"invariant": "公开API和数据库结构不变", "result": "pass", "evidence": "未改字段名、控制器或迁移"},
+    {"invariant": "租户、RBAC、审计、环境用户校验和导入事务不变", "result": "pass", "evidence": "原调用顺序保留且完整测试通过"},
+    {"invariant": "移动卡片层级不回归", "result": "pass", "evidence": "居中CSS限定桌面表格，三个手机视口显示卡片且无溢出"},
+    {"invariant": "测试管理文件头和关键逻辑注释保留", "result": "pass", "evidence": "六个修改文件均有文件头；新增字段矩阵、载荷清理、类型联动和桌面居中前有关键逻辑注释"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "默认JDK26", "result": "pass", "evidence": "按规约显式JDK17运行测试和打包"},
+    {"disturbance": "后端旧jar", "result": "pass", "evidence": "重建并重启为PID8046，健康接口UP"},
+    {"disturbance": "公共主题弹窗弃用警告", "result": "pass", "evidence": "仅warning且来源公共el-radio，本任务路由无error"}
+  ],
+  "residual_risks": ["编辑历史非翻数且缺少后续字段的旧记录时，用户必须补齐后才能再次保存。"],
+  "gate_result": "pass",
+  "route_reason": "七项must均由verified任务覆盖，自动化和真实运行证据通过，两次标准模式采样P0-P3均为0，无反馈、越界或不变量破坏。"
+}

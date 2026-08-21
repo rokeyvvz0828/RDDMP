@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "task_id": "T3",
+  "status": "completed",
+  "recorded_at": "2026-08-21T10:20:00+08:00",
+  "goal": "对齐 RADAR 日历安排模板并兼容其日期输入方言。",
+  "scope": [
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/BusinessDayWorkbookService.java",
+    "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/BusinessDayWorkbookServiceTest.java"
+  ],
+  "changes": [
+    "模板调整为 RADAR 的 8 列表头和两行示例，并按 RADAR 顺序导出日历安排。",
+    "导入按表头名称映射，兼容 RADAR 与旧 RDDMP 表头，维护人列保持可选。",
+    "自然日和营业日兼容 Excel 日期单元格、Excel 序列值、YYYYMMDD、分隔符日期和中文日期。",
+    "日期仅按 LocalDate 归一化，避免时区转换导致日期偏移；批处理字段有值时自动推断跑批。"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-test-management -am -Dtest=BusinessDayWorkbookServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "result": "passed; 4 focused workbook tests"},
+    {"command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn test", "result": "passed; all reactor modules including 6 test-management tests"}
+  ],
+  "unresolved": []
+}

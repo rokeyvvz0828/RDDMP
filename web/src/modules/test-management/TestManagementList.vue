@@ -1,3 +1,9 @@
+<!--
+文件：web/src/modules/test-management/TestManagementList.vue
+说明：测试管理非营业日页面共用的首期空白 CRUD 列表。
+用途：根据领域目录解析标题，提供会话内筛选、新增、编辑、删除和响应式占位交互。
+作者：hengguan
+-->
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
@@ -31,6 +37,7 @@ const formRef = ref<FormInstance>()
 const form = reactive({ name: '', description: '' })
 const rules: FormRules = { name: [{ required: true, message: '请输入名称', trigger: 'blur' }] }
 
+// 关键逻辑：占位记录只存在当前页面会话，筛选不发起后端请求并在刷新后清空。
 const filtered = computed(() => {
   const query = keyword.value.trim().toLowerCase()
   return query
@@ -61,6 +68,7 @@ function openEdit(record: PlaceholderRecord) {
   drawerOpen.value = true
 }
 
+// 关键逻辑：通用骨架仅模拟 CRUD，正式业务页面必须使用独立需求接入后端持久化。
 async function save() {
   if (!await formRef.value?.validate().catch(() => false)) return
   const updatedAt = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short', hour12: false }).format(new Date())

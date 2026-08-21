@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "completed",
+  "recorded_at": "2026-08-21T09:43:00+08:00",
+  "goal": "交付 V52、用户目录公开契约和营业日管理后端完整 API。",
+  "scope": [
+    "server/src/modules/test-management/**",
+    "server/src/platform/system/**/UserDirectory*",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V52__business_day_management.sql",
+    "模块治理、文档与 Maven 装配"
+  ],
+  "changes": [
+    "新增测试环境、日历安排、跑批需求和业务审计四张租户隔离表，并将营业日管理菜单收敛为单一叶子入口。",
+    "新增环境、安排、需求、评审、概览、用户目录和 XLSX 模板/导入/导出 API。",
+    "通过 platform/system 的 UserDirectoryPort 读取当前租户有效用户，业务模块不直接读取 sys_user。",
+    "实现环境引用保护、编码级联更新、自然键覆盖、停用环境校验、手工系统规范化、文件大小/行数限制和公式注入防护。",
+    "所有营业日写操作写入模块自有审计表，并在关键逻辑前添加维护注释。"
+  ],
+  "commands": [
+    {"command": "mvn test", "result": "passed; 70 tests across all modules"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 52 migrations"},
+    {"command": "node scripts/check-module-governance.mjs", "result": "passed; 13 modules"},
+    {"command": "node scripts/check-module-boundaries.mjs", "result": "passed; 10 governed modules"},
+    {"command": "local Spring Boot + MySQL runtime", "result": "passed; V52 applied and four tm_ tables created"}
+  ],
+  "unresolved": []
+}

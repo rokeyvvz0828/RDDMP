@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "task_id": "T1",
+  "status": "observed",
+  "recorded_at": "2026-08-21T09:43:00+08:00",
+  "observations": [
+    {
+      "scenario": "数据库迁移与菜单结构",
+      "result": "passed",
+      "evidence": "本地 MySQL 成功应用 V52；四张营业日业务表存在，菜单 614 下启用的子菜单数量为 0。"
+    },
+    {
+      "scenario": "持久化业务闭环",
+      "result": "passed",
+      "evidence": "通过真实 API 新建环境、日历安排和跑批需求，完成 ACCEPTED 评审，月历概览返回对应记录；验收样本随后完成逻辑清理。"
+    },
+    {
+      "scenario": "用户目录与权限",
+      "result": "passed",
+      "evidence": "当前租户用户目录返回 5 个有效用户，需求提出人成功引用用户管理中的演示测试负责人；无营业日角色的 mock.qa 请求返回 HTTP 403/code 40300。"
+    },
+    {
+      "scenario": "引用保护与文件能力",
+      "result": "passed",
+      "evidence": "删除被日历/需求引用的测试环境返回 HTTP 409；下载的 XLSX 模板为 3981 字节且可由 Apache POI 打开。"
+    },
+    {
+      "scenario": "业务审计",
+      "result": "passed",
+      "evidence": "验收写操作生成 7 条审计记录；业务样本清理后活动环境、安排和需求均为 0。"
+    }
+  ],
+  "coverage_note": "API 运行时使用隔离的本地基础设施和仅用于本次验收的临时授权；验收结束后已移除样本数据与临时角色关系。",
+  "residual_risks": []
+}

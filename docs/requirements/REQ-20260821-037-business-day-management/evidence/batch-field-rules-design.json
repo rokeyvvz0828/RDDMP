@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "topic": "business-day-batch-field-rules",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/requirements/REQ-20260821-037-business-day-management/requirement.md",
+  "objective": "让日历安排、跑批需求、手工接口和 Excel 导入统一执行 RADAR 跑批字段联动规则，并统一营业日桌面列表的拆列和居中呈现。",
+  "users": [
+    "测试管理人员在日历安排中维护仅营业日或带跑批的安排。",
+    "测试管理人员登记固定为跑批的跑批需求。"
+  ],
+  "requirements": [
+    {
+      "id": "R-BATCH-1",
+      "statement": "日历安排关闭跑批时必须清空并忽略批处理类型、跑批时间、涉及系统和验证内容。",
+      "acceptance": ["保存后四个跑批字段为空，重新打开表单不反显过期值。"],
+      "priority": "must",
+      "source": "RADAR 日历安排行为与用户确认",
+      "counterexample": ["关闭跑批后仍持久化系统或验证内容。"]
+    },
+    {
+      "id": "R-BATCH-2",
+      "statement": "跑批需求固定按跑批处理，不显示是否跑批开关，后端不接受 has_batch=false 绕过跑批校验。",
+      "acceptance": ["需求表单无是否跑批开关。", "客户端传 has_batch=false 时仍按跑批规则校验和保存。"],
+      "priority": "must",
+      "source": "用户确认按 RADAR 复刻",
+      "counterexample": ["跑批需求可以被保存为无跑批。"]
+    },
+    {
+      "id": "R-BATCH-3",
+      "statement": "翻数必须选择为有效跑批类型，但跑批时间、涉及系统和验证内容均为选填。",
+      "acceptance": ["三项均空的翻数安排和需求可保存。", "已填写的时间、系统和验证内容仍执行格式、数量与长度校验。"],
+      "priority": "must",
+      "source": "用户明确确认",
+      "counterexample": ["翻数因时间、系统或验证内容为空而无法提交。"]
+    },
+    {
+      "id": "R-BATCH-4",
+      "statement": "全量、增量和初始化必须填写跑批时间、至少一个涉及系统和验证内容。",
+      "acceptance": ["分别缺少三个字段时，前端字段旁和后端响应均给出对应错误。"],
+      "priority": "must",
+      "source": "用户确认的 RADAR 字段矩阵",
+      "counterexample": ["非翻数记录缺少任一后续字段仍保存成功。"]
+    },
+    {
+      "id": "R-BATCH-5",
+      "statement": "手工新增、编辑和 Excel 导入必须经过同一后端字段矩阵。",
+      "acceptance": ["合法翻数空字段可导入。", "非翻数缺少必填字段时整批导入失败并回滚。"],
+      "priority": "must",
+      "source": "RDDMP 服务端校验和原子导入规约",
+      "counterexample": ["页面拒绝的数据可以通过导入写入。"]
+    },
+    {
+      "id": "R-LIST-1",
+      "statement": "日历安排和跑批需求桌面列表必须把测试环境、自然日期、营业日期显示为三个独立列。",
+      "acceptance": ["两个表格均有独立的测试环境、自然日期、营业日期表头。", "测试环境单元格不再包含自然日期。"],
+      "priority": "must",
+      "source": "用户新增反馈",
+      "counterexample": ["继续使用环境 / 日期组合列。"]
+    },
+    {
+      "id": "R-LIST-2",
+      "statement": "测试环境、日历安排和跑批需求三个桌面表格的表头和单元格内容必须居中。",
+      "acceptance": ["表头文本、普通文本、标签、复合身份信息和操作按钮组均在各自单元格内居中。", "移动卡片保持原信息层级且页面无横向溢出。"],
+      "priority": "must",
+      "source": "用户新增反馈与 RDDMP 移动端约束",
+      "counterexample": ["表头居中但复合单元格仍靠左。", "为实现居中而让手机卡片全文居中或产生整页横向滚动。"]
+    }
+  ],
+  "invariants": [
+    "批处理类型只允许全量、增量、初始化、翻数。",
+    "选填不等于跳过非空值的格式、长度、数量、去空和去重校验。",
+    "租户隔离、RBAC、审计和环境有效性校验保持不变。",
+    "导入任一行失败时整批回滚。"
+  ],
+  "constraints": [
+    "仅修改当前需求 writable_paths。",
+    "不迁移已下线的动态输入项配置。",
+    "不修改数据库结构、公开 API 字段、筛选和导出契约。",
+    "保持 Java 17、Vue 3、Element Plus 和现有模块边界。"
+  ],
+  "non_goals": [
+    "新增跑批类型。",
+    "连接外部系统目录。",
+    "改变跑批需求评审或同步日历安排规则。",
+    "新增数据库迁移或公共组件。"
+  ],
+  "selected_approach": {
+    "name": "后端单一规则入口加前端联动反馈",
+    "reason": "用后端单一校验入口覆盖两个表单、直接 API 和导入，并用模块局部表格规则完成拆列和居中，避免校验漂移且不修改公共组件。",
+    "alternatives": [
+      {"name": "仅修改前端", "rejected_because": "接口和导入可绕过，数据规则不一致。"},
+      {"name": "迁移 RADAR 动态字段配置", "rejected_because": "超出范围且与 RDDMP 已下线该能力的规约冲突。"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["BusinessDayService 跑批字段校验", "BusinessDayWorkbookService 导入记录", "日历安排表单和列表", "跑批需求表单和列表", "测试环境列表", "营业日模块局部样式", "目标模块测试"],
+      "outside": ["数据库迁移", "权限和审计模型", "公共 UI 组件", "外部系统目录"]
+    },
+    "components": [
+      {"name": "BusinessDayService", "responsibility": "作为手工与导入保存的最终字段规则边界。", "depends_on": ["现有环境、用户和审计能力"]},
+      {"name": "CalendarScheduleList", "responsibility": "按是否跑批和类型展示即时字段校验。", "depends_on": ["现有营业日 API"]},
+      {"name": "BatchRequirementList", "responsibility": "固定跑批并按类型展示即时字段校验。", "depends_on": ["现有营业日 API和用户目录"]},
+      {"name": "Business day desktop tables", "responsibility": "拆分环境与日期列，并在模块范围统一表头和单元格居中。", "depends_on": ["现有 UiDataTable 和 Element Plus 表格"]},
+      {"name": "BusinessDayWorkbookService", "responsibility": "解析输入并交给 BusinessDayService 统一校验。", "depends_on": ["Apache POI"]}
+    ],
+    "interfaces": [
+      {"name": "schedule/requirement write payload", "producer": "营业日两个表单或 XLSX 解析", "consumers": ["BusinessDayService"], "contract": "字段保持现有名称；跑批需求的 has_batch 由服务端强制为 true。"}
+    ],
+    "data_flows": [
+      {"input": "用户或 XLSX 提交跑批字段", "transitions": ["规范化跑批标志和类型", "应用翻数豁免或非翻数必填矩阵", "验证非空值格式", "事务保存和审计"], "output": "一致的安排或需求记录，或明确字段错误"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "非翻数缺少时间、系统或验证内容", "behavior": "拒绝保存并返回字段对应错误。", "recovery": "保留表单内容，用户补齐后重试。"},
+    {"condition": "翻数的选填字段存在非法非空值", "behavior": "按既有格式或长度规则拒绝。", "recovery": "修正或清空该字段。"},
+    {"condition": "导入中任一行不满足矩阵", "behavior": "整批回滚并报告错误。", "recovery": "修正工作簿后重新导入。"}
+  ],
+  "quality_attributes": {
+    "security": ["后端强制规则，前端显隐不作为信任边界。"],
+    "performance": ["仅常量级字段判断，无额外查询。"],
+    "compatibility": ["API 字段和数据库结构不变；既有合法记录继续可读。"],
+    "operations": ["沿用现有业务审计和错误模型，无新配置。"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R-BATCH-1", "R-BATCH-2", "R-BATCH-3", "R-BATCH-4"], "signal": "服务端正常和负向场景", "method": "JDK 17 目标模块测试及完整 Maven 测试"},
+    {"requirement_ids": ["R-BATCH-3", "R-BATCH-4", "R-BATCH-5"], "signal": "导入与页面规则一致", "method": "工作簿专项测试与真实 API 导入"},
+    {"requirement_ids": ["R-BATCH-1", "R-BATCH-2", "R-BATCH-3", "R-BATCH-4"], "signal": "表单联动和错误状态可用", "method": "Vue 构建及桌面/三个手机视口真实浏览器验收"},
+    {"requirement_ids": ["R-LIST-1", "R-LIST-2"], "signal": "独立表头、表格居中和移动卡片不回归", "method": "真实浏览器 DOM、计算样式及桌面/三个手机视口截图验收"}
+  ],
+  "assumptions": [
+    {"text": "用户所说后续字段包含跑批时间、涉及系统和验证内容。", "basis": "用户先举时间、系统等内容，后确认完整字段矩阵。", "falsifier": "用户复核时明确某一字段在非翻数场景也应选填。"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "跑批需求固定为跑批并移除开关。", "reason": "复刻 RADAR。", "source": "用户确认"},
+    {"id": "D2", "decision": "翻数豁免时间、系统和验证内容必填。", "reason": "用户明确要求。", "source": "用户确认"},
+    {"id": "D3", "decision": "其他三种类型的后续字段全部必填。", "reason": "用户确认推荐字段矩阵。", "source": "用户确认"},
+    {"id": "D4", "decision": "两个业务列表把测试环境、自然日期和营业日期拆成独立列。", "reason": "提升逐列扫描和比较能力。", "source": "用户新增反馈"},
+    {"id": "D5", "decision": "三个桌面表格统一居中，但移动卡片保持原信息层级。", "reason": "满足用户对列表的对齐要求，同时遵守手机可读性和无溢出约束。", "source": "用户新增反馈"}
+  ],
+  "risks": [
+    {"risk": "前端、API 与导入规则再次漂移。", "impact": "不同入口产生不一致记录。", "mitigation": "后端单一规则入口并覆盖每个入口的回归测试。"},
+    {"risk": "编辑历史非翻数缺字段记录时被新规则阻止。", "impact": "用户必须补齐后才能保存。", "mitigation": "历史记录保持可读，仅在再次保存时明确提示补齐；不批量回填。"},
+    {"risk": "居中后的长验证内容和多系统标签可读性下降。", "impact": "桌面列表扫描变慢或列宽增大。", "mitigation": "保持现有最小列宽、换行和省略策略，并验证稀疏、密集及长文本样本。"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户确认设计修订 2 并明确要求开始实施。",
+    "confirmed_at": "2026-08-21T01:20:00+08:00"
+  }
+}

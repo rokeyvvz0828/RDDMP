@@ -1,0 +1,17 @@
+{
+  "sample_label": "T5 后端统一规则完成采样",
+  "task_ids": ["T5"],
+  "baseline_revision": "batch-field-rules-baseline-1",
+  "measurements": [
+    {"requirement_id": "R-BATCH-1", "sensor": "S-SERVICE", "result": "pass", "raw_evidence": "BusinessDayServiceTest clearsDependentFieldsWhenScheduleDoesNotRunBatch 通过，BatchFields 返回 type/time/validation=null、systems=[]", "limitation": []},
+    {"requirement_id": "R-BATCH-2", "sensor": "S-SERVICE", "result": "pass", "raw_evidence": "persistRequirement 固定调用 batchFields(body,true)，测试载荷 has_batch=false 仍产生 hasBatch=true", "limitation": ["未创建真实跑批需求记录"]},
+    {"requirement_id": "R-BATCH-3", "sensor": "S-SERVICE+S-WORKBOOK", "result": "pass", "raw_evidence": "翻数空三字段通过、25:00 非空时间被拒绝；工作簿解析测试 4/4 通过", "limitation": []},
+    {"requirement_id": "R-BATCH-4", "sensor": "S-SERVICE", "result": "pass", "raw_evidence": "增量分别缺时间、系统、验证内容的三个负向断言均通过", "limitation": []},
+    {"requirement_id": "R-BATCH-5", "sensor": "S-WORKBOOK+S-BUILD", "result": "pass", "raw_evidence": "importSchedules 继续调用同一 saveSchedule；目标模块 10 测试与完整 Maven 76 测试通过", "limitation": ["浏览器未上传真实工作簿以避免写入业务数据"]}
+  ],
+  "feedback": [],
+  "disturbances": [{"source": "默认 JDK 26", "classification": "disturbance", "evidence": "显式使用 JDK 17 后测试稳定通过"}],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

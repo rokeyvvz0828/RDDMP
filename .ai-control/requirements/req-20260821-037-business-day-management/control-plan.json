@@ -1,0 +1,84 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "交付 V52、用户目录契约和营业日后端完整 API。",
+      "requirement_ids": ["R1", "R2", "R3"],
+      "prerequisites": ["ready requirement", "approved high-risk scope", "RADAR behavior audit"],
+      "input_facts": ["V51 menu 614 has four children", "current max migration 51", "sys_user is platform/system owned", "no existing XLSX dependency"],
+      "write_scope": ["requirement/control ledgers", "governance/docs/CODEOWNERS", "root/boot/test-management poms", "V52", "system user directory contract/adapter/test", "test-management backend"],
+      "invariants": ["do not edit V51", "tenant isolation", "backend authorization", "no direct sys_user access from business module", "file limits"],
+      "interface_contracts": ["UserDirectoryPort", "ApiResponse/PageResult", "business-day REST API"],
+      "action_bounds": ["one new business module", "one additive migration", "Apache POI only in module"],
+      "acceptance_checks": ["service/controller tests", "XLSX round-trip", "Flyway runtime", "permission negative paths"],
+      "evidence_required": ["commands", "database state", "HTTP responses"],
+      "rollback": "回退提交；V52 已应用则追加补偿迁移。",
+      "stop_conditions": ["must write another business module", "must weaken auth or tenant isolation"]
+    },
+    {
+      "id": "T2",
+      "goal": "交付四个顶部视图的完整前端交互和响应式验收。",
+      "requirement_ids": ["R1", "R2", "R3", "R4"],
+      "prerequisites": ["T1 API contract implemented"],
+      "input_facts": ["delivery showcase nav pattern", "existing Ui components", "V51 placeholder route"],
+      "write_scope": ["web/src/router/index.ts", "web/src/modules/test-management/**"],
+      "invariants": ["one Sidebar item", "URL-reflected view", "no public UI component changes", "mobile no page overflow"],
+      "interface_contracts": ["business-day REST API", "Element Plus existing components"],
+      "action_bounds": ["business-day module-local components and CSS", "manual system tags"],
+      "acceptance_checks": ["Vue build", "CRUD/review/month/XLSX browser loop", "four viewport measurements", "console clean"],
+      "evidence_required": ["browser paths/screens/state probes", "build output"],
+      "rollback": "回退需求提交。",
+      "stop_conditions": ["requires shared component mutation"]
+    },
+    {
+      "id": "T3",
+      "goal": "对齐 RADAR 日历安排模板并兼容其日期输入方言。",
+      "requirement_ids": ["R3"],
+      "prerequisites": ["user follow-up approved", "RADAR workbook and parser audited"],
+      "input_facts": ["RADAR template has 8 columns and 2 examples", "RADAR accepts Excel date cells, serials, compact and separated dates", "RDDMP old template has 9 columns"],
+      "write_scope": ["test-management workbook service and focused tests", "current requirement/control ledgers"],
+      "invariants": ["5MB/2000 row limits", "transactional import", "old RDDMP template remains readable", "no timezone day shift"],
+      "interface_contracts": ["schedule import map consumed by BusinessDayService"],
+      "action_bounds": ["no database or controller change", "Apache POI only"],
+      "acceptance_checks": ["template headers/examples", "date cell", "Excel serial", "compact/separated/Chinese dates", "old header aliases"],
+      "evidence_required": ["focused JUnit output", "generated workbook inspection"],
+      "rollback": "Restore BusinessDayWorkbookService and its test.",
+      "stop_conditions": ["requires accepting ambiguous non-date numbers"]
+    },
+    {
+      "id": "T4",
+      "goal": "按 RADAR 复刻月历展示与当日详情弹窗，同时保持 RDDMP 响应式约束。",
+      "requirement_ids": ["R1", "R4"],
+      "prerequisites": ["user screenshot and RADAR CalendarOverview audited"],
+      "input_facts": ["summary cards must be removed", "RADAR uses environment toggle buttons and row-level detail modal", "calendar remains fixed at 42 cells"],
+      "write_scope": ["BusinessDayOverview.vue", "business-day.css", "current requirement/control ledgers"],
+      "invariants": ["URL view preserved", "semantic theme tokens", "keyboard-accessible environment rows", "mobile no page overflow"],
+      "interface_contracts": ["existing overview and environment-options API"],
+      "action_bounds": ["no shared UI mutation", "module-local CSS only"],
+      "acceptance_checks": ["desktop screenshot comparison", "42 cells", "detail modal", "375/390/430 widths", "console clean"],
+      "evidence_required": ["Vue build", "browser DOM and viewport probes"],
+      "rollback": "Restore overview component and module CSS.",
+      "stop_conditions": ["requires page-level horizontal scroll"]
+    }
+  ],
+  "dependency_edges": [{"from": "T1", "to": "T2", "reason": "frontend consumes backend contract"}],
+  "parallel_groups": [["T1"], ["T2"], ["T3", "T4"]],
+  "integration_points": [
+    {"after_tasks": ["T1", "T2"], "checks": ["Maven", "Vue", "Flyway", "governance", "scope", "browser"]},
+    {"after_tasks": ["T3", "T4"], "checks": ["focused workbook tests", "JDK 17 Maven reactor", "Vue", "scope", "browser desktop/mobile"]}
+  ],
+  "sampling_plan": [
+    {"label": "backend sample", "trigger": "T1 complete", "observer": "direct automated/runtime evidence", "sensors": ["S1", "S2", "S4"], "requirement_ids": ["R1", "R2", "R3"]},
+    {"label": "browser sample", "trigger": "T2 complete and services restarted", "observer": "current browser context, non-independent", "sensors": ["S3"], "requirement_ids": ["R1", "R2", "R3", "R4"]},
+    {"label": "RADAR follow-up sample", "trigger": "T3 and T4 complete", "observer": "focused automation plus current browser context", "sensors": ["S1", "S3", "S4"], "requirement_ids": ["R1", "R3", "R4"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T4"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2", "S3"]},
+    {"requirement_id": "R4", "task_ids": ["T2", "T4"], "sensor_ids": ["S3", "S4"]}
+  ],
+  "plan_status": "completed"
+}

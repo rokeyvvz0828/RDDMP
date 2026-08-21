@@ -68,7 +68,12 @@ function findMenuTitle(nodes: RouteNode[], path: string): string | null {
   return matchTitle || null
 }
 const title = computed(() => String(route.meta.title || findMenuTitle(auth.routes, route.path) || fallbackTitles[String(route.params.section || route.name || 'dashboard')] || '系统模块'))
-const appTabPath = computed(() => route.name === 'project-detail' && route.params.projectId ? route.path : route.fullPath)
+const appTabPath = computed(() => {
+  if (route.name === 'project-detail' && route.params.projectId) return route.path
+  // 营业日四个顶部视图共享一个全局页签，query 仅用于页面内部深链接。
+  if (route.name === 'business-day-management') return route.path
+  return route.fullPath
+})
 const themeLabel = computed(() => {
   const palette = paletteOptions.find(item => item.key === theme.palette)?.label || '默认配色'
   const appearance = { light: '浅色', dark: '深色', system: '跟随系统' }[theme.appearance]

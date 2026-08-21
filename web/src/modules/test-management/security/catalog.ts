@@ -1,3 +1,9 @@
+/*
+文件：web/src/modules/test-management/security/catalog.ts
+说明：安全测试的页面目录常量。
+用途：为动态路由提供稳定 slug 与中文页面名称映射。
+作者：hengguan
+*/
 export const securityTesting = {
   key: 'security',
   label: '安全测试',

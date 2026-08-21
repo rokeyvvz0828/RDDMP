@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260821-037", "status": "ready", "document": "docs/requirements/REQ-20260821-037-business-day-management/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "codex", "module": "business/test-management", "module_owner": "rokeyvvz0828", "branch": "feat/REQ-20260821-037-business-day-management", "worktree": "/Volumes/GuanMac/Code/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260821-037-business-day-management/**",
+      ".ai-control/requirements/req-20260821-037-business-day-management/*.json",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/integration/system-user-directory-contract.md",
+      ".github/CODEOWNERS",
+      "pom.xml",
+      "server/src/platform/boot/pom.xml",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V52__business_day_management.sql",
+      "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectoryItem.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/model/UserDirectoryPort.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/service/SystemUserDirectory.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/service/SystemUserDirectoryTest.java",
+      "server/src/modules/test-management/**",
+      "web/src/router/index.ts",
+      "web/src/views/AppLayout.vue",
+      "web/src/modules/test-management/**"
+    ],
+    "read_only_paths": ["server/src/shared/common/**", "server/src/platform/security/**", "web/src/components/ui/**", "web/src/modules/delivery-showcase/**", "web/src/stores/**", "web/src/styles.css", "/Volumes/GuanMac/Code/RADAR/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260821-037", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["mvn test", "npm --prefix web run build", "node scripts/check-all-governance.mjs"]},
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V52__business_day_management.sql"], "compatibility_and_rollback": "只追加 V52；已应用后使用补偿迁移停用功能并恢复菜单，不修改历史迁移或直接删除业务数据。"},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "api", "command": "验证营业日 API 正常、异常、冲突和 XLSX 路径"},
+    {"name": "permission", "command": "验证 read/create/update/delete/import/export/review 后端权限"},
+    {"name": "backend", "command": "mvn test"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "flyway", "command": "node scripts/check-flyway-migrations.mjs"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260821-037-business-day-management/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"},
+    {"name": "browser", "command": "验证环境、安排、需求、采纳、月历和 XLSX 闭环及四种视口"}
+  ],
+  "risk": {"level": "high", "items": ["公开用户目录契约", "新业务后端模块", "Flyway 业务表与菜单补偿", "权限矩阵", "XLSX 批量文件"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260821-037-business-day-management",
+    "acceptance_evidence": [".ai-control/requirements/req-20260821-037-business-day-management/execution-T1.json", ".ai-control/requirements/req-20260821-037-business-day-management/observation-T1.json", ".ai-control/requirements/req-20260821-037-business-day-management/convergence.json"],
+    "release_verification": ["管理员重新登录验证单一侧栏入口和顶部导航", "真实数据 CRUD/评审/月历/XLSX 闭环"],
+    "rollback": "回退需求提交；数据库已应用时追加补偿迁移。"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "task_id": "T6",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/test-management/business-day/CalendarScheduleList.vue", "purpose": "动态字段矩阵、关闭跑批清理、拆列和自适应列表"},
+    {"path_or_resource": "web/src/modules/test-management/business-day/BatchRequirementList.vue", "purpose": "固定跑批、动态字段矩阵、拆列和自适应列表"},
+    {"path_or_resource": "web/src/modules/test-management/business-day/TestEnvironmentList.vue", "purpose": "单行环境名称和自适应列表"},
+    {"path_or_resource": "web/src/modules/test-management/business-day/business-day.css", "purpose": "桌面表格局部居中和单行操作组"}
+  ],
+  "requirements_addressed": ["R-BATCH-1", "R-BATCH-2", "R-BATCH-3", "R-BATCH-4", "R-LIST-1", "R-LIST-2"],
+  "commands": [
+    {"command": "cd web && npm run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit 与 vite build 成功"},
+    {"command": "真实浏览器 1280x800 与 375x812、390x844、430x932 验收", "exit_code": 0, "salient_output": "三张表、两个表单和三个手机视口满足断言"}
+  ],
+  "local_checks": [
+    {"check": "表单联动", "result": "pass", "evidence": "日历翻数空三项仅报日期错误；切回增量恢复系统和验证内容错误；需求表单无是否跑批开关且翻数仅报日期错误", "limitations": ["未提交会写库的浏览器表单，保存语义由后端目标测试覆盖"]},
+    {"check": "桌面列表", "result": "pass", "evidence": "独立表头为测试环境、自然日期、营业日期；环境仅单行名称且无色块；表头和单元格计算样式均 center；table-layout=auto 且列宽按内容不同", "limitations": ["跑批需求当前无业务行，单元格居中由同一模块 CSS 和其他两张有数据表验证"]},
+    {"check": "移动视口", "result": "pass", "evidence": "三个页面在 375x812、390x844、430x932 均隐藏桌面表格、显示移动卡片且 scrollWidth=clientWidth", "limitations": []}
+  ],
+  "diff_summary": ["移除需求是否跑批开关", "翻数动态豁免时间、系统和验证内容", "拆分环境与两类日期", "三张表启用内容自适应列宽和桌面局部居中", "环境列仅显示单行名称且去除主题色块"],
+  "invariants_checked": [
+    {"invariant": "移动卡片保持原有左对齐层级", "result": "pass", "evidence": "居中选择器均限定在 .business-day-table，手机使用 .business-day-mobile-list"},
+    {"invariant": "页面无横向溢出", "result": "pass", "evidence": "桌面和九个手机页面样本均 scrollWidth=clientWidth"},
+    {"invariant": "用户填写内容在类型切换时不丢失", "result": "pass", "evidence": "watch 仅 clearValidate，真实浏览器切换后时间值仍保留"}
+  ],
+  "disturbances": [{"event": "主题设置弹窗产生 Element Plus el-radio 3.0 弃用警告", "impact": "属于既有公共主题组件；本任务页面无 error 日志"}],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

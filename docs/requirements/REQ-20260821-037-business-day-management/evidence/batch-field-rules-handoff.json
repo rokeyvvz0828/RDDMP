@@ -1,0 +1,790 @@
+{
+  "schema_version": 1,
+  "topic": "business-day-batch-field-rules",
+  "handoff_status": "approved",
+  "created_at": "2026-08-21T01:21:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "business-day-batch-field-rules",
+    "design_revision": 2,
+    "design_status": "approved",
+    "human_document": "docs/requirements/REQ-20260821-037-business-day-management/requirement.md",
+    "objective": "让日历安排、跑批需求、手工接口和 Excel 导入统一执行 RADAR 跑批字段联动规则，并统一营业日桌面列表的拆列和居中呈现。",
+    "users": [
+      "测试管理人员在日历安排中维护仅营业日或带跑批的安排。",
+      "测试管理人员登记固定为跑批的跑批需求。"
+    ],
+    "requirements": [
+      {
+        "id": "R-BATCH-1",
+        "statement": "日历安排关闭跑批时必须清空并忽略批处理类型、跑批时间、涉及系统和验证内容。",
+        "acceptance": [
+          "保存后四个跑批字段为空，重新打开表单不反显过期值。"
+        ],
+        "priority": "must",
+        "source": "RADAR 日历安排行为与用户确认",
+        "counterexample": [
+          "关闭跑批后仍持久化系统或验证内容。"
+        ]
+      },
+      {
+        "id": "R-BATCH-2",
+        "statement": "跑批需求固定按跑批处理，不显示是否跑批开关，后端不接受 has_batch=false 绕过跑批校验。",
+        "acceptance": [
+          "需求表单无是否跑批开关。",
+          "客户端传 has_batch=false 时仍按跑批规则校验和保存。"
+        ],
+        "priority": "must",
+        "source": "用户确认按 RADAR 复刻",
+        "counterexample": [
+          "跑批需求可以被保存为无跑批。"
+        ]
+      },
+      {
+        "id": "R-BATCH-3",
+        "statement": "翻数必须选择为有效跑批类型，但跑批时间、涉及系统和验证内容均为选填。",
+        "acceptance": [
+          "三项均空的翻数安排和需求可保存。",
+          "已填写的时间、系统和验证内容仍执行格式、数量与长度校验。"
+        ],
+        "priority": "must",
+        "source": "用户明确确认",
+        "counterexample": [
+          "翻数因时间、系统或验证内容为空而无法提交。"
+        ]
+      },
+      {
+        "id": "R-BATCH-4",
+        "statement": "全量、增量和初始化必须填写跑批时间、至少一个涉及系统和验证内容。",
+        "acceptance": [
+          "分别缺少三个字段时，前端字段旁和后端响应均给出对应错误。"
+        ],
+        "priority": "must",
+        "source": "用户确认的 RADAR 字段矩阵",
+        "counterexample": [
+          "非翻数记录缺少任一后续字段仍保存成功。"
+        ]
+      },
+      {
+        "id": "R-BATCH-5",
+        "statement": "手工新增、编辑和 Excel 导入必须经过同一后端字段矩阵。",
+        "acceptance": [
+          "合法翻数空字段可导入。",
+          "非翻数缺少必填字段时整批导入失败并回滚。"
+        ],
+        "priority": "must",
+        "source": "RDDMP 服务端校验和原子导入规约",
+        "counterexample": [
+          "页面拒绝的数据可以通过导入写入。"
+        ]
+      },
+      {
+        "id": "R-LIST-1",
+        "statement": "日历安排和跑批需求桌面列表必须把测试环境、自然日期、营业日期显示为三个独立列。",
+        "acceptance": [
+          "两个表格均有独立的测试环境、自然日期、营业日期表头。",
+          "测试环境单元格不再包含自然日期。"
+        ],
+        "priority": "must",
+        "source": "用户新增反馈",
+        "counterexample": [
+          "继续使用环境 / 日期组合列。"
+        ]
+      },
+      {
+        "id": "R-LIST-2",
+        "statement": "测试环境、日历安排和跑批需求三个桌面表格的表头和单元格内容必须居中。",
+        "acceptance": [
+          "表头文本、普通文本、标签、复合身份信息和操作按钮组均在各自单元格内居中。",
+          "移动卡片保持原信息层级且页面无横向溢出。"
+        ],
+        "priority": "must",
+        "source": "用户新增反馈与 RDDMP 移动端约束",
+        "counterexample": [
+          "表头居中但复合单元格仍靠左。",
+          "为实现居中而让手机卡片全文居中或产生整页横向滚动。"
+        ]
+      }
+    ],
+    "invariants": [
+      "批处理类型只允许全量、增量、初始化、翻数。",
+      "选填不等于跳过非空值的格式、长度、数量、去空和去重校验。",
+      "租户隔离、RBAC、审计和环境有效性校验保持不变。",
+      "导入任一行失败时整批回滚。"
+    ],
+    "constraints": [
+      "仅修改当前需求 writable_paths。",
+      "不迁移已下线的动态输入项配置。",
+      "不修改数据库结构、公开 API 字段、筛选和导出契约。",
+      "保持 Java 17、Vue 3、Element Plus 和现有模块边界。"
+    ],
+    "non_goals": [
+      "新增跑批类型。",
+      "连接外部系统目录。",
+      "改变跑批需求评审或同步日历安排规则。",
+      "新增数据库迁移或公共组件。"
+    ],
+    "selected_approach": {
+      "name": "后端单一规则入口加前端联动反馈",
+      "reason": "用后端单一校验入口覆盖两个表单、直接 API 和导入，并用模块局部表格规则完成拆列和居中，避免校验漂移且不修改公共组件。",
+      "alternatives": [
+        {
+          "name": "仅修改前端",
+          "rejected_because": "接口和导入可绕过，数据规则不一致。"
+        },
+        {
+          "name": "迁移 RADAR 动态字段配置",
+          "rejected_because": "超出范围且与 RDDMP 已下线该能力的规约冲突。"
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "BusinessDayService 跑批字段校验",
+          "BusinessDayWorkbookService 导入记录",
+          "日历安排表单和列表",
+          "跑批需求表单和列表",
+          "测试环境列表",
+          "营业日模块局部样式",
+          "目标模块测试"
+        ],
+        "outside": [
+          "数据库迁移",
+          "权限和审计模型",
+          "公共 UI 组件",
+          "外部系统目录"
+        ]
+      },
+      "components": [
+        {
+          "name": "BusinessDayService",
+          "responsibility": "作为手工与导入保存的最终字段规则边界。",
+          "depends_on": [
+            "现有环境、用户和审计能力"
+          ]
+        },
+        {
+          "name": "CalendarScheduleList",
+          "responsibility": "按是否跑批和类型展示即时字段校验。",
+          "depends_on": [
+            "现有营业日 API"
+          ]
+        },
+        {
+          "name": "BatchRequirementList",
+          "responsibility": "固定跑批并按类型展示即时字段校验。",
+          "depends_on": [
+            "现有营业日 API和用户目录"
+          ]
+        },
+        {
+          "name": "Business day desktop tables",
+          "responsibility": "拆分环境与日期列，并在模块范围统一表头和单元格居中。",
+          "depends_on": [
+            "现有 UiDataTable 和 Element Plus 表格"
+          ]
+        },
+        {
+          "name": "BusinessDayWorkbookService",
+          "responsibility": "解析输入并交给 BusinessDayService 统一校验。",
+          "depends_on": [
+            "Apache POI"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "schedule/requirement write payload",
+          "producer": "营业日两个表单或 XLSX 解析",
+          "consumers": [
+            "BusinessDayService"
+          ],
+          "contract": "字段保持现有名称；跑批需求的 has_batch 由服务端强制为 true。"
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "用户或 XLSX 提交跑批字段",
+          "transitions": [
+            "规范化跑批标志和类型",
+            "应用翻数豁免或非翻数必填矩阵",
+            "验证非空值格式",
+            "事务保存和审计"
+          ],
+          "output": "一致的安排或需求记录，或明确字段错误"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "非翻数缺少时间、系统或验证内容",
+        "behavior": "拒绝保存并返回字段对应错误。",
+        "recovery": "保留表单内容，用户补齐后重试。"
+      },
+      {
+        "condition": "翻数的选填字段存在非法非空值",
+        "behavior": "按既有格式或长度规则拒绝。",
+        "recovery": "修正或清空该字段。"
+      },
+      {
+        "condition": "导入中任一行不满足矩阵",
+        "behavior": "整批回滚并报告错误。",
+        "recovery": "修正工作簿后重新导入。"
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "后端强制规则，前端显隐不作为信任边界。"
+      ],
+      "performance": [
+        "仅常量级字段判断，无额外查询。"
+      ],
+      "compatibility": [
+        "API 字段和数据库结构不变；既有合法记录继续可读。"
+      ],
+      "operations": [
+        "沿用现有业务审计和错误模型，无新配置。"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "R-BATCH-1",
+          "R-BATCH-2",
+          "R-BATCH-3",
+          "R-BATCH-4"
+        ],
+        "signal": "服务端正常和负向场景",
+        "method": "JDK 17 目标模块测试及完整 Maven 测试"
+      },
+      {
+        "requirement_ids": [
+          "R-BATCH-3",
+          "R-BATCH-4",
+          "R-BATCH-5"
+        ],
+        "signal": "导入与页面规则一致",
+        "method": "工作簿专项测试与真实 API 导入"
+      },
+      {
+        "requirement_ids": [
+          "R-BATCH-1",
+          "R-BATCH-2",
+          "R-BATCH-3",
+          "R-BATCH-4"
+        ],
+        "signal": "表单联动和错误状态可用",
+        "method": "Vue 构建及桌面/三个手机视口真实浏览器验收"
+      },
+      {
+        "requirement_ids": [
+          "R-LIST-1",
+          "R-LIST-2"
+        ],
+        "signal": "独立表头、表格居中和移动卡片不回归",
+        "method": "真实浏览器 DOM、计算样式及桌面/三个手机视口截图验收"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "用户所说后续字段包含跑批时间、涉及系统和验证内容。",
+        "basis": "用户先举时间、系统等内容，后确认完整字段矩阵。",
+        "falsifier": "用户复核时明确某一字段在非翻数场景也应选填。"
+      }
+    ],
+    "unknowns": [],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "跑批需求固定为跑批并移除开关。",
+        "reason": "复刻 RADAR。",
+        "source": "用户确认"
+      },
+      {
+        "id": "D2",
+        "decision": "翻数豁免时间、系统和验证内容必填。",
+        "reason": "用户明确要求。",
+        "source": "用户确认"
+      },
+      {
+        "id": "D3",
+        "decision": "其他三种类型的后续字段全部必填。",
+        "reason": "用户确认推荐字段矩阵。",
+        "source": "用户确认"
+      },
+      {
+        "id": "D4",
+        "decision": "两个业务列表把测试环境、自然日期和营业日期拆成独立列。",
+        "reason": "提升逐列扫描和比较能力。",
+        "source": "用户新增反馈"
+      },
+      {
+        "id": "D5",
+        "decision": "三个桌面表格统一居中，但移动卡片保持原信息层级。",
+        "reason": "满足用户对列表的对齐要求，同时遵守手机可读性和无溢出约束。",
+        "source": "用户新增反馈"
+      }
+    ],
+    "risks": [
+      {
+        "risk": "前端、API 与导入规则再次漂移。",
+        "impact": "不同入口产生不一致记录。",
+        "mitigation": "后端单一规则入口并覆盖每个入口的回归测试。"
+      },
+      {
+        "risk": "编辑历史非翻数缺字段记录时被新规则阻止。",
+        "impact": "用户必须补齐后才能保存。",
+        "mitigation": "历史记录保持可读，仅在再次保存时明确提示补齐；不批量回填。"
+      },
+      {
+        "risk": "居中后的长验证内容和多系统标签可读性下降。",
+        "impact": "桌面列表扫描变慢或列宽增大。",
+        "mitigation": "保持现有最小列宽、换行和省略策略，并验证稀疏、密集及长文本样本。"
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户确认设计修订 2 并明确要求开始实施。",
+      "confirmed_at": "2026-08-21T01:20:00+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/requirements/REQ-20260821-037-business-day-management/requirement.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "仅修改当前需求 writable_paths；RADAR 和公共 UI 组件只读。",
+      "不新增依赖、数据库迁移、公共接口、跑批类型或动态输入项配置。",
+      "保持租户隔离、RBAC、审计、环境校验、用户目录和原子导入。",
+      "桌面表格居中不得改变移动卡片信息层级或引入页面级横向滚动。",
+      "使用项目要求的 JDK 17 执行 Maven 检查。"
+    ],
+    "file_map": [
+      {
+        "path": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/BusinessDayService.java",
+        "status": "existing",
+        "responsibility": "统一跑批字段规范化和保存校验",
+        "evidence": "当前手工安排、需求和导入最终均调用该服务"
+      },
+      {
+        "path": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/BusinessDayServiceTest.java",
+        "status": "existing",
+        "responsibility": "跑批字段矩阵正常和负向测试",
+        "evidence": "现有服务输入边界测试"
+      },
+      {
+        "path": "web/src/modules/test-management/business-day/CalendarScheduleList.vue",
+        "status": "existing",
+        "responsibility": "日历表单联动和独立列",
+        "evidence": "当前日历安排表单与表格"
+      },
+      {
+        "path": "web/src/modules/test-management/business-day/BatchRequirementList.vue",
+        "status": "existing",
+        "responsibility": "固定跑批需求表单联动和独立列",
+        "evidence": "当前跑批需求表单与表格"
+      },
+      {
+        "path": "web/src/modules/test-management/business-day/TestEnvironmentList.vue",
+        "status": "existing",
+        "responsibility": "测试环境列表居中回归范围",
+        "evidence": "当前测试环境表格"
+      },
+      {
+        "path": "web/src/modules/test-management/business-day/business-day.css",
+        "status": "existing",
+        "responsibility": "模块局部桌面列表居中和移动边界",
+        "evidence": "当前营业日模块样式"
+      },
+      {
+        "path": ".ai-control/requirements/req-20260821-037-business-day-management/execution-T5.json",
+        "status": "candidate-new",
+        "responsibility": "后端实施证据",
+        "evidence": "RDDMP 当前需求账本规范"
+      },
+      {
+        "path": ".ai-control/requirements/req-20260821-037-business-day-management/execution-T6.json",
+        "status": "candidate-new",
+        "responsibility": "前端和集成实施证据",
+        "evidence": "RDDMP 当前需求账本规范"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T5",
+        "goal": "统一后端手工与导入的 RADAR 跑批字段矩阵。",
+        "requirement_ids": [
+          "R-BATCH-1",
+          "R-BATCH-2",
+          "R-BATCH-3",
+          "R-BATCH-4",
+          "R-BATCH-5"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "BusinessDayService 是日历手工保存、需求保存和 importSchedules 的共同最终入口。",
+          "当前 time() 对所有跑批类型强制非空，systemsJson() 不强制非空。",
+          "tm_calendar_schedule 和 tm_batch_requirement 现有列允许本次规则所需的空值，无迁移需求。"
+        ],
+        "files": {
+          "create": [
+            ".ai-control/requirements/req-20260821-037-business-day-management/execution-T5.json"
+          ],
+          "modify": [
+            "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/BusinessDayService.java"
+          ],
+          "test": [
+            "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/BusinessDayServiceTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "saveSchedule/updateSchedule/importSchedules/createRequirement/updateRequirement 现有 Map 请求契约"
+          ],
+          "produces": [
+            "API 字段不变；需求固定跑批；翻数后三项选填；其他类型后三项必填的服务端错误语义"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T5-S1",
+            "action": "新增翻数成功、非法非空值、非翻数三类缺失、需求 false 绕过和导入复用失败测试。",
+            "command": null,
+            "expected": "测试输入和断言覆盖 R-BATCH-1 至 R-BATCH-5。",
+            "evidence": "BusinessDayServiceTest diff"
+          },
+          {
+            "id": "T5-S2",
+            "action": "运行新增测试取得失败基线。",
+            "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am -Dtest=BusinessDayServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+            "expected": "新增规则用例失败且失败来自当前校验差异。",
+            "evidence": "退出码与关键失败断言"
+          },
+          {
+            "id": "T5-S3",
+            "action": "实现单一跑批字段规范化入口并接入安排、需求和导入。",
+            "command": null,
+            "expected": "无跑批清空；需求强制跑批；翻数选填；其他类型必填；非空值继续校验。",
+            "evidence": "BusinessDayService diff"
+          },
+          {
+            "id": "T5-S4",
+            "action": "重跑目标模块测试和格式检查。",
+            "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am test && git diff --check",
+            "expected": "目标模块全部通过且 diff check 退出码 0。",
+            "evidence": "测试总数、退出码"
+          },
+          {
+            "id": "T5-S5",
+            "action": "记录后端执行证据。",
+            "command": null,
+            "expected": "execution-T5.json 只记录实际结果和未决项。",
+            "evidence": "execution-T5.json"
+          }
+        ],
+        "acceptance_checks": [
+          "翻数时间、系统、验证内容全空可保存。",
+          "翻数非空非法时间或超限内容仍拒绝。",
+          "全量、增量、初始化分别缺少时间、系统或验证内容时拒绝。",
+          "跑批需求传 has_batch=false 仍按跑批校验和保存。",
+          "importSchedules 复用同一矩阵且失败保持事务回滚语义。"
+        ],
+        "risks": [
+          "历史非翻数缺字段记录再次保存时需要补齐。"
+        ],
+        "rollback": "回退 BusinessDayService.java、BusinessDayServiceTest.java 和 execution-T5.json；无数据库补偿。",
+        "stop_conditions": [
+          "需要修改 V52、公共错误模型、公共导入组件或 API 字段。"
+        ],
+        "escalation_conditions": [
+          "数据库约束阻止合法翻数空字段，或手工与导入无法共用服务入口。"
+        ]
+      },
+      {
+        "id": "T6",
+        "goal": "交付前端跑批联动、列表拆列和三个桌面表格统一居中。",
+        "requirement_ids": [
+          "R-BATCH-1",
+          "R-BATCH-2",
+          "R-BATCH-3",
+          "R-BATCH-4",
+          "R-LIST-1",
+          "R-LIST-2"
+        ],
+        "prerequisites": [
+          "T5"
+        ],
+        "input_facts": [
+          "当前两个表单都把跑批时间设为所有跑批类型必填。",
+          "当前跑批需求显示是否跑批开关。",
+          "日历安排与跑批需求各有环境/日期组合列。",
+          "三个桌面表格均使用业务模块 class business-day-table，移动端在 760px 以下切换卡片。"
+        ],
+        "files": {
+          "create": [
+            ".ai-control/requirements/req-20260821-037-business-day-management/execution-T6.json"
+          ],
+          "modify": [
+            "web/src/modules/test-management/business-day/CalendarScheduleList.vue",
+            "web/src/modules/test-management/business-day/BatchRequirementList.vue",
+            "web/src/modules/test-management/business-day/TestEnvironmentList.vue",
+            "web/src/modules/test-management/business-day/business-day.css"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [
+            "T5 后端字段矩阵和现有营业日 API"
+          ],
+          "produces": [
+            "需求无跑批开关；两个表格三个独立列；三个桌面表格模块局部居中"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T6-S1",
+            "action": "记录当前构建和浏览器 DOM 基线。",
+            "command": "npm --prefix web run build",
+            "expected": "构建通过；浏览器仍可观察组合列和需求跑批开关。",
+            "evidence": "构建退出码与 DOM 基线"
+          },
+          {
+            "id": "T6-S2",
+            "action": "实现两个表单的翻数联动、需求固定跑批和无跑批清理。",
+            "command": null,
+            "expected": "翻数清除必填错误但保留值；其他类型提交时三项必填；需求无开关。",
+            "evidence": "两个 Vue 文件 diff"
+          },
+          {
+            "id": "T6-S3",
+            "action": "拆分两个列表的环境、自然日期、营业日期列并增加模块局部居中规则。",
+            "command": null,
+            "expected": "三个列表表头和复合单元格居中；移动卡片规则不变。",
+            "evidence": "三个 Vue 文件和 CSS diff"
+          },
+          {
+            "id": "T6-S4",
+            "action": "运行前端构建和格式检查。",
+            "command": "npm --prefix web run build && git diff --check",
+            "expected": "vue-tsc/Vite 成功且 diff check 退出码 0。",
+            "evidence": "构建输出和退出码"
+          },
+          {
+            "id": "T6-S5",
+            "action": "真实浏览器验收三个列表、两个表单、四个视口和两种主题。",
+            "command": null,
+            "expected": "字段联动、独立列、居中、控制台和无横向溢出全部通过。",
+            "evidence": "DOM/计算样式、视口测量、截图和控制台日志"
+          },
+          {
+            "id": "T6-S6",
+            "action": "记录前端和集成执行证据。",
+            "command": null,
+            "expected": "execution-T6.json 记录实际结果和未决项。",
+            "evidence": "execution-T6.json"
+          }
+        ],
+        "acceptance_checks": [
+          "日历安排和跑批需求均有测试环境、自然日期、营业日期独立表头。",
+          "测试环境、日历安排、跑批需求桌面表头和所有单元格内容居中。",
+          "需求无是否跑批开关并始终提交跑批。",
+          "翻数后三项为空可提交，切换类型时错误状态正确。",
+          "375x812、390x844、430x932 与桌面无页面级横向溢出，移动卡片不回归。",
+          "浅色、深色主题可读，控制台 warning/error 为空。"
+        ],
+        "risks": [
+          "居中长验证内容和多系统标签可能降低桌面可读性。"
+        ],
+        "rollback": "回退四个前端文件和 execution-T6.json；T5 后端规则可独立保留。",
+        "stop_conditions": [
+          "需要修改公共 UiDataTable、应用壳层或使用整页横向滚动。"
+        ],
+        "escalation_conditions": [
+          "用户要求手机卡片全文居中，或固定操作列在目标桌面视口产生无法局部解决的遮挡。"
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T5",
+        "to": "T6",
+        "reason": "前端错误语义以已验证的服务规则为契约"
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T5"
+      ],
+      [
+        "T6"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T5"
+        ],
+        "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am test",
+        "expected": "目标模块及依赖测试 0 失败"
+      },
+      {
+        "after_tasks": [
+          "T5",
+          "T6"
+        ],
+        "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn test",
+        "expected": "完整 Maven reactor BUILD SUCCESS"
+      },
+      {
+        "after_tasks": [
+          "T6"
+        ],
+        "command": "npm --prefix web run build",
+        "expected": "Vue 类型检查和 Vite 构建成功"
+      },
+      {
+        "after_tasks": [
+          "T5",
+          "T6"
+        ],
+        "command": "node scripts/check-governance.mjs && node scripts/check-module-boundaries.mjs && node scripts/check-flyway-migrations.mjs",
+        "expected": "专项治理、模块边界和 Flyway 检查通过"
+      },
+      {
+        "after_tasks": [
+          "T5",
+          "T6"
+        ],
+        "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260821-037-business-day-management/codex-task-scope.yaml --base HEAD --head HEAD --working-tree && git diff --check",
+        "expected": "范围和空白检查通过"
+      },
+      {
+        "after_tasks": [
+          "T6"
+        ],
+        "command": "真实浏览器验收",
+        "expected": "两个表单、三个列表、四个视口、两种主题和控制台信号通过"
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R-BATCH-1",
+        "task_ids": [
+          "T5",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R-BATCH-2",
+        "task_ids": [
+          "T5",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R-BATCH-3",
+        "task_ids": [
+          "T5",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R-BATCH-4",
+        "task_ids": [
+          "T5",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R-BATCH-5",
+        "task_ids": [
+          "T5"
+        ]
+      },
+      {
+        "requirement_id": "R-LIST-1",
+        "task_ids": [
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R-LIST-2",
+        "task_ids": [
+          "T6"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户明确回复“确认计划”，批准实施计划修订 1。",
+      "confirmed_at": "2026-08-21T01:23:00+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "BusinessDayService 跑批字段保存边界",
+      "两个营业日表单",
+      "三个营业日桌面列表",
+      "日历安排 XLSX 导入链路"
+    ],
+    "state_variable_candidates": [
+      "has_batch",
+      "batch_type",
+      "batch_time_required",
+      "systems_required",
+      "validation_required",
+      "requirement_fixed_batch",
+      "list_column_structure",
+      "table_alignment"
+    ],
+    "interface_candidates": [
+      "schedule/requirement write payload",
+      "BusinessDayService save/import entry points",
+      "UiDataTable slot columns"
+    ],
+    "sensor_candidates": [
+      "JUnit 服务测试",
+      "Vue production build",
+      "真实 API",
+      "浏览器 DOM 和 computed style",
+      "视口 scrollWidth",
+      "console logs"
+    ],
+    "actuator_candidates": [
+      "服务字段规范化入口",
+      "表单 FormRules",
+      "表格列模板",
+      "business-day module CSS"
+    ],
+    "disturbance_candidates": [
+      "历史非翻数缺字段记录",
+      "Element Plus 内部样式优先级",
+      "当前未提交需求改动",
+      "本机默认 JDK 26"
+    ],
+    "delay_candidates": [
+      "Vite HMR",
+      "后端重新打包和重启",
+      "浏览器异步表单校验"
+    ],
+    "assumptions": [
+      {
+        "text": "现有数据库列允许翻数后三项为空。",
+        "basis": "V52 列定义和当前 nullable 使用",
+        "falsifier": "目标模块测试或本地数据库写入报告非空约束"
+      },
+      {
+        "text": "business-day-table 模块 class 足以限定三个桌面表格居中。",
+        "basis": "三个列表当前均使用该 class",
+        "falsifier": "浏览器计算样式被 Element Plus 更高优先级覆盖"
+      },
+      {
+        "text": "移动卡片不适用桌面表格居中要求。",
+        "basis": "用户要求列表表头居中且移动卡片没有表头",
+        "falsifier": "用户明确要求手机卡片也全文居中"
+      }
+    ]
+  }
+}

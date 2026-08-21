@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260821-037-business-day-management",
+  "status": "converged",
+  "recorded_at": "2026-08-21T10:20:00+08:00",
+  "requirements": [
+    {"id": "R1", "status": "passed", "evidence": "Sidebar 单入口、四个顶部视图、URL 深链接，以及 RADAR 风格 7 列/42 格月历和详情弹窗均通过真实浏览器验收。"},
+    {"id": "R2", "status": "passed", "evidence": "环境、安排、需求、评审和月历数据通过真实 API 持久化闭环验证。"},
+    {"id": "R3", "status": "passed", "evidence": "RADAR 8 列模板、两行示例、Excel/文本日期兼容、旧模板别名，以及用户目录、权限、引用保护与审计均有自动化或运行时证据。"},
+    {"id": "R4", "status": "passed", "evidence": "固定 42 格月历、环境筛选、RADAR 同结构详情、RDDMP 用户提出人、手工系统和移动端两列无溢出均通过验收。"}
+  ],
+  "verification": {
+    "maven_tests": "passed under required JDK 17; full reactor including 6 test-management tests",
+    "frontend_build": "passed",
+    "flyway": "passed; V52 applied",
+    "governance": "passed",
+    "module_boundaries": "passed",
+    "task_scope": "passed",
+    "api_runtime": "passed",
+    "browser_desktop_and_mobile": "passed",
+    "git_diff_check": "passed"
+  },
+  "reopened_feedback": "closed; T3-T4 execution and observation evidence recorded",
+  "residual_risks": [
+    "全仓 check-all-governance 仍会报告若干早期需求遗留的 AI Control 格式/topic 不一致；本需求目录的 JSON、范围、构建和专项治理检查均通过。"
+  ],
+  "rollback": "回退本需求分支变更；若 V52 已在目标环境应用，追加补偿迁移停用能力并恢复菜单，不修改已发布迁移。"
+}

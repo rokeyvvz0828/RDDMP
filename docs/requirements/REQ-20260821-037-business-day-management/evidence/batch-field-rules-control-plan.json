@@ -1,0 +1,92 @@
+{
+  "baseline_revision": "batch-field-rules-baseline-1",
+  "model_revision": "batch-field-rules-model-1",
+  "tasks": [
+    {
+      "id": "T5",
+      "goal": "后端对日历安排、跑批需求和工作簿导入统一执行已确认的跑批字段矩阵。",
+      "requirement_ids": ["R-BATCH-1", "R-BATCH-2", "R-BATCH-3", "R-BATCH-4", "R-BATCH-5"],
+      "prerequisites": [],
+      "input_facts": [
+        "BusinessDayService.saveSchedule 是日历安排手工与导入共同写入入口。",
+        "BusinessDayService.persistRequirement 当前可接受 has_batch=false。",
+        "数据库相关跑批字段允许 null，无需迁移。"
+      ],
+      "write_scope": [
+        "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/BusinessDayService.java",
+        "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/BusinessDayServiceTest.java"
+      ],
+      "invariants": ["公开 API 字段不变。", "租户、权限、审计、环境校验和导入事务不变。", "非空选填值仍执行既有限额与格式校验。"],
+      "interface_contracts": ["跑批需求在服务端固定 has_batch=true。", "saveSchedule 同时服务手工与导入。"],
+      "non_goals": ["不修改工作簿表头。", "不增加数据库迁移。", "不改变评审或同步规则。"],
+      "action_bounds": ["只集中规范化和校验跑批字段并补目标服务测试。", "不修改控制器、仓储结构或公共错误模型。"],
+      "acceptance_checks": [
+        "关闭日历跑批时四字段清空。",
+        "翻数允许三个后续字段为空但拒绝非法非空值。",
+        "其他类型逐项拒绝缺少时间、系统或验证内容。",
+        "跑批需求传 has_batch=false 仍按跑批校验。",
+        "JDK 17 目标模块测试和完整 Maven 测试通过。"
+      ],
+      "evidence_required": ["T5 实际 diff", "失败先行与修复后目标测试退出码", "完整 Maven 测试退出码"],
+      "rollback": "仅恢复 T5 两个文件到本任务开始前内容，不触碰既有未提交修改。",
+      "stop_conditions": ["发现工作簿存在绕过 BusinessDayService 的独立写库路径。", "需要数据库迁移才能表达合法空值。"],
+      "escalation_conditions": ["必须修改公开 API 或事务边界。", "现有历史数据要求与用户确认矩阵冲突。"]
+    },
+    {
+      "id": "T6",
+      "goal": "前端表单即时反映后端字段矩阵，并完成两个列表拆列和三个桌面列表居中。",
+      "requirement_ids": ["R-BATCH-1", "R-BATCH-2", "R-BATCH-3", "R-BATCH-4", "R-LIST-1", "R-LIST-2"],
+      "prerequisites": ["T5"],
+      "input_facts": [
+        "两个表单当前把跑批时间固定为必填且编辑空时间会回填 22:00。",
+        "跑批需求当前仍显示是否跑批开关。",
+        "两个业务表格当前组合显示环境与自然日期。",
+        "760px 以下桌面表格隐藏并使用现有卡片布局。"
+      ],
+      "write_scope": [
+        "web/src/modules/test-management/business-day/CalendarScheduleList.vue",
+        "web/src/modules/test-management/business-day/BatchRequirementList.vue",
+        "web/src/modules/test-management/business-day/TestEnvironmentList.vue",
+        "web/src/modules/test-management/business-day/business-day.css"
+      ],
+      "invariants": ["切换类型不清空已填后续字段。", "移动卡片保持左对齐信息层级且无横向溢出。", "筛选、分页、导出与操作权限不变。"],
+      "interface_contracts": ["提交字段名与后端既有 API 保持一致。", "跑批需求提交 has_batch=true。"],
+      "non_goals": ["不修改 UiDataTable 公共组件。", "不重做概览日历。", "不改变移动卡片视觉结构。"],
+      "action_bounds": ["仅修改两个表单的动态规则和四个营业日模块文件的局部呈现。", "通过模块类选择器限制表格居中作用域。"],
+      "acceptance_checks": [
+        "翻数三项为空可提交，切回其他类型后显示三个对应必填错误。",
+        "日历关闭跑批提交时清空四字段。",
+        "跑批需求页面不再出现是否跑批开关。",
+        "两个桌面表格存在三个独立日期环境列。",
+        "三个桌面表格表头、普通单元格、标签和操作组计算样式均居中。",
+        "Vue 生产构建通过，桌面及三个手机视口无控制台错误或页面横向溢出。"
+      ],
+      "evidence_required": ["T6 实际 diff", "Vue 构建退出码", "真实浏览器 DOM、计算样式、控制台和多视口截图证据"],
+      "rollback": "仅恢复 T6 四个文件到本任务开始前内容，不触碰既有未提交修改。",
+      "stop_conditions": ["模块局部 CSS 无法覆盖表格而必须修改公共组件。", "前端 API 字段与建模事实不一致。"],
+      "escalation_conditions": ["必须改变公共组件或全局样式。", "移动卡片必须重构才能避免溢出。"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T5", "to": "T6", "reason": "前端即时规则必须消费稳定的后端字段矩阵契约。"}
+  ],
+  "parallel_groups": [["T5"], ["T6"]],
+  "integration_points": [
+    {"after_tasks": ["T5"], "checks": ["JDK 17 目标模块测试", "完整 Maven 测试"]},
+    {"after_tasks": ["T5", "T6"], "checks": ["Vue 生产构建", "重启后端并执行真实浏览器桌面及手机验收"]}
+  ],
+  "sampling_plan": [
+    {"label": "T5 完成采样", "trigger": "后端实现与测试完成", "observer": "主 Agent 独立执行测试", "sensors": ["S-SERVICE", "S-WORKBOOK", "S-BUILD"], "requirement_ids": ["R-BATCH-1", "R-BATCH-2", "R-BATCH-3", "R-BATCH-4", "R-BATCH-5"]},
+    {"label": "T6 集成采样", "trigger": "前端实现与构建完成且服务已重启", "observer": "主 Agent 真实浏览器验收", "sensors": ["S-BUILD", "S-BROWSER"], "requirement_ids": ["R-BATCH-1", "R-BATCH-2", "R-BATCH-3", "R-BATCH-4", "R-LIST-1", "R-LIST-2"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R-BATCH-1", "task_ids": ["T5", "T6"], "sensor_ids": ["S-SERVICE", "S-BROWSER"]},
+    {"requirement_id": "R-BATCH-2", "task_ids": ["T5", "T6"], "sensor_ids": ["S-SERVICE", "S-BROWSER"]},
+    {"requirement_id": "R-BATCH-3", "task_ids": ["T5", "T6"], "sensor_ids": ["S-SERVICE", "S-WORKBOOK", "S-BROWSER"]},
+    {"requirement_id": "R-BATCH-4", "task_ids": ["T5", "T6"], "sensor_ids": ["S-SERVICE", "S-WORKBOOK", "S-BROWSER"]},
+    {"requirement_id": "R-BATCH-5", "task_ids": ["T5"], "sensor_ids": ["S-SERVICE", "S-WORKBOOK"]},
+    {"requirement_id": "R-LIST-1", "task_ids": ["T6"], "sensor_ids": ["S-BROWSER"]},
+    {"requirement_id": "R-LIST-2", "task_ids": ["T6"], "sensor_ids": ["S-BROWSER"]}
+  ],
+  "plan_status": "ready"
+}
