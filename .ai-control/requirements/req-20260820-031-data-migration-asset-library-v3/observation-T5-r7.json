@@ -1,0 +1,33 @@
+{
+  "sample_label": "local admin login fixture recovery",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R3",
+      "sensor": "S4 authenticated login and identity probe",
+      "result": "pass",
+      "raw_evidence": "After resetting only the local admin test hash, admin/password login returned code=0, /api/auth/me returned HTTP 200, and /api/auth/routes returned HTTP 200",
+      "limitation": ["This validates local fixture credentials, not production identity configuration"]
+    },
+    {
+      "requirement_id": "R1",
+      "sensor": "S4 dynamic route probe",
+      "result": "pass",
+      "raw_evidence": "Authenticated route response contains the 数迁资产内容管理 root menu; frontend SPA route remains HTTP 200",
+      "limitation": ["Menu count includes other modules in the shared local database"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "source": "Local sys_user admin password hash did not match the browser's development credential",
+      "effect": "Login returned 401 until the local admin hash was reset to password; no application code or production configuration changed",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "coverage_gaps": ["The browser tab must retry login with admin/password after the local fixture reset"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

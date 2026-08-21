@@ -9,6 +9,7 @@ import WorkflowView from '../views/WorkflowView.vue'
 import AiView from '../views/AiView.vue'
 import ComponentShowcaseView from '../views/ComponentShowcaseView.vue'
 import DeliveryShowcaseModule from '../modules/delivery-showcase/DeliveryShowcaseModule.vue'
+import DataMigrationModule from '../modules/data-migration/DataMigrationModule.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,6 +30,7 @@ const router = createRouter({
         { path: 'ai/:section', name: 'ai', component: AiView, props: true },
         { path: 'components', name: 'components', component: ComponentShowcaseView, meta: { title: '组件示例' } },
         { path: 'delivery-showcase', name: 'delivery-showcase', component: DeliveryShowcaseModule, meta: { title: '交付示范中心' } }
+        ,{ path: 'data-migration/:group?/:section?', name: 'data-migration', component: DataMigrationModule, props: true, meta: { title: '数据迁移资产库' } }
       ]
     },
     { path: '/:pathMatch(.*)*', redirect: '/dashboard' }

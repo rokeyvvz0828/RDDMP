@@ -105,13 +105,24 @@
       "codex_default_access": "read_write",
       "risk": "high"
     },
+    "business/data-migration": {
+      "type": "business",
+      "description": "数据迁移资产库 V3：项目、组件、文件资产、结构化资产、Excel 与看板",
+      "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
+      "paths": ["server/src/modules/data-migration/**", "web/src/api/data-migration.ts", "web/src/modules/data-migration/**"],
+      "public_contracts": ["web/src/api/data-migration.ts"],
+      "allowed_dependencies": ["shared/common", "platform/infrastructure", "platform/security"],
+      "maven": {"artifact": "ccb-data-migration", "pom": "server/src/modules/data-migration/pom.xml", "java_packages": ["com.ccb.datamigration"], "public_packages": []},
+      "codex_default_access": "read_write",
+      "risk": "high"
+    },
     "platform/boot": {
       "type": "composition",
       "description": "Spring Boot 启动、模块装配、统一 Web 与运行观测",
       "owners": {"primary": "rokeyvvz0828", "backup": "rokeyvvz0828", "approvers": ["rokeyvvz0828"]},
       "paths": ["server/src/platform/boot/**", "pom.xml", "docker-compose.yml", ".env.example"],
       "public_contracts": ["server/src/platform/boot/src/main/resources/application.yml"],
-      "allowed_dependencies": ["shared/common", "platform/infrastructure", "platform/file-preview", "platform/security", "platform/system", "platform/workflow", "business/ai"],
+      "allowed_dependencies": ["shared/common", "platform/infrastructure", "platform/file-preview", "platform/security", "platform/system", "platform/workflow", "business/ai", "business/data-migration"],
       "maven": {"artifact": "ccb-boot", "pom": "server/src/platform/boot/pom.xml", "java_packages": ["com.ccb.boot"], "public_packages": []},
       "codex_default_access": "read_only",
       "risk": "high"
