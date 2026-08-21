@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "task_id": "T7",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "V37__seed_architecture_subsystem_catalog.sql", "purpose": "初始化三菜单、八权限、超级管理员授权和六类参数"},
+    {"path_or_resource": "ArchitectureCatalogMigrationMySqlTest", "purpose": "测量 V36 到 V37 增量、重复迁移、精确计数和最小授权"}
+  ],
+  "requirements_addressed": ["R6", "R7", "R8", "R10"],
+  "commands": [
+    {"command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureCatalogMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "MySQL 8.4：1/1 通过；V37 执行 1 次，重复执行 0 次"},
+    {"command": "git fetch origin main and collision scans", "exit_code": 0, "salient_output": "origin/main 为 HEAD 祖先且不占用 V35-V37、菜单/权限/参数固定 ID"},
+    {"command": "scope, module boundary, diff and negative SQL scans", "exit_code": 0, "salient_output": "2 files in scope；9 modules passed；无 biz_form 或启停用动作"}
+  ],
+  "local_checks": [
+    {"check": "目录精确性", "result": "pass", "evidence": "600/601/602、6011-6014、6021-6024、360001-360106 均由真实 MySQL 断言", "limitations": []},
+    {"check": "最小授权", "result": "pass", "evidence": "超级管理员获得 3 菜单和 8 动作；测试角色获得 0 项", "limitations": []},
+    {"check": "固定表单范围", "result": "pass", "evidence": "V37 不包含 biz_form 写入，迁移后 biz_form_scope 保持 0", "limitations": []}
+  ],
+  "diff_summary": [
+    "追加 V37 初始租户目录迁移，不修改既有版本脚本",
+    "新增真实 MySQL 的 V36 到 V37 精确计数、授权和重复执行测试"
+  ],
+  "invariants_checked": [
+    {"invariant": "只初始化租户 1 目录", "result": "pass", "evidence": "所有目录 INSERT 显式 tenant_id=1"},
+    {"invariant": "没有 status 动作", "result": "pass", "evidence": "权限仅 read/create/update/delete，负向扫描无 enable/disable/status"},
+    {"invariant": "迁移只追加且可重复启动", "result": "pass", "evidence": "V36->V37 单迁移且再次 migrate 为 0"}
+  ],
+  "disturbances": [
+    {"event": "Flyway 当前声明最高支持 MySQL 8.1", "impact": "MySQL 8.4 输出升级提示，但迁移和断言全部通过"},
+    {"event": "用户已有未跟踪 .dsh/** 与 docs/original/**", "impact": "未读取、未修改、未暂存"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实登录后的动态菜单和权限由 T10 验证", "T8 尚需受控同步虚构架构数据"],
+  "implementation_commit": "81c7c29",
+  "recommended_next": "observe"
+}

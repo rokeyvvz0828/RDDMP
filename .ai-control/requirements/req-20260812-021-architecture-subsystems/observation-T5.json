@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "sample_label": "T5 物理子系统与父子并发独立观察",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {
+      "requirement_id": "R2",
+      "sensor": "S1 service/MockMvc 与 S3 DTO 投影",
+      "result": "pass",
+      "raw_evidence": "物理分页、详情、创建、更新、软删除；事业群可空、团队必填、owner/contact 可空；平铺响应提供团队显示/valid、逻辑标签和实时电话",
+      "limitation": ["浏览器固定表单属于 T9"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1 归一化/唯一和 S5 MySQL 全回归",
+      "result": "pass",
+      "raw_evidence": "code/text/blank 规范化，预检与 DuplicateKey 409；当前物理聚焦 15/15、architecture 全模块 39/39 加新增更新用例通过",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S1 平台公开引用 mock 与 S10 依赖扫描",
+      "result": "pass",
+      "raw_evidence": "组织通过 OrganizationService；用户/参数通过 SystemReferenceQuery；无 internal/JdbcTemplate/platform 私有表访问",
+      "limitation": ["选项 API 属于 T6"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S2 Testcontainers MySQL 强制并发",
+      "result": "pass",
+      "raw_evidence": "物理先锁：create 成功/delete 409/parent active/child active；删除先锁且物理已初检：delete 成功/create 409/parent deleted/no active child；两者 dangling=0",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S3 权限注解、MockMvc 和错误码",
+      "result": "pass",
+      "raw_evidence": "physical list/create/update/delete 四权限精确断言；40400 复用模块 Advice；普通无效父 400、父锁竞争 409",
+      "limitation": ["真实 JWT 角色矩阵由 T10 测量"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S1 成功/失败审计路径与模块回归",
+      "result": "pass",
+      "raw_evidence": "成功审计在物理事务 callback 内；失败在事务退出后 recordFailure；异常数据库正文被安全摘要替换；system 11/11 回归通过",
+      "limitation": ["真实审计表与 trace 由 T10 测量"]
+    },
+    {
+      "requirement_id": "R12",
+      "sensor": "S10 tenant/source scan 与 MockMvc extra-field",
+      "result": "pass",
+      "raw_evidence": "所有 repository 调用传 actor.tenantId；HTTP command 无 tenant；客户端 tenant/status/phone/snapshot 被忽略且响应不含这些内部字段",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R13",
+      "sensor": "S1 快照/nullable 测试与 S5 V36 约束回归",
+      "result": "pass",
+      "raw_evidence": "团队 snapshot 使用服务端当前组织名；活动团队改名展示当前名，停用/删除展示 snapshot/valid=false；事业群、owner、contact 可空；删除不重验历史团队",
+      "limitation": ["真实组织删除后的页面标识由 T10 测量"]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S8 scope/module-boundary/diff",
+      "result": "pass",
+      "raw_evidence": "commit-diff scope 5 files、module-boundaries 9 modules、git diff --check 均退出 0",
+      "limitation": ["working-tree scope 仍受用户未跟踪目录基线噪声影响"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "三组 MySQL/Testcontainers 全套耗时约 2 分 37 秒，但无超时或不稳定信号",
+    "Flyway 对 MySQL 8.4 高于已测试 8.1 的版本提示仍存在，所有真实迁移/并发断言通过",
+    "用户未跟踪目录只影响 working-tree scope，提交差异已隔离"
+  ],
+  "coverage_gaps": [
+    "T6 尚需交付安全 options 和公开 contract",
+    "T7/T8 尚需目录权限参数与 local Mock",
+    "T9/T10 尚需真实前端、JWT/API、审计 SQL 和浏览器 UAT"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

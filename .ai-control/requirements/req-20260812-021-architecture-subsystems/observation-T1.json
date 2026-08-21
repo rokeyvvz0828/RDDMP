@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "sample_label": "T1 模块装配与治理边界独立复验",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {
+      "requirement_id": "R11",
+      "sensor": "S8 Maven reactor",
+      "result": "pass",
+      "raw_evidence": "ccb-architecture 及五个上游模块 BUILD SUCCESS",
+      "limitation": ["使用已校验的主机 Maven 缓存离线执行"]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S8 governance/module-boundaries",
+      "result": "pass",
+      "raw_evidence": "12 governance modules、9 Maven modules；无依赖违规",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S10 scope 与真实 diff",
+      "result": "pass",
+      "raw_evidence": "origin/main...HEAD 共 37 个文件通过当前 scope；提交 9072f5b 仅含 T1 十个文件",
+      "limitation": ["工作树中的 .dsh/、docs/original/ 属于既有未跟踪文件，未纳入提交和范围样本"]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S8 composition 与公开包源码审查",
+      "result": "pass",
+      "raw_evidence": "Boot 单向依赖 business/architecture；system capability 仅有无架构语义 package-info；architecture 公开包为空",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "Maven 网络下载慢；断点续传并校验 SHA-1 后使用同一缓存离线复验"
+  ],
+  "coverage_gaps": [
+    "T2 之前 capability 仍只有包边界，无可调用类型"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

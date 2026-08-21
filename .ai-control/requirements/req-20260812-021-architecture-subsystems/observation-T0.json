@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "sample_label": "T0 准入与计划纠正复验",
+  "task_ids": ["T0"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R11",
+      "sensor": "S8 计划 JSON 顺序断言",
+      "result": "pass",
+      "raw_evidence": "PLAN_ORDER_OK T0 fields-only; T1 full-scope with stop condition",
+      "limitation": ["T1 尚未执行，因此不声称 full scope 已通过"]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S8 development-entry",
+      "result": "fail",
+      "raw_evidence": "Codex plugin list failed: unexpected argument 'list'",
+      "limitation": ["control-engineering Skill 文件存在，但仓库强制脚本仍返回 1"]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "S5 origin/main Flyway 清单",
+      "result": "fail",
+      "raw_evidence": "MISSING=V35__workflow_business_integration.sql,V36__persistent_attachments.sql,V37__release_management.sql",
+      "limitation": ["仅测量已刷新 origin/main，不推断前置需求分支状态"]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R11",
+      "expected": "development-entry 强制检查退出码 0",
+      "observed": "当前 CLI 解析 plugin list 失败",
+      "reproduction": "node scripts/check-development-entry.mjs --require-plugin",
+      "evidence": "退出码 1 与原始错误输出",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "未测试尚未安装的更新 CLI 版本",
+      "causal_hypothesis": "治理脚本与本机可执行 Codex CLI 版本矩阵不兼容",
+      "correction_check": "在相同环境重跑入口脚本并获得退出码 0",
+      "classification": "duplicate"
+    },
+    {
+      "requirement_id": "R11",
+      "expected": "目标主干包含 V35-V37",
+      "observed": "刷新后的 origin/main 缺少三个文件",
+      "reproduction": "列出 origin/main 迁移文件并与三个精确文件名比较",
+      "evidence": "MISSING 输出和退出码 1",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "不覆盖未合并远端分支",
+      "causal_hypothesis": "前置需求尚未合并到 main",
+      "correction_check": "fetch 后三个精确迁移文件存在且版本连续",
+      "classification": "duplicate"
+    }
+  ],
+  "disturbances": [
+    "外部前置需求合入时延",
+    "Windows Codex CLI 多版本 PATH 与治理脚本契约差异"
+  ],
+  "coverage_gaps": [
+    "产品代码未获准开始，因此无产品测试或运行时采样",
+    "V35-V37 合入后的 ID 与 Flyway 连续性须重新采样"
+  ],
+  "error_counts": {"P0": 0, "P1": 2, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

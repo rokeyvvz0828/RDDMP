@@ -1,0 +1,37 @@
+{
+  "feedback_id": "F-0004",
+  "decision": "escalate",
+  "decision_reason": "故障位于已发布 V24；当前 scope 明确只允许新增 V35-V37，直接修改 V24 会破坏 append-only 和既有数据库校验和。",
+  "dynamic_pattern": "external_baseline_failure",
+  "causal_assessment": {
+    "hypothesis": "V24 假定 Flowable Liquibase 元数据表已先于 Flyway 存在，但 V20 只创建事件注册业务表且 Boot 禁用 Flowable schema update",
+    "supporting_evidence": [
+      "V20 无 FLW_EV_DATABASECHANGELOG/LOCK",
+      "V24 首次引用即失败",
+      "application.yml flowable.database-schema-update=false"
+    ],
+    "falsifier": "在未修改历史迁移且不预置外部表的空库中，origin/main V1-V34 可连续执行"
+  },
+  "control_action": {
+    "gain": "zero",
+    "target": "已发布 V24 空库兼容",
+    "write_scope": [],
+    "invariants": [
+      "不修改已发布迁移",
+      "不通过伪造前置表把 T3 描述为通过",
+      "不影响现有 ccb_platform 数据库"
+    ],
+    "impact_limit": "冻结 T3 提交和 T4-T10",
+    "rollback": "无需回滚；T3 候选文件保持未提交",
+    "correction_check": [
+      "空 MySQL 8.4 执行 V1-V34 通过",
+      "现有已迁移数据库 validate 通过",
+      "随后空库和 V35 增量到 V36 通过"
+    ],
+    "route": "correcting"
+  },
+  "resolution": "escalated",
+  "residual_risk": [
+    "任何全局 Flyway callback 或历史文件改动都会影响所有环境，必须独立设计和 Owner 审批"
+  ]
+}

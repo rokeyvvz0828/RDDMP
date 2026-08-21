@@ -1,0 +1,197 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260812-021",
+    "status": "ready",
+    "closure_status": "accepted",
+    "closed_at": "2026-08-15T22:13:16+08:00",
+    "document": "docs/requirements/REQ-20260812-021-architecture-subsystems/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260812-021-architecture-subsystems",
+    "worktree": "C:/Users/missa/source/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/architecture/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/**",
+      "server/src/platform/system/src/test/java/com/ccb/system/capability/**",
+      "server/src/platform/system/src/test/java/com/ccb/system/internal/capability/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+      "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+      "mock/mock-data.json",
+      "web/src/modules/architecture/**",
+      "web/src/router/index.ts",
+      "pom.xml",
+      "server/src/platform/boot/pom.xml",
+      "governance/modules.yaml",
+      "scripts/check-development-entry.mjs",
+      "scripts/check-flyway-migrations.mjs",
+      "scripts/check-repo-skill.mjs",
+      "scripts/check-ai-control-layout.mjs",
+      "docs/architecture/MODULES.md",
+      ".github/CODEOWNERS",
+      "docs/integration/architecture-module-contract.md",
+      "docs/requirements/REQ-20260812-021-architecture-subsystems/**",
+      "docs/engineering-control/designs/2026-08-12-architecture-subsystems-design.md",
+      "docs/engineering-control/plans/2026-08-13-architecture-subsystems-implementation-plan.md",
+      "docs/requirements/REQ-20260814-022-platform-business-integration/requirement.md",
+      "docs/requirements/REQ-20260814-022-platform-business-integration/codex-task-scope.yaml",
+      "docs/engineering-control/designs/2026-08-14-platform-business-integration-design.md",
+      "docs/engineering-control/plans/2026-08-14-platform-business-integration-implementation-plan.md",
+      "docs/requirements/REQ-20260814-021-release-management/codex-task-scope.yaml",
+      "docs/engineering-control/designs/2026-08-14-release-management-module-design.md",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/common/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/service/SystemService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/web/SystemController.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/org/OrganizationService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/org/OrgTreeNode.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/org/OrgUserSummary.java",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/api/http.ts",
+      "web/src/stores/auth.ts",
+      "docs/integration/business-form-metadata-contract.md",
+      "docs/integration/mock-data-contract.md",
+      "docs/integration/frontend-ui-contract.md",
+      "design-h5.md"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**",
+      "server/src/platform/file-preview/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/formmetadata/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      "web/src/views/FormMetadataView.vue",
+      ".ai-control/original/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260812-021",
+    "owner_approved": true,
+    "approval_evidence": "用户于 2026-08-14T15:37:31+08:00 批准实施与最小 platform/system 公开能力变更；随后明确要求修复 development-entry 与迁移前置阻塞。2026-08-15 用户再次批准扩大 scope，建立独立空库迁移基线修复，授权增加精确 Flyway SQL callback 与迁移治理检查修改，但不授权修改 V1-V34。2026-08-15 用户批准把 check-repo-skill.mjs 与 check-ai-control-layout.mjs 加入可写范围，仅修复 Windows CRLF 与当前账本产物识别问题。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "existing system resource APIs and generic /system/:section behavior remain unchanged",
+      "SystemReferenceQuery exposes only tenant-scoped safe user and parameter records and contains no architecture domain types",
+      "SystemOperationAudit preserves existing sys_operation_log writers and nullable trace_id compatibility",
+      "existing OrganizationService remains unchanged and architecture only maps its public records",
+      "platform/system registers com.ccb.system.capability as a public package while implementations remain internal",
+      "existing menu, role, organization, user and parameter management tests pass",
+      "boot assembles all existing modules plus ccb-architecture",
+      "governance and module-boundary checks pass after registering business/architecture"
+      ,"Flyway SQL callback 通过 information_schema 守卫只幂等补齐 V24 所需的两个 Flowable Liquibase 元数据表和锁记录，不进入 flyway_schema_history，不修改 V1-V34 校验和"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql"
+    ],
+    "compatibility_and_rollback": "截至 2026-08-14T16:03:00+08:00，刷新后的 origin/main 最高为 V34，当前实施需求取得连续的 V35-V37；原先仅由未实施需求文档预留的版本顺延。beforeMigrate callback 使用 information_schema 守卫和静态预编译 DDL 幂等补齐 V24 已假定存在的 Flowable Liquibase 元数据表及 ID=1 未锁定记录，不修改历史迁移或业务表，也不写 Flyway 历史；V35 仅增加可空 trace_id 和索引；V36 新增 arch_ 业务表，tenant_id 非空且无默认值；V37 仅初始化菜单、权限、管理员授权和参数，不写 biz_form_*。应用回退保留 callback、迁移和数据；callback 只有在后续替代机制保证所有空库都能越过 V24 后才可移除。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "architecture-module", "command": "mvn -pl :ccb-architecture -am test"},
+    {"name": "system-capability-regression", "command": "mvn -pl :ccb-system -am test"},
+    {"name": "infrastructure-migration-and-mock", "command": "mvn -pl :ccb-infrastructure -am test"},
+    {"name": "reactor-and-boot", "command": "mvn test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260812-021-architecture-subsystems/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "module-boundaries", "command": "node scripts/check-module-boundaries.mjs"},
+    {"name": "flyway", "command": "node scripts/check-flyway-migrations.mjs"},
+    {"name": "diff", "command": "git diff --check"},
+    {
+      "name": "api",
+      "type": "manual",
+      "procedure": "在 MockMvc 与真实 MySQL/API 环境以管理员、只读、无权限和 tenant 2 上下文执行两类资源 CRUD、分页筛选和带 logical-subsystem/physical-subsystem 上下文的选项接口；断言 ApiResponse/PageResult 和 OrganizationOption/UserOption/ParameterOption/LogicalSubsystemOption exact-key、camelCase、显式 phone null；验证负责团队创建必填、服务端快照、组织失效历史可读和编辑必须重选；验证客户端 tenant/status/phone/snapshot 字段不能改变持久化；验证普通无效逻辑引用 400、通过活动初检后并发删除 409、资源不存在 40400、401/403/409 不被模块 Advice 改写。",
+      "evidence": "保存脱敏 HTTP 请求/响应、数据库结果、组织失效状态和同一 trace ID 操作日志证据"
+    },
+    {
+      "name": "permission",
+      "type": "manual",
+      "procedure": "验证八项动作权限、401、403、认证 tenantId 注入、跨租户引用拒绝和选项最小字段；逻辑/物理资源上下文分别只接受对应 list 权限，不接受客户端权限码也不以两项权限 OR 放行；业务用户无需 system 用户或参数管理权限。",
+      "evidence": "保存管理员、只读、无权限和 tenant 2 的脱敏授权矩阵与响应结果"
+    },
+    {
+      "name": "browser-uat",
+      "type": "manual",
+      "procedure": "在 1280x800、375x812、390x844、430x932 视口完成两页面筛选、分页、详情、新增、编辑、删除、只读/无权限、明暗主题、长内容、卡片分页、抽屉滚动、更多菜单、脏表单、冲突和负责团队失效验收；DOM 与网络不得出现 tenant_id、status、form-schema 或 biz_form 请求，浏览器控制台无新增错误，documentElement.scrollWidth 不大于 innerWidth。",
+      "evidence": "保存各角色与关键状态截图、视口、网络、控制台和页面宽度记录"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "迁移版本已按主干实际落地顺序重新分配；其他 ready 需求的未落地迁移同步顺延，合并前仍须扫描冲突",
+      "开发入口脚本需要同时兼容 CLI JSON 查询和桌面端 config/cache 安装状态，且不得把仅有缓存但未启用判为通过",
+      "公共能力变更已获本次实施批准，但仍须通过 platform/system 回归与模块边界检查",
+      "当前分支 dev-ivanh 与声明的 feat 分支不一致，实施前必须使用批准的隔离分支或工作树",
+      "platform/system 只允许新增安全用户/参数查询与操作审计通用契约，不得承载架构领域代码",
+      "组织失效后必须保留负责团队快照可读并在下一次编辑阻止原失效引用",
+      "HTTP/领域 tenant_id 只从 AuthUser 注入，客户端值、常量 1 兜底和本地 Mock 缺省租户均被禁止",
+      "父子并发和软删除后的永久唯一性必须由数据库约束与服务端校验共同保证",
+      "固定表单不得重新引入 biz_form、schema 请求或任意动态字段渲染"
+      ,"空库基线修复只能追加 Flyway callback，不得修改 V24 或伪造 flyway_schema_history；callback 必须在空库全链和已越过 V24 的幂等路径均通过"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260812-021-architecture-subsystems",
+    "control_justification": "新增业务 Maven/前端模块，跨越平台公开查询与审计、Boot 装配、权限、菜单、数据库迁移、Mock、并发和移动端 UAT，需要 high-assurance 完整闭环。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/baseline.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/model.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/control-plan.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T*.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/observation-T*.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/convergence.json"
+    ],
+    "release_verification": [
+      "空库通过 callback 从 V1 连续迁移到 V37，已越过 V24 的增量库验证 callback 幂等后从 V34 到 V37",
+      "Maven reactor 和 Boot 新模块装配",
+      "真实 API 权限、认证租户、关联、负责团队和审计验证",
+      "桌面与指定手机视口浏览器 UAT",
+      "现有 system 模块与通用 capability 回归",
+      "模块治理、范围和边界检查"
+    ],
+    "rollback": "按前端、架构业务、平台 capability、Boot/根装配和治理登记的依赖逆序回退应用提交；保留 Flyway callback、V35-V37、业务数据和审计；关闭入口使用后续补偿迁移，不手工删除生产数据。"
+  }
+}
