@@ -5,10 +5,6 @@ import com.ccb.attachment.integration.AttachmentBindingCommand;
 import com.ccb.attachment.integration.AttachmentGateway;
 import com.ccb.attachment.integration.AttachmentItem;
 import com.ccb.attachment.integration.AttachmentOperation;
-import com.ccb.attachment.model.AttachmentLink;
-import com.ccb.attachment.model.AttachmentPort;
-import com.ccb.common.api.PageQuery;
-import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.filepreview.model.FilePreviewUrlProvider;
@@ -21,7 +17,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,7 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
-public class AttachmentService implements AttachmentGateway, AttachmentPort {
+public class AttachmentService implements AttachmentGateway {
     private final JdbcTemplate jdbc;
     private final MinioStorageService storage;
     private final FilePreviewUrlProvider previewUrlProvider;
@@ -176,86 +171,4 @@ public class AttachmentService implements AttachmentGateway, AttachmentPort {
     private String optional(String value, int max) { return value == null || value.isBlank() ? null : value.trim().substring(0, Math.min(value.trim().length(), max)); }
     private String value(Object value) { return value == null ? null : String.valueOf(value); }
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }
-
-    @Override
-    @Transactional
-    public com.ccb.attachment.model.AttachmentItem uploadAndBind(String businessType, long businessId, MultipartFile file, long tenantId, long uploaderId) {
-        AuthUser operator = systemUser(uploaderId, tenantId);
-        AttachmentItem uploaded = upload(file, operator);
-        bind(new AttachmentBindingCommand(uploaded.id(), businessType, String.valueOf(businessId), null), operator);
-        return toModel(uploaded, tenantId);
-    }
-
-    @Override
-    public PageResult<com.ccb.attachment.model.AttachmentItem> list(String businessType, long businessId, long tenantId, PageQuery pageQuery, String keyword) {
-        String where = "tenant_id = ? AND business_type = ? AND business_key = ? AND status = 'BOUND'";
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
-        args.add(businessType);
-        args.add(String.valueOf(businessId));
-        if (keyword != null && !keyword.isBlank()) {
-            where += " AND file_name LIKE ?";
-            args.add("%" + keyword.trim() + "%");
-        }
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM att_file WHERE " + where, Long.class, args.toArray());
-        args.add(pageQuery.size());
-        args.add((pageQuery.page() - 1) * pageQuery.size());
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, file_name, content_type, file_size, file_extension, uploader_id, created_at FROM att_file WHERE " + where
-                        + " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
-                args.toArray());
-        List<com.ccb.attachment.model.AttachmentItem> records = rows.stream()
-                .map(row -> toModel(row, tenantId))
-                .toList();
-        return new PageResult<>(records, total, pageQuery.page(), pageQuery.size());
-    }
-
-    @Override
-    public AttachmentLink preview(long attachmentId, String businessType, long businessId, long tenantId) {
-        Map<String, Object> row = authorizedRow(attachmentId, AttachmentOperation.PREVIEW, systemUser(0, tenantId));
-        requireBusinessMatch(row, businessType, businessId);
-        return new AttachmentLink(attachmentId, String.valueOf(row.get("file_name")),
-                previewUrlProvider.previewUrl(storage.presignedUrl(String.valueOf(row.get("object_key")))));
-    }
-
-    @Override
-    public AttachmentLink download(long attachmentId, String businessType, long businessId, long tenantId) {
-        Map<String, Object> row = authorizedRow(attachmentId, AttachmentOperation.DOWNLOAD, systemUser(0, tenantId));
-        requireBusinessMatch(row, businessType, businessId);
-        return new AttachmentLink(attachmentId, String.valueOf(row.get("file_name")),
-                storage.presignedUrl(String.valueOf(row.get("object_key"))));
-    }
-
-    @Override
-    public void delete(long attachmentId, String businessType, long businessId, long tenantId) {
-        deleteBound(attachmentId, businessType, String.valueOf(businessId), systemUser(0, tenantId));
-    }
-
-    private AuthUser systemUser(long userId, long tenantId) {
-        return new AuthUser(userId, tenantId, null, null, null, 0, true);
-    }
-
-    private void requireBusinessMatch(Map<String, Object> row, String businessType, long businessId) {
-        if (!businessType.equals(value(row.get("business_type"))) || !String.valueOf(businessId).equals(value(row.get("business_key")))) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "附件不属于该业务");
-        }
-    }
-
-    private com.ccb.attachment.model.AttachmentItem toModel(AttachmentItem item, long tenantId) {
-        String uploaderName = jdbc.query("SELECT display_name FROM sys_user WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                rs -> rs.next() ? rs.getString(1) : null, item.uploaderId(), tenantId);
-        return new com.ccb.attachment.model.AttachmentItem(item.id(), item.fileName(), item.contentType(), item.fileSize(),
-                item.uploaderId(), uploaderName, item.createdAt() == null ? null : item.createdAt().toString());
-    }
-
-    private com.ccb.attachment.model.AttachmentItem toModel(Map<String, Object> row, long tenantId) {
-        long uploaderId = ((Number) row.get("uploader_id")).longValue();
-        String uploaderName = jdbc.query("SELECT display_name FROM sys_user WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                rs -> rs.next() ? rs.getString(1) : null, uploaderId, tenantId);
-        Object created = row.get("created_at");
-        String createdAt = created instanceof Timestamp timestamp ? timestamp.toLocalDateTime().toString() : value(created);
-        return new com.ccb.attachment.model.AttachmentItem(((Number) row.get("id")).longValue(),
-                String.valueOf(row.get("file_name")), value(row.get("content_type")), ((Number) row.get("file_size")).longValue(),
-                uploaderId, uploaderName, createdAt);
-    }
 }
