@@ -11,6 +11,7 @@ import AiView from '../views/AiView.vue'
 import ComponentShowcaseView from '../views/ComponentShowcaseView.vue'
 import ProjectView from '../views/ProjectView.vue'
 import DeliveryShowcaseModule from '../modules/delivery-showcase/DeliveryShowcaseModule.vue'
+import DataMigrationModule from '../modules/data-migration/DataMigrationModule.vue'
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
@@ -200,6 +201,13 @@ const router = createRouter({
             permission: 'release:application:view',
             menuPath: '/release/applications'
           }
+        },
+        {
+          path: 'data-migration/:group?/:section?',
+          name: 'data-migration',
+          component: DataMigrationModule,
+          props: true,
+          meta: { title: '数据迁移资产库' }
         }
       ]
     },

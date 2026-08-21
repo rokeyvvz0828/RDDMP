@@ -16,6 +16,7 @@
 | 公共 | `server/src/shared/common` | 统一响应、分页、异常和 trace，不拥有业务数据 |
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
 | 业务 | `server/src/modules/release` | 投产窗口、版本申请、审批关联、投产基线、生产版本和统计分析 |
+| 业务 | `server/src/modules/data-migration` | 数据迁移资产库 V3 的基础资料、文件资产、结构化资产、Excel 与看板 |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
 

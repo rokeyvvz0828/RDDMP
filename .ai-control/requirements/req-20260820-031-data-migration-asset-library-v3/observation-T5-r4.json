@@ -1,0 +1,51 @@
+{
+  "sample_label": "结构化 Excel 持久化导入复验",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R5",
+      "sensor": "S4 authenticated XLSX round-trip probe",
+      "result": "pass",
+      "raw_evidence": "导出 RULE XLSX 后再次导入，服务端返回 code=0、rows=2、accepted=0、failed=2、errors.length=2；重复约束逐行返回错误",
+      "limitation": ["样本为重复导入，尚未用全新编号验证 accepted 持久化行"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S2 focused Maven module tests",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-data-migration -am test BUILD SUCCESS",
+      "limitation": ["现有测试未覆盖数据库集成导入写入"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S3 boot packaging",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-boot -am package -DskipTests BUILD SUCCESS",
+      "limitation": ["正式前端 npm build 仍受隔离依赖缺失影响"]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R5",
+      "expected": "基础资料具备完整维护及导出能力",
+      "observed": "结构化导入已持久化校验，但项目/组件/表结构前端仍缺少新增编辑、关联删除和筛选导出",
+      "reproduction": "打开 /data-migration/base/projects、/data-migration/base/components、/data-migration/base/target-tables",
+      "evidence": "浏览器页面显示项目/组件只读表格，未出现编辑、删除或导出操作",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "覆盖页面和现有 API，未覆盖未来新增维护接口",
+      "causal_hypothesis": "T2 基础资料服务没有 update/export 契约，T5 无法调用不存在的服务端能力",
+      "correction_check": "补充基础资料服务端 update/export/关联校验契约后再做管理员和普通用户复验",
+      "classification": "duplicate"
+    }
+  ],
+  "disturbances": [],
+  "coverage_gaps": [
+    "全新编号 Excel accepted 持久化行",
+    "基础资料新增/编辑/删除/导出",
+    "普通用户 HTTP 实体授权"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,16 @@
+{
+  "task_id":"T1","status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"pom.xml and server/src/platform/boot/pom.xml","purpose":"register ccb-data-migration in reactor and boot composition"},
+    {"path_or_resource":"governance/modules.yaml, docs/architecture/MODULES.md, .github/CODEOWNERS","purpose":"register module boundary and ownership"},
+    {"path_or_resource":"server/src/modules/data-migration/pom.xml","purpose":"declare module dependencies including pinned POI 5.4.1"},
+    {"path_or_resource":"server/src/platform/infrastructure/src/main/resources/db/migration/V35__data_migration_asset_library_v3.sql","purpose":"add dm_* tables and 20 idempotent menu/permission nodes"},
+    {"path_or_resource":"server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java","purpose":"verify V35 ownership and registration"}
+  ],
+  "requirements_addressed":["R1","R2","R7","R8"],
+  "commands":[{"command":"mvn -pl :ccb-data-migration -am test","exit_code":0,"salient_output":"Reactor SUCCESS; ccb-data-migration test 1 passed"}],
+  "local_checks":[{"check":"focused backend reactor","result":"pass","evidence":"Maven exit code 0; ccb-common 2, infrastructure 6, security 4, module 1 tests passed","limitations":["governance and SQL runtime checks remain for observing"]}],
+  "diff_summary":["registered new business module and boot dependency","added V35 schema for projects/components/assets/audit/snapshots","seeded 3 roots and 17 children with admin permissions","added module registration test"],
+  "invariants_checked":[{"invariant":"additive migration","result":"pass","evidence":"new V35 file only; no previous migration edited"},{"invariant":"module dependency boundary","result":"pass","evidence":"governance allows only common/infrastructure/security"},{"invariant":"formal menus and permissions are database-backed","result":"pass","evidence":"V35 inserts ids 200-219 and role/permission rows"}],
+  "disturbances":[],"assumptions_falsified":[],"unresolved_items":["SQL execution against local MySQL and governance scope check remain"],"recommended_next":"observe"
+}

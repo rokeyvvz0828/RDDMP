@@ -1,0 +1,35 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java", "purpose": "field-level structured asset update and relation-safe logical deletion"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java", "purpose": "structured update/delete endpoints and filtered export parameters"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java", "purpose": "project/component/keyword bounded export filters"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java", "purpose": "daily 02:00 snapshot scheduler"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java", "purpose": "latest snapshot-backed overall metrics with realtime fallback"},
+    {"path_or_resource": "web/src/api/data-migration.ts", "purpose": "structured update/delete and filtered export wrappers"},
+    {"path_or_resource": "web/src/modules/data-migration/DataMigrationModule.vue", "purpose": "structured field editing and batch logical delete controls"}
+  ],
+  "requirements_addressed": ["R5", "R6", "R8"],
+  "commands": [
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "ccb-data-migration and upstream tests passed"},
+    {"command": "mvn test", "exit_code": 0, "salient_output": "full Maven reactor BUILD SUCCESS"},
+    {"command": "node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs ... && git diff --check", "exit_code": 0, "salient_output": "governance, scope and whitespace checks passed"},
+    {"command": "vue-tsc --noEmit -p /tmp/rddmp-web-tsconfig.json && Vite build from web/", "exit_code": 0, "salient_output": "type check and Vite production build passed"},
+    {"command": "authenticated structured create/update/export/relation-delete probes with MOCK_DATA_ENABLED=false", "exit_code": 0, "salient_output": "create/update code=0, export HTTP 200, relation delete HTTP 409; probe rows cleaned"}
+  ],
+  "local_checks": [
+    {"check": "structured API lifecycle", "result": "pass", "evidence": "live HTTP probe against latest JAR", "limitations": ["admin temporary local hash only"]},
+    {"check": "daily snapshot wiring", "result": "pass", "evidence": "compiled @Scheduled 02:00 bean and snapshot-backed dashboard fallback", "limitations": ["scheduled tick not awaited"]}
+  ],
+  "diff_summary": ["structured update/delete endpoints", "relation-aware delete conflict", "filtered XLSX export", "daily snapshot scheduler", "responsive structured edit/delete controls"],
+  "invariants_checked": [
+    {"invariant": "tenant and owner authorization remain server-side", "result": "pass", "evidence": "service reads tenant from AuthUser and checks owner/admin before update/delete"},
+    {"invariant": "no object key or mock runtime data is exposed", "result": "pass", "evidence": "DTO queries omit object_key and runtime used MOCK_DATA_ENABLED=false"},
+    {"invariant": "mobile page remains bounded", "result": "pass", "evidence": "previous four viewport overflow sample retained; changes add only existing toolbar/table controls"}
+  ],
+  "disturbances": [{"source": "isolated worktree lacks native vue-tsc dependency", "effect": "mapped dependency paths used for frontend checks", "detectable": true, "controllable": false}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["normal-user role permission assignment HTTP evidence", "live 02:00 scheduler tick", "native npm build dependency installation"],
+  "recommended_next": "observe"
+}
