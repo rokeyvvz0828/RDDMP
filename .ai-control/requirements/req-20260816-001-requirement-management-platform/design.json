@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260816-001-requirement-management-platform",
+  "requirement_id": "REQ-20260816-001",
+  "revision": 1,
+  "goal": "新建项目域（项目/差异/评审状态/基线）+ 存量项目域（8 阶段状态推进）+ 系统清单 + 统一改动记录 + Excel 导入 + 脱敏测试数据",
+  "scope": {
+    "included": [
+      "req_project/req_difference/req_legacy_requirement/req_system/req_baseline/req_baseline_item/req_change_log/req_stage_log/req_import_batch/req_attachment 及数据范围表",
+      "差异状态机：待评审→评审中→已评审/已退回，评审通过锁定",
+      "基线：全部已评审后可形成快照并整体锁定",
+      "存量阶段：未开始/进行中/已完成，状态确认留痕",
+      "Excel 模板下载、逐行校验、校验报告、确认导入",
+      "行内修改记录弹窗、脱敏演示数据"
+    ],
+    "excluded": [
+      "审批流（Flowable/平台 workflow 集成）——用户 2026-08-16 明确本轮不做",
+      "基线后差异变更流程",
+      "配置管理模块",
+      "研发/测试模块打通"
+    ]
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "评审状态流转先实现业务状态机，提交评审直接置为评审中；提供管理员评审处理接口模拟审批回调，workflow_instance_id 字段预留",
+      "reason": "审批流本轮不做但需保证状态机、锁定与基线可验证",
+      "source": "user"
+    },
+    {
+      "id": "D2",
+      "decision": "新增 req_project_member 与 req_business_group_member 两张数据范围表支撑项目组/业务组授权",
+      "reason": "核心表清单未包含成员映射，服务端数据范围需要实体映射",
+      "source": "design"
+    },
+    {
+      "id": "D3",
+      "decision": "枚举以 RequirementEnums 代码常量维护（口径来自附件1 list sheet 与存量 sheet），存储中文值",
+      "reason": "附件源文件不入库，配置管理另立需求；受控选项仍由服务端校验",
+      "source": "design"
+    },
+    {
+      "id": "D4",
+      "decision": "采用 Apache POI 5.5.1 解析/生成 Excel，新增第三方依赖",
+      "reason": "仓库此前无 Excel 库；POI 已在本地 Maven 仓库缓存",
+      "source": "design"
+    },
+    {
+      "id": "D5",
+      "decision": "持久化沿用现有业务模块 JdbcTemplate 模式，不引入 MyBatis-Plus Mapper",
+      "reason": "与 business/ai 一致，减少新抽象",
+      "source": "design"
+    },
+    {
+      "id": "D6",
+      "decision": "事业群/业务板块/业务组为必填自由文本（完整清单在附件源文件内，不入库），其余枚举服务端强校验",
+      "reason": "附件 list sheet 未入库，无法枚举完整值域",
+      "source": "design"
+    }
+  ],
+  "constraints": [
+    "server/src/modules/requirement，artifact ccb-requirement，包名 com.ccb.requirement",
+    "依赖 shared/common、platform/security，公共包仅 com.ccb.common 与 com.ccb.security.model",
+    "Flyway V35/V36 追加式迁移，不改历史",
+    "演示数据脱敏：XX银行、虚构姓名、13800000000 形式",
+    "前端复用 components/ui 与 delivery-showcase 模式，按 design-h5.md 控制移动端溢出"
+  ],
+  "risks": [
+    "新增业务模块与治理文件变更需 Owner（rokeyvvz0828）审批",
+    "POI 为新增第三方依赖，需供应链审查",
+    "审批流推迟导致评审处理为模拟接口，后续接入时需替换",
+    "测试由用户执行，agent 未验证运行结果"
+  ]
+}

@@ -16,6 +16,7 @@
 | 公共 | `server/src/shared/common` | 统一响应、分页、异常和 trace，不拥有业务数据 |
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
 | 业务 | `server/src/modules/release` | 投产窗口、版本申请、审批关联、投产基线、生产版本和统计分析 |
+| 业务 | `server/src/modules/requirement` | 需求管理平台：新建项目差异清单、存量需求阶段、系统清单、基线与统一改动记录 |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
 
@@ -24,6 +25,7 @@
 当前前端仍是单 Vue 应用和按技术类型组织的目录。迁移到 `web/src/modules/<module>` 前，不为页面虚构目录边界：
 
 - `web/src/api/{system,workflow,ai}.ts` 是相应后端域的请求入口。
+- `web/src/api/requirements.ts`、`web/src/types/requirements.ts` 与 `web/src/views/RequirementsView.vue` 属于需求管理业务域。
 - `web/src/components/workflow` 和 `WorkflowView.vue` 属于 workflow。
 - `web/src/modules/delivery-showcase` 是纯前端虚构交付示范模块，使用本地 mock 数据沉淀列表、表单、详情、审批和可视化样式，不拥有后端业务数据。
 - `web/src/modules/release` 与 `web/src/api/release.ts` 属于配置管理业务模块；仅项目、物理子系统和交付单元选择源可以临时使用前端 Mock，业务状态必须来自 `ccb-release`。

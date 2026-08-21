@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260816-001-requirement-management-platform",
+  "task_id": "T1",
+  "status": "implemented-not-verified",
+  "coverage": [
+    "REQ-20260816-001 除审批流外的全部实施范围"
+  ],
+  "actual_changes": [
+    "governance/modules.yaml：新增 business/requirement",
+    "pom.xml / server/src/platform/boot/pom.xml：模块注册与装配",
+    "docs/architecture/MODULES.md、.github/CODEOWNERS：模块边界与所有权",
+    "server/src/platform/infrastructure/.../db/migration/V35__requirement_management_schema.sql、V36__requirement_management_seed.sql",
+    "server/src/modules/requirement/**：support/service/web 全部源码与单元测试",
+    "server/src/platform/infrastructure/.../mock/MockDataInitializer.java：req_* 表 allowlist",
+    "mock/mock-data.json：脱敏演示数据与菜单权限授权",
+    "web/src/api/requirements.ts、web/src/types/requirements.ts、web/src/views/RequirementsView.vue、web/src/router/index.ts",
+    "docs/engineering-control/designs/2026-08-16-requirement-management-platform-design.md",
+    ".ai-control/requirements/req-20260816-001-requirement-management-platform/*.json"
+  ],
+  "commands": [
+    {
+      "command": "git switch -c zbx_dev",
+      "result": "switched to new branch zbx_dev"
+    },
+    {
+      "command": "mvn -pl :ccb-requirement -am compile -DskipTests",
+      "result": "exit 0，编译通过"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "result": "通过（Governance / Skill / Development entry / AI control layout / Module boundary / Flyway 全部通过）"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "result": "通过（vue-tsc --noEmit 与 vite build 成功，仅有既有 chunk 体积警告）"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope ... --base origin/main --head HEAD --working-tree",
+      "result": "失败：.gitignore 与 application.yml 为本任务前既有的本地改动（非本任务修改）；public_capability_change.owner_approved=false 需 Owner 审批"
+    },
+    {
+      "command": "git diff --check",
+      "result": "exit 0"
+    }
+  ],
+  "not_executed": [
+    "mvn -pl :ccb-requirement -am test（用户选择自行测试，agent 未运行）",
+    "mvn test（同上）",
+    "npm --prefix web run build（用户选择自行测试，agent 未运行）",
+    "check-codex-scope.mjs（待用户执行）",
+    "本地 MySQL/后端/前端启动与浏览器验收（待用户执行）"
+  ],
+  "unresolved_issues": [
+    "审批流未实施（用户明确推迟）",
+    "Owner 审批未确认",
+    "POI 依赖供应链审查待办",
+    "事业群/业务板块/业务组枚举值域待附件源文件"
+  ]
+}

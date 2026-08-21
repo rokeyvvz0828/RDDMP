@@ -1,6 +1,14 @@
 spring:
   application:
     name: ccb-platform
+  config:
+    # IDEA/本地启动自动加载项目根目录 .env（KEY=VALUE），缺失时忽略；
+    # 环境变量优先级高于 .env，生产部署不受影响。
+    import: optional:file:.env[.properties]
+  profiles:
+    # 未显式指定 profile 时回退到 dev 本地开发配置（application-dev.yml），
+    # 便于 IDEA 直接启动；生产环境必须显式设置 SPRING_PROFILES_ACTIVE。
+    default: dev
   servlet:
     multipart:
       max-file-size: ${FILE_PREVIEW_MAX_FILE_SIZE:50MB}

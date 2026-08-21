@@ -17,7 +17,7 @@ import java.util.Set;
 public final class WorkflowDefinitionValidator {
     private static final int SCHEMA_VERSION = 1;
     private static final Set<String> NODE_TYPES = Set.of("START", "APPROVAL", "CC", "END");
-    private static final Set<String> ASSIGNEE_TYPES = Set.of("USER", "ROLE", "STARTER");
+    private static final Set<String> ASSIGNEE_TYPES = Set.of("USER", "ROLE", "STARTER", "VARIABLE");
     private static final Set<String> MODES = Set.of("ANY", "ALL");
 
     private final ObjectMapper objectMapper;
