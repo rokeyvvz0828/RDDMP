@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "control_prefix": "req-20260813-028-project-management-demo-data",
+  "phase": "executed",
+  "executed_at": "2026-08-21T09:05:11+08:00",
+  "scope": [
+    "mock/mock-data.json",
+    "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java"
+  ],
+  "changes": [
+    "Updated the local mock dataset to 2026.08.20.1.",
+    "Added 12 stage rows across two projects, including two same-stage sequential main plans and child plans.",
+    "Added project risks, risk comments, project organization trees, member organization assignments, and project attachment metadata.",
+    "Extended the mock initializer allowlist for the new project plan group phase, project member org_id, risk, risk comment, project organization, and attachment tables.",
+    "Seeded risk number rules and next risk sequences so new risks continue after the seeded R001/R002 records; removed the obsolete project-level phase column from the mock allowlist."
+  ],
+  "commands": [
+    {"command": "node mock JSON and cross-table reference validation", "result": "passed; 38 tables and 181 rows"},
+    {"command": "git diff --check", "result": "passed"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 50 migrations"},
+    {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed after stopping the local backend process that locked the boot jar"},
+    {"command": "mvn -pl :ccb-infrastructure -am test '-Dnet.bytebuddy.experimental=true'", "result": "passed; 8 tests"},
+    {"command": "node project mock invariant and cross-table reference validation", "result": "passed; 2 projects, 12 groups, 9 plans, 5 roles, 7 members, 3 risks, 3 comments, 5 project organizations, 3 attachments, seven plan phases, sequential main plans, child date bounds, and risk sequence seeds"},
+    {"command": "node mock allowlist validation", "result": "passed; 1,716 row fields across 38 tables are covered by the initializer allowlist"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "module governance passed; repository skill check failed because the existing SKILL.md uses CRLF while the checker regex requires LF"}
+  ],
+  "runtime": {
+    "status": "passed",
+    "commands": [
+      {"command": "docker compose --env-file .env ps", "result": "passed; local MySQL, MinIO, and kkFileView were running"},
+      {"command": "start packaged boot jar with .env and local profile", "result": "passed; backend process remained running on port 8080"},
+      {"command": "GET /actuator/health", "result": "passed; HTTP 200 and status UP"},
+      {"command": "project API query with a short-lived local signed test token", "result": "passed; workbench returned 2 target projects; details and attachment lists were readable"}
+    ],
+    "mock_sync": "dataset=rddmp-local-platform version=2026.08.20.1 rows=204",
+    "known_limits": [
+      "Attachment rows contain metadata and mock object keys; actual MinIO objects were not provisioned.",
+      "The documented mock user password login returned HTTP 401 in this existing local database; no password or database row was changed.",
+      "The packaged jar was used after the aggregate spring-boot:run command failed on the parent POM without a main class."
+    ]
+  },
+  "rollback": "Disable MOCK_DATA_ENABLED or restore the mock data and allowlist changes, then restart the local backend."
+}
