@@ -21,11 +21,11 @@ public class ProjectComponentService {
     }
 
     public Map<String, Object> options(AuthUser user) {
-        return Map.of("projects", projects(user), "components", components(user, null));
+        return Map.of("projects", projects(user, null), "components", components(user, null));
     }
 
-    public List<Map<String, Object>> projects(AuthUser user) {
-        return jdbc.queryForList("SELECT id, project_code, project_name, description, status, owner_id, created_at, updated_at FROM dm_project WHERE tenant_id = ? AND deleted = 0 ORDER BY updated_at DESC, id DESC", user.tenantId());
+    public List<Map<String, Object>> projects(AuthUser user, String keyword) {
+        if (keyword != null && !keyword.isBlank()) { return jdbc.queryForList("SELECT id, project_code, project_name, description, status, owner_id, created_at, updated_at FROM dm_project WHERE tenant_id = ? AND deleted = 0 AND (project_code LIKE ? OR project_name LIKE ?) ORDER BY updated_at DESC, id DESC", user.tenantId(), "%" + keyword + "%", "%" + keyword + "%"); } return jdbc.queryForList("SELECT id, project_code, project_name, description, status, owner_id, created_at, updated_at FROM dm_project WHERE tenant_id = ? AND deleted = 0 ORDER BY updated_at DESC, id DESC", user.tenantId());
     }
 
     public List<Map<String, Object>> components(AuthUser user, Long projectId) {

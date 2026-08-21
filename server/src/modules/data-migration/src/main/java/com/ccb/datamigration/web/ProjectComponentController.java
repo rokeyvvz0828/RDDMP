@@ -18,7 +18,7 @@ public class ProjectComponentController {
     public ProjectComponentController(ProjectComponentService service) { this.service = service; }
 
     @GetMapping("/options") public ApiResponse<Map<String, Object>> options(@AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.options(user), TraceId.getOrCreate()); }
-    @GetMapping("/projects") public ApiResponse<List<Map<String, Object>>> projects(@AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.projects(user), TraceId.getOrCreate()); }
+    @GetMapping("/projects") public ApiResponse<List<Map<String, Object>>> projects(@RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.projects(user, keyword), TraceId.getOrCreate()); }
     @PostMapping("/projects") public ApiResponse<Map<String, Object>> createProject(@RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.createProject(body, user), TraceId.getOrCreate()); }
     @PutMapping("/projects/{id}") public ApiResponse<Map<String, Object>> updateProject(@PathVariable long id, @RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.updateProject(id, body, user), TraceId.getOrCreate()); }
     @DeleteMapping("/projects/{id}") public ApiResponse<Void> deleteProject(@PathVariable long id, @AuthenticationPrincipal AuthUser user) { service.deleteProject(id, user); return ApiResponse.success(null, TraceId.getOrCreate()); }
