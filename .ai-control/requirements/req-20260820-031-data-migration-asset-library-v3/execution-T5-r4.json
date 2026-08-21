@@ -1,0 +1,69 @@
+{
+  "task_id": "T5",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java",
+      "purpose": "逐行校验结构化 Excel 的项目、组件、类型和重复约束并持久化有效行"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+      "purpose": "导入接口注入认证主体并返回 accepted/failed/errors"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/DataMigrationModule.vue",
+      "purpose": "展示真实导入结果统计"
+    }
+  ],
+  "requirements_addressed": ["R3", "R5", "R6", "R7"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "exit_code": 0,
+      "salient_output": "ccb-data-migration BUILD SUCCESS"
+    },
+    {
+      "command": "mvn -pl :ccb-boot -am package -DskipTests",
+      "exit_code": 0,
+      "salient_output": "ccb-boot repackaged successfully"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "authenticated structured Excel import",
+      "result": "pass",
+      "evidence": "管理员导入导出生成的 RULE XLSX，返回 rows=2、accepted=0、failed=2、errorCount=2，重复行逐条报告"
+    }
+  ],
+  "diff_summary": [
+    "ExcelService 逐行持久化导入",
+    "项目/组件/类型校验和操作审计",
+    "导入结果统计展示"
+  ],
+  "assumptions_falsified": [],
+  "invariants_checked": [
+    {
+      "invariant": "导入使用认证租户和操作人，不信任客户端租户",
+      "result": "pass",
+      "evidence": "ExcelService 使用 AuthUser.tenantId()/id() 校验和写入"
+    },
+    {
+      "invariant": "单行失败不静默丢弃其他行",
+      "result": "pass",
+      "evidence": "结果返回 accepted、failed 和逐行 errors"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "本地导入样本来自已有导出文件，资产编号重复",
+      "effect": "两行按重复约束失败，用于验证逐行错误路径",
+      "detectable": true
+    }
+  ],
+  "unresolved_items": [
+    "基础资料新增/编辑/关联校验删除和筛选导出",
+    "普通用户实体授权 HTTP 复验",
+    "正式 npm build 依赖缺失"
+  ],
+  "recommended_next": "独立观测导入接口和回归，继续保留 F-0001 的基础资料维护部分"
+}

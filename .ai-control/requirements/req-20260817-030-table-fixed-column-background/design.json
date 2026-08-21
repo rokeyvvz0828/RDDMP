@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260817-030-table-fixed-column-background",
+  "design_revision": 1,
+  "design_status": "approved",
+  "objective": "Prevent horizontally scrolled table content from showing through sticky fixed columns.",
+  "requirements": [
+    {"id": "R1", "statement": "Left and right fixed body cells use an opaque semantic panel background.", "acceptance": ["no content bleed-through during horizontal scrolling"]},
+    {"id": "R2", "statement": "Existing hover, row-state, header, and theme behavior remains intact.", "acceptance": ["hover matches non-fixed cells", "light and dark themes remain readable"]}
+  ],
+  "invariants": ["no business page changes", "no API or data changes", "semantic theme variables only"],
+  "selected_approach": {
+    "name": "target Element Plus 2.14 sticky fixed-cell classes",
+    "reason": "the installed version renders fixed columns as sticky cells rather than legacy fixed table wrappers",
+    "alternatives": ["legacy el-table__fixed wrapper selectors", "make every row opaque"]
+  },
+  "approval": {"status": "approved", "evidence": "User explicitly requested the fix and direct development on 2026-08-17."}
+}
