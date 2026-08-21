@@ -4,8 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Briefcase, Calendar, ChatDotRound, Delete, Document, Download, Edit, Folder, Plus, Search, Upload, User, View } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
-import * as echarts from 'echarts'
-import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams } from 'echarts'
 import { apiErrorMessage } from '../api/error'
 import { deleteProjectAttachment, getProjectAttachmentDownload, getProjectAttachmentPreview, getProjectAttachments, uploadProjectAttachment } from '../api/attachments'
 import { createProject, createProjectMember, createProjectOrganization, createProjectPlan, createProjectPlanGroup, createProjectRisk, createProjectRiskComment, createProjectRole, deleteProject, deleteProjectMember, deleteProjectOrganization, deleteProjectPlan, deleteProjectPlanGroup, deleteProjectRisk, deleteProjectRole, getProject, getProjectOptions, getProjectRiskComments, getProjectUserOptions, getProjectWorkbench, moveProjectPlanToGroup, updateProject, updateProjectMember, updateProjectOrganization, updateProjectPlan, updateProjectRisk, updateProjectRole, updateProjectSettings } from '../api/project'
@@ -19,14 +17,6 @@ import UiUserIdentity from '../components/ui/UiUserIdentity.vue'
 import UiTreeSelect, { type UiTreeOption } from '../components/ui/UiTreeSelect.vue'
 import UiFilePreview from '../components/ui/UiFilePreview.vue'
 import UiPagination from '../components/ui/UiPagination.vue'
-const planGroupColorOptions: Array<{ key: ProjectPlanGroupColorToken; colorVar: string; accentVar: string }> = [
-  { key: 'brand', colorVar: '--brand', accentVar: '--brand-strong' },
-  { key: 'accent', colorVar: '--accent', accentVar: '--brand-strong' },
-  { key: 'success', colorVar: '--success', accentVar: '--brand-strong' },
-  { key: 'warning', colorVar: '--warning', accentVar: '--brand-strong' },
-  { key: 'danger', colorVar: '--danger', accentVar: '--brand-strong' },
-  { key: 'muted', colorVar: '--muted', accentVar: '--line' }
-]
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -51,10 +41,12 @@ const saving = ref(false)
 const projectDialog = ref(false)
 const projectEditingId = ref<number | null>(null)
 const projectForm = reactive<Record<string, unknown>>({})
+const projectDateRange = ref<string[]>([])
 const planDialog = ref(false)
 const planEditingId = ref<number | null>(null)
 const planParentName = ref('')
 const planForm = reactive<Record<string, unknown>>({})
+const planDateRange = ref<string[]>([])
 const planChildrenDialog = ref(false)
 const selectedPlanForChildrenId = ref<number | null>(null)
 const memberDialog = ref(false)
@@ -67,9 +59,8 @@ const projectOrganizationDialog = ref(false)
 const projectOrganizationEditingId = ref<number | null>(null)
 const projectOrganizationForm = reactive<Record<string, unknown>>({})
 const selectedProjectOrganizationId = ref<number | null>(null)
-const planGroupDialog = ref(false)
-const planGroupForm = reactive<Record<string, unknown>>({ phase: '', color_key: 'brand' as ProjectPlanGroupColorToken, description: '', sort_no: 0 })
 const draggingPlanId = ref<number | null>(null)
+const newlyCreatedStageRowIds = ref<Set<number>>(new Set())
 const riskDialog = ref(false)
 const riskEditingId = ref<number | null>(null)
 const riskForm = reactive<Record<string, unknown>>({})
@@ -200,7 +191,7 @@ const planTree = computed<ProjectPlanRow[]>(() => {
     stageGroups.forEach(group => {
       const children = buildPlanBranch(grouped.get(group.id) || [])
       const stagePlanCode = group.stage_plan_code || group.group_name
-      stageChildren.push({ id: groupRowId(group.id, stage.index), node_type: 'group', stage_key: stage.key, stage_name: stage.name, stage_index: stage.index, group_id: group.id, group_name: stagePlanCode, group_color_key: group.color_key || 'brand', group_count: children.length, plan_name: stagePlanCode, plan_code: '阶段计划', parent_id: 0, progress: 0, status: 'NOT_STARTED', sort_no: group.sort_no, project_id: selectedProject.value?.id || 0, children } as ProjectPlanRow)
+      stageChildren.push({ id: groupRowId(group.id, stage.index), node_type: 'group', stage_key: stage.key, stage_name: stage.name, stage_index: stage.index, group_id: group.id, group_name: stagePlanCode, group_color_key: group.color_key || 'brand', group_count: children.length, plan_name: stagePlanCode, plan_code: '阶段', parent_id: 0, progress: 0, status: 'NOT_STARTED', sort_no: group.sort_no, project_id: selectedProject.value?.id || 0, children } as ProjectPlanRow)
       grouped.delete(group.id)
     })
     const ungrouped = buildPlanBranch((grouped.get(null) || []).filter(plan => plan.phase === stage.key))
@@ -213,36 +204,14 @@ const plans = flatPlans
 const risks = computed(() => selectedProject.value?.risks || [])
 const members = computed(() => selectedProject.value?.members || [])
 const roles = computed(() => selectedProject.value?.roles || [])
-const planStats = computed(() => {
-  const values = plans.value
-  const count = (status: PlanStatus) => values.filter(plan => plan.status === status).length
-  const progressTotal = values.reduce((total, plan) => total + Math.max(0, Math.min(100, Number(plan.progress || 0))), 0)
-  return {
-    total: values.length,
-    completed: count('COMPLETED'),
-    inProgress: count('IN_PROGRESS'),
-    notStarted: count('NOT_STARTED'),
-    blocked: count('BLOCKED'),
-    averageProgress: values.length ? Math.round(progressTotal / values.length) : 0,
-    statusData: [
-      { value: count('COMPLETED'), name: '已完成', color: '--success' },
-      { value: count('IN_PROGRESS'), name: '进行中', color: '--brand' },
-      { value: count('NOT_STARTED'), name: '未开始', color: '--muted' },
-      { value: count('BLOCKED'), name: '已阻塞', color: '--danger' }
-    ],
-    progressData: [...values].sort((left, right) => Number(right.progress || 0) - Number(left.progress || 0)).slice(0, 8).map(plan => ({ name: plan.plan_name, value: Math.round(Number(plan.progress || 0)) }))
-  }
+const mainPlanTimelineRanges = computed<GanttRange[]>(() => {
+  return plans.value
+    .filter(plan => !Number(plan.parent_id || 0))
+    .map(planRange)
+    .filter((range): range is GanttRange => Boolean(range))
 })
-const mainGanttRows = computed<GanttRow[]>(() => {
-  const rows: GanttRow[] = []
-  plans.value.filter(plan => !Number(plan.parent_id || 0)).forEach(plan => {
-    const range = planRange(plan)
-    if (range) rows.push({ plan, kind: 'master', label: plan.plan_name, range })
-  })
-  return rows
-})
-type PlanTimelineGroup = { key: string; id: number | null; name: string; colorKey: ProjectPlanGroupColorToken; masters: ProjectPlan[] }
-type PlanTimelineStage = { key: string; name: string; index: number; masters: ProjectPlan[]; groups: PlanTimelineGroup[] }
+type PlanTimelineRow = { key: string; id: number | null; colorKey: ProjectPlanGroupColorToken; masters: ProjectPlan[] }
+type PlanTimelineStage = { key: string; name: string; index: number; masters: ProjectPlan[]; rows: PlanTimelineRow[] }
 const planTimelineStages = computed<PlanTimelineStage[]>(() => {
   const stageMap = new Map<string, { key: string; name: string; index: number }>()
   projectOptions.value.plan_phases.forEach((stage, index) => stageMap.set(stage.value, { key: stage.value, name: stage.label, index }))
@@ -253,9 +222,30 @@ const planTimelineStages = computed<PlanTimelineStage[]>(() => {
   return [...stageMap.values()].sort((left, right) => left.index - right.index).map(stage => ({
     ...stage,
     masters: masterPlans.filter(plan => (plan.phase || '__UNASSIGNED__') === stage.key),
-    groups: timelineGroupsForStage(stage.key, masterPlans)
+    rows: timelineRowsForStage(stage.key, masterPlans)
   }))
 })
+const overviewPlanTimelineStages = computed<PlanTimelineStage[]>(() => planTimelineStages.value.map(stage => ({ ...stage, masters: sortTimelinePlans(stage.masters) })))
+const hasOverviewPlanTimeline = computed(() => overviewPlanTimelineStages.value.some(stage => stage.masters.length > 0))
+type OverviewTimelineRow = { plan: ProjectPlan; lane: number }
+function overviewTimelineRows(stage: PlanTimelineStage): OverviewTimelineRow[] {
+  const laneEnds: number[] = []
+  return sortTimelinePlans(stage.masters.filter(plan => planRange(plan))).map(plan => {
+    const range = planRange(plan)!
+    let lane = laneEnds.findIndex(end => end <= range.start)
+    if (lane < 0) { lane = laneEnds.length; laneEnds.push(range.end) } else laneEnds[lane] = range.end
+    return { plan, lane }
+  })
+}
+function overviewTimelineStageHeight(stage: PlanTimelineStage) {
+  const rows = overviewTimelineRows(stage)
+  const laneCount = rows.length ? Math.max(...rows.map(row => row.lane)) + 1 : 1
+  return `${Math.max(58, laneCount * 34 + (stage.masters.some(plan => !planRange(plan)) ? 48 : 24))}px`
+}
+function overviewTimelineBarStyle(plan: ProjectPlan, lane: number) {
+  return { ...timelineBarStyle(plan), top: `${12 + lane * 34}px` }
+}
+function overviewTimelineUndated(stage: PlanTimelineStage) { return stage.masters.filter(plan => !planRange(plan)) }
 function sortTimelinePlans(items: ProjectPlan[]) {
   return [...items].sort((left, right) => {
     const leftRange = planRange(left)?.start ?? Number.MAX_SAFE_INTEGER
@@ -265,22 +255,23 @@ function sortTimelinePlans(items: ProjectPlan[]) {
     return leftRange - rightRange || leftEnd - rightEnd || Number(left.sort_no || 0) - Number(right.sort_no || 0) || left.id - right.id
   })
 }
-function timelineGroupsForStage(stageKey: string, masterPlans: ProjectPlan[]): PlanTimelineGroup[] {
+function timelineRowsForStage(stageKey: string, masterPlans: ProjectPlan[]): PlanTimelineRow[] {
   const stagePlans = masterPlans.filter(plan => (plan.phase || '__UNASSIGNED__') === stageKey)
   const configuredGroups = planGroups.value.filter(group => (group.phase || '__UNASSIGNED__') === stageKey).sort((left, right) => Number(left.sort_no || 0) - Number(right.sort_no || 0) || left.id - right.id)
-  const groups: PlanTimelineGroup[] = configuredGroups.map(group => ({
+  const rows: PlanTimelineRow[] = configuredGroups.map(group => ({
     key: `group-${group.id}`,
     id: group.id,
-    name: group.stage_plan_code || group.group_name,
     colorKey: group.color_key || 'brand',
     masters: sortTimelinePlans(stagePlans.filter(plan => Number(plan.group_id) === Number(group.id)))
   }))
   const ungrouped = sortTimelinePlans(stagePlans.filter(plan => !plan.group_id || !configuredGroups.some(group => Number(group.id) === Number(plan.group_id))))
-  if (ungrouped.length || !groups.length) groups.push({ key: `ungrouped-${stageKey}`, id: null, name: '未分组', colorKey: 'muted', masters: ungrouped })
-  return groups
+  if (ungrouped.length || !rows.length) rows.push({ key: `ungrouped-${stageKey}`, id: null, colorKey: 'muted', masters: ungrouped })
+  return rows
 }
+const dayMillis = 86400000
+const todayTimelineDate = computed(() => startOfDay(Date.now()))
 const planTimelineAxis = computed(() => {
-  const axis = ganttAxisRange(mainGanttRows.value, 'month')
+  const axis = ganttAxisRange([...mainPlanTimelineRanges.value, { start: todayTimelineDate.value, end: todayTimelineDate.value + dayMillis }])
   if (axis) return axis
   const projectStart = planDateValue(selectedProject.value?.planned_start_date)
   const projectEnd = planDateValue(selectedProject.value?.planned_end_date)
@@ -297,6 +288,11 @@ const planTimelineMonths = computed(() => {
   }
   return months
 })
+const todayTimelinePosition = computed(() => {
+  const axis = planTimelineAxis.value
+  if (!axis || todayTimelineDate.value < axis.min || todayTimelineDate.value >= axis.max) return null
+  return `${Math.max(0, Math.min(100, (todayTimelineDate.value - axis.min) / (axis.max - axis.min) * 100))}%`
+})
 function timelineLayoutStyle() {
   return { '--project-plan-timeline-track-min-width': `${Math.max(760, planTimelineMonths.value.length * 112)}px` }
 }
@@ -306,51 +302,7 @@ const selectedPlanChildren = computed(() => {
   if (!parentId) return []
   return plans.value.filter(plan => Number(plan.parent_id || 0) === parentId).sort((left, right) => Number(left.sort_no || 0) - Number(right.sort_no || 0) || left.id - right.id)
 })
-const selectedMasterPlanId = ref<number | null>(null)
-const selectedMasterPlan = computed(() => mainGanttRows.value.find(row => row.plan.id === selectedMasterPlanId.value)?.plan || null)
-const childGanttRows = computed<GanttRow[]>(() => {
-  const rows: GanttRow[] = []
-  const mainPlan = selectedMasterPlan.value
-  if (!mainPlan) return rows
-  const children = plans.value
-    .filter(plan => Number(plan.parent_id || 0) === mainPlan.id && planRange(plan))
-    .sort((left, right) => Number(left.sort_no || 0) - Number(right.sort_no || 0) || left.id - right.id)
-  const mainRange = planRange(mainPlan) || mergePlanRanges(children)
-  if (!children.length || !mainRange) return rows
-  rows.push({ plan: mainPlan, kind: 'master', label: `主计划 · ${mainPlan.plan_name}`, range: mainRange })
-  children.forEach(plan => {
-    const range = planRange(plan)
-    if (range) rows.push({ plan, kind: 'child', label: `　子计划 · ${plan.plan_name}`, range })
-  })
-  return rows
-})
-const statusChartRef = ref<HTMLElement | null>(null)
-const progressChartRef = ref<HTMLElement | null>(null)
-const mainGanttChartRef = ref<HTMLElement | null>(null)
-const childGanttChartRef = ref<HTMLElement | null>(null)
-let statusChart: echarts.ECharts | null = null
-let progressChart: echarts.ECharts | null = null
-let mainGanttChart: echarts.ECharts | null = null
-let childGanttChart: echarts.ECharts | null = null
-let chartThemeObserver: MutationObserver | null = null
-
-function cssVar(name: string) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-}
-
-function chartTextColor() { return cssVar('--text') || '#15232d' }
-function chartMutedColor() { return cssVar('--muted') || '#637480' }
-function chartLineColor() { return cssVar('--line') || '#d7e0e5' }
-function chartPanelColor() { return cssVar('--panel-bg') || '#ffffff' }
-function chartBrandColor() { return cssVar('--brand') || '#147d92' }
-function chartBrandSoftColor() { const color = chartBrandColor(); const hex = color.replace('#', ''); if (hex.length !== 6) return color; return `rgba(${parseInt(hex.slice(0, 2), 16)}, ${parseInt(hex.slice(2, 4), 16)}, ${parseInt(hex.slice(4, 6), 16)}, .12)` }
-
-type GanttUnit = 'month' | 'week'
 type GanttRange = { start: number; end: number }
-type GanttRow = { plan: ProjectPlan; kind: 'master' | 'child'; label: string; range: GanttRange }
-type GanttData = { planName: string; startLabel: string; endLabel: string; progress: number; kind: GanttRow['kind']; value: number[] }
-
-const dayMillis = 86400000
 
 function planDateValue(value: string | null | undefined) {
   const raw = String(value || '').slice(0, 10)
@@ -368,32 +320,23 @@ function planRange(plan: ProjectPlan): GanttRange | null {
   return { start: first, end: Math.max(last, first + dayMillis) }
 }
 
-function mergePlanRanges(values: ProjectPlan[]) {
-  const ranges = values.map(planRange).filter((range): range is GanttRange => Boolean(range))
-  if (!ranges.length) return null
-  return { start: Math.min(...ranges.map(range => range.start)), end: Math.max(...ranges.map(range => range.end)) }
-}
-
 function startOfMonth(timestamp: number) {
   const date = new Date(timestamp)
   return new Date(date.getFullYear(), date.getMonth(), 1).getTime()
 }
 
-function startOfWeek(timestamp: number) {
+function startOfDay(timestamp: number) {
   const date = new Date(timestamp)
-  const mondayOffset = (date.getDay() + 6) % 7
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() - mondayOffset).getTime()
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
 }
 
-function ganttAxisRange(rows: GanttRow[], unit: GanttUnit) {
-  if (!rows.length) return null
-  const range = { start: Math.min(...rows.map(row => row.range.start)), end: Math.max(...rows.map(row => row.range.end)) }
-  const min = unit === 'month' ? startOfMonth(range.start) : startOfWeek(range.start)
-  const endAnchor = unit === 'month' ? startOfMonth(Math.max(range.end - dayMillis, range.start)) : startOfWeek(Math.max(range.end - dayMillis, range.start))
-  const max = unit === 'month' ? new Date(new Date(endAnchor).getFullYear(), new Date(endAnchor).getMonth() + 1, 1).getTime() : endAnchor + 7 * dayMillis
-  const count = unit === 'month'
-    ? (new Date(max).getFullYear() - new Date(min).getFullYear()) * 12 + new Date(max).getMonth() - new Date(min).getMonth()
-    : Math.max(1, Math.ceil((max - min) / (7 * dayMillis)))
+function ganttAxisRange(ranges: GanttRange[]) {
+  if (!ranges.length) return null
+  const range = { start: Math.min(...ranges.map(item => item.start)), end: Math.max(...ranges.map(item => item.end)) }
+  const min = startOfMonth(range.start)
+  const endAnchor = startOfMonth(Math.max(range.end - dayMillis, range.start))
+  const max = new Date(new Date(endAnchor).getFullYear(), new Date(endAnchor).getMonth() + 1, 1).getTime()
+  const count = (new Date(max).getFullYear() - new Date(min).getFullYear()) * 12 + new Date(max).getMonth() - new Date(min).getMonth()
   return { min, max, splitNumber: Math.max(1, Math.min(12, count)) }
 }
 
@@ -402,168 +345,10 @@ function monthAxisLabel(value: number) {
   return `${date.getFullYear()}年${date.getMonth() + 1}月`
 }
 
-function weekAxisLabel(value: number) {
-  const date = new Date(value)
-  const yearStart = startOfWeek(new Date(date.getFullYear(), 0, 1).getTime())
-  const currentWeek = Math.floor((startOfWeek(value) - yearStart) / (7 * dayMillis)) + 1
-  return `第${currentWeek}周`
-}
-
-function planStatusColor(status: PlanStatus) {
-  const colors: Record<PlanStatus, string> = { COMPLETED: '--success', IN_PROGRESS: '--brand', NOT_STARTED: '--muted', BLOCKED: '--danger' }
-  return cssVar(colors[status]) || chartBrandColor()
-}
-
-function clipGanttRect(shape: { x: number; y: number; width: number; height: number }, area: { x: number; y: number; width: number; height: number }) {
-  const x = Math.max(shape.x, area.x)
-  const right = Math.min(shape.x + shape.width, area.x + area.width)
-  if (right <= x) return null
-  return { ...shape, x, width: right - x }
-}
-
-function renderGanttItem(params: CustomSeriesRenderItemParams, api: CustomSeriesRenderItemAPI) {
-  if (!params.coordSys) return null
-  const categoryIndex = Number(api.value(0))
-  const start = api.coord([api.value(1), categoryIndex])
-  const end = api.coord([api.value(2), categoryIndex])
-  const rowHeight = Number((api.size?.([0, 1]) as number[] | undefined)?.[1] || 32)
-  const height = Math.min(20, Math.max(12, rowHeight * .46))
-  const shape = { x: Math.min(start[0], end[0]), y: start[1] - height / 2, width: Math.max(2, Math.abs(end[0] - start[0])), height }
-  const coordSys = params.coordSys as unknown as { x: number; y: number; width: number; height: number }
-  const clipped = clipGanttRect(shape, coordSys)
-  if (!clipped) return null
-  const color = api.visual('color') as string
-  const progress = Math.max(0, Math.min(100, Number(api.value(3) || 0)))
-  const isMaster = Number(api.value(4)) === 1
-  const isSelected = Number(api.value(5)) === 1
-  const cursor = isMaster ? 'pointer' : 'default'
-  const border = isSelected ? { stroke: chartTextColor(), lineWidth: 2 } : { stroke: 'transparent', lineWidth: 0 }
-  const children: Array<Record<string, unknown>> = [{ type: 'rect', shape: { ...clipped, r: 5 }, style: { fill: color, opacity: isMaster ? .24 : .16, cursor, ...border } }]
-  if (progress > 0) {
-    const progressShape = clipGanttRect({ ...clipped, width: clipped.width * progress / 100 }, coordSys)
-    if (progressShape) children.push({ type: 'rect', shape: { ...progressShape, r: 5 }, style: { fill: color, opacity: isMaster ? .92 : .84, cursor, ...border } })
-  }
-  return { type: 'group' as const, children }
-}
-
-function ganttTooltip(params: unknown) {
-  const item = (Array.isArray(params) ? params[0] : params) as { data?: GanttData } | undefined
-  const data = item?.data
-  if (!data) return ''
-  const level = data.kind === 'master' ? '主计划' : '子计划'
-  return `${level}：${data.planName}<br/>${data.startLabel} 至 ${data.endLabel}<br/>进度：${data.progress}%`
-}
-
-function createGanttOption(rows: GanttRow[], unit: GanttUnit, axis: { min: number; max: number; splitNumber: number }) {
-  const text = chartTextColor()
-  const muted = chartMutedColor()
-  const line = chartLineColor()
-  return {
-    animationDuration: 360,
-    grid: { left: 148, right: 20, top: 18, bottom: 34 },
-    tooltip: { trigger: 'item', formatter: ganttTooltip },
-    xAxis: {
-      type: 'time', min: axis.min, max: axis.max, splitNumber: axis.splitNumber,
-      minInterval: unit === 'week' ? 7 * dayMillis : undefined,
-      axisLabel: { color: muted, fontSize: 10, margin: 12, hideOverlap: true, formatter: unit === 'month' ? monthAxisLabel : weekAxisLabel },
-      axisLine: { lineStyle: { color: line } },
-      splitLine: { show: true, lineStyle: { color: line, type: 'dashed' } }
-    },
-    yAxis: {
-      type: 'category', inverse: true, data: rows.map(row => row.label),
-      axisLabel: { color: text, fontSize: 11, width: 132, overflow: 'truncate' },
-      axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: true, lineStyle: { color: line } }
-    },
-    series: [{
-      type: 'custom', renderItem: renderGanttItem, encode: { x: [1, 2], y: 0 },
-      data: rows.map((row, index) => ({
-        name: row.plan.plan_name,
-        planName: row.plan.plan_name,
-        startLabel: formatDateOnly(row.plan.planned_start_date) || formatDateOnly(new Date(row.range.start).toISOString()),
-        endLabel: formatDateOnly(row.plan.planned_end_date) || formatDateOnly(new Date(row.range.end - dayMillis).toISOString()),
-        progress: Math.round(Number(row.plan.progress || 0)),
-        kind: row.kind,
-        value: [index, row.range.start, row.range.end, Math.max(0, Math.min(100, Number(row.plan.progress || 0))), row.kind === 'master' ? 1 : 0, row.kind === 'master' && row.plan.id === selectedMasterPlanId.value ? 1 : 0],
-        itemStyle: { color: planStatusColor(row.plan.status) }
-      }))
-    }]
-  }
-}
-
-function handleMasterGanttClick(params: unknown) {
-  const dataIndex = Number((params as { dataIndex?: unknown } | undefined)?.dataIndex)
-  const row = Number.isInteger(dataIndex) ? mainGanttRows.value[dataIndex] : null
-  if (row) selectedMasterPlanId.value = row.plan.id
-}
-
-function ganttCanvasWidth(rows: GanttRow[], unit: GanttUnit) {
-  const axis = ganttAxisRange(rows, unit)
-  const units = axis?.splitNumber || 1
-  return `${Math.max(760, units * (unit === 'month' ? 128 : 72) + 170)}px`
-}
-
-function ganttCanvasHeight(rows: GanttRow[]) {
-  return `${Math.max(190, rows.length * 42 + 64)}px`
-}
-
-function renderCharts() {
-  const text = chartTextColor()
-  const muted = chartMutedColor()
-  const line = chartLineColor()
-  const panel = chartPanelColor()
-  const brand = chartBrandColor()
-  const stats = planStats.value
-  if (statusChartRef.value) {
-    statusChart ||= echarts.init(statusChartRef.value)
-    statusChart.setOption({
-    animationDuration: 500,
-    tooltip: { trigger: 'item', formatter: '{b}: {c} 项 ({d}%)' },
-    legend: { bottom: 0, left: 'center', itemWidth: 9, itemHeight: 9, textStyle: { color: muted, fontSize: 11 } },
-    series: [{ type: 'pie', radius: ['54%', '76%'], center: ['50%', '43%'], avoidLabelOverlap: true, itemStyle: { borderColor: panel, borderWidth: 3 }, label: { show: true, color: text, fontSize: 12, formatter: '{c}' }, data: stats.statusData.map(item => ({ value: item.value, name: item.name, itemStyle: { color: cssVar(item.color) } })) }]
-    }, true)
-  }
-  if (progressChartRef.value) {
-    progressChart ||= echarts.init(progressChartRef.value)
-    progressChart.setOption({
-    animationDuration: 500,
-    grid: { left: 92, right: 18, top: 12, bottom: 22 },
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: (items: Array<{ name: string; value: number }>) => `${items[0]?.name || ''}<br/>进度：${items[0]?.value || 0}%` },
-    xAxis: { type: 'value', max: 100, axisLabel: { color: muted, fontSize: 10, formatter: '{value}%' }, splitLine: { lineStyle: { color: line } } },
-    yAxis: { type: 'category', inverse: true, axisLabel: { color: text, fontSize: 11, width: 78, overflow: 'truncate' }, axisLine: { show: false }, axisTick: { show: false }, data: stats.progressData.map(item => item.name) },
-    series: [{ type: 'bar', barMaxWidth: 14, showBackground: true, backgroundStyle: { color: chartBrandSoftColor() }, itemStyle: { color: brand, borderRadius: [0, 4, 4, 0] }, label: { show: true, position: 'right', color: text, fontSize: 10, formatter: '{c}%' }, data: stats.progressData.map(item => item.value) }]
-    }, true)
-  }
-  const mainRows = mainGanttRows.value
-  const mainAxis = ganttAxisRange(mainRows, 'month')
-  if (mainGanttChartRef.value && mainAxis) {
-    mainGanttChart ||= echarts.init(mainGanttChartRef.value)
-    mainGanttChart.setOption(createGanttOption(mainRows, 'month', mainAxis), true)
-    mainGanttChart.off('click')
-    mainGanttChart.on('click', handleMasterGanttClick)
-  } else if (mainGanttChart) {
-    mainGanttChart.dispose()
-    mainGanttChart = null
-  }
-  const childRows = childGanttRows.value
-  const childAxis = ganttAxisRange(childRows, 'week')
-  if (childGanttChartRef.value && childAxis) {
-    childGanttChart ||= echarts.init(childGanttChartRef.value)
-    childGanttChart.setOption(createGanttOption(childRows, 'week', childAxis), true)
-  } else if (childGanttChart) {
-    childGanttChart.dispose()
-    childGanttChart = null
-  }
-}
-
-function resizeCharts() { statusChart?.resize(); progressChart?.resize(); mainGanttChart?.resize(); childGanttChart?.resize() }
-function disposeCharts() { statusChart?.dispose(); progressChart?.dispose(); mainGanttChart?.dispose(); childGanttChart?.dispose(); statusChart = null; progressChart = null; mainGanttChart = null; childGanttChart = null }
-async function refreshOverviewCharts() { await nextTick(); if (activeTab.value === 'overview') renderCharts() }
-
-function resetProjectForm() { Object.keys(projectForm).forEach(key => delete projectForm[key]); Object.assign(projectForm, { project_code: '', project_name: '', description: '', status: 'PLANNING', owner_id: auth.user?.id || null, planned_start_date: '', planned_end_date: '', actual_end_date: '' }) }
-function resetPlanForm() { Object.keys(planForm).forEach(key => delete planForm[key]); Object.assign(planForm, { parent_id: 0, group_id: null, phase: '', plan_name: '', description: '', owner_id: null, lead_org_id: null, cooperating_org_ids: [], planned_start_date: '', planned_end_date: '', progress: 0, status: 'NOT_STARTED', sort_no: 0 }) }
+function resetProjectForm() { Object.keys(projectForm).forEach(key => delete projectForm[key]); Object.assign(projectForm, { project_code: '', project_name: '', description: '', status: 'PLANNING', owner_id: auth.user?.id || null, planned_start_date: '', planned_end_date: '', actual_end_date: '' }); projectDateRange.value = [] }
+function resetPlanForm() { Object.keys(planForm).forEach(key => delete planForm[key]); Object.assign(planForm, { parent_id: 0, group_id: null, phase: '', plan_name: '', description: '', owner_id: null, lead_org_id: null, cooperating_org_ids: [], planned_start_date: '', planned_end_date: '', progress: 0, status: 'NOT_STARTED', sort_no: 0 }); planDateRange.value = [] }
 function resetRoleForm() { Object.keys(roleForm).forEach(key => delete roleForm[key]); Object.assign(roleForm, { role_code: '', role_name: '', description: '', member_ids: [] }) }
 function resetProjectOrganizationForm(parentId = 0) { Object.keys(projectOrganizationForm).forEach(key => delete projectOrganizationForm[key]); Object.assign(projectOrganizationForm, { parent_id: parentId, org_code: '', org_name: '', sort_no: 0, status: 1 }) }
-function resetPlanGroupForm(phase = '') { Object.keys(planGroupForm).forEach(key => delete planGroupForm[key]); Object.assign(planGroupForm, { phase: phase || projectOptions.value.plan_phases[0]?.value || '', color_key: 'brand', description: '', sort_no: 0 }) }
 function resetRiskForm() {
   Object.keys(riskForm).forEach(key => delete riskForm[key])
   Object.assign(riskForm, {
@@ -578,7 +363,7 @@ async function loadWorkbench() { loading.value = true; try { projects.value = (a
 function addUserOption(id: number | null | undefined, displayName?: string | null, username = '') { if (!id) return; const existing = userOptions.value.find(item => item.id === id); if (existing) { if (displayName) existing.display_name = displayName; if (username) existing.username = username; return }; userOptions.value.push({ id, username, display_name: displayName || `用户 ${id}` }) }
 function userOptionLabel(item: ProjectUserOption) { return item.username ? `${item.display_name}（${item.username}）` : item.display_name }
 function ensureProjectUserOptions(project: Project) { addUserOption(project.owner_id, project.owner_name); project.plans?.forEach(plan => addUserOption(plan.owner_id, plan.owner_name)); project.members?.forEach(member => addUserOption(member.user_id, member.display_name)) }
-async function refreshProject(projectId: number) { detailLoading.value = true; try { selectedProject.value = (await getProject(projectId)).data.data; ensureProjectUserOptions(selectedProject.value); resetSettingsForm(); if (activeTab.value === 'attachments') { resetAttachmentQuery(); await loadProjectAttachments() } } catch (error) { selectedProject.value = null; ElMessage.error(apiErrorMessage(error, '项目详情加载失败')); await router.replace({ name: 'projects', query: {} }) } finally { detailLoading.value = false } }
+async function refreshProject(projectId: number) { detailLoading.value = true; try { if (selectedProject.value?.id !== projectId) newlyCreatedStageRowIds.value = new Set(); selectedProject.value = (await getProject(projectId)).data.data; ensureProjectUserOptions(selectedProject.value); resetSettingsForm(); if (activeTab.value === 'attachments') { resetAttachmentQuery(); await loadProjectAttachments() } } catch (error) { newlyCreatedStageRowIds.value = new Set(); selectedProject.value = null; ElMessage.error(apiErrorMessage(error, '项目详情加载失败')); await router.replace({ name: 'projects', query: {} }) } finally { detailLoading.value = false } }
 function resetAttachmentQuery() { attachmentKeyword.value = ''; attachmentPage.value = 1; attachmentPageSize.value = 10; attachmentTotal.value = 0; attachments.value = [] }
 async function loadProjectAttachments() { if (!selectedProject.value) return; const requestSequence = ++attachmentRequestSequence; attachmentsLoading.value = true; try { const page = (await getProjectAttachments(selectedProject.value.id, { page: attachmentPage.value, size: attachmentPageSize.value, keyword: attachmentKeyword.value.trim() || undefined })).data.data; if (requestSequence !== attachmentRequestSequence) return; attachments.value = page.records; attachmentTotal.value = page.total } catch (error) { if (requestSequence !== attachmentRequestSequence) return; attachments.value = []; attachmentTotal.value = 0; ElMessage.error(apiErrorMessage(error, '项目附件加载失败')) } finally { if (requestSequence === attachmentRequestSequence) attachmentsLoading.value = false } }
 function searchAttachments() { attachmentPage.value = 1; void loadProjectAttachments() }
@@ -590,23 +375,29 @@ async function handleAttachmentChange(file: UploadFile) { if (file.raw) await up
 async function uploadAttachment(file: File) { if (!selectedProject.value) return; attachmentUploading.value = true; try { await uploadProjectAttachment(selectedProject.value.id, file); attachmentPage.value = 1; await loadProjectAttachments(); ElMessage.success('附件上传成功') } catch (error) { ElMessage.error(apiErrorMessage(error, '附件上传失败')) } finally { attachmentUploading.value = false } }
 async function previewAttachment(row: ProjectAttachment) { if (!selectedProject.value) return; try { const link = (await getProjectAttachmentPreview(selectedProject.value.id, row.id)).data.data; attachmentPreviewName.value = link.fileName || row.fileName; attachmentPreviewUrl.value = link.url; attachmentPreviewVisible.value = true } catch (error) { ElMessage.error(apiErrorMessage(error, '附件预览地址获取失败')) } }
 async function downloadAttachment(row: ProjectAttachment) { if (!selectedProject.value) return; try { const link = (await getProjectAttachmentDownload(selectedProject.value.id, row.id)).data.data; const anchor = document.createElement('a'); anchor.href = link.url; anchor.download = link.fileName || row.fileName; anchor.rel = 'noopener'; anchor.target = '_blank'; anchor.click() } catch (error) { ElMessage.error(apiErrorMessage(error, '附件下载地址获取失败')) } }
-async function removeAttachment(row: ProjectAttachment) { if (!selectedProject.value) return; try { await ElMessageBox.confirm(`确认删除附件“${row.fileName}”吗？删除后不可恢复。`, '删除附件', { type: 'warning' }); attachmentDeletingId.value = row.id; await deleteProjectAttachment(selectedProject.value.id, row.id); await loadProjectAttachments(); if (!attachments.value.length && attachmentPage.value > 1) { attachmentPage.value -= 1; await loadProjectAttachments() } ElMessage.success('附件已删除') } catch (error) { const action = (error as { action?: string }).action; if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '附件删除失败')) } finally { attachmentDeletingId.value = null } }
+function messageBoxAction(error: unknown) { return typeof error === 'string' ? error : (error as { action?: string } | null)?.action }
+async function removeAttachment(row: ProjectAttachment) { if (!selectedProject.value) return; try { await ElMessageBox.confirm(`确认删除附件“${row.fileName}”吗？删除后不可恢复。`, '删除附件', { type: 'warning' }); attachmentDeletingId.value = row.id; await deleteProjectAttachment(selectedProject.value.id, row.id); await loadProjectAttachments(); if (!attachments.value.length && attachmentPage.value > 1) { attachmentPage.value -= 1; await loadProjectAttachments() } ElMessage.success('附件已删除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '附件删除失败')) } finally { attachmentDeletingId.value = null } }
 async function syncProjectFromRoute() { const rawProjectId = route.params.projectId; if (!rawProjectId) { selectedProject.value = null; detailLoading.value = false; tabContentLoading.value = false; return }; const projectId = Number(rawProjectId); if (!Number.isSafeInteger(projectId) || projectId <= 0) { await router.replace({ name: 'projects', query: {} }); return }; activeTab.value = normalizeProjectTab(route.query.tab); if (selectedProject.value?.id !== projectId || detailLoading.value) await refreshProject(projectId) }
 function clearTabLoadingTimer() { if (tabLoadingTimer !== null) { window.clearTimeout(tabLoadingTimer); tabLoadingTimer = null } }
 async function setProjectTab(tab: string | number) { const normalizedTab = normalizeProjectTab(String(tab)); if (normalizeProjectTab(route.query.tab) === normalizedTab) return; clearTabLoadingTimer(); tabContentLoading.value = true; if (route.name === 'project-detail' && route.params.projectId != null) await router.replace({ query: { ...route.query, tab: normalizedTab } }); if (normalizedTab === 'attachments') await loadProjectAttachments(); await nextTick(); await new Promise<void>(resolve => { tabLoadingTimer = window.setTimeout(resolve, 220) }); tabLoadingTimer = null; tabContentLoading.value = false }
-async function openProject(project: Project) { selectedProject.value = project; activeTab.value = 'overview'; detailLoading.value = true; await router.push({ name: 'project-detail', params: { projectId: String(project.id) }, query: { tab: 'overview' } }) }
+async function openProject(project: Project) { if (selectedProject.value?.id !== project.id) newlyCreatedStageRowIds.value = new Set(); selectedProject.value = project; activeTab.value = 'overview'; detailLoading.value = true; await router.push({ name: 'project-detail', params: { projectId: String(project.id) }, query: { tab: 'overview' } }) }
 async function refreshSelectedProject() { if (selectedProject.value) await refreshProject(selectedProject.value.id) }
 function resetSettingsForm() { settingsForm.plan_number_rule = selectedProject.value?.plan_number_rule || '{PROJECT_CODE}-P{SEQ:3}'; settingsForm.child_plan_number_rule = selectedProject.value?.child_plan_number_rule || '{PARENT_CODE}-S{SEQ:3}'; settingsForm.risk_number_rule = selectedProject.value?.risk_number_rule || '{PROJECT_CODE}-R{SEQ:3}' }
 function openSettings() { resetSettingsForm() }
 async function saveSettings() { if (!selectedProject.value || !settingsForm.plan_number_rule.trim() || !settingsForm.child_plan_number_rule.trim() || !settingsForm.risk_number_rule.trim()) { ElMessage.warning('请输入主计划、子计划和风险编号规则'); return }; saving.value = true; try { selectedProject.value = (await updateProjectSettings(selectedProject.value.id, settingsForm)).data.data; await loadWorkbench(); ElMessage.success('项目设置已保存') } catch (error) { ElMessage.error(apiErrorMessage(error, '项目设置保存失败')) } finally { saving.value = false } }
 function openCreateProject() { projectEditingId.value = null; resetProjectForm(); projectDialog.value = true }
-async function openEditProject() { if (!selectedProject.value) return; await loadUsers(); addUserOption(selectedProject.value.owner_id, selectedProject.value.owner_name); projectEditingId.value = selectedProject.value.id; Object.assign(projectForm, { project_code: selectedProject.value.project_code, project_name: selectedProject.value.project_name, description: selectedProject.value.description || '', status: selectedProject.value.status, owner_id: selectedProject.value.owner_id, planned_start_date: selectedProject.value.planned_start_date || '', planned_end_date: selectedProject.value.planned_end_date || '', actual_end_date: selectedProject.value.actual_end_date || '' }); projectDialog.value = true }
+async function openEditProject() { if (!selectedProject.value) return; await loadUsers(); addUserOption(selectedProject.value.owner_id, selectedProject.value.owner_name); projectEditingId.value = selectedProject.value.id; Object.assign(projectForm, { project_code: selectedProject.value.project_code, project_name: selectedProject.value.project_name, description: selectedProject.value.description || '', status: selectedProject.value.status, owner_id: selectedProject.value.owner_id, planned_start_date: selectedProject.value.planned_start_date || '', planned_end_date: selectedProject.value.planned_end_date || '', actual_end_date: selectedProject.value.actual_end_date || '' }); projectDateRange.value = selectedProject.value.planned_start_date && selectedProject.value.planned_end_date ? [selectedProject.value.planned_start_date, selectedProject.value.planned_end_date] : []; projectDialog.value = true }
 function validDateRange(start: unknown, end: unknown) { return !start || !end || String(end) >= String(start) }
+function onProjectDateRangeChange(value: unknown) {
+  const values = Array.isArray(value) ? value.map(item => String(item || '')) : []
+  projectForm.planned_start_date = values.length === 2 ? values[0] : ''
+  projectForm.planned_end_date = values.length === 2 ? values[1] : ''
+}
 async function saveProject() { if (!String(projectForm.project_code || '').trim() || !String(projectForm.project_name || '').trim()) { ElMessage.warning('请填写项目编号和项目名称'); return }; if (!validDateRange(projectForm.planned_start_date, projectForm.planned_end_date) || !validDateRange(projectForm.planned_start_date, projectForm.actual_end_date)) { ElMessage.warning('项目结束日期必须大于等于开始日期'); return }; saving.value = true; try { const response = projectEditingId.value ? await updateProject(projectEditingId.value, projectForm) : await createProject(projectForm); selectedProject.value = response.data.data; ensureProjectUserOptions(selectedProject.value); resetSettingsForm(); projectDialog.value = false; await loadWorkbench(); await router.push({ name: 'project-detail', params: { projectId: String(selectedProject.value.id) } }); ElMessage.success(projectEditingId.value ? '项目已更新' : '项目已创建') } catch (error) { ElMessage.error(apiErrorMessage(error, '项目保存失败')) } finally { saving.value = false } }
-async function removeProject() { if (!selectedProject.value) return; try { await ElMessageBox.confirm('删除项目后，项目计划、成员和角色也将不再显示，确认继续吗？', '删除确认', { type: 'warning' }); await deleteProject(selectedProject.value.id); selectedProject.value = null; await router.push({ name: 'projects' }); await loadWorkbench(); ElMessage.success('项目已删除') } catch (error) { const action = (error as { action?: string }).action; if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目删除失败')) } }
-function openCreatePlanForGroup(group: PlanTimelineGroup, phase: PlanTimelineStage) { planEditingId.value = null; planParentName.value = ''; resetPlanForm(); planForm.phase = phase.key === '__UNASSIGNED__' ? '' : phase.key; planForm.group_id = group.id; planDialog.value = true }
+async function removeProject() { if (!selectedProject.value) return; try { await ElMessageBox.confirm('删除项目后，项目计划、成员和角色也将不再显示，确认继续吗？', '删除确认', { type: 'warning' }); await deleteProject(selectedProject.value.id); selectedProject.value = null; await router.push({ name: 'projects' }); await loadWorkbench(); ElMessage.success('项目已删除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目删除失败')) } }
+function openCreatePlanForStageRow(row: PlanTimelineRow, phase: PlanTimelineStage) { planEditingId.value = null; planParentName.value = ''; resetPlanForm(); planForm.phase = phase.key === '__UNASSIGNED__' ? '' : phase.key; planForm.group_id = row.id; planDialog.value = true }
 function openCreateChildPlan(row: ProjectPlan) { planChildrenDialog.value = false; planEditingId.value = null; planParentName.value = row.plan_name; resetPlanForm(); planForm.parent_id = row.id; planForm.group_id = row.group_id || null; planForm.phase = row.phase || ''; planDialog.value = true }
-async function openEditPlan(row: ProjectPlan) { planChildrenDialog.value = false; await loadUsers(); addUserOption(row.owner_id, row.owner_name); planEditingId.value = row.id; planParentName.value = row.parent_id ? (plans.value.find(plan => plan.id === row.parent_id)?.plan_name || '') : ''; Object.assign(planForm, { parent_id: row.parent_id, group_id: row.group_id || null, phase: row.phase || '', plan_name: row.plan_name, description: row.description || '', owner_id: row.owner_id || null, lead_org_id: row.lead_org_id || null, cooperating_org_ids: row.cooperating_org_ids || [], planned_start_date: row.planned_start_date || '', planned_end_date: row.planned_end_date || '', progress: row.progress, status: row.status, sort_no: row.sort_no }); planDialog.value = true }
+async function openEditPlan(row: ProjectPlan) { planChildrenDialog.value = false; await loadUsers(); addUserOption(row.owner_id, row.owner_name); planEditingId.value = row.id; planParentName.value = row.parent_id ? (plans.value.find(plan => plan.id === row.parent_id)?.plan_name || '') : ''; Object.assign(planForm, { parent_id: row.parent_id, group_id: row.group_id || null, phase: row.phase || '', plan_name: row.plan_name, description: row.description || '', owner_id: row.owner_id || null, lead_org_id: row.lead_org_id || null, cooperating_org_ids: row.cooperating_org_ids || [], planned_start_date: row.planned_start_date || '', planned_end_date: row.planned_end_date || '', progress: row.progress, status: row.status, sort_no: row.sort_no }); planDateRange.value = row.planned_start_date && row.planned_end_date ? [row.planned_start_date, row.planned_end_date] : []; planDialog.value = true }
 function openPlanChildren(row: ProjectPlan) { selectedPlanForChildrenId.value = row.id; planChildrenDialog.value = true }
 function closePlanChildren() { planChildrenDialog.value = false; selectedPlanForChildrenId.value = null }
 function timelineBarStyle(plan: ProjectPlan) {
@@ -620,10 +411,15 @@ function timelineBarStyle(plan: ProjectPlan) {
   const width = Math.max(.8, Math.min(100 - left, (end - start) / total * 100))
   return { left: `${left}%`, width: `${width}%`, top: '12px' }
 }
-function timelineGroupHeight(group: PlanTimelineGroup) { return `${Math.max(58, group.masters.some(plan => !planRange(plan)) ? 72 : 58)}px` }
-function timelineMastersWithDate(group: PlanTimelineGroup) { return sortTimelinePlans(group.masters.filter(plan => planRange(plan))) }
-function timelineMastersWithoutDate(group: PlanTimelineGroup) { return group.masters.filter(plan => !planRange(plan)) }
+function timelineRowHeight(row: PlanTimelineRow) { return `${Math.max(58, row.masters.some(plan => !planRange(plan)) ? 72 : 58)}px` }
+function timelineMastersWithDate(row: PlanTimelineRow) { return sortTimelinePlans(row.masters.filter(plan => planRange(plan))) }
+function timelineMastersWithoutDate(row: PlanTimelineRow) { return row.masters.filter(plan => !planRange(plan)) }
 function timelineGridStyle() { return { gridTemplateColumns: `repeat(${Math.max(1, planTimelineMonths.value.length)}, minmax(112px, 1fr))` } }
+function onPlanDateRangeChange(value: unknown) {
+  const values = Array.isArray(value) ? value.map(item => String(item || '')) : []
+  planForm.planned_start_date = values.length === 2 ? values[0] : ''
+  planForm.planned_end_date = values.length === 2 ? values[1] : ''
+}
 function mainPlanSequenceMessage() {
   const groupId = Number(planForm.group_id || 0)
   if (!groupId || Number(planForm.parent_id || 0)) return ''
@@ -644,7 +440,7 @@ function mainPlanSequenceMessage() {
   }
   return ''
 }
-async function savePlan() { if (!selectedProject.value || !String(planForm.plan_name || '').trim()) { ElMessage.warning('请填写计划名称'); return }; const isMainPlan = !Number(planForm.parent_id || 0); if (isMainPlan && (!String(planForm.planned_start_date || '').trim() || !String(planForm.planned_end_date || '').trim())) { ElMessage.warning('主计划必须填写开始和结束日期'); return }; if (!validDateRange(planForm.planned_start_date, planForm.planned_end_date)) { ElMessage.warning('计划结束日期必须大于等于开始日期'); return }; const sequenceMessage = mainPlanSequenceMessage(); if (sequenceMessage) { ElMessage.warning(sequenceMessage); return }; saving.value = true; try { if (planEditingId.value) await updateProjectPlan(selectedProject.value.id, planEditingId.value, planForm); else await createProjectPlan(selectedProject.value.id, planForm); planDialog.value = false; await refreshSelectedProject(); ElMessage.success('计划已保存') } catch (error) { ElMessage.error(apiErrorMessage(error, '计划保存失败')) } finally { saving.value = false } }
+async function savePlan() { if (!selectedProject.value || !String(planForm.plan_name || '').trim()) { ElMessage.warning('请填写计划名称'); return }; const isMainPlan = !Number(planForm.parent_id || 0); if (isMainPlan && (!String(planForm.planned_start_date || '').trim() || !String(planForm.planned_end_date || '').trim())) { ElMessage.warning('主计划必须填写时间范围'); return }; if (!validDateRange(planForm.planned_start_date, planForm.planned_end_date)) { ElMessage.warning('计划结束日期必须大于等于开始日期'); return }; const sequenceMessage = mainPlanSequenceMessage(); if (sequenceMessage) { ElMessage.warning(sequenceMessage); return }; saving.value = true; try { if (planEditingId.value) await updateProjectPlan(selectedProject.value.id, planEditingId.value, planForm); else await createProjectPlan(selectedProject.value.id, planForm); planDialog.value = false; await refreshSelectedProject(); ElMessage.success('计划已保存') } catch (error) { ElMessage.error(apiErrorMessage(error, '计划保存失败')) } finally { saving.value = false } }
 function openCreateRisk() { riskEditingId.value = null; resetRiskForm(); riskEntryMode.value = 'report'; riskMode.value = 'report'; riskComments.value = []; riskCommentText.value = ''; riskDialog.value = true }
 function riskDateInputValue(value: unknown) { const formatted = formatDateOnly(value); return formatted === '-' ? '' : formatted }
 function fillRiskForm(row: ProjectRisk) { riskEditingId.value = row.id; Object.assign(riskForm, { ...row, occurred_date: riskDateInputValue(row.occurred_date), expected_resolution_date: riskDateInputValue(row.expected_resolution_date), planned_resolution_date: riskDateInputValue(row.planned_resolution_date), actual_resolution_date: riskDateInputValue(row.actual_resolution_date) }) }
@@ -673,62 +469,41 @@ async function saveRisk() {
 }
 async function submitRiskComment() { if (!selectedProject.value || !riskEditingId.value) return; const comment = riskCommentText.value.trim(); if (!comment) { ElMessage.warning('请输入评论内容'); return }; riskCommentSubmitting.value = true; try { await createProjectRiskComment(selectedProject.value.id, riskEditingId.value, { comment_text: comment }); riskCommentText.value = ''; await loadRiskComments(); ElMessage.success('评论已发表') } catch (error) { ElMessage.error(apiErrorMessage(error, '评论发表失败')) } finally { riskCommentSubmitting.value = false } }
 function commentUser(comment: ProjectRiskComment) { return { id: comment.user_id, username: comment.username || '', displayName: comment.display_name || comment.username || '未命名用户', orgName: comment.org_name || null, avatarUrl: comment.avatar_url || null } }
-async function removeRisk(row: ProjectRisk) { if (!selectedProject.value) return; try { await ElMessageBox.confirm(`确认删除风险 ${row.risk_code} 吗？删除后不可恢复。`, '删除确认', { type: 'warning' }); await deleteProjectRisk(selectedProject.value.id, row.id); await refreshSelectedProject(); ElMessage.success('项目风险已删除') } catch (error) { const action = (error as { action?: string }).action; if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目风险删除失败')) } }
-function openCreatePlanGroup(phase = '') { resetPlanGroupForm(phase); planGroupDialog.value = true }
-async function savePlanGroup() {
-  if (!selectedProject.value) return
-  const projectId = selectedProject.value.id
-  const colorKey = String(planGroupForm.color_key || 'brand') as ProjectPlanGroupColorToken
-  const phase = String(planGroupForm.phase || '').trim()
-  if (!phase) { ElMessage.warning('请选择计划阶段'); return }
-  const payload = { phase, color_key: colorKey, description: String(planGroupForm.description || ''), sort_no: Number(planGroupForm.sort_no || 0) }
+async function removeRisk(row: ProjectRisk) { if (!selectedProject.value) return; try { await ElMessageBox.confirm(`确认删除风险 ${row.risk_code} 吗？删除后不可恢复。`, '删除确认', { type: 'warning' }); await deleteProjectRisk(selectedProject.value.id, row.id); await refreshSelectedProject(); ElMessage.success('项目风险已删除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目风险删除失败')) } }
+async function createStageRow(phase = '') {
+  if (!selectedProject.value || !phase || phase === '__UNASSIGNED__' || saving.value) return
+  const nextSortNo = planGroups.value.filter(group => group.phase === phase).reduce((max, group) => Math.max(max, Number(group.sort_no || 0)), -1) + 1
   saving.value = true
   try {
-    const response = await createProjectPlanGroup(projectId, payload)
-    if (response.data.code !== 0) throw new Error(response.data.message || '阶段计划保存失败')
-    const savedGroup = response.data.data
-    let listRefreshFailed = false
-    if (savedGroup) {
-      const groups = [...(selectedProject.value?.plan_groups || [])]
-      const savedId = Number(savedGroup.id || 0)
-      const fallbackGroup = { id: savedId, project_id: projectId, ...payload, group_name: String(savedGroup.stage_plan_code || savedGroup.group_name || '') }
-      const index = groups.findIndex(group => Number(group.id) === savedId)
-      if (index >= 0) groups[index] = { ...groups[index], ...fallbackGroup, ...savedGroup }
-      else groups.push({ ...fallbackGroup, ...savedGroup })
-      selectedProject.value = { ...selectedProject.value!, plan_groups: groups }
-    } else {
-      try {
-        const refreshedProject = (await getProject(projectId)).data.data
-        selectedProject.value = refreshedProject
-        ensureProjectUserOptions(refreshedProject)
-        resetSettingsForm()
-      } catch {
-        listRefreshFailed = true
-      }
-    }
-    planGroupDialog.value = false
-    if (listRefreshFailed) ElMessage.warning('阶段计划已保存，但列表刷新失败')
-    else ElMessage.success('阶段计划已保存')
+    const response = await createProjectPlanGroup(selectedProject.value.id, { phase, color_key: 'brand', sort_no: nextSortNo })
+    newlyCreatedStageRowIds.value = new Set([...newlyCreatedStageRowIds.value, response.data.data.id])
+    await refreshSelectedProject()
+    ElMessage.success('阶段已新增')
   } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '阶段计划保存失败'))
+    ElMessage.error(apiErrorMessage(error, '阶段新增失败'))
   } finally { saving.value = false }
 }
-async function removePlanGroup(group: PlanTimelineGroup) {
-  if (!selectedProject.value || group.id == null || saving.value) return
+async function removeStageRow(row: PlanTimelineRow) {
+  if (!selectedProject.value || row.id == null || saving.value) return
   try {
-    await ElMessageBox.confirm(`确认删除阶段计划“${group.name}”吗？删除后其下主计划和子计划将转为未分组。`, '删除确认', { type: 'warning' })
+    await ElMessageBox.confirm('确认删除该阶段行吗？删除后其中主计划和子计划将转为该阶段的未分配计划。', '删除确认', { type: 'warning' })
     saving.value = true
-    await deleteProjectPlanGroup(selectedProject.value.id, group.id)
+    await deleteProjectPlanGroup(selectedProject.value.id, row.id)
+    if (newlyCreatedStageRowIds.value.has(row.id)) {
+      const nextIds = new Set(newlyCreatedStageRowIds.value)
+      nextIds.delete(row.id)
+      newlyCreatedStageRowIds.value = nextIds
+    }
     await refreshSelectedProject()
-    ElMessage.success('阶段计划已删除')
+    ElMessage.success('阶段行已删除')
   } catch (error) {
-    const action = (error as { action?: string }).action
-    if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '阶段计划删除失败'))
+    const action = messageBoxAction(error)
+    if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '阶段行删除失败'))
   } finally { saving.value = false }
 }
 function startPlanDrag(row: ProjectPlanRow, event: DragEvent) { if (row.node_type !== 'plan' || row.parent_id) { event.preventDefault(); return }; draggingPlanId.value = row.id; event.dataTransfer?.setData('text/plain', String(row.id)); if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move' }
 function endPlanDrag() { draggingPlanId.value = null }
-async function dropPlanOnGroup(row: ProjectPlanRow, event: DragEvent) { event.preventDefault(); event.stopPropagation(); if (!selectedProject.value || row.node_type !== 'group' || draggingPlanId.value == null) return; const plan = plans.value.find(item => item.id === draggingPlanId.value); if (!plan || plan.parent_id) return; const groupId = row.group_id == null ? null : Number(row.group_id); if (plan.group_id === groupId) { endPlanDrag(); return }; saving.value = true; try { await moveProjectPlanToGroup(selectedProject.value.id, plan.id, groupId); await refreshSelectedProject(); ElMessage.success('主计划及其子计划已归入阶段计划') } catch (error) { ElMessage.error(apiErrorMessage(error, '阶段计划移动失败')) } finally { saving.value = false; endPlanDrag() } }
+async function dropPlanOnGroup(row: ProjectPlanRow, event: DragEvent) { event.preventDefault(); event.stopPropagation(); if (!selectedProject.value || row.node_type !== 'group' || draggingPlanId.value == null) return; const plan = plans.value.find(item => item.id === draggingPlanId.value); if (!plan || plan.parent_id) return; const groupId = row.group_id == null ? null : Number(row.group_id); if (plan.group_id === groupId) { endPlanDrag(); return }; saving.value = true; try { await moveProjectPlanToGroup(selectedProject.value.id, plan.id, groupId); await refreshSelectedProject(); ElMessage.success('主计划及其子计划已归入该阶段') } catch (error) { ElMessage.error(apiErrorMessage(error, '阶段归属调整失败')) } finally { saving.value = false; endPlanDrag() } }
 function planRowClassName({ row }: { row: ProjectPlanRow }) {
   const palette = planPaletteKey(row)
   if (row.node_type === 'stage') return `project-plan-row--stage project-plan-stage-${row.stage_index || 0}`
@@ -792,28 +567,25 @@ function handlePlanGroupDrop(event: DragEvent) {
   const groupRow = findPlanGroupRow(row)
   if (groupRow) void dropPlanOnGroup(groupRow, event)
 }
-async function removePlan(row: ProjectPlan) { if (!selectedProject.value) return; try { const message = row.parent_id ? '确认删除该计划吗？' : '删除主计划后，其下全部子计划也会被删除，是否继续？'; await ElMessageBox.confirm(message, '删除确认', { type: 'warning' }); await deleteProjectPlan(selectedProject.value.id, row.id); if (selectedPlanForChildrenId.value === row.id) closePlanChildren(); await refreshSelectedProject(); ElMessage.success('计划已删除') } catch (error) { const action = (error as { action?: string }).action; if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '计划删除失败')) } }
+async function removePlan(row: ProjectPlan) { if (!selectedProject.value) return; try { const message = row.parent_id ? '确认删除该计划吗？' : '删除主计划后，其下全部子计划也会被删除，是否继续？'; await ElMessageBox.confirm(message, '删除确认', { type: 'warning' }); await deleteProjectPlan(selectedProject.value.id, row.id); if (selectedPlanForChildrenId.value === row.id) closePlanChildren(); await refreshSelectedProject(); ElMessage.success('计划已删除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '计划删除失败')) } }
 async function loadUsers() { if (userOptionsLoaded.value) return; userOptionsLoading.value = true; try { const options = (await getProjectUserOptions()).data.data; options.forEach(item => addUserOption(item.id, item.display_name, item.username)); userOptionsLoaded.value = true } catch (error) { ElMessage.error(apiErrorMessage(error, '用户选项加载失败')) } finally { userOptionsLoading.value = false } }
 function onUserOptionsVisible(visible: boolean) { if (visible) void loadUsers() }
 async function openCreateMember() { memberEditingId.value = null; memberForm.user_id = null; memberForm.org_id = selectedProjectOrganizationId.value; memberForm.role_ids = []; memberForm.status = 1; await loadUsers(); memberDialog.value = true }
 async function openEditMember(row: ProjectMember) { await loadUsers(); addUserOption(row.user_id, row.display_name); memberEditingId.value = row.id; memberForm.user_id = row.user_id; memberForm.org_id = row.org_id ? Number(row.org_id) : null; memberForm.role_ids = row.roles.map(role => role.id); memberForm.status = row.status; memberDialog.value = true }
 async function saveMember() { if (!selectedProject.value || (!memberEditingId.value && !memberForm.user_id)) { ElMessage.warning('请选择成员'); return }; saving.value = true; try { const payload = { user_id: memberForm.user_id, org_id: memberForm.org_id, role_ids: memberForm.role_ids, status: memberForm.status }; if (memberEditingId.value) await updateProjectMember(selectedProject.value.id, memberEditingId.value, payload); else await createProjectMember(selectedProject.value.id, payload); memberDialog.value = false; await refreshSelectedProject(); ElMessage.success('成员已保存') } catch (error) { ElMessage.error(apiErrorMessage(error, '成员保存失败')) } finally { saving.value = false } }
-async function removeMember(row: ProjectMember) { if (!selectedProject.value) return; try { await ElMessageBox.confirm('确认移除该项目成员吗？', '移除确认', { type: 'warning' }); await deleteProjectMember(selectedProject.value.id, row.id); await refreshSelectedProject(); ElMessage.success('成员已移除') } catch (error) { const action = (error as { action?: string }).action; if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '成员移除失败')) } }
+async function removeMember(row: ProjectMember) { if (!selectedProject.value) return; try { await ElMessageBox.confirm('确认移除该项目成员吗？', '移除确认', { type: 'warning' }); await deleteProjectMember(selectedProject.value.id, row.id); await refreshSelectedProject(); ElMessage.success('成员已移除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '成员移除失败')) } }
 function openCreateRole() { roleEditingId.value = null; resetRoleForm(); roleDialog.value = true }
 function openEditRole(row: ProjectRole) { roleEditingId.value = row.id; Object.assign(roleForm, { role_code: row.role_code, role_name: row.role_name, description: row.description || '', member_ids: (row.members || []).map(member => member.id) }); roleDialog.value = true }
 async function saveRole() { if (!selectedProject.value || !String(roleForm.role_code || '').trim() || !String(roleForm.role_name || '').trim()) { ElMessage.warning('请填写角色编码和角色名称'); return }; saving.value = true; try { if (roleEditingId.value) await updateProjectRole(selectedProject.value.id, roleEditingId.value, roleForm); else await createProjectRole(selectedProject.value.id, roleForm); roleDialog.value = false; await refreshSelectedProject(); ElMessage.success('项目角色已保存') } catch (error) { ElMessage.error(apiErrorMessage(error, '项目角色保存失败')) } finally { saving.value = false } }
-async function removeRole(row: ProjectRole) { if (!selectedProject.value) return; try { await ElMessageBox.confirm('确认删除该项目角色吗？', '删除确认', { type: 'warning' }); await deleteProjectRole(selectedProject.value.id, row.id); await refreshSelectedProject(); ElMessage.success('项目角色已删除') } catch (error) { const action = (error as { action?: string }).action; if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目角色删除失败')) } }
+async function removeRole(row: ProjectRole) { if (!selectedProject.value) return; try { await ElMessageBox.confirm('确认删除该项目角色吗？', '删除确认', { type: 'warning' }); await deleteProjectRole(selectedProject.value.id, row.id); await refreshSelectedProject(); ElMessage.success('项目角色已删除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目角色删除失败')) } }
 function openCreateProjectOrganization(parentId = 0) { projectOrganizationEditingId.value = null; resetProjectOrganizationForm(parentId); projectOrganizationDialog.value = true }
 function openEditProjectOrganization(row: ProjectOrganization) { projectOrganizationEditingId.value = row.id; Object.assign(projectOrganizationForm, { parent_id: row.parent_id, org_code: row.org_code, org_name: row.org_name, sort_no: row.sort_no, status: row.status }); projectOrganizationDialog.value = true }
 async function saveProjectOrganization() { if (!selectedProject.value || !String(projectOrganizationForm.org_code || '').trim() || !String(projectOrganizationForm.org_name || '').trim()) { ElMessage.warning('请填写项目组织编码和名称'); return }; saving.value = true; try { if (projectOrganizationEditingId.value) await updateProjectOrganization(selectedProject.value.id, projectOrganizationEditingId.value, projectOrganizationForm); else await createProjectOrganization(selectedProject.value.id, projectOrganizationForm); projectOrganizationDialog.value = false; await refreshSelectedProject(); ElMessage.success('项目组织已保存') } catch (error) { ElMessage.error(apiErrorMessage(error, '项目组织保存失败')) } finally { saving.value = false } }
-async function removeProjectOrganization(row: ProjectOrganization) { if (!selectedProject.value) return; try { await ElMessageBox.confirm(`确认删除项目组织“${row.org_name}”吗？`, '删除确认', { type: 'warning' }); await deleteProjectOrganization(selectedProject.value.id, row.id); if (selectedProjectOrganizationId.value === row.id) selectedProjectOrganizationId.value = null; await refreshSelectedProject(); ElMessage.success('项目组织已删除') } catch (error) { const action = (error as { action?: string }).action; if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目组织删除失败')) } }
+async function removeProjectOrganization(row: ProjectOrganization) { if (!selectedProject.value) return; try { await ElMessageBox.confirm(`确认删除项目组织“${row.org_name}”吗？`, '删除确认', { type: 'warning' }); await deleteProjectOrganization(selectedProject.value.id, row.id); if (selectedProjectOrganizationId.value === row.id) selectedProjectOrganizationId.value = null; await refreshSelectedProject(); ElMessage.success('项目组织已删除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目组织删除失败')) } }
 function projectStatusTone(status: string): 'primary' | 'success' | 'warning' | 'danger' { return status === 'COMPLETED' ? 'success' : status === 'SUSPENDED' ? 'danger' : status === 'RUNNING' ? 'primary' : 'warning' }
 function planStatusTone(status: string): 'primary' | 'success' | 'warning' | 'danger' | 'info' { return status === 'COMPLETED' ? 'success' : status === 'BLOCKED' ? 'danger' : status === 'IN_PROGRESS' ? 'primary' : 'info' }
 function riskStatusTone(value?: string | null, label?: string | null): 'primary' | 'success' | 'warning' | 'danger' | 'info' { const text = `${value || ''}${label || ''}`; return text.includes('关闭') || text.includes('解决') || value === 'CLOSED' || value === 'RESOLVED' ? 'success' : text.includes('升级') || text.includes('高') || value === 'OPEN' ? 'warning' : text.includes('处理中') || value === 'PROCESSING' ? 'primary' : 'info' }
-watch([selectedProject, activeTab, plans, selectedMasterPlanId], () => { void refreshOverviewCharts(); void nextTick(applyPlanRowDragability) }, { deep: true })
-watch([selectedProject, plans], () => {
-  if (selectedMasterPlanId.value !== null && !mainGanttRows.value.some(row => row.plan.id === selectedMasterPlanId.value)) selectedMasterPlanId.value = null
-}, { deep: true })
+watch([selectedProject, activeTab, plans], () => { void nextTick(applyPlanRowDragability) }, { deep: true })
 watch(planTree, () => { void nextTick(applyPlanRowDragability) }, { deep: true })
 watch(() => route.params.projectId, () => {
   if (route.params.projectId) void syncProjectFromRoute()
@@ -825,8 +597,8 @@ watch(() => route.query.tab, (tab) => {
     if (nextTab !== activeTab.value) activeTab.value = nextTab
   }
 })
-onMounted(async () => { await loadOptions(); if (route.params.projectId) await syncProjectFromRoute(); else await loadWorkbench(); window.addEventListener('resize', resizeCharts); chartThemeObserver = new MutationObserver(() => { void refreshOverviewCharts() }); chartThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-palette'] }) })
-onBeforeUnmount(() => { clearTabLoadingTimer(); window.removeEventListener('resize', resizeCharts); chartThemeObserver?.disconnect(); disposeCharts() })
+onMounted(async () => { await loadOptions(); if (route.params.projectId) await syncProjectFromRoute(); else await loadWorkbench() })
+onBeforeUnmount(() => { clearTabLoadingTimer() })
 </script>
 
 <template>
@@ -863,9 +635,7 @@ onBeforeUnmount(() => { clearTabLoadingTimer(); window.removeEventListener('resi
             <div class="project-overview__facts"><div><span>项目负责人</span><strong>{{ selectedProject.owner_name || '-' }}</strong></div><div><span>计划周期</span><strong>{{ formatDateOnly(selectedProject.planned_start_date) || '-' }} 至 {{ formatDateOnly(selectedProject.planned_end_date) || '-' }}</strong></div><div><span>项目成员</span><strong>{{ selectedProject.member_count }} 人</strong></div><div><span>项目计划</span><strong>{{ selectedProject.plan_count }} 项</strong></div><div><span>当前状态</span><strong>{{ projectStatusLabels[selectedProject.status] }}</strong></div></div>
             <div class="project-overview__description-copy"><span class="project-overview__description-label">项目说明</span><p>{{ selectedProject.description || '暂无项目描述，点击编辑项目补充说明。' }}</p></div>
           </section>
-          <section class="project-overview__schedule"><el-card shadow="never" class="project-overview__chart project-overview__gantt-card"><div class="project-section-heading"><div><span class="panel-kicker">主计划排期</span><h3>主计划甘特图</h3></div><span class="muted">{{ selectedMasterPlan ? `已选：${selectedMasterPlan.plan_name}` : '点击计划条查看子计划' }} · 月份</span></div><div v-if="mainGanttRows.length" class="project-gantt-scroll"><div ref="mainGanttChartRef" class="project-gantt-canvas project-gantt-canvas--selectable" :style="{ width: ganttCanvasWidth(mainGanttRows, 'month'), height: ganttCanvasHeight(mainGanttRows) }" role="img" aria-label="主计划月维度甘特图，点击计划条查看子计划" /></div><div v-else class="project-gantt-empty"><el-empty description="暂无有效日期的主计划" :image-size="48" /></div><div class="project-gantt-legend"><span><i class="is-completed" />已完成</span><span><i class="is-progress" />进行中</span><span><i class="is-pending" />未开始</span><span><i class="is-blocked" />已阻塞</span></div></el-card><el-card shadow="never" class="project-overview__chart project-overview__gantt-card project-overview__child-gantt-card"><template v-if="selectedMasterPlan"><div class="project-section-heading"><div><span class="panel-kicker">子计划排期</span><h3>{{ selectedMasterPlan.plan_name }} · 子计划甘特图</h3></div><span class="muted">横轴：周</span></div><div v-if="childGanttRows.length" class="project-gantt-scroll"><div ref="childGanttChartRef" class="project-gantt-canvas" :style="{ width: ganttCanvasWidth(childGanttRows, 'week'), height: ganttCanvasHeight(childGanttRows) }" role="img" aria-label="当前主计划子计划周维度甘特图" /></div><div v-else class="project-gantt-empty"><el-empty description="该主计划暂无有效日期的子计划" :image-size="48" /></div><div v-if="childGanttRows.length" class="project-gantt-legend"><span><i class="is-completed" />已完成</span><span><i class="is-progress" />进行中</span><span><i class="is-pending" />未开始</span><span><i class="is-blocked" />已阻塞</span></div></template><div v-else class="project-gantt-selection-empty"><span class="project-gantt-selection-empty__icon">＋</span><strong>请选择主计划</strong><p>点击上方主计划甘特图中的计划条，查看对应的子计划排期。</p></div></el-card></section>
-          <section class="project-overview__kpis"><div class="project-overview__kpi"><span>计划总数</span><strong>{{ planStats.total }}</strong><small>当前项目全部计划</small></div><div class="project-overview__kpi is-success"><span>已完成</span><strong>{{ planStats.completed }}</strong><small>完成率 {{ planStats.total ? Math.round(planStats.completed / planStats.total * 100) : 0 }}%</small></div><div class="project-overview__kpi is-brand"><span>进行中</span><strong>{{ planStats.inProgress }}</strong><small>正在执行的计划</small></div><div class="project-overview__kpi is-muted"><span>未开始</span><strong>{{ planStats.notStarted }}</strong><small>等待启动的计划</small></div><div class="project-overview__kpi is-danger"><span>已阻塞</span><strong>{{ planStats.blocked }}</strong><small>需要关注的计划</small></div><div class="project-overview__kpi is-accent"><span>平均进度</span><strong>{{ planStats.averageProgress }}%</strong><small>按计划平均计算</small></div></section>
-          <section class="project-overview__charts"><el-card shadow="never" class="project-overview__chart"><div class="project-section-heading"><div><span class="panel-kicker">计划状态</span><h3>状态分布</h3></div></div><div v-if="planStats.total" ref="statusChartRef" class="project-chart project-chart--donut" /><el-empty v-else description="暂无计划数据" :image-size="54" /></el-card><el-card shadow="never" class="project-overview__chart"><div class="project-section-heading"><div><span class="panel-kicker">执行进度</span><h3>计划进度排行</h3></div></div><div v-if="planStats.progressData.length" ref="progressChartRef" class="project-chart" /><el-empty v-else description="暂无计划数据" :image-size="54" /></el-card></section>
+          <section class="project-overview__schedule project-overview__schedule--readonly"><el-card shadow="never" class="project-overview__chart project-overview__timeline-card"><div class="project-section-heading"><div><span class="panel-kicker">项目计划</span><h3>主计划排期</h3></div><span class="muted">只读 · 月份</span></div><div v-if="hasOverviewPlanTimeline" class="project-plan-timeline project-plan-timeline--overview" :style="timelineLayoutStyle()"><div class="project-plan-timeline__header"><div class="project-plan-timeline__axis-label">项目阶段</div><div class="project-plan-timeline__months" :style="timelineGridStyle()"><span v-for="month in planTimelineMonths" :key="month.timestamp">{{ month.label }}</span><span v-if="todayTimelinePosition" class="project-plan-timeline__today-marker" :style="{ left: todayTimelinePosition }" aria-label="今天"><strong>今天</strong></span></div></div><div class="project-plan-timeline__body"><section v-for="stage in overviewPlanTimelineStages" :key="stage.key" class="project-plan-timeline__stage-row project-plan-timeline__stage-row--overview" :style="{ minHeight: overviewTimelineStageHeight(stage) }"><div class="project-plan-timeline__stage"><div><el-icon><Calendar /></el-icon><strong>{{ stage.name }}</strong></div><small>{{ stage.masters.length }} 个主计划</small></div><div class="project-plan-timeline__track" :style="{ minHeight: overviewTimelineStageHeight(stage) }"><div class="project-plan-timeline__grid" :style="timelineGridStyle()" aria-hidden="true"><i v-for="month in planTimelineMonths" :key="month.timestamp" /></div><span v-if="todayTimelinePosition" class="project-plan-timeline__today-line" :style="{ left: todayTimelinePosition }" aria-hidden="true" /><div v-for="row in overviewTimelineRows(stage)" :key="row.plan.id" :class="['project-plan-timeline__bar', 'project-plan-timeline__bar--readonly', `project-plan-palette--${row.plan.group_id ? (planGroups.find(group => group.id === row.plan.group_id)?.color_key || 'brand') : 'muted'}`, `project-plan-status--${String(row.plan.status || 'NOT_STARTED').toLowerCase()}`]" :style="overviewTimelineBarStyle(row.plan, row.lane)" :title="row.plan.plan_name"><span class="project-plan-timeline__bar-progress" :style="{ width: `${Math.max(0, Math.min(100, Number(row.plan.progress || 0)))}%` }" /><span class="project-plan-timeline__bar-content"><strong>{{ row.plan.plan_name }}</strong><small>{{ Math.round(Number(row.plan.progress || 0)) }}%</small></span></div><span v-for="plan in overviewTimelineUndated(stage)" :key="`undated-${plan.id}`" class="project-plan-timeline__undated">未排期：{{ plan.plan_name }}</span><span v-if="!stage.masters.length" class="project-plan-timeline__empty">暂无主计划</span></div></section></div></div><div v-else class="project-gantt-empty"><el-empty description="暂无项目计划" :image-size="48" /></div><div class="project-gantt-legend"><span><i class="is-completed" />已完成</span><span><i class="is-progress" />进行中</span><span><i class="is-pending" />未开始</span><span><i class="is-blocked" />已阻塞</span></div></el-card></section>
         </div></el-tab-pane>
       <el-tab-pane name="plans" label="项目计划">
         <div class="project-tab-panel project-plan-timeline-panel">
@@ -875,29 +645,29 @@ onBeforeUnmount(() => { clearTabLoadingTimer(); window.removeEventListener('resi
           <div v-if="planTimelineStages.length" class="project-plan-timeline" :style="timelineLayoutStyle()">
             <div class="project-plan-timeline__header">
               <div class="project-plan-timeline__axis-label">项目阶段</div>
-              <div class="project-plan-timeline__group-axis-label">阶段计划</div>
-              <div class="project-plan-timeline__months" :style="timelineGridStyle()"><span v-for="month in planTimelineMonths" :key="month.timestamp">{{ month.label }}</span></div>
+              <div class="project-plan-timeline__stage-row-axis-label">阶段操作</div>
+              <div class="project-plan-timeline__months" :style="timelineGridStyle()"><span v-for="month in planTimelineMonths" :key="month.timestamp">{{ month.label }}</span><span v-if="todayTimelinePosition" class="project-plan-timeline__today-marker" :style="{ left: todayTimelinePosition }" aria-label="今天"><strong>今天</strong></span></div>
             </div>
             <div class="project-plan-timeline__body">
-              <section v-for="stage in planTimelineStages" :key="stage.key" class="project-plan-timeline__stage-row" :style="{ gridTemplateRows: `repeat(${stage.groups.length}, minmax(58px, auto))` }">
-                <div class="project-plan-timeline__stage" :style="{ gridRow: `1 / span ${stage.groups.length}` }">
+              <section v-for="stage in planTimelineStages" :key="stage.key" class="project-plan-timeline__stage-row" :style="{ gridTemplateRows: `repeat(${stage.rows.length}, minmax(58px, auto))` }">
+                <div class="project-plan-timeline__stage" :style="{ gridRow: `1 / span ${stage.rows.length}` }">
                   <div><el-icon><Calendar /></el-icon><strong>{{ stage.name }}</strong></div>
                   <small>{{ stage.masters.length }} 个主计划</small>
-                  <el-button v-if="canCreatePlan" class="project-plan-timeline__stage-action" text type="primary" @click.stop="openCreatePlanGroup(stage.key)"><el-icon><Plus /></el-icon>新增阶段计划</el-button>
+                  <el-button v-if="canCreatePlan && stage.key !== '__UNASSIGNED__'" class="project-plan-timeline__stage-action" text type="primary" :loading="saving" @click.stop="createStageRow(stage.key)"><el-icon><Plus /></el-icon>新增阶段</el-button>
                 </div>
-                <template v-for="group in stage.groups" :key="group.key">
-                  <div class="project-plan-timeline__group" :class="`project-plan-palette--${group.colorKey}`">
-                    <div class="project-plan-timeline__group-title"><el-icon><Folder /></el-icon><strong>阶段计划 {{ group.name }}</strong><el-tooltip v-if="canDeletePlan && group.id != null" content="删除阶段计划"><el-button class="project-plan-timeline__group-delete" text type="danger" aria-label="删除阶段计划" :disabled="saving" @click.stop="removePlanGroup(group)"><el-icon><Delete /></el-icon></el-button></el-tooltip></div><small>{{ group.masters.length }} 个主计划</small>
-                    <el-button v-if="canCreatePlan" class="project-plan-timeline__group-action" text type="primary" @click.stop="openCreatePlanForGroup(group, stage)"><el-icon><Plus /></el-icon>新增主计划</el-button>
+                <template v-for="row in stage.rows" :key="row.key">
+                  <div class="project-plan-timeline__stage-row-actions" :class="`project-plan-palette--${row.colorKey}`">
+                    <el-button v-if="canCreatePlan && row.id != null && newlyCreatedStageRowIds.has(row.id)" class="project-plan-timeline__row-action" text type="primary" @click.stop="openCreatePlanForStageRow(row, stage)"><el-icon><Plus /></el-icon>新增主计划</el-button>
+                    <el-tooltip v-if="canDeletePlan && row.id != null" content="删除该行"><el-button class="project-plan-timeline__row-delete" text type="danger" aria-label="删除该行" :disabled="saving" @click.stop="removeStageRow(row)"><el-icon><Delete /></el-icon></el-button></el-tooltip>
                   </div>
-                  <div class="project-plan-timeline__track" :style="{ minHeight: timelineGroupHeight(group) }">
-                    <div class="project-plan-timeline__grid" :style="timelineGridStyle()" aria-hidden="true"><i v-for="month in planTimelineMonths" :key="month.timestamp" /></div>
-                    <button v-for="master in timelineMastersWithDate(group)" :key="master.id" type="button" :class="['project-plan-timeline__bar', `project-plan-palette--${group.colorKey}`, `project-plan-status--${String(master.status || 'NOT_STARTED').toLowerCase()}`]" :style="timelineBarStyle(master)" :title="master.plan_name" @click="openPlanChildren(master)">
+                  <div class="project-plan-timeline__track" :style="{ minHeight: timelineRowHeight(row) }">
+                    <div class="project-plan-timeline__grid" :style="timelineGridStyle()" aria-hidden="true"><i v-for="month in planTimelineMonths" :key="month.timestamp" /></div><span v-if="todayTimelinePosition" class="project-plan-timeline__today-line" :style="{ left: todayTimelinePosition }" aria-hidden="true" />
+                    <button v-for="master in timelineMastersWithDate(row)" :key="master.id" type="button" :class="['project-plan-timeline__bar', `project-plan-palette--${row.colorKey}`, `project-plan-status--${String(master.status || 'NOT_STARTED').toLowerCase()}`]" :style="timelineBarStyle(master)" :title="master.plan_name" @click="openPlanChildren(master)">
                       <span class="project-plan-timeline__bar-progress" :style="{ width: `${Math.max(0, Math.min(100, Number(master.progress || 0)))}%` }" />
                       <span class="project-plan-timeline__bar-content"><strong>{{ master.plan_name }}</strong><small>{{ Math.round(Number(master.progress || 0)) }}%</small></span>
                     </button>
-                    <button v-for="master in timelineMastersWithoutDate(group)" :key="`undated-${master.id}`" type="button" class="project-plan-timeline__undated" @click="openPlanChildren(master)">未排期：{{ master.plan_name }}</button>
-                    <span v-if="!group.masters.length" class="project-plan-timeline__empty">暂无主计划</span>
+                    <button v-for="master in timelineMastersWithoutDate(row)" :key="`undated-${master.id}`" type="button" class="project-plan-timeline__undated" @click="openPlanChildren(master)">未排期：{{ master.plan_name }}</button>
+                    <span v-if="!row.masters.length" class="project-plan-timeline__empty">暂无主计划</span>
                   </div>
                 </template>
               </section>
@@ -958,7 +728,7 @@ onBeforeUnmount(() => { clearTabLoadingTimer(); window.removeEventListener('resi
       </div>
     </div>
 
-    <el-dialog v-model="projectDialog" :title="projectEditingId ? '编辑项目' : '新建项目'" width="600px" destroy-on-close><el-form label-position="top"><el-row :gutter="16"><el-col :span="12"><el-form-item label="项目编号" required><el-input v-model="projectForm.project_code" /></el-form-item></el-col><el-col :span="12"><el-form-item label="项目名称" required><el-input v-model="projectForm.project_name" /></el-form-item></el-col></el-row><el-form-item label="项目描述"><el-input v-model="projectForm.description" type="textarea" :rows="3" /></el-form-item><el-row :gutter="16"><el-col :span="12"><el-form-item label="项目状态"><el-select v-model="projectForm.status" style="width:100%"><el-option v-for="(label, value) in projectStatusLabels" :key="value" :label="label" :value="value" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="负责人"><el-select v-model="projectForm.owner_id" filterable :loading="userOptionsLoading" style="width:100%" @visible-change="onUserOptionsVisible"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="8"><el-form-item label="计划开始"><el-date-picker v-model="projectForm.planned_start_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col><el-col :span="8"><el-form-item label="计划结束"><el-date-picker v-model="projectForm.planned_end_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col><el-col :span="8"><el-form-item label="实际结束"><el-date-picker v-model="projectForm.actual_end_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col></el-row></el-form><template #footer><el-button @click="projectDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveProject">保存</el-button></template></el-dialog>
+    <el-dialog v-model="projectDialog" :title="projectEditingId ? '编辑项目' : '新建项目'" width="600px" destroy-on-close><el-form label-position="top"><el-row :gutter="16"><el-col :span="12"><el-form-item label="项目编号" required><el-input v-model="projectForm.project_code" /></el-form-item></el-col><el-col :span="12"><el-form-item label="项目名称" required><el-input v-model="projectForm.project_name" /></el-form-item></el-col></el-row><el-form-item label="项目描述"><el-input v-model="projectForm.description" type="textarea" :rows="3" /></el-form-item><el-row :gutter="16"><el-col :span="12"><el-form-item label="项目状态"><el-select v-model="projectForm.status" style="width:100%"><el-option v-for="(label, value) in projectStatusLabels" :key="value" :label="label" :value="value" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="负责人"><el-select v-model="projectForm.owner_id" filterable :loading="userOptionsLoading" style="width:100%" @visible-change="onUserOptionsVisible"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="16"><el-form-item label="计划时间范围"><el-date-picker v-model="projectDateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" clearable unlink-panels style="width:100%" @change="onProjectDateRangeChange" /></el-form-item></el-col><el-col :span="8"><el-form-item label="实际结束"><el-date-picker v-model="projectForm.actual_end_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col></el-row></el-form><template #footer><el-button @click="projectDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveProject">保存</el-button></template></el-dialog>
     <el-dialog v-model="planChildrenDialog" :title="selectedPlanForChildren ? selectedPlanForChildren.plan_name + ' · 子计划' : '子计划'" width="860px" destroy-on-close class="project-plan-children-dialog">
       <template v-if="selectedPlanForChildren">
         <div class="project-plan-children-dialog__summary">
@@ -979,8 +749,7 @@ onBeforeUnmount(() => { clearTabLoadingTimer(); window.removeEventListener('resi
       <el-empty v-else description="暂无主计划信息" :image-size="64" />
       <template #footer><el-button @click="closePlanChildren">关闭</el-button><el-button v-if="selectedPlanForChildren && canUpdatePlan" type="primary" @click="openEditPlan(selectedPlanForChildren)"><el-icon><Edit /></el-icon>编辑主计划</el-button><el-button v-if="selectedPlanForChildren && canDeletePlan" type="danger" plain @click="removePlan(selectedPlanForChildren)"><el-icon><Delete /></el-icon>删除主计划</el-button></template>
     </el-dialog>
-    <el-dialog v-model="planDialog" :title="planEditingId ? '编辑项目计划' : (planParentName ? '新增子计划' : '新增主计划')" width="600px" destroy-on-close><el-form label-position="top"><el-form-item label="计划名称" required><el-input v-model="planForm.plan_name" /></el-form-item><el-form-item label="计划层级"><el-input :model-value="planParentName ? `子计划（${planParentName}）` : '主计划'" disabled /></el-form-item><el-form-item label="计划描述"><el-input v-model="planForm.description" type="textarea" :rows="2" /></el-form-item><el-row :gutter="16"><el-col :span="12"><el-form-item label="负责人"><el-select v-model="planForm.owner_id" clearable filterable :loading="userOptionsLoading" style="width:100%" @visible-change="onUserOptionsVisible"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="状态"><el-select v-model="planForm.status" style="width:100%"><el-option v-for="(label, value) in planStatusLabels" :key="value" :label="label" :value="value" /></el-select></el-form-item></el-col></el-row><el-form-item label="牵头方"><UiTreeSelect :model-value="planForm.lead_org_id === null ? null : Number(planForm.lead_org_id || 0)" :options="organizationTreeOptions" placeholder="请选择牵头组织" @update:model-value="planForm.lead_org_id = $event" /></el-form-item><el-form-item label="配合方"><el-tree-select v-model="planForm.cooperating_org_ids" :data="organizationTreeOptions" multiple show-checkbox check-strictly clearable filterable node-key="value" placeholder="请选择配合组织" style="width:100%" /></el-form-item><el-row :gutter="16"><el-col :span="12"><el-form-item label="计划开始" :required="!Number(planForm.parent_id || 0)"><el-date-picker v-model="planForm.planned_start_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col><el-col :span="12"><el-form-item label="计划结束" :required="!Number(planForm.parent_id || 0)"><el-date-picker v-model="planForm.planned_end_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col></el-row><el-form-item label="完成进度"><el-slider v-model="planForm.progress" :max="100" /></el-form-item></el-form><template #footer><el-button @click="planDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="savePlan">保存</el-button></template></el-dialog>
-<el-dialog v-model="planGroupDialog" title="新增阶段计划" width="520px" destroy-on-close><el-form label-position="top"><el-form-item label="所属阶段" required><el-select v-model="planGroupForm.phase" clearable style="width:100%" placeholder="请选择计划阶段"><el-option v-for="item in projectOptions.plan_phases" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item><el-form-item label="阶段计划编号"><el-input model-value="保存后按阶段自动生成，例如 1-1" disabled /></el-form-item><el-form-item label="阶段计划配色"><div class="project-plan-palette-picker"><button v-for="palette in planGroupColorOptions" :key="palette.key" type="button" class="project-plan-palette-option project-plan-palette--brand" :class="{ 'is-selected': planGroupForm.color_key === palette.key }" :style="{ '--palette-color': 'var(' + palette.colorVar + ')', '--palette-accent': 'var(' + palette.accentVar + ')' }" :aria-label="palette.key" @click="planGroupForm.color_key = palette.key"><span class="project-plan-palette-option__swatch" /></button></div></el-form-item><el-form-item label="阶段计划说明"><el-input v-model="planGroupForm.description" type="textarea" :rows="3" maxlength="500" /></el-form-item><el-form-item label="排序号"><el-input-number v-model="planGroupForm.sort_no" :min="0" :max="9999" controls-position="right" /></el-form-item></el-form><template #footer><el-button @click="planGroupDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="savePlanGroup">保存</el-button></template></el-dialog>
+    <el-dialog v-model="planDialog" :title="planEditingId ? '编辑项目计划' : (planParentName ? '新增子计划' : '新增主计划')" width="600px" destroy-on-close><el-form label-position="top"><el-form-item label="计划名称" required><el-input v-model="planForm.plan_name" /></el-form-item><el-form-item label="计划层级"><el-input :model-value="planParentName ? `子计划（${planParentName}）` : '主计划'" disabled /></el-form-item><el-form-item label="计划描述"><el-input v-model="planForm.description" type="textarea" :rows="2" /></el-form-item><el-row :gutter="16"><el-col :span="12"><el-form-item label="负责人"><el-select v-model="planForm.owner_id" clearable filterable :loading="userOptionsLoading" style="width:100%" @visible-change="onUserOptionsVisible"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="状态"><el-select v-model="planForm.status" style="width:100%"><el-option v-for="(label, value) in planStatusLabels" :key="value" :label="label" :value="value" /></el-select></el-form-item></el-col></el-row><el-form-item label="牵头方"><UiTreeSelect :model-value="planForm.lead_org_id === null ? null : Number(planForm.lead_org_id || 0)" :options="organizationTreeOptions" placeholder="请选择牵头组织" @update:model-value="planForm.lead_org_id = $event" /></el-form-item><el-form-item label="配合方"><el-tree-select v-model="planForm.cooperating_org_ids" :data="organizationTreeOptions" multiple show-checkbox check-strictly clearable filterable node-key="value" placeholder="请选择配合组织" style="width:100%" /></el-form-item><el-form-item label="计划时间范围" :required="!Number(planForm.parent_id || 0)"><el-date-picker v-model="planDateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" clearable unlink-panels style="width:100%" @change="onPlanDateRangeChange" /></el-form-item><el-form-item label="完成进度"><el-slider v-model="planForm.progress" :max="100" /></el-form-item></el-form><template #footer><el-button @click="planDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="savePlan">保存</el-button></template></el-dialog>
     <el-dialog v-model="memberDialog" :title="memberEditingId ? '编辑项目成员' : '添加项目成员'" width="520px" destroy-on-close><el-form label-position="top"><el-form-item label="成员" required><el-select v-model="memberForm.user_id" filterable :disabled="Boolean(memberEditingId)" :loading="userOptionsLoading" style="width:100%"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item><el-form-item label="所属项目机构"><UiTreeSelect :model-value="memberForm.org_id" :options="projectOrganizationTreeOptions" placeholder="请选择项目机构" @update:model-value="memberForm.org_id = $event" /></el-form-item><el-form-item label="项目角色"><el-select v-model="memberForm.role_ids" multiple collapse-tags filterable style="width:100%"><el-option v-for="role in roles" :key="role.id" :label="role.role_name" :value="role.id" /></el-select></el-form-item><el-form-item label="成员状态"><el-switch v-model="memberForm.status" :active-value="1" :inactive-value="0" active-text="有效" inactive-text="停用" /></el-form-item></el-form><template #footer><el-button @click="memberDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveMember">保存</el-button></template></el-dialog>
     <el-dialog v-model="roleDialog" :title="roleEditingId ? '编辑项目角色' : '新增项目角色'" width="560px" destroy-on-close><el-form label-position="top"><el-form-item label="角色编码" required><el-input v-model="roleForm.role_code" /></el-form-item><el-form-item label="角色名称" required><el-input v-model="roleForm.role_name" /></el-form-item><el-form-item label="关联人员"><el-select v-model="roleForm.member_ids" multiple collapse-tags filterable clearable style="width:100%"><el-option v-for="member in members" :key="member.id" :label="`${member.display_name}${member.org_name ? `（${member.org_name}）` : ''}`" :value="member.id" /></el-select></el-form-item><el-form-item label="角色说明"><el-input v-model="roleForm.description" type="textarea" :rows="3" /></el-form-item></el-form><template #footer><el-button @click="roleDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveRole">保存</el-button></template></el-dialog>
     <el-dialog v-model="projectOrganizationDialog" :title="projectOrganizationEditingId ? '编辑项目组织' : '新增项目组织'" width="520px" destroy-on-close><el-form label-position="top"><el-form-item label="上级项目组织"><UiTreeSelect :model-value="projectOrganizationForm.parent_id ? Number(projectOrganizationForm.parent_id) : null" :options="projectOrganizationParentOptions" placeholder="请选择上级项目组织" @update:model-value="projectOrganizationForm.parent_id = $event || 0" /></el-form-item><el-form-item label="组织编码" required><el-input v-model="projectOrganizationForm.org_code" maxlength="64" /></el-form-item><el-form-item label="组织名称" required><el-input v-model="projectOrganizationForm.org_name" maxlength="128" /></el-form-item><el-form-item label="排序号"><el-input-number v-model="projectOrganizationForm.sort_no" :min="0" :max="9999" controls-position="right" /></el-form-item><el-form-item label="状态"><el-switch v-model="projectOrganizationForm.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" /></el-form-item></el-form><template #footer><el-button @click="projectOrganizationDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveProjectOrganization">保存</el-button></template></el-dialog>
