@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260821-037-sidebar-level-alignment",
+  "handoff_status": "approved",
+  "created_at": "2026-08-21T10:31:19+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260821-037-sidebar-level-alignment",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/requirements/REQ-20260821-037-business-day-management/sidebar-level-alignment-plan.md",
+    "objective": "营业日管理与应用组装测试保持同一视觉层级",
+    "users": ["测试管理人员"],
+    "requirements": [{
+      "id": "R-SIDEBAR-ALIGN",
+      "statement": "营业日管理的图标和文字必须与测试管理下其他二级菜单对齐",
+      "acceptance": ["桌面和移动菜单的图标、文字横坐标一致"],
+      "priority": "must",
+      "source": "用户截图反馈",
+      "counterexample": ["营业日管理继续向右偏移约 10px"]
+    }],
+    "invariants": ["单一 Sidebar 入口", "顶部四视图不变", "parent_id=600 不变"],
+    "constraints": ["不修改公共 UiRouteMenuNode", "不修改数据库迁移"],
+    "non_goals": ["全局菜单缩进重构"],
+    "selected_approach": {"name": "测试管理根节点作用域覆盖", "reason": "影响面最小", "alternatives": ["全局缩进调整", "伪造可展开目录"]},
+    "architecture": {"boundary": {"inside": ["AppLayout 测试管理节点标识", "营业日模块样式"], "outside": ["后端菜单树", "公共菜单组件"]}, "components": ["AppLayout", "business-day.css"], "interfaces": ["/test-management routePath"], "data_flows": ["RouteNode -> scoped class -> direct leaf padding"]},
+    "error_handling": ["class 未透传时停止，不扩大到公共组件"],
+    "quality_attributes": {"security": ["无权限变化"], "performance": ["仅静态 CSS"], "compatibility": ["桌面与移动菜单"], "operations": ["无迁移"]},
+    "verification_strategy": ["前端构建", "scope 检查", "真实浏览器坐标测量"],
+    "assumptions": ["Element Plus 组件透传 class 到根节点"],
+    "unknowns": [],
+    "decisions": ["采用 40px 与同级子目录标题对齐"],
+    "risks": ["组件 class 透传行为变化"],
+    "approval": {"status": "approved", "evidence": "用户提供截图并再次指出营业日管理与同级菜单仍不一致", "confirmed_at": "2026-08-21T10:31:19+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/requirements/REQ-20260821-037-business-day-management/sidebar-level-alignment-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["仅 REQ-037 可写范围", "不修改公共组件和数据库"],
+    "file_map": [
+      {"path": "web/src/views/AppLayout.vue", "status": "existing", "responsibility": "为测试管理根节点提供作用域类", "evidence": "现有动态菜单装配"},
+      {"path": "web/src/modules/test-management/business-day/business-day.css", "status": "existing", "responsibility": "限定作用域修正直接叶子缩进", "evidence": "营业日模块样式"}
+    ],
+    "tasks": [{
+      "id": "T7",
+      "goal": "同级菜单图标和文字严格对齐",
+      "requirement_ids": ["R-SIDEBAR-ALIGN"],
+      "prerequisites": [],
+      "input_facts": ["数据库父级已同为 600", "当前 CSS 使叶子项比子目录标题多 10px"],
+      "files": {"create": [], "modify": ["web/src/views/AppLayout.vue", "web/src/modules/test-management/business-day/business-day.css"], "test": []},
+      "interfaces": {"consumes": ["RouteNode.routePath"], "produces": ["app-menu-node--test-management CSS scope"]},
+      "steps": [
+        {"id": "T7-S1", "action": "添加测试管理根节点作用域类", "command": null, "expected": "桌面与移动菜单根节点具有稳定 class", "evidence": "DOM class"},
+        {"id": "T7-S2", "action": "覆盖直接叶子缩进为 40px", "command": null, "expected": "营业日管理与同级标题对齐", "evidence": "浏览器坐标"},
+        {"id": "T7-S3", "action": "执行构建和范围检查", "command": "npm --prefix web run build", "expected": "退出码 0", "evidence": "命令输出"}
+      ],
+      "acceptance_checks": ["桌面侧栏对齐", "移动菜单对齐", "营业日路由可用"],
+      "risks": ["class 透传失败"],
+      "rollback": "回退两个文件的 T7 修改",
+      "stop_conditions": ["需要修改公共组件或数据库"],
+      "escalation_conditions": ["桌面与移动缩进规则不一致"]
+    }],
+    "dependency_edges": [],
+    "parallel_groups": [["T7"]],
+    "integration_checks": [{"after_tasks": ["T7"], "command": "npm --prefix web run build", "expected": "构建通过"}],
+    "coverage": [{"requirement_id": "R-SIDEBAR-ALIGN", "task_ids": ["T7"]}],
+    "approval": {"status": "approved", "evidence": "用户再次提交不一致截图，要求修复同级视觉层级", "confirmed_at": "2026-08-21T10:31:19+08:00"}
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["测试管理 Sidebar 渲染"],
+    "state_variable_candidates": ["二级菜单横坐标"],
+    "interface_candidates": ["RouteNode.routePath", "CSS class 透传"],
+    "sensor_candidates": ["DOM computed style", "浏览器截图"],
+    "actuator_candidates": ["作用域 class", "padding-left"],
+    "disturbance_candidates": ["Element Plus 默认层级样式"],
+    "delay_candidates": ["Vite HMR"],
+    "assumptions": [{"text": "class 会透传到 UiRouteMenuNode 根节点", "basis": "Vue 单根节点属性透传", "falsifier": "运行 DOM 中根节点无 class"}]
+  }
+}

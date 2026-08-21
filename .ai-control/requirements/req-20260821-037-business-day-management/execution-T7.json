@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "task_id": "T7",
+  "status": "completed",
+  "recorded_at": "2026-08-21T10:34:14+08:00",
+  "goal": "修正营业日管理二级入口比同级可展开目录多 10px 的视觉缩进。",
+  "scope": [
+    "web/src/views/AppLayout.vue",
+    "web/src/modules/test-management/business-day/business-day.css"
+  ],
+  "changes": [
+    "为 /test-management 根菜单增加 app-menu-node--test-management 作用域类，覆盖顶部、桌面侧栏和移动抽屉。",
+    "仅将测试管理直接叶子项的 padding-left 从全局 50px 覆盖为 40px，不修改公共菜单组件或其他模块。"
+  ],
+  "commands": [
+    {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite production build"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260821-037-business-day-management/codex-task-scope.yaml --base HEAD --head HEAD --working-tree", "result": "passed"},
+    {"command": "git diff --check", "result": "passed"}
+  ],
+  "unresolved": []
+}

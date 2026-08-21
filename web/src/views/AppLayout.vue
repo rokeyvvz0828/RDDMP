@@ -67,6 +67,10 @@ function findMenuTitle(nodes: RouteNode[], path: string): string | null {
   visit(nodes)
   return matchTitle || null
 }
+// 关键逻辑：为测试管理菜单限定样式作用域，避免直接叶子项被误显示为更深一级。
+function routeMenuNodeClass(node: RouteNode): string {
+  return node.routePath === '/test-management' ? 'app-menu-node--test-management' : ''
+}
 const title = computed(() => String(route.meta.title || findMenuTitle(auth.routes, route.path) || fallbackTitles[String(route.params.section || route.name || 'dashboard')] || '系统模块'))
 const appTabPath = computed(() => {
   if (route.name === 'project-detail' && route.params.projectId) return route.path
@@ -180,7 +184,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
       </router-link>
       <el-menu :default-active="route.path" mode="horizontal" router class="app-top-menu">
         <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><span>工作台</span></el-menu-item>
-        <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" />
+        <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" />
       </el-menu>
       <div class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
     </header>
@@ -193,7 +197,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
         </router-link>
         <el-menu :default-active="route.path" :collapse="sidebarCollapsed" router class="app-menu">
           <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item>
-          <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" />
+          <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" />
         </el-menu>
       </el-aside>
       <el-container>
@@ -207,7 +211,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
     </el-container>
     <el-drawer v-if="mobileNavigationVisible" v-model="mobileMenuOpen" direction="ltr" size="280px" :with-header="false" class="mobile-menu-drawer">
       <div class="mobile-menu-drawer__header"><router-link to="/dashboard" class="app-logo" aria-label="工程交付平台工作台"><span class="brand-mark" aria-hidden="true">EP</span><span class="app-logo__text"><strong>工程交付平台</strong><small>ENGINEERING DELIVERY</small></span></router-link></div>
-      <el-menu :default-active="route.path" router class="app-menu mobile-menu-drawer__menu" @select="mobileMenuOpen = false"><el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item><UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" /></el-menu>
+      <el-menu :default-active="route.path" router class="app-menu mobile-menu-drawer__menu" @select="mobileMenuOpen = false"><el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item><UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" /></el-menu>
     </el-drawer>
     <ThemeSettingsDrawer v-model="settingsOpen" />
     <el-dialog v-model="avatarDialogOpen" title="更换头像" width="430px" class="avatar-dialog" :close-on-click-modal="false" destroy-on-close @closed="resetAvatarForm">
