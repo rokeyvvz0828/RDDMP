@@ -50,7 +50,7 @@ ON DUPLICATE KEY UPDATE role_name = VALUES(role_name), status = 1, deleted = 0;
 
 -- 3.1 统筹角色挂全部需求管理权限（含 requirement:admin 豁免）
 INSERT IGNORE INTO sys_role_permission (role_id, permission_id, tenant_id)
-SELECT 100, id, 1 FROM sys_menu_permission WHERE tenant_id = 1 AND id BETWEEN 6001 AND 6105;
+SELECT 100, id, 1 FROM sys_menu_permission WHERE tenant_id = 1 AND id BETWEEN 7001 AND 7105;
 
 -- 3.2 业务组成员挂基础访问权限（不含 admin 豁免，数据范围由 req_business_group_member / req_project_member 控制）
 INSERT IGNORE INTO sys_role_permission (role_id, permission_id, tenant_id)
@@ -63,8 +63,8 @@ SELECT 101, id, 1 FROM sys_menu_permission WHERE tenant_id = 1 AND permission_co
 
 -- 3.3 菜单可见性（让需求管理菜单对两个新角色都可见）
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id, tenant_id) VALUES
-    (100, 600, 1), (100, 601, 1), (100, 602, 1), (100, 603, 1),
-    (101, 600, 1), (101, 601, 1), (101, 602, 1), (101, 603, 1);
+    (100, 700, 1), (100, 701, 1), (100, 702, 1), (100, 703, 1),
+    (101, 700, 1), (101, 701, 1), (101, 702, 1), (101, 703, 1);
 
 -- 3.4 用户角色绑定
 DELETE FROM sys_user_role WHERE tenant_id = 1 AND user_id BETWEEN 1001 AND 1010;

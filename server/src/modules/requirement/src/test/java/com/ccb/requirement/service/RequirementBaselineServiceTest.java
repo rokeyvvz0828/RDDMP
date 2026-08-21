@@ -24,7 +24,10 @@ class RequirementBaselineServiceTest {
         project.put("id", 1L);
         project.put("project_code", "P001");
         project.put("project_name", "测试项目");
-        StubJdbcTemplate jdbc = new StubJdbcTemplate(counts, differences, project);
+        StubJdbcTemplate jdbc = new StubJdbcTemplate(
+                sql -> sql.contains("requirement:admin") ? 1L : counts.apply(sql),
+                differences,
+                project);
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
         RequirementBaselineService service = new RequirementBaselineService(jdbc, changeLog, security, new ObjectMapper());
@@ -49,8 +52,8 @@ class RequirementBaselineServiceTest {
         fixture.service().create(1L, "测试基线", ADMIN);
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_baseline`")));
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_baseline_item`")));
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("UPDATE `req_difference` SET baseline_id")));
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("BASELINE")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("UPDATE req_difference SET baseline_id")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_change_log")));
     }
 
     private record Fixture(StubJdbcTemplate jdbc, RequirementBaselineService service) {

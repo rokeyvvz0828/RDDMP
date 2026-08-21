@@ -1,42 +1,42 @@
 -- 架构子系统初始目录。仅初始化租户 1，不承载运行期租户选择逻辑。
 
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, sort_no)
-SELECT 600, 1, 0, 'directory', '架构管理', 'ArchitectureRoot', '/architecture', 'LAYOUT', NULL, 'collection', 350
+SELECT 800, 1, 0, 'directory', '架构管理', 'ArchitectureRoot', '/architecture', 'LAYOUT', NULL, 'collection', 800
 WHERE NOT EXISTS (
-    SELECT 1 FROM sys_menu WHERE tenant_id = 1 AND (id = 600 OR route_name = 'ArchitectureRoot' OR route_path = '/architecture')
+    SELECT 1 FROM sys_menu WHERE tenant_id = 1 AND (id = 800 OR route_name = 'ArchitectureRoot' OR route_path = '/architecture')
 );
 
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, sort_no)
-SELECT 601, 1, 600, 'menu', '逻辑子系统', 'ArchitectureLogicalSubsystems', '/architecture/logical-subsystems',
+SELECT 801, 1, 800, 'menu', '逻辑子系统', 'ArchitectureLogicalSubsystems', '/architecture/logical-subsystems',
        'architecture/logical-subsystems/index', 'architecture:logical:list', 'document', 10
 WHERE NOT EXISTS (
-    SELECT 1 FROM sys_menu WHERE tenant_id = 1 AND (id = 601 OR route_name = 'ArchitectureLogicalSubsystems' OR route_path = '/architecture/logical-subsystems')
+    SELECT 1 FROM sys_menu WHERE tenant_id = 1 AND (id = 801 OR route_name = 'ArchitectureLogicalSubsystems' OR route_path = '/architecture/logical-subsystems')
 );
 
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, sort_no)
-SELECT 602, 1, 600, 'menu', '物理子系统', 'ArchitecturePhysicalSubsystems', '/architecture/physical-subsystems',
+SELECT 802, 1, 800, 'menu', '物理子系统', 'ArchitecturePhysicalSubsystems', '/architecture/physical-subsystems',
        'architecture/physical-subsystems/index', 'architecture:physical:list', 'grid', 20
 WHERE NOT EXISTS (
-    SELECT 1 FROM sys_menu WHERE tenant_id = 1 AND (id = 602 OR route_name = 'ArchitecturePhysicalSubsystems' OR route_path = '/architecture/physical-subsystems')
+    SELECT 1 FROM sys_menu WHERE tenant_id = 1 AND (id = 802 OR route_name = 'ArchitecturePhysicalSubsystems' OR route_path = '/architecture/physical-subsystems')
 );
 
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id, tenant_id)
-SELECT 1, id, 1 FROM sys_menu WHERE tenant_id = 1 AND id IN (600, 601, 602) AND deleted = 0;
+SELECT 1, id, 1 FROM sys_menu WHERE tenant_id = 1 AND id IN (800, 801, 802) AND deleted = 0;
 
 INSERT IGNORE INTO sys_menu_permission (id, tenant_id, menu_id, action_code, permission_code, permission_name)
 VALUES
-    (6011, 1, 601, 'read', 'architecture:logical:list', '查看'),
-    (6012, 1, 601, 'create', 'architecture:logical:create', '新增'),
-    (6013, 1, 601, 'update', 'architecture:logical:update', '修改'),
-    (6014, 1, 601, 'delete', 'architecture:logical:delete', '删除'),
-    (6021, 1, 602, 'read', 'architecture:physical:list', '查看'),
-    (6022, 1, 602, 'create', 'architecture:physical:create', '新增'),
-    (6023, 1, 602, 'update', 'architecture:physical:update', '修改'),
-    (6024, 1, 602, 'delete', 'architecture:physical:delete', '删除');
+    (8011, 1, 801, 'read', 'architecture:logical:list', '查看'),
+    (8012, 1, 801, 'create', 'architecture:logical:create', '新增'),
+    (8013, 1, 801, 'update', 'architecture:logical:update', '修改'),
+    (8014, 1, 801, 'delete', 'architecture:logical:delete', '删除'),
+    (8021, 1, 802, 'read', 'architecture:physical:list', '查看'),
+    (8022, 1, 802, 'create', 'architecture:physical:create', '新增'),
+    (8023, 1, 802, 'update', 'architecture:physical:update', '修改'),
+    (8024, 1, 802, 'delete', 'architecture:physical:delete', '删除');
 
 INSERT IGNORE INTO sys_role_permission (role_id, permission_id, tenant_id)
 SELECT 1, id, 1 FROM sys_menu_permission
-WHERE tenant_id = 1 AND id IN (6011, 6012, 6013, 6014, 6021, 6022, 6023, 6024);
+WHERE tenant_id = 1 AND id IN (8011, 8012, 8013, 8014, 8021, 8022, 8023, 8024);
 
 INSERT IGNORE INTO sys_dict_type (id, tenant_id, dict_code, dict_name)
 VALUES

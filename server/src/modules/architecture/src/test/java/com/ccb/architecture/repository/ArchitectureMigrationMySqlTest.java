@@ -30,12 +30,12 @@ class ArchitectureMigrationMySqlTest {
 
     @BeforeEach
     void cleanDatabase() {
-        flyway("36").clean();
+        flyway("77").clean();
     }
 
     @Test
-    void migratesEmptyDatabaseToV36WithTenantSafeConstraints() throws Exception {
-        var migration = flyway("36").migrate();
+    void migratesEmptyDatabaseToV77WithTenantSafeConstraints() throws Exception {
+        var migration = flyway("77").migrate();
         assertTrue(migration.success);
 
         try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
@@ -54,7 +54,7 @@ class ArchitectureMigrationMySqlTest {
             assertEquals("tenant_id,logical_subsystem_id", foreignKeyColumns(connection));
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM FLW_EV_DATABASECHANGELOGLOCK WHERE id = 1 AND locked = 0"));
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM FLW_EV_DATABASECHANGELOG"));
-            assertEquals(36, count(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1"));
+            assertEquals(71, count(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1"));
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE script LIKE '%ensure_flowable_event_registry_metadata%'"));
 
             execute(connection, "INSERT INTO arch_logical_subsystem (id,tenant_id,code,short_name,name,business_org_id,contact_user_id,created_by,updated_by) VALUES (1,1,'LOGICAL_1','逻辑一','逻辑系统一',1,1,1,1)");
@@ -62,25 +62,25 @@ class ArchitectureMigrationMySqlTest {
             assertThrows(Exception.class, () -> execute(connection, "INSERT INTO arch_physical_subsystem (id,tenant_id,code,short_name,name,logical_subsystem_id,responsible_team_org_id,responsible_team_name_snapshot,created_by,updated_by) VALUES (1,2,'PHYSICAL_1','物理一','物理系统一',1,1,'团队',1,1)"));
         }
 
-        var repeated = flyway("36").migrate();
+        var repeated = flyway("77").migrate();
         assertTrue(repeated.success);
         assertEquals(0, repeated.migrationsExecuted);
         try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM FLW_EV_DATABASECHANGELOGLOCK WHERE id = 1"));
-            assertEquals(36, count(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1"));
+            assertEquals(71, count(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1"));
         }
     }
 
     @Test
-    void migratesIncrementallyFromV35ToV36() throws Exception {
-        assertTrue(flyway("35").migrate().success);
-        var result = flyway("36").migrate();
+    void migratesIncrementallyFromV76ToV77() throws Exception {
+        assertTrue(flyway("76").migrate().success);
+        var result = flyway("77").migrate();
         assertTrue(result.success);
         assertEquals(1, result.migrationsExecuted);
         try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
             assertEquals(2, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE 'arch_%_subsystem'"));
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM FLW_EV_DATABASECHANGELOGLOCK WHERE id = 1"));
-            assertEquals(36, count(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1"));
+            assertEquals(71, count(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1"));
         }
     }
 

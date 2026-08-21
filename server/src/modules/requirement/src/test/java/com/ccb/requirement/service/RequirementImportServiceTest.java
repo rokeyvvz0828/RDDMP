@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayOutputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +24,7 @@ class RequirementImportServiceTest {
     @Test
     void previewReportsValidAndInvalidRows() throws Exception {
         byte[] content = workbookBytes();
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
+        StubJdbcTemplate jdbc = adminJdbc();
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
         RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
@@ -47,7 +48,7 @@ class RequirementImportServiceTest {
 
     @Test
     void confirmPersistsRowsAndImportBatch() throws Exception {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
+        StubJdbcTemplate jdbc = adminJdbc();
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
         RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
@@ -57,9 +58,9 @@ class RequirementImportServiceTest {
             }
         };
         RequirementImportService service = new RequirementImportService(jdbc, security, systemService, changeLog, new ObjectMapper());
-        Map<String, Object> row = Map.of(
+        Map<String, Object> row = new LinkedHashMap<>(Map.of(
                 "name", "导入差异", "business_group", "零售一组", "requirement_no", "W01812-001",
-                "category", "功能", "difference_type", "无差异", "system_code", "W01812");
+                "category", "功能", "difference_type", "无差异", "system_code", "W01812"));
 
         Map<String, Object> result = service.confirm("DIFF", 1L, "diff.xlsx", List.of(row), ADMIN);
 
@@ -98,5 +99,12 @@ class RequirementImportServiceTest {
             workbook.write(output);
             return output.toByteArray();
         }
+    }
+
+    private StubJdbcTemplate adminJdbc() {
+        return new StubJdbcTemplate(
+                sql -> sql.contains("requirement:admin") || sql.contains("FROM req_project") ? 1L : 0L,
+                List.of(),
+                Map.of());
     }
 }

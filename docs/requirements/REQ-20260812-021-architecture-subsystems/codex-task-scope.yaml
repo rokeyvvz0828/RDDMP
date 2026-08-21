@@ -27,10 +27,10 @@
       "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/**",
       "server/src/platform/system/src/test/java/com/ccb/system/capability/**",
       "server/src/platform/system/src/test/java/com/ccb/system/internal/capability/**",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V76__extend_operation_log_trace.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V77__create_architecture_subsystems.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V78__seed_architecture_subsystem_catalog.sql",
       "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
       "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
       "mock/mock-data.json",
@@ -115,9 +115,9 @@
     "changed": true,
     "migration_files": [
       "server/src/platform/infrastructure/src/main/resources/db/migration/beforeMigrate__ensure_flowable_event_registry_metadata.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__extend_operation_log_trace.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V36__create_architecture_subsystems.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V37__seed_architecture_subsystem_catalog.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V76__extend_operation_log_trace.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V77__create_architecture_subsystems.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V78__seed_architecture_subsystem_catalog.sql"
     ],
     "compatibility_and_rollback": "截至 2026-08-14T16:03:00+08:00，刷新后的 origin/main 最高为 V34，当前实施需求取得连续的 V35-V37；原先仅由未实施需求文档预留的版本顺延。beforeMigrate callback 使用 information_schema 守卫和静态预编译 DDL 幂等补齐 V24 已假定存在的 Flowable Liquibase 元数据表及 ID=1 未锁定记录，不修改历史迁移或业务表，也不写 Flyway 历史；V35 仅增加可空 trace_id 和索引；V36 新增 arch_ 业务表，tenant_id 非空且无默认值；V37 仅初始化菜单、权限、管理员授权和参数，不写 biz_form_*。应用回退保留 callback、迁移和数据；callback 只有在后续替代机制保证所有空库都能越过 V24 后才可移除。"
   },
