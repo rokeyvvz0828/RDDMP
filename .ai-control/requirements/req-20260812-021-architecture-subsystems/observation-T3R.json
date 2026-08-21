@@ -1,0 +1,45 @@
+{
+  "sample_label": "T3R 空库迁移基线纠偏复验",
+  "task_ids": ["T3R"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {
+      "requirement_id": "R8",
+      "sensor": "S5 Testcontainers MySQL 8.4 空库基线",
+      "result": "pass",
+      "raw_evidence": "EmptyDatabaseMigrationBaselineMySqlTest 2/2：空库实际执行 34 migrations 到 V34；V24 后重复 migrate 执行 0；两张元数据表存在，锁记录 ID=1/locked=0，callback history 计数 0",
+      "limitation": ["Flyway 当前版本声明已测试 MySQL 上限为 8.1，但 MySQL 8.4 实际执行成功"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S5 T3 组合迁移回归",
+      "result": "pass",
+      "raw_evidence": "ArchitectureMigrationMySqlTest 2/2：空库到 V36、同库 V35 到 V36、无待迁移 callback 幂等均通过；与仓储组合共 6/6 通过",
+      "limitation": ["V36 候选尚未作为 T3 提交"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S10 历史文件与 callback 静态边界",
+      "result": "pass",
+      "raw_evidence": "git diff --quiet origin/main -- V24 返回 0；callback 静态扫描只出现 information_schema、FLW_EV_DATABASECHANGELOG/LOCK，flyway_schema_history 仅在禁止写入注释中出现",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S8/S10 迁移治理与模块回归",
+      "result": "pass-with-governance-baseline-limitation",
+      "raw_evidence": "提交 6cdcb1b 后 commit-diff scope 57 files、Flyway checker 36 migrations + 1 approved callback、module-boundaries 9 modules、development-entry、diff 均通过",
+      "limitation": ["check-all-governance 被既有 CRLF SKILL.md 解析问题阻断", "working-tree scope 仍会包含用户已有 .dsh/** 和 docs/original/**，因此采用同一 HEAD 的 commit diff 隔离任务变更"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "用户已有未跟踪 .dsh/** 与 docs/original/** 使 working-tree scope 传感器包含任务外噪声",
+    "仓库既有 repo-skill checker 对 CRLF frontmatter 的解析问题使 check-all-governance 不能到达全部子检查"
+  ],
+  "coverage_gaps": [
+    "仓库级 CRLF repo-skill 基线修复需独立需求授权，不属于 F-0004"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

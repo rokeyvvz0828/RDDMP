@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "status": "implemented",
+  "recorded_at": "2026-08-20T15:34:32+08:00",
+  "goal": "Simplify the project overview and replace its legacy charts with a read-only reuse of the project plan month timeline.",
+  "scope": ["web/src/views/ProjectView.vue", "web/src/styles.css"],
+  "changes": [
+    "Removed the overview plan-status chart, execution-progress chart, six KPI blocks, and their unused ECharts lifecycle and theme code.",
+    "Removed the overview main-plan and child-plan ECharts Gantt implementations.",
+    "Added a read-only overview timeline that reuses project plan stage and month data, omits the stage-plan column, and renders only main-plan bars.",
+    "Kept project plan timeline maintenance controls and click-to-open-child behavior in the project plan tab unchanged.",
+    "Removed obsolete overview chart and selectable-Gantt CSS rules while retaining timeline-local overflow and responsive rules."
+  ],
+  "commands": [
+    {"command": "node scripts/check-development-entry.mjs --require-plugin", "result": "blocked; Codex CLI is unavailable, so control-engineering plugin status could not be verified"},
+    {"command": "git diff --check", "result": "passed"},
+    {"command": "rg deprecated overview ECharts/chart selectors", "result": "passed; no legacy ECharts, KPI, chart, or selectable-Gantt selectors remain in scoped frontend files"},
+    {"command": ".\\node_modules\\.bin\\vue-tsc.cmd --noEmit", "result": "passed"},
+    {"command": "npm --prefix web run build", "result": "blocked by sandbox spawn EPERM while starting Vite/esbuild; escalated retry was rejected by environment approval"}
+  ],
+  "unresolved": [
+    "A fresh browser acceptance and full Vite production build remain unavailable in this environment."
+  ]
+}

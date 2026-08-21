@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "task_id": "T10",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "完整 origin/main..HEAD 产品与治理差异", "purpose": "执行 R1-R13 最终集成、运行与范围验收"},
+    {"path_or_resource": "scripts/check-repo-skill.mjs", "purpose": "按用户追加授权兼容 Windows CRLF，不放宽 frontmatter 内容规则"},
+    {"path_or_resource": "scripts/check-ai-control-layout.mjs", "purpose": "识别 control-engineering 正式 baseline/correction 产物，不放宽目录、JSON 或 topic 规则"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13"],
+  "commands": [
+    {"command": "mvn test", "exit_code": 0, "salient_output": "10 个 Reactor 模块 BUILD SUCCESS；25 份 Surefire 报告合计 99 tests，failures/errors/skipped 均为 0；architecture 47 项含 MySQL 8.4 迁移与并发"},
+    {"command": "mvn --batch-mode -DskipTests package", "exit_code": 0, "salient_output": "10 个 Reactor 模块成功；Boot 可执行 JAR 完成 repackage；42.842s"},
+    {"command": "npm.cmd --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc 与 Vite 通过；2341 modules transformed；逻辑/物理页面为独立懒加载 chunk"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "12 modules、repository skill、development entry、30 requirement directories/242 JSON、9 Maven modules、37 migrations/1 callback 全部通过"},
+    {"command": "node scripts/check-codex-scope.mjs --scope ... --base origin/main --head HEAD", "exit_code": 0, "salient_output": "118 changed files 全部位于批准范围"},
+    {"command": "governance negative fixtures", "exit_code": 0, "salient_output": "临时 HEAD 快照完整治理通过；非法 Skill name、非法 ledger file、缺失的通配符验收证据均按预期退出 1；临时目录已安全清理"},
+    {"command": "GET /actuator/health", "exit_code": 0, "salient_output": "status=UP"},
+    {"command": "real local API contract probe", "exit_code": 0, "salient_output": "临时管理员登录 200；逻辑/物理列表、逻辑组织选项、物理用户选项均 HTTP 200/code 0/trace present/forbiddenFields false；临时账号剩余 0"},
+    {"command": "real local MySQL audit probe", "exit_code": 0, "salient_output": "UAT_LOG_BROWSER/UAT_PHY_BROWSER 均 tenant 1 且 deleted=1；CREATE/UPDATE/DELETE 六条审计 success=1 且 trace present"},
+    {"command": "in-app browser UAT", "exit_code": 0, "salient_output": "管理员/只读/无权限；1280x800、375x812、390x844、430x932；真实 CRUD、主题、抽屉、脏表单、无横滚与 clean console 通过"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无 whitespace 错误"}
+  ],
+  "local_checks": [
+    {"check": "自动化与迁移", "result": "pass", "evidence": "99 tests、全 Reactor package、V1-V37/回调治理、MySQL 并发和迁移测试通过", "limitations": []},
+    {"check": "真实 API 与数据", "result": "pass", "evidence": "健康、认证、四个受保护读取端点、安全 DTO、软删除和六条 trace 审计通过", "limitations": ["浏览器工具不导出 Network waterfall；已由真实 HTTP 探针和数据库审计补充"]},
+    {"check": "权限与租户", "result": "pass", "evidence": "MockMvc/服务测试覆盖 400/401/403/40400/409、跨租户与父锁；浏览器覆盖管理员/只读/无权限；真实 API 由认证 tenant 注入", "limitations": []},
+    {"check": "前端与响应式", "result": "pass", "evidence": "类型构建、四视口、明暗主题、固定表单、远程选择器和最终控制台通过", "limitations": ["仓库既有主入口 bundle >500kB 警告；新增页面已独立懒加载"]},
+    {"check": "治理纠偏", "result": "pass", "evidence": "dc03916 后正向全绿、负向仍拒绝；F-0005 已关闭", "limitations": []}
+  ],
+  "diff_summary": [
+    "最终产品范围由 module/architecture、最小 system capability、追加迁移/Mock、静态前端路由与业务页面组成",
+    "未恢复已下线表单元数据；前端为固定强类型 DTO/表单",
+    "最终治理纠偏不修改产品行为，只修复两个跨平台/产物识别假阴性"
+  ],
+  "invariants_checked": [
+    {"invariant": "tenant 仅由认证上下文注入", "result": "pass", "evidence": "请求 DTO/前端无 tenant 字段；租户与跨租户测试通过"},
+    {"invariant": "不实现启停用", "result": "pass", "evidence": "资源 DTO、命令、页面和目录无业务 status 动作"},
+    {"invariant": "物理负责团队必填、事业群可选", "result": "pass", "evidence": "服务/页面校验与真实浏览器 CRUD 通过"},
+    {"invariant": "领域属于 module 而非 platform", "result": "pass", "evidence": "业务 Java 位于 server/src/modules/architecture；platform 仅提供公开安全引用与审计契约"},
+    {"invariant": "不覆盖用户工作", "result": "pass", "evidence": ".dsh/** 与 docs/original/** 未暂存、未提交"}
+  ],
+  "disturbances": [
+    {"event": "首次 package 在沙箱内访问 Maven Central 被 Permission denied", "impact": "按权限规则在沙箱外复跑，同一命令 10 模块 BUILD SUCCESS；属于环境限制，不是工程失败"},
+    {"event": "working-tree scope 读取到用户未跟踪 .dsh/** 与 docs/original/**", "impact": "提交态 scope 118 files 通过；两个目录保持未跟踪"},
+    {"event": "治理校验器对 CRLF 与正式账本类型假阴性", "impact": "用户批准后由 dc03916 限幅修复，正负向和全治理复验通过"}
+    ,{"event": "进入 converged 后验收证据通配符被当作字面路径", "impact": "8a179b1 改为至少一个实际文件匹配；正向全治理通过、缺失通配符负向退出 1"}
+  ],
+  "assumptions_falsified": [
+    "Windows 文本检出与 Git 对象具有相同行结束符",
+    "旧 AI control 文件白名单覆盖 control-engineering 生成的全部正式产物"
+  ],
+  "unresolved_items": [
+    "浏览器工具不提供 Network waterfall 导出；真实 HTTP/SQL/audit 已提供等价连通与安全字段证据",
+    "前端主入口存在仓库既有大 chunk 警告；本需求页面已代码分割"
+  ],
+  "implementation_commits": ["0d8f057", "9072f5b", "c122884", "6cdcb1b", "09e23ce", "a5fe6ee", "9d393af", "6df373f", "81c7c29", "3ded28c", "7883a0d", "dc03916", "8a179b1"],
+  "recommended_next": "observe"
+}

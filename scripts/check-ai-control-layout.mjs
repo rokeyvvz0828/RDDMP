@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {readJsonYaml, root} from './governance-utils.mjs';
+import {matches, readJsonYaml, root} from './governance-utils.mjs';
 
 const controlRoot = path.join(root, '.ai-control');
 const originalRoot = path.join(controlRoot, 'original');
@@ -20,7 +20,7 @@ const expectedOriginalFiles = new Set([
   'observation-T3.json',
   'state.json',
 ]);
-const requirementFilePattern = /^(control-plan|convergence|design|handoff|model|state|execution(?:-[A-Za-z0-9-]+)?|observation(?:-[A-Za-z0-9-]+)?)\.json$/;
+const requirementFilePattern = /^(baseline|control-plan|convergence|correction(?:-[A-Za-z0-9-]+)?|design|handoff|model|state|execution(?:-[A-Za-z0-9-]+)?|observation(?:-[A-Za-z0-9-]+)?)\.json$/;
 
 for (const entry of fs.readdirSync(controlRoot, {withFileTypes: true})) {
   if (entry.name === '.DS_Store') continue;
@@ -110,8 +110,14 @@ for (const entry of fs.readdirSync(requirementDocsRoot, {withFileTypes: true})) 
   for (const evidence of scope.completion.acceptance_evidence || []) {
     if (!evidence.startsWith(`${ledgerDirectory}/`)) {
       violations.push(`${entry.name}: invalid acceptance evidence ${evidence}`);
-    } else if (converged && !fs.existsSync(path.join(root, evidence))) {
-      violations.push(`${entry.name}: converged task is missing acceptance evidence ${evidence}`);
+    } else if (converged) {
+      const evidenceExists = evidence.includes('*')
+        ? fs.existsSync(ledgerPath) && fs.readdirSync(ledgerPath, {withFileTypes: true})
+          .some((file) => file.isFile() && matches(`${ledgerDirectory}/${file.name}`, [evidence]))
+        : fs.existsSync(path.join(root, evidence));
+      if (!evidenceExists) {
+        violations.push(`${entry.name}: converged task is missing acceptance evidence ${evidence}`);
+      }
     }
   }
 }

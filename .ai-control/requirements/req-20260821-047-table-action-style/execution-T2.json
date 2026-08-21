@@ -1,0 +1,86 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/LogicalSubsystemPage.vue",
+      "purpose": "Add standard detail/edit/more icons, matching desktop/mobile labels and a content-sized action column"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+      "purpose": "Mirror the logical subsystem action presentation without changing handlers or permissions"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/architecture.css",
+      "purpose": "Add module-local non-wrapping desktop action spacing and mobile button margin normalization"
+    }
+  ],
+  "requirements_addressed": ["R3", "R4"],
+  "commands": [
+    {
+      "command": "git diff --check -- architecture target files",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors"
+    },
+    {
+      "command": "rg target handlers, canUpdate, canDelete and command wiring",
+      "exit_code": 0,
+      "salient_output": "Both pages retain existing handlers and permission expressions on desktop and mobile"
+    },
+    {
+      "command": "npm --prefix web run build (sandboxed)",
+      "exit_code": 1,
+      "salient_output": "EPERM writing web/node_modules/.vite-temp before compilation"
+    },
+    {
+      "command": "npm --prefix web run build (approved filesystem access)",
+      "exit_code": 0,
+      "salient_output": "vue-tsc and Vite succeeded; 2391 modules transformed"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Architecture focused source and permission review",
+      "result": "pass",
+      "evidence": "Focused diff changes only imports, action markup, widths and architecture-local CSS",
+      "limitations": ["Rendered browser visual checks remain for observing"]
+    },
+    {
+      "check": "Frontend production build",
+      "result": "pass",
+      "evidence": "Escalated build exited 0 after the sandbox-only EPERM was isolated",
+      "limitations": ["Existing large-chunk warning remains"]
+    }
+  ],
+  "diff_summary": [
+    "Both desktop fixed action columns changed from 144 to 214 pixels and now use the same View/Edit/More structure",
+    "Both mobile card footers now use the same Detail/Edit/More labels and icons",
+    "Added architecture-local action gap, no-wrap, button margin and dropdown alignment rules"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Architecture handler bodies remain unchanged",
+      "result": "pass",
+      "evidence": "Focused diff contains no script function-body change"
+    },
+    {
+      "invariant": "canUpdate and canDelete semantics remain unchanged",
+      "result": "pass",
+      "evidence": "Original v-if expressions remain on the same edit and dropdown entries in both desktop and mobile templates"
+    },
+    {
+      "invariant": "Delete confirmation and command routing remain unchanged",
+      "result": "pass",
+      "evidence": "Dropdown still emits command=delete into the existing command function; remove functions are outside the diff"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Sandbox denied Vite temporary-file creation",
+      "impact": "First build failed before compilation; the identical command passed with approved project write access"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Desktop/mobile rendered browser verification remains pending"],
+  "recommended_next": "observe"
+}

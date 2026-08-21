@@ -36,10 +36,13 @@ public class ProjectComponentService {
     @Transactional
     public Map<String, Object> createProject(Map<String, Object> body, AuthUser user) {
         requireText(body, "projectCode"); requireText(body, "projectName");
-        String code = String.valueOf(body.get("projectCode")).trim();
+        String code = normalizeProjectCode(body.get("projectCode"));
+        String name = requireProjectName(body.get("projectName"));
+        String description = requireDescription(body.get("description"));
         if (exists("SELECT COUNT(*) FROM dm_project WHERE tenant_id = ? AND project_code = ? AND deleted = 0", user.tenantId(), code)) throw new BusinessException(ErrorCode.CONFLICT, "Project code already exists");
+        if (exists("SELECT COUNT(*) FROM dm_project WHERE tenant_id = ? AND project_name = ? AND deleted = 0", user.tenantId(), name)) throw new BusinessException(ErrorCode.CONFLICT, "Project name already exists");
         long id = nextId();
-        jdbc.update("INSERT INTO dm_project (id, tenant_id, project_code, project_name, description, owner_id) VALUES (?, ?, ?, ?, ?, ?)", id, user.tenantId(), code, body.get("projectName"), body.getOrDefault("description", ""), user.id());
+        jdbc.update("INSERT INTO dm_project (id, tenant_id, project_code, project_name, description, owner_id) VALUES (?, ?, ?, ?, ?, ?)", id, user.tenantId(), code, name, description, user.id());
         audit(user, "PROJECT_CREATE", "PROJECT", id);
         return jdbc.queryForMap("SELECT id, project_code, project_name, description, status, owner_id, created_at, updated_at FROM dm_project WHERE id = ? AND tenant_id = ?", id, user.tenantId());
     }
@@ -60,8 +63,11 @@ public class ProjectComponentService {
     public Map<String, Object> updateProject(long id, Map<String, Object> body, AuthUser user) {
         Map<String, Object> row = find("SELECT id, owner_id FROM dm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId());
         permissions.requireWrite(user, ((Number) row.get("owner_id")).longValue());
-        requireText(body, "projectName");
-        jdbc.update("UPDATE dm_project SET project_name = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0", body.get("projectName"), body.getOrDefault("description", ""), body.getOrDefault("status", "ACTIVE"), id, user.tenantId());
+        String name = requireProjectName(body.get("projectName"));
+        String description = requireDescription(body.get("description"));
+        if (exists("SELECT COUNT(*) FROM dm_project WHERE tenant_id = ? AND project_name = ? AND id <> ? AND deleted = 0", user.tenantId(), name, id)) throw new BusinessException(ErrorCode.CONFLICT, "Project name already exists");
+        // project_code is immutable after creation; it is never updated here.
+        jdbc.update("UPDATE dm_project SET project_name = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0", name, description, body.getOrDefault("status", "ACTIVE"), id, user.tenantId());
         audit(user, "PROJECT_UPDATE", "PROJECT", id);
         return jdbc.queryForMap("SELECT id, project_code, project_name, description, status, owner_id, created_at, updated_at FROM dm_project WHERE id = ? AND tenant_id = ?", id, user.tenantId());
     }
@@ -99,4 +105,22 @@ public class ProjectComponentService {
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }
     private static void requireText(Map<String, Object> body, String key) { if (body.get(key) == null || String.valueOf(body.get(key)).trim().isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, key + " is required"); }
     private static long number(Map<String, Object> body, String key) { requireText(body, key); try { return Long.parseLong(String.valueOf(body.get(key))); } catch (NumberFormatException ex) { throw new BusinessException(ErrorCode.BAD_REQUEST, key + " must be numeric"); } }
+    private static String normalizeProjectCode(Object raw) {
+        String code = String.valueOf(raw).trim().toUpperCase();
+        if (!code.matches("[A-Z0-9]+")) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project code must contain only letters and digits");
+        if (code.length() > 64) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project code must be at most 64 characters");
+        return code;
+    }
+    private static String requireProjectName(Object raw) {
+        if (raw == null || String.valueOf(raw).trim().isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "projectName is required");
+        String name = String.valueOf(raw).trim();
+        if (name.length() > 100) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project name must be at most 100 characters");
+        return name;
+    }
+    private static String requireDescription(Object raw) {
+        if (raw == null) return "";
+        String description = String.valueOf(raw).trim();
+        if (description.length() > 500) throw new BusinessException(ErrorCode.BAD_REQUEST, "Description must be at most 500 characters");
+        return description;
+    }
 }

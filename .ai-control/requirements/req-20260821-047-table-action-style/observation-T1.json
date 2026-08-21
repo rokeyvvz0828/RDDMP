@@ -1,0 +1,57 @@
+{
+  "sample_label": "Integrated source, build and initial rendered sample",
+  "task_ids": ["T1", "T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 focused diff and S2 production build",
+      "result": "pass",
+      "raw_evidence": "Difference actions retain workflow_instance_id, review_status and canEditDiff gates; npm run build exited 0 after 2391 modules transformed.",
+      "limitation": ["Representative current data does not expose every review state simultaneously."]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S1 focused diff and S3 rendered desktop browser",
+      "result": "pass",
+      "raw_evidence": "Legacy actions rendered at 215px within the 240px fixed column; system actions rendered at 135px within the 160px column; no button text overflow.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1 source comparison and S3 desktop/mobile browser",
+      "result": "pass",
+      "raw_evidence": "Logical and physical subsystem rows both render Detail, Edit and More with matching icons; 1280px action containers measured 189px and 390px mobile card footers measured 336px with no button overflow.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S3 responsive browser scroll probe",
+      "result": "fail",
+      "raw_evidence": "At 390x844 on /requirements/legacy, a 220px horizontal gesture over the table changed the root scrollLeft from 0 to 122 and shifted the application shell to x=-122.",
+      "limitation": ["The global 680px mobile table minimum width is intentional; the deviation is specifically that scrolling escapes to the page root."]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R4",
+      "expected": "Mobile table horizontal movement remains contained and the page shell stays at x=0.",
+      "observed": "The root document can scroll horizontally to 122px on the requirement legacy page.",
+      "reproduction": "Open /requirements/legacy at 390x844 and perform a 220px horizontal gesture over the table.",
+      "evidence": "document.scrollingElement.scrollLeft changed 0 -> 122; .app-shell bounding x changed to -122.",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "Measured in the local in-app browser at the required viewport.",
+      "causal_hypothesis": "The requirement page does not clip the global 680px mobile table minimum width at its local page boundary.",
+      "correction_check": "Repeat the horizontal gesture at 375x812, 390x844 and 430x932 and assert root scrollLeft remains 0 while action labels remain visible.",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    "The first sandboxed Vite build could not create a temporary file; the same build passed with approved project write access.",
+    "Vite reports the repository's existing large-chunk warning."
+  ],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

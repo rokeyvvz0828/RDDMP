@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "com.ccb.system.capability",
+      "purpose": "公开最小用户/参数查询与操作审计契约，不暴露 architecture 类型或独立 tenant 参数"
+    },
+    {
+      "path_or_resource": "com.ccb.system.internal.capability",
+      "purpose": "以租户限定 JdbcTemplate SQL 实现安全引用查询和 REQUIRED/REQUIRES_NEW 审计"
+    },
+    {
+      "path_or_resource": "V35__extend_operation_log_trace.sql",
+      "purpose": "为现有操作日志追加可空 trace_id 及租户组合索引"
+    },
+    {
+      "path_or_resource": "JdbcSystemReferenceQueryTest 与 JdbcSystemOperationAuditTest",
+      "purpose": "锁定字段、租户、状态、转义、事务传播、错误限长和 trace 语义"
+    }
+  ],
+  "requirements_addressed": ["R4", "R6", "R7"],
+  "commands": [
+    {
+      "command": "T2 聚焦测试（实现前）",
+      "exit_code": 1,
+      "salient_output": "23 个 missing symbol 编译错误，证明新契约尚不存在"
+    },
+    {
+      "command": "mvn -pl :ccb-system -am -Dtest=JdbcSystemReferenceQueryTest,JdbcSystemOperationAuditTest test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 6, Failures: 0, Errors: 0"
+    },
+    {
+      "command": "mvn -pl :ccb-system -am test",
+      "exit_code": 0,
+      "salient_output": "common 2 + infrastructure 6 + security 4 + system 11，共 23 个测试通过"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs && check-module-boundaries && check-governance",
+      "exit_code": 0,
+      "salient_output": "Flyway 35、Maven modules 9、governance modules 12 全部通过"
+    },
+    {
+      "command": "临时 MySQL 库创建迁移前日志表，执行仓库 V35，运行旧 INSERT 与 information_schema 断言，finally 删除临时库",
+      "exit_code": 0,
+      "salient_output": "varchar(64)|YES|NULL；tenant_id,trace_id；legacy NULL row count=1"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --base origin/main --head HEAD",
+      "exit_code": 0,
+      "salient_output": "REQ-20260812-021 scope 49 changed files passed"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "用户安全查询",
+      "result": "pass",
+      "evidence": "tenant/deleted/status 固定 SQL、LIKE 元字符转义、分页、phone 映射和 inactive 查询由 3 个测试覆盖",
+      "limitations": ["真实多租户数据联调留在 T10"]
+    },
+    {
+      "check": "参数安全查询",
+      "result": "pass",
+      "evidence": "分类代码只作为绑定值；分类和参数均 tenant/status/deleted 限定；DTO 仅 code/label",
+      "limitations": ["V37 才初始化六类目录"]
+    },
+    {
+      "check": "统一审计",
+      "result": "pass",
+      "evidence": "success REQUIRED、failure REQUIRES_NEW；tenant/operator 只来自 AuthUser；错误 255、trace 64",
+      "limitations": ["架构服务调用链在 T4/T5 接入"]
+    },
+    {
+      "check": "V35 兼容",
+      "result": "pass",
+      "evidence": "真实 MySQL 8 临时库执行仓库 SQL；列可空无默认、组合索引正确、既有 INSERT 兼容",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "未修改 SystemService、SystemController、OrganizationService 或共享异常",
+    "公开 capability 不含 architecture 命名，不允许单独传 tenant",
+    "V35 只追加可空列和索引，V1-V34 不变"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "公开类型无 architecture 语义",
+      "result": "pass",
+      "evidence": "公开包源码扫描 architecture/tenantId/tenant_id 无匹配"
+    },
+    {
+      "invariant": "用户/参数全部租户限定",
+      "result": "pass",
+      "evidence": "SQL 捕获断言 tenant 参数来自 AuthUser"
+    },
+    {
+      "invariant": "trace_id 可空且旧写入兼容",
+      "result": "pass",
+      "evidence": "真实 MySQL information_schema 与旧 INSERT"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "PowerShell 对未加引号的 Maven -D 参数发生解析偏差，且本机初始缺少 Surefire provider",
+      "impact": "修正命令引号并通过既有代理补齐校验后的测试运行器，随后正向套件通过"
+    },
+    {
+      "event": "首次 MySQL -e 校验受嵌套引号影响失败",
+      "impact": "改用标准输入执行同一 SQL；finally 清理临时库，第二次完整通过"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "T4/T5 才能验证业务失败回滚后调用 failure audit 的端到端行为",
+    "V37 才能用真实六类参数目录验证 activeParameters"
+  ],
+  "recommended_next": "observe"
+}

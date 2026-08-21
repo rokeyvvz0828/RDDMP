@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "escalate",
+  "decision_reason": "V35-V37 属于其他已登记需求且当前 scope 明确只读；本任务代建或跳号都会破坏 Flyway 所有权与连续性。",
+  "dynamic_pattern": "delay",
+  "causal_assessment": {
+    "hypothesis": "前置需求尚未合入 origin/main",
+    "supporting_evidence": ["刷新后的 origin/main@9e83fbf 仅包含 V1-V34"],
+    "falsifier": "重新 fetch 后三个精确迁移文件均存在"
+  },
+  "control_action": {
+    "gain": "zero",
+    "target": "V35-V37 前置迁移",
+    "write_scope": [],
+    "invariants": ["不修改其他需求迁移", "不创建 V38-V40 占位"],
+    "impact_limit": "冻结 T1 及后续产品代码",
+    "rollback": "无需回滚；没有产品修改",
+    "correction_check": ["git fetch origin main", "三个精确迁移文件存在", "Flyway 版本连续"],
+    "route": "planning"
+  },
+  "resolution": "escalated",
+  "residual_risk": ["合入后预留 ID 可能变化，须重新扫描"]
+}

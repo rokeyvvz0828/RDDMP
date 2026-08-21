@@ -1,3 +1,8 @@
+<!--
+  用途：数迁整体看板页
+  说明：展示项目数、组件数、活动资产数三项核心统计指标；调用 getDataMigrationDashboard('overall')
+        拉取汇总数据，自带加载/失败/空数据状态，移动端卡片单列排列。
+-->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { getDataMigrationDashboard } from '../../../../api/data-migration'

@@ -1,3 +1,8 @@
+<!--
+  用途：数迁资产内容 - 回收站页
+  说明：展示已移入回收站的文件资产，支持关键词查询、批量恢复、彻底清理（不可恢复）；
+        独立渲染页面，未复用 AssetListView，自带加载/失败/空数据状态。
+-->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { listDataMigrationRecycleBin, purgeDataMigrationAssets, restoreDataMigrationAssets, type DataMigrationAsset } from '../../../../api/data-migration'

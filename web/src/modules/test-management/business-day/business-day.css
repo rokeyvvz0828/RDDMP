@@ -1,0 +1,164 @@
+/*
+文件：web/src/modules/test-management/business-day/business-day.css
+说明：营业日管理四个顶部视图的模块级样式与响应式规则。
+用途：统一导航、月历、列表、表单和移动卡片布局，保持主题变量与无页面级横向溢出。
+作者：hengguan
+*/
+.business-day-page { min-width: 0; }
+.business-day-page button { letter-spacing: 0; }
+.business-day-nav { display: flex; align-items: center; gap: 4px; min-height: 48px; margin-bottom: 18px; padding: 4px; overflow-x: auto; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+.business-day-nav button { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px; min-width: 132px; height: 38px; padding: 0 16px; color: var(--muted); background: transparent; border: 0; border-radius: 4px; font: inherit; font-size: 13px; cursor: pointer; }
+.business-day-nav button:hover { color: var(--text); background: var(--panel-muted); }
+.business-day-nav button.active { color: var(--brand-strong); background: color-mix(in srgb, var(--brand) 14%, var(--panel-bg)); font-weight: 650; }
+.business-day-nav .el-icon { font-size: 16px; }
+.business-day-view, .business-day-overview { min-width: 0; }
+.business-day-view > .el-alert { margin-bottom: 14px; }
+.business-day-panel { min-width: 0; overflow: hidden; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+.business-day-panel__header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.business-day-panel__header h2 { margin: 5px 0 0; font-size: 17px; }
+
+.business-day-calendar-panel { min-width: 0; }
+.business-day-calendar-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.business-day-calendar-period, .business-day-calendar-actions, .business-day-calendar-environments { display: flex; align-items: center; gap: 8px; }
+.business-day-calendar-period .el-date-editor { width: 190px; }
+.business-day-calendar-actions { min-width: 0; justify-content: flex-end; }
+.business-day-calendar-environments { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.business-day-calendar-environments .el-button { margin: 0; color: var(--muted); background: var(--panel-bg); border-color: var(--line); }
+.business-day-calendar-environments .el-button.is-active { color: var(--business-day-environment-color); background: color-mix(in srgb, var(--business-day-environment-color) 9%, var(--panel-bg)); border-color: var(--business-day-environment-color); }
+.business-day-calendar-frame { min-width: 0; overflow-x: auto; border: 1px solid var(--line); }
+.business-day-calendar { min-width: 960px; background: var(--panel-bg); }
+.business-day-weekdays, .business-day-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.business-day-weekdays { background: var(--panel-muted); border-bottom: 1px solid var(--line); }
+.business-day-weekdays span { padding: 10px 8px; color: var(--muted); text-align: center; font-size: 12px; font-weight: 650; border-right: 1px solid var(--line); }
+.business-day-weekdays span:last-child { border-right: 0; }
+.business-day-calendar-cell { min-width: 0; min-height: 132px; padding: 7px 8px; background: var(--panel-bg); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.business-day-calendar-cell:nth-child(7n) { border-right: 0; }
+.business-day-calendar-cell.is-other-month { color: var(--muted); background: color-mix(in srgb, var(--panel-muted) 58%, var(--panel-bg)); opacity: .62; }
+.business-day-calendar-cell > header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 5px; }
+.business-day-calendar-cell > header strong { color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; }
+.business-day-calendar-cell > header span { color: var(--muted); font-size: 10px; }
+.business-day-calendar-events { display: grid; gap: 3px; }
+.business-day-calendar-events > button { width: 100%; min-width: 0; margin: 0; padding: 3px 4px 3px 6px; color: var(--text); background: transparent; border: 1px solid transparent; border-left: 2px solid var(--business-day-environment-color); border-radius: 0; font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.business-day-calendar-events > button:hover, .business-day-calendar-events > button:focus-visible { outline: 0; background: color-mix(in srgb, var(--business-day-environment-color) 10%, var(--panel-bg)); border-color: var(--business-day-environment-color); }
+.business-day-calendar-events > button.has-batch { background: color-mix(in srgb, var(--business-day-environment-color) 9%, var(--panel-bg)); }
+.business-day-calendar-event-line { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 4px; min-width: 0; }
+.business-day-calendar-event-line b { min-width: 0; overflow: hidden; color: var(--business-day-environment-color); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.business-day-calendar-event-line em { justify-self: center; padding: 1px 4px; color: var(--muted); background: var(--panel-muted); font-size: 9px; font-style: normal; font-variant-numeric: tabular-nums; }
+.business-day-calendar-events > button.has-batch .business-day-calendar-event-line em { color: var(--panel-bg); background: var(--business-day-environment-color); }
+.business-day-calendar-event-line small { justify-self: end; color: var(--muted); font-size: 9px; white-space: nowrap; }
+.business-day-calendar-batch-line { display: flex; min-width: 0; align-items: center; gap: 4px; margin-top: 2px; font-size: 9px; }
+.business-day-calendar-batch-line .el-tag { flex: 0 0 auto; height: 16px; padding: 0 3px; color: var(--panel-bg); background: var(--business-day-environment-color); border: 0; font-size: 9px; line-height: 14px; }
+.business-day-calendar-batch-line > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.business-day-calendar-detail .el-dialog__body { max-height: calc(100vh - 210px); overflow-y: auto; overscroll-behavior: contain; }
+.business-day-calendar-detail-section { margin-bottom: 18px; }
+.business-day-calendar-detail-section:last-child { margin-bottom: 0; }
+.business-day-calendar-detail-section h3 { margin: 0 0 10px; padding-left: 8px; color: var(--text); border-left: 3px solid var(--brand); font-size: 14px; }
+.business-day-calendar-day-title { display: flex; align-items: baseline; gap: 8px; padding: 10px 12px; background: var(--panel-muted); border: 1px solid var(--line); }
+.business-day-calendar-day-title span { color: var(--muted); font-size: 12px; }
+.business-day-calendar-day-title strong { color: var(--brand-strong); font-size: 18px; font-variant-numeric: tabular-nums; }
+.business-day-calendar-day-title .el-tag { margin: 0; }
+.business-day-calendar-detail-list { display: grid; gap: 8px; }
+.business-day-calendar-detail-list > article { background: var(--panel-bg); border: 1px solid var(--line); border-left: 3px solid var(--business-day-environment-color); }
+.business-day-calendar-detail-list > article > header { display: grid; grid-template-columns: minmax(0, 1fr) max-content 34px; align-items: center; gap: 8px; padding: 10px; }
+.business-day-calendar-detail-list > article > header > span { display: flex; min-width: 0; align-items: center; gap: 7px; }
+.business-day-calendar-detail-list > article > header i { width: 14px; height: 14px; flex: 0 0 14px; background: var(--business-day-environment-color); border: 1px solid var(--line); border-radius: 2px; }
+.business-day-calendar-detail-list > article > header strong { min-width: 0; overflow: hidden; color: var(--text); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.business-day-calendar-detail-list > article > header small { color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; }
+.business-day-calendar-detail-batch { display: grid; gap: 4px; padding: 0 10px 10px; }
+.business-day-calendar-detail-batch > div { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
+.business-day-calendar-detail-batch .el-tag { flex: 0 0 auto; color: var(--business-day-environment-color); background: transparent; border-color: var(--business-day-environment-color); }
+.business-day-calendar-detail-batch > div > span { min-width: 0; overflow-wrap: anywhere; }
+.business-day-calendar-detail-batch p { display: flex; align-items: center; gap: 12px; margin: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.business-day-calendar-detail-batch p small { color: inherit; font-size: 12px; overflow-wrap: anywhere; }
+
+.business-day-filters { display: flex; min-width: 0; align-items: center; gap: 8px; flex-wrap: wrap; }
+.business-day-filters > .el-input { width: 260px; }
+.business-day-filters > .el-select { width: 145px; }
+.business-day-filters--wide > .el-input { width: 220px; }
+.business-day-filters--wide > .el-date-editor { width: 260px; }
+.business-day-table { min-width: 0; }
+/* 关键逻辑：居中规则仅作用于营业日桌面表格；手机端隐藏表格后继续使用原有左对齐卡片层级。 */
+.business-day-table .el-table__cell, .business-day-table .cell { text-align: center; }
+.business-day-table .business-day-primary-cell, .business-day-table .business-day-tags { justify-content: center; }
+.business-day-table .business-day-user { text-align: center; }
+.business-day-table .business-day-actions { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
+.business-day-table .business-day-actions .el-button { margin: 0 6px; }
+.business-day-primary-cell { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.business-day-primary-cell > i, .business-day-theme-option > i { width: 9px; height: 32px; flex: 0 0 auto; background: var(--brand); border-radius: 2px; }
+.business-day-primary-cell > div { min-width: 0; }
+.business-day-primary-cell strong, .business-day-primary-cell small, .business-day-user strong, .business-day-user small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.business-day-primary-cell strong, .business-day-user strong { font-size: 13px; }
+.business-day-primary-cell small, .business-day-user small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.business-day-primary-cell > i.theme-success, .business-day-theme-option > i.theme-success { background: var(--success); border-left-color: var(--success); }
+.business-day-primary-cell > i.theme-warning, .business-day-theme-option > i.theme-warning { background: var(--warning); border-left-color: var(--warning); }
+.business-day-primary-cell > i.theme-danger, .business-day-theme-option > i.theme-danger { background: var(--danger); border-left-color: var(--danger); }
+.business-day-primary-cell > i.theme-accent, .business-day-theme-option > i.theme-accent { background: var(--accent); border-left-color: var(--accent); }
+.business-day-primary-cell > i.theme-brand, .business-day-theme-option > i.theme-brand { background: var(--brand); border-left-color: var(--brand); }
+.business-day-theme-option { display: flex; align-items: center; gap: 8px; }
+.business-day-theme-option > i { height: 16px; }
+.business-day-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.business-day-inline-meta { margin-left: 8px; color: var(--muted); font-size: 11px; }
+.business-day-block-meta { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+.business-day-user-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.business-day-user-option span { color: var(--muted); font-size: 11px; }
+.business-day-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.business-day-form-grid .el-select, .business-day-form-grid .el-date-editor, .business-day-form-grid .el-input-number { width: 100%; }
+.business-day-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.business-day-mobile-list { display: none; }
+.business-day-view > .ui-pagination, .business-day-view > .el-pagination { justify-content: flex-end; margin-top: 16px; }
+
+/* 关键逻辑：营业日管理是测试管理的直接二级叶子，与同级可展开目录统一缩进。 */
+.app-menu-node--test-management > .el-menu > .el-menu-item {
+  padding-left: 40px !important;
+}
+
+@media (max-width: 1180px) {
+  .business-day-filters--wide > .el-input { width: 200px; }
+}
+@media (max-width: 760px) {
+  .business-day-page .ui-page-header { align-items: flex-start; }
+  .business-day-nav { margin-right: -12px; margin-left: -12px; border-right: 0; border-left: 0; border-radius: 0; }
+  .business-day-nav button { min-width: 118px; }
+  .business-day-panel__header { align-items: flex-start; flex-direction: column; }
+  .business-day-calendar-toolbar { align-items: stretch; flex-direction: column; }
+  .business-day-calendar-period { width: 100%; }
+  .business-day-calendar-period .el-date-editor { flex: 1; min-width: 0; }
+  .business-day-calendar-period input { font-size: 16px; }
+  .business-day-calendar-actions { width: 100%; align-items: flex-start; justify-content: space-between; }
+  .business-day-calendar-environments { flex: 1; justify-content: flex-start; }
+  .business-day-calendar-environments .el-button { min-height: 32px; }
+  .business-day-calendar-frame { overflow: visible; }
+  .business-day-calendar { min-width: 0; }
+  .business-day-weekdays { display: none; }
+  .business-day-calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .business-day-calendar-cell { min-height: 124px; padding: 7px; }
+  .business-day-calendar-cell:nth-child(7n) { border-right: 1px solid var(--line); }
+  .business-day-calendar-cell:nth-child(2n) { border-right: 0; }
+  .business-day-calendar-events > button { min-height: 44px; padding: 5px 6px; }
+  .business-day-calendar-event-line b { font-size: 11px; }
+  .business-day-calendar-event-line em, .business-day-calendar-event-line small, .business-day-calendar-batch-line { font-size: 10px; }
+  .business-day-calendar-batch-line > span { display: -webkit-box; overflow: hidden; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .business-day-calendar-detail { max-width: calc(100vw - 24px); margin: 12px auto; }
+  .business-day-calendar-detail .el-dialog__body { max-height: calc(100vh - 180px); }
+  .business-day-filters, .business-day-filters--wide { width: 100%; }
+  .business-day-filters > .el-input, .business-day-filters > .el-select, .business-day-filters > .el-date-editor, .business-day-filters--wide > .el-input, .business-day-filters--wide > .el-select, .business-day-filters--wide > .el-date-editor { width: 100% !important; }
+  .business-day-filters > .el-button { flex: 1; }
+  .business-day-page .ui-toolbar__actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+  .business-day-page .ui-toolbar__actions > .el-button { flex: 1; }
+  .business-day-table { display: none; }
+  .business-day-mobile-list { display: grid; gap: 10px; }
+  .business-day-mobile-list.is-loading { min-height: 220px; opacity: .45; pointer-events: none; }
+  .business-day-mobile-list article { display: grid; gap: 11px; padding: 14px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+  .business-day-mobile-list article > header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .business-day-mobile-list article > p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+  .business-day-mobile-list dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+  .business-day-mobile-list dt { color: var(--muted); font-size: 10px; }
+  .business-day-mobile-list dd { overflow: hidden; margin: 3px 0 0; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .business-day-mobile-list footer { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-top: 7px; border-top: 1px solid var(--line); }
+  .business-day-form-grid { grid-template-columns: 1fr; }
+  .business-day-user-option span { display: none; }
+  .business-day-view > .el-pagination { justify-content: center; flex-wrap: wrap; overflow: hidden; }
+  .business-day-view > .el-pagination .el-pagination__sizes,
+  .business-day-view > .el-pagination .el-pagination__jump { display: none; }
+}

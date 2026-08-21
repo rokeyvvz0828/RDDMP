@@ -1,0 +1,40 @@
+{
+  "feedback_id": "F-0005",
+  "decision": "accept",
+  "decision_reason": "用户批准两个治理校验器的最小兼容修复，且未改变产品代码或既有拒绝规则。",
+  "dynamic_pattern": "sensor_false_negative",
+  "causal_assessment": {
+    "hypothesis": "CRLF 与正式 baseline/correction 产物未被旧校验器覆盖。",
+    "supporting_evidence": [
+      "修改前 check-all-governance 退出 1",
+      "修改后 Windows 工作树与临时 HEAD 快照均通过完整治理",
+      "非法 Skill 名称、非法账本文件与缺失通配符验收证据仍退出 1"
+    ],
+    "falsifier": "相同提交态再次出现 CRLF、baseline/correction 或 topic 假阴性"
+  },
+  "control_action": {
+    "gain": "minimal",
+    "target": "scripts/check-repo-skill.mjs 与 scripts/check-ai-control-layout.mjs",
+    "write_scope": [
+      "用户批准的两个治理校验器",
+      "当前需求 scope/计划和当前前缀账本"
+    ],
+    "invariants": [
+      "Skill name/description/reference 仍严格校验",
+      "非法账本文件、无效 JSON 和 topic mismatch 仍严格拒绝",
+      "无产品、平台或数据库代码变更"
+    ],
+    "impact_limit": "提交 dc03916 的 9 个治理/账本文件及 8a179b1 的单文件通配符修复",
+    "rollback": "按 8a179b1、dc03916 逆序回退",
+    "correction_check": [
+      "node scripts/check-all-governance.mjs -> 0",
+      "scope origin/main..HEAD -> 118 files pass",
+      "negative Skill name -> 1",
+      "negative ledger file -> 1",
+      "negative missing wildcard evidence -> 1"
+    ],
+    "route": "executing"
+  },
+  "resolution": "verified",
+  "residual_risk": []
+}

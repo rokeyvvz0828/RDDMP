@@ -1,0 +1,132 @@
+{
+  "task_id": "T3R",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "beforeMigrate__ensure_flowable_event_registry_metadata.sql",
+      "purpose": "在不修改 V24 的前提下补齐两张 Flowable Liquibase 元数据表和 ID=1 未锁定记录"
+    },
+    {
+      "path_or_resource": "scripts/check-flyway-migrations.mjs",
+      "purpose": "只对白名单中的精确 callback 放行，保持其他迁移命名和 append-only 约束"
+    },
+    {
+      "path_or_resource": "EmptyDatabaseMigrationBaselineMySqlTest",
+      "purpose": "独立验证空库 V1-V34、已越过 V24 的幂等性、schema history 和锁记录"
+    },
+    {
+      "path_or_resource": "当前 scope、设计、计划、模型和控制账本",
+      "purpose": "记录用户批准的范围扩展和独立 T3R 边界"
+    }
+  ],
+  "requirements_addressed": ["R8"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am '-Dtest=ArchitectureMigrationMySqlTest,ArchitectureSubsystemRepositoryTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exit_code": 0,
+      "salient_output": "6 tests passed；首次 callback 使空库执行 36 个版本、V35 到 V36 执行 1 个版本、重复 migrate 执行 0 个版本"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am '-Dtest=ArchitectureMigrationMySqlTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exit_code": 0,
+      "salient_output": "2 tests passed；information_schema 守卫版本在空库、增量和无待迁移路径通过，重复路径不再产生表已存在或重复主键警告"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am '-Dtest=EmptyDatabaseMigrationBaselineMySqlTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exit_code": 0,
+      "salient_output": "独立 T3R 2 tests passed；空库准确执行 V1-V34，V24 后重复 migrate 为 0"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs --base origin/main --head HEAD",
+      "exit_code": 0,
+      "salient_output": "36 migrations and 1 approved callback passed"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs；node scripts/check-development-entry.mjs --require-plugin；git diff --check",
+      "exit_code": 0,
+      "salient_output": "9 Maven modules、development entry 和 diff 检查通过"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "模块治理通过后被仓库既有 CRLF SKILL.md 解析问题阻断，与 T3R diff 无关"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs ... --working-tree",
+      "exit_code": 1,
+      "salient_output": "仅报告用户已有未跟踪 .dsh/** 和 docs/original/** 在 scope 外；T3R 文件均未被报告"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "空库已发布基线",
+      "result": "pass",
+      "evidence": "Testcontainers MySQL 8.4 从空库成功执行 34 个迁移并到达 V34",
+      "limitations": ["Flyway 当前版本提示 MySQL 8.4 高于其已测试的 8.1，但迁移实际通过"]
+    },
+    {
+      "check": "callback 幂等和历史隔离",
+      "result": "pass",
+      "evidence": "V24 后再次 migrate 执行 0；锁表 ID=1 只有一行；flyway_schema_history 无 callback 记录",
+      "limitations": []
+    },
+    {
+      "check": "历史脚本保护",
+      "result": "pass",
+      "evidence": "git diff 对 V24 无输出；callback 为新文件，治理检查通过",
+      "limitations": []
+    },
+    {
+      "check": "完整 scope/governance",
+      "result": "blocked-by-baseline",
+      "evidence": "scope 仅被用户未跟踪目录阻断；check-all-governance 仅被既有 repo skill CRLF 解析阻断",
+      "limitations": ["提交后可在不包含工作树未跟踪文件的 commit diff 上复验 scope"]
+    }
+  ],
+  "diff_summary": [
+    "增加一个 Flyway 原生 beforeMigrate SQL callback，不增加 Java 启动逻辑",
+    "callback 通过 information_schema 守卫静态 DDL，重复迁移为无噪声 no-op",
+    "迁移治理继续拒绝未授权非版本 SQL，只接受一个精确文件名",
+    "T3R 测试与 V36/T3 候选测试分离"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "不修改 V1-V34",
+      "result": "pass",
+      "evidence": "V24 无 diff；修复仅新增 callback"
+    },
+    {
+      "invariant": "不写 flyway_schema_history",
+      "result": "pass",
+      "evidence": "数据库断言 callback 脚本计数为 0，版本计数保持 24/34"
+    },
+    {
+      "invariant": "只触及两张 Flowable Liquibase 元数据表",
+      "result": "pass",
+      "evidence": "callback SQL 只包含两张表和 information_schema 读取"
+    },
+    {
+      "invariant": "已越过 V24 的库幂等",
+      "result": "pass",
+      "evidence": "重复 migrate 0 migrations，表和锁记录计数不变"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "用户已有未跟踪 .dsh/** 和 docs/original/**",
+      "impact": "working-tree scope 传感器报告 scope 外文件，但没有 T3R 越界"
+    },
+    {
+      "event": "仓库既有 SKILL.md CRLF 与 checker 的 LF-only 解析不兼容",
+      "impact": "check-all-governance 在与本任务无关的 repo-skill 检查停止"
+    }
+  ],
+  "assumptions_falsified": [
+    "直接使用 CREATE TABLE IF NOT EXISTS 虽然正确但会在每次 migrate 产生可避免的表已存在警告；已改为 information_schema 守卫"
+  ],
+  "unresolved_items": [
+    "提交 T3R 后需对 commit diff 重新运行 scope 检查",
+    "check-all-governance 的既有 CRLF 解析基线不在本次批准写入面"
+  ],
+  "recommended_next": "observe"
+}

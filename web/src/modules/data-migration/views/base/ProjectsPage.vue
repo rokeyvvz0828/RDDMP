@@ -1,71 +1,150 @@
+<!--
+  用途：数迁基础资料 - 项目清单页（项目信息管理）
+  说明：以表格展示项目（编号/名称/描述），支持增删改查；
+        编号仅允许字母与数字、自动转大写、创建后不可修改；名称不允许重复且不超过 100 字符；
+        视觉与交互对齐“用户管理”页：UiToolbar + UiDataTable + UiFormDrawer + Element Plus 反馈。
+-->
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { listDataMigrationProjects, updateDataMigrationProject, type DataMigrationProject } from '../../../../api/data-migration'
+import { onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import UiDataTable from '../../../../components/ui/UiDataTable.vue'
+import UiFormDrawer from '../../../../components/ui/UiFormDrawer.vue'
+import UiToolbar from '../../../../components/ui/UiToolbar.vue'
+import { apiErrorMessage } from '../../../../api/error'
+import { createDataMigrationProject, deleteDataMigrationProject, listDataMigrationProjects, updateDataMigrationProject, type DataMigrationProject } from '../../../../api/data-migration'
 
-const loading = ref(true)
-const error = ref('')
+const loading = ref(false)
+const saving = ref(false)
 const projects = ref<DataMigrationProject[]>([])
-const actionBusy = ref(false)
+const keyword = ref('')
+const drawerOpen = ref(false)
+const editingId = ref<number | null>(null)
+const formRef = ref<FormInstance>()
+
+const form = reactive({ projectCode: '', projectName: '', description: '' })
+
+const rules: FormRules = {
+  projectCode: [
+    { required: true, message: '请输入项目编号', trigger: 'blur' },
+    { pattern: /^[A-Za-z0-9]+$/, message: '仅允许英文字母和数字', trigger: 'blur' }
+  ],
+  projectName: [
+    { required: true, message: '请输入项目名称', trigger: 'blur' },
+    { max: 100, message: '长度不能超过 100 个字符', trigger: 'blur' }
+  ],
+  description: [{ max: 500, message: '长度不能超过 500 个字符', trigger: 'blur' }]
+}
 
 function messageOf(error: unknown) {
   return error instanceof Error ? error.message : '操作失败，请稍后重试'
 }
 
 async function load() {
-  loading.value = true; error.value = ''
+  loading.value = true
   try {
-    projects.value = (await listDataMigrationProjects()).data.data ?? []
-  } catch (e) { error.value = messageOf(e) }
+    projects.value = (await listDataMigrationProjects({ keyword: keyword.value || undefined })).data.data ?? []
+  } catch (e) { ElMessage.error(messageOf(e)) }
   finally { loading.value = false }
 }
 
-async function editProject(project: DataMigrationProject) {
-  const name = window.prompt('项目名称', project.project_name)?.trim()
-  if (!name || name === project.project_name) return
-  actionBusy.value = true; error.value = ''
-  try { await updateDataMigrationProject(project.id, { projectName: name }); await load() } catch (e) { error.value = messageOf(e) } finally { actionBusy.value = false }
+function onCodeInput() {
+  form.projectCode = form.projectCode.toUpperCase()
+}
+
+function openCreate() {
+  editingId.value = null
+  form.projectCode = ''
+  form.projectName = ''
+  form.description = ''
+  drawerOpen.value = true
+}
+
+function openEdit(row: DataMigrationProject) {
+  editingId.value = row.id
+  form.projectCode = String(row.project_code || '')
+  form.projectName = String(row.project_name || '')
+  form.description = String(row.description ?? '')
+  drawerOpen.value = true
+}
+
+async function save() {
+  if (!formRef.value) return
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+  saving.value = true
+  try {
+    if (editingId.value) {
+      await updateDataMigrationProject(editingId.value, { projectName: form.projectName.trim(), description: form.description.trim() })
+      ElMessage.success('更新成功')
+    } else {
+      await createDataMigrationProject({ projectCode: form.projectCode.trim().toUpperCase(), projectName: form.projectName.trim(), description: form.description.trim() })
+      ElMessage.success('创建成功')
+    }
+    drawerOpen.value = false
+    await load()
+  } catch (e) { ElMessage.error(apiErrorMessage(e, '保存失败，请检查字段和权限')) }
+  finally { saving.value = false }
+}
+
+async function removeProject(row: DataMigrationProject) {
+  try {
+    await ElMessageBox.confirm(`删除项目「${row.project_name}」后将不再显示该项目，确认继续吗？`, '删除确认', { type: 'warning' })
+    await deleteDataMigrationProject(row.id)
+    ElMessage.success('删除成功')
+    await load()
+  } catch (error) {
+    const action = (error as { action?: string }).action
+    if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '删除失败'))
+  }
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <main class="dm-page">
-    <header class="dm-page-header">
-      <div><span class="dm-eyebrow">DATA MIGRATION</span><h1>项目清单</h1></div>
-      <div class="dm-header-actions"><button class="dm-button" type="button" :disabled="loading || actionBusy" @click="load">刷新</button></div>
-    </header>
-    <p v-if="loading" class="dm-state">正在加载...</p>
-    <p v-else-if="error" class="dm-state dm-error">{{ error }}</p>
-    <section v-else class="dm-table-shell">
-      <div class="dm-row dm-head dm-project-row"><span>项目编码</span><span>项目名称</span><span>状态</span><span>操作</span></div>
-      <div v-for="project in projects" :key="project.id" class="dm-row dm-project-row"><span>{{ project.project_code }}</span><span>{{ project.project_name }}</span><span>{{ project.status }}</span><button class="dm-link" type="button" :disabled="actionBusy" @click="editProject(project)">编辑</button></div>
-      <p v-if="!projects.length" class="dm-state">暂无项目</p>
-    </section>
-  </main>
+  <section class="projects-page">
+    <UiToolbar>
+      <el-input v-model="keyword" clearable placeholder="搜索项目编号或名称" style="width: 240px" @keyup.enter="load">
+        <template #prefix><el-icon><Search /></el-icon></template>
+      </el-input>
+      <template #actions>
+        <el-button :disabled="loading" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button>
+        <el-button type="primary" :disabled="loading" @click="load"><el-icon><Search /></el-icon>查询</el-button>
+        <el-button type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建项目</el-button>
+      </template>
+    </UiToolbar>
+
+    <UiDataTable :data="projects" :loading="loading" row-key="id" border empty-text="暂无项目">
+      <el-table-column prop="project_code" label="项目编号" min-width="150" />
+      <el-table-column prop="project_name" label="项目名称" min-width="180" />
+      <el-table-column prop="description" label="项目描述" min-width="220" show-overflow-tooltip>
+        <template #default="scope">{{ scope.row.description || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="150" fixed="right">
+        <template #default="scope">
+          <el-button link type="primary" @click="openEdit(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button>
+          <el-button link type="danger" @click="removeProject(scope.row)"><el-icon><Delete /></el-icon>删除</el-button>
+        </template>
+      </el-table-column>
+    </UiDataTable>
+
+    <UiFormDrawer v-model="drawerOpen" :title="editingId ? '编辑项目' : '新建项目'" :loading="saving" @submit="save">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="项目编号" prop="projectCode">
+          <el-input v-model="form.projectCode" :disabled="editingId != null" placeholder="仅限字母和数字，自动转为大写" maxlength="64" @input="onCodeInput" />
+        </el-form-item>
+        <el-form-item label="项目名称" prop="projectName">
+          <el-input v-model="form.projectName" placeholder="不能与已有项目重复" maxlength="100" show-word-limit />
+        </el-form-item>
+        <el-form-item label="项目描述" prop="description">
+          <el-input v-model="form.description" type="textarea" :rows="4" placeholder="选填" maxlength="500" show-word-limit />
+        </el-form-item>
+      </el-form>
+    </UiFormDrawer>
+  </section>
 </template>
 
 <style scoped>
-.dm-page { padding: 24px; color: var(--el-text-color-primary, #1f2937); }
-.dm-page-header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:24px; }
-.dm-header-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.dm-eyebrow { color:#64748b; font-size:12px; letter-spacing:.08em; }
-h1 { margin:4px 0 0; font-size:28px; }
-.dm-button { border:1px solid #cbd5e1; background:#fff; padding:8px 14px; border-radius:6px; cursor:pointer; }
-.dm-button:disabled { cursor:not-allowed; opacity:.55; }
-.dm-link { border:0; padding:0; color:#2563eb; background:transparent; cursor:pointer; }
-.dm-link:disabled { cursor:not-allowed; opacity:.55; }
-.dm-table-shell { overflow:auto; border:1px solid #e2e8f0; border-radius:8px; background:#fff; }
-.dm-row { min-width:640px; display:grid; grid-template-columns:.45fr 1fr 1.5fr 1fr .8fr; gap:16px; align-items:center; padding:14px 16px; border-bottom:1px solid #f1f5f9; }
-.dm-project-row { grid-template-columns:1fr 1.5fr 1fr .8fr; }
-.dm-head { font-weight:600; background:#f8fafc; }
-.dm-state { padding:28px 0; color:#64748b; }
-.dm-error { color:#b91c1c; }
-@media (max-width: 640px) {
-  .dm-page { padding:16px; }
-  h1 { font-size:22px; }
-  .dm-table-shell { border:0; background:transparent; overflow:visible; }
-  .dm-row { min-width:0; grid-template-columns:1fr; gap:6px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:10px; }
-  .dm-head { display:none; }
-}
+.projects-page { min-width: 0; }
 </style>

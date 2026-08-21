@@ -101,7 +101,7 @@
 
 - Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3 和 TypeScript。
 - 保持现有 com.ccb 包名和 ApiResponse。
-- Flyway 只新增 V35 和 V36，不修改 V1 至 V34。
+- Flyway 只新增 V38 和 V39，不修改 V1 至 V37；V35—V37 已分配给先实施的架构子系统需求。
 - 平台公开能力需要治理登记、Owner 审批和完整回归。
 - 站内通知继续使用 SystemNotificationPublisher。
 - 当前验收以桌面工作台和审批路径为主，不新增版本业务移动端范围。
@@ -382,7 +382,7 @@ refresh()
 
 ## 15. 数据库迁移
 
-### V35 workflow_business_integration
+### V38 workflow_business_integration
 
 - 为 wf_instance 增加可空业务上下文字段，兼容旧实例。
 - 新建 wf_business_event。
@@ -390,7 +390,7 @@ refresh()
 - 新建 wf_task_signature。
 - 增加事件调度、业务查询和签名唯一索引。
 
-### V36 persistent_attachments
+### V39 persistent_attachments
 
 - 新建 att_file。
 - 新建 att_binding。
@@ -521,7 +521,7 @@ DELETE /api/attachments/{id}
 
 ### 20.5 集成
 
-- Flyway 从 V34 升级到 V36 和全新安装。
+- Flyway 从 V37 升级到 V39 和全新安装。
 - Maven 模块聚合与 Boot 装配。
 - 通知发布能力回归。
 - 全量 Maven、前端构建和治理检查。

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "sample_label": "T8 受限 local Mock 独立观察",
+  "task_ids": ["T8"],
+  "baseline_revision": "baseline-3",
+  "measurements": [
+    {"requirement_id": "R8", "sensor": "S6 数据集解析、重复 upsert 和无 schema 扫描", "result": "pass", "raw_evidence": "真实数据集 2 logical + 3 physical，连续同步使用主键 upsert；未增加 architecture 表单元数据", "limitation": ["真实库重复启动由 T10 测量"]},
+    {"requirement_id": "R12", "sensor": "S2 显式租户负向单测", "result": "pass", "raw_evidence": "arch 行缺失/非正 tenant 立即拒绝；tenant 必须存在活动根组织；仅 local+enabled bean 可运行", "limitation": []},
+    {"requirement_id": "R13", "sensor": "S2 团队快照和人员可空测试", "result": "pass", "raw_evidence": "负责团队按同租户活动组织校验且 snapshot 必须精确匹配；owner/contact null 通过", "limitation": []},
+    {"requirement_id": "R11", "sensor": "S8 scope/module/diff", "result": "pass", "raw_evidence": "commit-diff scope 3 files、module-boundaries 9 modules、diff check 均通过", "limitation": []}
+  ],
+  "feedback": [],
+  "disturbances": ["两项测试夹具错误已在最终样本前修复并复验", "用户未跟踪目录不在提交差异内"],
+  "coverage_gaps": ["T9 前端和 T10 真实 Boot/数据库同步尚未执行"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

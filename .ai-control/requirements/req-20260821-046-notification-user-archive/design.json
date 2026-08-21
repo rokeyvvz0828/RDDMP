@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260821-046-notification-user-archive",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-21-notification-user-archive-design.md",
+  "objective": "Allow each authenticated user to archive read notifications out of the active notification center and restore them later without deleting shared notification or audit evidence.",
+  "users": [
+    "Users clearing handled workflow and business notifications from the active notification center",
+    "Users recovering an accidentally archived notification",
+    "Operators preserving durable notification and audit evidence"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Only a read, active notification may be archived, and the archive transition must affect only the authenticated tenant and recipient while preserving the shared notification record.",
+      "acceptance": [
+        "The notification disappears from the current user's ALL and UNREAD views after archive",
+        "Another recipient's state is unchanged",
+        "Archiving an unread notification returns an explicit conflict",
+        "Repeated archive requests are idempotent"
+      ],
+      "priority": "must",
+      "source": "User-confirmed option 1 on 2026-08-21.",
+      "counterexample": [
+        "Archive deletes sys_notification",
+        "One recipient archives the message for all recipients",
+        "An unread notification is silently archived"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "The notification center must provide an archived view and allow a user to restore one of their archived notifications while retaining its read state.",
+      "acceptance": [
+        "Archived notifications are pageable and filterable by business module",
+        "Restore returns the notification to ALL but not UNREAD",
+        "Restore is scoped to the authenticated recipient and is idempotent"
+      ],
+      "priority": "must",
+      "source": "User explicitly confirmed archived viewing and recovery on 2026-08-20 and approved the complete design on 2026-08-21.",
+      "counterexample": [
+        "Archived notifications cannot be found",
+        "Restoring a notification increments the unread badge"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "A user must be able to archive all of their active read notifications in one confirmed operation without affecting unread notifications.",
+      "acceptance": [
+        "The operation requires confirmation",
+        "Only rows with is_read = 1 and archived_at IS NULL are changed",
+        "The API returns the actual changed count and the UI refreshes list, modules and unread count",
+        "No eligible notifications produces a zero-change success or a disabled action"
+      ],
+      "priority": "must",
+      "source": "User-approved complete design on 2026-08-21.",
+      "counterexample": [
+        "Bulk archive includes unread notifications",
+        "The UI clears optimistically before a failed server operation"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "List totals, module summaries and unread counts must consistently separate active and archived notifications.",
+      "acceptance": [
+        "ALL and UNREAD exclude archived rows",
+        "ARCHIVED includes only archived rows",
+        "Module options and counts match the selected view, including modules that contain only archived rows",
+        "The one-second foreground poll remains a lightweight active unread-count request"
+      ],
+      "priority": "must",
+      "source": "Approved design consistency requirement.",
+      "counterexample": [
+        "Archived messages remain in active module totals",
+        "A module containing only archives cannot be selected in the archived view",
+        "The polling loop reloads archived pages every second"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Archive and restore APIs must derive tenant and user scope from authentication and preserve existing publication, read and audit contracts.",
+      "acceptance": [
+        "No archive request accepts tenantId or userId from the client",
+        "Cross-tenant and cross-user rows cannot be changed",
+        "sys_notification, publication audit and recipient rows remain durable",
+        "Existing publication, mark-read and mark-all-read clients remain compatible"
+      ],
+      "priority": "must",
+      "source": "Existing system notification contract and approved design.",
+      "counterexample": [
+        "A client selects another user to archive",
+        "Archive removes business event evidence",
+        "Existing unreadOnly clients stop working"
+      ]
+    }
+  ],
+  "invariants": [
+    "sys_notification remains the durable shared notification record and is never physically deleted by user archive operations",
+    "Archive state belongs to sys_user_notification and one authenticated recipient",
+    "An archived notification is always read and restore retains read state",
+    "Every query and mutation is constrained by authenticated tenant_id and user_id",
+    "Existing one-second foreground unread polling, failure backoff and notification publishing semantics remain in force"
+  ],
+  "constraints": [
+    "Use Java 17, Spring Boot, MySQL 8.4, Vue 3, TypeScript and Element Plus already present in the repository",
+    "Use a forward-only Flyway migration with a nullable archived_at column and supporting index",
+    "Keep legacy unreadOnly behavior when the new view parameter is absent",
+    "Implement on the local rokey branch after a separately approved implementation plan"
+  ],
+  "non_goals": [
+    "Physical notification deletion",
+    "Administrator-driven archive or restore for another user",
+    "Automatic retention, scheduled archive or cleanup policies",
+    "External delivery channels or notification-content changes",
+    "Automatically archiving notifications when marking all as read"
+  ],
+  "selected_approach": {
+    "name": "Recipient-scoped soft archive with archived view and restore",
+    "reason": "It removes handled notifications from the active user experience while preserving cross-recipient isolation and durable workflow and business audit evidence.",
+    "alternatives": [
+      {
+        "name": "Frontend-only hiding of read notifications",
+        "rejected_because": "It cannot synchronize across devices, provide reliable recovery or keep server pagination and counts consistent."
+      },
+      {
+        "name": "Physical deletion",
+        "rejected_because": "A notification is shared by recipients and supports business traceability, so deletion can remove evidence or affect other users."
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "sys_user_notification archive schema and index",
+        "Authenticated notification list, module summary, archive, restore and bulk-archive APIs",
+        "Notification center ALL, UNREAD and ARCHIVED views",
+        "Focused service, API, build and browser verification"
+      ],
+      "outside": [
+        "Notification publication and workflow event content",
+        "Physical deletion and retention jobs",
+        "Administrator archive controls",
+        "External notification delivery channels"
+      ]
+    },
+    "components": [
+      {
+        "name": "Flyway notification archive migration",
+        "responsibility": "Add nullable archived_at state and an index supporting authenticated active and archived queries.",
+        "depends_on": ["sys_user_notification", "MySQL 8.4"]
+      },
+      {
+        "name": "SystemNotificationService",
+        "responsibility": "Apply view filtering and recipient-scoped archive, restore and bulk archive state transitions.",
+        "depends_on": ["JdbcTemplate", "authenticated AuthUser", "sys_user_notification", "sys_notification"]
+      },
+      {
+        "name": "NotificationController",
+        "responsibility": "Expose backward-compatible authenticated list and module queries plus archive commands.",
+        "depends_on": ["SystemNotificationService"]
+      },
+      {
+        "name": "UiNotificationCenter",
+        "responsibility": "Render the three views, archive eligible items, restore archives and confirm bulk archive without breaking polling or item navigation.",
+        "depends_on": ["notification API client", "Element Plus", "Vue Router"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "GET /api/notifications",
+        "producer": "platform/system",
+        "consumers": ["UiNotificationCenter", "legacy notification clients"],
+        "contract": "Accept view=ALL|UNREAD|ARCHIVED; default to ALL; preserve unreadOnly behavior when view is absent; always scope results to the authenticated recipient."
+      },
+      {
+        "name": "GET /api/notifications/modules",
+        "producer": "platform/system",
+        "consumers": ["UiNotificationCenter"],
+        "contract": "Return module options and counts consistent with the requested active or archived view for the authenticated recipient."
+      },
+      {
+        "name": "PATCH /api/notifications/{id}/archive",
+        "producer": "platform/system",
+        "consumers": ["UiNotificationCenter"],
+        "contract": "Archive one authenticated recipient row only when read; reject unread state explicitly; remain idempotent."
+      },
+      {
+        "name": "PATCH /api/notifications/{id}/restore",
+        "producer": "platform/system",
+        "consumers": ["UiNotificationCenter"],
+        "contract": "Clear archived_at for the authenticated recipient and retain read state; remain idempotent."
+      },
+      {
+        "name": "PATCH /api/notifications/archive-read",
+        "producer": "platform/system",
+        "consumers": ["UiNotificationCenter"],
+        "contract": "Archive all active read rows for the authenticated recipient and return the actual changed count."
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "Read active notification and archive command",
+        "transitions": ["authenticate recipient", "validate read state", "set archived_at", "refresh active list and module summaries"],
+        "output": "Notification hidden from active views and visible in ARCHIVED"
+      },
+      {
+        "input": "Archived notification and restore command",
+        "transitions": ["authenticate recipient", "clear archived_at", "retain is_read/read_at", "refresh archived and active summaries"],
+        "output": "Read notification returned to ALL without unread badge increase"
+      },
+      {
+        "input": "Confirmed bulk archive",
+        "transitions": ["authenticate recipient", "update active read rows only", "return changed count", "reload active list, modules and unread count"],
+        "output": "Handled notifications removed from the active center"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "Archive targets an unread active notification",
+      "behavior": "Return HTTP 409 with a clear read-before-archive message and retain the row unchanged.",
+      "recovery": "The user reads the notification and retries archive."
+    },
+    {
+      "condition": "Notification is absent or outside the authenticated tenant/user scope",
+      "behavior": "Do not reveal cross-scope existence and do not modify any row.",
+      "recovery": "Refresh the current user's notification list."
+    },
+    {
+      "condition": "Archive, restore or list request fails",
+      "behavior": "Keep the current client state, show one actionable error and avoid optimistic removal.",
+      "recovery": "Retry the operation or reload the drawer."
+    },
+    {
+      "condition": "Business route navigation fails after a notification state change",
+      "behavior": "Show the existing route error without rolling back the durable state transition.",
+      "recovery": "Return to the notification center and retry navigation later."
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "All reads and writes include authenticated tenant_id and user_id",
+      "Archive APIs accept no client identity fields",
+      "Physical notification and audit evidence remain immutable through this feature"
+    ],
+    "performance": [
+      "Active unread count remains an indexed lightweight query suitable for one-second foreground polling",
+      "Archive views use a recipient and archive-state index with deterministic notification time ordering",
+      "No archived list is polled while the drawer is closed"
+    ],
+    "compatibility": [
+      "Legacy unreadOnly requests remain valid when view is absent",
+      "Existing publish, mark-read and mark-all-read contracts remain unchanged",
+      "Historical rows default to active because archived_at is nullable"
+    ],
+    "operations": [
+      "The migration requires no data backfill",
+      "Product-code rollback may leave the nullable column and index in place without behavioral impact",
+      "No destructive reverse migration is required"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": ["R1", "R2", "R3", "R5"],
+      "signal": "Archive and restore transitions are idempotent, tenant/user scoped and preserve shared evidence.",
+      "method": "Focused SystemNotificationService and controller tests with multiple users, tenants and states."
+    },
+    {
+      "requirement_ids": ["R4"],
+      "signal": "List totals, module summaries and unread counts remain consistent after every transition.",
+      "method": "Repository/service query tests plus authenticated API flow assertions."
+    },
+    {
+      "requirement_ids": ["R1", "R2", "R3", "R4"],
+      "signal": "The drawer exposes correct actions and views without accidental navigation or layout regressions.",
+      "method": "Frontend production build and desktop/mobile browser interaction with real notification data."
+    },
+    {
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "signal": "Migration and all existing notification, workflow and platform behavior remain healthy.",
+      "method": "Flyway startup, relevant Maven module tests, full backend tests, governance checks and diff validation."
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "Notification and publication audit evidence must remain durable after a user cleans their active list.",
+      "basis": "Existing persistent publication audit and workflow/business notification usage.",
+      "falsifier": "A separately approved retention policy permits destructive deletion of shared notifications."
+    },
+    {
+      "text": "A nullable archived_at timestamp is sufficient and does not require a separate boolean state.",
+      "basis": "The product needs only active versus archived plus the archive time, and one timestamp prevents dual-field inconsistency.",
+      "falsifier": "Future requirements introduce additional archive lifecycle states that cannot be represented by a timestamp."
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "Use recipient-scoped soft archive and retain all shared notification data.",
+      "reason": "The user needs a clean active list without losing audit evidence or affecting other recipients.",
+      "source": "User selected option 1 and confirmed the complete design."
+    },
+    {
+      "id": "D2",
+      "decision": "Provide an ARCHIVED tab and single-item restore.",
+      "reason": "Users must be able to inspect history and recover accidental archive actions.",
+      "source": "User explicitly confirmed recovery."
+    },
+    {
+      "id": "D3",
+      "decision": "Archive only read notifications and provide confirmed bulk archive of all active read notifications.",
+      "reason": "Unread work must not disappear, while handled backlog needs an efficient cleanup action.",
+      "source": "User-approved complete design."
+    },
+    {
+      "id": "D4",
+      "decision": "Restore retains read state.",
+      "reason": "Recovery is a visibility action and must not create a false unread event.",
+      "source": "Approved design consistency rule."
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Module summaries can diverge from the selected notification view if the old aggregation is reused unchanged.",
+      "impact": "Archived-only modules may be unavailable as filters or display incorrect totals.",
+      "mitigation": "Make view filtering explicit in module aggregation and cover it with service and API tests."
+    },
+    {
+      "risk": "Archive or restore icon clicks can bubble to the existing whole-item navigation handler.",
+      "impact": "Users are unexpectedly routed while managing notification state.",
+      "mitigation": "Use dedicated accessible icon buttons with stopped propagation and browser interaction checks."
+    },
+    {
+      "risk": "Adding an index to a large target table may take operational time.",
+      "impact": "Migration startup may be delayed.",
+      "mitigation": "Inspect target row volume and use a MySQL 8.4-compatible forward migration; keep rollback non-destructive."
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "The user reviewed the landed design and explicitly requested implementation on 2026-08-21.",
+    "confirmed_at": "2026-08-21T08:55:47+08:00"
+  }
+}

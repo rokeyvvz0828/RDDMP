@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "PhysicalSubsystemService",
+      "purpose": "物理字段规范化、团队快照、历史投影、人员/参数/逻辑引用、父锁、事务和审计编排"
+    },
+    {
+      "path_or_resource": "PhysicalSubsystemController",
+      "purpose": "固定四权限的物理分页、详情、新增、编辑和软删除 HTTP API"
+    },
+    {
+      "path_or_resource": "PhysicalSubsystemServiceTest 与 PhysicalSubsystemControllerTest",
+      "purpose": "字段、快照、历史展示、引用、审计、错误语义和 HTTP DTO 传感器"
+    },
+    {
+      "path_or_resource": "PhysicalSubsystemConcurrencyMySqlTest",
+      "purpose": "真实 MySQL 两种父子锁顺序和最终无悬挂引用传感器"
+    }
+  ],
+  "requirements_addressed": ["R2", "R3", "R4", "R5", "R6", "R7", "R12", "R13"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am '-Dtest=PhysicalSubsystemServiceTest,PhysicalSubsystemControllerTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exit_code": 0,
+      "salient_output": "清理后当前聚焦套件 15/15 通过；service 11、MockMvc 4"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am '-Dtest=PhysicalSubsystemConcurrencyMySqlTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exit_code": 0,
+      "salient_output": "MySQL 8.4 两种强制锁顺序 2/2 通过；两种最终 dangling active physical count 均为 0"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test",
+      "exit_code": 0,
+      "salient_output": "新增更新成功用例前 architecture 39/39、依赖 common 2、infrastructure 6、security 4、system 11 全部通过；新增用例随后已在当前聚焦 15/15 中通过"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -DskipTests test",
+      "exit_code": 0,
+      "salient_output": "清理后主代码 14 files、测试源码 8 files 编译通过"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260812-021-architecture-subsystems/codex-task-scope.yaml --base HEAD~1 --head HEAD",
+      "exit_code": 0,
+      "salient_output": "REQ-20260812-021 commit diff scope passed for 5 files"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs 与 git diff --check HEAD~1 HEAD",
+      "exit_code": 0,
+      "salient_output": "9 Maven modules passed；无 whitespace 错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "物理字段与服务端快照",
+      "result": "pass",
+      "evidence": "事业群 blank 归一化 null；团队必填且活动；保存名称来自 OrganizationService；owner/contact 可空且非空时校验活动用户",
+      "limitations": []
+    },
+    {
+      "check": "历史团队与实时用户投影",
+      "result": "pass",
+      "evidence": "活动团队返回当前名称/valid=true；停用或删除团队返回服务端快照/valid=false；contactPhone 来自实时 SystemReferenceQuery；HTTP 不暴露原始 snapshot",
+      "limitations": ["真实组织停用后的 API/浏览器展示由 T10 复验"]
+    },
+    {
+      "check": "父子并发不变量",
+      "result": "pass",
+      "evidence": "MySQL latch 固定物理先锁和删除先锁两时序；竞争失败统一 409；活动父子最终状态一致且无悬挂引用",
+      "limitations": ["Flyway 对 MySQL 8.4 输出高于已测试 8.1 的版本提示"]
+    },
+    {
+      "check": "权限、租户与审计",
+      "result": "pass",
+      "evidence": "物理四权限精确注解；tenant 只取 AuthUser；成功审计在业务事务内、失败审计在事务退出后；客户端 tenant/status/phone/snapshot 不进入命令",
+      "limitations": ["真实 JWT 401/403、operation log 和 trace 由 T10 复验"]
+    }
+  ],
+  "diff_summary": [
+    "新增物理五个 CRUD 端点和固定四项 authority",
+    "物理响应为平铺强类型 PhysicalSubsystemView，包含团队显示名/有效性、逻辑标签和实时联系人电话，不包含 tenant/status/deleted/raw snapshot",
+    "创建/编辑先做活动逻辑初检，再在事务内 SELECT FOR UPDATE；初检无效为 400，初检后删除竞争为 409",
+    "逻辑删除复用 T4 父锁和活动子计数；真实 MySQL 证明两个锁时序均不产生悬挂活动引用",
+    "删除历史物理记录不重新要求已失效团队，编辑则必须重新选择活动团队"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "事业群可空、团队必填且 snapshot 服务端生成",
+      "result": "pass",
+      "evidence": "service command 捕获和 HTTP extra-field 测试"
+    },
+    {
+      "invariant": "失效团队历史可读、编辑必须重选",
+      "result": "pass",
+      "evidence": "detail projection 与 update negative test"
+    },
+    {
+      "invariant": "父先物理后锁序且并发失败为 409",
+      "result": "pass",
+      "evidence": "PhysicalSubsystemConcurrencyMySqlTest 2/2"
+    },
+    {
+      "invariant": "owner/contact 可空且电话不落物理表",
+      "result": "pass",
+      "evidence": "nullable command 测试、非空活动用户校验和实时 contactPhone 投影；repository 写入仍只保存 ID"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "完整 migration + 三组 MySQL 容器套件耗时约 2 分 37 秒",
+      "impact": "测试时延符合计划，最终退出 0"
+    },
+    {
+      "event": "用户已有 scope 外未跟踪 .dsh/** 与 docs/original/**",
+      "impact": "未读取、未修改、未暂存；commit diff scope 通过"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "选项 API 与公开 HTTP 契约由 T6 交付",
+    "真实组织失效、JWT 权限、审计 trace 和页面行为由 T10 复验"
+  ],
+  "implementation_commit": "9d393af",
+  "recommended_next": "observe"
+}

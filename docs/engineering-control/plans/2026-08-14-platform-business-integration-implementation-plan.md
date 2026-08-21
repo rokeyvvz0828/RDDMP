@@ -23,7 +23,7 @@
 - 平台能力先实施，REQ-20260814-021 版本发布业务代码不进入本计划。
 - rokey 已于 2026-08-14 快进到最新 origin/main；按用户要求直接在 rokey 实施并保护现有未提交原型修改。
 - Java 固定使用 17，不使用系统 Java 26。
-- Flyway 只新增 V35 和 V36，不修改 V1 至 V34。
+- Flyway 只新增 V38 和 V39，不修改 V1 至 V37；V35—V37 已分配给先实施的架构子系统需求。
 - 保持现有按 definitionId 启动、流程设计、待办已办、通知和 file-preview 接口兼容。
 - 平台模块不得依赖具体业务模块。
 - 签署人只来自 AuthUser；客户端不提交 signerId、tenantId 或 dataDigest。
@@ -57,8 +57,8 @@
 | web/src/views/DashboardView.vue | existing | 首页工作台 | 代码勘察 |
 | web/src/views/WorkflowView.vue | existing | 流程设计、待办已办、监控和审批操作 | 代码勘察 |
 | web/src/components/workflow/WorkflowNodeInspector.vue | existing | 审批节点配置 | 代码勘察 |
-| V35__workflow_business_integration.sql | candidate-new | 工作流业务上下文、事件和签名结构 | 已批准设计 |
-| V36__persistent_attachments.sql | candidate-new | 附件元数据、绑定、日志和清理结构 | 已批准设计 |
+| V38__workflow_business_integration.sql | candidate-new | 工作流业务上下文、事件和签名结构 | 已批准设计 |
+| V39__persistent_attachments.sql | candidate-new | 附件元数据、绑定、日志和清理结构 | 已批准设计 |
 | governance/modules.yaml | existing | 模块、依赖和公开包事实源 | 项目契约 |
 
 ## 任务依赖与并行策略
@@ -101,7 +101,7 @@ T4 持久附件中心 ───────────────────�
 
 **文件：**
 
-- 新建：server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql
+- 新建：server/src/platform/infrastructure/src/main/resources/db/migration/V38__workflow_business_integration.sql
 - 新建：server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessGateway.java
 - 新建：server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowBusinessContext.java
 - 新建：server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowStartCommand.java
@@ -141,7 +141,7 @@ JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Conte
 
 预期：新增测试因 Gateway、DTO、服务或数据库字段不存在而失败；原有测试保持通过到编译失败点。
 
-- [ ] **步骤 2：新增 V35 数据结构**
+- [ ] **步骤 2：新增 V38 数据结构**
 
 为 wf_instance 增加可空 business_type、business_title、business_round、project_ref、project_name、action_path 和 data_digest；同时创建 T2/T3 将使用的 wf_business_event、wf_business_event_delivery 和 wf_task_signature 表及唯一索引。
 
@@ -172,15 +172,15 @@ JAVA_HOME=/Users/zhangwei/Library/Java/JavaVirtualMachines/openjdk-17.0.18/Conte
 - [ ] **步骤 7：提交检查点**
 
 ~~~bash
-git add server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql server/src/platform/workflow
+git add server/src/platform/infrastructure/src/main/resources/db/migration/V38__workflow_business_integration.sql server/src/platform/workflow
 git commit -m "feat: add workflow business gateway"
 ~~~
 
 **验收证据：** 测试退出码、解析到的定义版本断言、零实例失败断言、旧 API 回归结果。
 
-**回滚：** 回退 T1 提交；保留已执行的 V35 新字段和空表，不执行 DROP。
+**回滚：** 回退 T1 提交；保留已执行的 V38 新字段和空表，不执行 DROP。
 
-**停止条件：** origin/main 新增 V35；wf_definition 编码不能在租户内唯一解析；旧启动 API 必须破坏才能实现。
+**停止条件：** origin/main 新增 V38；wf_definition 编码不能在租户内唯一解析；旧启动 API 必须破坏才能实现。
 
 **升级条件：** 需要修改 security 私有实现；需要业务模块直接访问 workflow 表；需要改变既有流程定义发布语义。
 
@@ -340,7 +340,7 @@ git commit -m "feat: add internal workflow signatures"
 
 **文件：**
 
-- 新建：server/src/platform/infrastructure/src/main/resources/db/migration/V36__persistent_attachments.sql
+- 新建：server/src/platform/infrastructure/src/main/resources/db/migration/V39__persistent_attachments.sql
 - 新建：server/src/platform/attachment/pom.xml
 - 新建：server/src/platform/attachment/src/main/java/com/ccb/attachment/config/AttachmentProperties.java
 - 新建：server/src/platform/attachment/src/main/java/com/ccb/attachment/model/AttachmentGateway.java
@@ -384,7 +384,7 @@ public interface AttachmentAccessPolicy {
 
 覆盖 TEMP 上传人访问、跨租户拒绝、绑定幂等、重复绑定不同对象冲突、无策略拒绝、策略异常拒绝、预览、下载、逻辑删除、对象删除失败和孤立清理。
 
-- [ ] **步骤 2：新增 V36 和 Maven 模块**
+- [ ] **步骤 2：新增 V39 和 Maven 模块**
 
 创建 att_file、att_binding、att_operation_log、att_cleanup_job；对象键、绑定和清理任务建立唯一索引。根 POM、dependencyManagement 和 Boot 增加 ccb-attachment。
 
@@ -416,13 +416,13 @@ npm --prefix web run build
 - [ ] **步骤 8：提交检查点**
 
 ~~~bash
-git add pom.xml server/src/platform/boot/pom.xml server/src/platform/attachment server/src/platform/file-preview server/src/platform/infrastructure/src/main/resources/db/migration/V36__persistent_attachments.sql web/src/api/attachments.ts
+git add pom.xml server/src/platform/boot/pom.xml server/src/platform/attachment server/src/platform/file-preview server/src/platform/infrastructure/src/main/resources/db/migration/V39__persistent_attachments.sql web/src/api/attachments.ts
 git commit -m "feat: add persistent attachment center"
 ~~~
 
-**回滚：** 关闭新附件入口并回退模块装配；保留 V36 表和已绑定元数据，不删除对象证据。
+**回滚：** 关闭新附件入口并回退模块装配；保留 V39 表和已绑定元数据，不删除对象证据。
 
-**停止条件：** origin/main 已占用 V36；对象存储无法生成短时 URL；访问策略需要 attachment 模块依赖具体业务模块。
+**停止条件：** origin/main 已占用 V39；对象存储无法生成短时 URL；访问策略需要 attachment 模块依赖具体业务模块。
 
 **升级条件：** 需要病毒扫描、跨系统文件传输、内容审查或制品仓库；需要修改 MinIO 凭据和生产配置。
 
@@ -537,7 +537,7 @@ node scripts/check-flyway-migrations.mjs
 git diff --check
 ~~~
 
-预期：所有命令退出码 0；V1 至 V34 校验未修改；V35、V36 顺序唯一；治理清单识别新模块和公开包。
+预期：所有命令退出码 0；V1 至 V37 校验未修改；V38、V39 顺序唯一；治理清单识别新模块和公开包。
 
 - [ ] **步骤 4：运行桌面浏览器验收**
 

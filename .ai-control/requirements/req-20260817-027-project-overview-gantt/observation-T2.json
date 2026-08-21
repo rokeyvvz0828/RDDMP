@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "task_id": "T2",
+  "status": "observed-with-environment-limit",
+  "recorded_at": "2026-08-20T15:34:32+08:00",
+  "independent": false,
+  "observations": [
+    {
+      "scenario": "Overview template and behavior surface",
+      "result": "passed-static",
+      "evidence": "The overview contains one project-plan schedule section with project phase and month columns; bars are div elements without click handlers, while the project plan tab retains its maintenance buttons and clickable main-plan buttons."
+    },
+    {
+      "scenario": "Legacy overview chart removal",
+      "result": "passed-static",
+      "evidence": "Scoped-file search found no ECharts imports, chart refs/lifecycle functions, overview KPI/chart selectors, or selectable legacy Gantt selectors."
+    },
+    {
+      "scenario": "Type and whitespace checks",
+      "result": "passed",
+      "evidence": "vue-tsc --noEmit exited 0 and git diff --check exited 0."
+    },
+    {
+      "scenario": "Production build and browser",
+      "result": "not-completed",
+      "evidence": "Vite/esbuild was blocked by spawn EPERM in the sandbox; the escalated retry was rejected by environment approval. No fresh browser tool was available for this turn."
+    }
+  ],
+  "coverage_note": "This observation was performed in the same Codex context and is not an independent review.",
+  "residual_risks": [
+    "Run npm --prefix web run build in an environment that permits Vite/esbuild child processes.",
+    "Verify the overview at desktop and mobile viewports for timeline-local scrolling and no page-level overflow."
+  ]
+}

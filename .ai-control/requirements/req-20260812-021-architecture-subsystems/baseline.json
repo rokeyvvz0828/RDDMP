@@ -1,0 +1,74 @@
+{
+  "objective": "用户能够在当前租户内通过两个专用页面安全维护逻辑子系统和物理子系统基础信息，并获得可复核的关联与审计结果。",
+  "requirements": [
+    {"id":"R1","statement":"逻辑子系统支持分页筛选、详情、新增、编辑和软删除。","acceptance":["创建后可在原筛选和页码重读","详情、编辑和软删除刷新后保持一致"],"priority":"must","source":"用户批准修订 3，沿用已批准 V1 范围","counterexample":["仅有静态页面","执行物理删除"]},
+    {"id":"R2","statement":"物理子系统支持完整维护，并且每条活动记录必须关联当前租户未删除逻辑子系统。","acceptance":["一个逻辑可关联多个物理","普通无效父引用返回 400","活动初检后遭并发软删除返回 409"],"priority":"must","source":"用户确认父子关系","counterexample":["物理记录没有逻辑父记录","只在前端校验"]},
+    {"id":"R3","statement":"两类编号由服务端转大写并校验格式，编号和名称在租户内永久唯一。","acceptance":["编号格式和长度准确","重复及删除后复用返回 409"],"priority":"must","source":"用户确认手工编号与永久唯一","counterexample":["保存小写编号","删除后复用"]},
+    {"id":"R4","statement":"所有组织、用户、参数和逻辑子系统引用必须属于当前租户并符合保存时有效性规则。","acceptance":["跨租户或无效引用被拒绝","参数只接受资源白名单分类"],"priority":"must","source":"项目安全规则和用户确认","counterexample":["信任客户端选项","保存跨租户引用"]},
+    {"id":"R5","statement":"被活动物理子系统引用的逻辑子系统不得删除。","acceptance":["删除返回 409","父子记录保持一致","并发后无悬挂活动引用"],"priority":"must","source":"用户确认不级联","counterexample":["级联删除","悬挂引用"]},
+    {"id":"R6","statement":"服务端按资源和动作执行八项权限、认证租户隔离和统一操作审计。","acceptance":["401/403 和八项权限准确","所有访问限定 AuthUser.tenantId","成功和失败可按 trace ID 复核"],"priority":"must","source":"安全规则和用户批准审计方案 1","counterexample":["仅前端隐藏按钮","客户端指定 tenant","审计覆盖原错误"]},
+    {"id":"R7","statement":"逻辑事业群、物理负责团队、人员和六类分类通过平台组织、用户和参数安全来源读取。","acceptance":["引用按租户验证","用户选项分页且字段最小","电话实时读取且不存业务表"],"priority":"must","source":"用户确认平台来源和分类设计不变","counterexample":["负责团队保存自由文本","要求 system 管理权限","泄露管理字段"]},
+    {"id":"R8","statement":"菜单、权限、参数和虚构 Mock 数据可自动初始化并保持幂等，且不新增动态表单元数据。","acceptance":["空库无需手工目录配置","重复启动不重复","无新增 biz_form 或 schema 依赖"],"priority":"must","source":"用户选择固定表单且 main 已退役元数据","counterexample":["首次交付依赖输入项配置","新增 PublishedFormSchemaQuery"]},
+    {"id":"R9","statement":"两个固定强类型页面在桌面与移动端完整呈现加载、空、失败、无权限、只读和提交状态。","acceptance":["小于 760px 使用卡片","三个手机视口无页面级横向滚动","构建和控制台检查通过"],"priority":"must","source":"用户批准固定表单和移动端准入","counterexample":["运行时请求 schema","手机整页横滚","失败无重试"]},
+    {"id":"R10","statement":"V1 不实现系统启用、停用、状态筛选或状态变更。","acceptance":["页面、DTO、API 和权限没有启停动作","软删除不描述为停用"],"priority":"must","source":"用户明确要求","counterexample":["出现启停按钮","接口接受 status"]},
+    {"id":"R11","statement":"逻辑与物理领域代码、表、HTTP 契约和前端页面归独立 business/architecture 模块。","acceptance":["ccb-architecture 由 Boot 装配","前端收口 architecture 模块","治理和 CODEOWNERS 一致","platform/system 无领域类型"],"priority":"must","source":"用户明确模块归属","counterexample":["在 com.ccb.system 实现领域服务","平台反向依赖业务"]},
+    {"id":"R12","statement":"tenant_id 仅由认证用户注入、页面不可见且数据库无默认值；受信任本地 Mock 只使用经校验的显式租户。","acceptance":["请求不声明 tenant","客户端同名字段无效","新表 tenant 无 DEFAULT","非 local 不初始化"],"priority":"must","source":"用户批准隐藏租户方案 A","counterexample":["常量 1 兜底","页面显示 tenant","Mock 缺省租户"]},
+    {"id":"R13","statement":"物理所属事业群为可空文本，负责团队为必选平台组织并保存服务端名称快照，物理负责人和联系人均可空。","acceptance":["事业群空白为 null 且最长 100","负责团队创建编辑必填","团队失效历史可读并标记","编辑必须重选有效团队","负责人联系人可空"],"priority":"must","source":"用户逐项确认并批准修订 3","counterexample":["事业群仍保存组织 ID","客户端提交快照","失效后详情不可读","负责人被设为必填"]}
+  ],
+  "invariants": [
+    "运行期 tenant_id 只来自 AuthUser",
+    "编号大写且编号和名称永久唯一",
+    "物理活动记录只关联同租户活动逻辑记录",
+    "负责团队快照和电话由服务端产生",
+    "成功写入和成功审计同事务，失败审计不覆盖原错误",
+    "不新增 biz_form 或 form-schema 依赖",
+    "不修改已发布 Flyway 脚本",
+    "不实现系统启停用"
+  ],
+  "constraints": [
+    "只修改当前 codex-task-scope writable_paths",
+    "目标主干最高仍为 V34 且 V35-V37/稳定 ID 未被实际占用",
+    "platform/system 公共契约需 Owner 审批和回归",
+    "Java 17、Spring Boot、JdbcTemplate、MySQL、Flyway、Vue 3 和 TypeScript",
+    "业务模块不得直接写平台表"
+  ],
+  "non_goals": [
+    "系统启停用和状态历史",
+    "动态表单元数据和扩展字段",
+    "自动编号、智能补全和推荐",
+    "审批、导入导出和外部同步",
+    "事业群或负责团队级行权限",
+    "跨租户共享和级联删除"
+  ],
+  "assumptions": [
+    {"text":"开始实施时目标主干最高仍为 V34，当前需求可取得 V35-V37。","basis":"最新 origin/main 与所有远端分支均未出现 V35-V40，未实施需求已同步顺延。","falsifier":"编码或提交前主干出现任一 V35-V37 文件。"},
+    {"text":"现有 OrganizationService 可提供当前租户组织树。","basis":"公开包登记和只读代码勘察。","falsifier":"真实回归无法得到有效组织和层级。"},
+    {"text":"交付示范和公共 UI 足以实现固定表单页面。","basis":"只读检查存在表格、移动卡片和表单抽屉。","falsifier":"实现必须修改公共 UI。"}
+  ],
+  "unknowns": [
+    {"question":"并行 main 是否会在合入前占用 V35-V37？","impact":"冲突时必须重新分配。","owner":"迁移 Owner","blocking":false},
+    {"question":"CLI JSON 与桌面 config/cache 的插件状态能否一致判定？","impact":"误放行会破坏准入。","owner":"governance Owner","blocking":false}
+  ],
+  "decisions": [
+    {"question":"物理事业群如何建模？","options":["可空文本","平台组织","新主数据"],"selected":"可空文本，最长 100","blocking":false,"source":"用户确认"},
+    {"question":"负责团队如何建模？","options":["平台组织","自由文本"],"selected":"平台组织必填并保存服务端快照","blocking":false,"source":"用户确认"},
+    {"question":"表单如何实现？","options":["固定强类型","动态发布元数据"],"selected":"固定强类型","blocking":false,"source":"用户确认"},
+    {"question":"审计如何实现？","options":["SystemOperationAudit","arch_operation_log"],"selected":"SystemOperationAudit","blocking":false,"source":"用户确认"}
+  ],
+  "measurement_intents": [
+    {"requirement_id":"R1","observable":"逻辑 CRUD 前后 API 与数据库状态","candidate_sensor":"architecture 服务/HTTP/MySQL 测试"},
+    {"requirement_id":"R2","observable":"物理 CRUD、父引用和并发状态","candidate_sensor":"architecture 服务和两事务 MySQL 测试"},
+    {"requirement_id":"R3","observable":"规范化值和唯一冲突","candidate_sensor":"服务测试与数据库唯一键测试"},
+    {"requirement_id":"R4","observable":"同租户有效引用与参数白名单","candidate_sensor":"平台契约和 API 负向测试"},
+    {"requirement_id":"R5","observable":"删除 409 与最终父子状态","candidate_sensor":"并发 MySQL 和真实 API 测试"},
+    {"requirement_id":"R6","observable":"角色矩阵、tenant SQL 和 trace 审计","candidate_sensor":"MockMvc、真实 API 与日志 SQL"},
+    {"requirement_id":"R7","observable":"选项 exact-key、实时电话和参数值","candidate_sensor":"平台契约与 JSONPath 测试"},
+    {"requirement_id":"R8","observable":"Flyway/Mock 计数和无元数据依赖","candidate_sensor":"迁移测试、Mock 测试和 rg"},
+    {"requirement_id":"R9","observable":"构建、四视口状态和页面宽度","candidate_sensor":"Vite 构建与真实浏览器 UAT"},
+    {"requirement_id":"R10","observable":"代码、API、DOM 无启停行为","candidate_sensor":"rg、契约测试和浏览器检查"},
+    {"requirement_id":"R11","observable":"模块装配和边界登记","candidate_sensor":"Maven、Boot、governance 和 module-boundaries"},
+    {"requirement_id":"R12","observable":"客户端 tenant 无效、DB 无默认、Mock 受限","candidate_sensor":"HTTP、information_schema 和 Mock profile 测试"},
+    {"requirement_id":"R13","observable":"事业群空值、团队快照/失效和人员可空","candidate_sensor":"服务/API/MySQL/浏览器组合测试"}
+  ],
+  "baseline_status": "ready"
+}

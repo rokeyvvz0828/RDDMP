@@ -1,0 +1,82 @@
+{
+  "baseline_revision": "baseline-3",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T3", "T4", "T9", "T10"], "evidence": ["逻辑 CRUD/软删除自动化、真实浏览器、API 和 SQL 审计通过"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T3", "T5", "T9", "T10"], "evidence": ["物理 CRUD、父逻辑必选、两种 MySQL 并发与真实浏览器通过"], "limitations": []},
+    {"id": "R3", "result": "pass", "task_ids": ["T3", "T4", "T5", "T10"], "evidence": ["编号规范化/格式/永久唯一测试与 V36 约束通过"], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T2", "T4", "T5", "T6", "T10"], "evidence": ["安全引用 capability、租户/有效性测试和真实 options HTTP 通过"], "limitations": []},
+    {"id": "R5", "result": "pass", "task_ids": ["T3", "T5", "T10"], "evidence": ["活动子记录阻止父删除、并发 409 与合法最终状态通过"], "limitations": []},
+    {"id": "R6", "result": "pass", "task_ids": ["T2", "T4", "T5", "T6", "T7", "T10"], "evidence": ["八项后端权限、三角色浏览器与六条真实 trace 审计通过"], "limitations": []},
+    {"id": "R7", "result": "pass", "task_ids": ["T2", "T4", "T5", "T6", "T7", "T9", "T10"], "evidence": ["组织/用户/参数/逻辑安全 options exact-key 与真实 HTTP 通过"], "limitations": []},
+    {"id": "R8", "result": "pass", "task_ids": ["T0", "T3R", "T7", "T8", "T10"], "evidence": ["V1-V37、目录权限参数、trusted local Mock 与幂等测试通过；无动态表单元数据"], "limitations": []},
+    {"id": "R9", "result": "pass", "task_ids": ["T9", "T10"], "evidence": ["类型构建、四视口、三角色、浅深主题、全状态、无横滚与 clean console 通过"], "limitations": ["浏览器工具不导出 waterfall；真实 HTTP/SQL/audit 已补充连通证据"]},
+    {"id": "R10", "result": "pass", "task_ids": ["T7", "T9", "T10"], "evidence": ["DTO/SQL/前端源码和真实页面均无启停用、状态筛选或状态动作"], "limitations": []},
+    {"id": "R11", "result": "pass", "task_ids": ["T0", "T1", "T10"], "evidence": ["独立 business/architecture 模块、Maven/Boot、9 模块边界、12 模块治理与 118 文件 scope 通过"], "limitations": []},
+    {"id": "R12", "result": "pass", "task_ids": ["T3", "T4", "T5", "T8", "T10"], "evidence": ["认证 tenant 注入、数据库无默认、HTTP/页面无 tenant、trusted local 显式租户与真实 SQL 通过"], "limitations": []},
+    {"id": "R13", "result": "pass", "task_ids": ["T3", "T5", "T8", "T9", "T10"], "evidence": ["事业群可空、团队必选/快照、人员可空与团队失效重选通过"], "limitations": []}
+  ],
+  "task_results": [
+    {"id": "T0", "status": "verified", "evidence": ["入口、Owner、分支和迁移槽位通过"]},
+    {"id": "T1", "status": "verified", "evidence": ["模块装配和治理边界通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["system capability、审计与 V35 通过"]},
+    {"id": "T3R", "status": "verified", "evidence": ["空库迁移基线纠偏通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["V36 与仓储模型通过"]},
+    {"id": "T4", "status": "verified", "evidence": ["逻辑子系统服务与 HTTP 通过"]},
+    {"id": "T5", "status": "verified", "evidence": ["物理子系统、团队和并发通过"]},
+    {"id": "T6", "status": "verified", "evidence": ["安全 options 契约通过"]},
+    {"id": "T7", "status": "verified", "evidence": ["V37 目录/权限/参数通过"]},
+    {"id": "T8", "status": "verified", "evidence": ["trusted local Mock 通过"]},
+    {"id": "T9", "status": "verified", "evidence": ["固定强类型前端与真实浏览器 UAT 通过"]},
+    {"id": "T10", "status": "verified", "evidence": ["99 tests、package/build、真实 API/SQL、浏览器、治理和 scope 全部通过"]}
+  ],
+  "feedback_summary": {
+    "total": 5,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0012", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0013", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0014", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0015", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Maven 全 Reactor 测试", "result": "pass", "evidence": "99 tests，failures/errors/skipped 0"},
+    {"check": "Boot 可执行包", "result": "pass", "evidence": "10 modules BUILD SUCCESS，Spring Boot repackage 完成"},
+    {"check": "前端生产构建", "result": "pass", "evidence": "vue-tsc/Vite 2341 modules transformed"},
+    {"check": "仓库治理", "result": "pass", "evidence": "check-all-governance 全绿；非法 Skill、非法账本、缺失通配符证据三类负向夹具仍拒绝"},
+    {"check": "范围与差异", "result": "pass", "evidence": "origin/main..HEAD 118 files in scope；git diff --check 通过"},
+    {"check": "真实运行", "result": "pass", "evidence": "Boot UP；认证 API 200；软删除与六条 trace audit；四视口 UAT"}
+  ],
+  "invariant_results": [
+    {"invariant": "领域代码属于 module，platform 仅暴露最小安全 capability", "result": "pass", "evidence": "模块路径、依赖边界和公开包治理通过"},
+    {"invariant": "tenant 只由认证上下文或受信任 local Mock 显式注入", "result": "pass", "evidence": "DTO/页面负向扫描、租户测试和真实 SQL 通过"},
+    {"invariant": "V1 不包含启停用", "result": "pass", "evidence": "后端/迁移/前端无状态动作"},
+    {"invariant": "负责团队必填、事业群和人员按确认可空", "result": "pass", "evidence": "服务、页面与真实 CRUD 通过"},
+    {"invariant": "不使用已下线动态表单元数据", "result": "pass", "evidence": "源码/SQL/网络负向扫描和固定 DTO 页面通过"},
+    {"invariant": "不覆盖用户未关联改动", "result": "pass", "evidence": ".dsh/** 与 docs/original/** 保持未跟踪且未进入提交"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Windows CRLF 与控制证据通配符", "result": "pass", "evidence": "治理正向通过，非法 Skill 与缺失通配符证据负向仍失败"},
+    {"disturbance": "空数据库 V24 前置缺表", "result": "pass", "evidence": "受控 callback、空库和幂等 Testcontainers 通过"},
+    {"disturbance": "父子并发删除", "result": "pass", "evidence": "两种 MySQL 时序与最终状态通过"},
+    {"disturbance": "移动端与慢响应", "result": "pass", "evidence": "四视口、抽屉、过期响应丢弃和脏表单通过"},
+    {"disturbance": "沙箱网络限制", "result": "pass", "evidence": "授权环境中同一 Maven package 命令成功"}
+  ],
+  "residual_risks": [
+    "前端主入口保留仓库既有 >500kB 构建警告；两个新增页面已经独立懒加载，不阻塞本需求。",
+    "浏览器工具未导出 Network waterfall；真实 HTTP、SQL 与审计提供了独立等价证据。"
+  ],
+  "user_acceptance": {
+    "status": "accepted",
+    "accepted_at": "2026-08-15T22:13:16+08:00",
+    "evidence": "用户明确表示：验收通过，关闭此需求。"
+  },
+  "gate_result": "pass",
+  "route_reason": "R1-R13 均具备任务、修改和至少两类异质传感器；所有任务 verified、5 条反馈关闭、S-0012 至 S-0015 连续零误差、自动化/真实运行/范围/不变量全部通过。"
+}

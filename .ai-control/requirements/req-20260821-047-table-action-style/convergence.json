@@ -1,0 +1,132 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": [
+        "Focused final diff retains workflow_instance_id, review_status and canEditDiff visibility gates and the original handlers.",
+        "Difference operation width is 280px and final vue-tsc/Vite production build exited 0."
+      ],
+      "limitations": ["Current test rows do not simultaneously expose every workflow state; source conditions cover the remaining states."]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": [
+        "Legacy rows render Stage advance and Change history directly with remaining actions in More; measured action width is 215px inside a 240px column.",
+        "System rows render Edit and More at 135px inside a 160px column; More exposes the existing Delete command."
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T2"],
+      "evidence": [
+        "Logical and physical desktop templates use matching View, Edit and More icons, labels and permission gates.",
+        "1280px action containers measured 189px; required mobile card footers exposed the same actions with zero button overflow."
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": [
+        "Desktop action containers are nowrap and have scrollWidth equal to rendered width in light and dark themes.",
+        "At 375x812, 390x844 and 430x932 across all requirement routes, the original horizontal gesture leaves root scrollLeft=0, app-shell x=0 and HTML scrollWidth equal to viewport.",
+        "Architecture mobile cards render at 321px, 336px and 376px action-footer widths with no clipped buttons."
+      ],
+      "limitations": ["Requirement tables retain the repository's intentional internal horizontal table surface; page-level leakage is corrected."
+      ]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": ["Focused diff, final build and corrected responsive browser probes pass; F-0001 is resolved."]
+    },
+    {
+      "id": "T2",
+      "status": "verified",
+      "evidence": ["Source symmetry plus desktop/mobile/light/dark rendered checks pass."]
+    }
+  ],
+  "feedback_summary": {
+    "total": 1,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {
+      "check": "Frontend production build",
+      "result": "pass",
+      "evidence": "vue-tsc --noEmit and Vite build passed; 2391 modules transformed."
+    },
+    {
+      "check": "Whitespace and focused diff validation",
+      "result": "pass",
+      "evidence": "git diff --check exited 0; product changes remain in the four approved frontend files."
+    },
+    {
+      "check": "Rendered interaction and responsive checks",
+      "result": "pass",
+      "evidence": "Desktop, three mobile viewports, light/dark themes, action sizing and More menu interaction were sampled."
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "No backend, API, database, permission or audit behavior changes",
+      "result": "pass",
+      "evidence": "Task product diff is limited to four frontend files and contains no request, permission or handler body changes."
+    },
+    {
+      "invariant": "Every action retains its existing visibility condition, confirmation and handler",
+      "result": "pass",
+      "evidence": "Focused source audit confirms original gates and handler references; destructive actions still route through existing commands."
+    },
+    {
+      "invariant": "UiDataTable remains owner of shared fixed-column foundation styles",
+      "result": "pass",
+      "evidence": "UiDataTable and web/src/styles.css were not modified."
+    }
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "Sandbox denied Vite temporary-file creation",
+      "result": "pass",
+      "evidence": "The identical build passed with approved project write access."
+    },
+    {
+      "disturbance": "Light and dark theme rendering",
+      "result": "pass",
+      "evidence": "Action sizing and semantic colors remain valid in both modes."
+    },
+    {
+      "disturbance": "Existing global mobile 680px table minimum width",
+      "result": "pass",
+      "evidence": "The local page boundary contains the width while preserving the table's internal overflow surface."
+    }
+  ],
+  "residual_risks": [
+    "Vite retains the repository's existing large-chunk warning.",
+    "The user-required rokey branch does not satisfy the repository branch-name scope validator.",
+    "Repository-wide governance remains blocked by historical AI-control files outside this task.",
+    "The worktree contains unrelated user changes that were not modified or reverted."
+  ],
+  "gate_result": "pass",
+  "route_reason": "All four must requirements have verified task, source/build and rendered evidence; F-0001 is resolved; the standard-mode sample trend reaches zero P0/P1 with no regression."
+}

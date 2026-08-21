@@ -2,7 +2,7 @@ import http from './http'
 import type { ApiResponse } from '../types/auth'
 
 export interface DataMigrationMenu { id: number; name: string; routePath: string }
-export interface DataMigrationProject { id: number; project_code: string; project_name: string; status: string }
+export interface DataMigrationProject { id: number; project_code: string; project_name: string; description?: string; status: string }
 export interface DataMigrationAsset { id: number; project_id: number; component_id?: number; asset_type: string; asset_code: string; asset_name: string; file_size?: number; structured_data?: unknown; owner_id: number }
 export interface DataMigrationComponent { id: number; project_id: number; component_code: string; component_name: string; description?: string; owner_id: number }
 
@@ -14,8 +14,16 @@ export function listDataMigrationComponents(params?: Record<string, unknown>) {
   return http.get<ApiResponse<DataMigrationComponent[]>>('/data-migration/components', { params })
 }
 
+export function createDataMigrationProject(body: Record<string, unknown>) {
+  return http.post<ApiResponse<DataMigrationProject>>('/data-migration/projects', body)
+}
+
 export function updateDataMigrationProject(id: number, body: Record<string, unknown>) {
   return http.put<ApiResponse<DataMigrationProject>>(`/data-migration/projects/${id}`, body)
+}
+
+export function deleteDataMigrationProject(id: number) {
+  return http.delete<ApiResponse<null>>(`/data-migration/projects/${id}`)
 }
 
 export function updateDataMigrationComponent(id: number, body: Record<string, unknown>) {

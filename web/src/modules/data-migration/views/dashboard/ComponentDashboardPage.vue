@@ -1,3 +1,8 @@
+<!--
+  用途：数迁组件看板页
+  说明：按组件维度展示资产数量统计（组件编码/名称/资产数量）；调用 getDataMigrationDashboard('component')
+        拉取数据，自带加载/失败/空数据状态。
+-->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { getDataMigrationDashboard } from '../../../../api/data-migration'

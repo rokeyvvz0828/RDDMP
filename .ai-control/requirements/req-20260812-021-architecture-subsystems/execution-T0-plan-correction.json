@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "task_id": "T0",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/engineering-control/plans/2026-08-13-architecture-subsystems-implementation-plan.md",
+      "purpose": "把 full scope 检查移到 architecture 模块登记之后"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260812-021-architecture-subsystems/{control-plan.json,handoff.json}",
+      "purpose": "同步 T0/T1 依赖、验收与集成检查"
+    }
+  ],
+  "requirements_addressed": ["R11"],
+  "commands": [
+    {
+      "command": "PowerShell JSON parse and T0/T1 ordering assertions",
+      "exit_code": 0,
+      "salient_output": "PLAN_ORDER_OK T0 fields-only; T1 full-scope"
+    },
+    {
+      "command": "git diff --check -- current requirement/control paths",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "计划依赖无循环",
+      "result": "pass",
+      "evidence": "T0 不再调用依赖未登记模块的 scope checker；T1 登记后调用",
+      "limitations": ["T1 尚未执行，full scope 真实退出码仍未产生"]
+    }
+  ],
+  "diff_summary": [
+    "未改变业务设定值、scope 写入边界或产品文件",
+    "仅重排治理校验时点"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "T2 前必须完成 full scope 检查",
+      "result": "pass",
+      "evidence": "T1 acceptance_checks 和 stop_conditions 明确 scope 失败即停止 T2"
+    }
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "V35-V37 与 development-entry 外部阻塞不在本纠正动作范围"
+  ],
+  "recommended_next": "observe"
+}

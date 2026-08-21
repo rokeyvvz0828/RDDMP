@@ -1,6 +1,6 @@
 {
   "datasetKey": "rddmp-local-platform",
-  "datasetVersion": "2026.08.17.1",
+  "datasetVersion": "2026.08.20.1",
   "description": "RDDMP 本地研发演示数据。所有数据均为虚构内容，使用高位保留 ID。",
   "catalog": [
     {
@@ -14,10 +14,10 @@
     {
       "module": "project-management",
       "name": "项目管理",
-      "features": ["项目工作台", "项目计划", "项目成员", "项目角色", "项目日历", "计划统计"],
+      "features": ["项目工作台", "项目计划", "项目成员", "项目角色", "项目日历", "计划统计", "项目风险", "风险评论", "项目组织", "项目附件"],
       "entry": "/projects",
       "dataStrategy": "database",
-      "tables": ["pm_project", "pm_project_plan", "pm_project_role", "pm_project_member", "pm_project_member_role", "pm_project_plan_org"]
+      "tables": ["pm_project", "pm_project_plan_group", "pm_project_plan", "pm_project_role", "pm_project_member", "pm_project_member_role", "pm_project_plan_org", "pm_project_risk", "pm_project_risk_comment", "pm_project_org", "sys_attachment"]
     },
     {
       "module": "workflow",
@@ -69,12 +69,28 @@
       "tables": ["biz_form_scope", "biz_form_section", "biz_form_field_definition", "biz_form_field_rule", "biz_form_field_option", "biz_form_field_value", "biz_form_config_revision"]
     },
     {
+      "module": "architecture",
+      "name": "架构管理",
+      "features": ["逻辑子系统", "物理子系统", "组织与人员引用", "父子关联"],
+      "entry": "/architecture",
+      "dataStrategy": "database",
+      "tables": ["arch_logical_subsystem", "arch_physical_subsystem"]
+    },
+    {
       "module": "new-business-template",
       "name": "后续业务模块模板",
       "features": ["列表", "查询", "表单", "审批", "通知", "附件", "统计"],
       "entry": "new module contract",
       "dataStrategy": "add-database-table-and-register",
       "tables": []
+    },
+    {
+      "module": "requirement",
+      "name": "需求管理平台",
+      "features": ["新建项目差异清单", "评审处理", "基线版本", "存量需求阶段", "系统清单", "Excel 导入", "修改记录"],
+      "entry": "/requirements",
+      "dataStrategy": "database",
+      "tables": ["req_system", "req_project", "req_difference", "req_baseline", "req_baseline_item", "req_legacy_requirement", "req_stage_log", "req_change_log", "req_import_batch", "req_attachment", "req_project_member", "req_business_group_member"]
     }
   ],
   "database": [
@@ -165,21 +181,41 @@
       "table": "pm_project",
       "keyColumns": ["id"],
       "rows": [
-        {"id": 910000000003001, "tenant_id": 1, "project_code": "RDDMP-PLATFORM", "project_name": "平台能力升级项目", "description": "围绕平台基础能力、权限治理和交付质量开展的阶段性升级项目。", "status": "RUNNING", "plan_number_rule": "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule": "{PARENT_CODE}-S{SEQ:3}", "next_plan_sequence": 4, "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-10-31", "created_by": 910000000000001, "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-12 16:30:00", "deleted": 0},
-        {"id": 910000000003002, "tenant_id": 1, "project_code": "RDDMP-DATA", "project_name": "数据治理专项", "description": "建立数据标准、质量检查和运营分析机制，支撑后续业务模块接入。", "status": "PLANNING", "plan_number_rule": "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule": "{PARENT_CODE}-S{SEQ:3}", "next_plan_sequence": 3, "owner_id": 910000000000002, "planned_start_date": "2026-09-01", "planned_end_date": "2026-12-15", "created_by": 910000000000002, "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-12 15:20:00", "deleted": 0}
+        {"id": 910000000003001, "tenant_id": 1, "project_code": "RDDMP-PLATFORM", "project_name": "平台能力升级项目", "description": "围绕平台基础能力、权限治理和交付质量开展的阶段性升级项目。", "status": "RUNNING", "plan_number_rule": "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule": "{PARENT_CODE}-S{SEQ:3}", "risk_number_rule": "{PROJECT_CODE}-R{SEQ:3}", "next_plan_sequence": 4, "next_risk_sequence": 3, "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-10-31", "created_by": 910000000000001, "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-12 16:30:00", "deleted": 0},
+        {"id": 910000000003002, "tenant_id": 1, "project_code": "RDDMP-DATA", "project_name": "数据治理专项", "description": "建立数据标准、质量检查和运营分析机制，支撑后续业务模块接入。", "status": "PLANNING", "plan_number_rule": "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule": "{PARENT_CODE}-S{SEQ:3}", "risk_number_rule": "{PROJECT_CODE}-R{SEQ:3}", "next_plan_sequence": 3, "next_risk_sequence": 2, "owner_id": 910000000000002, "planned_start_date": "2026-09-01", "planned_end_date": "2026-12-15", "created_by": 910000000000002, "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-12 15:20:00", "deleted": 0}
+      ]
+    },
+    {
+      "table": "pm_project_plan_group",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003601, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_INITIATION", "group_name": "1-1", "color_key": "brand", "description": "完成项目立项、范围确认和启动准备。", "sort_no": 10, "created_at": "2026-08-01 09:05:00", "updated_at": "2026-08-01 09:05:00", "deleted": 0},
+        {"id": 910000000003602, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_REQUIREMENT", "group_name": "2-1", "color_key": "accent", "description": "完成需求梳理和业务方案确认。", "sort_no": 10, "created_at": "2026-08-01 09:06:00", "updated_at": "2026-08-01 09:06:00", "deleted": 0},
+        {"id": 910000000003603, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_DESIGN_DEVELOPMENT", "group_name": "3-1", "color_key": "success", "description": "完成核心设计、研发实施和联调。", "sort_no": 10, "created_at": "2026-08-01 09:07:00", "updated_at": "2026-08-01 09:07:00", "deleted": 0},
+        {"id": 910000000003604, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_DESIGN_DEVELOPMENT", "group_name": "3-2", "color_key": "warning", "description": "补充第二条同阶段主计划，验证横向顺序排期。", "sort_no": 20, "created_at": "2026-08-01 09:08:00", "updated_at": "2026-08-01 09:08:00", "deleted": 0},
+        {"id": 910000000003605, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_DATA_MIGRATION", "group_name": "4-1", "color_key": "danger", "description": "完成数据迁移准备和演练。", "sort_no": 10, "created_at": "2026-08-01 09:09:00", "updated_at": "2026-08-01 09:09:00", "deleted": 0},
+        {"id": 910000000003606, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_TEST_ACCEPTANCE", "group_name": "5-1", "color_key": "brand", "description": "完成测试、验收和问题闭环。", "sort_no": 10, "created_at": "2026-08-01 09:11:00", "updated_at": "2026-08-01 09:11:00", "deleted": 0},
+        {"id": 910000000003607, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_TRAINING_PRODUCTION_REHEARSAL", "group_name": "6-1", "color_key": "accent", "description": "完成培训和投产演练。", "sort_no": 10, "created_at": "2026-08-01 09:12:00", "updated_at": "2026-08-01 09:12:00", "deleted": 0},
+        {"id": 910000000003608, "tenant_id": 1, "project_id": 910000000003001, "phase": "PLAN_PRODUCTION_LAUNCH", "group_name": "7-1", "color_key": "muted", "description": "完成投产上线和运行观察。", "sort_no": 10, "created_at": "2026-08-01 09:13:00", "updated_at": "2026-08-01 09:13:00", "deleted": 0},
+        {"id": 910000000003611, "tenant_id": 1, "project_id": 910000000003002, "phase": "PLAN_INITIATION", "group_name": "1-1", "color_key": "brand", "description": "完成数据治理专项立项。", "sort_no": 10, "created_at": "2026-08-10 10:01:00", "updated_at": "2026-08-10 10:01:00", "deleted": 0},
+        {"id": 910000000003612, "tenant_id": 1, "project_id": 910000000003002, "phase": "PLAN_REQUIREMENT", "group_name": "2-1", "color_key": "accent", "description": "完成数据标准和质量需求分析。", "sort_no": 10, "created_at": "2026-08-10 10:02:00", "updated_at": "2026-08-10 10:02:00", "deleted": 0},
+        {"id": 910000000003613, "tenant_id": 1, "project_id": 910000000003002, "phase": "PLAN_DESIGN_DEVELOPMENT", "group_name": "3-1", "color_key": "success", "description": "完成质量规则设计和配置开发。", "sort_no": 10, "created_at": "2026-08-10 10:03:00", "updated_at": "2026-08-10 10:03:00", "deleted": 0},
+        {"id": 910000000003614, "tenant_id": 1, "project_id": 910000000003002, "phase": "PLAN_TEST_ACCEPTANCE", "group_name": "5-1", "color_key": "warning", "description": "完成数据质量验收。", "sort_no": 10, "created_at": "2026-08-10 10:04:00", "updated_at": "2026-08-10 10:04:00", "deleted": 0}
       ]
     },
     {
       "table": "pm_project_plan",
       "keyColumns": ["id"],
       "rows": [
-        {"id": 910000000003101, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 0, "plan_name": "平台升级总体计划", "plan_code": "RDDMP-PLATFORM-P001", "next_child_plan_sequence": 3, "description": "平台升级项目主计划，统筹需求、研发和验收工作。", "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-10-31", "progress": 62, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-01 09:10:00", "updated_at": "2026-08-12 16:30:00", "deleted": 0},
-        {"id": 910000000003102, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 910000000003101, "plan_name": "需求与方案确认", "plan_code": "RDDMP-PLATFORM-P001-S001", "next_child_plan_sequence": 1, "description": "完成平台升级范围、验收标准和技术方案确认。", "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-08-15", "progress": 100, "status": "COMPLETED", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-01 09:20:00", "updated_at": "2026-08-15 17:00:00", "deleted": 0},
-        {"id": 910000000003103, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 910000000003101, "plan_name": "核心能力开发", "plan_code": "RDDMP-PLATFORM-P001-S002", "next_child_plan_sequence": 1, "description": "完成公共组件、权限和项目管理能力开发。", "owner_id": 910000000000002, "planned_start_date": "2026-08-16", "planned_end_date": "2026-09-30", "progress": 70, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 20, "created_at": "2026-08-16 09:00:00", "updated_at": "2026-08-30 14:00:00", "deleted": 0},
-        {"id": 910000000003104, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 0, "plan_name": "上线验收计划", "plan_code": "RDDMP-PLATFORM-P002", "next_child_plan_sequence": 2, "description": "完成上线前验证、培训和投产准备。", "owner_id": 910000000000003, "planned_start_date": "2026-10-01", "planned_end_date": "2026-10-31", "progress": 15, "status": "NOT_STARTED", "phase": "PLAN_TEST_ACCEPTANCE", "sort_no": 20, "created_at": "2026-08-02 10:00:00", "updated_at": "2026-08-12 10:00:00", "deleted": 0},
-        {"id": 910000000003201, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 0, "plan_name": "数据治理总体计划", "plan_code": "RDDMP-DATA-P001", "next_child_plan_sequence": 3, "description": "数据治理专项主计划。", "owner_id": 910000000000002, "planned_start_date": "2026-09-01", "planned_end_date": "2026-12-15", "progress": 18, "status": "IN_PROGRESS", "phase": "PLAN_REQUIREMENT", "sort_no": 10, "created_at": "2026-09-01 09:00:00", "updated_at": "2026-09-05 11:00:00", "deleted": 0},
-        {"id": 910000000003202, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 910000000003201, "plan_name": "数据标准梳理", "plan_code": "RDDMP-DATA-P001-S001", "next_child_plan_sequence": 1, "description": "梳理核心业务数据标准和编码规则。", "owner_id": 910000000000001, "planned_start_date": "2026-09-01", "planned_end_date": "2026-09-20", "progress": 35, "status": "IN_PROGRESS", "phase": "PLAN_REQUIREMENT", "sort_no": 10, "created_at": "2026-09-01 09:10:00", "updated_at": "2026-09-05 11:00:00", "deleted": 0},
-        {"id": 910000000003203, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 910000000003201, "plan_name": "质量规则配置", "plan_code": "RDDMP-DATA-P001-S002", "next_child_plan_sequence": 1, "description": "配置数据质量检查规则并准备试运行。", "owner_id": 910000000000003, "planned_start_date": "2026-09-21", "planned_end_date": "2026-10-15", "progress": 0, "status": "BLOCKED", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 20, "created_at": "2026-09-21 09:10:00", "updated_at": "2026-09-25 10:00:00", "deleted": 0}
+        {"id": 910000000003101, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 0, "plan_name": "平台升级总体计划", "plan_code": "RDDMP-PLATFORM-P001", "next_child_plan_sequence": 3, "description": "平台升级项目主计划，统筹需求、研发和验收工作。", "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-09-14", "progress": 62, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-01 09:10:00", "updated_at": "2026-08-12 16:30:00", "deleted": 0},
+        {"id": 910000000003102, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 910000000003101, "plan_name": "需求与方案确认", "plan_code": "RDDMP-PLATFORM-P001-S001", "next_child_plan_sequence": 1, "description": "完成平台升级范围、验收标准和技术方案确认。", "owner_id": 910000000000001, "planned_start_date": "2026-08-01", "planned_end_date": "2026-08-15", "progress": 100, "status": "COMPLETED", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-01 09:20:00", "updated_at": "2026-08-15 17:00:00", "deleted": 0},
+        {"id": 910000000003103, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 910000000003101, "plan_name": "核心能力开发", "plan_code": "RDDMP-PLATFORM-P001-S002", "next_child_plan_sequence": 1, "description": "完成公共组件、权限和项目管理能力开发。", "owner_id": 910000000000002, "planned_start_date": "2026-08-16", "planned_end_date": "2026-09-14", "progress": 70, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 20, "created_at": "2026-08-16 09:00:00", "updated_at": "2026-08-30 14:00:00", "deleted": 0},
+        {"id": 910000000003104, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003606, "parent_id": 0, "plan_name": "上线验收计划", "plan_code": "RDDMP-PLATFORM-P002", "next_child_plan_sequence": 2, "description": "完成上线前验证、培训和投产准备。", "owner_id": 910000000000003, "planned_start_date": "2026-10-01", "planned_end_date": "2026-10-31", "progress": 15, "status": "NOT_STARTED", "phase": "PLAN_TEST_ACCEPTANCE", "sort_no": 20, "created_at": "2026-08-02 10:00:00", "updated_at": "2026-08-12 10:00:00", "deleted": 0},
+        {"id": 910000000003105, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 0, "plan_name": "迁移演练计划", "plan_code": "RDDMP-PLATFORM-P003", "next_child_plan_sequence": 2, "description": "验证迁移脚本、回退方案和演练结果。", "owner_id": 910000000000004, "planned_start_date": "2026-09-15", "planned_end_date": "2026-09-30", "progress": 28, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 30, "created_at": "2026-08-03 10:00:00", "updated_at": "2026-08-20 10:00:00", "deleted": 0},
+        {"id": 910000000003106, "tenant_id": 1, "project_id": 910000000003001, "group_id": 910000000003603, "parent_id": 910000000003105, "plan_name": "迁移脚本演练", "plan_code": "RDDMP-PLATFORM-P003-S001", "next_child_plan_sequence": 1, "description": "完成迁移脚本在演示环境的验证。", "owner_id": 910000000000002, "planned_start_date": "2026-09-15", "planned_end_date": "2026-09-20", "progress": 40, "status": "IN_PROGRESS", "phase": "PLAN_DESIGN_DEVELOPMENT", "sort_no": 10, "created_at": "2026-08-03 10:10:00", "updated_at": "2026-08-20 10:00:00", "deleted": 0},
+        {"id": 910000000003201, "tenant_id": 1, "project_id": 910000000003002, "group_id": 910000000003612, "parent_id": 0, "plan_name": "数据治理总体计划", "plan_code": "RDDMP-DATA-P001", "next_child_plan_sequence": 3, "description": "数据治理专项主计划。", "owner_id": 910000000000002, "planned_start_date": "2026-09-01", "planned_end_date": "2026-12-15", "progress": 18, "status": "IN_PROGRESS", "phase": "PLAN_REQUIREMENT", "sort_no": 10, "created_at": "2026-09-01 09:00:00", "updated_at": "2026-09-05 11:00:00", "deleted": 0},
+        {"id": 910000000003202, "tenant_id": 1, "project_id": 910000000003002, "group_id": 910000000003612, "parent_id": 910000000003201, "plan_name": "数据标准梳理", "plan_code": "RDDMP-DATA-P001-S001", "next_child_plan_sequence": 1, "description": "梳理核心业务数据标准和编码规则。", "owner_id": 910000000000001, "planned_start_date": "2026-09-01", "planned_end_date": "2026-09-20", "progress": 35, "status": "IN_PROGRESS", "phase": "PLAN_REQUIREMENT", "sort_no": 10, "created_at": "2026-09-01 09:10:00", "updated_at": "2026-09-05 11:00:00", "deleted": 0},
+        {"id": 910000000003203, "tenant_id": 1, "project_id": 910000000003002, "group_id": 910000000003612, "parent_id": 910000000003201, "plan_name": "质量规则配置", "plan_code": "RDDMP-DATA-P001-S002", "next_child_plan_sequence": 1, "description": "配置数据质量检查规则并准备试运行。", "owner_id": 910000000000003, "planned_start_date": "2026-09-21", "planned_end_date": "2026-10-15", "progress": 0, "status": "BLOCKED", "phase": "PLAN_REQUIREMENT", "sort_no": 20, "created_at": "2026-09-21 09:10:00", "updated_at": "2026-09-25 10:00:00", "deleted": 0}
       ]
     },
     {
@@ -197,13 +233,13 @@
       "table": "pm_project_member",
       "keyColumns": ["id"],
       "rows": [
-        {"id": 910000000003501, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000001, "status": 1, "joined_at": "2026-08-01 09:00:00", "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-01 09:00:00", "deleted": 0},
-        {"id": 910000000003502, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000002, "status": 1, "joined_at": "2026-08-01 09:05:00", "created_at": "2026-08-01 09:05:00", "updated_at": "2026-08-01 09:05:00", "deleted": 0},
-        {"id": 910000000003503, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000003, "status": 1, "joined_at": "2026-08-01 09:10:00", "created_at": "2026-08-01 09:10:00", "updated_at": "2026-08-01 09:10:00", "deleted": 0},
-        {"id": 910000000003504, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000004, "status": 1, "joined_at": "2026-08-01 09:15:00", "created_at": "2026-08-01 09:15:00", "updated_at": "2026-08-01 09:15:00", "deleted": 0},
-        {"id": 910000000003505, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000002, "status": 1, "joined_at": "2026-08-10 10:00:00", "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-10 10:00:00", "deleted": 0},
-        {"id": 910000000003506, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000001, "status": 1, "joined_at": "2026-08-10 10:05:00", "created_at": "2026-08-10 10:05:00", "updated_at": "2026-08-10 10:05:00", "deleted": 0},
-        {"id": 910000000003507, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000003, "status": 1, "joined_at": "2026-08-10 10:10:00", "created_at": "2026-08-10 10:10:00", "updated_at": "2026-08-10 10:10:00", "deleted": 0}
+        {"id": 910000000003501, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000001, "org_id": 910000000003701, "status": 1, "joined_at": "2026-08-01 09:00:00", "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-01 09:00:00", "deleted": 0},
+        {"id": 910000000003502, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000002, "org_id": 910000000003702, "status": 1, "joined_at": "2026-08-01 09:05:00", "created_at": "2026-08-01 09:05:00", "updated_at": "2026-08-01 09:05:00", "deleted": 0},
+        {"id": 910000000003503, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000003, "org_id": 910000000003703, "status": 1, "joined_at": "2026-08-01 09:10:00", "created_at": "2026-08-01 09:10:00", "updated_at": "2026-08-01 09:10:00", "deleted": 0},
+        {"id": 910000000003504, "tenant_id": 1, "project_id": 910000000003001, "user_id": 910000000000004, "org_id": 910000000003702, "status": 1, "joined_at": "2026-08-01 09:15:00", "created_at": "2026-08-01 09:15:00", "updated_at": "2026-08-01 09:15:00", "deleted": 0},
+        {"id": 910000000003505, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000002, "org_id": 910000000003711, "status": 1, "joined_at": "2026-08-10 10:00:00", "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-10 10:00:00", "deleted": 0},
+        {"id": 910000000003506, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000001, "org_id": 910000000003712, "status": 1, "joined_at": "2026-08-10 10:05:00", "created_at": "2026-08-10 10:05:00", "updated_at": "2026-08-10 10:05:00", "deleted": 0},
+        {"id": 910000000003507, "tenant_id": 1, "project_id": 910000000003002, "user_id": 910000000000003, "org_id": 910000000003712, "status": 1, "joined_at": "2026-08-10 10:10:00", "created_at": "2026-08-10 10:10:00", "updated_at": "2026-08-10 10:10:00", "deleted": 0}
       ]
     },
     {
@@ -229,6 +265,44 @@
         {"plan_id": 910000000003104, "org_id": 910000000000003, "party_type": "LEAD", "tenant_id": 1, "created_at": "2026-08-02 10:00:00"},
         {"plan_id": 910000000003201, "org_id": 910000000000001, "party_type": "LEAD", "tenant_id": 1, "created_at": "2026-09-01 09:00:00"},
         {"plan_id": 910000000003201, "org_id": 910000000000002, "party_type": "COOPERATING", "tenant_id": 1, "created_at": "2026-09-01 09:00:00"}
+      ]
+    },
+    {
+      "table": "pm_project_risk",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003801, "tenant_id": 1, "project_id": 910000000003001, "risk_code": "RDDMP-PLATFORM-R001", "occurred_date": "2026-08-18", "project_phase": "EXECUTION", "urgency": "HIGH", "report_level": "L1", "current_status": "PROCESSING", "proposer_org_id": 910000000000002, "proposer_subsystem": "研发平台", "proposer_contact_name": "演示研发工程师", "proposer_contact_phone": "13800000002", "involved_org_id": 910000000000003, "involved_subsystem": "质量验证", "problem_description": "核心能力联调环境的测试数据刷新不稳定，可能影响验收排期。", "expected_resolution_date": "2026-09-05", "suggested_solution": "增加每日数据快照并安排专人核对刷新结果。", "current_handler_name": "演示研发工程师", "current_handler_phone": "13800000002", "progress_description": "已完成问题复现，正在验证快照恢复方案。", "attention_level": "HIGH", "problem_nature": "环境稳定性", "problem_domain": "测试数据", "pmo_contact": "演示产品经理 / 13800000001", "escalation_level": "YES", "current_problem_level": "P2", "planned_resolution_date": "2026-09-03", "actual_resolution_date": null, "resolution_solution": null, "created_by": 910000000000001, "created_at": "2026-08-18 10:00:00", "updated_at": "2026-08-20 14:00:00", "deleted": 0},
+        {"id": 910000000003802, "tenant_id": 1, "project_id": 910000000003001, "risk_code": "RDDMP-PLATFORM-R002", "occurred_date": "2026-08-12", "project_phase": "EXECUTION", "urgency": "MEDIUM", "report_level": "L2", "current_status": "OPEN", "proposer_org_id": 910000000000003, "proposer_subsystem": "质量平台", "proposer_contact_name": "演示测试负责人", "proposer_contact_phone": "13800000003", "involved_org_id": 910000000000002, "involved_subsystem": "部署流水线", "problem_description": "部分回归用例尚未完成自动化改造，人工执行耗时较长。", "expected_resolution_date": "2026-09-20", "suggested_solution": "按高风险用例优先级补齐自动化脚本。", "current_handler_name": "演示测试负责人", "current_handler_phone": "13800000003", "progress_description": null, "attention_level": "MEDIUM", "problem_nature": "交付效率", "problem_domain": "测试自动化", "pmo_contact": "演示产品经理 / 13800000001", "escalation_level": "NO", "current_problem_level": "P3", "planned_resolution_date": "2026-09-15", "actual_resolution_date": null, "resolution_solution": null, "created_by": 910000000000001, "created_at": "2026-08-12 15:00:00", "updated_at": "2026-08-12 15:00:00", "deleted": 0},
+        {"id": 910000000003803, "tenant_id": 1, "project_id": 910000000003002, "risk_code": "RDDMP-DATA-R001", "occurred_date": "2026-09-08", "project_phase": "INITIATION", "urgency": "LOW", "report_level": "L3", "current_status": "RESOLVED", "proposer_org_id": 910000000000001, "proposer_subsystem": "数据标准", "proposer_contact_name": "演示产品经理", "proposer_contact_phone": "13800000001", "involved_org_id": 910000000000002, "involved_subsystem": "数据治理", "problem_description": "部分历史字段缺少业务口径说明。", "expected_resolution_date": "2026-09-12", "suggested_solution": "组织业务和研发完成字段口径会审。", "current_handler_name": "演示研发工程师", "current_handler_phone": "13800000002", "progress_description": "已完成口径会审并更新数据字典。", "attention_level": "LOW", "problem_nature": "需求澄清", "problem_domain": "数据标准", "pmo_contact": "演示产品经理 / 13800000001", "escalation_level": "NO", "current_problem_level": "P3", "planned_resolution_date": "2026-09-12", "actual_resolution_date": "2026-09-11", "resolution_solution": "完成数据字典补充并由业务负责人确认。", "created_by": 910000000000002, "created_at": "2026-09-08 09:00:00", "updated_at": "2026-09-11 16:00:00", "deleted": 0}
+      ]
+    },
+    {
+      "table": "pm_project_risk_comment",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003851, "tenant_id": 1, "project_id": 910000000003001, "risk_id": 910000000003801, "user_id": 910000000000001, "comment_text": "请在本周联调评审会上确认快照恢复方案的验证结果。", "created_at": "2026-08-19 09:30:00", "updated_at": "2026-08-19 09:30:00", "deleted": 0},
+        {"id": 910000000003852, "tenant_id": 1, "project_id": 910000000003001, "risk_id": 910000000003801, "user_id": 910000000000002, "comment_text": "已补充恢复脚本，预计明天完成第二轮验证。", "created_at": "2026-08-20 14:00:00", "updated_at": "2026-08-20 14:00:00", "deleted": 0},
+        {"id": 910000000003853, "tenant_id": 1, "project_id": 910000000003002, "risk_id": 910000000003803, "user_id": 910000000000002, "comment_text": "数据字典已更新，风险关闭依据已归档。", "created_at": "2026-09-11 16:10:00", "updated_at": "2026-09-11 16:10:00", "deleted": 0}
+      ]
+    },
+    {
+      "table": "pm_project_org",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003701, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 0, "org_code": "PLATFORM-PMO", "org_name": "平台升级项目组", "sort_no": 10, "status": 1, "created_at": "2026-08-01 09:00:00", "updated_at": "2026-08-01 09:00:00", "deleted": 0},
+        {"id": 910000000003702, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 910000000003701, "org_code": "PLATFORM-DEV", "org_name": "研发实施组", "sort_no": 10, "status": 1, "created_at": "2026-08-01 09:01:00", "updated_at": "2026-08-01 09:01:00", "deleted": 0},
+        {"id": 910000000003703, "tenant_id": 1, "project_id": 910000000003001, "parent_id": 910000000003701, "org_code": "PLATFORM-QA", "org_name": "质量验收组", "sort_no": 20, "status": 1, "created_at": "2026-08-01 09:02:00", "updated_at": "2026-08-01 09:02:00", "deleted": 0},
+        {"id": 910000000003711, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 0, "org_code": "DATA-PMO", "org_name": "数据治理项目组", "sort_no": 10, "status": 1, "created_at": "2026-08-10 10:00:00", "updated_at": "2026-08-10 10:00:00", "deleted": 0},
+        {"id": 910000000003712, "tenant_id": 1, "project_id": 910000000003002, "parent_id": 910000000003711, "org_code": "DATA-STANDARD", "org_name": "数据标准组", "sort_no": 10, "status": 1, "created_at": "2026-08-10 10:01:00", "updated_at": "2026-08-10 10:01:00", "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_attachment",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003901, "tenant_id": 1, "business_type": "PROJECT", "business_id": 910000000003001, "file_name": "平台升级项目实施方案.pdf", "content_type": "application/pdf", "file_size": 284672, "object_key": "mock/project/910000000003001/platform-plan.pdf", "uploader_id": 910000000000001, "created_at": "2026-08-02 11:00:00", "updated_at": "2026-08-02 11:00:00", "deleted": 0},
+        {"id": 910000000003902, "tenant_id": 1, "business_type": "PROJECT", "business_id": 910000000003001, "file_name": "验收问题跟踪表.xlsx", "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "file_size": 93612, "object_key": "mock/project/910000000003001/acceptance-issues.xlsx", "uploader_id": 910000000000003, "created_at": "2026-08-18 16:20:00", "updated_at": "2026-08-18 16:20:00", "deleted": 0},
+        {"id": 910000000003903, "tenant_id": 1, "business_type": "PROJECT", "business_id": 910000000003002, "file_name": "数据标准目录.docx", "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "file_size": 148320, "object_key": "mock/project/910000000003002/data-standard.docx", "uploader_id": 910000000000002, "created_at": "2026-09-05 13:30:00", "updated_at": "2026-09-05 13:30:00", "deleted": 0}
       ]
     },
     {
@@ -322,6 +396,23 @@
       ]
     },
     {
+      "table": "arch_logical_subsystem",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003001, "tenant_id": 1, "code": "LOG_CHANNEL", "short_name": "渠道接入", "name": "渠道接入逻辑子系统", "business_org_id": 910000000000001, "deployment_platform_code": "architecture.deployment-platform.employee-channel-p2", "system_type_code": "architecture.system-type.application-platform", "system_ownership_code": "architecture.system-ownership.channel-integration", "contact_user_id": 910000000000001, "description": "承载本地演示环境的统一渠道接入能力。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000003002, "tenant_id": 1, "code": "LOG_DELIVERY", "short_name": "交付支撑", "name": "交付支撑逻辑子系统", "business_org_id": 910000000000002, "deployment_platform_code": "architecture.deployment-platform.employee-channel-p2", "system_type_code": "architecture.system-type.application-platform", "system_ownership_code": "architecture.system-ownership.channel-integration", "contact_user_id": 910000000000002, "description": "承载本地演示环境的研发与交付支撑能力。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1}
+      ]
+    },
+    {
+      "table": "arch_physical_subsystem",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 910000000003101, "tenant_id": 1, "code": "PHY_PORTAL", "short_name": "员工门户", "name": "员工门户物理子系统", "logical_subsystem_id": 910000000003001, "business_group_name": "数字渠道事业群", "responsible_team_org_id": 910000000000002, "responsible_team_name_snapshot": "研发工程中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000002, "description": "面向员工的本地演示门户。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000003102, "tenant_id": 1, "code": "PHY_MOBILE", "short_name": "移动渠道", "name": "移动渠道物理子系统", "logical_subsystem_id": 910000000003001, "business_group_name": null, "responsible_team_org_id": 910000000000002, "responsible_team_name_snapshot": "研发工程中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000004, "description": "用于移动端渠道联调的虚构物理子系统。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000003103, "tenant_id": 1, "code": "PHY_OPERATIONS", "short_name": "交付运营", "name": "交付运营物理子系统", "logical_subsystem_id": 910000000003002, "business_group_name": "技术交付事业群", "responsible_team_org_id": 910000000000003, "responsible_team_name_snapshot": "质量保障中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000003, "description": "用于研发交付与质量联调的虚构物理子系统。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1}
+      ]
+    },
+    {
       "table": "biz_form_scope",
       "keyColumns": ["id"],
       "rows": [
@@ -396,6 +487,158 @@
       "keyColumns": ["id"],
       "rows": [
         {"id": 910000000001901, "tenant_id": 1, "scope_id": 910000000001001, "revision_no": 1, "revision_status": "published", "snapshot_json": {"scopeKey": "delivery.work-order", "revision": 1, "sections": ["basic", "delivery", "quality"], "fieldCount": 8, "source": "mock"}, "change_summary": "交付工单首版字段配置", "created_by": 1, "published_by": 1, "created_at": "2026-08-08 09:00:00", "published_at": "2026-08-08 09:00:00"}
+      ]
+    },
+    {
+      "table": "req_system",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000001, "tenant_id": 1, "system_code": "W01812", "system_name": "示例支付核心系统", "english_name": "PAY-CORE", "conglomerate": "数字金融事业群", "status": "启用", "logical_subsystem_code": "W01812", "logical_subsystem_name": "支付核心子系统", "business_component_code": "W01812", "business_component_name": "支付核心组件", "business_domain": "支付结算", "product_view": "零售支付视图", "launch_point": "2026-03", "category": "核心系统", "introduction": "脱敏演示系统，不承载真实业务", "disaster_level": "同城双活", "source_type": "保留系统", "created_by": 1, "deleted": 0},
+        {"id": 930000000000002, "tenant_id": 1, "system_code": "W02234", "system_name": "示例零售信贷系统", "english_name": "RETAIL-LOAN", "conglomerate": "数字金融事业群", "status": "启用", "logical_subsystem_code": "W02234", "logical_subsystem_name": "零售信贷子系统", "business_component_code": "W02234", "business_component_name": "信贷组件", "business_domain": "零售信贷", "product_view": "信贷视图", "launch_point": "2026-05", "category": "业务系统", "introduction": "脱敏演示系统，不承载真实业务", "disaster_level": "异地灾备", "source_type": "引入系统", "created_by": 1, "deleted": 0},
+        {"id": 930000000000003, "tenant_id": 1, "system_code": "W0332C", "system_name": "示例监管报送系统", "english_name": "REG-REPORT", "conglomerate": "风险管理事业群", "status": "启用", "logical_subsystem_code": "W0332C", "logical_subsystem_name": "监管报送子系统", "business_component_code": "W0332C", "business_component_name": "报送组件", "business_domain": "监管报送", "product_view": "报送视图", "launch_point": "2025-12", "category": "报送系统", "introduction": "脱敏演示系统，不承载真实业务", "disaster_level": "同城双活", "source_type": "保留系统", "created_by": 1, "deleted": 0},
+        {"id": 930000000000004, "tenant_id": 1, "system_code": "W0441C", "system_name": "示例渠道整合系统", "english_name": "CHANNEL", "conglomerate": "数字金融事业群", "status": "启用", "logical_subsystem_code": "W0441C", "logical_subsystem_name": "渠道整合子系统", "business_component_code": "W0441C", "business_component_name": "渠道组件", "business_domain": "渠道服务", "product_view": "渠道视图", "launch_point": "2026-01", "category": "渠道系统", "introduction": "脱敏演示系统，不承载真实业务", "disaster_level": "同城双活", "source_type": "引入系统", "created_by": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_project",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000101, "tenant_id": 1, "project_code": "PRJ-2026-001", "project_name": "客户信息项目组", "project_type": "0~1 新建", "start_time": "2026-01-10", "status": "进行中", "description": "演示新建项目组：差异清单录入、评审与基线流程", "created_by": 1, "deleted": 0},
+        {"id": 930000000000102, "tenant_id": 1, "project_code": "PRJ-2026-002", "project_name": "国际结算项目组", "project_type": "0~1 新建", "start_time": "2026-02-01", "status": "已基线", "description": "演示已形成基线项目组", "created_by": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_project_member",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000301, "tenant_id": 1, "project_id": 930000000000101, "user_id": 1, "member_role": "LEADER", "created_by": 1, "deleted": 0},
+        {"id": 930000000000302, "tenant_id": 1, "project_id": 930000000000101, "user_id": 910000000000001, "member_role": "MEMBER", "created_by": 1, "deleted": 0},
+        {"id": 930000000000303, "tenant_id": 1, "project_id": 930000000000101, "user_id": 910000000000002, "member_role": "MEMBER", "created_by": 1, "deleted": 0},
+        {"id": 930000000000304, "tenant_id": 1, "project_id": 930000000000102, "user_id": 1, "member_role": "LEADER", "created_by": 1, "deleted": 0},
+        {"id": 930000000000305, "tenant_id": 1, "project_id": 930000000000102, "user_id": 910000000000001, "member_role": "MEMBER", "created_by": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_difference",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000401, "tenant_id": 1, "project_id": 930000000000101, "seq_no": 1, "business_conglomerate": "数字金融事业群", "business_section": "零售业务板块", "business_group": "客户信息一组", "requirement_no": "W01812-001", "category": "功能", "name": "示例：客户信息查询改造（脱敏）", "system_id": 930000000000001, "jinke_practice": "金科支持客户信息参数化配置", "difference_type": "金科有-蒙商无", "monshang_practice": "蒙商当前无对应功能", "difference_desc": "脱敏示例差异描述", "monshang_dept": "零售部", "monshang_analyst": "张示例", "jinke_analyst": "李示例", "adapt_mode": "按原型", "handle_status": "双方已确认", "coord_group": "客户信息组", "solution": "按原型实现", "is_special": "否", "decision_level": "版块内", "monshang_confirm_dept": "零售部", "jinke_confirmer": "李示例", "review_status": "待评审", "dev_status": "未开始", "test_status": "未开始", "source": "ONLINE", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000000402, "tenant_id": 1, "project_id": 930000000000101, "seq_no": 2, "business_conglomerate": "数字金融事业群", "business_section": "零售业务板块", "business_group": "客户信息一组", "requirement_no": "W01812-002", "category": "报表", "name": "示例：客户对账报表改造（脱敏）", "system_id": 930000000000001, "difference_type": "双方作法有差异", "difference_desc": "脱敏示例差异描述", "adapt_mode": "少量改造", "handle_status": "待决策", "is_special": "否", "review_status": "已退回", "review_comment": "请补充差异描述", "reviewed_by": 1, "dev_status": "未开始", "test_status": "未开始", "source": "ONLINE", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000000403, "tenant_id": 1, "project_id": 930000000000101, "seq_no": 3, "business_conglomerate": "数字金融事业群", "business_section": "零售业务板块", "business_group": "客户信息一组", "requirement_no": "W01812-003", "category": "流程", "name": "示例：客户信息维护流程调整（脱敏）", "system_id": 930000000000001, "difference_type": "金科有-蒙商手工", "adapt_mode": "参数配置", "handle_status": "待行方确认", "is_special": "否", "review_status": "评审中", "reviewed_by": 1, "dev_status": "开发中", "test_status": "未开始", "source": "ONLINE", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000000404, "tenant_id": 1, "project_id": 930000000000101, "seq_no": 4, "business_conglomerate": "数字金融事业群", "business_section": "零售业务板块", "business_group": "客户信息一组", "requirement_no": "W01812-004", "category": "菜单", "name": "示例：客户信息菜单权限调整（脱敏）", "system_id": 930000000000001, "difference_type": "蒙商有-金科无", "adapt_mode": "保留现状", "handle_status": "双方已确认", "is_special": "否", "review_status": "已评审", "reviewed_by": 1, "dev_status": "已完成", "test_status": "测试中", "source": "ONLINE", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000000411, "tenant_id": 1, "project_id": 930000000000102, "seq_no": 1, "business_conglomerate": "数字金融事业群", "business_section": "国际业务板块", "business_group": "国际结算一组", "requirement_no": "W02234-001", "category": "功能", "name": "示例：国际结算额度管理改造（脱敏）", "system_id": 930000000000002, "difference_type": "金科有-蒙商无", "adapt_mode": "按原型", "handle_status": "双方已确认", "is_special": "否", "review_status": "已评审", "reviewed_by": 1, "dev_status": "已上线", "test_status": "已通过", "baseline_id": 930000000000501, "source": "ONLINE", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000000412, "tenant_id": 1, "project_id": 930000000000102, "seq_no": 2, "business_conglomerate": "数字金融事业群", "business_section": "国际业务板块", "business_group": "国际结算一组", "requirement_no": "W02234-002", "category": "批处理", "name": "示例：国际结算批量处理改造（脱敏）", "system_id": 930000000000002, "difference_type": "双方作法有差异", "adapt_mode": "少量改造", "handle_status": "双方已确认", "is_special": "否", "review_status": "已评审", "reviewed_by": 1, "dev_status": "已上线", "test_status": "已通过", "baseline_id": 930000000000501, "source": "ONLINE", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000000413, "tenant_id": 1, "project_id": 930000000000102, "seq_no": 3, "business_conglomerate": "数字金融事业群", "business_section": "国际业务板块", "business_group": "国际结算一组", "requirement_no": "W02234-003", "category": "报表", "name": "示例：国际结算报表改造（脱敏）", "system_id": 930000000000002, "difference_type": "金科有-蒙商手工", "adapt_mode": "业务清理", "handle_status": "双方已确认", "is_special": "否", "review_status": "已评审", "reviewed_by": 1, "dev_status": "已上线", "test_status": "已通过", "baseline_id": 930000000000501, "source": "ONLINE", "created_by": 910000000000001, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_baseline",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000501, "tenant_id": 1, "project_id": 930000000000102, "baseline_no": "BL-PRJ-2026-002-20260220-1", "baseline_name": "国际结算项目组 基线 1", "status": "RELEASED", "difference_count": 3, "remark": "脱敏演示基线", "created_by": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_baseline_item",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000601, "tenant_id": 1, "baseline_id": 930000000000501, "difference_id": 930000000000411, "snapshot_json": {"name": "示例：国际结算额度管理改造（脱敏）", "review_status": "已评审", "requirement_no": "W02234-001"}, "deleted": 0},
+        {"id": 930000000000602, "tenant_id": 1, "baseline_id": 930000000000501, "difference_id": 930000000000412, "snapshot_json": {"name": "示例：国际结算批量处理改造（脱敏）", "review_status": "已评审", "requirement_no": "W02234-002"}, "deleted": 0},
+        {"id": 930000000000603, "tenant_id": 1, "baseline_id": 930000000000501, "difference_id": 930000000000413, "snapshot_json": {"name": "示例：国际结算报表改造（脱敏）", "review_status": "已评审", "requirement_no": "W02234-003"}, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_legacy_requirement",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000701, "tenant_id": 1, "legacy_doc_name": "监管报送业需V1.0（脱敏）", "requirement_no": "JG-W0332C-240507-001", "requirement_name": "示例监管报送需求（脱敏）", "content_summary": "脱敏演示内容", "propose_dept": "风险管理部", "proposer": "王示例 13800000011", "monshang_ba": "赵示例", "monshang_architect": "孙示例", "requirement_received_date": "2026-05-07", "requirement_type": "监管", "regulation_category": "国家级", "business_group": "零售一组", "sub_group": "报送组", "jinke_contact": "钱示例 13800000022", "need_jinke_arch_decision": "否", "jinke_architect": "周示例", "unified_managed": "是", "requirement_status": "需求分析", "remark": "脱敏演示", "change_involved": "否", "current_stage": "PROPOSE", "propose_stage_status": "进行中", "docking_stage_status": "未开始", "workload_stage_status": "未开始", "project_stage_status": "未开始", "soft_stage_status": "未开始", "launch_stage_status": "未开始", "source": "ONLINE", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000000702, "tenant_id": 1, "legacy_doc_name": "存款账户改造业需V2.0（脱敏）", "requirement_no": "JG-W0332C-240508-002", "requirement_name": "示例存款账户改造需求（脱敏）", "content_summary": "脱敏演示内容", "propose_dept": "零售部", "proposer": "王示例 13800000011", "monshang_ba": "赵示例", "monshang_architect": "孙示例", "ba_review_date": "2026-06-20", "workload_date": "2026-07-05", "finance_project_date": "2026-07-18", "soft_doc_name": "存款改造软需V1.0（脱敏）", "owner_conglomerate": "数字金融事业群", "owner_system": "W0332C 示例监管报送系统", "owner_contact": "钱示例 13800000022", "involve_cooperation": "否", "soft_submit_date": "2026-08-01", "requirement_type": "业务", "business_group": "零售一组", "sub_group": "存款组", "need_jinke_arch_decision": "是", "jinke_architect": "周示例", "unified_managed": "是", "requirement_status": "软需编制", "remark": "脱敏演示", "change_involved": "否", "current_stage": "SOFT", "propose_stage_status": "已完成", "docking_stage_status": "已完成", "workload_stage_status": "已完成", "project_stage_status": "已完成", "soft_stage_status": "进行中", "launch_stage_status": "未开始", "source": "ONLINE", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000000703, "tenant_id": 1, "legacy_doc_name": "", "requirement_no": "JG-W0441C-240509-003", "requirement_name": "示例渠道升级需求（脱敏）", "content_summary": "脱敏演示内容", "propose_dept": "渠道部", "proposer": "吴示例 13800000033", "requirement_type": "业务", "business_group": "对公二组", "sub_group": "渠道组", "need_jinke_arch_decision": "否", "unified_managed": "是", "requirement_status": "需求分析", "remark": "演示导入来源数据", "change_involved": "否", "current_stage": "PROPOSE", "propose_stage_status": "未开始", "docking_stage_status": "未开始", "workload_stage_status": "未开始", "project_stage_status": "未开始", "soft_stage_status": "未开始", "launch_stage_status": "未开始", "source": "IMPORT", "created_by": 910000000000001, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_business_group_member",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000801, "tenant_id": 1, "business_group": "零售一组", "user_id": 910000000000001, "created_by": 1, "deleted": 0},
+        {"id": 930000000000802, "tenant_id": 1, "business_group": "零售一组", "user_id": 910000000000002, "created_by": 1, "deleted": 0},
+        {"id": 930000000000803, "tenant_id": 1, "business_group": "对公二组", "user_id": 910000000000003, "created_by": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_stage_log",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000000901, "tenant_id": 1, "requirement_id": 930000000000701, "from_stage": "PROPOSE", "to_stage": "PROPOSE", "from_status": "未开始", "to_status": "进行中", "operator_id": 910000000000001, "operator_name": "演示产品经理", "comment": "开始需求提出阶段", "deleted": 0},
+        {"id": 930000000000902, "tenant_id": 1, "requirement_id": 930000000000702, "from_stage": "PROPOSE", "to_stage": "SOFT", "from_status": "已完成", "to_status": "进行中", "operator_id": 910000000000001, "operator_name": "演示产品经理", "comment": "进入软需阶段", "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_change_log",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000001001, "tenant_id": 1, "biz_type": "NEW_PROJECT_DIFF", "biz_id": 930000000000402, "field_name": "review_status", "old_value": "评审中", "new_value": "已退回", "change_type": "REVIEW_RETURN", "operator_id": 1, "operator_name": "管理员", "source": "ONLINE", "trace_id": "MOCK-TRACE-001", "deleted": 0},
+        {"id": 930000000001002, "tenant_id": 1, "biz_type": "LEGACY_REQUIREMENT", "biz_id": 930000000000701, "field_name": "propose_stage_status", "old_value": "未开始", "new_value": "进行中", "change_type": "STAGE_TRANSITION", "operator_id": 910000000000001, "operator_name": "演示产品经理", "source": "ONLINE", "trace_id": "MOCK-TRACE-002", "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_import_batch",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000001101, "tenant_id": 1, "biz_type": "LEGACY", "project_id": null, "file_name": "legacy-import-demo.xlsx", "template_type": "LEGACY_REQUIREMENT", "total_rows": 1, "success_rows": 1, "error_rows": 0, "errors_json": [], "status": "IMPORTED", "operator_id": 910000000000001, "operator_name": "演示产品经理", "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_attachment",
+      "keyColumns": ["id"],
+      "rows": [
+        {"id": 930000000001201, "tenant_id": 1, "biz_type": "NEW_PROJECT_DIFF", "biz_id": 930000000000401, "file_name": "差异清单样例.xlsx", "file_size": 10240, "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "preview_id": "demo-preview-001", "preview_url": null, "operator_id": 910000000000001, "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_role_menu",
+      "keyColumns": ["role_id", "menu_id"],
+      "rows": [
+        {"role_id": 910000000000101, "menu_id": 600, "tenant_id": 1},
+        {"role_id": 910000000000101, "menu_id": 601, "tenant_id": 1},
+        {"role_id": 910000000000101, "menu_id": 602, "tenant_id": 1},
+        {"role_id": 910000000000101, "menu_id": 603, "tenant_id": 1},
+        {"role_id": 910000000000102, "menu_id": 600, "tenant_id": 1},
+        {"role_id": 910000000000102, "menu_id": 601, "tenant_id": 1},
+        {"role_id": 910000000000102, "menu_id": 602, "tenant_id": 1},
+        {"role_id": 910000000000102, "menu_id": 603, "tenant_id": 1}
+      ]
+    },
+    {
+      "table": "sys_role_permission",
+      "keyColumns": ["role_id", "permission_id"],
+      "rows": [
+        {"role_id": 910000000000101, "permission_id": 6001, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6011, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6012, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6013, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6014, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6021, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6022, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6023, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6024, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6031, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6032, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6033, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6034, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6101, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6102, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6103, "tenant_id": 1},
+        {"role_id": 910000000000101, "permission_id": 6105, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6001, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6011, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6012, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6013, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6021, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6022, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6031, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6103, "tenant_id": 1},
+        {"role_id": 910000000000102, "permission_id": 6105, "tenant_id": 1}
       ]
     }
   ],

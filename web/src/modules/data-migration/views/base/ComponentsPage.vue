@@ -1,3 +1,8 @@
+<!--
+  用途：数迁基础资料 - 系统/组件清单页
+  说明：展示组件列表（组件编码/名称/所属项目 ID），支持行内编辑组件名称（window.prompt）；
+        独立渲染页面，未复用 AssetListView，自带加载/失败/空数据状态。
+-->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { listDataMigrationComponents, updateDataMigrationComponent, type DataMigrationComponent } from '../../../../api/data-migration'

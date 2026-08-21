@@ -1,0 +1,178 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "Requirement difference, legacy requirement and system catalog action templates",
+      "Logical and physical subsystem desktop and mobile action templates",
+      "Requirement page local action CSS and architecture module local action CSS",
+      "Element Plus icon and dropdown rendering inside the target pages"
+    ],
+    "environment": [
+      "Existing business handlers, row state and frontend permission calculations",
+      "UiDataTable fixed-column foundation styles",
+      "Backend APIs, database, workflow and authorization",
+      "Local Vite/browser runtime and current test data"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "visible_action_set",
+      "owner": "Existing page template conditions",
+      "valid_values": ["existing eligible actions only"]
+    },
+    {
+      "name": "action_presentation",
+      "owner": "Target Vue templates and module-local CSS",
+      "valid_values": ["direct frequent actions", "more-menu low-frequency actions"]
+    },
+    {
+      "name": "action_layout",
+      "owner": "Target table width and local action container",
+      "valid_values": ["compact", "single-line desktop", "reachable mobile"]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "Requirement difference row state and existing canEditDiff/workflow conditions",
+      "transitions": ["Evaluate original visibility conditions", "Render frequent actions directly", "Render existing edit/delete entries in more menu"],
+      "outputs": ["Same eligible operations in a fixed column no wider than 280 pixels"]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "Legacy requirement or system catalog row",
+      "transitions": ["Render frequent actions directly", "Render low-frequency/destructive actions in more menu", "Invoke original handler"],
+      "outputs": ["Compact operation column with unchanged confirmations and errors"]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "Architecture row and existing canUpdate/canDelete permissions",
+      "transitions": ["Evaluate original permission conditions", "Render standard icons and labels", "Invoke existing detail/edit/delete command"],
+      "outputs": ["Logical and physical subsystem actions use the same desktop/mobile presentation"]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "Visible action count, viewport, theme and fixed-column scroll position",
+      "transitions": ["Apply scoped flex/gap/white-space rules", "Use content-sized fixed-column width", "Retain UiDataTable fixed-column ownership"],
+      "outputs": ["Readable actions without excessive whitespace, overlap or page-level overflow"]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "Existing requirement action handlers",
+      "producers": ["RequirementsView script setup"],
+      "consumers": ["Direct buttons and more-menu entries"],
+      "invariant": "Handler bodies, arguments, confirmations, requests and refresh behavior do not change"
+    },
+    {
+      "name": "Existing architecture action handlers and permissions",
+      "producers": ["LogicalSubsystemPage and PhysicalSubsystemPage script setup"],
+      "consumers": ["Desktop table and mobile card actions"],
+      "invariant": "showDetail, editRecord, command, canUpdate and canDelete semantics do not change"
+    },
+    {
+      "name": "UiDataTable fixed-column presentation",
+      "producers": ["Shared UiDataTable and global semantic styles"],
+      "consumers": ["Five target lists"],
+      "invariant": "Shared fixed-column background, shadow and hover implementation remains untouched"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "Template, condition, handler and writable-scope invariants",
+      "method": "Focused git diff, rg handler baseline and git diff --check",
+      "blind_spots": ["Runtime dropdown placement and actual browser text clipping"],
+      "independence": "Direct source and version-control observation"
+    },
+    {
+      "id": "S2",
+      "target": "Vue/TypeScript template and icon integration",
+      "method": "npm --prefix web run build",
+      "blind_spots": ["Visual spacing quality and state-specific data availability"],
+      "independence": "Compiler and production bundler"
+    },
+    {
+      "id": "S3",
+      "target": "Desktop/mobile layout, themes, fixed columns, menus and action eligibility",
+      "method": "Authenticated browser screenshots, DOM width checks, console/network inspection and representative clicks",
+      "blind_spots": ["Row states absent from local test data"],
+      "independence": "Rendered runtime behavior"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "Requirement operation-column presentation",
+      "action": "Modify only icon imports, three action-column templates, widths and RequirementsView local action CSS",
+      "authority": "REQ-20260821-047 writable scope",
+      "impact_radius": "Requirement management frontend page",
+      "rollback": "Restore RequirementsView task diff"
+    },
+    {
+      "id": "A2",
+      "target": "Architecture operation presentation",
+      "action": "Modify only icon imports, desktop/mobile action templates, widths and architecture local CSS",
+      "authority": "REQ-20260821-047 writable scope",
+      "impact_radius": "Logical and physical subsystem frontend pages",
+      "rollback": "Restore the two architecture page diffs and task-local CSS"
+    }
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2", "S3"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {
+      "source": "Unrelated dirty rokey worktree changes",
+      "effect": "Repository-wide status and scope checks contain signals outside this task",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "User-mandated rokey branch",
+      "effect": "Scope checker reports branch naming deviation before file evaluation",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "Local authentication and available row states",
+      "effect": "Some runtime action combinations may not be constructible",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "Vite hot update and list requests",
+      "consequence": "Immediate visual sampling can observe stale assets or loading state",
+      "sampling_rule": "Wait for page load and network idle before screenshots and DOM checks"
+    },
+    {
+      "source": "Element Plus dropdown rendering",
+      "consequence": "Menu is teleported after click",
+      "sampling_rule": "Wait for visible dropdown popper before evaluating reachability"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "Element Plus dropdown menu entries can retain the current row through inline template closures",
+      "evidence": "DeliveryProjectList and release application lists use the same established pattern",
+      "falsifier": "Browser click invokes the wrong row or fails to invoke the existing handler"
+    },
+    {
+      "text": "Module-local action containers are sufficient without shared fixed-column changes",
+      "evidence": "UiDataTable already owns fixed background and DeliveryProjectList uses local action layout",
+      "falsifier": "Runtime fixed-column bleed or clipping persists after scoped widths and containers"
+    }
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1 with S1/S2/S3 sampling"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A1 with S1/S2/S3 sampling"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A2 with S1/S2/S3 sampling"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A1 and A2 with S1/S2/S3 sampling"}
+  ],
+  "model_status": "ready"
+}
