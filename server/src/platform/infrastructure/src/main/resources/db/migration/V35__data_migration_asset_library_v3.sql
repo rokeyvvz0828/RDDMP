@@ -1,4 +1,5 @@
 -- Data migration asset library V3. Additive only; application rollback hides menus and leaves data intact.
+-- 2026-08 治理:菜单 ID 600-644 与 release 线菜单 600/610-615 冲突,整体迁移至 700-744。
 
 CREATE TABLE dm_project (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -79,36 +80,36 @@ CREATE TABLE dm_dashboard_snapshot (
 );
 
 INSERT IGNORE INTO sys_menu (id, tenant_id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, sort_no) VALUES
-(600,1,0,'directory','数迁资产看板','DataMigrationDashboard','/data-migration/dashboard','LAYOUT','data-migration:access','data-analysis',80),
-(601,1,600,'menu','整体看板','DataMigrationOverall','/data-migration/dashboard/overall','data-migration','data-migration:dashboard:overall','dashboard',10),
-(602,1,600,'menu','组件看板','DataMigrationComponent','/data-migration/dashboard/components','data-migration','data-migration:dashboard:components','pie-chart',20),
-(620,1,0,'directory','数迁资产内容管理','DataMigrationContent','/data-migration/content','LAYOUT','data-migration:access','folder-opened',90),
-(621,1,620,'menu','汇报材料','DataMigrationReports','/data-migration/content/reports','data-migration','data-migration:content:reports','document',10),
-(622,1,620,'menu','会议纪要','DataMigrationMeetings','/data-migration/content/meetings','data-migration','data-migration:content:meetings','document',20),
-(623,1,620,'menu','迁移方案','DataMigrationPlans','/data-migration/content/plans','data-migration','data-migration:content:plans','document',30),
-(624,1,620,'menu','迁移映射','DataMigrationMappings','/data-migration/content/mappings','data-migration','data-migration:content:mappings','document',40),
-(625,1,620,'menu','迁移检核规则','DataMigrationValidationRules','/data-migration/content/validation-rules','data-migration','data-migration:content:validation-rules','document-checked',50),
-(626,1,620,'menu','迁移参数','DataMigrationParameters','/data-migration/content/parameters','data-migration','data-migration:content:parameters','setting',60),
-(627,1,620,'menu','迁移过程依赖文件','DataMigrationDependencies','/data-migration/content/dependencies','data-migration','data-migration:content:dependencies','files',70),
-(628,1,620,'menu','迁移程序','DataMigrationPrograms','/data-migration/content/programs','data-migration','data-migration:content:programs','cpu',80),
-(629,1,620,'menu','专题材料','DataMigrationTopics','/data-migration/content/topics','data-migration','data-migration:content:topics','collection',90),
-(630,1,620,'menu','投产及演练','DataMigrationReleaseDrills','/data-migration/content/release-drills','data-migration','data-migration:content:release-drills','promotion',100),
-(631,1,620,'menu','问题清单','DataMigrationIssues','/data-migration/content/issues','data-migration','data-migration:content:issues','warning',110),
-(640,1,0,'directory','基础资料管理','DataMigrationBase','/data-migration/base','LAYOUT','data-migration:manage','database',100),
-(641,1,640,'menu','项目清单','DataMigrationProjects','/data-migration/base/projects','data-migration','data-migration:base:projects','folder',10),
-(642,1,640,'menu','系统/组件清单','DataMigrationComponents','/data-migration/base/components','data-migration','data-migration:base:components','box',20),
-(643,1,640,'menu','目标表结构','DataMigrationTargetTables','/data-migration/base/target-tables','data-migration','data-migration:base:target-tables','table',30),
-(644,1,640,'menu','中间表结构','DataMigrationIntermediateTables','/data-migration/base/intermediate-tables','data-migration','data-migration:base:intermediate-tables','table-2',40);
+(700,1,0,'directory','数迁资产看板','DataMigrationDashboard','/data-migration/dashboard','LAYOUT','data-migration:access','data-analysis',80),
+(701,1,700,'menu','整体看板','DataMigrationOverall','/data-migration/dashboard/overall','data-migration','data-migration:dashboard:overall','dashboard',10),
+(702,1,700,'menu','组件看板','DataMigrationComponent','/data-migration/dashboard/components','data-migration','data-migration:dashboard:components','pie-chart',20),
+(720,1,0,'directory','数迁资产内容管理','DataMigrationContent','/data-migration/content','LAYOUT','data-migration:access','folder-opened',90),
+(721,1,720,'menu','汇报材料','DataMigrationReports','/data-migration/content/reports','data-migration','data-migration:content:reports','document',10),
+(722,1,720,'menu','会议纪要','DataMigrationMeetings','/data-migration/content/meetings','data-migration','data-migration:content:meetings','document',20),
+(723,1,720,'menu','迁移方案','DataMigrationPlans','/data-migration/content/plans','data-migration','data-migration:content:plans','document',30),
+(724,1,720,'menu','迁移映射','DataMigrationMappings','/data-migration/content/mappings','data-migration','data-migration:content:mappings','document',40),
+(725,1,720,'menu','迁移检核规则','DataMigrationValidationRules','/data-migration/content/validation-rules','data-migration','data-migration:content:validation-rules','document-checked',50),
+(726,1,720,'menu','迁移参数','DataMigrationParameters','/data-migration/content/parameters','data-migration','data-migration:content:parameters','setting',60),
+(727,1,720,'menu','迁移过程依赖文件','DataMigrationDependencies','/data-migration/content/dependencies','data-migration','data-migration:content:dependencies','files',70),
+(728,1,720,'menu','迁移程序','DataMigrationPrograms','/data-migration/content/programs','data-migration','data-migration:content:programs','cpu',80),
+(729,1,720,'menu','专题材料','DataMigrationTopics','/data-migration/content/topics','data-migration','data-migration:content:topics','collection',90),
+(730,1,720,'menu','投产及演练','DataMigrationReleaseDrills','/data-migration/content/release-drills','data-migration','data-migration:content:release-drills','promotion',100),
+(731,1,720,'menu','问题清单','DataMigrationIssues','/data-migration/content/issues','data-migration','data-migration:content:issues','warning',110),
+(740,1,0,'directory','基础资料管理','DataMigrationBase','/data-migration/base','LAYOUT','data-migration:manage','database',100),
+(741,1,740,'menu','项目清单','DataMigrationProjects','/data-migration/base/projects','data-migration','data-migration:base:projects','folder',10),
+(742,1,740,'menu','系统/组件清单','DataMigrationComponents','/data-migration/base/components','data-migration','data-migration:base:components','box',20),
+(743,1,740,'menu','目标表结构','DataMigrationTargetTables','/data-migration/base/target-tables','data-migration','data-migration:base:target-tables','table',30),
+(744,1,740,'menu','中间表结构','DataMigrationIntermediateTables','/data-migration/base/intermediate-tables','data-migration','data-migration:base:intermediate-tables','table-2',40);
 
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id, tenant_id)
-SELECT 1, id, 1 FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 600 AND 644 AND deleted = 0;
+SELECT 1, id, 1 FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 700 AND 744 AND deleted = 0;
 INSERT IGNORE INTO sys_menu_permission (id, tenant_id, menu_id, action_code, permission_code, permission_name)
-SELECT id * 10 + 1, 1, id, 'read', permission_code, '查看' FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 600 AND 644 AND deleted = 0;
+SELECT id * 10 + 1, 1, id, 'read', permission_code, '查看' FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 700 AND 744 AND deleted = 0;
 INSERT IGNORE INTO sys_menu_permission (id, tenant_id, menu_id, action_code, permission_code, permission_name)
-SELECT id * 10 + 2, 1, id, 'create', CONCAT(permission_code, ':create'), '新增' FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 600 AND 644 AND deleted = 0;
+SELECT id * 10 + 2, 1, id, 'create', CONCAT(permission_code, ':create'), '新增' FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 700 AND 744 AND deleted = 0;
 INSERT IGNORE INTO sys_menu_permission (id, tenant_id, menu_id, action_code, permission_code, permission_name)
-SELECT id * 10 + 3, 1, id, 'update', CONCAT(permission_code, ':update'), '修改' FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 600 AND 644 AND deleted = 0;
+SELECT id * 10 + 3, 1, id, 'update', CONCAT(permission_code, ':update'), '修改' FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 700 AND 744 AND deleted = 0;
 INSERT IGNORE INTO sys_menu_permission (id, tenant_id, menu_id, action_code, permission_code, permission_name)
-SELECT id * 10 + 4, 1, id, 'delete', CONCAT(permission_code, ':delete'), '删除' FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 600 AND 644 AND deleted = 0;
+SELECT id * 10 + 4, 1, id, 'delete', CONCAT(permission_code, ':delete'), '删除' FROM sys_menu WHERE tenant_id = 1 AND id BETWEEN 700 AND 744 AND deleted = 0;
 INSERT IGNORE INTO sys_role_permission (role_id, permission_id, tenant_id)
-SELECT 1, id, 1 FROM sys_menu_permission WHERE tenant_id = 1 AND menu_id BETWEEN 600 AND 644;
+SELECT 1, id, 1 FROM sys_menu_permission WHERE tenant_id = 1 AND menu_id BETWEEN 700 AND 744;
