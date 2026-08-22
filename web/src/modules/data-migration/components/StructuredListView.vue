@@ -7,6 +7,7 @@
         覆盖加载/空/失败/无权限/提交中状态；基础资料子页面不展示标题横幅，定位依赖顶部 Tabs。
 -->
 <script setup lang="ts">
+import '../data-migration.css'
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Download, Edit, Search, UploadFilled } from '@element-plus/icons-vue'
@@ -150,7 +151,7 @@ onMounted(load)
 </script>
 
 <template>
-  <main class="structured-list-page">
+  <main class="dm-page-root">
     <section v-if="forbidden" class="dm-state-panel"><el-result icon="warning" :title="`暂无${pageTitle}查看权限`" sub-title="请向数据迁移管理员申请 data-migration:access 权限。" /></section>
     <section v-else-if="error" class="dm-state-panel"><el-result icon="error" :title="`${pageTitle}加载失败`" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
     <template v-else>
@@ -197,8 +198,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.structured-list-page { min-width: 0; }
 .dm-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .dm-import-result { margin: 0 0 12px; color: var(--success); font-size: 13px; }
-.dm-state-panel { padding: 24px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
 </style>

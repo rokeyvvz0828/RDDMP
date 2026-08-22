@@ -5,6 +5,7 @@
         覆盖加载/空/失败/无权限状态。
 -->
 <script setup lang="ts">
+import '../../data-migration.css'
 import { onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
@@ -39,7 +40,7 @@ onMounted(load)
 </script>
 
 <template>
-  <main class="component-dashboard-page">
+  <main class="dm-page-root">
     <UiPageHeader title="组件看板" description="按组件维度展示数据迁移资产数量统计。">
       <template #actions><el-button :disabled="loading" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template>
     </UiPageHeader>
@@ -56,8 +57,3 @@ onMounted(load)
     </template>
   </main>
 </template>
-
-<style scoped>
-.component-dashboard-page { min-width: 0; }
-.dm-state-panel { padding: 24px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
-</style>

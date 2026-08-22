@@ -6,6 +6,7 @@
         基础资料子页面不展示标题横幅，定位依赖顶部 Tabs（见 T5-r8）。
 -->
 <script setup lang="ts">
+import '../../data-migration.css'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Download, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
@@ -271,7 +272,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="components-page">
+  <main class="dm-page-root components-page">
     <section v-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无组件清单查看权限" sub-title="请向数据迁移管理员申请组件清单管理权限。" /></section>
     <section v-else-if="error" class="dm-state-panel"><el-result icon="error" title="组件清单加载失败" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
     <template v-else>
@@ -328,7 +329,7 @@ onMounted(() => {
           <el-table-column prop="updated_by_name" label="更新人" min-width="100" show-overflow-tooltip />
           <el-table-column label="操作" width="200" fixed="right" align="center">
             <template #default="{ row }">
-              <div class="components-table-actions">
+              <div class="dm-table-actions">
                 <el-button link type="primary" :disabled="actionBusy" @click="openView(row)"><el-icon><View /></el-icon>查看</el-button>
                 <el-button v-if="canManage" link type="primary" :disabled="actionBusy" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-button>
                 <el-button v-if="canManage" link type="danger" :disabled="actionBusy" @click="removeComponent(row)"><el-icon><Delete /></el-icon>删除</el-button>
@@ -336,7 +337,7 @@ onMounted(() => {
             </template>
           </el-table-column>
           <template #footer>
-            <div class="components-table-footer">
+            <div class="dm-table-footer">
               <span>共 {{ total }} 条</span>
               <el-pagination background layout="total, sizes, prev, pager, next" :total="total" :current-page="page" :page-size="pageSize" :page-sizes="[20, 50, 100]" @current-change="onPageChange" @size-change="onSizeChange" />
             </div>
@@ -344,7 +345,7 @@ onMounted(() => {
         </UiDataTable>
       </div>
 
-      <div v-if="rows.length || loading" class="components-mobile-list">
+      <div v-if="rows.length || loading" class="dm-mobile-list">
         <article v-for="row in rows" :key="row.id">
           <header>
             <div>
@@ -369,7 +370,7 @@ onMounted(() => {
             <el-button v-if="canManage" link type="danger" :disabled="actionBusy" @click="removeComponent(row)"><el-icon><Delete /></el-icon>删除</el-button>
           </footer>
         </article>
-        <div class="components-table-footer">
+        <div class="dm-table-footer">
           <span>共 {{ total }} 条</span>
           <el-pagination background layout="prev, pager, next" :total="total" :current-page="page" :page-size="pageSize" @current-change="onPageChange" />
         </div>
@@ -454,19 +455,14 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.components-page { width: 100%; min-width: 0; }
 .components-page .ui-toolbar { align-items: flex-start; }
 .components-page .ui-toolbar__filters, .components-page .ui-toolbar__actions { flex-wrap: wrap; }
-.dm-state-panel { display: grid; min-height: 360px; place-items: center; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+.components-page .dm-table-actions { flex-wrap: nowrap; }
+.components-page .dm-state-panel { padding: 0; }
 .components-advanced-filter { margin: -6px 0 16px; padding: 14px 16px 0; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
 .components-advanced-filter .el-form { display: flex; flex-wrap: wrap; gap: 0 14px; }
-.components-table-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.components-table-actions .el-button { margin-left: 0; }
-.components-table-footer { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; }
-.components-table-footer > span { color: var(--muted); font-size: 12px; }
 .components-subsystem-search { display: flex; width: 100%; gap: 8px; }
 .components-subsystem-alert { width: 100%; margin-bottom: 16px; }
-.components-mobile-list { display: none; }
 
 @media (max-width: 760px) {
   .components-page .ui-toolbar__filters, .components-page .ui-toolbar__actions { width: 100%; }
@@ -476,25 +472,5 @@ onMounted(() => {
   .components-advanced-filter .el-select { width: 100% !important; }
   .components-page .ui-toolbar__filters > .el-button, .components-page .ui-toolbar__actions > .el-button { flex: 1; }
   .components-desktop-table { display: none; }
-  .components-mobile-list { display: grid; gap: 10px; }
-  .components-mobile-list.is-loading { min-height: 220px; opacity: .5; pointer-events: none; }
-  .components-mobile-list article { display: grid; min-width: 0; gap: 12px; padding: 14px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
-  .components-mobile-list header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 10px; }
-  .components-mobile-list header > div { min-width: 0; }
-  .components-mobile-list strong, .components-mobile-list small { display: block; overflow-wrap: anywhere; }
-  .components-mobile-list small { margin-top: 4px; color: var(--muted); font-size: 11px; }
-  .components-mobile-list dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
-  .components-mobile-list dt { color: var(--muted); font-size: 10px; }
-  .components-mobile-list dd { margin: 4px 0 0; overflow-wrap: anywhere; font-size: 12px; }
-  .components-mobile-list footer { display: flex; flex-wrap: wrap; gap: 4px 10px; padding-top: 8px; border-top: 1px solid var(--line); }
-  .components-mobile-list footer .el-button { margin-left: 0; }
-  .components-table-footer { justify-content: center; }
-  .components-table-footer > span { display: none; }
-  .components-table-footer .el-pagination { flex-wrap: wrap; justify-content: center; }
-}
-
-@media (max-width: 480px) {
-  .components-table-footer .el-pagination__total,
-  .components-table-footer .el-pagination__sizes { display: none; }
 }
 </style>

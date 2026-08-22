@@ -5,6 +5,7 @@
         表英文名/中文名在 项目+系统编号 下唯一，字段英文名/中文名在表内唯一。覆盖加载/空/失败/无权限/提交中状态与移动端卡片化。
 -->
 <script setup lang="ts">
+import '../../data-migration.css'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -360,11 +361,11 @@ onMounted(() => { loadProjects(); load() })
 </script>
 
 <template>
-  <main class="tt-page">
-    <section v-if="forbidden" class="tt-state">
+  <main class="dm-page-root tt-page">
+    <section v-if="forbidden" class="dm-state-panel">
       <el-result icon="warning" :title="`暂无${title}查看权限`" sub-title="请向数据迁移管理员申请相应权限。" />
     </section>
-    <section v-else-if="error" class="tt-state">
+    <section v-else-if="error" class="dm-state-panel">
       <el-result icon="error" :title="`${title}加载失败`" :sub-title="error">
         <template #extra><el-button type="primary" @click="load">重新加载</el-button></template>
       </el-result>
@@ -428,7 +429,7 @@ onMounted(() => { loadProjects(); load() })
           <el-table-column prop="dict_code" label="数据字典编号" min-width="130" show-overflow-tooltip />
           <el-table-column label="操作" width="210" fixed="right" align="center">
             <template #default="{ row }">
-              <div class="tt-actions">
+              <div class="dm-table-actions">
                 <el-button link type="primary" :disabled="actionBusy" @click="openView(row)"><el-icon><View /></el-icon>查看</el-button>
                 <el-button v-if="canUpdate" link type="primary" :disabled="actionBusy" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-button>
                 <el-button v-if="canUpdate" link type="primary" :disabled="actionBusy" @click="openFields(row)">字段</el-button>
@@ -437,7 +438,7 @@ onMounted(() => { loadProjects(); load() })
             </template>
           </el-table-column>
           <template #footer>
-            <div class="tt-footer">
+            <div class="dm-table-footer">
               <span>共 {{ total }} 条</span>
               <el-button v-if="canDelete && selectedIds.length" type="danger" link :disabled="actionBusy" @click="batchDelete">批量删除（{{ selectedIds.length }}）</el-button>
               <el-pagination background layout="total, sizes, prev, pager, next" :total="total" :current-page="page" :page-size="pageSize" :page-sizes="[20, 50, 100]" @current-change="onPageChange" @size-change="onSizeChange" />
@@ -446,7 +447,7 @@ onMounted(() => { loadProjects(); load() })
         </UiDataTable>
       </div>
 
-      <div v-if="rows.length || loading" class="tt-mobile">
+      <div v-if="rows.length || loading" class="dm-mobile-list">
         <article v-for="row in rows" :key="row.id">
           <header>
             <div><strong>{{ row.table_name_cn }}</strong><small>{{ row.table_name_en }} · {{ row.system_code }}</small></div>
@@ -467,7 +468,7 @@ onMounted(() => { loadProjects(); load() })
             <el-button v-if="canDelete" link type="danger" :disabled="actionBusy" @click="removeRow(row)"><el-icon><Delete /></el-icon>删除</el-button>
           </footer>
         </article>
-        <div class="tt-footer">
+        <div class="dm-table-footer">
           <span>共 {{ total }} 条</span>
           <el-pagination background layout="prev, pager, next" :total="total" :current-page="page" :page-size="pageSize" @current-change="onPageChange" />
         </div>
@@ -624,42 +625,21 @@ onMounted(() => { loadProjects(); load() })
 </template>
 
 <style scoped>
-.tt-page { width: 100%; min-width: 0; }
 .tt-page .ui-toolbar { align-items: flex-start; }
 .tt-page .ui-toolbar__filters, .tt-page .ui-toolbar__actions { flex-wrap: wrap; }
-.tt-state { display: grid; min-height: 360px; place-items: center; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
-.tt-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.tt-actions .el-button { margin-left: 0; }
-.tt-footer { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; }
-.tt-footer > span { color: var(--muted); font-size: 12px; }
+.tt-page .dm-table-actions { gap: 6px; }
+.tt-page .dm-state-panel { padding: 0; }
 .tt-section-title { margin: 14px 0 8px; font-size: 14px; font-weight: 600; color: var(--text); }
 .tt-subsystem-search { display: flex; width: 100%; gap: 8px; }
 .tt-subsystem-alert { width: 100%; margin-bottom: 12px; }
 .tt-create-field { padding: 8px 0; }
 .tt-field-toolbar { margin: 8px 0; }
 .tt-field-edit { padding: 8px 16px; }
-.tt-mobile { display: none; }
 
 @media (max-width: 760px) {
   .tt-page .ui-toolbar__filters, .tt-page .ui-toolbar__actions { width: 100%; }
   .tt-page .ui-toolbar .el-input, .tt-page .ui-toolbar .el-select { width: 100% !important; }
   .tt-page .ui-toolbar__filters > .el-button, .tt-page .ui-toolbar__actions > .el-button { flex: 1; }
   .tt-desktop { display: none; }
-  .tt-mobile { display: grid; gap: 10px; }
-  .tt-mobile article { display: grid; min-width: 0; gap: 12px; padding: 14px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
-  .tt-mobile header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 10px; }
-  .tt-mobile strong, .tt-mobile small { display: block; overflow-wrap: anywhere; }
-  .tt-mobile small { margin-top: 4px; color: var(--muted); font-size: 11px; }
-  .tt-mobile dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
-  .tt-mobile dt { color: var(--muted); font-size: 10px; }
-  .tt-mobile dd { margin: 4px 0 0; overflow-wrap: anywhere; font-size: 12px; }
-  .tt-mobile footer { display: flex; flex-wrap: wrap; gap: 4px 10px; padding-top: 8px; border-top: 1px solid var(--line); }
-  .tt-mobile footer .el-button { margin-left: 0; }
-  .tt-footer { justify-content: center; }
-  .tt-footer > span { display: none; }
-  .tt-footer .el-pagination { flex-wrap: wrap; justify-content: center; }
-}
-@media (max-width: 480px) {
-  .tt-footer .el-pagination__total, .tt-footer .el-pagination__sizes { display: none; }
 }
 </style>

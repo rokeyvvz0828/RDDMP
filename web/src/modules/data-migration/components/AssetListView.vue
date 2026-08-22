@@ -5,6 +5,7 @@
         视觉与交互对齐“用户管理”页：UiToolbar + UiDataTable + UiFormDrawer + Element Plus 反馈。
 -->
 <script setup lang="ts">
+import '../data-migration.css'
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import { Delete, Download, Plus, Refresh, Search, UploadFilled } from '@element-plus/icons-vue'
@@ -106,7 +107,7 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="asset-list-page">
+  <section class="dm-page-root">
     <UiToolbar>
       <el-input v-model="keyword" clearable placeholder="搜索编号或名称" style="width: 240px" @keyup.enter="load">
         <template #prefix><el-icon><Search /></el-icon></template>
@@ -149,7 +150,3 @@ onMounted(load)
     </UiFormDrawer>
   </section>
 </template>
-
-<style scoped>
-.asset-list-page { min-width: 0; }
-</style>

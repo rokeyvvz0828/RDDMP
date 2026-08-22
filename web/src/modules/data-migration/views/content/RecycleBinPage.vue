@@ -5,6 +5,7 @@
         彻底清理为危险操作，需确认后执行。
 -->
 <script setup lang="ts">
+import '../../data-migration.css'
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Refresh, Search } from '@element-plus/icons-vue'
@@ -81,7 +82,7 @@ onMounted(load)
 </script>
 
 <template>
-  <main class="recycle-bin-page">
+  <main class="dm-page-root">
     <UiPageHeader title="回收站" description="管理已移入回收站的文件资产，可恢复或彻底清理。">
       <template #actions><el-button :disabled="loading || actionBusy" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template>
     </UiPageHeader>
@@ -110,8 +111,3 @@ onMounted(load)
     </template>
   </main>
 </template>
-
-<style scoped>
-.recycle-bin-page { min-width: 0; }
-.dm-state-panel { padding: 24px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
-</style>

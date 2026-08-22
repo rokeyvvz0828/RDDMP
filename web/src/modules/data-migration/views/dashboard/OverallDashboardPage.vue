@@ -4,6 +4,7 @@
         拉取汇总数据，覆盖加载/空/失败/无权限状态，指标卡片使用语义主题变量，移动端单列排列。
 -->
 <script setup lang="ts">
+import '../../data-migration.css'
 import { onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
@@ -36,7 +37,7 @@ onMounted(load)
 </script>
 
 <template>
-  <main class="overall-dashboard-page">
+  <main class="dm-page-root">
     <UiPageHeader title="整体看板" description="按项目维度展示数据迁移资产核心统计指标。">
       <template #actions><el-button :disabled="loading" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template>
     </UiPageHeader>
@@ -52,8 +53,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.overall-dashboard-page { min-width: 0; }
-.dm-state-panel { padding: 24px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
 .dm-dashboard-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .dm-metric-card { min-height: 148px; padding: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); border-top: 3px solid var(--brand); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); }
 .dm-metric-card span { color: var(--muted); font-size: 13px; }
