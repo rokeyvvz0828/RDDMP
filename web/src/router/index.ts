@@ -26,10 +26,8 @@ import DataMigrationTopics from '../modules/data-migration/views/content/TopicsP
 import DataMigrationReleaseDrills from '../modules/data-migration/views/content/ReleaseDrillsPage.vue'
 import DataMigrationIssues from '../modules/data-migration/views/content/IssuesPage.vue'
 import DataMigrationRecycleBin from '../modules/data-migration/views/content/RecycleBinPage.vue'
-import DataMigrationProjects from '../modules/data-migration/views/base/ProjectsPage.vue'
 import DataMigrationBaseComponents from '../modules/data-migration/views/base/ComponentsPage.vue'
 import DataMigrationTargetTables from '../modules/data-migration/views/base/TargetTablesPage.vue'
-import DataMigrationIntermediateTables from '../modules/data-migration/views/base/IntermediateTablesPage.vue'
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
@@ -320,13 +318,7 @@ const router = createRouter({
         },
         {
           path: 'data-migration/base',
-          redirect: '/data-migration/base/projects'
-        },
-        {
-          path: 'data-migration/base/projects',
-          name: 'data-migration-base-projects',
-          component: DataMigrationProjects,
-          meta: { title: '项目清单' }
+          redirect: '/data-migration/base/components'
         },
         {
           path: 'data-migration/base/components',
@@ -338,13 +330,15 @@ const router = createRouter({
           path: 'data-migration/base/target-tables',
           name: 'data-migration-base-target-tables',
           component: DataMigrationTargetTables,
-          meta: { title: '目标表结构' }
+          props: true,
+          meta: { title: '目标表结构', category: 'TARGET' }
         },
         {
           path: 'data-migration/base/intermediate-tables',
           name: 'data-migration-base-intermediate-tables',
-          component: DataMigrationIntermediateTables,
-          meta: { title: '中间表结构' }
+          component: DataMigrationTargetTables,
+          props: true,
+          meta: { title: '中间表结构', category: 'INTERMEDIATE' }
         },
         { path: 'requirements', redirect: '/requirements/new-project' },
         { path: 'requirements/:section', name: 'requirements', component: RequirementsView, props: true, meta: { title: '需求管理平台' } },

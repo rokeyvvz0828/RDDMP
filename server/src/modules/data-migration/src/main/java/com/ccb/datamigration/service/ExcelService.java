@@ -53,7 +53,7 @@ public class ExcelService {
                     String code = text(row, 0, formatter); String name = text(row, 1, formatter);
                     long projectId = number(row, 2, formatter); String component = text(row, 3, formatter);
                     if (code.isBlank() || name.isBlank()) throw new IllegalArgumentException("asset_code and asset_name are required");
-                    if (!exists("SELECT COUNT(*) FROM dm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId())) throw new IllegalArgumentException("project_id not found");
+                    if (!exists("SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId())) throw new IllegalArgumentException("project_id not found");
                     Long componentId = component.isBlank() ? null : Long.valueOf(component);
                     if (componentId != null && !exists("SELECT COUNT(*) FROM dm_component WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", componentId, projectId, user.tenantId())) throw new IllegalArgumentException("component_id not found");
                     String structuredData = text(row, 5, formatter); String assetType = text(row, 4, formatter);

@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 70,
+  "revision": 77,
   "created_at": "2026-08-20T02:59:18+00:00",
-  "updated_at": "2026-08-21T03:45:00+00:00",
+  "updated_at": "2026-08-22T20:19:00+08:00",
   "mode": "high-assurance",
   "phase": "observing",
   "phase_history": [
@@ -185,6 +185,66 @@
       "to": "observing",
       "evidence": "T6 implemented: Flyway V36 migration applied, menu hierarchy created, backend running, all tests pass",
       "recorded_at": "2026-08-21T02:45:00+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "用户指令：组件编号/组件名称 为多余字段清理，进入 T7 受控执行",
+      "recorded_at": "2026-08-22T02:30:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T7 字段清理完成：V84 幂等删列/唯一键并新增 uk_dm_component_subsystem、后端列表/导出/创建/看板移除读写、前端表单/抽屉/看板移除展示，构建与测试通过，进入复验",
+      "recorded_at": "2026-08-22T02:45:00+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "用户指令：组件简介（dm_component.description）字段亦为冗余字段，进入 T8 受控执行",
+      "recorded_at": "2026-08-22T03:00:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T8 组件简介清理完成：V84 幂等 DROP description、后端列表/导出/创建/关键字筛选移除读写、前端表单/抽屉移除录入，导出 14→13 列，构建与测试通过，进入复验",
+      "recorded_at": "2026-08-22T03:20:00+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "用户指令：所属项目字段 为 根菜单「项目管理」中的数据，进入 T9 受控执行（定标：全链路收敛 pm_project、废弃数迁项目维护、接受 workbench 权限/数据范围）",
+      "recorded_at": "2026-08-22T04:00:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T9 数据源切换完成：组件/资产/看板/Excel 项目引用全部切到 pm_project（只读 JOIN/COUNT）；/projects 与 /options 端点、项目清单页/路由/API 废弃移除；前端所属项目下拉改用 workbench；进入复验",
+      "recorded_at": "2026-08-22T04:30:00+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "用户指令：新增数据迁移管理员/开发人员两个角色并写入初始化脚本（含角色描述与权限分配，幂等且兼容现有角色体系），进入 T10 受控执行",
+      "recorded_at": "2026-08-22T04:52:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T10 角色初始化完成：V87 幂等新增 sys_role.role_description 列，创建 DATA_MIGRATION_ADMIN(200)/DATA_MIGRATION_DEVELOPER(201) 两角色并分配全部数据迁移菜单（各20项）与动作权限（管理员66/开发人员18仅read），数据库验证通过，进入复验",
+      "recorded_at": "2026-08-22T05:00:00+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "代码审查发现目标表项目数据源、租户唯一性、分类权限和 Excel 导入契约偏差，进入 T11 受控修复",
+      "recorded_at": "2026-08-22T19:00:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T11 修复完成：聚焦后端测试、前端构建和 diff 检查通过；范围仅剩 IDE 生成 .codebuddy 越界，治理/全量运行仍有环境或历史账本缺口",
+      "recorded_at": "2026-08-22T19:15:00+08:00"
     }
   ],
   "stage_artifacts": {
@@ -4197,9 +4257,13 @@
         {
           "recorded_at": "2026-08-21T01:18:29+00:00",
           "text": "T5-r6 observation: structured update/delete/export probes, full Maven/Vite/governance checks and runtime health passed; residual coverage gaps recorded"
+        },
+        {
+          "recorded_at": "2026-08-21T03:50:00+00:00",
+          "text": "T5-r8: 用户反馈 F-0002 触发，移除基础资料子菜单的 UiPageHeader 横幅；vue-tsc+vite build 通过；变更仅影响 ComponentsPage.vue/StructuredListView.vue 标记与导入"
         }
       ],
-      "updated_at": "2026-08-21T01:18:29+00:00"
+      "updated_at": "2026-08-21T03:50:00+00:00"
     },
     {
       "id": "T6",
@@ -4287,6 +4351,25 @@
       "resolved_at": "2026-08-21T01:18:05+00:00",
       "resolution_evidence": "T5-r6 已实测字段级更新、关联校验删除和筛选导出：更新 code=0，导出 HTTP 200，存在引用时删除 HTTP 409；前端已提供编辑字段和批量删除入口",
       "decided_at": "2026-08-21T00:46:56+00:00"
+    },
+    {
+      "id": "F-0002",
+      "task": "T5",
+      "source": "user directive (screenshot)",
+      "requirement": "R8",
+      "expected": "基础资料管理下各子菜单（项目清单/系统或组件清单/目标表结构/中间表结构）不再渲染大标题+描述横幅；标题由顶部 Tabs 承担",
+      "observed": "T5-r7 在 ComponentsPage.vue 与 StructuredListView.vue 顶部加入了 UiPageHeader 区块（含 eyebrow + 标题 + 描述），在 375/390 视口占用近 1/3 的首屏空间且与顶部 Tabs 信息重复",
+      "evidence": "用户截图：sections 顶部出现'系统/组件清单 / 维护迁移组件及其所属项目，支持编辑组件名称。'红色框区域；前端 ComponentsPage.vue、StructuredListView.vue 当前模板",
+      "severity": "P3",
+      "confidence": "high",
+      "sensor_limit": "视口截图与代码片段可见",
+      "causal_hypothesis": "T5-r7 优化 Toolbar/Drawer 时统一加入 UiPageHeader 用于辅助定位，但与已有 Tabs 重复，在基础资料子页面显得冗余",
+      "correction_check": "删除页面头部 UiPageHeader 区块（含 eyebrow/标题/描述/刷新 actions）；vue-tsc 与 vite build 仍通过；其它基础资料页面保持现有样式",
+      "decision": "accept",
+      "decision_reason": "用户明确要求，且变更仅影响两个文件的标记/导入，零后端、零契约、零数据影响",
+      "created_at": "2026-08-21T03:50:00+00:00",
+      "resolved_at": "2026-08-21T03:50:00+00:00",
+      "resolution_evidence": "execution-T5-r8 已移除 web/src/modules/data-migration/views/base/ComponentsPage.vue 与 web/src/modules/data-migration/components/StructuredListView.vue 中的 UiPageHeader/eyebrow/title/description/刷新按钮；同步清理 Refresh 图标与 UiPageHeader 导入；vue-tsc 与 vite build 输出 BUILD SUCCESS；状态已写入 state.revision +1"
     }
   ],
   "samples": [

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "task_id": "T12",
+  "sample_label": "Independent re-review after authorization and migration fixes",
+  "expected": [
+    "Fresh-database migration provides every table used by the data-migration module.",
+    "Developer read-only role cannot call asset or structured-asset write endpoints.",
+    "Target-table import rejects known duplicate fields before inserting a partial table."
+  ],
+  "observed": [
+    "V84 contains idempotent dm_asset, dm_operation_log, dm_dashboard_snapshot and menu hierarchy creation; V87 binds the root menu.",
+    "Asset upload/delete and structured save/update/delete/import require write or manage authority; recycle restore/purge require manage authority.",
+    "TargetTableService validates imported field names before createTable and the controller only catches IOException."
+  ],
+  "passed": [
+    "mvn -q -pl :ccb-data-migration -am test",
+    "npm --prefix web run build",
+    "git diff --check",
+    "node scripts/check-governance.mjs"
+  ],
+  "blocked": [
+    "mvn -q test: Testcontainers Docker client API 1.32 is rejected by the local Docker server requiring 1.40; DOCKER_API_VERSION=1.40 does not change the bundled client.",
+    "node scripts/check-all-governance.mjs: historical requirement ledgers have topic mismatches, invalid files, BOM JSON and missing convergence evidence.",
+    "node scripts/check-module-boundaries.mjs: pre-existing platform/attachment and requirement/workflow boundary violations.",
+    "codex scope check: untracked .codebuddy/agents/AGENTS.md is outside writable_paths and was preserved."
+  ],
+  "decision": "not_converged",
+  "push_allowed": false
+}

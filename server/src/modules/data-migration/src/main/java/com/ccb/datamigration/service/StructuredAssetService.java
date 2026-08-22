@@ -33,7 +33,7 @@ public class StructuredAssetService {
         long projectId;
         try { projectId = Long.parseLong(String.valueOf(body.get("projectId"))); }
         catch (NumberFormatException ex) { throw new BusinessException(ErrorCode.BAD_REQUEST, "projectId must be numeric"); }
-        if (jdbc.queryForObject("SELECT COUNT(*) FROM dm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Integer.class, projectId, user.tenantId()) == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project not found");
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Integer.class, projectId, user.tenantId()) == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project not found");
         if (body.get("componentId") != null && jdbc.queryForObject("SELECT COUNT(*) FROM dm_component WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Integer.class, body.get("componentId"), projectId, user.tenantId()) == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "Component not found");
         String structuredData;
         try { structuredData = objectMapper.writeValueAsString(body.getOrDefault("structuredData", Map.of())); }
@@ -96,7 +96,7 @@ public class StructuredAssetService {
     }
 
     private void ensureProject(long id, AuthUser user) {
-        if (!exists("SELECT COUNT(*) FROM dm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId())) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project not found");
+        if (!exists("SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId())) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project not found");
     }
 
     private void ensureComponent(long id, long projectId, AuthUser user) {

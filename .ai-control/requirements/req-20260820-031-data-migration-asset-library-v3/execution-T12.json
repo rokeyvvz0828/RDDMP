@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "task_id": "T12",
+  "purpose": "Independent re-review fixes for migration completeness, import error semantics, partial table prevention, and asset write authorization.",
+  "files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V87__data_migration_roles_seed.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TargetTableController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/AssetController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+  ],
+  "actions": [
+    "Restored dm_asset, dm_operation_log, dm_dashboard_snapshot and the data-migration menu hierarchy in the authorized V84 migration.",
+    "Included the dynamic DataMigration root menu in V87 role-menu bindings.",
+    "Preserved authorization errors from target-table import and prevalidated imported fields before table persistence.",
+    "Added method-level write/manage authorization to asset and structured-asset endpoints."
+  ],
+  "commands": [
+    "mvn -q -pl :ccb-data-migration -am test",
+    "npm --prefix web run build",
+    "git diff --check",
+    "node scripts/check-governance.mjs",
+    "mvn -q test",
+    "DOCKER_API_VERSION=1.40 mvn -q test",
+    "node scripts/check-all-governance.mjs",
+    "node scripts/check-module-boundaries.mjs"
+  ],
+  "result": "Focused backend, frontend build, diff and module governance checks passed; full backend, all-governance and module-boundary checks remain blocked by pre-existing environment or repository issues."
+}

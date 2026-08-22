@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T9",
+  "phase": "observing",
+  "control_prefix": "T9",
+  "recorded_at": "2026-08-22T04:10:00+00:00",
+  "result": "converged",
+  "deviation_control": {
+    "observed_deviation": [],
+    "corrective_actions": [],
+    "residual_risks": [
+      "后端以只读 SQL JOIN/COUNT 方式访问 pm_project（platform/system 数据），未走 Java 服务契约，若未来平台要求跨模块读取全走契约需评估依赖登记",
+      "后端组件列表 JOIN 不做成员过滤（与切换前 dm_project 行为一致），非成员项目组件在列表中仍展示项目编码/名称",
+      "本机运行态存在 .codebuddy/agents/AGENTS.md（IDE 自动生成、untracked、非任务产物），删除操作未获批准，codex-scope 检查因该文件报越界（非本次改动）",
+      "本地 dev 库 admin 登录密码为 admin123（非默认 password），运行抽查使用该凭据，未触碰任何生产数据"
+    ]
+  },
+  "evidence": {
+    "backend_diff": "ProjectComponentService：移除 options/projects/createProject/updateProject/deleteProject 及 normalizeProjectCode/requireProjectName/requireDescription/optionalText；组件列表/导出/详情 JOIN 与 count JOIN 全部 dm_project→pm_project；ensureProject 改查 pm_project。Controller：移除 /options 与 /projects 的 GET/POST/PUT/DELETE。DashboardService/DashboardSnapshotScheduler/AssetService/StructuredAssetService/ExcelService 全部 dm_project→pm_project",
+    "frontend_diff": "data-migration.ts 移除 DataMigrationProject 类型与 4 个 project API；ComponentsPage.vue 项目下拉/筛选改用 getProjectWorkbench()（Project 类型）；router/index.ts 移除 /data-migration/base/projects 路由、/data-migration/base redirect 改 components；ProjectsPage.vue 删除",
+    "sql_probe": "grep dm_project 在 modules/data-migration 无残留（仅 V84 表定义保留）；V84 未变更（dm_project 表保留历史数据）",
+    "build": "vue-tsc --noEmit 0 错误；npm run build 成功",
+    "tests": "mvn -pl server/src/modules/data-migration -am test 通过（exitCode 0）",
+    "governance": "check-all-governance 通过（17 模块 + repo skill + development entry）；AI control layout 失败项均为其他需求（req-20260813-030 等）既有问题，本需求未列其中",
+    "scope": "check-codex-scope 通过，唯一越界项为本机 IDE 生成物 .codebuddy/agents/AGENTS.md（untracked、非本次改动、删除未获批准）",
+    "runtime_probe": [
+      "创建组件 projectId=1787357565278326（pm_project.id）成功，返回 project_code=111 / project_name=3333（来自 pm_project JOIN）",
+      "GET /components 列表 total=1，记录含 project_code/name（pm_project）与 physical_subsystem_code 带出字段",
+      "PUT /components/{id} totalCheck 1→0 成功",
+      "GET /components/export HTTP 200，xlsx 13 列（项目编号/项目名称/系统编号/所属事业群/系统简称/系统名称/系统描述/负责团队/是否涉及总分核对/创建时间/创建人/更新时间/更新人），数据行为 111/3333（pm_project），无组件简介列",
+      "GET /data-migration/projects 与 /options 已无映射（返回 500 无资源，前端已同步移除调用）",
+      "GET /project/workbench 正常返回 pm_project（1 条：code=111 name=3333）",
+      "抽查数据已软删清理，dm_component 有效数据恢复为 0"
+    ]
+  },
+  "verification": {
+    "unit_tests": "passed",
+    "build": "passed",
+    "governance": "passed_with_known_unrelated_failures",
+    "scope": "passed_except_ide_generated_file",
+    "runtime_spot_check": "passed",
+    "unverified": []
+  },
+  "convergence_checklist": {
+    "scope_clean": true,
+    "no_prod_contact": true,
+    "no_pii_exposure": true,
+    "no_security_bypass": true,
+    "no_rollback_of_others": true,
+    "writable_paths_respected": true,
+    "all_changes_reported": true,
+    "unverified_not_claimed": true
+  },
+  "next": "user review / merge preparation"
+}

@@ -1,66 +1,63 @@
 <!--
   用途：数迁组件看板页
-  说明：按组件维度展示资产数量统计（组件编码/名称/资产数量）；调用 getDataMigrationDashboard('component')
-        拉取数据，自带加载/失败/空数据状态。
+  说明：按组件维度展示资产数量统计（系统编号/系统名称/资产数量，组件身份即物理子系统）；
+        调用 getDataMigrationDashboard('component') 拉取数据，使用 UiPageHeader + UiDataTable，
+        覆盖加载/空/失败/无权限状态。
 -->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { Refresh } from '@element-plus/icons-vue'
+import UiDataTable from '../../../../components/ui/UiDataTable.vue'
+import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
+import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
+import { apiErrorMessage } from '../../../../api/error'
 import { getDataMigrationDashboard } from '../../../../api/data-migration'
 
-const loading = ref(true)
+const loading = ref(false)
 const error = ref('')
+const forbidden = ref(false)
 const rows = ref<Array<Record<string, unknown>>>([])
 
-function messageOf(error: unknown) {
-  return error instanceof Error ? error.message : '操作失败，请稍后重试'
+function httpStatus(error: unknown) {
+  return (error as { response?: { status?: number } }).response?.status
 }
 
 async function load() {
-  loading.value = true; error.value = ''
+  loading.value = true
+  error.value = ''
+  forbidden.value = false
   try {
     const data = (await getDataMigrationDashboard('component')).data.data ?? []
     rows.value = Array.isArray(data) ? data : []
-  } catch (e) { error.value = messageOf(e) }
-  finally { loading.value = false }
+  } catch (e) {
+    if (httpStatus(e) === 403) forbidden.value = true
+    else error.value = apiErrorMessage(e, '组件看板数据加载失败')
+  } finally { loading.value = false }
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <main class="dm-page">
-    <header class="dm-page-header">
-      <div><span class="dm-eyebrow">DATA MIGRATION</span><h1>组件看板</h1></div>
-      <div class="dm-header-actions"><button class="dm-button" type="button" :disabled="loading" @click="load">刷新</button></div>
-    </header>
-    <p v-if="loading" class="dm-state">正在加载...</p>
-    <p v-else-if="error" class="dm-state dm-error">{{ error }}</p>
-    <section v-else class="dm-table-shell">
-      <div class="dm-row dm-head"><span>组件编码</span><span>组件名称</span><span>资产数量</span></div>
-      <div v-for="row in rows" :key="String(row.id)" class="dm-row"><span>{{ row.component_code }}</span><span>{{ row.component_name }}</span><span>{{ row.asset_count }}</span></div>
-      <p v-if="!rows.length" class="dm-state">暂无组件数据</p>
-    </section>
+  <main class="component-dashboard-page">
+    <UiPageHeader title="组件看板" description="按组件维度展示数据迁移资产数量统计。">
+      <template #actions><el-button :disabled="loading" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template>
+    </UiPageHeader>
+
+    <section v-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无组件看板查看权限" sub-title="请向数据迁移管理员申请 data-migration:dashboard 权限。" /></section>
+    <section v-else-if="error" class="dm-state-panel"><el-result icon="error" title="组件看板加载失败" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
+    <template v-else>
+      <UiDataTable v-if="rows.length || loading" :data="rows" :loading="loading" border empty-text="暂无组件数据">
+        <el-table-column label="系统编号" min-width="150"><template #default="scope">{{ scope.row.system_code }}</template></el-table-column>
+        <el-table-column label="系统名称" min-width="180"><template #default="scope">{{ scope.row.system_name }}</template></el-table-column>
+        <el-table-column label="资产数量" min-width="110"><template #default="scope">{{ scope.row.asset_count }}</template></el-table-column>
+      </UiDataTable>
+      <UiEmptyState v-if="!loading && !rows.length" title="暂无组件数据" description="按组件维度暂无可展示的资产统计。" />
+    </template>
   </main>
 </template>
 
 <style scoped>
-.dm-page { padding: 24px; color: var(--el-text-color-primary, #1f2937); }
-.dm-page-header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:24px; }
-.dm-header-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.dm-eyebrow { color:#64748b; font-size:12px; letter-spacing:.08em; }
-h1 { margin:4px 0 0; font-size:28px; }
-.dm-button { border:1px solid #cbd5e1; background:#fff; padding:8px 14px; border-radius:6px; cursor:pointer; }
-.dm-button:disabled { cursor:not-allowed; opacity:.55; }
-.dm-table-shell { overflow:auto; border:1px solid #e2e8f0; border-radius:8px; background:#fff; }
-.dm-row { min-width:640px; display:grid; grid-template-columns:.45fr 1fr 1.5fr 1fr .8fr; gap:16px; align-items:center; padding:14px 16px; border-bottom:1px solid #f1f5f9; }
-.dm-head { font-weight:600; background:#f8fafc; }
-.dm-state { padding:28px 0; color:#64748b; }
-.dm-error { color:#b91c1c; }
-@media (max-width: 640px) {
-  .dm-page { padding:16px; }
-  h1 { font-size:22px; }
-  .dm-table-shell { border:0; background:transparent; overflow:visible; }
-  .dm-row { min-width:0; grid-template-columns:1fr; gap:6px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:10px; }
-  .dm-head { display:none; }
-}
+.component-dashboard-page { min-width: 0; }
+.dm-state-panel { padding: 24px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
 </style>

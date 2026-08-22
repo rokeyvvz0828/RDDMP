@@ -1,54 +1,94 @@
 <!--
   用途：结构化资产列表视图（结构化数据通用列表组件）
   说明：按结构化类型展示字段型资产（如目标表结构、中间表结构等），支持关键词查询、
-        批量删除、Excel 导入/导出、以及以 JSON 形式编辑字段内容；
+        批量删除（逻辑删除，进入回收站）、Excel 导入/导出、以及抽屉表单编辑字段内容；
         接收 structuredType（结构化类型）与 pageTitle（页面标题）两个 props，由各内容页复用。
+        视觉与交互对齐 AssetListView：UiToolbar + UiDataTable + UiFormDrawer，
+        覆盖加载/空/失败/无权限/提交中状态；基础资料子页面不展示标题横幅，定位依赖顶部 Tabs。
 -->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { deleteDataMigrationStructured, exportDataMigrationStructured, inspectDataMigrationStructuredImport, listDataMigrationStructured, updateDataMigrationStructured, type DataMigrationAsset } from '../../../api/data-migration'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete, Download, Edit, Search, UploadFilled } from '@element-plus/icons-vue'
+import UiDataTable from '../../../components/ui/UiDataTable.vue'
+import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
+import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
+import UiToolbar from '../../../components/ui/UiToolbar.vue'
+import { apiErrorMessage } from '../../../api/error'
+import {
+  deleteDataMigrationStructured,
+  exportDataMigrationStructured,
+  inspectDataMigrationStructuredImport,
+  listDataMigrationStructured,
+  updateDataMigrationStructured,
+  type DataMigrationAsset
+} from '../../../api/data-migration'
 
 const props = defineProps<{ structuredType: string; pageTitle: string }>()
-const loading = ref(true)
+
+const loading = ref(false)
 const error = ref('')
+const forbidden = ref(false)
 const assets = ref<DataMigrationAsset[]>([])
 const keyword = ref('')
 const selectedIds = ref<number[]>([])
 const actionBusy = ref(false)
-const structuredInput = ref<HTMLInputElement | null>(null)
 const importResult = ref('')
+const structuredInput = ref<HTMLInputElement | null>(null)
+
+const drawerOpen = ref(false)
+const saving = ref(false)
+const editingAsset = ref<DataMigrationAsset | null>(null)
+const editName = ref('')
+const editJson = ref('')
 
 function messageOf(error: unknown) {
   return error instanceof Error ? error.message : '操作失败，请稍后重试'
 }
 
+function httpStatus(error: unknown) {
+  return (error as { response?: { status?: number } }).response?.status
+}
+
+function cancelled(error: unknown) {
+  const action = (error as { action?: string }).action
+  return action === 'cancel' || action === 'close'
+}
+
 async function load() {
-  loading.value = true; error.value = ''
+  loading.value = true
+  error.value = ''
+  forbidden.value = false
   selectedIds.value = []
   try {
     assets.value = (await listDataMigrationStructured(props.structuredType, { keyword: keyword.value || undefined })).data.data ?? []
-  } catch (e) { error.value = messageOf(e) }
-  finally { loading.value = false }
+  } catch (e) {
+    if (httpStatus(e) === 403) forbidden.value = true
+    else error.value = apiErrorMessage(e, '列表加载失败')
+  } finally { loading.value = false }
 }
 
-function toggleSelection(id: number) {
-  selectedIds.value = selectedIds.value.includes(id) ? selectedIds.value.filter(item => item !== id) : [...selectedIds.value, id]
+function onSelectionChange(rows: DataMigrationAsset[]) {
+  selectedIds.value = rows.map(row => row.id)
 }
 
 async function removeSelected() {
   if (!selectedIds.value.length) return
-  actionBusy.value = true; error.value = ''
   try {
+    await ElMessageBox.confirm(`确认将选中的 ${selectedIds.value.length} 个${props.pageTitle}删除吗？删除后进入回收站。`, '删除', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' })
+    actionBusy.value = true
     await deleteDataMigrationStructured(props.structuredType, selectedIds.value)
+    ElMessage.success('已删除')
     await load()
-  } catch (e) { error.value = messageOf(e) }
-  finally { actionBusy.value = false }
+  } catch (e) {
+    if (!cancelled(e)) ElMessage.error(messageOf(e))
+  } finally { actionBusy.value = false }
 }
 
 function chooseStructuredImport() { structuredInput.value?.click() }
 
 async function exportStructured() {
-  actionBusy.value = true; error.value = ''
+  actionBusy.value = true
   try {
     const response = await exportDataMigrationStructured(props.structuredType, { keyword: keyword.value || undefined })
     const url = URL.createObjectURL(response.data)
@@ -57,99 +97,108 @@ async function exportStructured() {
     anchor.download = `data-migration-${props.structuredType}.xlsx`
     anchor.click()
     URL.revokeObjectURL(url)
-  } catch (e) { error.value = messageOf(e) }
+    ElMessage.success('导出成功')
+  } catch (e) { ElMessage.error(messageOf(e)) }
   finally { actionBusy.value = false }
 }
 
-async function editStructured(asset: DataMigrationAsset) {
-  const name = window.prompt('资产名称', asset.asset_name)?.trim()
-  if (!name) return
-  const current = typeof asset.structured_data === 'string' ? asset.structured_data : JSON.stringify(asset.structured_data ?? {}, null, 2)
-  const raw = window.prompt('字段 JSON', current)
-  if (raw == null) return
+function openEdit(asset: DataMigrationAsset) {
+  editingAsset.value = asset
+  editName.value = asset.asset_name
+  editJson.value = typeof asset.structured_data === 'string' ? asset.structured_data : JSON.stringify(asset.structured_data ?? {}, null, 2)
+  drawerOpen.value = true
+}
+
+async function saveEdit() {
+  const asset = editingAsset.value
+  if (!asset) return
+  if (!editName.value.trim()) {
+    ElMessage.warning('请填写资产名称')
+    return
+  }
   let structuredData: unknown
-  try { structuredData = JSON.parse(raw) } catch { error.value = '字段 JSON 格式无效'; return }
-  actionBusy.value = true; error.value = ''
+  try { structuredData = JSON.parse(editJson.value) } catch { ElMessage.warning('字段 JSON 格式无效'); return }
+  saving.value = true
   try {
-    await updateDataMigrationStructured(props.structuredType, asset.id, { projectId: asset.project_id, componentId: asset.component_id, assetCode: asset.asset_code, assetName: name, structuredData })
+    await updateDataMigrationStructured(props.structuredType, asset.id, { projectId: asset.project_id, componentId: asset.component_id, assetCode: asset.asset_code, assetName: editName.value.trim(), structuredData })
+    ElMessage.success('已保存')
+    drawerOpen.value = false
     await load()
-  } catch (e) { error.value = messageOf(e) }
-  finally { actionBusy.value = false }
+  } catch (e) { ElMessage.error(messageOf(e)) }
+  finally { saving.value = false }
 }
 
 async function inspectStructuredImport(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
-  actionBusy.value = true; error.value = ''; importResult.value = ''
+  actionBusy.value = true
+  importResult.value = ''
   try {
     const response = await inspectDataMigrationStructuredImport(props.structuredType, file)
     const data = response.data.data ?? {}
     importResult.value = `导入完成：成功 ${String(data.accepted ?? 0)} 行，失败 ${String(data.failed ?? 0)} 行`
-  } catch (e) { error.value = messageOf(e) }
-  finally { actionBusy.value = false; if (structuredInput.value) structuredInput.value.value = '' }
+    ElMessage.success(importResult.value)
+    await load()
+  } catch (e) { ElMessage.error(messageOf(e)) }
+  finally {
+    actionBusy.value = false
+    if (structuredInput.value) structuredInput.value.value = ''
+  }
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <main class="dm-page">
-    <header class="dm-page-header">
-      <div><span class="dm-eyebrow">DATA MIGRATION</span><h1>{{ pageTitle }}</h1></div>
-      <div class="dm-header-actions"><button class="dm-button" type="button" :disabled="loading || actionBusy" @click="load">刷新</button></div>
-    </header>
-    <section class="dm-toolbar" aria-label="资产操作">
-      <label class="dm-field"><span>关键词</span><input v-model="keyword" type="search" placeholder="编号或名称" @keyup.enter="load"></label>
-      <button class="dm-button" type="button" :disabled="loading || actionBusy" @click="load">查询</button>
-      <input ref="structuredInput" class="dm-hidden" type="file" accept=".xlsx" @change="inspectStructuredImport">
-      <button class="dm-button" type="button" :disabled="actionBusy" @click="chooseStructuredImport">导入 Excel</button>
-      <button class="dm-button" type="button" :disabled="actionBusy" @click="exportStructured">导出 Excel</button>
-      <button class="dm-button dm-danger" type="button" :disabled="!selectedIds.length || actionBusy" @click="removeSelected">删除 ({{ selectedIds.length }})</button>
-      <span v-if="importResult" class="dm-import-result" role="status">{{ importResult }}</span>
-    </section>
-    <p v-if="loading" class="dm-state">正在加载...</p>
-    <p v-else-if="error" class="dm-state dm-error">{{ error }}</p>
-    <section v-else class="dm-table-shell">
-      <div class="dm-row dm-head"><span>选择</span><span>资产编码</span><span>名称</span><span>类型</span><span>操作</span></div>
-      <div v-for="asset in assets" :key="asset.id" class="dm-row">
-        <span><input type="checkbox" :checked="selectedIds.includes(asset.id)" :aria-label="`选择 ${asset.asset_name}`" @change="toggleSelection(asset.id)"></span>
-        <span>{{ asset.asset_code }}</span><span>{{ asset.asset_name }}</span><span>{{ asset.asset_type }}</span>
-        <span class="dm-row-actions"><button class="dm-link" type="button" :disabled="actionBusy" @click="editStructured(asset)">编辑字段</button></span>
-      </div>
-      <p v-if="!assets.length" class="dm-state">暂无资产</p>
-    </section>
+  <main class="structured-list-page">
+    <section v-if="forbidden" class="dm-state-panel"><el-result icon="warning" :title="`暂无${pageTitle}查看权限`" sub-title="请向数据迁移管理员申请 data-migration:access 权限。" /></section>
+    <section v-else-if="error" class="dm-state-panel"><el-result icon="error" :title="`${pageTitle}加载失败`" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
+    <template v-else>
+      <UiToolbar>
+        <el-input v-model="keyword" clearable placeholder="搜索编号或名称" style="width: 240px" @keyup.enter="load">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <template #actions>
+          <el-button :disabled="loading || actionBusy" @click="load"><el-icon><Search /></el-icon>查询</el-button>
+          <input ref="structuredInput" class="dm-hidden" type="file" accept=".xlsx" @change="inspectStructuredImport">
+          <el-button :disabled="actionBusy" @click="chooseStructuredImport"><el-icon><UploadFilled /></el-icon>导入 Excel</el-button>
+          <el-button :disabled="actionBusy" @click="exportStructured"><el-icon><Download /></el-icon>导出 Excel</el-button>
+          <el-button type="danger" plain :disabled="!selectedIds.length || actionBusy" @click="removeSelected"><el-icon><Delete /></el-icon>删除 ({{ selectedIds.length }})</el-button>
+        </template>
+      </UiToolbar>
+
+      <p v-if="importResult" class="dm-import-result" role="status">{{ importResult }}</p>
+
+      <UiDataTable v-if="assets.length || loading" :data="assets" :loading="loading" row-key="id" border empty-text="暂无资产" @selection-change="onSelectionChange">
+        <el-table-column type="selection" width="46" />
+        <el-table-column prop="asset_code" label="资产编码" min-width="150" />
+        <el-table-column prop="asset_name" label="名称" min-width="180" />
+        <el-table-column prop="asset_type" label="类型" min-width="110" />
+        <el-table-column label="操作" width="110" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" :disabled="actionBusy" @click="openEdit(scope.row)"><el-icon><Edit /></el-icon>编辑字段</el-button>
+          </template>
+        </el-table-column>
+      </UiDataTable>
+      <UiEmptyState v-if="!loading && !assets.length" title="暂无资产" description="调整筛选条件，或通过 Excel 导入资产。" />
+    </template>
+
+    <UiFormDrawer v-model="drawerOpen" :title="`编辑${pageTitle}`" :loading="saving" @submit="saveEdit">
+      <el-form label-position="top">
+        <el-form-item label="资产名称" required>
+          <el-input v-model="editName" placeholder="必填" />
+        </el-form-item>
+        <el-form-item label="字段 JSON" required>
+          <el-input v-model="editJson" type="textarea" :rows="12" placeholder="{}" />
+        </el-form-item>
+      </el-form>
+    </UiFormDrawer>
   </main>
 </template>
 
 <style scoped>
-.dm-page { padding: 24px; color: var(--el-text-color-primary, #1f2937); }
-.dm-page-header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:24px; }
-.dm-header-actions, .dm-toolbar, .dm-row-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.dm-eyebrow { color:#64748b; font-size:12px; letter-spacing:.08em; }
-h1 { margin:4px 0 0; font-size:28px; }
-.dm-button { border:1px solid #cbd5e1; background:#fff; padding:8px 14px; border-radius:6px; cursor:pointer; }
-.dm-danger { color:#b91c1c; border-color:#fecaca; }
-.dm-link { border:0; padding:0; color:#2563eb; background:transparent; cursor:pointer; }
-.dm-button:disabled, .dm-link:disabled { cursor:not-allowed; opacity:.55; }
-.dm-toolbar { margin-bottom:16px; padding:12px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; }
-.dm-import-result { color:#166534; font-size:13px; }
-.dm-field { display:flex; align-items:center; gap:8px; color:#475569; font-size:13px; }
-.dm-field input { min-width:120px; border:1px solid #cbd5e1; border-radius:6px; padding:7px 9px; color:inherit; }
-.dm-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-.dm-table-shell { overflow:auto; border:1px solid #e2e8f0; border-radius:8px; background:#fff; }
-.dm-row { min-width:640px; display:grid; grid-template-columns:.45fr 1fr 1.5fr 1fr .8fr; gap:16px; align-items:center; padding:14px 16px; border-bottom:1px solid #f1f5f9; }
-.dm-head { font-weight:600; background:#f8fafc; }
-.dm-state { padding:28px 0; color:#64748b; }
-.dm-error { color:#b91c1c; }
-@media (max-width: 640px) {
-  .dm-page { padding:16px; }
-  h1 { font-size:22px; }
-  .dm-toolbar { align-items:stretch; }
-  .dm-field { width:100%; justify-content:space-between; }
-  .dm-field input { flex:1; min-width:0; }
-  .dm-toolbar button { flex:1; }
-  .dm-table-shell { border:0; background:transparent; overflow:visible; }
-  .dm-row { min-width:0; grid-template-columns:1fr; gap:6px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:10px; }
-  .dm-head { display:none; }
-}
+.structured-list-page { min-width: 0; }
+.dm-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.dm-import-result { margin: 0 0 12px; color: var(--success); font-size: 13px; }
+.dm-state-panel { padding: 24px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
 </style>

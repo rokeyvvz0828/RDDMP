@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T10",
+  "phase": "observing",
+  "control_prefix": "T10",
+  "recorded_at": "2026-08-22T05:00:00+00:00",
+  "result": "converged",
+  "deviation_control": {
+    "observed_deviation": [],
+    "corrective_actions": [],
+    "residual_risks": [
+      "role_description 字段为 sys_role 新增列，平台角色管理界面暂不展示/维护该描述（未改 SystemService，避免平台能力越界）",
+      "data-migration:write/dashboard/components 权限码未在菜单/权限表中登记，接口访问由 data-migration:access/manage 覆盖，未来如需独立登记需评估权限体系扩展",
+      "新角色默认未绑定任何用户，需管理员通过角色管理界面分配"
+    ]
+  },
+  "evidence": {
+    "migration_script": "V87__data_migration_roles_seed.sql：1) information_schema 幂等 ADD COLUMN sys_role.role_description；2) INSERT...WHERE NOT EXISTS 建 DATA_MIGRATION_ADMIN(200)/DATA_MIGRATION_DEVELOPER(201) 含描述；3) INSERT IGNORE 分配 700-744 现存 20 项菜单给两角色；4) 管理员 66 项全部 data-migration 动作权限 / 开发人员 18 项仅 read",
+    "flyway_log": "Migrating schema `ccb_platform` to version \"87 - data migration roles seed\"；Successfully applied 1 migration，now at version v87；Started CcbApplication in 4.277 seconds",
+    "db_probe": "utf8mb4 查询：200 DATA_MIGRATION_ADMIN 数据迁移管理员（负责数据迁移任务的创建、监控与管理，具备数据迁移模块全部菜单与动作权限）；201 DATA_MIGRATION_DEVELOPER 数据迁移开发人员（负责迁移任务的执行与调试，具备数据迁移模块查看与只读权限）；menu_cnt=20/20；perm_cnt=66/18；开发人员非 read 权限计数=0",
+    "idempotency": "角色 INSERT 用 WHERE NOT EXISTS（按 tenant_id+role_code+deleted=0 判定），菜单/权限分配用 INSERT IGNORE，重复执行不产生重复记录；加列用 information_schema 检查，重复执行跳过",
+    "compatibility": "新角色 id 200/201 与既有 1/100/101 隔离；未修改 SUPER_ADMIN/需求角色既有分配；未授予 system:admin；未改动平台 Java 代码与既有迁移脚本"
+  },
+  "verification": {
+    "migration_applied": "passed",
+    "roles_created": "passed",
+    "menu_assignment": "passed",
+    "permission_assignment": "passed",
+    "description_stored": "passed",
+    "idempotency_by_design": "passed",
+    "unverified": [
+      "未实际二次执行 V87 验证幂等（Flyway 已记录 v87 不会重跑；幂等性由脚本 WHERE NOT EXISTS / INSERT IGNORE / information_schema 检查保证）",
+      "未绑定测试用户到新角色做接口级访问验证（角色分配正确性已通过数据库探针确认，接口验证依赖用户绑定，超出本次脚本交付范围）"
+    ]
+  },
+  "convergence_checklist": {
+    "scope_clean": true,
+    "no_prod_contact": true,
+    "no_pii_exposure": true,
+    "no_security_bypass": true,
+    "no_rollback_of_others": true,
+    "writable_paths_respected": true,
+    "all_changes_reported": true,
+    "unverified_not_claimed": true
+  },
+  "next": "user review / merge preparation"
+}

@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T5-r9",
+  "phase": "executing",
+  "control_prefix": "T5",
+  "execution_status": "complete",
+  "trigger": "REQ-20260820-031 系统/组件清单功能规格 + 用户交互确认（不落库联动/V84 幂等/仅 manage-admin 改 total_check/保留删除）",
+  "scope": {
+    "writable": [
+      "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+      "web/src/api/data-migration.ts",
+      "server/src/modules/data-migration/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql",
+      "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/**"
+    ],
+    "read_only": [
+      "web/src/modules/architecture/**",
+      "web/src/components/ui/**",
+      "docs/engineering-control/designs/**"
+    ],
+    "forbidden": [
+      "server/src/platform/**",
+      "governance/**",
+      "production systems / real data"
+    ],
+    "non_goals": [
+      "不落库业务组/简称/名称/描述/负责团队（后端 JOIN 实时带出）",
+      "不修改架构模块代码（仅只读调用既有 REST 契约 /architecture/physical-subsystems）",
+      "不修改历史迁移脚本（V35/V36/V82/V83 已发布或历史删除，只追加 V84）",
+      "不调整菜单层级与角色授权（走既有权限管理模块）"
+    ]
+  },
+  "input_facts": [
+    "设计文档已追加「系统/组件清单 增量设计」章节（修订2），D5-D8 决策已由用户确认",
+    "V82/V83 历史迁移已被 f49ae25 删除，全新库缺 dm_project/dm_component 建表脚本",
+    "V84 迁移已创建：幂等建表 dm_project/dm_component + 增列 physical_subsystem_code/total_check/created_by/updated_by + 索引 + 菜单 642 与权限补齐",
+    "后端 ProjectComponentService/Controller 已扩展：components 筛选分页 JOIN、exportComponents 导出、createComponent 新增派生字段、updateComponent 仅 total_check、componentView 单条",
+    "data-migration.ts 已扩展 DataMigrationComponent/DataMigrationPage 与 create/export 函数；缺少 deleteDataMigrationComponent",
+    "架构模块无 index 导出、项目前端无跨模块 import 先例，联动须走 REST 契约而非代码导入",
+    "T5-r8 决策：基础资料子页面统一无 UiPageHeader 横幅，顶部 Tabs 承担定位"
+  ],
+  "plan_steps": [
+    {
+      "id": "T5-r9-S1",
+      "action": "修复 ProjectComponentService 中遗留的旧版 updateComponent 重载（与新版同签名导致编译失败），仅保留 requireAdmin + total_check 逻辑",
+      "evidence": "删除第 207-214 行旧方法，mvn compile 通过"
+    },
+    {
+      "id": "T5-r9-S2",
+      "action": "data-migration.ts 补充 deleteDataMigrationComponent；新增 PhysicalSubsystemLite 类型与 listPhysicalSubsystemsByCode（走 /architecture/physical-subsystems REST，保持模块边界）",
+      "evidence": "web/src/api/data-migration.ts diff：+deleteDataMigrationComponent、+listPhysicalSubsystemsByCode"
+    },
+    {
+      "id": "T5-r9-S3",
+      "action": "重写 ComponentsPage.vue：7 项筛选（项目下拉/事业群/系统编号/负责团队/简称名称同框/总分核对/关键字）、12 列表格、20/50/100 分页、筛选后 Excel 导出、新增抽屉（系统编号联动物理子系统带出只读字段）、编辑抽屉（仅 total_check）、删除确认、加载/空/失败/无权限/提交中状态、移动端卡片化",
+      "evidence": "web/src/modules/data-migration/views/base/ComponentsPage.vue 重写为 499 行（含 scoped 响应式样式）"
+    },
+    {
+      "id": "T5-r9-S4",
+      "action": "对齐 T5-r8 决策：移除 ComponentsPage 中误引入的 UiPageHeader 横幅，刷新/新增按钮并入 UiToolbar actions",
+      "evidence": "UiPageHeader import 与 template 块移除；actions 槽含 刷新/查询/重置/导出/新增组件"
+    },
+    {
+      "id": "T5-r9-S5",
+      "action": "更新遗留测试 DataMigrationModuleRegistrationTest 断言 V82→V84（V82 历史已删除）",
+      "evidence": "test 方法名 moduleRegistrationIsBackedByV84，断言 V84 文件存在"
+    },
+    {
+      "id": "T5-r9-S6",
+      "action": "codex-task-scope.yaml writable_paths 补充 backend-dev.sh/frontend-dev.sh（本分支历史提交引入的开发辅助脚本，scope 检查越界告警）",
+      "evidence": "scope 检查通过：0 越界文件"
+    },
+    {
+      "id": "T5-r9-S7",
+      "action": "前端 vue-tsc + vite build、后端 mvn test、governance 检查、scope 检查",
+      "command": "cd web && npx vue-tsc --noEmit -p tsconfig.json && timeout 180 npm run build; cd .. && mvn -q -pl server/src/modules/data-migration -am test; node scripts/check-all-governance.mjs; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "expected": "0 类型错误；BUILD SUCCESS；tests pass；本任务无治理错误；scope 0 越界",
+      "evidence": "vue-tsc 退出 0；vite build 成功；mvn test exit 0；治理检查仅历史任务（req-20260813-030/req-20260817-031）报错，本任务无；scope 检查通过"
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-T5-r9-1",
+      "text": "联动依赖 architecture:physical:list 权限，权限不足时 403，带出功能不可用",
+      "mitigation": "新增抽屉内已处理 403：提示缺少物理子系统查询权限，并给出授权指引；不影响组件本身的新增/列表",
+      "residual": "需在权限管理中为数据迁移角色授予架构查询权限后方可联动"
+    },
+    {
+      "id": "R-T5-r9-2",
+      "text": "dm_component/dm_project 表全新库由 V84 幂等补齐，与既有逻辑（V36 菜单、V82 残留 target 脚本）存在历史不一致",
+      "mitigation": "V84 采用 V62 先例的 information_schema.columns/PREPARE 幂等补列，CREATE TABLE IF NOT EXISTS 补建表",
+      "residual": "生产/存量库中已存在的 dm_component 旧列定义以 V84 增列结果为准"
+    },
+    {
+      "id": "R-T5-r9-3",
+      "text": "12 列桌面表格在 375/390/430 视口须验证移动端卡片化渲染",
+      "mitigation": "移动端已隐藏表格、启用卡片列表与简化分页（prev/pager/next）",
+      "residual": "实际视口回放验收在 T6 acceptance 阶段统一执行"
+    }
+  ],
+  "compliance_check": {
+    "scope_clean": true,
+    "no_prod": true,
+    "no_pii": true,
+    "no_bypass": true,
+    "writable_paths_respected": true,
+    "no_rollback_of_others": true
+  },
+  "executed_at": "2026-08-22T08:10:00+00:00",
+  "result": "pass",
+  "next": "T5-r9 observation in observation-T5-r9.json"
+}

@@ -18,7 +18,7 @@ public class DashboardService {
             result.put("assets", jdbc.queryForObject("SELECT COALESCE(SUM(metric_value), 0) FROM dm_dashboard_snapshot WHERE tenant_id = ? AND snapshot_date = ? AND metric_code = 'ASSET_TOTAL'", Number.class, user.tenantId(), snapshotDate));
             result.put("snapshotDate", snapshotDate);
         } else {
-            result.put("projects", jdbc.queryForObject("SELECT COUNT(*) FROM dm_project WHERE tenant_id = ? AND deleted = 0", Integer.class, user.tenantId()));
+            result.put("projects", jdbc.queryForObject("SELECT COUNT(*) FROM pm_project WHERE tenant_id = ? AND deleted = 0", Integer.class, user.tenantId()));
             result.put("components", jdbc.queryForObject("SELECT COUNT(*) FROM dm_component WHERE tenant_id = ? AND deleted = 0", Integer.class, user.tenantId()));
             result.put("assets", jdbc.queryForObject("SELECT COUNT(*) FROM dm_asset WHERE tenant_id = ? AND deleted = 0", Integer.class, user.tenantId()));
         }
@@ -33,7 +33,16 @@ public class DashboardService {
         return jdbc.queryForObject("SELECT COALESCE(metric_value, 0) FROM dm_dashboard_snapshot WHERE tenant_id = ? AND snapshot_date = ? AND metric_code = ? AND project_id = ?", Number.class, user.tenantId(), date, metricCode, projectId);
     }
     public List<Map<String,Object>> component(AuthUser user, Long projectId) {
-        if (projectId == null) return jdbc.queryForList("SELECT c.id, c.component_code, c.component_name, COUNT(a.id) AS asset_count FROM dm_component c LEFT JOIN dm_asset a ON a.component_id = c.id AND a.tenant_id = c.tenant_id AND a.deleted = 0 WHERE c.tenant_id = ? AND c.deleted = 0 GROUP BY c.id, c.component_code, c.component_name ORDER BY c.component_name", user.tenantId());
-        return jdbc.queryForList("SELECT c.id, c.component_code, c.component_name, COUNT(a.id) AS asset_count FROM dm_component c LEFT JOIN dm_asset a ON a.component_id = c.id AND a.tenant_id = c.tenant_id AND a.deleted = 0 WHERE c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0 GROUP BY c.id, c.component_code, c.component_name ORDER BY c.component_name", user.tenantId(), projectId);
+        // 组件身份由系统编号承担；系统编号/名称来自物理子系统（LEFT JOIN，缺失时回退编号本身）。
+        String base = "SELECT c.id, c.physical_subsystem_code AS system_code, "
+                + "COALESCE(s.short_name, s.name, c.physical_subsystem_code) AS system_name, "
+                + "COUNT(a.id) AS asset_count "
+                + "FROM dm_component c "
+                + "LEFT JOIN dm_asset a ON a.component_id = c.id AND a.tenant_id = c.tenant_id AND a.deleted = 0 "
+                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
+                + "WHERE c.tenant_id = ? AND c.deleted = 0";
+        String group = " GROUP BY c.id, c.physical_subsystem_code, s.short_name, s.name ORDER BY system_name";
+        if (projectId == null) return jdbc.queryForList(base + group, user.tenantId());
+        return jdbc.queryForList(base + " AND c.project_id = ?" + group, user.tenantId(), projectId);
     }
 }
