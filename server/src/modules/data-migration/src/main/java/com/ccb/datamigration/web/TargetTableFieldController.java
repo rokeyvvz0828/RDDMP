@@ -4,6 +4,7 @@ import com.ccb.common.api.ApiResponse;
 import com.ccb.common.trace.TraceId;
 import com.ccb.datamigration.service.TargetTableService;
 import com.ccb.security.model.AuthUser;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +29,12 @@ public class TargetTableFieldController {
     @DeleteMapping("/{fieldId}") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin','data-migration:base:table-fields-target:delete','data-migration:base:table-fields-intermediate:delete')")
     public ApiResponse<Void> delete(@PathVariable long fieldId, @RequestParam(required = false) String category, @AuthenticationPrincipal AuthUser user) {
         service.deleteField(fieldId, cat(category), user);
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
+
+    @PostMapping("/batch-delete") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin','data-migration:base:table-fields-target:delete','data-migration:base:table-fields-intermediate:delete')")
+    public ApiResponse<Void> batchDelete(@RequestParam(required = false) String category, @RequestBody List<Long> ids, @AuthenticationPrincipal AuthUser user) {
+        service.deleteFields(ids, cat(category), user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 }

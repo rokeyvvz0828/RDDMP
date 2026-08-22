@@ -51,10 +51,10 @@ public class TargetTableService {
         String cat = categoryOf(category);
         permissions.requireCategoryPermission(user, cat, "read");
         StringBuilder sql = new StringBuilder(
-                "SELECT f.id, f.field_code, f.table_id, f.table_code, f.field_name_en, f.field_name_cn, f.field_meaning, " +
+                "SELECT t.id, f.id AS field_id, f.field_code, f.table_id, f.table_code, f.field_name_en, f.field_name_cn, f.field_meaning, " +
                         "f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
                         "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, t.owner_id, t.created_at, t.updated_at, " +
-                        "p.project_name, ps.business_group_name, ps.name AS system_name, u.display_name AS owner_name " +
+                        "p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name " +
                         "FROM dm_target_table_field f " +
                         "JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                         "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
@@ -111,7 +111,7 @@ public class TargetTableService {
         String cat = categoryOf(category);
         permissions.requireCategoryPermission(user, cat, "read");
         List<Map<String, Object>> tables = jdbc.queryForList(
-                "SELECT t.*, p.project_name, ps.business_group_name, ps.name AS system_name, u.display_name AS owner_name " +
+                "SELECT t.*, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name " +
                         "FROM dm_target_table t " +
                         "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
                         "LEFT JOIN arch_physical_subsystem ps ON ps.code = t.system_code AND ps.tenant_id = t.tenant_id AND ps.deleted = 0 " +
@@ -236,7 +236,7 @@ public class TargetTableService {
         return jdbc.queryForMap("SELECT * FROM dm_target_table_field WHERE id = ? AND tenant_id = ? AND deleted = 0", fieldId, user.tenantId());
     }
 
-    // ============ 字段：删除 ============
+    // ============ 字段：删除（单条，级联删空表） ============
     @Transactional
     public void deleteField(long fieldId, String category, AuthUser user) {
         String cat = categoryOf(category);
@@ -246,9 +246,45 @@ public class TargetTableService {
                 fieldId, user.tenantId(), cat);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "字段不存在");
         Map<String, Object> current = rows.get(0);
+        long tableId = ((Number) current.get("table_id")).longValue();
         permissions.requireWrite(user, ((Number) current.get("owner_id")).longValue());
         jdbc.update("UPDATE dm_target_table_field SET deleted = 1, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ? AND tenant_id = ? AND deleted = 0", user.id(), fieldId, user.tenantId());
-        audit(user, "TARGET_TABLE_FIELD_DELETE", ((Number) current.get("table_id")).longValue());
+        audit(user, "TARGET_TABLE_FIELD_DELETE", tableId);
+        // 字段被全部删除时，同步删除对应的表
+        cascadeDeleteTableIfEmpty(tableId, cat, user);
+    }
+
+    // ============ 字段：批量删除（级联删空表） ============
+    @Transactional
+    public void deleteFields(Collection<Long> fieldIds, String category, AuthUser user) {
+        String cat = categoryOf(category);
+        permissions.requireCategoryPermission(user, cat, "delete");
+        Set<Long> affectedTables = new LinkedHashSet<>();
+        for (Long fieldId : fieldIds == null ? List.<Long>of() : fieldIds) {
+            List<Map<String, Object>> rows = jdbc.queryForList(
+                    "SELECT f.*, t.owner_id FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id AND t.deleted = 0 WHERE f.id = ? AND f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?",
+                    fieldId, user.tenantId(), cat);
+            if (rows.isEmpty()) continue;
+            Map<String, Object> current = rows.get(0);
+            permissions.requireWrite(user, ((Number) current.get("owner_id")).longValue());
+            long tableId = ((Number) current.get("table_id")).longValue();
+            jdbc.update("UPDATE dm_target_table_field SET deleted = 1, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ? AND tenant_id = ? AND deleted = 0", user.id(), fieldId, user.tenantId());
+            audit(user, "TARGET_TABLE_FIELD_DELETE", tableId);
+            affectedTables.add(tableId);
+        }
+        // 每张受影响的表：若字段已全删，则同步删除表
+        for (Long tableId : affectedTables) cascadeDeleteTableIfEmpty(tableId, cat, user);
+    }
+
+    // 若表下已无未删除字段，则软删除该表
+    private void cascadeDeleteTableIfEmpty(long tableId, String cat, AuthUser user) {
+        Integer remain = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM dm_target_table_field WHERE table_id = ? AND tenant_id = ? AND deleted = 0",
+                Integer.class, tableId, user.tenantId());
+        if (remain != null && remain == 0) {
+            jdbc.update("UPDATE dm_target_table SET deleted = 1, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ? AND tenant_id = ? AND deleted = 0 AND table_category = ?", user.id(), tableId, user.tenantId(), cat);
+            audit(user, "TARGET_TABLE_DELETE", tableId);
+        }
     }
 
     // ============ Excel 导入 ============
@@ -384,7 +420,7 @@ public class TargetTableService {
             String placeholders = ids.stream().map(i -> "?").collect(Collectors.joining(","));
             rows = jdbc.queryForList(
                     "SELECT f.field_code, f.table_code, f.field_name_en, f.field_name_cn, f.field_meaning, f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
-                            "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
+                            "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
                             "FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                     "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
                             "LEFT JOIN arch_physical_subsystem ps ON ps.code = t.system_code AND ps.tenant_id = t.tenant_id AND ps.deleted = 0 " +
@@ -396,7 +432,7 @@ public class TargetTableService {
             Map<String, Object> p = params == null ? Map.of() : params;
             StringBuilder sql = new StringBuilder(
                     "SELECT f.field_code, f.table_code, f.field_name_en, f.field_name_cn, f.field_meaning, f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
-                            "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
+                            "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
                             "FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                             "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
                             "LEFT JOIN arch_physical_subsystem ps ON ps.code = t.system_code AND ps.tenant_id = t.tenant_id AND ps.deleted = 0 " +
@@ -433,7 +469,7 @@ public class TargetTableService {
                 xr.createCell(2).setCellValue(str(row.get("table_name_cn")));
                 xr.createCell(3).setCellValue(str(row.get("table_meaning")));
                 xr.createCell(4).setCellValue(str(row.get("project_name")));
-                xr.createCell(5).setCellValue(str(row.get("business_group_name")));
+                xr.createCell(5).setCellValue(str(row.get("business_group")));
                 xr.createCell(6).setCellValue(str(row.get("system_code")));
                 xr.createCell(7).setCellValue(str(row.get("system_name")));
                 xr.createCell(8).setCellValue(str(row.get("field_code")));

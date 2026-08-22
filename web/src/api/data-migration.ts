@@ -216,6 +216,10 @@ export function deleteTargetTableField(fieldId: number, category: TableCategory)
   return http.delete<ApiResponse<null>>(`/data-migration/target-table-fields/${fieldId}`, { params: { category } })
 }
 
+export function deleteTargetTableFields(category: TableCategory, ids: number[]) {
+  return http.post<ApiResponse<null>>(`/data-migration/target-table-fields/batch-delete`, ids, { params: { category } })
+}
+
 export function importTargetTables(category: TableCategory, file: File) {
   const form = new FormData()
   form.append('file', file)

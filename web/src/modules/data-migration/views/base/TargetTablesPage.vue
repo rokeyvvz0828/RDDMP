@@ -20,6 +20,7 @@ import {
   addTargetTableField,
   createTargetTable,
   deleteTargetTableField,
+  deleteTargetTableFields,
   deleteTargetTables,
   downloadTargetTableTemplate,
   exportTargetTables,
@@ -60,6 +61,12 @@ const page = ref(1)
 const pageSize = ref(20)
 const actionBusy = ref(false)
 const selectedIds = ref<number[]>([])
+
+// 记录每行被裁剪进 "..." 的操作（key: row.id），用于控制下拉菜单只显示被裁剪的操作
+const clippedMap = reactive(new Map<number, Set<string>>())
+function getClipped(row: TargetTableRecord) {
+  return clippedMap.get(row.id) ?? new Set<string>()
+}
 
 const projects = ref<Project[]>([])
 const filters = reactive({
@@ -286,6 +293,7 @@ const fieldBusy = ref(false)
 const editingField = ref<TargetTableField | null>(null)
 const fieldForm = reactive<Record<string, unknown>>({})
 const fieldSaving = ref(false)
+const selectedFieldIds = ref<number[]>([])
 
 async function openFields(row: TargetTableRecord) {
   fieldTable.value = row
@@ -331,8 +339,29 @@ async function removeField(f: TargetTableField) {
     fieldBusy.value = true
     await deleteTargetTableField(f.id, resolvedCategory.value)
     fieldRows.value = fieldRows.value.filter(x => x.id !== f.id)
+    selectedFieldIds.value = selectedFieldIds.value.filter(x => x !== f.id)
     ElMessage.success('已删除')
+    // 若该表字段已全部删除，后端会同步删除表：关闭抽屉并刷新列表
+    if (fieldRows.value.length === 0) {
+      fieldOpen.value = false
+      await load()
+    }
   } catch (e) { if (!cancelled(e)) ElMessage.error(apiErrorMessage(e, '删除失败')) } finally { fieldBusy.value = false }
+}
+async function batchDeleteFields() {
+  if (!selectedFieldIds.value.length) return ElMessage.warning('请先勾选要删除的字段')
+  try {
+    await ElMessageBox.confirm(`确认批量删除 ${selectedFieldIds.value.length} 个字段吗？若某表字段被全部删除将同步删除该表`, '批量删除字段', { type: 'warning' })
+    fieldBusy.value = true
+    await deleteTargetTableFields(resolvedCategory.value, selectedFieldIds.value)
+    fieldRows.value = fieldRows.value.filter(x => !selectedFieldIds.value.includes(x.id))
+    selectedFieldIds.value = []
+    ElMessage.success('已批量删除')
+    if (fieldRows.value.length === 0) {
+      fieldOpen.value = false
+      await load()
+    }
+  } catch (e) { if (!cancelled(e)) ElMessage.error(apiErrorMessage(e, '批量删除失败')) } finally { fieldBusy.value = false }
 }
 
 /* ---------- 删除表 ---------- */
@@ -355,6 +384,78 @@ async function batchDelete() {
     selectedIds.value = []
     await load()
   } catch (e) { if (!cancelled(e)) ElMessage.error(apiErrorMessage(e, '批量删除失败')) } finally { actionBusy.value = false }
+}
+
+/* ---------- 溢出检测指令 ---------- */
+const vOverflow = {
+  mounted(el: HTMLElement) {
+    checkOverflow(el)
+    const observer = new ResizeObserver(() => checkOverflow(el))
+    observer.observe(el)
+    ;(el as any).__overflowObserver = observer
+  },
+  updated(el: HTMLElement) {
+    checkOverflow(el)
+  },
+  unmounted(el: HTMLElement) {
+    ;(el as any).__overflowObserver?.disconnect()
+  },
+}
+const _overflowLock = new WeakSet<HTMLElement>()
+function checkOverflow(el: HTMLElement) {
+  // 防止重入：如果正在处理同一元素，跳过
+  if (_overflowLock.has(el)) return
+  _overflowLock.add(el)
+  
+  const buttons = Array.from(el.querySelectorAll('.el-button[data-action]')) as HTMLElement[]
+  const trigger = el.querySelector('.dm-overflow-trigger') as HTMLElement | null
+  const rowId = Number(el.getAttribute('data-row-id') || 0)
+  
+  if (!trigger) {
+    el.classList.remove('is-overflow')
+    _overflowLock.delete(el)
+    return
+  }
+  
+  // 先清除所有 is-clipped 类，让按钮恢复自然宽度
+  buttons.forEach((btn) => btn.classList.remove('is-clipped'))
+  
+  // 使用 requestAnimationFrame 确保浏览器完成布局后再测量
+  requestAnimationFrame(() => {
+    const containerWidth = el.getBoundingClientRect().width
+    const gap = 8 // 与 CSS gap: 8px 一致
+    
+    // 临时显示触发器以测量其宽度
+    const origDisplay = trigger.style.display
+    trigger.style.display = 'flex'
+    const triggerWidth = trigger.getBoundingClientRect().width
+    trigger.style.display = origDisplay
+    
+    const availableWidth = containerWidth - triggerWidth
+    
+    // 用累积宽度判断哪些按钮溢出（此时按钮均处于自然状态）
+    let cumWidth = 0
+    const clippedActions = new Set<string>()
+    buttons.forEach((btn, i) => {
+      const btnWidth = btn.getBoundingClientRect().width
+      if (i > 0) cumWidth += gap
+      cumWidth += btnWidth
+      const isHidden = cumWidth > availableWidth
+      btn.classList.toggle('is-clipped', isHidden)
+      if (isHidden) {
+        clippedActions.add(btn.getAttribute('data-action') || '')
+      }
+    })
+    
+    // 记录到响应式状态，驱动下拉菜单只展示被裁剪的操作
+    if (rowId) {
+      clippedMap.set(rowId, clippedActions)
+    }
+    
+    const isOverflow = clippedActions.size > 0
+    el.classList.toggle('is-overflow', isOverflow)
+    _overflowLock.delete(el)
+  })
 }
 
 onMounted(() => { loadProjects(); load() })
@@ -429,11 +530,21 @@ onMounted(() => { loadProjects(); load() })
           <el-table-column prop="dict_code" label="数据字典编号" min-width="130" show-overflow-tooltip />
           <el-table-column label="操作" width="210" fixed="right" align="center">
             <template #default="{ row }">
-              <div class="dm-table-actions">
-                <el-button link type="primary" :disabled="actionBusy" @click="openView(row)"><el-icon><View /></el-icon>查看</el-button>
-                <el-button v-if="canUpdate" link type="primary" :disabled="actionBusy" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-button>
-                <el-button v-if="canUpdate" link type="primary" :disabled="actionBusy" @click="openFields(row)">字段</el-button>
-                <el-button v-if="canDelete" link type="danger" :disabled="actionBusy" @click="removeRow(row)"><el-icon><Delete /></el-icon>删除</el-button>
+              <div v-overflow class="dm-table-actions" :data-row-id="row.id">
+                <el-button data-action="view" link type="primary" :disabled="actionBusy" @click="openView(row)"><el-icon><View /></el-icon>查看</el-button>
+                <el-button v-if="canUpdate" data-action="edit" link type="primary" :disabled="actionBusy" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-button>
+                <el-button v-if="canUpdate" data-action="fields" link type="primary" :disabled="actionBusy" @click="openFields(row)">字段</el-button>
+                <el-button v-if="canDelete" data-action="delete" link type="danger" :disabled="actionBusy" @click="removeRow(row)"><el-icon><Delete /></el-icon>删除</el-button>
+                <el-dropdown class="dm-overflow-trigger" trigger="click">
+                  <span class="el-dropdown-link">...</span>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="canUpdate && getClipped(row).has('edit')" data-action="edit" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-dropdown-item>
+                      <el-dropdown-item v-if="canUpdate && getClipped(row).has('fields')" data-action="fields" @click="openFields(row)">字段</el-dropdown-item>
+                      <el-dropdown-item v-if="canDelete && getClipped(row).has('delete')" data-action="delete" divided @click="removeRow(row)"><el-icon><Delete /></el-icon>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </div>
             </template>
           </el-table-column>
@@ -571,8 +682,10 @@ onMounted(() => { loadProjects(); load() })
         <el-alert type="info" :closable="false" show-icon :title="`表编号 ${fieldTable.table_code} · 系统编号 ${fieldTable.system_code} · 字段级操作，按行编辑提交`" class="tt-subsystem-alert" />
         <div class="tt-field-toolbar">
           <el-button v-if="canUpdate" type="primary" :loading="fieldBusy" @click="addField"><el-icon><Plus /></el-icon>新增字段</el-button>
+          <el-button v-if="canDelete" type="danger" :loading="fieldBusy" :disabled="!selectedFieldIds.length" @click="batchDeleteFields"><el-icon><Delete /></el-icon>批量删除字段（{{ selectedFieldIds.length }}）</el-button>
         </div>
-        <el-table :data="fieldRows" border size="small">
+        <el-table :data="fieldRows" border size="small" row-key="id" @selection-change="(rows: TargetTableField[]) => selectedFieldIds = rows.map(r => r.id)">
+          <el-table-column type="selection" width="46" />
           <el-table-column type="expand">
             <template #default="{ row }">
               <el-form label-width="110px" label-position="left" class="tt-field-edit">
