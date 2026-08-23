@@ -1,0 +1,98 @@
+{
+  "sample_label": "S-0007-T3-独立静态观察-2026-08-23",
+  "task_ids": ["T3"],
+  "baseline_revision": "design_revision=2; plan_revision=2",
+  "measurements": [
+    {
+      "requirement_id": "R2/R3/R5/R6/R9",
+      "sensor": "提交协调、生命周期消费者和事务边界静态复核",
+      "result": "pass-with-runtime-defer",
+      "raw_evidence": "提交与取消只依赖 com.ccb.workflow.integration；启动结果校验 module/business/round/digest；消费者按 tenant/business/instance/round/digest 和 receipt 幂等，发布异常向上抛出以回滚事务。",
+      "limitation": ["V84 正确保持 DRAFT 且 deployment_id 为空；真实 Flowable 发布、启动、任务处理和事件重试延后到 T5。"]
+    },
+    {
+      "requirement_id": "R1/R8",
+      "sensor": "新三级权限到发布主数据、选项和既有工作流 API 的可达性审查",
+      "result": "fail",
+      "raw_evidence": "ROLE110 只有 architecture:view/apply/manage；发布主数据与选项 Controller 仍只接受旧 list 权限，WorkflowController 类级只接受 system:access/workflow:access。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "architecture change/integration 依赖和 provider 静态复核",
+      "result": "pass",
+      "raw_evidence": "NoopAiSubsystemSuggestionProvider 返回空；建议入口只委派本地 provider；未发现真实 AI 或外部网络调用。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R11/R12",
+      "sensor": "执行证据与控制账本一致性复核",
+      "result": "partial",
+      "raw_evidence": "execution-T3 记录 163/163 architecture、47/47 workflow、V83/V84 MySQL 及 scope/Flyway/diff 通过，但 state 仍将 T3 标记 planned。",
+      "limitation": ["独立观察未重复运行 Maven/MySQL；使用执行侧退出码并记录为传感器限制。"]
+    }
+  ],
+  "negative_feedback": [
+    {
+      "id": "F-T3-001",
+      "requirement_id": "R1/R8",
+      "expected": "architecture:view/apply/manage 按包含关系访问已发布事实及工单所需选项，同时保留旧权限兼容。",
+      "observed": "逻辑、物理和选项 Controller 的 GET 端点只认旧 architecture:*:list，ROLE110 会被拒绝。",
+      "severity": "P1",
+      "confidence": "high",
+      "causal_hypothesis": "V83 完成了旧权限向新权限映射，但既有查询端点未反向兼容新权限。",
+      "correction_check": "三个 Controller 的 GET/选项兼容旧 list 与新 view/apply/manage；反射权限测试和 architecture 聚焦测试通过。"
+    },
+    {
+      "id": "F-T3-002",
+      "requirement_id": "R8/R9",
+      "expected": "固定 ROLE110 管理员可通过既有 workflow web API 获取当前任务并执行 APPROVE/RETURN/REJECT。",
+      "observed": "WorkflowController 需要 system:access/workflow:access，而 V83 未给 ROLE110 对应菜单权限，业务详情审批不可达。",
+      "severity": "P1",
+      "confidence": "high",
+      "causal_hypothesis": "固定角色种子遗漏了已批准的既有 workflow web API 访问前置权限。",
+      "correction_check": "V83 为 ROLE110 绑定既有 workflow 根和收件箱菜单，迁移测试验证 workflow:access；任务本身仍由工作流 assignee 和节点动作策略校验。"
+    },
+    {
+      "id": "F-T3-003",
+      "requirement_id": "R12",
+      "expected": "执行、观察和 state 任务状态一致。",
+      "observed": "execution-T3 已 implemented，但 state 中 T3 仍 planned。",
+      "severity": "P2",
+      "confidence": "high",
+      "causal_hypothesis": "执行证据先于独立观察落账。",
+      "correction_check": "P1 关闭后同步 T2/T3 状态、阶段历史、反馈和采样；真实 Flowable 门禁继续留在 T5。"
+    }
+  ],
+  "correction_reobservation": {
+    "result": "pass-with-runtime-defer",
+    "evidence": [
+      "独立观察者判定 F-T3-001 resolved：GET/detail/options 兼容旧 list 与新 view/apply/manage，write 不含 view，控制器测试 16/16。",
+      "独立观察者判定 F-T3-002 resolved：ROLE110 只绑定 200/202；MySQL 8.4 正向迁移到 V84，并由隔离冲突库动态证明错误菜单 803 身份使 V83 失败关闭，测试类 4/4。",
+      "git diff --check exit 0；全局 Testcontainers 配置未修改，docker-java 只在 Maven 进程使用 -Dapi.version=1.44。"
+    ],
+    "residual_risks": [
+      "真实 Flowable 发布、启动、审批、退回、拒绝和取消仍由 T5 验收。",
+      "workflow:access 是平台既有粗粒度权限，真实 API 可达范围由 T5 复核。"
+    ]
+  },
+  "blind_spots": [
+    "真实 Flowable 发布、启动、审批、退回重提、取消和事件重试未在本次观察运行。",
+    "既有 WorkflowController 使用粗粒度 workflow:access；本任务不修改只读的平台授权实现。"
+  ],
+  "repeatability": {
+    "commands": [
+      "mvn -q -pl :ccb-architecture -am -Dtest=LogicalSubsystemControllerTest,PhysicalSubsystemControllerTest,ArchitectureOptionsControllerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "mvn -q -pl :ccb-architecture -am -Dapi.version=1.44 -Dtest=ArchitectureWorkflowIntegrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    ],
+    "environment": "隔离工作树；MySQL 8.4 Testcontainers；DOCKER_HOST 和 socket override 仅在测试进程设置；观察子代理严格只读。"
+  },
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "assessment": {
+    "verdict": "pass-with-runtime-defer",
+    "summary": "T3 静态契约、权限可达性、V83/V84 正向迁移与稳定 ID 冲突失败关闭均已复验；真实 Flowable 运行门禁按批准计划延后 T5。"
+  },
+  "recommended_next": ["启动 T4 响应式前端；T5 再提升真实 Flowable 和浏览器运行证据。"],
+  "observation_status": "complete",
+  "recorded_at": "2026-08-23T09:22:43+08:00"
+}

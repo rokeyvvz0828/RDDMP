@@ -1,0 +1,109 @@
+{
+  "sample_label": "S-0003-T1-独立观察-2026-08-23",
+  "task_ids": ["T1"],
+  "baseline_revision": "design_revision=2; plan_revision=2",
+  "measurements": [
+    {
+      "requirement_id": "R4/R11/R12",
+      "sensor": "Testcontainers MySQL 8.4：ArchitectureSubsystemLifecycleMySqlTest",
+      "result": "pass",
+      "raw_evidence": "3/3 通过：V81→V82 保留既有 code；逻辑 number_sequence 跨租户全局稳定回填且唯一；物理槽位覆盖 1..35 与 deleted 历史；36/10000 容量场景在永久 DDL 前失败且无 V82 持久结构。",
+      "limitation": ["未验证真实环境历史数据容量。"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "FixedPrefixIncrementalSubsystemNumberStrategyTest + JdbcSubsystemNumberReservationStoreMySqlTest",
+      "result": "partial-pass",
+      "raw_evidence": "策略单测 6/6、真实 MySQL 编号存储测试 6/6 通过；覆盖 A/W 格式、跨租户并发唯一、RETURNED 保留、REJECTED/CANCELLED 最小值复用、APPROVED 消费、deleted 历史 code 跳过、回滚和容量边界。",
+      "limitation": ["物理 namespace 没有独立并发专项测试。"]
+    },
+    {
+      "requirement_id": "R1/R11/R12",
+      "sensor": "V77 传感器隔离检查：源码搜索 + PhysicalSubsystemConcurrencyMySqlTest",
+      "result": "pass",
+      "raw_evidence": "V82 生命周期字段仅由新建 SubsystemChangeStore 使用；PhysicalSubsystemConcurrencyMySqlTest 仍 target V77，独立运行 2/2 通过。",
+      "limitation": ["SubsystemChangeStore 尚无专门 MySQL 映射和事务锁测试；发布写入属于后续 T2。"]
+    },
+    {
+      "requirement_id": "R11/R12",
+      "sensor": "静态门禁",
+      "result": "pass",
+      "raw_evidence": "Flyway 检查通过（76 migrations、1 callback）；范围检查通过（28 changed files）；当前任务 JSON 与 scope 均可解析；git diff --check 无错误。",
+      "limitation": ["diff 检查仅出现现有测试文件的 LF→CRLF 提示。"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "JdbcSubsystemNumberReservationStore 公开入口静态审查",
+      "result": "fail",
+      "raw_evidence": "findByApplicationLine/reserve/release/consume 均调用 requireTransaction()；但 isPublishedCodeOccupied(String) 直接查询数据库，未调用 requireTransaction()。",
+      "limitation": ["观察任务限定只读，未新增复现代码。"]
+    }
+  ],
+  "negative_feedback": [
+    {
+      "id": "F-T1-001",
+      "requirement_id": "R4",
+      "expected": "编号存储的所有公开操作均要求真实数据库事务。",
+      "observed": "isPublishedCodeOccupied(String) 可在无真实事务时直接执行查询。",
+      "evidence": "JdbcSubsystemNumberReservationStore.java 的该入口没有 requireTransaction()，其他公开入口均有守卫。",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "策略经 reserve 调用该方法时会处于事务内；偏差存在于公开存储边界的直接调用路径。",
+      "causal_hypothesis": "只读占用检查被视为辅助操作，遗漏统一事务守卫。",
+      "correction_check": "入口补 requireTransaction()，新增无事务断言，复跑 JDBC 编号测试与 17 项组合测试。"
+    }
+  ],
+  "blind_spots": [
+    "观察者未执行完整 architecture 模块套件；执行侧已执行 62/62。",
+    "未对真实环境历史数据执行 9999/35 容量预检。",
+    "物理编号专门并发及 SubsystemChangeStore 行锁映射尚无独立测试。",
+    "T2 之后的发布、引用、工作流和前端闭环不在当前 T1 可观察范围。"
+  ],
+  "repeatability": {
+    "commands": [
+      {
+        "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureSubsystemLifecycleMySqlTest,FixedPrefixIncrementalSubsystemNumberStrategyTest,JdbcSubsystemNumberReservationStoreMySqlTest,PhysicalSubsystemConcurrencyMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+        "exit_code": 0,
+        "result": "17 tests, 0 failures, 0 errors, 0 skipped"
+      },
+      {
+        "command": "node scripts/check-flyway-migrations.mjs",
+        "exit_code": 0,
+        "result": "passed"
+      },
+      {
+        "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260822-048-architecture-subsystem-lifecycle/codex-task-scope.yaml --base e5b57473beabc9d2a9c2c63bd32635b2f708d8a8 --head HEAD --working-tree",
+        "exit_code": 0,
+        "result": "passed"
+      },
+      {
+        "command": "git diff --check",
+        "exit_code": 0,
+        "result": "no diff error"
+      }
+    ],
+    "environment": "Docker 仅通过 Maven 子进程环境变量连接本机 Docker Desktop；未修改全局配置、源文件或任务账本。"
+  },
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "assessment": {
+    "verdict": "needs-correction",
+    "summary": "V82、编号格式/回收/并发、V77 传感器隔离和静态范围均有独立通过证据；F-T1-001 未闭合前，T1 不应标记为 verified。"
+  },
+  "recommended_next": ["F-T1-001 已经独立复验闭合，可以验证 T1 并进入 T2。"],
+  "correction_reobservation": {
+    "feedback_id": "F-T1-001",
+    "measurements": [
+      "静态确认 isPublishedCodeOccupied 入口先调用 requireTransaction，查询语义不变",
+      "无事务测试直接覆盖公开占用查询",
+      "独立 JdbcSubsystemNumberReservationStoreMySqlTest 6/6 通过",
+      "修复后四类 Surefire 报告合计 17/17",
+      "git diff --check 退出码 0"
+    ],
+    "negative_feedback": [],
+    "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+    "assessment": "pass",
+    "blind_spots": ["独立复验未重跑 17 项组合，只核对主线程修复后报告；独立重跑了 JDBC 6/6。"],
+    "recorded_at": "2026-08-22T17:15:00+00:00"
+  },
+  "observation_status": "complete"
+}

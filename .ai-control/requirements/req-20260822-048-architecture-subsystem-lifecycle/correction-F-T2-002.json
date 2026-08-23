@@ -1,0 +1,18 @@
+{
+  "feedback_id": "F-T2-002",
+  "task_id": "T2",
+  "requirement_id": "R8",
+  "severity": "P1",
+  "decision": "accept",
+  "expected": "change.web 的业务异常与既有 architecture REST 保持 400/401/403/409/503 语义",
+  "observed": "ArchitectureExceptionAdvice 初始只锚定 LogicalSubsystemController，未覆盖新增 change.web Controller",
+  "causal_hypothesis": "基于单一 basePackageClasses 的 advice 扫描范围没有跨到兄弟包",
+  "correction": "把 SubsystemChangeApplicationController 加入 advice 的 basePackageClasses，并统一映射 BusinessException",
+  "verification": [
+    "SubsystemChangeApplicationControllerTest 6/6",
+    "工单/发布/引用/Controller 组合 75/75",
+    "完整 architecture 142/142"
+  ],
+  "status": "verified",
+  "resolved_at": "2026-08-23T00:14:29Z"
+}

@@ -165,27 +165,37 @@ class ArchitectureOptionsControllerTest {
     }
 
     @Test
-    void eachKnownContextUsesOnlyItsOwnListPermission() throws Exception {
+    void eachKnownContext兼容旧读取权限并纳入新三级权限() throws Exception {
         assertPermission("logicalOrganizations", "architecture:logical:list",
+                "hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class, AuthUser.class);
         assertPermission("logicalUsers", "architecture:logical:list",
+                "hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class, AuthUser.class);
-        assertPermission("logicalParameters", "architecture:logical:list", String.class, AuthUser.class);
+        assertPermission("logicalParameters", "architecture:logical:list",
+                "hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
+                String.class, AuthUser.class);
         assertPermission("physicalOrganizations", "architecture:physical:list",
+                "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class, AuthUser.class);
         assertPermission("physicalUsers", "architecture:physical:list",
+                "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class, AuthUser.class);
-        assertPermission("physicalParameters", "architecture:physical:list", String.class, AuthUser.class);
+        assertPermission("physicalParameters", "architecture:physical:list",
+                "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
+                String.class, AuthUser.class);
         assertPermission("physicalLogicalSubsystems", "architecture:physical:list",
+                "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class, String.class, AuthUser.class);
     }
 
-    private void assertPermission(String methodName, String authority, Class<?>... parameterTypes) throws Exception {
+    private void assertPermission(String methodName, String legacyAuthority, String expectedExpression,
+                                  Class<?>... parameterTypes) throws Exception {
         PreAuthorize annotation = ArchitectureOptionsController.class.getMethod(methodName, parameterTypes)
                 .getAnnotation(PreAuthorize.class);
         assertThat(annotation).isNotNull();
-        assertThat(annotation.value()).isEqualTo("hasAuthority('" + authority + "')");
-        assertThat(annotation.value()).doesNotContain("hasAnyAuthority").doesNotContain(" or ");
+        assertThat(annotation.value()).isEqualTo(expectedExpression);
+        assertThat(annotation.value()).contains("'" + legacyAuthority + "'");
     }
 
     private void assertExactKeys(MvcResult result, String pointer, String... expected) throws Exception {

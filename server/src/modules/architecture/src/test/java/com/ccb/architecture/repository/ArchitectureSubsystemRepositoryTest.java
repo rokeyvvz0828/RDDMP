@@ -1,8 +1,6 @@
 package com.ccb.architecture.repository;
 
-import com.ccb.architecture.model.LogicalSubsystem;
 import com.ccb.architecture.model.LogicalSubsystemQuery;
-import com.ccb.architecture.model.PhysicalSubsystem;
 import com.ccb.architecture.model.PhysicalSubsystemQuery;
 import com.ccb.common.api.PageQuery;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,42 +37,88 @@ class ArchitectureSubsystemRepositoryTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void pagesLogicalRecordsWithinTenantAndEscapesFilters() {
+    void 逻辑分页按租户状态筛选并投影V82字段() {
         when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
         when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
 
-        repository.pageLogical(9L, new PageQuery(2, 10), new LogicalSubsystemQuery("A%_\\B", "简称", "名称", 21L));
+        repository.pageLogical(9L, new PageQuery(2, 10),
+                new LogicalSubsystemQuery("A%_\\B", "简称", "名称", 21L, "OFFLINE"));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).query(sql.capture(), any(RowMapper.class), args.capture());
         assertTrue(sql.getValue().contains("tenant_id = ? AND deleted = 0"));
+        assertTrue(sql.getValue().contains("status = ?"));
+        assertTrue(sql.getValue().contains("number_sequence, status, sort_no, row_version"));
+        assertTrue(sql.getValue().contains("ORDER BY sort_no ASC, id DESC"));
         assertTrue(sql.getValue().contains("ESCAPE '\\\\'"));
-        assertEquals(9L, args.getValue()[0]);
-        assertEquals("%A\\%\\_\\\\B%", args.getValue()[1]);
-        assertEquals(21L, args.getValue()[4]);
-        assertEquals(10L, args.getValue()[5]);
-        assertEquals(10L, args.getValue()[6]);
+        assertEquals(List.of(9L, "%A\\%\\_\\\\B%", "%简称%", "%名称%", 21L, "OFFLINE", 10L, 10L),
+                List.of(args.getValue()));
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void locksLogicalParentEvenWhenDeletedAndCountsOnlyActiveChildren() {
+    void 物理分页按租户状态筛选并投影V82字段() {
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
         when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(3L);
 
-        assertTrue(repository.lockLogical(9L, 12L).isEmpty());
-        assertEquals(3L, repository.countActivePhysicalByLogical(9L, 12L));
+        repository.pagePhysical(9L, new PageQuery(1, 20),
+                new PhysicalSubsystemQuery("W", "物理", "系统", "事业群", 31L, 12L, "VOIDED"));
 
-        ArgumentCaptor<String> lockSql = ArgumentCaptor.forClass(String.class);
-        verify(jdbc).query(lockSql.capture(), any(RowMapper.class), any(Object[].class));
-        assertTrue(lockSql.getValue().contains("FOR UPDATE"));
-        assertTrue(lockSql.getValue().contains("SELECT id, deleted"));
-        assertFalse(lockSql.getValue().contains("deleted = 0"));
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), args.capture());
+        assertTrue(sql.getValue().contains("tenant_id = ? AND deleted = 0"));
+        assertTrue(sql.getValue().contains("logical_subsystem_id = ?"));
+        assertTrue(sql.getValue().contains("status = ?"));
+        assertTrue(sql.getValue().contains("number_slot, english_name, status, row_version"));
+        assertEquals(List.of(9L, "%W%", "%物理%", "%系统%", "%事业群%", 31L, 12L, "VOIDED", 20L, 0L),
+                List.of(args.getValue()));
     }
 
     @Test
-    void softDeletesOnlyActiveTenantRow() {
+    @SuppressWarnings("unchecked")
+    void 逻辑详情的物理摘要排除软删除历史并保持租户隔离() {
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+
+        assertTrue(repository.findPhysicalByLogical(9L, 12L).isEmpty());
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), args.capture());
+        assertTrue(sql.getValue().contains("tenant_id = ? AND logical_subsystem_id = ? AND deleted = 0"));
+        assertTrue(sql.getValue().contains("ORDER BY number_slot ASC, id ASC"));
+        assertEquals(List.of(9L, 12L), List.of(args.getValue()));
+    }
+
+    @Test
+    void 活动物理计数仅统计ACTIVE发布事实() {
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(3L);
+
+        assertEquals(3L, repository.countActivePhysicalByLogical(9L, 12L));
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForObject(sql.capture(), eq(Long.class), any(Object[].class));
+        assertTrue(sql.getValue().contains("deleted = 0 AND status = 'ACTIVE'"));
+    }
+
+    @Test
+    void 物理历史计数包含软删除和非活动记录但仍按租户隔离() {
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(4L);
+
+        assertEquals(4L, repository.countPhysicalHistoryByLogical(9L, 12L));
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).queryForObject(sql.capture(), eq(Long.class), args.capture());
+        assertTrue(sql.getValue().contains("tenant_id = ? AND logical_subsystem_id = ?"));
+        assertFalse(sql.getValue().contains("deleted = 0"));
+        assertFalse(sql.getValue().contains("status ="));
+        assertEquals(List.of(9L, 12L), List.of(args.getValue()));
+    }
+
+    @Test
+    void 软删除仍限定当前租户和未删除记录() {
         when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
 
         assertEquals(1, repository.softDeleteLogical(9L, 12L, 7L));
@@ -83,26 +127,7 @@ class ArchitectureSubsystemRepositoryTest {
         ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).update(sql.capture(), args.capture());
         assertTrue(sql.getValue().contains("tenant_id = ? AND id = ? AND deleted = 0"));
+        assertFalse(sql.getValue().contains("status = 'VOIDED'"));
         assertEquals(List.of(7L, 9L, 12L), List.of(args.getValue()));
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void pagesPhysicalRecordsWithFixedParentTeamAndTextFilters() {
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
-        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
-
-        repository.pagePhysical(9L, new PageQuery(1, 20),
-                new PhysicalSubsystemQuery("P1", "物理", "系统", "事业群", 31L, 12L));
-
-        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
-        verify(jdbc).query(sql.capture(), any(RowMapper.class), args.capture());
-        assertTrue(sql.getValue().contains("tenant_id = ? AND deleted = 0"));
-        assertTrue(sql.getValue().contains("responsible_team_org_id = ?"));
-        assertTrue(sql.getValue().contains("logical_subsystem_id = ?"));
-        assertEquals(9L, args.getValue()[0]);
-        assertEquals(31L, args.getValue()[5]);
-        assertEquals(12L, args.getValue()[6]);
     }
 }

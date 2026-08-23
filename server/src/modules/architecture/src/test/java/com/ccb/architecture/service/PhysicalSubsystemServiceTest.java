@@ -1,9 +1,7 @@
 package com.ccb.architecture.service;
 
 import com.ccb.architecture.model.LogicalSubsystem;
-import com.ccb.architecture.model.LogicalSubsystemLock;
 import com.ccb.architecture.model.PhysicalSubsystem;
-import com.ccb.architecture.model.PhysicalSubsystemCommand;
 import com.ccb.architecture.model.PhysicalSubsystemQuery;
 import com.ccb.architecture.repository.ArchitectureSubsystemRepository;
 import com.ccb.architecture.service.PhysicalSubsystemService.PhysicalSubsystemView;
@@ -13,8 +11,6 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationAudit;
-import com.ccb.system.capability.SystemOperationAuditCommand;
-import com.ccb.system.capability.SystemParameterReference;
 import com.ccb.system.capability.SystemReferenceQuery;
 import com.ccb.system.capability.SystemUserReference;
 import com.ccb.system.org.OrgTreeNode;
@@ -25,28 +21,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,234 +59,106 @@ class PhysicalSubsystemServiceTest {
     }
 
     @Test
-    void listProjectsCurrentTeamLogicalLabelsAndCreatorName() {
-        PhysicalSubsystem raw = physical(201, "团队旧名称", 30L);
+    void 列表使用认证租户并返回V82状态和逻辑摘要() {
         when(repository.pagePhysical(eq(7L), any(PageQuery.class), any(PhysicalSubsystemQuery.class)))
-                .thenReturn(new PageResult<>(List.of(raw), 1, 1, 20));
-        when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "平台研发团队", 1)));
-        when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
-        when(referenceQuery.findUser(ACTOR, 30, false))
-                .thenReturn(Optional.of(new SystemUserReference(30, "系统负责人", "owner", null, true)));
-        when(referenceQuery.findUser(ACTOR, 9, false))
-                .thenReturn(Optional.of(new SystemUserReference(9, "架构管理员", "architect", null, true)));
+                .thenReturn(new PageResult<>(List.of(physical("VOIDED")), 1, 1, 20));
+        when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12L, "平台研发团队", 1)));
+        when(repository.findLogical(7L, 101L)).thenReturn(Optional.of(logical()));
+        when(referenceQuery.findUser(ACTOR, 30L, false))
+                .thenReturn(Optional.of(new SystemUserReference(30L, "系统负责人", "owner", null, true)));
+        when(referenceQuery.findUser(ACTOR, 9L, false))
+                .thenReturn(Optional.of(new SystemUserReference(9L, "架构管理员", "architect", null, true)));
 
         PageResult<PhysicalSubsystemView> result = service.list(ACTOR, new PageQuery(1, 20),
-                new PhysicalSubsystemQuery(" WP ", null, null, " 渠道 ", 12L, 101L));
+                new PhysicalSubsystemQuery(" W0001 ", null, null, " 渠道 ", 12L, 101L, " voided "));
 
         assertThat(result.records()).singleElement().satisfies(view -> {
-            assertThat(view.responsibleTeamDisplayName()).isEqualTo("平台研发团队");
-            assertThat(view.responsibleTeamValid()).isTrue();
-            assertThat(view.logicalSubsystemCode()).isEqualTo("AP_201");
-            assertThat(view.ownerDisplayName()).isEqualTo("系统负责人");
-            assertThat(view.createdByDisplayName()).isEqualTo("架构管理员");
+            assertThat(view.code()).isEqualTo("W00011");
+            assertThat(view.numberSlot()).isEqualTo("1");
+            assertThat(view.englishName()).isEqualTo("Mall Platform");
+            assertThat(view.status()).isEqualTo("VOIDED");
+            assertThat(view.rowVersion()).isEqualTo(4L);
+            assertThat(view.logicalSubsystemCode()).isEqualTo("A0001");
+            assertThat(view.logicalSubsystemNumberSequence()).isEqualTo(1);
+            assertThat(view.logicalSubsystemStatus()).isEqualTo("OFFLINE");
         });
         ArgumentCaptor<PhysicalSubsystemQuery> query = ArgumentCaptor.forClass(PhysicalSubsystemQuery.class);
         verify(repository).pagePhysical(eq(7L), any(PageQuery.class), query.capture());
-        assertThat(query.getValue().code()).isEqualTo("WP");
-        assertThat(query.getValue().businessGroupName()).isEqualTo("渠道");
+        assertThat(query.getValue()).isEqualTo(
+                new PhysicalSubsystemQuery("W0001", null, null, "渠道", 12L, 101L, "VOIDED"));
     }
 
     @Test
-    void detailUsesSnapshotWhenResponsibleTeamIsInactive() {
-        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原平台团队", null)));
-        when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "已改名团队", 0)));
-        when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
+    void 详情保留状态字段并在团队停用时使用快照名称() {
+        when(repository.findPhysical(7L, 201L)).thenReturn(Optional.of(physical("OFFLINE")));
+        when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12L, "已停用团队", 0)));
+        when(repository.findLogical(7L, 101L)).thenReturn(Optional.of(logical()));
 
-        PhysicalSubsystemView view = service.detail(ACTOR, 201);
+        PhysicalSubsystemView view = service.detail(ACTOR, 201L);
 
+        assertThat(view.status()).isEqualTo("OFFLINE");
+        assertThat(view.numberSlot()).isEqualTo("1");
+        assertThat(view.englishName()).isEqualTo("Mall Platform");
         assertThat(view.responsibleTeamValid()).isFalse();
-        assertThat(view.responsibleTeamDisplayName()).isEqualTo("原平台团队");
+        assertThat(view.responsibleTeamDisplayName()).isEqualTo("平台研发团队快照");
     }
 
     @Test
-    void createNormalizesBlankBusinessGroupTakesServerTeamSnapshotAndAuditsInsideTransaction() {
-        AtomicBoolean inTransaction = new AtomicBoolean();
-        executeTransactions(inTransaction);
-        validCreateReferences();
-        when(repository.lockLogical(7, 101)).thenReturn(Optional.of(new LogicalSubsystemLock(101, false)));
-        AtomicLong insertedId = new AtomicLong();
-        doAnswer(invocation -> {
-            insertedId.set(invocation.getArgument(0));
-            return null;
-        }).when(repository).insertPhysical(anyLong(), eq(7L), any(PhysicalSubsystemCommand.class),
-                eq("平台研发团队"), eq(9L));
-        when(repository.findPhysical(eq(7L), anyLong()))
-                .thenAnswer(invocation -> Optional.of(physical(invocation.getArgument(1),
-                        "平台研发团队", null)));
-        doAnswer(invocation -> {
-            assertThat(inTransaction.get()).isTrue();
-            return null;
-        }).when(operationAudit).recordSuccess(any());
+    void 旧新增入口在认证后立即要求工单且无副作用() {
+        assertWorkOrderRequired(() -> service.create(ACTOR, null, "trace-create"));
 
-        PhysicalSubsystemView result = service.create(ACTOR, validCommand(), "trace-create");
-
-        assertThat(result.id()).isEqualTo(insertedId.get());
-        ArgumentCaptor<PhysicalSubsystemCommand> normalized = ArgumentCaptor.forClass(PhysicalSubsystemCommand.class);
-        verify(repository).insertPhysical(eq(insertedId.get()), eq(7L), normalized.capture(),
-                eq("平台研发团队"), eq(9L));
-        assertThat(normalized.getValue().code()).isEqualTo("WP_201");
-        assertThat(normalized.getValue().businessGroupName()).isNull();
-        assertThat(normalized.getValue().runtimeCode()).isEqualTo("architecture.runtime.7x24");
-        assertThat(normalized.getValue().ownerUserId()).isNull();
-        assertThat(result.responsibleTeamDisplayName()).isEqualTo("平台研发团队");
-        verify(repository).lockLogical(7, 101);
-        verify(operationAudit).recordSuccess(any());
+        verifyNoInteractions(repository, organizationService, referenceQuery, operationAudit, transactions);
     }
 
     @Test
-    void ordinaryInvalidLogicalReferenceReturns400BeforeParentLock() {
-        when(repository.findLogical(7, 101)).thenReturn(Optional.empty());
+    void 旧修改入口在认证后立即要求工单且无副作用() {
+        assertWorkOrderRequired(() -> service.update(ACTOR, -1L, null, "trace-update"));
 
-        assertThatThrownBy(() -> service.create(ACTOR, validCommand(), "trace-invalid-parent"))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.code()).isEqualTo(ErrorCode.BAD_REQUEST));
-
-        verify(transactions, never()).execute(any());
-        verify(repository, never()).lockLogical(anyLong(), anyLong());
-        verify(operationAudit).recordFailure(any());
+        verifyNoInteractions(repository, organizationService, referenceQuery, operationAudit, transactions);
     }
 
     @Test
-    void parentDeletedAfterInitialCheckReturns409() {
-        executeTransactions(new AtomicBoolean());
-        validCreateReferences();
-        when(repository.lockLogical(7, 101)).thenReturn(Optional.of(new LogicalSubsystemLock(101, true)));
+    void 旧删除入口在认证后立即要求工单且无副作用() {
+        assertWorkOrderRequired(() -> service.delete(ACTOR, -1L, "trace-delete"));
 
-        assertThatThrownBy(() -> service.create(ACTOR, validCommand(), "trace-race"))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.code()).isEqualTo(ErrorCode.CONFLICT));
-
-        verify(repository, never()).insertPhysical(anyLong(), anyLong(), any(), any(), anyLong());
-        verify(operationAudit).recordFailure(any());
+        verifyNoInteractions(repository, organizationService, referenceQuery, operationAudit, transactions);
     }
 
     @Test
-    void updateRequiresInactiveResponsibleTeamToBeReselected() {
-        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原团队", null)));
-        when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
-        when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "原团队", 0)));
-
-        assertThatThrownBy(() -> service.update(ACTOR, 201, validCommand(), "trace-team"))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> {
-                    assertThat(exception.code()).isEqualTo(ErrorCode.BAD_REQUEST);
-                    assertThat(exception.getMessage()).contains("重新选择");
-                });
-
-        verify(transactions, never()).execute(any());
-        verify(repository, never()).updatePhysical(anyLong(), anyLong(), any(), any(), anyLong());
-    }
-
-    @Test
-    void updateExistingResourceRefreshesTeamSnapshotAndUsesExcludeId() {
-        executeTransactions(new AtomicBoolean());
-        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "原团队", null)));
-        validCreateReferences();
-        when(repository.lockLogical(7, 101)).thenReturn(Optional.of(new LogicalSubsystemLock(101, false)));
-        when(repository.updatePhysical(eq(7L), eq(201L), any(PhysicalSubsystemCommand.class),
-                eq("平台研发团队"), eq(9L))).thenReturn(1);
-
-        PhysicalSubsystemView result = service.update(ACTOR, 201, validCommand(), "trace-update-success");
-
-        assertThat(result.id()).isEqualTo(201);
-        verify(repository).physicalCodeExists(7, "WP_201", 201L);
-        verify(repository).physicalNameExists(7, "员工渠道物理平台", 201L);
-        verify(repository).updatePhysical(eq(7L), eq(201L), any(PhysicalSubsystemCommand.class),
-                eq("平台研发团队"), eq(9L));
-        verify(operationAudit).recordSuccess(any());
-    }
-
-    @Test
-    void optionalOwnerMustBeActiveAndTenantScopedWhenProvided() {
-        when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
-        when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "平台研发团队", 1)));
-        when(referenceQuery.findUser(ACTOR, 30, true)).thenReturn(Optional.empty());
-        PhysicalSubsystemCommand command = new PhysicalSubsystemCommand("WP_201", "员工渠道物理", "员工渠道物理平台",
-                101L, null, 12L, null, null, null, 30L, null, null);
-
-        assertThatThrownBy(() -> service.create(ACTOR, command, "trace-owner"))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.code()).isEqualTo(ErrorCode.BAD_REQUEST));
-    }
-
-    @Test
-    void databaseDuplicateIsMappedTo409WithoutLeakingSqlToAudit() {
-        executeTransactions(new AtomicBoolean());
-        validCreateReferences();
-        when(repository.lockLogical(7, 101)).thenReturn(Optional.of(new LogicalSubsystemLock(101, false)));
-        doThrow(new DuplicateKeyException("secret physical SQL"))
-                .when(repository).insertPhysical(anyLong(), eq(7L), any(), any(), eq(9L));
-
-        assertThatThrownBy(() -> service.create(ACTOR, validCommand(), "trace-duplicate"))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.code()).isEqualTo(ErrorCode.CONFLICT));
-
-        ArgumentCaptor<SystemOperationAuditCommand> audit = ArgumentCaptor.forClass(SystemOperationAuditCommand.class);
-        verify(operationAudit).recordFailure(audit.capture());
-        assertThat(audit.getValue().errorMessage()).doesNotContain("secret physical SQL");
-    }
-
-    @Test
-    void deleteSoftDeletesWithoutRevalidatingHistoricTeam() {
-        executeTransactions(new AtomicBoolean());
-        when(repository.findPhysical(7, 201)).thenReturn(Optional.of(physical(201, "已删除团队", null)));
-        when(repository.softDeletePhysical(7, 201, 9)).thenReturn(1);
-
-        service.delete(ACTOR, 201, "trace-delete");
-
-        verify(repository).softDeletePhysical(7, 201, 9);
-        verify(organizationService, never()).tree(any());
-        verify(operationAudit).recordSuccess(any());
-    }
-
-    @Test
-    void missingAuthenticatedTenantReturns401AndIsNotAudited() {
+    void 无有效租户时仍在工单兼容判断前返回未认证() {
         AuthUser missingTenant = new AuthUser(9, 0, "architect", "hash", "架构管理员", 11, true);
 
-        assertThatThrownBy(() -> service.create(missingTenant, validCommand(), "trace-auth"))
+        assertThatThrownBy(() -> service.create(missingTenant, null, "trace-auth"))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.code()).isEqualTo(ErrorCode.UNAUTHORIZED));
 
-        verify(operationAudit, never()).recordFailure(any());
+        verifyNoInteractions(repository, organizationService, referenceQuery, operationAudit, transactions);
     }
 
-    private void executeTransactions(AtomicBoolean inTransaction) {
-        when(transactions.execute(any())).thenAnswer(invocation -> {
-            @SuppressWarnings("unchecked")
-            TransactionCallback<Object> callback = invocation.getArgument(0);
-            inTransaction.set(true);
-            try {
-                return callback.doInTransaction(mock(TransactionStatus.class));
-            } finally {
-                inTransaction.set(false);
-            }
-        });
-    }
-
-    private void validCreateReferences() {
-        when(repository.findLogical(7, 101)).thenReturn(Optional.of(logical()));
-        when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12, "平台研发团队", 1)));
-        when(referenceQuery.activeParameters(ACTOR, PhysicalSubsystemService.RUNTIME_CATEGORY))
-                .thenReturn(List.of(new SystemParameterReference("architecture.runtime.7x24", "7*24")));
-    }
-
-    private PhysicalSubsystemCommand validCommand() {
-        return new PhysicalSubsystemCommand(" wp_201 ", " 员工渠道物理 ", " 员工渠道物理平台 ",
-                101L, "   ", 12L, " ARCHITECTURE.RUNTIME.7X24 ", null, null, null, " 描述 ", "  ");
-    }
-
-    private OrgTreeNode organization(long id, String name, int status) {
-        return new OrgTreeNode(id, 0, "TEAM", name, 1, status, new ArrayList<>(), new ArrayList<>());
+    private void assertWorkOrderRequired(Runnable action) {
+        assertThatThrownBy(action::run)
+                .isInstanceOfSatisfying(BusinessException.class, exception -> {
+                    assertThat(exception.code()).isEqualTo(ErrorCode.CONFLICT);
+                    assertThat(exception.getMessage()).startsWith("ARCHITECTURE_WORK_ORDER_REQUIRED");
+                });
     }
 
     private LogicalSubsystem logical() {
-        return new LogicalSubsystem(101, "AP_201", "员工渠道", "员工渠道整合平台", 11,
-                null, null, null, 21, null, null, 9, 9,
-                LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0));
+        return new LogicalSubsystem(101L, "A0001", "商城", "商城系统", 11L,
+                "P2", "APPLICATION", "CHANNEL", 21L, "系统描述", null,
+                9L, 9L, LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0),
+                1, "OFFLINE", 8, 3L, List.of());
     }
 
-    private PhysicalSubsystem physical(long id, String snapshot, Long ownerId) {
-        return new PhysicalSubsystem(id, "WP_201", "员工渠道物理", "员工渠道物理平台", 101,
-                null, 12, snapshot, "architecture.runtime.7x24", null, null, ownerId, "描述", null,
-                9, 9, LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0));
+    private PhysicalSubsystem physical(String status) {
+        return new PhysicalSubsystem(201L, "W00011", "商城物理", "商城物理平台", 101L,
+                "渠道", 12L, "平台研发团队快照", "architecture.runtime.7x24", "A", "Spring", 30L,
+                "描述", null, 9L, 9L,
+                LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0),
+                "1", "Mall Platform", status, 4L);
+    }
+
+    private OrgTreeNode organization(long id, String name, int status) {
+        return new OrgTreeNode(id, 0L, "TEAM", name, 1, status, new ArrayList<>(), new ArrayList<>());
     }
 }

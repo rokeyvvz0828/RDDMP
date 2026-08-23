@@ -2,14 +2,18 @@ import http from '../../api/http'
 import type { ApiResponse } from '../../types/auth'
 import type {
   ArchitectureResource,
+  CreateSubsystemChangeApplicationPayload,
   LogicalSubsystem,
-  LogicalSubsystemCommand,
   LogicalSubsystemOption,
   OrganizationOption,
   PageResult,
   ParameterOption,
   PhysicalSubsystem,
-  PhysicalSubsystemCommand,
+  SubsystemApplicationStatus,
+  SubsystemChangeApplicationDetail,
+  SubsystemChangeApplicationSummary,
+  SubsystemSuggestion,
+  UpdateSubsystemChangeApplicationPayload,
   UserOption
 } from './types'
 
@@ -28,18 +32,6 @@ export async function getLogicalSubsystem(id: number) {
   return (await http.get<ApiResponse<LogicalSubsystem>>(`/architecture/logical-subsystems/${id}`)).data.data
 }
 
-export async function createLogicalSubsystem(command: LogicalSubsystemCommand) {
-  return (await http.post<ApiResponse<LogicalSubsystem>>('/architecture/logical-subsystems', command)).data.data
-}
-
-export async function updateLogicalSubsystem(id: number, command: LogicalSubsystemCommand) {
-  return (await http.put<ApiResponse<LogicalSubsystem>>(`/architecture/logical-subsystems/${id}`, command)).data.data
-}
-
-export async function deleteLogicalSubsystem(id: number) {
-  await http.delete(`/architecture/logical-subsystems/${id}`)
-}
-
 export async function listPhysicalSubsystems(query: Query) {
   return (await http.get<ApiResponse<PageResult<PhysicalSubsystem>>>('/architecture/physical-subsystems', { params: compact(query) })).data.data
 }
@@ -48,16 +40,57 @@ export async function getPhysicalSubsystem(id: number) {
   return (await http.get<ApiResponse<PhysicalSubsystem>>(`/architecture/physical-subsystems/${id}`)).data.data
 }
 
-export async function createPhysicalSubsystem(command: PhysicalSubsystemCommand) {
-  return (await http.post<ApiResponse<PhysicalSubsystem>>('/architecture/physical-subsystems', command)).data.data
+export async function listSubsystemChangeApplications(query: {
+  status?: SubsystemApplicationStatus | ''
+  limit?: number
+  offset?: number
+}) {
+  return (await http.get<ApiResponse<SubsystemChangeApplicationSummary[]>>(
+    '/architecture/subsystem-change-applications',
+    { params: compact(query) }
+  )).data.data
 }
 
-export async function updatePhysicalSubsystem(id: number, command: PhysicalSubsystemCommand) {
-  return (await http.put<ApiResponse<PhysicalSubsystem>>(`/architecture/physical-subsystems/${id}`, command)).data.data
+export async function getSubsystemChangeApplication(id: number) {
+  return (await http.get<ApiResponse<SubsystemChangeApplicationDetail>>(
+    `/architecture/subsystem-change-applications/${id}`
+  )).data.data
 }
 
-export async function deletePhysicalSubsystem(id: number) {
-  await http.delete(`/architecture/physical-subsystems/${id}`)
+export async function createSubsystemChangeApplication(payload: CreateSubsystemChangeApplicationPayload) {
+  return (await http.post<ApiResponse<SubsystemChangeApplicationDetail>>(
+    '/architecture/subsystem-change-applications',
+    payload
+  )).data.data
+}
+
+export async function updateSubsystemChangeApplication(id: number, payload: UpdateSubsystemChangeApplicationPayload) {
+  return (await http.put<ApiResponse<SubsystemChangeApplicationDetail>>(
+    `/architecture/subsystem-change-applications/${id}`,
+    payload
+  )).data.data
+}
+
+export async function submitSubsystemChangeApplication(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<SubsystemChangeApplicationDetail>>(
+    `/architecture/subsystem-change-applications/${id}/submit`,
+    { rowVersion }
+  )).data.data
+}
+
+export async function cancelSubsystemChangeApplication(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<SubsystemChangeApplicationDetail>>(
+    `/architecture/subsystem-change-applications/${id}/cancel`,
+    { rowVersion }
+  )).data.data
+}
+
+/** 当前实现只访问本地 no-op provider；返回候选值但不自动回写表单。 */
+export async function requestSubsystemSuggestions(fieldValues: Record<string, string>) {
+  return (await http.post<ApiResponse<SubsystemSuggestion[]>>(
+    '/architecture/subsystem-change-applications/suggestions',
+    { fieldValues }
+  )).data.data
 }
 
 export async function loadOrganizationOptions(resource: ArchitectureResource, keyword = '', size = 50) {

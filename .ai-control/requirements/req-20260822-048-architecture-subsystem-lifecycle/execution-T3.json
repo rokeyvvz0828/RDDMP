@@ -1,0 +1,161 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "recorded_at": "2026-08-23T01:04:00Z",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql",
+      "purpose": "预置工单菜单、view/apply/manage 三级权限、架构管理员角色及兼容授权"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V84__seed_architecture_subsystem_workflow.sql",
+      "purpose": "以 DRAFT 预置固定 ROLE 110 流程模型，避免无 Flowable deployment 时伪标已发布"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/ArchitectureSubsystemSubmissionService.java",
+      "purpose": "在工单事务中启动固定流程、绑定轮次和上下文，并协调审批中取消"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/integration/ArchitectureWorkflowLifecycleConsumer.java",
+      "purpose": "幂等消费 STARTED/APPROVED/RETURNED/REJECTED/TERMINATED 并校验租户、实例、轮次和摘要"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/model/**; persistence/**; service/SubsystemChangeService.java; web/SubsystemChangeApplicationController.java",
+      "purpose": "补工作流 round/receipt 强类型存储、提交/取消协调、submit REST 和终态应用"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/**",
+      "purpose": "覆盖提交失败、上下文校验、事件幂等/乱序、发布失败重试、取消和 V82-V84 真实 MySQL 契约"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/pom.xml; governance/modules.yaml; docs/architecture/MODULES.md",
+      "purpose": "登记 architecture 对 com.ccb.workflow.integration 的公开依赖且不开放内部实现"
+    }
+  ],
+  "requirements_addressed": ["R2", "R3", "R5", "R6", "R8", "R9", "R11", "R12"],
+  "commands": [
+    {
+      "command": "mvn -q -pl :ccb-architecture -am -Dtest=SubsystemChangeServiceTest,ArchitectureSubsystemSubmissionServiceTest,ArchitectureWorkflowLifecycleConsumerTest,SubsystemChangeApplicationControllerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "45/45 通过：工单 27、提交协调 5、生命周期 7、Controller 6"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am -Dtest=SubsystemChangeStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "9/9 通过：round/receipt/CAS/取消请求、租户隔离和事务回滚"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am -Dtest=ArchitectureWorkflowIntegrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "3/3 通过；隔离 MySQL 8.4 经 Flyway 到 V84，验证 V83/V84 和 V82 工作流持久化契约"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am -Dtest=LogicalSubsystemControllerTest,PhysicalSubsystemControllerTest,ArchitectureOptionsControllerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "16/16 通过；旧读取权限与 view/apply/manage 兼容，write 不含 view，旧写保持工单 409 语义"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am -Dapi.version=1.44 -Dtest=ArchitectureWorkflowIntegrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "4/4 通过；主库正向迁移到 V84，独立冲突库证明错误菜单 803 身份在 V83 失败关闭"
+    },
+    {
+      "command": "mvn -q -pl :ccb-workflow -am test",
+      "exit_code": 0,
+      "salient_output": "11 个报告，47 tests，0 failures，0 errors，0 skipped"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test",
+      "exit_code": 0,
+      "salient_output": "23 个报告，163 tests，0 failures，0 errors，0 skipped"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260822-048-architecture-subsystem-lifecycle/codex-task-scope.yaml --base e5b57473beabc9d2a9c2c63bd32635b2f708d8a8 --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "REQ-20260822-048 范围检查通过；78 个变更文件"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "78 migrations 与 1 approved callback 检查通过"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs",
+      "exit_code": 1,
+      "salient_output": "仅报告既有 system->attachment 和 requirement->workflow 基线；无 architecture 新违规"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误，仅工作区 LF 到 CRLF 提示"
+    },
+    {
+      "command": "rg -n -i openai|anthropic|gemini|ollama|httpclient|webclient|resttemplate|https?:// architecture change/integration",
+      "exit_code": 1,
+      "salient_output": "无匹配；T3 未增加真实 AI 或网络客户端"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "固定流程与权限迁移",
+      "result": "pass",
+      "evidence": "MySQL 3/3 验证菜单 803、权限 8031-8033、角色 110、ROLE/ANY/ERROR/三动作和 DRAFT/deployment 空值",
+      "limitations": ["真实 Flowable 发布、启动和任务处理保留到 T5 通过既有发布入口验收"]
+    },
+    {
+      "check": "提交和取消事务协调",
+      "result": "pass",
+      "evidence": "固定 code/context/digest、启动结果校验、round 绑定、未发布/启动失败不绑定、审批中 terminate 等 5 项测试通过",
+      "limitations": ["外部真实工作流事务回滚将在 T5 运行时对账"]
+    },
+    {
+      "check": "生命周期幂等和可重试发布",
+      "result": "pass",
+      "evidence": "重复、旧摘要、批准、退回、拒绝、终止和发布失败共 7 项；Store MySQL 9 项验证 receipt 唯一和事务回滚",
+      "limitations": []
+    },
+    {
+      "check": "模块边界和无 AI",
+      "result": "pass-with-baseline",
+      "evidence": "生产代码只导入 com.ccb.workflow.integration；scope/Flyway/diff/无 AI 检查通过",
+      "limitations": ["全局 module-boundary 仍有与本票据无关的既有基线失败"]
+    }
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "提交仍必须启动流程，manage 不绕过工作流",
+      "result": "pass",
+      "evidence": "唯一 submit REST 委托 ArchitectureSubsystemSubmissionService；无直接批准业务入口"
+    },
+    {
+      "invariant": "事件必须匹配 tenant/business/instance/round/digest",
+      "result": "pass",
+      "evidence": "consumer fail-closed 校验和旧摘要 IGNORE 测试"
+    },
+    {
+      "invariant": "发布失败不得完成 round/receipt",
+      "result": "pass",
+      "evidence": "发布异常向外传播且不写完成轮次或成功回执，事务允许平台重试"
+    },
+    {
+      "invariant": "无真实 deployment 不伪标 PUBLISHED",
+      "result": "pass",
+      "evidence": "V84 definition/version 均为 DRAFT 且 deployment_id NULL；MySQL 断言通过"
+    }
+  ],
+  "disturbances": [
+    "首次提交服务测试混用 Mockito raw 参数和 matcher 导致 4 项夹具错误；统一 eq/any 后 5/5 通过",
+    "静态核对发现 V84 初稿把没有 Flowable deployment 的 definition/version 标成 PUBLISHED，实际 startByCode 必然拒绝；限幅纠正为 DRAFT 并补 MySQL 断言，真实发布仍使用既有平台入口",
+    "全局 module-boundary 检查仍报告 system/requirement 既有越界，当前输出没有 architecture 项",
+    "docker-java 不读取 DOCKER_API_VERSION 环境变量且默认 API 低于 Docker 29 最小版本，首次复跑 /info 400；改为 Maven 进程级 -Dapi.version=1.44 后真实 MySQL 测试通过，未修改全局配置",
+    "稳定 ID 冲突负向用例首次使用无建库权限的测试用户、第二次遗漏隔离库排序规则；改为独立临时 MySQL 容器并与主库统一 utf8mb4_unicode_ci 后 4/4 通过"
+  ],
+  "assumptions_falsified": [
+    "仅向 wf_definition/wf_version 写 PUBLISHED 状态即可构成可启动的真实固定流程"
+  ],
+  "unresolved_items": [
+    "T5 需通过平台既有发布入口生成真实 Flowable deployment，并以真实 instance/task 验证发布、退回重提、自审批、拒绝和取消",
+    "T4 实现桌面与移动端页面"
+  ],
+  "recommended_next": "T4"
+}

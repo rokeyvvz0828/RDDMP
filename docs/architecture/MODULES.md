@@ -17,7 +17,7 @@
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
 | 业务 | `server/src/modules/release` | 投产窗口、版本申请、审批关联、投产基线、生产版本和统计分析 |
 | 业务 | `server/src/modules/requirement` | 需求管理平台：新建项目差异清单、存量需求阶段、系统清单、基线与统一改动记录 |
-| 业务 | `server/src/modules/architecture` | 逻辑子系统、物理子系统及其关联关系管理 |
+| 业务 | `server/src/modules/architecture` | 逻辑子系统、物理子系统、关联关系与变更工单全生命周期（审批、确定性编号、引用检查） |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
 
@@ -35,6 +35,7 @@
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
 - `com.ccb.attachment.model` 提供持久附件公开契约，业务模块只能通过 `AttachmentPort` 访问附件，不得读取附件表或对象键。
 - `com.ccb.system.notification` 与 `web/src/api/notifications.ts` 提供租户隔离的站内消息发布和当前用户消息中心契约，业务模块不得直接写通知表。
+- `business/architecture` 对外仍只公开 `com.ccb.architecture.integration`；该包提供子系统外部引用检查的中性 SPI，异常或无法判定必须按 `INDETERMINATE` 失败关闭，首期不接入真实 AI。架构模块仅通过 `com.ccb.workflow.integration` 接入固定审批流程，不访问 workflow 内部实现或表。
 - 其余业务页面的归属以 `modules.yaml` 中列出的精确路径为准。
 
 公共前端能力变更需要说明现有页面回归范围。后续目录重构必须独立立项，保持路由、类型、接口和业务逻辑兼容。

@@ -31,7 +31,7 @@ public class PhysicalSubsystemController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('architecture:physical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<PhysicalSubsystemView>> list(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
@@ -41,21 +41,22 @@ public class PhysicalSubsystemController {
             @RequestParam(required = false) String businessGroupName,
             @RequestParam(required = false) Long responsibleTeamOrgId,
             @RequestParam(required = false) Long logicalSubsystemId,
+            @RequestParam(required = false) String status,
             @AuthenticationPrincipal AuthUser actor) {
         PhysicalSubsystemQuery query = new PhysicalSubsystemQuery(code, shortName, name, businessGroupName,
-                responsibleTeamOrgId, logicalSubsystemId);
+                responsibleTeamOrgId, logicalSubsystemId, status);
         return ApiResponse.success(service.list(actor, new PageQuery(page, size), query), TraceId.getOrCreate());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('architecture:physical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PhysicalSubsystemView> detail(@PathVariable long id,
                                                       @AuthenticationPrincipal AuthUser actor) {
         return ApiResponse.success(service.detail(actor, id), TraceId.getOrCreate());
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('architecture:physical:create')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:create', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PhysicalSubsystemView> create(@RequestBody PhysicalSubsystemCommand command,
                                                       @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
@@ -63,7 +64,7 @@ public class PhysicalSubsystemController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('architecture:physical:update')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:update', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PhysicalSubsystemView> update(@PathVariable long id,
                                                       @RequestBody PhysicalSubsystemCommand command,
                                                       @AuthenticationPrincipal AuthUser actor) {
@@ -72,7 +73,7 @@ public class PhysicalSubsystemController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('architecture:physical:delete')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:delete', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<Void> delete(@PathVariable long id,
                                     @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();

@@ -1,0 +1,41 @@
+{
+  "feedback_id": "F-T1-001",
+  "decision": "accept",
+  "decision_reason": "独立观察直接对比全部公开编号存储入口，确认 isPublishedCodeOccupied 是唯一遗漏 requireTransaction() 的方法；该偏差违反 T1 明确的全操作事务不变量。",
+  "dynamic_pattern": "boundary-guard-omission",
+  "causal_assessment": {
+    "hypothesis": "只读已发布 code 占用检查被当作内部辅助查询，遗漏公开存储边界统一事务守卫。",
+    "supporting_evidence": [
+      "reserve/release/consume/findByApplicationLine 均在入口调用 requireTransaction()",
+      "isPublishedCodeOccupied 直接执行查询且接口对外公开",
+      "现有无事务测试未覆盖该方法"
+    ],
+    "falsifier": "补守卫后无事务调用仍能执行查询，或事务内策略/并发测试发生回归"
+  },
+  "control_action": {
+    "gain": "low",
+    "target": "JdbcSubsystemNumberReservationStore.isPublishedCodeOccupied 的事务边界",
+    "write_scope": [
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/JdbcSubsystemNumberReservationStore.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/number/JdbcSubsystemNumberReservationStoreMySqlTest.java"
+    ],
+    "invariants": [
+      "不改变编号格式、锁顺序或回收算法",
+      "事务内 published code 占用检查结果不变",
+      "不修改 V82、用户全局配置或 T2 代码"
+    ],
+    "impact_limit": "一个公开方法的一行事务守卫和一个无事务断言",
+    "rollback": "移除新增事务守卫和对应测试断言",
+    "correction_check": [
+      "无事务直接调用 isPublishedCodeOccupied 抛出真实数据库事务异常",
+      "JdbcSubsystemNumberReservationStoreMySqlTest 全部通过",
+      "T1 组合测试全部通过",
+      "git diff --check 通过"
+    ],
+    "route": "executing"
+  },
+  "resolution": "closed",
+  "resolution_evidence": "独立复验确认事务守卫和无事务断言；独立 JDBC 6/6；修复后组合报告 17/17；diff check 通过；零新反馈。",
+  "resolved_at": "2026-08-22T17:15:00+00:00",
+  "residual_risk": ["物理 namespace 专项并发和 SubsystemChangeStore 映射测试仍由 T2/T5 补充"]
+}
