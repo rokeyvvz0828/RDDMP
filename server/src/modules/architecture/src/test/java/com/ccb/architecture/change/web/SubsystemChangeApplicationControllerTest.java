@@ -18,6 +18,7 @@ import com.ccb.architecture.change.suggestion.SubsystemSuggestionProvider;
 import com.ccb.architecture.change.suggestion.SubsystemSuggestionProvider.Suggestion;
 import com.ccb.architecture.change.suggestion.SubsystemSuggestionProvider.SuggestionRequest;
 import com.ccb.architecture.web.ArchitectureExceptionAdvice;
+import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
@@ -48,8 +49,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -66,6 +70,7 @@ class SubsystemChangeApplicationControllerTest {
     private SubsystemChangeService service;
     private ArchitectureSubsystemSubmissionService workflowService;
     private SubsystemSuggestionProvider suggestionProvider;
+    private SystemOperationAudit operationAudit;
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -73,8 +78,9 @@ class SubsystemChangeApplicationControllerTest {
         service = mock(SubsystemChangeService.class);
         workflowService = mock(ArchitectureSubsystemSubmissionService.class);
         suggestionProvider = mock(SubsystemSuggestionProvider.class);
+        operationAudit = mock(SystemOperationAudit.class);
         mockMvc = MockMvcBuilders.standaloneSetup(
-                        new SubsystemChangeApplicationController(service, workflowService, suggestionProvider))
+                        new SubsystemChangeApplicationController(service, workflowService, suggestionProvider, operationAudit))
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalResolver(ACTOR))
                 .build();
@@ -235,6 +241,16 @@ class SubsystemChangeApplicationControllerTest {
         verify(workflowService).cancel(ACTOR, 101L, 8L);
         verify(workflowService).submit(ACTOR, 101L, 7L);
         assertThat(updateCommand.getValue().reason()).isEqualTo("更新说明");
+        verify(operationAudit).recordSuccess(argThat(command ->
+                command.operationCode().equals("architecture.subsystem-change.update")
+                        && "PUT".equals(command.requestMethod())
+                        && command.requestPath().equals(BASE + "/101")));
+        verify(operationAudit).recordSuccess(argThat(command ->
+                command.operationCode().equals("architecture.subsystem-change.cancel")));
+        verify(operationAudit).recordSuccess(argThat(command ->
+                command.operationCode().equals("architecture.subsystem-change.submit")));
+        verify(operationAudit, times(3)).recordSuccess(any());
+        verify(operationAudit, never()).recordFailure(any());
     }
 
     @Test

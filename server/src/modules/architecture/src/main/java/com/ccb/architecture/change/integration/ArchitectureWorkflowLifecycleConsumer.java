@@ -19,6 +19,7 @@ import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
     private final SubsystemPublicationService publication;
     private final LongSupplier idSupplier;
 
+    @Autowired
     public ArchitectureWorkflowLifecycleConsumer(SubsystemChangeStore store,
                                                  SubsystemChangeService changes,
                                                  SubsystemPublicationService publication) {

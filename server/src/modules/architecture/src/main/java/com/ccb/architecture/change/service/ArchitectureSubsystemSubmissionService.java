@@ -14,6 +14,7 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
+import com.ccb.workflow.integration.WorkflowProgress;
 import com.ccb.workflow.integration.WorkflowStartCommand;
 import com.ccb.workflow.integration.WorkflowStartResult;
 import com.ccb.workflow.integration.WorkflowTerminateCommand;
@@ -121,6 +122,11 @@ public class ArchitectureSubsystemSubmissionService {
     }
 
     private void terminateWorkflow(AuthUser actor, CancellationPreparation preparation) {
+        WorkflowProgress progress = workflowGateway.progress(preparation.workflowInstanceId(), actor);
+        if (progress == null || !"RUNNING".equals(progress.status())) {
+            throw conflict("审批流程已结束（状态 " + (progress == null ? "未知" : progress.status())
+                    + "），不能取消；请等待平台生命周期事件重试或由运维处置");
+        }
         workflowGateway.terminate(new WorkflowTerminateCommand(
                 preparation.workflowInstanceId(), BUSINESS_TYPE, String.valueOf(preparation.applicationId()),
                 preparation.businessRound(), "申请人取消架构子系统变更工单"), actor);

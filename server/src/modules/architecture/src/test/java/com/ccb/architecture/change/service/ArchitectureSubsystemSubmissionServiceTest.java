@@ -16,6 +16,7 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
+import com.ccb.workflow.integration.WorkflowProgress;
 import com.ccb.workflow.integration.WorkflowStartCommand;
 import com.ccb.workflow.integration.WorkflowStartResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -165,6 +166,7 @@ class ArchitectureSubsystemSubmissionServiceTest {
         ApplicationDetail current = detail(application(ApplicationStatus.IN_REVIEW, 2, 90L, false, 6L));
         ApplicationDetail requested = detail(application(ApplicationStatus.IN_REVIEW, 2, 90L, true, 7L));
         when(changes.detail(ACTOR, AccessScope.OWN, 101L)).thenReturn(current, requested);
+        when(workflowGateway.progress(90L, ACTOR)).thenReturn(progress("RUNNING"));
         CancellationPreparation preparation = new CancellationPreparation(101L, 2, 90L, DIGEST);
         doAnswer(invocation -> {
             CancellationCoordinator coordinator = invocation.getArgument(3);
@@ -183,6 +185,33 @@ class ArchitectureSubsystemSubmissionServiceTest {
         assertThat(command.getValue().businessKey()).isEqualTo("101");
         assertThat(command.getValue().businessRound()).isEqualTo(2);
         verify(changes, never()).cancel(any(), any(), any(Long.class), any(Long.class));
+    }
+
+    @Test
+    void 审批中取消遇到已结束实例时返回冲突且不调用终止() {
+        ApplicationDetail current = detail(application(ApplicationStatus.IN_REVIEW, 2, 90L, false, 6L));
+        when(changes.detail(ACTOR, AccessScope.OWN, 101L)).thenReturn(current);
+        when(workflowGateway.progress(90L, ACTOR)).thenReturn(progress("APPROVED"));
+        CancellationPreparation preparation = new CancellationPreparation(101L, 2, 90L, DIGEST);
+        doAnswer(invocation -> {
+            CancellationCoordinator coordinator = invocation.getArgument(3);
+            coordinator.terminate(preparation);
+            return preparation;
+        }).when(changes).coordinateCancellation(eq(ACTOR), eq(101L), eq(6L),
+                any(CancellationCoordinator.class));
+
+        assertThatThrownBy(() -> service.cancel(ACTOR, 101L, 6L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.code()).isEqualTo(ErrorCode.CONFLICT));
+
+        verify(workflowGateway, never()).terminate(any(), any());
+    }
+
+    private WorkflowProgress progress(String status) {
+        return new WorkflowProgress(90L, 1L, 1, status,
+                new WorkflowBusinessContext("architecture", "架构管理", "architecture_subsystem_change",
+                        "101", "架构子系统变更申请 101", 2, null, null,
+                        "/architecture/subsystem-change-applications/101", DIGEST), TIME);
     }
 
     private void stubSubmission(SubmissionPreparation preparation) {

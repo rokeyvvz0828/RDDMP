@@ -24,6 +24,8 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.SystemOperationAudit;
+import com.ccb.system.capability.SystemOperationAuditCommand;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -37,12 +39,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * 架构子系统变更工单的草稿 HTTP 边界。
@@ -53,19 +59,59 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/architecture/subsystem-change-applications")
 public class SubsystemChangeApplicationController {
+    private static final Logger log = LoggerFactory.getLogger(SubsystemChangeApplicationController.class);
     private static final String MANAGE_AUTHORITY = "architecture:manage";
     private static final Set<String> RESERVED_SUGGESTION_FIELDS = Set.of("tenantid", "applicantid", "accessscope");
 
     private final SubsystemChangeService service;
     private final ArchitectureSubsystemSubmissionService workflowService;
     private final SubsystemSuggestionProvider suggestionProvider;
+    private final SystemOperationAudit operationAudit;
 
     public SubsystemChangeApplicationController(SubsystemChangeService service,
                                                 ArchitectureSubsystemSubmissionService workflowService,
-                                                SubsystemSuggestionProvider suggestionProvider) {
+                                                SubsystemSuggestionProvider suggestionProvider,
+                                                SystemOperationAudit operationAudit) {
         this.service = service;
         this.workflowService = workflowService;
         this.suggestionProvider = suggestionProvider;
+        this.operationAudit = operationAudit;
+    }
+
+    /** 关键写操作统一审计：成功记录成功，业务失败记录失败；审计失败不阻断业务结果。 */
+    private <T> T audited(AuthUser actor, String operationCode, String method, String path,
+                          Supplier<T> action) {
+        try {
+            T result = action.get();
+            recordAudit(actor, operationCode, method, path, null, TraceId.getOrCreate());
+            return result;
+        } catch (BusinessException failure) {
+            recordAudit(actor, operationCode, method, path, businessAuditMessage(failure), TraceId.getOrCreate());
+            throw failure;
+        } catch (RuntimeException failure) {
+            recordAudit(actor, operationCode, method, path, "工单操作失败", TraceId.getOrCreate());
+            throw failure;
+        }
+    }
+
+    private void recordAudit(AuthUser actor, String operationCode, String method, String path,
+                             String errorMessage, String traceId) {
+        try {
+            SystemOperationAuditCommand command = new SystemOperationAuditCommand(
+                    actor, operationCode, method, path, errorMessage, traceId);
+            if (errorMessage == null) {
+                operationAudit.recordSuccess(command);
+            } else {
+                operationAudit.recordFailure(command);
+            }
+        } catch (RuntimeException auditFailure) {
+            log.warn("变更工单审计写入失败 operationCode={}", operationCode, auditFailure);
+        }
+    }
+
+    private static String businessAuditMessage(BusinessException failure) {
+        String message = failure.getMessage();
+        return message == null || message.isBlank() ? "工单操作失败" : message;
     }
 
     /** view/apply/manage 都只能默认查看本人，manage 由认证权限提升为当前租户全部。 */
@@ -100,13 +146,14 @@ public class SubsystemChangeApplicationController {
     public ApiResponse<ApplicationDetailResponse> create(@RequestBody CreateApplicationRequest request,
                                                           @AuthenticationPrincipal AuthUser actor) {
         TargetKind targetKind = requiredTargetKind(request == null ? null : request.targetKind());
-        ApplicationDetail detail = switch (targetKind) {
-            case LOGICAL -> service.createLogical(actor, new LogicalApplicationCommand(
-                    request.actionType(), request.targetId(), request.reason(), request.logicalDraft(),
-                    request.physicalDrafts()));
-            case PHYSICAL -> service.createPhysical(actor, new PhysicalApplicationCommand(
-                    request.actionType(), request.targetId(), request.reason(), request.physicalDraft()));
-        };
+        ApplicationDetail detail = audited(actor, "architecture.subsystem-change.create", "POST",
+                "/api/architecture/subsystem-change-applications", () -> switch (targetKind) {
+                    case LOGICAL -> service.createLogical(actor, new LogicalApplicationCommand(
+                            request.actionType(), request.targetId(), request.reason(), request.logicalDraft(),
+                            request.physicalDrafts()));
+                    case PHYSICAL -> service.createPhysical(actor, new PhysicalApplicationCommand(
+                            request.actionType(), request.targetId(), request.reason(), request.physicalDraft()));
+                });
         return success(toDetail(detail));
     }
 
@@ -117,8 +164,10 @@ public class SubsystemChangeApplicationController {
                                                           @RequestBody UpdateApplicationRequest request,
                                                           @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
-        ApplicationDetail detail = service.update(actor, AccessScope.OWN, id, rowVersion,
-                new DraftUpdateCommand(request.reason(), request.logicalDraft(), request.physicalDrafts()));
+        ApplicationDetail detail = audited(actor, "architecture.subsystem-change.update", "PUT",
+                "/api/architecture/subsystem-change-applications/" + id, () ->
+                service.update(actor, AccessScope.OWN, id, rowVersion,
+                        new DraftUpdateCommand(request.reason(), request.logicalDraft(), request.physicalDrafts())));
         return success(toDetail(detail));
     }
 
@@ -128,7 +177,10 @@ public class SubsystemChangeApplicationController {
                                                           @RequestBody CancelApplicationRequest request,
                                                           @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
-        return success(toDetail(workflowService.cancel(actor, id, rowVersion)));
+        ApplicationDetail detail = audited(actor, "architecture.subsystem-change.cancel", "POST",
+                "/api/architecture/subsystem-change-applications/" + id + "/cancel", () ->
+                workflowService.cancel(actor, id, rowVersion));
+        return success(toDetail(detail));
     }
 
     /** 提交入口只接受行版本；业务值全部从当前工单草稿读取并固化快照。 */
@@ -138,7 +190,10 @@ public class SubsystemChangeApplicationController {
                                                           @RequestBody SubmitApplicationRequest request,
                                                           @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
-        return success(toDetail(workflowService.submit(actor, id, rowVersion)));
+        ApplicationDetail detail = audited(actor, "architecture.subsystem-change.submit", "POST",
+                "/api/architecture/subsystem-change-applications/" + id + "/submit", () ->
+                workflowService.submit(actor, id, rowVersion));
+        return success(toDetail(detail));
     }
 
     /**
