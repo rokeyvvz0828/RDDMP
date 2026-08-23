@@ -44,6 +44,7 @@ import {
   cancelled,
   formatDateTime,
   formatLogicalNumber,
+  httpStatus,
   targetKindLabels
 } from './utils'
 import './architecture.css'
@@ -65,6 +66,7 @@ const levels = ref<ParameterOption[]>([])
 const frameworks = ref<ParameterOption[]>([])
 const loading = ref(true)
 const loadError = ref('')
+const forbidden = ref(false)
 const deciding = ref<WorkflowTaskAction | ''>('')
 const cancelling = ref(false)
 
@@ -183,6 +185,7 @@ async function load() {
   }
   loading.value = true
   loadError.value = ''
+  forbidden.value = false
   try {
     await loadReferences()
     const result = await getSubsystemChangeApplication(id)
@@ -190,7 +193,8 @@ async function load() {
     physicalDrafts.value = result.physicalDrafts.map(toInput)
     await Promise.all([loadPublished(result), loadWorkflow(result)])
   } catch (error) {
-    loadError.value = apiErrorMessage(error, '工单详情加载失败')
+    if (httpStatus(error) === 403) forbidden.value = true
+    else loadError.value = apiErrorMessage(error, '工单详情加载失败')
   } finally {
     loading.value = false
   }
@@ -270,7 +274,10 @@ onMounted(() => { void load() })
       </template>
     </UiPageHeader>
 
-    <section v-if="loadError" class="architecture-state-panel">
+    <section v-if="forbidden" class="architecture-state-panel">
+      <el-result icon="warning" title="暂无工单查看权限" sub-title="需要 architecture:view、architecture:apply 或 architecture:manage 权限。" />
+    </section>
+    <section v-else-if="loadError" class="architecture-state-panel">
       <el-result icon="error" title="工单详情加载失败" :sub-title="loadError"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result>
     </section>
     <div v-else v-loading="loading" class="architecture-change-detail-shell">
