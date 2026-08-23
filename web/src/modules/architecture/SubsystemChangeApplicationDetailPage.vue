@@ -45,6 +45,7 @@ import {
   formatDateTime,
   formatLogicalNumber,
   httpStatus,
+  optionLabel,
   targetKindLabels
 } from './utils'
 import './architecture.css'
@@ -64,6 +65,9 @@ const logicalSubsystems = ref<LogicalSubsystemOption[]>([])
 const runtimes = ref<ParameterOption[]>([])
 const levels = ref<ParameterOption[]>([])
 const frameworks = ref<ParameterOption[]>([])
+const deploymentPlatforms = ref<ParameterOption[]>([])
+const systemTypes = ref<ParameterOption[]>([])
+const ownerships = ref<ParameterOption[]>([])
 const loading = ref(true)
 const loadError = ref('')
 const forbidden = ref(false)
@@ -90,8 +94,8 @@ const comparison = computed(() => {
     return [
       { label: '系统简称', current: current.shortName, draft: draft.shortName },
       { label: '系统名称', current: current.name, draft: draft.name },
-      { label: '所属事业群', current: String(current.businessOrgId), draft: String(draft.businessOrgId) },
-      { label: '联系人', current: String(current.contactUserId), draft: String(draft.contactUserId) },
+      { label: '所属事业群', current: orgLabel(current.businessOrgId), draft: orgLabel(draft.businessOrgId) },
+      { label: '联系人', current: userLabel(current.contactUserId), draft: userLabel(draft.contactUserId) },
       { label: '状态', current: current.status, draft: actionTypeLabels[detail.value.application.actionType] }
     ]
   }
@@ -141,7 +145,10 @@ async function loadReferences() {
     loadLogicalSubsystemOptions('', 100),
     loadParameterOptions('physical-subsystem', 'ARCH_RUNTIME'),
     loadParameterOptions('physical-subsystem', 'ARCH_SYSTEM_LEVEL'),
-    loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK')
+    loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK'),
+    loadParameterOptions('logical-subsystem', 'ARCH_DEPLOYMENT_PLATFORM'),
+    loadParameterOptions('logical-subsystem', 'ARCH_SYSTEM_TYPE'),
+    loadParameterOptions('logical-subsystem', 'ARCH_SYSTEM_OWNERSHIP')
   ])
   if (results[0].status === 'fulfilled') organizations.value = results[0].value
   if (results[1].status === 'fulfilled') users.value = results[1].value
@@ -149,6 +156,18 @@ async function loadReferences() {
   if (results[3].status === 'fulfilled') runtimes.value = results[3].value
   if (results[4].status === 'fulfilled') levels.value = results[4].value
   if (results[5].status === 'fulfilled') frameworks.value = results[5].value
+  if (results[6].status === 'fulfilled') deploymentPlatforms.value = results[6].value
+  if (results[7].status === 'fulfilled') systemTypes.value = results[7].value
+  if (results[8].status === 'fulfilled') ownerships.value = results[8].value
+}
+
+function orgLabel(id: number) {
+  return organizations.value.find(item => item.id === id)?.pathLabel || `组织 #${id}`
+}
+
+function userLabel(id: number) {
+  const user = users.value.find(item => item.id === id)
+  return user ? `${user.displayName}（${user.username}）` : `用户 #${id}`
 }
 
 async function loadPublished(applicationDetail: SubsystemChangeApplicationDetail) {
@@ -289,7 +308,7 @@ onMounted(() => { void load() })
         </div>
         <UiStatusTag :value="application.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(application.status)" />
         <dl>
-          <div><dt>申请人</dt><dd>#{{ application.applicantId }}</dd></div>
+          <div><dt>申请人</dt><dd>{{ userLabel(application.applicantId) }}</dd></div>
           <div><dt>业务轮次</dt><dd>第 {{ application.currentBusinessRound }} 轮</dd></div>
           <div><dt>创建时间</dt><dd>{{ formatDateTime(application.createdAt) }}</dd></div>
           <div><dt>最后更新</dt><dd>{{ formatDateTime(application.updatedAt) }}</dd></div>
@@ -303,11 +322,11 @@ onMounted(() => { void load() })
         <dl class="architecture-detail-grid">
           <div><dt>系统简称</dt><dd>{{ detail.logicalDraft.shortName }}</dd></div>
           <div><dt>系统名称</dt><dd>{{ detail.logicalDraft.name }}</dd></div>
-          <div><dt>所属事业群</dt><dd>#{{ detail.logicalDraft.businessOrgId }}</dd></div>
-          <div><dt>联系人</dt><dd>#{{ detail.logicalDraft.contactUserId }}</dd></div>
-          <div><dt>部署平台</dt><dd>{{ detail.logicalDraft.deploymentPlatformCode || '—' }}</dd></div>
-          <div><dt>系统类型</dt><dd>{{ detail.logicalDraft.systemTypeCode || '—' }}</dd></div>
-          <div><dt>系统归属</dt><dd>{{ detail.logicalDraft.systemOwnershipCode || '—' }}</dd></div>
+          <div><dt>所属事业群</dt><dd>{{ orgLabel(detail.logicalDraft.businessOrgId) }}</dd></div>
+          <div><dt>联系人</dt><dd>{{ userLabel(detail.logicalDraft.contactUserId) }}</dd></div>
+          <div><dt>部署平台</dt><dd>{{ optionLabel(deploymentPlatforms, detail.logicalDraft.deploymentPlatformCode) }}</dd></div>
+          <div><dt>系统类型</dt><dd>{{ optionLabel(systemTypes, detail.logicalDraft.systemTypeCode) }}</dd></div>
+          <div><dt>系统归属</dt><dd>{{ optionLabel(ownerships, detail.logicalDraft.systemOwnershipCode) }}</dd></div>
           <div><dt>草稿修订</dt><dd>第 {{ detail.logicalDraft.draftRevision }} 版</dd></div>
           <div class="is-wide"><dt>系统描述</dt><dd>{{ detail.logicalDraft.description || '—' }}</dd></div>
           <div class="is-wide"><dt>备注</dt><dd>{{ detail.logicalDraft.remark || '—' }}</dd></div>
