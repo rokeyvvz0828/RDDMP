@@ -1,10 +1,10 @@
 {
   "schema_version": 4,
-  "revision": 50,
+  "revision": 51,
   "created_at": "2026-08-22T15:00:05+00:00",
-  "updated_at": "2026-08-23T11:45:00+00:00",
+  "updated_at": "2026-08-23T14:05:00+00:00",
   "mode": "high-assurance",
-  "phase": "executing",
+  "phase": "converged",
   "phase_history": [
     {
       "from": null,
@@ -185,6 +185,12 @@
       "to": "executing",
       "evidence": "T4 独立观察 verdict=pass-with-runtime-defer；F-T4-OBS-001（详情页 403 专用态，P3）已限幅修复并经独立复验 resolved；T4 verified；下一步 T5 集成与收敛验收（planned，本会话未启动）",
       "recorded_at": "2026-08-23T11:45:00+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "converged",
+      "evidence": "T5 独立观察实质通过（API 62/62、浏览器 67/67、Flyway 78/78、边界 0 违规、重启保持、审计对账）；F-T5-OBS-001（观测脚本 schema 缺陷）已修正关闭；开放反馈 0；convergence gate=pass；账本收敛",
+      "recorded_at": "2026-08-23T14:05:00+00:00"
     }
   ],
   "stage_artifacts": {
@@ -6394,9 +6400,14 @@
         "需要平台公共接口或真实 AI",
         "需求必须变化"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-22T15:42:40+00:00"
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-23T14:05:00+00:00",
+          "text": "execution-T5/observation-T5/convergence 已记录：全量 reactor BUILD SUCCESS（395/0/0）、Vue build 0、治理/范围/Flyway/diff 通过、隔离 MySQL V84+真实 Flowable+HTTP 62/62、四视口明暗主题浏览器 67/67、重启保持与审计对账通过；三项纠偏（Boot 装配 @Autowired、已结束实例取消 409、写操作审计）已提交并聚焦测试通过；开放反馈 0"
+        }
+      ],
+      "updated_at": "2026-08-23T14:05:00+00:00"
     }
   ],
   "feedback": [
@@ -6577,6 +6588,26 @@
       "decided_at": "2026-08-23T11:41:00+00:00",
       "resolved_at": "2026-08-23T11:42:00+00:00",
       "resolution_evidence": "独立复验：详情页 forbidden 分支与专用 el-result 已存在且先于 loadError；修复提交 52d76e5；npm --prefix web run build exit 0；git diff --check exit 0"
+    },
+    {
+      "id": "F-T5-OBS-001",
+      "task": "T5",
+      "source": "independent-observer",
+      "requirement": "R12",
+      "expected": "观测脚本应正确读取 UAT 结果文件 schema（checked/failed）。",
+      "observed": "首次核验用 d['passed'] 触发 KeyError（文件键为 checked/failed），被判为 fail；实际 checked=67、failed=0，无底层失败。",
+      "evidence": "python json 读取 /tmp/t5/uat-results.json 键集与首次命令不匹配；修正后 67 checked / 0 failed。",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "观测指令 schema 错误，非产品偏差",
+      "causal_hypothesis": "观测命令假设了不存在的 passed 键",
+      "correction_check": "改用 checked/failed 键复读",
+      "decision": "accept",
+      "decision_reason": "测量脚本缺陷；修正后所有实质检查通过，无产品偏差",
+      "created_at": "2026-08-23T13:58:16+00:00",
+      "decided_at": "2026-08-23T13:59:00+00:00",
+      "resolved_at": "2026-08-23T13:59:30+00:00",
+      "resolution_evidence": "以正确键复读：checked=67, failed=0；其余 11/12 传感器 pass（Flyway 78/78、边界 0、diff 干净、health UP、DB 事实一致）"
     }
   ],
   "samples": [
@@ -6669,6 +6700,22 @@
       "score": 0,
       "evidence": "详情页补 forbidden 专用态并先于 loadError 渲染；独立复验确认修复已提交（52d76e5）、build exit 0、diff check 0；F-T4-OBS-001 resolved；T4 verified；真实浏览器/MySQL/工作流延后 T5",
       "recorded_at": "2026-08-23T11:42:00+00:00"
+    },
+    {
+      "id": "S-0011",
+      "label": "T5 独立观察",
+      "errors": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+      "score": 1,
+      "evidence": "11/12 传感器 pass；唯一 fail 为观测脚本读取 UAT 结果文件的 schema 缺陷（checked/failed vs passed），无底层失败",
+      "recorded_at": "2026-08-23T13:58:16+00:00"
+    },
+    {
+      "id": "S-0012",
+      "label": "T5 修正后独立复验与收敛",
+      "errors": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+      "score": 0,
+      "evidence": "修正测量键后 UAT 67 checked/0 failed；API 62/62、Flyway 78/78、architecture 边界 0 违规、diff 干净、health UP、DB 事实（主数据/替换/交付 DEAD=3/审计 98+22）一致；F-T5-OBS-001 resolved；收敛 gate=pass，开放反馈 0",
+      "recorded_at": "2026-08-23T14:05:00+00:00"
     }
   ]
 }
