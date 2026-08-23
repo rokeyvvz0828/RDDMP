@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 49,
+  "revision": 50,
   "created_at": "2026-08-22T15:00:05+00:00",
-  "updated_at": "2026-08-23T02:03:38+00:00",
+  "updated_at": "2026-08-23T11:45:00+00:00",
   "mode": "high-assurance",
   "phase": "executing",
   "phase_history": [
@@ -179,6 +179,12 @@
       "to": "executing",
       "evidence": "独立观察判定两项 P1 resolved；T3 implemented-with-runtime-defer，真实 Flowable 保留 T5，启动 T4",
       "recorded_at": "2026-08-23T02:03:38+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T4 独立观察 verdict=pass-with-runtime-defer；F-T4-OBS-001（详情页 403 专用态，P3）已限幅修复并经独立复验 resolved；T4 verified；下一步 T5 集成与收敛验收（planned，本会话未启动）",
+      "recorded_at": "2026-08-23T11:45:00+00:00"
     }
   ],
   "stage_artifacts": {
@@ -6302,14 +6308,18 @@
       "escalation_conditions": [
         "需要改变全页布局、权限降级或建议采用规则"
       ],
-      "status": "active",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-23T02:03:38+00:00",
           "text": "T3 两项 P1 已独立复验关闭；前端设计手册、模块指令、delivery-showcase 与稳定 REST/工作流契约已复核，启动 T4"
+        },
+        {
+          "recorded_at": "2026-08-23T11:45:00+00:00",
+          "text": "execution-T4 与 observation-T4 已记录；独立观察 9 项中 8 项 pass、1 项 partial（详情页 403 专用态），经纠偏（52d76e5）后独立复验 resolved；npm build exit 0、diff check 0；真实浏览器四视口/MySQL/工作流验收按批准计划留 T5"
         }
       ],
-      "updated_at": "2026-08-23T02:03:38+00:00"
+      "updated_at": "2026-08-23T11:45:00+00:00"
     },
     {
       "id": "T5",
@@ -6547,6 +6557,26 @@
       "decided_at": "2026-08-23T01:22:43+00:00",
       "resolved_at": "2026-08-23T01:22:43+00:00",
       "resolution_evidence": "state revision 48：phase=correcting、T2=verified、T3=correcting、S-0007；全部当前前缀 JSON 可解析"
+    },
+    {
+      "id": "F-T4-OBS-001",
+      "task": "T4",
+      "source": "independent-observer",
+      "requirement": "R10",
+      "expected": "工单详情页应像主数据页与列表页一样，用专用 forbidden/无权限状态呈现 403。",
+      "observed": "SubsystemChangeApplicationDetailPage.vue 无 forbidden 标志，403 仅落入 loadError 通用失败态，标题仍为“工单详情加载失败”。",
+      "evidence": "DetailPage load() 与模板无 403 分支；Logical/Physical 主数据页与工单列表页均有 forbidden 专用态。",
+      "severity": "P3",
+      "confidence": "high",
+      "sensor_limit": "静态只读；未真实浏览器触发 403 确认渲染文案",
+      "causal_hypothesis": "详情页遗漏了与列表/主数据页一致的 forbidden 状态分支",
+      "correction_check": "为详情页 load() 增加 httpStatus===403→forbidden 分支并在模板渲染专用无权限 el-result；重跑 npm --prefix web run build。",
+      "decision": "accept",
+      "decision_reason": "详情页 403 呈现与其余页面不一致，属纯前端状态覆盖偏差；限幅修复不改变契约、不扩大范围。",
+      "created_at": "2026-08-23T11:35:58+00:00",
+      "decided_at": "2026-08-23T11:41:00+00:00",
+      "resolved_at": "2026-08-23T11:42:00+00:00",
+      "resolution_evidence": "独立复验：详情页 forbidden 分支与专用 el-result 已存在且先于 loadError；修复提交 52d76e5；npm --prefix web run build exit 0；git diff --check exit 0"
     }
   ],
   "samples": [
@@ -6623,6 +6653,22 @@
       "score": 0,
       "evidence": "控制器 16/16；V83/V84 正向和稳定菜单 ID 冲突负向 MySQL 4/4；两项 P1 均由独立观察关闭，真实 Flowable 延后 T5",
       "recorded_at": "2026-08-23T02:03:38+00:00"
+    },
+    {
+      "id": "S-0009",
+      "label": "T4 首次独立观察",
+      "errors": {"P0": 0, "P1": 0, "P2": 0, "P3": 1},
+      "score": 1,
+      "evidence": "vue-tsc+vite build exit 0；主数据只读/列表/表单/详情审批/DTO/物理归属纠偏/建议边界 8 项 pass，状态覆盖 1 项 partial；发现 F-T4-OBS-001（详情页缺专用 403，P3）",
+      "recorded_at": "2026-08-23T11:35:58+00:00"
+    },
+    {
+      "id": "S-0010",
+      "label": "T4 纠偏后独立复验",
+      "errors": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+      "score": 0,
+      "evidence": "详情页补 forbidden 专用态并先于 loadError 渲染；独立复验确认修复已提交（52d76e5）、build exit 0、diff check 0；F-T4-OBS-001 resolved；T4 verified；真实浏览器/MySQL/工作流延后 T5",
+      "recorded_at": "2026-08-23T11:42:00+00:00"
     }
   ]
 }
