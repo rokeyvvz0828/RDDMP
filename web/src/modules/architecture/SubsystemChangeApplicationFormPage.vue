@@ -49,6 +49,8 @@ const applicationId = ref<number | null>(positiveNumber(route.params.id))
 const targetKind = ref<SubsystemTargetKind>(route.query.targetKind === 'PHYSICAL' ? 'PHYSICAL' : 'LOGICAL')
 const actionType = ref<SubsystemActionType>(readAction(route.query.actionType))
 const targetId = ref<number | null>(positiveNumber(route.query.targetId))
+/** 物理工单发布记录的当前归属逻辑；REPLACE 需排除该选项并留空待选。 */
+const sourceLogicalSubsystemId = ref<number | null>(null)
 const reason = ref('')
 const logicalDraft = ref<LogicalDraftInput>(emptyLogicalDraft())
 const physicalDrafts = ref<PhysicalDraftInput[]>([])
@@ -176,6 +178,7 @@ function hydrate(application: SubsystemChangeApplicationDetail) {
   targetKind.value = application.application.targetKind
   actionType.value = application.application.actionType
   targetId.value = application.application.targetId
+  sourceLogicalSubsystemId.value = null
   reason.value = application.application.reason
   logicalDraft.value = application.logicalDraft ? logicalInput(application.logicalDraft) : emptyLogicalDraft()
   physicalDrafts.value = application.physicalDrafts.map(physicalInput)
@@ -229,9 +232,10 @@ async function initializeFromPublished() {
     return
   }
   const source = await getPhysicalSubsystem(targetId.value)
+  sourceLogicalSubsystemId.value = source.logicalSubsystemId
   physicalDrafts.value = [{
     lineNo: 1,
-    targetLogicalSubsystemId: source.logicalSubsystemId,
+    targetLogicalSubsystemId: actionType.value === 'REPLACE' ? null : source.logicalSubsystemId,
     shortName: source.shortName,
     name: source.name,
     englishName: source.englishName,
@@ -268,6 +272,7 @@ async function initialize() {
 function changeTargetKind(value: SubsystemTargetKind) {
   if (isExisting.value || targetId.value) return
   targetKind.value = value
+  sourceLogicalSubsystemId.value = null
   logicalDraft.value = emptyLogicalDraft()
   physicalDrafts.value = value === 'PHYSICAL' ? [emptyPhysicalDraft(1)] : []
 }
@@ -314,7 +319,9 @@ function validate() {
   }
   if (targetKind.value === 'PHYSICAL' && physicalDrafts.value.length !== 1) return '物理工单必须且只能包含一个物理子系统草稿'
   for (const [index, draft] of physicalDrafts.value.entries()) {
-    if (targetKind.value === 'PHYSICAL' && !draft.targetLogicalSubsystemId) return '请选择物理子系统所属逻辑子系统'
+    if (targetKind.value === 'PHYSICAL' && !draft.targetLogicalSubsystemId) {
+      return actionType.value === 'REPLACE' ? '请选择与当前归属不同的新逻辑子系统' : '请选择物理子系统所属逻辑子系统'
+    }
     if (!draft.shortName || !draft.name) return `请完整填写第 ${index + 1} 个物理子系统的简称和名称`
     if (!draft.responsibleTeamOrgId || !draft.responsibleTeamNameSnapshot) return `请选择第 ${index + 1} 个物理子系统的负责团队`
   }
@@ -579,6 +586,8 @@ onMounted(() => { void initialize() })
           :frameworks="frameworks"
           :number-label="physicalNumberLabel(physicalDrafts[0])"
           show-logical-target
+          :logical-target-locked="actionType !== 'CREATE' && actionType !== 'REPLACE'"
+          :logical-target-exclusions="actionType === 'REPLACE' && sourceLogicalSubsystemId ? [sourceLogicalSubsystemId] : []"
         />
       </section>
     </div>

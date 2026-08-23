@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Delete } from '@element-plus/icons-vue'
 import type {
   LogicalSubsystemOption,
@@ -18,14 +19,25 @@ const props = withDefaults(defineProps<{
   title?: string
   numberLabel?: string
   showLogicalTarget?: boolean
+  /** 非 REPLACE 物理工单的所属逻辑子系统由后端契约固定，只读展示当前归属。 */
+  logicalTargetLocked?: boolean
+  /** REPLACE 工单排除源物理当前归属逻辑，避免选择无变化的无效目标。 */
+  logicalTargetExclusions?: number[]
   removable?: boolean
   readonly?: boolean
 }>(), {
   title: '物理子系统',
   numberLabel: '待生成',
   showLogicalTarget: false,
+  logicalTargetLocked: false,
+  logicalTargetExclusions: () => [],
   removable: false,
   readonly: false
+})
+
+const logicalOptions = computed(() => {
+  const excluded = new Set(props.logicalTargetExclusions)
+  return props.logicalSubsystems.filter(item => !excluded.has(item.id))
 })
 
 const model = defineModel<PhysicalDraftInput>({ required: true })
@@ -52,9 +64,9 @@ function teamChanged(value: number | null) {
 
     <div class="architecture-form-grid">
       <el-form-item v-if="showLogicalTarget" label="所属逻辑子系统" required>
-        <el-select v-model="model.targetLogicalSubsystemId" :disabled="readonly" filterable placeholder="选择已启用逻辑子系统">
+        <el-select v-model="model.targetLogicalSubsystemId" :disabled="readonly || logicalTargetLocked" filterable placeholder="选择已启用逻辑子系统">
           <el-option
-            v-for="item in logicalSubsystems"
+            v-for="item in logicalOptions"
             :key="item.id"
             :label="`${item.name}（${item.code}）`"
             :value="item.id"
