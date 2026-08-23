@@ -1,0 +1,20 @@
+{
+  "feedback_id": "F-T3-001",
+  "task_id": "T3",
+  "requirement_id": "R1/R8",
+  "severity": "P1",
+  "decision": "accept",
+  "expected": "新三级权限按包含关系访问发布主数据和工单选项，并保留旧权限兼容",
+  "observed": "三个既有查询 Controller 只接受旧 list 权限，ROLE110 只有新权限会收到 403",
+  "causal_hypothesis": "权限迁移只完成旧到新映射，查询端点遗漏新权限兼容",
+  "correction": "已执行：GET/选项接受旧 list 与 architecture:view/apply/manage；旧写仅增加 apply/manage 的入口兼容，仍由服务层稳定返回 409 ARCHITECTURE_WORK_ORDER_REQUIRED，view 不具备写入口。",
+  "verification": [
+    "主代理复核 LogicalSubsystemController、PhysicalSubsystemController、ArchitectureOptionsController 的 @PreAuthorize 表达式符合新旧权限兼容边界。",
+    "2026-08-23 主代理运行 LogicalSubsystemControllerTest、PhysicalSubsystemControllerTest、ArchitectureOptionsControllerTest：16 tests，0 failures，0 errors，Maven exit 0。",
+    "git diff --check exit 0；仅有 Windows LF/CRLF 提示。"
+  ],
+  "independent_reobservation": "独立观察者 Curie 复核控制器、注解和 MockMvc 测试后判定 resolved；残余动态 RBAC/真实服务 409 链路留 T5。",
+  "status": "resolved",
+  "resolved_at": "2026-08-23T09:48:00+08:00",
+  "decided_at": "2026-08-23T09:22:43+08:00"
+}

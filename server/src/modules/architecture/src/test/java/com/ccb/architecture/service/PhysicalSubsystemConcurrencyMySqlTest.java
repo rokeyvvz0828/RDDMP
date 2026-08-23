@@ -26,21 +26,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 @Testcontainers
@@ -63,7 +57,7 @@ class PhysicalSubsystemConcurrencyMySqlTest {
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("36"))
+                .target(MigrationVersion.fromVersion("77"))
                 .load()
                 .migrate();
     }
@@ -83,93 +77,50 @@ class PhysicalSubsystemConcurrencyMySqlTest {
     }
 
     @Test
-    void physicalCreateLocksFirstSoConcurrentLogicalDeleteReturns409() throws Exception {
-        ArchitectureSubsystemRepository repository = spy(new ArchitectureSubsystemRepository(jdbc));
-        CountDownLatch physicalHasParentLock = new CountDownLatch(1);
-        CountDownLatch deleteAttemptedParentLock = new CountDownLatch(1);
-        CountDownLatch allowPhysicalCommit = new CountDownLatch(1);
-        AtomicBoolean pausePhysicalOnce = new AtomicBoolean(true);
-
-        doAnswer(invocation -> {
-            boolean physicalThread = Thread.currentThread().getName().contains("physical-create");
-            if (!physicalThread) {
-                deleteAttemptedParentLock.countDown();
-                return invocation.callRealMethod();
-            }
-            Object result = invocation.callRealMethod();
-            if (pausePhysicalOnce.compareAndSet(true, false)) {
-                physicalHasParentLock.countDown();
-                await(allowPhysicalCommit, "物理事务未获准提交");
-            }
-            return result;
-        }).when(repository).lockLogical(anyLong(), anyLong());
-
+    void concurrentLegacyPhysicalCreatesAllReturn409WithoutChangingPublishedFacts() throws Exception {
+        ArchitectureSubsystemRepository repository = new ArchitectureSubsystemRepository(jdbc);
         Services services = services(repository);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
         try {
-            Future<?> physical = executor.submit(() -> {
-                Thread.currentThread().setName("physical-create");
-                services.physical().create(ACTOR, command(), "trace-physical-first");
-            });
-            await(physicalHasParentLock, "物理事务未取得逻辑父锁");
-            Future<?> deletion = executor.submit(() -> {
-                Thread.currentThread().setName("logical-delete");
-                services.logical().delete(ACTOR, LOGICAL_ID, "trace-delete-second");
-            });
-            await(deleteAttemptedParentLock, "删除事务未尝试逻辑父锁");
-            allowPhysicalCommit.countDown();
+            List<Future<?>> writes = new ArrayList<>();
+            for (int index = 0; index < 8; index++) {
+                int requestIndex = index;
+                writes.add(executor.submit(() -> services.physical().create(
+                        ACTOR, command(), "trace-legacy-create-" + requestIndex)));
+            }
 
-            physical.get(20, TimeUnit.SECONDS);
-            BusinessException conflict = businessFailure(deletion);
-            assertThat(conflict.code()).isEqualTo(ErrorCode.CONFLICT);
+            for (Future<?> write : writes) {
+                assertWorkOrderRequired(write);
+            }
             assertThat(activeLogicalCount()).isEqualTo(1);
-            assertThat(activePhysicalCount()).isEqualTo(1);
+            assertThat(activePhysicalCount()).isZero();
             assertThat(danglingActivePhysicalCount()).isZero();
         } finally {
-            allowPhysicalCommit.countDown();
             executor.shutdownNow();
         }
     }
 
     @Test
-    void logicalDeleteLocksFirstSoAlreadyPrecheckedPhysicalCreateReturns409() throws Exception {
-        ArchitectureSubsystemRepository repository = spy(new ArchitectureSubsystemRepository(jdbc));
-        CountDownLatch physicalPrecheckedParent = new CountDownLatch(1);
-        CountDownLatch allowPhysicalTransaction = new CountDownLatch(1);
-        AtomicBoolean pausePhysicalPrecheckOnce = new AtomicBoolean(true);
-
-        doAnswer(invocation -> {
-            Object result = invocation.callRealMethod();
-            boolean physicalThread = Thread.currentThread().getName().contains("physical-create");
-            if (physicalThread && pausePhysicalPrecheckOnce.compareAndSet(true, false)) {
-                physicalPrecheckedParent.countDown();
-                await(allowPhysicalTransaction, "物理事务未获准继续");
-            }
-            return result;
-        }).when(repository).findLogical(anyLong(), anyLong());
-
+    void concurrentLegacyDeleteAndCreateBothReturn409WithoutChangingPublishedFacts() throws Exception {
+        ArchitectureSubsystemRepository repository = new ArchitectureSubsystemRepository(jdbc);
         Services services = services(repository);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<?> physical = executor.submit(() -> {
                 Thread.currentThread().setName("physical-create");
-                services.physical().create(ACTOR, command(), "trace-prechecked");
+                services.physical().create(ACTOR, command(), "trace-legacy-create");
             });
-            await(physicalPrecheckedParent, "物理事务未完成活动父记录初检");
             Future<?> deletion = executor.submit(() -> {
                 Thread.currentThread().setName("logical-delete");
-                services.logical().delete(ACTOR, LOGICAL_ID, "trace-delete-first");
+                services.logical().delete(ACTOR, LOGICAL_ID, "trace-legacy-delete");
             });
-            deletion.get(20, TimeUnit.SECONDS);
-            allowPhysicalTransaction.countDown();
 
-            BusinessException conflict = businessFailure(physical);
-            assertThat(conflict.code()).isEqualTo(ErrorCode.CONFLICT);
-            assertThat(activeLogicalCount()).isZero();
+            assertWorkOrderRequired(physical);
+            assertWorkOrderRequired(deletion);
+            assertThat(activeLogicalCount()).isEqualTo(1);
             assertThat(activePhysicalCount()).isZero();
             assertThat(danglingActivePhysicalCount()).isZero();
         } finally {
-            allowPhysicalTransaction.countDown();
             executor.shutdownNow();
         }
     }
@@ -190,13 +141,15 @@ class PhysicalSubsystemConcurrencyMySqlTest {
                 null, 12L, null, null, null, null, null, null);
     }
 
-    private BusinessException businessFailure(Future<?> future) throws Exception {
+    private void assertWorkOrderRequired(Future<?> future) throws Exception {
         try {
             future.get(20, TimeUnit.SECONDS);
-            return fail("预期并发操作返回 BusinessException");
+            fail("预期兼容写入口返回工单冲突");
         } catch (ExecutionException exception) {
             assertThat(exception.getCause()).isInstanceOf(BusinessException.class);
-            return (BusinessException) exception.getCause();
+            BusinessException conflict = (BusinessException) exception.getCause();
+            assertThat(conflict.code()).isEqualTo(ErrorCode.CONFLICT);
+            assertThat(conflict.getMessage()).startsWith("ARCHITECTURE_WORK_ORDER_REQUIRED");
         }
     }
 
@@ -223,12 +176,6 @@ class PhysicalSubsystemConcurrencyMySqlTest {
                 WHERE p.tenant_id = ? AND p.deleted = 0 AND l.id IS NULL
                 """, Long.class, ACTOR.tenantId());
         return value == null ? 0 : value;
-    }
-
-    private static void await(CountDownLatch latch, String message) throws InterruptedException {
-        if (!latch.await(10, TimeUnit.SECONDS)) {
-            fail(message);
-        }
     }
 
     private static String migrationDirectory() {

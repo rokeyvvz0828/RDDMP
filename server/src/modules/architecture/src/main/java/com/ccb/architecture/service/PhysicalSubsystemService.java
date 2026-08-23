@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -50,6 +51,9 @@ public class PhysicalSubsystemService {
     private static final String CREATE_OPERATION = "ARCHITECTURE_PHYSICAL_CREATE";
     private static final String UPDATE_OPERATION = "ARCHITECTURE_PHYSICAL_UPDATE";
     private static final String DELETE_OPERATION = "ARCHITECTURE_PHYSICAL_DELETE";
+    private static final Set<String> PUBLISHED_STATUSES = Set.of("ACTIVE", "OFFLINE", "VOIDED");
+    static final String WORK_ORDER_REQUIRED_MESSAGE =
+            "ARCHITECTURE_WORK_ORDER_REQUIRED：请通过架构子系统变更工单发起申请";
 
     private final ArchitectureSubsystemRepository repository;
     private final OrganizationService organizationService;
@@ -91,58 +95,17 @@ public class PhysicalSubsystemService {
 
     public PhysicalSubsystemView create(AuthUser actor, PhysicalSubsystemCommand command, String traceId) {
         requireActor(actor);
-        return executeWrite(actor, CREATE_OPERATION, "POST", RESOURCE_PATH, traceId, () -> {
-            PreparedCommand prepared = prepare(actor, command);
-            ensureUnique(actor.tenantId(), prepared.command(), null);
-            return transactions.execute(status -> {
-                lockInitiallyValidParent(actor.tenantId(), prepared.command().logicalSubsystemId());
-                long id = nextId();
-                repository.insertPhysical(id, actor.tenantId(), prepared.command(),
-                        prepared.responsibleTeamNameSnapshot(), actor.id());
-                operationAudit.recordSuccess(auditCommand(actor, CREATE_OPERATION, "POST", RESOURCE_PATH, null, traceId));
-                PhysicalSubsystem created = repository.findPhysical(actor.tenantId(), id)
-                        .orElseThrow(() -> new IllegalStateException("物理子系统创建后无法读取"));
-                return toView(actor, created, projectionContext(actor));
-            });
-        });
+        throw workOrderRequired();
     }
 
     public PhysicalSubsystemView update(AuthUser actor, long id, PhysicalSubsystemCommand command, String traceId) {
         requireActor(actor);
-        String path = RESOURCE_PATH + "/" + id;
-        return executeWrite(actor, UPDATE_OPERATION, "PUT", path, traceId, () -> {
-            requirePositiveId(id);
-            if (repository.findPhysical(actor.tenantId(), id).isEmpty()) {
-                throw notFound(id);
-            }
-            PreparedCommand prepared = prepare(actor, command);
-            ensureUnique(actor.tenantId(), prepared.command(), id);
-            return transactions.execute(status -> {
-                lockInitiallyValidParent(actor.tenantId(), prepared.command().logicalSubsystemId());
-                if (repository.updatePhysical(actor.tenantId(), id, prepared.command(),
-                        prepared.responsibleTeamNameSnapshot(), actor.id()) == 0) {
-                    throw notFound(id);
-                }
-                operationAudit.recordSuccess(auditCommand(actor, UPDATE_OPERATION, "PUT", path, null, traceId));
-                PhysicalSubsystem updated = repository.findPhysical(actor.tenantId(), id)
-                        .orElseThrow(() -> notFound(id));
-                return toView(actor, updated, projectionContext(actor));
-            });
-        });
+        throw workOrderRequired();
     }
 
     public void delete(AuthUser actor, long id, String traceId) {
         requireActor(actor);
-        String path = RESOURCE_PATH + "/" + id;
-        executeWrite(actor, DELETE_OPERATION, "DELETE", path, traceId, () -> transactions.execute(status -> {
-            requirePositiveId(id);
-            if (repository.findPhysical(actor.tenantId(), id).isEmpty()
-                    || repository.softDeletePhysical(actor.tenantId(), id, actor.id()) == 0) {
-                throw notFound(id);
-            }
-            operationAudit.recordSuccess(auditCommand(actor, DELETE_OPERATION, "DELETE", path, null, traceId));
-            return null;
-        }));
+        throw workOrderRequired();
     }
 
     private PreparedCommand prepare(AuthUser actor, PhysicalSubsystemCommand command) {
@@ -197,7 +160,9 @@ public class PhysicalSubsystemService {
                 responsibleTeamValid, item.runtimeCode(), item.systemLevelCode(), item.developmentFrameworkCode(),
                 item.ownerUserId(), owner == null ? null : owner.displayName(),
                 item.description(), item.remark(), item.createdBy(), creator == null ? null : creator.displayName(),
-                item.updatedBy(), item.createdAt(), item.updatedAt());
+                item.updatedBy(), item.createdAt(), item.updatedAt(), item.numberSlot(), item.englishName(),
+                item.status(), item.rowVersion(), logical == null ? null : logical.numberSequence(),
+                logical == null ? null : logical.status());
     }
 
     private SystemUserReference userReference(AuthUser actor, Long userId, Map<Long, Optional<SystemUserReference>> cache) {
@@ -314,7 +279,19 @@ public class PhysicalSubsystemService {
         }
         return new PhysicalSubsystemQuery(normalizeOptional(query.code()), normalizeOptional(query.shortName()),
                 normalizeOptional(query.name()), normalizeOptional(query.businessGroupName()),
-                query.responsibleTeamOrgId(), query.logicalSubsystemId());
+                query.responsibleTeamOrgId(), query.logicalSubsystemId(), normalizeStatus(query.status()));
+    }
+
+    private String normalizeStatus(String value) {
+        String normalized = normalizeOptional(value);
+        if (normalized == null) {
+            return null;
+        }
+        String status = normalized.toUpperCase(Locale.ROOT);
+        if (!PUBLISHED_STATUSES.contains(status)) {
+            throw badRequest("发布状态仅支持 ACTIVE、OFFLINE 或 VOIDED");
+        }
+        return status;
     }
 
     private void validateQueryIds(PhysicalSubsystemQuery query) {
@@ -381,6 +358,10 @@ public class PhysicalSubsystemService {
         return new BusinessException(ErrorCode.CONFLICT, message);
     }
 
+    private BusinessException workOrderRequired() {
+        return conflict(WORK_ORDER_REQUIRED_MESSAGE);
+    }
+
     private long nextId() {
         return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000);
     }
@@ -416,6 +397,28 @@ public class PhysicalSubsystemService {
             String createdByDisplayName,
             long updatedBy,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt,
+            String numberSlot,
+            String englishName,
+            String status,
+            long rowVersion,
+            Integer logicalSubsystemNumberSequence,
+            String logicalSubsystemStatus) {
+
+        /** 兼容既有主数据投影调用，新增生命周期字段使用发布默认值。 */
+        public PhysicalSubsystemView(long id, String code, String shortName, String name, long logicalSubsystemId,
+                                     String logicalSubsystemCode, String logicalSubsystemName,
+                                     String businessGroupName, long responsibleTeamOrgId,
+                                     String responsibleTeamDisplayName, boolean responsibleTeamValid,
+                                     String runtimeCode, String systemLevelCode, String developmentFrameworkCode,
+                                     Long ownerUserId, String ownerDisplayName, String description, String remark,
+                                     long createdBy, String createdByDisplayName, long updatedBy,
+                                     LocalDateTime createdAt, LocalDateTime updatedAt) {
+            this(id, code, shortName, name, logicalSubsystemId, logicalSubsystemCode, logicalSubsystemName,
+                    businessGroupName, responsibleTeamOrgId, responsibleTeamDisplayName, responsibleTeamValid,
+                    runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId, ownerDisplayName,
+                    description, remark, createdBy, createdByDisplayName, updatedBy, createdAt, updatedAt,
+                    null, null, "ACTIVE", 0, null, null);
+        }
     }
 }
