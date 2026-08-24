@@ -5,7 +5,6 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
-import com.ccb.workflow.service.WorkflowService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +19,10 @@ import com.ccb.requirement.support.RequirementIds;
 import com.ccb.requirement.support.RequirementSql;
 import com.ccb.requirement.support.RequirementValues;
 
-/** 存量项目常态化需求：8 阶段字段维护、阶段状态推进（接入审批流 legacy.stage.transition）与业务组数据范围。 */
+/**
+ * 存量项目常态化需求：6 阶段字段维护、阶段状态直接流转（不设审批节点，
+ * 流转痕迹由 req_stage_log 状态变更日志留痕）与业务组数据范围。
+ */
 @Service
 public class RequirementLegacyService {
     private static final List<String> LEGACY_FIELDS = List.of(
@@ -60,15 +62,12 @@ public class RequirementLegacyService {
     private final JdbcTemplate jdbc;
     private final RequirementChangeLogService changeLog;
     private final RequirementSecurityService security;
-    private final WorkflowService workflowService;
 
     public RequirementLegacyService(JdbcTemplate jdbc, RequirementChangeLogService changeLog,
-                                    RequirementSecurityService security,
-                                    WorkflowService workflowService) {
+                                    RequirementSecurityService security) {
         this.jdbc = jdbc;
         this.changeLog = changeLog;
         this.security = security;
-        this.workflowService = workflowService;
     }
 
     public PageResult<Map<String, Object>> list(String businessGroup, String stage, String stageStatus,
@@ -157,6 +156,10 @@ public class RequirementLegacyService {
         if (values.isEmpty()) {
             return before;
         }
+        // 保存也只做强校验核心标识字段，阶段业务字段不强卡
+        Map<String, Object> merged = new LinkedHashMap<>(before);
+        merged.putAll(values);
+        validateCoreFields(merged);
         values.put("updated_by", user.id());
         RequirementSql.update(jdbc, "req_legacy_requirement", id, user.tenantId(), values);
         Map<String, Object> after = row(id, user);
@@ -174,88 +177,54 @@ public class RequirementLegacyService {
     }
 
     /**
-     * 阶段推进审批：未开始/进行中 → 审批中 → 进行中/已完成/未开始。
-     * 不直接写最终状态：先启动 legacy.stage.transition 审批流，
-     * 业务阶段列置为"审批中"并落 workflow_instance_id；
-     * 审批结果由 RequirementWorkflowListener 幂等回写。
-     * "审批中"阶段拒绝再次发起，避免并发审批。
-     * 发起人必须指定审批人（approverIds），写入流程变量供 VARIABLE 类型审批节点解析。
+     * 阶段推进：直接状态流转，不设审批节点。
+     * START：未开始→进行中；COMPLETE：进行中→已完成；BACK：进行中→未开始。
+     * 核心标识字段强校验；阶段业务字段缺失时不拦截流转，返回 confirmed=false + missingFields 提醒，
+     * 由前端弹窗确认后携带 ignoreMissingStageFields=true 继续推进。
+     * 回退（BACK）只修改状态并写日志，不清空阶段表单数据，支持后续回头补填。
      */
     @Transactional
     public Map<String, Object> stageTransition(long id, String stage, String action, String comment,
-                                                List<Long> approverIds, AuthUser user) {
+                                                boolean ignoreMissingStageFields, AuthUser user) {
         Map<String, Object> row = row(id, user);
         security.requireLegacyAccess(user, String.valueOf(row.get("business_group")));
         if (!RequirementEnums.LEGACY_STAGES.contains(stage)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "阶段不在受控枚举内：" + stage);
         }
-        if (approverIds == null || approverIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "至少选择一个审批人");
-        }
-        // 阶段必填字段校验：从 PROPOSE 到目标 stage 的所有阶段必填字段都要完成
-        validateStageFieldsReady(row, stage);
+        validateCoreFields(row);
         String column = RequirementEnums.LEGACY_STAGE_COLUMNS.get(stage);
         String fromStatus = String.valueOf(row.get(column));
-        if ("审批中".equals(fromStatus)) {
-            throw new BusinessException(ErrorCode.CONFLICT, "当前阶段处于审批中，禁止重复发起");
-        }
-        // 仍按原状态机校验目标动作合法性（避免审批通过后写入非法状态）
         String toStatus = nextStatus(fromStatus, action);
+        // 阶段业务字段不强卡流转：缺失时返回提醒，由前端确认后继续（BACK 回退不提醒，保留数据供回头补填）
+        if (!"BACK".equalsIgnoreCase(action)) {
+            List<String> missing = missingStageFields(row, stage);
+            if (!missing.isEmpty() && !ignoreMissingStageFields) {
+                Map<String, Object> reminder = new LinkedHashMap<>();
+                reminder.put("confirmed", false);
+                reminder.put("missingFields", missing);
+                return reminder;
+            }
+        }
         String oldStage = String.valueOf(row.get("current_stage"));
-
-        long definitionId = lookupDefinitionId(user.tenantId(), "legacy.stage.transition");
-        String businessKey = "req-legacy:" + id + ":" + stage + ":" + action.toUpperCase();
-        Map<String, Object> variables = new LinkedHashMap<>();
-        variables.put("requirementId", id);
-        variables.put("stage", stage);
-        variables.put("action", action.toUpperCase());
-        variables.put("fromStatus", fromStatus);
-        variables.put("toStatus", toStatus);
-        variables.put("submitterId", user.id());
-        variables.put("submitterName", user.displayName());
-        variables.put("comment", comment == null ? "" : comment);
-        variables.put("approverIds", approverIds);
-        Map<String, Object> instance = workflowService.start(definitionId, businessKey, variables, user);
-        long instanceId = ((Number) instance.get("id")).longValue();
+        String oldRequirementStatus = row.get("requirement_status") == null ? null : String.valueOf(row.get("requirement_status"));
+        String newRequirementStatus = RequirementEnums.LEGACY_STAGE_ACTION_TO_REQ_STATUS.get(stage + ":" + action);
+        if (newRequirementStatus == null) newRequirementStatus = oldRequirementStatus;
+        // 只修改状态 + 写阶段日志 + 改动记录；不清空业务字段，不启动审批流
         jdbc.update("UPDATE req_legacy_requirement SET " + RequirementSql.quote(column)
-                        + " = '审批中', workflow_instance_id = ?, current_stage = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                String.valueOf(instanceId), stage, user.id(), user.tenantId(), id);
+                        + " = ?, current_stage = ?, requirement_status = ?, workflow_instance_id = NULL, updated_by = ? WHERE tenant_id = ? AND id = ?",
+                toStatus, stage, newRequirementStatus, user.id(), user.tenantId(), id);
         long logId = RequirementIds.next();
         jdbc.update("""
                 INSERT INTO req_stage_log (id, tenant_id, requirement_id, from_stage, to_stage, from_status, to_status, operator_id, operator_name, comment, approval_result, workflow_instance_id, deleted)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                """, logId, user.tenantId(), id, oldStage, stage, fromStatus, "审批中",
-                user.id(), user.displayName(), "发起审批：" + action, "PENDING", String.valueOf(instanceId));
-        changeLog.record("LEGACY_REQUIREMENT", id, "STAGE_TRANSITION", column, fromStatus, "审批中", user, "ONLINE");
-        return get(id, user);
-    }
-
-    /** 阶段推进可选审批人：能编辑存量需求的人 + 协调员 + 管理员。 */
-    public List<Map<String, Object>> reviewers(AuthUser user) {
-        return jdbc.queryForList("""
-                SELECT DISTINCT u.id, u.username, u.display_name
-                FROM sys_user u
-                LEFT JOIN sys_user_role ur ON ur.user_id = u.id AND ur.tenant_id = u.tenant_id
-                LEFT JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id
-                LEFT JOIN sys_role_permission rp ON rp.role_id = r.id AND rp.tenant_id = r.tenant_id
-                LEFT JOIN sys_menu_permission mp ON mp.id = rp.permission_id AND mp.tenant_id = rp.tenant_id
-                WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1
-                  AND (mp.permission_code = 'requirement:legacy:update'
-                       OR r.role_code = 'REQUIREMENT_COORDINATOR'
-                       OR u.id = 1)
-                ORDER BY u.id
-                """, user.tenantId());
-    }
-
-    /** 按流程编码取已发布流程定义 id；不存在或未发布抛业务异常。 */
-    private long lookupDefinitionId(long tenantId, String code) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id FROM wf_definition WHERE tenant_id = ? AND code = ? AND status = 'PUBLISHED' AND deleted = 0",
-                tenantId, code);
-        if (rows.isEmpty()) {
-            throw new BusinessException(ErrorCode.CONFLICT, "流程定义未发布：" + code);
+                """, logId, user.tenantId(), id, oldStage, stage, fromStatus, toStatus,
+                user.id(), user.displayName(), comment == null ? "" : comment, "MANUAL", null);
+        changeLog.record("LEGACY_REQUIREMENT", id, "STAGE_TRANSITION", column, fromStatus, toStatus, user, "ONLINE");
+        if (newRequirementStatus != null && (oldRequirementStatus == null || !oldRequirementStatus.equals(newRequirementStatus))) {
+            changeLog.record("LEGACY_REQUIREMENT", id, "STAGE_TRANSITION", "requirement_status",
+                    oldRequirementStatus, newRequirementStatus, user, "ONLINE");
         }
-        return ((Number) rows.get(0).get("id")).longValue();
+        return get(id, user);
     }
 
     public List<Map<String, Object>> stageLogs(long id, AuthUser user) {
@@ -283,35 +252,39 @@ public class RequirementLegacyService {
     }
 
     /**
-     * 阶段推进前的必填字段校验：仅校验当前阶段（含）之前所有阶段的必填字段。
-     * 即从 PROPOSE 到 currentStage 为止的必填字段都必须非空；目标阶段及之后的字段不校验。
-     * 这样 PROPOSE→DOCKING 只校验 PROPOSE 字段；DOCKING→WORKLOAD 校验 PROPOSE+DOCKING 字段。
-     * 缺失字段会拼接中文标签列表抛 BAD_REQUEST，前端可直接展示。
+     * 核心标识字段强校验：需求编号、需求名称、业务组不允许为空。
+     * 阶段业务字段不在此强校验范围，缺失时走提醒 + 确认继续。
      */
-    private void validateStageFieldsReady(Map<String, Object> row, String targetStage) {
+    private void validateCoreFields(Map<String, Object> row) {
+        for (String field : RequirementEnums.LEGACY_CORE_REQUIRED_FIELDS) {
+            Object v = row.get(field);
+            if (v == null || (v instanceof String s && s.isBlank())) {
+                String label = RequirementEnums.FIELD_LABELS.getOrDefault(field, field);
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "核心标识字段不能为空：" + label);
+            }
+        }
+    }
+
+    /**
+     * 阶段业务字段缺失清单：从 PROPOSE 到目标阶段的所有业务字段（排除核心标识字段），
+     * 用于前端弹窗提醒；缺失不拦截流转，用户确认后可继续。
+     */
+    private List<String> missingStageFields(Map<String, Object> row, String targetStage) {
         List<String> missing = new ArrayList<>();
-        // 找到 currentStage 在 LEGACY_STAGES 中的位置
-        String currentStage = String.valueOf(row.get("current_stage"));
-        int currentIdx = RequirementEnums.LEGACY_STAGES.indexOf(currentStage);
-        if (currentIdx < 0) currentIdx = 0;
-        // 校验从 PROPOSE 到 currentStage 为止的所有阶段必填字段
-        for (int i = 0; i <= currentIdx && i < RequirementEnums.LEGACY_STAGES.size(); i++) {
+        int targetIdx = RequirementEnums.LEGACY_STAGES.indexOf(targetStage);
+        for (int i = 0; i <= targetIdx && i < RequirementEnums.LEGACY_STAGES.size(); i++) {
             String stage = RequirementEnums.LEGACY_STAGES.get(i);
-            List<String> fields = RequirementEnums.LEGACY_STAGE_REQUIRED_FIELDS.get(stage);
+            List<String> fields = RequirementEnums.LEGACY_STAGE_FIELDS.get(stage);
             if (fields == null) continue;
             for (String field : fields) {
+                if (RequirementEnums.LEGACY_CORE_REQUIRED_FIELDS.contains(field)) continue;
                 Object v = row.get(field);
                 if (v == null || (v instanceof String s && s.isBlank())) {
-                    String label = RequirementEnums.FIELD_LABELS.getOrDefault(field, field);
-                    missing.add(label);
+                    missing.add(RequirementEnums.FIELD_LABELS.getOrDefault(field, field));
                 }
             }
         }
-        if (!missing.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST,
-                    "以下字段必填，完成后方可推进阶段：" +
-                            String.join("、", missing));
-        }
+        return missing;
     }
 
     private String nextStatus(String fromStatus, String action) {

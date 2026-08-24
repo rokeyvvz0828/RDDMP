@@ -206,6 +206,7 @@ const router = createRouter({
         },
         { path: 'requirements', redirect: '/requirements/new-project' },
         { path: 'requirements/:section', name: 'requirements', component: RequirementsView, props: true, meta: { title: '需求管理平台' } },
+        { path: 'requirements/params/:section', name: 'requirement-params-section', component: RequirementsView, props: true, meta: { title: '八大参数管理' } },
         { path: 'architecture/logical-subsystems', name: 'architecture-logical-subsystems', component: () => import('../modules/architecture/LogicalSubsystemPage.vue'), meta: { title: '逻辑子系统' } },
         { path: 'architecture/physical-subsystems', name: 'architecture-physical-subsystems', component: () => import('../modules/architecture/PhysicalSubsystemPage.vue'), meta: { title: '物理子系统' } },
         { path: 'test-management/business-day', name: 'business-day-management', component: BusinessDayManagement, meta: { title: '营业日管理' } },

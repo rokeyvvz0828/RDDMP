@@ -18,7 +18,7 @@ public final class RequirementEnums {
     public static final List<String> DECISION_LEVELS = List.of("版块内", "总体组", "领导小组");
     public static final List<String> YES_NO = List.of("是", "否");
     public static final List<String> SYSTEM_STATUSES = List.of("启用", "停用");
-    public static final List<String> STAGE_STATUSES = List.of("未开始", "审批中", "进行中", "已完成");
+    public static final List<String> STAGE_STATUSES = List.of("未开始", "进行中", "已完成");
     public static final List<String> REQUIREMENT_TYPES = List.of("监管", "业务", "技术");
     public static final List<String> REGULATION_CATEGORIES = List.of("国家级", "地方级", "处罚整改");
     public static final List<String> REQUIREMENT_STATUSES = List.of(
@@ -71,25 +71,37 @@ public final class RequirementEnums {
     );
 
     /**
-     * 存量项目阶段 → 字段映射：每个阶段列出该阶段推进前必须校验的必填字段。
-     * key = 阶段编码，value = 字段名列表（校验时逐个检查非空）。
-     * 注：通用字段（需求状态/备注/变更信息）不纳入阶段校验，由表单自身维护。
+     * 存量需求核心标识字段：保存与阶段推进时的强校验字段。
+     * 需求编号、需求名称、业务组是列表检索、数据范围与跨阶段识别的标识，不允许为空。
      */
-    public static final Map<String, List<String>> LEGACY_STAGE_REQUIRED_FIELDS = Map.of(
+    public static final List<String> LEGACY_CORE_REQUIRED_FIELDS = List.of(
+            "requirement_no", "requirement_name", "business_group");
+
+    /**
+     * 存量项目阶段 → 业务字段映射（与前端阶段表单一致）。
+     * 仅用于阶段推进时的缺失字段提醒：缺字段不拦截流转，由用户确认后继续。
+     * 核心标识字段由 LEGACY_CORE_REQUIRED_FIELDS 强校验，不在此提醒范围内。
+     */
+    public static final Map<String, List<String>> LEGACY_STAGE_FIELDS = Map.of(
             "PROPOSE", List.of(
                     "legacy_doc_name", "requirement_no", "requirement_name", "content_summary",
-                    "propose_dept", "proposer", "business_group"),
+                    "propose_dept", "proposer", "monshang_ba", "monshang_architect",
+                    "expected_launch_date", "regulator", "regulation_doc_no", "regulation_desc",
+                    "regulation_launch_date"),
             "DOCKING", List.of(
-                    "jinke_contact", "ba_review_date"),
+                    "requirement_received_date", "requirement_type", "regulation_category",
+                    "business_group", "sub_group", "jinke_contact", "need_jinke_arch_decision",
+                    "jinke_architect", "ba_review_date"),
             "WORKLOAD", List.of(
                     "workload_date"),
             "PROJECT", List.of(
-                    "finance_project_date", "soft_doc_name", "owner_conglomerate",
-                    "owner_system", "owner_contact"),
+                    "finance_project_date"),
             "SOFT", List.of(
+                    "soft_doc_name", "owner_conglomerate", "owner_system", "owner_contact",
+                    "involve_cooperation", "coord_conglomerate", "coord_system",
                     "soft_submit_date", "soft_review_date"),
             "LAUNCH", List.of(
-                    "planned_launch_date", "launch_mode")
+                    "planned_launch_date", "actual_launch_date", "launch_mode")
     );
 
     public static final Map<String, Object> OPTIONS = new LinkedHashMap<>();

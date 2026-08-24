@@ -18,6 +18,7 @@ import java.util.Map;
 import com.ccb.requirement.support.RequirementIds;
 import com.ccb.requirement.support.RequirementSql;
 import com.ccb.requirement.support.RequirementValues;
+import com.ccb.requirement.support.WorkflowBizContextHelper;
 
 /** 新建项目需求差异清单：生命周期状态机（待评审→评审中→已评审/已退回）、数据范围与改动记录。 */
 @Service
@@ -141,6 +142,7 @@ public class RequirementDifferenceService {
 
     /**
      * 提交评审：待评审/已退回 → 评审中，并启动审批流（requirement.diff.review）。
+     * <p>发起前会自动终结本差异遗留的同名 business_key（req-diff:{id}）RUNNING 实例，避免重提产生双实例脏数据。
      * 业务字段先改为"评审中"并锁定；审批人在工作流中心 APPROVE/REJECT 后，
      * 由 RequirementWorkflowListener 接收 WorkflowInstanceCompletedEvent 幂等回写"已评审/已退回"。
      */
@@ -155,20 +157,78 @@ public class RequirementDifferenceService {
         if (approverIds == null || approverIds.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择审批人");
         }
+        // 终结同 business_key 的 RUNNING 旧实例（若存在），防止"退回后再提交"造成双实例 & 我的代办脏数据
+        String businessKey = "req-diff:" + id;
+        terminateResidualDiffInstances(user.tenantId(), businessKey, id, user);
         // 启动审批流，businessKey 编码业务单号；variables 携带 approverIds 供 VARIABLE 审批节点解析
         long definitionId = lookupDefinitionId(user.tenantId(), "requirement.diff.review");
-        String businessKey = "req-diff:" + id;
         Map<String, Object> variables = new LinkedHashMap<>();
         variables.put("differenceId", id);
         variables.put("submitterId", user.id());
         variables.put("submitterName", user.displayName());
         variables.put("approverIds", approverIds);
+        variables.put("fromStatus", status);
         Map<String, Object> instance = workflowService.start(definitionId, businessKey, variables, user);
         long instanceId = ((Number) instance.get("id")).longValue();
+        // 补写工作流实例的业务上下文（代办列表的业务事项/详情跳转依赖 action_path、business_title）
+        // project_ref 使用需求模块 req_project.project_code，与前端 ProjectContextItem.ref（项目编号）格式对齐；
+        // 同时 project_name 兜底，避免跨模块 project_ref 语义不一时前端过滤误杀。
+        Map<String, Object> project = jdbc.queryForMap(
+                "SELECT COALESCE(project_code, '') AS project_code, COALESCE(project_name, '') AS project_name FROM req_project WHERE tenant_id = ? AND id = ?",
+                user.tenantId(), ((Number) row.get("project_id")).longValue());
+        String projectCode = String.valueOf(project.get("project_code"));
+        String projectName = String.valueOf(project.get("project_name"));
+        String title = "差异评审 - " + (row.get("name") == null ? "" : String.valueOf(row.get("name")))
+                + "（" + (row.get("requirement_no") == null ? ("#" + id) : String.valueOf(row.get("requirement_no"))) + "）";
+        String ref = (projectCode == null || projectCode.isBlank()) ? null : projectCode;
+        WorkflowBizContextHelper.fill(jdbc, instanceId, user.tenantId(),
+                "requirement", "需求管理", "requirement_diff_review",
+                title, 1,
+                ref, projectName,
+                "/requirements/new-project");
         jdbc.update("UPDATE req_difference SET review_status = '评审中', review_comment = NULL, workflow_instance_id = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
                 instanceId, user.id(), user.tenantId(), id);
         changeLog.record("NEW_PROJECT_DIFF", id, "SUBMIT_REVIEW", "review_status", status, "评审中", user, "ONLINE");
         return get(id, user);
+    }
+
+    /**
+     * 撤销评审：审批中状态下，创建人或项目成员可主动撤回当前在审的流程实例，
+     * review_status 从"评审中"回退为"待评审"，wf_instance 变 TERMINATED，PENDING 审批任务批量标记 DONE/CANCELLED。
+     * 退回后 review_status 已经是"已退回"的情况也允许再次"撤销"（直接回待评审，给编辑机会）。
+     */
+    @Transactional
+    public Map<String, Object> cancelReview(long id, String reason, AuthUser user) {
+        Map<String, Object> row = row(id, user);
+        security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
+        String status = String.valueOf(row.get("review_status"));
+        if (!"评审中".equals(status) && !"已退回".equals(status)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "当前状态不可撤销评审：" + status);
+        }
+        String businessKey = "req-diff:" + id;
+        terminateResidualDiffInstances(user.tenantId(), businessKey, id, user);
+        jdbc.update("UPDATE req_difference SET review_status = '待评审', review_comment = ?, workflow_instance_id = NULL, updated_by = ? WHERE tenant_id = ? AND id = ?",
+                reason == null || reason.isBlank() ? null : reason.substring(0, Math.min(500, reason.length())),
+                user.id(), user.tenantId(), id);
+        changeLog.record("NEW_PROJECT_DIFF", id, "CANCEL_REVIEW", "review_status", status, "待评审", user, "ONLINE");
+        return get(id, user);
+    }
+
+    /** 终结指定差异的同 business_key 残留 RUNNING 审批实例 & PENDING 审批任务，为重提/撤销释放锁。 */
+    private void terminateResidualDiffInstances(long tenantId, String businessKey, long diffId, AuthUser user) {
+        List<Map<String, Object>> oldInstances = jdbc.queryForList(
+                "SELECT id FROM wf_instance WHERE tenant_id = ? AND business_key = ? AND status IN ('RUNNING','PENDING')",
+                tenantId, businessKey);
+        if (oldInstances.isEmpty()) return;
+        for (Map<String, Object> inst : oldInstances) {
+            long instanceId = ((Number) inst.get("id")).longValue();
+            jdbc.update("UPDATE wf_task SET status = 'COMPLETED', comment = '差异评审撤回重提' WHERE tenant_id = ? AND instance_id = ? AND status = 'PENDING'",
+                    tenantId, instanceId);
+            jdbc.update("UPDATE wf_instance SET status = 'TERMINATED' WHERE tenant_id = ? AND id = ? AND status IN ('RUNNING','PENDING')",
+                    tenantId, instanceId);
+        }
+        // 若当前差异仍挂旧 workflow_instance_id（在审撤回场景），解挂
+        jdbc.update("UPDATE req_difference SET workflow_instance_id = NULL WHERE tenant_id = ? AND id = ?", tenantId, diffId);
     }
 
     /** 可选审批人列表：有差异评审权限（requirement:diff:review）或需求统筹管理员角色的启用用户。 */

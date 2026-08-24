@@ -344,6 +344,72 @@ public class WorkflowService {
         return new PageResult<>(decorated, total, pageQuery.page(), pageQuery.size());
     }
 
+    /**
+     * 我发起的流程实例（按 instance 维度聚合）：starter_id = 当前用户。
+     * 每条记录附加：该实例当前是否有 PENDING/SENT 任务 → 用作列表行状态；当前 PENDING 任务的审批人集合 → 提交人一眼看到"谁还在审"。
+     * 返回字段尽量对齐 inbox，避免前端额外适配。
+     */
+    public PageResult<Map<String, Object>> submitted(PageQuery pageQuery, AuthUser user) {
+        String where = " FROM wf_instance i"
+                + " LEFT JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id"
+                + " LEFT JOIN sys_user starter ON starter.id = i.starter_id AND starter.tenant_id = i.tenant_id"
+                + " WHERE i.tenant_id = ? AND i.starter_id = ? AND i.deleted = 0";
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT i.id AS instance_id, i.business_key, i.business_type, i.business_title, i.business_round,"
+                        + " i.project_ref, i.project_name, i.action_path, i.status AS instance_status, i.created_at,"
+                        + " starter.display_name AS starter_name, d.name AS definition_name"
+                        + where + " ORDER BY i.id DESC LIMIT ?, ?",
+                user.tenantId(), user.id(), offset(pageQuery), pageQuery.size());
+        long total = count(where, user.tenantId(), user.id());
+        if (rows.isEmpty()) return new PageResult<>(List.of(), total, pageQuery.page(), pageQuery.size());
+        List<Long> instanceIds = rows.stream().map(r -> ((Number) r.get("instance_id")).longValue()).toList();
+        // 批量查：每个实例当前活跃审批人（PENDING/SENT）+ 当前节点名
+        List<Map<String, Object>> assigneeRows = jdbc.queryForList(
+                "SELECT t.instance_id, t.id AS id, t.task_key, t.node_id, t.task_type, t.status,"
+                        + " COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.assignee_id"
+                        + " FROM wf_task t LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id"
+                        + " WHERE t.tenant_id = ? AND t.status IN ('PENDING','SENT') AND t.instance_id IN ("
+                        + instanceIds.stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse("0") + ")",
+                user.tenantId());
+        Map<Long, List<Map<String, Object>>> byInstance = assigneeRows.stream()
+                .collect(java.util.stream.Collectors.groupingBy(r -> ((Number) r.get("instance_id")).longValue()));
+        List<Map<String, Object>> merged = new java.util.ArrayList<>(rows.size());
+        for (Map<String, Object> r : rows) {
+            Map<String, Object> row = new LinkedHashMap<>(r);
+            List<Map<String, Object>> tasks = byInstance.getOrDefault(((Number) r.get("instance_id")).longValue(), List.of());
+            String instanceStatus = String.valueOf(row.get("instance_status"));
+            // 行状态：复用 inbox 的 PENDING/SENT/DONE 语义，便于前端 pendingStatus() 复用标签
+            if ("RUNNING".equalsIgnoreCase(instanceStatus)) {
+                if (!tasks.isEmpty()) {
+                    Map<String, Object> first = tasks.get(0);
+                    row.put("id", first.get("id"));  // task id（前端 action_path 跳业务详情要带 taskId=task.id）
+                    row.put("task_key", first.get("task_key"));
+                    row.put("node_id", first.get("node_id"));
+                    row.put("task_type", first.get("task_type"));
+                    row.put("status", first.get("status"));
+                } else {
+                    // RUNNING 但没有 PENDING task → 通常在流转中间；显示 DRAFT（无UiStatusTag对应色即可）
+                    row.put("status", "PENDING");
+                }
+            } else {
+                row.put("status", "COMPLETED");  // 终态统一显示为"已办结"
+            }
+            // 活跃审批人名单（逗号分隔：最多前5人 + "等N人"）
+            List<String> names = tasks.stream()
+                    .map(t -> t.get("assignee_name") == null ? String.valueOf(t.get("assignee_id")) : String.valueOf(t.get("assignee_name")))
+                    .distinct().toList();
+            if (names.size() > 5) {
+                row.put("current_assignees", names.subList(0, 5).stream().reduce((a, b) -> a + "、" + b).get() + " 等" + names.size() + "人");
+            } else {
+                row.put("current_assignees", names.stream().reduce((a, b) -> a + "、" + b).orElse(""));
+            }
+            row.put("task_count", tasks.size());
+            merged.add(row);
+        }
+        return new PageResult<>(nodeLabelResolver != null ? nodeLabelResolver.decorateTasks(merged, user.tenantId()) : merged,
+                total, pageQuery.page(), pageQuery.size());
+    }
+
     public Map<String, Object> taskContext(long taskId, AuthUser user) {
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.status AS task_status, t.assignee_id,"

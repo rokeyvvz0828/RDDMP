@@ -95,6 +95,10 @@ export function submitReview(id: number, approverIds: number[]) {
   return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/submit-review`, { approverIds })
 }
 
+export function cancelReview(id: number, reason?: string) {
+  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/cancel-review`, reason != null ? { reason } : {})
+}
+
 export function differenceChanges(id: number) {
   return http.get<ApiResponse<ChangeLogRow[]>>(`/requirements/differences/${id}/changes`)
 }
@@ -188,12 +192,8 @@ export function deleteLegacy(id: number) {
   return http.delete<ApiResponse<void>>(`/requirements/legacy/${id}`)
 }
 
-export function stageTransition(id: number, data: { stage: string; action: 'START' | 'COMPLETE' | 'BACK'; comment?: string; approverIds: number[] }) {
+export function stageTransition(id: number, data: { stage: string; action: 'START' | 'COMPLETE' | 'BACK'; comment?: string; ignoreMissingStageFields?: boolean }) {
   return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/stage`, data)
-}
-
-export function listLegacyReviewers(id: number) {
-  return http.get<ApiResponse<RequirementReviewer[]>>(`/requirements/legacy/${id}/reviewers`)
 }
 
 export function legacyStageLogs(id: number) {

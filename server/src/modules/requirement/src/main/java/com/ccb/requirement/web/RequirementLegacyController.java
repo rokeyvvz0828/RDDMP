@@ -78,17 +78,10 @@ public class RequirementLegacyController {
     public ApiResponse<Map<String, Object>> stageTransition(@PathVariable long id,
                                                             @RequestBody Map<String, Object> body,
                                                             @AuthenticationPrincipal AuthUser user) {
-        @SuppressWarnings("unchecked")
-        List<Long> approverIds = (List<Long>) body.get("approverIds");
+        boolean ignoreMissingStageFields = Boolean.TRUE.equals(body.get("ignoreMissingStageFields"));
         return ApiResponse.success(legacyService.stageTransition(id,
                 (String) body.get("stage"), (String) body.get("action"),
-                (String) body.get("comment"), approverIds, user), TraceId.getOrCreate());
-    }
-
-    @GetMapping("/legacy/{id}/reviewers")
-    @PreAuthorize("hasAnyAuthority('requirement:legacy:update','requirement:legacy:read')")
-    public ApiResponse<List<Map<String, Object>>> legacyReviewers(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(legacyService.reviewers(user), TraceId.getOrCreate());
+                (String) body.get("comment"), ignoreMissingStageFields, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/legacy/{id}/stage-logs")

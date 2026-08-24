@@ -161,6 +161,14 @@ public class WorkflowController {
         return ApiResponse.success(service.done(new PageQuery(page, size), user), TraceId.getOrCreate());
     }
 
+    @GetMapping("/submitted")
+    public ApiResponse<PageResult<Map<String, Object>>> submitted(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.submitted(new PageQuery(page, size), user), TraceId.getOrCreate());
+    }
+
     @GetMapping("/tasks/{id}/context")
     public ApiResponse<Map<String, Object>> taskContext(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.taskContext(id, user), TraceId.getOrCreate());

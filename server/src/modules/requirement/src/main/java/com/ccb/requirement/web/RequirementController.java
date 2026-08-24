@@ -170,6 +170,15 @@ public class RequirementController {
         return ApiResponse.success(differenceService.submitReview(id, approverIds, user), TraceId.getOrCreate());
     }
 
+    @PostMapping("/differences/{id}/cancel-review")
+    @PreAuthorize("hasAuthority('requirement:project:update')")
+    public ApiResponse<Map<String, Object>> cancelReview(@PathVariable long id,
+                                                         @RequestBody(required = false) Map<String, Object> body,
+                                                         @AuthenticationPrincipal AuthUser user) {
+        String reason = body == null ? null : (String) body.get("reason");
+        return ApiResponse.success(differenceService.cancelReview(id, reason, user), TraceId.getOrCreate());
+    }
+
     @GetMapping("/reviewers")
     @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:update')")
     public ApiResponse<List<Map<String, Object>>> reviewers(@AuthenticationPrincipal AuthUser user) {
