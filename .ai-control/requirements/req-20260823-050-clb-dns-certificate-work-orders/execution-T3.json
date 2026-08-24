@@ -1,0 +1,46 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/**",
+      "purpose": "领域测试（状态机/per-kind/摘要/结果/黑名单/归属）与 MySQL 集成测试（表结构、约束、种子、身份冲突、租户隔离、行版本、回执幂等、轮次持久化）"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R6"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=NetworkWorkOrderMySqlTest,NetworkWorkflowIntegrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test",
+      "salient_output": "11/11 通过（Testcontainers mysql:8.4 + 真实迁移至 V90）；BUILD SUCCESS",
+      "exit_code": 0
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test -Dapi.version=1.44",
+      "salient_output": "待 T6 收口（后台全量运行中）",
+      "exit_code": null
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "真实 MySQL 迁移",
+      "evidence": "空库迁移 V1-V90 成功；冲突库 V90 失败关闭",
+      "result": "pass",
+      "limitations": []
+    },
+    {
+      "check": "V89 约束",
+      "evidence": "kind/action 跨列 CHECK、状态/结果 CHECK 负向断言通过",
+      "result": "pass",
+      "limitations": []
+    },
+    {
+      "check": "回执幂等与租户隔离",
+      "evidence": "同 eventId+subscriberKey 二次 begin 失败；跨租户查询为空",
+      "result": "pass",
+      "limitations": []
+    }
+  ],
+  "diff_summary": ["测试全部位于 com.ccb.architecture.network 测试包"]
+}

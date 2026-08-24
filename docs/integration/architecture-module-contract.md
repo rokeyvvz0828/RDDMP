@@ -159,6 +159,57 @@
 - 生命周期事件按 `subscriberKey + eventId` 幂等消费并校验租户、业务键、实例、轮次与摘要；`APPROVED` 事件在同一业务事务重新校验编号、唯一性、引用、状态和行版本后原子发布，失败则保持未批准并交由平台重试（重试耗尽进入 DEAD，需运维处置；对已结束实例的取消返回 409）。
 - 写操作审计：关键工单写（create/update/submit/cancel 成功与业务失败）写入 `sys_operation_log`（operation_code `architecture.subsystem-change.*`）；工作流任务动作走 `wf_audit_event`（`TASK_*`）。
 
+
+## 网络专项工单（REQ-20260823-050）
+
+资源根：`/api/architecture/network-work-orders`。三类工单（CLB/DNS/证书）共享工单引擎与
+固定审批流程，但各自持有独立字段契约；平台只登记申请、办理过程与办理结果，不执行任何
+外部 CLB/DNS/证书动作。
+
+| 方法 | 路径 | 权限与语义 |
+| --- | --- | --- |
+| GET | `.../network-work-orders` | `view`/`apply`/`manage`；查询 `kind?,status?,limit,offset`；`view`/`apply` 只返回本人，`manage` 返回当前租户全部；响应 `NetworkWorkOrderSummary[]` |
+| GET | `.../network-work-orders/{id}` | `view`/`apply`/`manage`；本人或管理范围，跨租户 404 |
+| POST | `.../network-work-orders` | `apply`/`manage`；创建草稿 `DRAFT` |
+| PUT | `.../network-work-orders/{id}` | `apply`/`manage`；仅本人 `DRAFT/RETURNED`；其它人 403/409 |
+| POST | `.../{id}/submit` | `apply`/`manage`；固化工单快照与 SHA-256 摘要并启动新流程轮次；`body {rowVersion}` |
+| POST | `.../{id}/cancel` | `apply`/`manage`；草稿/退回同步取消；审批中先登记并调用工作流终止，收到 `TERMINATED` 事件后终态化；`body {rowVersion}` |
+| POST | `.../{id}/handling-result` | `manage`；状态 `IN_REVIEW` 或 `COMPLETED` 时登记/更新办理结果与凭证附件；`body {rowVersion, resultStatus, resultDescription?, resultAttachmentIds[]}` |
+| POST | `.../{id}/attachments/{attachmentId}/remove` | `apply`/`manage`；仅 `DRAFT/RETURNED` 且删除授权通过附件策略；`body {rowVersion}` |
+
+状态机：`DRAFT → IN_REVIEW → COMPLETED/REJECTED`，`IN_REVIEW → RETURNED → IN_REVIEW`（新轮次），
+`DRAFT/RETURNED → CANCELLED`（同步），`IN_REVIEW → CANCELLED`（`TERMINATED` 事件确认）。
+批准只把工单推进到 `COMPLETED`（外部配置已办理并登记），不产生任何主记录发布。
+
+工单类型与动作：
+
+| kind | 动作 | 载荷契约（payload，服务端强类型校验） |
+| --- | --- | --- |
+| `CLB` | `OPEN/ADJUST` | `{clbName, purpose, description?}`；subject = clbName |
+| `DNS` | `ADD/CHANGE/REMOVE` | `{domainName, purpose, description?}`；subject = 小写 domainName |
+| `CERT` | `APPLY/RENEW/REVOKE` | `{certType: SSL\|EXTERNAL, subjectName, purpose, description?}`；subject = subjectName；附件扩展名黑名单 `key/pem/pfx/p12/jks/keystore` |
+
+详情响应 `data`：`{workOrder, payload, attachmentIds[], resultAttachmentIds[], history[]}`；
+`workOrder` 含 `id,kind,actionType,subject,applicantId,reason,status,resultStatus,
+resultDescription,currentBusinessRound,cancellationRequested,rowVersion,createdBy,updatedBy,
+createdAt,updatedAt`；`history[]` 为不可变业务事件。
+
+工作流与附件：
+
+- 固定流程编码 `architecture.network.work-order`，业务类型 `architecture_network_work_order`，
+  订阅键 `architecture.network.work-order.lifecycle.v1`；审批节点为单一 ROLE（角色 112
+  `NETWORK_MANAGER`，ANY，空处理人 ERROR），只允许 `APPROVE/RETURN/REJECT`；V90 预置草稿
+  定义（`900000000000032`），必须经平台既有发布入口（`POST /api/workflows/definitions/900000000000032/publish`）
+  生成 Flowable deployment 后才能提交。
+- 生命周期事件按 `subscriberKey + eventId` 幂等消费并校验租户、业务键、实例、轮次与摘要。
+- 附件业务类型 `architecture_network_work_order`，业务键为工单 id；授权策略
+  `NetworkAttachmentAccessPolicy`（读/预览/下载需可读工单，删除仅草稿/退回且本人或管理）。
+- 写操作审计：`architecture.network-work-order.create/update/submit/cancel/result/attachment-remove`
+  写入 `sys_operation_log`；工作流任务动作走 `wf_audit_event`。
+
+错误码：400 字段/状态/附件黑名单；401 未认证；403 权限/归属/删除授权；404/code `40400`
+当前租户资源不存在；409 行版本、状态机、流程实例已结束。
+
 ## 明确不提供
 
 - `/api/architecture/form-schemas/**` 或任何动态表单 schema。

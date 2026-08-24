@@ -1,0 +1,47 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V89__create_architecture_network_work_orders.sql",
+      "purpose": "arch_network_work_order / history / workflow_round / workflow_receipt 四表，kind/action 跨列 CHECK、状态/结果约束与索引"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V90__seed_architecture_network_work_orders.sql",
+      "purpose": "菜单 806、权限 8061-8063、角色 112 NETWORK_MANAGER、兼容映射、流程草稿 900000000000032/033、身份冲突守卫"
+    },
+    {
+      "path_or_resource": "governance/modules.yaml",
+      "purpose": "business/architecture 登记 platform/attachment 依赖并更新模块描述"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/pom.xml",
+      "purpose": "追加 ccb-attachment 依赖"
+    }
+  ],
+  "requirements_addressed": ["R1", "R5", "R6"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=NetworkWorkOrderMySqlTest,NetworkWorkflowIntegrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test",
+      "salient_output": "NetworkWorkOrderMySqlTest 6/6 通过；NetworkWorkflowIntegrationMySqlTest 5/5 通过（含 V90 身份冲突负向用例）；BUILD SUCCESS",
+      "exit_code": 0
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "空库迁移至 V90",
+      "evidence": "Testcontainers mysql:8.4 + Flyway migrate 成功",
+      "result": "pass",
+      "limitations": []
+    },
+    {
+      "check": "V90 稳定 ID 身份冲突失败关闭",
+      "evidence": "冲突库迁移抛 FlywayException",
+      "result": "pass",
+      "limitations": []
+    }
+  ],
+  "diff_summary": ["V89/V90 只追加；V90 守卫模式与 V83/V84 一致；未修改 V1-V86"]
+}
