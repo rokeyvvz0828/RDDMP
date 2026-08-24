@@ -6,7 +6,7 @@
 ## T1 数据库迁移 V89-V90
 
 - 产物：`V89__create_architecture_network_work_orders.sql`（4 张表 + CHECK/索引/FK）、
-  `V90__seed_architecture_network_work_orders.sql`（菜单 806、权限 8061-8063、角色 112、
+  `V90__seed_architecture_network_work_orders.sql`（菜单 808、权限 8081-8083、角色 113、
   兼容映射、流程草稿 900000000000032/033、身份冲突守卫）。
 - 证据：`node scripts/check-flyway-migrations.mjs`；
   `mvn -pl :ccb-architecture -am -Dtest=NetworkWorkOrderMySqlTest,NetworkWorkflowIntegrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test`。

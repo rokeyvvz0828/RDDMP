@@ -102,32 +102,32 @@ class NetworkWorkflowIntegrationMySqlTest {
     @Test
     void v90预置工单菜单三级权限与办理角色() {
         assertThat(jdbc.queryForObject("SELECT CONCAT(route_name, '|', route_path, '|', permission_code) "
-                        + "FROM sys_menu WHERE id = 806 AND tenant_id = 1 AND deleted = 0", String.class))
+                        + "FROM sys_menu WHERE id = 808 AND tenant_id = 1 AND deleted = 0", String.class))
                 .isEqualTo("ArchitectureNetworkWorkOrders|/architecture/network-work-orders"
                         + "|architecture:network-work-order:view");
         assertThat(jdbc.queryForList("SELECT CONCAT(action_code, '|', permission_code) "
-                        + "FROM sys_menu_permission WHERE tenant_id = 1 AND id IN (8061, 8062, 8063) ORDER BY id",
+                        + "FROM sys_menu_permission WHERE tenant_id = 1 AND id IN (8081, 8082, 8083) ORDER BY id",
                 String.class))
                 .containsExactly("view|architecture:network-work-order:view",
                         "apply|architecture:network-work-order:apply",
                         "manage|architecture:network-work-order:manage");
-        assertThat(jdbc.queryForObject("SELECT role_code FROM sys_role WHERE id = 112 AND tenant_id = 1 "
+        assertThat(jdbc.queryForObject("SELECT role_code FROM sys_role WHERE id = 113 AND tenant_id = 1 "
                         + "AND status = 1 AND deleted = 0", String.class))
                 .isEqualTo("NETWORK_MANAGER");
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission "
-                + "WHERE tenant_id = 1 AND role_id = 112 AND permission_id IN (8061, 8062, 8063)"))
+                + "WHERE tenant_id = 1 AND role_id = 113 AND permission_id IN (8081, 8082, 8083)"))
                 .isEqualTo(3L);
         assertThat(count("SELECT COUNT(*) FROM sys_role_menu "
-                + "WHERE tenant_id = 1 AND role_id = 112 AND menu_id IN (800, 806)"))
+                + "WHERE tenant_id = 1 AND role_id = 113 AND menu_id IN (800, 808)"))
                 .isEqualTo(2L);
         assertThat(jdbc.queryForList("SELECT menu_id FROM sys_role_menu "
-                        + "WHERE tenant_id = 1 AND role_id = 112 AND menu_id IN (200, 201, 202, 203, 204) "
+                        + "WHERE tenant_id = 1 AND role_id = 113 AND menu_id IN (200, 201, 202, 203, 204) "
                         + "ORDER BY menu_id", Long.class))
                 .containsExactly(200L, 202L);
-        assertThat(count("SELECT COUNT(*) FROM sys_user_role WHERE tenant_id = 1 AND user_id = 1 AND role_id = 112"))
+        assertThat(count("SELECT COUNT(*) FROM sys_user_role WHERE tenant_id = 1 AND user_id = 1 AND role_id = 113"))
                 .isEqualTo(1L);
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission "
-                + "WHERE tenant_id = 1 AND role_id = 1 AND permission_id IN (8061, 8062, 8063)"))
+                + "WHERE tenant_id = 1 AND role_id = 1 AND permission_id IN (8081, 8082, 8083)"))
                 .isEqualTo(3L);
     }
 
@@ -135,12 +135,12 @@ class NetworkWorkflowIntegrationMySqlTest {
     void v90存量角色兼容映射() {
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission role_permission "
                 + "JOIN sys_role_permission inherited ON inherited.role_id = role_permission.role_id "
-                + "AND inherited.tenant_id = role_permission.tenant_id AND inherited.permission_id = 8061 "
+                + "AND inherited.tenant_id = role_permission.tenant_id AND inherited.permission_id = 8081 "
                 + "WHERE role_permission.tenant_id = 1 AND role_permission.permission_id = 8031"))
                 .isGreaterThanOrEqualTo(1L);
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission role_permission "
                 + "JOIN sys_role_permission inherited ON inherited.role_id = role_permission.role_id "
-                + "AND inherited.tenant_id = role_permission.tenant_id AND inherited.permission_id = 8062 "
+                + "AND inherited.tenant_id = role_permission.tenant_id AND inherited.permission_id = 8082 "
                 + "WHERE role_permission.tenant_id = 1 AND role_permission.permission_id = 8032"))
                 .isGreaterThanOrEqualTo(1L);
     }
@@ -163,7 +163,7 @@ class NetworkWorkflowIntegrationMySqlTest {
             conflictJdbc.update("INSERT INTO sys_menu "
                     + "(id, tenant_id, parent_id, menu_type, menu_name, route_name, route_path, component_path, "
                     + "permission_code, icon, sort_no) VALUES "
-                    + "(806, 1, 800, 'menu', '冲突菜单', 'ConflictingNetworkMenu', '/conflict', "
+                    + "(808, 1, 800, 'menu', '冲突菜单', 'ConflictingNetworkMenu', '/conflict', "
                     + "'architecture/conflict', 'architecture:network-work-order:view', 'warning', 99)");
 
             Flyway v90 = flyway(conflictDataSource, "90");
@@ -200,9 +200,9 @@ class NetworkWorkflowIntegrationMySqlTest {
         JsonNode config = approval.path("config");
         assertThat(config.path("assigneeType").asText()).isEqualTo("ROLE");
         assertThat(config.path("assigneeIds").size()).isEqualTo(1);
-        assertThat(config.path("assigneeIds").get(0).asLong()).isEqualTo(112L);
+        assertThat(config.path("assigneeIds").get(0).asLong()).isEqualTo(113L);
         assertThat(config.path("roleIds").size()).isEqualTo(1);
-        assertThat(config.path("roleIds").get(0).asLong()).isEqualTo(112L);
+        assertThat(config.path("roleIds").get(0).asLong()).isEqualTo(113L);
         assertThat(config.path("mode").asText()).isEqualTo("ANY");
         assertThat(config.path("emptyAssigneeAction").asText()).isEqualTo("ERROR");
         assertThat(actionNames(config.path("actionPolicy").path("allowedActions")))

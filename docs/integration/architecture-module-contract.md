@@ -257,7 +257,7 @@ createdAt,updatedAt`；`history[]` 为不可变业务事件。
 工作流与附件：
 
 - 固定流程编码 `architecture.network.work-order`，业务类型 `architecture_network_work_order`，
-  订阅键 `architecture.network.work-order.lifecycle.v1`；审批节点为单一 ROLE（角色 112
+  订阅键 `architecture.network.work-order.lifecycle.v1`；审批节点为单一 ROLE（角色 113
   `NETWORK_MANAGER`，ANY，空处理人 ERROR），只允许 `APPROVE/RETURN/REJECT`；V90 预置草稿
   定义（`900000000000032`），必须经平台既有发布入口（`POST /api/workflows/definitions/900000000000032/publish`）
   生成 Flowable deployment 后才能提交。

@@ -108,7 +108,7 @@
     "required": true,
     "issue": "REQ-20260823-050",
     "owner_approved": true,
-    "approval_evidence": "用户于 2026-08-23 直接下达“实施 11「CLB、DNS 与证书工单」”任务并确认模块落点 business/architecture；批准在 business/architecture 内新增网络专项工单能力、登记 platform/attachment 依赖（governance/modules.yaml 与 pom.xml）、追加 V89-V90 迁移与 806/8061-8063/112 菜单权限角色。platform/attachment 只通过既有公开 integration 契约消费，无平台行为变更。",
+    "approval_evidence": "用户于 2026-08-23 直接下达“实施 11「CLB、DNS 与证书工单」”任务并确认模块落点 business/architecture；批准在 business/architecture 内新增网络专项工单能力、登记 platform/attachment 依赖（governance/modules.yaml 与 pom.xml）、追加 V89-V90 迁移与 808/8081-8083/113 菜单权限角色。platform/attachment 只通过既有公开 integration 契约消费，无平台行为变更。",
     "old_behavior_preserved": true,
     "regression_tests": [
       "既有逻辑/物理子系统与变更工单 API 契约不变，全部原测试继续通过",
@@ -124,7 +124,7 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V89__create_architecture_network_work_orders.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V90__seed_architecture_network_work_orders.sql"
     ],
-    "compatibility_and_rollback": "只追加 V89-V90。V89 建立 arch_network_work_order（kind 专属 JSON 载荷、附件 id 列表、办理结果、工作流上下文、行版本）、arch_network_work_order_history、arch_network_workflow_round 与 arch_network_workflow_receipt，全部 arch_ 前缀归属 architecture 模块。V90 追加菜单 806、权限 8061-8063、角色 112 NETWORK_MANAGER 及兼容映射，并预置草稿流程 architecture.network.work-order（定义 900000000000032、版本 900000000000033，审批节点 ROLE 112 ANY，动作 APPROVE/RETURN/REJECT），必须经平台既有发布入口生成 Flowable deployment 后才能提交。V90 对稳定 ID 身份冲突失败关闭。应用回退保留迁移、工单、历史、轮次与审计，使用后续补偿迁移关闭入口和撤销授权，不手工删除生产数据。注意：本批次 V89-V90 相对 dev-ivanh 既有 V85-V88 纯追加，无编号冲突。"
+    "compatibility_and_rollback": "只追加 V89-V90。V89 建立 arch_network_work_order（kind 专属 JSON 载荷、附件 id 列表、办理结果、工作流上下文、行版本）、arch_network_work_order_history、arch_network_workflow_round 与 arch_network_workflow_receipt，全部 arch_ 前缀归属 architecture 模块。V90 追加菜单 808、权限 8081-8083、角色 113 NETWORK_MANAGER 及兼容映射，并预置草稿流程 architecture.network.work-order（定义 900000000000032、版本 900000000000033，审批节点 ROLE 113 ANY，动作 APPROVE/RETURN/REJECT），必须经平台既有发布入口生成 Flowable deployment 后才能提交。V90 对稳定 ID 身份冲突失败关闭。应用回退保留迁移、工单、历史、轮次与审计，使用后续补偿迁移关闭入口和撤销授权，不手工删除生产数据。注意：本批次 V89-V90 相对 dev-ivanh 既有 V85-V88 纯追加，无编号冲突。"
   },
   "external_access": {
     "changed": false,

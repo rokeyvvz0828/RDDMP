@@ -18,7 +18,7 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
 
 本需求以仓库治理和本文件为编码准入基准。外部 Wayfinder 票据（
 `temp/implementation/issues/11-clb-dns-certificate-work-orders.md`）与 `temp/spec.md`
-（User Stories 110-112）、`temp/CONTEXT.md` 作为需求来源；用户于 2026-08-23 直接下达
+（User Stories 110-113）、`temp/CONTEXT.md` 作为需求来源；用户于 2026-08-23 直接下达
 “实施 11「CLB、DNS 与证书工单」”任务并确认模块落点为 `business/architecture`，作为本
 批次开工授权。
 
@@ -79,12 +79,12 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
   - 证书工单附件扩展名黑名单：`key/pem/pfx/p12/jks/keystore`，命中即 400，
     防止私钥进入平台存储。
 - 角色、权限、数据范围和审计：
-  - 新增菜单 806「网络专项工单」（父菜单 800，路由
-    `/architecture/network-work-orders`）、权限 8061/8062/8063
-    （`architecture:network-work-order:view/apply/manage`）；新角色 112
-    `NETWORK_MANAGER`（网络办理人员）拥有三者；本地管理员（用户 1）加入角色 112 并
-    直接授权；存量角色兼容映射：持有 `architecture:view` 的存量角色获得 8061，
-    持有 `architecture:apply` 的存量角色获得 8062（与 V83 口径一致）。
+  - 新增菜单 808「网络专项工单」（父菜单 800，路由
+    `/architecture/network-work-orders`）、权限 8081/8082/8083
+    （`architecture:network-work-order:view/apply/manage`）；新角色 113
+    `NETWORK_MANAGER`（网络办理人员）拥有三者；本地管理员（用户 1）加入角色 113 并
+    直接授权；存量角色兼容映射：持有 `architecture:view` 的存量角色获得 8081，
+    持有 `architecture:apply` 的存量角色获得 8082（与 V83 口径一致）。
   - 查询列表/详情要求 `view/apply/manage` 任一且遵守数据范围；创建/编辑/提交/取消
     要求 `apply/manage` 且限本人；办理结果登记与审批动作要求 `manage`。
   - 服务端校验认证、RBAC、当前租户、实体存在性、状态机、行版本与附件授权；
@@ -120,9 +120,9 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
   `V90__seed_architecture_network_work_orders.sql`；不修改 V1-V88。V89 建立
   `arch_network_work_order`（主表，含 kind 专属 JSON 载荷、附件 id 列表、办理结果、
   工作流上下文、行版本）、`arch_network_work_order_history`、`arch_network_workflow_round`
-  与 `arch_network_workflow_receipt`；V90 追加菜单 806、权限 8061-8063、角色 112 及
+  与 `arch_network_workflow_receipt`；V90 追加菜单 808、权限 8081-8083、角色 113 及
   兼容映射，并预置草稿流程 `architecture.network.work-order`（定义
-  `900000000000032`、版本 `900000000000033`，审批节点 ROLE 112、ANY、空处理人 ERROR、
+  `900000000000032`、版本 `900000000000033`，审批节点 ROLE 113、ANY、空处理人 ERROR、
   动作 `APPROVE/RETURN/REJECT`，必须经平台既有发布入口生成 Flowable deployment 后才可
   提交）。迁移对稳定 ID 身份冲突失败关闭；存量数据无需改写。
 - 脱敏输入输出示例：

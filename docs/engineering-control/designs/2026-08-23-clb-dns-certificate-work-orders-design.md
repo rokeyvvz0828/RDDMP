@@ -1,7 +1,7 @@
 # CLB、DNS 与证书工单设计
 
 适用需求：`REQ-20260823-050`；来源 `temp/implementation/issues/11-clb-dns-certificate-work-orders.md`
-与 `temp/spec.md` User Stories 110-112。
+与 `temp/spec.md` User Stories 110-113。
 
 ## 1. 目标与边界
 
@@ -73,7 +73,7 @@ DRAFT ──submit──▶ IN_REVIEW ──APPROVED 事件──▶ COMPLETED
   `businessType=architecture_network_work_order`、订阅键
   `architecture.network.work-order.lifecycle.v1`。
 - 固定流程编码 `architecture.network.work-order`：单一 ROLE 审批节点
-  （角色 112 `NETWORK_MANAGER`，ANY，空处理人 ERROR，动作 `APPROVE/RETURN/REJECT`），
+  （角色 113 `NETWORK_MANAGER`，ANY，空处理人 ERROR，动作 `APPROVE/RETURN/REJECT`），
   V90 预置草稿（定义 900000000000032、版本 900000000000033），经平台发布入口生成
   Flowable deployment 后方可提交；未发布时提交返回明确错误。
 - 提交/取消通过 `WorkflowBusinessGateway`；生命周期事件按
@@ -83,10 +83,10 @@ DRAFT ──submit──▶ IN_REVIEW ──APPROVED 事件──▶ COMPLETED
 
 ## 5. 权限与审计（V90）
 
-- 菜单 806「网络专项工单」（父 800，路由 `/architecture/network-work-orders`）；
-  权限 8061/8062/8063 = `architecture:network-work-order:view/apply/manage`；
-  角色 112 `NETWORK_MANAGER` 拥有三者；用户 1（本地管理员）加入角色 112 并直接授权；
-  存量角色兼容映射：持有 `architecture:view` → 8061、`architecture:apply` → 8062。
+- 菜单 808「网络专项工单」（父 800，路由 `/architecture/network-work-orders`）；
+  权限 8081/8082/8083 = `architecture:network-work-order:view/apply/manage`；
+  角色 113 `NETWORK_MANAGER` 拥有三者；用户 1（本地管理员）加入角色 113 并直接授权；
+  存量角色兼容映射：持有 `architecture:view` → 8081、`architecture:apply` → 8082。
 - 数据范围：`view/apply` 仅本人，`manage` 当前租户全部；HTTP DTO 不接受 `tenantId`。
 - 写操作审计：`architecture.network-work-order.create/update/submit/cancel/result`
   成功与业务失败均记录 `sys_operation_log`（含 trace ID）。
