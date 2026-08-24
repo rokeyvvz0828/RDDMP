@@ -128,9 +128,9 @@ public class DeploymentUnitService {
                     prepared.shortName(), prepared.name(), prepared.kind(), prepared.description(),
                     prepared.remark()));
         } catch (DuplicateKeyException exception) {
-            throw recordFailure(actor, CREATE_OPERATION, conflict("部署单元名称已被占用，停用或作废后也不可复用"), traceId);
+            throw recordFailure(actor, CREATE_OPERATION, "POST", conflict("部署单元名称已被占用，停用或作废后也不可复用"), traceId);
         } catch (RuntimeException exception) {
-            throw recordFailure(actor, CREATE_OPERATION, exception, traceId);
+            throw recordFailure(actor, CREATE_OPERATION, "POST", exception, traceId);
         }
         DeploymentUnit unit = store.findUnit(actor.tenantId(), unitId).orElseThrow(() -> notFound(unitId));
         operationAudit.recordSuccess(auditCommand(actor, CREATE_OPERATION, "POST", RESOURCE_PATH, null, traceId));
@@ -170,9 +170,9 @@ public class DeploymentUnitService {
                 store.updateUnitCurrentVersion(actor.tenantId(), id, nextVersion, actor.id());
             });
         } catch (DuplicateKeyException exception) {
-            throw recordFailure(actor, UPDATE_OPERATION, conflict("部署单元名称已被占用，停用或作废后也不可复用"), traceId);
+            throw recordFailure(actor, UPDATE_OPERATION, "PUT", conflict("部署单元名称已被占用，停用或作废后也不可复用"), traceId);
         } catch (RuntimeException exception) {
-            throw recordFailure(actor, UPDATE_OPERATION, exception, traceId);
+            throw recordFailure(actor, UPDATE_OPERATION, "PUT", exception, traceId);
         }
         DeploymentUnit unit = store.findUnit(actor.tenantId(), id).orElseThrow(() -> notFound(id));
         operationAudit.recordSuccess(auditCommand(actor, UPDATE_OPERATION, "PUT", RESOURCE_PATH + "/" + id, null, traceId));
@@ -226,7 +226,7 @@ public class DeploymentUnitService {
                 }
             });
         } catch (RuntimeException exception) {
-            throw recordFailure(actor, operation, exception, traceId);
+            throw recordFailure(actor, operation, method, exception, traceId);
         }
         operationAudit.recordSuccess(auditCommand(actor, operation, method, RESOURCE_PATH + "/" + id, null, traceId));
     }
@@ -366,10 +366,10 @@ public class DeploymentUnitService {
         return new SystemOperationAuditCommand(actor, operationCode, method, path, error, traceId);
     }
 
-    private RuntimeException recordFailure(AuthUser actor, String operationCode, RuntimeException original,
-                                           String traceId) {
+    private RuntimeException recordFailure(AuthUser actor, String operationCode, String method,
+                                           RuntimeException original, String traceId) {
         try {
-            operationAudit.recordFailure(auditCommand(actor, operationCode, "POST", RESOURCE_PATH,
+            operationAudit.recordFailure(auditCommand(actor, operationCode, method, RESOURCE_PATH,
                     safeErrorMessage(original), traceId));
         } catch (RuntimeException auditFailure) {
             logFailure(operationCode, auditFailure);
