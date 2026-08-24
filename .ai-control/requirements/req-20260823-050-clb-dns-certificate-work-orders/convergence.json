@@ -1,0 +1,67 @@
+{
+  "requirement_id": "REQ-20260823-050-clb-dns-certificate-work-orders",
+  "requirement_results": [
+    {"id": "R1", "verdict": "pass", "evidence": "CLB/DNS/证书三类草稿创建成功且 per-kind 校验生效（跨 kind 动作/非法证书类型/DNS 小写归一）；草稿仅本人可编辑（他人 403）；提交固化快照并进入审批（单元+MySQL+运行时三重验证）"},
+    {"id": "R2", "verdict": "pass", "evidence": "状态机由动作与真实工作流事件驱动：提交 IN_REVIEW、批准 COMPLETED、退回 RETURNED、拒绝 REJECTED、取消需 TERMINATED；退回重提轮次 1→2；平台不执行任何外部动作（消费端只推进状态）"},
+    {"id": "R3", "verdict": "pass", "evidence": "办理结果登记（SUCCESS/FAILED、说明、凭证附件）在 IN_REVIEW 与 COMPLETED 生效，rowVersion 过期 409；每次登记写 RESULT_REGISTERED 历史；过期版本并发保护运行时复验"},
+    {"id": "R4", "verdict": "pass", "evidence": "附件实体授权：读/预览/下载需可读工单（本人或权限），删除仅草稿/退回且本人或管理；证书工单私钥扩展名黑名单运行时 400 且不绑定；公开证书附件绑定 BOUND 验证"},
+    {"id": "R5", "verdict": "pass", "evidence": "view/apply/manage 三级权限与数据范围运行时矩阵验证（无权限 403、角色 110 view+apply 可查本人但结果登记 403、admin 全通）；未认证 401；审计行 create/submit/result 落库；HTTP DTO 无 tenantId"},
+    {"id": "R6", "verdict": "pass", "evidence": "890 tests 0 failures 0 errors（全 reactor）；Testcontainers 真实 MySQL 迁移 V1-V90 与 V90 冲突失败关闭；运行时真实 Flowable 全链路；前端构建通过；浏览器 UAT 为 manual 项（见 limitations）"}
+  ],
+  "task_results": {
+    "T1": "verified",
+    "T2": "verified",
+    "T3": "verified",
+    "T4": "verified",
+    "T5": "verified",
+    "T6": "verified-with-manual-defer"
+  },
+  "regression": {
+    "command": "mvn test -Dapi.version=1.44",
+    "exit_code": 0,
+    "evidence": "BUILD SUCCESS（9:35min）；聚合 surefire 890 tests, 0 failures, 0 errors"
+  },
+  "runtime_gates": [
+    {"command": "mvn -pl :ccb-architecture -am test -Dapi.version=1.44", "exit_code": 0, "evidence": "架构模块全量通过（含全部 MySQL 测试）"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "evidence": "vue-tsc + vite 通过"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "evidence": "80 migrations + 1 callback"},
+    {"command": "node scripts/check-codex-scope.mjs --base HEAD --head HEAD --working-tree", "exit_code": 0, "evidence": "范围通过；41 changed files 全部在 writable_paths"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "evidence": "失败项与 HEAD 快照逐字节一致（存量：其他需求账本 topic mismatch、048 缺失 baseline.json），非本批次引入"},
+    {"command": "node scripts/check-module-boundaries.mjs", "exit_code": 1, "evidence": "失败项与 HEAD 快照逐字节一致（存量：system/requirement 既有违规），architecture 违规 0"},
+    {"command": "git diff --check", "exit_code": 0, "evidence": "无空白错误"}
+  ],
+  "runtime_evidence": {
+    "mysql": "隔离容器 rddmp-050-mysql:3307 空库 Flyway V1-V90（80/80 success）；仅测试库将 att_file.expires_at 改 DATETIME 以绕过平台存量缺陷（见 open_feedback F-T6-002）",
+    "workflow": "真实 Flowable：定义 900000000000032 发布后 startByCode 启动；任务上下文/APPROVE/RETURN 决策；轮次 1→2 新实例；事件驱动 COMPLETED/RETURNED",
+    "http": "登录/401/403/409/400/40400 矩阵；三类工单创建/提交/审批/结果登记/附件绑定与移除全链路 curl 证据（见 observation-T6.json）",
+    "frontend": "构建通过；桌面/移动浏览器 UAT 未执行（无浏览器工具，manual 项移交用户）"
+  },
+  "open_feedback": [
+    {
+      "id": "F-T6-002",
+      "severity": "high",
+      "subject": "平台存量缺陷：附件绑定必然失败",
+      "detail": "V36 att_file.expires_at 为 TIMESTAMP；platform/attachment AttachmentService.bind 写入 '9999-12-31 23:59:59'；mysql-connector-j 8/9 会话强制 STRICT_TRANS_TABLES → Data truncation（任何环境执行附件绑定均 500）。本批次隔离测试库改列类型完成验证；正式修复（V36 改 DATETIME 或 bind SQL 修正）需平台 Owner 另行立项。",
+      "owner": "rokeyvvz0828（平台 Owner）",
+      "blocking_release": false
+    },
+    {
+      "id": "F-T6-003",
+      "severity": "medium",
+      "subject": "浏览器 UAT 未执行（manual 项）",
+      "detail": "本会话无浏览器自动化工具；桌面 1280x800 与移动 375x812/390x844/430x932、明暗主题验收按 codex-task-scope.yaml browser-uat 用例移交用户执行；前端已通过 vue-tsc/vite 构建。",
+      "owner": "用户验收",
+      "blocking_release": false
+    },
+    {
+      "id": "F-T6-004",
+      "severity": "low",
+      "subject": "存量治理检查失败项",
+      "detail": "check-module-boundaries（system/requirement 既有违规）与 check-all-governance（其他需求账本 mismatch）与 HEAD 输出一致，非本批次引入，未在本批次修复。",
+      "owner": "治理 Owner",
+      "blocking_release": false
+    }
+  ],
+  "verdict": "converged-with-manual-defer",
+  "notes": "代码、自动化测试、迁移、范围与运行时 API 接缝收敛；浏览器 UAT 与平台存量缺陷修复按 F-T6-002/003 移交。V89-V90 与在途 049 的 V85-V86 无编号冲突，但合并顺序必须 049 先入库。"
+}

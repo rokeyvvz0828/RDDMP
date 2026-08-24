@@ -1,0 +1,257 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "边界、状态机、因果路径与传感器已绑定 R1-R6。",
+  "recorded_at": "2026-08-23T16:10:00+00:00",
+  "data": {
+    "baseline_revision": "baseline-1",
+    "plant_boundary": {
+      "inside": [
+        "com.ccb.architecture.network 代码",
+        "V89/V90 迁移",
+        "web/src/modules/architecture 网络工单页面",
+        "架构模块测试"
+      ],
+      "environment": [
+        "MySQL 8.4",
+        "平台 security/system/workflow/attachment 能力",
+        "外部线下办理动作（仅登记结果，不调用）",
+        "浏览器"
+      ]
+    },
+    "state_variables": [
+      {
+        "name": "work_order_status",
+        "owner": "arch_network_work_order",
+        "valid_values": ["DRAFT", "IN_REVIEW", "RETURNED", "COMPLETED", "REJECTED", "CANCELLED"]
+      },
+      {
+        "name": "business_round",
+        "owner": "arch_network_work_order",
+        "valid_values": ["0..N 严格递增"]
+      },
+      {
+        "name": "round_status",
+        "owner": "arch_network_workflow_round",
+        "valid_values": ["PENDING", "STARTED", "RETURNED", "APPROVED", "REJECTED", "TERMINATED", "IGNORED"]
+      },
+      {
+        "name": "result_status",
+        "owner": "arch_network_work_order",
+        "valid_values": ["null", "SUCCESS", "FAILED"]
+      }
+    ],
+    "causal_paths": [
+      {
+        "requirement_id": "R1",
+        "input": "创建/更新命令（kind/actionType/payload）",
+        "transitions": ["per-kind DTO 校验", "投影 subject", "写主表 DRAFT", "审计"],
+        "outputs": ["草稿工单 + 历史事件"]
+      },
+      {
+        "requirement_id": "R2",
+        "input": "提交/审批动作与工作流事件",
+        "transitions": ["状态与归属校验", "固化快照+摘要", "启动/绑定轮次", "消费事件终态化"],
+        "outputs": ["IN_REVIEW/COMPLETED/REJECTED/RETURNED/CANCELLED + 轮次与回执"]
+      },
+      {
+        "requirement_id": "R3",
+        "input": "办理结果登记命令",
+        "transitions": ["manage 校验", "状态校验", "rowVersion 守卫", "写结果+历史"],
+        "outputs": ["结果快照 + RESULT_REGISTERED 事件"]
+      },
+      {
+        "requirement_id": "R4",
+        "input": "附件上传/绑定/下载/删除",
+        "transitions": ["平台附件上传", "扩展名黑名单（证书）", "绑定 businessKey", "AttachmentAccessPolicy 授权"],
+        "outputs": ["绑定附件或 400/403"]
+      },
+      {
+        "requirement_id": "R5",
+        "input": "受保护 HTTP 请求",
+        "transitions": ["认证", "RBAC 三级权限", "数据范围 OWN/MANAGE", "实体存在与归属", "审计"],
+        "outputs": ["结果或 401/403/404/409"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "REST /api/architecture/network-work-orders",
+        "producers": ["NetworkWorkOrderController"],
+        "consumers": ["web 前端"],
+        "invariant": "code/message/data/traceId；无 tenantId；camelCase"
+      },
+      {
+        "name": "WorkflowBusinessGateway",
+        "producers": ["platform/workflow"],
+        "consumers": ["NetworkWorkOrderSubmissionService"],
+        "invariant": "按流程编码启动；上下文含业务键/轮次/摘要/路由"
+      },
+      {
+        "name": "WorkflowLifecycleConsumer",
+        "producers": ["NetworkWorkflowLifecycleConsumer"],
+        "consumers": ["platform/workflow"],
+        "invariant": "subscriberKey+eventId 幂等；失败可重试"
+      },
+      {
+        "name": "AttachmentGateway/AttachmentAccessPolicy",
+        "producers": ["platform/attachment"],
+        "consumers": ["NetworkWorkOrderController/Policy"],
+        "invariant": "businessType+businessKey 绑定；实体授权 fail-closed"
+      }
+    ],
+    "sensors": [
+      {
+        "id": "S1",
+        "target": "R1/R2 状态机与校验",
+        "method": "领域测试 + MySQL 断言",
+        "blind_spots": ["真实 Flowable 时序"],
+        "independence": "服务与数据库边界"
+      },
+      {
+        "id": "S2",
+        "target": "R2 工作流持久化",
+        "method": "Testcontainers 轮次/回执/幂等断言",
+        "blind_spots": ["未发布流程的运行时路径"],
+        "independence": "真实 MySQL"
+      },
+      {
+        "id": "S3",
+        "target": "R3/R4 结果与附件",
+        "method": "服务级测试 + 黑名单测试",
+        "blind_spots": ["MinIO 对象内容"],
+        "independence": "业务服务与附件契约"
+      },
+      {
+        "id": "S4",
+        "target": "R5 权限矩阵",
+        "method": "HTTP/服务级 403/404 测试",
+        "blind_spots": ["未列出的端点"],
+        "independence": "请求结果"
+      },
+      {
+        "id": "S5",
+        "target": "R6 浏览器旅程",
+        "method": "桌面/移动视口 UAT",
+        "blind_spots": ["非 Chromium"],
+        "independence": "渲染与网络证据"
+      }
+    ],
+    "actuators": [
+      {
+        "id": "A1",
+        "target": "迁移 V89/V90",
+        "action": "追加建表与种子",
+        "authority": "workspace write",
+        "impact_radius": "新 arch_ 表与菜单/权限/流程",
+        "rollback": "保留迁移，补偿迁移关闭入口"
+      },
+      {
+        "id": "A2",
+        "target": "network 后端",
+        "action": "实现模型/存储/服务/消费/HTTP",
+        "authority": "workspace write",
+        "impact_radius": "com.ccb.architecture.network",
+        "rollback": "逆序回退服务代码"
+      },
+      {
+        "id": "A3",
+        "target": "web 前端",
+        "action": "实现三页面与类型/API/路由",
+        "authority": "workspace write",
+        "impact_radius": "web/src/modules/architecture",
+        "rollback": "回退页面与路由 diff"
+      },
+      {
+        "id": "A4",
+        "target": "验证",
+        "action": "运行测试/构建/治理检查",
+        "authority": "local execution",
+        "impact_radius": "报告",
+        "rollback": "清理报告"
+      }
+    ],
+    "disturbances": [
+      {
+        "source": "固定流程未发布",
+        "effect": "提交失败",
+        "detectable": true,
+        "controllable": true
+      },
+      {
+        "source": "V85-V86 与 V89-V90 合并乱序",
+        "effect": "Flyway out-of-order",
+        "detectable": true,
+        "controllable": true
+      },
+      {
+        "source": "Docker/Testcontainers 环境",
+        "effect": "MySQL 集成测试不可运行",
+        "detectable": true,
+        "controllable": true
+      }
+    ],
+    "delays": [
+      {
+        "source": "容器启动与全量迁移",
+        "consequence": "集成反馈延迟",
+        "sampling_rule": "先跑领域测试，再跑 MySQL 测试"
+      },
+      {
+        "source": "浏览器 UAT",
+        "consequence": "构建通过不证明页面",
+        "sampling_rule": "构建后再做浏览器验收"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "固定流程发布入口可用（平台既有能力）",
+        "evidence": "V84 同一模式",
+        "falsifier": "发布接口不可达"
+      },
+      {
+        "text": "MySQL/Testcontainers 可用",
+        "evidence": "环境基线测试通过",
+        "falsifier": "容器环境不可用"
+      }
+    ],
+    "control_assessment": [
+      {
+        "requirement_id": "R1",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R2",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R3",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R4",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R5",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R6",
+        "observable": "partial",
+        "controllable": "yes",
+        "action": "浏览器验收补充证据"
+      }
+    ],
+    "model_status": "ready"
+  }
+}

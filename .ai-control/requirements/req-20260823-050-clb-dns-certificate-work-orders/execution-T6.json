@@ -1,0 +1,74 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "task_id": "T6",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/architecture/MODULES.md / docs/integration/architecture-module-contract.md",
+      "purpose": "模块描述与网络专项工单契约章节"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260823-050-clb-dns-certificate-work-orders/**",
+      "purpose": "执行与观测账本"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am test -Dapi.version=1.44",
+      "salient_output": "首轮 215 测试 1 失败 1 错误（registerHandlingResult 回归）；修正后复跑通过（见 T2/T3）",
+      "exit_code": 0
+    },
+    {
+      "command": "mvn test -Dapi.version=1.44",
+      "salient_output": "全 reactor 测试（后台运行中）",
+      "exit_code": null
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260823-050-clb-dns-certificate-work-orders/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "salient_output": "Codex scope check passed; 41 changed file(s)",
+      "exit_code": 0
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "salient_output": "Flyway migration check passed for 80 migration(s)",
+      "exit_code": 0
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs / node scripts/check-all-governance.mjs",
+      "salient_output": "失败项与 HEAD 快照输出逐字节一致，均为存量问题（requirement/system 既有违规、048 缺失 baseline.json），非本批次引入",
+      "exit_code": 1
+    },
+    {
+      "command": "git diff --check",
+      "salient_output": "无空白错误",
+      "exit_code": 0
+    },
+    {
+      "command": "npm --prefix web run build",
+      "salient_output": "vue-tsc 与 vite build 通过",
+      "exit_code": 0
+    },
+    {
+      "command": "运行时验收（隔离环境）",
+      "salient_output": "见 observation-T6.json",
+      "exit_code": 0
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "范围一致性",
+      "evidence": "41 个变更文件全部落在 writable_paths",
+      "result": "pass",
+      "limitations": []
+    },
+    {
+      "check": "迁移追加性",
+      "evidence": "V89-V90 只追加，V1-V86 未改动",
+      "result": "pass",
+      "limitations": []
+    }
+  ],
+  "diff_summary": ["文档与账本更新；无代码变更"]
+}

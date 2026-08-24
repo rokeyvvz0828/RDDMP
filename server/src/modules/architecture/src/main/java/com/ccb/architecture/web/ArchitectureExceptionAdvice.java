@@ -4,6 +4,7 @@ import com.ccb.architecture.change.service.SubsystemReferenceGuard;
 import com.ccb.architecture.change.web.SubsystemChangeApplicationController;
 import com.ccb.architecture.decision.web.ArchitectureDecisionController;
 import com.ccb.architecture.standard.web.ArchitectureStandardController;
+import com.ccb.architecture.network.web.NetworkWorkOrderController;
 import com.ccb.common.api.ApiResponse;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
@@ -22,7 +23,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         ArchitectureStandardController.class,
         ArchitectureDecisionController.class,
         DeploymentUnitController.class,
-        DeploymentUnitImportController.class
+        DeploymentUnitImportController.class,
+        NetworkWorkOrderController.class
 })
 public class ArchitectureExceptionAdvice {
     public static final int NOT_FOUND_CODE = 40400;

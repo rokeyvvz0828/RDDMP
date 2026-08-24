@@ -17,7 +17,7 @@
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
 | 业务 | `server/src/modules/release` | 投产窗口、版本申请、审批关联、投产基线、生产版本和统计分析 |
 | 业务 | `server/src/modules/requirement` | 需求管理平台：新建项目差异清单、存量需求阶段、系统清单、基线与统一改动记录 |
-| 业务 | `server/src/modules/architecture` | 逻辑子系统、物理子系统、部署单元（版本与初始化导入）、关联关系与变更工单全生命周期（审批、确定性编号、引用检查）、架构规范文档与架构决策事项/结论替代链 |
+| 业务 | `server/src/modules/architecture` | 逻辑子系统、物理子系统、部署单元（版本与初始化导入）、关联关系与变更工单全生命周期（审批、确定性编号、引用检查）、CLB/DNS/证书网络专项工单（办理结果登记）、架构规范文档与架构决策事项/结论替代链 |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
 
@@ -30,7 +30,7 @@
 - `web/src/components/workflow` 和 `WorkflowView.vue` 属于 workflow。
 - `web/src/modules/delivery-showcase` 是纯前端虚构交付示范模块，使用本地 mock 数据沉淀列表、表单、详情、审批和可视化样式，不拥有后端业务数据。
 - `web/src/modules/release` 与 `web/src/api/release.ts` 属于配置管理业务模块；仅项目、物理子系统和交付单元选择源可以临时使用前端 Mock，业务状态必须来自 `ccb-release`。
-- `web/src/modules/architecture` 属于架构管理业务模块，承载逻辑子系统和物理子系统页面、类型与 API，不写入前端公共目录。
+- `web/src/modules/architecture` 属于架构管理业务模块，承载逻辑子系统、物理子系统与网络专项工单页面、类型与 API，不写入前端公共目录。
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
 - `com.ccb.attachment.model` 提供持久附件公开契约，业务模块只能通过 `AttachmentPort` 访问附件，不得读取附件表或对象键。
