@@ -1,0 +1,42 @@
+{
+  "sample_label": "T15 kkFileView preview endpoint correction recheck",
+  "task_ids": [
+    "T6"
+  ],
+  "baseline_revision": "state-revision-123",
+  "measurements": [
+    {
+      "requirement_id": "R8",
+      "sensor": "restarted Java process environment",
+      "result": "pass",
+      "raw_evidence": "MINIO_ENDPOINT=http://127.0.0.1:9000; MINIO_PREVIEW_ENDPOINT=http://host.docker.internal:9000; KK_FILE_VIEW_BASE_URL=http://127.0.0.1:8012",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "focused file-preview automated tests",
+      "result": "pass",
+      "raw_evidence": "ccb-file-preview reactor tests pass, including the existing Docker-reachable endpoint re-signing contract",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "independent HTTP and container network probes",
+      "result": "pass",
+      "raw_evidence": "backend actuator reports UP; kkFileView responds on 8012; kkFileView container reaches host.docker.internal:9000/minio/health/live",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": [
+    "no authorized local browser session was available to open an attachment preview iframe end to end"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

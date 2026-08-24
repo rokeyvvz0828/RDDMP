@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 123,
+  "revision": 148,
   "created_at": "2026-08-20T02:59:18+00:00",
-  "updated_at": "2026-08-24T03:16:09+00:00",
+  "updated_at": "2026-08-24T05:49:28+00:00",
   "mode": "high-assurance",
   "phase": "observing",
   "phase_history": [
@@ -299,6 +299,42 @@
       "to": "observing",
       "evidence": "T14-r2 implementation and heterogeneous evidence recorded",
       "recorded_at": "2026-08-24T03:14:34+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "observation-T15-r1 records actionable F-0008 with a bounded startup-script cause",
+      "recorded_at": "2026-08-24T04:31:13+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "Accepted F-0008 has a bounded write scope, invariants, rollback and repeatable checks",
+      "recorded_at": "2026-08-24T04:31:54+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "execution-T15 contains the actual diff, passing checks, runtime evidence and disclosed browser limitation",
+      "recorded_at": "2026-08-24T04:32:26+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "observation-T16-r1 isolates actionable F-0009 and identifies a bounded current-module compatibility path",
+      "recorded_at": "2026-08-24T05:43:44+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "Accepted F-0009 has bounded write scope, preserved authorization, cleanup, rollback and browser checks",
+      "recorded_at": "2026-08-24T05:45:21+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "execution-T16 records the actual diff, authorization invariants, automated checks and temporary-object cleanup",
+      "recorded_at": "2026-08-24T05:46:33+00:00"
     }
   ],
   "stage_artifacts": {
@@ -2294,6 +2330,162 @@
           ],
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 9,
+        "evidence": "bounded startup correction, focused tests, restart and runtime endpoint probes",
+        "recorded_at": "2026-08-24T04:32:26+00:00",
+        "data": {
+          "task_id": "T6",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "backend-dev.sh",
+              "purpose": "preserve the Docker-reachable MinIO endpoint for kkFileView while the host backend falls back to 127.0.0.1"
+            }
+          ],
+          "requirements_addressed": [
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "bash -n backend-dev.sh && git diff --check",
+              "exit_code": 0,
+              "salient_output": "shell syntax and whitespace checks passed"
+            },
+            {
+              "command": "mvn -q -pl :ccb-file-preview -am test",
+              "exit_code": 0,
+              "salient_output": "focused file-preview reactor tests passed from repository root"
+            },
+            {
+              "command": "./backend-dev.sh restart",
+              "exit_code": 0,
+              "salient_output": "startup selected backend http://127.0.0.1:9000 and preview http://host.docker.internal:9000; Spring Boot started on 8080"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "restarted backend environment",
+              "result": "pass",
+              "evidence": "MINIO_ENDPOINT=http://127.0.0.1:9000 and MINIO_PREVIEW_ENDPOINT=http://host.docker.internal:9000",
+              "limitations": []
+            },
+            {
+              "check": "service and container network health",
+              "result": "pass",
+              "evidence": "backend actuator UP, kkFileView HTTP reachable, and kkFileView container reaches MinIO live endpoint",
+              "limitations": []
+            },
+            {
+              "check": "authenticated report preview",
+              "result": "not_run",
+              "evidence": "no authorized local login session was available",
+              "limitations": [
+                "the final browser iframe was not sampled in this execution"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "captured the original host.docker.internal MinIO endpoint before host fallback",
+            "replaced only empty or loopback preview endpoints",
+            "left explicit non-loopback preview endpoints unchanged"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "platform file-preview implementation remains unchanged",
+              "result": "pass",
+              "evidence": "working diff contains no server/src/platform/file-preview source changes"
+            },
+            {
+              "invariant": "host backend retains local MinIO reachability",
+              "result": "pass",
+              "evidence": "backend starts successfully and actuator reports UP"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "authenticated browser preview is not sampled in the current session"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 10,
+        "evidence": "scoped report preview compatibility change, builds and authenticated runtime probes",
+        "recorded_at": "2026-08-24T05:46:33+00:00",
+        "data": {
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue",
+              "purpose": "route authorized report attachments through the public temporary preview service so kkFileView receives an extension-bearing object URL"
+            }
+          ],
+          "requirements_addressed": [
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "npm run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite production build passed; existing bundle-size warning remains"
+            },
+            {
+              "command": "mvn -q -pl :ccb-file-preview -am test",
+              "exit_code": 0,
+              "salient_output": "focused platform preview contract tests passed without source changes"
+            },
+            {
+              "command": "current requirement scope checker and git diff check",
+              "exit_code": 0,
+              "salient_output": "REQ-20260820-031 scope and whitespace checks passed"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "authorized attachment transfer",
+              "result": "pass",
+              "evidence": "attachment metadata and download APIs return 200; downloaded Blob size equals declared 3137 bytes",
+              "limitations": []
+            },
+            {
+              "check": "temporary preview creation",
+              "result": "pass",
+              "evidence": "POST /api/file-previews returns 200 and the iframe source host is host.docker.internal:9000",
+              "limitations": []
+            },
+            {
+              "check": "temporary preview cleanup",
+              "result": "pass",
+              "evidence": "dialog close removes the preview iframe and DELETE /api/file-previews/{previewId} returns 200",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "replaced the direct generic attachment preview call with authorized metadata and download calls",
+            "uploaded the preserved File name and content type to the public temporary preview endpoint",
+            "added dialog-close and component-unmount cleanup"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "server-side attachment authorization remains authoritative",
+              "result": "pass",
+              "evidence": "the flow uses existing GET /api/attachments/{id} and download endpoints before preview creation"
+            },
+            {
+              "invariant": "read-only platform implementations remain unchanged",
+              "result": "pass",
+              "evidence": "the source diff is limited to ReportsPage.vue plus current-prefix ledger files"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -3268,6 +3460,207 @@
           },
           "observation_status": "complete"
         }
+      },
+      {
+        "revision": 15,
+        "evidence": "用户复现、后端进程环境与 kkFileView 容器网络探针",
+        "recorded_at": "2026-08-24T04:31:13+00:00",
+        "data": {
+          "sample_label": "T15 kkFileView preview source trust failure",
+          "task_ids": [
+            "T6"
+          ],
+          "baseline_revision": "state-revision-123",
+          "measurements": [
+            {
+              "requirement_id": "R8",
+              "sensor": "backend process environment and kkFileView trust policy",
+              "result": "fail",
+              "raw_evidence": "MINIO_PREVIEW_ENDPOINT was http://127.0.0.1:9000 while kkFileView rejects 127.0.0.1 as an untrusted preview source",
+              "limitation": [
+                "authenticated browser preview was not available during the initial diagnosis"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "container network probe",
+              "result": "pass",
+              "raw_evidence": "ccb-platform-kkfileview resolves and reaches http://host.docker.internal:9000/minio/health/live",
+              "limitation": []
+            }
+          ],
+          "feedback": [
+            {
+              "id": "F-0008",
+              "severity": "P1",
+              "expected": "report preview source uses a host trusted by kkFileView and reachable from its container",
+              "observed": "backend signs the preview source with 127.0.0.1, which kkFileView rejects",
+              "evidence": "running backend MINIO_PREVIEW_ENDPOINT=http://127.0.0.1:9000; user-visible kkFileView trust warning"
+            }
+          ],
+          "disturbances": [],
+          "coverage_gaps": [
+            "initial observation did not include an authenticated attachment preview request"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 16,
+        "evidence": "independent process environment, focused tests and network health recheck",
+        "recorded_at": "2026-08-24T04:33:00+00:00",
+        "data": {
+          "sample_label": "T15 kkFileView preview endpoint correction recheck",
+          "task_ids": [
+            "T6"
+          ],
+          "baseline_revision": "state-revision-123",
+          "measurements": [
+            {
+              "requirement_id": "R8",
+              "sensor": "restarted Java process environment",
+              "result": "pass",
+              "raw_evidence": "MINIO_ENDPOINT=http://127.0.0.1:9000; MINIO_PREVIEW_ENDPOINT=http://host.docker.internal:9000; KK_FILE_VIEW_BASE_URL=http://127.0.0.1:8012",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "focused file-preview automated tests",
+              "result": "pass",
+              "raw_evidence": "ccb-file-preview reactor tests pass, including the existing Docker-reachable endpoint re-signing contract",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "independent HTTP and container network probes",
+              "result": "pass",
+              "raw_evidence": "backend actuator reports UP; kkFileView responds on 8012; kkFileView container reaches host.docker.internal:9000/minio/health/live",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "no authorized local browser session was available to open an attachment preview iframe end to end"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 17,
+        "evidence": "authenticated Chromium iframe plus sanitized kkFileView container stack trace",
+        "recorded_at": "2026-08-24T05:43:44+00:00",
+        "data": {
+          "sample_label": "T16 authenticated kkFileView attachment preview failure",
+          "task_ids": [
+            "T5",
+            "T6"
+          ],
+          "baseline_revision": "state-revision-135",
+          "measurements": [
+            {
+              "requirement_id": "R8",
+              "sensor": "authenticated Chromium report preview",
+              "result": "fail",
+              "raw_evidence": "attachment preview API returns 200 and the source host is trusted, but the kkFileView iframe renders a 500 Whitelabel Error Page",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "kkFileView 4.1.0 container log and bytecode inspection",
+              "result": "fail",
+              "raw_evidence": "WebUtils.encodeUrlFileName throws StringIndexOutOfBoundsException because the attachment object URL ends with an extensionless UUID",
+              "limitation": [
+                "platform file-preview and attachment implementations are read-only in the current requirement"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "id": "F-0009",
+              "severity": "P1",
+              "expected": "an authorized report attachment opens as a rendered document after the trusted source check",
+              "observed": "kkFileView 4.1.0 returns HTTP 500 while deriving a file type from the extensionless attachment object key",
+              "evidence": "authenticated browser iframe and container stack trace at WebUtils.encodeUrlFileName"
+            }
+          ],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 18,
+        "evidence": "authenticated real XLSX DOM, API status, error absence and cleanup recheck",
+        "recorded_at": "2026-08-24T05:48:39+00:00",
+        "data": {
+          "sample_label": "T16 authenticated report preview correction recheck",
+          "task_ids": [
+            "T5",
+            "T6"
+          ],
+          "baseline_revision": "state-revision-135",
+          "measurements": [
+            {
+              "requirement_id": "R8",
+              "sensor": "authenticated Chromium network and iframe probe",
+              "result": "pass",
+              "raw_evidence": "attachment metadata, download and temporary preview APIs return 200; kkFileView source host is host.docker.internal:9000",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "kkFileView nested document DOM",
+              "result": "pass",
+              "raw_evidence": "real target_tables.xlsx renders one visible nested frame with one table and 240 cells; worksheet text is non-empty",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "trust, error and cleanup assertions",
+              "result": "pass",
+              "raw_evidence": "no untrusted-source warning, HTTP 500 or loading error; close removes the iframe and temporary preview DELETE returns 200",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "production build and focused preview tests",
+              "result": "pass",
+              "raw_evidence": "frontend build, ccb-file-preview tests, diff check and current requirement scope check all exit 0",
+              "limitation": [
+                "existing Vite bundle-size warning remains non-blocking"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
       }
     ],
     "correcting": [
@@ -3534,6 +3927,100 @@
           },
           "resolution": "open",
           "residual_risk": []
+        }
+      },
+      {
+        "revision": 7,
+        "evidence": "F-0008 cause isolated to local startup endpoint fallback",
+        "recorded_at": "2026-08-24T04:31:54+00:00",
+        "data": {
+          "feedback_id": "F-0008",
+          "decision": "accept",
+          "decision_reason": "The running process environment and kkFileView trust warning reproducibly show that the local startup fallback collapses two different network endpoints into 127.0.0.1.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "backend-dev.sh rewrites MINIO_ENDPOINT for host reachability without retaining the original Docker-reachable endpoint for MINIO_PREVIEW_ENDPOINT.",
+            "supporting_evidence": [
+              "before correction the Java process had MINIO_ENDPOINT and MINIO_PREVIEW_ENDPOINT both set to http://127.0.0.1:9000",
+              "kkFileView rejects 127.0.0.1 but reaches host.docker.internal:9000 from its container",
+              "KkFileViewUrlBuilder already supports re-signing with MINIO_PREVIEW_ENDPOINT"
+            ],
+            "falsifier": "a restarted backend preserves a trusted container-reachable preview endpoint without changing backend MinIO reachability"
+          },
+          "control_action": {
+            "gain": "high",
+            "target": "local backend MinIO endpoint fallback",
+            "write_scope": [
+              "backend-dev.sh",
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+            ],
+            "invariants": [
+              "host backend continues to reach MinIO through 127.0.0.1",
+              "kkFileView continues to be browser-accessible through 127.0.0.1:8012",
+              "an explicitly configured non-loopback preview endpoint is preserved",
+              "platform file-preview implementation remains unchanged"
+            ],
+            "impact_limit": "local development startup environment only",
+            "rollback": "restore the prior backend-dev.sh fallback and restart the local backend",
+            "correction_check": [
+              "bash syntax and diff checks",
+              "focused ccb-file-preview tests",
+              "restarted Java process environment",
+              "backend, kkFileView and container-to-MinIO health probes"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "authenticated browser preview remains an operator recheck if no local login session is available"
+          ]
+        }
+      },
+      {
+        "revision": 8,
+        "evidence": "F-0009 cause and current-module compatibility action confirmed by browser and container evidence",
+        "recorded_at": "2026-08-24T05:45:21+00:00",
+        "data": {
+          "feedback_id": "F-0009",
+          "decision": "accept",
+          "decision_reason": "Authenticated browser and container evidence reproduce the failure after trust validation, and the public temporary preview API provides a scoped compatibility path without changing read-only platform code.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "kkFileView 4.1.0 cannot derive a filename suffix from generic attachment object keys that end in a UUID.",
+            "supporting_evidence": [
+              "the trusted source URL path ends with an extensionless UUID",
+              "the container stack fails in WebUtils.encodeUrlFileName while searching for a dot suffix",
+              "the platform temporary preview service stores objects as UUID plus the validated extension"
+            ],
+            "falsifier": "the same real attachment renders successfully through the generic attachment preview URL without a filename hint"
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "data-migration report preview workflow",
+            "write_scope": [
+              "web/src/modules/data-migration/views/content/ReportsPage.vue",
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+            ],
+            "invariants": [
+              "attachment authorization remains enforced by the platform APIs",
+              "platform file-preview and attachment source code remains unchanged",
+              "the original filename and content type are preserved",
+              "temporary preview objects are deleted when the dialog closes or the page unmounts"
+            ],
+            "impact_limit": "report material preview action only",
+            "rollback": "restore ReportsPage previewReport to the generic attachment preview call and remove temporary preview cleanup state",
+            "correction_check": [
+              "frontend production build",
+              "authenticated real XLSX preview renders a non-empty table",
+              "no trust, HTTP 500 or loading error appears",
+              "closing the dialog returns HTTP 200 from DELETE /api/file-previews/{previewId}"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "the compatibility flow transfers the attachment through the browser once before preview upload"
+          ]
         }
       }
     ],
@@ -5066,9 +5553,13 @@
         {
           "recorded_at": "2026-08-24T03:16:09+00:00",
           "text": "Frontend build and 1280/375/390/430 browser presentation checks pass"
+        },
+        {
+          "recorded_at": "2026-08-24T05:49:28+00:00",
+          "text": "T16 frontend build passes; authenticated target_tables.xlsx preview renders one table with 240 cells; no trust/500 error; temporary preview deletion returns 200."
         }
       ],
-      "updated_at": "2026-08-24T03:16:09+00:00"
+      "updated_at": "2026-08-24T05:49:28+00:00"
     },
     {
       "id": "T6",
@@ -5292,6 +5783,46 @@
       "resolved_at": "2026-08-24T03:16:08+00:00",
       "resolution_evidence": "Four-viewport recheck shows mutually exclusive table/card presentation, overflow 0 and no errors",
       "decided_at": "2026-08-24T03:07:12+00:00"
+    },
+    {
+      "id": "F-0008",
+      "task": "T6",
+      "source": "observation-T15-r1",
+      "requirement": "R8",
+      "expected": "report preview source uses a host trusted by kkFileView and reachable from its container",
+      "observed": "backend signs the preview source with 127.0.0.1, which kkFileView rejects",
+      "evidence": "running backend MINIO_PREVIEW_ENDPOINT=http://127.0.0.1:9000; user-visible kkFileView trust warning",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "initial diagnosis lacks an authenticated attachment preview request",
+      "causal_hypothesis": "backend-dev.sh replaces host.docker.internal in MINIO_ENDPOINT without preserving the container-facing preview endpoint",
+      "correction_check": "startup log and process environment show host.docker.internal preview endpoint; focused file-preview tests and health probes pass",
+      "decision": "accept",
+      "decision_reason": "Runtime evidence confirms a local startup endpoint split defect; correction is limited to backend-dev.sh and preserves platform behavior.",
+      "created_at": "2026-08-24T04:31:13+00:00",
+      "resolved_at": "2026-08-24T04:33:00+00:00",
+      "resolution_evidence": "Restarted backend uses MINIO_PREVIEW_ENDPOINT=http://host.docker.internal:9000; ccb-file-preview tests pass; backend is UP; kkFileView container reaches MinIO through the trusted host.",
+      "decided_at": "2026-08-24T04:31:54+00:00"
+    },
+    {
+      "id": "F-0009",
+      "task": "T5",
+      "source": "observation-T16-r1",
+      "requirement": "R8",
+      "expected": "an authorized report attachment opens as a rendered document after the trusted source check",
+      "observed": "kkFileView 4.1.0 returns HTTP 500 while deriving a file type from the extensionless attachment object key",
+      "evidence": "authenticated browser iframe and container stack trace at WebUtils.encodeUrlFileName",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "current scope cannot change platform attachment object naming or file-preview URL construction",
+      "causal_hypothesis": "generic attachment preview passes an extensionless MinIO object URL to kkFileView 4.1.0, whose filename encoder requires a suffix",
+      "correction_check": "report page uses the public temporary preview contract, renders the real XLSX table, and deletes the temporary preview on close",
+      "decision": "accept",
+      "decision_reason": "The scoped report-page compatibility flow reuses public authorized APIs and avoids prohibited platform modifications.",
+      "created_at": "2026-08-24T05:43:44+00:00",
+      "resolved_at": "2026-08-24T05:48:39+00:00",
+      "resolution_evidence": "Authenticated report preview creates an extension-bearing temporary object, renders target_tables.xlsx as one table with 240 cells, shows no trust/500 error, and deletes the preview object on close.",
+      "decided_at": "2026-08-24T05:45:21+00:00"
     }
   ],
   "samples": [
@@ -5411,6 +5942,58 @@
       "score": 0,
       "evidence": "Focused tests, frontend build, authenticated MinIO lifecycle and four-viewport browser evidence pass",
       "recorded_at": "2026-08-24T03:16:08+00:00"
+    },
+    {
+      "id": "S-0010",
+      "label": "T15 kkFileView preview source trust failure",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "MINIO_PREVIEW_ENDPOINT=http://127.0.0.1:9000; kkFileView reports untrusted source 127.0.0.1",
+      "recorded_at": "2026-08-24T04:31:13+00:00"
+    },
+    {
+      "id": "S-0011",
+      "label": "T15 kkFileView preview endpoint correction recheck",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "trusted container preview endpoint restored; focused tests and all health probes pass",
+      "recorded_at": "2026-08-24T04:33:00+00:00"
+    },
+    {
+      "id": "S-0012",
+      "label": "T16 authenticated kkFileView attachment preview failure",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "trusted source reaches kkFileView but extensionless attachment object causes WebUtils.encodeUrlFileName HTTP 500",
+      "recorded_at": "2026-08-24T05:43:44+00:00"
+    },
+    {
+      "id": "S-0013",
+      "label": "T16 authenticated report preview correction recheck",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "real XLSX renders one table with 240 cells; no trust or 500 error; temporary preview cleanup returns 200",
+      "recorded_at": "2026-08-24T05:48:39+00:00"
     }
   ],
   "current_phase": "observing",

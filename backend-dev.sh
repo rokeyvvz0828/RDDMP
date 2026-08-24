@@ -41,12 +41,19 @@ load_env() {
   set +a
 
   # Linux 本机通常无法解析 Docker Desktop 专用的 host.docker.internal。
-  # 仅在该主机名确实不可解析时回退到本机 MinIO，不覆盖用户可解析的显式配置。
+  # 后端回退到本机 MinIO 时，预览端点仍需保留为容器可访问的地址。
   if [[ "${MINIO_ENDPOINT:-}" == *host.docker.internal* ]] \
     && ! getent hosts host.docker.internal >/dev/null 2>&1; then
+    local container_minio_endpoint="${MINIO_ENDPOINT}"
+    if [[ -z "${MINIO_PREVIEW_ENDPOINT:-}" \
+      || "${MINIO_PREVIEW_ENDPOINT}" == *127.0.0.1* \
+      || "${MINIO_PREVIEW_ENDPOINT}" == *localhost* ]]; then
+      MINIO_PREVIEW_ENDPOINT="${container_minio_endpoint}"
+      export MINIO_PREVIEW_ENDPOINT
+    fi
     MINIO_ENDPOINT="${MINIO_ENDPOINT//host.docker.internal/127.0.0.1}"
     export MINIO_ENDPOINT
-    echo "[兼容] host.docker.internal 不可解析，当前本地启动使用 ${MINIO_ENDPOINT}"
+    echo "[兼容] host.docker.internal 不可解析，后端使用 ${MINIO_ENDPOINT}，预览使用 ${MINIO_PREVIEW_ENDPOINT:-未配置}"
   fi
 }
 

@@ -5,7 +5,7 @@
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import { Delete, Download, Edit, Plus, Refresh, Search, UploadFilled, FolderOpened, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
@@ -32,7 +32,8 @@ import {
   type ReportMaterial,
   type ReportPageQuery
 } from '../../../../api/data-migration'
-import { uploadAttachment, getAttachmentPreview, getAttachmentDownload } from '../../../../api/attachments'
+import { uploadAttachment, getAttachment, getAttachmentDownload } from '../../../../api/attachments'
+import { deleteFilePreview, uploadFilePreview } from '../../../../api/file-preview'
 
 const authStore = useAuthStore()
 const loading = ref(false)
@@ -47,6 +48,27 @@ const actionBusy = ref(false)
 const filePreviewVisible = ref(false)
 const filePreviewUrl = ref<string | null>(null)
 const filePreviewName = ref('')
+const filePreviewId = ref<string | null>(null)
+
+async function cleanupFilePreview() {
+  const previewId = filePreviewId.value
+  filePreviewId.value = null
+  filePreviewUrl.value = null
+  if (!previewId) return
+  try {
+    await deleteFilePreview(previewId)
+  } catch (error) {
+    console.warn('清理临时预览文件失败', error)
+  }
+}
+
+watch(filePreviewVisible, (visible) => {
+  if (!visible) void cleanupFilePreview()
+})
+
+onUnmounted(() => {
+  void cleanupFilePreview()
+})
 
 // 筛选条件
 const filterProjectId = ref<number | null>(null)
@@ -598,15 +620,28 @@ async function previewReport(row: ReportMaterial) {
   }
   actionBusy.value = true
   try {
-    const res = await getAttachmentPreview(row.attachment_id)
-    const url = res.data.data?.previewUrl
-    if (url) {
-      filePreviewUrl.value = url
-      filePreviewName.value = row.asset_name || '文件预览'
-      filePreviewVisible.value = true
-    } else {
-      ElMessage.warning('无法获取预览地址')
-    }
+    await cleanupFilePreview()
+    const [attachmentResponse, downloadResponse] = await Promise.all([
+      getAttachment(row.attachment_id),
+      getAttachmentDownload(row.attachment_id)
+    ])
+    const attachment = attachmentResponse.data.data
+    const downloadUrl = downloadResponse.data.data?.downloadUrl
+    if (!attachment || !downloadUrl) throw new Error('无法获取附件信息')
+
+    const sourceResponse = await fetch(downloadUrl)
+    if (!sourceResponse.ok) throw new Error('附件下载失败')
+    const sourceBlob = await sourceResponse.blob()
+    const sourceFile = new File([sourceBlob], attachment.fileName, {
+      type: attachment.contentType || sourceBlob.type || 'application/octet-stream'
+    })
+    const preview = (await uploadFilePreview(sourceFile)).data.data
+    if (!preview?.previewUrl || !preview.previewId) throw new Error('无法获取预览地址')
+
+    filePreviewId.value = preview.previewId
+    filePreviewUrl.value = preview.previewUrl
+    filePreviewName.value = preview.fileName || attachment.fileName
+    filePreviewVisible.value = true
   } catch (e) {
     // 预览失败时，提示用户并建议下载
     ElMessageBox.confirm(
