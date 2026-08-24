@@ -39,6 +39,15 @@ load_env() {
   # shellcheck disable=SC1091
   source .env
   set +a
+
+  # Linux 本机通常无法解析 Docker Desktop 专用的 host.docker.internal。
+  # 仅在该主机名确实不可解析时回退到本机 MinIO，不覆盖用户可解析的显式配置。
+  if [[ "${MINIO_ENDPOINT:-}" == *host.docker.internal* ]] \
+    && ! getent hosts host.docker.internal >/dev/null 2>&1; then
+    MINIO_ENDPOINT="${MINIO_ENDPOINT//host.docker.internal/127.0.0.1}"
+    export MINIO_ENDPOINT
+    echo "[兼容] host.docker.internal 不可解析，当前本地启动使用 ${MINIO_ENDPOINT}"
+  fi
 }
 
 # 返回监听 PORT 的进程 PID（无则输出空）

@@ -22,10 +22,19 @@
         <mybatis-plus.version>3.5.12</mybatis-plus.version>
         <jjwt.version>0.12.6</jjwt.version>
         <flowable.version>7.0.1</flowable.version>
+        <!-- Docker 29 requires API 1.40+; Testcontainers 2 uses a compatible Docker client. -->
+        <testcontainers.version>2.0.5</testcontainers.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency><groupId>com.ccb</groupId><artifactId>ccb-common</artifactId><version>${project.version}</version></dependency>
             <dependency><groupId>com.ccb</groupId><artifactId>ccb-infrastructure</artifactId><version>${project.version}</version></dependency>
             <dependency><groupId>com.ccb</groupId><artifactId>ccb-file-preview</artifactId><version>${project.version}</version></dependency>

@@ -9,6 +9,7 @@ class DataMigrationModuleRegistrationTest {
     @Test
     void moduleRegistrationIsBackedByV84() {
         assertTrue(Files.exists(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql")));
+        assertTrue(Files.exists(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V91__attachment_expires_at_datetime.sql")));
     }
 
     @Test
@@ -57,5 +58,24 @@ class DataMigrationModuleRegistrationTest {
         assertTrue(asset.contains("/recycle-bin/restore") && asset.contains("data-migration:manage"));
         assertTrue(structured.contains("/structured/{type}/import") && structured.contains("data-migration:write"));
         assertTrue(structured.contains("/structured/{type}/delete") && structured.contains("data-migration:write"));
+    }
+
+    @Test
+    void genericFileAssetsOwnTheReportUploadAndRejectDuplicateMd5() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/AssetService.java"));
+        String controller = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/AssetController.java"));
+        assertTrue(source.contains("DATA_MIGRATION_ASSET"));
+        assertTrue(source.contains("assertMd5Available"));
+        assertTrue(source.contains("文件 MD5 已存在"));
+        assertTrue(source.contains("attachmentGateway.bind"));
+        assertTrue(controller.contains("@RequestParam Long attachmentId"));
+        assertTrue(controller.contains("@RequestParam String md5"));
+        assertTrue(controller.contains("/assets/check-md5"));
+    }
+
+    @Test
+    void issueTrackingHasDedicatedBackendService() {
+        assertTrue(Files.exists(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java")));
+        assertTrue(Files.exists(Path.of("src/main/java/com/ccb/datamigration/web/IssueController.java")));
     }
 }
