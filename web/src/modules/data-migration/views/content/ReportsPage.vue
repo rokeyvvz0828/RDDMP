@@ -14,6 +14,7 @@ import UiToolbar from '../../../../components/ui/UiToolbar.vue'
 import UiPagination from '../../../../components/ui/UiPagination.vue'
 import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
+import UiFilePreview from '../../../../components/ui/UiFilePreview.vue'
 import { useAuthStore } from '../../../../stores/auth'
 import {
   listReportMaterials,
@@ -41,6 +42,11 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const selectedIds = ref<number[]>([])
 const actionBusy = ref(false)
+
+// 文件预览
+const filePreviewVisible = ref(false)
+const filePreviewUrl = ref<string | null>(null)
+const filePreviewName = ref('')
 
 // 筛选条件
 const filterProjectId = ref<number | null>(null)
@@ -595,7 +601,9 @@ async function previewReport(row: ReportMaterial) {
     const res = await getAttachmentPreview(row.attachment_id)
     const url = res.data.data?.previewUrl
     if (url) {
-      window.open(url, '_blank')
+      filePreviewUrl.value = url
+      filePreviewName.value = row.asset_name || '文件预览'
+      filePreviewVisible.value = true
     } else {
       ElMessage.warning('无法获取预览地址')
     }
@@ -1459,6 +1467,13 @@ onMounted(() => {
         <el-button type="primary" @click="saveBatchEdit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 文件预览对话框 -->
+    <UiFilePreview
+      v-model="filePreviewVisible"
+      :url="filePreviewUrl"
+      :file-name="filePreviewName"
+    />
   </section>
 </template>
 
