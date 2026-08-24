@@ -1,4 +1,8 @@
 import type {
+  DeploymentUnitImportBatchStatus,
+  DeploymentUnitImportItemStatus,
+  DeploymentUnitKind,
+  DeploymentUnitStatus,
   ParameterOption,
   PublishedSubsystemStatus,
   SubsystemActionType,
@@ -115,4 +119,51 @@ export function httpStatus(error: unknown) {
 
 export function httpErrorCode(error: unknown) {
   return (error as { response?: { data?: { code?: string } } }).response?.data?.code
+}
+
+// ---------- 部署单元 ----------
+
+export const deploymentUnitKindLabels: Record<DeploymentUnitKind, string> = {
+  APPLICATION: '应用',
+  DATABASE: '数据库',
+  MQ: '消息队列'
+}
+
+export const deploymentUnitStatusLabels: Record<DeploymentUnitStatus, string> = {
+  ACTIVE: '启用',
+  INACTIVE: '已停用',
+  VOIDED: '已作废'
+}
+
+export const importBatchStatusLabels: Record<DeploymentUnitImportBatchStatus, string> = {
+  PREVIEW: '待确认',
+  SUCCESS: '全部成功',
+  PARTIAL: '部分失败',
+  FAILED: '已回滚'
+}
+
+export const importItemStatusLabels: Record<DeploymentUnitImportItemStatus, string> = {
+  VALID: '可写入',
+  INVALID: '校验失败',
+  SUCCESS: '已写入',
+  FAILED: '写入失败',
+  SKIPPED: '已跳过'
+}
+
+export function deploymentUnitStatusTone(status: DeploymentUnitStatus) {
+  if (status === 'ACTIVE') return 'success' as const
+  if (status === 'INACTIVE') return 'warning' as const
+  return 'danger' as const
+}
+
+export function importBatchStatusTone(status: DeploymentUnitImportBatchStatus) {
+  if (status === 'SUCCESS') return 'success' as const
+  if (status === 'PARTIAL' || status === 'PREVIEW') return 'warning' as const
+  return 'danger' as const
+}
+
+export function importItemStatusTone(status: DeploymentUnitImportItemStatus) {
+  if (status === 'SUCCESS' || status === 'SKIPPED') return 'success' as const
+  if (status === 'VALID') return 'info' as const
+  return 'danger' as const
 }

@@ -212,6 +212,8 @@ const router = createRouter({
         { path: 'architecture/subsystem-change-applications/new', name: 'architecture-subsystem-change-application-new', component: () => import('../modules/architecture/SubsystemChangeApplicationFormPage.vue'), meta: { title: '新建架构子系统变更工单' } },
         { path: 'architecture/subsystem-change-applications/:id/edit', name: 'architecture-subsystem-change-application-edit', component: () => import('../modules/architecture/SubsystemChangeApplicationFormPage.vue'), meta: { title: '编辑架构子系统变更工单' } },
         { path: 'architecture/subsystem-change-applications/:id', name: 'architecture-subsystem-change-application-detail', component: () => import('../modules/architecture/SubsystemChangeApplicationDetailPage.vue'), meta: { title: '架构子系统变更工单详情' } },
+        { path: 'architecture/deployment-units', name: 'architecture-deployment-units', component: () => import('../modules/architecture/DeploymentUnitPage.vue'), meta: { title: '部署单元' } },
+        { path: 'architecture/deployment-unit-imports', name: 'architecture-deployment-unit-imports', component: () => import('../modules/architecture/DeploymentUnitImportPage.vue'), meta: { title: '部署单元初始化导入' } },
         { path: 'test-management/business-day', name: 'business-day-management', component: BusinessDayManagement, meta: { title: '营业日管理' } },
         { path: 'test-management/business-day/calendar-overview', redirect: '/test-management/business-day' },
         { path: 'test-management/business-day/calendar-schedule', redirect: { path: '/test-management/business-day', query: { view: 'schedule' } } },

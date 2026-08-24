@@ -201,3 +201,103 @@ export interface LogicalSubsystemOption { id: number; code: string; name: string
 
 export type ArchitectureResource = 'logical-subsystem' | 'physical-subsystem'
 export type DetailItem = { label: string; value: string; wide?: boolean; tone?: 'warning' | 'danger' }
+
+// ---------- 部署单元 ----------
+
+export type DeploymentUnitKind = 'APPLICATION' | 'DATABASE' | 'MQ'
+export type DeploymentUnitStatus = 'ACTIVE' | 'INACTIVE' | 'VOIDED'
+export type DeploymentUnitImportBatchStatus = 'PREVIEW' | 'SUCCESS' | 'PARTIAL' | 'FAILED'
+export type DeploymentUnitImportItemStatus = 'VALID' | 'INVALID' | 'SUCCESS' | 'FAILED' | 'SKIPPED'
+
+export interface DeploymentUnit {
+  id: number
+  code: string | null
+  physicalSubsystemId: number
+  physicalSubsystemCode: string | null
+  physicalSubsystemName: string | null
+  physicalSubsystemStatus: string | null
+  shortName: string
+  name: string
+  kind: DeploymentUnitKind
+  status: DeploymentUnitStatus
+  currentVersion: number
+  description: string | null
+  remark: string | null
+  createdBy: number
+  createdByDisplayName: string | null
+  updatedBy: number
+  updatedByDisplayName: string | null
+  createdAt: string
+  updatedAt: string
+  rowVersion: number
+}
+
+export interface DeploymentUnitVersion {
+  versionNo: number
+  shortName: string
+  name: string
+  kind: DeploymentUnitKind
+  description: string | null
+  remark: string | null
+  publishedBy: number
+  publishedByDisplayName: string
+  publishedAt: string
+}
+
+export interface DeploymentUnitPayload {
+  physicalSubsystemId: number | null
+  shortName: string
+  name: string
+  kind: DeploymentUnitKind | ''
+  description: string | null
+  remark: string | null
+  rowVersion?: number | null
+}
+
+export interface DeploymentUnitImportBatch {
+  id: number
+  fileName: string
+  fileSize: number
+  totalRows: number
+  validRows: number
+  successRows: number
+  failedRows: number
+  skippedRows: number
+  status: DeploymentUnitImportBatchStatus
+  errorMessage: string | null
+  createdBy: number
+  createdByDisplayName: string
+  createdAt: string
+  completedAt: string | null
+}
+
+export interface DeploymentUnitImportRow {
+  physicalCode: string | null
+  shortName: string | null
+  name: string | null
+  kindLabel: string | null
+  description: string | null
+  remark: string | null
+}
+
+export interface DeploymentUnitImportItem {
+  itemId: number
+  lineNo: number
+  row: DeploymentUnitImportRow
+  rowStatus: DeploymentUnitImportItemStatus
+  errorMessage: string | null
+  note: string | null
+  unitId: number | null
+}
+
+export interface DeploymentUnitImportBatchDetail {
+  batch: DeploymentUnitImportBatch
+  items: DeploymentUnitImportItem[]
+}
+
+export interface PhysicalSubsystemOption {
+  id: number
+  code: string
+  name: string
+  status: string
+}

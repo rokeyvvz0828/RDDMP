@@ -1,0 +1,44 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "V85/V86 迁移已编写并通过真实 MySQL 8.4 空库迁移（测试容器），种子断言由迁移守卫与集成测试共同验证。",
+  "recorded_at": "2026-08-23T23:40:00+00:00",
+  "data": {
+    "task_id": "T1",
+    "status": "implemented",
+    "changed_surfaces": [
+      {
+        "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
+        "purpose": "arch_deployment_unit/version/number_seq/import_batch/import_item 五张表与约束"
+      },
+      {
+        "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V86__seed_architecture_deployment_units.sql",
+        "purpose": "菜单 804/805、权限 8041/8042、角色 111 技术架构师与授权映射"
+      }
+    ],
+    "requirements_addressed": ["R1", "R4", "R6"],
+    "commands": [
+      {
+        "command": "DOCKER_HOST=tcp://127.0.0.1:2376 ... mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitLifecycleMySqlTest,DeploymentUnitImportMySqlTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test",
+        "salient_output": "16/16 通过；空库完整迁移至 V86，含 V86 种子守卫与 804/805/8041/8042/111 断言",
+        "exit_code": 0
+      }
+    ],
+    "local_checks": [
+      {
+        "check": "node scripts/check-flyway-migrations.mjs",
+        "result": "pass",
+        "evidence": "80 个迁移检查通过"
+      }
+    ],
+    "diff_summary": ["新增 V85/V86；不修改 V1-V84"],
+    "disturbances": [
+      {
+        "source": "V86 首次迁移发现 sys_role_permission 无 status 列",
+        "effect": "迁移失败",
+        "handling": "移除 role_permission.status 条件后重跑通过"
+      }
+    ],
+    "unresolved_issues": []
+  }
+}

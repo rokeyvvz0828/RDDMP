@@ -1,0 +1,56 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "T0-T5 全部验证通过；F-0001 修复并复验；无未关闭偏差。",
+  "recorded_at": "2026-08-24T02:00:00+00:00",
+  "data": {
+    "requirement_results": [
+      {
+        "requirement_id": "R1",
+        "result": "pass",
+        "evidence": "创建即分配 DW0001A001 并发布版本 1（API 实测）；类型 APPLICATION/DATABASE/MQ；MySQL 集成测试 8/8"
+      },
+      {
+        "requirement_id": "R2",
+        "result": "pass",
+        "evidence": "编号/归属不可变更；更新生成版本 2 且版本 1 不可改写（独立观测确认无 UPDATE/DELETE 路径）；陈旧 rowVersion 409"
+      },
+      {
+        "requirement_id": "R3",
+        "result": "pass",
+        "evidence": "停用→启用→作废状态机实测；作废后编号不可复用 409；引用守卫 fail-closed（独立观测）"
+      },
+      {
+        "requirement_id": "R4",
+        "result": "pass",
+        "evidence": "viewer 角色查询 200/创建 403/导入上传 403；审计 ARCHITECTURE_DEPLOYMENT_UNIT_* 成功与失败 14 条；租户隔离由服务端注入"
+      },
+      {
+        "requirement_id": "R5",
+        "result": "pass",
+        "evidence": "预览 5 行 2 有效 3 无效（原因精确）；确认 PARTIAL 2 成功 3 失败；错误报告 CSV(BOM)；幂等重导 SKIPPED；重复确认 409；行快照损坏整批回滚 FAILED"
+      },
+      {
+        "requirement_id": "R6",
+        "result": "pass",
+        "evidence": "Testcontainers 真实 MySQL 8.4 空库迁移至 V86；195/195 架构模块测试；浏览器 UAT 16/17（1280x800 与 375x812，唯一失败为既有 404 噪声）"
+      }
+    ],
+    "regression": {
+      "result": "pass",
+      "detail": "架构模块 195/195（含 issue 01 工作流集成、编号并发、迁移基线全部既有测试）；前端构建通过；system/security/workflow/requirement/test-management 上游模块测试通过"
+    },
+    "scope_audit": {
+      "result": "pass",
+      "detail": "独立观测确认全部改动在 writable_paths 内；temp/** 与 docs/original/** 为任务前既有用户材料"
+    },
+    "remaining_risks": [
+      "控制台 404（favicon 类）为仓库既有问题，未在本任务修复",
+      "浏览器验收覆盖 1280x800 与 375x812；390x844/430x932 与明暗主题留待最终集成批次统一验收",
+      "部署单元引用 SPI 首期无 provider，作废守卫对无引用放行；未来模块接入时需对应治理批准",
+      "本机并行 REQ-050 会话与 8080 端口存在运行时竞争，验收期间以隔离库与受管任务完成验证"
+    ],
+    "final_gate": "converged",
+    "gate_conclusion": "R1-R6 全部通过，回归无偏差，范围合规，剩余风险可接受；实施证据留存于 execution/observation 账本、隔离 MySQL 与 /tmp/t49-uat 截图。"
+  }
+}
