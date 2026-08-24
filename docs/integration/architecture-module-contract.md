@@ -220,7 +220,7 @@
 模板表头固定：`物理子系统编号,部署单元简称,部署单元名称,部署单元类型,描述,备注`；类型取 `应用|数据库|消息队列`（或 `APPLICATION|DATABASE|MQ`）。预览行状态 `VALID|INVALID`；确认后 `SUCCESS|FAILED|SKIPPED`（SKIPPED 为幂等重导时已存在的 ACTIVE 同名同物理行）。批次状态 `PREVIEW|SUCCESS|PARTIAL|FAILED`；确认时预期行级失败记录明细并继续，意外异常整批回滚并标记 FAILED。批次字段：`id,fileName,fileSize,totalRows,validRows,successRows,failedRows,skippedRows,status,errorMessage,createdBy,createdByDisplayName,createdAt,completedAt`；行明细：`itemId,lineNo,row{physicalCode,shortName,name,kindLabel,description,remark},rowStatus,errorMessage,note,unitId`。
 
 
-## 网络专项工单（REQ-20260823-050）
+## 网络专项工单（REQ-20260823-051）
 
 资源根：`/api/architecture/network-work-orders`。三类工单（CLB/DNS/证书）共享工单引擎与
 固定审批流程，但各自持有独立字段契约；平台只登记申请、办理过程与办理结果，不执行任何
@@ -280,7 +280,7 @@ createdAt,updatedAt`；`history[]` 为不可变业务事件。
 - 直接访问 `com.ccb.system.internal.*` 或 system 私有数据表。
 - 真实 AI、外部引用 provider 或业务模块之外的引用检查实现（`com.ccb.architecture.integration` SPI 预留，provider 为空视为无外部引用）。
 
-## 架构规范（REQ-20260823-050）
+## 架构规范（REQ-20260823-051）
 
 资源根 `/api/architecture/standards`。
 
@@ -302,7 +302,7 @@ createdAt,updatedAt`；`history[]` 为不可变业务事件。
 - `status` 取 `DRAFT|PUBLISHED|OFFLINE`；类别为平台参数 `ARCH_STANDARD_CATEGORY` 的键。
 - 每次发布版本号自增并写入不可变快照；PDF 等只作为附件格式。
 
-## 架构决策（REQ-20260823-050）
+## 架构决策（REQ-20260823-051）
 
 资源根 `/api/architecture/decisions`。权限分级 `architecture:decision:view/propose/review/manage`。
 

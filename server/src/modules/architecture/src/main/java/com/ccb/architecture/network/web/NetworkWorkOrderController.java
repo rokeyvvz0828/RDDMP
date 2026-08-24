@@ -44,7 +44,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * CLB/DNS/证书网络专项工单的 HTTP 边界（REQ-20260823-050）。
+ * CLB/DNS/证书网络专项工单的 HTTP 边界（REQ-20260823-051）。
  *
  * <p>提交和审批中取消通过真实工作流协调器执行；批准、退回、拒绝只由平台工作流任务与
  * 生命周期事件驱动，不能通过这里绕过工作流直接终态化工单。</p>

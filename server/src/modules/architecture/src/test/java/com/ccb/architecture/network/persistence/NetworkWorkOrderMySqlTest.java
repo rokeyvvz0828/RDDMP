@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 验证 V89 表结构/约束与 Store 持久化契约（REQ-20260823-050）。
+ * 验证 V89 表结构/约束与 Store 持久化契约（REQ-20260823-051）。
  */
 @Testcontainers
 class NetworkWorkOrderMySqlTest {

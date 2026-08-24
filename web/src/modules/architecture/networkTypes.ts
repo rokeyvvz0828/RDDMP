@@ -1,5 +1,5 @@
 /**
- * CLB/DNS/证书网络专项工单类型（REQ-20260823-050）。
+ * CLB/DNS/证书网络专项工单类型（REQ-20260823-051）。
  * 后端契约见 docs/integration/architecture-module-contract.md 网络专项工单章节。
  */
 export type NetworkWorkOrderKind = 'CLB' | 'DNS' | 'CERT'

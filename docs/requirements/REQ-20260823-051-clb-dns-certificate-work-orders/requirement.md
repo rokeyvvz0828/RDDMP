@@ -1,5 +1,5 @@
 ---
-id: REQ-20260823-050
+id: REQ-20260823-051
 status: ready
 owner: rokeyvvz0828
 module: business/architecture
@@ -172,4 +172,4 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
   本批次只在隔离测试库将该列改为 `DATETIME` 完成验证；正式修复（改 V36 列类型或
   修正 bind SQL）需平台 Owner 另行立项。运行时验收证据：隔离 MySQL 8.4 空库迁移
   V1-V90、真实 Flowable 审批、附件绑定/私钥拒绝、权限矩阵与审计，见
-  `.ai-control/requirements/req-20260823-050-clb-dns-certificate-work-orders/observation-T6.json`。
+  `.ai-control/requirements/req-20260823-051-clb-dns-certificate-work-orders/observation-T6.json`。

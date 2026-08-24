@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * CLB、DNS 与证书网络专项工单的强类型基础模型（REQ-20260823-050）。
+ * CLB、DNS 与证书网络专项工单的强类型基础模型（REQ-20260823-051）。
  *
  * <p>三类工单共享工单引擎（状态机、工作流轮次、事件回执、不可变历史），kind 专属
  * 字段以 {@link #payload()} JSON 快照保存；平台只登记申请、办理过程与办理结果，

@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 验证 V90 的菜单/权限/角色/流程种子、身份冲突失败关闭与工作流轮次持久化契约
- * （REQ-20260823-050）；不启动或模拟 Flowable 流程实例。
+ * （REQ-20260823-051）；不启动或模拟 Flowable 流程实例。
  */
 @Testcontainers
 class NetworkWorkflowIntegrationMySqlTest {

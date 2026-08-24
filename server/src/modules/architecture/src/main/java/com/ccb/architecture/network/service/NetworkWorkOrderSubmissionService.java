@@ -30,7 +30,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
 
 /**
- * 网络专项工单与平台工作流公开契约之间的事务协调器（REQ-20260823-050）。
+ * 网络专项工单与平台工作流公开契约之间的事务协调器（REQ-20260823-051）。
  *
  * <p>提交准备和流程启动、轮次绑定必须共享 {@link NetworkWorkOrderService} 开启的事务；
  * 任一平台结果校验或持久化失败都会让状态、摘要与轮次一起回滚。</p>

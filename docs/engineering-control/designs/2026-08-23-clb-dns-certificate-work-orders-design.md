@@ -1,6 +1,6 @@
 # CLB、DNS 与证书工单设计
 
-适用需求：`REQ-20260823-050`；来源 `temp/implementation/issues/11-clb-dns-certificate-work-orders.md`
+适用需求：`REQ-20260823-051`；来源 `temp/implementation/issues/11-clb-dns-certificate-work-orders.md`
 与 `temp/spec.md` User Stories 110-113。
 
 ## 1. 目标与边界

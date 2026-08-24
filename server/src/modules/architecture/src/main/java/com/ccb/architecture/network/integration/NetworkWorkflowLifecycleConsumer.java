@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
 
 /**
- * 网络专项工单的可信工作流生命周期消费者（REQ-20260823-050）。
+ * 网络专项工单的可信工作流生命周期消费者（REQ-20260823-051）。
  *
  * <p>事件只携带流程身份，不携带可编辑业务值；批准只把工单推进到 COMPLETED，
  * 不执行任何外部动作。回执、轮次和业务状态共享同一事务，失败时回执也回滚，

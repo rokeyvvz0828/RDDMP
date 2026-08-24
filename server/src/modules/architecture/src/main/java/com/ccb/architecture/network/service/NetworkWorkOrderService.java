@@ -41,7 +41,7 @@ import java.util.function.LongSupplier;
 import java.util.function.Consumer;
 
 /**
- * 网络专项工单的状态机与业务规则（REQ-20260823-050）。
+ * 网络专项工单的状态机与业务规则（REQ-20260823-051）。
  *
  * <p>状态只能由业务动作与工作流生命周期事件改变；批准只把工单推进到 COMPLETED，
  * 表示外部实际配置已办理并登记，本服务不执行任何外部 CLB/DNS/证书动作。</p>
