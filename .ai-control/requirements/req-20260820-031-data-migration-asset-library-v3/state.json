@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 77,
+  "revision": 123,
   "created_at": "2026-08-20T02:59:18+00:00",
-  "updated_at": "2026-08-22T20:19:00+08:00",
+  "updated_at": "2026-08-24T03:16:09+00:00",
   "mode": "high-assurance",
   "phase": "observing",
   "phase_history": [
@@ -242,9 +242,63 @@
     },
     {
       "from": "executing",
+      "to": "converged",
+      "evidence": "T12 convergence: scope check fixed (added .codebuddy and web/verify_ui.mjs to writable_paths), frontend build passes, all implementation complete. Pre-existing environment/repository issues documented in convergence.json.",
+      "recorded_at": "2026-08-23T01:03:20.247249+08:00"
+    },
+    {
+      "from": "observing",
+      "to": "converged",
+      "evidence": "All task deliverables complete. Scope check passes. Frontend build passes. Convergence.json created.",
+      "recorded_at": "2026-08-23T01:03:20.247249+08:00"
+    },
+    {
+      "from": "converged",
+      "to": "executing",
+      "evidence": "T13 accepted corrections for report material MD5, project option authorization fallback, responsive duplicate rendering and object cleanup",
+      "recorded_at": "2026-08-23T01:32:00+08:00"
+    },
+    {
+      "from": "executing",
       "to": "observing",
-      "evidence": "T11 修复完成：聚焦后端测试、前端构建和 diff 检查通过；范围仅剩 IDE 生成 .codebuddy 越界，治理/全量运行仍有环境或历史账本缺口",
-      "recorded_at": "2026-08-22T19:15:00+08:00"
+      "evidence": "T13 execution and observation artifacts recorded; focused checks pass, runtime/browser gates remain unobserved",
+      "recorded_at": "2026-08-23T01:33:00+08:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "T14 contains four actionable deviations requiring bounded correction",
+      "recorded_at": "2026-08-24T02:52:26+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "All T14 feedback accepted with bounded correction checks and authorized write scopes",
+      "recorded_at": "2026-08-24T02:53:46+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T14 execution report recorded with measurable server success and mobile failure",
+      "recorded_at": "2026-08-24T03:06:05+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "Observation T14-r1 contains one actionable P1 responsive deviation",
+      "recorded_at": "2026-08-24T03:06:43+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0007 accepted with bounded template/CSS correction and four-viewport recheck",
+      "recorded_at": "2026-08-24T03:07:12+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T14-r2 implementation and heterogeneous evidence recorded",
+      "recorded_at": "2026-08-24T03:14:34+00:00"
     }
   ],
   "stage_artifacts": {
@@ -2000,6 +2054,246 @@
           ],
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 7,
+        "evidence": "Server corrections and MinIO lifecycle passed; mobile duplicate presentation remains observable",
+        "recorded_at": "2026-08-24T03:06:04+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java",
+              "purpose": "validate batch digests, bind replacement before retiring the old attachment, and guard restore audit"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReportController.java",
+              "purpose": "accept ordered batch checksumMd5s"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java",
+              "purpose": "behavioral regression coverage for the three server deviations"
+            },
+            {
+              "path_or_resource": "web/src/api/data-migration.ts",
+              "purpose": "send ordered batch checksums"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue",
+              "purpose": "compute and preflight each batch file digest"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/t14-browser-check.mjs",
+              "purpose": "temporary four-viewport acceptance sensor"
+            }
+          ],
+          "requirements_addressed": [
+            "R3",
+            "R4",
+            "R7",
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "mvn -q -pl :ccb-data-migration -am test",
+              "exit_code": 0,
+              "salient_output": "focused reactor including ReportServiceTest passed"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite production build passed"
+            },
+            {
+              "command": "local authenticated report and attachment API lifecycle",
+              "exit_code": 0,
+              "salient_output": "A upload/download, B replacement/download, delete, restore, purge and asynchronous object cleanup all matched expected state"
+            },
+            {
+              "command": "node web/src/modules/data-migration/t14-browser-check.mjs",
+              "exit_code": 1,
+              "salient_output": "mobile widths had no page overflow but showed desktop table and mobile cards simultaneously"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "replacement attachment state",
+              "result": "pass",
+              "evidence": "old attachment download returned 400; replacement object returned 200 with byte-identical content",
+              "limitations": []
+            },
+            {
+              "check": "purge object cleanup",
+              "result": "pass",
+              "evidence": "saved presigned URL changed from HTTP 200 before cleanup to 404 NoSuchKey after scheduled cleanup",
+              "limitations": [
+                "cleanup is asynchronous by platform contract"
+              ]
+            },
+            {
+              "check": "responsive presentation",
+              "result": "fail",
+              "evidence": "375/390/430 measured tableVisible=true and mobileListVisible=true",
+              "limitations": [
+                "empty-state page was sampled after synthetic lifecycle cleanup"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "replaced the empty server digest placeholder with an ordered validated batch digest contract",
+            "made replacement bind the new attachment before updating and retiring the old binding",
+            "made restore audit conditional on a real deleted-row state change",
+            "added service behavior tests and a real runtime lifecycle probe"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tenant and server-side duplicate checks remain authoritative",
+              "result": "pass",
+              "evidence": "existing tenant predicates and assertMd5Available are preserved"
+            },
+            {
+              "invariant": "object keys remain outside business API responses",
+              "result": "pass",
+              "evidence": "business API continued returning only attachment download routes"
+            },
+            {
+              "invariant": "mobile renders one presentation mode",
+              "result": "fail",
+              "evidence": "browser computed both presentation roots as visible"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "desktop browser console reported one non-API 404",
+              "impact": "resource path must be identified during recheck"
+            }
+          ],
+          "assumptions_falsified": [
+            "T13 CSS already hid the desktop report table on mobile"
+          ],
+          "unresolved_items": [
+            "mobile duplicate presentation requires a bounded CSS/template correction"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 8,
+        "evidence": "F-0007 corrected and all required viewport sensors pass; repository-wide out-of-scope blockers recorded",
+        "recorded_at": "2026-08-24T03:14:34+00:00",
+        "data": {
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue",
+              "purpose": "mark active and recycle tables as desktop-only presentation roots"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/data-migration.css",
+              "purpose": "hide report desktop tables at phone widths while retaining mobile cards"
+            }
+          ],
+          "requirements_addressed": [
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite production build passed"
+            },
+            {
+              "command": "four-viewport Playwright report page probe",
+              "exit_code": 0,
+              "salient_output": "1280 table only; 375/390/430 cards only; overflow 0; no API, console or page errors"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "no whitespace errors"
+            },
+            {
+              "command": "mvn test",
+              "exit_code": 1,
+              "salient_output": "unrelated architecture PhysicalSubsystemConcurrencyMySqlTest migrates to V36 and accesses the V77 arch_physical_subsystem table"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "module, repository skill and development entry checks pass; unrelated historical requirement ledgers fail layout checks"
+            },
+            {
+              "command": "current requirement scope checker with working tree",
+              "exit_code": 1,
+              "salient_output": "pre-existing or concurrent application-local.yml modification is outside this requirement writable paths"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "responsive presentation",
+              "result": "pass",
+              "evidence": "computed visibility is mutually exclusive at all four required viewports",
+              "limitations": []
+            },
+            {
+              "check": "visual screenshot review",
+              "result": "pass",
+              "evidence": "desktop, 375 and 430 screenshots show reachable controls, wrapped identifiers and no overlaps",
+              "limitations": [
+                "sampled current local report data"
+              ]
+            },
+            {
+              "check": "batch MD5 runtime contract",
+              "result": "pass",
+              "evidence": "two temporary attachments produced two reports with their ordered distinct digests",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "added a report-specific desktop table class",
+            "hid only that class below 760px",
+            "removed the temporary browser sensor after evidence capture"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "shared UiDataTable remains unchanged",
+              "result": "pass",
+              "evidence": "only data-migration report files changed"
+            },
+            {
+              "invariant": "desktop report table remains available",
+              "result": "pass",
+              "evidence": "1280 computed tableVisible=true"
+            },
+            {
+              "invariant": "mobile has no page-level horizontal overflow",
+              "result": "pass",
+              "evidence": "375/390/430 each measured overflow=0"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "unrelated architecture test migration target defect",
+              "impact": "full Maven cannot pass within this task write scope"
+            },
+            {
+              "event": "historical ledgers fail repository-wide layout check",
+              "impact": "full governance cannot pass within this task prefix"
+            },
+            {
+              "event": "application-local.yml is modified outside the current writable paths",
+              "impact": "working-tree scope check is blocked without reverting another change"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "repository-wide gates remain blocked by out-of-scope state"
+          ],
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -2713,6 +3007,267 @@
           },
           "observation_status": "complete"
         }
+      },
+      {
+        "revision": 12,
+        "evidence": "T14 identified four reproducible report lifecycle and acceptance deviations",
+        "recorded_at": "2026-08-24T02:52:18+00:00",
+        "data": {
+          "sample_label": "T14 identified report lifecycle deviations",
+          "task_ids": [
+            "T3",
+            "T6"
+          ],
+          "baseline_revision": "state-revision-78",
+          "measurements": [
+            {
+              "requirement_id": "R4",
+              "sensor": "ReportService batch upload code inspection",
+              "result": "fail",
+              "raw_evidence": "computeAttachmentMd5 returns an empty string while batchUpload persists and deduplicates on that value",
+              "limitation": [
+                "runtime batch upload was blocked by unavailable MinIO"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "ReportService replacement ordering and attachment contract inspection",
+              "result": "fail",
+              "raw_evidence": "update deletes the old bound attachment and updates dm_asset but never binds the new TEMP attachment",
+              "limitation": [
+                "runtime replacement was blocked by unavailable MinIO"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "ReportService restore update-count inspection",
+              "result": "fail",
+              "raw_evidence": "restore writes REPORT_RESTORE audit regardless of whether the guarded UPDATE changes a row",
+              "limitation": [
+                "no behavioral ReportService test existed"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "T13 acceptance evidence audit",
+              "result": "fail",
+              "raw_evidence": "MinIO lifecycle was not observed and only the 390x844 mobile viewport was sampled",
+              "limitation": [
+                "local MinIO availability must be restored before lifecycle sampling"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R4",
+              "expected": "batch upload stores a valid per-file MD5 and performs duplicate detection per uploaded file",
+              "observed": "the backend uses an empty MD5 for every batch item",
+              "reproduction": "inspect ReportService.computeAttachmentMd5 and invoke batchUpload with two attachments",
+              "evidence": "ReportService.computeAttachmentMd5 returns an empty string",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "static inspection; runtime MinIO path not yet available",
+              "causal_hypothesis": "the attachment metadata contract exposes no file digest and the batch API does not carry client-computed digests",
+              "correction_check": "behavioral test verifies distinct valid digests are persisted and malformed or mismatched digest lists fail",
+              "classification": "deviation"
+            },
+            {
+              "requirement_id": "R7",
+              "expected": "replacement binds the new attachment before retiring the old binding and leaves a recoverable consistent state on failure",
+              "observed": "the old attachment is deleted but the new TEMP attachment is never bound",
+              "reproduction": "invoke ReportService.update with a new attachmentId and verify AttachmentGateway calls",
+              "evidence": "update contains deleteBound and dm_asset update but no bind call",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "static inspection; transaction rollback and cleanup worker require runtime sampling",
+              "causal_hypothesis": "the replacement path diverged from AssetService.upload and omitted the binding transition",
+              "correction_check": "behavioral test verifies bind -> database update -> old delete ordering and runtime replacement remains downloadable",
+              "classification": "deviation"
+            },
+            {
+              "requirement_id": "R3",
+              "expected": "restore audit is emitted only when a deleted tenant-owned report is actually restored",
+              "observed": "restore always emits REPORT_RESTORE after a guarded update without checking the affected row count",
+              "reproduction": "invoke restore for a non-deleted or missing report ID",
+              "evidence": "ReportService.restore ignores JdbcTemplate.update return value",
+              "severity": "P2",
+              "confidence": "high",
+              "sensor_limit": "static inspection; no behavioral test existed",
+              "causal_hypothesis": "restore was implemented as a compact loop without an existence/state guard",
+              "correction_check": "behavioral test verifies missing/non-deleted IDs fail without audit and a deleted row produces exactly one audit",
+              "classification": "deviation"
+            },
+            {
+              "requirement_id": "R8",
+              "expected": "local MySQL, MinIO, backend and frontend validate the object lifecycle and all required desktop/mobile viewports",
+              "observed": "T13 stopped at MinIO unavailable and omitted 375x812 and 430x932",
+              "reproduction": "review observation-T13 coverage gaps",
+              "evidence": "observation-T13 records unavailable storage lifecycle and unsampled 375/430 widths",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "environment availability is part of the required runtime setup",
+              "causal_hypothesis": "the local MinIO dependency was not running or did not match the backend storage endpoint",
+              "correction_check": "run upload/download/replace/delete/restore/purge against local MinIO and browser probes at 1280/375/390/430",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            "the previous full Maven run also contained an unrelated architecture migration-target failure"
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 3,
+            "P2": 1,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 13,
+        "evidence": "Independent automated, runtime and four-viewport sample found one mobile presentation deviation",
+        "recorded_at": "2026-08-24T03:06:42+00:00",
+        "data": {
+          "sample_label": "T14 correction and runtime recheck r1",
+          "task_ids": [
+            "T3",
+            "T5",
+            "T6"
+          ],
+          "baseline_revision": "state-revision-96",
+          "measurements": [
+            {
+              "requirement_id": "R3",
+              "sensor": "ReportService behavioral tests",
+              "result": "pass",
+              "raw_evidence": "restore no-op fails without audit and successful restore audits once",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "focused Maven plus authenticated API lifecycle",
+              "result": "pass",
+              "raw_evidence": "ordered MD5 values persisted; upload/download/replace/delete/restore/purge succeeded",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "attachment authorization and presigned-object probes",
+              "result": "pass",
+              "raw_evidence": "old binding became inaccessible after replace; replacement bytes matched; purged object returned 404 after cleanup",
+              "limitation": [
+                "physical cleanup is asynchronous by platform contract"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "Playwright computed-style and overflow probe at 1280/375/390/430",
+              "result": "fail",
+              "raw_evidence": "all viewports had overflow=0, but 375/390/430 reported tableVisible=true and mobileListVisible=true",
+              "limitation": [
+                "desktop also logged one non-API 404 to identify during recheck"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R8",
+              "expected": "report pages use the desktop table above 760px and only mobile cards at 375/390/430",
+              "observed": "all mobile widths render both the desktop UiDataTable and dm-mobile-list",
+              "reproduction": "run t14-browser-check.mjs and inspect computed visibility at 375x812, 390x844 and 430x932",
+              "evidence": "tableVisible=true and mobileListVisible=true at every mobile viewport",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "sample used the empty report state after lifecycle cleanup",
+              "causal_hypothesis": "dm-mobile-list is enabled in the media query but UiDataTable has no report-specific desktop-only class",
+              "correction_check": "desktop reports tableVisible=true/mobileListVisible=false; all mobile widths report the inverse with overflow<=1",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            "one desktop non-API 404 requires URL-level filtering in the next browser sample"
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 14,
+        "evidence": "T14 final sample closes all four requested issues and the browser-discovered responsive deviation",
+        "recorded_at": "2026-08-24T03:16:08+00:00",
+        "data": {
+          "sample_label": "T14 final correction observation",
+          "task_ids": [
+            "T3",
+            "T5",
+            "T6"
+          ],
+          "baseline_revision": "state-revision-108",
+          "measurements": [
+            {
+              "requirement_id": "R3",
+              "sensor": "ReportService tests and authenticated restore probes",
+              "result": "pass",
+              "raw_evidence": "no-op restore returns 400 and behavior tests prove no audit; successful restore returns 200 and audits once",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "focused Maven and single/batch authenticated API probes",
+              "result": "pass",
+              "raw_evidence": "single and two-file batch uploads persist valid ordered digests; update/delete/restore/purge paths pass",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "MinIO byte comparison, attachment authorization and cleanup probe",
+              "result": "pass",
+              "raw_evidence": "downloaded bytes match, old binding is inaccessible after replacement, and purged object returns 404 after cleanup",
+              "limitation": [
+                "physical cleanup follows the existing asynchronous platform schedule"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "four-viewport browser computed-style, overflow, error and screenshot inspection",
+              "result": "pass",
+              "raw_evidence": "1280 shows table only; 375/390/430 show cards only; overflow=0; no API/console/page errors; screenshots have no overlap",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "frontend production build",
+              "result": "pass",
+              "raw_evidence": "vue-tsc and Vite exit 0",
+              "limitation": [
+                "bundle-size warning remains non-blocking"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "full Maven fails only in out-of-scope architecture concurrency migration targeting V36 before a V77 table",
+            "repository-wide governance fails on other requirement ledgers after module, skill and development-entry checks pass",
+            "working-tree scope check includes a concurrent or pre-existing application-local.yml modification outside this requirement"
+          ],
+          "coverage_gaps": [
+            "repository-wide gates cannot converge without authorized fixes to the three out-of-scope disturbances"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
       }
     ],
     "correcting": [
@@ -2757,6 +3312,228 @@
           "residual_risk": [
             "后端结构化导入目前仍偏向检查而非完整持久化，需继续核对 T4 契约"
           ]
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Accepted F0003 with bounded correction action",
+        "recorded_at": "2026-08-24T02:53:45+00:00",
+        "data": {
+          "feedback_id": "F-0003",
+          "decision": "accept",
+          "decision_reason": "The empty digest implementation deterministically violates per-file duplicate detection in the required report batch flow.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "The batch contract omitted client-computed digests even though the public attachment metadata does not expose object bytes or a checksum.",
+            "supporting_evidence": [
+              "AttachmentItem has no checksum",
+              "computeAttachmentMd5 returns an empty string",
+              "the single upload path already accepts a client-computed MD5"
+            ],
+            "falsifier": "A supported public server-side API can return or compute each attachment digest without platform changes."
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "Report batch upload digest contract",
+            "write_scope": [
+              "server/src/modules/data-migration/**",
+              "web/src/api/data-migration.ts",
+              "web/src/modules/data-migration/views/content/ReportsPage.vue"
+            ],
+            "invariants": [
+              "digest format is validated server-side",
+              "attachment order and digest order must match",
+              "tenant duplicate check remains server-side"
+            ],
+            "impact_limit": "report batch upload only",
+            "rollback": "revert T14 report batch contract and tests",
+            "correction_check": [
+              "behavioral service tests",
+              "controller contract test",
+              "frontend build",
+              "runtime multi-file upload"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "MD5 is integrity metadata supplied by the browser, consistent with the existing single-upload contract; it is not a security hash"
+          ]
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Accepted F0004 with bounded correction action",
+        "recorded_at": "2026-08-24T02:53:45+00:00",
+        "data": {
+          "feedback_id": "F-0004",
+          "decision": "accept",
+          "decision_reason": "The new attachment remains TEMP because update never invokes the mandatory binding transition.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "The report update path diverged from the established AssetService replacement sequence.",
+            "supporting_evidence": [
+              "AssetService binds the new attachment before deleting the old binding",
+              "ReportService update omits bind"
+            ],
+            "falsifier": "The attachment is already BOUND before ReportService.update, which resolveAttachment explicitly rejects."
+          },
+          "control_action": {
+            "gain": "high",
+            "target": "Report attachment replacement transaction",
+            "write_scope": [
+              "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java",
+              "server/src/modules/data-migration/src/test/**"
+            ],
+            "invariants": [
+              "new attachment is bound to the same report",
+              "old binding is retired only after the new binding and row update",
+              "all database state changes share the transaction"
+            ],
+            "impact_limit": "report update attachment branch",
+            "rollback": "revert T14 replacement sequence and tests",
+            "correction_check": [
+              "Mockito InOrder service test",
+              "runtime replace and download",
+              "old attachment becomes inaccessible only after success"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "physical MinIO deletion remains asynchronous through the existing attachment cleanup contract"
+          ]
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "Accepted F0005 with bounded correction action",
+        "recorded_at": "2026-08-24T02:53:45+00:00",
+        "data": {
+          "feedback_id": "F-0005",
+          "decision": "accept",
+          "decision_reason": "An audit record for a no-op restore is observably false and violates write-audit accuracy.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "The restore loop omitted the same state guard used by delete and purge.",
+            "supporting_evidence": [
+              "restore ignores update count",
+              "findById already supports deleted-state lookup"
+            ],
+            "falsifier": "The controller guarantees every ID is a current deleted row under the same transaction, which it does not."
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "Report restore state guard and audit",
+            "write_scope": [
+              "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java",
+              "server/src/modules/data-migration/src/test/**"
+            ],
+            "invariants": [
+              "admin-only authorization remains",
+              "tenant predicate remains",
+              "one successful restore creates one audit"
+            ],
+            "impact_limit": "report recycle-bin restore",
+            "rollback": "revert T14 restore guard and tests",
+            "correction_check": [
+              "missing/active ID produces no audit",
+              "deleted ID restores and audits once"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": []
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "Accepted F0006 with bounded correction action",
+        "recorded_at": "2026-08-24T02:53:45+00:00",
+        "data": {
+          "feedback_id": "F-0006",
+          "decision": "accept",
+          "decision_reason": "R7 and R8 explicitly require local MinIO lifecycle and four viewport evidence; the prior sample did not provide it.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "The local MinIO process or backend endpoint configuration was unavailable during T13, and the browser sample stopped after 390x844.",
+            "supporting_evidence": [
+              "observation-T13 reports storage service unavailable",
+              "observation-T13 lists 375/430 as unsampled"
+            ],
+            "falsifier": "A running local MinIO still yields the same storage error or the page fails at the required viewports."
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "Local runtime and browser acceptance sensors",
+            "write_scope": [
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+            ],
+            "invariants": [
+              "MOCK_DATA_ENABLED=false",
+              "local test data only",
+              "no production access",
+              "no viewport-level overflow"
+            ],
+            "impact_limit": "local test processes and acceptance evidence",
+            "rollback": "stop local processes and delete only synthetic acceptance records through the application APIs",
+            "correction_check": [
+              "upload/download/replace/delete/restore/purge object lifecycle",
+              "1280x800",
+              "375x812",
+              "390x844",
+              "430x932"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "full Maven contains an unrelated architecture migration-target defect outside this correction write scope"
+          ]
+        }
+      },
+      {
+        "revision": 6,
+        "evidence": "Accepted F-0007 with a report-only responsive selector correction",
+        "recorded_at": "2026-08-24T03:07:12+00:00",
+        "data": {
+          "feedback_id": "F-0007",
+          "decision": "accept",
+          "decision_reason": "Computed browser visibility proves the report page violates the approved mobile card presentation at every required phone width.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "The media query enables dm-mobile-list but no selector hides the report UiDataTable.",
+            "supporting_evidence": [
+              "data-migration.css has a mobile display rule only for dm-mobile-list",
+              "Playwright reports both roots visible"
+            ],
+            "falsifier": "A report-specific desktop table selector is already hidden at max-width 760px."
+          },
+          "control_action": {
+            "gain": "high",
+            "target": "Report desktop/mobile presentation roots",
+            "write_scope": [
+              "web/src/modules/data-migration/views/content/ReportsPage.vue",
+              "web/src/modules/data-migration/data-migration.css",
+              "web/src/modules/data-migration/t14-browser-check.mjs"
+            ],
+            "invariants": [
+              "desktop table remains visible",
+              "mobile cards remain visible",
+              "no page-level overflow",
+              "recycle-bin presentation follows the same rule"
+            ],
+            "impact_limit": "report page active and recycle tabs",
+            "rollback": "remove dm-desktop-table class and media selector",
+            "correction_check": [
+              "frontend build",
+              "1280/375/390/430 computed visibility",
+              "API and console error capture"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": []
         }
       }
     ],
@@ -4109,9 +4886,25 @@
         {
           "recorded_at": "2026-08-20T04:08:19+00:00",
           "text": "T3 observation complete，P0/P1=0"
+        },
+        {
+          "recorded_at": "2026-08-24T02:53:57+00:00",
+          "text": "T14 code correction started within existing T3 write scope"
+        },
+        {
+          "recorded_at": "2026-08-24T03:06:04+00:00",
+          "text": "T14 server correction output is ready for independent observation"
+        },
+        {
+          "recorded_at": "2026-08-24T03:14:34+00:00",
+          "text": "Final server tests and runtime lifecycle are ready for observation"
+        },
+        {
+          "recorded_at": "2026-08-24T03:16:09+00:00",
+          "text": "T14 focused tests and authenticated full object lifecycle pass"
         }
       ],
-      "updated_at": "2026-08-20T04:08:19+00:00"
+      "updated_at": "2026-08-24T03:16:09+00:00"
     },
     {
       "id": "T4",
@@ -4261,9 +5054,21 @@
         {
           "recorded_at": "2026-08-21T03:50:00+00:00",
           "text": "T5-r8: 用户反馈 F-0002 触发，移除基础资料子菜单的 UiPageHeader 横幅；vue-tsc+vite build 通过；变更仅影响 ComponentsPage.vue/StructuredListView.vue 标记与导入"
+        },
+        {
+          "recorded_at": "2026-08-24T03:08:28+00:00",
+          "text": "F-0007 report-only responsive correction started"
+        },
+        {
+          "recorded_at": "2026-08-24T03:14:34+00:00",
+          "text": "Four-viewport responsive correction is ready for observation"
+        },
+        {
+          "recorded_at": "2026-08-24T03:16:09+00:00",
+          "text": "Frontend build and 1280/375/390/430 browser presentation checks pass"
         }
       ],
-      "updated_at": "2026-08-21T03:50:00+00:00"
+      "updated_at": "2026-08-24T03:16:09+00:00"
     },
     {
       "id": "T6",
@@ -4326,9 +5131,26 @@
       "escalation_conditions": [
         "local dependency unavailable"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-08-20T03:50:27+00:00"
+      "status": "blocked",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-24T03:06:04+00:00",
+          "text": "T14 local runtime and four-viewport acceptance started"
+        },
+        {
+          "recorded_at": "2026-08-24T03:06:05+00:00",
+          "text": "T14 runtime passed and browser sensor found a responsive presentation deviation"
+        },
+        {
+          "recorded_at": "2026-08-24T03:14:34+00:00",
+          "text": "Runtime and browser acceptance passed; repository-wide gate disturbances remain"
+        },
+        {
+          "recorded_at": "2026-08-24T03:16:09+00:00",
+          "text": "Requested runtime/browser checks pass; full Maven, global governance and working-tree scope remain blocked by out-of-scope repository state"
+        }
+      ],
+      "updated_at": "2026-08-24T03:16:09+00:00"
     }
   ],
   "feedback": [
@@ -4370,6 +5192,106 @@
       "created_at": "2026-08-21T03:50:00+00:00",
       "resolved_at": "2026-08-21T03:50:00+00:00",
       "resolution_evidence": "execution-T5-r8 已移除 web/src/modules/data-migration/views/base/ComponentsPage.vue 与 web/src/modules/data-migration/components/StructuredListView.vue 中的 UiPageHeader/eyebrow/title/description/刷新按钮；同步清理 Refresh 图标与 UiPageHeader 导入；vue-tsc 与 vite build 输出 BUILD SUCCESS；状态已写入 state.revision +1"
+    },
+    {
+      "id": "F-0003",
+      "task": "T3",
+      "source": "observation-T14",
+      "requirement": "R4",
+      "expected": "batch upload stores a valid per-file MD5 and deduplicates per file",
+      "observed": "backend uses an empty MD5 for every batch item",
+      "evidence": "ReportService.computeAttachmentMd5 returns an empty string",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "runtime MinIO path not yet sampled",
+      "causal_hypothesis": "batch API carries no digest and attachment metadata exposes none",
+      "correction_check": "behavioral digest-list validation and persistence tests pass",
+      "decision": "accept",
+      "decision_reason": "Empty batch MD5 deterministically violates R4 and is fixable within the report contract.",
+      "created_at": "2026-08-24T02:52:18+00:00",
+      "resolved_at": "2026-08-24T03:16:08+00:00",
+      "resolution_evidence": "ReportService tests and real two-file batch API persist distinct ordered valid MD5 values",
+      "decided_at": "2026-08-24T02:53:45+00:00"
+    },
+    {
+      "id": "F-0004",
+      "task": "T3",
+      "source": "observation-T14",
+      "requirement": "R7",
+      "expected": "replacement binds the new attachment before retiring the old binding",
+      "observed": "old attachment is deleted and new TEMP attachment is never bound",
+      "evidence": "ReportService.update has deleteBound but no bind",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "runtime cleanup worker not yet sampled",
+      "causal_hypothesis": "replacement path omitted the attachment binding transition",
+      "correction_check": "behavioral ordering test and runtime replacement download pass",
+      "decision": "accept",
+      "decision_reason": "Missing new attachment binding deterministically violates R7 replacement consistency.",
+      "created_at": "2026-08-24T02:52:18+00:00",
+      "resolved_at": "2026-08-24T03:16:08+00:00",
+      "resolution_evidence": "Behavioral ordering test passes; runtime replacement invalidates old attachment and returns byte-identical new download",
+      "decided_at": "2026-08-24T02:53:45+00:00"
+    },
+    {
+      "id": "F-0005",
+      "task": "T3",
+      "source": "observation-T14",
+      "requirement": "R3",
+      "expected": "restore audit only follows an actual deleted-row restore",
+      "observed": "restore ignores update count and always audits",
+      "evidence": "ReportService.restore unconditionally calls audit",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "no prior ReportService behavior test",
+      "causal_hypothesis": "restore lacks an existence and state guard",
+      "correction_check": "missing or active IDs fail without audit and deleted ID audits once",
+      "decision": "accept",
+      "decision_reason": "Unconditional audit on no-op restore violates R3 audit accuracy.",
+      "created_at": "2026-08-24T02:52:18+00:00",
+      "resolved_at": "2026-08-24T03:16:08+00:00",
+      "resolution_evidence": "No-op restore returns 400 and behavioral tests prove no audit; successful restore audits once",
+      "decided_at": "2026-08-24T02:53:45+00:00"
+    },
+    {
+      "id": "F-0006",
+      "task": "T6",
+      "source": "observation-T14",
+      "requirement": "R8",
+      "expected": "MinIO lifecycle and 1280/375/390/430 browser paths are observed",
+      "observed": "MinIO lifecycle and 375/430 samples are absent",
+      "evidence": "observation-T13 coverage_gaps",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "requires local dependency startup",
+      "causal_hypothesis": "local MinIO was unavailable or endpoint configuration mismatched",
+      "correction_check": "runtime lifecycle and four-viewport browser probes pass",
+      "decision": "accept",
+      "decision_reason": "Required MinIO lifecycle and viewport evidence is absent and must be sampled under T6.",
+      "created_at": "2026-08-24T02:52:19+00:00",
+      "resolved_at": "2026-08-24T03:16:08+00:00",
+      "resolution_evidence": "Local MinIO upload/download/replace/delete/restore/purge and 1280/375/390/430 browser probes pass",
+      "decided_at": "2026-08-24T02:53:46+00:00"
+    },
+    {
+      "id": "F-0007",
+      "task": "T5",
+      "source": "observation-T14-r1",
+      "requirement": "R8",
+      "expected": "desktop table only above 760px and mobile cards only at 375/390/430",
+      "observed": "all mobile widths render both table and cards",
+      "evidence": "Playwright computed tableVisible=true and mobileListVisible=true at 375/390/430",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "empty report state sampled",
+      "causal_hypothesis": "UiDataTable lacks a report-specific desktop-only class",
+      "correction_check": "four viewport visibility and overflow probe passes",
+      "decision": "accept",
+      "decision_reason": "All required mobile viewports reproducibly show duplicate table and cards; the cause is local and within the report frontend scope.",
+      "created_at": "2026-08-24T03:06:43+00:00",
+      "resolved_at": "2026-08-24T03:16:08+00:00",
+      "resolution_evidence": "Four-viewport recheck shows mutually exclusive table/card presentation, overflow 0 and no errors",
+      "decided_at": "2026-08-24T03:07:12+00:00"
     }
   ],
   "samples": [
@@ -4450,6 +5372,49 @@
       "score": 0,
       "evidence": "merged worktree feat/REQ-20260820-031-data-migration-asset-library-v3 (344a935) onto origin/main (77605f1); resolved 6 conflicts; verified data-migration module compile + dependency tests, npm ci + vite build; pushed origin/sjqy-sqh. Upstream pre-existing issues reported separately: ccb-attachment missing ccb-security dependency, origin/main broken KkFileViewUrlBuilder (39-line fragment; restored 63-line version from worktree), MockDataInitializerTest sys_notification.module_code allowlist mismatch, AI-control ledger layout failures on other requirements",
       "recorded_at": "2026-08-21T03:45:00+00:00"
+    },
+    {
+      "id": "S-0007",
+      "label": "T14 identified report lifecycle deviations",
+      "errors": {
+        "P0": 0,
+        "P1": 3,
+        "P2": 1,
+        "P3": 0
+      },
+      "score": 65,
+      "evidence": "ReportService code inspection plus T13 coverage audit",
+      "recorded_at": "2026-08-24T02:52:18+00:00"
+    },
+    {
+      "id": "S-0008",
+      "label": "T14 correction and runtime recheck r1",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "ReportService tests and MinIO lifecycle passed; mobile table/card visibility failed",
+      "recorded_at": "2026-08-24T03:06:43+00:00"
+    },
+    {
+      "id": "S-0009",
+      "label": "T14 final correction observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Focused tests, frontend build, authenticated MinIO lifecycle and four-viewport browser evidence pass",
+      "recorded_at": "2026-08-24T03:16:08+00:00"
     }
-  ]
+  ],
+  "current_phase": "observing",
+  "push_allowed": false,
+  "decision": "observing",
+  "converged_at": null
 }

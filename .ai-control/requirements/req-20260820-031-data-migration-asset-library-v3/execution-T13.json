@@ -1,0 +1,36 @@
+{
+  "task_id": "T13",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/api/data-migration.ts", "purpose": "修复浏览器 MD5 计算并增加汇报材料项目选项契约"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue", "purpose": "支持项目权限降级读取、手工 MD5 兜底并修复桌面/移动列表重复渲染"},
+    {"path_or_resource": "web/src/modules/data-migration/data-migration.css", "purpose": "区分桌面表格和移动卡片分页"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReportController.java", "purpose": "提供租户隔离的项目选项读取接口"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java", "purpose": "查询项目选项并在批量/单条写入失败时清理已上传对象"}
+  ],
+  "requirements_addressed": ["R3", "R4", "R6", "R8"],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite build succeeded"},
+    {"command": "mvn -q -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "focused module tests passed"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "no whitespace errors"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 0, "salient_output": "scope check passed"},
+    {"command": "curl /actuator/health and authenticated report project-options/list", "exit_code": 0, "salient_output": "health UP; project-options HTTP 200 with one tenant project; reports list HTTP 200"},
+    {"command": "Playwright login and report page probe at 390x844", "exit_code": 0, "salient_output": "汇报材料 page rendered without console/page errors and no page-level horizontal overflow"}
+  ],
+  "local_checks": [
+    {"check": "RFC 1321 MD5 vectors", "result": "pass", "evidence": "empty, a, abc, message digest and alphabet vectors matched known digests", "limitations": ["not a browser-device run"]},
+    {"check": "full Maven test", "result": "blocked", "evidence": "Testcontainers Docker client 1.32 rejected by local server requiring API 1.40", "limitations": ["pre-existing environment issue"]}
+  ],
+  "diff_summary": ["removed unsupported crypto.subtle MD5 call", "added data-migration project-options fallback", "prevented duplicate report table/pagination on mobile/desktop", "added best-effort object cleanup on failed writes"],
+  "invariants_checked": [
+    {"invariant": "project options are tenant-scoped", "result": "pass", "evidence": "ReportService query filters pm_project.tenant_id and deleted=0"},
+    {"invariant": "report writes remain asset_type=REPORT and owner/audit paths", "result": "pass", "evidence": "existing SQL predicates and audit calls preserved"},
+    {"invariant": "writable paths remain within current requirement scope", "result": "pass", "evidence": "scope checker exit code 0"}
+  ],
+  "disturbances": [
+    {"event": "full Maven suite cannot initialize Testcontainers", "impact": "integration migration tests unavailable"}
+  ],
+  "assumptions_falsified": ["Web Crypto supports MD5 in browsers", "every data-migration role has project:access"],
+  "unresolved_items": ["MinIO upload probe returned storage service unavailable, so upload/download/recycle object lifecycle was not completed"],
+  "recommended_next": "observe"
+}

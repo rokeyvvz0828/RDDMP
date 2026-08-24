@@ -1,0 +1,95 @@
+{
+  "sample_label": "T14 identified report lifecycle deviations",
+  "task_ids": ["T3", "T6"],
+  "baseline_revision": "state-revision-78",
+  "measurements": [
+    {
+      "requirement_id": "R4",
+      "sensor": "ReportService batch upload code inspection",
+      "result": "fail",
+      "raw_evidence": "computeAttachmentMd5 returns an empty string while batchUpload persists and deduplicates on that value",
+      "limitation": ["runtime batch upload was blocked by unavailable MinIO"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "ReportService replacement ordering and attachment contract inspection",
+      "result": "fail",
+      "raw_evidence": "update deletes the old bound attachment and updates dm_asset but never binds the new TEMP attachment",
+      "limitation": ["runtime replacement was blocked by unavailable MinIO"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "ReportService restore update-count inspection",
+      "result": "fail",
+      "raw_evidence": "restore writes REPORT_RESTORE audit regardless of whether the guarded UPDATE changes a row",
+      "limitation": ["no behavioral ReportService test existed"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "T13 acceptance evidence audit",
+      "result": "fail",
+      "raw_evidence": "MinIO lifecycle was not observed and only the 390x844 mobile viewport was sampled",
+      "limitation": ["local MinIO availability must be restored before lifecycle sampling"]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R4",
+      "expected": "batch upload stores a valid per-file MD5 and performs duplicate detection per uploaded file",
+      "observed": "the backend uses an empty MD5 for every batch item",
+      "reproduction": "inspect ReportService.computeAttachmentMd5 and invoke batchUpload with two attachments",
+      "evidence": "ReportService.computeAttachmentMd5 returns an empty string",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "static inspection; runtime MinIO path not yet available",
+      "causal_hypothesis": "the attachment metadata contract exposes no file digest and the batch API does not carry client-computed digests",
+      "correction_check": "behavioral test verifies distinct valid digests are persisted and malformed or mismatched digest lists fail",
+      "classification": "deviation"
+    },
+    {
+      "requirement_id": "R7",
+      "expected": "replacement binds the new attachment before retiring the old binding and leaves a recoverable consistent state on failure",
+      "observed": "the old attachment is deleted but the new TEMP attachment is never bound",
+      "reproduction": "invoke ReportService.update with a new attachmentId and verify AttachmentGateway calls",
+      "evidence": "update contains deleteBound and dm_asset update but no bind call",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "static inspection; transaction rollback and cleanup worker require runtime sampling",
+      "causal_hypothesis": "the replacement path diverged from AssetService.upload and omitted the binding transition",
+      "correction_check": "behavioral test verifies bind -> database update -> old delete ordering and runtime replacement remains downloadable",
+      "classification": "deviation"
+    },
+    {
+      "requirement_id": "R3",
+      "expected": "restore audit is emitted only when a deleted tenant-owned report is actually restored",
+      "observed": "restore always emits REPORT_RESTORE after a guarded update without checking the affected row count",
+      "reproduction": "invoke restore for a non-deleted or missing report ID",
+      "evidence": "ReportService.restore ignores JdbcTemplate.update return value",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "static inspection; no behavioral test existed",
+      "causal_hypothesis": "restore was implemented as a compact loop without an existence/state guard",
+      "correction_check": "behavioral test verifies missing/non-deleted IDs fail without audit and a deleted row produces exactly one audit",
+      "classification": "deviation"
+    },
+    {
+      "requirement_id": "R8",
+      "expected": "local MySQL, MinIO, backend and frontend validate the object lifecycle and all required desktop/mobile viewports",
+      "observed": "T13 stopped at MinIO unavailable and omitted 375x812 and 430x932",
+      "reproduction": "review observation-T13 coverage gaps",
+      "evidence": "observation-T13 records unavailable storage lifecycle and unsampled 375/430 widths",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "environment availability is part of the required runtime setup",
+      "causal_hypothesis": "the local MinIO dependency was not running or did not match the backend storage endpoint",
+      "correction_check": "run upload/download/replace/delete/restore/purge against local MinIO and browser probes at 1280/375/390/430",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    "the previous full Maven run also contained an unrelated architecture migration-target failure"
+  ],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 3, "P2": 1, "P3": 0},
+  "observation_status": "complete"
+}
