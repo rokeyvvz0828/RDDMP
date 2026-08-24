@@ -1,0 +1,50 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "business/architecture 架构规范文档、版本快照、发布与附件",
+      "business/architecture 决策事项、材料、评审、行动项、结论与替代链",
+      "business/architecture 工作流发布门禁适配与生命周期消费者",
+      "architecture 附件访问策略（architecture-standard / architecture-decision）",
+      "V87-V88 迁移（结构、字典、菜单、权限、角色、流程草稿）",
+      "web architecture 规范与决策页面"
+    ],
+    "environment": [
+      "platform/workflow 的 WorkflowBusinessGateway、WorkflowLifecycleConsumer、任务决定 API 和 ROLE 处理人解析",
+      "platform/attachment 的 AttachmentPort、AttachmentGateway 与访问策略注册",
+      "platform/security 的 AuthUser 与服务端权限表达式",
+      "platform/system 的用户、参数（sys_dict_type/sys_config）与操作审计公开能力",
+      "MySQL 8.4、Flyway、Docker 与 Testcontainers",
+      "Vue 应用壳、共享 UI、HTTP 与认证 store",
+      "浏览器桌面与移动视口"
+    ]
+  },
+  "state_variables": [
+    {"name": "standard_status", "owner": "arch_standard_document", "valid_values": ["DRAFT", "PUBLISHED", "OFFLINE"]},
+    {"name": "standard_version", "owner": "arch_standard_document/version snapshot", "valid_values": ["positive integer, immutable snapshots"]},
+    {"name": "matter_status", "owner": "arch_decision_matter", "valid_values": ["SUBMITTED", "RETURNED_FOR_INFO", "IN_REVIEW", "PUBLISHED"]},
+    {"name": "first_handling_deadline", "owner": "arch_decision_matter", "valid_values": ["received_at + 7 natural days, overdue computed"]},
+    {"name": "matter_number", "owner": "arch_decision_number_sequence", "valid_values": ["AD-YYYY-NNNN unique per tenant, never reused"]},
+    {"name": "review_record", "owner": "arch_decision_review/participant/action_item", "valid_values": ["ASYNC/MEETING, conclusion content + rationale required before publish"]},
+    {"name": "conclusion_immutability", "owner": "arch_decision_conclusion", "valid_values": ["written once by APPROVED event, no update path"]},
+    {"name": "supersession_chain", "owner": "arch_decision_supersession", "valid_values": ["unique (new conclusion, old conclusion), EFFECTIVE/SUPERSEDED/PARTIALLY_SUPERSEDED derived"]},
+    {"name": "workflow_receipt", "owner": "architecture decision consumer", "valid_values": ["PROCESSED", "IGNORED"]},
+    {"name": "attachment_access", "owner": "attachment access policy registry", "valid_values": ["allowed for view/manage/propose/review per business type"]}
+  ],
+  "sensors": [
+    {"id": "maven-focused", "kind": "test", "bind": ["R1-R8"], "detail": "mvn -pl :ccb-architecture -am -Dtest=... test 聚焦测试"},
+    {"id": "mysql-flyway", "kind": "test", "bind": ["R1-R6", "R8"], "detail": "Testcontainers MySQL 8.4 空库/增量迁移与存储断言"},
+    {"id": "workflow-lifecycle", "kind": "test", "bind": ["R5", "R8"], "detail": "真实 Flowable 实例 APPROVED/RETURNED 与幂等事件"},
+    {"id": "mockmvc-permission", "kind": "test", "bind": ["R1-R6", "R8"], "detail": "权限矩阵、403/409、DTO 白名单与审计"},
+    {"id": "frontend-build", "kind": "build", "bind": ["R7"], "detail": "npm --prefix web run build"},
+    {"id": "governance", "kind": "static", "bind": ["R8"], "detail": "check-all-governance / check-codex-scope / check-flyway / git diff --check"},
+    {"id": "browser-uat", "kind": "manual", "bind": ["R7", "R8"], "detail": "四视口明暗主题真实浏览器旅程（本批次末声明未验证或执行结果）"}
+  ],
+  "disturbances": [
+    "并发提交事项/发布结论导致编号或结论重复",
+    "工作流事件乱序、重复或摘要不匹配",
+    "字典类别被管理员调整后业务选项变化",
+    "平台附件策略注册冲突或越权访问",
+    "既有 048/049 迁移与 V87/V88 的 id 冲突"
+  ]
+}
