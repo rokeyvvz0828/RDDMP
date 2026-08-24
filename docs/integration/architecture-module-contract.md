@@ -166,3 +166,53 @@
 - 客户端提供 tenant、团队名称快照、物理联系人、电话或审计字段的写入能力。
 - 直接访问 `com.ccb.system.internal.*` 或 system 私有数据表。
 - 真实 AI、外部引用 provider 或业务模块之外的引用检查实现（`com.ccb.architecture.integration` SPI 预留，provider 为空视为无外部引用）。
+
+## 架构规范（REQ-20260823-050）
+
+资源根 `/api/architecture/standards`。
+
+| 方法 | 路径 | 权限 |
+| --- | --- | --- |
+| GET | `/categories` | `architecture:standard:view` |
+| GET | `` | 列表（`page,size,title,categoryCode,status`） |
+| GET | `/{id}` | 详情 |
+| GET | `/{id}/versions` | 发布版本快照 |
+| GET | `/{id}/attachments` | 附件清单（业务类型 `architecture-standard`） |
+| POST | `` | 创建草稿 |
+| PUT | `/{id}` | 编辑（草稿或已发布；已下线拒绝） |
+| POST | `/{id}/publish` | 发布/重新发布（追加不可变版本快照） |
+| POST | `/{id}/offline` | 下线 |
+| DELETE | `/{id}` | 仅从未发布的草稿 |
+| POST | `/{id}/attachments` | 绑定附件（manage） |
+| DELETE | `/{id}/attachments/{attachmentId}` | 移除附件（manage；OFFLINE 拒绝） |
+
+- `status` 取 `DRAFT|PUBLISHED|OFFLINE`；类别为平台参数 `ARCH_STANDARD_CATEGORY` 的键。
+- 每次发布版本号自增并写入不可变快照；PDF 等只作为附件格式。
+
+## 架构决策（REQ-20260823-050）
+
+资源根 `/api/architecture/decisions`。权限分级 `architecture:decision:view/propose/review/manage`。
+
+| 方法 | 路径 | 权限 |
+| --- | --- | --- |
+| GET | `/options/types`、`/options/users` | view |
+| GET | `` | 事项列表（`page,size,keyword,typeCode,status,firstHandlingOverdue`） |
+| GET | `/{id}`、`/{id}/materials`、`/{id}/reviews`、`/{id}/reviews/{reviewId}/participants`、`/{id}/reviews/{reviewId}/action-items` | view |
+| GET | `/conclusions`、`/conclusions/{conclusionId}/chain` | view |
+| POST | `` | 提交事项（propose） |
+| PUT | `/{id}` | 编辑标题/问题（propose 本人或 manage，仅 SUBMITTED/RETURNED_FOR_INFO） |
+| POST | `/{id}/materials` | 补充材料（propose 本人/review/manage） |
+| POST | `/{id}/type` | 确定类型（review/manage；发布前必填） |
+| POST | `/{id}/first-handling` | 首次处理（review；ACCEPTED/REQUESTED_INFO/REVIEW_MODE_SET） |
+| POST | `/{id}/resubmit` | 要求补充后重新提交（propose 本人或 manage） |
+| POST | `/{id}/reviews`、`PUT /{id}/reviews/{reviewId}` | 记录/编辑评审（review） |
+| POST | `/{id}/reviews/{reviewId}/action-items/{actionItemId}/complete` | 完成行动项（review；发布后仍可跟踪） |
+| POST | `/{id}/publication/prepare` | 结论发布准备（manage；类型+含结论评审必填，登记替代/部分修订目标） |
+| POST | `/{id}/publication/start` | 启动 `architecture.decision.review` 工作流（manage） |
+| POST | `/{id}/attachments`、`DELETE /{id}/attachments/{attachmentId}` | 附件（业务类型 `architecture-decision`；发布后不可删除） |
+
+- 事项编号 `AD-<年份>-<四位序号>` 租户内永久唯一、不可复用。
+- 首次处理期限 = 受理时间 + 7 自然日，逾期为计算标识。
+- 正式结论只由工作流 `APPROVED` 生命周期事件写入，已发布结论无修改/删除路径。
+- 结论有效状态由替代关系推导：`EFFECTIVE`/`SUPERSEDED`/`PARTIALLY_SUPERSEDED`。
+- 工作流业务类型 `architecture_decision_publish`，订阅标识 `architecture.decision.publish.lifecycle.v1`。

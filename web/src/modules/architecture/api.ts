@@ -2,22 +2,42 @@ import http from '../../api/http'
 import type { ApiResponse } from '../../types/auth'
 import type {
   ArchitectureResource,
+  AttachmentItemView,
+  ConclusionEffectiveStatus,
+  ConclusionView,
   CreateSubsystemChangeApplicationPayload,
+  DecisionActionItem,
+  DecisionMaterial,
+  DecisionMatterDetail,
+  DecisionMatterStatus,
+  DecisionMatterSummary,
+  DecisionReview,
+  DecisionUserReference,
+  FirstHandlingOutcome,
   LogicalSubsystem,
   LogicalSubsystemOption,
+  MaterialKind,
   OrganizationOption,
   PageResult,
   ParameterOption,
   PhysicalSubsystem,
+  PublicationIntentView,
+  ReviewMethod,
+  StandardCategory,
+  StandardDocumentDetail,
+  StandardDocumentStatus,
+  StandardDocumentSummary,
+  StandardVersion,
   SubsystemApplicationStatus,
   SubsystemChangeApplicationDetail,
   SubsystemChangeApplicationSummary,
   SubsystemSuggestion,
+  SupersessionKind,
   UpdateSubsystemChangeApplicationPayload,
   UserOption
 } from './types'
 
-type QueryValue = string | number | null | undefined
+type QueryValue = string | number | boolean | null | undefined
 type Query = Record<string, QueryValue>
 
 function compact(query: Query) {
@@ -114,4 +134,181 @@ export async function loadLogicalSubsystemOptions(keyword = '', size = 50) {
   return (await http.get<ApiResponse<PageResult<LogicalSubsystemOption>>>('/architecture/options/physical-subsystem/logical-subsystems', {
     params: compact({ page: 1, size, ...filter })
   })).data.data.records
+}
+
+// ---------- 架构规范 ----------
+
+export async function listStandardCategories() {
+  return (await http.get<ApiResponse<StandardCategory[]>>('/architecture/standards/categories')).data.data
+}
+
+export async function listStandardDocuments(query: {
+  page?: number
+  size?: number
+  title?: string
+  categoryCode?: string
+  status?: StandardDocumentStatus | ''
+}) {
+  return (await http.get<ApiResponse<PageResult<StandardDocumentSummary>>>('/architecture/standards', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function getStandardDocument(id: number) {
+  return (await http.get<ApiResponse<StandardDocumentDetail>>(`/architecture/standards/${id}`)).data.data
+}
+
+export async function listStandardVersions(id: number) {
+  return (await http.get<ApiResponse<StandardVersion[]>>(`/architecture/standards/${id}/versions`)).data.data
+}
+
+export async function createStandardDocument(payload: { title: string; categoryCode: string; summary?: string | null; content?: string | null }) {
+  return (await http.post<ApiResponse<StandardDocumentDetail>>('/architecture/standards', payload)).data.data
+}
+
+export async function updateStandardDocument(id: number, payload: { rowVersion: number; title: string; categoryCode: string; summary?: string | null; content?: string | null }) {
+  return (await http.put<ApiResponse<StandardDocumentDetail>>(`/architecture/standards/${id}`, payload)).data.data
+}
+
+export async function publishStandardDocument(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<StandardVersion>>(`/architecture/standards/${id}/publish`, { rowVersion })).data.data
+}
+
+export async function offlineStandardDocument(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<StandardDocumentDetail>>(`/architecture/standards/${id}/offline`, { rowVersion })).data.data
+}
+
+export async function deleteStandardDocument(id: number, rowVersion: number) {
+  return (await http.delete<ApiResponse<void>>(`/architecture/standards/${id}`, { params: { rowVersion } })).data
+}
+
+export async function listStandardAttachments(id: number) {
+  return (await http.get<ApiResponse<AttachmentItemView[]>>(`/architecture/standards/${id}/attachments`)).data.data
+}
+
+export async function bindStandardAttachment(id: number, attachmentId: number) {
+  return (await http.post<ApiResponse<void>>(`/architecture/standards/${id}/attachments`, { attachmentId })).data
+}
+
+export async function deleteStandardAttachment(id: number, attachmentId: number) {
+  return (await http.delete<ApiResponse<void>>(`/architecture/standards/${id}/attachments/${attachmentId}`)).data
+}
+
+// ---------- 架构决策 ----------
+
+export async function listDecisionTypes() {
+  return (await http.get<ApiResponse<StandardCategory[]>>('/architecture/decisions/options/types')).data.data
+}
+
+export async function searchDecisionUsers(keyword = '') {
+  return (await http.get<ApiResponse<DecisionUserReference[]>>('/architecture/decisions/options/users', {
+    params: compact({ keyword })
+  })).data.data
+}
+
+export async function listDecisionMatters(query: {
+  page?: number
+  size?: number
+  keyword?: string
+  typeCode?: string
+  status?: DecisionMatterStatus | ''
+  firstHandlingOverdue?: boolean
+}) {
+  return (await http.get<ApiResponse<PageResult<DecisionMatterSummary>>>('/architecture/decisions', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function getDecisionMatter(id: number) {
+  return (await http.get<ApiResponse<DecisionMatterDetail>>(`/architecture/decisions/${id}`)).data.data
+}
+
+export async function createDecisionMatter(payload: { title: string; problem: string }) {
+  return (await http.post<ApiResponse<DecisionMatterDetail>>('/architecture/decisions', payload)).data.data
+}
+
+export async function updateDecisionMatter(id: number, payload: { rowVersion: number; title: string; problem: string }) {
+  return (await http.put<ApiResponse<DecisionMatterDetail>>(`/architecture/decisions/${id}`, payload)).data.data
+}
+
+export async function addDecisionMaterial(id: number, payload: { kind: MaterialKind; content: string }) {
+  return (await http.post<ApiResponse<DecisionMaterial>>(`/architecture/decisions/${id}/materials`, payload)).data.data
+}
+
+export async function setDecisionType(id: number, payload: { rowVersion: number; typeCode: string }) {
+  return (await http.post<ApiResponse<DecisionMatterDetail>>(`/architecture/decisions/${id}/type`, payload)).data.data
+}
+
+export async function firstHandlingDecisionMatter(id: number, payload: {
+  rowVersion: number
+  outcome: FirstHandlingOutcome
+  reviewMode?: ReviewMethod | null
+  comment?: string | null
+}) {
+  return (await http.post<ApiResponse<DecisionMatterDetail>>(`/architecture/decisions/${id}/first-handling`, payload)).data.data
+}
+
+export async function resubmitDecisionMatter(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<DecisionMatterDetail>>(`/architecture/decisions/${id}/resubmit`, { rowVersion })).data.data
+}
+
+export interface ReviewPayload {
+  method: ReviewMethod
+  reviewedAt?: string | null
+  processMaterialSummary?: string | null
+  keyOpinion?: string | null
+  conclusionContent?: string | null
+  conclusionRationale?: string | null
+  participantUserIds?: number[]
+  actionItems?: { id?: number | null; content: string; ownerUserId?: number | null; ownerName?: string | null }[]
+}
+
+export async function recordDecisionReview(id: number, payload: ReviewPayload) {
+  return (await http.post<ApiResponse<DecisionReview>>(`/architecture/decisions/${id}/reviews`, payload)).data.data
+}
+
+export async function updateDecisionReview(id: number, reviewId: number, payload: ReviewPayload) {
+  return (await http.put<ApiResponse<DecisionReview>>(`/architecture/decisions/${id}/reviews/${reviewId}`, payload)).data.data
+}
+
+export async function completeDecisionActionItem(id: number, reviewId: number, actionItemId: number) {
+  return (await http.post<ApiResponse<DecisionActionItem>>(
+    `/architecture/decisions/${id}/reviews/${reviewId}/action-items/${actionItemId}/complete`
+  )).data.data
+}
+
+export async function prepareDecisionPublication(id: number, payload: {
+  rowVersion: number
+  reviewId: number
+  targets: { conclusionId: number; kind: SupersessionKind }[]
+}) {
+  return (await http.post<ApiResponse<PublicationIntentView>>(
+    `/architecture/decisions/${id}/publication/prepare`, payload)).data.data
+}
+
+export async function startDecisionPublication(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<DecisionMatterDetail>>(
+    `/architecture/decisions/${id}/publication/start`, { rowVersion })).data.data
+}
+
+export async function listDecisionConclusions(query: { page?: number; size?: number; effectiveStatus?: ConclusionEffectiveStatus | '' }) {
+  return (await http.get<ApiResponse<PageResult<ConclusionView>>>('/architecture/decisions/conclusions', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function getDecisionConclusionChain(conclusionId: number) {
+  return (await http.get<ApiResponse<ConclusionView>>(`/architecture/decisions/conclusions/${conclusionId}/chain`)).data.data
+}
+
+export async function listDecisionAttachments(id: number) {
+  return (await http.get<ApiResponse<AttachmentItemView[]>>(`/architecture/decisions/${id}/attachments`)).data.data
+}
+
+export async function bindDecisionAttachment(id: number, attachmentId: number) {
+  return (await http.post<ApiResponse<void>>(`/architecture/decisions/${id}/attachments`, { attachmentId })).data
+}
+
+export async function deleteDecisionAttachment(id: number, attachmentId: number) {
+  return (await http.delete<ApiResponse<void>>(`/architecture/decisions/${id}/attachments/${attachmentId}`)).data
 }

@@ -201,3 +201,182 @@ export interface LogicalSubsystemOption { id: number; code: string; name: string
 
 export type ArchitectureResource = 'logical-subsystem' | 'physical-subsystem'
 export type DetailItem = { label: string; value: string; wide?: boolean; tone?: 'warning' | 'danger' }
+
+// ---------- 架构规范 ----------
+export type StandardDocumentStatus = 'DRAFT' | 'PUBLISHED' | 'OFFLINE'
+
+export interface StandardDocumentSummary {
+  id: number
+  title: string
+  categoryCode: string
+  status: StandardDocumentStatus
+  currentVersion: number
+  publishedAt: string | null
+  publishedByName: string | null
+  updatedAt: string
+}
+
+export interface StandardDocumentDetail {
+  id: number
+  title: string
+  categoryCode: string
+  summary: string | null
+  content: string | null
+  status: StandardDocumentStatus
+  currentVersion: number
+  publishedAt: string | null
+  publishedBy: number | null
+  publishedByName: string | null
+  rowVersion: number
+  createdByName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StandardVersion {
+  id: number
+  documentId: number
+  versionNo: number
+  title: string
+  categoryCode: string
+  summary: string | null
+  content: string | null
+  publishedAt: string
+  publishedBy: number
+  publishedByName: string | null
+}
+
+export interface StandardCategory { code: string; label: string }
+
+export interface AttachmentItemView {
+  id: number
+  fileName: string
+  contentType: string | null
+  size: number
+  uploaderName: string | null
+  createdAt: string
+}
+
+// ---------- 架构决策 ----------
+export type DecisionMatterStatus = 'SUBMITTED' | 'RETURNED_FOR_INFO' | 'IN_REVIEW' | 'PUBLISHED'
+export type FirstHandlingOutcome = 'ACCEPTED' | 'REQUESTED_INFO' | 'REVIEW_MODE_SET'
+export type ReviewMethod = 'ASYNC' | 'MEETING'
+export type MaterialKind = 'SOLUTION' | 'IMPACT' | 'DISPUTE' | 'OTHER'
+export type SupersessionKind = 'SUPERSEDE' | 'PARTIALLY_REVISE'
+export type ConclusionEffectiveStatus = 'EFFECTIVE' | 'SUPERSEDED' | 'PARTIALLY_SUPERSEDED'
+
+export interface DecisionMatterSummary {
+  id: number
+  matterNo: string
+  title: string
+  typeCode: string | null
+  status: DecisionMatterStatus
+  receivedAt: string
+  firstHandlingDeadline: string
+  firstHandlingOverdue: boolean
+  firstHandlingOutcome: FirstHandlingOutcome | null
+  reviewMode: ReviewMethod | null
+  proposerName: string
+  updatedAt: string
+}
+
+export interface DecisionMatterDetail {
+  id: number
+  matterNo: string
+  title: string
+  problem: string
+  typeCode: string | null
+  status: DecisionMatterStatus
+  receivedAt: string
+  firstHandlingDeadline: string
+  firstHandlingOverdue: boolean
+  firstHandlingOutcome: FirstHandlingOutcome | null
+  firstHandlingComment: string | null
+  firstHandledAt: string | null
+  firstHandlerId: number | null
+  firstHandlerName: string | null
+  reviewMode: ReviewMethod | null
+  proposerId: number
+  proposerName: string
+  submitterId: number
+  submitterName: string
+  publicationPreparedAt: string | null
+  publicationPreparedBy: number | null
+  currentBusinessRound: number
+  currentWorkflowInstanceId: number | null
+  rowVersion: number
+  createdByName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DecisionMaterial {
+  id: number
+  matterId: number
+  kind: MaterialKind
+  content: string
+  createdByName: string | null
+  createdAt: string
+}
+
+export interface DecisionReview {
+  id: number
+  matterId: number
+  reviewNo: number
+  method: ReviewMethod
+  reviewedAt: string
+  processMaterialSummary: string | null
+  keyOpinion: string | null
+  conclusionContent: string | null
+  conclusionRationale: string | null
+  createdByName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DecisionActionItem {
+  id: number
+  reviewId: number
+  content: string
+  ownerUserId: number | null
+  ownerName: string | null
+  status: 'OPEN' | 'DONE'
+  createdAt: string
+}
+
+export interface ChainLink {
+  id: number
+  kind: SupersessionKind
+  conclusionId: number
+  conclusionMatterNo: string | null
+  supersededConclusionId: number
+  supersededMatterNo: string | null
+  createdAt: string
+}
+
+export interface ConclusionView {
+  conclusionId: number
+  matterId: number
+  matterNo: string | null
+  matterTitle: string | null
+  typeCode: string | null
+  content: string
+  rationale: string | null
+  publishedAt: string
+  publishedBy: number
+  publishedByName: string | null
+  effectiveStatus: ConclusionEffectiveStatus
+  supersedes: ChainLink[]
+  supersededBy: ChainLink[]
+}
+
+export interface PublicationIntentView {
+  matterId: number
+  reviewId: number
+  targets: { conclusionId: number; kind: SupersessionKind }[]
+  payloadDigest: string
+  preparedByName: string | null
+  preparedAt: string
+}
+
+export interface DecisionUserReference { id: number; displayName: string; username: string }
