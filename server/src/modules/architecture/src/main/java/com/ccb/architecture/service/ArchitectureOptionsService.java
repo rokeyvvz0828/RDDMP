@@ -4,6 +4,8 @@ import com.ccb.architecture.model.LogicalSubsystemOption;
 import com.ccb.architecture.model.LogicalSubsystemQuery;
 import com.ccb.architecture.model.OrganizationOption;
 import com.ccb.architecture.model.ParameterOption;
+import com.ccb.architecture.model.PhysicalSubsystemOption;
+import com.ccb.architecture.model.PhysicalSubsystemQuery;
 import com.ccb.architecture.model.UserOption;
 import com.ccb.architecture.repository.ArchitectureSubsystemRepository;
 import com.ccb.common.api.PageQuery;
@@ -99,6 +101,19 @@ public class ArchitectureOptionsService {
                         normalizeOptional(name), null));
         List<LogicalSubsystemOption> records = result.records().stream()
                 .map(item -> new LogicalSubsystemOption(item.id(), item.code(), item.name()))
+                .toList();
+        return new PageResult<>(records, result.total(), result.page(), result.size());
+    }
+
+    /** 部署单元级联选项：仅返回当前租户可用的 ACTIVE 物理子系统。 */
+    public PageResult<PhysicalSubsystemOption> physicalSubsystems(AuthUser actor, PageQuery page,
+                                                                  String code, String name) {
+        requireActor(actor);
+        PageResult<com.ccb.architecture.model.PhysicalSubsystem> result = repository.pagePhysical(
+                actor.tenantId(), page, new PhysicalSubsystemQuery(normalizeOptional(code), null,
+                        normalizeOptional(name), null, null, null, "ACTIVE"));
+        List<PhysicalSubsystemOption> records = result.records().stream()
+                .map(item -> new PhysicalSubsystemOption(item.id(), item.code(), item.name(), item.status()))
                 .toList();
         return new PageResult<>(records, result.total(), result.page(), result.size());
     }

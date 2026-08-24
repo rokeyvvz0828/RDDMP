@@ -1,0 +1,96 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "部署单元编号/生命周期/版本/导入后端实现完成；领域与 MySQL 聚焦测试先行通过。",
+  "recorded_at": "2026-08-23T23:55:00+00:00",
+  "data": {
+    "task_id": "T2",
+    "status": "implemented",
+    "changed_surfaces": [
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java",
+        "purpose": "部署单元/版本/命令/查询/导入批次与明细模型"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+        "purpose": "数据访问与编号分配（GET_LOCK 串行化 + 行锁 + 唯一索引）"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+        "purpose": "创建即版本 1、更新即新版本、停用/启用/作废状态机、乐观锁"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+        "purpose": "Excel 解析、预览校验、确认逐行事务、批次台账、错误报告、模板"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitReferenceGuard.java",
+        "purpose": "作废引用守卫 fail-closed"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/DeploymentUnitReferenceChecker.java",
+        "purpose": "公开引用检查 SPI 与中性请求值"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitController.java",
+        "purpose": "部署单元 HTTP 契约与权限"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitImportController.java",
+        "purpose": "导入 HTTP 契约与权限"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java 与 ArchitectureOptionsController.java",
+        "purpose": "deployment-unit 级联选项"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/pom.xml",
+        "purpose": "新增 poi-ooxml 5.5.1（与 requirement/test-management 一致）"
+      }
+    ],
+    "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+    "commands": [
+      {
+        "command": "mvn -pl :ccb-architecture -am -DskipTests compile",
+        "salient_output": "编译通过",
+        "exit_code": 0
+      },
+      {
+        "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+        "salient_output": "14/14 通过",
+        "exit_code": 0
+      },
+      {
+        "command": "DOCKER_HOST=tcp://127.0.0.1:2376 ... mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitLifecycleMySqlTest,DeploymentUnitImportMySqlTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test",
+        "salient_output": "16/16 通过（并发编号不重号、版本不可改写、导入幂等与整批回滚）",
+        "exit_code": 0
+      }
+    ],
+    "local_checks": [
+      {
+        "check": "编号并发分配",
+        "result": "pass",
+        "evidence": "6 线程并发创建编号互不重复且格式匹配 DW0001A\\d{3}"
+      },
+      {
+        "check": "作废引用守卫 fail-closed",
+        "result": "pass",
+        "evidence": "REFERENCED/INDETERMINATE 与检查异常均拒绝作废"
+      }
+    ],
+    "diff_summary": ["architecture 主代码新增约 1200 行；未改动其他模块"],
+    "disturbances": [
+      {
+        "source": "MySQL 并发 INSERT IGNORE + FOR UPDATE 死锁",
+        "effect": "并发创建部分失败",
+        "handling": "改为 GET_LOCK 命名锁串行化 + 行锁 + 唯一索引，死锁测试通过"
+      },
+      {
+        "source": "rowVersion 从 0 开始被 requiredId 拒绝",
+        "effect": "首次更新失败",
+        "handling": "rowVersion 允许 0，负数拒绝"
+      }
+    ],
+    "unresolved_issues": []
+  }
+}

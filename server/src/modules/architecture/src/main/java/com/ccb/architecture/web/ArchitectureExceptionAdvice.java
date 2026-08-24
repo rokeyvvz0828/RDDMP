@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         LogicalSubsystemController.class,
         SubsystemChangeApplicationController.class,
         ArchitectureStandardController.class,
-        ArchitectureDecisionController.class
+        ArchitectureDecisionController.class,
+        DeploymentUnitController.class,
+        DeploymentUnitImportController.class
 })
 public class ArchitectureExceptionAdvice {
     public static final int NOT_FOUND_CODE = 40400;

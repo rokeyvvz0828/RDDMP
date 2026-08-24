@@ -1,6 +1,6 @@
 # 架构子系统模块集成契约
 
-适用需求：`REQ-20260812-021`；`REQ-20260822-048` 完成生命周期修订（主记录写入全部经由变更工单、主记录新增状态、三级权限、固定审批流程、引用检查 SPI 与操作审计）。本契约冻结逻辑子系统、物理子系统、受限选项 API 和变更工单的 HTTP 边界。V1 使用固定强类型表单，不提供表单 schema 或任意字段接口。
+适用需求：`REQ-20260812-021`；`REQ-20260822-048` 完成生命周期修订（主记录写入全部经由变更工单、主记录新增状态、三级权限、固定审批流程、引用检查 SPI 与操作审计）；`REQ-20260823-049` 新增部署单元（版本发布、停用/作废生命周期、Excel 初始化导入与技术架构师权限）。本契约冻结逻辑子系统、物理子系统、部署单元、受限选项 API 和变更工单的 HTTP 边界。V1 使用固定强类型表单，不提供表单 schema 或任意字段接口。
 
 ## 通用约定
 
@@ -91,7 +91,7 @@
 
 ## 选项 API
 
-路径中的资源上下文只允许 `logical-subsystem` 和 `physical-subsystem`。已知上下文检查自己的 `list` 权限或新三级权限（`view`/`apply`/`manage`），不以多项权限 OR 放行；未知或不支持的上下文返回 404/code `40400`。
+路径中的资源上下文允许 `logical-subsystem`、`physical-subsystem` 和 `deployment-unit`。已知上下文检查自己的 `list`/`view` 权限或新三级权限（`view`/`apply`/`manage`），不以多项权限 OR 放行；未知或不支持的上下文返回 404/code `40400`。
 
 | 方法与路径 | 查询 | 权限 | `data` |
 | --- | --- | --- | --- |
@@ -102,6 +102,7 @@
 | `GET /options/logical-subsystem/parameters/{categoryCode}` | 无 | `architecture:logical:list` | `ParameterOption[]` |
 | `GET /options/physical-subsystem/parameters/{categoryCode}` | 无 | `architecture:physical:list` | `ParameterOption[]` |
 | `GET /options/physical-subsystem/logical-subsystems` | `page,size,code?,name?` | `architecture:physical:list` | `PageResult<LogicalSubsystemOption>` |
+| `GET /options/deployment-unit/physical-subsystems` | `page,size,code?,name?` | `architecture:deployment-unit:view`/`manage`，或 `view`/`apply`/`manage` 任一 | `PageResult<PhysicalSubsystemOption>` |
 
 选项记录必须精确使用以下字段：
 
@@ -111,6 +112,7 @@
 | `UserOption` | `id,displayName,username,phone` | `phone` 显式允许 `null`；只返回活动用户 |
 | `ParameterOption` | `code,label` | 不分页 |
 | `LogicalSubsystemOption` | `id,code,name` | 只返回当前租户未删除记录 |
+| `PhysicalSubsystemOption` | `id,code,name,status` | 只返回当前租户 ACTIVE 物理子系统（部署单元级联选择） |
 
 逻辑上下文参数分类白名单为 `ARCH_DEPLOYMENT_PLATFORM`、`ARCH_SYSTEM_TYPE`、`ARCH_SYSTEM_OWNERSHIP`；物理上下文为 `ARCH_RUNTIME`、`ARCH_SYSTEM_LEVEL`、`ARCH_DEVELOPMENT_FRAMEWORK`。跨上下文分类返回 400。
 
@@ -158,12 +160,72 @@
 - 首次提交与每次退回重提均启动新实例并递增 `currentBusinessRound`；V84 预置草稿定义，必须经平台既有发布入口（`POST /api/workflows/definitions/900000000000030/publish`）生成 Flowable deployment 后才能提交。
 - 生命周期事件按 `subscriberKey + eventId` 幂等消费并校验租户、业务键、实例、轮次与摘要；`APPROVED` 事件在同一业务事务重新校验编号、唯一性、引用、状态和行版本后原子发布，失败则保持未批准并交由平台重试（重试耗尽进入 DEAD，需运维处置；对已结束实例的取消返回 409）。
 - 写操作审计：关键工单写（create/update/submit/cancel 成功与业务失败）写入 `sys_operation_log`（operation_code `architecture.subsystem-change.*`）；工作流任务动作走 `wf_audit_event`（`TASK_*`）。
+- 部署单元写操作审计：`sys_operation_log` 的 operation_code 为 `architecture.deployment-unit.*`（create/update/deactivate/reactivate/void 成功与失败）与 `architecture.deployment-unit.import`（导入上传与确认成功与失败）。
+
+## 部署单元（REQ-20260823-049）
+
+资源根：`/api/architecture/deployment-units`。部署单元由技术架构师直接维护，不经过变更工单；创建即发布版本 1 并分配永久编号；已发布单元显示内容变更自动发布新版本；已发布后编号与物理归属不可变更。
+
+| 方法 | 路径 | 权限 |
+| --- | --- | --- |
+| GET | `/deployment-units` | `architecture:deployment-unit:view`，或 `view`/`apply`/`manage` 任一 |
+| GET | `/deployment-units/{id}` | 同上 |
+| GET | `/deployment-units/{id}/versions` | 同上 |
+| POST | `/deployment-units` | `architecture:deployment-unit:manage` |
+| PUT | `/deployment-units/{id}` | `architecture:deployment-unit:manage` |
+| POST | `/deployment-units/{id}/deactivate` | `architecture:deployment-unit:manage` |
+| POST | `/deployment-units/{id}/reactivate` | `architecture:deployment-unit:manage` |
+| POST | `/deployment-units/{id}/void` | `architecture:deployment-unit:manage` |
+
+列表查询只接受 `page,size,code,shortName,name,physicalSubsystemId,kind,status`。`kind` 取 `APPLICATION|DATABASE|MQ`；`status` 取 `ACTIVE|INACTIVE|VOIDED`。
+
+创建请求体：
+
+```json
+{
+  "physicalSubsystemId": 501,
+  "shortName": "ECIP-AP",
+  "name": "电子渠道接入应用",
+  "kind": "APPLICATION",
+  "description": null,
+  "remark": null
+}
+```
+
+更新请求体与创建相同但必须携带 `rowVersion`（乐观锁）；`physicalSubsystemId` 忽略。创建响应与详情记录字段固定为：
+
+`id,code,physicalSubsystemId,physicalSubsystemCode,physicalSubsystemName,physicalSubsystemStatus,shortName,name,kind,status,currentVersion,description,remark,createdBy,createdByDisplayName,updatedBy,updatedByDisplayName,createdAt,updatedAt,rowVersion`。
+
+- `code`：永久编号 `D<物理编号><三位序号>`（如 `DW0001A001`），创建即分配，之后不可修改、不可复用；每物理子系统最多 999 个。
+- `currentVersion`：当前版本号；每次更新 ACTIVE 单元自动 +1 并新增不可改写版本行。
+- `status`：`ACTIVE|INACTIVE|VOIDED`；`INACTIVE` 阻止新的引用但保留历史，可重新启用；`VOIDED` 为终态，仅从未被引用（`com.ccb.architecture.integration.DeploymentUnitReferenceChecker` 全部 CLEAR）允许，检查异常按存在引用失败关闭（503）。
+- `rowVersion`：更新必须等于服务端当前值，冲突返回 409。
+- `kind` 可随版本变化；`physicalSubsystemId` 创建后不可变更。
+
+版本历史 `GET /deployment-units/{id}/versions` 返回 `[{versionNo,shortName,name,kind,description,remark,publishedBy,publishedByDisplayName,publishedAt}]`，按 `versionNo` 升序；版本行无更新/删除接口。
+
+### 初始化导入
+
+资源根：`/api/architecture/deployment-unit-imports`。仅 `architecture:deployment-unit:manage` 可上传与确认；批次台账查询需要查看权限；错误报告导出需要维护权限。
+
+| 方法 | 路径 | 语义 |
+| --- | --- | --- |
+| POST | `/deployment-unit-imports` | multipart 上传 `.xlsx`（≤10MB、≤5000 行），解析与校验后创建 PREVIEW 批次并返回预览 |
+| GET | `/deployment-unit-imports` | 批次分页（`page,size`），`PageResult<DeploymentUnitImportBatch>` |
+| GET | `/deployment-unit-imports/{id}` | 批次与行明细 |
+| POST | `/deployment-unit-imports/{id}/confirm` | 确认写入；PREVIEW 批次只可确认一次 |
+| GET | `/deployment-unit-imports/{id}/error-report` | 失败行 CSV（UTF-8 BOM），`Content-Disposition` 下载 |
+| GET | `/deployment-unit-imports/template` | xlsx 模板下载 |
+
+模板表头固定：`物理子系统编号,部署单元简称,部署单元名称,部署单元类型,描述,备注`；类型取 `应用|数据库|消息队列`（或 `APPLICATION|DATABASE|MQ`）。预览行状态 `VALID|INVALID`；确认后 `SUCCESS|FAILED|SKIPPED`（SKIPPED 为幂等重导时已存在的 ACTIVE 同名同物理行）。批次状态 `PREVIEW|SUCCESS|PARTIAL|FAILED`；确认时预期行级失败记录明细并继续，意外异常整批回滚并标记 FAILED。批次字段：`id,fileName,fileSize,totalRows,validRows,successRows,failedRows,skippedRows,status,errorMessage,createdBy,createdByDisplayName,createdAt,completedAt`；行明细：`itemId,lineNo,row{physicalCode,shortName,name,kindLabel,description,remark},rowStatus,errorMessage,note,unitId`。
 
 ## 明确不提供
 
 - `/api/architecture/form-schemas/**` 或任何动态表单 schema。
 - 绕过工单直接修改发布主记录的 HTTP 写接口（旧 POST/PUT/DELETE 保留路由但只返回 409 `ARCHITECTURE_WORK_ORDER_REQUIRED`）。
 - 客户端提供 tenant、团队名称快照、物理联系人、电话或审计字段的写入能力。
+- 部署单元编号、物理归属或版本行的修改能力；已发布部署单元的显示内容只能通过发布新版本改变。
+- 绕过引用守卫的部署单元作废；引用检查器不可判定时一律失败关闭。
 - 直接访问 `com.ccb.system.internal.*` 或 system 私有数据表。
 - 真实 AI、外部引用 provider 或业务模块之外的引用检查实现（`com.ccb.architecture.integration` SPI 预留，provider 为空视为无外部引用）。
 

@@ -1,0 +1,46 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "用户确认部署单元模块完成（列表导出不纳入本批次），选择本地合并到 dev-ivanh 并关闭任务；合并冲突（050 架构规范与决策任务的 8 个共享文件）已全部解决并由编译/前端构建验证，合并树全量架构模块测试在后台运行。",
+  "recorded_at": "2026-08-24T02:40:00+00:00",
+  "data": {
+    "handoff_status": "closed",
+    "delivery": {
+      "requirement": "REQ-20260823-049",
+      "branch": "feat/REQ-20260823-049-deployment-unit-version-import（938d621 + 5bd2165）",
+      "target_branch": "dev-ivanh",
+      "merge": "三方合并已执行：dev-ivanh@1f61cb8 基础上将 050 架构规范与决策（REQ-20260823-050）3 个提交并入本任务改动；8 个共享文件冲突全部解决并保留双侧能力（MODULES.md 描述合并、ArchitectureExceptionAdvice 纳入两个任务全部控制器、api.ts/types.ts/css/router 双侧增量合并）",
+      "frontend": "vue-tsc + vite 构建通过（冲突解析后复验）",
+      "backend": "ccb-architecture -am 编译通过；合并树全量测试结果见 execution/observation 补充",
+      "verified": [
+        "架构模块 195/195（本任务隔离树）",
+        "空库迁移至 V86、公开 API 全旅程、浏览器 UAT 16/17（1280x800 + 375x812）",
+        "独立观测 9/9 通过",
+        "合并冲突解析后后端编译 + 前端构建通过"
+      ]
+    },
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/baseline.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/model.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/control-plan.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/execution-T0.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/execution-T1.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/execution-T2.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/execution-T3.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/execution-T4.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/execution-T5.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/observation-T1.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/convergence.json"
+    ],
+    "remaining_risks": [
+      "合并树全量测试以后台任务产出最终结论（本任务隔离树 195/195 已通过，冲突仅涉及文档、控制器注册与前端增量合并）",
+      "控制台 404（favicon 类）为仓库既有问题",
+      "390x844/430x932 与明暗主题浏览器验收留待最终集成批次",
+      "列表导出未纳入本批次（用户确认）"
+    ],
+    "next_steps": [
+      "确认合并树全量测试通过后执行 git branch -d 清理功能分支",
+      "按需推送 dev-ivanh 或创建 PR（用户决定）"
+    ]
+  }
+}

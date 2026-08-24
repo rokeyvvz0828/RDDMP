@@ -3,6 +3,7 @@ package com.ccb.architecture.web;
 import com.ccb.architecture.model.LogicalSubsystemOption;
 import com.ccb.architecture.model.OrganizationOption;
 import com.ccb.architecture.model.ParameterOption;
+import com.ccb.architecture.model.PhysicalSubsystemOption;
 import com.ccb.architecture.model.UserOption;
 import com.ccb.architecture.service.ArchitectureOptionsService;
 import com.ccb.common.api.ApiResponse;
@@ -82,6 +83,15 @@ public class ArchitectureOptionsController {
             @RequestParam(required = false) String code, @RequestParam(required = false) String name,
             @AuthenticationPrincipal AuthUser actor) {
         return success(service.logicalSubsystems(actor, new PageQuery(page, size), code, name));
+    }
+
+    @GetMapping("/deployment-unit/physical-subsystems")
+    @PreAuthorize("hasAnyAuthority('architecture:deployment-unit:view', 'architecture:deployment-unit:manage', 'architecture:view', 'architecture:apply', 'architecture:manage')")
+    public ApiResponse<PageResult<PhysicalSubsystemOption>> deploymentUnitPhysicalSubsystems(
+            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String code, @RequestParam(required = false) String name,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.physicalSubsystems(actor, new PageQuery(page, size), code, name));
     }
 
     @GetMapping("/{resource}/organizations")

@@ -216,6 +216,8 @@ const router = createRouter({
         { path: 'architecture/decisions', name: 'architecture-decisions', component: () => import('../modules/architecture/DecisionMatterListPage.vue'), meta: { title: '架构决策' } },
         { path: 'architecture/decisions/new', name: 'architecture-decision-new', component: () => import('../modules/architecture/DecisionMatterFormPage.vue'), meta: { title: '提交架构决策事项' } },
         { path: 'architecture/decisions/:id', name: 'architecture-decision-detail', component: () => import('../modules/architecture/DecisionMatterDetailPage.vue'), meta: { title: '架构决策事项详情' } },
+        { path: 'architecture/deployment-units', name: 'architecture-deployment-units', component: () => import('../modules/architecture/DeploymentUnitPage.vue'), meta: { title: '部署单元' } },
+        { path: 'architecture/deployment-unit-imports', name: 'architecture-deployment-unit-imports', component: () => import('../modules/architecture/DeploymentUnitImportPage.vue'), meta: { title: '部署单元初始化导入' } },
         { path: 'test-management/business-day', name: 'business-day-management', component: BusinessDayManagement, meta: { title: '营业日管理' } },
         { path: 'test-management/business-day/calendar-overview', redirect: '/test-management/business-day' },
         { path: 'test-management/business-day/calendar-schedule', redirect: { path: '/test-management/business-day', query: { view: 'schedule' } } },

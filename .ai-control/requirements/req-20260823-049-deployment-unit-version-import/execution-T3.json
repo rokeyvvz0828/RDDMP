@@ -1,0 +1,63 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "领域测试 14 项 + MySQL 集成测试 16 项全部通过；真实 MySQL 8.4 与完整 Flyway 迁移。",
+  "recorded_at": "2026-08-24T00:20:00+00:00",
+  "data": {
+    "task_id": "T3",
+    "status": "implemented",
+    "changed_surfaces": [
+      {
+        "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitServiceTest.java",
+        "purpose": "编号/版本/状态机/引用守卫/审计领域测试 14 项"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitLifecycleMySqlTest.java",
+        "purpose": "真实 MySQL 生命周期/编号并发/容量/名称占用测试 8 项"
+      },
+      {
+        "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java",
+        "purpose": "真实 MySQL 导入预览/确认/幂等/回滚/错误报告测试 8 项"
+      }
+    ],
+    "requirements_addressed": ["R1", "R2", "R3", "R5", "R6"],
+    "commands": [
+      {
+        "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+        "salient_output": "Tests run: 14, Failures: 0, Errors: 0",
+        "exit_code": 0
+      },
+      {
+        "command": "DOCKER_HOST=tcp://127.0.0.1:2376 DOCKER_API_VERSION=1.44 DOCKER_CLIENT_STRATEGY=org.testcontainers.dockerclient.EnvironmentAndSystemPropertyClientProviderStrategy mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitLifecycleMySqlTest,DeploymentUnitImportMySqlTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test",
+        "salient_output": "Tests run: 16, Failures: 0, Errors: 0",
+        "exit_code": 0
+      }
+    ],
+    "local_checks": [
+      {
+        "check": "空库迁移至 V86 幂等",
+        "result": "pass",
+        "evidence": "每个测试类独立容器空库迁移成功"
+      },
+      {
+        "check": "并发编号不重号",
+        "result": "pass",
+        "evidence": "6 线程并发创建互不重复"
+      },
+      {
+        "check": "导入整批回滚",
+        "result": "pass",
+        "evidence": "行快照损坏触发整批 FAILED 且零写入"
+      }
+    ],
+    "diff_summary": ["测试代码新增约 700 行"],
+    "disturbances": [
+      {
+        "source": "本机 Docker Desktop WSL2 代理拒绝 v1.32 API",
+        "effect": "Testcontainers 无法启动容器",
+        "handling": "本地 TCP 桥 + DOCKER_API_VERSION=1.44 + 环境策略；不改用户全局配置"
+      }
+    ],
+    "unresolved_issues": ["全模块回归（含 issue 01 的既有 MySQL 测试）待 T5 全量运行确认"]
+  }
+}
