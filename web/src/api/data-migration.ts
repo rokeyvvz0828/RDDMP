@@ -465,7 +465,23 @@ export interface IssueRecord {
   project_name?: string
   asset_code: string
   asset_name: string
-  structured_data?: string
+  granularity?: string
+  systemCode?: string
+  systemName?: string
+  issueSource?: string
+  defectType?: string
+  issueDescription?: string
+  solution?: string
+  meetingConclusion?: string
+  processingSteps?: string
+  businessScenario?: string
+  handler?: string
+  responsibleParty?: string
+  keywords?: string
+  frequency?: string
+  relatedMeetingMinutes?: number[]
+  relatedTables?: number[]
+  relatedFields?: number[]
   owner_id: number
   created_at?: string
   updated_at?: string

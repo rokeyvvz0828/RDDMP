@@ -78,4 +78,26 @@ class DataMigrationModuleRegistrationTest {
         assertTrue(Files.exists(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java")));
         assertTrue(Files.exists(Path.of("src/main/java/com/ccb/datamigration/web/IssueController.java")));
     }
+
+    @Test
+    void issueStorageIsIndependentAndGenericAssetTypesRejectIssue() throws Exception {
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V93__data_migration_issue_independent_storage.sql");
+        String sql = Files.readString(migration);
+        assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS dm_issue"));
+        assertTrue(sql.contains("DELETE FROM dm_asset_relation"));
+        assertTrue(sql.contains("DELETE FROM dm_asset"));
+        String issue = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java"));
+        assertTrue(issue.contains("FROM dm_issue"));
+        assertTrue(!issue.contains("FROM dm_asset a"));
+        assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java")).contains("\"ISSUE\""));
+        assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/AssetService.java")).contains("\"ISSUE\""));
+    }
+
+    @Test
+    void issueCreateInsertBindsAllColumns() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java"));
+        String insert = source.lines().filter(line -> line.contains("INSERT INTO dm_issue")).findFirst().orElseThrow();
+        assertTrue(insert.substring(insert.indexOf("VALUES")).chars().filter(ch -> ch == '?').count() == 22);
+        assertTrue(insert.contains("created_by, updated_by"));
+    }
 }

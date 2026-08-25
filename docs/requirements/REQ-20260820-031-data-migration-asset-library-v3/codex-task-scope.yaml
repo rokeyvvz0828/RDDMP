@@ -39,6 +39,7 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V90__data_migration_common_asset_attachment_dedup.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V91__attachment_expires_at_datetime.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V92__data_migration_asset_relation.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__data_migration_issue_independent_storage.sql",
       "web/package.json",
       "web/package-lock.json",
       "web/src/api/data-migration.ts",
@@ -94,9 +95,10 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V89__data_migration_report_material_enrichment.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V90__data_migration_common_asset_attachment_dedup.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V91__attachment_expires_at_datetime.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__data_migration_asset_relation.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__data_migration_asset_relation.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__data_migration_issue_independent_storage.sql"
     ],
-    "compatibility_and_rollback": "Additive MySQL 8.4 migrations only. V84 enriches components; V86 removes the deprecated projects menu; V87 adds sys_role.role_description and seeds two data-migration roles; V88 adds target/intermediate table structure and migrates valid historical assets; V89 adds report-material columns to dm_asset (report_period/report_date/keywords/deleted_by/deleted_at/created_by/updated_by), an idx_dm_asset_report index, and idempotently backfills report_period=IRREGULAR for existing REPORT rows; V90 adds attachment_id and active MD5 uniqueness; V91 changes att_file.expires_at to DATETIME so public attachment binding can persist 9999-12-31 on MySQL 8.4; V92 creates dm_asset_relation for issue-meeting/table/field relations and migrates existing structured_data relations. Application rollback hides menus and disables jobs while retaining new tables, objects and role data; no production DROP."
+    "compatibility_and_rollback": "Additive MySQL 8.4 migrations only. V84 enriches components; V86 removes the deprecated projects menu; V87 adds sys_role.role_description and seeds two data-migration roles; V88 adds target/intermediate table structure and migrates valid historical assets; V89 adds report-material columns to dm_asset (report_period/report_date/keywords/deleted_by/deleted_at/created_by/updated_by), an idx_dm_asset_report index, and idempotently backfills report_period=IRREGULAR for existing REPORT rows; V90 adds attachment_id and active MD5 uniqueness; V91 changes att_file.expires_at to DATETIME so public attachment binding can persist 9999-12-31 on MySQL 8.4; V92 creates dm_asset_relation for issue-meeting/table/field relations and migrates existing structured_data relations; V93 creates dm_issue, removes old ISSUE relations and deletes legacy dm_asset ISSUE rows without copying them. Application rollback hides menus and disables jobs while retaining new tables, objects and role data; no production DROP."
   },
   "external_access": {
     "changed": false,

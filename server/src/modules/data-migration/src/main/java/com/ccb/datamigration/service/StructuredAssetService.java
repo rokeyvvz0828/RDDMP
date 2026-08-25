@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StructuredAssetService {
-    private static final Set<String> TYPES = Set.of("RULE","PARAMETER","ISSUE","TABLE_STRUCTURE","INTERMEDIATE_TABLE");
+    private static final Set<String> TYPES = Set.of("RULE","PARAMETER","TABLE_STRUCTURE","INTERMEDIATE_TABLE");
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
     private final DataMigrationPermissionService permissions;

@@ -1,0 +1,28 @@
+{
+  "task_id": "T-I2-T-I4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V93__data_migration_issue_independent_storage.sql", "purpose": "创建 dm_issue 并清理旧 ISSUE 数据与关系，不复制历史数据"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java", "purpose": "问题 CRUD、筛选、回收站和多态关系切换到 dm_issue"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/IssuesPage.vue", "purpose": "问题页面消费结构化列而非 structured_data JSON"}
+    ,{"path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md", "purpose": "按 V93 实际结构更新现存表清单、dm_issue 列索引和关系约束设计"}
+  ],
+  "requirements_addressed": ["R-I1", "R-I2", "R-I3", "R-I4"],
+  "commands": [
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "ccb-data-migration 13 tests passed"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite build passed; existing bundle-size warning remains"},
+    {"command": "docker exec ... mysql < V93__data_migration_issue_independent_storage.sql", "exit_code": 0, "salient_output": "dm_issue created; old ISSUE rows and relations are zero"}
+    ,{"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "ccb-data-migration 14 tests passed after binding regression fix"}
+    ,{"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite build passed"}
+    ,{"command": "./backend-dev.sh start; authenticated curl CRUD against /api/data-migration/issues", "exit_code": 0, "salient_output": "health 200; create/get/update/delete/recycle/restore/purge all returned code=0; test row purged"}
+  ],
+  "invariants_checked": [
+    {"invariant": "IssueService does not use dm_asset as an ISSUE source", "result": "pass", "evidence": "all issue CRUD SQL targets dm_issue"},
+    {"invariant": "generic assets retain dm_asset structured_data and attachment/report fields", "result": "pass", "evidence": "only ISSUE was removed from generic type allowlists"},
+    {"invariant": "tenant and relation target validation remains server-side", "result": "pass", "evidence": "dm_issue tenant filters and relation target existence checks"},
+    {"invariant": "issue create binds every dm_issue column", "result": "pass", "evidence": "runtime authenticated create returned code=0; regression test asserts 22 placeholders"}
+  ],
+  "disturbances": ["governance checker reports pre-existing other-ledger violations", "scope checker reports pre-existing application-local.yml outside writable_paths"],
+  "unresolved_items": ["Browser desktop/mobile visual acceptance was not run", "full Maven remains blocked by pre-existing architecture concurrency test table initialization"],
+  "recommended_next": "observe"
+}

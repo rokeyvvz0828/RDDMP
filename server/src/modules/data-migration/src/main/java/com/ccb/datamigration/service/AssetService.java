@@ -19,7 +19,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class AssetService {
     public static final String BUSINESS_TYPE = "DATA_MIGRATION_ASSET";
     private static final long MAX_FILE_SIZE = 50L * 1024 * 1024;
-    private static final Set<String> TYPES = Set.of("REPORT", "MEETING", "PLAN", "MAPPING_DOC", "VALIDATION_DOC", "PARAMETER", "DEPENDENCY", "SCRIPT", "TOPIC", "RELEASE_DRILL", "ISSUE", "TRANSFORM_DOC", "CONFIG", "OTHER", "RULE", "TABLE_STRUCTURE", "INTERMEDIATE_TABLE");
+    private static final Set<String> TYPES = Set.of("REPORT", "MEETING", "PLAN", "MAPPING_DOC", "VALIDATION_DOC", "PARAMETER", "DEPENDENCY", "SCRIPT", "TOPIC", "RELEASE_DRILL", "TRANSFORM_DOC", "CONFIG", "OTHER", "RULE", "TABLE_STRUCTURE", "INTERMEDIATE_TABLE");
     private static final String MD5_PATTERN = "[0-9a-fA-F]{32}";
 
     private final JdbcTemplate jdbc;

@@ -209,3 +209,197 @@
 ## 高风险动作批准
 
 用户已批准新增模块、追加数据库迁移、正式菜单权限入库、MinIO 文件写入和从最新 `main` 的隔离实现。生产访问、生产迁移、合并、推送和发布不在授权范围。
+
+---
+
+# 问题清单独立存储增量实施计划
+
+## 状态与来源
+
+- 计划修订：1（问题清单独立存储）
+- 设计修订：1（见同名增量设计）
+- 设计文档：`docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md`
+- 状态：已解除范围阻断，进入受控产品实现
+- 用户授权：用户确认问题清单独立为 `dm_issue`、不保留历史数据，并授权生成实施计划。
+
+## 目标与全局约束
+
+目标：将问题清单从 `dm_asset` 完整改造为 `dm_issue` 独立模型，清理旧 ISSUE 数据和问题关系，保留 `dm_asset` 仍被 REPORT、RULE、PARAMETER 和文件资产使用的通用字段。
+
+全局约束：
+
+- 只修改当前 `codex-task-scope.yaml` 的 `writable_paths`；平台模块和公共能力只读。
+- Flyway 只追加，不修改 V84–V92；生产数据库不手工改表。
+- 新增迁移候选文件为 `server/src/platform/infrastructure/src/main/resources/db/migration/V93__data_migration_issue_independent_storage.sql`。
+- 当前范围文件已授权 V93；先完成 T-I1 基线复核，再按任务依赖进入产品实现。
+- 不迁移、不归档、不保留 `dm_asset(asset_type='ISSUE')` 历史数据；清理前按环境执行计数和备份策略检查。
+- 不删除 `dm_asset.structured_data`、REPORT 字段、附件字段、组件关联和通用审计字段。
+- 保持 `/api/data-migration/issues` 路由、统一 `ApiResponse`、认证、RBAC、租户隔离、实体授权和 `dm_operation_log` 审计。
+
+## 文件职责地图
+
+- 新建（候选，当前未授权）：`server/src/platform/infrastructure/src/main/resources/db/migration/V93__data_migration_issue_independent_storage.sql`：创建 `dm_issue`、索引并清理旧 ISSUE 行/关系。
+- 修改：`server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java`：从 `dm_issue` 读写结构化列和关系。
+- 修改：`server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueController.java`：保持路由，调整响应字段投影。
+- 修改：`server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java` 及相关测试：问题 XLSX 改为 `dm_issue` 列。
+- 修改：`server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/AssetService.java`、`StructuredAssetService.java`：移除 ISSUE 类型白名单和旧 ISSUE SQL。
+- 修改/新增测试：`server/src/modules/data-migration/src/test/**`：覆盖 CRUD、筛选、导入导出、关系、权限、审计和非 ISSUE 回归。
+- 修改：`docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md`：反映独立 `dm_issue` 结构和关系。
+
+## 任务依赖图与并行策略
+
+串行依赖：`T-I1 -> T-I2 -> T-I3 -> T-I4 -> T-I5`。
+
+数据库迁移、服务 SQL 和关系契约共享 `dm_issue` 字段，不能并行修改。T-I1 未解除范围阻断前，不启动 T-I2–T-I5。
+
+## 范围授权阻断点
+
+当前 `docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml` 的 `database.migration_files` 与 `scope.writable_paths` 只列到 V92，没有授权新建 V93。根据项目规约：
+
+1. 不能修改已发布 V92 或其他历史迁移脚本来绕过授权。
+2. 不能在未授权路径创建 V93。
+3. 没有 V93，无法把 `dm_issue` 建表和旧 ISSUE 清理作为可重复部署的正式迁移交付。
+4. 因此当前只能生成计划和做只读基线，不能执行产品代码、数据库或删除操作。
+
+解除条件：由需求 Owner/授权维护者更新当前 `codex-task-scope.yaml`，至少增加：
+
+```text
+server/src/platform/infrastructure/src/main/resources/db/migration/V93__data_migration_issue_independent_storage.sql
+```
+
+并同步更新 `database.migration_files`、`release_verification` 或等价验收范围。范围更新后重新运行：
+
+```bash
+node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree
+```
+
+### T-I1：范围和数据库基线（已解除）
+
+**需求映射：** R-I1, R-I2, R-I4
+
+**前置任务：** 无
+
+**文件：** 只读 `codex-task-scope.yaml`、Flyway 目录、IssueService、数据库；解除范围后才允许创建 V93。
+
+**步骤：**
+
+- [ ] 记录 `origin/main` 与当前 HEAD 基线，确认 `origin/main` 无新增提交。
+- [ ] 记录本地和目标环境 `dm_asset` ISSUE 行数、`dm_asset_relation` ISSUE 源关系数、`pm_project` 可用性。
+- [x] 检查 V93 已进入 writable_paths；范围阻断已解除。
+
+**验收：** 基线 SQL、scope 检查和当前分支状态均有原始输出；未授权时产品 diff 为 0。
+
+**回滚：** 无产品修改，不需要回滚。
+
+**停止条件：** V93 未授权、目标环境不是明确的本地/批准测试库、发现 ISSUE 数据量非零但没有清理审批。
+
+**升级条件：** Owner 不同意新增 V93，或要求保留历史数据/改用其他迁移策略。
+
+### T-I2：独立表和清理迁移
+
+**需求映射：** R-I1, R-I2, R-I4
+
+**前置任务：** T-I1 通过范围门禁
+
+**文件：** 新建 V93 候选迁移；修改数据库结构文档。
+
+**接口：** 产出 `dm_issue` 表、唯一键、筛选索引、逻辑删除字段；清理旧 ISSUE 行和 `source_asset_type='ISSUE'` 关系。
+
+**步骤：**
+
+- [ ] 创建 `dm_issue`，字段与设计文档一致，唯一键覆盖租户/项目/问题编号/删除状态。
+- [ ] 在明确的清理顺序下删除旧 ISSUE 关系和 `dm_asset` ISSUE 行；不复制数据。
+- [ ] 运行 Flyway 静态检查和本地迁移，验证 `SHOW CREATE TABLE`、旧数据计数和关系计数。
+
+**验收：** `dm_issue` 存在；旧 ISSUE 数据与关系为 0；REPORT/RULE/PARAMETER/附件数据不受影响。
+
+**回滚：** 应用回滚不重新启用旧 ISSUE 路径；数据恢复只能使用迁移前数据库备份，经审批执行。
+
+**停止条件：** 迁移执行环境无法确认、清理前计数未记录、删除影响非 ISSUE 数据或存在跨租户关系。
+
+**升级条件：** 需要生产执行、需要保留历史数据、或发现 V93 与现有 Flyway 版本冲突。
+
+### T-I3：后端问题服务和关系契约
+
+**需求映射：** R-I1, R-I3, R-I4, R-I6
+
+**前置任务：** T-I2
+
+**文件：** 修改 IssueService、IssueController、ExcelService；修改/新增 `server/src/modules/data-migration/src/test/**`。
+
+**接口：** 保持 `/api/data-migration/issues` 路由；请求字段映射到 `dm_issue` 列；关系源 ID 使用 `dm_issue.id`。
+
+**步骤：**
+
+- [ ] 将列表、详情、创建、更新、删除、恢复、清理和选项 SQL 改为 `dm_issue`。
+- [ ] 将问题字段 JSON 读取改为列投影，保留码值、分页、关键字、租户和实体授权校验。
+- [ ] 更新会议纪要、目标表、字段关系的增删查，校验目标类型和租户。
+- [ ] 将问题 Excel 导入/导出改为结构化列，逐行错误契约保持不变。
+- [ ] 从 AssetService/StructuredAssetService/ExcelService 类型集合移除 ISSUE。
+
+**验收：** 静态搜索无 `dm_asset` ISSUE CRUD；问题模块测试覆盖 200/400/403/404/409 和租户边界；非 ISSUE 测试通过。
+
+**回滚：** 在未完成前端切换前不发布；应用回退只能停用问题菜单和接口，不恢复旧 ISSUE 路径。
+
+**停止条件：** 发现仍需从 dm_asset 读取问题字段，或关系目标校验无法证明租户安全。
+
+**升级条件：** API 兼容需要新增版本化路由，或前端依赖旧 `structured_data` 响应。
+
+### T-I4：前端和接口回归
+
+**需求映射：** R-I3, R-I6
+
+**前置任务：** T-I3
+
+**文件：** 修改 `web/src/api/data-migration.ts`、问题清单页面和相关类型/测试（仅当前 writable_paths）。
+
+**步骤：**
+
+- [ ] 按新的结构化响应调整问题列表、详情、编辑抽屉、导入导出和回收站。
+- [ ] 验证加载、空、失败、无权限、提交中、重复提交和关系目标不存在状态。
+- [ ] 运行 `npm --prefix web run build`，并按需求视口验证问题清单页面。
+
+**验收：** 桌面和 375x812、390x844、430x932 页面无白屏/横向溢出，接口不再发送 `structured_data` 问题 JSON。
+
+**回滚：** 回退前端变更，后端数据模型不回退到 dm_asset ISSUE。
+
+**停止条件：** 前端仍依赖旧 JSON 字段或出现权限/关系信息泄露。
+
+**升级条件：** 需要修改公共 UI 组件或跨模块契约。
+
+### T-I5：集成验证与收敛
+
+**需求映射：** R-I1–R-I6
+
+**前置任务：** T-I4
+
+**文件：** 只更新当前任务前缀的 execution/observation/convergence 证据。
+
+**步骤：**
+
+- [ ] 运行 `mvn -pl :ccb-data-migration -am test`、`mvn test`、`npm --prefix web run build`。
+- [ ] 运行治理检查、scope 检查和 `git diff --check`。
+- [ ] 本地 `MOCK_DATA_ENABLED=false` 启动后端和前端，验证问题清单 CRUD、关系、权限和回收站。
+- [ ] 进行至少三次异质采样：数据库结构/计数、静态 SQL 契约、HTTP/浏览器行为。
+- [ ] 只有所有 must 需求通过且迁移、权限、回归和残余风险收敛后，才进入 `converged`。
+
+**验收：** 六项增量需求均有独立证据；不存在旧 ISSUE 数据源；通用资产回归通过。
+
+**回滚：** 按应用提交逆序回退；数据库清理不通过应用回滚恢复，使用批准的备份恢复方案。
+
+**停止条件：** 任何 P0/P1、迁移失败、越权、旧数据源残留、通用资产回归失败或浏览器白屏。
+
+**升级条件：** 需要生产访问、合并、推送或修改任务范围之外的文件。
+
+## 增量需求覆盖
+
+- R-I1：T-I2、T-I3、T-I5
+- R-I2：T-I1、T-I2、T-I5
+- R-I3：T-I3、T-I4、T-I5
+- R-I4：T-I2、T-I3、T-I5
+- R-I5：T-I3、T-I5
+- R-I6：T-I3、T-I4、T-I5
+
+## 历史范围阻断（已解除）
+
+此前 V93 未列入 `codex-task-scope.yaml`，因此 T-I2 至 T-I5 曾被阻断。用户已授权执行，授权维护者已将 V93 加入 `scope.writable_paths`、`database.migration_files` 和回滚说明；重新检查时仅报告工作区既有的 `application-local.yml` 越界，该文件不属于本次 data-migration 改动并按用户要求忽略。

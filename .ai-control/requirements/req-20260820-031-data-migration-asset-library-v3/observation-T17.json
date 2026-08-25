@@ -1,0 +1,16 @@
+{
+  "sample_label": "dm_issue independent storage migration recheck",
+  "task_ids": ["T-I2", "T-I3", "T-I4"],
+  "baseline_revision": "V92 and pre-change local counts",
+  "measurements": [
+    {"requirement_id": "R-I1", "sensor": "MySQL SHOW CREATE TABLE", "result": "pass", "raw_evidence": "dm_issue exists with structured issue columns and tenant/project/deleted indexes", "limitation": []},
+    {"requirement_id": "R-I2", "sensor": "MySQL count queries", "result": "pass", "raw_evidence": "dm_asset ISSUE=0 and dm_asset_relation source ISSUE=0 after V93 SQL", "limitation": []},
+    {"requirement_id": "R-I3", "sensor": "static service SQL inspection", "result": "pass", "raw_evidence": "IssueService reads/writes dm_issue and validates MEETING/TABLE/FIELD targets before dm_asset_relation insert", "limitation": []},
+    {"requirement_id": "R-I4", "sensor": "Maven tests, frontend build and authenticated HTTP workflow", "result": "pass", "raw_evidence": "14 data-migration tests passed; vue-tsc and Vite build passed; local authenticated create/get/update/delete/recycle/restore/purge all returned code=0", "limitation": ["browser visual workflow not sampled"]}
+  ],
+  "feedback": [],
+  "disturbances": ["scope output contains only existing application-local.yml out-of-scope change", "governance output contains unrelated historical ledger violations"],
+  "coverage_gaps": ["browser desktop/mobile CRUD and full normal-user permission matrix remain for a later runtime sample"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

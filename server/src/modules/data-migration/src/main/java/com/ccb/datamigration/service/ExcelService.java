@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ExcelService {
     private static final long MAX_SIZE = 50L * 1024 * 1024;
     private static final int MAX_ROWS = 5000;
-    private static final Set<String> TYPES = Set.of("RULE", "PARAMETER", "ISSUE", "TABLE_STRUCTURE", "INTERMEDIATE_TABLE");
+    private static final Set<String> TYPES = Set.of("RULE", "PARAMETER", "TABLE_STRUCTURE", "INTERMEDIATE_TABLE");
     private final JdbcTemplate jdbc;
     public ExcelService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
     public byte[] export(String type, AuthUser user) {
