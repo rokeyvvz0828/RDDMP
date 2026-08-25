@@ -7,6 +7,7 @@ import com.ccb.architecture.model.ParameterOption;
 import com.ccb.architecture.model.PhysicalSubsystemOption;
 import com.ccb.architecture.model.PhysicalSubsystemQuery;
 import com.ccb.architecture.model.UserOption;
+import com.ccb.architecture.environment.service.EnvironmentResourceService;
 import com.ccb.architecture.repository.ArchitectureSubsystemRepository;
 import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
@@ -35,7 +36,13 @@ public class ArchitectureOptionsService {
     private static final Set<String> PHYSICAL_PARAMETER_CATEGORIES = Set.of(
             PhysicalSubsystemService.RUNTIME_CATEGORY,
             PhysicalSubsystemService.SYSTEM_LEVEL_CATEGORY,
-            PhysicalSubsystemService.DEVELOPMENT_FRAMEWORK_CATEGORY);
+            PhysicalSubsystemService.DEVELOPMENT_FRAMEWORK_CATEGORY,
+            PhysicalSubsystemService.DEPLOYMENT_PLATFORM_CATEGORY,
+            PhysicalSubsystemService.DISASTER_RECOVERY_MODE_CATEGORY,
+            "ARCH_SERVER_TYPE",
+            EnvironmentResourceService.JDK_VERSION_CATEGORY,
+            EnvironmentResourceService.MIDDLEWARE_CATEGORY,
+            EnvironmentResourceService.OPERATING_SYSTEM_CATEGORY);
 
     private final OrganizationService organizationService;
     private final SystemReferenceQuery referenceQuery;
@@ -113,7 +120,10 @@ public class ArchitectureOptionsService {
                 actor.tenantId(), page, new PhysicalSubsystemQuery(normalizeOptional(code), null,
                         normalizeOptional(name), null, null, null, "ACTIVE"));
         List<PhysicalSubsystemOption> records = result.records().stream()
-                .map(item -> new PhysicalSubsystemOption(item.id(), item.code(), item.name(), item.status()))
+                .map(item -> new PhysicalSubsystemOption(item.id(), item.code(), item.shortName(),
+                        item.name(), item.businessGroupName(), item.businessContinuityLevel(),
+                        item.collectedSystemLevel(), item.deploymentPlatform(),
+                        item.disasterRecoveryMode(), item.systemLevelCode(), item.status()))
                 .toList();
         return new PageResult<>(records, result.total(), result.page(), result.size());
     }

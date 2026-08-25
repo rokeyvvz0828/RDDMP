@@ -53,6 +53,10 @@ export interface PhysicalSubsystem {
   logicalSubsystemCode: string
   logicalSubsystemName: string
   businessGroupName: string | null
+  businessContinuityLevel: string | null
+  collectedSystemLevel: string | null
+  deploymentPlatform: string | null
+  disasterRecoveryMode: string | null
   responsibleTeamOrgId: number
   responsibleTeamDisplayName: string
   responsibleTeamValid: boolean
@@ -97,6 +101,10 @@ export interface PhysicalDraftInput {
   name: string
   englishName: string | null
   businessGroupName: string | null
+  businessContinuityLevel: string | null
+  collectedSystemLevel: string | null
+  deploymentPlatform: string | null
+  disasterRecoveryMode: string | null
   responsibleTeamOrgId: number | null
   responsibleTeamNameSnapshot: string
   runtimeCode: string | null
@@ -396,6 +404,8 @@ export interface DeploymentUnit {
   physicalSubsystemStatus: string | null
   shortName: string
   name: string
+  relatedDeploymentUnitName: string | null
+  deploymentUnitType: string
   kind: DeploymentUnitKind
   status: DeploymentUnitStatus
   currentVersion: number
@@ -414,6 +424,8 @@ export interface DeploymentUnitVersion {
   versionNo: number
   shortName: string
   name: string
+  relatedDeploymentUnitName: string | null
+  deploymentUnitType: string
   kind: DeploymentUnitKind
   description: string | null
   remark: string | null
@@ -426,6 +438,8 @@ export interface DeploymentUnitPayload {
   physicalSubsystemId: number | null
   shortName: string
   name: string
+  relatedDeploymentUnitName: string | null
+  deploymentUnitType: string | null
   kind: DeploymentUnitKind | ''
   description: string | null
   remark: string | null
@@ -476,6 +490,201 @@ export interface DeploymentUnitImportBatchDetail {
 export interface PhysicalSubsystemOption {
   id: number
   code: string
+  shortName: string | null
   name: string
+  businessGroupName: string | null
+  businessContinuityLevel: string | null
+  collectedSystemLevel: string | null
+  deploymentPlatform: string | null
+  disasterRecoveryMode: string | null
+  systemLevelCode: string | null
   status: string
+}
+
+// ---------- 具体环境与资源申请 ----------
+
+export type EnvironmentRecordStatus = 'ACTIVE' | 'INACTIVE'
+export type ResourceRequestType = 'INITIAL' | 'EXPANSION' | 'SHRINK' | 'ADJUSTMENT'
+export type ResourceRequestStatus = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+
+export interface EnvironmentType {
+  code: string
+  name: string
+}
+
+export interface Environment {
+  id: number
+  code: string
+  name: string
+  typeCode: string
+  typeName: string
+  status: EnvironmentRecordStatus
+  description: string | null
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EnvironmentResourceSummary {
+  environmentId: number
+  requestCount: number
+  approvedRequestCount: number
+  pendingRequestCount: number
+  requestedCpuCores: number
+  requestedMemoryGb: number
+  requestedStorageGb: number
+  requestedNodeCount: number
+  actualCpuCores: number
+  actualMemoryGb: number
+  actualStorageGb: number
+  actualNodeCount: number
+}
+
+export interface EnvironmentDetail {
+  environment: Environment
+  resourceSummary: EnvironmentResourceSummary
+}
+
+export interface EnvironmentPayload {
+  code: string
+  name: string
+  typeCode: string | null
+  description: string | null
+  remark: string | null
+  rowVersion?: number | null
+}
+
+export interface ResourceRequestItemPayload {
+  deploymentUnitId: number | null
+  databaseStorageGb: number
+  fileStorageGb: number
+  networkZone: string | null
+  serverType: string | null
+  cpuCores: number
+  memoryGb: number
+  appWebGroupCount: number
+  plannedNodeCount: number
+  sidecarCpuCores: number
+  sidecarMemoryGb: number
+  hasSidecar: boolean
+  databaseName: string | null
+  databaseVersion: string | null
+  jdkVersion: string | null
+  middleware: string | null
+  operatingSystem: string | null
+  extraCbsGb: number
+  localDiskGb: number
+  needsNft: boolean
+  needsFserver: boolean
+  needsJobexecutor: boolean
+  remark: string | null
+}
+
+export interface ResourceRequestPayload {
+  physicalSubsystemId: number | null
+  environmentId: number | null
+  contactUserId: number | null
+  requestType: ResourceRequestType | ''
+  reason: string | null
+  items: ResourceRequestItemPayload[]
+  rowVersion?: number | null
+}
+
+export interface DeploymentUnitOption {
+  id: number
+  code: string
+  name: string
+  kind: DeploymentUnitKind
+  physicalSubsystemId: number
+  relatedDeploymentUnitName: string | null
+  deploymentUnitType: string | null
+  description: string | null
+}
+
+export interface ResourceRequestSummary {
+  id: number
+  requestNo: string
+  physicalSubsystemId: number
+  physicalSubsystemCode: string
+  physicalSubsystemShortName: string | null
+  physicalSubsystemName: string
+  physicalSubsystemBusinessGroupName: string | null
+  physicalSubsystemSystemLevelCode: string | null
+  physicalSubsystemDeploymentPlatform: string | null
+  physicalSubsystemDisasterRecoveryMode: string | null
+  environmentId: number
+  environmentCode: string
+  environmentName: string
+  environmentTypeName: string
+  applicantId: number
+  contactUserId: number
+  requestType: ResourceRequestType
+  reason: string | null
+  status: ResourceRequestStatus
+  currentBusinessRound: number
+  cancellationRequested: boolean
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ResourceRequestItem {
+  id: number
+  itemSeq: number
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  deploymentUnitKind: DeploymentUnitKind
+  relatedDeploymentUnitName: string | null
+  deploymentUnitDescription: string | null
+  deploymentUnitType: string | null
+  databaseStorageGb: number
+  fileStorageGb: number
+  networkZone: string | null
+  serverType: string | null
+  cpuCores: number
+  memoryGb: number
+  appWebGroupCount: number
+  plannedNodeCount: number
+  totalCpuCores: number
+  totalMemoryGb: number
+  sidecarCpuCores: number
+  sidecarMemoryGb: number
+  sidecarMemoryRatio: string | null
+  hasSidecar: boolean
+  databaseName: string | null
+  databaseVersion: string | null
+  jdkVersion: string | null
+  middleware: string | null
+  operatingSystem: string | null
+  extraCbsGb: number
+  localDiskGb: number
+  needsNft: boolean
+  needsFserver: boolean
+  needsJobexecutor: boolean
+  remark: string | null
+}
+
+export interface ResourceRequestHistory {
+  id: number
+  eventType: string
+  fromStatus: ResourceRequestStatus | null
+  toStatus: ResourceRequestStatus | null
+  businessRound: number
+  summary: string
+  snapshotJson: string | null
+  diffJson: string | null
+  operatorId: number
+  occurredAt: string
+}
+
+export interface ResourceRequestDetail {
+  request: ResourceRequestSummary
+  items: ResourceRequestItem[]
+  history: ResourceRequestHistory[]
 }

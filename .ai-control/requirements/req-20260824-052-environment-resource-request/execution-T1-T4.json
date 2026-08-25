@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260824-052-environment-resource-request",
+  "requirement_id": "REQ-20260824-052",
+  "recorded_at": "2026-08-24T18:05:00+08:00",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "status": "completed",
+      "summary": "追加 V91/V92 迁移，创建具体环境、环境类型、资源申请、资源申请明细、历史、工作流轮次和回执表；追加菜单、权限、环境资源办理角色和资源申请固定工作流草稿。",
+      "files": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V91__create_architecture_environment_resource_requests.sql",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V92__seed_architecture_environment_resource_requests.sql"
+      ]
+    },
+    {
+      "task_id": "T2",
+      "status": "completed",
+      "summary": "新增 architecture.environment 后端子包，提供环境主数据、资源申请状态机、工作流提交协调器、生命周期消费者、HTTP 控制器和服务级测试；批准只进入 APPROVED，不创建实际资源分配。",
+      "files": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/ResourceRequestSubmissionService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/integration/ResourceRequestWorkflowLifecycleConsumer.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java"
+      ]
+    },
+    {
+      "task_id": "T3",
+      "status": "completed",
+      "summary": "新增具体环境和资源申请前端页面、类型、API、路由和局部样式；修复架构模块样式文件既有冲突标记残留以恢复 CSS 语法。",
+      "files": [
+        "web/src/modules/architecture/EnvironmentPage.vue",
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/api.ts",
+        "web/src/modules/architecture/types.ts",
+        "web/src/modules/architecture/utils.ts",
+        "web/src/modules/architecture/architecture.css",
+        "web/src/router/index.ts"
+      ]
+    },
+    {
+      "task_id": "T4",
+      "status": "completed",
+      "summary": "同步治理与集成契约，明确具体环境和资源申请归属 architecture，真实资源分配、机器/IP 和环境部署实例留给后续需求。",
+      "files": [
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        "docs/integration/architecture-module-contract.md",
+        "server/src/modules/architecture/AGENTS.md",
+        "web/src/modules/architecture/AGENTS.md"
+      ]
+    }
+  ],
+  "scope_notes": [
+    "只修改 codex-task-scope.yaml 授权的当前需求范围和当前 .ai-control 前缀文件。",
+    "未实现资源履约、实际资源台账、机器/IP、环境部署实例、任务生成、网络连通或外部自动化。"
+  ]
+}

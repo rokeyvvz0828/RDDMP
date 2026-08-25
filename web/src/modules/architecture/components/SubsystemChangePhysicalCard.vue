@@ -16,6 +16,8 @@ const props = withDefaults(defineProps<{
   runtimes: ParameterOption[]
   levels: ParameterOption[]
   frameworks: ParameterOption[]
+  deploymentPlatforms?: ParameterOption[]
+  disasterRecoveryModes?: ParameterOption[]
   title?: string
   numberLabel?: string
   showLogicalTarget?: boolean
@@ -31,6 +33,8 @@ const props = withDefaults(defineProps<{
   showLogicalTarget: false,
   logicalTargetLocked: false,
   logicalTargetExclusions: () => [],
+  deploymentPlatforms: () => [],
+  disasterRecoveryModes: () => [],
   removable: false,
   readonly: false
 })
@@ -84,6 +88,22 @@ function teamChanged(value: number | null) {
       </el-form-item>
       <el-form-item label="所属事业群">
         <el-input v-model="model.businessGroupName" :disabled="readonly" maxlength="100" />
+      </el-form-item>
+      <el-form-item label="农信业务连续性等级">
+        <el-input v-model="model.businessContinuityLevel" :disabled="readonly" maxlength="32" />
+      </el-form-item>
+      <el-form-item label="项目组收集系统等级">
+        <el-input v-model="model.collectedSystemLevel" :disabled="readonly" maxlength="32" />
+      </el-form-item>
+      <el-form-item label="部署平台">
+        <el-select v-model="model.deploymentPlatform" :disabled="readonly" clearable>
+          <el-option v-for="item in deploymentPlatforms" :key="item.code" :label="item.label" :value="item.code" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="灾备模式">
+        <el-select v-model="model.disasterRecoveryMode" :disabled="readonly" clearable>
+          <el-option v-for="item in disasterRecoveryModes" :key="item.code" :label="item.label" :value="item.code" />
+        </el-select>
       </el-form-item>
       <el-form-item label="负责团队" required>
         <el-select

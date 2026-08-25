@@ -28,6 +28,7 @@ public class ArchitectureSubsystemRepository {
             """;
     private static final String PHYSICAL_COLUMNS = """
             id, code, short_name, name, logical_subsystem_id, business_group_name,
+            business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
             responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
             development_framework_code, owner_user_id, description, remark,
             created_by, updated_by, created_at, updated_at,
@@ -47,6 +48,8 @@ public class ArchitectureSubsystemRepository {
     private static final RowMapper<PhysicalSubsystem> PHYSICAL_MAPPER = (rs, rowNum) -> new PhysicalSubsystem(
             rs.getLong("id"), rs.getString("code"), rs.getString("short_name"), rs.getString("name"),
             rs.getLong("logical_subsystem_id"), rs.getString("business_group_name"),
+            rs.getString("business_continuity_level"), rs.getString("collected_system_level"),
+            rs.getString("deployment_platform"), rs.getString("disaster_recovery_mode"),
             rs.getLong("responsible_team_org_id"), rs.getString("responsible_team_name_snapshot"),
             rs.getString("runtime_code"), rs.getString("system_level_code"),
             rs.getString("development_framework_code"), nullableLong(rs, "owner_user_id"),
@@ -215,11 +218,14 @@ public class ArchitectureSubsystemRepository {
         jdbc.update("""
                 INSERT INTO arch_physical_subsystem
                     (id, tenant_id, code, short_name, name, logical_subsystem_id, business_group_name,
+                     business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
                      responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
                      development_framework_code, owner_user_id, description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, tenantId, command.code(), command.shortName(), command.name(), command.logicalSubsystemId(),
-                command.businessGroupName(), command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
+                command.businessGroupName(), command.businessContinuityLevel(), command.collectedSystemLevel(),
+                command.deploymentPlatform(), command.disasterRecoveryMode(),
+                command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
                 command.ownerUserId(), command.description(), command.remark(), actorId, actorId);
     }
@@ -229,12 +235,15 @@ public class ArchitectureSubsystemRepository {
         return jdbc.update("""
                 UPDATE arch_physical_subsystem
                 SET code = ?, short_name = ?, name = ?, logical_subsystem_id = ?, business_group_name = ?,
-                    responsible_team_org_id = ?, responsible_team_name_snapshot = ?, runtime_code = ?,
-                    system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
+                    business_continuity_level = ?, collected_system_level = ?, deployment_platform = ?,
+                    disaster_recovery_mode = ?, responsible_team_org_id = ?, responsible_team_name_snapshot = ?,
+                    runtime_code = ?, system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
                     description = ?, remark = ?, updated_by = ?
                 WHERE tenant_id = ? AND id = ? AND deleted = 0
                 """, command.code(), command.shortName(), command.name(), command.logicalSubsystemId(),
-                command.businessGroupName(), command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
+                command.businessGroupName(), command.businessContinuityLevel(), command.collectedSystemLevel(),
+                command.deploymentPlatform(), command.disasterRecoveryMode(),
+                command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
                 command.ownerUserId(), command.description(), command.remark(),
                 actorId, tenantId, id);

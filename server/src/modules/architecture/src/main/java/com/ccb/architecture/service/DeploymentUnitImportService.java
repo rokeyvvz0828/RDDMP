@@ -215,7 +215,7 @@ public class DeploymentUnitImportService {
                 throw badRequest("部署单元类型仅支持 应用、数据库、消息队列");
             }
             long unitId = unitService.publishInitial(actor, physical.id(), row.shortName(), row.name(),
-                    kind, row.description(), row.remark());
+                    kind, row.description(), null, defaultDeploymentUnitType(kind), row.remark());
             store.updateItemResult(actor.tenantId(), item.id(), ImportItemStatus.SUCCESS.name(), null, null, unitId);
             return ImportItemStatus.SUCCESS;
         } catch (BusinessException exception) {
@@ -441,6 +441,10 @@ public class DeploymentUnitImportService {
             }
         }
         return null;
+    }
+
+    private String defaultDeploymentUnitType(String kind) {
+        return "DATABASE".equalsIgnoreCase(kind) ? "DB" : "AP";
     }
 
     private RawRow parseRawRow(String rawJson) {

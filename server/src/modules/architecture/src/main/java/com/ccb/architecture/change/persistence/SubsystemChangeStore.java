@@ -73,6 +73,10 @@ public class SubsystemChangeStore {
                     rs.getString("name"),
                     rs.getString("english_name"),
                     rs.getString("business_group_name"),
+                    rs.getString("business_continuity_level"),
+                    rs.getString("collected_system_level"),
+                    rs.getString("deployment_platform"),
+                    rs.getString("disaster_recovery_mode"),
                     rs.getLong("responsible_team_org_id"),
                     rs.getString("responsible_team_name_snapshot"),
                     rs.getString("runtime_code"),
@@ -213,6 +217,7 @@ public class SubsystemChangeStore {
     private static final String PHYSICAL_DRAFT_COLUMNS = """
             application_id, line_no, tenant_id, source_physical_subsystem_id, target_logical_subsystem_id,
             short_name, name, english_name, business_group_name, responsible_team_org_id,
+            business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
             responsible_team_name_snapshot, runtime_code, system_level_code, development_framework_code,
             owner_user_id, description, remark, reserved_number_slot, source_row_version, draft_revision,
             submitted_snapshot_json, created_at, updated_at
@@ -770,13 +775,16 @@ public class SubsystemChangeStore {
         jdbc.update("""
                         INSERT INTO arch_physical_subsystem
                             (id, tenant_id, code, number_slot, short_name, name, logical_subsystem_id,
-                             english_name, business_group_name, responsible_team_org_id,
+                             english_name, business_group_name, business_continuity_level, collected_system_level,
+                             deployment_platform, disaster_recovery_mode, responsible_team_org_id,
                              responsible_team_name_snapshot, runtime_code, system_level_code,
                              development_framework_code, owner_user_id, description, remark, status, row_version,
                              created_by, updated_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, id, tenantId, code, numberSlot, draft.shortName(), draft.name(), logicalSubsystemId,
-                draft.englishName(), draft.businessGroupName(), draft.responsibleTeamOrgId(),
+                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
+                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
                 status.name(), rowVersion, actorId, actorId);
@@ -790,13 +798,16 @@ public class SubsystemChangeStore {
         return jdbc.update("""
                         UPDATE arch_physical_subsystem
                         SET short_name = ?, name = ?, english_name = ?, business_group_name = ?,
-                            responsible_team_org_id = ?, responsible_team_name_snapshot = ?, runtime_code = ?,
-                            system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
-                            description = ?, remark = ?, updated_by = ?, row_version = row_version + 1
+                            business_continuity_level = ?, collected_system_level = ?, deployment_platform = ?,
+                            disaster_recovery_mode = ?, responsible_team_org_id = ?,
+                            responsible_team_name_snapshot = ?, runtime_code = ?, system_level_code = ?,
+                            development_framework_code = ?, owner_user_id = ?, description = ?, remark = ?,
+                            updated_by = ?, row_version = row_version + 1
                         WHERE tenant_id = ? AND id = ? AND row_version = ?
                         """, draft.shortName(), draft.name(), draft.englishName(), draft.businessGroupName(),
-                draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(), draft.runtimeCode(),
-                draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
+                draft.businessContinuityLevel(), draft.collectedSystemLevel(), draft.deploymentPlatform(),
+                draft.disasterRecoveryMode(), draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(),
+                draft.runtimeCode(), draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
                 draft.description(), draft.remark(), actorId, tenantId, id, expectedRowVersion) == 1;
     }
 
@@ -832,13 +843,16 @@ public class SubsystemChangeStore {
                         INSERT INTO arch_subsystem_physical_draft
                             (application_id, line_no, tenant_id, source_physical_subsystem_id,
                              target_logical_subsystem_id, short_name, name, english_name, business_group_name,
-                             responsible_team_org_id, responsible_team_name_snapshot, runtime_code,
-                             system_level_code, development_framework_code, owner_user_id, description, remark,
+                             business_continuity_level, collected_system_level, deployment_platform,
+                             disaster_recovery_mode, responsible_team_org_id, responsible_team_name_snapshot,
+                             runtime_code, system_level_code, development_framework_code, owner_user_id, description, remark,
                              reserved_number_slot, source_row_version, draft_revision, submitted_snapshot_json)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, draft.applicationId(), draft.lineNo(), draft.tenantId(),
                 draft.sourcePhysicalSubsystemId(), draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(),
-                draft.englishName(), draft.businessGroupName(), draft.responsibleTeamOrgId(),
+                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
+                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
                 draft.reservedNumberSlot(), draft.sourceRowVersion(), draft.draftRevision(),

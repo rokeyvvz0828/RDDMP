@@ -1,0 +1,181 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260824-052",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260824-052-environment-resource-request/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260824-052-environment-resource-request",
+    "worktree": "C:/Users/missa/source/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/architecture/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V91__create_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__seed_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__move_environment_type_to_system_dictionary.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__expand_resource_request_registration_items.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__refine_resource_request_registration_ownership.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V96__refine_resource_request_resource_catalogs.sql",
+      "web/src/modules/architecture/**",
+      "web/src/router/index.ts",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/integration/architecture-module-contract.md",
+      "docs/requirements/REQ-20260824-052-environment-resource-request/**",
+      ".ai-control/requirements/req-20260824-052-environment-resource-request/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/attachment/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V5__create_workflow_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V77__create_architecture_subsystems.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V86__seed_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V89__create_architecture_network_work_orders.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V90__seed_architecture_network_work_orders.sql",
+      "web/src/api/http.ts",
+      "web/src/api/workflow.ts",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/stores/auth.ts",
+      "docs/integration/frontend-ui-contract.md",
+      "design-h5.md",
+      "temp/CONTEXT.md",
+      "temp/spec.md",
+      "temp/implementation/issues/03-environment-and-resource-request.md"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/internal/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      ".ai-control/original/**",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/**",
+      ".ai-control/requirements/req-20260823-051-clb-dns-certificate-work-orders/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260824-052",
+    "owner_approved": true,
+    "approval_evidence": "用户于 2026-08-24 下达“实现03：具体环境与资源申请”，批准在 business/architecture 内扩展环境类型、具体环境和资源申请能力，追加 V91-V92 迁移、809/810 菜单权限与 architecture.resource-request 固定工作流草稿；用户于 2026-08-25 纠正“环境类型放到字典里维护，不要自行维护”，批准追加 V93 将环境类型迁入系统字典；用户于 2026-08-25 要求按现有登记表重写资源申请，批准追加 V94 扩展资源申请明细登记字段；用户于 2026-08-25 明确服务器类型、灾备模式改由数据字典维护，资源申请改为从物理子系统、部署单元模型带出字段并移除来源任务号、最终确认人与联系方式，批准追加 V95 收口字段归属；用户于 2026-08-25 明确农信业务连续性等级和项目组收集系统等级改为物理子系统系统等级带出，容量类字段必须为整数，JDK/中间件/操作系统改由系统字典维护，批准追加 V96 收口资源申请登记字段。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "现有逻辑/物理子系统、部署单元、架构规范决策、网络专项工单 API 契约保持兼容",
+      "V91-V96 只追加，不修改 V1-V90；V93 将环境类型从架构自维护表迁入系统字典，V94 扩展资源申请明细为登记表字段，V95 将服务器类型/灾备模式纳入系统字典并收口资源申请字段归属，V96 将技术栈纳入字典、容量改为整数并移除明细层旧等级与物理字段",
+      "资源申请审批通过不创建环境部署实例，避免侵入 04 范围",
+      "新增菜单、权限和角色只补充，不删除既有授权"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V91__create_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__seed_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__move_environment_type_to_system_dictionary.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__expand_resource_request_registration_items.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__refine_resource_request_registration_ownership.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V96__refine_resource_request_resource_catalogs.sql"
+    ],
+    "compatibility_and_rollback": "只追加 V91-V96。V91 建立旧环境类型、具体环境、资源申请主表、明细、历史、工作流轮次和回执；V92 追加菜单 809/810、权限、角色 114 与固定工作流草稿；V93 将旧环境类型迁入系统字典 ARCH_ENVIRONMENT_TYPE，并把具体环境改为保存 type_code；V94 扩展资源申请明细登记表字段并允许零节点数据库存储需求；V95 追加 ARCH_SERVER_TYPE、ARCH_DISASTER_RECOVERY_MODE 字典，物理子系统/部署单元模型字段和资源申请联系人字段，并移除来源任务号及明细确认人；V96 追加 ARCH_JDK_VERSION、ARCH_MIDDLEWARE、ARCH_OPERATING_SYSTEM 字典，容量类字段改 BIGINT，并移除资源申请明细层旧等级与物理字段。应用回退保留迁移和数据，通过后续补偿迁移关闭入口或恢复兼容结构。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "development-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin"
+    },
+    {
+      "name": "environment-resource-unit",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "api",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "permission",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "architecture-module",
+      "command": "mvn -pl :ccb-architecture -am test"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "flyway",
+      "command": "node scripts/check-flyway-migrations.mjs"
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"
+    },
+    {
+      "name": "diff",
+      "command": "git diff --check"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "新增迁移、权限、工作流和业务状态机，必须保留服务端校验与审计",
+      "资源申请与实际分配边界必须清晰，不能提前创建环境部署实例",
+      "环境停用只阻止新申请，不应级联取消既有工单",
+      "固定工作流草稿需要平台发布入口发布后才能在真实运行中提交"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260824-052-environment-resource-request",
+    "control_justification": "跨数据库迁移、业务状态机、权限、工作流、前后端用户旅程和移动端验收，需要完整工程控制账本。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260824-052-environment-resource-request/baseline.json",
+      ".ai-control/requirements/req-20260824-052-environment-resource-request/model.json",
+      ".ai-control/requirements/req-20260824-052-environment-resource-request/control-plan.json",
+      ".ai-control/requirements/req-20260824-052-environment-resource-request/execution-T*.json",
+      ".ai-control/requirements/req-20260824-052-environment-resource-request/observation-T*.json",
+      ".ai-control/requirements/req-20260824-052-environment-resource-request/observation-environment-type-dictionary.json",
+      ".ai-control/requirements/req-20260824-052-environment-resource-request/convergence.json"
+    ],
+    "release_verification": [
+      "空库与 V90 增量库迁移到 V96",
+      "系统字典维护环境类型，具体环境维护、删除引用守卫和停用限制",
+      "资源申请登记表明细级联、重复部署单元明细、零节点数据库存储需求、联系人用户选择、物理子系统系统等级带出、DB/非 DB 字段分流、容量整数校验和申请态汇总",
+      "草稿、提交、退回、批准、拒绝、取消和历史追踪",
+      "权限矩阵、租户隔离与审计",
+      "桌面与移动视口真实浏览器 UAT"
+    ],
+    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V91-V96 与业务数据；通过后续补偿迁移隐藏菜单、撤销授权或恢复兼容结构，不执行生产逆向删除。"
+  }
+}

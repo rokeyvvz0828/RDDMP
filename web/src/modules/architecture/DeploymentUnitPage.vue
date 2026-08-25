@@ -66,6 +66,8 @@ const form = reactive<DeploymentUnitPayload>({
   physicalSubsystemId: null,
   shortName: '',
   name: '',
+  relatedDeploymentUnitName: null,
+  deploymentUnitType: 'AP',
   kind: '',
   description: null,
   remark: null,
@@ -81,6 +83,23 @@ const canView = computed(() => auth.hasPermission('architecture:deployment-unit:
   || auth.hasPermission('architecture:deployment-unit:manage')
   || ['architecture:view', 'architecture:apply', 'architecture:manage'].some(p => auth.hasPermission(p)))
 const canManage = computed(() => auth.hasPermission('architecture:deployment-unit:manage'))
+
+function text(value: string | null | undefined) {
+  const normalized = value?.trim()
+  return normalized || null
+}
+
+function registrationTypeLabel(value: string | null | undefined) {
+  return value || '—'
+}
+
+function defaultRegistrationType(kind: DeploymentUnitKind | '') {
+  return kind === 'DATABASE' ? 'DB' : 'AP'
+}
+
+function allowedRegistrationTypes(kind: DeploymentUnitKind | '') {
+  return kind === 'DATABASE' ? ['DB'] : ['AP', 'WB', 'PL']
+}
 
 async function loadPhysicals() {
   try {
@@ -141,7 +160,17 @@ async function loadVersions(id: number) {
 }
 
 function openCreate() {
-  Object.assign(form, { physicalSubsystemId: null, shortName: '', name: '', kind: '', description: null, remark: null, rowVersion: null })
+  Object.assign(form, {
+    physicalSubsystemId: null,
+    shortName: '',
+    name: '',
+    relatedDeploymentUnitName: null,
+    deploymentUnitType: 'AP',
+    kind: '',
+    description: null,
+    remark: null,
+    rowVersion: null
+  })
   formMode.value = 'create'
   formError.value = ''
   formOpen.value = true
@@ -152,6 +181,8 @@ function openEdit(unit: DeploymentUnit) {
     physicalSubsystemId: null,
     shortName: unit.shortName,
     name: unit.name,
+    relatedDeploymentUnitName: unit.relatedDeploymentUnitName,
+    deploymentUnitType: unit.deploymentUnitType,
     kind: unit.kind,
     description: unit.description,
     remark: unit.remark,
@@ -172,6 +203,14 @@ async function submitForm() {
     formError.value = '请选择部署单元类型'
     return
   }
+  if (!form.deploymentUnitType) {
+    formError.value = '请选择登记表部署单元类型'
+    return
+  }
+  if (!allowedRegistrationTypes(form.kind).includes(form.deploymentUnitType)) {
+    formError.value = form.kind === 'DATABASE' ? '数据库部署单元的登记表类型必须为 DB' : '非数据库部署单元不能登记为 DB'
+    return
+  }
   if (formMode.value === 'create' && !form.physicalSubsystemId) {
     formError.value = '请选择所属物理子系统'
     return
@@ -179,20 +218,22 @@ async function submitForm() {
   formSubmitting.value = true
   formError.value = ''
   try {
+    const payload: DeploymentUnitPayload = {
+      physicalSubsystemId: form.physicalSubsystemId,
+      shortName: form.shortName,
+      name: form.name,
+      relatedDeploymentUnitName: text(form.relatedDeploymentUnitName),
+      deploymentUnitType: form.deploymentUnitType,
+      kind: form.kind as DeploymentUnitKind,
+      description: text(form.description),
+      remark: text(form.remark),
+      rowVersion: form.rowVersion
+    }
     if (formMode.value === 'create') {
-      await createDeploymentUnit({ ...form })
+      await createDeploymentUnit(payload)
       ElMessage.success('部署单元已创建并发布版本 1')
     } else {
-      const payload: DeploymentUnitPayload = {
-        physicalSubsystemId: null,
-        shortName: form.shortName,
-        name: form.name,
-        kind: form.kind as DeploymentUnitKind,
-        description: form.description,
-        remark: form.remark,
-        rowVersion: form.rowVersion
-      }
-      const updated = await updateDeploymentUnit(detail.value!.id, payload)
+      const updated = await updateDeploymentUnit(detail.value!.id, { ...payload, physicalSubsystemId: null })
       ElMessage.success(`已发布新版本 v${updated.currentVersion}`)
       detail.value = updated
       void loadVersions(updated.id)
@@ -272,6 +313,13 @@ function changePageSize(value: number) { pageSize.value = value; page.value = 1;
 watch(canView, allowed => {
   if (allowed) void Promise.all([load(), loadPhysicals()])
 }, { immediate: true })
+
+watch(() => form.kind, value => {
+  const allowed = allowedRegistrationTypes(value)
+  if (!form.deploymentUnitType || !allowed.includes(form.deploymentUnitType)) {
+    form.deploymentUnitType = defaultRegistrationType(value)
+  }
+})
 </script>
 
 <template>
@@ -299,6 +347,7 @@ watch(canView, allowed => {
         <el-table-column label="部署单元" min-width="220"><template #default="scope"><button type="button" class="architecture-table-identity" @click="showDetail(scope.row)"><strong>{{ scope.row.name }}</strong><small>{{ scope.row.code || '—' }} · {{ scope.row.shortName }}</small></button></template></el-table-column>
         <el-table-column label="状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="deploymentUnitStatusLabels" :tone="deploymentUnitStatusTone(scope.row.status)" /></template></el-table-column>
         <el-table-column label="类型" width="100"><template #default="scope">{{ deploymentUnitKindLabels[scope.row.kind as DeploymentUnitKind] }}</template></el-table-column>
+        <el-table-column label="登记类型" width="100"><template #default="scope">{{ registrationTypeLabel(scope.row.deploymentUnitType) }}</template></el-table-column>
         <el-table-column label="所属物理子系统" min-width="180"><template #default="scope">{{ scope.row.physicalSubsystemName }}<small class="architecture-inline-code">{{ scope.row.physicalSubsystemCode }}</small></template></el-table-column>
         <el-table-column label="当前版本" width="100"><template #default="scope">v{{ scope.row.currentVersion }}</template></el-table-column>
         <el-table-column label="最后更新" width="145"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
@@ -307,7 +356,7 @@ watch(canView, allowed => {
       </UiDataTable>
 
       <div v-if="rows.length || loading" v-loading="loading" class="architecture-mobile-list" :class="{ 'is-loading': loading }">
-        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code || '—' }} · {{ row.shortName }}</small></div><UiStatusTag :value="row.status" :labels="deploymentUnitStatusLabels" :tone="deploymentUnitStatusTone(row.status)" /></header><dl><div><dt>类型</dt><dd>{{ deploymentUnitKindLabels[row.kind] }}</dd></div><div><dt>所属物理子系统</dt><dd>{{ row.physicalSubsystemName }}（{{ row.physicalSubsystemCode }}）</dd></div><div><dt>当前版本</dt><dd>v{{ row.currentVersion }}</dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-dropdown v-if="canManage" @command="(command: string | number | object) => handleMaintainCommand(command, row)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>维护</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-if="row.status === 'ACTIVE'" command="edit">修改并发布新版本</el-dropdown-item><el-dropdown-item v-if="row.status === 'ACTIVE'" command="deactivate" divided>停用</el-dropdown-item><el-dropdown-item v-if="row.status === 'INACTIVE'" command="reactivate">重新启用</el-dropdown-item><el-dropdown-item v-if="row.status === 'ACTIVE' || row.status === 'INACTIVE'" command="void" divided>作废</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
+        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code || '—' }} · {{ row.shortName }}</small></div><UiStatusTag :value="row.status" :labels="deploymentUnitStatusLabels" :tone="deploymentUnitStatusTone(row.status)" /></header><dl><div><dt>类型</dt><dd>{{ deploymentUnitKindLabels[row.kind] }}</dd></div><div><dt>登记类型</dt><dd>{{ registrationTypeLabel(row.deploymentUnitType) }}</dd></div><div><dt>所属物理子系统</dt><dd>{{ row.physicalSubsystemName }}（{{ row.physicalSubsystemCode }}）</dd></div><div><dt>当前版本</dt><dd>v{{ row.currentVersion }}</dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-dropdown v-if="canManage" @command="(command: string | number | object) => handleMaintainCommand(command, row)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>维护</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-if="row.status === 'ACTIVE'" command="edit">修改并发布新版本</el-dropdown-item><el-dropdown-item v-if="row.status === 'ACTIVE'" command="deactivate" divided>停用</el-dropdown-item><el-dropdown-item v-if="row.status === 'INACTIVE'" command="reactivate">重新启用</el-dropdown-item><el-dropdown-item v-if="row.status === 'ACTIVE' || row.status === 'INACTIVE'" command="void" divided>作废</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
         <div class="architecture-table-footer"><el-pagination :current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="changePage" /></div>
       </div>
       <UiEmptyState v-if="!loading && !rows.length" title="暂无部署单元" description="在已发布的物理子系统下创建，或通过初始化导入批量接入存量部署单元。"><template #action><el-button v-if="canManage" type="primary" @click="openCreate">新建部署单元</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
@@ -341,6 +390,12 @@ watch(canView, allowed => {
           </el-radio-group>
           <p class="architecture-form-hint">数据库、MQ 等满足独立生命周期边界的服务同样以部署单元表达。</p>
         </el-form-item>
+        <el-form-item label="登记表部署单元类型">
+          <el-select v-model="form.deploymentUnitType" style="width:100%">
+            <el-option v-for="type in allowedRegistrationTypes(form.kind)" :key="type" :label="type" :value="type" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关联部署单元名称"><el-input v-model="form.relatedDeploymentUnitName" maxlength="500" show-word-limit /></el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" maxlength="2000" show-word-limit /></el-form-item>
         <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="2" maxlength="1000" show-word-limit /></el-form-item>
         <el-alert v-if="formMode === 'edit'" type="info" :closable="false" show-icon title="保存后立即发布新版本，历史版本保持不可改写。" />

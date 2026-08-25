@@ -17,8 +17,14 @@ import type {
   DeploymentUnit,
   DeploymentUnitImportBatch,
   DeploymentUnitImportBatchDetail,
+  DeploymentUnitOption,
   DeploymentUnitPayload,
   DeploymentUnitVersion,
+  Environment,
+  EnvironmentDetail,
+  EnvironmentPayload,
+  EnvironmentRecordStatus,
+  EnvironmentType,
   LogicalSubsystem,
   LogicalSubsystemOption,
   MaterialKind,
@@ -28,6 +34,10 @@ import type {
   PhysicalSubsystem,
   PublicationIntentView,
   ReviewMethod,
+  ResourceRequestDetail,
+  ResourceRequestPayload,
+  ResourceRequestStatus,
+  ResourceRequestSummary,
   StandardCategory,
   StandardDocumentDetail,
   StandardDocumentStatus,
@@ -358,6 +368,88 @@ export async function loadPhysicalSubsystemOptions(keyword = '', size = 50) {
   return (await http.get<ApiResponse<PageResult<PhysicalSubsystemOption>>>('/architecture/options/deployment-unit/physical-subsystems', {
     params: compact({ page: 1, size, ...filter })
   })).data.data.records
+}
+
+// ---------- 具体环境与资源申请 ----------
+
+export async function listEnvironmentTypes(query: { status?: EnvironmentRecordStatus | '' } = {}) {
+  return (await http.get<ApiResponse<EnvironmentType[]>>('/architecture/environment-types', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function listEnvironments(query: {
+  typeCode?: string | null
+  status?: EnvironmentRecordStatus | ''
+  keyword?: string
+  limit?: number
+  offset?: number
+}) {
+  return (await http.get<ApiResponse<Environment[]>>('/architecture/environments', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function getEnvironment(id: number) {
+  return (await http.get<ApiResponse<EnvironmentDetail>>(`/architecture/environments/${id}`)).data.data
+}
+
+export async function createEnvironment(payload: EnvironmentPayload) {
+  return (await http.post<ApiResponse<Environment>>('/architecture/environments', payload)).data.data
+}
+
+export async function updateEnvironment(id: number, payload: EnvironmentPayload) {
+  return (await http.put<ApiResponse<Environment>>(`/architecture/environments/${id}`, payload)).data.data
+}
+
+export async function deactivateEnvironment(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<Environment>>(`/architecture/environments/${id}/deactivate`, { rowVersion })).data.data
+}
+
+export async function reactivateEnvironment(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<Environment>>(`/architecture/environments/${id}/reactivate`, { rowVersion })).data.data
+}
+
+export async function deleteEnvironment(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<void>>(`/architecture/environments/${id}/delete`, { rowVersion })).data
+}
+
+export async function loadResourceDeploymentUnitOptions(physicalSubsystemId: number, limit = 100) {
+  return (await http.get<ApiResponse<DeploymentUnitOption[]>>('/architecture/resource-requests/options/deployment-units', {
+    params: compact({ physicalSubsystemId, limit })
+  })).data.data
+}
+
+export async function listResourceRequests(query: {
+  status?: ResourceRequestStatus | ''
+  environmentId?: number | null
+  physicalSubsystemId?: number | null
+  limit?: number
+  offset?: number
+}) {
+  return (await http.get<ApiResponse<ResourceRequestSummary[]>>('/architecture/resource-requests', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function getResourceRequest(id: number) {
+  return (await http.get<ApiResponse<ResourceRequestDetail>>(`/architecture/resource-requests/${id}`)).data.data
+}
+
+export async function createResourceRequest(payload: ResourceRequestPayload) {
+  return (await http.post<ApiResponse<ResourceRequestDetail>>('/architecture/resource-requests', payload)).data.data
+}
+
+export async function updateResourceRequest(id: number, payload: ResourceRequestPayload) {
+  return (await http.put<ApiResponse<ResourceRequestDetail>>(`/architecture/resource-requests/${id}`, payload)).data.data
+}
+
+export async function submitResourceRequest(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<ResourceRequestDetail>>(`/architecture/resource-requests/${id}/submit`, { rowVersion })).data.data
+}
+
+export async function cancelResourceRequest(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<ResourceRequestDetail>>(`/architecture/resource-requests/${id}/cancel`, { rowVersion })).data.data
 }
 
 // ---------- 部署单元初始化导入 ----------

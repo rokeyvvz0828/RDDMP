@@ -48,6 +48,8 @@ public final class DeploymentUnitModels {
             long physicalSubsystemId,
             String shortName,
             String name,
+            String relatedDeploymentUnitName,
+            String deploymentUnitType,
             String kind,
             String status,
             int currentVersion,
@@ -58,6 +60,14 @@ public final class DeploymentUnitModels {
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             long rowVersion) {
+
+        public DeploymentUnit(long id, String code, long physicalSubsystemId, String shortName, String name,
+                              String kind, String status, int currentVersion, String description, String remark,
+                              long createdBy, long updatedBy, LocalDateTime createdAt, LocalDateTime updatedAt,
+                              long rowVersion) {
+            this(id, code, physicalSubsystemId, shortName, name, null, defaultRegistrationType(kind), kind, status,
+                    currentVersion, description, remark, createdBy, updatedBy, createdAt, updatedAt, rowVersion);
+        }
     }
 
     /** 部署单元发布版本快照（不可改写）。 */
@@ -67,11 +77,20 @@ public final class DeploymentUnitModels {
             int versionNo,
             String shortName,
             String name,
+            String relatedDeploymentUnitName,
+            String deploymentUnitType,
             String kind,
             String description,
             String remark,
             long publishedBy,
             LocalDateTime publishedAt) {
+
+        public DeploymentUnitVersion(long id, long unitId, int versionNo, String shortName, String name,
+                                     String kind, String description, String remark,
+                                     long publishedBy, LocalDateTime publishedAt) {
+            this(id, unitId, versionNo, shortName, name, null, defaultRegistrationType(kind), kind, description,
+                    remark, publishedBy, publishedAt);
+        }
     }
 
     /** 创建/更新部署单元命令；归属物理子系统只在创建时提供。 */
@@ -79,10 +98,17 @@ public final class DeploymentUnitModels {
             Long physicalSubsystemId,
             String shortName,
             String name,
+            String relatedDeploymentUnitName,
+            String deploymentUnitType,
             String kind,
             String description,
             String remark,
             Long rowVersion) {
+
+        public DeploymentUnitCommand(Long physicalSubsystemId, String shortName, String name, String kind,
+                                     String description, String remark, Long rowVersion) {
+            this(physicalSubsystemId, shortName, name, null, null, kind, description, remark, rowVersion);
+        }
     }
 
     /** 部署单元分页查询条件。 */
@@ -127,5 +153,9 @@ public final class DeploymentUnitModels {
             String note,
             Long unitId,
             LocalDateTime createdAt) {
+    }
+
+    private static String defaultRegistrationType(String kind) {
+        return kind != null && "DATABASE".equalsIgnoreCase(kind) ? "DB" : "AP";
     }
 }

@@ -126,6 +126,7 @@ public final class SubsystemChangeModels {
             String submittedSnapshotJson,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
+
     }
 
     /** V82 物理子系统草稿，lineNo 保持草稿内稳定顺序。 */
@@ -139,6 +140,10 @@ public final class SubsystemChangeModels {
             String name,
             String englishName,
             String businessGroupName,
+            String businessContinuityLevel,
+            String collectedSystemLevel,
+            String deploymentPlatform,
+            String disasterRecoveryMode,
             long responsibleTeamOrgId,
             String responsibleTeamNameSnapshot,
             String runtimeCode,
@@ -153,6 +158,21 @@ public final class SubsystemChangeModels {
             String submittedSnapshotJson,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
+
+        /** 兼容 V82-V94 期间不含登记表来源字段的测试与内部构造。 */
+        public PhysicalDraft(long applicationId, int lineNo, long tenantId, Long sourcePhysicalSubsystemId,
+                             Long targetLogicalSubsystemId, String shortName, String name, String englishName,
+                             String businessGroupName, long responsibleTeamOrgId,
+                             String responsibleTeamNameSnapshot, String runtimeCode, String systemLevelCode,
+                             String developmentFrameworkCode, Long ownerUserId, String description, String remark,
+                             String reservedNumberSlot, Long sourceRowVersion, int draftRevision,
+                             String submittedSnapshotJson, LocalDateTime createdAt, LocalDateTime updatedAt) {
+            this(applicationId, lineNo, tenantId, sourcePhysicalSubsystemId, targetLogicalSubsystemId,
+                    shortName, name, englishName, businessGroupName, null, null, null, null,
+                    responsibleTeamOrgId, responsibleTeamNameSnapshot, runtimeCode, systemLevelCode,
+                    developmentFrameworkCode, ownerUserId, description, remark, reservedNumberSlot,
+                    sourceRowVersion, draftRevision, submittedSnapshotJson, createdAt, updatedAt);
+        }
     }
 
     /** V82 不可变工单历史。 */

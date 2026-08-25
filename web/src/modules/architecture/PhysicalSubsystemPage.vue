@@ -56,6 +56,8 @@ const logicalSubsystems = ref<LogicalSubsystemOption[]>([])
 const runtimes = ref<ParameterOption[]>([])
 const levels = ref<ParameterOption[]>([])
 const frameworks = ref<ParameterOption[]>([])
+const deploymentPlatforms = ref<ParameterOption[]>([])
+const disasterRecoveryModes = ref<ParameterOption[]>([])
 const statusOptions: PublishedSubsystemStatus[] = ['ACTIVE', 'OFFLINE', 'VOIDED']
 const filters = reactive({
   code: '',
@@ -84,6 +86,10 @@ const detailItems = computed<DetailItem[]>(() => detail.value ? [
   { label: '所属逻辑子系统', value: `${detail.value.logicalSubsystemName}（${detail.value.logicalSubsystemCode}）` },
   { label: '逻辑子系统状态', value: detail.value.logicalSubsystemStatus ? publishedStatusLabels[detail.value.logicalSubsystemStatus] : '—' },
   { label: '所属事业群', value: detail.value.businessGroupName || '—' },
+  { label: '农信业务连续性等级', value: detail.value.businessContinuityLevel || '—' },
+  { label: '项目组收集系统等级', value: detail.value.collectedSystemLevel || '—' },
+  { label: '部署平台', value: optionLabel(deploymentPlatforms.value, detail.value.deploymentPlatform) },
+  { label: '灾备模式', value: optionLabel(disasterRecoveryModes.value, detail.value.disasterRecoveryMode) },
   { label: '负责团队', value: detail.value.responsibleTeamDisplayName, tone: detail.value.responsibleTeamValid ? undefined : 'warning' },
   { label: '团队引用', value: detail.value.responsibleTeamValid ? '当前有效' : '已失效，变更时必须重选', tone: detail.value.responsibleTeamValid ? undefined : 'warning' },
   { label: '系统运行时间', value: optionLabel(runtimes.value, detail.value.runtimeCode) },
@@ -104,13 +110,17 @@ async function loadReferences() {
     loadLogicalSubsystemOptions('', 100),
     loadParameterOptions('physical-subsystem', 'ARCH_RUNTIME'),
     loadParameterOptions('physical-subsystem', 'ARCH_SYSTEM_LEVEL'),
-    loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK')
+    loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK'),
+    loadParameterOptions('physical-subsystem', 'ARCH_DEPLOYMENT_PLATFORM'),
+    loadParameterOptions('physical-subsystem', 'ARCH_DISASTER_RECOVERY_MODE')
   ])
   if (results[0].status === 'fulfilled') organizations.value = results[0].value
   if (results[1].status === 'fulfilled') logicalSubsystems.value = results[1].value
   if (results[2].status === 'fulfilled') runtimes.value = results[2].value
   if (results[3].status === 'fulfilled') levels.value = results[3].value
   if (results[4].status === 'fulfilled') frameworks.value = results[4].value
+  if (results[5].status === 'fulfilled') deploymentPlatforms.value = results[5].value
+  if (results[6].status === 'fulfilled') disasterRecoveryModes.value = results[6].value
 }
 
 async function load() {

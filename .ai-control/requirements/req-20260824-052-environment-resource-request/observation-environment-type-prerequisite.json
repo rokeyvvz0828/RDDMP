@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260824-052-environment-resource-request",
+  "requirement_id": "REQ-20260824-052",
+  "recorded_at": "2026-08-25T08:57:32+08:00",
+  "validity": "superseded",
+  "superseded_by": "observation-environment-type-dictionary.json",
+  "superseded_reason": "用户随后明确“环境类型放到字典里维护，不要自行维护”，因此该记录中的架构页面新建环境类型引导不再作为有效方案。",
+  "incident": {
+    "symptom": "空库或新租户下直接点击“新建具体环境”后，环境类型下拉无可选项，保存只提示“请填写环境编码、名称和环境类型”。",
+    "cause": "当前需求确认环境类型由管理人员维护，V92 不预置 DEV/SIT/UAT 等业务分类；前端允许用户在无启用环境类型时进入具体环境表单，前置条件表达不清。",
+    "scope": "仅修正具体环境页面前端交互和校验文案；不新增环境类型种子数据，不修改 API、权限或数据库结构。"
+  },
+  "changes": [
+    {
+      "file": "web/src/modules/architecture/EnvironmentPage.vue",
+      "summary": "无启用环境类型时，点击新建具体环境会切换到环境类型页签并打开新建环境类型弹窗；空态操作按钮改为“先新建环境类型”；环境类型选择器禁用并显示前置提示；保存校验文案区分缺少前置类型。"
+    }
+  ],
+  "checks": [
+    {
+      "kind": "frontend-build",
+      "command": "npm --prefix web run build",
+      "result": "passed",
+      "evidence": "vue-tsc --noEmit 与 vite build 通过；Vite 仅输出既有 Rollup PURE 注释和大 chunk 提示。"
+    },
+    {
+      "kind": "diff-whitespace",
+      "command": "git diff --check -- web/src/modules/architecture/EnvironmentPage.vue",
+      "result": "passed",
+      "evidence": "未发现空白错误。"
+    },
+    {
+      "kind": "runtime-status",
+      "command": "Get-NetTCPConnection -LocalPort 8080,5173",
+      "result": "running",
+      "evidence": "本地后端 8080 进程 PID 8496、Vite 5173 进程 PID 41620 均处于监听状态。"
+    }
+  ],
+  "negative_space": [
+    "未自动创建 SIT、UAT、DEV 等环境类型；用户应通过“环境类型”入口维护受控分类。",
+    "未执行真实浏览器点击验收；Vite 已运行，页面可通过热更新获取此改动。"
+  ],
+  "conclusion": "该前置引导方案已废弃；最终收敛方案见 observation-environment-type-dictionary.json。"
+}

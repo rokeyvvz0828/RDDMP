@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T15:29:20+08:00",
+  "phase": "observing",
+  "observations": [
+    {
+      "sensor": "focused-backend-test",
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=EnvironmentResourceServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "pass",
+      "evidence": "EnvironmentResourceServiceTest 共 9 个用例通过，新增“关闭边车时忽略边车容量和占比”覆盖服务端保存、总量和占比口径。"
+    },
+    {
+      "sensor": "frontend-build",
+      "command": "npm --prefix web run build",
+      "result": "pass",
+      "evidence": "vue-tsc --noEmit 与 vite build 成功，ResourceRequestPage 生产包生成。Vite 仅报告既有第三方 PURE 注释和大 chunk 警告。"
+    },
+    {
+      "sensor": "flyway-static",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "pass",
+      "evidence": "Flyway migration check passed for 90 migration(s) and 1 approved callback(s)。本次未新增迁移。"
+    },
+    {
+      "sensor": "diff-whitespace",
+      "command": "git diff --check",
+      "result": "pass-with-line-ending-warnings",
+      "evidence": "未发现空白错误；仅输出当前工作区既有 LF/CRLF 转换提示。"
+    },
+    {
+      "sensor": "runtime-reachability",
+      "command": "Invoke-RestMethod http://127.0.0.1:8080/actuator/health; Invoke-RestMethod http://127.0.0.1:5173/",
+      "result": "pass",
+      "evidence": "8080 返回 {\"status\":\"UP\"}，5173 返回 HTTP 200。"
+    }
+  ],
+  "residual_risks": [
+    "本轮未使用真实浏览器完成截图路径复验；本地未安装 Playwright，当前可调用工具未提供页面交互能力。",
+    "当前 8080 运行进程未重启为最新后端代码；前端即时计算与提交载荷已通过构建生效，后端新口径已由聚焦单元测试覆盖，若要让接口层新口径在当前运行进程立即生效，需要重新 package 并重启后端。",
+    "完整 architecture 模块测试仍沿用前序结论：受 Testcontainers Docker 探测问题影响，未在本轮重跑。"
+  ],
+  "conclusion": "边车内存占比缺陷已按前后端一致口径修复并通过聚焦后端测试、前端构建、Flyway 静态检查和空白检查；浏览器 UAT 与后端运行进程热替换仍为后续验证项。"
+}

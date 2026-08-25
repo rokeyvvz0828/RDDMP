@@ -66,6 +66,7 @@ const runtimes = ref<ParameterOption[]>([])
 const levels = ref<ParameterOption[]>([])
 const frameworks = ref<ParameterOption[]>([])
 const deploymentPlatforms = ref<ParameterOption[]>([])
+const disasterRecoveryModes = ref<ParameterOption[]>([])
 const systemTypes = ref<ParameterOption[]>([])
 const ownerships = ref<ParameterOption[]>([])
 const loading = ref(true)
@@ -126,6 +127,10 @@ function toInput(source: SubsystemChangeApplicationDetail['physicalDrafts'][numb
     name: source.name,
     englishName: source.englishName,
     businessGroupName: source.businessGroupName,
+    businessContinuityLevel: source.businessContinuityLevel,
+    collectedSystemLevel: source.collectedSystemLevel,
+    deploymentPlatform: source.deploymentPlatform,
+    disasterRecoveryMode: source.disasterRecoveryMode,
     responsibleTeamOrgId: source.responsibleTeamOrgId,
     responsibleTeamNameSnapshot: source.responsibleTeamNameSnapshot,
     runtimeCode: source.runtimeCode,
@@ -148,7 +153,8 @@ async function loadReferences() {
     loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK'),
     loadParameterOptions('logical-subsystem', 'ARCH_DEPLOYMENT_PLATFORM'),
     loadParameterOptions('logical-subsystem', 'ARCH_SYSTEM_TYPE'),
-    loadParameterOptions('logical-subsystem', 'ARCH_SYSTEM_OWNERSHIP')
+    loadParameterOptions('logical-subsystem', 'ARCH_SYSTEM_OWNERSHIP'),
+    loadParameterOptions('physical-subsystem', 'ARCH_DISASTER_RECOVERY_MODE')
   ])
   if (results[0].status === 'fulfilled') organizations.value = results[0].value
   if (results[1].status === 'fulfilled') users.value = results[1].value
@@ -159,6 +165,7 @@ async function loadReferences() {
   if (results[6].status === 'fulfilled') deploymentPlatforms.value = results[6].value
   if (results[7].status === 'fulfilled') systemTypes.value = results[7].value
   if (results[8].status === 'fulfilled') ownerships.value = results[8].value
+  if (results[9].status === 'fulfilled') disasterRecoveryModes.value = results[9].value
 }
 
 function orgLabel(id: number) {
@@ -346,6 +353,8 @@ onMounted(() => { void load() })
             :runtimes="runtimes"
             :levels="levels"
             :frameworks="frameworks"
+            :deployment-platforms="deploymentPlatforms"
+            :disaster-recovery-modes="disasterRecoveryModes"
             :title="`物理子系统 ${index + 1}`"
             :number-label="physicalNumber(index)"
             :show-logical-target="application?.targetKind === 'PHYSICAL'"

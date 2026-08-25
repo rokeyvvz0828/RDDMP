@@ -1,6 +1,6 @@
 # 架构子系统模块集成契约
 
-适用需求：`REQ-20260812-021`；`REQ-20260822-048` 完成生命周期修订（主记录写入全部经由变更工单、主记录新增状态、三级权限、固定审批流程、引用检查 SPI 与操作审计）；`REQ-20260823-049` 新增部署单元（版本发布、停用/作废生命周期、Excel 初始化导入与技术架构师权限）。本契约冻结逻辑子系统、物理子系统、部署单元、受限选项 API 和变更工单的 HTTP 边界。V1 使用固定强类型表单，不提供表单 schema 或任意字段接口。
+适用需求：`REQ-20260812-021`；`REQ-20260822-048` 完成生命周期修订（主记录写入全部经由变更工单、主记录新增状态、三级权限、固定审批流程、引用检查 SPI 与操作审计）；`REQ-20260823-049` 新增部署单元（版本发布、停用/作废生命周期、Excel 初始化导入与技术架构师权限）；`REQ-20260824-052` 新增具体环境与资源申请（申请态审批，不生成实际资源分配）。本契约冻结逻辑子系统、物理子系统、部署单元、具体环境、资源申请、受限选项 API 和变更工单的 HTTP 边界。V1 使用固定强类型表单，不提供表单 schema 或任意字段接口。
 
 ## 通用约定
 
@@ -68,6 +68,10 @@
   "name": "员工渠道物理平台",
   "logicalSubsystemId": 101,
   "businessGroupName": null,
+  "businessContinuityLevel": "B1",
+  "collectedSystemLevel": "A",
+  "deploymentPlatform": "architecture.deployment-platform.p8",
+  "disasterRecoveryMode": "architecture.disaster-recovery.active-standby",
   "responsibleTeamOrgId": 12,
   "runtimeCode": "24H",
   "systemLevelCode": "A_PLUS",
@@ -81,6 +85,7 @@
 列表记录和详情的字段固定为：
 
 `id,code,shortName,name,logicalSubsystemId,logicalSubsystemCode,logicalSubsystemName,businessGroupName,responsibleTeamOrgId,responsibleTeamDisplayName,responsibleTeamValid,runtimeCode,systemLevelCode,developmentFrameworkCode,ownerUserId,ownerDisplayName,numberSlot,englishName,status,rowVersion,logicalSubsystemNumberSequence,logicalSubsystemStatus,description,remark,createdBy,createdByDisplayName,updatedBy,createdAt,updatedAt`。
+V95 后额外包含 `businessContinuityLevel,collectedSystemLevel,deploymentPlatform,disasterRecoveryMode`；资源申请按 V96 口径只带出 `businessGroupName,systemLevelCode,deploymentPlatform,disasterRecoveryMode`，不再使用业务连续性等级和项目组收集系统等级。
 
 - `numberSlot`：物理槽位（`1..9,A..Z`），配合父逻辑 `numberSequence` 形成编号（`W%04d<slot>`）。
 - `englishName`：非空时租户内永久唯一。
@@ -103,6 +108,7 @@
 | `GET /options/physical-subsystem/parameters/{categoryCode}` | 无 | `architecture:physical:list` | `ParameterOption[]` |
 | `GET /options/physical-subsystem/logical-subsystems` | `page,size,code?,name?` | `architecture:physical:list` | `PageResult<LogicalSubsystemOption>` |
 | `GET /options/deployment-unit/physical-subsystems` | `page,size,code?,name?` | `architecture:deployment-unit:view`/`manage`，或 `view`/`apply`/`manage` 任一 | `PageResult<PhysicalSubsystemOption>` |
+| `GET /resource-requests/options/deployment-units` | `physicalSubsystemId,limit?` | `architecture:resource-request:view/apply/manage`，或 `view`/`apply`/`manage` 任一 | `DeploymentUnitOption[]` |
 
 选项记录必须精确使用以下字段：
 
@@ -112,9 +118,10 @@
 | `UserOption` | `id,displayName,username,phone` | `phone` 显式允许 `null`；只返回活动用户 |
 | `ParameterOption` | `code,label` | 不分页 |
 | `LogicalSubsystemOption` | `id,code,name` | 只返回当前租户未删除记录 |
-| `PhysicalSubsystemOption` | `id,code,name,status` | 只返回当前租户 ACTIVE 物理子系统（部署单元级联选择） |
+| `PhysicalSubsystemOption` | `id,code,shortName,name,businessGroupName,businessContinuityLevel,collectedSystemLevel,deploymentPlatform,disasterRecoveryMode,systemLevelCode,status` | 只返回当前租户 ACTIVE 物理子系统；资源申请只消费 `businessGroupName,systemLevelCode,deploymentPlatform,disasterRecoveryMode` 作为物理子系统只读带出信息 |
+| `DeploymentUnitOption` | `id,code,name,kind,physicalSubsystemId,relatedDeploymentUnitName,deploymentUnitType,description` | 只返回所选 ACTIVE 物理子系统下的 ACTIVE 部署单元（资源申请级联选择和部署单元信息带出） |
 
-逻辑上下文参数分类白名单为 `ARCH_DEPLOYMENT_PLATFORM`、`ARCH_SYSTEM_TYPE`、`ARCH_SYSTEM_OWNERSHIP`；物理上下文为 `ARCH_RUNTIME`、`ARCH_SYSTEM_LEVEL`、`ARCH_DEVELOPMENT_FRAMEWORK`。跨上下文分类返回 400。
+逻辑上下文参数分类白名单为 `ARCH_DEPLOYMENT_PLATFORM`、`ARCH_SYSTEM_TYPE`、`ARCH_SYSTEM_OWNERSHIP`；物理上下文为 `ARCH_RUNTIME`、`ARCH_SYSTEM_LEVEL`、`ARCH_DEVELOPMENT_FRAMEWORK`、`ARCH_DEPLOYMENT_PLATFORM`、`ARCH_DISASTER_RECOVERY_MODE`、`ARCH_SERVER_TYPE`、`ARCH_JDK_VERSION`、`ARCH_MIDDLEWARE`、`ARCH_OPERATING_SYSTEM`。跨上下文分类返回 400。
 
 选项响应不得包含密码散列、头像对象键、活动状态、删除标记、租户或平台内部管理字段。业务用户不需要 system 用户、组织或参数管理权限。
 
@@ -220,6 +227,87 @@
 模板表头固定：`物理子系统编号,部署单元简称,部署单元名称,部署单元类型,描述,备注`；类型取 `应用|数据库|消息队列`（或 `APPLICATION|DATABASE|MQ`）。预览行状态 `VALID|INVALID`；确认后 `SUCCESS|FAILED|SKIPPED`（SKIPPED 为幂等重导时已存在的 ACTIVE 同名同物理行）。批次状态 `PREVIEW|SUCCESS|PARTIAL|FAILED`；确认时预期行级失败记录明细并继续，意外异常整批回滚并标记 FAILED。批次字段：`id,fileName,fileSize,totalRows,validRows,successRows,failedRows,skippedRows,status,errorMessage,createdBy,createdByDisplayName,createdAt,completedAt`；行明细：`itemId,lineNo,row{physicalCode,shortName,name,kindLabel,description,remark},rowStatus,errorMessage,note,unitId`。
 
 
+## 具体环境与资源申请（REQ-20260824-052）
+
+具体环境资源根：`/api/architecture/environments`；环境类型通过 `GET /api/architecture/environment-types` 读取系统字典 `ARCH_ENVIRONMENT_TYPE` 的启用项。具体环境主数据由环境资源办理人员维护，不创建机器、IP、环境部署实例或实际资源分配；环境类型增删改停不在架构模块内维护。
+
+| 方法 | 路径 | 权限与语义 |
+| --- | --- | --- |
+| GET | `/environment-types` | `architecture:environment:view/manage`，或 `architecture:view/manage`；返回启用字典项 `{code,name}` |
+| GET | `/environments` | `architecture:environment:view/manage`，或 `architecture:view/manage`；查询 `typeCode?,status?,keyword?,limit,offset` |
+| GET | `/environments/{id}` | 同上；返回环境详情与资源汇总 |
+| POST | `/environments` | `architecture:environment:manage`，或 `architecture:manage`；创建 ACTIVE 具体环境 |
+| PUT | `/environments/{id}` | 同上；`body {code,name,typeCode,description,remark,rowVersion}` |
+| POST | `/environments/{id}/deactivate`、`/reactivate`、`/delete` | 同上；`body {rowVersion}`；删除要求未被资源申请引用 |
+
+环境类型字段：`code,name`，来源于系统字典 `ARCH_ENVIRONMENT_TYPE` 启用参数项。具体环境字段：`id,code,name,typeCode,typeName,status,description,remark,rowVersion,createdBy,updatedBy,createdAt,updatedAt`。
+
+环境详情 `resourceSummary` 区分申请态与实际态：申请态统计已批准资源申请明细汇总；实际态字段 `actualCpuCores,actualMemoryGb,actualStorageGb,actualNodeCount` 在本需求固定为 0，等待后续搭建任务接入实际资源台账。
+
+资源申请资源根：`/api/architecture/resource-requests`。申请必须固定选择一个 ACTIVE 物理子系统和一个 ACTIVE 具体环境，可包含多条部署单元登记明细；部署单元必须 ACTIVE 且属于所选物理子系统。
+申请联系人通过 `contactUserId` 选择租户内启用用户；来源任务号不再由资源申请维护。
+
+| 方法 | 路径 | 权限与语义 |
+| --- | --- | --- |
+| GET | `/resource-requests` | `view/apply/manage`；查询 `status?,environmentId?,physicalSubsystemId?,limit,offset`；`view/apply` 只返回本人，`manage` 返回当前租户全部 |
+| GET | `/resource-requests/{id}` | `view/apply/manage`；本人或管理范围，跨租户 404 |
+| POST | `/resource-requests` | `apply/manage`；创建草稿 `DRAFT` |
+| PUT | `/resource-requests/{id}` | `apply/manage`；仅本人 `DRAFT/RETURNED`；其它人 403/409 |
+| POST | `/resource-requests/{id}/submit` | `apply/manage`；固化申请快照与 SHA-256 摘要并启动审批；`body {rowVersion}` |
+| POST | `/resource-requests/{id}/cancel` | `apply/manage`；草稿/退回同步取消；审批中终止流程后由 `TERMINATED` 事件确认；`body {rowVersion}` |
+
+创建/更新请求体：
+
+```json
+{
+  "physicalSubsystemId": 501,
+  "environmentId": 9001,
+  "contactUserId": 10001,
+  "requestType": "INITIAL",
+  "reason": "新建开发环境资源",
+  "items": [
+    {
+      "deploymentUnitId": 7001,
+      "databaseStorageGb": 0,
+      "fileStorageGb": 100,
+      "networkZone": "开放区",
+      "serverType": "architecture.server-type.container",
+      "cpuCores": 2,
+      "memoryGb": 4,
+      "appWebGroupCount": 1,
+      "plannedNodeCount": 2,
+      "sidecarCpuCores": 0,
+      "sidecarMemoryGb": 0,
+      "hasSidecar": false,
+      "databaseName": null,
+      "databaseVersion": null,
+      "jdkVersion": "architecture.jdk.jdk17",
+      "middleware": "architecture.middleware.tomcat9",
+      "operatingSystem": "architecture.os.rhel8-5",
+      "extraCbsGb": 0,
+      "localDiskGb": 0,
+      "needsNft": false,
+      "needsFserver": false,
+      "needsJobexecutor": false,
+      "remark": "应用资源登记"
+    }
+  ],
+  "rowVersion": 0
+}
+```
+
+明细请求体只接收申请人可填写的资源需求字段；物理子系统字段由服务端从物理子系统主数据带出并写入申请级快照，部署单元字段从部署单元主数据带出并写入明细快照。`DB` 部署单元仅接收数据库存储需求、数据库和数据库版本，`AP/WB/PL` 接收除 `DB` 专属字段外的资源、网络、技术栈和附加需求字段。服务器类型来源于 `ARCH_SERVER_TYPE`，默认 `architecture.server-type.container`；灾备模式和系统等级来源于物理子系统。JDK、中间件和产品化操作系统分别来源于 `ARCH_JDK_VERSION`、`ARCH_MIDDLEWARE`、`ARCH_OPERATING_SYSTEM`。容量、CPU、内存和存储类字段均为非负整数；`plannedNodeCount` 允许为 0，用于数据库存储类登记行。申请态汇总按 `cpuCores * plannedNodeCount + sidecarCpuCores`、`memoryGb * plannedNodeCount + sidecarMemoryGb` 和 `databaseStorageGb + fileStorageGb + extraCbsGb + localDiskGb` 计算。
+
+`requestType=INITIAL|EXPANSION|SHRINK|ADJUSTMENT`；工单状态机：`DRAFT → IN_REVIEW → APPROVED/REJECTED`，`IN_REVIEW → RETURNED → IN_REVIEW`（新轮次），`DRAFT/RETURNED → CANCELLED`，`IN_REVIEW → CANCELLED`（终止事件确认）。批准只将资源申请置为 `APPROVED`，不生成机器、IP、环境部署实例、实际资源分配或搭建任务。
+
+详情响应 `data`：`{request, items[], history[]}`。`request` 含 `id,requestNo,physicalSubsystemId,physicalSubsystemCode,physicalSubsystemShortName,physicalSubsystemName,physicalSubsystemBusinessGroupName,physicalSubsystemSystemLevelCode,physicalSubsystemDeploymentPlatform,physicalSubsystemDisasterRecoveryMode,environmentId,environmentCode,environmentName,environmentTypeName,applicantId,contactUserId,requestType,reason,status,currentBusinessRound,cancellationRequested,rowVersion,createdBy,updatedBy,createdAt,updatedAt`。`items[]` 含 `id,itemSeq,deploymentUnitId,deploymentUnitCode,deploymentUnitName,deploymentUnitKind,relatedDeploymentUnitName,deploymentUnitDescription,deploymentUnitType,databaseStorageGb,fileStorageGb,networkZone,serverType,cpuCores,memoryGb,appWebGroupCount,plannedNodeCount,totalCpuCores,totalMemoryGb,sidecarCpuCores,sidecarMemoryGb,sidecarMemoryRatio,hasSidecar,databaseName,databaseVersion,jdkVersion,middleware,operatingSystem,extraCbsGb,localDiskGb,needsNft,needsFserver,needsJobexecutor,remark`。`history[]` 为不可变业务事件。
+
+工作流与审计：
+
+- 固定流程编码 `architecture.resource-request`，业务类型 `architecture_resource_request`，订阅键 `architecture.resource-request.lifecycle.v1`；审批节点为单一 ROLE（角色 114 `ENVIRONMENT_RESOURCE_MANAGER`，ANY，空处理人 ERROR），只允许 `APPROVE/RETURN/REJECT`；V92 预置草稿定义（`900000000000050`），必须经平台既有发布入口发布后才能提交。
+- 生命周期事件按 `subscriberKey + eventId` 幂等消费并校验租户、业务键、实例、轮次与摘要。
+- 写操作审计：`architecture.environment.*`、`architecture.resource-request.create/update/submit/cancel` 写入 `sys_operation_log`；环境类型维护走系统字典自身审计；工作流任务动作走 `wf_audit_event`。
+
 ## 网络专项工单（REQ-20260823-051）
 
 资源根：`/api/architecture/network-work-orders`。三类工单（CLB/DNS/证书）共享工单引擎与
@@ -276,6 +364,7 @@ createdAt,updatedAt`；`history[]` 为不可变业务事件。
 - 绕过工单直接修改发布主记录的 HTTP 写接口（旧 POST/PUT/DELETE 保留路由但只返回 409 `ARCHITECTURE_WORK_ORDER_REQUIRED`）。
 - 客户端提供 tenant、团队名称快照、物理联系人、电话或审计字段的写入能力。
 - 部署单元编号、物理归属或版本行的修改能力；已发布部署单元的显示内容只能通过发布新版本改变。
+- 资源申请批准后的真实资源分配、机器/IP、环境部署实例、网络连通、DNS/证书/CLB 实际配置或搭建任务生成；这些能力由后续需求另行定义。
 - 绕过引用守卫的部署单元作废；引用检查器不可判定时一律失败关闭。
 - 直接访问 `com.ccb.system.internal.*` 或 system 私有数据表。
 - 真实 AI、外部引用 provider 或业务模块之外的引用检查实现（`com.ccb.architecture.integration` SPI 预留，provider 为空视为无外部引用）。

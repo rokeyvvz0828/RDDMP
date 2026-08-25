@@ -3,8 +3,11 @@ import type {
   DeploymentUnitImportItemStatus,
   DeploymentUnitKind,
   DeploymentUnitStatus,
+  EnvironmentRecordStatus,
   ParameterOption,
   PublishedSubsystemStatus,
+  ResourceRequestStatus,
+  ResourceRequestType,
   SubsystemActionType,
   SubsystemApplicationStatus,
   SubsystemTargetKind
@@ -166,4 +169,50 @@ export function importItemStatusTone(status: DeploymentUnitImportItemStatus) {
   if (status === 'SUCCESS' || status === 'SKIPPED') return 'success' as const
   if (status === 'VALID') return 'info' as const
   return 'danger' as const
+}
+
+// ---------- 具体环境与资源申请 ----------
+
+export const environmentStatusLabels: Record<EnvironmentRecordStatus, string> = {
+  ACTIVE: '启用',
+  INACTIVE: '已停用'
+}
+
+export function environmentStatusTone(status: EnvironmentRecordStatus) {
+  return status === 'ACTIVE' ? 'success' as const : 'warning' as const
+}
+
+export const resourceRequestTypeLabels: Record<ResourceRequestType, string> = {
+  INITIAL: '首次申请',
+  EXPANSION: '扩容',
+  SHRINK: '缩容',
+  ADJUSTMENT: '调整'
+}
+
+export const resourceRequestStatusLabels: Record<ResourceRequestStatus, string> = {
+  DRAFT: '草稿',
+  IN_REVIEW: '审批中',
+  RETURNED: '已退回',
+  APPROVED: '已批准',
+  REJECTED: '已拒绝',
+  CANCELLED: '已取消'
+}
+
+export function resourceRequestStatusTone(status: ResourceRequestStatus) {
+  if (status === 'APPROVED') return 'success' as const
+  if (status === 'REJECTED') return 'danger' as const
+  if (status === 'IN_REVIEW' || status === 'RETURNED') return 'warning' as const
+  return 'info' as const
+}
+
+export function canEditResourceRequest(status: ResourceRequestStatus) {
+  return status === 'DRAFT' || status === 'RETURNED'
+}
+
+export function canSubmitResourceRequest(status: ResourceRequestStatus) {
+  return status === 'DRAFT' || status === 'RETURNED'
+}
+
+export function canCancelResourceRequest(status: ResourceRequestStatus) {
+  return status === 'DRAFT' || status === 'RETURNED' || status === 'IN_REVIEW'
 }
