@@ -20,18 +20,25 @@ import type {
   DeploymentUnitOption,
   DeploymentUnitPayload,
   DeploymentUnitVersion,
+  DisasterRecoveryPayload,
   Environment,
   EnvironmentDetail,
+  EnvironmentInstance,
   EnvironmentPayload,
   EnvironmentRecordStatus,
   EnvironmentType,
+  FulfillmentPayload,
+  InstanceDisasterRecovery,
+  InstanceStatus,
   LogicalSubsystem,
   LogicalSubsystemOption,
   MaterialKind,
+  OfflineInstancePayload,
   OrganizationOption,
   PageResult,
   ParameterOption,
   PhysicalSubsystem,
+  ProvisionPreviewResult,
   PublicationIntentView,
   ReviewMethod,
   ResourceRequestDetail,
@@ -491,4 +498,56 @@ export async function downloadDeploymentUnitImportTemplate() {
   link.download = 'deployment-unit-import-template.xlsx'
   link.click()
   URL.revokeObjectURL(link.href)
+}
+
+// ---------- 环境部署实例与资源下发 ----------
+
+export async function previewAutomatedProvision(requestId: number) {
+  return (await http.get<ApiResponse<ProvisionPreviewResult>>(`/architecture/resource-requests/${requestId}/preview-automated-provision`)).data.data
+}
+
+export async function fulfillResourceRequest(requestId: number, payload: FulfillmentPayload) {
+  return (await http.post<ApiResponse<EnvironmentInstance[]>>(`/architecture/resource-requests/${requestId}/fulfill`, payload)).data.data
+}
+
+export async function listEnvironmentInstances(query: {
+  environmentId?: number
+  physicalSubsystemId?: number
+  deploymentUnitId?: number
+  status?: InstanceStatus
+  keyword?: string
+  limit?: number
+  offset?: number
+}) {
+  return (await http.get<ApiResponse<EnvironmentInstance[]>>('/architecture/instances', { params: compact(query) })).data.data
+}
+
+export async function getEnvironmentInstance(id: number) {
+  return (await http.get<ApiResponse<EnvironmentInstance>>(`/architecture/instances/${id}`)).data.data
+}
+
+export async function offlineEnvironmentInstance(id: number, payload: OfflineInstancePayload) {
+  return (await http.post<ApiResponse<EnvironmentInstance>>(`/architecture/instances/${id}/offline`, payload)).data.data
+}
+
+export async function listInstanceDisasterRecoveries(instanceId: number) {
+  return (await http.get<ApiResponse<InstanceDisasterRecovery[]>>(`/architecture/instances/${instanceId}/disaster-recoveries`)).data.data
+}
+
+export async function listAllDisasterRecoveries(query?: { deploymentUnitId?: number; instanceId?: number }) {
+  return (await http.get<ApiResponse<InstanceDisasterRecovery[]>>('/architecture/instance-disaster-recoveries', { params: compact(query || {}) })).data.data
+}
+
+export async function createInstanceDisasterRecovery(payload: DisasterRecoveryPayload) {
+  return (await http.post<ApiResponse<InstanceDisasterRecovery>>('/architecture/instance-disaster-recoveries', payload)).data.data
+}
+
+export async function deleteInstanceDisasterRecovery(id: number) {
+  return (await http.delete<ApiResponse<void>>(`/architecture/instance-disaster-recoveries/${id}`)).data
+}
+
+export async function listAvailableStandbyInstances(deploymentUnitId: number, excludeInstanceId?: number) {
+  return (await http.get<ApiResponse<EnvironmentInstance[]>>('/architecture/instances/options/available-standbys', {
+    params: compact({ deploymentUnitId, excludeInstanceId })
+  })).data.data
 }

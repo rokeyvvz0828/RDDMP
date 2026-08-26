@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import UiDataTable from '../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
@@ -24,6 +25,7 @@ import { environmentStatusLabels, environmentStatusTone, formatDateTime, httpSta
 import './architecture.css'
 
 const auth = useAuthStore()
+const router = useRouter()
 const loading = ref(false)
 const loadError = ref('')
 const forbidden = ref(false)
@@ -282,13 +284,14 @@ watch(canView, allowed => {
             <div class="architecture-table-actions">
               <el-button link type="primary" @click="showDetail(scope.row)"><el-icon><View /></el-icon>详情</el-button>
               <el-button v-if="canManage" link type="primary" @click="openEnvironmentEdit(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button>
-              <el-dropdown v-if="canManage">
+              <el-dropdown>
                 <el-button link type="primary">更多</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item v-if="scope.row.status === 'ACTIVE'" @click="changeEnvironmentStatus(scope.row, 'INACTIVE')">停用</el-dropdown-item>
-                    <el-dropdown-item v-if="scope.row.status === 'INACTIVE'" @click="changeEnvironmentStatus(scope.row, 'ACTIVE')">重新启用</el-dropdown-item>
-                    <el-dropdown-item divided @click="removeEnvironment(scope.row)"><el-icon><Delete /></el-icon>删除</el-dropdown-item>
+                    <el-dropdown-item @click="router.push(`/architecture/instances?environmentId=${scope.row.id}`)">查看部署实例</el-dropdown-item>
+                    <el-dropdown-item v-if="canManage && scope.row.status === 'ACTIVE'" @click="changeEnvironmentStatus(scope.row, 'INACTIVE')">停用</el-dropdown-item>
+                    <el-dropdown-item v-if="canManage && scope.row.status === 'INACTIVE'" @click="changeEnvironmentStatus(scope.row, 'ACTIVE')">重新启用</el-dropdown-item>
+                    <el-dropdown-item v-if="canManage" divided @click="removeEnvironment(scope.row)"><el-icon><Delete /></el-icon>删除</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -301,7 +304,11 @@ watch(canView, allowed => {
         <article v-for="row in environments" :key="row.id">
           <header><div><strong>{{ row.name }}</strong><small>{{ row.code }} · {{ row.typeName }}</small></div><UiStatusTag :value="row.status" :labels="environmentStatusLabels" :tone="environmentStatusTone(row.status)" /></header>
           <dl><div><dt>说明</dt><dd>{{ row.description || '—' }}</dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl>
-          <footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button v-if="canManage" link type="primary" @click="openEnvironmentEdit(row)"><el-icon><Edit /></el-icon>编辑</el-button></footer>
+          <footer>
+            <el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button>
+            <el-button link type="primary" @click="router.push(`/architecture/instances?environmentId=${row.id}`)">实例</el-button>
+            <el-button v-if="canManage" link type="primary" @click="openEnvironmentEdit(row)"><el-icon><Edit /></el-icon>编辑</el-button>
+          </footer>
         </article>
       </div>
       <UiEmptyState v-if="!loading && !environments.length" title="暂无具体环境" :description="activeTypes.length ? '当前筛选下没有环境记录。' : '请在系统字典维护 ARCH_ENVIRONMENT_TYPE 后刷新。'"><template #action><el-button v-if="canManage && activeTypes.length" type="primary" @click="openEnvironmentCreate">新建具体环境</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
@@ -322,7 +329,12 @@ watch(canView, allowed => {
             <div class="is-wide"><dt>备注</dt><dd>{{ detail.environment.remark || '—' }}</dd></div>
           </dl>
           <section class="architecture-drawer-section">
-            <header><strong>资源汇总</strong><span class="architecture-muted">申请态 / 实际态</span></header>
+            <header style="display: flex; justify-content: space-between; align-items: center;">
+              <div><strong>资源汇总</strong><span class="architecture-muted" style="margin-left: 8px;">申请态 / 实际在用态</span></div>
+              <el-button type="primary" link @click="router.push(`/architecture/instances?environmentId=${detail.environment.id}`)">
+                查看部署实例 ({{ detail.resourceSummary.actualNodeCount }}) →
+              </el-button>
+            </header>
             <div class="architecture-resource-summary-grid">
               <article><span>申请态 CPU</span><strong>{{ detail.resourceSummary.requestedCpuCores }}</strong></article>
               <article><span>申请态内存</span><strong>{{ detail.resourceSummary.requestedMemoryGb }} GB</strong></article>

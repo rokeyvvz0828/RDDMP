@@ -1,7 +1,12 @@
 package com.ccb.architecture.environment.persistence;
 
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.DisasterRecoveryMode;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.Environment;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.EnvironmentInstance;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillmentMode;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.HistoryEvent;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.InstanceDisasterRecovery;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.InstanceStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RecordStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RequestStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RequestType;
@@ -28,7 +33,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** REQ-20260824-052 的数据访问边界。 */
+/** REQ-20260824-052 与 REQ-20260825-053 的数据访问边界。 */
 @Repository
 public class EnvironmentResourceStore {
     private static final String ENVIRONMENT_COLUMNS = """
@@ -36,6 +41,39 @@ public class EnvironmentResourceStore {
             environment.type_code, environment.type_code AS type_name,
             environment.status, environment.description, environment.remark, environment.row_version,
             environment.created_by, environment.updated_by, environment.created_at, environment.updated_at
+            """;
+
+    private static final String INSTANCE_COLUMNS = """
+            instance.id, instance.tenant_id, instance.instance_no, instance.environment_id,
+            environment.code AS environment_code, environment.name AS environment_name,
+            environment.type_code AS environment_type_name,
+            instance.deployment_unit_id, unit.code AS deployment_unit_code, unit.name AS deployment_unit_name,
+            unit.kind AS deployment_unit_kind, instance.deployment_unit_version_id,
+            instance.deployment_unit_version_no, unit.current_version AS latest_deployment_unit_version_no,
+            instance.physical_subsystem_id, physical.code AS physical_subsystem_code,
+            physical.name AS physical_subsystem_name, instance.source_request_id,
+            request.request_no AS source_request_no, instance.source_item_id,
+            instance.machine_name, instance.ip_address, instance.server_type,
+            instance.deployment_platform, instance.network_zone, instance.status,
+            instance.cpu_cores, instance.memory_gb, instance.database_storage_gb,
+            instance.file_storage_gb, instance.extra_cbs_gb, instance.local_disk_gb,
+            instance.database_name, instance.database_version, instance.jdk_version,
+            instance.middleware, instance.operating_system, instance.needs_nft,
+            instance.needs_fserver, instance.needs_jobexecutor, instance.fulfillment_mode,
+            instance.difference_reason, instance.remark, instance.offlined_at,
+            instance.offlined_by, instance.offline_reason, instance.row_version,
+            instance.created_by, instance.updated_by, instance.created_at, instance.updated_at
+            """;
+
+    private static final String DR_COLUMNS = """
+            dr.id, dr.tenant_id, dr.deployment_unit_id, unit.code AS deployment_unit_code,
+            unit.name AS deployment_unit_name, dr.primary_instance_id,
+            p_inst.machine_name AS primary_machine_name, p_inst.ip_address AS primary_ip_address,
+            p_env.code AS primary_environment_code, p_env.name AS primary_environment_name,
+            dr.standby_instance_id, s_inst.machine_name AS standby_machine_name,
+            s_inst.ip_address AS standby_ip_address, s_env.code AS standby_environment_code,
+            s_env.name AS standby_environment_name, dr.dr_mode, dr.description,
+            dr.created_by, dr.created_at, dr.updated_at
             """;
 
     private static final String REQUEST_COLUMNS = """
@@ -156,6 +194,86 @@ public class EnvironmentResourceStore {
             localDateTime(rs.getTimestamp("created_at")),
             localDateTime(rs.getTimestamp("updated_at")));
 
+    private static final RowMapper<EnvironmentInstance> INSTANCE_MAPPER = (rs, rowNum) -> {
+        int versionNo = rs.getInt("deployment_unit_version_no");
+        int latestVersionNo = rs.getInt("latest_deployment_unit_version_no");
+        return new EnvironmentInstance(
+                rs.getLong("id"),
+                rs.getLong("tenant_id"),
+                rs.getString("instance_no"),
+                rs.getLong("environment_id"),
+                rs.getString("environment_code"),
+                rs.getString("environment_name"),
+                rs.getString("environment_type_name"),
+                rs.getLong("deployment_unit_id"),
+                rs.getString("deployment_unit_code"),
+                rs.getString("deployment_unit_name"),
+                rs.getString("deployment_unit_kind"),
+                nullableLong(rs, "deployment_unit_version_id"),
+                versionNo,
+                latestVersionNo,
+                versionNo != latestVersionNo,
+                rs.getLong("physical_subsystem_id"),
+                rs.getString("physical_subsystem_code"),
+                rs.getString("physical_subsystem_name"),
+                rs.getLong("source_request_id"),
+                rs.getString("source_request_no"),
+                nullableLong(rs, "source_item_id"),
+                rs.getString("machine_name"),
+                rs.getString("ip_address"),
+                rs.getString("server_type"),
+                rs.getString("deployment_platform"),
+                rs.getString("network_zone"),
+                InstanceStatus.fromDatabase(rs.getString("status")),
+                decimal(rs, "cpu_cores"),
+                decimal(rs, "memory_gb"),
+                decimal(rs, "database_storage_gb"),
+                decimal(rs, "file_storage_gb"),
+                decimal(rs, "extra_cbs_gb"),
+                decimal(rs, "local_disk_gb"),
+                rs.getString("database_name"),
+                rs.getString("database_version"),
+                rs.getString("jdk_version"),
+                rs.getString("middleware"),
+                rs.getString("operating_system"),
+                rs.getBoolean("needs_nft"),
+                rs.getBoolean("needs_fserver"),
+                rs.getBoolean("needs_jobexecutor"),
+                FulfillmentMode.fromDatabase(rs.getString("fulfillment_mode")),
+                rs.getString("difference_reason"),
+                rs.getString("remark"),
+                localDateTime(rs.getTimestamp("offlined_at")),
+                nullableLong(rs, "offlined_by"),
+                rs.getString("offline_reason"),
+                rs.getLong("row_version"),
+                rs.getLong("created_by"),
+                rs.getLong("updated_by"),
+                localDateTime(rs.getTimestamp("created_at")),
+                localDateTime(rs.getTimestamp("updated_at")));
+    };
+
+    private static final RowMapper<InstanceDisasterRecovery> DR_MAPPER = (rs, rowNum) -> new InstanceDisasterRecovery(
+            rs.getLong("id"),
+            rs.getLong("tenant_id"),
+            rs.getLong("deployment_unit_id"),
+            rs.getString("deployment_unit_code"),
+            rs.getString("deployment_unit_name"),
+            rs.getLong("primary_instance_id"),
+            rs.getString("primary_machine_name"),
+            rs.getString("primary_ip_address"),
+            rs.getString("primary_environment_code"),
+            rs.getString("primary_environment_name"),
+            rs.getLong("standby_instance_id"),
+            rs.getString("standby_machine_name"),
+            rs.getString("standby_ip_address"),
+            rs.getString("standby_environment_code"),
+            rs.getString("standby_environment_name"),
+            DisasterRecoveryMode.fromDatabase(rs.getString("dr_mode")),
+            rs.getString("description"),
+            rs.getLong("created_by"),
+            localDateTime(rs.getTimestamp("created_at")),
+            localDateTime(rs.getTimestamp("updated_at")));
+
     private static final RowMapper<HistoryEvent> HISTORY_MAPPER = (rs, rowNum) -> new HistoryEvent(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
@@ -207,7 +325,8 @@ public class EnvironmentResourceStore {
 
     public record DeploymentUnitRef(long id, String code, String name, String kind, String status,
                                     long physicalSubsystemId, String relatedDeploymentUnitName,
-                                    String deploymentUnitType, String description) {
+                                    String deploymentUnitType, String description,
+                                    Long currentVersionId, int currentVersion) {
     }
 
     private final JdbcTemplate jdbc;
@@ -315,20 +434,20 @@ public class EnvironmentResourceStore {
     }
 
     public ResourceSummary resourceSummary(long tenantId, long environmentId) {
-        return jdbc.query("""
+        ResourceSummary requested = jdbc.query("""
                 SELECT
                     COUNT(DISTINCT request.id) AS request_count,
-                    COUNT(DISTINCT CASE WHEN request.status = 'APPROVED' THEN request.id END) AS approved_count,
+                    COUNT(DISTINCT CASE WHEN request.status IN ('APPROVED', 'FULFILLED', 'DIFF_FULFILLED') THEN request.id END) AS approved_count,
                     COUNT(DISTINCT CASE WHEN request.status = 'IN_REVIEW' THEN request.id END) AS pending_count,
-                    COALESCE(SUM(CASE WHEN request.status = 'APPROVED'
+                    COALESCE(SUM(CASE WHEN request.status IN ('APPROVED', 'FULFILLED', 'DIFF_FULFILLED')
                         THEN item.cpu_cores * item.planned_node_count
                             + CASE WHEN item.has_sidecar = 1 THEN item.sidecar_cpu_cores ELSE 0 END ELSE 0 END), 0) AS cpu_sum,
-                    COALESCE(SUM(CASE WHEN request.status = 'APPROVED'
+                    COALESCE(SUM(CASE WHEN request.status IN ('APPROVED', 'FULFILLED', 'DIFF_FULFILLED')
                         THEN item.memory_gb * item.planned_node_count
                             + CASE WHEN item.has_sidecar = 1 THEN item.sidecar_memory_gb ELSE 0 END ELSE 0 END), 0) AS memory_sum,
-                    COALESCE(SUM(CASE WHEN request.status = 'APPROVED'
+                    COALESCE(SUM(CASE WHEN request.status IN ('APPROVED', 'FULFILLED', 'DIFF_FULFILLED')
                         THEN item.database_storage_gb + item.storage_gb + item.extra_cbs_gb + item.local_disk_gb ELSE 0 END), 0) AS storage_sum,
-                    COALESCE(SUM(CASE WHEN request.status = 'APPROVED'
+                    COALESCE(SUM(CASE WHEN request.status IN ('APPROVED', 'FULFILLED', 'DIFF_FULFILLED')
                         THEN item.planned_node_count ELSE 0 END), 0) AS node_sum
                 FROM arch_resource_request request
                 LEFT JOIN arch_resource_request_item item
@@ -353,6 +472,44 @@ public class EnvironmentResourceStore {
                     BigDecimal.ZERO,
                     0);
         }, tenantId, environmentId);
+
+        ActualSummary actual = jdbc.query("""
+                SELECT
+                    COALESCE(SUM(cpu_cores), 0) AS actual_cpu_sum,
+                    COALESCE(SUM(memory_gb), 0) AS actual_memory_sum,
+                    COALESCE(SUM(database_storage_gb + file_storage_gb + extra_cbs_gb + local_disk_gb), 0) AS actual_storage_sum,
+                    COUNT(id) AS actual_node_count
+                FROM arch_environment_instance
+                WHERE tenant_id = ? AND environment_id = ? AND status = 'ACTIVE'
+                """, rs -> {
+            if (!rs.next()) {
+                return new ActualSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0L);
+            }
+            return new ActualSummary(decimal(rs, "actual_cpu_sum"), decimal(rs, "actual_memory_sum"),
+                    decimal(rs, "actual_storage_sum"), rs.getLong("actual_node_count"));
+        }, tenantId, environmentId);
+
+        if (requested == null) {
+            requested = emptySummary(environmentId);
+        }
+        if (actual == null) {
+            actual = new ActualSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0L);
+        }
+        return new ResourceSummary(environmentId,
+                requested.requestCount(),
+                requested.approvedRequestCount(),
+                requested.pendingRequestCount(),
+                requested.requestedCpuCores(),
+                requested.requestedMemoryGb(),
+                requested.requestedStorageGb(),
+                requested.requestedNodeCount(),
+                actual.cpu(),
+                actual.memory(),
+                actual.storage(),
+                actual.nodeCount());
+    }
+
+    private record ActualSummary(BigDecimal cpu, BigDecimal memory, BigDecimal storage, long nodeCount) {
     }
 
     public Optional<PhysicalSubsystemRef> findPhysical(long tenantId, long physicalSubsystemId) {
@@ -370,29 +527,41 @@ public class EnvironmentResourceStore {
 
     public Optional<DeploymentUnitRef> findDeploymentUnit(long tenantId, long deploymentUnitId) {
         return jdbc.query("""
-                SELECT id, code, name, kind, status, physical_subsystem_id,
-                       related_deployment_unit_name, deployment_unit_type, description
-                FROM arch_deployment_unit
-                WHERE tenant_id = ? AND id = ?
+                SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id,
+                       unit.related_deployment_unit_name, unit.deployment_unit_type, unit.description,
+                       version.id AS current_version_id, unit.current_version
+                FROM arch_deployment_unit unit
+                LEFT JOIN arch_deployment_unit_version version
+                  ON version.tenant_id = unit.tenant_id
+                 AND version.unit_id = unit.id
+                 AND version.version_no = unit.current_version
+                WHERE unit.tenant_id = ? AND unit.id = ?
                 """, (rs, rowNum) -> new DeploymentUnitRef(rs.getLong("id"), rs.getString("code"),
                 rs.getString("name"), rs.getString("kind"), rs.getString("status"),
                 rs.getLong("physical_subsystem_id"), rs.getString("related_deployment_unit_name"),
-                rs.getString("deployment_unit_type"), rs.getString("description")),
+                rs.getString("deployment_unit_type"), rs.getString("description"),
+                nullableLong(rs, "current_version_id"), rs.getInt("current_version")),
                 tenantId, deploymentUnitId).stream().findFirst();
     }
 
     public List<DeploymentUnitRef> listDeploymentUnits(long tenantId, long physicalSubsystemId, int limit) {
         return jdbc.query("""
-                SELECT id, code, name, kind, status, physical_subsystem_id,
-                       related_deployment_unit_name, deployment_unit_type, description
-                FROM arch_deployment_unit
-                WHERE tenant_id = ? AND physical_subsystem_id = ? AND status = 'ACTIVE'
-                ORDER BY code ASC, id ASC
+                SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id,
+                       unit.related_deployment_unit_name, unit.deployment_unit_type, unit.description,
+                       version.id AS current_version_id, unit.current_version
+                FROM arch_deployment_unit unit
+                LEFT JOIN arch_deployment_unit_version version
+                  ON version.tenant_id = unit.tenant_id
+                 AND version.unit_id = unit.id
+                 AND version.version_no = unit.current_version
+                WHERE unit.tenant_id = ? AND unit.physical_subsystem_id = ? AND unit.status = 'ACTIVE'
+                ORDER BY unit.code ASC, unit.id ASC
                 LIMIT ?
                 """, (rs, rowNum) -> new DeploymentUnitRef(rs.getLong("id"), rs.getString("code"),
                 rs.getString("name"), rs.getString("kind"), rs.getString("status"),
                 rs.getLong("physical_subsystem_id"), rs.getString("related_deployment_unit_name"),
-                rs.getString("deployment_unit_type"), rs.getString("description")),
+                rs.getString("deployment_unit_type"), rs.getString("description"),
+                nullableLong(rs, "current_version_id"), rs.getInt("current_version")),
                 tenantId, physicalSubsystemId, limit);
     }
 
@@ -463,6 +632,15 @@ public class EnvironmentResourceStore {
                         + "ON unit.tenant_id = item.tenant_id AND unit.id = item.deployment_unit_id "
                         + "WHERE item.tenant_id = ? AND item.request_id = ? ORDER BY item.item_seq ASC",
                 ITEM_MAPPER, tenantId, requestId);
+    }
+
+    public int countInstancesForEnvironmentUnit(long tenantId, long environmentId, long deploymentUnitId) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*)
+                FROM arch_environment_instance
+                WHERE tenant_id = ? AND environment_id = ? AND deployment_unit_id = ?
+                """, Integer.class, tenantId, environmentId, deploymentUnitId);
+        return count == null ? 0 : count;
     }
 
     public void replaceItems(long tenantId, long requestId, List<ResourceRequestItem> items) {
@@ -664,6 +842,200 @@ public class EnvironmentResourceStore {
                 FROM arch_resource_request_workflow_receipt
                 WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
                 """, WORKFLOW_RECEIPT_MAPPER, tenantId, eventId, subscriberKey).stream().findFirst();
+    }
+
+    // ===== 环境部署实例与灾备关系持久化 =====
+
+    public void insertInstance(EnvironmentInstance instance) {
+        requireTransaction();
+        jdbc.update("""
+                INSERT INTO arch_environment_instance
+                    (id, tenant_id, instance_no, environment_id, deployment_unit_id,
+                     deployment_unit_version_id, deployment_unit_version_no,
+                     physical_subsystem_id, source_request_id, source_item_id,
+                     machine_name, ip_address, server_type, deployment_platform,
+                     network_zone, status, cpu_cores, memory_gb, database_storage_gb,
+                     file_storage_gb, extra_cbs_gb, local_disk_gb, database_name,
+                     database_version, jdk_version, middleware, operating_system,
+                     needs_nft, needs_fserver, needs_jobexecutor, fulfillment_mode,
+                     difference_reason, remark, offlined_at, offlined_by, offline_reason,
+                     row_version, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, instance.id(), instance.tenantId(), instance.instanceNo(), instance.environmentId(),
+                instance.deploymentUnitId(), instance.deploymentUnitVersionId(), instance.deploymentUnitVersionNo(),
+                instance.physicalSubsystemId(), instance.sourceRequestId(), instance.sourceItemId(),
+                instance.machineName(), instance.ipAddress(), instance.serverType(), instance.deploymentPlatform(),
+                instance.networkZone(), instance.status().name(), instance.cpuCores(), instance.memoryGb(),
+                instance.databaseStorageGb(), instance.fileStorageGb(), instance.extraCbsGb(), instance.localDiskGb(),
+                instance.databaseName(), instance.databaseVersion(), instance.jdkVersion(), instance.middleware(),
+                instance.operatingSystem(), instance.needsNft(), instance.needsFserver(), instance.needsJobexecutor(),
+                instance.fulfillmentMode().name(), instance.differenceReason(), instance.remark(),
+                instance.offlinedAt() == null ? null : Timestamp.valueOf(instance.offlinedAt()),
+                instance.offlinedBy(), instance.offlineReason(), instance.rowVersion(),
+                instance.createdBy(), instance.updatedBy());
+    }
+
+    public Optional<EnvironmentInstance> findInstance(long tenantId, long id) {
+        return jdbc.query(instanceSelect("WHERE instance.tenant_id = ? AND instance.id = ?"),
+                INSTANCE_MAPPER, tenantId, id).stream().findFirst();
+    }
+
+    public Optional<EnvironmentInstance> lockInstance(long tenantId, long id) {
+        requireTransaction();
+        return jdbc.query(instanceSelect("WHERE instance.tenant_id = ? AND instance.id = ? FOR UPDATE"),
+                INSTANCE_MAPPER, tenantId, id).stream().findFirst();
+    }
+
+    public Optional<EnvironmentInstance> findActiveInstanceByMachineOrIp(long tenantId, long environmentId,
+                                                                         String machineName, String ipAddress,
+                                                                         Long excludeInstanceId) {
+        StringBuilder sql = new StringBuilder(instanceSelect(
+                "WHERE instance.tenant_id = ? AND instance.environment_id = ? AND instance.status = 'ACTIVE' "
+                        + "AND (instance.machine_name = ? OR instance.ip_address = ?)"));
+        List<Object> args = new ArrayList<>(List.of(tenantId, environmentId, machineName, ipAddress));
+        if (excludeInstanceId != null) {
+            sql.append(" AND instance.id <> ?");
+            args.add(excludeInstanceId);
+        }
+        return jdbc.query(sql.toString(), INSTANCE_MAPPER, args.toArray()).stream().findFirst();
+    }
+
+    public List<EnvironmentInstance> listInstances(long tenantId, Long environmentId, Long physicalSubsystemId,
+                                                   Long deploymentUnitId, InstanceStatus status,
+                                                   String keyword, int limit, int offset) {
+        if (limit <= 0 || offset < 0) {
+            throw new IllegalArgumentException("分页参数无效");
+        }
+        StringBuilder filter = new StringBuilder("WHERE instance.tenant_id = ?");
+        List<Object> args = new ArrayList<>();
+        args.add(tenantId);
+        if (environmentId != null) {
+            filter.append(" AND instance.environment_id = ?");
+            args.add(environmentId);
+        }
+        if (physicalSubsystemId != null) {
+            filter.append(" AND instance.physical_subsystem_id = ?");
+            args.add(physicalSubsystemId);
+        }
+        if (deploymentUnitId != null) {
+            filter.append(" AND instance.deployment_unit_id = ?");
+            args.add(deploymentUnitId);
+        }
+        if (status != null) {
+            filter.append(" AND instance.status = ?");
+            args.add(status.name());
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String pattern = "%" + escapeLike(keyword.trim()) + "%";
+            filter.append(" AND (instance.machine_name LIKE ? ESCAPE '\\\\' OR instance.ip_address LIKE ? ESCAPE '\\\\' OR instance.instance_no LIKE ? ESCAPE '\\\\')");
+            args.add(pattern);
+            args.add(pattern);
+            args.add(pattern);
+        }
+        filter.append(" ORDER BY instance.updated_at DESC, instance.id DESC LIMIT ? OFFSET ?");
+        args.add(limit);
+        args.add(offset);
+        return jdbc.query(instanceSelect(filter.toString()), INSTANCE_MAPPER, args.toArray());
+    }
+
+    public boolean offlineInstance(long tenantId, long id, long expectedRowVersion,
+                                   String offlineReason, long actorId, LocalDateTime offlinedAt) {
+        requireTransaction();
+        return jdbc.update("""
+                UPDATE arch_environment_instance
+                SET status = 'OFFLINE', offline_reason = ?, offlined_by = ?, offlined_at = ?,
+                    updated_by = ?, row_version = row_version + 1
+                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
+                """, offlineReason, actorId, Timestamp.valueOf(offlinedAt), actorId,
+                tenantId, id, expectedRowVersion) == 1;
+    }
+
+    public void insertDisasterRecovery(InstanceDisasterRecovery dr) {
+        requireTransaction();
+        jdbc.update("""
+                INSERT INTO arch_instance_disaster_recovery
+                    (id, tenant_id, deployment_unit_id, primary_instance_id, standby_instance_id,
+                     dr_mode, description, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, dr.id(), dr.tenantId(), dr.deploymentUnitId(), dr.primaryInstanceId(),
+                dr.standbyInstanceId(), dr.drMode().name(), dr.description(), dr.createdBy());
+    }
+
+    public Optional<InstanceDisasterRecovery> findDisasterRecovery(long tenantId, long id) {
+        return jdbc.query(drSelect("WHERE dr.tenant_id = ? AND dr.id = ?"),
+                DR_MAPPER, tenantId, id).stream().findFirst();
+    }
+
+    public Optional<InstanceDisasterRecovery> findDisasterRecoveryPair(long tenantId,
+                                                                       long primaryInstanceId,
+                                                                       long standbyInstanceId) {
+        return jdbc.query(drSelect("WHERE dr.tenant_id = ? AND dr.primary_instance_id = ? AND dr.standby_instance_id = ?"),
+                DR_MAPPER, tenantId, primaryInstanceId, standbyInstanceId).stream().findFirst();
+    }
+
+    public List<InstanceDisasterRecovery> listDisasterRecoveries(long tenantId, Long deploymentUnitId, Long instanceId) {
+        StringBuilder filter = new StringBuilder("WHERE dr.tenant_id = ?");
+        List<Object> args = new ArrayList<>();
+        args.add(tenantId);
+        if (deploymentUnitId != null) {
+            filter.append(" AND dr.deployment_unit_id = ?");
+            args.add(deploymentUnitId);
+        }
+        if (instanceId != null) {
+            filter.append(" AND (dr.primary_instance_id = ? OR dr.standby_instance_id = ?)");
+            args.add(instanceId);
+            args.add(instanceId);
+        }
+        filter.append(" ORDER BY dr.id DESC");
+        return jdbc.query(drSelect(filter.toString()), DR_MAPPER, args.toArray());
+    }
+
+    public boolean deleteDisasterRecovery(long tenantId, long id) {
+        requireTransaction();
+        return jdbc.update("DELETE FROM arch_instance_disaster_recovery WHERE tenant_id = ? AND id = ?",
+                tenantId, id) == 1;
+    }
+
+    public List<EnvironmentInstance> listAvailableStandbyInstances(long tenantId, long deploymentUnitId, Long excludeInstanceId) {
+        StringBuilder filter = new StringBuilder(
+                "WHERE instance.tenant_id = ? AND instance.deployment_unit_id = ? AND instance.status = 'ACTIVE'");
+        List<Object> args = new ArrayList<>(List.of(tenantId, deploymentUnitId));
+        if (excludeInstanceId != null) {
+            filter.append(" AND instance.id <> ?");
+            args.add(excludeInstanceId);
+        }
+        filter.append(" ORDER BY instance.environment_id ASC, instance.id ASC");
+        return jdbc.query(instanceSelect(filter.toString()), INSTANCE_MAPPER, args.toArray());
+    }
+
+    private String instanceSelect(String suffix) {
+        return "SELECT " + INSTANCE_COLUMNS
+                + " FROM arch_environment_instance instance "
+                + "JOIN arch_environment environment "
+                + "  ON environment.tenant_id = instance.tenant_id AND environment.id = instance.environment_id "
+                + "JOIN arch_deployment_unit unit "
+                + "  ON unit.tenant_id = instance.tenant_id AND unit.id = instance.deployment_unit_id "
+                + "JOIN arch_physical_subsystem physical "
+                + "  ON physical.tenant_id = instance.tenant_id AND physical.id = instance.physical_subsystem_id "
+                + "JOIN arch_resource_request request "
+                + "  ON request.tenant_id = instance.tenant_id AND request.id = instance.source_request_id "
+                + suffix;
+    }
+
+    private String drSelect(String suffix) {
+        return "SELECT " + DR_COLUMNS
+                + " FROM arch_instance_disaster_recovery dr "
+                + "JOIN arch_deployment_unit unit "
+                + "  ON unit.tenant_id = dr.tenant_id AND unit.id = dr.deployment_unit_id "
+                + "JOIN arch_environment_instance p_inst "
+                + "  ON p_inst.tenant_id = dr.tenant_id AND p_inst.id = dr.primary_instance_id "
+                + "JOIN arch_environment p_env "
+                + "  ON p_env.tenant_id = p_inst.tenant_id AND p_env.id = p_inst.environment_id "
+                + "JOIN arch_environment_instance s_inst "
+                + "  ON s_inst.tenant_id = dr.tenant_id AND s_inst.id = dr.standby_instance_id "
+                + "JOIN arch_environment s_env "
+                + "  ON s_env.tenant_id = s_inst.tenant_id AND s_env.id = s_inst.environment_id "
+                + suffix;
     }
 
     private String requestSelect(String suffix) {

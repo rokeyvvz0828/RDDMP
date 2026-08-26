@@ -220,6 +220,7 @@ const router = createRouter({
         { path: 'architecture/deployment-units', name: 'architecture-deployment-units', component: () => import('../modules/architecture/DeploymentUnitPage.vue'), meta: { title: '部署单元' } },
         { path: 'architecture/deployment-unit-imports', name: 'architecture-deployment-unit-imports', component: () => import('../modules/architecture/DeploymentUnitImportPage.vue'), meta: { title: '部署单元初始化导入' } },
         { path: 'architecture/environments', name: 'architecture-environments', component: () => import('../modules/architecture/EnvironmentPage.vue'), meta: { title: '具体环境' } },
+        { path: 'architecture/instances', name: 'architecture-instances', component: () => import('../modules/architecture/InstanceListPage.vue'), meta: { title: '环境部署实例' } },
         { path: 'architecture/resource-requests', name: 'architecture-resource-requests', component: () => import('../modules/architecture/ResourceRequestPage.vue'), meta: { title: '资源申请' } },
         { path: 'architecture/resource-requests/:id', name: 'architecture-resource-request-detail', component: () => import('../modules/architecture/ResourceRequestPage.vue'), meta: { title: '资源申请详情', menuPath: '/architecture/resource-requests' } },
         { path: 'architecture/network-work-orders', name: 'architecture-network-work-orders', component: () => import('../modules/architecture/NetworkWorkOrderListPage.vue'), meta: { title: '网络专项工单' } },

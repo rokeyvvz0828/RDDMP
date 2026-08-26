@@ -194,14 +194,16 @@ export const resourceRequestStatusLabels: Record<ResourceRequestStatus, string> 
   IN_REVIEW: '审批中',
   RETURNED: '已退回',
   APPROVED: '已批准',
+  FULFILLED: '已下发',
+  DIFF_FULFILLED: '已差异下发',
   REJECTED: '已拒绝',
   CANCELLED: '已取消'
 }
 
 export function resourceRequestStatusTone(status: ResourceRequestStatus) {
-  if (status === 'APPROVED') return 'success' as const
+  if (status === 'APPROVED' || status === 'FULFILLED') return 'success' as const
   if (status === 'REJECTED') return 'danger' as const
-  if (status === 'IN_REVIEW' || status === 'RETURNED') return 'warning' as const
+  if (status === 'IN_REVIEW' || status === 'RETURNED' || status === 'DIFF_FULFILLED') return 'warning' as const
   return 'info' as const
 }
 

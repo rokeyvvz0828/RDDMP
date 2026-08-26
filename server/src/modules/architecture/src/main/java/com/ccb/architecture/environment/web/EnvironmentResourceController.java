@@ -1,8 +1,16 @@
 package com.ccb.architecture.environment.web;
 
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.DisasterRecoveryCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.DisasterRecoveryMode;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.Environment;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.EnvironmentInstance;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.EnvironmentType;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillmentCommand;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.HistoryEvent;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.InstanceDisasterRecovery;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.InstanceStatus;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.OfflineInstanceCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.ProvisionPreviewResult;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RecordStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RequestStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RequestType;
@@ -30,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -333,6 +342,115 @@ public class EnvironmentResourceController {
         return new BusinessException(ErrorCode.BAD_REQUEST, message);
     }
 
+    @GetMapping("/resource-requests/{id}/preview-automated-provision")
+    @PreAuthorize("hasAnyAuthority('architecture:resource-request:view','architecture:resource-request:apply',"
+            + "'architecture:resource-request:manage','architecture:view','architecture:manage')")
+    public ApiResponse<ProvisionPreviewResult> previewAutomatedProvision(
+            @PathVariable long id,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.previewAutomatedProvision(actor, id));
+    }
+
+    @PostMapping("/resource-requests/{id}/fulfill")
+    @PreAuthorize("hasAnyAuthority('architecture:resource-request:manage','architecture:manage')")
+    public ApiResponse<List<EnvironmentInstanceResponse>> fulfillResourceRequest(
+            @PathVariable long id,
+            @RequestBody FulfillmentCommand command,
+            @AuthenticationPrincipal AuthUser actor) {
+        return audited(actor, "architecture.resource-request.fulfill", "POST",
+                "/api/architecture/resource-requests/" + id + "/fulfill",
+                () -> success(service.fulfillRequest(actor, id, command).stream().map(this::toInstance).toList()));
+    }
+
+    @GetMapping("/instances")
+    @PreAuthorize("hasAnyAuthority('architecture:instance:view','architecture:instance:manage',"
+            + "'architecture:view','architecture:manage')")
+    public ApiResponse<List<EnvironmentInstanceResponse>> listInstances(
+            @RequestParam(required = false) Long environmentId,
+            @RequestParam(required = false) Long physicalSubsystemId,
+            @RequestParam(required = false) Long deploymentUnitId,
+            @RequestParam(required = false) InstanceStatus status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") int offset,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.listInstances(actor, environmentId, physicalSubsystemId, deploymentUnitId,
+                status, keyword, limit, offset).stream().map(this::toInstance).toList());
+    }
+
+    @GetMapping("/instances/{id}")
+    @PreAuthorize("hasAnyAuthority('architecture:instance:view','architecture:instance:manage',"
+            + "'architecture:view','architecture:manage')")
+    public ApiResponse<EnvironmentInstanceResponse> detailInstance(
+            @PathVariable long id,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(toInstance(service.detailInstance(actor, id)));
+    }
+
+    @PostMapping("/instances/{id}/offline")
+    @PreAuthorize("hasAnyAuthority('architecture:instance:manage','architecture:manage')")
+    public ApiResponse<EnvironmentInstanceResponse> offlineInstance(
+            @PathVariable long id,
+            @RequestBody OfflineInstanceCommand command,
+            @AuthenticationPrincipal AuthUser actor) {
+        return audited(actor, "architecture.instance.offline", "POST",
+                "/api/architecture/instances/" + id + "/offline",
+                () -> success(toInstance(service.offlineInstance(actor, id, command))));
+    }
+
+    @GetMapping("/instances/{id}/disaster-recoveries")
+    @PreAuthorize("hasAnyAuthority('architecture:instance:view','architecture:instance:manage',"
+            + "'architecture:view','architecture:manage')")
+    public ApiResponse<List<InstanceDisasterRecoveryResponse>> listInstanceDisasterRecoveries(
+            @PathVariable long id,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.listInstanceDisasterRecoveries(actor, id).stream().map(this::toDr).toList());
+    }
+
+    @GetMapping("/instance-disaster-recoveries")
+    @PreAuthorize("hasAnyAuthority('architecture:instance:view','architecture:instance:manage',"
+            + "'architecture:view','architecture:manage')")
+    public ApiResponse<List<InstanceDisasterRecoveryResponse>> listDisasterRecoveries(
+            @RequestParam(required = false) Long deploymentUnitId,
+            @RequestParam(required = false) Long instanceId,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.listDisasterRecoveries(actor, deploymentUnitId, instanceId).stream().map(this::toDr).toList());
+    }
+
+    @PostMapping("/instance-disaster-recoveries")
+    @PreAuthorize("hasAnyAuthority('architecture:instance:manage','architecture:manage')")
+    public ApiResponse<InstanceDisasterRecoveryResponse> createDisasterRecovery(
+            @RequestBody DisasterRecoveryCommand command,
+            @AuthenticationPrincipal AuthUser actor) {
+        return audited(actor, "architecture.instance-dr.create", "POST",
+                "/api/architecture/instance-disaster-recoveries",
+                () -> success(toDr(service.createDisasterRecovery(actor, command))));
+    }
+
+    @DeleteMapping("/instance-disaster-recoveries/{id}")
+    @PreAuthorize("hasAnyAuthority('architecture:instance:manage','architecture:manage')")
+    public ApiResponse<Void> deleteDisasterRecovery(
+            @PathVariable long id,
+            @AuthenticationPrincipal AuthUser actor) {
+        return audited(actor, "architecture.instance-dr.delete", "DELETE",
+                "/api/architecture/instance-disaster-recoveries/" + id,
+                () -> {
+                    service.deleteDisasterRecovery(actor, id);
+                    return success(null);
+                });
+    }
+
+    @GetMapping("/instances/options/available-standbys")
+    @PreAuthorize("hasAnyAuthority('architecture:instance:view','architecture:instance:manage',"
+            + "'architecture:view','architecture:manage')")
+    public ApiResponse<List<EnvironmentInstanceResponse>> listAvailableStandbys(
+            @RequestParam long deploymentUnitId,
+            @RequestParam(required = false) Long excludeInstanceId,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.listAvailableStandbyInstances(actor, deploymentUnitId, excludeInstanceId)
+                .stream().map(this::toInstance).toList());
+    }
+
     private <T> ApiResponse<T> success(T data) {
         return ApiResponse.success(data, TraceId.getOrCreate());
     }
@@ -493,5 +611,71 @@ public class EnvironmentResourceController {
                                   RequestStatus toStatus, int businessRound, String summary,
                                   String snapshotJson, String diffJson, long operatorId,
                                   LocalDateTime occurredAt) {
+    }
+
+    private EnvironmentInstanceResponse toInstance(EnvironmentInstance instance) {
+        return new EnvironmentInstanceResponse(
+                instance.id(), instance.instanceNo(), instance.environmentId(),
+                instance.environmentCode(), instance.environmentName(), instance.environmentTypeName(),
+                instance.deploymentUnitId(), instance.deploymentUnitCode(), instance.deploymentUnitName(),
+                instance.deploymentUnitKind(), instance.deploymentUnitVersionId(),
+                instance.deploymentUnitVersionNo(), instance.latestDeploymentUnitVersionNo(),
+                instance.hasVersionDifference(),
+                instance.physicalSubsystemId(), instance.physicalSubsystemCode(), instance.physicalSubsystemName(),
+                instance.sourceRequestId(), instance.sourceRequestNo(), instance.sourceItemId(),
+                instance.machineName(), instance.ipAddress(), instance.serverType(),
+                instance.deploymentPlatform(), instance.networkZone(), instance.status(),
+                instance.cpuCores(), instance.memoryGb(), instance.databaseStorageGb(),
+                instance.fileStorageGb(), instance.extraCbsGb(), instance.localDiskGb(),
+                instance.databaseName(), instance.databaseVersion(), instance.jdkVersion(),
+                instance.middleware(), instance.operatingSystem(), instance.needsNft(),
+                instance.needsFserver(), instance.needsJobexecutor(), instance.fulfillmentMode(),
+                instance.differenceReason(), instance.remark(), instance.offlinedAt(),
+                instance.offlinedBy(), instance.offlineReason(), instance.rowVersion(),
+                instance.createdBy(), instance.updatedBy(), instance.createdAt(), instance.updatedAt()
+        );
+    }
+
+    private InstanceDisasterRecoveryResponse toDr(InstanceDisasterRecovery dr) {
+        return new InstanceDisasterRecoveryResponse(
+                dr.id(), dr.deploymentUnitId(), dr.deploymentUnitCode(), dr.deploymentUnitName(),
+                dr.primaryInstanceId(), dr.primaryMachineName(), dr.primaryIpAddress(),
+                dr.primaryEnvironmentCode(), dr.primaryEnvironmentName(),
+                dr.standbyInstanceId(), dr.standbyMachineName(), dr.standbyIpAddress(),
+                dr.standbyEnvironmentCode(), dr.standbyEnvironmentName(),
+                dr.drMode(), dr.description(), dr.createdBy(), dr.createdAt(), dr.updatedAt()
+        );
+    }
+
+    public record EnvironmentInstanceResponse(
+            long id, String instanceNo, long environmentId, String environmentCode,
+            String environmentName, String environmentTypeName, long deploymentUnitId,
+            String deploymentUnitCode, String deploymentUnitName, String deploymentUnitKind,
+            Long deploymentUnitVersionId, int deploymentUnitVersionNo, int latestDeploymentUnitVersionNo,
+            boolean hasVersionDifference, long physicalSubsystemId, String physicalSubsystemCode,
+            String physicalSubsystemName, long sourceRequestId, String sourceRequestNo,
+            Long sourceItemId, String machineName, String ipAddress, String serverType,
+            String deploymentPlatform, String networkZone, InstanceStatus status,
+            BigDecimal cpuCores, BigDecimal memoryGb, BigDecimal databaseStorageGb,
+            BigDecimal fileStorageGb, BigDecimal extraCbsGb, BigDecimal localDiskGb,
+            String databaseName, String databaseVersion, String jdkVersion,
+            String middleware, String operatingSystem, boolean needsNft,
+            boolean needsFserver, boolean needsJobexecutor,
+            com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillmentMode fulfillmentMode,
+            String differenceReason, String remark, LocalDateTime offlinedAt,
+            Long offlinedBy, String offlineReason, long rowVersion,
+            long createdBy, long updatedBy, LocalDateTime createdAt, LocalDateTime updatedAt
+    ) {
+    }
+
+    public record InstanceDisasterRecoveryResponse(
+            long id, long deploymentUnitId, String deploymentUnitCode, String deploymentUnitName,
+            long primaryInstanceId, String primaryMachineName, String primaryIpAddress,
+            String primaryEnvironmentCode, String primaryEnvironmentName,
+            long standbyInstanceId, String standbyMachineName, String standbyIpAddress,
+            String standbyEnvironmentCode, String standbyEnvironmentName,
+            DisasterRecoveryMode drMode, String description,
+            long createdBy, LocalDateTime createdAt, LocalDateTime updatedAt
+    ) {
     }
 }

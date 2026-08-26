@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /** 具体环境与资源申请的强类型模型（REQ-20260824-052）。 */
 public final class EnvironmentResourceModels {
@@ -17,6 +18,34 @@ public final class EnvironmentResourceModels {
 
         public static RecordStatus fromDatabase(String value) {
             return enumValue(RecordStatus.class, value, "status");
+        }
+    }
+
+    public enum InstanceStatus {
+        ACTIVE,
+        OFFLINE;
+
+        public static InstanceStatus fromDatabase(String value) {
+            return enumValue(InstanceStatus.class, value, "status");
+        }
+    }
+
+    public enum FulfillmentMode {
+        MANUAL,
+        AUTOMATED;
+
+        public static FulfillmentMode fromDatabase(String value) {
+            return enumValue(FulfillmentMode.class, value, "fulfillment_mode");
+        }
+    }
+
+    public enum DisasterRecoveryMode {
+        PRIMARY_STANDBY,
+        ACTIVE_ACTIVE,
+        COLD_STANDBY;
+
+        public static DisasterRecoveryMode fromDatabase(String value) {
+            return enumValue(DisasterRecoveryMode.class, value, "dr_mode");
         }
     }
 
@@ -36,6 +65,8 @@ public final class EnvironmentResourceModels {
         IN_REVIEW,
         RETURNED,
         APPROVED,
+        FULFILLED,
+        DIFF_FULFILLED,
         REJECTED,
         CANCELLED;
 
@@ -302,6 +333,232 @@ public final class EnvironmentResourceModels {
             Boolean needsFserver,
             Boolean needsJobexecutor,
             String remark) {
+    }
+
+    public record EnvironmentInstance(
+            long id,
+            long tenantId,
+            String instanceNo,
+            long environmentId,
+            String environmentCode,
+            String environmentName,
+            String environmentTypeName,
+            long deploymentUnitId,
+            String deploymentUnitCode,
+            String deploymentUnitName,
+            String deploymentUnitKind,
+            Long deploymentUnitVersionId,
+            int deploymentUnitVersionNo,
+            int latestDeploymentUnitVersionNo,
+            boolean hasVersionDifference,
+            long physicalSubsystemId,
+            String physicalSubsystemCode,
+            String physicalSubsystemName,
+            long sourceRequestId,
+            String sourceRequestNo,
+            Long sourceItemId,
+            String machineName,
+            String ipAddress,
+            String serverType,
+            String deploymentPlatform,
+            String networkZone,
+            InstanceStatus status,
+            BigDecimal cpuCores,
+            BigDecimal memoryGb,
+            BigDecimal databaseStorageGb,
+            BigDecimal fileStorageGb,
+            BigDecimal extraCbsGb,
+            BigDecimal localDiskGb,
+            String databaseName,
+            String databaseVersion,
+            String jdkVersion,
+            String middleware,
+            String operatingSystem,
+            boolean needsNft,
+            boolean needsFserver,
+            boolean needsJobexecutor,
+            FulfillmentMode fulfillmentMode,
+            String differenceReason,
+            String remark,
+            LocalDateTime offlinedAt,
+            Long offlinedBy,
+            String offlineReason,
+            long rowVersion,
+            long createdBy,
+            long updatedBy,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+    }
+
+    public record InstanceDisasterRecovery(
+            long id,
+            long tenantId,
+            long deploymentUnitId,
+            String deploymentUnitCode,
+            String deploymentUnitName,
+            long primaryInstanceId,
+            String primaryMachineName,
+            String primaryIpAddress,
+            String primaryEnvironmentCode,
+            String primaryEnvironmentName,
+            long standbyInstanceId,
+            String standbyMachineName,
+            String standbyIpAddress,
+            String standbyEnvironmentCode,
+            String standbyEnvironmentName,
+            DisasterRecoveryMode drMode,
+            String description,
+            long createdBy,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FulfillInstanceItemCommand(
+            Long sourceItemId,
+            Long deploymentUnitId,
+            String machineName,
+            String ipAddress,
+            String serverType,
+            String deploymentPlatform,
+            String networkZone,
+            BigDecimal cpuCores,
+            BigDecimal memoryGb,
+            BigDecimal databaseStorageGb,
+            BigDecimal fileStorageGb,
+            BigDecimal extraCbsGb,
+            BigDecimal localDiskGb,
+            String databaseName,
+            String databaseVersion,
+            String jdkVersion,
+            String middleware,
+            String operatingSystem,
+            Boolean needsNft,
+            Boolean needsFserver,
+            Boolean needsJobexecutor,
+            FulfillmentMode fulfillmentMode,
+            String remark) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FulfillmentCommand(
+            FulfillmentMode fulfillmentMode,
+            String differenceReason,
+            List<FulfillInstanceItemCommand> instances,
+            Long rowVersion) {
+        public FulfillmentCommand {
+            instances = List.copyOf(instances == null ? List.of() : instances);
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record OfflineInstanceCommand(
+            String offlineReason,
+            Long rowVersion) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DisasterRecoveryCommand(
+            Long deploymentUnitId,
+            Long primaryInstanceId,
+            Long standbyInstanceId,
+            DisasterRecoveryMode drMode,
+            String description) {
+    }
+
+    public record ProvisionItemRequest(
+            long sourceItemId,
+            int itemSeq,
+            long deploymentUnitId,
+            String deploymentUnitCode,
+            String deploymentUnitName,
+            String deploymentUnitType,
+            String deploymentUnitKind,
+            BigDecimal cpuCores,
+            BigDecimal memoryGb,
+            BigDecimal databaseStorageGb,
+            BigDecimal fileStorageGb,
+            BigDecimal extraCbsGb,
+            BigDecimal localDiskGb,
+            int plannedNodeCount,
+            int nextSequenceStart,
+            String networkZone,
+            String serverType,
+            String deploymentPlatform,
+            String databaseName,
+            String databaseVersion,
+            String jdkVersion,
+            String middleware,
+            String operatingSystem,
+            boolean needsNft,
+            boolean needsFserver,
+            boolean needsJobexecutor,
+            String remark) {
+    }
+
+    public record ProvisionRequest(
+            long tenantId,
+            long requestId,
+            String requestNo,
+            long environmentId,
+            String environmentCode,
+            String environmentName,
+            long physicalSubsystemId,
+            String physicalSubsystemCode,
+            String physicalSubsystemName,
+            List<ProvisionItemRequest> items) {
+        public ProvisionRequest {
+            items = List.copyOf(items == null ? List.of() : items);
+        }
+    }
+
+    public record ProvisionedInstance(
+            long sourceItemId,
+            int itemSeq,
+            long deploymentUnitId,
+            String deploymentUnitCode,
+            String deploymentUnitName,
+            String machineName,
+            String ipAddress,
+            String serverType,
+            String deploymentPlatform,
+            String networkZone,
+            BigDecimal cpuCores,
+            BigDecimal memoryGb,
+            BigDecimal databaseStorageGb,
+            BigDecimal fileStorageGb,
+            BigDecimal extraCbsGb,
+            BigDecimal localDiskGb,
+            String databaseName,
+            String databaseVersion,
+            String jdkVersion,
+            String middleware,
+            String operatingSystem,
+            boolean needsNft,
+            boolean needsFserver,
+            boolean needsJobexecutor,
+            String remark,
+            String mockExecutionLog) {
+    }
+
+    public record ProvisionPreviewResult(
+            boolean success,
+            String executionId,
+            String message,
+            List<ProvisionedInstance> instances) {
+        public ProvisionPreviewResult {
+            instances = List.copyOf(instances == null ? List.of() : instances);
+        }
+    }
+
+    public record ProvisionResult(
+            boolean success,
+            String executionId,
+            String message,
+            List<ProvisionedInstance> instances) {
+        public ProvisionResult {
+            instances = List.copyOf(instances == null ? List.of() : instances);
+        }
     }
 
     private static <T extends Enum<T>> T enumValue(Class<T> type, String value, String column) {

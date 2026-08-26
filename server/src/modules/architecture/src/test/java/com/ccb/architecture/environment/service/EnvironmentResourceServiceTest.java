@@ -1,7 +1,17 @@
 package com.ccb.architecture.environment.service;
 
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.DisasterRecoveryCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.DisasterRecoveryMode;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.Environment;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.EnvironmentInstance;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillInstanceItemCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillmentCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillmentMode;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.HistoryEvent;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.InstanceDisasterRecovery;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.InstanceStatus;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.OfflineInstanceCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.ProvisionPreviewResult;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RecordStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RequestStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RequestType;
@@ -81,7 +91,8 @@ class EnvironmentResourceServiceTest {
         lenient().when(referenceQuery.findUser(ACTOR, ACTOR.id(), true)).thenReturn(Optional.of(
                 new com.ccb.system.capability.SystemUserReference(ACTOR.id(), ACTOR.username(), ACTOR.displayName(),
                         null, true)));
-        service = new EnvironmentResourceService(store, new ObjectMapper(), referenceQuery, ids::incrementAndGet,
+        service = new EnvironmentResourceService(store, new ObjectMapper(), referenceQuery,
+                new MockAutomatedDeploymentProvider(), ids::incrementAndGet,
                 Clock.fixed(Instant.parse("2026-08-24T10:00:00Z"), ZoneOffset.UTC));
     }
 
@@ -283,13 +294,17 @@ class EnvironmentResourceServiceTest {
     }
 
     private DeploymentUnitRef activeUnit(long id, long physicalId) {
+        return activeUnit(id, physicalId, 1_001L, 1);
+    }
+
+    private DeploymentUnitRef activeUnit(long id, long physicalId, long currentVersionId, int currentVersion) {
         return new DeploymentUnitRef(id, "DW0001A001", "接入应用", "APPLICATION", "ACTIVE",
-                physicalId, null, "AP", "接入应用节点");
+                physicalId, null, "AP", "接入应用节点", currentVersionId, currentVersion);
     }
 
     private DeploymentUnitRef databaseUnit(long id, long physicalId) {
         return new DeploymentUnitRef(id, "DW0001D001", "接入数据库", "DATABASE", "ACTIVE",
-                physicalId, null, "DB", "接入数据库");
+                physicalId, null, "DB", "接入数据库", 1_002L, 1);
     }
 
     private ResourceRequest request(long id, RequestStatus status, long applicantId,
@@ -320,5 +335,244 @@ class EnvironmentResourceServiceTest {
                 null, null, BigDecimal.ZERO, BigDecimal.ZERO, 0, 0, BigDecimal.ZERO,
                 BigDecimal.ZERO, false, "GoldenDB", "6.1", null, null, null,
                 BigDecimal.ZERO, BigDecimal.ZERO, false, false, false, null, TIME, TIME);
+    }
+
+    @Test
+    void 自动部署预览生成正确带出Mock机器名和IP() {
+        ResourceRequest approved = request(900001L, RequestStatus.APPROVED, ACTOR.id(), 0, false);
+        ResourceRequestItem item = item(900002L, 900001L, 300L);
+        when(store.findRequest(7L, 900001L)).thenReturn(Optional.of(approved));
+        when(store.listItems(7L, 900001L)).thenReturn(List.of(item));
+        when(store.countInstancesForEnvironmentUnit(7L, 200L, 300L)).thenReturn(5);
+
+        ProvisionPreviewResult preview = service.previewAutomatedProvision(ACTOR, 900001L);
+
+        assertThat(preview.success()).isTrue();
+        assertThat(preview.instances()).hasSize(2);
+        assertThat(preview.instances().get(0).sourceItemId()).isEqualTo(900002L);
+        assertThat(preview.instances().get(0).machineName()).isEqualTo("dev-a-dw0001a001-0006");
+        assertThat(preview.instances().get(1).machineName()).isEqualTo("dev-a-dw0001a001-0007");
+        assertThat(preview.instances()).extracting("ipAddress").doesNotHaveDuplicates();
+        assertThat(preview.instances().get(0).ipAddress()).matches("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
+        assertThat(preview.instances().get(0).cpuCores()).isEqualByComparingTo("2");
+        assertThat(preview.instances().get(0).memoryGb()).isEqualByComparingTo("4");
+    }
+
+    @Test
+    void 审批通过工单手动填报完成下发生成环境部署实例() {
+        ResourceRequest approved = request(900001L, RequestStatus.APPROVED, ACTOR.id(), 0, false);
+        ResourceRequestItem item = item(900002L, 900001L, 300L);
+        when(store.lockRequest(7L, 900001L)).thenReturn(Optional.of(approved));
+        when(store.listItems(7L, 900001L)).thenReturn(List.of(item));
+        when(store.findDeploymentUnit(7L, 300L)).thenReturn(Optional.of(activeUnit(300L, 100L)));
+        when(store.findActiveInstanceByMachineOrIp(eq(7L), eq(200L), any(), any(), eq(null)))
+                .thenReturn(Optional.empty());
+        when(store.compareAndSetStatus(7L, 900001L, RequestStatus.APPROVED, 0L,
+                RequestStatus.FULFILLED, ACTOR.id())).thenReturn(true);
+
+        FulfillInstanceItemCommand node1 = new FulfillInstanceItemCommand(
+                900002L, 300L, "vm-eacp-01", "10.10.1.1", "architecture.server-type.container",
+                "TSF", "开放区", BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.valueOf(50), BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, "architecture.jdk.jdk17", "architecture.middleware.tomcat9",
+                "architecture.os.rhel8-5", false, false, false, FulfillmentMode.MANUAL, "节点1");
+
+        FulfillInstanceItemCommand node2 = new FulfillInstanceItemCommand(
+                900002L, 300L, "vm-eacp-02", "10.10.1.2", "architecture.server-type.container",
+                "TSF", "开放区", BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.valueOf(50), BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, "architecture.jdk.jdk17", "architecture.middleware.tomcat9",
+                "architecture.os.rhel8-5", false, false, false, FulfillmentMode.MANUAL, "节点2");
+
+        FulfillmentCommand cmd = new FulfillmentCommand(FulfillmentMode.MANUAL, null, List.of(node1, node2), 0L);
+
+        List<EnvironmentInstance> result = service.fulfillRequest(ACTOR, 900001L, cmd);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).machineName()).isEqualTo("vm-eacp-01");
+        assertThat(result.get(0).ipAddress()).isEqualTo("10.10.1.1");
+        assertThat(result.get(0).status()).isEqualTo(InstanceStatus.ACTIVE);
+        verify(store, org.mockito.Mockito.times(2)).insertInstance(any(EnvironmentInstance.class));
+        verify(store).compareAndSetStatus(7L, 900001L, RequestStatus.APPROVED, 0L,
+                RequestStatus.FULFILLED, ACTOR.id());
+        ArgumentCaptor<HistoryEvent> history = ArgumentCaptor.forClass(HistoryEvent.class);
+        verify(store).insertHistory(history.capture());
+        assertThat(history.getValue().eventType()).isEqualTo("FULFILLED");
+        assertThat(history.getValue().toStatus()).isEqualTo(RequestStatus.FULFILLED);
+        assertThat(history.getValue().summary()).contains("已按申请规格下发");
+    }
+
+    @Test
+    void 下发实例记录部署单元当前发布版本快照() {
+        ResourceRequest approved = request(900001L, RequestStatus.APPROVED, ACTOR.id(), 0, false);
+        ResourceRequestItem item = item(900002L, 900001L, 300L);
+        when(store.lockRequest(7L, 900001L)).thenReturn(Optional.of(approved));
+        when(store.listItems(7L, 900001L)).thenReturn(List.of(item));
+        when(store.findDeploymentUnit(7L, 300L)).thenReturn(Optional.of(activeUnit(300L, 100L, 910003L, 3)));
+        when(store.findActiveInstanceByMachineOrIp(eq(7L), eq(200L), any(), any(), eq(null)))
+                .thenReturn(Optional.empty());
+        when(store.compareAndSetStatus(7L, 900001L, RequestStatus.APPROVED, 0L,
+                RequestStatus.DIFF_FULFILLED, ACTOR.id())).thenReturn(true);
+
+        FulfillInstanceItemCommand node1 = new FulfillInstanceItemCommand(
+                900002L, 300L, "vm-eacp-01", "10.10.1.1", "architecture.server-type.container",
+                "TSF", "开放区", BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.valueOf(100), BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, null, null, null, false, false, false, FulfillmentMode.MANUAL, "节点1");
+        FulfillmentCommand cmd = new FulfillmentCommand(FulfillmentMode.MANUAL, "单节点部署", List.of(node1), 0L);
+
+        List<EnvironmentInstance> result = service.fulfillRequest(ACTOR, 900001L, cmd);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).deploymentUnitVersionId()).isEqualTo(910003L);
+        assertThat(result.get(0).deploymentUnitVersionNo()).isEqualTo(3);
+        assertThat(result.get(0).latestDeploymentUnitVersionNo()).isEqualTo(3);
+        assertThat(result.get(0).hasVersionDifference()).isFalse();
+        ArgumentCaptor<HistoryEvent> history = ArgumentCaptor.forClass(HistoryEvent.class);
+        verify(store).insertHistory(history.capture());
+        assertThat(history.getValue().eventType()).isEqualTo("DIFF_FULFILLED");
+        assertThat(history.getValue().toStatus()).isEqualTo(RequestStatus.DIFF_FULFILLED);
+        assertThat(history.getValue().summary()).contains("已差异下发");
+    }
+
+    @Test
+    void 实际下发资源与申请存在差异时强制要求记录差异原因() {
+        ResourceRequest approved = request(900001L, RequestStatus.APPROVED, ACTOR.id(), 0, false);
+        ResourceRequestItem item = item(900002L, 900001L, 300L); // plannedNodeCount = 2, cpu = 2, total = 4
+        when(store.lockRequest(7L, 900001L)).thenReturn(Optional.of(approved));
+        when(store.listItems(7L, 900001L)).thenReturn(List.of(item));
+
+        // Actual is only 1 node, so requested != actual
+        FulfillInstanceItemCommand node1 = new FulfillInstanceItemCommand(
+                900002L, 300L, "vm-eacp-01", "10.10.1.1", "architecture.server-type.container",
+                "TSF", "开放区", BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.valueOf(50), BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, null, null, null, false, false, false, FulfillmentMode.MANUAL, "节点1");
+
+        FulfillmentCommand cmdWithoutReason = new FulfillmentCommand(FulfillmentMode.MANUAL, null, List.of(node1), 0L);
+
+        assertThatThrownBy(() -> service.fulfillRequest(ACTOR, 900001L, cmdWithoutReason))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("实际下发资源与工单申请值存在差异");
+    }
+
+    @Test
+    void 同环境存在同名机器或IP在用实例时下发拒绝() {
+        ResourceRequest approved = request(900001L, RequestStatus.APPROVED, ACTOR.id(), 0, false);
+        ResourceRequestItem item = item(900002L, 900001L, 300L);
+        when(store.lockRequest(7L, 900001L)).thenReturn(Optional.of(approved));
+        when(store.listItems(7L, 900001L)).thenReturn(List.of(item));
+        when(store.findDeploymentUnit(7L, 300L)).thenReturn(Optional.of(activeUnit(300L, 100L)));
+
+        EnvironmentInstance existing = new EnvironmentInstance(
+                999L, 7L, "INS999", 200L, "DEV-A", "开发环境 A", "开发环境",
+                300L, "DW0001A001", "接入应用", "APPLICATION", null, 1, 1, false,
+                100L, "W0001A", "电子渠道接入", 900000L, "RR900000", null,
+                "vm-duplicate", "10.10.1.1", "architecture.server-type.container",
+                "TSF", "开放区", InstanceStatus.ACTIVE, BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null,
+                null, null, null, false, false, false, FulfillmentMode.MANUAL, null, null,
+                null, null, null, 0L, 1L, 1L, TIME, TIME);
+
+        when(store.findActiveInstanceByMachineOrIp(eq(7L), eq(200L), eq("vm-duplicate"), eq("10.10.1.1"), eq(null)))
+                .thenReturn(Optional.of(existing));
+
+        FulfillInstanceItemCommand node1 = new FulfillInstanceItemCommand(
+                900002L, 300L, "vm-duplicate", "10.10.1.1", "architecture.server-type.container",
+                "TSF", "开放区", BigDecimal.valueOf(4), BigDecimal.valueOf(8),
+                BigDecimal.ZERO, BigDecimal.valueOf(100), BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, null, null, null, false, false, false, FulfillmentMode.MANUAL, "重复节点");
+
+        FulfillmentCommand cmd = new FulfillmentCommand(FulfillmentMode.MANUAL, "缩减为1台大规格", List.of(node1), 0L);
+
+        assertThatThrownBy(() -> service.fulfillRequest(ACTOR, 900001L, cmd))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已存在机器名或 IP 相同的在用实例");
+    }
+
+    @Test
+    void 实例下线校验状态与版本并更新下线事实() {
+        EnvironmentInstance active = new EnvironmentInstance(
+                900010L, 7L, "INS900010", 200L, "DEV-A", "开发环境 A", "开发环境",
+                300L, "DW0001A001", "接入应用", "APPLICATION", null, 1, 1, false,
+                100L, "W0001A", "电子渠道接入", 900001L, "RR900001", null,
+                "vm-eacp-01", "10.10.1.1", "architecture.server-type.container",
+                "TSF", "开放区", InstanceStatus.ACTIVE, BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null,
+                null, null, null, false, false, false, FulfillmentMode.MANUAL, null, null,
+                null, null, null, 0L, 1L, 1L, TIME, TIME);
+
+        EnvironmentInstance offlined = new EnvironmentInstance(
+                900010L, 7L, "INS900010", 200L, "DEV-A", "开发环境 A", "开发环境",
+                300L, "DW0001A001", "接入应用", "APPLICATION", null, 1, 1, false,
+                100L, "W0001A", "电子渠道接入", 900001L, "RR900001", null,
+                "vm-eacp-01", "10.10.1.1", "architecture.server-type.container",
+                "TSF", "开放区", InstanceStatus.OFFLINE, BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null,
+                null, null, null, false, false, false, FulfillmentMode.MANUAL, null, null,
+                LocalDateTime.now(), ACTOR.id(), "缩容下线机器", 1L, 1L, ACTOR.id(), TIME, TIME);
+
+        when(store.lockInstance(7L, 900010L)).thenReturn(Optional.of(active));
+        when(store.offlineInstance(eq(7L), eq(900010L), eq(0L), eq("缩容下线机器"), eq(ACTOR.id()), any()))
+                .thenReturn(true);
+        when(store.findInstance(7L, 900010L)).thenReturn(Optional.of(offlined));
+
+        EnvironmentInstance res = service.offlineInstance(ACTOR, 900010L, new OfflineInstanceCommand("缩容下线机器", 0L));
+
+        assertThat(res.status()).isEqualTo(InstanceStatus.OFFLINE);
+        assertThat(res.offlineReason()).isEqualTo("缩容下线机器");
+    }
+
+    @Test
+    void 同部署单元实例成功建立灾备关系跨部署单元拒绝() {
+        EnvironmentInstance instA = new EnvironmentInstance(
+                900010L, 7L, "INS900010", 200L, "DEV-A", "开发环境 A", "开发环境",
+                300L, "DW0001A001", "接入应用", "APPLICATION", null, 1, 1, false,
+                100L, "W0001A", "电子渠道接入", 900001L, "RR900001", null,
+                "vm-eacp-01", "10.10.1.1", "architecture.server-type.container",
+                "TSF", "开放区", InstanceStatus.ACTIVE, BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null,
+                null, null, null, false, false, false, FulfillmentMode.MANUAL, null, null,
+                null, null, null, 0L, 1L, 1L, TIME, TIME);
+
+        EnvironmentInstance instB = new EnvironmentInstance(
+                900011L, 7L, "INS900011", 201L, "DR-A", "灾备环境 A", "灾备环境",
+                300L, "DW0001A001", "接入应用", "APPLICATION", null, 1, 1, false,
+                100L, "W0001A", "电子渠道接入", 900002L, "RR900002", null,
+                "vm-eacp-dr-01", "10.20.1.1", "architecture.server-type.container",
+                "TSF", "开放区", InstanceStatus.ACTIVE, BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null,
+                null, null, null, false, false, false, FulfillmentMode.MANUAL, null, null,
+                null, null, null, 0L, 1L, 1L, TIME, TIME);
+
+        EnvironmentInstance instDiffUnit = new EnvironmentInstance(
+                900012L, 7L, "INS900012", 200L, "DEV-A", "开发环境 A", "开发环境",
+                301L, "DW0001D001", "接入数据库", "DATABASE", null, 1, 1, false,
+                100L, "W0001A", "电子渠道接入", 900003L, "RR900003", null,
+                "vm-db-01", "10.10.2.1", "architecture.server-type.container",
+                "TSF", "开放区", InstanceStatus.ACTIVE, BigDecimal.valueOf(4), BigDecimal.valueOf(8),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null,
+                null, null, null, false, false, false, FulfillmentMode.MANUAL, null, null,
+                null, null, null, 0L, 1L, 1L, TIME, TIME);
+
+        when(store.findInstance(7L, 900010L)).thenReturn(Optional.of(instA));
+        when(store.findInstance(7L, 900011L)).thenReturn(Optional.of(instB));
+        when(store.findInstance(7L, 900012L)).thenReturn(Optional.of(instDiffUnit));
+        when(store.findDisasterRecoveryPair(7L, 900010L, 900011L)).thenReturn(Optional.empty());
+
+        // Same DU across environments -> Success
+        DisasterRecoveryCommand validCmd = new DisasterRecoveryCommand(
+                300L, 900010L, 900011L, DisasterRecoveryMode.PRIMARY_STANDBY, "主备关系");
+        InstanceDisasterRecovery dr = service.createDisasterRecovery(ACTOR, validCmd);
+        assertThat(dr.primaryInstanceId()).isEqualTo(900010L);
+        assertThat(dr.standbyInstanceId()).isEqualTo(900011L);
+        assertThat(dr.drMode()).isEqualTo(DisasterRecoveryMode.PRIMARY_STANDBY);
+
+        // Different DU -> Error
+        DisasterRecoveryCommand invalidCmd = new DisasterRecoveryCommand(
+                300L, 900010L, 900012L, DisasterRecoveryMode.PRIMARY_STANDBY, "不同DU");
+        assertThatThrownBy(() -> service.createDisasterRecovery(ACTOR, invalidCmd))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("只能在同一部署单元的实例之间建立");
     }
 }

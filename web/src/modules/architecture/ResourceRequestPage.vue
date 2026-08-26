@@ -20,6 +20,7 @@ import { useAuthStore } from '../../stores/auth'
 import {
   cancelResourceRequest,
   createResourceRequest,
+  fulfillResourceRequest,
   getResourceRequest,
   listEnvironments,
   listResourceRequests,
@@ -27,6 +28,7 @@ import {
   loadPhysicalSubsystemOptions,
   loadResourceDeploymentUnitOptions,
   loadUserOptions,
+  previewAutomatedProvision,
   submitResourceRequest,
   updateResourceRequest
 } from './api'
@@ -34,6 +36,8 @@ import type {
   DeploymentUnitKind,
   DeploymentUnitOption,
   Environment,
+  FulfillInstanceItemPayload,
+  FulfillmentMode,
   ParameterOption,
   PhysicalSubsystemOption,
   ResourceRequestDetail,
@@ -130,7 +134,7 @@ const form = reactive<ResourceForm>({
 let listSequence = 0
 let detailSequence = 0
 let optionSequence = 0
-const statusOptions: ResourceRequestStatus[] = ['DRAFT', 'IN_REVIEW', 'RETURNED', 'APPROVED', 'REJECTED', 'CANCELLED']
+const statusOptions: ResourceRequestStatus[] = ['DRAFT', 'IN_REVIEW', 'RETURNED', 'APPROVED', 'FULFILLED', 'DIFF_FULFILLED', 'REJECTED', 'CANCELLED']
 const typeOptions: ResourceRequestType[] = ['INITIAL', 'EXPANSION', 'SHRINK', 'ADJUSTMENT']
 const canView = computed(() => ['architecture:resource-request:view', 'architecture:resource-request:apply', 'architecture:resource-request:manage', 'architecture:view', 'architecture:apply', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
 const canApply = computed(() => ['architecture:resource-request:apply', 'architecture:resource-request:manage', 'architecture:apply', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
@@ -780,6 +784,221 @@ async function decide(action: WorkflowTaskAction) {
   }
 }
 
+// ---------- 资源办理下发 (REQ-20260825-053) ----------
+
+const fulfillOpen = ref(false)
+const fulfillLoading = ref(false)
+const fulfillSubmitting = ref(false)
+const fulfillMode = ref<FulfillmentMode>('AUTOMATED')
+const mockExecutionLog = ref('')
+const fulfillmentInstances = ref<FulfillInstanceItemPayload[]>([])
+const differenceReason = ref('')
+const targetFulfillRequest = ref<ResourceRequestSummary | null>(null)
+const targetFulfillItems = ref<ResourceRequestItem[]>([])
+
+const requestedNodes = computed(() => targetFulfillItems.value.reduce((acc, it) => acc + (it.plannedNodeCount || 0), 0))
+const requestedCpu = computed(() => targetFulfillItems.value.reduce((acc, it) => acc + (it.cpuCores * (it.plannedNodeCount || 0) + (it.hasSidecar ? it.sidecarCpuCores : 0)), 0))
+const requestedMem = computed(() => targetFulfillItems.value.reduce((acc, it) => acc + (it.memoryGb * (it.plannedNodeCount || 0) + (it.hasSidecar ? it.sidecarMemoryGb : 0)), 0))
+const requestedStorage = computed(() => targetFulfillItems.value.reduce((acc, it) => acc + (it.databaseStorageGb + it.fileStorageGb + it.extraCbsGb + it.localDiskGb), 0))
+
+const actualNodes = computed(() => fulfillmentInstances.value.length)
+const actualCpu = computed(() => fulfillmentInstances.value.reduce((acc, it) => acc + (Number(it.cpuCores) || 0), 0))
+const actualMem = computed(() => fulfillmentInstances.value.reduce((acc, it) => acc + (Number(it.memoryGb) || 0), 0))
+const actualStorage = computed(() => fulfillmentInstances.value.reduce((acc, it) => acc + (Number(it.databaseStorageGb || 0) + Number(it.fileStorageGb || 0) + Number(it.extraCbsGb || 0) + Number(it.localDiskGb || 0)), 0))
+
+const hasResourceDiff = computed(() => {
+  return requestedNodes.value !== actualNodes.value
+    || requestedCpu.value !== actualCpu.value
+    || requestedMem.value !== actualMem.value
+    || requestedStorage.value !== actualStorage.value
+})
+
+async function openFulfillDialog(req: ResourceRequestSummary, items?: ResourceRequestItem[]) {
+  targetFulfillRequest.value = req
+  differenceReason.value = ''
+  mockExecutionLog.value = ''
+  fulfillmentInstances.value = []
+  fulfillMode.value = 'AUTOMATED'
+  fulfillOpen.value = true
+
+  if (items && items.length) {
+    targetFulfillItems.value = items
+  } else {
+    try {
+      const full = await getResourceRequest(req.id)
+      targetFulfillItems.value = full.items
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  await loadAutomatedPreview()
+}
+
+async function loadAutomatedPreview() {
+  if (!targetFulfillRequest.value) return
+  fulfillLoading.value = true
+  try {
+    const preview = await previewAutomatedProvision(targetFulfillRequest.value.id)
+    mockExecutionLog.value = preview.instances.map(i => i.mockExecutionLog).filter(Boolean).join('\n') || preview.message
+    fulfillmentInstances.value = preview.instances.map(inst => ({
+      sourceItemId: inst.sourceItemId,
+      deploymentUnitId: inst.deploymentUnitId,
+      machineName: inst.machineName,
+      ipAddress: inst.ipAddress,
+      serverType: inst.serverType || DEFAULT_SERVER_TYPE_CODE,
+      deploymentPlatform: inst.deploymentPlatform || targetFulfillRequest.value?.physicalSubsystemDeploymentPlatform,
+      networkZone: inst.networkZone,
+      cpuCores: inst.cpuCores,
+      memoryGb: inst.memoryGb,
+      databaseStorageGb: inst.databaseStorageGb,
+      fileStorageGb: inst.fileStorageGb,
+      extraCbsGb: inst.extraCbsGb,
+      localDiskGb: inst.localDiskGb,
+      databaseName: inst.databaseName,
+      databaseVersion: inst.databaseVersion,
+      jdkVersion: inst.jdkVersion,
+      middleware: inst.middleware,
+      operatingSystem: inst.operatingSystem,
+      needsNft: inst.needsNft,
+      needsFserver: inst.needsFserver,
+      needsJobexecutor: inst.needsJobexecutor,
+      fulfillmentMode: 'AUTOMATED',
+      remark: inst.remark
+    }))
+  } catch (err) {
+    ElMessage.error(apiErrorMessage(err, '自动部署预览失败，已切换为手动模式'))
+    fulfillMode.value = 'MANUAL'
+  } finally {
+    fulfillLoading.value = false
+  }
+}
+
+function handleFulfillModeChange(mode: FulfillmentMode) {
+  fulfillMode.value = mode
+  if (mode === 'AUTOMATED') {
+    loadAutomatedPreview()
+  } else {
+    if (!fulfillmentInstances.value.length && targetFulfillItems.value.length) {
+      for (const item of targetFulfillItems.value) {
+        const count = Math.max(1, item.plannedNodeCount || 1)
+        for (let i = 0; i < count; i++) {
+          fulfillmentInstances.value.push({
+            sourceItemId: item.id,
+            deploymentUnitId: item.deploymentUnitId,
+            machineName: '',
+            ipAddress: '',
+            serverType: item.serverType || DEFAULT_SERVER_TYPE_CODE,
+            deploymentPlatform: targetFulfillRequest.value?.physicalSubsystemDeploymentPlatform,
+            networkZone: item.networkZone,
+            cpuCores: item.cpuCores,
+            memoryGb: item.memoryGb,
+            databaseStorageGb: item.databaseStorageGb,
+            fileStorageGb: item.fileStorageGb,
+            extraCbsGb: item.extraCbsGb,
+            localDiskGb: item.localDiskGb,
+            databaseName: item.databaseName,
+            databaseVersion: item.databaseVersion,
+            jdkVersion: item.jdkVersion,
+            middleware: item.middleware,
+            operatingSystem: item.operatingSystem,
+            needsNft: item.needsNft,
+            needsFserver: item.needsFserver,
+            needsJobexecutor: item.needsJobexecutor,
+            fulfillmentMode: 'MANUAL',
+            remark: item.remark
+          })
+        }
+      }
+    }
+  }
+}
+
+function addManualInstanceRow() {
+  const firstUnit = targetFulfillItems.value[0]
+  fulfillmentInstances.value.push({
+    sourceItemId: firstUnit?.id || null,
+    deploymentUnitId: firstUnit?.deploymentUnitId || 0,
+    machineName: '',
+    ipAddress: '',
+    serverType: firstUnit?.serverType || DEFAULT_SERVER_TYPE_CODE,
+    deploymentPlatform: targetFulfillRequest.value?.physicalSubsystemDeploymentPlatform,
+    networkZone: firstUnit?.networkZone || null,
+    cpuCores: firstUnit?.cpuCores || 2,
+    memoryGb: firstUnit?.memoryGb || 4,
+    databaseStorageGb: firstUnit?.databaseStorageGb || 0,
+    fileStorageGb: firstUnit?.fileStorageGb || 0,
+    extraCbsGb: firstUnit?.extraCbsGb || 0,
+    localDiskGb: firstUnit?.localDiskGb || 0,
+    databaseName: firstUnit?.databaseName || null,
+    databaseVersion: firstUnit?.databaseVersion || null,
+    jdkVersion: firstUnit?.jdkVersion || null,
+    middleware: firstUnit?.middleware || null,
+    operatingSystem: firstUnit?.operatingSystem || null,
+    needsNft: firstUnit?.needsNft || false,
+    needsFserver: firstUnit?.needsFserver || false,
+    needsJobexecutor: firstUnit?.needsJobexecutor || false,
+    fulfillmentMode: 'MANUAL',
+    remark: null
+  })
+}
+
+function removeManualInstanceRow(index: number) {
+  fulfillmentInstances.value.splice(index, 1)
+}
+
+async function submitFulfill() {
+  if (!targetFulfillRequest.value) return
+  if (!fulfillmentInstances.value.length) {
+    ElMessage.warning('请至少填报一台下发机器实例')
+    return
+  }
+  for (let i = 0; i < fulfillmentInstances.value.length; i++) {
+    const inst = fulfillmentInstances.value[i]
+    if (!inst.deploymentUnitId) {
+      ElMessage.warning(`第 ${i + 1} 台实例必须选择所属部署单元`)
+      return
+    }
+    if (!inst.machineName?.trim()) {
+      ElMessage.warning(`第 ${i + 1} 台实例的主机名/机器名不能为空`)
+      return
+    }
+    if (!inst.ipAddress?.trim()) {
+      ElMessage.warning(`第 ${i + 1} 台实例的 IP 地址不能为空`)
+      return
+    }
+  }
+  if (hasResourceDiff.value && !differenceReason.value.trim()) {
+    ElMessage.warning('实际下发资源与工单申请值存在差异，必须填写差异原因')
+    return
+  }
+
+  fulfillSubmitting.value = true
+  try {
+    const res = await fulfillResourceRequest(targetFulfillRequest.value.id, {
+      fulfillmentMode: fulfillMode.value,
+      differenceReason: differenceReason.value.trim() || undefined,
+      instances: fulfillmentInstances.value.map(i => ({
+        ...i,
+        machineName: i.machineName.trim(),
+        ipAddress: i.ipAddress.trim(),
+        fulfillmentMode: fulfillMode.value
+      })),
+      rowVersion: targetFulfillRequest.value.rowVersion
+    })
+    ElMessage.success(`资源办理成功，已生成 ${res.length} 台环境部署实例！`)
+    fulfillOpen.value = false
+    void load()
+    if (detail.value && detail.value.request.id === targetFulfillRequest.value.id) {
+      await showDetail(detail.value.request)
+    }
+  } catch (err) {
+    ElMessage.error(apiErrorMessage(err, '资源下发办理失败'))
+  } finally {
+    fulfillSubmitting.value = false
+  }
+}
+
 function previous() {
   if (page.value <= 1) return
   page.value -= 1
@@ -847,10 +1066,11 @@ watch(deploymentUnitOptions, () => {
         <el-table-column label="申请人" width="120"><template #default="scope">{{ userLabel(scope.row.applicantId) }}</template></el-table-column>
         <el-table-column label="联系人" width="120"><template #default="scope">{{ userLabel(scope.row.contactUserId) }}</template></el-table-column>
         <el-table-column label="最后更新" width="150"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
-        <el-table-column label="操作" width="230" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="scope">
             <div class="architecture-table-actions">
               <el-button link type="primary" @click="showDetail(scope.row)"><el-icon><View /></el-icon>详情</el-button>
+              <el-button v-if="canManage && scope.row.status === 'APPROVED'" link type="success" @click="openFulfillDialog(scope.row)">办理下发</el-button>
               <el-button v-if="canApply && owns(scope.row) && canEditResourceRequest(scope.row.status)" link type="primary" @click="openEdit(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button>
               <el-button v-if="canApply && owns(scope.row) && canSubmitResourceRequest(scope.row.status)" link type="success" @click="confirmSubmit(scope.row)">提交</el-button>
               <el-button v-if="canApply && owns(scope.row) && canCancelResourceRequest(scope.row.status)" link type="warning" @click="confirmCancel(scope.row)">取消</el-button>
@@ -864,7 +1084,13 @@ watch(deploymentUnitOptions, () => {
           <header><div><strong>{{ row.requestNo }}</strong><small>{{ requestTypeLabel(row.requestType) }} · {{ row.environmentName }}</small></div><UiStatusTag :value="row.status" :labels="resourceRequestStatusLabels" :tone="resourceRequestStatusTone(row.status)" /></header>
           <p class="architecture-mobile-card__reason">{{ row.reason || '未填写申请原因' }}</p>
           <dl><div><dt>物理子系统</dt><dd>{{ row.physicalSubsystemName }}（{{ row.physicalSubsystemShortName || row.physicalSubsystemCode }}）</dd></div><div><dt>联系人</dt><dd>{{ userLabel(row.contactUserId) }}</dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl>
-          <footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button v-if="canApply && owns(row) && canEditResourceRequest(row.status)" link type="primary" @click="openEdit(row)"><el-icon><Edit /></el-icon>编辑</el-button><el-button v-if="canApply && owns(row) && canSubmitResourceRequest(row.status)" link type="success" @click="confirmSubmit(row)">提交</el-button><el-button v-if="canApply && owns(row) && canCancelResourceRequest(row.status)" link type="warning" @click="confirmCancel(row)">取消</el-button></footer>
+          <footer>
+            <el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button>
+            <el-button v-if="canManage && row.status === 'APPROVED'" link type="success" @click="openFulfillDialog(row)">办理下发</el-button>
+            <el-button v-if="canApply && owns(row) && canEditResourceRequest(row.status)" link type="primary" @click="openEdit(row)"><el-icon><Edit /></el-icon>编辑</el-button>
+            <el-button v-if="canApply && owns(row) && canSubmitResourceRequest(row.status)" link type="success" @click="confirmSubmit(row)">提交</el-button>
+            <el-button v-if="canApply && owns(row) && canCancelResourceRequest(row.status)" link type="warning" @click="confirmCancel(row)">取消</el-button>
+          </footer>
         </article>
       </div>
 
@@ -963,6 +1189,16 @@ watch(deploymentUnitOptions, () => {
                 <el-button v-if="allowedDecisions.includes('REJECT')" type="danger" plain :loading="deciding === 'REJECT'" :disabled="Boolean(deciding)" @click="decide('REJECT')">拒绝</el-button>
                 <el-button v-if="allowedDecisions.includes('APPROVE')" type="primary" :loading="deciding === 'APPROVE'" :disabled="Boolean(deciding)" @click="decide('APPROVE')">批准</el-button>
               </div>
+            </div>
+          </section>
+          <section v-if="canManage && detail.request.status === 'APPROVED'" class="architecture-drawer-section architecture-change-approval">
+            <header><strong>资源下发办理</strong><span class="architecture-muted">将工单审批资源规格落地为具体环境部署实例</span></header>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+              <div>
+                <p style="margin: 0 0 4px; font-weight: 500;">工单审批已通过，可执行自动部署或手动逐台登记下发。</p>
+                <span class="architecture-muted" style="font-size: 12px;">自动部署将模拟带出主机名、IP及资源指标。</span>
+              </div>
+              <el-button type="primary" @click="openFulfillDialog(detail.request, detail.items)">办理下发</el-button>
             </div>
           </section>
           <div v-if="canApply && owns(detail.request)" class="architecture-drawer-actions architecture-drawer-section">
@@ -1090,6 +1326,147 @@ watch(deploymentUnitOptions, () => {
         <el-alert v-if="formError" type="error" :closable="false" show-icon :title="formError" />
       </el-form>
       <template #footer><el-button @click="formOpen = false">取消</el-button><el-button type="primary" :loading="formSubmitting" @click="submitForm">保存草稿</el-button></template>
+    </el-dialog>
+
+    <!-- Fulfillment Dialog (REQ-20260825-053) -->
+    <el-dialog
+      v-model="fulfillOpen"
+      :title="`资源申请下发办理 — ${targetFulfillRequest?.requestNo || ''}`"
+      width="min(1280px, 96vw)"
+      destroy-on-close
+    >
+      <div v-loading="fulfillLoading" class="architecture-drawer-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--el-fill-color-light); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px;">
+          <div>
+            <strong style="font-size: 15px;">下发办理方式</strong>
+            <p style="margin: 4px 0 0; font-size: 13px; color: var(--el-text-color-secondary);">
+              {{ fulfillMode === 'AUTOMATED' ? '自动部署模式：根据工单规格自动分配主机名与子网 IP（当前为对接平台 Mock 模式）' : '手动录入模式：管理员逐台手工登记下发主机名与 IP' }}
+            </p>
+          </div>
+          <el-radio-group v-model="fulfillMode" @change="handleFulfillModeChange">
+            <el-radio-button label="AUTOMATED">自动部署带出 (Mock)</el-radio-button>
+            <el-radio-button label="MANUAL">手动逐台登记</el-radio-button>
+          </el-radio-group>
+        </div>
+
+        <el-alert
+          v-if="fulfillMode === 'AUTOMATED' && mockExecutionLog"
+          type="success"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px;"
+          title="自动部署调度就绪"
+          :description="`已通过自动部署服务生成 ${fulfillmentInstances.length} 台实例初始规划配置。`"
+        />
+
+        <section class="architecture-drawer-section" style="border: 1px solid var(--el-border-color-lighter); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong>资源规格对比</strong>
+            <el-tag :type="hasResourceDiff ? 'warning' : 'success'">
+              {{ hasResourceDiff ? '下发规格与申请存在差异' : '下发规格与申请一致' }}
+            </el-tag>
+          </header>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="background: var(--el-fill-color-blank); border-radius: 6px; padding: 10px 14px; border: 1px dashed var(--el-border-color);">
+              <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 4px;">工单申请规格</div>
+              <div style="font-size: 13px; font-weight: 500;">
+                {{ requestedNodes }} 节点 / {{ requestedCpu }} 核 CPU / {{ requestedMem }} GB 内存 / {{ requestedStorage }} GB 存储
+              </div>
+            </div>
+            <div style="background: var(--el-fill-color-blank); border-radius: 6px; padding: 10px 14px; border: 1px dashed var(--el-border-color);" :style="{ borderColor: hasResourceDiff ? 'var(--el-color-warning)' : undefined }">
+              <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 4px;">实际下发规格</div>
+              <div style="font-size: 13px; font-weight: 500;" :style="{ color: hasResourceDiff ? 'var(--el-color-warning)' : undefined }">
+                {{ actualNodes }} 节点 / {{ actualCpu }} 核 CPU / {{ actualMem }} GB 内存 / {{ actualStorage }} GB 存储
+              </div>
+            </div>
+          </div>
+          <div v-if="hasResourceDiff" style="margin-top: 12px;">
+            <el-form-item label="差异原因说明 (必填，因实际下发资源与工单申请值存在差异)" required>
+              <el-input
+                v-model="differenceReason"
+                type="textarea"
+                :rows="2"
+                placeholder="请详细说明实际下发资源规格与工单申请规格产生差异的原因（如：机型配额限制、规格升档等）"
+                maxlength="500"
+                show-word-limit
+              />
+            </el-form-item>
+          </div>
+        </section>
+
+        <section class="architecture-drawer-section">
+          <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <strong>待落成环境部署实例明细 ({{ fulfillmentInstances.length }} 台)</strong>
+            <el-button v-if="fulfillMode === 'MANUAL'" size="small" type="primary" :icon="Plus" @click="addManualInstanceRow">
+              新增实例行
+            </el-button>
+          </header>
+
+          <el-table :data="fulfillmentInstances" border style="width: 100%;">
+            <el-table-column label="#" type="index" width="50" align="center" />
+            <el-table-column label="所属部署单元" min-width="160">
+              <template #default="{ row }">
+                <el-select v-model="row.deploymentUnitId" size="small" style="width: 100%;">
+                  <el-option
+                    v-for="item in targetFulfillItems"
+                    :key="item.deploymentUnitId"
+                    :label="`${item.deploymentUnitName} (${item.deploymentUnitCode})`"
+                    :value="item.deploymentUnitId"
+                  />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="机器标识 / 主机名" min-width="170">
+              <template #default="{ row }">
+                <el-input v-model="row.machineName" size="small" placeholder="如 vm-dev-01" />
+              </template>
+            </el-table-column>
+            <el-table-column label="IP 地址" min-width="140">
+              <template #default="{ row }">
+                <el-input v-model="row.ipAddress" size="small" placeholder="如 10.10.1.10" />
+              </template>
+            </el-table-column>
+            <el-table-column label="CPU(核)" width="95">
+              <template #default="{ row }">
+                <el-input-number v-model="row.cpuCores" size="small" :min="0" :precision="0" style="width: 100%;" controls-position="right" />
+              </template>
+            </el-table-column>
+            <el-table-column label="内存(G)" width="95">
+              <template #default="{ row }">
+                <el-input-number v-model="row.memoryGb" size="small" :min="0" :precision="0" style="width: 100%;" controls-position="right" />
+              </template>
+            </el-table-column>
+            <el-table-column label="DB存储(G)" width="95">
+              <template #default="{ row }">
+                <el-input-number v-model="row.databaseStorageGb" size="small" :min="0" :precision="0" style="width: 100%;" controls-position="right" />
+              </template>
+            </el-table-column>
+            <el-table-column label="文件存储(G)" width="95">
+              <template #default="{ row }">
+                <el-input-number v-model="row.fileStorageGb" size="small" :min="0" :precision="0" style="width: 100%;" controls-position="right" />
+              </template>
+            </el-table-column>
+            <el-table-column label="网络分区" width="110">
+              <template #default="{ row }">
+                <el-input v-model="row.networkZone" size="small" placeholder="网络分区" />
+              </template>
+            </el-table-column>
+            <el-table-column v-if="fulfillMode === 'MANUAL'" label="操作" width="70" align="center">
+              <template #default="{ $index }">
+                <el-button link type="danger" size="small" :disabled="fulfillmentInstances.length <= 1" @click="removeManualInstanceRow($index)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </section>
+      </div>
+      <template #footer>
+        <el-button @click="fulfillOpen = false">取消</el-button>
+        <el-button type="primary" :loading="fulfillSubmitting" @click="submitFulfill">
+          确认下发并生成环境部署实例
+        </el-button>
+      </template>
     </el-dialog>
   </main>
 </template>

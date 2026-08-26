@@ -1,8 +1,20 @@
 package com.ccb.architecture.environment.service;
 
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.DisasterRecoveryCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.DisasterRecoveryMode;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.Environment;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.EnvironmentInstance;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.EnvironmentType;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillInstanceItemCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillmentCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.FulfillmentMode;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.HistoryEvent;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.InstanceDisasterRecovery;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.InstanceStatus;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.OfflineInstanceCommand;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.ProvisionItemRequest;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.ProvisionPreviewResult;
+import com.ccb.architecture.environment.model.EnvironmentResourceModels.ProvisionRequest;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RecordStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RequestStatus;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.RequestType;
@@ -40,7 +52,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
-/** 具体环境和资源申请的业务规则（REQ-20260824-052）。 */
+/** 具体环境和资源申请的业务规则（REQ-20260824-052 与 REQ-20260825-053）。 */
 @Service
 public class EnvironmentResourceService {
     public static final String ENVIRONMENT_TYPE_CATEGORY = "ARCH_ENVIRONMENT_TYPE";
@@ -87,22 +99,27 @@ public class EnvironmentResourceService {
     private final EnvironmentResourceStore store;
     private final ObjectMapper objectMapper;
     private final SystemReferenceQuery referenceQuery;
+    private final AutomatedDeploymentProvider automatedDeploymentProvider;
     private final LongSupplier idSupplier;
     private final Clock clock;
 
     @Autowired
     public EnvironmentResourceService(EnvironmentResourceStore store, ObjectMapper objectMapper,
-                                      SystemReferenceQuery referenceQuery) {
-        this(store, objectMapper, referenceQuery,
+                                      SystemReferenceQuery referenceQuery,
+                                      AutomatedDeploymentProvider automatedDeploymentProvider) {
+        this(store, objectMapper, referenceQuery, automatedDeploymentProvider,
                 () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000),
                 Clock.systemUTC());
     }
 
     EnvironmentResourceService(EnvironmentResourceStore store, ObjectMapper objectMapper,
-                               SystemReferenceQuery referenceQuery, LongSupplier idSupplier, Clock clock) {
+                               SystemReferenceQuery referenceQuery,
+                               AutomatedDeploymentProvider automatedDeploymentProvider,
+                               LongSupplier idSupplier, Clock clock) {
         this.store = Objects.requireNonNull(store, "环境资源存储不能为空");
         this.objectMapper = Objects.requireNonNull(objectMapper, "JSON 序列化器不能为空");
         this.referenceQuery = Objects.requireNonNull(referenceQuery, "系统引用查询不能为空");
+        this.automatedDeploymentProvider = Objects.requireNonNull(automatedDeploymentProvider, "自动部署提供器不能为空");
         this.idSupplier = Objects.requireNonNull(idSupplier, "标识生成器不能为空");
         this.clock = Objects.requireNonNull(clock, "时钟不能为空");
     }
@@ -925,6 +942,421 @@ public class EnvironmentResourceService {
 
     private static BusinessException badRequest(String message) {
         return new BusinessException(ErrorCode.BAD_REQUEST, message);
+    }
+
+    // ===== REQ-20260825-053：资源工单下发、环境部署实例生命周期与灾备关系 =====
+
+    @Transactional(readOnly = true)
+    public ProvisionPreviewResult previewAutomatedProvision(AuthUser actor, long requestId) {
+        requireActor(actor);
+        ResourceRequest request = store.findRequest(actor.tenantId(), requestId)
+                .orElseThrow(() -> notFound("资源申请工单不存在：" + requestId));
+        if (request.status() != RequestStatus.APPROVED) {
+            throw badRequest("只有审批通过 (APPROVED) 的资源工单才能执行自动部署下发");
+        }
+        List<ResourceRequestItem> items = store.listItems(actor.tenantId(), requestId);
+        if (items.isEmpty()) {
+            throw badRequest("资源申请工单无明细项，无法执行部署预览");
+        }
+        Map<Long, Integer> nextSequenceByUnit = new LinkedHashMap<>();
+        List<ProvisionItemRequest> provisionItems = new java.util.ArrayList<>();
+        for (ResourceRequestItem item : items) {
+            int nodeCount = Math.max(1, item.plannedNodeCount());
+            int nextSequenceStart = nextSequenceByUnit.computeIfAbsent(item.deploymentUnitId(),
+                    ignored -> store.countInstancesForEnvironmentUnit(actor.tenantId(),
+                            request.environmentId(), item.deploymentUnitId()) + 1);
+            nextSequenceByUnit.put(item.deploymentUnitId(), nextSequenceStart + nodeCount);
+
+            provisionItems.add(new ProvisionItemRequest(
+                    item.id(),
+                    item.itemSeq(),
+                    item.deploymentUnitId(),
+                    item.deploymentUnitCode(),
+                    item.deploymentUnitName(),
+                    item.deploymentUnitType(),
+                    item.deploymentUnitKind(),
+                    item.cpuCores(),
+                    item.memoryGb(),
+                    item.databaseStorageGb(),
+                    item.fileStorageGb(),
+                    item.extraCbsGb(),
+                    item.localDiskGb(),
+                    item.plannedNodeCount(),
+                    nextSequenceStart,
+                    item.networkZone(),
+                    item.serverType(),
+                    request.physicalSubsystemDeploymentPlatform(),
+                    item.databaseName(),
+                    item.databaseVersion(),
+                    item.jdkVersion(),
+                    item.middleware(),
+                    item.operatingSystem(),
+                    item.needsNft(),
+                    item.needsFserver(),
+                    item.needsJobexecutor(),
+                    item.remark()
+            ));
+        }
+
+        ProvisionRequest provisionRequest = new ProvisionRequest(
+                actor.tenantId(),
+                request.id(),
+                request.requestNo(),
+                request.environmentId(),
+                request.environmentCode(),
+                request.environmentName(),
+                request.physicalSubsystemId(),
+                request.physicalSubsystemCode(),
+                request.physicalSubsystemName(),
+                provisionItems
+        );
+        return automatedDeploymentProvider.previewProvision(provisionRequest);
+    }
+
+    @Transactional
+    public List<EnvironmentInstance> fulfillRequest(AuthUser actor, long requestId, FulfillmentCommand command) {
+        requireActor(actor);
+        if (command == null) {
+            throw badRequest("办理下发参数不能为空");
+        }
+        if (command.instances().isEmpty()) {
+            throw badRequest("请至少填报一台下发机器/实例");
+        }
+        ResourceRequest request = store.lockRequest(actor.tenantId(), requestId)
+                .orElseThrow(() -> notFound("资源申请工单不存在：" + requestId));
+        if (request.status() != RequestStatus.APPROVED) {
+            throw conflict("只有审批通过 (APPROVED) 的工单允许办理下发，当前状态: " + request.status());
+        }
+        if (command.rowVersion() != null && !command.rowVersion().equals(request.rowVersion())) {
+            throw conflict("资源申请工单已被其他操作更新，请刷新重试");
+        }
+        List<ResourceRequestItem> items = store.listItems(actor.tenantId(), requestId);
+        Map<Long, ResourceRequestItem> itemsById = new LinkedHashMap<>();
+        Map<Long, List<ResourceRequestItem>> itemsByUnitId = new LinkedHashMap<>();
+        for (ResourceRequestItem item : items) {
+            itemsById.put(item.id(), item);
+            itemsByUnitId.computeIfAbsent(item.deploymentUnitId(), ignored -> new java.util.ArrayList<>()).add(item);
+        }
+
+        BigDecimal requestedCpu = items.stream().map(it -> it.cpuCores().multiply(BigDecimal.valueOf(it.plannedNodeCount()))
+                .add(it.hasSidecar() ? it.sidecarCpuCores() : BigDecimal.ZERO)).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal requestedMem = items.stream().map(it -> it.memoryGb().multiply(BigDecimal.valueOf(it.plannedNodeCount()))
+                .add(it.hasSidecar() ? it.sidecarMemoryGb() : BigDecimal.ZERO)).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal requestedStorage = items.stream().map(it -> it.databaseStorageGb().add(it.fileStorageGb()).add(it.extraCbsGb()).add(it.localDiskGb()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int requestedNodes = items.stream().mapToInt(ResourceRequestItem::plannedNodeCount).sum();
+
+        BigDecimal actualCpu = command.instances().stream().map(i -> i.cpuCores() == null ? BigDecimal.ZERO : nonNegativeInteger(i.cpuCores(), "CPU核心数")).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal actualMem = command.instances().stream().map(i -> i.memoryGb() == null ? BigDecimal.ZERO : nonNegativeInteger(i.memoryGb(), "内存容量")).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal actualStorage = command.instances().stream().map(i -> (i.databaseStorageGb() == null ? BigDecimal.ZERO : nonNegativeInteger(i.databaseStorageGb(), "数据库存储"))
+                .add(i.fileStorageGb() == null ? BigDecimal.ZERO : nonNegativeInteger(i.fileStorageGb(), "文件存储"))
+                .add(i.extraCbsGb() == null ? BigDecimal.ZERO : nonNegativeInteger(i.extraCbsGb(), "CBS容量"))
+                .add(i.localDiskGb() == null ? BigDecimal.ZERO : nonNegativeInteger(i.localDiskGb(), "本地盘容量"))).reduce(BigDecimal.ZERO, BigDecimal::add);
+        int actualNodes = command.instances().size();
+
+        boolean hasDiff = requestedCpu.compareTo(actualCpu) != 0
+                || requestedMem.compareTo(actualMem) != 0
+                || requestedStorage.compareTo(actualStorage) != 0
+                || requestedNodes != actualNodes;
+
+        String diffReason = trimToNull(command.differenceReason());
+        if (hasDiff && diffReason == null) {
+            throw badRequest("实际下发资源与工单申请值存在差异（申请: " + requestedNodes + "节点/" + requestedCpu + "核/" + requestedMem + "GB/" + requestedStorage + "GB，实际: "
+                    + actualNodes + "节点/" + actualCpu + "核/" + actualMem + "GB/" + actualStorage + "GB），必须填写差异原因");
+        }
+
+        FulfillmentMode mode = command.fulfillmentMode() == null ? FulfillmentMode.MANUAL : command.fulfillmentMode();
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<EnvironmentInstance> createdList = new java.util.ArrayList<>();
+        int seq = 1;
+        for (FulfillInstanceItemCommand instCmd : command.instances()) {
+            if (instCmd.deploymentUnitId() == null) {
+                throw badRequest("第 " + seq + " 台实例必须指定所属部署单元");
+            }
+            ResourceRequestItem sourceItem;
+            if (instCmd.sourceItemId() != null) {
+                sourceItem = itemsById.get(instCmd.sourceItemId());
+                if (sourceItem == null) {
+                    throw badRequest("第 " + seq + " 台实例的来源明细不属于当前资源工单");
+                }
+                if (sourceItem.deploymentUnitId() != instCmd.deploymentUnitId()) {
+                    throw badRequest("第 " + seq + " 台实例的来源明细与所属部署单元不一致");
+                }
+            } else {
+                List<ResourceRequestItem> matchedItems = itemsByUnitId.getOrDefault(instCmd.deploymentUnitId(), List.of());
+                if (matchedItems.isEmpty()) {
+                    throw badRequest("第 " + seq + " 台实例所属部署单元不在当前资源工单明细中");
+                }
+                if (matchedItems.size() > 1) {
+                    throw badRequest("第 " + seq + " 台实例所属部署单元在工单中存在多条需求明细，必须指定来源明细");
+                }
+                sourceItem = matchedItems.get(0);
+            }
+            DeploymentUnitRef unit = store.findDeploymentUnit(actor.tenantId(), instCmd.deploymentUnitId())
+                    .orElseThrow(() -> badRequest("部署单元不存在：" + instCmd.deploymentUnitId()));
+            if (!"ACTIVE".equals(unit.status())) {
+                throw badRequest("部署单元已停用：" + unit.code());
+            }
+            if (unit.physicalSubsystemId() != request.physicalSubsystemId()) {
+                throw badRequest("部署单元「" + unit.code() + "」不属于工单物理子系统");
+            }
+            if (unit.currentVersion() <= 0) {
+                throw badRequest("部署单元「" + unit.code() + "」尚未发布版本，不能生成环境部署实例");
+            }
+            String machineName = requireText(instCmd.machineName(), "机器标识/主机名", 128);
+            String ipAddress = requireText(instCmd.ipAddress(), "IP 地址", 64);
+
+            // Rule 41: Guarantee same machine and IP only has 1 active instance in this environment
+            var existingActive = store.findActiveInstanceByMachineOrIp(actor.tenantId(), request.environmentId(), machineName, ipAddress, null);
+            if (existingActive.isPresent()) {
+                throw conflict("具体环境「" + request.environmentName() + "」中已存在机器名或 IP 相同的在用实例：" + machineName + " / " + ipAddress);
+            }
+
+            String serverType = validateParameter(actor, SERVER_TYPE_CATEGORY,
+                    instCmd.serverType() == null || instCmd.serverType().isBlank() ? DEFAULT_SERVER_TYPE_CODE : instCmd.serverType(), "服务器类型");
+            String jdk = validateOptionalParameter(actor, JDK_VERSION_CATEGORY, instCmd.jdkVersion(), "JDK 版本");
+            String middleware = validateOptionalParameter(actor, MIDDLEWARE_CATEGORY, instCmd.middleware(), "中间件");
+            String os = validateOptionalParameter(actor, OPERATING_SYSTEM_CATEGORY, instCmd.operatingSystem(), "操作系统");
+            String platform = optional(instCmd.deploymentPlatform() == null ? request.physicalSubsystemDeploymentPlatform() : instCmd.deploymentPlatform(), "部署平台", 64);
+            String zone = optional(instCmd.networkZone(), "网络分区", 100);
+
+            long instanceId = nextId();
+            String instanceNo = "INS" + instanceId;
+
+            EnvironmentInstance instance = new EnvironmentInstance(
+                    instanceId,
+                    actor.tenantId(),
+                    instanceNo,
+                    request.environmentId(),
+                    request.environmentCode(),
+                    request.environmentName(),
+                    request.environmentTypeName(),
+                    unit.id(),
+                    unit.code(),
+                    unit.name(),
+                    unit.kind(),
+                    unit.currentVersionId(),
+                    unit.currentVersion(),
+                    unit.currentVersion(),
+                    false,
+                    request.physicalSubsystemId(),
+                    request.physicalSubsystemCode(),
+                    request.physicalSubsystemName(),
+                    request.id(),
+                    request.requestNo(),
+                    sourceItem.id(),
+                    machineName,
+                    ipAddress,
+                    serverType,
+                    platform,
+                    zone,
+                    InstanceStatus.ACTIVE,
+                    instCmd.cpuCores() == null ? BigDecimal.ZERO : nonNegativeInteger(instCmd.cpuCores(), "CPU核心数"),
+                    instCmd.memoryGb() == null ? BigDecimal.ZERO : nonNegativeInteger(instCmd.memoryGb(), "内存容量"),
+                    instCmd.databaseStorageGb() == null ? BigDecimal.ZERO : nonNegativeInteger(instCmd.databaseStorageGb(), "数据库存储"),
+                    instCmd.fileStorageGb() == null ? BigDecimal.ZERO : nonNegativeInteger(instCmd.fileStorageGb(), "文件存储"),
+                    instCmd.extraCbsGb() == null ? BigDecimal.ZERO : nonNegativeInteger(instCmd.extraCbsGb(), "CBS容量"),
+                    instCmd.localDiskGb() == null ? BigDecimal.ZERO : nonNegativeInteger(instCmd.localDiskGb(), "本地盘容量"),
+                    optional(instCmd.databaseName(), "数据库库名", 100),
+                    optional(instCmd.databaseVersion(), "数据库版本", 100),
+                    jdk,
+                    middleware,
+                    os,
+                    Boolean.TRUE.equals(instCmd.needsNft()),
+                    Boolean.TRUE.equals(instCmd.needsFserver()),
+                    Boolean.TRUE.equals(instCmd.needsJobexecutor()),
+                    mode,
+                    diffReason,
+                    optional(instCmd.remark(), "备注", 1000),
+                    null,
+                    null,
+                    null,
+                    0L,
+                    actor.id(),
+                    actor.id(),
+                    now,
+                    now
+            );
+            store.insertInstance(instance);
+            createdList.add(instance);
+            seq++;
+        }
+
+        RequestStatus nextStatus = hasDiff ? RequestStatus.DIFF_FULFILLED : RequestStatus.FULFILLED;
+        if (!store.compareAndSetStatus(actor.tenantId(), requestId, RequestStatus.APPROVED,
+                request.rowVersion(), nextStatus, actor.id())) {
+            throw conflict("资源申请工单已被其他操作更新，请刷新后重新办理下发");
+        }
+
+        Map<String, Object> summaryMap = new LinkedHashMap<>();
+        summaryMap.put("fulfillmentMode", mode);
+        summaryMap.put("instanceCount", createdList.size());
+        summaryMap.put("hasDifference", hasDiff);
+        summaryMap.put("toStatus", nextStatus);
+        summaryMap.put("differenceReason", diffReason);
+        String snapshotJson;
+        try {
+            snapshotJson = objectMapper.writeValueAsString(summaryMap);
+        } catch (JsonProcessingException e) {
+            snapshotJson = "{}";
+        }
+        store.insertHistory(new HistoryEvent(
+                nextId(),
+                actor.tenantId(),
+                requestId,
+                nextStatus.name(),
+                RequestStatus.APPROVED,
+                nextStatus,
+                request.currentBusinessRound(),
+                fulfillmentSummary(createdList.size(), mode, hasDiff, diffReason),
+                snapshotJson,
+                null,
+                actor.id(),
+                now
+        ));
+
+        return List.copyOf(createdList);
+    }
+
+    private static String fulfillmentSummary(int instanceCount, FulfillmentMode mode, boolean hasDiff, String diffReason) {
+        String modeLabel = mode == FulfillmentMode.AUTOMATED ? "自动部署" : "手动输入";
+        if (hasDiff) {
+            return "资源已差异下发，生成 " + instanceCount + " 个环境部署实例（" + modeLabel + "），差异原因：" + diffReason;
+        }
+        return "资源已按申请规格下发，生成 " + instanceCount + " 个环境部署实例（" + modeLabel + "）";
+    }
+
+    @Transactional(readOnly = true)
+    public List<EnvironmentInstance> listInstances(AuthUser actor, Long environmentId, Long physicalSubsystemId,
+                                                   Long deploymentUnitId, InstanceStatus status,
+                                                   String keyword, int limit, int offset) {
+        requireActor(actor);
+        return store.listInstances(actor.tenantId(), environmentId, physicalSubsystemId, deploymentUnitId, status,
+                keyword, limit <= 0 ? 50 : Math.min(limit, 200), Math.max(0, offset));
+    }
+
+    @Transactional(readOnly = true)
+    public EnvironmentInstance detailInstance(AuthUser actor, long instanceId) {
+        requireActor(actor);
+        return store.findInstance(actor.tenantId(), instanceId)
+                .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
+    }
+
+    @Transactional
+    public EnvironmentInstance offlineInstance(AuthUser actor, long instanceId, OfflineInstanceCommand command) {
+        requireActor(actor);
+        if (command == null) {
+            throw badRequest("下线参数不能为空");
+        }
+        String reason = requireText(command.offlineReason(), "下线原因", 1000);
+        EnvironmentInstance instance = store.lockInstance(actor.tenantId(), instanceId)
+                .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
+        if (instance.status() != InstanceStatus.ACTIVE) {
+            throw conflict("该实例当前已处于下线状态，无需重复下线");
+        }
+        if (command.rowVersion() != null && !command.rowVersion().equals(instance.rowVersion())) {
+            throw conflict("实例已被其他人修改，请刷新后重试");
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        boolean ok = store.offlineInstance(actor.tenantId(), instanceId, instance.rowVersion(), reason, actor.id(), now);
+        if (!ok) {
+            throw conflict("实例下线失败，可能已被其他人操作");
+        }
+        return store.findInstance(actor.tenantId(), instanceId)
+                .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<InstanceDisasterRecovery> listInstanceDisasterRecoveries(AuthUser actor, long instanceId) {
+        requireActor(actor);
+        store.findInstance(actor.tenantId(), instanceId)
+                .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
+        return store.listDisasterRecoveries(actor.tenantId(), null, instanceId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InstanceDisasterRecovery> listDisasterRecoveries(AuthUser actor, Long deploymentUnitId, Long instanceId) {
+        requireActor(actor);
+        return store.listDisasterRecoveries(actor.tenantId(), deploymentUnitId, instanceId);
+    }
+
+    @Transactional
+    public InstanceDisasterRecovery createDisasterRecovery(AuthUser actor, DisasterRecoveryCommand command) {
+        requireActor(actor);
+        if (command == null) {
+            throw badRequest("灾备关系创建参数不能为空");
+        }
+        if (command.primaryInstanceId() == null || command.standbyInstanceId() == null) {
+            throw badRequest("必须指定主实例和备实例");
+        }
+        if (command.primaryInstanceId().equals(command.standbyInstanceId())) {
+            throw badRequest("主实例和备实例不能相同");
+        }
+        if (command.drMode() == null) {
+            throw badRequest("必须指定灾备模式");
+        }
+        EnvironmentInstance primary = store.findInstance(actor.tenantId(), command.primaryInstanceId())
+                .orElseThrow(() -> notFound("主实例不存在：" + command.primaryInstanceId()));
+        EnvironmentInstance standby = store.findInstance(actor.tenantId(), command.standbyInstanceId())
+                .orElseThrow(() -> notFound("备实例不存在：" + command.standbyInstanceId()));
+
+        if (primary.status() != InstanceStatus.ACTIVE || standby.status() != InstanceStatus.ACTIVE) {
+            throw badRequest("只有在用 (ACTIVE) 的实例才能建立灾备关系");
+        }
+        if (primary.deploymentUnitId() != standby.deploymentUnitId()) {
+            throw badRequest("灾备关系只能在同一部署单元的实例之间建立（主实例属于「" + primary.deploymentUnitCode()
+                    + "」，备实例属于「" + standby.deploymentUnitCode() + "」）");
+        }
+        if (command.deploymentUnitId() != null && !command.deploymentUnitId().equals(primary.deploymentUnitId())) {
+            throw badRequest("灾备关系所属部署单元必须与主备实例所属部署单元一致");
+        }
+        if (store.findDisasterRecoveryPair(actor.tenantId(), primary.id(), standby.id()).isPresent()) {
+            throw conflict("主实例「" + primary.machineName() + "」与备实例「" + standby.machineName() + "」之间已存在灾备关系");
+        }
+
+        long drId = nextId();
+        LocalDateTime now = LocalDateTime.now(clock);
+        InstanceDisasterRecovery dr = new InstanceDisasterRecovery(
+                drId,
+                actor.tenantId(),
+                primary.deploymentUnitId(),
+                primary.deploymentUnitCode(),
+                primary.deploymentUnitName(),
+                primary.id(),
+                primary.machineName(),
+                primary.ipAddress(),
+                primary.environmentCode(),
+                primary.environmentName(),
+                standby.id(),
+                standby.machineName(),
+                standby.ipAddress(),
+                standby.environmentCode(),
+                standby.environmentName(),
+                command.drMode(),
+                optional(command.description(), "灾备说明", 1000),
+                actor.id(),
+                now,
+                now
+        );
+        store.insertDisasterRecovery(dr);
+        return dr;
+    }
+
+    @Transactional
+    public void deleteDisasterRecovery(AuthUser actor, long id) {
+        requireActor(actor);
+        store.findDisasterRecovery(actor.tenantId(), id)
+                .orElseThrow(() -> notFound("灾备关系记录不存在：" + id));
+        boolean deleted = store.deleteDisasterRecovery(actor.tenantId(), id);
+        if (!deleted) {
+            throw conflict("灾备关系解除失败");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<EnvironmentInstance> listAvailableStandbyInstances(AuthUser actor, long deploymentUnitId, Long excludeInstanceId) {
+        requireActor(actor);
+        return store.listAvailableStandbyInstances(actor.tenantId(), deploymentUnitId, excludeInstanceId);
     }
 
     private static BusinessException conflict(String message) {

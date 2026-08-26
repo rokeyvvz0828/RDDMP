@@ -505,7 +505,7 @@ export interface PhysicalSubsystemOption {
 
 export type EnvironmentRecordStatus = 'ACTIVE' | 'INACTIVE'
 export type ResourceRequestType = 'INITIAL' | 'EXPANSION' | 'SHRINK' | 'ADJUSTMENT'
-export type ResourceRequestStatus = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type ResourceRequestStatus = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'APPROVED' | 'FULFILLED' | 'DIFF_FULFILLED' | 'REJECTED' | 'CANCELLED'
 
 export interface EnvironmentType {
   code: string
@@ -687,4 +687,166 @@ export interface ResourceRequestDetail {
   request: ResourceRequestSummary
   items: ResourceRequestItem[]
   history: ResourceRequestHistory[]
+}
+
+export type InstanceStatus = 'ACTIVE' | 'OFFLINE'
+export type FulfillmentMode = 'MANUAL' | 'AUTOMATED'
+export type DisasterRecoveryMode = 'PRIMARY_STANDBY' | 'ACTIVE_ACTIVE' | 'COLD_STANDBY'
+
+export interface EnvironmentInstance {
+  id: number
+  instanceNo: string
+  environmentId: number
+  environmentCode: string
+  environmentName: string
+  environmentTypeName?: string
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  deploymentUnitKind: string
+  deploymentUnitVersionId?: number | null
+  deploymentUnitVersionNo: number
+  latestDeploymentUnitVersionNo: number
+  hasVersionDifference: boolean
+  physicalSubsystemId: number
+  physicalSubsystemCode: string
+  physicalSubsystemName: string
+  sourceRequestId: number
+  sourceRequestNo: string
+  sourceItemId?: number | null
+  machineName: string
+  ipAddress: string
+  serverType?: string
+  deploymentPlatform?: string
+  networkZone?: string
+  status: InstanceStatus
+  cpuCores: number
+  memoryGb: number
+  databaseStorageGb: number
+  fileStorageGb: number
+  extraCbsGb: number
+  localDiskGb: number
+  databaseName?: string
+  databaseVersion?: string
+  jdkVersion?: string
+  middleware?: string
+  operatingSystem?: string
+  needsNft: boolean
+  needsFserver: boolean
+  needsJobexecutor: boolean
+  fulfillmentMode: FulfillmentMode
+  differenceReason?: string
+  remark?: string
+  offlinedAt?: string
+  offlinedBy?: number
+  offlineReason?: string
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface InstanceDisasterRecovery {
+  id: number
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  primaryInstanceId: number
+  primaryMachineName: string
+  primaryIpAddress: string
+  primaryEnvironmentCode: string
+  primaryEnvironmentName: string
+  standbyInstanceId: number
+  standbyMachineName: string
+  standbyIpAddress: string
+  standbyEnvironmentCode: string
+  standbyEnvironmentName: string
+  drMode: DisasterRecoveryMode
+  description?: string
+  createdBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ProvisionedInstance {
+  sourceItemId: number
+  itemSeq: number
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  machineName: string
+  ipAddress: string
+  serverType?: string
+  deploymentPlatform?: string
+  networkZone?: string
+  cpuCores: number
+  memoryGb: number
+  databaseStorageGb: number
+  fileStorageGb: number
+  extraCbsGb: number
+  localDiskGb: number
+  databaseName?: string
+  databaseVersion?: string
+  jdkVersion?: string
+  middleware?: string
+  operatingSystem?: string
+  needsNft: boolean
+  needsFserver: boolean
+  needsJobexecutor: boolean
+  remark?: string
+  mockExecutionLog?: string
+}
+
+export interface ProvisionPreviewResult {
+  success: boolean
+  executionId: string
+  message: string
+  instances: ProvisionedInstance[]
+}
+
+export interface FulfillInstanceItemPayload {
+  sourceItemId?: number | null
+  deploymentUnitId: number
+  machineName: string
+  ipAddress: string
+  serverType?: string | null
+  deploymentPlatform?: string | null
+  networkZone?: string | null
+  cpuCores: number
+  memoryGb: number
+  databaseStorageGb: number
+  fileStorageGb: number
+  extraCbsGb: number
+  localDiskGb: number
+  databaseName?: string | null
+  databaseVersion?: string | null
+  jdkVersion?: string | null
+  middleware?: string | null
+  operatingSystem?: string | null
+  needsNft?: boolean
+  needsFserver?: boolean
+  needsJobexecutor?: boolean
+  fulfillmentMode?: FulfillmentMode
+  remark?: string | null
+}
+
+export interface FulfillmentPayload {
+  fulfillmentMode: FulfillmentMode
+  differenceReason?: string
+  instances: FulfillInstanceItemPayload[]
+  rowVersion?: number
+}
+
+export interface OfflineInstancePayload {
+  offlineReason: string
+  rowVersion?: number
+}
+
+export interface DisasterRecoveryPayload {
+  deploymentUnitId?: number
+  primaryInstanceId: number
+  standbyInstanceId: number
+  drMode: DisasterRecoveryMode
+  description?: string
 }
