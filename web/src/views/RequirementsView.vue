@@ -14,12 +14,15 @@ import { listSystem } from '../api/system'
 import { decideWorkflowTask, getWorkflowTaskContext, type WorkflowTaskAction, type WorkflowTaskContext } from '../api/workflow'
 import {
   addProjectMember,
+  addLegacyMember,
   confirmImport,
   createBaseline,
   createDifference,
   createLegacy,
   createProject,
   createSystem,
+  deleteCoordination,
+  deleteDeliverable,
   deleteDifference,
   deleteLegacy,
   deleteProject,
@@ -28,19 +31,35 @@ import {
   listDifferenceApprovalLogs,
   downloadTemplate,
   fetchRequirementEnums,
+  getLegacy,
   legacyChanges,
+  legacyFlowLogs,
   legacyStageLogs,
+  legacySystemItems,
+  legacyVersions,
   listBaselineItems,
   listBaselines,
+  listCoordination,
+  listDeliverables,
   listDifferences,
   listLegacy,
+  listLegacyMembers,
   listProjectMembers,
   listProjects,
   listReviewers,
+  listReviewRecords,
   listSystems,
   previewImport,
   removeProjectMember,
+  removeLegacyMember,
+  returnLegacyFlow,
+  reviewDeliverable,
+  saveCoordination,
+  saveDeliverable,
+  saveLegacyChange as saveLegacyChangeApi,
+  sendLegacyFlow,
   stageTransition,
+  submitDeliverableReview,
   submitReview,
   cancelReview,
   updateDifference,
@@ -51,8 +70,13 @@ import {
 import type {
   BaselineItem,
   ChangeLogRow,
+  CoordinationItem,
   ImportPreviewReport,
+  LegacyDeliverable,
+  LegacyFlowLog,
+  LegacyMember,
   LegacyRequirement,
+  LegacySystemItem,
   ProjectMember,
   RequirementApprovalLog,
   RequirementBaseline,
@@ -60,6 +84,8 @@ import type {
   RequirementEnums,
   RequirementProject,
   RequirementSystem,
+  RequirementVersionRow,
+  ReviewRecord,
   StageLogRow
 } from '../types/requirements'
 import type { RequirementReviewer } from '../api/requirements'
@@ -390,6 +416,7 @@ async function submitDifferenceReview(row: RequirementDifference) {
     }
     submitReviewTarget.value = row
     submitReviewApprovers.value = []
+    submitReviewReportName.value = ''
     submitReviewOptions.value = reviewers
     submitReviewDialogVisible.value = true
   } catch (error) {
@@ -401,6 +428,7 @@ const submitReviewDialogVisible = ref(false)
 const submitReviewSaving = ref(false)
 const submitReviewTarget = ref<RequirementDifference | null>(null)
 const submitReviewApprovers = ref<number[]>([])
+const submitReviewReportName = ref('')
 const submitReviewOptions = ref<RequirementReviewer[]>([])
 
 async function confirmSubmitReview() {
@@ -411,7 +439,7 @@ async function confirmSubmitReview() {
   }
   submitReviewSaving.value = true
   try {
-    await submitReview(submitReviewTarget.value.id, submitReviewApprovers.value)
+    await submitReview(submitReviewTarget.value.id, submitReviewApprovers.value, submitReviewReportName.value || undefined)
     submitReviewDialogVisible.value = false
     ElMessage.success('已提交评审，等待审批人处理')
     await loadDifferences()
@@ -618,6 +646,68 @@ const legacySaving = ref(false)
 const legacyForm = reactive<Record<string, unknown>>({})
 // 协同系统行（多个协同系统：一个用户需求可挂多个），保存时合并写入 coord_conglomerate/coord_system
 const coordRows = ref<Array<{ conglomerate: string; system: string }>>([])
+// 存量增强：统一编辑抽屉（预览/编辑/阶段推进合并）状态
+const legacyDetailTab = ref('stage')
+const legacyDetailLoading = ref(false)
+// 系统子表编辑行：members 为系统人员用户 ID 数组
+interface SystemItemEditRow {
+  id: number
+  system_role: string
+  system_code?: string | null
+  system_name?: string | null
+  owner_user_id?: number | null
+  owner_user_name?: string | null
+  members: number[]
+  remark?: string | null
+}
+const systemItemRows = ref<SystemItemEditRow[]>([])
+const flowLogRows = ref<LegacyFlowLog[]>([])
+const workloadDocs = ref<LegacyDeliverable[]>([])
+const softDocs = ref<LegacyDeliverable[]>([])
+const coordItems = ref<CoordinationItem[]>([])
+const versionRows = ref<RequirementVersionRow[]>([])
+// 存量需求成员（参考新建项目成员）
+const legacyMembers = ref<LegacyMember[]>([])
+const legacyMemberUserId = ref<number | null>(null)
+const legacyMemberSaving = ref(false)
+
+async function loadLegacyMembers() {
+  if (!legacyForm.id) {
+    legacyMembers.value = []
+    return
+  }
+  legacyMembers.value = (await listLegacyMembers(Number(legacyForm.id))).data.data
+}
+
+async function addLegacyMemberAction() {
+  if (!legacyForm.id || !legacyMemberUserId.value) {
+    ElMessage.warning('请选择成员用户')
+    return
+  }
+  legacyMemberSaving.value = true
+  try {
+    await addLegacyMember(Number(legacyForm.id), { userId: legacyMemberUserId.value })
+    legacyMemberUserId.value = null
+    ElMessage.success('成员已添加')
+    await loadLegacyMembers()
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '添加成员失败'))
+  } finally {
+    legacyMemberSaving.value = false
+  }
+}
+
+async function removeLegacyMemberAction(member: LegacyMember) {
+  try {
+    await ElMessageBox.confirm(`确认移除成员「${member.display_name || member.username || member.user_id}」？`, '移除确认', { type: 'warning' })
+    await removeLegacyMember(member.id)
+    ElMessage.success('成员已移除')
+    await loadLegacyMembers()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(apiErrorMessage(error, '移除成员失败'))
+  }
+}
 
 function openLegacyCreate() {
   Object.keys(legacyForm).forEach(key => delete legacyForm[key])
@@ -629,17 +719,444 @@ function openLegacyCreate() {
     jinke_architect: '', requirement_status: '需求分析', remark: ''
   })
   coordRows.value = []
+  systemItemRows.value = []
+  flowLogRows.value = []
+  versionRows.value = []
+  workloadDocs.value = []
+  softDocs.value = []
+  coordItems.value = []
+  legacyMembers.value = []
+  legacyMemberUserId.value = null
+  legacyDetailTab.value = 'stage'
+  void loadUserOptions()
   legacyFormVisible.value = true
 }
 
-function openLegacyEdit(row: LegacyRequirement) {
-  Object.keys(legacyForm).forEach(key => delete legacyForm[key])
-  Object.assign(legacyForm, { id: row.id }, row)
-  // 从既有"；"分隔的协同字段还原为多行
-  const conglomerates = splitEntries((row as any).coord_conglomerate)
-  const systems = splitEntries((row as any).coord_system)
-  coordRows.value = systems.map((system, index) => ({ conglomerate: conglomerates[index] || '', system }))
-  legacyFormVisible.value = true
+async function openLegacyEdit(row: LegacyRequirement) {
+  legacyDetailLoading.value = true
+  try {
+    await loadUserOptions()
+    const detail = (await getLegacy(row.id)).data.data
+    Object.keys(legacyForm).forEach(key => delete legacyForm[key])
+    Object.assign(legacyForm, detail)
+    systemItemRows.value = (detail.system_items || []).map(item => ({
+      ...item,
+      members: (item.members || []).map(m => m.user_id)
+    }))
+    flowLogRows.value = detail.flow_logs || []
+    versionRows.value = detail.versions || []
+    legacyDetailTab.value = 'stage'
+    legacyFormVisible.value = true
+    await Promise.all([loadDeliverables(), loadCoordination(), loadLegacyMembers()])
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '存量需求加载失败'))
+  } finally {
+    legacyDetailLoading.value = false
+  }
+}
+
+async function refreshLegacyDetail() {
+  if (!legacyForm.id) return
+  try {
+    const detail = (await getLegacy(Number(legacyForm.id))).data.data
+    Object.assign(legacyForm, detail)
+    systemItemRows.value = (detail.system_items || []).map(item => ({
+      ...item,
+      members: (item.members || []).map(m => m.user_id)
+    }))
+    flowLogRows.value = detail.flow_logs || []
+    versionRows.value = detail.versions || []
+    await Promise.all([loadDeliverables(), loadCoordination(), loadLegacyMembers()])
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '存量需求刷新失败'))
+  }
+}
+
+async function loadDeliverables() {
+  if (!legacyForm.id) return
+  const id = Number(legacyForm.id)
+  const [workload, soft] = await Promise.all([
+    listDeliverables(id, 'WORKLOAD'),
+    listDeliverables(id, 'SOFT')
+  ])
+  workloadDocs.value = workload.data.data
+  softDocs.value = soft.data.data
+}
+
+async function loadCoordination() {
+  if (!legacyForm.id) return
+  coordItems.value = (await listCoordination(Number(legacyForm.id))).data.data
+}
+
+// 系统人员/负责人/流转处理人共用用户列表（存量抽屉打开时确保已加载）
+async function loadUserOptions() {
+  if (userOptions.value.length > 0) return
+  try {
+    const page = (await listSystem('users', { page: 1, size: 100 })).data.data
+    userOptions.value = (page as { records: Array<{ id: number; display_name?: string; username?: string }> }).records || []
+  } catch {
+    userOptions.value = []
+  }
+}
+
+function uploadPlaceholder() {
+  ElMessage.info('文件上传能力本期未开放，后续版本支持')
+}
+
+// 系统子表编辑行
+function addSystemItemRow() {
+  systemItemRows.value.push({ id: 0, system_role: '主责', system_code: '', system_name: '', owner_user_id: null, owner_user_name: '', members: [], remark: '' })
+}
+
+function removeSystemItemRow(index: number) {
+  systemItemRows.value.splice(index, 1)
+}
+
+function onSystemItemSystemChange(index: number) {
+  const row = systemItemRows.value[index]
+  const code = String(row.system_code || '').split(/[+\s]/)[0]
+  const system = systems.value.find(s => s.system_code === code)
+  row.system_code = code
+  row.system_name = system ? system.system_name : row.system_name
+  if (!row.owner_user_name) {
+    const owner = userOptions.value.find(u => u.id === Number(row.owner_user_id))
+    row.owner_user_name = owner ? (owner.display_name || owner.username) : ''
+  }
+}
+
+function onSystemItemOwnerChange(index: number) {
+  const row = systemItemRows.value[index]
+  const owner = userOptions.value.find(u => u.id === Number(row.owner_user_id))
+  row.owner_user_name = owner ? (owner.display_name || owner.username) : ''
+}
+
+// ---------------- 整条需求流转 ----------------
+const flowDialogVisible = ref(false)
+const flowSaving = ref(false)
+const flowComment = ref('')
+const flowToUserId = ref<number | null>(null)
+
+function openFlowDialog() {
+  flowToUserId.value = null
+  flowComment.value = ''
+  flowDialogVisible.value = true
+}
+
+async function sendFlowAction() {
+  if (!legacyForm.id || !flowToUserId.value) {
+    ElMessage.warning('请选择流转处理人')
+    return
+  }
+  flowSaving.value = true
+  try {
+    const result = (await sendLegacyFlow(Number(legacyForm.id), { toUserId: flowToUserId.value, comment: flowComment.value || undefined })).data.data
+    Object.assign(legacyForm, result)
+    flowLogRows.value = result.flow_logs || []
+    flowDialogVisible.value = false
+    ElMessage.success('已流转给指定处理人')
+    await loadLegacy()
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '流转失败'))
+  } finally {
+    flowSaving.value = false
+  }
+}
+
+async function returnFlowAction() {
+  if (!legacyForm.id) return
+  try {
+    await ElMessageBox.confirm('确认将当前需求回传给发起人？', '回传确认', { type: 'warning' })
+    const result = (await returnLegacyFlow(Number(legacyForm.id), '回传')).data.data
+    Object.assign(legacyForm, result)
+    flowLogRows.value = result.flow_logs || []
+    ElMessage.success('已回传')
+    await loadLegacy()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(apiErrorMessage(error, '回传失败'))
+  }
+}
+
+// ---------------- 工作量表 / 软需文档 ----------------
+const deliverableDialogVisible = ref(false)
+const deliverableSaving = ref(false)
+const deliverableType = ref<'WORKLOAD' | 'SOFT'>('WORKLOAD')
+const deliverableForm = reactive<Record<string, unknown>>({})
+
+function openDeliverableCreate(type: 'WORKLOAD' | 'SOFT', systemItemId?: number) {
+  deliverableType.value = type
+  Object.keys(deliverableForm).forEach(key => delete deliverableForm[key])
+  const defaultItem = systemItemRows.value.find(r => r.system_role === '主责') || null
+  const item = systemItemId != null
+    ? systemItemRows.value.find(r => r.id === Number(systemItemId)) || null
+    : defaultItem
+  Object.assign(deliverableForm, {
+    system_item_id: item && item.id > 0 ? item.id : null,
+    system_code: item ? (item.system_code || '') : '',
+    doc_name: '', remark: ''
+  })
+  deliverableDialogVisible.value = true
+}
+
+function onDeliverableSystemChange() {
+  const item = systemItemRows.value.find(r => r.id === Number(deliverableForm.system_item_id))
+  deliverableForm.system_code = item ? (item.system_code || '') : ''
+}
+
+async function saveDeliverableAction() {
+  if (!legacyForm.id) return
+  if (!deliverableForm.doc_name && !deliverableForm.system_code) {
+    ElMessage.warning('请填写文档名称或选择系统')
+    return
+  }
+  deliverableSaving.value = true
+  try {
+    await saveDeliverable(Number(legacyForm.id), deliverableType.value, {
+      system_item_id: deliverableForm.system_item_id || undefined,
+      system_code: deliverableForm.system_code || undefined,
+      doc_name: deliverableForm.doc_name || undefined,
+      remark: deliverableForm.remark || undefined
+    })
+    deliverableDialogVisible.value = false
+    ElMessage.success(deliverableType.value === 'WORKLOAD' ? '工作量表记录已保存' : '软需文档记录已保存')
+    await loadDeliverables()
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '交付件保存失败'))
+  } finally {
+    deliverableSaving.value = false
+  }
+}
+
+async function removeDeliverable(doc: LegacyDeliverable, type: 'WORKLOAD' | 'SOFT') {
+  try {
+    await ElMessageBox.confirm(`确认删除${type === 'WORKLOAD' ? '工作量表' : '软需文档'}记录「${doc.doc_name || doc.version_no}」？`, '删除确认', { type: 'warning' })
+    await deleteDeliverable(doc.id, type)
+    ElMessage.success('已删除')
+    await loadDeliverables()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(apiErrorMessage(error, '删除失败'))
+  }
+}
+
+async function submitDeliverable(doc: LegacyDeliverable, type: 'WORKLOAD' | 'SOFT') {
+  try {
+    await ElMessageBox.confirm(`确认将「${doc.doc_name || doc.version_no}」提交评审？`, '提交评审', { type: 'warning' })
+    await submitDeliverableReview(doc.id, type)
+    ElMessage.success('已提交评审')
+    await loadDeliverables()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(apiErrorMessage(error, '提交评审失败'))
+  }
+}
+
+const deliverableReviewVisible = ref(false)
+const deliverableReviewSaving = ref(false)
+const deliverableReviewTarget = ref<{ id: number; type: 'WORKLOAD' | 'SOFT'; title: string } | null>(null)
+const deliverableReviewForm = reactive<{ conclusion: string; comment: string }>({ conclusion: '通过', comment: '' })
+
+function openDeliverableReview(doc: LegacyDeliverable, type: 'WORKLOAD' | 'SOFT') {
+  deliverableReviewTarget.value = { id: doc.id, type, title: doc.doc_name || `${type === 'WORKLOAD' ? '工作量表' : '软需文档'} ${doc.version_no}` }
+  deliverableReviewForm.conclusion = '通过'
+  deliverableReviewForm.comment = ''
+  deliverableReviewVisible.value = true
+}
+
+async function confirmDeliverableReview() {
+  const target = deliverableReviewTarget.value
+  if (!target) return
+  deliverableReviewSaving.value = true
+  try {
+    await reviewDeliverable(target.id, target.type, {
+      conclusion: deliverableReviewForm.conclusion,
+      comment: deliverableReviewForm.comment || undefined
+    })
+    deliverableReviewVisible.value = false
+    ElMessage.success('评审已完成')
+    await loadDeliverables()
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '评审失败'))
+  } finally {
+    deliverableReviewSaving.value = false
+  }
+}
+
+// ---------------- 协同事项（改造/测试） ----------------
+const coordDialogVisible = ref(false)
+const coordSaving = ref(false)
+const coordForm = reactive<Record<string, unknown>>({})
+
+function openCoordCreate() {
+  Object.keys(coordForm).forEach(key => delete coordForm[key])
+  Object.assign(coordForm, { item_type: '改造', status: '未开始', system_item_id: null, system_code: '', system_name: '', owner_user_id: null, owner_user_name: '', start_date: '', end_date: '', description: '' })
+  coordDialogVisible.value = true
+}
+
+function openCoordEdit(item: CoordinationItem) {
+  Object.keys(coordForm).forEach(key => delete coordForm[key])
+  Object.assign(coordForm, { ...item })
+  coordDialogVisible.value = true
+}
+
+async function saveCoordAction() {
+  if (!legacyForm.id) return
+  if (!coordForm.item_type) {
+    ElMessage.warning('请选择协同事项类型')
+    return
+  }
+  coordSaving.value = true
+  try {
+    await saveCoordination(Number(legacyForm.id), {
+      id: coordForm.id || undefined,
+      item_type: coordForm.item_type,
+      system_item_id: coordForm.system_item_id || undefined,
+      system_code: coordForm.system_code || undefined,
+      system_name: coordForm.system_name || undefined,
+      owner_user_id: coordForm.owner_user_id || undefined,
+      owner_user_name: coordForm.owner_user_name || undefined,
+      start_date: coordForm.start_date || undefined,
+      end_date: coordForm.end_date || undefined,
+      status: coordForm.status,
+      description: coordForm.description || undefined
+    })
+    coordDialogVisible.value = false
+    ElMessage.success('协同事项已保存')
+    await loadCoordination()
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '协同事项保存失败'))
+  } finally {
+    coordSaving.value = false
+  }
+}
+
+async function removeCoord(item: CoordinationItem) {
+  try {
+    await ElMessageBox.confirm(`确认删除协同事项「${item.item_type}」？`, '删除确认', { type: 'warning' })
+    await deleteCoordination(item.id)
+    ElMessage.success('已删除')
+    await loadCoordination()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(apiErrorMessage(error, '删除失败'))
+  }
+}
+
+function onCoordSystemChange() {
+  const code = String(coordForm.system_code || '').split(/[+\s]/)[0]
+  const system = systems.value.find(s => s.system_code === code)
+  coordForm.system_code = code
+  coordForm.system_name = system ? system.system_name : coordForm.system_name
+}
+
+function onCoordOwnerChange() {
+  const owner = userOptions.value.find(u => u.id === Number(coordForm.owner_user_id))
+  coordForm.owner_user_name = owner ? (owner.display_name || owner.username) : ''
+}
+
+function onCoordSystemItemChange() {
+  const item = systemItemRows.value.find(r => r.id === Number(coordForm.system_item_id))
+  if (item) {
+    coordForm.system_code = item.system_code || ''
+    coordForm.system_name = item.system_name || ''
+  }
+}
+
+// ---------------- 版本历史 ----------------
+const versionSnapshotVisible = ref(false)
+const versionSnapshotText = ref('')
+const versionSnapshotTitle = ref('')
+
+function viewVersion(row: RequirementVersionRow) {
+  versionSnapshotTitle.value = `版本快照：${row.version_no}`
+  try {
+    const parsed = row.snapshot_json ? JSON.parse(row.snapshot_json) : {}
+    versionSnapshotText.value = JSON.stringify(parsed, null, 2)
+  } catch {
+    versionSnapshotText.value = row.snapshot_json || '-'
+  }
+  versionSnapshotVisible.value = true
+}
+
+function openLegacyChangeFromDetail() {
+  openLegacyChange(legacyForm as unknown as LegacyRequirement)
+}
+
+// 阶段推进合并进编辑页：完成（进入下一阶段）
+async function advanceStage() {
+  if (!legacyForm.id) return
+  const cur = String(legacyForm.current_stage || 'PROPOSE')
+  const status = String(legacyForm[STAGE_FIELD_MAP[cur]] || '未开始')
+  try {
+    if (status === '未开始') {
+      await ElMessageBox.confirm('当前阶段尚未启动，是否先启动（未开始→进行中）？', '阶段推进', { type: 'warning' })
+      await stageTransition(Number(legacyForm.id), { stage: cur, action: 'START', comment: '启动阶段' })
+      ElMessage.success('阶段已启动，可填写完成后再次点击推进')
+      await refreshLegacyDetail()
+      return
+    }
+    let result = (await stageTransition(Number(legacyForm.id), { stage: cur, action: 'COMPLETE', comment: '完成（进入下一阶段）' })).data.data
+    const missing = (result as any).missingFields
+    if ((result as any).confirmed === false && Array.isArray(missing) && missing.length > 0) {
+      await ElMessageBox.confirm(`以下阶段字段尚未填写：\n· ${missing.join('\n· ')}\n\n仍要继续推进吗？`, '阶段字段未填写完整', { type: 'warning' })
+      result = (await stageTransition(Number(legacyForm.id), { stage: cur, action: 'COMPLETE', comment: '完成（进入下一阶段）', ignoreMissingStageFields: true })).data.data
+    }
+    const idx = LEGACY_STAGE_ORDER.indexOf(cur)
+    const next = LEGACY_STAGE_ORDER[idx + 1]
+    if (next && String(result[STAGE_FIELD_MAP[next]] || '未开始') === '未开始') {
+      await stageTransition(Number(legacyForm.id), { stage: next, action: 'START', comment: '进入下一阶段' })
+    }
+    ElMessage.success('阶段已推进')
+    await refreshLegacyDetail()
+    await loadLegacy()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(apiErrorMessage(error, '阶段推进失败'))
+  }
+}
+
+// 差异评审记录（新建项目）
+const reviewRecordDialogVisible = ref(false)
+const reviewRecordTitle = ref('')
+const reviewRecordRows = ref<ReviewRecord[]>([])
+
+async function openReviewRecords(bizType: string, bizId: number, title: string) {
+  reviewRecordTitle.value = title
+  reviewRecordRows.value = (await listReviewRecords(bizType, bizId)).data.data
+  reviewRecordDialogVisible.value = true
+}
+
+// 预览与编辑合并：点击预览进入统一编辑抽屉（以编辑为主）
+function openLegacyPreview(row: LegacyRequirement) {
+  openLegacyEdit(row)
+}
+
+function systemSummary(row: LegacyRequirement, role: string) {
+  const items = (row.system_items || []).filter(i => i.system_role === role)
+  if (items.length === 0) return '-'
+  const labels = items
+    .map(i => [i.system_code, i.system_name].filter(Boolean).join(' '))
+    .filter(Boolean)
+  return labels.length > 0 ? labels.join('；') : '-'
+}
+
+async function openFlowLogsFromRow(row: LegacyRequirement) {
+  await openLegacyEdit(row)
+  legacyDetailTab.value = 'flow'
+}
+
+function flowActionLabel(action: string) {
+  if (action === 'SEND') return '流转'
+  if (action === 'RETURN') return '回传'
+  if (action === 'COMPLETE') return '完成'
+  return action
+}
+
+function reviewStatusTagType(s: string): 'info' | 'primary' | 'success' | 'warning' {
+  if (s === '已评审') return 'success'
+  if (s === '评审中') return 'primary'
+  if (s === '已退回') return 'warning'
+  return 'info'
 }
 
 async function saveLegacy() {
@@ -649,13 +1166,38 @@ async function saveLegacy() {
     const filled = coordRows.value.filter(r => r.system && r.conglomerate)
     legacyForm.coord_conglomerate = filled.map(r => r.conglomerate).join('；')
     legacyForm.coord_system = filled.map(r => r.system).join('；')
-    if (legacyForm.id) {
-      await updateLegacy(Number(legacyForm.id), legacyForm)
-    } else {
-      await createLegacy(legacyForm)
+    const payload: Record<string, unknown> = { ...legacyForm }
+    const validItems = systemItemRows.value.filter(r => (r.system_code || r.system_name) && r.system_role)
+    if (!legacyForm.id && validItems.length === 0) {
+      ElMessage.warning('请先在「系统清单」中添加主责系统')
+      return
     }
-    legacyFormVisible.value = false
+    if (validItems.length > 0 && !validItems.some(r => r.system_role === '主责')) {
+      ElMessage.warning('系统清单至少需要一个主责系统')
+      return
+    }
+    if (validItems.length > 0) {
+      payload.system_items = validItems.map(r => ({
+        ...r,
+        members: (r.members || []).filter((id): id is number => typeof id === 'number')
+      }))
+    }
+    if (legacyForm.id) {
+      const result = (await updateLegacy(Number(legacyForm.id), payload)).data.data
+      Object.assign(legacyForm, result)
+    } else {
+      const result = (await createLegacy(payload)).data.data
+      Object.assign(legacyForm, result)
+      systemItemRows.value = (result.system_items || []).map(item => ({
+        ...item,
+        members: (item.members || []).map(m => m.user_id)
+      }))
+      flowLogRows.value = result.flow_logs || []
+      versionRows.value = result.versions || []
+    }
     ElMessage.success('存量需求已保存')
+    await loadDeliverables()
+    await loadCoordination()
     await loadLegacy()
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '存量需求保存失败'))
@@ -704,7 +1246,8 @@ function openLegacyChange(row: LegacyRequirement | null) {
     change_info: (source as any).change_info || '',
     change_review_conclusion: (source as any).change_review_conclusion || '',
     change_conclusion_status: (source as any).change_conclusion_status || '',
-    change_remark: (source as any).change_remark || ''
+    change_remark: (source as any).change_remark || '',
+    workload_change: (source as any).workload_change || ''
   })
   legacyChangeVisible.value = true
 }
@@ -718,136 +1261,29 @@ async function saveLegacyChange() {
   if (!legacyChangeForm.id) return
   legacyChangeSaving.value = true
   try {
-    await updateLegacy(Number(legacyChangeForm.id), {
+    const result = (await saveLegacyChangeApi(Number(legacyChangeForm.id), {
       change_involved: legacyChangeForm.change_involved,
       change_info: legacyChangeForm.change_info,
       change_review_conclusion: legacyChangeForm.change_review_conclusion,
       change_conclusion_status: legacyChangeForm.change_conclusion_status,
-      change_remark: legacyChangeForm.change_remark
-    })
+      change_remark: legacyChangeForm.change_remark,
+      workload_change: legacyChangeForm.workload_change
+    })).data.data
     legacyChangeVisible.value = false
-    ElMessage.success('需求变更信息已保存')
+    ElMessage.success(result.version_no
+      ? `需求变更信息已保存，版本已更新为 ${result.version_no}`
+      : '需求变更信息已保存')
     await loadLegacy()
     // 若编辑抽屉正打开，同步最新变更字段，避免再次打开时展示旧值
     if (legacyForm.id === legacyChangeForm.id) {
-      for (const field of CHANGE_FIELDS) (legacyForm as any)[field] = legacyChangeForm[field]
+      Object.assign(legacyForm, result)
+      versionRows.value = result.versions || []
     }
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '需求变更保存失败'))
   } finally {
     legacyChangeSaving.value = false
   }
-}
-
-// 预览
-const legacyPreviewVisible = ref(false)
-const legacyPreviewRow = ref<LegacyRequirement | null>(null)
-const legacyPreviewActiveTab = ref('')
-
-// 预览：通用字段置顶 + 阶段字段按 tab 切换
-const legacyPreviewCommonFields = computed(() => {
-  const row = legacyPreviewRow.value
-  if (!row) return []
-  const fields: Array<{ key: string; label: string; value: string; span: number }> = []
-  for (const f of COMMON_FIELDS) {
-    const raw = (row as any)[f.key]
-    if (raw === null || raw === undefined || raw === '') continue
-    let value = String(raw)
-    fields.push({ key: f.key, label: f.label, value, span: COMMON_FULL_WIDTH_KEYS.has(f.key) ? 2 : 1 })
-  }
-  return fields
-})
-
-const legacyPreviewStageGroups = computed(() => {
-  const row = legacyPreviewRow.value
-  if (!row) return []
-  const groups: Array<{ title: string; fields: Array<{ key: string; label: string; value: string; span: number }> }> = []
-  // 阶段状态行
-  const stageStatusFields: Array<{ key: string; label: string; value: string; span: number }> = []
-  for (const stage of LEGACY_STAGE_ORDER) {
-    const statusKey = STAGE_FIELD_MAP[stage]
-    const raw = (row as any)[statusKey]
-    if (raw !== null && raw !== undefined && raw !== '') {
-      stageStatusFields.push({ key: statusKey, label: `${stageLabel(stage)}状态`, value: String(raw), span: 1 })
-    }
-  }
-  if (stageStatusFields.length > 0) groups.push({ title: '阶段状态', fields: stageStatusFields })
-  // 各阶段字段
-  for (const stage of LEGACY_STAGE_ORDER) {
-    const stageFields = STAGE_FIELD_GROUPS[stage] || []
-    const fields: Array<{ key: string; label: string; value: string; span: number }> = []
-    for (const f of stageFields) {
-      const raw = (row as any)[f.key]
-      const value = raw === null || raw === undefined || String(raw).trim() === '' ? '-' : String(raw)
-      fields.push({ key: f.key, label: f.label, value, span: isTextArea(f.key) || f.key === 'content_summary' || f.key === 'regulation_desc' ? 2 : 1 })
-    }
-    groups.push({ title: `${stageLabel(stage)}阶段`, fields })
-  }
-  // 需求变更信息独立展示（不属于任何阶段）
-  const changeFields: Array<{ key: string; label: string; value: string; span: number }> = []
-  for (const f of CHANGE_FIELDS) {
-    const raw = (row as any)[f]
-    if (raw === null || raw === undefined || raw === '') continue
-    changeFields.push({ key: f, label: label(f), value: String(raw), span: f === 'change_info' || f === 'change_remark' ? 2 : 1 })
-  }
-  if (changeFields.length > 0) {
-    groups.push({ title: '需求变更', fields: changeFields })
-  }
-  return groups
-})
-
-function openLegacyPreview(row: LegacyRequirement) {
-  legacyPreviewRow.value = row
-  legacyPreviewActiveTab.value = ''
-  legacyPreviewVisible.value = true
-  // 首个 tab
-  nextTick(() => {
-    if (legacyPreviewStageGroups.value.length > 0 && !legacyPreviewActiveTab.value) {
-      legacyPreviewActiveTab.value = legacyPreviewStageGroups.value[0].title
-    }
-  })
-}
-
-// 主责/协同系统明细弹窗：点击列表系统单元格查看系统清单（req_system）信息
-const legacySystemVisible = ref(false)
-const legacySystemTarget = ref<LegacyRequirement | null>(null)
-const legacySystemRows = computed<Array<{
-  role: string; code: string; name: string; conglomerate: string; logical: string; component: string
-  domain: string; productView: string; launchPoint: string; sourceType: string; raw: string
-}>>(() => {
-  const row = legacySystemTarget.value
-  if (!row) return []
-  const entries: Array<{
-    role: string; code: string; name: string; conglomerate: string; logical: string; component: string
-    domain: string; productView: string; launchPoint: string; sourceType: string; raw: string
-  }> = []
-  const push = (role: string, raw: unknown) => {
-    for (const text of splitEntries(raw)) {
-      if (!text) continue
-      const code = systemCodeOf(text)
-      const system = systems.value.find(s => s.system_code === code) || null
-      entries.push({
-        role, code,
-        name: system?.system_name || text,
-        conglomerate: system?.conglomerate || '',
-        logical: system ? `${system.logical_subsystem_code || ''} ${system.logical_subsystem_name || ''}`.trim() : '',
-        component: system ? `${system.business_component_code || ''} ${system.business_component_name || ''}`.trim() : '',
-        domain: system?.business_domain || '',
-        productView: system?.product_view || '',
-        launchPoint: system?.launch_point || '',
-        sourceType: system?.source_type || '',
-        raw: text
-      })
-    }
-  }
-  push('主责系统', row.owner_system)
-  push('协同系统', row.coord_system)
-  return entries
-})
-
-function openLegacySystems(row: LegacyRequirement) {
-  legacySystemTarget.value = row
-  legacySystemVisible.value = true
 }
 
 // 差异预览（新建项目差异点）
@@ -1271,6 +1707,7 @@ function canEditDiff(row: RequirementDifference) {
               <div class="req-table-actions">
                 <el-button link type="primary" @click="openChangeLogs('NEW_PROJECT_DIFF', scope.row.id, `修改记录：${scope.row.name}`)"><el-icon><Clock /></el-icon>修改记录</el-button>
                 <el-button v-if="scope.row.workflow_instance_id" link type="primary" @click="openApprovalLogs(scope.row)"><el-icon><Tickets /></el-icon>审批记录</el-button>
+                <el-button link type="primary" @click="openReviewRecords('DIFFERENCE', scope.row.id, `评审记录：${scope.row.name}`)"><el-icon><Tickets /></el-icon>评审记录</el-button>
                 <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDifferenceReview(scope.row)"><el-icon><Promotion /></el-icon>提交评审</el-button>
                 <el-button v-if="scope.row.review_status === '评审中' || scope.row.review_status === '已退回'" link type="info" @click="cancelDifferenceReview(scope.row)" title="撤销评审流程，回到待评审后可重新编辑提交"><el-icon><RefreshRight /></el-icon>撤销评审</el-button>
                 <el-dropdown v-if="canEditDiff(scope.row)" @command="(command: string) => command === 'edit' ? openDiffEdit(scope.row) : removeDifference(scope.row)">
@@ -1313,32 +1750,23 @@ function canEditDiff(row: RequirementDifference) {
         <el-table-column prop="business_group" label="业务组" width="110" />
         <el-table-column label="当前阶段" width="120"><template #default="scope"><UiStatusTag :value="stageLabel(scope.row.current_stage)" /></template></el-table-column>
         <el-table-column label="主责系统" min-width="170" show-overflow-tooltip>
-          <template #default="scope">
-            <el-button v-if="scope.row.owner_system" link type="primary" @click="openLegacySystems(scope.row)">{{ scope.row.owner_system }}</el-button>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="协同系统" min-width="170" show-overflow-tooltip>
-          <template #default="scope">
-            <el-button v-if="scope.row.coord_system" link type="primary" @click="openLegacySystems(scope.row)">{{ scope.row.coord_system }}</el-button>
-            <span v-else>-</span>
-          </template>
+          <template #default="scope"><span>{{ systemSummary(scope.row, '主责') }}</span></template>
         </el-table-column>
         <!-- 需求状态及备注：每条数据的最后两列 -->
         <el-table-column label="需求状态" width="120"><template #default="scope"><span>{{ scope.row.requirement_status || '-' }}</span></template></el-table-column>
         <el-table-column label="备注" min-width="180" show-overflow-tooltip><template #default="scope"><span>{{ scope.row.remark || '-' }}</span></template></el-table-column>
-        <el-table-column label="操作" width="320" fixed="right">
+        <el-table-column label="操作" width="360" fixed="right">
           <template #default="scope">
             <div class="req-table-actions">
-              <el-button link type="primary" @click="openStage(scope.row)"><el-icon><Promotion /></el-icon>阶段推进</el-button>
-              <el-button link type="warning" @click="openLegacyChange(scope.row)"><el-icon><RefreshRight /></el-icon>需求变更</el-button>
+              <el-button link type="primary" @click="openLegacyPreview(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button>
+              <el-button link type="primary" @click="openFlowLogsFromRow(scope.row)"><el-icon><Promotion /></el-icon>流转记录</el-button>
               <el-button link type="primary" @click="openChangeLogs('LEGACY_REQUIREMENT', scope.row.id, `修改记录：${scope.row.requirement_name}`)"><el-icon><Clock /></el-icon>修改记录</el-button>
-              <el-dropdown @command="(command: string) => command === 'stage-logs' ? showStageLogs(scope.row) : command === 'edit' ? openLegacyEdit(scope.row) : removeLegacy(scope.row)">
+              <el-dropdown @command="(command: string) => command === 'change' ? openLegacyChange(scope.row) : command === 'stage-logs' ? showStageLogs(scope.row) : removeLegacy(scope.row)">
                 <el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
+                    <el-dropdown-item command="change"><el-icon><RefreshRight /></el-icon>需求变更</el-dropdown-item>
                     <el-dropdown-item command="stage-logs"><el-icon><Tickets /></el-icon>阶段记录</el-dropdown-item>
-                    <el-dropdown-item command="edit"><el-icon><Edit /></el-icon>编辑</el-dropdown-item>
                     <el-dropdown-item command="delete" divided><el-icon><Delete /></el-icon>删除</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
@@ -1349,60 +1777,6 @@ function canEditDiff(row: RequirementDifference) {
       </UiDataTable>
       <UiPagination v-model:page="legacyPage" v-model:page-size="legacySize" :total="legacyTotal" @update:page="loadLegacy" @update:page-size="loadLegacy" />
 
-      <!-- 需求预览 -->
-      <el-dialog v-model="legacyPreviewVisible" :title="`需求预览：${legacyPreviewRow?.requirement_no || ''}`" width="min(900px, calc(100vw - 24px))" top="6vh">
-        <div v-if="legacyPreviewRow">
-          <div class="req-preview-header">
-            <span class="req-preview-title">{{ legacyPreviewRow.requirement_name }}</span>
-            <el-tag size="small">{{ stageLabel(legacyPreviewRow.current_stage) }}</el-tag>
-            <el-tag v-if="legacyPreviewRow.requirement_status" size="small" type="info">{{ legacyPreviewRow.requirement_status }}</el-tag>
-            <el-tag size="small" :type="legacyPreviewRow.source === 'IMPORT' ? 'warning' : 'success'">{{ legacyPreviewRow.source === 'IMPORT' ? '导入' : '在线填写' }}</el-tag>
-          </div>
-          <!-- 需求状态及备注（始终可见） -->
-          <div v-if="legacyPreviewCommonFields.length" class="req-preview-common">
-            <div class="req-section-title">需求状态及备注</div>
-            <el-descriptions :column="2" border size="small">
-              <el-descriptions-item v-for="f in legacyPreviewCommonFields" :key="f.key" :label="f.label" :span="f.span">
-                <span class="req-preview-value">{{ f.value }}</span>
-              </el-descriptions-item>
-            </el-descriptions>
-          </div>
-          <!-- 阶段字段（tab 切换） -->
-          <el-tabs v-if="legacyPreviewStageGroups.length" v-model="legacyPreviewActiveTab" type="border-card">
-            <el-tab-pane v-for="g in legacyPreviewStageGroups" :key="g.title" :label="g.title" :name="g.title">
-              <el-descriptions :column="2" border size="small">
-                <el-descriptions-item v-for="f in g.fields" :key="f.key" :label="f.label" :span="f.span">
-                  <span class="req-preview-value">{{ f.value }}</span>
-                </el-descriptions-item>
-              </el-descriptions>
-            </el-tab-pane>
-          </el-tabs>
-        </div>
-        <template #footer>
-          <el-button @click="legacyPreviewVisible = false">关闭</el-button>
-          <el-button type="primary" @click="legacyPreviewVisible = false; legacyPreviewRow && openLegacyEdit(legacyPreviewRow)">编辑</el-button>
-        </template>
-      </el-dialog>
-
-      <!-- 主责/协同系统明细 -->
-      <el-dialog v-model="legacySystemVisible" :title="`系统明细：${legacySystemTarget?.requirement_name || ''}`" width="min(860px, calc(100vw - 24px))">
-        <el-table v-if="legacySystemRows.length" :data="legacySystemRows" border size="small">
-          <el-table-column prop="role" label="角色" width="90" />
-          <el-table-column label="系统编号" width="110"><template #default="scope">{{ scope.row.code || '-' }}</template></el-table-column>
-          <el-table-column label="系统名称" min-width="150" show-overflow-tooltip><template #default="scope">{{ scope.row.name || '-' }}</template></el-table-column>
-          <el-table-column label="事业群" width="105"><template #default="scope">{{ scope.row.conglomerate || '-' }}</template></el-table-column>
-          <el-table-column label="所属逻辑子系统" min-width="140" show-overflow-tooltip><template #default="scope">{{ scope.row.logical || '-' }}</template></el-table-column>
-          <el-table-column label="归属业务组件" min-width="140" show-overflow-tooltip><template #default="scope">{{ scope.row.component || '-' }}</template></el-table-column>
-          <el-table-column label="业务领域" min-width="100" show-overflow-tooltip><template #default="scope">{{ scope.row.domain || '-' }}</template></el-table-column>
-          <el-table-column label="产品视图" min-width="100" show-overflow-tooltip><template #default="scope">{{ scope.row.productView || '-' }}</template></el-table-column>
-          <el-table-column label="投产点" width="85"><template #default="scope">{{ scope.row.launchPoint || '-' }}</template></el-table-column>
-          <el-table-column label="引入/保留" width="90"><template #default="scope">{{ scope.row.sourceType || '-' }}</template></el-table-column>
-        </el-table>
-        <el-empty v-else description="尚未选择主责/协同系统" :image-size="80" />
-        <template #footer>
-          <el-button @click="legacySystemVisible = false">关闭</el-button>
-        </template>
-      </el-dialog>
     </div>
 
     <!-- 八大参数管理三级菜单：页面建设中占位 -->
@@ -1511,6 +1885,15 @@ function canEditDiff(row: RequirementDifference) {
             <el-option v-for="item in submitReviewOptions" :key="item.id" :label="`${item.display_name}（${item.username}）`" :value="item.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="评审报告信息文档">
+          <div class="req-upload-line">
+            <el-input v-model="submitReviewReportName" placeholder="填写评审报告文档名称（上传能力本期未开放）" />
+            <el-button @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="submitReviewTarget" label="评审记录">
+          <el-button link type="primary" @click="openReviewRecords('DIFFERENCE', submitReviewTarget.id, `评审记录：${submitReviewTarget.name}`)"><el-icon><Tickets /></el-icon>查看历史评审记录</el-button>
+        </el-form-item>
       </el-form>
       <template #footer><el-button @click="submitReviewDialogVisible = false">取消</el-button><el-button type="primary" :loading="submitReviewSaving" @click="confirmSubmitReview">提交</el-button></template>
     </el-dialog>
@@ -1558,106 +1941,213 @@ function canEditDiff(row: RequirementDifference) {
       </template>
     </el-dialog>
 
-    <!-- 存量需求表单 -->
-    <UiFormDrawer v-model="legacyFormVisible" :title="legacyForm.id ? '编辑存量需求' : '新增存量需求'" :loading="legacySaving" width="min(820px, calc(100vw - 24px))" @submit="saveLegacy">
-      <!-- 阶段时序条（可点击切换查看各阶段；非当前阶段为只读） -->
-      <div v-if="legacyForm.current_stage" class="req-stage-overview">
-        <div class="req-stage-track">
-          <div v-for="s in LEGACY_STAGE_ORDER" :key="s"
-               class="req-stage-node"
-               :class="{
-                 'req-stage-active': s === legacyForm.current_stage,
-                 'req-stage-viewing': s === legacyViewStage
-               }"
-               @click="switchViewStage(s)"
-               role="button"
-               :title="isViewStageActive() && s === legacyForm.current_stage ? `当前维护阶段：${stageLabel(s)}（可编辑）` : `点击查看${stageLabel(s)}阶段字段（只读）`">
-            <span class="req-stage-name">{{ stageLabel(s) }}</span>
-            <el-tag size="small" :type="stageStatusTagType(((legacyForm as any)[STAGE_FIELD_MAP[s]] as string) || '未开始')">{{ ((legacyForm as any)[STAGE_FIELD_MAP[s]] as string) || '未开始' }}</el-tag>
-          </div>
-        </div>
+    <!-- 存量需求统一编辑抽屉（预览/编辑/阶段推进合并，以编辑为主，加宽） -->
+    <UiFormDrawer v-model="legacyFormVisible" :title="`存量需求：${legacyForm.requirement_no || '新增'} ${legacyForm.requirement_name || ''}`" :loading="legacySaving || legacyDetailLoading" width="min(1100px, calc(100vw - 24px))" @submit="saveLegacy">
+      <div class="req-stage-actions">
         <div class="req-stage-summary">
           当前维护阶段：<strong>{{ stageLabel(String((legacyForm as any).current_stage || 'PROPOSE')) }}</strong>
-          <span class="req-stage-view-tag" v-if="!isViewStageActive()">&nbsp;· 正在查看 <u>{{ stageLabel(legacyViewStage) }}</u> 阶段历史字段（只读）· </span>
-          <el-button v-if="!isViewStageActive()" link size="small" @click="switchViewStage(String((legacyForm as any).current_stage || 'PROPOSE'))">回到当前阶段</el-button>
+          <span v-if="legacyForm.current_flow_user_name" class="req-form-hint"> · 当前流转处理人：{{ legacyForm.current_flow_user_name }}</span>
+          <span v-if="legacyForm.version_no" class="req-form-hint"> · 版本：{{ legacyForm.version_no }}</span>
         </div>
+        <el-button type="success" @click="advanceStage"><el-icon><Promotion /></el-icon>完成（进入下一阶段）</el-button>
       </div>
-
-      <!-- 查看阶段字段 + 通用信息（非 current_stage 时禁用） -->
-      <el-form label-position="top" class="req-form-grid">
-        <template v-if="currentStageFields.length">
-          <div class="req-section-title d-flex align-items-center gap-8">
-            <span>{{ stageLabel(legacyViewStage || 'PROPOSE') }}阶段字段</span>
-            <el-tag v-if="!isViewStageActive()" size="small" type="info" effect="plain">历史阶段 · 只读</el-tag>
-            <el-tag v-else size="small" type="success" effect="plain">当前维护</el-tag>
+      <el-tabs v-model="legacyDetailTab" class="req-legacy-tabs">
+        <el-tab-pane label="阶段信息" name="stage">
+          <!-- 阶段时序条（可点击切换查看各阶段；非当前阶段为只读） -->
+          <div v-if="legacyForm.current_stage" class="req-stage-overview">
+            <div class="req-stage-track">
+              <div v-for="s in LEGACY_STAGE_ORDER" :key="s"
+                   class="req-stage-node"
+                   :class="{
+                     'req-stage-active': s === legacyForm.current_stage,
+                     'req-stage-viewing': s === legacyViewStage
+                   }"
+                   @click="switchViewStage(s)"
+                   role="button"
+                   :title="isViewStageActive() && s === legacyForm.current_stage ? `当前维护阶段：${stageLabel(s)}（可编辑）` : `点击查看${stageLabel(s)}阶段字段（只读）`">
+                <span class="req-stage-name">{{ stageLabel(s) }}</span>
+                <el-tag size="small" :type="stageStatusTagType(((legacyForm as any)[STAGE_FIELD_MAP[s]] as string) || '未开始')">{{ ((legacyForm as any)[STAGE_FIELD_MAP[s]] as string) || '未开始' }}</el-tag>
+              </div>
+            </div>
+            <div class="req-stage-summary">
+              <span class="req-stage-view-tag" v-if="!isViewStageActive()">&nbsp;· 正在查看 <u>{{ stageLabel(legacyViewStage) }}</u> 阶段历史字段（只读）· </span>
+              <el-button v-if="!isViewStageActive()" link size="small" @click="switchViewStage(String((legacyForm as any).current_stage || 'PROPOSE'))">回到当前阶段</el-button>
+            </div>
           </div>
-          <template v-for="f in currentStageFields" :key="f.key">
-            <template v-if="!SOFT_SYSTEM_FIELDS.has(f.key)">
-              <el-form-item :label="f.label" :required="isStageRequired(f.key) && isViewStageActive()">
-                <el-input v-if="isTextField(f.key)" v-model="(legacyForm as any)[f.key]" :type="isTextArea(f.key) ? 'textarea' : 'text'" :rows="isTextArea(f.key) ? 2 : undefined" :placeholder="f.placeholder" :disabled="!isViewStageActive()" />
-                <el-date-picker v-else-if="isDateField(f.key)" v-model="(legacyForm as any)[f.key]" type="date" value-format="YYYY-MM-DD" style="width: 100%" :disabled="!isViewStageActive()" />
-                <el-select v-else-if="isEnumField(f.key)" v-model="(legacyForm as any)[f.key]" :clearable="!isRequiredField(f.key) || !isViewStageActive()" style="width: 100%" :disabled="!isViewStageActive()">
-                  <el-option v-for="item in getOptionsForField(f.key)" :key="item" :label="item" :value="item" />
-                </el-select>
-                <el-input v-else v-model="(legacyForm as any)[f.key]" :placeholder="f.placeholder" :disabled="!isViewStageActive()" />
-              </el-form-item>
+          <!-- 查看阶段字段 + 通用信息（非 current_stage 时禁用） -->
+          <el-form label-position="top" class="req-form-grid">
+            <template v-if="currentStageFields.length">
+              <div class="req-section-title d-flex align-items-center gap-8">
+                <span>{{ stageLabel(legacyViewStage || 'PROPOSE') }}阶段字段</span>
+                <el-tag v-if="!isViewStageActive()" size="small" type="info" effect="plain">历史阶段 · 只读</el-tag>
+                <el-tag v-else size="small" type="success" effect="plain">当前维护</el-tag>
+              </div>
+              <template v-for="f in currentStageFields" :key="f.key">
+                <template v-if="!SOFT_SYSTEM_FIELDS.has(f.key)">
+                  <el-form-item :label="f.label" :required="isStageRequired(f.key) && isViewStageActive()">
+                    <el-input v-if="isTextField(f.key)" v-model="(legacyForm as any)[f.key]" :type="isTextArea(f.key) ? 'textarea' : 'text'" :rows="isTextArea(f.key) ? 2 : undefined" :placeholder="f.placeholder" :disabled="!isViewStageActive()" />
+                    <el-date-picker v-else-if="isDateField(f.key)" v-model="(legacyForm as any)[f.key]" type="date" value-format="YYYY-MM-DD" style="width: 100%" :disabled="!isViewStageActive()" />
+                    <el-select v-else-if="isEnumField(f.key)" v-model="(legacyForm as any)[f.key]" :clearable="!isRequiredField(f.key) || !isViewStageActive()" style="width: 100%" :disabled="!isViewStageActive()">
+                      <el-option v-for="item in getOptionsForField(f.key)" :key="item" :label="item" :value="item" />
+                    </el-select>
+                    <el-input v-else v-model="(legacyForm as any)[f.key]" :placeholder="f.placeholder" :disabled="!isViewStageActive()" />
+                  </el-form-item>
+                </template>
+              </template>
             </template>
-          </template>
-        </template>
-
-        <!-- 软需阶段系统确认：先选事业群，再选系统（数据源为需求管理系统清单）；协同系统可多个 -->
-        <div v-if="legacyViewStage === 'SOFT'" class="req-span-2">
-          <div class="req-section-title">软需系统确认</div>
-          <div class="req-system-row">
-            <div class="req-system-field">
-              <el-form-item label="主责事业群" :required="isViewStageActive()">
-                <el-select v-model="(legacyForm as any).owner_conglomerate" filterable clearable style="width: 100%" :disabled="!isViewStageActive()" placeholder="先选择事业群" @change="onOwnerConglomerateChange">
-                  <el-option v-for="g in systemConglomerates" :key="g" :label="g" :value="g" />
-                </el-select>
-              </el-form-item>
+            <!-- 需求状态及备注（不属于任何阶段，固定展示） -->
+            <div class="req-section-title d-flex align-items-center gap-8">
+              <span>需求状态及备注</span>
+              <el-button v-if="legacyForm.id" link type="warning" size="small" @click="openLegacyChange(null)"><el-icon><RefreshRight /></el-icon>需求变更</el-button>
             </div>
-            <div class="req-system-field">
-              <el-form-item label="主责系统" :required="isViewStageActive()">
-                <el-select v-model="(legacyForm as any).owner_system" filterable clearable style="width: 100%" :disabled="!isViewStageActive() || !(legacyForm as any).owner_conglomerate" placeholder="再选择系统">
-                  <el-option v-for="s in systemsByConglomerate(String((legacyForm as any).owner_conglomerate || ''))" :key="s.system_code" :label="`${s.system_code} ${s.system_name}`" :value="systemValue(s)" />
+            <el-form-item label="需求状态">
+              <el-input :model-value="(legacyForm as any).requirement_status || '需求分析'" disabled placeholder="由阶段推进自动维护" />
+            </el-form-item>
+            <el-form-item label="备注">
+              <el-input v-model="(legacyForm as any).remark" type="textarea" :rows="2" placeholder="【0611】713前投产，纳入建设合同" />
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+        <el-tab-pane label="系统清单" name="systems">
+          <el-table :data="systemItemRows" border size="small">
+            <el-table-column label="角色" width="110">
+              <template #default="scope">
+                <el-select v-model="scope.row.system_role" style="width: 100%"><el-option label="主责" value="主责" /></el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="系统" min-width="240">
+              <template #default="scope">
+                <el-select v-model="scope.row.system_code" filterable clearable style="width: 100%" placeholder="选择系统" @change="onSystemItemSystemChange(scope.$index)">
+                  <el-option v-for="s in systems" :key="s.system_code" :label="`${s.system_code} ${s.system_name}`" :value="s.system_code" />
                 </el-select>
-              </el-form-item>
-            </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="系统名称" min-width="170"><template #default="scope"><span>{{ scope.row.system_name || '-' }}</span></template></el-table-column>
+            <el-table-column label="负责人" min-width="190">
+              <template #default="scope">
+                <el-select v-model="scope.row.owner_user_id" filterable clearable style="width: 100%" placeholder="选择负责人" @change="onSystemItemOwnerChange(scope.$index)">
+                  <el-option v-for="u in userOptions" :key="u.id" :label="`${u.display_name || u.username}（${u.username}）`" :value="u.id" />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="系统人员" min-width="240">
+              <template #default="scope">
+                <el-select v-model="scope.row.members" multiple filterable collapse-tags collapse-tags-tooltip placeholder="选择系统人员（可查看该需求）" style="width: 100%">
+                  <el-option v-for="u in userOptions" :key="u.id" :label="`${u.display_name || u.username}（${u.username}）`" :value="u.id" />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="80"><template #default="scope"><el-button link type="danger" @click="removeSystemItemRow(scope.$index)">移除</el-button></template></el-table-column>
+          </el-table>
+          <el-button class="req-add-row-btn" plain type="primary" size="small" @click="addSystemItemRow"><el-icon><Plus /></el-icon>添加系统行（主责/协同）</el-button>
+          <div class="req-form-hint">页面只展示主责系统；系统行负责人/系统人员与当前流转处理人可见该需求，PMO/管理员全量可见。</div>
+        </el-tab-pane>
+        <el-tab-pane label="流转记录" name="flow">
+          <div class="req-flow-actions">
+            <el-button type="primary" size="small" @click="openFlowDialog"><el-icon><Promotion /></el-icon>发起流转</el-button>
+            <el-button size="small" @click="returnFlowAction"><el-icon><RefreshRight /></el-icon>回传</el-button>
+            <el-button size="small" @click="showStageLogs(legacyForm as unknown as LegacyRequirement)"><el-icon><Tickets /></el-icon>阶段记录</el-button>
           </div>
-          <div class="req-section-title">协同系统（可多个）</div>
-          <div v-for="(row, index) in coordRows" :key="index" class="req-system-row">
-            <div class="req-system-field">
-              <el-form-item :label="`协同事业群 ${index + 1}`">
-                <el-select v-model="row.conglomerate" filterable clearable style="width: 100%" :disabled="!isViewStageActive()" placeholder="先选择事业群">
-                  <el-option v-for="g in systemConglomerates" :key="g" :label="g" :value="g" />
-                </el-select>
-              </el-form-item>
-            </div>
-            <div class="req-system-field">
-              <el-form-item :label="`协同系统 ${index + 1}`">
-                <el-select v-model="row.system" filterable clearable style="width: 100%" :disabled="!isViewStageActive() || !row.conglomerate" placeholder="再选择系统">
-                  <el-option v-for="s in systemsByConglomerate(row.conglomerate)" :key="s.system_code" :label="`${s.system_code} ${s.system_name}`" :value="systemValue(s)" />
-                </el-select>
-              </el-form-item>
-            </div>
-            <el-button v-if="isViewStageActive()" link type="danger" @click="removeCoordRow(index)">移除</el-button>
+          <el-table :data="flowLogRows" border size="small">
+            <el-table-column label="动作" width="80"><template #default="scope"><el-tag size="small" :type="scope.row.action === 'SEND' ? 'primary' : scope.row.action === 'RETURN' ? 'warning' : 'success'">{{ flowActionLabel(scope.row.action) }}</el-tag></template></el-table-column>
+            <el-table-column prop="from_user_name" label="操作人" width="130" />
+            <el-table-column label="流转目标" min-width="130"><template #default="scope"><span>{{ scope.row.to_user_name || '—' }}</span></template></el-table-column>
+            <el-table-column prop="comment" label="说明" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="created_at" label="时间" width="170" />
+          </el-table>
+          <el-empty v-if="flowLogRows.length === 0" description="暂无流转记录" :image-size="80" />
+        </el-tab-pane>
+        <el-tab-pane label="工作量表" name="workload">
+          <div class="req-flow-actions">
+            <el-button type="primary" size="small" @click="openDeliverableCreate('WORKLOAD')"><el-icon><Plus /></el-icon>新增工作量表记录</el-button>
+            <el-button size="small" @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传工作量表（占位）</el-button>
           </div>
-          <el-button v-if="isViewStageActive()" plain type="primary" size="small" @click="addCoordRow"><el-icon><Plus /></el-icon>添加协同系统</el-button>
-          <div v-if="coordRows.length === 0 && !isViewStageActive()" class="req-form-hint">未配置协同系统</div>
-        </div>
-
-        <!-- 需求状态及备注（不属于任何阶段，在每条数据最后两列/表单底部固定展示） -->
-        <div class="req-section-title d-flex align-items-center gap-8">
-          <span>需求状态及备注</span>
-          <el-button v-if="legacyForm.id" link type="warning" size="small" @click="openLegacyChange(null)"><el-icon><RefreshRight /></el-icon>需求变更</el-button>
-        </div>
-        <el-form-item label="需求状态">
-          <el-input :model-value="(legacyForm as any).requirement_status || '需求分析'" disabled placeholder="由阶段推进自动维护" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="(legacyForm as any).remark" type="textarea" :rows="2" placeholder="【0611】713前投产，纳入建设合同" />
-        </el-form-item>
-      </el-form>
+          <el-table :data="workloadDocs" border size="small">
+            <el-table-column prop="system_code" label="系统" min-width="110" />
+            <el-table-column prop="doc_name" label="文档名称" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="version_no" label="版本" width="70" />
+            <el-table-column label="评审状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.review_status" :tone="reviewStatusTagType(scope.row.review_status)" /></template></el-table-column>
+            <el-table-column label="操作" width="250" fixed="right">
+              <template #default="scope">
+                <div class="req-table-actions">
+                  <el-button link type="info" @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传</el-button>
+                  <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDeliverable(scope.row, 'WORKLOAD')">提交评审</el-button>
+                  <el-button v-if="scope.row.review_status === '评审中'" link type="success" @click="openDeliverableReview(scope.row, 'WORKLOAD')">评审</el-button>
+                  <el-button link type="danger" @click="removeDeliverable(scope.row, 'WORKLOAD')">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="workloadDocs.length === 0" description="暂无工作量表记录" :image-size="80" />
+        </el-tab-pane>
+        <el-tab-pane label="软需文档" name="soft">
+          <div class="req-flow-actions">
+            <el-button type="primary" size="small" @click="openDeliverableCreate('SOFT')"><el-icon><Plus /></el-icon>新增软需文档记录</el-button>
+            <el-button size="small" @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传软需文档（占位）</el-button>
+          </div>
+          <el-table :data="softDocs" border size="small">
+            <el-table-column prop="system_code" label="系统" min-width="110" />
+            <el-table-column prop="doc_name" label="文档名称" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="version_no" label="版本" width="70" />
+            <el-table-column label="评审状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.review_status" :tone="reviewStatusTagType(scope.row.review_status)" /></template></el-table-column>
+            <el-table-column label="操作" width="250" fixed="right">
+              <template #default="scope">
+                <div class="req-table-actions">
+                  <el-button link type="info" @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传</el-button>
+                  <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDeliverable(scope.row, 'SOFT')">提交评审</el-button>
+                  <el-button v-if="scope.row.review_status === '评审中'" link type="success" @click="openDeliverableReview(scope.row, 'SOFT')">评审</el-button>
+                  <el-button link type="danger" @click="removeDeliverable(scope.row, 'SOFT')">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="softDocs.length === 0" description="暂无软需文档记录" :image-size="80" />
+        </el-tab-pane>
+        <el-tab-pane label="协同事项" name="coordination">
+          <div class="req-flow-actions">
+            <el-button type="primary" size="small" @click="openCoordCreate"><el-icon><Plus /></el-icon>新增协同事项</el-button>
+          </div>
+          <el-table :data="coordItems" border size="small">
+            <el-table-column prop="item_type" label="类型" width="80" />
+            <el-table-column prop="system_code" label="系统" min-width="110" />
+            <el-table-column prop="owner_user_name" label="负责人" min-width="110" />
+            <el-table-column prop="start_date" label="开始日期" width="110" />
+            <el-table-column prop="end_date" label="结束日期" width="110" />
+            <el-table-column label="状态" width="90"><template #default="scope"><UiStatusTag :value="scope.row.status" /></template></el-table-column>
+            <el-table-column prop="description" label="说明" min-width="180" show-overflow-tooltip />
+            <el-table-column label="操作" width="110"><template #default="scope"><div class="req-table-actions"><el-button link type="primary" @click="openCoordEdit(scope.row)">编辑</el-button><el-button link type="danger" @click="removeCoord(scope.row)">删除</el-button></div></template></el-table-column>
+          </el-table>
+          <el-empty v-if="coordItems.length === 0" description="暂无协同事项" :image-size="80" />
+        </el-tab-pane>
+        <el-tab-pane label="版本历史" name="versions">
+          <div class="req-flow-actions">
+            <el-button v-if="legacyForm.id" type="warning" size="small" @click="openLegacyChangeFromDetail"><el-icon><RefreshRight /></el-icon>需求变更（版本递增）</el-button>
+          </div>
+          <el-table :data="versionRows" border size="small">
+            <el-table-column prop="version_no" label="版本号" width="100" />
+            <el-table-column prop="change_summary" label="变更说明" min-width="240" show-overflow-tooltip />
+            <el-table-column prop="created_at" label="记录时间" width="180" />
+            <el-table-column label="操作" width="110"><template #default="scope"><el-button link type="primary" @click="viewVersion(scope.row)">查看快照</el-button></template></el-table-column>
+          </el-table>
+          <el-empty v-if="versionRows.length === 0" description="暂无版本记录" :image-size="80" />
+        </el-tab-pane>
+        <el-tab-pane label="成员" name="members">
+          <div class="req-member-row">
+            <el-select v-model="legacyMemberUserId" placeholder="选择成员用户" filterable style="flex: 1">
+              <el-option v-for="user in userOptions" :key="user.id" :label="`${user.display_name || user.username}（${user.username}）`" :value="user.id" />
+            </el-select>
+            <el-button type="primary" :loading="legacyMemberSaving" @click="addLegacyMemberAction">添加</el-button>
+          </div>
+          <el-table :data="legacyMembers" border size="small">
+            <el-table-column prop="display_name" label="姓名" min-width="130" />
+            <el-table-column prop="username" label="账号" min-width="150" />
+            <el-table-column prop="member_role" label="角色" width="100" />
+            <el-table-column label="操作" width="90"><template #default="scope"><el-button link type="danger" @click="removeLegacyMemberAction(scope.row)">移除</el-button></template></el-table-column>
+          </el-table>
+          <el-empty v-if="legacyMembers.length === 0" description="暂无成员" :image-size="80" />
+          <div class="req-form-hint">需求成员（参考新建项目成员）与 PMO/管理员可见该需求；系统行负责人/系统人员、当前流转处理人同样可见。</div>
+        </el-tab-pane>
+      </el-tabs>
     </UiFormDrawer>
 
     <!-- 需求变更（独立按钮弹窗，不属于任何阶段） -->
@@ -1684,6 +2174,9 @@ function canEditDiff(row: RequirementDifference) {
         <el-form-item label="需求变更备注">
           <el-input v-model="legacyChangeForm.change_remark" type="textarea" :rows="2" :disabled="isChangeDetailDisabled()" />
         </el-form-item>
+        <el-form-item label="工作量需求变更记录（变更后工作量/原因/前后对比，关联版本管理）" class="req-span-2">
+          <el-input v-model="legacyChangeForm.workload_change" type="textarea" :rows="2" :disabled="isChangeDetailDisabled()" placeholder="例如：工作量由 10 人日调整为 15 人日，原因：新增联调范围；对应新版本 2.0" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="legacyChangeVisible = false">取消</el-button>
@@ -1691,43 +2184,109 @@ function canEditDiff(row: RequirementDifference) {
       </template>
     </el-dialog>
 
-    <!-- 阶段推进 -->
-    <el-dialog v-model="stageDialogVisible" title="阶段推进" width="min(620px, calc(100vw - 24px))">
-      <div v-if="stageTarget" class="req-stage-overview">
-        <div class="req-stage-track">
-          <div v-for="s in LEGACY_STAGE_ORDER" :key="s" class="req-stage-node" :class="{ 'req-stage-active': s === stageTarget.current_stage, 'req-stage-selected': s === stageForm.stage }">
-            <span class="req-stage-name">{{ stageLabel(s) }}</span>
-            <el-tag size="small" :type="stageStatusTagType((stageTarget[STAGE_FIELD_MAP[s]] as string) || '未开始')">{{ (stageTarget[STAGE_FIELD_MAP[s]] as string) || '未开始' }}</el-tag>
-          </div>
-        </div>
-        <div class="req-stage-summary">
-          当前阶段：<strong>{{ stageLabel(stageTarget.current_stage) }}</strong> · 需求状态：<el-tag size="small" type="info">{{ stageTarget.requirement_status || '需求分析' }}</el-tag>
-        </div>
-      </div>
-      <el-form label-position="top" class="req-stage-form">
-        <el-form-item label="阶段" required>
-          <el-select v-model="stageForm.stage" style="width: 100%">
-            <el-option v-for="stage in options.legacyStages || []" :key="stage" :label="stageLabel(stage)" :value="stage" />
+    <!-- 发起流转 -->
+    <el-dialog v-model="flowDialogVisible" title="发起流转" width="min(480px, calc(100vw - 24px))">
+      <el-form label-position="top">
+        <el-form-item label="流转处理人" required>
+          <el-select v-model="flowToUserId" filterable placeholder="选择一位处理人（单次流转一人）" style="width: 100%">
+            <el-option v-for="u in userOptions" :key="u.id" :label="`${u.display_name || u.username}（${u.username}）`" :value="u.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="动作" required>
-          <el-radio-group v-model="stageForm.action">
-            <el-radio v-for="a in availableActions" :key="a.value" :value="a.value" :disabled="a.disabled">{{ a.label }}<span v-if="a.disabled" class="req-action-reason">（{{ a.reason }}）</span></el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="联动预览">
-          <div class="req-linkage-preview">
-            需求状态：<span class="req-old-value">{{ stageTarget?.requirement_status || '需求分析' }}</span>
-            → <span class="req-new-value">{{ linkedRequirementStatus || '不变' }}</span>
-            <span v-if="!linkedRequirementStatus" class="req-form-hint">（当前动作不触发联动）</span>
-          </div>
-        </el-form-item>
-        <el-form-item label="说明"><el-input v-model="stageForm.comment" type="textarea" :rows="2" placeholder="可选：记录本次推进说明（写入阶段日志）" /></el-form-item>
+        <el-form-item label="流转说明"><el-input v-model="flowComment" type="textarea" :rows="2" placeholder="可选：说明本次流转事项" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="stageDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="stageSaving" @click="saveStage">确认推进</el-button>
+        <el-button @click="flowDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="flowSaving" @click="sendFlowAction">流转</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 交付件记录（工作量表/软需文档，上传能力占位） -->
+    <el-dialog v-model="deliverableDialogVisible" :title="deliverableType === 'WORKLOAD' ? '新增工作量表记录' : '新增软需文档记录'" width="min(560px, calc(100vw - 24px))">
+      <el-form label-position="top" class="req-form-grid">
+        <el-form-item label="所属系统" class="req-span-2">
+          <el-select v-model="deliverableForm.system_item_id" filterable clearable style="width: 100%" placeholder="选择系统子表行" @change="onDeliverableSystemChange">
+            <el-option v-for="item in systemItemRows" :key="item.id" :label="`${item.system_role}：${item.system_code || ''} ${item.system_name || ''}`" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="文档名称"><el-input v-model="deliverableForm.doc_name" placeholder="如：工作量评估表-XX系统-V0.3" /></el-form-item>
+        <el-form-item label="备注"><el-input v-model="deliverableForm.remark" placeholder="可选" /></el-form-item>
+        <el-form-item label="文件" class="req-span-2">
+          <el-button plain @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传文件（本期未开放）</el-button>
+          <span class="req-form-hint">本期仅维护文本元数据，上传能力后续版本支持</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="deliverableDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="deliverableSaving" @click="saveDeliverableAction">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 交付件评审确认（PMO） -->
+    <el-dialog v-model="deliverableReviewVisible" :title="`评审：${deliverableReviewTarget?.title || ''}`" width="min(520px, calc(100vw - 24px))">
+      <el-form label-position="top">
+        <el-form-item label="评审结论" required>
+          <el-radio-group v-model="deliverableReviewForm.conclusion">
+            <el-radio-button value="通过">通过</el-radio-button>
+            <el-radio-button value="退回">退回</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="评审意见"><el-input v-model="deliverableReviewForm.comment" type="textarea" :rows="3" /></el-form-item>
+        <el-form-item label="评审报告文档">
+          <el-button plain @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传评审报告（本期未开放）</el-button>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="deliverableReviewVisible = false">取消</el-button>
+        <el-button type="primary" :loading="deliverableReviewSaving" @click="confirmDeliverableReview">确认评审</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 协同事项（改造/测试） -->
+    <el-dialog v-model="coordDialogVisible" :title="coordForm.id ? '编辑协同事项' : '新增协同事项'" width="min(640px, calc(100vw - 24px))">
+      <el-form label-position="top" class="req-form-grid">
+        <el-form-item label="事项类型" required>
+          <el-select v-model="coordForm.item_type" style="width: 100%"><el-option v-for="t in options.coordTypes || []" :key="t" :label="t" :value="t" /></el-select>
+        </el-form-item>
+        <el-form-item label="所属系统">
+          <el-select v-model="coordForm.system_item_id" filterable clearable style="width: 100%" placeholder="选择系统子表行" @change="onCoordSystemItemChange">
+            <el-option v-for="item in systemItemRows" :key="item.id" :label="`${item.system_role}：${item.system_code || ''} ${item.system_name || ''}`" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="负责人">
+          <el-select v-model="coordForm.owner_user_id" filterable clearable style="width: 100%" placeholder="选择负责人" @change="onCoordOwnerChange">
+            <el-option v-for="u in userOptions" :key="u.id" :label="`${u.display_name || u.username}（${u.username}）`" :value="u.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="coordForm.status" style="width: 100%"><el-option v-for="s in options.coordStatuses || []" :key="s" :label="s" :value="s" /></el-select>
+        </el-form-item>
+        <el-form-item label="开始日期"><el-date-picker v-model="coordForm.start_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+        <el-form-item label="结束日期"><el-date-picker v-model="coordForm.end_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+        <el-form-item label="事项说明" class="req-span-2"><el-input v-model="coordForm.description" type="textarea" :rows="2" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="coordDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="coordSaving" @click="saveCoordAction">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 版本快照 -->
+    <el-dialog v-model="versionSnapshotVisible" :title="versionSnapshotTitle" width="min(720px, calc(100vw - 24px))">
+      <pre class="req-snapshot">{{ versionSnapshotText }}</pre>
+      <template #footer><el-button @click="versionSnapshotVisible = false">关闭</el-button></template>
+    </el-dialog>
+
+    <!-- 评审记录 -->
+    <el-dialog v-model="reviewRecordDialogVisible" :title="reviewRecordTitle" width="min(860px, calc(100vw - 24px))">
+      <el-table :data="reviewRecordRows" border size="small">
+        <el-table-column prop="reviewer_name" label="评审人" width="130" />
+        <el-table-column prop="review_time" label="评审时间" width="170" />
+        <el-table-column label="结论" width="90"><template #default="scope"><el-tag size="small" :type="scope.row.conclusion === '通过' ? 'success' : 'warning'">{{ scope.row.conclusion }}</el-tag></template></el-table-column>
+        <el-table-column prop="comment" label="评审意见" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="report_doc_name" label="评审报告文档" min-width="160" show-overflow-tooltip />
+      </el-table>
+      <el-empty v-if="reviewRecordRows.length === 0" description="暂无评审记录" />
+      <template #footer><el-button @click="reviewRecordDialogVisible = false">关闭</el-button></template>
     </el-dialog>
 
     <!-- 阶段记录 -->
@@ -1989,6 +2548,35 @@ function canEditDiff(row: RequirementDifference) {
   padding: 12px;
   background: var(--el-fill-color-light, #f5f7fa);
   border-radius: 6px;
+}
+.req-stage-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--el-fill-color-light, #f5f7fa);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+.req-flow-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.req-add-row-btn {
+  margin-top: 10px;
+}
+.req-upload-line {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.req-upload-line .el-input {
+  flex: 1;
 }
 .req-stage-track {
   display: flex;

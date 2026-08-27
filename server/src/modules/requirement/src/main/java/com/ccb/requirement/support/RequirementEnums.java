@@ -26,6 +26,13 @@ public final class RequirementEnums {
     public static final List<String> LAUNCH_MODES = List.of("常规版本", "紧急版本");
     public static final List<String> CHANGE_REVIEW_CONCLUSIONS = List.of("评审通过", "评审不通过");
     public static final List<String> CHANGE_CONCLUSION_STATUSES = List.of("审核通过", "评估工作量", "蒙商立项完成");
+    public static final List<String> SYSTEM_ROLES = List.of("主责", "协同");
+    public static final List<String> FLOW_ACTIONS = List.of("SEND", "RETURN", "COMPLETE");
+    public static final List<String> REVIEW_CONCLUSIONS = List.of("通过", "退回");
+    public static final List<String> DELIVERABLE_TYPES = List.of("WORKLOAD", "SOFT");
+    public static final List<String> DELIVERABLE_REVIEW_STATUSES = List.of("待评审", "评审中", "已评审", "已退回");
+    public static final List<String> COORD_TYPES = List.of("改造", "测试");
+    public static final List<String> COORD_STATUSES = List.of("未开始", "进行中", "已完成");
     public static final List<String> LEGACY_STAGES = List.of("PROPOSE", "DOCKING", "WORKLOAD", "PROJECT", "SOFT", "LAUNCH");
     public static final Map<String, String> LEGACY_STAGE_LABELS = Map.of(
             "PROPOSE", "需求提出", "DOCKING", "需求对接", "WORKLOAD", "工作量评估",
@@ -129,6 +136,13 @@ public final class RequirementEnums {
         OPTIONS.put("launchModes", LAUNCH_MODES);
         OPTIONS.put("changeReviewConclusions", CHANGE_REVIEW_CONCLUSIONS);
         OPTIONS.put("changeConclusionStatuses", CHANGE_CONCLUSION_STATUSES);
+        OPTIONS.put("systemRoles", SYSTEM_ROLES);
+        OPTIONS.put("flowActions", FLOW_ACTIONS);
+        OPTIONS.put("reviewConclusions", REVIEW_CONCLUSIONS);
+        OPTIONS.put("deliverableTypes", DELIVERABLE_TYPES);
+        OPTIONS.put("deliverableReviewStatuses", DELIVERABLE_REVIEW_STATUSES);
+        OPTIONS.put("coordTypes", COORD_TYPES);
+        OPTIONS.put("coordStatuses", COORD_STATUSES);
     }
 
     public static final Map<String, String> FIELD_LABELS = fieldLabels();
@@ -216,6 +230,10 @@ public final class RequirementEnums {
         labels.put("change_conclusion_status", "变更结论及状态（审核通过/评估工作量/蒙商立项完成）");
         labels.put("change_remark", "需求变更备注");
         labels.put("not_project_developed", "未立项已开发");
+        labels.put("version_no", "需求版本号");
+        labels.put("workload_change", "工作量需求变更记录");
+        labels.put("current_flow_user_name", "当前流转处理人");
+        labels.put("review_report_name", "评审报告信息文档");
         labels.put("current_stage", "当前阶段");
         labels.put("propose_stage_status", "需求提出阶段状态");
         labels.put("docking_stage_status", "需求对接阶段状态");

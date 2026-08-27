@@ -27,6 +27,74 @@ public class RequirementSecurityService {
         return count != null && count > 0;
     }
 
+    /** PMO：需求管理统筹角色，全量查看、阶段推进、发起流转、标记完成。 */
+    public boolean isPmo(AuthUser user) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM sys_user_role ur
+                JOIN sys_role_permission rp ON rp.role_id = ur.role_id AND rp.tenant_id = ur.tenant_id
+                JOIN sys_menu_permission mp ON mp.id = rp.permission_id AND mp.tenant_id = rp.tenant_id
+                WHERE ur.user_id = ? AND ur.tenant_id = ? AND mp.permission_code = 'requirement:pmo'
+                """, Integer.class, user.id(), user.tenantId());
+        return count != null && count > 0;
+    }
+
+    public boolean isLegacySystemOwner(AuthUser user, long requirementId) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM req_legacy_system_item
+                WHERE tenant_id = ? AND requirement_id = ? AND owner_user_id = ? AND deleted = 0
+                """, Integer.class, user.tenantId(), requirementId, user.id());
+        return count != null && count > 0;
+    }
+
+    /** 系统人员：主责/协同系统行负责人或系统人员表中的成员。 */
+    public boolean isLegacySystemMember(AuthUser user, long requirementId) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM req_legacy_system_item si
+                LEFT JOIN req_legacy_system_member m
+                       ON m.system_item_id = si.id AND m.tenant_id = si.tenant_id AND m.deleted = 0
+                WHERE si.tenant_id = ? AND si.requirement_id = ? AND si.deleted = 0
+                  AND (si.owner_user_id = ? OR m.user_id = ?)
+                """, Integer.class, user.tenantId(), requirementId, user.id(), user.id());
+        return count != null && count > 0;
+    }
+
+    /** 当前流转处理人（整条需求流转）。 */
+    public boolean isCurrentFlowAssignee(AuthUser user, long requirementId) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM req_legacy_requirement
+                WHERE tenant_id = ? AND id = ? AND deleted = 0 AND current_flow_user_id = ?
+                """, Integer.class, user.tenantId(), requirementId, user.id());
+        return count != null && count > 0;
+    }
+
+    /** 存量需求显式成员（参考新建项目 req_project_member）。 */
+    public boolean isLegacyMember(AuthUser user, long requirementId) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM req_legacy_member
+                WHERE tenant_id = ? AND requirement_id = ? AND user_id = ? AND deleted = 0
+                """, Integer.class, user.tenantId(), requirementId, user.id());
+        return count != null && count > 0;
+    }
+
+    /** 存量需求数据范围：PMO/管理员全量；否则需求显式成员、业务组成员、系统行负责人/成员或当前流转处理人可见。 */
+    public void requireLegacyRequirementAccess(AuthUser user, long requirementId, String businessGroup) {
+        if (isPmo(user) || isAdmin(user) || isBusinessGroupMember(user, businessGroup)
+                || isLegacySystemOwner(user, requirementId)
+                || isLegacySystemMember(user, requirementId)
+                || isCurrentFlowAssignee(user, requirementId)
+                || isLegacyMember(user, requirementId)) {
+            return;
+        }
+        throw new BusinessException(ErrorCode.FORBIDDEN, "无该存量需求数据访问权限");
+    }
+
+    /** 存量需求成员维护权限：仅 PMO/管理员。 */
+    public void requireLegacyMemberManage(AuthUser user) {
+        if (!isPmo(user) && !isAdmin(user)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "仅 PMO/管理员可维护存量需求成员");
+        }
+    }
+
     public boolean isProjectMember(AuthUser user, long projectId) {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM req_project_member WHERE tenant_id = ? AND project_id = ? AND user_id = ? AND deleted = 0",

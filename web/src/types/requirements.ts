@@ -117,7 +117,98 @@ export interface LegacyRequirement {
   soft_stage_status: string
   launch_stage_status: string
   source?: string
+  version_no?: string
+  workload_change?: string | null
+  current_flow_user_id?: number | null
+  current_flow_user_name?: string | null
+  system_items?: LegacySystemItem[]
+  flow_logs?: LegacyFlowLog[]
+  versions?: RequirementVersionRow[]
   [key: string]: unknown
+}
+
+export interface LegacySystemItem {
+  id: number
+  requirement_id?: number
+  system_role: string
+  system_code?: string | null
+  system_name?: string | null
+  owner_user_id?: number | null
+  owner_user_name?: string | null
+  members?: Array<{ user_id: number; user_name?: string | null }>
+  remark?: string | null
+  created_at?: string
+}
+
+export interface LegacyMember {
+  id: number
+  requirement_id: number
+  user_id: number
+  member_role: string
+  username?: string
+  display_name?: string
+}
+
+export interface LegacyFlowLog {
+  id?: number
+  action: string
+  from_user_id?: number | null
+  from_user_name?: string | null
+  to_user_id?: number | null
+  to_user_name?: string | null
+  comment?: string | null
+  created_at: string
+}
+
+export interface RequirementVersionRow {
+  version_no: string
+  change_summary?: string | null
+  snapshot_json?: string | null
+  created_at?: string
+}
+
+export interface LegacyDeliverable {
+  id: number
+  requirement_id: number
+  system_item_id?: number | null
+  system_code?: string | null
+  doc_name?: string | null
+  version_no: string
+  review_status: string
+  review_record_id?: number | null
+  remark?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CoordinationItem {
+  id: number
+  requirement_id: number
+  system_item_id?: number | null
+  item_type: string
+  system_code?: string | null
+  system_name?: string | null
+  owner_user_id?: number | null
+  owner_user_name?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  status: string
+  description?: string | null
+  created_at?: string
+}
+
+export interface ReviewRecord {
+  id: number
+  biz_type: string
+  biz_id: number
+  review_no?: string | null
+  reviewer_id: number
+  reviewer_name?: string | null
+  review_time?: string | null
+  conclusion: string
+  comment?: string | null
+  report_doc_name?: string | null
+  created_at?: string
 }
 
 export interface RequirementSystem {

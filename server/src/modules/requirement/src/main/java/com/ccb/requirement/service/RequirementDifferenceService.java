@@ -37,7 +37,7 @@ public class RequirementDifferenceService {
             monshang_practice, difference_desc, monshang_dept, monshang_analyst, jinke_analyst,
             adapt_mode, handle_status, coord_group, solution, is_special, decision_level,
             decision_conclusion, monshang_confirm_dept, jinke_confirmer, review_status,
-            review_comment, reviewed_by, reviewed_at, workflow_instance_id, dev_status,
+            review_comment, review_report_name, reviewed_by, reviewed_at, workflow_instance_id, dev_status,
             test_status, baseline_id, source, import_batch_id, created_at, updated_at
             """;
 
@@ -147,7 +147,7 @@ public class RequirementDifferenceService {
      * 由 RequirementWorkflowListener 接收 WorkflowInstanceCompletedEvent 幂等回写"已评审/已退回"。
      */
     @Transactional
-    public Map<String, Object> submitReview(long id, List<Long> approverIds, AuthUser user) {
+    public Map<String, Object> submitReview(long id, List<Long> approverIds, String reportDocName, AuthUser user) {
         Map<String, Object> row = row(id, user);
         security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
         String status = String.valueOf(row.get("review_status"));
@@ -186,7 +186,8 @@ public class RequirementDifferenceService {
                 title, 1,
                 ref, projectName,
                 "/requirements/new-project");
-        jdbc.update("UPDATE req_difference SET review_status = '评审中', review_comment = NULL, workflow_instance_id = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
+        jdbc.update("UPDATE req_difference SET review_status = '评审中', review_comment = NULL, review_report_name = ?, workflow_instance_id = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
+                reportDocName == null || reportDocName.isBlank() ? null : reportDocName.substring(0, Math.min(200, reportDocName.length())),
                 instanceId, user.id(), user.tenantId(), id);
         changeLog.record("NEW_PROJECT_DIFF", id, "SUBMIT_REVIEW", "review_status", status, "评审中", user, "ONLINE");
         return get(id, user);

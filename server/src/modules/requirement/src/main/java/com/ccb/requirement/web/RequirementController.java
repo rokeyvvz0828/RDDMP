@@ -167,7 +167,9 @@ public class RequirementController {
         List<Number> raw = (List<Number>) body.get("approverIds");
         List<Long> approverIds = raw == null ? List.of()
                 : raw.stream().map(Number::longValue).toList();
-        return ApiResponse.success(differenceService.submitReview(id, approverIds, user), TraceId.getOrCreate());
+        String reportDocName = body.get("reportDocName") == null ? null : String.valueOf(body.get("reportDocName"));
+        return ApiResponse.success(differenceService.submitReview(id, approverIds, reportDocName, user),
+                TraceId.getOrCreate());
     }
 
     @PostMapping("/differences/{id}/cancel-review")
