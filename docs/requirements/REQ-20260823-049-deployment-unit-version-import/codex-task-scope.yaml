@@ -21,8 +21,8 @@
   "scope": {
     "writable_paths": [
       "server/src/modules/architecture/**",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V86__seed_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V96__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V97__seed_architecture_deployment_units.sql",
       "web/src/modules/architecture/**",
       "web/src/router/index.ts",
       "docs/architecture/MODULES.md",
@@ -41,8 +41,8 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V5__create_workflow_schema.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V77__create_architecture_subsystems.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V78__seed_architecture_subsystem_catalog.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__seed_architecture_subsystem_lifecycle.sql",
       "server/src/modules/requirement/**",
       "server/src/modules/test-management/**",
       "web/src/api/http.ts",
@@ -74,12 +74,12 @@
     "required": true,
     "issue": "REQ-20260823-049",
     "owner_approved": true,
-    "approval_evidence": "用户于 2026-08-23 下达“实现部署单元模块”任务并引用 issue 02 与规格；批准在 business/architecture 内新增部署单元能力、在 com.ccb.architecture.integration 预留部署单元引用检查 SPI、追加 V85-V86 迁移与 804/805 菜单权限。",
+    "approval_evidence": "用户于 2026-08-23 下达“实现部署单元模块”任务并引用 issue 02 与规格；批准在 business/architecture 内新增部署单元能力、在 com.ccb.architecture.integration 预留部署单元引用检查 SPI、集成后追加 V96-V97 迁移与 804/805 菜单权限。",
     "old_behavior_preserved": true,
     "regression_tests": [
       "既有逻辑/物理子系统与变更工单 API 契约不变，全部原测试继续通过",
       "com.ccb.architecture.integration 只新增中性部署单元引用检查 SPI，不暴露持久化或 Web 类型",
-      "V85-V86 只追加，不修改 V1-V84；空库与既有库均可迁移",
+      "V96-V97 只追加，不修改 V1-V95；空库与既有库均可迁移",
       "architecture 新增 poi-ooxml 依赖，与 requirement/test-management 模块版本一致",
       "现有 system、security、workflow、release、requirement、test-management 和 Boot 测试无回归"
     ]
@@ -87,10 +87,10 @@
   "database": {
     "changed": true,
     "migration_files": [
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V86__seed_architecture_deployment_units.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V96__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V97__seed_architecture_deployment_units.sql"
     ],
-    "compatibility_and_rollback": "只追加 V85-V86。V85 建立 arch_deployment_unit（稳定身份/编号/归属/状态/当前版本）、arch_deployment_unit_version（不可改写版本快照）、arch_deployment_unit_number_seq（按物理子系统行锁分配编号）与 arch_deployment_unit_import_batch/item（导入批次与明细）。V86 追加菜单 804/805、权限 8041/8042、角色 111 及映射。应用回退保留迁移、编号、版本、批次与审计，使用后续补偿迁移关闭入口，不手工删除生产数据。"
+    "compatibility_and_rollback": "只追加 V96-V97。V96 建立 arch_deployment_unit（稳定身份/编号/归属/状态/当前版本）、arch_deployment_unit_version（不可改写版本快照）、arch_deployment_unit_number_seq（按物理子系统行锁分配编号）与 arch_deployment_unit_import_batch/item（导入批次与明细）。V97 追加菜单 804/805、权限 8041/8042、角色 111 及映射。应用回退保留迁移、编号、版本、批次与审计，使用后续补偿迁移关闭入口，不手工删除生产数据。"
   },
   "external_access": {
     "changed": false,
@@ -185,7 +185,7 @@
       ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/convergence.json"
     ],
     "release_verification": [
-      "空库与 V84 增量库迁移到 V86",
+      "空库与 V95 增量库迁移到 V97",
       "编号并发不重号、发布后编号/归属不可变",
       "版本行不可改写、变更形成新版本且审计完整",
       "停用/重新启用/作废状态机与引用守卫 fail-closed",
@@ -194,6 +194,6 @@
       "四个视口与明暗主题真实浏览器 UAT",
       "Maven/Vue/Boot/治理/范围/模块边界/Flyway 全量检查"
     ],
-    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V85-V86、编号、版本、批次和审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
+    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V96-V97、编号、版本、批次和审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
   }
 }

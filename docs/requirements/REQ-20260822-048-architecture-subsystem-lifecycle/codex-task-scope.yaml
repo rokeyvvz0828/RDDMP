@@ -21,9 +21,9 @@
   "scope": {
     "writable_paths": [
       "server/src/modules/architecture/**",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__seed_architecture_subsystem_workflow.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__seed_architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__seed_architecture_subsystem_workflow.sql",
       "web/src/modules/architecture/**",
       "web/src/router/index.ts",
       "governance/modules.yaml",
@@ -88,11 +88,11 @@
   "database": {
     "changed": true,
     "migration_files": [
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__seed_architecture_subsystem_workflow.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__seed_architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__seed_architecture_subsystem_workflow.sql"
     ],
-    "compatibility_and_rollback": "只追加 V82-V84，不修改 V1-V81。V82 为既有主表追加可兼容默认列，保留 code，并建立强类型申请、编号、锁、历史、替换和工作流回执表；既有逻辑与所有物理历史按稳定顺序补内部序号/槽位，超出 9999/35 时迁移失败。V83 追加菜单 803、权限 8031-8033、角色 110 及旧权限映射；V84 追加 definition 900000000000030 和 version 900000000000031。应用回退保留迁移、编号、申请、发布和审计，使用后续补偿迁移关闭入口，不手工删除生产数据。"
+    "compatibility_and_rollback": "只追加 V93-V95，不修改 V1-V92。V93 为既有主表追加可兼容默认列，保留 code，并建立强类型申请、编号、锁、历史、替换和工作流回执表；既有逻辑与所有物理历史按稳定顺序补内部序号/槽位，超出 9999/35 时迁移失败。V94 追加菜单 803、权限 8031-8033、角色 110 及旧权限映射；V95 追加 definition 900000000000030 和 version 900000000000031。应用回退保留迁移、编号、申请、发布和审计，使用后续补偿迁移关闭入口，不手工删除生产数据。"
   },
   "external_access": {
     "changed": false,
@@ -193,7 +193,7 @@
       ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/convergence.json"
     ],
     "release_verification": [
-      "空库和 V81 增量库迁移到 V84，既有 code 不变",
+      "空库和 V92 增量库迁移到 V95，既有 code 不变",
       "编号并发、释放复用、退回保留和永久占用",
       "真实工作流批准、退回重提、自审批、拒绝、取消和事件幂等",
       "逻辑级联与物理替换原子发布",
@@ -201,6 +201,6 @@
       "四个视口与明暗主题真实浏览器 UAT",
       "Maven/Vue/Boot/治理/范围/模块边界/Flyway 全量检查"
     ],
-    "rollback": "按前端、architecture 消费者与服务、workflow 依赖和治理登记逆序回退应用代码；保留 V82-V84、编号、申请、发布、历史和审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
+    "rollback": "按前端、architecture 消费者与服务、workflow 依赖和治理登记逆序回退应用代码；保留 V93-V95、编号、申请、发布、历史和审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
   }
 }

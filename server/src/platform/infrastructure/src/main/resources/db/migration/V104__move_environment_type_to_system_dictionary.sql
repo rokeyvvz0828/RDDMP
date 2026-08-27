@@ -1,5 +1,5 @@
 -- REQ-20260824-052 纠偏：环境类型改由系统字典维护，架构模块只保存字典 code。
--- V91 已建立 arch_environment_type，本迁移负责存量类型迁入 ARCH_ENVIRONMENT_TYPE 并移除自维护表。
+-- V102 已建立 arch_environment_type，本迁移负责存量类型迁入 ARCH_ENVIRONMENT_TYPE 并移除自维护表。
 
 INSERT IGNORE INTO sys_dict_type (id, tenant_id, dict_code, dict_name, status)
 VALUES (360009, 1, 'ARCH_ENVIRONMENT_TYPE', '具体环境类型', 1);
