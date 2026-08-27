@@ -1,0 +1,57 @@
+{
+  "sample_label": "F-0001 纠正后 section 复验",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R2",
+      "sensor": "S5 Chromium route probe",
+      "result": "pass",
+      "raw_evidence": "基础资料组件入口返回组件表格，目标表结构入口返回专用结构化列表状态；1280x800 scrollWidth 等于 clientWidth",
+      "limitation": ["组件和表结构仍为只读展示，未覆盖新增/编辑/关联删除"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S4 authenticated API plus S5 browser probe",
+      "result": "partial",
+      "raw_evidence": "validation-rules 路由请求 /structured/RULE 并显示 RULE 资产；页面提供 Excel 导入检查和导出按钮",
+      "limitation": ["后端导入接口只返回检查结果，不持久化逐行数据；参数/问题和表结构写入仍未完成完整维护契约"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S3 temporary dependency-mapped build",
+      "result": "pass",
+      "raw_evidence": "vue-tsc exit 0，Vite production bundle built",
+      "limitation": ["正式 npm --prefix web run build 仍受隔离依赖缺失阻断"]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R5",
+      "expected": "结构化资产和基础资料具备完整维护及持久化导入能力",
+      "observed": "本次纠正已补齐 section 路由、列表和 Excel 检查/导出，但基础资料仍只读，Excel 导入仍不持久化",
+      "reproduction": "打开 /data-migration/base/components、/data-migration/content/validation-rules 并执行导入/编辑操作",
+      "evidence": "S5 页面文本显示只读组件和导入检查；StructuredAssetController.inspectImport 仅调用 excel.inspectImport",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "已覆盖路由和接口调用，未覆盖大批量数据写入",
+      "causal_hypothesis": "T4 后端契约本身将导入实现为 inspect，T5 无法在当前 API 上完成真实持久化",
+      "correction_check": "补充后端持久化导入和基础资料写接口后重跑对象、数据库和浏览器验收",
+      "classification": "duplicate"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "隔离树正式 npm build 缺少 vue-tsc",
+      "effect": "继续使用主工作区只读依赖映射",
+      "detectable": true
+    }
+  ],
+  "coverage_gaps": [
+    "结构化导入持久化",
+    "基础资料新增/编辑/关联校验删除/导出",
+    "普通用户权限 HTTP 复验"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

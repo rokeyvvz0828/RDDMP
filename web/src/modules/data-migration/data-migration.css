@@ -1,0 +1,37 @@
+/* Shared layout primitives for data-migration business pages. */
+.dm-page-root { width: 100%; min-width: 0; }
+.dm-state-panel { display: grid; min-height: 360px; place-items: center; padding: 24px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+.dm-table-actions { display: flex; align-items: center; gap: 8px; overflow: hidden; position: relative; max-width: 100%; }
+.dm-table-actions .el-button { margin-left: 0; white-space: nowrap; flex-shrink: 0; }
+.dm-table-actions .el-button.is-clipped { display: none; }
+.dm-table-actions .dm-overflow-trigger { position: absolute; right: 0; top: 0; bottom: 0; display: none; align-items: center; padding: 0 4px; background: var(--el-bg-color, #fff); color: var(--el-text-color-regular, #606266); font-size: 14px; cursor: pointer; z-index: 1; font-weight: bold; letter-spacing: 1px; }
+.dm-table-actions.is-overflow .dm-overflow-trigger { display: flex; }
+.dm-overflow-trigger .el-dropdown-menu__item.is-hidden { display: none; }
+.dm-table-footer { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; }
+.dm-table-footer > span { color: var(--muted); font-size: 12px; }
+.dm-desktop-table { display: block; }
+.dm-mobile-list { display: none; }
+
+@media (max-width: 760px) {
+  .dm-desktop-table { display: none; }
+  .dm-mobile-list { display: grid; gap: 10px; }
+  .dm-mobile-list.is-loading { min-height: 220px; opacity: .5; pointer-events: none; }
+  .dm-mobile-list article { display: grid; min-width: 0; gap: 12px; padding: 14px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+  .dm-mobile-list header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .dm-mobile-list header > div { min-width: 0; }
+  .dm-mobile-list strong, .dm-mobile-list small { display: block; overflow-wrap: anywhere; }
+  .dm-mobile-list small { margin-top: 4px; color: var(--muted); font-size: 11px; }
+  .dm-mobile-list dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+  .dm-mobile-list dt { color: var(--muted); font-size: 10px; }
+  .dm-mobile-list dd { margin: 4px 0 0; overflow-wrap: anywhere; font-size: 12px; }
+  .dm-mobile-list footer { display: flex; flex-wrap: wrap; gap: 4px 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .dm-mobile-list footer .el-button { margin-left: 0; }
+  .dm-table-footer { justify-content: center; }
+  .dm-table-footer > span { display: none; }
+  .dm-table-footer .el-pagination { flex-wrap: wrap; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .dm-table-footer .el-pagination__total,
+  .dm-table-footer .el-pagination__sizes { display: none; }
+}

@@ -1,0 +1,78 @@
+{
+  "task_id": "T5",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "添加上传、下载、逻辑删除、恢复和彻底清理请求封装"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/DataMigrationModule.vue",
+      "purpose": "添加关键词查询、批量选择、上传工具栏、下载和回收站操作状态"
+    }
+  ],
+  "requirements_addressed": ["R1", "R3", "R4", "R8"],
+  "commands": [
+    {
+      "command": "node /home/song/workspace/RDDMP/web/node_modules/vue-tsc/bin/vue-tsc.js --noEmit -p /tmp/rddmp-web-tsconfig.json",
+      "exit_code": 0,
+      "salient_output": "TypeScript check passed using read-only dependency mapping"
+    },
+    {
+      "command": "node /home/song/workspace/RDDMP/web/node_modules/vite/bin/vite.js build --config /tmp/rddmp-vite-req031.config.cjs --outDir /tmp/rddmp-web-dist",
+      "exit_code": 0,
+      "salient_output": "2328 modules transformed; production bundle built"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "backend asset lifecycle probe",
+      "result": "pass",
+      "evidence": "管理员真实 API 完成上传、列表、下载、逻辑删除、回收站查询、恢复、再次删除和彻底清理"
+    },
+    {
+      "check": "frontend action states",
+      "result": "pass",
+      "evidence": "工具栏和行级下载入口在桌面和移动端路由可见"
+    }
+  ],
+  "diff_summary": [
+    "真实资产 API 封装",
+    "资产筛选和批量选择",
+    "上传、下载、逻辑删除、恢复和彻底清理按钮",
+    "桌面表格和移动卡片状态"
+  ],
+  "assumptions_falsified": [],
+  "invariants_checked": [
+    {
+      "invariant": "后端仍是权限事实源",
+      "result": "pass",
+      "evidence": "操作请求仅由前端触发，服务端 RBAC 和实体授权未绕过"
+    },
+    {
+      "invariant": "移动端无页面级横向滚动",
+      "result": "pass",
+      "evidence": "375/390/430 视口 scrollWidth 等于 clientWidth"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "隔离工作树未安装 vue-tsc，正式 npm build 无法启动",
+      "effect": "改用主工作区依赖的临时映射完成等价编译和打包",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "原后端进程 MINIO_ENDPOINT 指向不可解析的 host.docker.internal",
+      "effect": "上传首轮返回 File storage service unavailable；本地进程改用 127.0.0.1:9000 后生命周期探针通过",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "unresolved_items": [
+    "结构化资产导入/导出和基础资料专用视图尚未形成完整前端交互",
+    "普通用户实体授权 HTTP 流程尚未在独立账号上复验",
+    "正式 npm --prefix web run build 仍受隔离依赖缺失阻断"
+  ],
+  "recommended_next": "独立观测 T5；对剩余前端契约缺口建立纠正反馈，不宣布收敛"
+}

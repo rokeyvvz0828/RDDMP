@@ -1,0 +1,50 @@
+{
+  "sample_label": "T16 authenticated report preview correction recheck",
+  "task_ids": [
+    "T5",
+    "T6"
+  ],
+  "baseline_revision": "state-revision-135",
+  "measurements": [
+    {
+      "requirement_id": "R8",
+      "sensor": "authenticated Chromium network and iframe probe",
+      "result": "pass",
+      "raw_evidence": "attachment metadata, download and temporary preview APIs return 200; kkFileView source host is host.docker.internal:9000",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "kkFileView nested document DOM",
+      "result": "pass",
+      "raw_evidence": "real target_tables.xlsx renders one visible nested frame with one table and 240 cells; worksheet text is non-empty",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "trust, error and cleanup assertions",
+      "result": "pass",
+      "raw_evidence": "no untrusted-source warning, HTTP 500 or loading error; close removes the iframe and temporary preview DELETE returns 200",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "production build and focused preview tests",
+      "result": "pass",
+      "raw_evidence": "frontend build, ccb-file-preview tests, diff check and current requirement scope check all exit 0",
+      "limitation": [
+        "existing Vite bundle-size warning remains non-blocking"
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": [],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

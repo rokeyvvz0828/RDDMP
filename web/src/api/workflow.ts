@@ -101,4 +101,12 @@ export function listWorkflowInbox(params: WorkflowPageQuery) { return http.get<A
 export function listWorkflowSubmitted(params: WorkflowPageQuery) { return http.get<ApiResponse<WorkflowPage<WorkflowTask & { current_assignees?: string; task_count?: number; instance_status?: string; definition_name?: string }>>>('/workflows/submitted', { params }) }
 export function getWorkflowTaskContext(id: number) { return http.get<ApiResponse<WorkflowTaskContext>>(`/workflows/tasks/${id}/context`) }
 export function getCurrentWorkflowTaskContext(businessType: string, businessKey: string) { return http.get<ApiResponse<WorkflowTaskContext | null>>('/workflows/tasks/current-context', { params: { businessType, businessKey } }) }
-export function decideWorkflowTask(id: number, action: WorkflowTaskAction, comment: string, options?: { targetUserId?: number; ccUserIds?: number[]; signatureConfirmed?: boolean }) { return http.post<ApiResponse<void>>(`/workflows/tasks/${id}/decision`, { action, comment, targetUserId: options?.targetUserId, ccUserIds: options?.ccUserIds, signatureConfirmed: options?.signatureConfirmed }) }
+export function decideWorkflowTask(id: number, action: WorkflowTaskAction, comment: string, options?: { targetUserId?: number; ccUserIds?: number[]; signatureConfirmed?: boolean }) {
+  return http.post<ApiResponse<void>>(`/workflows/tasks/${id}/decision`, {
+    action,
+    comment,
+    targetUserId: options?.targetUserId,
+    ccUserIds: options?.ccUserIds,
+    signatureConfirmed: options?.signatureConfirmed
+  }, { timeout: 30_000 })
+}

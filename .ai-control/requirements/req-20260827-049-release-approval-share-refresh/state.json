@@ -1,0 +1,748 @@
+{
+  "schema_version": 5,
+  "revision": 14,
+  "created_at": "2026-08-27T01:44:25+00:00",
+  "updated_at": "2026-08-27T02:00:50+00:00",
+  "mode": "standard",
+  "workflow": "compact",
+  "phase": "controlling",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "defining",
+      "evidence": "初始化 compact 工作流",
+      "recorded_at": "2026-08-27T01:44:25+00:00"
+    },
+    {
+      "from": "defining",
+      "to": "planning",
+      "evidence": "四项必须需求均具备传感器和受控动作且无阻塞未知项",
+      "recorded_at": "2026-08-27T01:44:56+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "controlling",
+      "evidence": "计划写入范围、检查、回滚与停止条件完整",
+      "recorded_at": "2026-08-27T01:44:56+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "defining": [
+      {
+        "revision": 1,
+        "evidence": "用户确认固定申请链接及当前审核人权限边界，代码勘察确认现有上下文接口可复用",
+        "recorded_at": "2026-08-27T01:44:39+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "objective": "为审批中的版本申请提供可共享的固定审批链接，并确保只有当前审核人可操作且审批完成后待办及时更新。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "审批中的版本申请必须提供不含任务ID的固定可复制链接。",
+              "acceptance": [
+                "仅IN_REVIEW行显示审批链接",
+                "链接指向申请详情且复制结果有反馈"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "非审批中申请仍显示审批链接",
+                "链接绑定单个taskId"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "只有流程当前到达且任务属于当前登录审核人时才允许审批。",
+              "acceptance": [
+                "当前审核人看到允许动作",
+                "其他用户和非当前节点审核人只读",
+                "服务端校验继续生效"
+              ],
+              "priority": "must",
+              "source": "用户明确补充",
+              "counterexample": [
+                "链接持有者可以越权审批"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "审批完成后当前浏览器中的审核人待办必须及时刷新。",
+              "acceptance": [
+                "审批成功事件触发任务中心和工作台刷新",
+                "页面重新获得焦点或恢复可见时刷新"
+              ],
+              "priority": "must",
+              "source": "用户请求",
+              "counterexample": [
+                "已完成任务持续保留在待办直到手动刷新"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "申请详情和审批操作必须在390x844移动视口可完整使用。",
+              "acceptance": [
+                "无页面级横向溢出和遮挡",
+                "审批意见和操作按钮可见可点"
+              ],
+              "priority": "must",
+              "source": "用户请求",
+              "counterexample": [
+                "操作按钮被裁剪或长文本撑破页面"
+              ]
+            }
+          ],
+          "boundary": {
+            "inside": [
+              "版本申请列表操作区",
+              "版本申请详情审批面板",
+              "任务中心",
+              "工作台",
+              "版本申请局部响应式样式"
+            ],
+            "environment": [
+              "现有工作流任务上下文和决定接口",
+              "浏览器剪贴板",
+              "登录与菜单权限"
+            ]
+          },
+          "invariants": [
+            "服务端任务归属、状态和动作校验不变",
+            "链接本身不授予权限",
+            "不覆盖工作区无关改动"
+          ],
+          "constraints": [
+            "Vue 3和Element Plus现有技术栈",
+            "无后端接口、数据库或依赖变化",
+            "固定链接不包含taskId"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "源码断言、浏览器复制与前端构建",
+              "expected": "仅审批中行出现固定申请链接",
+              "blind_spots": [
+                "非安全上下文的Clipboard API"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "审批面板上下文状态与服务端403/409行为",
+              "expected": "仅actionable当前任务渲染操作并可提交",
+              "blind_spots": [
+                "无可用多账号测试数据时只能验证代码和接口边界"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "审批后列表请求与页面聚焦刷新",
+              "expected": "已处理任务从待办消失并进入已办",
+              "blind_spots": [
+                "跨设备无主动推送"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "390x844浏览器截图和横向溢出检查",
+              "expected": "内容完整且可操作",
+              "blind_spots": [
+                "未覆盖全部移动浏览器内核"
+              ]
+            }
+          ],
+          "action_bounds": [
+            {
+              "requirement_ids": [
+                "R1"
+              ],
+              "target": "ReleaseApplicationView和容器复制函数",
+              "authority": "新增审批中行操作和前端链接生成",
+              "impact_limit": "版本申请列表",
+              "rollback": "移除新增事件与函数"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "target": "审批面板、任务中心和工作台",
+              "authority": "成功后发布事件并在页面激活时刷新",
+              "impact_limit": "当前浏览器工作流列表",
+              "rollback": "移除事件工具和监听"
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "target": "release-prototype局部媒体查询",
+              "authority": "调整移动布局",
+              "impact_limit": "配置管理版本申请页面",
+              "rollback": "移除新增局部规则"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "现有getCurrentWorkflowTaskContext和decideWorkflowTask已按当前用户、任务状态及允许动作授权",
+              "evidence": "代码勘察显示审批面板仅在actionable时提交，服务端接口为最终边界",
+              "falsifier": "运行验证发现非任务审核人可成功提交"
+            }
+          ],
+          "unknowns": [],
+          "status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "三个串行任务覆盖固定链接、待办同步与H5验收",
+        "recorded_at": "2026-08-27T01:44:56+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "审批中申请提供固定可复制链接",
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "prerequisites": [],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseApplicationView.vue",
+                "web/src/modules/release/ReleaseManagementPrototype.vue"
+              ],
+              "checks": [
+                "固定链接不含taskId",
+                "按钮仅对IN_REVIEW显示",
+                "前端构建"
+              ],
+              "evidence_required": [
+                "实际diff",
+                "构建退出码",
+                "浏览器复制反馈"
+              ],
+              "rollback": "移除复制入口和处理函数",
+              "stop_conditions": [
+                "必须暴露taskId才能定位审批"
+              ],
+              "escalation_conditions": [
+                "发现服务端越权"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "审批成功和页面重新激活时同步待办",
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "write_scope": [
+                "web/src/utils/workflow-task-events.ts",
+                "web/src/modules/release/components/ReleaseApprovalPanel.vue",
+                "web/src/views/TaskCenterView.vue",
+                "web/src/views/DashboardView.vue"
+              ],
+              "checks": [
+                "成功后发布事件",
+                "失败不发布",
+                "监听生命周期清理",
+                "前端构建"
+              ],
+              "evidence_required": [
+                "实际diff",
+                "构建退出码",
+                "网络请求或列表状态"
+              ],
+              "rollback": "移除事件工具和监听",
+              "stop_conditions": [
+                "出现刷新循环"
+              ],
+              "escalation_conditions": [
+                "要求跨设备实时推送"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "审批详情在390x844视口完整可用",
+              "requirement_ids": [
+                "R4"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "write_scope": [
+                "web/src/modules/release/release-prototype.css"
+              ],
+              "checks": [
+                "390x844截图",
+                "横向溢出检查",
+                "前端构建",
+                "git diff --check"
+              ],
+              "evidence_required": [
+                "截图",
+                "构建和差异检查退出码"
+              ],
+              "rollback": "移除新增局部媒体查询",
+              "stop_conditions": [
+                "需要修改公共壳层"
+              ],
+              "escalation_conditions": [
+                "无登录数据无法验收"
+              ]
+            }
+          ],
+          "dependencies": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "事件同步建立在审批链接和详情入口确定后"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "移动布局在交互结构稳定后验收"
+            }
+          ],
+          "integration_checks": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "check": "前端生产构建、桌面与390x844浏览器验收、git diff --check"
+            }
+          ],
+          "status": "ready"
+        }
+      }
+    ],
+    "controlling": [
+      {
+        "revision": 1,
+        "evidence": "固定链接显示条件、URL结构和生产构建独立检查通过",
+        "recorded_at": "2026-08-27T01:58:13+00:00",
+        "data": {
+          "iteration_id": "I1",
+          "task_id": "T1",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseApplicationView.vue",
+              "purpose": "仅为审批中申请展示复制审批链接入口"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/ReleaseManagementPrototype.vue",
+              "purpose": "生成不含任务ID的固定申请详情链接并复制"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc通过，Vite构建2450个模块并成功生成资源"
+            },
+            {
+              "command": "rg固定链接与IN_REVIEW显示条件",
+              "exit_code": 0,
+              "salient_output": "复制入口只位于IN_REVIEW条件，router.resolve只使用applicationCode"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": "按钮仅在IN_REVIEW行渲染；链接为当前origin下的/release/applications/{applicationCode}；构建通过",
+              "limitations": [
+                "浏览器安全策略阻止本地页面点击复制验收"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": "固定链接不携带taskId或身份信息；WorkflowServiceTaskContextTest验证任务按当前用户和PENDING状态查询",
+              "limitations": []
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "前端构建、任务上下文授权测试和运行健康检查通过",
+        "recorded_at": "2026-08-27T01:59:07+00:00",
+        "data": {
+          "iteration_id": "I2",
+          "task_id": "T2",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/utils/workflow-task-events.ts",
+              "purpose": "同页和同源标签页广播任务变化并监听页面激活"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseApprovalPanel.vue",
+              "purpose": "审批成功或任务冲突后发布任务变化"
+            },
+            {
+              "path_or_resource": "web/src/views/TaskCenterView.vue",
+              "purpose": "监听任务变化和页面激活并只采用最新列表响应"
+            },
+            {
+              "path_or_resource": "web/src/views/DashboardView.vue",
+              "purpose": "监听任务变化和页面激活并只采用最新列表响应"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "TypeScript与Vue模板编译通过"
+            },
+            {
+              "command": "mvn -pl :ccb-workflow -am -Dtest=WorkflowServiceTaskContextTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "WorkflowServiceTaskContextTest 7个测试全部通过"
+            },
+            {
+              "command": "docker exec rddmp-local-web wget /actuator/health",
+              "exit_code": 0,
+              "salient_output": "后端状态UP"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": "审批面板仅在panelState=ready且上下文actionable时提交；服务测试确认assignee和PENDING过滤",
+              "limitations": []
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": "审批成功后触发页内事件和同源storage事件；任务中心与工作台监听事件、focus和visibilitychange并重新查询；请求序号阻止旧响应覆盖新状态",
+              "limitations": [
+                "跨设备不主动推送，重新打开或激活页面时刷新"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "H5代码和构建完成，真实390x844浏览器视觉验收被本地URL安全策略阻止",
+        "recorded_at": "2026-08-27T02:00:50+00:00",
+        "data": {
+          "iteration_id": "I3",
+          "task_id": "T3",
+          "status": "blocked",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/release-prototype.css",
+              "purpose": "补齐430px以下审批详情头部、意见输入、按钮触控和溢出规则"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "响应式样式进入生产构建，构建成功"
+            },
+            {
+              "command": "docker exec rddmp-local-web wget /",
+              "exit_code": 0,
+              "salient_output": "Nginx已提供最新index-NS_3I4-N.js和index-CyQG1Lp8.css"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R4",
+              "result": "blocked",
+              "evidence": "430px媒体规则包含页面横向裁剪、可换行头部、112px意见区、44px操作按钮和单列审批上下文；生产构建通过，但浏览器URL安全策略阻止本地页面验收",
+              "limitations": [
+                "未取得390x844真实截图和点击证据"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "blocked"
+        }
+      }
+    ],
+    "verifying": []
+  },
+  "objective": "为审批中的版本申请提供可共享的固定审批链接，并确保只有当前审核人可操作且审批完成后待办及时更新。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "审批中的版本申请必须提供不含任务ID的固定可复制链接。",
+      "acceptance": [
+        "仅IN_REVIEW行显示审批链接",
+        "链接指向申请详情且复制结果有反馈"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "非审批中申请仍显示审批链接",
+        "链接绑定单个taskId"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "只有流程当前到达且任务属于当前登录审核人时才允许审批。",
+      "acceptance": [
+        "当前审核人看到允许动作",
+        "其他用户和非当前节点审核人只读",
+        "服务端校验继续生效"
+      ],
+      "priority": "must",
+      "source": "用户明确补充",
+      "counterexample": [
+        "链接持有者可以越权审批"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "审批完成后当前浏览器中的审核人待办必须及时刷新。",
+      "acceptance": [
+        "审批成功事件触发任务中心和工作台刷新",
+        "页面重新获得焦点或恢复可见时刷新"
+      ],
+      "priority": "must",
+      "source": "用户请求",
+      "counterexample": [
+        "已完成任务持续保留在待办直到手动刷新"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "申请详情和审批操作必须在390x844移动视口可完整使用。",
+      "acceptance": [
+        "无页面级横向溢出和遮挡",
+        "审批意见和操作按钮可见可点"
+      ],
+      "priority": "must",
+      "source": "用户请求",
+      "counterexample": [
+        "操作按钮被裁剪或长文本撑破页面"
+      ]
+    }
+  ],
+  "invariants": [
+    "服务端任务归属、状态和动作校验不变",
+    "链接本身不授予权限",
+    "不覆盖工作区无关改动"
+  ],
+  "constraints": [
+    "Vue 3和Element Plus现有技术栈",
+    "无后端接口、数据库或依赖变化",
+    "固定链接不包含taskId"
+  ],
+  "non_goals": [],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"现有工作流任务上下文和决定接口\", \"浏览器剪贴板\", \"登录与菜单权限\"], \"inside\": [\"版本申请列表操作区\", \"版本申请详情审批面板\", \"任务中心\", \"工作台\", \"版本申请局部响应式样式\"]}",
+    "sensors": [
+      "源码断言、浏览器复制与前端构建",
+      "审批面板上下文状态与服务端403/409行为",
+      "审批后列表请求与页面聚焦刷新",
+      "390x844浏览器截图和横向溢出检查"
+    ],
+    "actuators": [
+      "{\"authority\": \"新增审批中行操作和前端链接生成\", \"impact_limit\": \"版本申请列表\", \"requirement_ids\": [\"R1\"], \"rollback\": \"移除新增事件与函数\", \"target\": \"ReleaseApplicationView和容器复制函数\"}",
+      "{\"authority\": \"成功后发布事件并在页面激活时刷新\", \"impact_limit\": \"当前浏览器工作流列表\", \"requirement_ids\": [\"R2\", \"R3\"], \"rollback\": \"移除事件工具和监听\", \"target\": \"审批面板、任务中心和工作台\"}",
+      "{\"authority\": \"调整移动布局\", \"impact_limit\": \"配置管理版本申请页面\", \"requirement_ids\": [\"R4\"], \"rollback\": \"移除新增局部规则\", \"target\": \"release-prototype局部媒体查询\"}"
+    ],
+    "disturbances": [],
+    "assumptions": [
+      "{\"evidence\": \"代码勘察显示审批面板仅在actionable时提交，服务端接口为最终边界\", \"falsifier\": \"运行验证发现非任务审核人可成功提交\", \"text\": \"现有getCurrentWorkflowTaskContext和decideWorkflowTask已按当前用户、任务状态及允许动作授权\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "源码断言、浏览器复制与前端构建"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "审批面板上下文状态与服务端403/409行为"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "审批后列表请求与页面聚焦刷新"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "390x844浏览器截图和横向溢出检查"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "审批中申请提供固定可复制链接",
+      "requirements": [
+        "R1",
+        "R2"
+      ],
+      "prerequisites": [],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseApplicationView.vue",
+        "web/src/modules/release/ReleaseManagementPrototype.vue"
+      ],
+      "acceptance": [
+        "固定链接不含taskId",
+        "按钮仅对IN_REVIEW显示",
+        "前端构建"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "构建退出码",
+        "浏览器复制反馈"
+      ],
+      "rollback": "移除复制入口和处理函数",
+      "stop_conditions": [
+        "必须暴露taskId才能定位审批"
+      ],
+      "escalation_conditions": [
+        "发现服务端越权"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-27T01:58:13+00:00",
+          "text": "开始实现审批链接"
+        },
+        {
+          "recorded_at": "2026-08-27T01:58:13+00:00",
+          "text": "实现完成并交由构建与静态传感器复验"
+        },
+        {
+          "recorded_at": "2026-08-27T01:58:13+00:00",
+          "text": "ControlIteration I1: verified"
+        }
+      ],
+      "updated_at": "2026-08-27T01:58:13+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "审批成功和页面重新激活时同步待办",
+      "requirements": [
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "write_scope": [
+        "web/src/utils/workflow-task-events.ts",
+        "web/src/modules/release/components/ReleaseApprovalPanel.vue",
+        "web/src/views/TaskCenterView.vue",
+        "web/src/views/DashboardView.vue"
+      ],
+      "acceptance": [
+        "成功后发布事件",
+        "失败不发布",
+        "监听生命周期清理",
+        "前端构建"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "构建退出码",
+        "网络请求或列表状态"
+      ],
+      "rollback": "移除事件工具和监听",
+      "stop_conditions": [
+        "出现刷新循环"
+      ],
+      "escalation_conditions": [
+        "要求跨设备实时推送"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-27T01:59:07+00:00",
+          "text": "开始实现待办同步"
+        },
+        {
+          "recorded_at": "2026-08-27T01:59:07+00:00",
+          "text": "实现完成并交由构建、服务测试与健康探针复验"
+        },
+        {
+          "recorded_at": "2026-08-27T01:59:07+00:00",
+          "text": "ControlIteration I2: verified"
+        }
+      ],
+      "updated_at": "2026-08-27T01:59:07+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "审批详情在390x844视口完整可用",
+      "requirements": [
+        "R4"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "write_scope": [
+        "web/src/modules/release/release-prototype.css"
+      ],
+      "acceptance": [
+        "390x844截图",
+        "横向溢出检查",
+        "前端构建",
+        "git diff --check"
+      ],
+      "evidence_required": [
+        "截图",
+        "构建和差异检查退出码"
+      ],
+      "rollback": "移除新增局部媒体查询",
+      "stop_conditions": [
+        "需要修改公共壳层"
+      ],
+      "escalation_conditions": [
+        "无登录数据无法验收"
+      ],
+      "status": "blocked",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-27T01:59:07+00:00",
+          "text": "开始实施H5局部样式"
+        },
+        {
+          "recorded_at": "2026-08-27T01:59:07+00:00",
+          "text": "样式和构建完成，等待390x844真实浏览器截图验收"
+        },
+        {
+          "recorded_at": "2026-08-27T02:00:50+00:00",
+          "text": "ControlIteration I3: blocked"
+        }
+      ],
+      "updated_at": "2026-08-27T02:00:50+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

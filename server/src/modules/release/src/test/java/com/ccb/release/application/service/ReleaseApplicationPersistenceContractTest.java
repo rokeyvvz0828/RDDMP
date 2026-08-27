@@ -25,10 +25,21 @@ class ReleaseApplicationPersistenceContractTest {
         RecordingJdbcTemplate jdbc = new RecordingJdbcTemplate();
         ReleaseApplicationStore store = new ReleaseApplicationStore(jdbc);
 
-        store.findPage(1L, "P1", "AUTH", null, false, 7L, new PageQuery(1, 20));
+        store.findPage(1L, "P1", null, "AUTH", null, false, 7L, new PageQuery(1, 20));
 
         assertTrue(jdbc.sql.stream().anyMatch(value -> value.contains(
                 "application_code LIKE ? OR subsystem_code LIKE ? OR subsystem_name LIKE ?")));
+    }
+
+    @Test
+    void windowFilterIncludesDirectAndAssignedEmergencyApplications() {
+        RecordingJdbcTemplate jdbc = new RecordingJdbcTemplate();
+        ReleaseApplicationStore store = new ReleaseApplicationStore(jdbc);
+
+        store.findPage(1L, "P1", 20L, null, null, false, 7L, new PageQuery(1, 20));
+
+        assertTrue(jdbc.sql.stream().anyMatch(value -> value.contains(
+                "(window_id = ? OR assigned_window_id = ?)")));
     }
 
     @Test

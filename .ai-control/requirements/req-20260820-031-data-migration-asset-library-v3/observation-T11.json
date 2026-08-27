@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T11",
+  "phase": "observing",
+  "control_prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "recorded_at": "2026-08-22T19:15:00+08:00",
+  "result": "observed_with_environment_gaps",
+  "measurements": [
+    {"requirement_id": "R2/R7", "sensor": "TargetTableService source scan and focused Maven tests", "result": "passed", "raw_evidence": "无 dm_project 残留；pm_project 查询和聚焦测试通过"},
+    {"requirement_id": "R3", "sensor": "service-layer permission source scan and focused Maven tests", "result": "passed", "raw_evidence": "分类动作校验覆盖读/建/改/删；聚焦测试通过"},
+    {"requirement_id": "R5", "sensor": "Excel grouping source assertions and focused Maven tests", "result": "passed", "raw_evidence": "项目+系统+表名分组，成功/失败计数按 createTableSafely 结果更新"},
+    {"requirement_id": "R8", "sensor": "scope/governance commands", "result": "incomplete", "raw_evidence": "scope 仅被 .codebuddy 越界阻断；治理仍被其他需求历史账本阻断"}
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R8",
+      "expected": "当前任务范围检查通过",
+      "observed": ".codebuddy/agents/AGENTS.md 仍是未授权未跟踪文件",
+      "reproduction": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "evidence": "命令退出码 1；V88 已从越界列表移除",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "该文件为 IDE 生成物，本任务未删除或修改",
+      "correction_check": "清理或隔离 .codebuddy 后重新运行范围检查",
+      "classification": "environmental_blocker"
+    }
+  ],
+  "coverage_gaps": ["全量 mvn test、真实数据库/MinIO 运行和浏览器视口验收仍未完成"],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

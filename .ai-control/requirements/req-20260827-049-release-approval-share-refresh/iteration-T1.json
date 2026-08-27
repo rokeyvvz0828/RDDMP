@@ -1,0 +1,21 @@
+{
+  "iteration_id":"I1",
+  "task_id":"T1",
+  "status":"verified",
+  "changed_surfaces":[
+    {"path_or_resource":"web/src/modules/release/components/ReleaseApplicationView.vue","purpose":"仅为审批中申请展示复制审批链接入口"},
+    {"path_or_resource":"web/src/modules/release/ReleaseManagementPrototype.vue","purpose":"生成不含任务ID的固定申请详情链接并复制"}
+  ],
+  "commands":[
+    {"command":"npm --prefix web run build","exit_code":0,"salient_output":"vue-tsc通过，Vite构建2450个模块并成功生成资源"},
+    {"command":"rg固定链接与IN_REVIEW显示条件","exit_code":0,"salient_output":"复制入口只位于IN_REVIEW条件，router.resolve只使用applicationCode"},
+    {"command":"git diff --check","exit_code":0,"salient_output":"无空白错误"}
+  ],
+  "checks":[
+    {"requirement_id":"R1","result":"pass","evidence":"按钮仅在IN_REVIEW行渲染；链接为当前origin下的/release/applications/{applicationCode}；构建通过","limitations":["浏览器安全策略阻止本地页面点击复制验收"]},
+    {"requirement_id":"R2","result":"pass","evidence":"固定链接不携带taskId或身份信息；WorkflowServiceTaskContextTest验证任务按当前用户和PENDING状态查询","limitations":[]}
+  ],
+  "feedback":[],
+  "correction":null,
+  "next":"controlling"
+}

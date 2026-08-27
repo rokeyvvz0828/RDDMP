@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Check, Close, Lock, Refresh, RefreshLeft, WarningFilled } from '@element-plus/icons-vue'
+import { Check, CircleCheckFilled, Close, Lock, Refresh, RefreshLeft, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiErrorMessage } from '../../../api/error'
 import { decideWorkflowTask, getCurrentWorkflowTaskContext, getWorkflowTaskContext, type WorkflowTaskAction, type WorkflowTaskContext } from '../../../api/workflow'
 import { useAuthStore } from '../../../stores/auth'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
+import { emitWorkflowTaskChanged } from '../../../utils/workflow-task-events'
+import type { ReleaseApplicationStatusCode } from '../../../api/release'
 
 type PanelState = 'idle' | 'loading' | 'ready' | 'readonly' | 'forbidden' | 'stale' | 'error'
 type ApprovalAction = Extract<WorkflowTaskAction, 'APPROVE' | 'RETURN' | 'REJECT'>
 
-const props = defineProps<{ applicationCode: string; taskId?: number }>()
+const props = defineProps<{ applicationCode: string; applicationStatus: ReleaseApplicationStatusCode; taskId?: number }>()
 const emit = defineEmits<{ decided: [] }>()
 const auth = useAuthStore()
 const panelState = ref<PanelState>('idle')
@@ -21,6 +23,7 @@ const submitting = ref(false)
 const errorMessage = ref('')
 const activeTaskId = ref<number>()
 const signerName = computed(() => auth.user?.displayName || auth.user?.username || '当前登录用户')
+const approvalCompleted = computed(() => props.applicationStatus === 'RELEASED')
 const actions = computed(() => (context.value?.allowed_actions || []).filter((action): action is ApprovalAction => ['APPROVE', 'RETURN', 'REJECT'].includes(action)))
 const actionMeta: Record<ApprovalAction, { label: string; type: 'primary' | 'warning' | 'danger'; plain?: boolean }> = {
   APPROVE: { label: '同意', type: 'primary' },
@@ -32,31 +35,36 @@ function errorStatus(error: unknown) {
   return (error as { response?: { status?: number } })?.response?.status
 }
 
-async function loadContext() {
+function isRequestTimeout(error: unknown) {
+  return (error as { code?: string })?.code === 'ECONNABORTED'
+}
+
+async function loadContext(): Promise<WorkflowTaskContext | null | undefined> {
   context.value = null
   activeTaskId.value = undefined
   errorMessage.value = ''
   panelState.value = 'loading'
   try {
-    const next = props.taskId
-      ? (await getWorkflowTaskContext(props.taskId)).data.data
-      : (await getCurrentWorkflowTaskContext('release_application', props.applicationCode)).data.data
+    const current = (await getCurrentWorkflowTaskContext('release_application', props.applicationCode)).data.data
+    const next = current || (props.taskId ? (await getWorkflowTaskContext(props.taskId)).data.data : null)
     if (!next) {
       panelState.value = 'idle'
-      return
+      return null
     }
     if (next.business_key.toUpperCase() !== props.applicationCode.toUpperCase()) {
       panelState.value = 'error'
       errorMessage.value = '待办任务与当前版本申请不一致，审批操作已关闭。'
-      return
+      return next
     }
     context.value = next
     activeTaskId.value = next.task_id
     panelState.value = next.actionable ? 'ready' : 'readonly'
+    return next
   } catch (error) {
     const status = errorStatus(error)
     panelState.value = status === 403 ? 'forbidden' : status === 409 ? 'stale' : 'error'
     errorMessage.value = apiErrorMessage(error, '审批任务加载失败，请稍后重试。')
+    return undefined
   }
 }
 
@@ -87,13 +95,30 @@ async function submit(action: ApprovalAction) {
     opinion.value = ''
     signed.value = false
     ElMessage.success(`审批已${meta.label}`)
+    emitWorkflowTaskChanged()
     await loadContext()
     emit('decided')
   } catch (error) {
     const status = errorStatus(error)
-    if (status === 409) {
+    if (isRequestTimeout(error)) {
+      const refreshed = await loadContext()
+      const sameTaskPending = refreshed?.task_id === taskId && refreshed.actionable
+      if (refreshed !== undefined && !sameTaskPending) {
+        opinion.value = ''
+        signed.value = false
+        ElMessage.success(`审批已${meta.label}`)
+        emitWorkflowTaskChanged()
+        emit('decided')
+      } else {
+        errorMessage.value = refreshed === undefined
+          ? '审批提交响应超时，暂时无法确认任务状态，请刷新后确认。'
+          : '审批提交响应超时，任务仍待处理，请重试。'
+        ElMessage.warning(errorMessage.value)
+      }
+    } else if (status === 409) {
       panelState.value = 'stale'
       errorMessage.value = '该任务状态已变化，审批意见已保留，请刷新后确认。'
+      emitWorkflowTaskChanged()
     } else if (status === 403) {
       panelState.value = 'forbidden'
       errorMessage.value = '当前账号无权处理该任务，页面已切换为只读。'
@@ -110,13 +135,15 @@ watch(() => [props.taskId, props.applicationCode], () => { void loadContext() },
 </script>
 
 <template>
-  <aside class="release-approval-panel" aria-label="审批操作">
+  <aside class="release-approval-panel" :class="{ 'is-completed': approvalCompleted }" aria-label="审批操作">
     <header>
-      <div><span class="release-panel-kicker">当前任务</span><strong>审批操作</strong></div>
-      <UiStatusTag v-if="context" :value="context.actionable ? '待处理' : '已处理'" :tone="context.actionable ? 'primary' : 'info'" />
+      <div><span class="release-panel-kicker">{{ approvalCompleted ? '流程状态' : '当前任务' }}</span><strong>{{ approvalCompleted ? '审批已完成' : '审批操作' }}</strong></div>
+      <UiStatusTag v-if="approvalCompleted" value="已完成" tone="success" />
+      <UiStatusTag v-else-if="context" :value="context.actionable ? '待处理' : '已处理'" :tone="context.actionable ? 'primary' : 'info'" />
     </header>
 
-    <div v-if="panelState === 'loading'" class="release-approval-state"><el-skeleton :rows="4" animated /></div>
+    <div v-if="approvalCompleted" class="release-approval-state is-success"><el-icon><CircleCheckFilled /></el-icon><strong>审批流程已完成</strong><span>申请已通过全部审批并完成制品准出，无需继续操作。</span></div>
+    <div v-else-if="panelState === 'loading'" class="release-approval-state"><el-skeleton :rows="4" animated /></div>
     <div v-else-if="panelState === 'idle'" class="release-approval-state is-muted"><el-icon><Lock /></el-icon><strong>当前账号暂无待审批任务</strong><span>申请信息可正常查看；流程流转到当前账号后，此处会自动显示审批操作。</span></div>
     <div v-else-if="panelState === 'forbidden'" class="release-approval-state is-warning"><el-icon><WarningFilled /></el-icon><strong>无权处理当前任务</strong><span>{{ errorMessage }}</span></div>
     <div v-else-if="panelState === 'stale'" class="release-approval-state is-warning"><el-icon><WarningFilled /></el-icon><strong>任务状态已变化</strong><span>{{ errorMessage }}</span><el-button :icon="Refresh" @click="loadContext">刷新任务状态</el-button></div>

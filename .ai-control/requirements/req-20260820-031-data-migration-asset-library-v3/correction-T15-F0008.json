@@ -1,0 +1,42 @@
+{
+  "feedback_id": "F-0008",
+  "decision": "accept",
+  "decision_reason": "The running process environment and kkFileView trust warning reproducibly show that the local startup fallback collapses two different network endpoints into 127.0.0.1.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "backend-dev.sh rewrites MINIO_ENDPOINT for host reachability without retaining the original Docker-reachable endpoint for MINIO_PREVIEW_ENDPOINT.",
+    "supporting_evidence": [
+      "before correction the Java process had MINIO_ENDPOINT and MINIO_PREVIEW_ENDPOINT both set to http://127.0.0.1:9000",
+      "kkFileView rejects 127.0.0.1 but reaches host.docker.internal:9000 from its container",
+      "KkFileViewUrlBuilder already supports re-signing with MINIO_PREVIEW_ENDPOINT"
+    ],
+    "falsifier": "a restarted backend preserves a trusted container-reachable preview endpoint without changing backend MinIO reachability"
+  },
+  "control_action": {
+    "gain": "high",
+    "target": "local backend MinIO endpoint fallback",
+    "write_scope": [
+      "backend-dev.sh",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+    ],
+    "invariants": [
+      "host backend continues to reach MinIO through 127.0.0.1",
+      "kkFileView continues to be browser-accessible through 127.0.0.1:8012",
+      "an explicitly configured non-loopback preview endpoint is preserved",
+      "platform file-preview implementation remains unchanged"
+    ],
+    "impact_limit": "local development startup environment only",
+    "rollback": "restore the prior backend-dev.sh fallback and restart the local backend",
+    "correction_check": [
+      "bash syntax and diff checks",
+      "focused ccb-file-preview tests",
+      "restarted Java process environment",
+      "backend, kkFileView and container-to-MinIO health probes"
+    ],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": [
+    "authenticated browser preview remains an operator recheck if no local login session is available"
+  ]
+}

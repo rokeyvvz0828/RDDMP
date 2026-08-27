@@ -1,0 +1,49 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["WorkflowNodeInspector 电子签名配置入口", "WorkflowSignatureService 运行时要求与签名写入", "WorkflowMonitorService 历史签名查询"],
+    "environment": ["工作流定义 JSON", "业务审批页面", "wf_signature 历史数据", "任务授权与状态校验"]
+  },
+  "state_variables": [
+    {"name": "signature_runtime_required", "owner": "WorkflowSignatureService", "valid_values": [false]},
+    {"name": "historical_signature_records", "owner": "wf_signature", "valid_values": ["preserved"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "管理员选择审批节点", "transitions": ["WorkflowNodeInspector 渲染节点字段"], "outputs": ["不展示电子签名配置"]},
+    {"requirement_id": "R2", "input": "任务上下文查询或审批决定", "transitions": ["WorkflowService 调用 WorkflowSignatureService", "签名服务固定返回不要求并跳过确认写入"], "outputs": ["signature_required=false", "审批不被签名阻塞", "无新增签名"]},
+    {"requirement_id": "R3", "input": "流程监控查询历史签名", "transitions": ["WorkflowMonitorService 调用 signatures"], "outputs": ["返回既有 wf_signature 记录"]}
+  ],
+  "interfaces": [
+    {"name": "workflow_task_context.signature_required", "producers": ["WorkflowService"], "consumers": ["业务审批页面"], "invariant": "字段保留且停用期固定为 false"},
+    {"name": "workflow_decision.signatureConfirmed", "producers": ["前端调用方"], "consumers": ["WorkflowSignatureService"], "invariant": "字段保留且停用期不触发签名写入"},
+    {"name": "workflow_monitor.signatures", "producers": ["WorkflowSignatureService"], "consumers": ["流程监控和业务详情"], "invariant": "历史记录继续可读"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "节点配置入口", "method": "模板源码断言加 TypeScript 生产构建", "blind_spots": ["浏览器缓存旧静态资源"], "independence": "静态模板与编译器两类检查"},
+    {"id": "S2", "target": "运行时签名要求和写入", "method": "WorkflowSignatureService 聚焦单元测试", "blind_spots": ["未覆盖的外部调用方自定义 UI"], "independence": "直接调用服务公开方法并观察 JDBC 写入次数"},
+    {"id": "S3", "target": "历史签名兼容", "method": "服务测试观察历史查询 SQL 及 Maven 编译回归", "blind_spots": ["生产数据库内容不在本任务访问范围"], "independence": "查询行为与接口编译检查"},
+    {"id": "S4", "target": "范围与无迁移约束", "method": "scope、git diff 和治理检查", "blind_spots": [], "independence": "仓库治理脚本"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "WorkflowNodeInspector", "action": "移除签名配置表单项", "authority": "REQ-20260826-048 writable_paths", "impact_radius": "流程设计器审批节点", "rollback": "恢复单个模板块"},
+    {"id": "A2", "target": "WorkflowSignatureService", "action": "固定 required=false 并使 confirmIfRequired 无操作，保留 signatures 查询", "authority": "REQ-20260826-048 writable_paths", "impact_radius": "所有平台工作流审批任务", "rollback": "恢复原服务校验与写入实现"},
+    {"id": "A3", "target": "WorkflowSignatureServiceTest", "action": "把测试设定值改为停用语义并覆盖历史查询", "authority": "REQ-20260826-048 writable_paths", "impact_radius": "工作流聚焦回归", "rollback": "随服务实现一并恢复"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S4"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3", "S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "当前工作区已有未提交的版本申请和附件改动", "effect": "全量 diff 含无关文件", "detectable": true, "controllable": false},
+    {"source": "存量流程定义含 signatureRequired=true", "effect": "若仅隐藏前端则旧任务仍被阻塞", "detectable": true, "controllable": true}
+  ],
+  "delays": [{"source": "前端静态资源由 Nginx 容器挂载", "consequence": "构建后浏览器可能仍缓存旧资源", "sampling_rule": "使用新构建并刷新资源后验收"}],
+  "assumptions": [{"text": "所有运行时签名要求均经 WorkflowSignatureService", "evidence": "全仓 rg 仅发现 WorkflowService 与 FlowableWorkflowService 调用该服务", "falsifier": "后续发现旁路签名校验或直接 wf_signature 写入"}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A2+A3"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A2 保留查询并由 S3/S4 验证"}
+  ],
+  "model_status": "ready"
+}

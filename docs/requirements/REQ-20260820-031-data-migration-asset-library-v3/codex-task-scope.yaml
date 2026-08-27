@@ -1,0 +1,133 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260820-031",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/data-migration",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260820-031-data-migration"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "pom.xml",
+      "package-lock.json",
+      "backend-dev.sh",
+      "frontend-dev.sh",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      ".github/CODEOWNERS",
+      ".codebuddy/agents/AGENTS.md",
+      ".codebuddy/settings.json",
+      "server/src/modules/data-migration/**",
+      "server/src/modules/architecture/pom.xml",
+      "server/src/platform/boot/pom.xml",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V86__remove_data_migration_projects_menu.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V87__data_migration_roles_seed.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V88__data_migration_target_table_structure.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V89__data_migration_report_material_enrichment.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V90__data_migration_common_asset_attachment_dedup.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V91__attachment_expires_at_datetime.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__data_migration_asset_relation.sql",
+      "web/package.json",
+      "web/package-lock.json",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/**",
+      "web/src/router/index.ts",
+      "web/src/vue-shim.d.ts",
+      "web/verify_ui.mjs",
+      "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/**",
+      "docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md",
+      "docs/engineering-control/plans/2026-08-20-data-migration-asset-library-v3-implementation-plan.md",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/common/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/file-preview/**",
+      "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/storage/**",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/api/http.ts",
+      "web/src/stores/**",
+      "design-h5.md"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "mock/mock-data.json",
+      ".ai-control/original/**",
+      ".ai-control/requirements/req-20260818-027-secure-persistent-attachment/**",
+      ".ai-control/requirements/req-20260818-028-data-migration-asset-library/**",
+      ".ai-control/requirements/req-20260818-029-asset-transfer-and-ui/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260820-031",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["module-boundary", "maven-reactor", "dynamic-menu", "frontend-build"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V86__remove_data_migration_projects_menu.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V87__data_migration_roles_seed.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V88__data_migration_target_table_structure.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V89__data_migration_report_material_enrichment.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V90__data_migration_common_asset_attachment_dedup.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V91__attachment_expires_at_datetime.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__data_migration_asset_relation.sql"
+    ],
+    "compatibility_and_rollback": "Additive MySQL 8.4 migrations only. V84 enriches components; V86 removes the deprecated projects menu; V87 adds sys_role.role_description and seeds two data-migration roles; V88 adds target/intermediate table structure and migrates valid historical assets; V89 adds report-material columns to dm_asset (report_period/report_date/keywords/deleted_by/deleted_at/created_by/updated_by), an idx_dm_asset_report index, and idempotently backfills report_period=IRREGULAR for existing REPORT rows; V90 adds attachment_id and active MD5 uniqueness; V91 changes att_file.expires_at to DATETIME so public attachment binding can persist 9999-12-31 on MySQL 8.4; V92 creates dm_asset_relation for issue-meeting/table/field relations and migrates existing structured_data relations. Application rollback hides menus and disables jobs while retaining new tables, objects and role data; no production DROP."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": ["local MinIO through existing platform storage contract"],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "api", "command": "verify /api/data-migration contract and response envelope"},
+    {"name": "permission", "command": "verify administrator and normal-user authorization paths"},
+    {"name": "focused-backend", "command": "mvn -pl :ccb-data-migration -am test"},
+    {"name": "full-backend", "command": "mvn test"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"},
+    {"name": "runtime", "command": "start local MySQL, MinIO, backend and frontend with MOCK_DATA_ENABLED=false and verify health"},
+    {"name": "browser", "command": "verify administrator flows at 1280x800, 375x812, 390x844 and 430x932"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["new business module registration", "database migration", "server-side RBAC and entity authorization", "MinIO object consistency", "Excel parsing resource limits", "17 dynamic menu entries", "desktop and mobile workflow"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260820-031-data-migration-asset-library-v3",
+    "control_justification": "Cross-module business feature with database, RBAC, object storage, batch import, dashboards and responsive frontend behavior.",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/execution-T1.json",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/observation-T1.json",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/convergence.json"
+    ],
+    "release_verification": ["focused-backend", "full-backend", "frontend", "governance", "scope", "runtime", "browser"],
+    "rollback": "Disable the three data-migration menu roots and scheduled snapshot job, revert application commits, retain additive tables and MinIO objects, and use a separately approved compensation task for later cleanup."
+  }
+}

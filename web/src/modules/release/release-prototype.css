@@ -60,8 +60,7 @@
 .release-form-section > header > div { display: grid; gap: 3px; }
 .release-form-section > header strong { font-size: 13px; }
 .release-form-section > header small { color: var(--muted); font-size: 10px; }
-.release-scenario-preview { display: flex; width: 100%; min-height: 32px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 10px; background: var(--panel-muted); border: 1px solid var(--line); border-radius: 4px; }
-.release-scenario-preview > span { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+.release-scenario-preview { display: flex; width: 100%; min-height: 32px; align-items: center; justify-content: flex-start; padding: 0 10px; background: var(--panel-muted); border: 1px solid var(--line); border-radius: 4px; }
 .release-unit-editor { display: grid; gap: 8px; margin: -4px 0 14px; }
 .release-unit-editor article { display: grid; grid-template-columns: minmax(180px, 1fr) 72px minmax(180px, .9fr) 34px; align-items: center; gap: 10px; padding: 10px 12px; background: var(--panel-muted); border: 1px solid var(--line); border-radius: 5px; }
 .release-unit-editor article > div { display: grid; min-width: 0; gap: 3px; }
@@ -111,7 +110,7 @@
 .release-attachment-list strong, .release-attachment-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .release-attachment-list small { color: var(--muted); font-size: 10px; }
 .release-inline-empty { padding: 22px; color: var(--muted); text-align: center; font-size: 11px; }
-.release-flow-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 18px; border: 1px solid var(--line); border-radius: 5px; }
+.release-flow-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; border: 1px solid var(--line); border-radius: 5px; }
 .release-flow-summary > div { display: grid; gap: 4px; padding: 11px 13px; border-right: 1px solid var(--line); }
 .release-flow-summary > div:last-child { border-right: 0; }
 .release-flow-summary span { color: var(--muted); font-size: 10px; }
@@ -255,6 +254,8 @@
 .release-review-header span { color: var(--muted); font-size: 10px; }
 .release-review-header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 .release-detail-statuses { display: flex; flex: 0 0 auto !important; flex-direction: row !important; align-items: center; gap: 7px !important; }
+.release-detail-status--released.el-tag { --el-tag-bg-color: color-mix(in srgb, var(--success) 84%, #000); --el-tag-border-color: color-mix(in srgb, var(--success) 84%, #000); --el-tag-text-color: #fff; min-height: 26px; padding: 0 10px; color: #fff; background: var(--el-tag-bg-color); border-color: var(--el-tag-border-color); font-weight: 700; box-shadow: 0 2px 8px color-mix(in srgb, var(--success) 22%, transparent); }
+.release-review-header .release-detail-status--released.el-tag .el-tag__content { color: #fff; }
 .release-review-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; align-items: start; gap: 14px; }
 .release-review-main { display: grid; gap: 14px; }
 .release-review-section, .release-review-actions { overflow: hidden; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
@@ -298,6 +299,8 @@
 .release-review-actions { position: sticky; top: 12px; padding-bottom: 14px; }
 .release-review-actions > .el-form { padding: 14px 14px 0; }
 .release-approval-panel { position: sticky; top: 12px; overflow: hidden; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+.release-approval-panel.is-completed { border-color: color-mix(in srgb, var(--success) 34%, var(--line)); }
+.release-approval-panel.is-completed > header { background: color-mix(in srgb, var(--success) 7%, var(--panel-bg)); border-bottom-color: color-mix(in srgb, var(--success) 25%, var(--line)); }
 .release-approval-panel > header { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
 .release-approval-panel > header > div { display: grid; gap: 4px; }
 .release-approval-panel > header strong { font-size: 14px; }
@@ -312,6 +315,8 @@
 .release-approval-state strong { font-size: 13px; }
 .release-approval-state span { max-width: 260px; color: var(--muted); line-height: 1.65; font-size: 11px; }
 .release-approval-state.is-warning > .el-icon { color: var(--warning); }
+.release-approval-state.is-success > .el-icon { display: grid; width: 42px; height: 42px; place-items: center; color: var(--success); background: color-mix(in srgb, var(--success) 11%, var(--panel-bg)); border-radius: 50%; font-size: 27px; }
+.release-approval-state.is-success strong { color: var(--success); }
 .release-approval-state .el-button { margin-top: 4px; }
 .release-workflow-runtime { margin: 14px; }
 .release-workflow-runtime > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
@@ -366,9 +371,6 @@
   .release-review-section .el-descriptions__body td { display: block; min-width: 0; }
   .release-review-units article { grid-template-columns: 24px minmax(0, 1fr); }
   .release-review-units article > code { grid-column: 2; overflow-wrap: anywhere; }
-  .release-flow-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .release-flow-summary > div:nth-child(2) { border-right: 0; }
-  .release-flow-summary > div:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
   .release-detail-hero { align-items: stretch; flex-direction: column; }
   .release-detail-hero > div:last-child { flex-wrap: wrap; }
 }
@@ -391,9 +393,17 @@
   .release-related-history__description { grid-template-columns: 1fr; gap: 4px; }
   .release-related-history__changes p { grid-template-columns: 1fr; }
   .release-related-history__changes b { transform: rotate(90deg); }
-  .release-review-header { align-items: flex-start; flex-wrap: wrap; }
+  .release-application-detail-page { width: 100%; min-height: auto; overflow-x: clip; }
+  .release-review-header { align-items: flex-start; flex-wrap: wrap; gap: 8px; padding: 9px 10px; }
   .release-review-header > button { margin-top: 2px; }
+  .release-review-header strong { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
   .release-detail-statuses { width: 100%; padding-left: 46px; }
+  .release-approval-panel > header { min-height: 54px; padding: 9px 12px; }
+  .release-approval-form { padding: 12px 12px 0; }
+  .release-approval-form .el-textarea__inner { min-height: 112px !important; }
+  .release-review-buttons { gap: 9px; padding: 0 12px 12px; }
+  .release-review-buttons .el-button { min-height: 44px; }
+  .release-approval-state { min-height: 180px; padding: 16px 12px; }
   .release-approval-context, .release-flow-summary { grid-template-columns: 1fr; }
   .release-approval-context > div, .release-flow-summary > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .release-approval-context > div:last-child, .release-flow-summary > div:last-child { border-bottom: 0; }

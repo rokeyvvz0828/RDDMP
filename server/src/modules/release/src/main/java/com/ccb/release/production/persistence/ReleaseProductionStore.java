@@ -93,25 +93,33 @@ public class ReleaseProductionStore {
 
     public List<Entry> findCurrentVersions(long tenantId, String projectId) {
         String projectClause = projectId == null || projectId.isBlank() ? "" : " AND a.project_id = ?";
-        String sql = "SELECT " + prefixColumns("p") + " FROM rel_production_entry p JOIN rel_release_application a "
-                + "ON a.tenant_id = p.tenant_id AND a.id = p.application_id WHERE p.tenant_id = ? "
+        String sql = "SELECT " + prefixColumns("p") + ", w.window_name AS window_name FROM rel_production_entry p "
+                + "JOIN rel_release_window w ON w.tenant_id = p.tenant_id AND w.id = p.window_id "
+                + "JOIN rel_release_application a ON a.tenant_id = p.tenant_id AND a.id = p.application_id WHERE p.tenant_id = ? "
                 + "AND p.production_result = 'SUCCEEDED'" + projectClause + " AND NOT EXISTS (SELECT 1 FROM rel_production_entry n "
                 + "WHERE n.tenant_id = p.tenant_id AND n.subsystem_code = p.subsystem_code AND n.item_key = p.item_key "
                 + "AND n.production_result = 'SUCCEEDED' AND (n.production_at > p.production_at OR "
                 + "(n.production_at = p.production_at AND (n.updated_at > p.updated_at OR (n.updated_at = p.updated_at AND n.id > p.id))))) "
                 + "ORDER BY p.subsystem_name, p.delivery_unit_name";
-        return projectClause.isEmpty() ? jdbc.query(sql, MAPPER, tenantId) : jdbc.query(sql, MAPPER, tenantId, projectId.trim());
+        return projectClause.isEmpty() ? jdbc.query(sql, WINDOW_NAME_MAPPER, tenantId)
+                : jdbc.query(sql, WINDOW_NAME_MAPPER, tenantId, projectId.trim());
     }
 
     public List<Entry> findHistory(long tenantId, String subsystemCode, String deliveryCode) {
-        return jdbc.query("SELECT " + COLUMNS + " FROM rel_production_entry WHERE tenant_id = ? AND subsystem_code = ? "
-                + "AND delivery_unit_code = ? ORDER BY production_at DESC, updated_at DESC, id DESC", MAPPER,
+        return jdbc.query("SELECT " + prefixColumns("p") + ", w.window_name AS window_name FROM rel_production_entry p "
+                + "JOIN rel_release_window w ON w.tenant_id = p.tenant_id AND w.id = p.window_id "
+                + "WHERE p.tenant_id = ? AND p.subsystem_code = ? AND p.delivery_unit_code = ? "
+                + "AND p.production_result = 'SUCCEEDED' "
+                + "ORDER BY p.production_at DESC, p.updated_at DESC, p.id DESC", WINDOW_NAME_MAPPER,
                 tenantId, subsystemCode, deliveryCode);
     }
 
     public List<Entry> findHistoryByItemKey(long tenantId, String subsystemCode, String itemKey) {
-        return jdbc.query("SELECT " + COLUMNS + " FROM rel_production_entry WHERE tenant_id = ? AND subsystem_code = ? "
-                + "AND item_key = ? ORDER BY production_at DESC, updated_at DESC, id DESC", MAPPER,
+        return jdbc.query("SELECT " + prefixColumns("p") + ", w.window_name AS window_name FROM rel_production_entry p "
+                + "JOIN rel_release_window w ON w.tenant_id = p.tenant_id AND w.id = p.window_id "
+                + "WHERE p.tenant_id = ? AND p.subsystem_code = ? AND p.item_key = ? "
+                + "AND p.production_result = 'SUCCEEDED' "
+                + "ORDER BY p.production_at DESC, p.updated_at DESC, p.id DESC", WINDOW_NAME_MAPPER,
                 tenantId, subsystemCode, itemKey);
     }
 
@@ -131,4 +139,6 @@ public class ReleaseProductionStore {
             rs.getString("characteristic"), Result.valueOf(rs.getString("production_result")), time(rs, "production_at"),
             rs.getString("result_reason"), rs.getBoolean("active_candidate"), rs.getLong("row_version"),
             time(rs, "created_at"), time(rs, "updated_at"));
+    private static final RowMapper<Entry> WINDOW_NAME_MAPPER = (rs, row) ->
+            MAPPER.mapRow(rs, row).withWindowName(rs.getString("window_name"));
 }

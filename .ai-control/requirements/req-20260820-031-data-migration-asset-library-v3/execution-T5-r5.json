@@ -1,0 +1,69 @@
+{
+  "task_id": "T5",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+      "purpose": "增加项目和组件更新、所有权校验和审计"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+      "purpose": "公开 PUT 项目/组件更新接口"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "封装项目和组件更新请求"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/DataMigrationModule.vue",
+      "purpose": "项目清单和组件清单提供编辑动作及提交状态"
+    }
+  ],
+  "requirements_addressed": ["R2", "R3", "R7"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-boot -am package -DskipTests",
+      "exit_code": 0,
+      "salient_output": "boot package BUILD SUCCESS; controller bytecode includes updateProject/updateComponent"
+    },
+    {
+      "command": "authenticated PUT project/component probes",
+      "exit_code": 0,
+      "salient_output": "projectUpdateCode=0, componentUpdateCode=0"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "server-side update authorization",
+      "result": "pass",
+      "evidence": "ProjectComponentService.requireWrite checks owner/admin before UPDATE and writes operation log"
+    }
+  ],
+  "diff_summary": [
+    "project/component update service and controller",
+    "typed frontend update wrappers",
+    "desktop/mobile edit affordance"
+  ],
+  "assumptions_falsified": [],
+  "invariants_checked": [
+    {
+      "invariant": "普通写操作不信任请求中的 ownerId",
+      "result": "pass",
+      "evidence": "owner_id is read from tenant-scoped database row"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "Maven incremental compiler did not notice controller timestamp until source touch",
+      "effect": "首次运行时 jar 未包含 PUT 映射；强制重新编译后真实请求返回 code=0",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "unresolved_items": [
+    "目标表/中间表字段级编辑、关联删除和筛选导出",
+    "普通用户实体授权 HTTP 复验",
+    "正式 npm build 依赖缺失"
+  ],
+  "recommended_next": "独立观测更新接口和最终浏览器路由，保持 F-0001 开放"
+}

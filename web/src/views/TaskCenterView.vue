@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, Clock, Refresh, Search, View } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiErrorMessage } from '../api/error'
@@ -12,6 +12,7 @@ import UiStatusTag from '../components/ui/UiStatusTag.vue'
 import UiToolbar from '../components/ui/UiToolbar.vue'
 import { useProjectContextStore } from '../stores/project-context'
 import { formatDateOnly } from '../utils/date'
+import { subscribeToPageActivation, subscribeToWorkflowTaskChanges } from '../utils/workflow-task-events'
 
 type TaskTab = 'pending' | 'done' | 'submitted'
 type WorkflowSubmittedItem = WorkflowTask & { current_assignees?: string; task_count?: number; instance_status?: string; definition_name?: string }
@@ -31,6 +32,9 @@ const keyword = ref('')
 const loading = ref(false)
 const forbidden = ref(false)
 const errorMessage = ref('')
+let unsubscribeTaskChanges: (() => void) | undefined
+let unsubscribePageActivation: (() => void) | undefined
+let loadRequestId = 0
 
 const rawRows = computed<TaskRow[]>(() => {
   if (activeTab.value === 'pending') return pending.value
@@ -77,16 +81,19 @@ function safeRouteLocation(path: string | undefined, query: Record<string, strin
 }
 
 async function load() {
+  const requestId = ++loadRequestId
   loading.value = true
   forbidden.value = false
   errorMessage.value = ''
   try {
     if (activeTab.value === 'pending') {
       const result = normalizePage((await listWorkflowInbox({ page: page.value, size: pageSize.value })).data.data)
+      if (requestId !== loadRequestId) return
       pending.value = result.records
       total.value = result.total
     } else if (activeTab.value === 'done') {
       const result = normalizePage((await listWorkflowDone({ page: page.value, size: pageSize.value })).data.data)
+      if (requestId !== loadRequestId) return
       done.value = result.records
       total.value = result.total
     } else {
@@ -95,11 +102,12 @@ async function load() {
       total.value = result.total
     }
   } catch (error) {
+    if (requestId !== loadRequestId) return
     const status = (error as { response?: { status?: number } })?.response?.status
     forbidden.value = status === 403
     errorMessage.value = apiErrorMessage(error, '任务列表加载失败，请稍后重试。')
   } finally {
-    loading.value = false
+    if (requestId === loadRequestId) loading.value = false
   }
 }
 
@@ -156,7 +164,16 @@ watch(() => route.query.tab, value => {
   }
 })
 watch(() => projectContext.currentRef, () => { page.value = 1; void load() })
-onMounted(async () => { await projectContext.initialize(); await load() })
+onMounted(async () => {
+  unsubscribeTaskChanges = subscribeToWorkflowTaskChanges(() => { void load() })
+  unsubscribePageActivation = subscribeToPageActivation(() => { void load() })
+  await projectContext.initialize()
+  await load()
+})
+onBeforeUnmount(() => {
+  unsubscribeTaskChanges?.()
+  unsubscribePageActivation?.()
+})
 </script>
 
 <template>
