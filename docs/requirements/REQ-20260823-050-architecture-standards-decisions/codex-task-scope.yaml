@@ -1,0 +1,213 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260823-050",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260823-050-architecture-standards-decisions/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260823-050-architecture-standards-decisions",
+    "worktree": "/home/ivanh/source/RDDMP/.worktrees/REQ-20260823-050-architecture-standards-decisions"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/architecture/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V87__create_architecture_standards_decisions.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V88__seed_architecture_standards_decisions.sql",
+      "web/src/modules/architecture/**",
+      "web/src/router/index.ts",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/integration/architecture-module-contract.md",
+      "docs/requirements/REQ-20260823-050-architecture-standards-decisions/**",
+      "docs/engineering-control/designs/2026-08-23-architecture-standards-decisions-design.md",
+      "docs/engineering-control/plans/2026-08-23-architecture-standards-decisions-implementation-plan.md",
+      ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/attachment/**",
+      "server/src/platform/file-preview/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V5__create_workflow_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V77__create_architecture_subsystems.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V78__seed_architecture_subsystem_catalog.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__seed_architecture_subsystem_workflow.sql",
+      "server/src/modules/release/**",
+      "web/src/api/http.ts",
+      "web/src/api/workflow.ts",
+      "web/src/api/attachments.ts",
+      "web/src/api/system.ts",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/stores/auth.ts",
+      "docs/integration/frontend-ui-contract.md",
+      "docs/integration/attachment-module-contract.md",
+      "docs/integration/workflow-module-contract.md",
+      "design-h5.md",
+      "temp/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/internal/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/**",
+      "server/src/platform/attachment/src/main/java/com/ccb/attachment/internal/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      ".ai-control/original/**",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/**",
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260823-050",
+    "owner_approved": true,
+    "approval_evidence": "用户于 2026-08-23 直接下达「实施 13 架构规范与架构决策，使用 worktree 实施」作为开工授权；本批次需要 architecture 新增 platform/attachment 依赖、注册 architecture-standard 与 architecture-decision 附件访问策略，并在 governance/modules.yaml 登记。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "architecture 现有逻辑/物理主数据、变更工单与部署单元（若已合并）功能不受影响",
+      "platform/attachment 既有业务策略（release 等）行为不变，新策略仅新增不替换",
+      "modules.yaml 只追加 business/architecture 的 allowed_dependencies 与 public_contracts，不改变其他模块",
+      "现有 system、security、workflow、release、attachment 和 Boot 测试无回归"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V87__create_architecture_standards_decisions.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V88__seed_architecture_standards_decisions.sql"
+    ],
+    "compatibility_and_rollback": "只追加 V87-V88，不修改 V1-V86。V87 建立规范文档/版本快照、决策事项/材料/评审/参与人/行动项/结论/替代关系/工作流回执与轮次表；V88 追加字典类别 360007/360008 与种子参数 360201-360305、菜单 806/807、权限 8061/8062/8071-8074、角色 112 及授权、工作流草稿 definition 900000000000040/version 900000000000041。应用回退保留迁移与业务数据，通过后续补偿迁移关闭入口，不执行生产逆向删除。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "development-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin"
+    },
+    {
+      "name": "standards-and-decisions-domain",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureStandardServiceTest,ArchitectureDecisionServiceTest,ArchitectureDecisionWorkflowLifecycleConsumerTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "standards-and-decisions-mysql",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureStandardsDecisionsMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "architecture-module",
+      "command": "mvn -pl :ccb-architecture -am test"
+    },
+    {
+      "name": "workflow-regression",
+      "command": "mvn -pl :ccb-workflow -am test"
+    },
+    {
+      "name": "boot-and-reactor",
+      "command": "mvn test"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260823-050-architecture-standards-decisions/codex-task-scope.yaml --base 1f61cb8 --head HEAD --working-tree"
+    },
+    {
+      "name": "governance",
+      "command": "node scripts/check-all-governance.mjs"
+    },
+    {
+      "name": "module-boundaries",
+      "command": "node scripts/check-module-boundaries.mjs"
+    },
+    {
+      "name": "flyway",
+      "command": "node scripts/check-flyway-migrations.mjs"
+    },
+    {
+      "name": "diff",
+      "command": "git diff --check"
+    },
+    {
+      "name": "api",
+      "type": "manual",
+      "procedure": "在隔离 MySQL 8.4 空库启动正式 Boot/Vite；通过业务 API 创建/发布架构规范并验证版本快照与附件授权；创建决策事项（材料不完整可提交）、补充材料、首次处理（7 日期限）、记录异步/会议评审与结论、经 architecture.decision.review 真实工作流批准发布结论、替代/部分修订链查询；验证 403/409、跨租户拒绝与审计。",
+      "evidence": "保存脱敏 HTTP、workflow instance/task、数据库断言、操作审计和重启后复核证据"
+    },
+    {
+      "name": "permission",
+      "type": "manual",
+      "procedure": "以 view/propose/review/manage/无权限及 tenant 2 用户验证规范查阅、事项提交、首次处理、评审、发布结论与替代链；验证附件越权拒绝、结论无修改入口、类型未确定不能发布。",
+      "evidence": "保存脱敏权限矩阵、错误码、前后数据库计数和审计记录"
+    },
+    {
+      "name": "browser-uat",
+      "type": "manual",
+      "procedure": "在 1280x800、375x812、390x844、430x932 和明暗主题完成规范列表/详情/发布、决策列表/表单/详情评审/发布/替代链验收；确认控制台无新增错误、documentElement.scrollWidth 不大于 innerWidth。",
+      "evidence": "保存每个视口关键状态截图、网络、控制台、页面宽度和操作结果"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "已发布结论不可变与替代链一致性必须由唯一约束与单事务发布保证",
+      "工作流事件与结论发布异步，必须按事件、实例、轮次和摘要幂等并允许平台重试",
+      "首次处理期限按受理时间 + 7 自然日计算，时区与跨日边界必须明确",
+      "事项编号 AD-年份-序号 并发分配必须由行锁与唯一约束共同保证",
+      "附件业务策略新增属于公共能力变更，回归范围必须覆盖既有业务策略",
+      "平台字典（sys_dict_type + sys_config）为本批次受控分类唯一来源，迁移种子与参数管理页面必须一致",
+      "本机 Testcontainers 需子进程指定 Docker 环境；不得修改用户全局配置"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260823-050-architecture-standards-decisions",
+    "control_justification": "跨数据库、工作流生命周期、不可变结论与替代链、公共能力变更（附件策略）和响应式前端功能，需要完整需求定标、建模、计划、受控执行、独立观测、纠偏和收敛。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/baseline.json",
+      ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/model.json",
+      ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/control-plan.json",
+      ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/execution-T*.json",
+      ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/observation-T*.json",
+      ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/convergence.json"
+    ],
+    "release_verification": [
+      "空库和 V86 增量库迁移到 V88，既有数据不变",
+      "规范发布/下线/重发与版本快照，附件实体授权",
+      "决策事项提交、补充、首次处理期限、评审记录与结论准备",
+      "真实工作流批准发布结论、退回重提、事件幂等与替代链推导",
+      "权限、租户、结论不可变、编号并发与审计",
+      "四个视口与明暗主题真实浏览器 UAT",
+      "Maven/Vue/Boot/治理/范围/模块边界/Flyway 全量检查"
+    ],
+    "rollback": "按前端、architecture 消费者与服务、attachment 策略与治理登记逆序回退应用代码；保留 V87-V88、规范文档、决策事项、结论与审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
+  }
+}

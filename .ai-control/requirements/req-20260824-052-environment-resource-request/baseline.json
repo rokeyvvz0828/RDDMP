@@ -1,0 +1,110 @@
+{
+  "objective": "在 business/architecture 内实现具体环境维护与资源申请工单入口，清晰区分申请态资源与后续实际分配。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "系统必须通过系统字典维护环境类型，并支持具体环境维护；存在业务引用时阻止删除具体环境。",
+      "acceptance": ["环境类型来自系统字典 ARCH_ENVIRONMENT_TYPE 的启用项", "架构模块不提供环境类型自维护入口或独立类型表", "具体环境可新增、修改、停用、启用", "有资源申请引用的具体环境删除返回冲突", "停用环境不能用于新资源申请"],
+      "priority": "must",
+      "source": "用户请求实现 03 与 Wayfinder US24-26",
+      "counterexample": ["已被资源申请引用的环境被物理删除", "停用环境仍可创建新资源申请"]
+    },
+    {
+      "id": "R2",
+      "statement": "系统必须在具体环境详情中分别展示基础信息、申请态资源汇总和实际态资源分区。",
+      "acceptance": ["申请态汇总由资源申请明细计算", "实际态不允许人工录入，未实现 04 时展示为空态说明", "不存在重复环境资源总账入口"],
+      "priority": "must",
+      "source": "Wayfinder US27 与领域词汇",
+      "counterexample": ["通过具体环境表单直接维护实际 CPU、IP 或节点数"]
+    },
+    {
+      "id": "R3",
+      "statement": "系统必须支持资源申请固定一个物理子系统和一个具体环境，并按现有登记表口径连续添加多个部署单元资源需求明细。",
+      "acceptance": ["明细部署单元必须属于该物理子系统", "同一部署单元可存在多条不同规格明细", "登记表字段可保存并在详情回显", "CPU、内存、数据库/文件/CBS/本地盘存储、边车资源、组数、节点数和附加需求被服务端校验", "节点数为 0 的数据库存储明细可保存"],
+      "priority": "must",
+      "source": "Wayfinder US28-31",
+      "counterexample": ["一张申请混入多个物理子系统的部署单元", "只支持 CPU/内存/存储/节点的简化明细", "节点数为 0 的数据库存储明细被拒绝"]
+    },
+    {
+      "id": "R4",
+      "statement": "系统必须复用平台工作流办理资源申请，覆盖草稿、提交、退回、批准、拒绝、取消和历史追踪。",
+      "acceptance": ["提交启动 architecture.resource-request 工作流", "生命周期事件驱动退回、批准、拒绝和终止", "历史记录保留状态前后值、操作者、轮次和快照"],
+      "priority": "must",
+      "source": "Wayfinder US32 与平台工作流复用决策",
+      "counterexample": ["通过资源申请接口直接绕过工作流改成批准"]
+    },
+    {
+      "id": "R5",
+      "statement": "系统必须执行服务端权限、状态、租户和实体校验，拒绝失效物理子系统、停用部署单元和停用环境的新申请。",
+      "acceptance": ["无权限写操作返回 403", "OFFLINE/VOIDED 物理子系统或非 ACTIVE 部署单元被拒绝", "HTTP DTO 不接收或返回 tenantId"],
+      "priority": "must",
+      "source": "仓库治理、AGENTS 和 Wayfinder 验收项",
+      "counterexample": ["前端隐藏按钮后服务端仍允许越权创建"]
+    },
+    {
+      "id": "R6",
+      "statement": "系统必须提供桌面和移动端可用的具体环境与资源申请页面入口。",
+      "acceptance": ["页面覆盖加载、空、失败、无权限、提交中状态", "移动端以卡片和单列表单完成核心路径", "前端构建通过"],
+      "priority": "must",
+      "source": "AGENTS、design-h5 与 Wayfinder 验收项",
+      "counterexample": ["375px 视口只能依赖整页横向滚动操作"]
+    }
+  ],
+  "invariants": [
+    "保持 com.ccb.* 包名和 business/architecture 数据所有权",
+    "Flyway 只追加 V91-V94，不修改 V1-V90",
+    "资源申请不创建环境部署实例或实际资源分配",
+    "前端权限显隐不能替代后端校验",
+    "不接入动态表单元数据"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3、Element Plus",
+    "只修改 codex-task-scope.yaml 授权路径",
+    "工作流通过 com.ccb.workflow.integration 公开契约接入",
+    "部署单元、物理子系统只读校验，不直接改写其主记录"
+  ],
+  "non_goals": [
+    "资源下发结果、机器/IP、环境部署实例和实际资源分配",
+    "搭建计划任务与资源申请的真实任务关联",
+    "网络访问、CLB/DNS/证书、加密机入池",
+    "外部资源自动下发或生产系统访问"
+  ],
+  "assumptions": [
+    {
+      "text": "business/architecture 是本批次合适的数据 Owner。",
+      "basis": "governance/modules.yaml 已承载架构资产、部署单元和网络专项，03 依赖这些架构资产。",
+      "falsifier": "Owner 要求拆分为新的业务模块"
+    },
+    {
+      "text": "03 的实际态资源只需要明确分区和空态说明，不需要创建实例。",
+      "basis": "04 票据专门负责资源下发与环境部署实例。",
+      "falsifier": "用户要求本批次同时登记机器/IP 和实际资源"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "资源申请可选来源搭建任务的正式任务表和公开契约尚未实现。",
+      "impact": "本批次只能预留 source_task_id，不提供真实任务发起入口。",
+      "owner": "后续搭建计划批次",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "question": "实际资源分配是否纳入本批次。",
+      "options": ["不纳入，留给 04", "本批次提前实现"],
+      "selected": "不纳入，留给 04",
+      "blocking": false,
+      "source": "03/04 票据边界"
+    }
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "字典环境类型读取、环境 CRUD、删除守卫和停用限制", "candidate_sensor": "服务层测试、HTTP 流程"},
+    {"requirement_id": "R2", "observable": "环境详情资源分区 DTO 与页面展示", "candidate_sensor": "服务层断言和浏览器 UAT"},
+    {"requirement_id": "R3", "observable": "资源申请登记表明细级联、数值校验和详情回显", "candidate_sensor": "服务层测试、前端表单构建"},
+    {"requirement_id": "R4", "observable": "工作流启动和生命周期事件", "candidate_sensor": "SubmissionService/LifecycleConsumer 测试"},
+    {"requirement_id": "R5", "observable": "403/409/400 和租户字段缺失", "candidate_sensor": "Controller/Service 测试、代码审计"},
+    {"requirement_id": "R6", "observable": "前端构建和视口 UAT", "candidate_sensor": "npm build、浏览器截图/控制台"}
+  ],
+  "baseline_status": "ready"
+}

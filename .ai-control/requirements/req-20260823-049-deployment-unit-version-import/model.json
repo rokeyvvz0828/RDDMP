@@ -1,0 +1,199 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "边界、状态机、因果路径与传感器已绑定 R1-R6。",
+  "recorded_at": "2026-08-23T15:30:00+00:00",
+  "data": {
+    "baseline_revision": "baseline-1",
+    "plant_boundary": {
+      "inside": [
+        "business/architecture 部署单元代码",
+        "V85/V86 迁移",
+        "web/src/modules/architecture 页面",
+        "架构模块测试"
+      ],
+      "environment": [
+        "MySQL 8.4",
+        "平台 security/system 能力",
+        "浏览器"
+      ]
+    },
+    "state_variables": [
+      {
+        "name": "unit_status",
+        "owner": "arch_deployment_unit",
+        "valid_values": ["ACTIVE", "INACTIVE", "VOIDED"]
+      },
+      {
+        "name": "current_version",
+        "owner": "arch_deployment_unit",
+        "valid_values": ["1..N 严格递增"]
+      },
+      {
+        "name": "batch_status",
+        "owner": "arch_deployment_unit_import_batch",
+        "valid_values": ["PREVIEW", "SUCCESS", "PARTIAL", "FAILED"]
+      },
+      {
+        "name": "item_status",
+        "owner": "arch_deployment_unit_import_item",
+        "valid_values": ["VALID", "INVALID", "SUCCESS", "FAILED", "SKIPPED"]
+      }
+    ],
+    "causal_paths": [
+      {
+        "requirement_id": "R1",
+        "input": "创建命令（物理子系统/名称/类型）",
+        "transitions": ["校验物理子系统 ACTIVE", "行锁分配编号", "写版本 1", "写主记录", "审计"],
+        "outputs": ["ACTIVE 单元 + 编号 + 版本 1"]
+      },
+      {
+        "requirement_id": "R2",
+        "input": "更新命令（展示内容）",
+        "transitions": ["校验状态 ACTIVE", "更新主记录", "追加版本 N+1", "审计"],
+        "outputs": ["新版本快照，旧版本不可改写"]
+      },
+      {
+        "requirement_id": "R3",
+        "input": "停用/启用/作废命令",
+        "transitions": ["状态机校验", "引用守卫（作废）", "写状态", "审计"],
+        "outputs": ["INACTIVE/VOIDED + 历史保留"]
+      },
+      {
+        "requirement_id": "R5",
+        "input": "导入文件",
+        "transitions": ["POI 解析", "行级校验", "预览批次", "确认逐行事务", "批次结果"],
+        "outputs": ["批次台账 + 明细 + 错误报告"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "deployment-unit API",
+        "producers": ["architecture"],
+        "consumers": ["web", "未来模块"],
+        "invariant": "{ code, data, message, traceId } 统一响应"
+      },
+      {
+        "name": "DeploymentUnitReferenceChecker SPI",
+        "producers": ["未来引用方模块"],
+        "consumers": ["architecture"],
+        "invariant": "中性值对象；INDETERMINATE 失败关闭"
+      }
+    ],
+    "sensors": [
+      {
+        "id": "S1",
+        "target": "R1/R2 编号与版本",
+        "method": "领域测试 + MySQL 唯一约束与版本行断言",
+        "blind_spots": ["真实并发量"],
+        "independence": "数据库与 API"
+      },
+      {
+        "id": "S2",
+        "target": "R3 生命周期",
+        "method": "状态机与引用守卫测试",
+        "blind_spots": ["未来 provider 语义"],
+        "independence": "领域规则"
+      },
+      {
+        "id": "S3",
+        "target": "R4 权限",
+        "method": "Controller 级 403 与租户断言",
+        "blind_spots": ["角色种子未覆盖场景"],
+        "independence": "请求结果"
+      },
+      {
+        "id": "S4",
+        "target": "R5/R6 导入与迁移",
+        "method": "Testcontainers 全流程 + 构建 + 浏览器 UAT",
+        "blind_spots": ["生产数据形态"],
+        "independence": "真实 MySQL"
+      }
+    ],
+    "actuators": [
+      {
+        "id": "A1",
+        "target": "迁移与种子",
+        "action": "追加 V85/V86",
+        "authority": "workspace + MySQL",
+        "impact_radius": "新表/新菜单权限",
+        "rollback": "保留迁移，补偿关闭入口"
+      },
+      {
+        "id": "A2",
+        "target": "后端领域",
+        "action": "实现编号/生命周期/导入服务",
+        "authority": "workspace write",
+        "impact_radius": "architecture 模块",
+        "rollback": "逆序回退服务代码"
+      },
+      {
+        "id": "A3",
+        "target": "前端页面",
+        "action": "部署单元与导入页面",
+        "authority": "workspace write",
+        "impact_radius": "web/src/modules/architecture",
+        "rollback": "回退页面与路由"
+      }
+    ],
+    "disturbances": [
+      {
+        "source": "编号并发提交",
+        "effect": "重号或容量冲突",
+        "detectable": true,
+        "controllable": true
+      },
+      {
+        "source": "导入行级与批次级异常",
+        "effect": "部分写入或整批回滚",
+        "detectable": true,
+        "controllable": true
+      },
+      {
+        "source": "引用 SPI 异常",
+        "effect": "作废误判",
+        "detectable": true,
+        "controllable": true
+      }
+    ],
+    "control_assessment": [
+      {
+        "requirement_id": "R1",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R2",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R3",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R4",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R5",
+        "observable": "yes",
+        "controllable": "yes",
+        "action": "planning"
+      },
+      {
+        "requirement_id": "R6",
+        "observable": "partial",
+        "controllable": "yes",
+        "action": "add browser check"
+      }
+    ],
+    "model_status": "ready"
+  }
+}

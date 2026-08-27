@@ -1,0 +1,53 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/StandardDocumentListPage.vue",
+      "purpose": "规范列表/筛选/详情抽屉/创建编辑/发布/下线/删除/版本快照/附件上传预览下载"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/DecisionMatterListPage.vue",
+      "purpose": "事项列表与筛选（含首次处理逾期标识）"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/DecisionMatterFormPage.vue",
+      "purpose": "事项提交/编辑全页表单"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/DecisionMatterDetailPage.vue",
+      "purpose": "事项详情：首次处理、类型、材料、评审（参与人/行动项）、发布准备与启动、工作流任务办理、替代链、附件"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/types.ts",
+      "purpose": "规范与决策类型定义"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/api.ts",
+      "purpose": "规范与决策 API 封装"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/architecture.css",
+      "purpose": "响应式样式（640px 以下单列重排）"
+    },
+    {
+      "path_or_resource": "web/src/router/index.ts",
+      "purpose": "注册 /architecture/standards 与 /architecture/decisions 路由"
+    }
+  ],
+  "requirements_addressed": ["R7", "R8"],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit && vite build 通过，无类型错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "复用与全状态",
+      "result": "复用 components/ui、api/http、api/attachments、api/workflow；页面覆盖加载/空/失败/403/提交中/重复提交/长文本；移动端样式在 640px 断点重排"
+    }
+  ],
+  "notes": "浏览器真实 UAT（四视口明暗主题）在本批次未执行，列入 observation 未验证项与上线前清单。"
+}

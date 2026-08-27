@@ -18,7 +18,7 @@
 | 业务 | `server/src/modules/release` | 投产窗口、版本申请、审批关联、投产基线、生产版本和统计分析 |
 | 业务 | `server/src/modules/data-migration` | 数据迁移资产库 V3 的基础资料、文件资产、结构化资产、Excel 与看板 |
 | 业务 | `server/src/modules/requirement` | 需求管理平台：新建项目差异清单、存量需求阶段、系统清单、基线与统一改动记录 |
-| 业务 | `server/src/modules/architecture` | 逻辑子系统、物理子系统及其关联关系管理 |
+| 业务 | `server/src/modules/architecture` | 逻辑子系统、物理子系统、部署单元（版本与初始化导入）、具体环境、资源申请（申请态审批，不做实际资源分配）、关联关系与变更工单全生命周期（审批、确定性编号、引用检查）、CLB/DNS/证书网络专项工单（办理结果登记）、架构规范文档与架构决策事项/结论替代链 |
 
 `boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。数据迁移模块是已登记的例外：仅对 `pm_project` 与 `arch_physical_subsystem` 做带租户条件的只读投影，不写入或调用其私有服务，依赖边界以 `governance/modules.yaml` 为准。
 
@@ -31,11 +31,12 @@
 - `web/src/components/workflow` 和 `WorkflowView.vue` 属于 workflow。
 - `web/src/modules/delivery-showcase` 是纯前端虚构交付示范模块，使用本地 mock 数据沉淀列表、表单、详情、审批和可视化样式，不拥有后端业务数据。
 - `web/src/modules/release` 与 `web/src/api/release.ts` 属于配置管理业务模块；仅项目、物理子系统和交付单元选择源可以临时使用前端 Mock，业务状态必须来自 `ccb-release`。
-- `web/src/modules/architecture` 属于架构管理业务模块，承载逻辑子系统和物理子系统页面、类型与 API，不写入前端公共目录。
+- `web/src/modules/architecture` 属于架构管理业务模块，承载逻辑子系统、物理子系统、部署单元、具体环境、资源申请与网络专项工单页面、类型与 API，不写入前端公共目录。
 - `web/src/components/ui`、router、stores、主题和通用类型属于前端公共能力。
 - `web/src/api/file-preview.ts` 与 `UiFilePreview.vue` 提供统一文件预览契约，业务页面不得直接拼接 kkFileView 地址或提交任意外部 URL。
 - `com.ccb.attachment.model` 提供持久附件公开契约，业务模块只能通过 `AttachmentPort` 访问附件，不得读取附件表或对象键。
 - `com.ccb.system.notification` 与 `web/src/api/notifications.ts` 提供租户隔离的站内消息发布和当前用户消息中心契约，业务模块不得直接写通知表。
+- `business/architecture` 对外仍只公开 `com.ccb.architecture.integration`；该包提供子系统外部引用检查的中性 SPI，异常或无法判定必须按 `INDETERMINATE` 失败关闭，首期不接入真实 AI。架构模块通过 `com.ccb.workflow.integration` 接入固定审批流程（子系统变更审批、决策结论发布审批），通过 `com.ccb.attachment.integration`/`com.ccb.attachment.model`（AttachmentPort）访问附件，不访问 workflow/attachment 内部实现或表。REQ-20260823-050 增加架构规范（`architecture-standard`）与架构决策（`architecture-decision`）两个附件业务策略。
 - 其余业务页面的归属以 `modules.yaml` 中列出的精确路径为准。
 
 公共前端能力变更需要说明现有页面回归范围。后续目录重构必须独立立项，保持路由、类型、接口和业务逻辑兼容。

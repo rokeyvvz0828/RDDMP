@@ -31,7 +31,7 @@ public class LogicalSubsystemController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('architecture:logical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<LogicalSubsystem>> list(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
@@ -39,20 +39,21 @@ public class LogicalSubsystemController {
             @RequestParam(required = false) String shortName,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long businessOrgId,
+            @RequestParam(required = false) String status,
             @AuthenticationPrincipal AuthUser actor) {
         return ApiResponse.success(service.list(actor, new PageQuery(page, size),
-                new LogicalSubsystemQuery(code, shortName, name, businessOrgId)), TraceId.getOrCreate());
+                new LogicalSubsystemQuery(code, shortName, name, businessOrgId, status)), TraceId.getOrCreate());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('architecture:logical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<LogicalSubsystem> detail(@PathVariable long id,
                                                  @AuthenticationPrincipal AuthUser actor) {
         return ApiResponse.success(service.detail(actor, id), TraceId.getOrCreate());
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('architecture:logical:create')")
+    @PreAuthorize("hasAnyAuthority('architecture:logical:create', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<LogicalSubsystem> create(@RequestBody LogicalSubsystemCommand command,
                                                  @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
@@ -60,7 +61,7 @@ public class LogicalSubsystemController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('architecture:logical:update')")
+    @PreAuthorize("hasAnyAuthority('architecture:logical:update', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<LogicalSubsystem> update(@PathVariable long id,
                                                  @RequestBody LogicalSubsystemCommand command,
                                                  @AuthenticationPrincipal AuthUser actor) {
@@ -69,7 +70,7 @@ public class LogicalSubsystemController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('architecture:logical:delete')")
+    @PreAuthorize("hasAnyAuthority('architecture:logical:delete', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<Void> delete(@PathVariable long id,
                                     @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();

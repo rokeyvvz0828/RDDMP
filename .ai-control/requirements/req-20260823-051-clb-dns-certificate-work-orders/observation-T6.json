@@ -1,0 +1,55 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "task_id": "T6",
+  "status": "verified",
+  "observed_at": "2026-08-24T09:05:00+00:00",
+  "observer": "主 Agent（独立复跑与运行时验收）",
+  "observations": [
+    {
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+      "signal": "运行时 API 验收（隔离 MySQL 8.4 空库迁移 V1-V90 + 真实 Flowable 工作流 + MinIO）",
+      "result": "pass",
+      "details": [
+        "登录 admin/admin123 成功；未认证访问工单 API 返回 401",
+        "创建 CLB/DNS/证书三类草稿成功；DNS 域名自动小写归一（Runtime.Example.Test → runtime.example.test）",
+        "跨 kind 动作与非法证书类型返回 400 且不落库",
+        "证书工单引用 server.key 附件返回 400「证书工单不允许上传私钥类文件」",
+        "证书工单携带 public.crt 附件创建成功并绑定（att_file.status=BOUND，business_type=architecture_network_work_order）",
+        "流程未发布时提交返回 409「流程编码未发布或不存在」；发布 900000000000032 后提交进入 IN_REVIEW 轮次 1",
+        "工作流任务上下文（business_type=architecture_network_work_order）返回 APPROVE/RETURN/REJECT；批准后工单 COMPLETED，历史 CREATED/SUBMITTED/COMPLETED",
+        "退回后重提轮次递增（round 1→2），历史 CREATED/SUBMITTED/RETURNED/SUBMITTED/COMPLETED",
+        "办理结果登记成功（SUCCESS+说明+凭证附件），历史追加 RESULT_REGISTERED；过期 rowVersion 返回 409",
+        "附件移除成功（工单列表清空 + att_file 标记 DELETED）",
+        "无权限用户（未分配角色）访问列表 403；角色 110（view+apply）可查本人列表但结果登记 403；admin 全部通过",
+        "sys_operation_log 记录 architecture.network-work-order.create/result/submit 审计行"
+      ]
+    },
+    {
+      "requirement_ids": ["R6"],
+      "signal": "发现并定位平台存量缺陷",
+      "result": "deviation",
+      "details": [
+        "运行时附件绑定暴露平台存量缺陷：V36 att_file.expires_at 为 TIMESTAMP，platform/attachment AttachmentService.bind 写入 '9999-12-31 23:59:59'，mysql-connector-j 8/9 默认在会话强制 STRICT_TRANS_TABLES 导致 Data truncation（500）",
+        "该缺陷与本批次代码无关（平台路径 read_only，未修改）；为完成运行时验证，仅在隔离测试库将 att_file.expires_at 改为 DATETIME",
+        "处置：作为平台缺陷提交 Owner 复核（建议将 V36 列改 DATETIME 或修正 bind SQL），另行立项修复"
+      ]
+    }
+  ],
+  "negative_feedback": [
+    {
+      "id": "F-T6-001",
+      "severity": "medium",
+      "observation": "首轮全量架构测试 1 失败 1 错误：registerHandlingResult 重构（结果附件校验前置读取 currentKind）破坏既有测试",
+      "root_cause": "重构时在 lockWorkOrder 之前新增 findWorkOrder 读取，测试未 stub findWorkOrder",
+      "correction": "改为锁定工单后使用 current.kind() 校验附件，删除 currentKind 辅助方法",
+      "verification": "NetworkWorkOrderServiceTest 21/21 复跑通过；运行时结果登记 409/成功路径复验通过",
+      "closed": true
+    }
+  ],
+  "limitations": [
+    "浏览器 UAT（桌面/移动视口）为 manual 项，本会话无浏览器工具，未执行；按 scope 移交用户验收",
+    "全 reactor mvn test 结果待收口（后台运行中）",
+    "check-module-boundaries/check-all-governance 失败项为存量问题（与 HEAD 输出一致），未在本批次修复"
+  ]
+}

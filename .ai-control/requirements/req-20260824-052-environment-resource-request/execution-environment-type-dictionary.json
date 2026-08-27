@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260824-052-environment-resource-request",
+  "requirement_id": "REQ-20260824-052",
+  "recorded_at": "2026-08-25T09:36:31+08:00",
+  "trigger": "用户纠正：环境类型放到字典里维护，不要自行维护。",
+  "deviation": {
+    "prior_behavior": "架构模块自建 arch_environment_type 并提供环境类型维护入口；后续空类型引导还继续假设由架构页面创建环境类型。",
+    "desired_behavior": "环境类型由 platform/system 系统字典 ARCH_ENVIRONMENT_TYPE 维护，架构模块只读取启用字典项并在具体环境上保存 typeCode。"
+  },
+  "actions": [
+    {
+      "area": "database",
+      "files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V93__move_environment_type_to_system_dictionary.sql"],
+      "summary": "追加 V93，创建/复用 ARCH_ENVIRONMENT_TYPE 字典类型，将既有 arch_environment_type 迁入 sys_config，arch_environment 改为 type_code，并删除架构自维护类型表。"
+    },
+    {
+      "area": "backend",
+      "files": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java"
+      ],
+      "summary": "移除环境类型写接口和独立持久化，改由 SystemReferenceQuery.activeParameters(actor, ARCH_ENVIRONMENT_TYPE) 获取字典项；具体环境创建和更新校验 typeCode 必须来自启用字典项。"
+    },
+    {
+      "area": "frontend",
+      "files": [
+        "web/src/modules/architecture/EnvironmentPage.vue",
+        "web/src/modules/architecture/api.ts",
+        "web/src/modules/architecture/types.ts"
+      ],
+      "summary": "删除环境类型页签、弹窗和写 API；具体环境表单使用字典 code，下拉为空时提示到系统字典维护 ARCH_ENVIRONMENT_TYPE。"
+    },
+    {
+      "area": "contract",
+      "files": [
+        "docs/requirements/REQ-20260824-052-environment-resource-request/requirement.md",
+        "docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml",
+        "docs/integration/architecture-module-contract.md"
+      ],
+      "summary": "更新需求、范围和集成契约，明确环境类型数据 Owner 为 platform/system，架构模块只暴露只读字典投影。"
+    }
+  ],
+  "negative_space": [
+    "未在架构模块保留环境类型新增、修改、停用、删除接口。",
+    "未绕过 SystemReferenceQuery 直接在业务服务中写 sys_config。",
+    "未把资源申请批准扩展为实际资源分配。"
+  ]
+}

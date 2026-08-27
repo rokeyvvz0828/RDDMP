@@ -1,0 +1,20 @@
+{
+  "feedback_id": "F-T2-004",
+  "observer_feedback_id": "F-T2-001",
+  "task_id": "T2",
+  "requirement_id": "R8",
+  "severity": "P1",
+  "decision": "accept",
+  "expected": "apply/manage 都只能编辑、提交和取消本人申请；manage 只扩展查看全部和审批能力",
+  "observed": "Controller 将 manage 用户的更新和取消传为 MANAGE，Service 仅在 OWN 时校验申请人，管理者可维护他人草稿",
+  "causal_hypothesis": "把管理读取范围误复用于申请人写入范围",
+  "correction": "Controller 更新/取消固定传 OWN；Service 新增 lockOwned，使 update/cancel/coordinateSubmission 即使收到 MANAGE 也强制 applicantId 等于 actor.id",
+  "verification": [
+    "SubsystemChangeServiceTest 25/25",
+    "SubsystemChangeApplicationControllerTest 6/6",
+    "管理范围修改、取消和提交他人申请均断言 FORBIDDEN",
+    "独立观察静态复验通过，无剩余原子反馈"
+  ],
+  "status": "verified",
+  "resolved_at": "2026-08-23T00:18:00Z"
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260824-052-environment-resource-request",
+  "requirement_id": "REQ-20260824-052",
+  "recorded_at": "2026-08-24T18:05:00+08:00",
+  "checks": [
+    {
+      "kind": "static-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "result": "passed",
+      "evidence": "开发准入脚本确认 control-engineering 插件可用。"
+    },
+    {
+      "kind": "backend-compile",
+      "command": "mvn -pl server/src/modules/architecture -am \"-DskipTests\" compile",
+      "result": "passed",
+      "evidence": "ccb-architecture 及依赖模块编译成功。首次沙箱网络被拒后，经授权联网解析 Maven 依赖。"
+    },
+    {
+      "kind": "backend-unit",
+      "command": "mvn -pl server/src/modules/architecture -am \"-Dtest=EnvironmentResourceServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "evidence": "EnvironmentResourceServiceTest 6 个用例通过，覆盖创建、引用校验、本人约束、提交摘要、批准边界和 OWN 可见范围。"
+    },
+    {
+      "kind": "frontend-build",
+      "command": "npm run build",
+      "working_directory": "web",
+      "result": "passed",
+      "evidence": "vue-tsc --noEmit 与 vite build 均通过；Vite 仅输出既有大 chunk 提示。"
+    }
+  ],
+  "negative_space": [
+    "未启动后端服务、未执行 Flyway 真实数据库迁移、未做浏览器 UAT。",
+    "未发布 V92 预置的资源申请工作流草稿；真实提交审批前仍需通过平台工作流发布入口发布定义。"
+  ],
+  "conclusion": "T1-T4 静态编译、单测与前端构建均收敛；剩余风险为真实数据库迁移和浏览器 UAT 尚未执行。"
+}

@@ -1,0 +1,199 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260823-049",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260823-049-deployment-unit-version-import/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260823-049-deployment-unit-version-import",
+    "worktree": "/home/ivanh/source/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/architecture/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V86__seed_architecture_deployment_units.sql",
+      "web/src/modules/architecture/**",
+      "web/src/router/index.ts",
+      "docs/architecture/MODULES.md",
+      "docs/integration/architecture-module-contract.md",
+      "docs/requirements/REQ-20260823-049-deployment-unit-version-import/**",
+      "docs/engineering-control/designs/2026-08-23-deployment-unit-version-import-design.md",
+      "docs/engineering-control/plans/2026-08-23-deployment-unit-version-import-implementation-plan.md",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V5__create_workflow_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V77__create_architecture_subsystems.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V78__seed_architecture_subsystem_catalog.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql",
+      "server/src/modules/requirement/**",
+      "server/src/modules/test-management/**",
+      "web/src/api/http.ts",
+      "web/src/api/workflow.ts",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/stores/auth.ts",
+      "docs/integration/frontend-ui-contract.md",
+      "design-h5.md"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/internal/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      ".ai-control/original/**",
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260823-049",
+    "owner_approved": true,
+    "approval_evidence": "用户于 2026-08-23 下达“实现部署单元模块”任务并引用 issue 02 与规格；批准在 business/architecture 内新增部署单元能力、在 com.ccb.architecture.integration 预留部署单元引用检查 SPI、追加 V85-V86 迁移与 804/805 菜单权限。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "既有逻辑/物理子系统与变更工单 API 契约不变，全部原测试继续通过",
+      "com.ccb.architecture.integration 只新增中性部署单元引用检查 SPI，不暴露持久化或 Web 类型",
+      "V85-V86 只追加，不修改 V1-V84；空库与既有库均可迁移",
+      "architecture 新增 poi-ooxml 依赖，与 requirement/test-management 模块版本一致",
+      "现有 system、security、workflow、release、requirement、test-management 和 Boot 测试无回归"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V86__seed_architecture_deployment_units.sql"
+    ],
+    "compatibility_and_rollback": "只追加 V85-V86。V85 建立 arch_deployment_unit（稳定身份/编号/归属/状态/当前版本）、arch_deployment_unit_version（不可改写版本快照）、arch_deployment_unit_number_seq（按物理子系统行锁分配编号）与 arch_deployment_unit_import_batch/item（导入批次与明细）。V86 追加菜单 804/805、权限 8041/8042、角色 111 及映射。应用回退保留迁移、编号、版本、批次与审计，使用后续补偿迁移关闭入口，不手工删除生产数据。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "development-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin"
+    },
+    {
+      "name": "deployment-unit-domain",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitNumberServiceTest,DeploymentUnitServiceTest,DeploymentUnitImportServiceTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "deployment-unit-mysql",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitLifecycleMySqlTest,DeploymentUnitImportMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "architecture-module",
+      "command": "mvn -pl :ccb-architecture -am test"
+    },
+    {
+      "name": "boot-and-reactor",
+      "command": "mvn test"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260823-049-deployment-unit-version-import/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"
+    },
+    {
+      "name": "governance",
+      "command": "node scripts/check-all-governance.mjs"
+    },
+    {
+      "name": "module-boundaries",
+      "command": "node scripts/check-module-boundaries.mjs"
+    },
+    {
+      "name": "flyway",
+      "command": "node scripts/check-flyway-migrations.mjs"
+    },
+    {
+      "name": "diff",
+      "command": "git diff --check"
+    },
+    {
+      "name": "api",
+      "type": "manual",
+      "procedure": "在隔离 MySQL 8.4 空库启动正式 Boot/Vite；以技术架构师角色创建应用/数据库/MQ 类型部署单元并核对编号规则；修改显示内容确认形成版本 2 且版本 1 不可改写；停用、重新启用、作废（含被引用时失败关闭）；上传 Excel 模板文件完成预览、确认、批次台账、失败明细与错误报告导出；以仅有查看权限角色验证 403；验证重启后数据一致。",
+      "evidence": "保存脱敏 HTTP、数据库断言、操作审计与重启后复核证据"
+    },
+    {
+      "name": "permission",
+      "type": "manual",
+      "procedure": "以 view/manage/无权限用户验证查询、写操作、导入与导出权限矩阵；验证跨租户不可见；验证已发布编号不可修改、物理归属不可变更、作废后编号不可复用。",
+      "evidence": "保存脱敏权限矩阵、错误码、前后数据库计数和审计记录"
+    },
+    {
+      "name": "browser-uat",
+      "type": "manual",
+      "procedure": "在 1280x800、375x812、390x844、430x932 和明暗主题完成部署单元列表、创建弹层、详情版本历史、停用/启用/作废、导入上传预览确认、批次明细与错误报告下载验收；确认控制台无新增错误、documentElement.scrollWidth 不大于 innerWidth。",
+      "evidence": "保存每个视口关键状态截图、网络、控制台、页面宽度和操作结果"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "确定性编号并发分配必须由物理子系统级行锁与唯一约束共同保证",
+      "版本行不可改写与状态机约束必须由服务端校验和数据库约束双重保证",
+      "导入确认写入采用行级事务与批次级回滚，任何不一致必须可观测",
+      "作废引用检查采用 fail-closed；未来 provider 接入需要相应模块治理批准",
+      "POI 依赖版本与 requirement/test-management 保持一致，避免供应链分歧",
+      "菜单/权限种子必须与既有 800/801/802/803 体系兼容，不得破坏既有角色授权"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260823-049-deployment-unit-version-import",
+    "control_justification": "跨数据库迁移、确定性编号并发、版本不可变性、引用 SPI、权限种子、导入事务与响应式前端功能，需要完整需求定标、建模、计划、受控执行、独立观测、纠偏和收敛。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/baseline.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/model.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/control-plan.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/execution-T*.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/observation-T*.json",
+      ".ai-control/requirements/req-20260823-049-deployment-unit-version-import/convergence.json"
+    ],
+    "release_verification": [
+      "空库与 V84 增量库迁移到 V86",
+      "编号并发不重号、发布后编号/归属不可变",
+      "版本行不可改写、变更形成新版本且审计完整",
+      "停用/重新启用/作废状态机与引用守卫 fail-closed",
+      "导入预览、确认、幂等重导、失败明细、错误报告与整批回滚",
+      "权限矩阵、租户隔离与审计",
+      "四个视口与明暗主题真实浏览器 UAT",
+      "Maven/Vue/Boot/治理/范围/模块边界/Flyway 全量检查"
+    ],
+    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V85-V86、编号、版本、批次和审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
+  }
+}

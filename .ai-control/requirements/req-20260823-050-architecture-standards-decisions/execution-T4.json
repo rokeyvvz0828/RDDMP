@@ -1,0 +1,49 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/model/DecisionModels.java",
+      "purpose": "事项/材料/评审/行动项/结论/替代关系/发布意图/轮次模型"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/persistence/DecisionStore.java",
+      "purpose": "事项存储：编号序列行锁、状态机、评审、发布意图、结论与替代关系、工作流回执/轮次"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/service/ArchitectureDecisionService.java",
+      "purpose": "编号 AD-年份-序号、7 日期限、首次处理三选一、评审/行动项、发布准备校验、启动发布、替代链推导、附件"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java",
+      "purpose": "HTTP 边界：view/propose/review/manage 四级权限与操作审计，结论无修改路径"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/integration/ArchitectureDecisionWorkflowLifecycleConsumer.java",
+      "purpose": "architecture_decision_publish 生命周期消费者：APPROVED 原子发布结论+替代关系+事项完成，RETURNED/REJECTED/TERMINATED 结束轮次，事件幂等"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/integration/DecisionAttachmentAccessPolicy.java",
+      "purpose": "architecture-decision 附件实体授权策略"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureExceptionAdvice.java",
+      "purpose": "新控制器纳入统一异常映射"
+    }
+  ],
+  "requirements_addressed": ["R3", "R4", "R5", "R6", "R7", "R8"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureDecisionServiceTest,ArchitectureDecisionWorkflowLifecycleConsumerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "服务 12 用例 + 消费者 7 用例通过：编号/期限/状态机/发布准备校验/工作流一致性/结论原子发布/幂等/退回拒绝终止"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "结论不可变",
+      "result": "结论表无更新/删除路径；唯一结论约束；替代对唯一约束；控制器不提供已发布结论写接口"
+    }
+  ],
+  "notes": "工作流定义草稿需平台发布入口生成部署后方可启动真实实例（遵循 048 先例）；工作流业务类型 architecture_decision_publish。"
+}

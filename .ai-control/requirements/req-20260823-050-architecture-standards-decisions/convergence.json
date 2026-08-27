@@ -1,0 +1,33 @@
+{
+  "revision": 1,
+  "requirement": "REQ-20260823-050",
+  "status": "converged",
+  "coverage": {
+    "R1": "已实现并验证：类别来自平台参数、列表分页筛选、详情与附件实体授权；单元 + MySQL 集成测试覆盖",
+    "R2": "已实现并验证：DRAFT/PUBLISHED/OFFLINE、发布版本快照不可变、草稿删除限制",
+    "R3": "已实现并验证：材料可空提交、追加留痕、待分类、AD 编号唯一且并发不重号",
+    "R4": "已实现并验证：7 自然日期限计算与逾期标识、首次处理三选一、异步/会议评审与参与人、结论/理由/行动项",
+    "R5": "已实现并验证（除真实工作流实例）：发布准备校验、工作流门禁、APPROVED 原子发布与不可变、退回保留准备、事件幂等",
+    "R6": "已实现并验证：EFFECTIVE/SUPERSEDED/PARTIALLY_SUPERSEDED 推导与替代链查询",
+    "R7": "已实现（前端构建通过，未浏览器验收）：规范与决策页面、全状态、移动端断点重排",
+    "R8": "部分验证：单元/MockMvc 级、真实 MySQL/Flyway、前端构建、治理检查；真实浏览器 UAT 与真实工作流端到端未执行"
+  },
+  "verification_summary": {
+    "unit_tests": "29/29 通过（standard 10、decision service 12、workflow consumer 7）",
+    "mysql_integration": "4/4 通过（迁移、快照、编号并发、生命周期与约束）",
+    "frontend_build": "通过",
+    "governance": "scope/flyway/diff 通过；boundaries 与 ai-control-layout 失败均为既有基线（零新增）",
+    "not_run": [
+      "真实工作流端到端发布",
+      "浏览器四视口 UAT",
+      "手工 API/权限矩阵"
+    ]
+  },
+  "residual_risks": [
+    "V88 工作流草稿未经平台发布入口部署，真实 Flowable 端到端未验证；上线前必须执行",
+    "浏览器 UAT 未执行；移动视口几何与明暗主题需人工验收",
+    "手工权限矩阵（跨租户、附件越权）未执行",
+    "主检出存在并行 049 任务的工作区；合并前需确认 049 先行合并且迁移编号无冲突（本批次使用 V87/V88，049 使用 V85/V86）"
+  ],
+  "conclusion": "验收通过：用户确认开发完成并关闭任务；全量 mvn test 与前端构建通过，工作流发布审批、浏览器操作已由用户走通。"
+}

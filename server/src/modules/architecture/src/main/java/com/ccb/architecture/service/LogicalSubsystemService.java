@@ -4,6 +4,7 @@ import com.ccb.architecture.model.LogicalSubsystem;
 import com.ccb.architecture.model.LogicalSubsystemCommand;
 import com.ccb.architecture.model.LogicalSubsystemLock;
 import com.ccb.architecture.model.LogicalSubsystemQuery;
+import com.ccb.architecture.model.PhysicalSubsystemSummary;
 import com.ccb.architecture.repository.ArchitectureSubsystemRepository;
 import com.ccb.architecture.web.ArchitectureNotFoundException;
 import com.ccb.common.api.PageQuery;
@@ -27,6 +28,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -43,6 +45,9 @@ public class LogicalSubsystemService {
     private static final String CREATE_OPERATION = "ARCHITECTURE_LOGICAL_CREATE";
     private static final String UPDATE_OPERATION = "ARCHITECTURE_LOGICAL_UPDATE";
     private static final String DELETE_OPERATION = "ARCHITECTURE_LOGICAL_DELETE";
+    private static final Set<String> PUBLISHED_STATUSES = Set.of("ACTIVE", "OFFLINE", "VOIDED");
+    static final String WORK_ORDER_REQUIRED_MESSAGE =
+            "ARCHITECTURE_WORK_ORDER_REQUIRED：请通过架构子系统变更工单发起申请";
 
     private final ArchitectureSubsystemRepository repository;
     private final OrganizationService organizationService;
@@ -74,59 +79,29 @@ public class LogicalSubsystemService {
     public LogicalSubsystem detail(AuthUser actor, long id) {
         requireActor(actor);
         requirePositiveId(id);
-        return repository.findLogical(actor.tenantId(), id)
+        LogicalSubsystem subsystem = repository.findLogical(actor.tenantId(), id)
                 .orElseThrow(() -> notFound(id));
+        List<PhysicalSubsystemSummary> physicalSubsystems = repository.findPhysicalByLogical(actor.tenantId(), id)
+                .stream()
+                .map(item -> new PhysicalSubsystemSummary(item.id(), item.code(), item.shortName(), item.name(),
+                        item.numberSlot(), item.englishName(), item.status(), item.rowVersion()))
+                .toList();
+        return subsystem.withPhysicalSubsystems(physicalSubsystems);
     }
 
     public LogicalSubsystem create(AuthUser actor, LogicalSubsystemCommand command, String traceId) {
         requireActor(actor);
-        return executeWrite(actor, CREATE_OPERATION, "POST", RESOURCE_PATH, traceId, () -> {
-            LogicalSubsystemCommand normalized = normalizeAndValidate(actor, command);
-            ensureUnique(actor.tenantId(), normalized, null);
-            long id = nextId();
-            repository.insertLogical(id, actor.tenantId(), normalized, actor.id());
-            operationAudit.recordSuccess(auditCommand(actor, CREATE_OPERATION, "POST", RESOURCE_PATH, null, traceId));
-            return repository.findLogical(actor.tenantId(), id)
-                    .orElseThrow(() -> new IllegalStateException("逻辑子系统创建后无法读取"));
-        });
+        throw workOrderRequired();
     }
 
     public LogicalSubsystem update(AuthUser actor, long id, LogicalSubsystemCommand command, String traceId) {
         requireActor(actor);
-        String path = RESOURCE_PATH + "/" + id;
-        return executeWrite(actor, UPDATE_OPERATION, "PUT", path, traceId, () -> {
-            requirePositiveId(id);
-            if (repository.findLogical(actor.tenantId(), id).isEmpty()) {
-                throw notFound(id);
-            }
-            LogicalSubsystemCommand normalized = normalizeAndValidate(actor, command);
-            ensureUnique(actor.tenantId(), normalized, id);
-            if (repository.updateLogical(actor.tenantId(), id, normalized, actor.id()) == 0) {
-                throw notFound(id);
-            }
-            operationAudit.recordSuccess(auditCommand(actor, UPDATE_OPERATION, "PUT", path, null, traceId));
-            return repository.findLogical(actor.tenantId(), id)
-                    .orElseThrow(() -> notFound(id));
-        });
+        throw workOrderRequired();
     }
 
     public void delete(AuthUser actor, long id, String traceId) {
         requireActor(actor);
-        String path = RESOURCE_PATH + "/" + id;
-        executeWrite(actor, DELETE_OPERATION, "DELETE", path, traceId, () -> {
-            requirePositiveId(id);
-            LogicalSubsystemLock locked = repository.lockLogical(actor.tenantId(), id)
-                    .filter(record -> !record.deleted())
-                    .orElseThrow(() -> notFound(id));
-            if (repository.countActivePhysicalByLogical(actor.tenantId(), locked.id()) > 0) {
-                throw conflict("逻辑子系统仍被物理子系统引用，不能删除");
-            }
-            if (repository.softDeleteLogical(actor.tenantId(), locked.id(), actor.id()) == 0) {
-                throw notFound(id);
-            }
-            operationAudit.recordSuccess(auditCommand(actor, DELETE_OPERATION, "DELETE", path, null, traceId));
-            return null;
-        });
+        throw workOrderRequired();
     }
 
     private LogicalSubsystemCommand normalizeAndValidate(AuthUser actor, LogicalSubsystemCommand command) {
@@ -238,7 +213,19 @@ public class LogicalSubsystemService {
             return LogicalSubsystemQuery.empty();
         }
         return new LogicalSubsystemQuery(normalizeOptional(query.code()), normalizeOptional(query.shortName()),
-                normalizeOptional(query.name()), query.businessOrgId());
+                normalizeOptional(query.name()), query.businessOrgId(), normalizeStatus(query.status()));
+    }
+
+    private String normalizeStatus(String value) {
+        String normalized = normalizeOptional(value);
+        if (normalized == null) {
+            return null;
+        }
+        String status = normalized.toUpperCase(Locale.ROOT);
+        if (!PUBLISHED_STATUSES.contains(status)) {
+            throw badRequest("发布状态仅支持 ACTIVE、OFFLINE 或 VOIDED");
+        }
+        return status;
     }
 
     private void requireActor(AuthUser actor) {
@@ -294,6 +281,10 @@ public class LogicalSubsystemService {
 
     private BusinessException conflict(String message) {
         return new BusinessException(ErrorCode.CONFLICT, message);
+    }
+
+    private BusinessException workOrderRequired() {
+        return conflict(WORK_ORDER_REQUIRED_MESSAGE);
     }
 
     private long nextId() {

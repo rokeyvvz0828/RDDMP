@@ -1,0 +1,79 @@
+{
+  "task_id": "T0",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/PhysicalSubsystemConcurrencyMySqlTest.java",
+      "purpose": "把并发测试错误的 Flyway V36 目标精确纠正为创建架构子系统表的 V77"
+    }
+  ],
+  "requirements_addressed": ["R11", "R12"],
+  "commands": [
+    {
+      "command": "$env:DOCKER_HOST = 'npipe:////./pipe/dockerDesktopLinuxEngine'; $env:DOCKER_API_VERSION = '1.44'; mvn '-Ddocker.client.strategy=org.testcontainers.dockerclient.EnvironmentAndSystemPropertyClientProviderStrategy' '-Ddocker.host=npipe:////./pipe/dockerDesktopLinuxEngine' '-Dapi.version=1.44' -pl :ccb-architecture -am '-Dtest=PhysicalSubsystemConcurrencyMySqlTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exit_code": 0,
+      "salient_output": "Flyway 迁移到 V77；Tests run: 2, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS"
+    },
+    {
+      "command": "$env:DOCKER_HOST = 'npipe:////./pipe/dockerDesktopLinuxEngine'; $env:DOCKER_API_VERSION = '1.44'; mvn '-Ddocker.client.strategy=org.testcontainers.dockerclient.EnvironmentAndSystemPropertyClientProviderStrategy' '-Ddocker.host=npipe:////./pipe/dockerDesktopLinuxEngine' '-Dapi.version=1.44' -pl :ccb-architecture -am test",
+      "exit_code": 0,
+      "salient_output": "ccb-architecture Tests run: 47, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS；Total time: 03:07 min"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无 diff 空白错误；仅有工作区 LF 到 CRLF 提示"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "并发测试聚焦复验",
+      "result": "pass",
+      "evidence": "MySQL 8.4 上成功应用到 V77，2/2 用例通过",
+      "limitations": ["由执行子代理运行，仍需独立观察复验"]
+    },
+    {
+      "check": "architecture 完整模块回归",
+      "result": "pass",
+      "evidence": "47/47 通过，Maven BUILD SUCCESS",
+      "limitations": ["由执行子代理运行，仍需独立观察复验"]
+    },
+    {
+      "check": "范围与格式",
+      "result": "pass",
+      "evidence": "git diff 仅显示同一测试文件 target 从 V36 改为 V77；git diff --check 退出码 0",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "PhysicalSubsystemConcurrencyMySqlTest 的 Flyway target 从 V36 改为 V77",
+    "两个并发测试方法体和断言未改"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "T0 不修改产品代码或 V1-V81 历史迁移",
+      "result": "pass",
+      "evidence": "实际 diff 仅包含目标测试文件一行替换"
+    },
+    {
+      "invariant": "不修改用户级 Testcontainers 配置",
+      "result": "pass",
+      "evidence": "Docker 参数只注入 Maven 子进程"
+    },
+    {
+      "invariant": "architecture 完整基线恢复绿色",
+      "result": "pass",
+      "evidence": "完整套件 47/47 通过"
+    }
+  ],
+  "disturbances": [
+    "无 target 时会暴露与本并发传感器无关的 V80 排序规则冲突；通过精确 V77 边界隔离"
+  ],
+  "assumptions_falsified": [
+    "直接移除 target(V36) 就能恢复该测试；事实证明应精确设为 V77"
+  ],
+  "unresolved_items": [
+    "由独立观察者复验聚焦测试、完整架构套件和最终一行 diff"
+  ],
+  "recommended_next": "observe"
+}
