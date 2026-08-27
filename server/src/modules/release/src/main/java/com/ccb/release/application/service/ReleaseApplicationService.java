@@ -69,11 +69,12 @@ public class ReleaseApplicationService {
         this.objectMapper = objectMapper;
     }
 
-    public PageResult<Response> list(long page, long size, String projectId, String keyword, String status,
+    public PageResult<Response> list(long page, long size, String projectId, Long windowId, String keyword, String status,
                                      boolean mineOnly, AuthUser user) {
+        if (windowId != null && windowId <= 0) throw badRequest("投产窗口标识无效");
         String normalizedStatus = status == null || status.isBlank() ? null : parseStatus(status).name();
-        PageResult<Application> result = store.findPage(user.tenantId(), projectId, keyword, normalizedStatus, mineOnly, user.id(),
-                new PageQuery(page, size));
+        PageResult<Application> result = store.findPage(user.tenantId(), projectId, windowId, keyword, normalizedStatus,
+                mineOnly, user.id(), new PageQuery(page, size));
         return new PageResult<>(result.records().stream().map(value -> response(value, ConflictReport.empty())).toList(),
                 result.total(), result.page(), result.size());
     }

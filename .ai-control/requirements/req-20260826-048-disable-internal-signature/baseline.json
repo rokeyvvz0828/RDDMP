@@ -1,0 +1,41 @@
+{
+  "objective": "暂停新内部电子签名要求，使审批无需签名确认即可完成，同时完整保留历史证据和接口兼容。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "流程设计器不得再提供内部电子签名配置入口。",
+      "acceptance": ["审批节点检查器不展示需要电子签名控件"],
+      "priority": "must",
+      "source": "用户于 2026-08-26 明确要求先去掉电子签名",
+      "counterexample": ["管理员仍可把审批节点设置为需要电子签名"]
+    },
+    {
+      "id": "R2",
+      "statement": "所有审批任务在运行时均不得要求签名确认或新增签名记录。",
+      "acceptance": ["存量 signatureRequired=true 的任务上下文返回 false", "未确认签名的审批决定不被签名服务阻止", "审批决定不新增 wf_signature 记录"],
+      "priority": "must",
+      "source": "用户确认采用兼容性停用方案",
+      "counterexample": ["旧流程实例仍要求勾选确认签署", "审批后写入新的签名记录"]
+    },
+    {
+      "id": "R3",
+      "statement": "历史签名数据和公开接口字段必须保持兼容。",
+      "acceptance": ["历史签名查询继续返回既有记录", "signature_required 和 signatureConfirmed 字段不删除", "无数据库迁移"],
+      "priority": "must",
+      "source": "用户确认保留历史数据的兼容性方案",
+      "counterexample": ["删除 wf_signature 或历史记录", "旧前端因字段删除而失败"]
+    }
+  ],
+  "invariants": ["任务授权、状态和允许动作继续由服务端校验", "历史签名记录不可修改或删除", "不修改业务模块审批逻辑"],
+  "constraints": ["Java 17 与现有 Spring/Vue 技术栈", "不修改数据库和公开 API", "只修改批准写入范围"],
+  "non_goals": ["手写签名", "密码复核", "CA 或第三方签署", "审批流程重构"],
+  "assumptions": [{"text": "业务审批页面依据 signature_required 决定是否展示签署控件", "basis": "只读代码勘察", "falsifier": "存在不依赖该字段的其他签署入口"}],
+  "unknowns": [],
+  "decisions": [{"question": "停用时是否删除历史结构", "options": ["保留兼容", "物理删除"], "selected": "保留兼容", "blocking": false, "source": "用户确认"}],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "节点配置模板中无签名控件", "candidate_sensor": "源码检查与前端构建"},
+    {"requirement_id": "R2", "observable": "required=false 且 confirm 不写入", "candidate_sensor": "WorkflowSignatureServiceTest"},
+    {"requirement_id": "R3", "observable": "历史查询仍执行且接口类型未删除", "candidate_sensor": "服务测试、编译和差异审计"}
+  ],
+  "baseline_status": "ready"
+}

@@ -43,6 +43,15 @@ const statusLabels: Record<ReleaseApplicationStatusCode, string> = {
 }
 const versionLabels = { REGULAR: '常规版本', URGENT: '紧急版本', EMERGENCY: '应急版本' } as const
 const artifactLabels = { IMAGE: '镜像', BINARY: '二进制' } as const
+const nodeStatusLabels: Record<string, string> = {
+  PENDING: '待审批',
+  APPROVED: '已通过',
+  COMPLETED: '已完成',
+  REJECTED: '已拒绝',
+  RETURNED: '已退回',
+  CANCELLED: '已取消',
+  SENT: '已抄送'
+}
 const currentNode = computed(() => {
   const pending = workflowDetail.value?.node_states.filter(item => item.status === 'PENDING').map(item => item.node_name || item.task_key)
   return pending?.filter(Boolean).join('、') || (application.value?.status === 'RELEASED' ? '制品准出' : '-')
@@ -54,7 +63,23 @@ function positiveInteger(value: unknown) {
   const parsed = Number(text)
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined
 }
-function minute(value?: string) { return value ? value.replace('T', ' ').slice(0, 16) : '-' }
+function minute(value?: string) {
+  if (!value) return '-'
+  const source = value.trim().replace(' ', 'T')
+  const instant = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(source) ? source : `${source}Z`)
+  if (Number.isNaN(instant.getTime())) return value.replace('T', ' ').slice(0, 16)
+  const parts = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(instant)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value || ''
+  return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`
+}
 function statusTone(value: ReleaseApplicationStatusCode) {
   return value === 'RELEASED' ? 'success' : value === 'IN_REVIEW' ? 'primary'
     : value === 'RETURNED' || value === 'WITHDRAWN' ? 'warning' : 'info'
@@ -66,10 +91,23 @@ function nodeTone(value: string) {
   return value === 'COMPLETED' ? 'success' : value === 'PENDING' ? 'primary'
     : value === 'REJECTED' || value === 'RETURNED' ? 'warning' : 'info'
 }
+function nodeStatusLabel(value: string) { return nodeStatusLabels[value] || value }
 function eventLabel(value: string) {
   const labels: Record<string, string> = {
-    INSTANCE_STARTED: '流程已启动', TASK_APPROVED: '审批同意', TASK_REJECTED: '审批不通过',
-    TASK_RETURNED: '退回修改', INSTANCE_COMPLETED: '流程已完成', INSTANCE_TERMINATED: '流程已终止'
+    INSTANCE_STARTED: '流程已启动',
+    TASK_APPROVE: '审批同意',
+    TASK_APPROVED: '审批同意',
+    TASK_REJECT: '审批不通过',
+    TASK_REJECTED: '审批不通过',
+    TASK_RETURN: '退回修改',
+    TASK_RETURNED: '退回修改',
+    TASK_ADD_SIGN: '加签',
+    TASK_CC: '抄送',
+    TASK_TRANSFER: '转办',
+    TASK_DELEGATE: '委派',
+    INSTANCE_COMPLETED: '流程已完成',
+    INSTANCE_TERMINATED: '流程已终止',
+    INSTANCE_DELETED: '流程已删除'
   }
   return labels[value] || value
 }
@@ -174,7 +212,7 @@ watch(applicationCode, load)
     <header class="release-review-header">
       <button type="button" aria-label="返回版本申请" @click="router.back()"><el-icon><ArrowLeft /></el-icon></button>
       <div><span>配置管理 / 版本申请</span><strong>{{ application?.applicationCode || applicationCode }}</strong></div>
-      <div v-if="application" class="release-detail-statuses"><UiStatusTag :value="versionLabels[application.versionType]" :tone="versionTone(application.versionType)" /><UiStatusTag :value="statusLabels[application.status]" :tone="statusTone(application.status)" /></div>
+      <div v-if="application" class="release-detail-statuses"><UiStatusTag :value="versionLabels[application.versionType]" :tone="versionTone(application.versionType)" /><UiStatusTag :value="statusLabels[application.status]" :tone="statusTone(application.status)" :class="{ 'release-detail-status--released': application.status === 'RELEASED' }" /></div>
     </header>
 
     <section v-if="loading" class="release-state-panel"><el-skeleton :rows="8" animated /></section>
@@ -189,7 +227,6 @@ watch(applicationCode, load)
             <el-descriptions-item label="所属项目">{{ application.projectName }}</el-descriptions-item><el-descriptions-item label="申请人">{{ application.requesterName }} / {{ application.requesterDepartment || '-' }}</el-descriptions-item>
             <el-descriptions-item label="物理子系统">{{ application.subsystemName }}（{{ application.subsystemCode }}）</el-descriptions-item><el-descriptions-item label="投产窗口">{{ application.windowName || '制品准出后自动归入承接窗口' }}</el-descriptions-item>
             <el-descriptions-item label="版本类型"><UiStatusTag :value="versionLabels[application.versionType]" :tone="versionTone(application.versionType)" /></el-descriptions-item><el-descriptions-item label="申请特征">{{ application.characteristic === 'ADDITIONAL' ? '追加申请' : '普通申请' }}</el-descriptions-item>
-            <el-descriptions-item label="流程编码" :span="2"><code>{{ application.workflowCode }}</code></el-descriptions-item>
             <el-descriptions-item label="需求编号" :span="2"><template v-if="application.requirementCodes.length"><el-tag v-for="item in application.requirementCodes" :key="item" class="release-inline-tag">{{ item }}</el-tag></template><span v-else>{{ application.emergency ? '应急版本不关联需求编号' : '暂无' }}</span></el-descriptions-item>
             <el-descriptions-item v-if="application.emergencyDescription" label="应急说明" :span="2">{{ application.emergencyDescription }}</el-descriptions-item><el-descriptions-item v-if="application.urgentReason" label="紧急原因" :span="2">{{ application.urgentReason }}</el-descriptions-item>
             <el-descriptions-item label="申请说明" :span="2">{{ application.description || '暂无' }}</el-descriptions-item>
@@ -247,10 +284,10 @@ watch(applicationCode, load)
 
         <section class="release-review-section">
           <header><span>审批进展</span><UiStatusTag :value="currentNode" :tone="application.status === 'IN_REVIEW' ? 'primary' : 'info'" /></header>
-          <div class="release-flow-summary"><div><span>申请状态</span><strong>{{ statusLabels[application.status] }}</strong></div><div><span>当前节点</span><strong>{{ currentNode }}</strong></div><div><span>审批轮次</span><strong>{{ round ? `第 ${round.roundNo} 轮` : '未提交' }}</strong></div><div><span>流程编码</span><strong>{{ round?.workflowCode || application.workflowCode }}</strong></div></div>
+          <div class="release-flow-summary"><div><span>申请状态</span><strong>{{ statusLabels[application.status] }}</strong></div><div><span>当前节点</span><strong>{{ currentNode }}</strong></div><div><span>审批轮次</span><strong>{{ round ? `第 ${round.roundNo} 轮` : '未提交' }}</strong></div></div>
           <el-alert v-if="workflowError" :title="workflowError" type="warning" :closable="false" show-icon class="release-workflow-runtime" />
           <div v-else-if="workflowDetail" class="release-approval-records">
-            <article v-for="node in workflowDetail.node_states" :key="node.id"><span class="release-approval-records__icon" :class="{ done: node.status === 'COMPLETED' }"><el-icon><Check /></el-icon></span><div><header><strong>{{ node.node_name || node.task_key }}</strong><UiStatusTag :value="node.status" :tone="nodeTone(node.status)" /></header><p>{{ node.comment || '暂无审批意见' }}</p><small>{{ node.assignee_name || '系统' }} · {{ minute(node.completed_at || node.created_at) }}</small><div v-if="workflowDetail.signatures?.some(signature => signature.task_id === node.id)" class="release-signature"><el-icon><Lock /></el-icon>已使用登录身份完成电子签名</div></div></article>
+            <article v-for="node in workflowDetail.node_states" :key="node.id"><span class="release-approval-records__icon" :class="{ done: node.status === 'COMPLETED' }"><el-icon><Check /></el-icon></span><div><header><strong>{{ node.node_name || node.task_key }}</strong><UiStatusTag :value="nodeStatusLabel(node.status)" :tone="nodeTone(node.status)" /></header><p>{{ node.comment || '暂无审批意见' }}</p><small>{{ node.assignee_name || '系统' }} · {{ minute(node.completed_at || node.created_at) }}</small><div v-if="workflowDetail.signatures?.some(signature => signature.task_id === node.id)" class="release-signature"><el-icon><Lock /></el-icon>已使用登录身份完成电子签名</div></div></article>
           </div>
           <div v-else class="release-inline-empty">{{ round ? '暂无可展示的流程节点' : '申请尚未提交审批' }}</div>
         </section>
@@ -261,7 +298,7 @@ watch(applicationCode, load)
         </section>
       </div>
 
-      <ReleaseApprovalPanel :application-code="application.applicationCode" :task-id="taskId" @decided="handleDecided" />
+      <ReleaseApprovalPanel :application-code="application.applicationCode" :application-status="application.status" :task-id="taskId" @decided="handleDecided" />
     </section>
   </main>
 </template>

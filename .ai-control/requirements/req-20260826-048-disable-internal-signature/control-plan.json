@@ -1,0 +1,42 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "在不删除历史证据和公开字段的前提下关闭内部电子签名配置与运行时要求",
+      "requirement_ids": ["R1", "R2", "R3"],
+      "prerequisites": ["REQ-20260826-048 为 ready", "开发入口检查通过", "现有签名调用链已完成只读勘察"],
+      "input_facts": ["WorkflowNodeInspector 是节点签名配置入口", "WorkflowSignatureService 是签名要求与写入的集中服务", "WorkflowMonitorService 通过 signatures 方法查询历史记录"],
+      "write_scope": [
+        "web/src/components/workflow/WorkflowNodeInspector.vue",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowSignatureService.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowSignatureServiceTest.java",
+        "docs/integration/workflow-module-contract.md"
+      ],
+      "invariants": ["任务授权状态与动作校验不变", "历史签名查询不变", "不删除 API 字段和数据库结构", "不覆盖工作区无关改动"],
+      "interface_contracts": ["signature_required 字段保留且固定 false", "signatureConfirmed 请求字段继续兼容", "signatures 历史列表继续返回"],
+      "non_goals": ["修改版本申请业务代码", "删除存量 signatureRequired JSON", "增加新签署方案", "数据库迁移"],
+      "action_bounds": ["只移除一个配置表单项", "只在签名服务集中关闭 required 和 confirm 行为", "只调整直接服务测试和契约文档"],
+      "acceptance_checks": ["WorkflowSignatureServiceTest 覆盖旧配置为 true 仍返回 false 且零写入", "历史 signatures 查询测试通过", "节点检查器不包含签名配置文案", "工作流聚焦测试通过", "前端构建通过", "全量后端测试通过", "范围和差异检查通过"],
+      "evidence_required": ["限定文件实际 diff", "聚焦测试命令与退出码", "前端构建和全量测试结果", "治理范围与 diff 检查结果"],
+      "rollback": "恢复四个任务文件的本需求差异；数据库无补偿",
+      "stop_conditions": ["发现签名校验存在 WorkflowSignatureService 之外的旁路", "需要删除公开字段或数据库结构", "测试表明任务授权或审批动作语义被改变"],
+      "escalation_conditions": ["用户要求物理删除历史签名", "出现外部消费者依赖 signature_required=true", "必须修改业务模块才能完成停用"]
+    }
+  ],
+  "dependency_edges": [],
+  "parallel_groups": [["T1"]],
+  "integration_points": [{"after_tasks": ["T1"], "checks": ["工作流聚焦测试", "前端生产构建", "全量后端测试", "范围和差异审计"]}],
+  "sampling_plan": [
+    {"label": "局部行为采样", "trigger": "代码与直接测试完成", "observer": "独立测试命令", "sensors": ["S1", "S2", "S3"], "requirement_ids": ["R1", "R2", "R3"]},
+    {"label": "跨模块回归采样", "trigger": "聚焦检查通过", "observer": "Maven 与 TypeScript 构建", "sensors": ["S1", "S2", "S3"], "requirement_ids": ["R1", "R2", "R3"]},
+    {"label": "最终范围采样", "trigger": "全量回归完成", "observer": "治理与差异检查", "sensors": ["S4"], "requirement_ids": ["R1", "R2", "R3"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S4"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S2", "S4"]},
+    {"requirement_id": "R3", "task_ids": ["T1"], "sensor_ids": ["S3", "S4"]}
+  ],
+  "plan_status": "ready"
+}

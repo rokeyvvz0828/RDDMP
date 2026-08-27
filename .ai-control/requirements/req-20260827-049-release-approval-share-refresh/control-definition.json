@@ -1,0 +1,27 @@
+{
+  "definition_revision": "definition-1",
+  "objective": "为审批中的版本申请提供可共享的固定审批链接，并确保只有当前审核人可操作且审批完成后待办及时更新。",
+  "requirements": [
+    {"id":"R1","statement":"审批中的版本申请必须提供不含任务ID的固定可复制链接。","acceptance":["仅IN_REVIEW行显示审批链接","链接指向申请详情且复制结果有反馈"],"priority":"must","source":"用户确认","counterexample":["非审批中申请仍显示审批链接","链接绑定单个taskId"]},
+    {"id":"R2","statement":"只有流程当前到达且任务属于当前登录审核人时才允许审批。","acceptance":["当前审核人看到允许动作","其他用户和非当前节点审核人只读","服务端校验继续生效"],"priority":"must","source":"用户明确补充","counterexample":["链接持有者可以越权审批"]},
+    {"id":"R3","statement":"审批完成后当前浏览器中的审核人待办必须及时刷新。","acceptance":["审批成功事件触发任务中心和工作台刷新","页面重新获得焦点或恢复可见时刷新"],"priority":"must","source":"用户请求","counterexample":["已完成任务持续保留在待办直到手动刷新"]},
+    {"id":"R4","statement":"申请详情和审批操作必须在390x844移动视口可完整使用。","acceptance":["无页面级横向溢出和遮挡","审批意见和操作按钮可见可点"],"priority":"must","source":"用户请求","counterexample":["操作按钮被裁剪或长文本撑破页面"]}
+  ],
+  "boundary": {"inside":["版本申请列表操作区","版本申请详情审批面板","任务中心","工作台","版本申请局部响应式样式"],"environment":["现有工作流任务上下文和决定接口","浏览器剪贴板","登录与菜单权限"]},
+  "invariants":["服务端任务归属、状态和动作校验不变","链接本身不授予权限","不覆盖工作区无关改动"],
+  "constraints":["Vue 3和Element Plus现有技术栈","无后端接口、数据库或依赖变化","固定链接不包含taskId"],
+  "measurements":[
+    {"requirement_id":"R1","sensor":"源码断言、浏览器复制与前端构建","expected":"仅审批中行出现固定申请链接","blind_spots":["非安全上下文的Clipboard API"]},
+    {"requirement_id":"R2","sensor":"审批面板上下文状态与服务端403/409行为","expected":"仅actionable当前任务渲染操作并可提交","blind_spots":["无可用多账号测试数据时只能验证代码和接口边界"]},
+    {"requirement_id":"R3","sensor":"审批后列表请求与页面聚焦刷新","expected":"已处理任务从待办消失并进入已办","blind_spots":["跨设备无主动推送"]},
+    {"requirement_id":"R4","sensor":"390x844浏览器截图和横向溢出检查","expected":"内容完整且可操作","blind_spots":["未覆盖全部移动浏览器内核"]}
+  ],
+  "action_bounds":[
+    {"requirement_ids":["R1"],"target":"ReleaseApplicationView和容器复制函数","authority":"新增审批中行操作和前端链接生成","impact_limit":"版本申请列表","rollback":"移除新增事件与函数"},
+    {"requirement_ids":["R2","R3"],"target":"审批面板、任务中心和工作台","authority":"成功后发布事件并在页面激活时刷新","impact_limit":"当前浏览器工作流列表","rollback":"移除事件工具和监听"},
+    {"requirement_ids":["R4"],"target":"release-prototype局部媒体查询","authority":"调整移动布局","impact_limit":"配置管理版本申请页面","rollback":"移除新增局部规则"}
+  ],
+  "assumptions":[{"text":"现有getCurrentWorkflowTaskContext和decideWorkflowTask已按当前用户、任务状态及允许动作授权","evidence":"代码勘察显示审批面板仅在actionable时提交，服务端接口为最终边界","falsifier":"运行验证发现非任务审核人可成功提交"}],
+  "unknowns":[],
+  "status":"ready"
+}

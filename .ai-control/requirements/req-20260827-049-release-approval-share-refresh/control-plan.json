@@ -1,0 +1,11 @@
+{
+  "definition_revision":"definition-1",
+  "tasks":[
+    {"id":"T1","goal":"审批中申请提供固定可复制链接","requirement_ids":["R1","R2"],"prerequisites":[],"write_scope":["web/src/modules/release/components/ReleaseApplicationView.vue","web/src/modules/release/ReleaseManagementPrototype.vue"],"checks":["固定链接不含taskId","按钮仅对IN_REVIEW显示","前端构建"],"evidence_required":["实际diff","构建退出码","浏览器复制反馈"],"rollback":"移除复制入口和处理函数","stop_conditions":["必须暴露taskId才能定位审批"],"escalation_conditions":["发现服务端越权"]},
+    {"id":"T2","goal":"审批成功和页面重新激活时同步待办","requirement_ids":["R2","R3"],"prerequisites":["T1"],"write_scope":["web/src/utils/workflow-task-events.ts","web/src/modules/release/components/ReleaseApprovalPanel.vue","web/src/views/TaskCenterView.vue","web/src/views/DashboardView.vue"],"checks":["成功后发布事件","失败不发布","监听生命周期清理","前端构建"],"evidence_required":["实际diff","构建退出码","网络请求或列表状态"],"rollback":"移除事件工具和监听","stop_conditions":["出现刷新循环"],"escalation_conditions":["要求跨设备实时推送"]},
+    {"id":"T3","goal":"审批详情在390x844视口完整可用","requirement_ids":["R4"],"prerequisites":["T1","T2"],"write_scope":["web/src/modules/release/release-prototype.css"],"checks":["390x844截图","横向溢出检查","前端构建","git diff --check"],"evidence_required":["截图","构建和差异检查退出码"],"rollback":"移除新增局部媒体查询","stop_conditions":["需要修改公共壳层"],"escalation_conditions":["无登录数据无法验收"]}
+  ],
+  "dependencies":[{"from":"T1","to":"T2","reason":"事件同步建立在审批链接和详情入口确定后"},{"from":"T2","to":"T3","reason":"移动布局在交互结构稳定后验收"}],
+  "integration_checks":[{"after_tasks":["T1","T2","T3"],"check":"前端生产构建、桌面与390x844浏览器验收、git diff --check"}],
+  "status":"ready"
+}

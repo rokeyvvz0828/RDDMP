@@ -100,4 +100,12 @@ export function getWorkflowTimeline(id: number) { return http.get<ApiResponse<Wo
 export function listWorkflowInbox(params: WorkflowPageQuery) { return http.get<ApiResponse<WorkflowPage<WorkflowTask>>>('/workflows/inbox', { params }) }
 export function getWorkflowTaskContext(id: number) { return http.get<ApiResponse<WorkflowTaskContext>>(`/workflows/tasks/${id}/context`) }
 export function getCurrentWorkflowTaskContext(businessType: string, businessKey: string) { return http.get<ApiResponse<WorkflowTaskContext | null>>('/workflows/tasks/current-context', { params: { businessType, businessKey } }) }
-export function decideWorkflowTask(id: number, action: WorkflowTaskAction, comment: string, options?: { targetUserId?: number; ccUserIds?: number[]; signatureConfirmed?: boolean }) { return http.post<ApiResponse<void>>(`/workflows/tasks/${id}/decision`, { action, comment, targetUserId: options?.targetUserId, ccUserIds: options?.ccUserIds, signatureConfirmed: options?.signatureConfirmed }) }
+export function decideWorkflowTask(id: number, action: WorkflowTaskAction, comment: string, options?: { targetUserId?: number; ccUserIds?: number[]; signatureConfirmed?: boolean }) {
+  return http.post<ApiResponse<void>>(`/workflows/tasks/${id}/decision`, {
+    action,
+    comment,
+    targetUserId: options?.targetUserId,
+    ccUserIds: options?.ccUserIds,
+    signatureConfirmed: options?.signatureConfirmed
+  }, { timeout: 30_000 })
+}
