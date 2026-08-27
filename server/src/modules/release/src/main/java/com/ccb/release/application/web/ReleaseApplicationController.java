@@ -51,10 +51,12 @@ public class ReleaseApplicationController {
     @PreAuthorize("hasAnyAuthority('release:application:view','system:admin')")
     public ApiResponse<PageResult<Response>> list(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String projectId, @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String projectId, @RequestParam(required = false) Long windowId,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean mineOnly,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.list(page, size, projectId, keyword, status, mineOnly, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.list(page, size, projectId, windowId, keyword, status, mineOnly, user),
+                TraceId.getOrCreate());
     }
 
     @GetMapping("/{code}")

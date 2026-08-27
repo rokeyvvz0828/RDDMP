@@ -167,6 +167,7 @@ export interface ProductionEntryDto {
   id: number
   tenantId: number
   windowId: number
+  windowName?: string
   applicationId: number
   applicationCode: string
   approvedAt: string
@@ -263,7 +264,7 @@ export function changeReleaseWindowRegularEnabled(id: number, regularEnabled: bo
   return http.put<ApiResponse<ReleaseWindowDto>>(`/release/windows/${id}/regular-enabled`, { regularEnabled, rowVersion, changeReason })
 }
 
-export function listReleaseApplications(params: { page?: number; size?: number; projectId?: string; keyword?: string; status?: ReleaseApplicationStatusCode; mineOnly?: boolean }) {
+export function listReleaseApplications(params: { page?: number; size?: number; projectId?: string; windowId?: number; keyword?: string; status?: ReleaseApplicationStatusCode; mineOnly?: boolean }) {
   return http.get<ApiResponse<PageResult<ReleaseApplicationDto>>>('/release/applications', { params })
 }
 export function getReleaseApplication(code: string) { return http.get<ApiResponse<ReleaseApplicationDto>>(`/release/applications/${encodeURIComponent(code)}`) }

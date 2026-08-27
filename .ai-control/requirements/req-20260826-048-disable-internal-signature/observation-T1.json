@@ -1,0 +1,40 @@
+{
+  "sample_label": "T1 最终观测",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "节点检查器源码检查、TypeScript 检查与 Vite 生产构建",
+      "result": "pass",
+      "raw_evidence": "WorkflowNodeInspector 不再包含需要电子签名表单项；vue-tsc 与 Vite 构建成功，2449 个模块完成转换；5173 返回最新构建资源",
+      "limitation": ["浏览器会话位于登录页，未执行登录后的视觉点击验收"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "WorkflowSignatureServiceTest、工作流模块回归与运行健康检查",
+      "result": "pass",
+      "raw_evidence": "直接测试 2/2 通过，旧签名配置下 required=false、confirmIfRequired 零写入；工作流 45 个测试通过；新后端健康状态为 UP",
+      "limitation": ["未在生产数据库执行审批"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "历史查询单元测试、编译和差异审计",
+      "result": "pass",
+      "raw_evidence": "历史 signatures 查询测试返回存量记录；signature_required 和 signatureConfirmed 调用链保留；无数据库迁移；git diff --check 通过",
+      "limitation": ["未连接生产数据库抽样历史记录"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "全量 Maven 测试在既有 PhysicalSubsystemConcurrencyMySqlTest 处因 architecture_concurrency.arch_physical_subsystem 表缺失失败；工作流及此前模块均已通过",
+    "仓库治理检查存在本需求之外的历史账本错误和当前工作区无关改动，不能作为本次产品偏差",
+    "沙箱内 Mockito Byte Buddy 无法自附加，改用 JDK 17 宿主环境完成工作流回归"
+  ],
+  "coverage_gaps": [
+    "未执行登录后的流程设计器视觉验收",
+    "全量后端测试未越过既有架构模块数据库夹具故障"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

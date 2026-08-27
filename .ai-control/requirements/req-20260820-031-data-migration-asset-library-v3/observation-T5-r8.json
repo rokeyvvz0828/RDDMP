@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T5-r8",
+  "phase": "observing",
+  "control_prefix": "T5",
+  "observation_status": "complete",
+  "trigger": "F-0002",
+  "commands_run": [
+    {
+      "id": "S1",
+      "command": "cd web && npx vue-tsc --noEmit -p tsconfig.json",
+      "exit_code": 0,
+      "evidence": "输出为空（无类型错误）；针对两个修改文件的 grep 过滤结果为空（无 ComponentsPage/StructuredListView 错误）"
+    },
+    {
+      "id": "S2",
+      "command": "cd web && npx vite build",
+      "exit_code": 0,
+      "evidence": "生成 web/dist 目录与最新时间戳资产文件，BUILD SUCCESS"
+    },
+    {
+      "id": "S3",
+      "command": "grep -nE 'UiPageHeader|Refresh' web/src/modules/data-migration/views/base/ComponentsPage.vue web/src/modules/data-migration/components/StructuredListView.vue",
+      "exit_code": 0,
+      "evidence": "两条匹配均为 0，确认两个文件已无 UiPageHeader/Refresh 残留引用"
+    },
+    {
+      "id": "S4",
+      "command": "git diff --stat web/src/modules/data-migration/views/base/ComponentsPage.vue web/src/modules/data-migration/components/StructuredListView.vue",
+      "exit_code": 0,
+      "evidence": "diff stat 集中在这两个文件，无其它模块越权修改"
+    }
+  ],
+  "sensors": [
+    {
+      "requirement_id": "R8",
+      "sensor": "S-frontend-build",
+      "result": "pass",
+      "raw_evidence": "vue-tsc 与 vite build 均通过；移除 UiPageHeader 不触发未解析符号或类型错误"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S-base-data-pages",
+      "result": "pass",
+      "raw_evidence": "基础资料 4 个子菜单页面（ProjectsPage / ComponentsPage / TargetTablesPage / IntermediateTablesPage）已统一无顶部 UiPageHeader 横幅；位置感由顶部 Tabs 承担"
+    }
+  ],
+  "disturbances": [],
+  "coverage_gaps": [
+    "桌面与 375/390/430 视口的实际渲染未在本轮回放截图复核，统一在 T6 acceptance 阶段回归"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "decision": "converged",
+  "decision_reason": "F-0002 提出的 UX 偏差已在本轮被定向消除，build 信号与 grep 复核一致；待 T6 阶段做最终视口验收",
+  "observed_at": "2026-08-21T03:50:00+00:00"
+}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, Check, Clock, Connection, Lock, Refresh, UserFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
@@ -8,6 +8,7 @@ import { listWorkflowDone, listWorkflowInbox, type WorkflowDoneItem, type Workfl
 import { apiErrorMessage } from '../api/error'
 import UiEmptyState from '../components/ui/UiEmptyState.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
+import { subscribeToPageActivation, subscribeToWorkflowTaskChanges } from '../utils/workflow-task-events'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -17,24 +18,32 @@ const done = ref<WorkflowDoneItem[]>([])
 const loading = ref(false)
 const forbidden = ref(false)
 const errorMessage = ref('')
+let unsubscribeTaskChanges: (() => void) | undefined
+let unsubscribePageActivation: (() => void) | undefined
+let taskRequestId = 0
 const currentHour = new Date().getHours()
 const greeting = computed(() => currentHour < 12 ? '早上好' : currentHour < 18 ? '下午好' : '晚上好')
 const projectInbox = computed(() => inbox.value.filter(item => !item.project_ref || item.project_ref === projectContext.currentRef))
 const projectDone = computed(() => done.value.filter(item => !item.project_ref || item.project_ref === projectContext.currentRef))
 
 async function loadTasks() {
+  const requestId = ++taskRequestId
   loading.value = true
   forbidden.value = false
   errorMessage.value = ''
   try {
     const [inboxResponse, doneResponse] = await Promise.all([listWorkflowInbox({ page: 1, size: 5 }), listWorkflowDone({ page: 1, size: 5 })])
+    if (requestId !== taskRequestId) return
     inbox.value = inboxResponse.data.data.records || []
     done.value = doneResponse.data.data.records || []
   } catch (error: unknown) {
+    if (requestId !== taskRequestId) return
     const status = (error as { response?: { status?: number } })?.response?.status
     forbidden.value = status === 403
     errorMessage.value = apiErrorMessage(error, '工作流任务加载失败')
-  } finally { loading.value = false }
+  } finally {
+    if (requestId === taskRequestId) loading.value = false
+  }
 }
 
 function openBusiness(item: WorkflowTask | WorkflowDoneItem) {
@@ -59,7 +68,16 @@ function openBusiness(item: WorkflowTask | WorkflowDoneItem) {
 }
 
 watch(() => projectContext.currentRef, () => { /* Project filtering is presentation-only. */ })
-onMounted(async () => { await projectContext.initialize(); await loadTasks() })
+onMounted(async () => {
+  unsubscribeTaskChanges = subscribeToWorkflowTaskChanges(() => { void loadTasks() })
+  unsubscribePageActivation = subscribeToPageActivation(() => { void loadTasks() })
+  await projectContext.initialize()
+  await loadTasks()
+})
+onBeforeUnmount(() => {
+  unsubscribeTaskChanges?.()
+  unsubscribePageActivation?.()
+})
 </script>
 
 <template>

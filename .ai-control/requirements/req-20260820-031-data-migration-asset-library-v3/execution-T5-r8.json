@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T5-r8",
+  "phase": "executing",
+  "control_prefix": "T5",
+  "execution_status": "complete",
+  "trigger": "F-0002 user directive (remove UiPageHeader banner from 基础资料管理 sub-menus)",
+  "scope": {
+    "writable": [
+      "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+      "web/src/modules/data-migration/components/StructuredListView.vue"
+    ],
+    "read_only": [
+      "web/src/modules/data-migration/**",
+      "web/src/components/ui/UiPageHeader.vue"
+    ],
+    "forbidden": [
+      "server/src/**",
+      "governance/**",
+      "database migration files",
+      "router config"
+    ],
+    "non_goals": [
+      "重排所有页面布局",
+      "修改 UiPageHeader 组件本身",
+      "修改 ProjectsPage.vue（原本就不含 UiPageHeader）",
+      "修改 dashboard 页面（不在 基础资料管理 菜单下）"
+    ]
+  },
+  "input_facts": [
+    "ComponentsPage.vue 模板含 <UiPageHeader title='系统/组件清单' description='...'> 块，actions 槽有'刷新'按钮",
+    "StructuredListView.vue 模板含 <UiPageHeader eyebrow='DATA MIGRATION' :title='pageTitle'> 块，actions 槽有'刷新'按钮（被 TargetTablesPage.vue 与 IntermediateTablesPage.vue 复用）",
+    "pageTitle prop 仍在 StructuredListView.vue 内被 :title='`编辑${pageTitle}`' 与'暂无${pageTitle}查看权限'两处引用，需保留",
+    "Refresh 图标仅在 UiPageHeader 的 actions 槽使用，移除后可同步清理导入",
+    "codex-task-scope.yaml 中 writable_paths 包含 web/src/modules/data-migration/**"
+  ],
+  "plan_steps": [
+    {
+      "id": "T5-r8-S1",
+      "action": "移除 ComponentsPage.vue 模板中 <UiPageHeader> 块（含 actions 槽刷新按钮）",
+      "evidence": "diff -- web/src/modules/data-migration/views/base/ComponentsPage.vue：删除 5 行 template 内容"
+    },
+    {
+      "id": "T5-r8-S2",
+      "action": "ComponentsPage.vue 清理 Refresh / UiPageHeader 导入并更新顶部注释",
+      "evidence": "script setup imports 移除 Refresh 与 UiPageHeader；注释明确'基础资料子页面不展示标题横幅，定位依赖顶部 Tabs'"
+    },
+    {
+      "id": "T5-r8-S3",
+      "action": "移除 StructuredListView.vue 模板中 <UiPageHeader> 块（含 actions 槽刷新按钮）",
+      "evidence": "diff -- web/src/modules/data-migration/components/StructuredListView.vue：删除 3 行 template 内容"
+    },
+    {
+      "id": "T5-r8-S4",
+      "action": "StructuredListView.vue 清理 Refresh / UiPageHeader 导入并更新顶部注释，保留 pageTitle prop 与其在抽屉/无权限文案中的使用",
+      "evidence": "script setup imports 移除 Refresh 与 UiPageHeader；注释明确基础资料子页面不展示标题横幅"
+    },
+    {
+      "id": "T5-r8-S5",
+      "action": "vue-tsc 与 vite build 验证",
+      "command": "cd web && npx vue-tsc --noEmit -p tsconfig.json && npx vite build",
+      "expected": "0 errors；BUILD SUCCESS",
+      "evidence": "vue-tsc 退出码 0 且无输出（针对两个文件的 grep 为空）；vite build 输出 dist/ 目录"
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-T5-r8-1",
+      "text": "失去页面级的'刷新'按钮可能影响主动刷新体验",
+      "mitigation": "StructuredListView 的 UiToolbar 已含'查询'按钮（同样调用 load()）；ComponentsPage 用户可关闭标签后重开或浏览器刷新",
+      "residual": "无 P0/P1 阻断"
+    },
+    {
+      "id": "R-T5-r8-2",
+      "text": "顶部 Tabs 已承担定位功能；移除页面标题横幅后上下文是否清晰需要在 375/390/430 视口实测确认",
+      "mitigation": "T5-r8 observation 阶段补做桌面与 375/390/430 截图复核",
+      "residual": "未在本轮执行；进入 T6 acceptance 阶段统一回归"
+    }
+  ],
+  "compliance_check": {
+    "scope_clean": true,
+    "no_prod": true,
+    "no_pii": true,
+    "no_bypass": true,
+    "writable_paths_respected": true,
+    "no_rollback_of_others": true
+  },
+  "executed_at": "2026-08-21T03:50:00+00:00",
+  "result": "pass",
+  "next": "T5-r8 observation in observation-T5-r8.json"
+}

@@ -1,0 +1,45 @@
+{
+  "sample_label": "T15 kkFileView preview source trust failure",
+  "task_ids": [
+    "T6"
+  ],
+  "baseline_revision": "state-revision-123",
+  "measurements": [
+    {
+      "requirement_id": "R8",
+      "sensor": "backend process environment and kkFileView trust policy",
+      "result": "fail",
+      "raw_evidence": "MINIO_PREVIEW_ENDPOINT was http://127.0.0.1:9000 while kkFileView rejects 127.0.0.1 as an untrusted preview source",
+      "limitation": [
+        "authenticated browser preview was not available during the initial diagnosis"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "container network probe",
+      "result": "pass",
+      "raw_evidence": "ccb-platform-kkfileview resolves and reaches http://host.docker.internal:9000/minio/health/live",
+      "limitation": []
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0008",
+      "severity": "P1",
+      "expected": "report preview source uses a host trusted by kkFileView and reachable from its container",
+      "observed": "backend signs the preview source with 127.0.0.1, which kkFileView rejects",
+      "evidence": "running backend MINIO_PREVIEW_ENDPOINT=http://127.0.0.1:9000; user-visible kkFileView trust warning"
+    }
+  ],
+  "disturbances": [],
+  "coverage_gaps": [
+    "initial observation did not include an authenticated attachment preview request"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 1,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

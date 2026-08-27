@@ -1,0 +1,75 @@
+{
+  "task_id": "T6",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "backend-dev.sh",
+      "purpose": "preserve the Docker-reachable MinIO endpoint for kkFileView while the host backend falls back to 127.0.0.1"
+    }
+  ],
+  "requirements_addressed": [
+    "R8"
+  ],
+  "commands": [
+    {
+      "command": "bash -n backend-dev.sh && git diff --check",
+      "exit_code": 0,
+      "salient_output": "shell syntax and whitespace checks passed"
+    },
+    {
+      "command": "mvn -q -pl :ccb-file-preview -am test",
+      "exit_code": 0,
+      "salient_output": "focused file-preview reactor tests passed from repository root"
+    },
+    {
+      "command": "./backend-dev.sh restart",
+      "exit_code": 0,
+      "salient_output": "startup selected backend http://127.0.0.1:9000 and preview http://host.docker.internal:9000; Spring Boot started on 8080"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "restarted backend environment",
+      "result": "pass",
+      "evidence": "MINIO_ENDPOINT=http://127.0.0.1:9000 and MINIO_PREVIEW_ENDPOINT=http://host.docker.internal:9000",
+      "limitations": []
+    },
+    {
+      "check": "service and container network health",
+      "result": "pass",
+      "evidence": "backend actuator UP, kkFileView HTTP reachable, and kkFileView container reaches MinIO live endpoint",
+      "limitations": []
+    },
+    {
+      "check": "authenticated report preview",
+      "result": "not_run",
+      "evidence": "no authorized local login session was available",
+      "limitations": [
+        "the final browser iframe was not sampled in this execution"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "captured the original host.docker.internal MinIO endpoint before host fallback",
+    "replaced only empty or loopback preview endpoints",
+    "left explicit non-loopback preview endpoints unchanged"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "platform file-preview implementation remains unchanged",
+      "result": "pass",
+      "evidence": "working diff contains no server/src/platform/file-preview source changes"
+    },
+    {
+      "invariant": "host backend retains local MinIO reachability",
+      "result": "pass",
+      "evidence": "backend starts successfully and actuator reports UP"
+    }
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "authenticated browser preview is not sampled in the current session"
+  ],
+  "recommended_next": "observe"
+}

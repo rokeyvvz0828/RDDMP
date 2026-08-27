@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T11",
+  "phase": "executing",
+  "control_prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "execution_status": "implemented",
+  "trigger": "代码审查发现目标表项目数据源、租户唯一性、分类权限和 Excel 导入契约偏差",
+  "changed_surfaces": [
+    {"path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java", "purpose": "切换 pm_project、租户唯一性、分类权限、Excel 按表分组及成功/失败统计"},
+    {"path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java", "purpose": "识别数据迁移管理员并按目标/中间表分类校验动作权限"},
+    {"path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java", "purpose": "增加迁移、项目数据源、租户、导入分组和分类权限回归断言"},
+    {"path": "server/src/platform/infrastructure/src/main/resources/db/migration/V88__data_migration_target_table_structure.sql", "purpose": "项目引用与历史数据迁移校验统一到 pm_project"},
+    {"path": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml", "purpose": "授权并登记 V88 迁移"},
+    {"path": "governance/modules.yaml", "purpose": "登记 data-migration 对项目与架构只读数据边界的依赖"},
+    {"path": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/design-target-table-structure.md", "purpose": "同步 pm_project 契约说明"}
+  ],
+  "requirements_addressed": ["R2", "R3", "R5", "R7", "R8"],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "聚焦模块测试通过"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc 与 Vite build 通过"},
+    {"command": "mvn -q test", "exit_code": 1, "salient_output": "4 个架构 Testcontainers 测试因 Docker API 1.32 低于服务端最低 1.40 而失败"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 1, "salient_output": "仅剩 .codebuddy/agents/AGENTS.md 越界"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "当前需求之外的历史账本格式问题仍存在"}
+  ],
+  "invariants_checked": [
+    {"invariant": "目标表项目引用使用 pm_project", "result": "passed"},
+    {"invariant": "唯一性校验使用认证租户", "result": "passed"},
+    {"invariant": "分类动作权限由服务端按 category 校验", "result": "passed"},
+    {"invariant": "Excel 同项目同系统的不同表不合并", "result": "passed"},
+    {"invariant": "accepted/failed 反映实际表持久化结果", "result": "passed"}
+  ],
+  "disturbances": [
+    {"event": "未跟踪的 IDE 生成 .codebuddy/agents/AGENTS.md", "impact": "范围检查仍失败，未修改该文件"},
+    {"event": "仓库历史治理账本和 Docker Testcontainers 环境问题", "impact": "治理全量和全量 Maven 仍不能作为通过证据"}
+  ],
+  "unresolved_items": ["需由用户/环境处理 .codebuddy 越界文件；需在兼容 Docker 环境执行全量 Maven、运行和浏览器验收"],
+  "recommended_next": "observe"
+}

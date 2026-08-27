@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T9",
+  "phase": "executing",
+  "control_prefix": "T9",
+  "execution_status": "in_progress",
+  "trigger": "用户指令 2026-08-22：所属项目字段切换为根菜单「项目管理」中的数据（经定标确认：全链路收敛到 pm_project、废弃数迁自建项目清单维护、接受 workbench 权限/数据范围）",
+  "scope": {
+    "writable": [
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/AssetService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+      "web/src/modules/data-migration/views/base/ProjectsPage.vue",
+      "web/src/router/index.ts",
+      "docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/**"
+    ],
+    "read_only": [
+      "web/src/components/ui/**",
+      "server/src/platform/**（平台能力只读）",
+      "web/src/api/project.ts（workbench 契约消费方）",
+      "governance/**"
+    ],
+    "forbidden": [
+      "production systems / real data"
+    ],
+    "non_goals": [
+      "不写 pm_project（仅只读 JOIN/COUNT 校验，项目数据仍由根菜单「项目管理」负责）",
+      "不调整 platform/system 的 ProjectService 与 workbench 契约",
+      "不删除 dm_project 表（历史数据保留，仅停用数迁维护入口）"
+    ]
+  },
+  "input_facts": [
+    "定标（2026-08-22）：全链路收敛到根菜单「项目管理」（pm_project）；废弃(停用数迁项目维护)；接受 workbench 权限/数据范围（project:project:list + 成员数据范围）",
+    "pm_project 与 dm_* 表同 schema（V51__project_management.sql 建表），可直接 SQL 只读 JOIN/COUNT，无需新增模块 Java 依赖与 pom 变更",
+    "dm_component 有效数据为 0（仅 2 条软删）、dm_asset 引用 0，切换无存量数据迁移负担",
+    "workbench 契约（platform/system ProjectService，只读）：超管 1=1，非超管 EXISTS pm_project_member；前端已存在 web/src/api/project.ts getProjectWorkbench()",
+    "dm_project 引用点：ProjectComponentService（projects()/options()/createProject/updateProject/deleteProject/组件列表与导出 JOIN/componentView/ensureProject）、DashboardService（PROJECT_TOTAL fallback）、DashboardSnapshotScheduler（PROJECT_TOTAL 快照）、AssetService/StructuredAssetService/ExcelService（ensureProject）",
+    "前端引用点：data-migration.ts（DataMigrationProject 类型 + 4 个 project API）、ComponentsPage.vue（所属项目下拉/筛选）、ProjectsPage.vue（项目清单维护页）、router/index.ts（/data-migration/base/projects 路由与 redirect）"
+  ],
+  "plan_steps": [
+    {
+      "id": "T9-S1",
+      "action": "ProjectComponentService：移除 options()/projects()/createProject/updateProject/deleteProject 及项目维护辅助方法（normalizeProjectCode/requireProjectName/requireDescription/optionalText）；组件列表/导出/详情 JOIN 与 count JOIN 从 dm_project 切到 pm_project；ensureProject 改查 pm_project",
+      "evidence": "ProjectComponentService diff：无 dm_project 残留，JOIN/校验全部指向 pm_project，项目 CRUD 方法移除"
+    },
+    {
+      "id": "T9-S2",
+      "action": "ProjectComponentController：移除 /options 与 /projects 的 GET/POST/PUT/DELETE 端点，仅保留 /components/** 相关端点",
+      "evidence": "Controller diff：/projects 与 /options 端点移除，grep 无 data-migration/projects 残留"
+    },
+    {
+      "id": "T9-S3",
+      "action": "DashboardService（PROJECT_TOTAL fallback）、DashboardSnapshotScheduler（PROJECT_TOTAL 快照）、AssetService/StructuredAssetService/ExcelService（ensureProject）全部从 dm_project 切到 pm_project",
+      "evidence": "5 个文件 diff；grep dm_project 在 modules/data-migration 仅剩 dm_project 表定义（V84 保留）"
+    },
+    {
+      "id": "T9-S4",
+      "action": "前端：data-migration.ts 移除 DataMigrationProject 类型与 4 个 project API；ComponentsPage.vue 所属项目下拉/筛选改用 getProjectWorkbench()（Project 类型）；router/index.ts 移除 /data-migration/base/projects 路由并将 /data-migration/base redirect 改为 components；删除 ProjectsPage.vue",
+      "evidence": "前端 diff；grep listDataMigrationProjects/DataMigrationProject 无残留；vue-tsc/build 通过"
+    },
+    {
+      "id": "T9-S5",
+      "action": "文档与账本：设计文档新增设计修订（所属项目数据源切换 pm_project + 废弃数迁项目维护）；design.json design_revision 4→5 追加 D11；state.json revision 73→74 追加 phase_history",
+      "evidence": "docs/design diff；design.json/state.json diff"
+    },
+    {
+      "id": "T9-S6",
+      "action": "验证：前端 vue-tsc + vite build、后端 mvn test、governance、scope、本地运行抽查（组件增/改/查/导出 + 项目下拉来自 pm_project）",
+      "command": "cd web && npx vue-tsc --noEmit -p tsconfig.json && timeout 240 npm run build; cd .. && mvn -q -pl server/src/modules/data-migration -am test; node scripts/check-all-governance.mjs; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "evidence": "vue-tsc 0 错误、build 成功；mvn test MVN_EXIT=0；governance/scope 通过；运行抽查通过"
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-T9-1",
+      "text": "后端直接 SQL 只读 pm_project，绕开 workbench 服务契约（非 Java import，不触发模块边界检查）",
+      "mitigation": "仅读不写、只用于展示与存在性校验；项目下拉等交互数据源走 workbench 契约遵循数据范围；模块边界检查只校验 pom 依赖与 Java import 包，SQL 只读不构成依赖声明变更",
+      "residual": "若未来平台要求所有跨模块读取都走服务契约，需评估注入 ProjectService 的依赖方向（需 modules.yaml 依赖登记与平台公开包审批）"
+    },
+    {
+      "id": "R-T9-2",
+      "text": "废弃 /projects CRUD 接口导致既有调用方失败",
+      "mitigation": "前端同步移除调用与维护页/路由；dm_component 有效数据为 0 无存量使用方；发布时前端与后端同批",
+      "residual": "外部系统若直接调用 data-migration /projects 接口需同步迁移到项目管理平台接口"
+    },
+    {
+      "id": "R-T9-3",
+      "text": "pm_project 数据范围（成员可见）与组件列表可见性不一致（后端 JOIN 不做成员过滤）",
+      "mitigation": "与既有 dm_project JOIN 行为保持一致（不新增过滤）；所属项目下拉/筛选遵循 workbench 成员范围，用户仅可创建/筛选其成员项目；看板统计与快照保持平台项目总数口径",
+      "residual": "非成员项目的组件在列表中仍展示项目编码/名称（与切换前 dm_project 行为一致）"
+    }
+  ],
+  "compliance_check": {
+    "scope_clean": true,
+    "no_prod": true,
+    "no_pii": true,
+    "no_bypass": true,
+    "writable_paths_respected": true,
+    "no_rollback_of_others": true
+  },
+  "executed_at": "2026-08-22T04:10:00+00:00",
+  "result": "success",
+  "next": "T9 observation completed in observation-T9.json"
+}

@@ -1,0 +1,58 @@
+{
+  "sample_label": "项目组件更新和当前前端状态复验",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R2",
+      "sensor": "S4 authenticated PUT and S5 browser route probe",
+      "result": "pass",
+      "raw_evidence": "项目和组件 PUT 请求均返回 code=0；项目/组件页面显示编辑入口；1280x800 与移动视口无页面溢出",
+      "limitation": ["未验证普通用户对他人记录编辑被拒绝"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S4 authentication boundary probe",
+      "result": "partial",
+      "raw_evidence": "无 Authorization 资产访问返回 401，管理员更新返回 200；普通用户实体授权仍未复验",
+      "limitation": ["本地数据库未提供可用普通用户登录凭据"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S1/S2/S3 governance, Maven and temporary frontend build",
+      "result": "pass",
+      "raw_evidence": "focused Maven、boot package、治理、scope、vue-tsc、Vite build 均通过；正式 npm 命令仍返回 vue-tsc not found",
+      "limitation": ["正式隔离依赖仍未恢复"]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R5",
+      "expected": "目标表/中间表字段级编辑、关联删除和筛选导出完整可用",
+      "observed": "当前页面已提供表结构列表和 Excel 导入/导出入口，但未提供字段级编辑、关联删除和筛选结果导出完整流程",
+      "reproduction": "打开 /data-migration/base/target-tables 或 /data-migration/base/intermediate-tables，检查操作区和提交请求",
+      "evidence": "页面显示通用结构化表格；无字段编辑抽屉和关联删除请求",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "覆盖当前实现和真实路由，不覆盖未来补充 API",
+      "causal_hypothesis": "表结构领域契约尚未在服务层建模为字段级资源",
+      "correction_check": "补充表结构字段 DTO、服务端关联校验删除和筛选导出后重新采样",
+      "classification": "duplicate"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "隔离工作树 node_modules 缺少 vue-tsc",
+      "effect": "正式 npm build 仍无法启动；主工作区依赖映射构建通过",
+      "detectable": true
+    }
+  ],
+  "coverage_gaps": [
+    "普通用户实体授权",
+    "表结构字段级维护和筛选导出",
+    "每日快照任务",
+    "正式前端依赖安装后的原生命令"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,71 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue",
+      "purpose": "route authorized report attachments through the public temporary preview service so kkFileView receives an extension-bearing object URL"
+    }
+  ],
+  "requirements_addressed": [
+    "R8"
+  ],
+  "commands": [
+    {
+      "command": "npm run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc and Vite production build passed; existing bundle-size warning remains"
+    },
+    {
+      "command": "mvn -q -pl :ccb-file-preview -am test",
+      "exit_code": 0,
+      "salient_output": "focused platform preview contract tests passed without source changes"
+    },
+    {
+      "command": "current requirement scope checker and git diff check",
+      "exit_code": 0,
+      "salient_output": "REQ-20260820-031 scope and whitespace checks passed"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "authorized attachment transfer",
+      "result": "pass",
+      "evidence": "attachment metadata and download APIs return 200; downloaded Blob size equals declared 3137 bytes",
+      "limitations": []
+    },
+    {
+      "check": "temporary preview creation",
+      "result": "pass",
+      "evidence": "POST /api/file-previews returns 200 and the iframe source host is host.docker.internal:9000",
+      "limitations": []
+    },
+    {
+      "check": "temporary preview cleanup",
+      "result": "pass",
+      "evidence": "dialog close removes the preview iframe and DELETE /api/file-previews/{previewId} returns 200",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "replaced the direct generic attachment preview call with authorized metadata and download calls",
+    "uploaded the preserved File name and content type to the public temporary preview endpoint",
+    "added dialog-close and component-unmount cleanup"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "server-side attachment authorization remains authoritative",
+      "result": "pass",
+      "evidence": "the flow uses existing GET /api/attachments/{id} and download endpoints before preview creation"
+    },
+    {
+      "invariant": "read-only platform implementations remain unchanged",
+      "result": "pass",
+      "evidence": "the source diff is limited to ReportsPage.vue plus current-prefix ledger files"
+    }
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

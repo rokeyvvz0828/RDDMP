@@ -1,0 +1,36 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/components/workflow/WorkflowNodeInspector.vue", "purpose": "移除审批节点电子签名配置入口"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowSignatureService.java", "purpose": "关闭运行时签名要求与新签名写入，保留历史查询"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowSignatureServiceTest.java", "purpose": "验证停用语义与历史兼容"},
+    {"path_or_resource": "docs/integration/workflow-module-contract.md", "purpose": "记录暂停期间的兼容契约"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3"],
+  "commands": [
+    {"command": "mvn -pl :ccb-workflow -am -Dtest=WorkflowSignatureServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "WorkflowSignatureServiceTest: 2 tests, 0 failures, BUILD SUCCESS"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc passed; Vite transformed 2449 modules and built production assets"},
+    {"command": "mvn -pl :ccb-workflow -am test (sandbox)", "exit_code": 1, "salient_output": "Mockito Byte Buddy could not self-attach in sandbox; workflow module was not reached"},
+    {"command": "env JAVA_HOME=<JDK17> /opt/homebrew/bin/mvn -pl :ccb-workflow -am test (host)", "exit_code": 0, "salient_output": "45 workflow tests plus dependencies passed; BUILD SUCCESS"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "no whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "停用签名服务行为", "result": "pass", "evidence": "旧配置路径 required=false、两次确认调用零 JDBC 写入且历史查询返回记录", "limitations": ["未访问生产数据库"]},
+    {"check": "工作流模块回归", "result": "pass", "evidence": "JDK 17 宿主环境 45 个工作流测试全部通过", "limitations": []},
+    {"check": "节点配置构建", "result": "pass", "evidence": "vue-tsc 与 Vite 生产构建退出码 0", "limitations": ["浏览器视觉验收留给观察阶段"]}
+  ],
+  "diff_summary": ["移除一个签名配置表单项", "签名服务 required 固定 false 且 confirmIfRequired 不再写入", "历史 signatures 查询保持原 SQL", "测试和契约改为暂停语义"],
+  "invariants_checked": [
+    {"invariant": "公开字段保持兼容", "result": "pass", "evidence": "未修改 WorkflowController、web/src/api/workflow.ts 或任务上下文字段"},
+    {"invariant": "历史签名不可修改或删除", "result": "pass", "evidence": "无迁移、删除或更新 SQL；只保留原 SELECT"},
+    {"invariant": "任务授权状态与动作校验不变", "result": "pass", "evidence": "WorkflowService 与 FlowableWorkflowService 未修改且工作流回归通过"},
+    {"invariant": "不覆盖用户无关改动", "result": "pass", "evidence": "任务 diff 限定四个授权文件；版本申请和附件改动未触碰"}
+  ],
+  "disturbances": [
+    {"event": "默认 Maven 使用 JDK 26 且沙箱禁止 Mockito 自附加", "impact": "两次依赖测试在 infrastructure 模块环境失败；改用 JDK 17 宿主环境后同一完整命令通过"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["全量后端测试、治理、范围和运行验收由 observing 阶段执行"],
+  "recommended_next": "observe"
+}
