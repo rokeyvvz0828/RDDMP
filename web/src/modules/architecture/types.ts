@@ -408,6 +408,8 @@ export interface DeploymentUnit {
   deploymentUnitType: string
   kind: DeploymentUnitKind
   status: DeploymentUnitStatus
+  defaultNetworkZoneId: number | null
+  defaultNetworkZoneName: string | null
   currentVersion: number
   description: string | null
   remark: string | null
@@ -427,6 +429,8 @@ export interface DeploymentUnitVersion {
   relatedDeploymentUnitName: string | null
   deploymentUnitType: string
   kind: DeploymentUnitKind
+  defaultNetworkZoneId: number | null
+  defaultNetworkZoneName: string | null
   description: string | null
   remark: string | null
   publishedBy: number
@@ -441,6 +445,7 @@ export interface DeploymentUnitPayload {
   relatedDeploymentUnitName: string | null
   deploymentUnitType: string | null
   kind: DeploymentUnitKind | ''
+  defaultNetworkZoneId: number | null
   description: string | null
   remark: string | null
   rowVersion?: number | null
@@ -506,6 +511,168 @@ export interface PhysicalSubsystemOption {
 export type EnvironmentRecordStatus = 'ACTIVE' | 'INACTIVE'
 export type ResourceRequestType = 'INITIAL' | 'EXPANSION' | 'SHRINK' | 'ADJUSTMENT'
 export type ResourceRequestStatus = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'APPROVED' | 'FULFILLED' | 'DIFF_FULFILLED' | 'REJECTED' | 'CANCELLED'
+export type NetworkAddressType = 'IP' | 'CIDR' | 'DOMAIN'
+export type NetworkEndpointKind = 'MANAGED' | 'EXTERNAL'
+export type NetworkAccessProtocol = 'TCP' | 'UDP' | 'HTTP' | 'HTTPS' | 'OTHER'
+export type NetworkAccessApplicationStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type NetworkAccessRelationStatus = 'ACTIVE' | 'CLOSED'
+
+export interface NetworkZone {
+  id: number
+  tenantId: number
+  parentId: number | null
+  parentName: string | null
+  code: string
+  name: string
+  restrictionLevel: number
+  status: EnvironmentRecordStatus
+  description: string | null
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NetworkZoneOption {
+  id: number
+  code: string
+  name: string
+  parentId: number | null
+  parentName: string | null
+  restrictionLevel: number
+  leaf: boolean
+}
+
+export interface NetworkZoneSubnet {
+  id: number
+  tenantId: number
+  networkZoneId: number
+  networkZoneCode: string
+  networkZoneName: string
+  cidrBlock: string
+  gatewayIp: string | null
+  purpose: string | null
+  status: EnvironmentRecordStatus
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ExternalNetworkAddress {
+  id: number
+  tenantId: number
+  addressType: NetworkAddressType
+  addressValue: string
+  displayName: string
+  purpose: string | null
+  status: EnvironmentRecordStatus
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ManagedEndpointInstance {
+  id: number
+  instanceNo: string
+  physicalSubsystemId: number
+  physicalSubsystemCode: string
+  physicalSubsystemName: string
+  environmentId: number
+  environmentCode: string
+  environmentName: string
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  machineName: string
+  ipAddress: string
+  networkZoneId: number | null
+  networkZoneName: string | null
+}
+
+export interface NetworkEndpointPayload {
+  kind: NetworkEndpointKind
+  physicalSubsystemId?: number | null
+  environmentId?: number | null
+  deploymentUnitId?: number | null
+  externalAddressId?: number | null
+  instanceIds?: number[]
+}
+
+export interface NetworkAccessPayload {
+  source: NetworkEndpointPayload
+  target: NetworkEndpointPayload
+  protocol: NetworkAccessProtocol
+  ports: string
+  purpose: string
+  processDescription?: string | null
+  validFrom?: string | null
+  validUntil?: string | null
+}
+
+export interface NetworkAccessApplication {
+  id: number
+  tenantId: number
+  applicationNo: string
+  applicantId: number
+  sourceKind: NetworkEndpointKind
+  sourcePhysicalSubsystemId: number | null
+  sourceEnvironmentId: number | null
+  sourceDeploymentUnitId: number | null
+  sourceExternalAddressId: number | null
+  sourceSnapshotJson: string | null
+  targetKind: NetworkEndpointKind
+  targetPhysicalSubsystemId: number | null
+  targetEnvironmentId: number | null
+  targetDeploymentUnitId: number | null
+  targetExternalAddressId: number | null
+  targetSnapshotJson: string | null
+  protocol: NetworkAccessProtocol
+  ports: string
+  purpose: string
+  processDescription: string | null
+  validFrom: string | null
+  validUntil: string | null
+  status: NetworkAccessApplicationStatus
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NetworkAccessRelation {
+  id: number
+  tenantId: number
+  relationNo: string
+  applicationId: number
+  sourceKind: NetworkEndpointKind
+  sourceSnapshotJson: string | null
+  targetKind: NetworkEndpointKind
+  targetSnapshotJson: string | null
+  protocol: NetworkAccessProtocol
+  ports: string
+  purpose: string
+  processDescription: string | null
+  validFrom: string | null
+  validUntil: string | null
+  status: NetworkAccessRelationStatus
+  closeReason: string | null
+  closedBy: number | null
+  closedAt: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
 
 export interface EnvironmentType {
   code: string
@@ -561,6 +728,7 @@ export interface ResourceRequestItemPayload {
   deploymentUnitId: number | null
   databaseStorageGb: number
   fileStorageGb: number
+  networkZoneId: number | null
   networkZone: string | null
   serverType: string | null
   cpuCores: number
@@ -602,6 +770,8 @@ export interface DeploymentUnitOption {
   relatedDeploymentUnitName: string | null
   deploymentUnitType: string | null
   description: string | null
+  defaultNetworkZoneId: number | null
+  defaultNetworkZoneName: string | null
 }
 
 export interface ResourceRequestSummary {
@@ -645,6 +815,8 @@ export interface ResourceRequestItem {
   deploymentUnitType: string | null
   databaseStorageGb: number
   fileStorageGb: number
+  networkZoneId: number | null
+  networkZoneName: string | null
   networkZone: string | null
   serverType: string | null
   cpuCores: number
@@ -718,6 +890,8 @@ export interface EnvironmentInstance {
   ipAddress: string
   serverType?: string
   deploymentPlatform?: string
+  networkZoneId?: number | null
+  networkZoneName?: string | null
   networkZone?: string
   status: InstanceStatus
   cpuCores: number
@@ -779,6 +953,8 @@ export interface ProvisionedInstance {
   ipAddress: string
   serverType?: string
   deploymentPlatform?: string
+  networkZoneId?: number | null
+  networkZoneName?: string | null
   networkZone?: string
   cpuCores: number
   memoryGb: number
@@ -812,6 +988,8 @@ export interface FulfillInstanceItemPayload {
   ipAddress: string
   serverType?: string | null
   deploymentPlatform?: string | null
+  networkZoneId?: number | null
+  networkZoneName?: string | null
   networkZone?: string | null
   cpuCores: number
   memoryGb: number

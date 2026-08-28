@@ -30,11 +30,12 @@ public class DeploymentUnitStore {
     private static final String UNIT_COLUMNS = """
             id, code, physical_subsystem_id, short_name, name, related_deployment_unit_name,
             deployment_unit_type, kind, status, current_version,
+            default_network_zone_id, default_network_zone_name,
             description, remark, created_by, updated_by, created_at, updated_at, row_version
             """;
     private static final String VERSION_COLUMNS = """
             id, unit_id, version_no, short_name, name, related_deployment_unit_name, deployment_unit_type,
-            kind, description, remark, published_by, published_at
+            kind, default_network_zone_id, default_network_zone_name, description, remark, published_by, published_at
             """;
     private static final String BATCH_COLUMNS = """
             id, file_name, file_size, total_rows, valid_rows, success_rows, failed_rows, skipped_rows,
@@ -47,8 +48,9 @@ public class DeploymentUnitStore {
     private static final RowMapper<DeploymentUnit> UNIT_MAPPER = (rs, rowNum) -> new DeploymentUnit(
             rs.getLong("id"), rs.getString("code"), rs.getLong("physical_subsystem_id"),
             rs.getString("short_name"), rs.getString("name"), rs.getString("related_deployment_unit_name"),
-            rs.getString("deployment_unit_type"), rs.getString("kind"), rs.getString("status"),
-            rs.getInt("current_version"), rs.getString("description"), rs.getString("remark"),
+            rs.getString("deployment_unit_type"), rs.getString("kind"),
+            nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
+            rs.getString("status"), rs.getInt("current_version"), rs.getString("description"), rs.getString("remark"),
             rs.getLong("created_by"), rs.getLong("updated_by"),
             localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")),
             rs.getLong("row_version"));
@@ -57,6 +59,7 @@ public class DeploymentUnitStore {
             rs.getLong("id"), rs.getLong("unit_id"), rs.getInt("version_no"),
             rs.getString("short_name"), rs.getString("name"), rs.getString("related_deployment_unit_name"),
             rs.getString("deployment_unit_type"), rs.getString("kind"),
+            nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
             rs.getString("description"), rs.getString("remark"), rs.getLong("published_by"),
             localDateTime(rs.getTimestamp("published_at")));
 
@@ -152,42 +155,61 @@ public class DeploymentUnitStore {
 
     public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId, String shortName,
                            String name, String relatedDeploymentUnitName, String deploymentUnitType,
-                           String kind, String description, String remark, long actorId) {
+                           String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
+                           String description, String remark, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit
                     (id, tenant_id, code, physical_subsystem_id, short_name, name,
                      related_deployment_unit_name, deployment_unit_type, kind, status,
-                     current_version, description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 1, ?, ?, ?, ?)
+                     current_version, default_network_zone_id, default_network_zone_name,
+                     description, remark, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 1, ?, ?, ?, ?, ?, ?)
                 """, id, tenantId, code, physicalSubsystemId, shortName, name,
                 relatedDeploymentUnitName, deploymentUnitType, kind,
-                description, remark, actorId, actorId);
+                defaultNetworkZoneId, defaultNetworkZoneName, description, remark, actorId, actorId);
     }
 
     public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId, String shortName,
                            String name, String kind, String description, String remark, long actorId) {
         insertUnit(id, tenantId, code, physicalSubsystemId, shortName, name, null,
-                defaultDeploymentUnitType(kind), kind, description, remark, actorId);
+                defaultDeploymentUnitType(kind), kind, null, null, description, remark, actorId);
+    }
+
+    public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId, String shortName,
+                           String name, String relatedDeploymentUnitName, String deploymentUnitType,
+                           String kind, String description, String remark, long actorId) {
+        insertUnit(id, tenantId, code, physicalSubsystemId, shortName, name, relatedDeploymentUnitName,
+                deploymentUnitType, kind, null, null, description, remark, actorId);
     }
 
     /** 乐观锁更新展示内容；返回 0 表示版本冲突或状态不允许。 */
     public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String shortName, String name,
                                  String relatedDeploymentUnitName, String deploymentUnitType,
-                                 String kind, String description, String remark, long actorId) {
+                                 String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
+                                 String description, String remark, long actorId) {
         return jdbc.update("""
                 UPDATE arch_deployment_unit
                 SET short_name = ?, name = ?, related_deployment_unit_name = ?, deployment_unit_type = ?,
-                    kind = ?, description = ?, remark = ?, updated_by = ?,
+                    kind = ?, default_network_zone_id = ?, default_network_zone_name = ?,
+                    description = ?, remark = ?, updated_by = ?,
                     row_version = row_version + 1
                 WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
                 """, shortName, name, relatedDeploymentUnitName, deploymentUnitType, kind,
-                description, remark, actorId, tenantId, id, expectedRowVersion);
+                defaultNetworkZoneId, defaultNetworkZoneName, description, remark, actorId,
+                tenantId, id, expectedRowVersion);
     }
 
     public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String shortName, String name,
                                  String kind, String description, String remark, long actorId) {
         return updateUnitContent(tenantId, id, expectedRowVersion, shortName, name, null,
-                defaultDeploymentUnitType(kind), kind, description, remark, actorId);
+                defaultDeploymentUnitType(kind), kind, null, null, description, remark, actorId);
+    }
+
+    public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String shortName, String name,
+                                 String relatedDeploymentUnitName, String deploymentUnitType,
+                                 String kind, String description, String remark, long actorId) {
+        return updateUnitContent(tenantId, id, expectedRowVersion, shortName, name,
+                relatedDeploymentUnitName, deploymentUnitType, kind, null, null, description, remark, actorId);
     }
 
     /** 状态迁移；返回 0 表示状态不允许或已变更。 */
@@ -271,20 +293,30 @@ public class DeploymentUnitStore {
 
     public void insertVersion(long id, long tenantId, long unitId, int versionNo, String shortName, String name,
                               String relatedDeploymentUnitName, String deploymentUnitType,
-                              String kind, String description, String remark, long actorId) {
+                              String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
+                              String description, String remark, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit_version
                     (id, tenant_id, unit_id, version_no, short_name, name, related_deployment_unit_name,
-                     deployment_unit_type, kind, description, remark, published_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     deployment_unit_type, kind, default_network_zone_id, default_network_zone_name,
+                     description, remark, published_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, tenantId, unitId, versionNo, shortName, name, relatedDeploymentUnitName,
-                deploymentUnitType, kind, description, remark, actorId);
+                deploymentUnitType, kind, defaultNetworkZoneId, defaultNetworkZoneName,
+                description, remark, actorId);
     }
 
     public void insertVersion(long id, long tenantId, long unitId, int versionNo, String shortName, String name,
                               String kind, String description, String remark, long actorId) {
         insertVersion(id, tenantId, unitId, versionNo, shortName, name, null,
-                defaultDeploymentUnitType(kind), kind, description, remark, actorId);
+                defaultDeploymentUnitType(kind), kind, null, null, description, remark, actorId);
+    }
+
+    public void insertVersion(long id, long tenantId, long unitId, int versionNo, String shortName, String name,
+                              String relatedDeploymentUnitName, String deploymentUnitType,
+                              String kind, String description, String remark, long actorId) {
+        insertVersion(id, tenantId, unitId, versionNo, shortName, name, relatedDeploymentUnitName,
+                deploymentUnitType, kind, null, null, description, remark, actorId);
     }
 
     public List<DeploymentUnitVersion> findVersions(long tenantId, long unitId) {

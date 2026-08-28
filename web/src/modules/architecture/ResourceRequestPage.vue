@@ -26,6 +26,7 @@ import {
   listResourceRequests,
   loadParameterOptions,
   loadPhysicalSubsystemOptions,
+  loadNetworkZoneOptions,
   loadResourceDeploymentUnitOptions,
   loadUserOptions,
   previewAutomatedProvision,
@@ -38,6 +39,7 @@ import type {
   Environment,
   FulfillInstanceItemPayload,
   FulfillmentMode,
+  NetworkZoneOption,
   ParameterOption,
   PhysicalSubsystemOption,
   ResourceRequestDetail,
@@ -74,6 +76,7 @@ type ResourceFormItem = ResourceRequestItemPayload & UnitShape & {
   deploymentUnitName: string | null
   relatedDeploymentUnitName: string | null
   deploymentUnitDescription: string | null
+  networkZoneName: string | null
 }
 
 type ResourceForm = Omit<ResourceRequestPayload, 'items'> & {
@@ -91,6 +94,7 @@ const environments = ref<Environment[]>([])
 const users = ref<UserOption[]>([])
 const physicalOptions = ref<PhysicalSubsystemOption[]>([])
 const deploymentUnitOptions = ref<DeploymentUnitOption[]>([])
+const networkZoneOptions = ref<NetworkZoneOption[]>([])
 const serverTypes = ref<ParameterOption[]>([])
 const deploymentPlatforms = ref<ParameterOption[]>([])
 const disasterRecoveryModes = ref<ParameterOption[]>([])
@@ -197,6 +201,20 @@ function displayText(value: string | number | null | undefined) {
   return value === null || value === undefined || value === '' ? '—' : String(value)
 }
 
+function networkZoneName(id: number | null | undefined) {
+  if (!id) return null
+  return networkZoneOptions.value.find(zone => zone.id === id)?.name ?? null
+}
+
+function displayNetworkZone(item: { networkZoneId?: number | null; networkZoneName?: string | null; networkZone?: string | null }) {
+  return item.networkZoneName || networkZoneName(item.networkZoneId) || item.networkZone || '—'
+}
+
+function syncNetworkZoneText(item: { networkZoneId?: number | null; networkZoneName?: string | null; networkZone?: string | null }) {
+  item.networkZoneName = networkZoneName(item.networkZoneId) ?? null
+  item.networkZone = item.networkZoneName
+}
+
 function displayAmount(value: number | null | undefined, unit = '') {
   const formatted = integerAmount(value).toLocaleString('zh-CN')
   return unit ? `${formatted} ${unit}` : formatted
@@ -275,6 +293,8 @@ function syncDeploymentUnit(item: ResourceFormItem, resetDemand = true) {
     item.relatedDeploymentUnitName = null
     item.deploymentUnitDescription = null
     item.deploymentUnitType = null
+    item.networkZoneId = null
+    item.networkZoneName = null
     return
   }
   item.deploymentUnitCode = unit.code
@@ -283,12 +303,19 @@ function syncDeploymentUnit(item: ResourceFormItem, resetDemand = true) {
   item.relatedDeploymentUnitName = unit.relatedDeploymentUnitName ?? null
   item.deploymentUnitDescription = unit.description ?? null
   item.deploymentUnitType = unit.deploymentUnitType ?? defaultDeploymentUnitType(unit.kind)
+  if (resetDemand) {
+    item.networkZoneId = unit.defaultNetworkZoneId ?? null
+    item.networkZoneName = unit.defaultNetworkZoneName ?? null
+    item.networkZone = unit.defaultNetworkZoneName ?? null
+  }
   if (resetDemand) normalizeDemandFields(item)
 }
 
 function normalizeDemandFields(item: ResourceFormItem) {
   if (isDatabaseRecord(item)) {
     item.fileStorageGb = 0
+    item.networkZoneId = null
+    item.networkZoneName = null
     item.networkZone = null
     item.serverType = null
     item.cpuCores = 0
@@ -379,6 +406,7 @@ async function loadOptions() {
       platformRows,
       disasterRows,
       systemLevelRows,
+      networkZoneRows,
       jdkRows,
       middlewareRows,
       operatingSystemRows
@@ -390,6 +418,7 @@ async function loadOptions() {
       loadParameterOptions('physical-subsystem', 'ARCH_DEPLOYMENT_PLATFORM'),
       loadParameterOptions('physical-subsystem', 'ARCH_DISASTER_RECOVERY_MODE'),
       loadParameterOptions('physical-subsystem', 'ARCH_SYSTEM_LEVEL'),
+      loadNetworkZoneOptions(true),
       loadParameterOptions('physical-subsystem', 'ARCH_JDK_VERSION'),
       loadParameterOptions('physical-subsystem', 'ARCH_MIDDLEWARE'),
       loadParameterOptions('physical-subsystem', 'ARCH_OPERATING_SYSTEM')
@@ -401,6 +430,7 @@ async function loadOptions() {
     deploymentPlatforms.value = platformRows
     disasterRecoveryModes.value = disasterRows
     systemLevels.value = systemLevelRows
+    networkZoneOptions.value = networkZoneRows
     jdkVersions.value = jdkRows
     middlewares.value = middlewareRows
     operatingSystems.value = operatingSystemRows
@@ -554,6 +584,8 @@ async function openEdit(row: ResourceRequestSummary) {
       deploymentUnitType: item.deploymentUnitType,
       databaseStorageGb: Number(item.databaseStorageGb),
       fileStorageGb: Number(item.fileStorageGb),
+      networkZoneId: item.networkZoneId,
+      networkZoneName: item.networkZoneName,
       networkZone: item.networkZone,
       serverType: item.serverType,
       cpuCores: Number(item.cpuCores),
@@ -597,6 +629,8 @@ function blankItem(): ResourceFormItem {
     deploymentUnitType: null,
     databaseStorageGb: 0,
     fileStorageGb: 0,
+    networkZoneId: null,
+    networkZoneName: null,
     networkZone: null,
     serverType: defaultServerTypeCode(),
     cpuCores: 0,
@@ -665,6 +699,9 @@ function validateForm() {
     if (!itemHasDemand(item)) {
       return isDatabaseRecord(item) ? 'DB 明细至少填写数据库存储需求、数据库或数据库版本' : '非 DB 明细至少填写一项资源容量或附加需求'
     }
+    if (!isDatabaseRecord(item) && !item.networkZoneId) {
+      return '非 DB 明细必须选择网络分区'
+    }
   }
   return null
 }
@@ -676,7 +713,8 @@ function requestItemPayload(item: ResourceFormItem): ResourceRequestItemPayload 
     deploymentUnitId: item.deploymentUnitId,
     databaseStorageGb: database ? integerAmount(item.databaseStorageGb) : 0,
     fileStorageGb: database ? 0 : integerAmount(item.fileStorageGb),
-    networkZone: database ? null : text(item.networkZone),
+    networkZoneId: database ? null : item.networkZoneId,
+    networkZone: database ? null : (networkZoneName(item.networkZoneId) || text(item.networkZone)),
     serverType: database ? null : (text(item.serverType) || defaultServerTypeCode()),
     cpuCores: database ? 0 : integerAmount(item.cpuCores),
     memoryGb: database ? 0 : integerAmount(item.memoryGb),
@@ -848,6 +886,8 @@ async function loadAutomatedPreview() {
       ipAddress: inst.ipAddress,
       serverType: inst.serverType || DEFAULT_SERVER_TYPE_CODE,
       deploymentPlatform: inst.deploymentPlatform || targetFulfillRequest.value?.physicalSubsystemDeploymentPlatform,
+      networkZoneId: inst.networkZoneId ?? null,
+      networkZoneName: inst.networkZoneName ?? null,
       networkZone: inst.networkZone,
       cpuCores: inst.cpuCores,
       memoryGb: inst.memoryGb,
@@ -890,7 +930,9 @@ function handleFulfillModeChange(mode: FulfillmentMode) {
             ipAddress: '',
             serverType: item.serverType || DEFAULT_SERVER_TYPE_CODE,
             deploymentPlatform: targetFulfillRequest.value?.physicalSubsystemDeploymentPlatform,
-            networkZone: item.networkZone,
+            networkZoneId: item.networkZoneId,
+            networkZoneName: item.networkZoneName,
+            networkZone: item.networkZoneName || item.networkZone,
             cpuCores: item.cpuCores,
             memoryGb: item.memoryGb,
             databaseStorageGb: item.databaseStorageGb,
@@ -923,7 +965,9 @@ function addManualInstanceRow() {
     ipAddress: '',
     serverType: firstUnit?.serverType || DEFAULT_SERVER_TYPE_CODE,
     deploymentPlatform: targetFulfillRequest.value?.physicalSubsystemDeploymentPlatform,
-    networkZone: firstUnit?.networkZone || null,
+    networkZoneId: firstUnit?.networkZoneId || null,
+    networkZoneName: firstUnit?.networkZoneName || null,
+    networkZone: firstUnit?.networkZoneName || firstUnit?.networkZone || null,
     cpuCores: firstUnit?.cpuCores || 2,
     memoryGb: firstUnit?.memoryGb || 4,
     databaseStorageGb: firstUnit?.databaseStorageGb || 0,
@@ -967,6 +1011,10 @@ async function submitFulfill() {
       ElMessage.warning(`第 ${i + 1} 台实例的 IP 地址不能为空`)
       return
     }
+    if (!inst.networkZoneId) {
+      ElMessage.warning(`第 ${i + 1} 台实例必须选择网络分区`)
+      return
+    }
   }
   if (hasResourceDiff.value && !differenceReason.value.trim()) {
     ElMessage.warning('实际下发资源与工单申请值存在差异，必须填写差异原因')
@@ -982,6 +1030,7 @@ async function submitFulfill() {
         ...i,
         machineName: i.machineName.trim(),
         ipAddress: i.ipAddress.trim(),
+        networkZone: networkZoneName(i.networkZoneId) || i.networkZone || null,
         fulfillmentMode: fulfillMode.value
       })),
       rowVersion: targetFulfillRequest.value.rowVersion
@@ -1139,7 +1188,7 @@ watch(deploymentUnitOptions, () => {
                   <dl>
                     <div><dt>服务器类型</dt><dd>{{ serverTypeLabel(item.serverType) }}</dd></div>
                     <div><dt>文件存储需求</dt><dd>{{ displayAmount(item.fileStorageGb, 'G') }}</dd></div>
-                    <div><dt>网络分区</dt><dd>{{ displayText(item.networkZone) }}</dd></div>
+                    <div><dt>网络分区</dt><dd>{{ displayNetworkZone(item) }}</dd></div>
                     <div><dt>CPU</dt><dd>{{ displayAmount(item.cpuCores) }}</dd></div>
                     <div><dt>内存</dt><dd>{{ displayAmount(item.memoryGb, 'G') }}</dd></div>
                     <div><dt>AP、WEB组数</dt><dd>{{ item.appWebGroupCount }}</dd></div>
@@ -1273,7 +1322,11 @@ watch(deploymentUnitOptions, () => {
                     </el-select>
                   </el-form-item>
                   <el-form-item label="文件存储需求（G）"><el-input-number v-model="item.fileStorageGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="网络分区"><el-input v-model="item.networkZone" maxlength="100" /></el-form-item>
+                  <el-form-item label="网络分区">
+                    <el-select v-model="item.networkZoneId" filterable placeholder="选择启用叶子网络分区" @change="syncNetworkZoneText(item)">
+                      <el-option v-for="zone in networkZoneOptions" :key="zone.id" :label="`${zone.name}（${zone.code}）`" :value="zone.id" />
+                    </el-select>
+                  </el-form-item>
                   <el-form-item label="CPU"><el-input-number v-model="item.cpuCores" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
                   <el-form-item label="内存"><el-input-number v-model="item.memoryGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
                   <el-form-item label="AP、WEB组数"><el-input-number v-model="item.appWebGroupCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
@@ -1446,9 +1499,11 @@ watch(deploymentUnitOptions, () => {
                 <el-input-number v-model="row.fileStorageGb" size="small" :min="0" :precision="0" style="width: 100%;" controls-position="right" />
               </template>
             </el-table-column>
-            <el-table-column label="网络分区" width="110">
+            <el-table-column label="网络分区" min-width="170">
               <template #default="{ row }">
-                <el-input v-model="row.networkZone" size="small" placeholder="网络分区" />
+                <el-select v-model="row.networkZoneId" size="small" filterable placeholder="网络分区" style="width:100%" @change="syncNetworkZoneText(row)">
+                  <el-option v-for="zone in networkZoneOptions" :key="zone.id" :label="`${zone.name}（${zone.code}）`" :value="zone.id" />
+                </el-select>
               </template>
             </el-table-column>
             <el-table-column v-if="fulfillMode === 'MANUAL'" label="操作" width="70" align="center">

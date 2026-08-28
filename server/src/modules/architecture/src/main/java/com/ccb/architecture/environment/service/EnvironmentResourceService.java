@@ -24,6 +24,8 @@ import com.ccb.architecture.environment.model.EnvironmentResourceModels.Resource
 import com.ccb.architecture.environment.persistence.EnvironmentResourceStore;
 import com.ccb.architecture.environment.persistence.EnvironmentResourceStore.DeploymentUnitRef;
 import com.ccb.architecture.environment.persistence.EnvironmentResourceStore.PhysicalSubsystemRef;
+import com.ccb.architecture.network.service.NetworkAccessService;
+import com.ccb.architecture.network.service.NetworkAccessService.ZoneRef;
 import com.ccb.architecture.web.ArchitectureNotFoundException;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
@@ -100,26 +102,37 @@ public class EnvironmentResourceService {
     private final ObjectMapper objectMapper;
     private final SystemReferenceQuery referenceQuery;
     private final AutomatedDeploymentProvider automatedDeploymentProvider;
+    private final NetworkAccessService networkAccessService;
     private final LongSupplier idSupplier;
     private final Clock clock;
 
     @Autowired
     public EnvironmentResourceService(EnvironmentResourceStore store, ObjectMapper objectMapper,
                                       SystemReferenceQuery referenceQuery,
-                                      AutomatedDeploymentProvider automatedDeploymentProvider) {
+                                      AutomatedDeploymentProvider automatedDeploymentProvider,
+                                      NetworkAccessService networkAccessService) {
         this(store, objectMapper, referenceQuery, automatedDeploymentProvider,
                 () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000),
-                Clock.systemUTC());
+                Clock.systemUTC(), networkAccessService);
     }
 
     EnvironmentResourceService(EnvironmentResourceStore store, ObjectMapper objectMapper,
                                SystemReferenceQuery referenceQuery,
                                AutomatedDeploymentProvider automatedDeploymentProvider,
                                LongSupplier idSupplier, Clock clock) {
+        this(store, objectMapper, referenceQuery, automatedDeploymentProvider, idSupplier, clock, null);
+    }
+
+    EnvironmentResourceService(EnvironmentResourceStore store, ObjectMapper objectMapper,
+                               SystemReferenceQuery referenceQuery,
+                               AutomatedDeploymentProvider automatedDeploymentProvider,
+                               LongSupplier idSupplier, Clock clock,
+                               NetworkAccessService networkAccessService) {
         this.store = Objects.requireNonNull(store, "环境资源存储不能为空");
         this.objectMapper = Objects.requireNonNull(objectMapper, "JSON 序列化器不能为空");
         this.referenceQuery = Objects.requireNonNull(referenceQuery, "系统引用查询不能为空");
         this.automatedDeploymentProvider = Objects.requireNonNull(automatedDeploymentProvider, "自动部署提供器不能为空");
+        this.networkAccessService = networkAccessService;
         this.idSupplier = Objects.requireNonNull(idSupplier, "标识生成器不能为空");
         this.clock = Objects.requireNonNull(clock, "时钟不能为空");
     }
@@ -659,6 +672,8 @@ public class EnvironmentResourceService {
             }
             boolean databaseUnit = isDatabaseDeploymentUnit(unit, deploymentUnitType);
             String serverType = null;
+            Long networkZoneId = null;
+            String networkZoneName = null;
             String networkZone = null;
             String jdkVersion = null;
             String middleware = null;
@@ -687,7 +702,10 @@ public class EnvironmentResourceService {
                 serverType = validateParameter(actor, SERVER_TYPE_CATEGORY,
                         trimToNull(command.serverType()) == null ? DEFAULT_SERVER_TYPE_CODE : command.serverType(),
                         "服务器类型");
-                networkZone = optional(command.networkZone(), "网络分区", 100);
+                ZoneRef zone = resolveResourceItemNetworkZone(actor, command.networkZoneId(), unit, command.networkZone());
+                networkZoneId = zone == null ? null : zone.id();
+                networkZoneName = zone == null ? null : zone.name();
+                networkZone = networkZoneName == null ? optional(command.networkZone(), "网络分区", 100) : networkZoneName;
                 jdkVersion = validateOptionalParameter(actor, JDK_VERSION_CATEGORY, command.jdkVersion(), "JDK");
                 middleware = validateOptionalParameter(actor, MIDDLEWARE_CATEGORY, command.middleware(), "中间件");
                 operatingSystem = validateOptionalParameter(actor, OPERATING_SYSTEM_CATEGORY,
@@ -705,13 +723,54 @@ public class EnvironmentResourceService {
                     trimToNull(unit.description()),
                     deploymentUnitType,
                     databaseStorage, fileStorage,
-                    networkZone, serverType,
+                    networkZoneId, networkZoneName, networkZone, serverType,
                     cpu, memory, appWebGroups, nodes, sidecarCpu, sidecarMemory, hasSidecar,
                     databaseName, databaseVersion, jdkVersion, middleware, operatingSystem,
                     extraCbs, localDisk, needsNft, needsFserver, needsJobexecutor,
                     optional(command.remark(), "备注", 1000)));
         }
         return List.copyOf(items);
+    }
+
+    private ZoneRef resolveResourceItemNetworkZone(AuthUser actor, Long requestedZoneId,
+                                                   DeploymentUnitRef unit, String legacyText) {
+        Long selectedZoneId = requestedZoneId == null ? unit.defaultNetworkZoneId() : requestedZoneId;
+        if (selectedZoneId != null) {
+            if (networkAccessService == null) {
+                return new ZoneRef(selectedZoneId, null,
+                        requestedZoneId == null ? unit.defaultNetworkZoneName() : null);
+            }
+            return networkAccessService.requireActiveLeafZone(actor.tenantId(), selectedZoneId, "资源申请网络分区");
+        }
+        if (networkAccessService != null) {
+            throw badRequest("非 DB 资源申请明细必须选择网络分区");
+        }
+        return null;
+    }
+
+    private ZoneRef resolveFulfillmentNetworkZone(AuthUser actor, Long requestedZoneId,
+                                                  ResourceRequestItem sourceItem, DeploymentUnitRef unit, int seq) {
+        Long selectedZoneId = requestedZoneId;
+        String fallbackName = null;
+        if (selectedZoneId == null && sourceItem.networkZoneId() != null) {
+            selectedZoneId = sourceItem.networkZoneId();
+            fallbackName = sourceItem.networkZoneName();
+        }
+        if (selectedZoneId == null && unit.defaultNetworkZoneId() != null) {
+            selectedZoneId = unit.defaultNetworkZoneId();
+            fallbackName = unit.defaultNetworkZoneName();
+        }
+        if (selectedZoneId != null) {
+            if (networkAccessService == null) {
+                return new ZoneRef(selectedZoneId, null, fallbackName);
+            }
+            return networkAccessService.requireActiveLeafZone(actor.tenantId(), selectedZoneId,
+                    "第 " + seq + " 台实例网络分区");
+        }
+        if (networkAccessService != null) {
+            throw badRequest("第 " + seq + " 台实例必须选择网络分区");
+        }
+        return null;
     }
 
     private List<ResourceRequestItem> toItems(long tenantId, long requestId, List<ItemInput> inputs) {
@@ -722,7 +781,8 @@ public class EnvironmentResourceService {
                     input.unit().id(), input.unit().code(), input.unit().name(), input.unit().kind(),
                     input.relatedDeploymentUnitName(), input.deploymentUnitDescription(),
                     input.deploymentUnitType(), input.databaseStorageGb(), input.fileStorageGb(),
-                    input.networkZone(), input.serverType(), input.cpuCores(), input.memoryGb(),
+                    input.networkZoneId(), input.networkZoneName(), input.networkZone(),
+                    input.serverType(), input.cpuCores(), input.memoryGb(),
                     input.appWebGroupCount(), input.plannedNodeCount(), input.sidecarCpuCores(),
                     input.sidecarMemoryGb(), input.hasSidecar(), input.databaseName(),
                     input.databaseVersion(), input.jdkVersion(), input.middleware(), input.operatingSystem(),
@@ -791,6 +851,8 @@ public class EnvironmentResourceService {
         itemSnapshot.put("deploymentUnitDescription", item.deploymentUnitDescription());
         itemSnapshot.put("databaseStorageGb", item.databaseStorageGb());
         itemSnapshot.put("fileStorageGb", item.fileStorageGb());
+        itemSnapshot.put("networkZoneId", item.networkZoneId());
+        itemSnapshot.put("networkZoneName", item.networkZoneName());
         itemSnapshot.put("networkZone", item.networkZone());
         itemSnapshot.put("serverType", item.serverType());
         itemSnapshot.put("cpuCores", item.cpuCores());
@@ -966,6 +1028,9 @@ public class EnvironmentResourceService {
                     ignored -> store.countInstancesForEnvironmentUnit(actor.tenantId(),
                             request.environmentId(), item.deploymentUnitId()) + 1);
             nextSequenceByUnit.put(item.deploymentUnitId(), nextSequenceStart + nodeCount);
+            String subnetCidr = networkAccessService == null ? null
+                    : networkAccessService.requirePrimaryActiveSubnetCidr(actor.tenantId(), item.networkZoneId(),
+                    "自动部署明细 " + item.itemSeq());
 
             provisionItems.add(new ProvisionItemRequest(
                     item.id(),
@@ -983,7 +1048,10 @@ public class EnvironmentResourceService {
                     item.localDiskGb(),
                     item.plannedNodeCount(),
                     nextSequenceStart,
+                    item.networkZoneId(),
+                    item.networkZoneName(),
                     item.networkZone(),
+                    subnetCidr,
                     item.serverType(),
                     request.physicalSubsystemDeploymentPlatform(),
                     item.databaseName(),
@@ -1118,7 +1186,17 @@ public class EnvironmentResourceService {
             String middleware = validateOptionalParameter(actor, MIDDLEWARE_CATEGORY, instCmd.middleware(), "中间件");
             String os = validateOptionalParameter(actor, OPERATING_SYSTEM_CATEGORY, instCmd.operatingSystem(), "操作系统");
             String platform = optional(instCmd.deploymentPlatform() == null ? request.physicalSubsystemDeploymentPlatform() : instCmd.deploymentPlatform(), "部署平台", 64);
-            String zone = optional(instCmd.networkZone(), "网络分区", 100);
+            ZoneRef zoneRef = resolveFulfillmentNetworkZone(actor, instCmd.networkZoneId(), sourceItem, unit, seq);
+            Long zoneId = zoneRef == null ? null : zoneRef.id();
+            String zoneName = zoneRef == null ? null : zoneRef.name();
+            String zone = zoneName == null
+                    ? optional(instCmd.networkZone() == null ? sourceItem.networkZone() : instCmd.networkZone(),
+                    "网络分区", 100)
+                    : zoneName;
+            if (networkAccessService != null) {
+                networkAccessService.requireIpInActiveSubnet(actor.tenantId(), zoneId, ipAddress,
+                        "第 " + seq + " 台实例 IP 地址");
+            }
 
             long instanceId = nextId();
             String instanceNo = "INS" + instanceId;
@@ -1149,6 +1227,8 @@ public class EnvironmentResourceService {
                     ipAddress,
                     serverType,
                     platform,
+                    zoneId,
+                    zoneName,
                     zone,
                     InstanceStatus.ACTIVE,
                     instCmd.cpuCores() == null ? BigDecimal.ZERO : nonNegativeInteger(instCmd.cpuCores(), "CPU核心数"),
@@ -1378,7 +1458,8 @@ public class EnvironmentResourceService {
 
     private record ItemInput(DeploymentUnitRef unit, String relatedDeploymentUnitName, String deploymentUnitDescription,
                              String deploymentUnitType, BigDecimal databaseStorageGb,
-                             BigDecimal fileStorageGb, String networkZone, String serverType,
+                             BigDecimal fileStorageGb, Long networkZoneId, String networkZoneName,
+                             String networkZone, String serverType,
                              BigDecimal cpuCores, BigDecimal memoryGb, int appWebGroupCount,
                              int plannedNodeCount, BigDecimal sidecarCpuCores,
                              BigDecimal sidecarMemoryGb, boolean hasSidecar, String databaseName,

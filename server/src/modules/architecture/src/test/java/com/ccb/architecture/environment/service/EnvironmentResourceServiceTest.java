@@ -24,6 +24,8 @@ import com.ccb.architecture.environment.persistence.EnvironmentResourceStore.Phy
 import com.ccb.architecture.environment.service.EnvironmentResourceService.AccessScope;
 import com.ccb.architecture.environment.service.EnvironmentResourceService.ResourceRequestCommand;
 import com.ccb.architecture.environment.service.EnvironmentResourceService.SubmissionPreparation;
+import com.ccb.architecture.network.service.NetworkAccessService;
+import com.ccb.architecture.network.service.NetworkAccessService.ZoneRef;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
@@ -66,6 +68,8 @@ class EnvironmentResourceServiceTest {
     private EnvironmentResourceStore store;
     @Mock
     private SystemReferenceQuery referenceQuery;
+    @Mock
+    private NetworkAccessService networkAccessService;
 
     private final AtomicLong ids = new AtomicLong(900000L);
     private EnvironmentResourceService service;
@@ -307,6 +311,13 @@ class EnvironmentResourceServiceTest {
                 physicalId, null, "DB", "接入数据库", 1_002L, 1);
     }
 
+    private EnvironmentResourceService serviceWithNetworkAccess() {
+        return new EnvironmentResourceService(store, new ObjectMapper(), referenceQuery,
+                new MockAutomatedDeploymentProvider(), ids::incrementAndGet,
+                Clock.fixed(Instant.parse("2026-08-24T10:00:00Z"), ZoneOffset.UTC),
+                networkAccessService);
+    }
+
     private ResourceRequest request(long id, RequestStatus status, long applicantId,
                                     long rowVersion, boolean cancellationRequested) {
         return new ResourceRequest(id, 7L, "RR" + id, 100L, "W0001A", "EACP",
@@ -322,6 +333,18 @@ class EnvironmentResourceServiceTest {
                 "接入应用", "APPLICATION", null, "接入应用节点", "AP",
                 BigDecimal.ZERO, BigDecimal.valueOf(100),
                 "开放区", "architecture.server-type.container", BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                1, 2, BigDecimal.ZERO, BigDecimal.ZERO, false, null, null,
+                "architecture.jdk.jdk17", "architecture.middleware.tomcat9", "architecture.os.rhel8-5",
+                BigDecimal.ZERO, BigDecimal.ZERO,
+                false, false, false, null, TIME, TIME);
+    }
+
+    private ResourceRequestItem itemWithZone(long id, long requestId, long unitId) {
+        return new ResourceRequestItem(id, 7L, requestId, 1, unitId, "DW0001A001",
+                "接入应用", "APPLICATION", null, "接入应用节点", "AP",
+                BigDecimal.ZERO, BigDecimal.valueOf(100),
+                800L, "P8开放AP", "P8开放AP", "architecture.server-type.container",
+                BigDecimal.valueOf(2), BigDecimal.valueOf(4),
                 1, 2, BigDecimal.ZERO, BigDecimal.ZERO, false, null, null,
                 "architecture.jdk.jdk17", "architecture.middleware.tomcat9", "architecture.os.rhel8-5",
                 BigDecimal.ZERO, BigDecimal.ZERO,
@@ -356,6 +379,24 @@ class EnvironmentResourceServiceTest {
         assertThat(preview.instances().get(0).ipAddress()).matches("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
         assertThat(preview.instances().get(0).cpuCores()).isEqualByComparingTo("2");
         assertThat(preview.instances().get(0).memoryGb()).isEqualByComparingTo("4");
+    }
+
+    @Test
+    void 自动部署预览按网络分区启用网段生成IP() {
+        service = serviceWithNetworkAccess();
+        ResourceRequest approved = request(900001L, RequestStatus.APPROVED, ACTOR.id(), 0, false);
+        ResourceRequestItem item = itemWithZone(900002L, 900001L, 300L);
+        when(store.findRequest(7L, 900001L)).thenReturn(Optional.of(approved));
+        when(store.listItems(7L, 900001L)).thenReturn(List.of(item));
+        when(store.countInstancesForEnvironmentUnit(7L, 200L, 300L)).thenReturn(0);
+        when(networkAccessService.requirePrimaryActiveSubnetCidr(7L, 800L, "自动部署明细 1"))
+                .thenReturn("10.16.32.0/29");
+
+        ProvisionPreviewResult preview = service.previewAutomatedProvision(ACTOR, 900001L);
+
+        assertThat(preview.instances()).hasSize(2);
+        assertThat(preview.instances()).extracting("ipAddress")
+                .allMatch(ip -> ip.toString().matches("10\\.16\\.32\\.[1-6]"));
     }
 
     @Test
@@ -488,6 +529,36 @@ class EnvironmentResourceServiceTest {
         assertThatThrownBy(() -> service.fulfillRequest(ACTOR, 900001L, cmd))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已存在机器名或 IP 相同的在用实例");
+    }
+
+    @Test
+    void 手动下发IP不属于网络分区启用网段时拒绝() {
+        service = serviceWithNetworkAccess();
+        ResourceRequest approved = request(900001L, RequestStatus.APPROVED, ACTOR.id(), 0, false);
+        ResourceRequestItem item = itemWithZone(900002L, 900001L, 300L);
+        when(store.lockRequest(7L, 900001L)).thenReturn(Optional.of(approved));
+        when(store.listItems(7L, 900001L)).thenReturn(List.of(item));
+        when(store.findDeploymentUnit(7L, 300L)).thenReturn(Optional.of(activeUnit(300L, 100L)));
+        when(store.findActiveInstanceByMachineOrIp(eq(7L), eq(200L), any(), any(), eq(null)))
+                .thenReturn(Optional.empty());
+        when(networkAccessService.requireActiveLeafZone(7L, 800L, "第 1 台实例网络分区"))
+                .thenReturn(new ZoneRef(800L, "P8_APP", "P8开放AP"));
+        org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.BAD_REQUEST,
+                        "第 1 台实例 IP 地址「10.17.1.10」不属于网络分区「P8开放AP」的启用网段"))
+                .when(networkAccessService).requireIpInActiveSubnet(7L, 800L,
+                        "10.17.1.10", "第 1 台实例 IP 地址");
+
+        FulfillInstanceItemCommand node1 = new FulfillInstanceItemCommand(
+                900002L, 300L, "vm-eacp-01", "10.17.1.10", "architecture.server-type.container",
+                "TSF", 800L, "P8开放AP", BigDecimal.valueOf(2), BigDecimal.valueOf(4),
+                BigDecimal.ZERO, BigDecimal.valueOf(50), BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, null, null, null, false, false, false, FulfillmentMode.MANUAL, "越界节点");
+
+        FulfillmentCommand cmd = new FulfillmentCommand(FulfillmentMode.MANUAL, "单节点差异下发", List.of(node1), 0L);
+
+        assertThatThrownBy(() -> service.fulfillRequest(ACTOR, 900001L, cmd))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不属于网络分区");
     }
 
     @Test

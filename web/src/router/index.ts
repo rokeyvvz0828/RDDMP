@@ -227,6 +227,8 @@ const router = createRouter({
         { path: 'architecture/network-work-orders/new', name: 'architecture-network-work-order-new', component: () => import('../modules/architecture/NetworkWorkOrderFormPage.vue'), meta: { title: '新建网络专项工单' } },
         { path: 'architecture/network-work-orders/:id/edit', name: 'architecture-network-work-order-edit', component: () => import('../modules/architecture/NetworkWorkOrderFormPage.vue'), meta: { title: '编辑网络专项工单' } },
         { path: 'architecture/network-work-orders/:id', name: 'architecture-network-work-order-detail', component: () => import('../modules/architecture/NetworkWorkOrderDetailPage.vue'), meta: { title: '网络专项工单详情' } },
+        { path: 'architecture/network-zones', name: 'architecture-network-zones', component: () => import('../modules/architecture/NetworkZonePage.vue'), meta: { title: '网络分区' } },
+        { path: 'architecture/network-access', name: 'architecture-network-access', component: () => import('../modules/architecture/NetworkAccessPage.vue'), meta: { title: '网络访问关系' } },
         { path: 'test-management/business-day', name: 'business-day-management', component: BusinessDayManagement, meta: { title: '营业日管理' } },
         { path: 'test-management/business-day/calendar-overview', redirect: '/test-management/business-day' },
         { path: 'test-management/business-day/calendar-schedule', redirect: { path: '/test-management/business-day', query: { view: 'schedule' } } },

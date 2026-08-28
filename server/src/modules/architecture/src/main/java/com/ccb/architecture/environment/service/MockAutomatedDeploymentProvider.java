@@ -5,6 +5,7 @@ import com.ccb.architecture.environment.model.EnvironmentResourceModels.Provisio
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.ProvisionRequest;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.ProvisionResult;
 import com.ccb.architecture.environment.model.EnvironmentResourceModels.ProvisionedInstance;
+import com.ccb.architecture.network.service.NetworkCidr;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -50,12 +51,16 @@ public class MockAutomatedDeploymentProvider implements AutomatedDeploymentProvi
             String unitCode = item.deploymentUnitCode() == null ? "du" : item.deploymentUnitCode().toLowerCase(Locale.ROOT).replace('_', '-');
             String serverType = item.serverType() == null || item.serverType().isBlank() ? DEFAULT_SERVER_TYPE : item.serverType();
             String deploymentPlatform = item.deploymentPlatform() == null || item.deploymentPlatform().isBlank() ? DEFAULT_DEPLOYMENT_PLATFORM : item.deploymentPlatform();
-            String networkZone = item.networkZone() == null || item.networkZone().isBlank() ? "ZONE-A" : item.networkZone();
+            String networkZone = item.networkZoneName() == null || item.networkZoneName().isBlank()
+                    ? (item.networkZone() == null || item.networkZone().isBlank() ? "ZONE-A" : item.networkZone())
+                    : item.networkZoneName();
 
             for (int i = 0; i < nodeCount; i++) {
                 int sequence = Math.max(1, item.nextSequenceStart()) + i;
                 String machineName = String.format("%s-%s-%04d", envCode, unitCode, sequence);
-                String ipAddress = randomPrivateIp(generatedIps);
+                String ipAddress = item.networkSubnetCidr() == null || item.networkSubnetCidr().isBlank()
+                        ? randomPrivateIp(generatedIps)
+                        : NetworkCidr.suggestAddress(item.networkSubnetCidr(), sequence, generatedIps);
                 String mockLog = String.format("【Mock自动化部署】执行ID: %s，已完成部署单元 [%s] 节点 %d/%d 分配：机器 [%s]，IP [%s]，网络分区 [%s]。",
                         executionId, item.deploymentUnitCode(), i + 1, nodeCount, machineName, ipAddress, networkZone);
 
@@ -69,6 +74,8 @@ public class MockAutomatedDeploymentProvider implements AutomatedDeploymentProvi
                         ipAddress,
                         serverType,
                         deploymentPlatform,
+                        item.networkZoneId(),
+                        item.networkZoneName(),
                         networkZone,
                         item.cpuCores(),
                         item.memoryGb(),

@@ -54,7 +54,9 @@ public class EnvironmentResourceStore {
             physical.name AS physical_subsystem_name, instance.source_request_id,
             request.request_no AS source_request_no, instance.source_item_id,
             instance.machine_name, instance.ip_address, instance.server_type,
-            instance.deployment_platform, instance.network_zone, instance.status,
+            instance.deployment_platform, instance.network_zone_id,
+            COALESCE(instance.network_zone_name, instance.network_zone) AS network_zone_name,
+            instance.network_zone, instance.status,
             instance.cpu_cores, instance.memory_gb, instance.database_storage_gb,
             instance.file_storage_gb, instance.extra_cbs_gb, instance.local_disk_gb,
             instance.database_name, instance.database_version, instance.jdk_version,
@@ -100,6 +102,7 @@ public class EnvironmentResourceStore {
             unit.kind AS deployment_unit_kind, item.related_deployment_unit_name,
             item.deployment_unit_description, item.deployment_unit_type,
             item.database_storage_gb, item.storage_gb AS file_storage_gb,
+            item.network_zone_id, COALESCE(item.network_zone_name, item.network_zone) AS network_zone_name,
             item.network_zone, item.server_type, item.cpu_cores, item.memory_gb,
             item.app_web_group_count, item.planned_node_count, item.sidecar_cpu_cores,
             item.sidecar_memory_gb, item.has_sidecar, item.database_name, item.database_version,
@@ -171,6 +174,8 @@ public class EnvironmentResourceStore {
             rs.getString("deployment_unit_type"),
             decimal(rs, "database_storage_gb"),
             decimal(rs, "file_storage_gb"),
+            nullableLong(rs, "network_zone_id"),
+            rs.getString("network_zone_name"),
             rs.getString("network_zone"),
             rs.getString("server_type"),
             rs.getBigDecimal("cpu_cores"),
@@ -223,6 +228,8 @@ public class EnvironmentResourceStore {
                 rs.getString("ip_address"),
                 rs.getString("server_type"),
                 rs.getString("deployment_platform"),
+                nullableLong(rs, "network_zone_id"),
+                rs.getString("network_zone_name"),
                 rs.getString("network_zone"),
                 InstanceStatus.fromDatabase(rs.getString("status")),
                 decimal(rs, "cpu_cores"),
@@ -326,7 +333,15 @@ public class EnvironmentResourceStore {
     public record DeploymentUnitRef(long id, String code, String name, String kind, String status,
                                     long physicalSubsystemId, String relatedDeploymentUnitName,
                                     String deploymentUnitType, String description,
+                                    Long defaultNetworkZoneId, String defaultNetworkZoneName,
                                     Long currentVersionId, int currentVersion) {
+        public DeploymentUnitRef(long id, String code, String name, String kind, String status,
+                                 long physicalSubsystemId, String relatedDeploymentUnitName,
+                                 String deploymentUnitType, String description,
+                                 Long currentVersionId, int currentVersion) {
+            this(id, code, name, kind, status, physicalSubsystemId, relatedDeploymentUnitName,
+                    deploymentUnitType, description, null, null, currentVersionId, currentVersion);
+        }
     }
 
     private final JdbcTemplate jdbc;
@@ -529,6 +544,7 @@ public class EnvironmentResourceStore {
         return jdbc.query("""
                 SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id,
                        unit.related_deployment_unit_name, unit.deployment_unit_type, unit.description,
+                       unit.default_network_zone_id, unit.default_network_zone_name,
                        version.id AS current_version_id, unit.current_version
                 FROM arch_deployment_unit unit
                 LEFT JOIN arch_deployment_unit_version version
@@ -540,6 +556,7 @@ public class EnvironmentResourceStore {
                 rs.getString("name"), rs.getString("kind"), rs.getString("status"),
                 rs.getLong("physical_subsystem_id"), rs.getString("related_deployment_unit_name"),
                 rs.getString("deployment_unit_type"), rs.getString("description"),
+                nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
                 nullableLong(rs, "current_version_id"), rs.getInt("current_version")),
                 tenantId, deploymentUnitId).stream().findFirst();
     }
@@ -548,6 +565,7 @@ public class EnvironmentResourceStore {
         return jdbc.query("""
                 SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id,
                        unit.related_deployment_unit_name, unit.deployment_unit_type, unit.description,
+                       unit.default_network_zone_id, unit.default_network_zone_name,
                        version.id AS current_version_id, unit.current_version
                 FROM arch_deployment_unit unit
                 LEFT JOIN arch_deployment_unit_version version
@@ -561,6 +579,7 @@ public class EnvironmentResourceStore {
                 rs.getString("name"), rs.getString("kind"), rs.getString("status"),
                 rs.getLong("physical_subsystem_id"), rs.getString("related_deployment_unit_name"),
                 rs.getString("deployment_unit_type"), rs.getString("description"),
+                nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
                 nullableLong(rs, "current_version_id"), rs.getInt("current_version")),
                 tenantId, physicalSubsystemId, limit);
     }
@@ -653,17 +672,19 @@ public class EnvironmentResourceStore {
                         (id, tenant_id, request_id, item_seq, deployment_unit_id,
                          related_deployment_unit_name, deployment_unit_description,
                          deployment_unit_type, database_storage_gb,
-                         storage_gb, network_zone, server_type, cpu_cores, memory_gb,
+                         storage_gb, network_zone_id, network_zone_name, network_zone,
+                         server_type, cpu_cores, memory_gb,
                          app_web_group_count, planned_node_count, sidecar_cpu_cores,
                          sidecar_memory_gb, has_sidecar, database_name, database_version,
                          jdk_version, middleware, operating_system, extra_cbs_gb, local_disk_gb,
                          needs_nft, needs_fserver, needs_jobexecutor, remark)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?)
                     """, item.id(), item.tenantId(), item.requestId(), item.itemSeq(),
                     item.deploymentUnitId(), item.relatedDeploymentUnitName(),
                     item.deploymentUnitDescription(), item.deploymentUnitType(),
                     item.databaseStorageGb(), item.fileStorageGb(),
-                    item.networkZone(), item.serverType(), item.cpuCores(), item.memoryGb(),
+                    item.networkZoneId(), item.networkZoneName(), item.networkZone(),
+                    item.serverType(), item.cpuCores(), item.memoryGb(),
                     item.appWebGroupCount(), item.plannedNodeCount(), item.sidecarCpuCores(),
                     item.sidecarMemoryGb(), item.hasSidecar(), item.databaseName(), item.databaseVersion(),
                     item.jdkVersion(), item.middleware(), item.operatingSystem(), item.extraCbsGb(),
@@ -854,18 +875,20 @@ public class EnvironmentResourceStore {
                      deployment_unit_version_id, deployment_unit_version_no,
                      physical_subsystem_id, source_request_id, source_item_id,
                      machine_name, ip_address, server_type, deployment_platform,
-                     network_zone, status, cpu_cores, memory_gb, database_storage_gb,
+                     network_zone_id, network_zone_name, network_zone, status,
+                     cpu_cores, memory_gb, database_storage_gb,
                      file_storage_gb, extra_cbs_gb, local_disk_gb, database_name,
                      database_version, jdk_version, middleware, operating_system,
                      needs_nft, needs_fserver, needs_jobexecutor, fulfillment_mode,
                      difference_reason, remark, offlined_at, offlined_by, offline_reason,
                      row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, instance.id(), instance.tenantId(), instance.instanceNo(), instance.environmentId(),
                 instance.deploymentUnitId(), instance.deploymentUnitVersionId(), instance.deploymentUnitVersionNo(),
                 instance.physicalSubsystemId(), instance.sourceRequestId(), instance.sourceItemId(),
                 instance.machineName(), instance.ipAddress(), instance.serverType(), instance.deploymentPlatform(),
-                instance.networkZone(), instance.status().name(), instance.cpuCores(), instance.memoryGb(),
+                instance.networkZoneId(), instance.networkZoneName(), instance.networkZone(),
+                instance.status().name(), instance.cpuCores(), instance.memoryGb(),
                 instance.databaseStorageGb(), instance.fileStorageGb(), instance.extraCbsGb(), instance.localDiskGb(),
                 instance.databaseName(), instance.databaseVersion(), instance.jdkVersion(), instance.middleware(),
                 instance.operatingSystem(), instance.needsNft(), instance.needsFserver(), instance.needsJobexecutor(),

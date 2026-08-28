@@ -40,6 +40,7 @@ const items = computed(() => props.unit ? [
   item('部署单元类型', kindLabel.value),
   item('登记表部署单元类型', props.unit.deploymentUnitType),
   item('关联部署单元名称', props.unit.relatedDeploymentUnitName),
+  item('默认网络分区', props.unit.defaultNetworkZoneName),
   item('部署单元简称', props.unit.shortName),
   item('部署单元名称', props.unit.name),
   item('所属物理子系统', props.unit.physicalSubsystemCode ? `${props.unit.physicalSubsystemName}（${props.unit.physicalSubsystemCode}）` : '—'),
@@ -95,7 +96,7 @@ function canEdit() {
               >
                 <div class="architecture-version-item">
                   <strong>v{{ version.versionNo }} · {{ version.name }}</strong>
-                  <small>{{ deploymentUnitKindLabels[version.kind] }} · {{ version.deploymentUnitType }} · {{ version.shortName }} · 发布人 {{ version.publishedByDisplayName }}</small>
+                  <small>{{ deploymentUnitKindLabels[version.kind] }} · {{ version.deploymentUnitType }} · {{ version.shortName }} · {{ version.defaultNetworkZoneName || '未设默认网络分区' }} · 发布人 {{ version.publishedByDisplayName }}</small>
                   <p v-if="version.relatedDeploymentUnitName">关联部署单元：{{ version.relatedDeploymentUnitName }}</p>
                   <p v-if="version.description">{{ version.description }}</p>
                   <p v-if="version.remark" class="architecture-muted">备注：{{ version.remark }}</p>

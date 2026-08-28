@@ -71,6 +71,10 @@ function instanceStatusTone(status: InstanceStatus) {
   return statusTones[status]
 }
 
+function networkZoneLabel(instance: EnvironmentInstance | null | undefined) {
+  return instance?.networkZoneName || instance?.networkZone || '—'
+}
+
 const drModeLabels: Record<DisasterRecoveryMode, string> = {
   PRIMARY_STANDBY: '主备',
   ACTIVE_ACTIVE: '双活',
@@ -466,7 +470,7 @@ onMounted(async () => {
 
         <el-table-column label="网络 / 平台" width="140">
           <template #default="{ row }">
-            <div>{{ row.networkZone || '—' }}</div>
+            <div>{{ networkZoneLabel(row) }}</div>
             <small class="architecture-muted">{{ row.deploymentPlatform || '—' }}</small>
           </template>
         </el-table-column>
@@ -524,7 +528,7 @@ onMounted(async () => {
           <dl>
             <div><dt>实际规格</dt><dd>{{ row.cpuCores }}核 / {{ row.memoryGb }}GB</dd></div>
             <div><dt>采用版本</dt><dd>v{{ row.deploymentUnitVersionNo }} <span v-if="row.hasVersionDifference" style="color: #e6a23c;">(最新v{{ row.latestDeploymentUnitVersionNo }})</span></dd></div>
-            <div><dt>网络分区</dt><dd>{{ row.networkZone || '—' }}</dd></div>
+            <div><dt>网络分区</dt><dd>{{ networkZoneLabel(row) }}</dd></div>
             <div><dt>来源工单</dt><dd>{{ row.sourceRequestNo }}</dd></div>
           </dl>
           <footer>
@@ -596,7 +600,7 @@ onMounted(async () => {
             <dl class="architecture-detail-list">
               <div><dt>服务器类型</dt><dd>{{ detail.serverType || '—' }}</dd></div>
               <div><dt>部署平台</dt><dd>{{ detail.deploymentPlatform || '—' }}</dd></div>
-              <div><dt>网络分区</dt><dd>{{ detail.networkZone || '—' }}</dd></div>
+              <div><dt>网络分区</dt><dd>{{ networkZoneLabel(detail) }}</dd></div>
               <div><dt>JDK 版本</dt><dd>{{ detail.jdkVersion || '—' }}</dd></div>
               <div><dt>中间件</dt><dd>{{ detail.middleware || '—' }}</dd></div>
               <div><dt>操作系统</dt><dd>{{ detail.operatingSystem || '—' }}</dd></div>
