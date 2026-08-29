@@ -1,20 +1,26 @@
 package com.ccb.architecture.network.web;
 
 import com.ccb.architecture.network.model.NetworkAccessModels.ApplicationStatus;
+import com.ccb.architecture.network.model.NetworkAccessModels.ExemptionRuleStatus;
 import com.ccb.architecture.network.model.NetworkAccessModels.ExternalNetworkAddress;
 import com.ccb.architecture.network.model.NetworkAccessModels.ManagedEndpointInstance;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessApplication;
+import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessExemptionRule;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessRelation;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkZone;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkZoneOption;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkZoneSubnet;
 import com.ccb.architecture.network.model.NetworkAccessModels.RecordStatus;
 import com.ccb.architecture.network.model.NetworkAccessModels.RelationStatus;
+import com.ccb.architecture.network.service.NetworkAccessApplicationSubmissionService;
 import com.ccb.architecture.network.service.NetworkAccessService;
 import com.ccb.architecture.network.service.NetworkAccessService.AccessScope;
 import com.ccb.architecture.network.service.NetworkAccessService.CloseRelationCommand;
+import com.ccb.architecture.network.service.NetworkAccessService.ExemptionRuleCommand;
 import com.ccb.architecture.network.service.NetworkAccessService.ExternalAddressCommand;
 import com.ccb.architecture.network.service.NetworkAccessService.NetworkAccessCommand;
+import com.ccb.architecture.network.service.NetworkAccessService.NetworkAccessDecisionCommand;
+import com.ccb.architecture.network.service.NetworkAccessService.NetworkAccessDecisionResult;
 import com.ccb.architecture.network.service.NetworkAccessService.NetworkZoneCommand;
 import com.ccb.architecture.network.service.NetworkAccessService.NetworkZoneSubnetCommand;
 import com.ccb.common.api.ApiResponse;
@@ -49,10 +55,14 @@ public class NetworkAccessController {
     private static final String ARCHITECTURE_MANAGE = "architecture:manage";
 
     private final NetworkAccessService service;
+    private final NetworkAccessApplicationSubmissionService submissionService;
     private final SystemOperationAudit operationAudit;
 
-    public NetworkAccessController(NetworkAccessService service, SystemOperationAudit operationAudit) {
+    public NetworkAccessController(NetworkAccessService service,
+                                   NetworkAccessApplicationSubmissionService submissionService,
+                                   SystemOperationAudit operationAudit) {
         this.service = service;
+        this.submissionService = submissionService;
         this.operationAudit = operationAudit;
     }
 
@@ -217,6 +227,71 @@ public class NetworkAccessController {
         return success(service.listEndpointInstances(actor, physicalSubsystemId, environmentId, deploymentUnitId));
     }
 
+    @PostMapping("/network-access/decision")
+    @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:apply',"
+            + "'architecture:network-access:manage','architecture:view','architecture:manage')")
+    public ApiResponse<NetworkAccessDecisionResult> decideNetworkAccess(
+            @RequestBody NetworkAccessDecisionCommand command,
+            @AuthenticationPrincipal AuthUser actor) {
+        return audited(actor, "architecture.network-access.decision.evaluate", "POST",
+                "/api/architecture/network-access/decision",
+                () -> success(service.decideAccess(actor, command)));
+    }
+
+    @GetMapping("/network-access-exemption-rules")
+    @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:manage',"
+            + "'architecture:view','architecture:manage')")
+    public ApiResponse<List<NetworkAccessExemptionRule>> listExemptionRules(
+            @RequestParam(required = false) ExemptionRuleStatus status,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.listExemptionRules(actor, status));
+    }
+
+    @PostMapping("/network-access-exemption-rules")
+    @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
+    public ApiResponse<NetworkAccessExemptionRule> createExemptionRule(
+            @RequestBody ExemptionRuleCommand command,
+            @AuthenticationPrincipal AuthUser actor) {
+        return audited(actor, "architecture.network-access-exemption-rule.create", "POST",
+                "/api/architecture/network-access-exemption-rules",
+                () -> success(service.createExemptionRule(actor, command)));
+    }
+
+    @PutMapping("/network-access-exemption-rules/{id}")
+    @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
+    public ApiResponse<NetworkAccessExemptionRule> updateExemptionRule(
+            @PathVariable long id,
+            @RequestBody ExemptionRuleCommand command,
+            @AuthenticationPrincipal AuthUser actor) {
+        return audited(actor, "architecture.network-access-exemption-rule.update", "PUT",
+                "/api/architecture/network-access-exemption-rules/" + id,
+                () -> success(service.updateExemptionRule(actor, id, command)));
+    }
+
+    @PostMapping("/network-access-exemption-rules/{id}/enable")
+    @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
+    public ApiResponse<NetworkAccessExemptionRule> enableExemptionRule(
+            @PathVariable long id,
+            @RequestBody RowVersionRequest request,
+            @AuthenticationPrincipal AuthUser actor) {
+        long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
+        return audited(actor, "architecture.network-access-exemption-rule.enable", "POST",
+                "/api/architecture/network-access-exemption-rules/" + id + "/enable",
+                () -> success(service.updateExemptionRuleStatus(actor, id, rowVersion, ExemptionRuleStatus.ACTIVE)));
+    }
+
+    @PostMapping("/network-access-exemption-rules/{id}/disable")
+    @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
+    public ApiResponse<NetworkAccessExemptionRule> disableExemptionRule(
+            @PathVariable long id,
+            @RequestBody RowVersionRequest request,
+            @AuthenticationPrincipal AuthUser actor) {
+        long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
+        return audited(actor, "architecture.network-access-exemption-rule.disable", "POST",
+                "/api/architecture/network-access-exemption-rules/" + id + "/disable",
+                () -> success(service.updateExemptionRuleStatus(actor, id, rowVersion, ExemptionRuleStatus.DISABLED)));
+    }
+
     @GetMapping("/network-access-applications")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:apply',"
             + "'architecture:network-access:manage','architecture:view','architecture:manage')")
@@ -248,7 +323,7 @@ public class NetworkAccessController {
         long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
         return audited(actor, "architecture.network-access-application.submit", "POST",
                 "/api/architecture/network-access-applications/" + id + "/submit",
-                () -> success(service.submitApplication(actor, id, rowVersion)));
+                () -> success(submissionService.submit(actor, id, rowVersion)));
     }
 
     @PostMapping("/network-access-applications/{id}/approve")
@@ -282,7 +357,7 @@ public class NetworkAccessController {
         long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
         return audited(actor, "architecture.network-access-application.cancel", "POST",
                 "/api/architecture/network-access-applications/" + id + "/cancel",
-                () -> success(service.cancelApplication(actor, id, rowVersion)));
+                () -> success(submissionService.cancel(actor, id, rowVersion)));
     }
 
     @GetMapping("/network-access-relations")

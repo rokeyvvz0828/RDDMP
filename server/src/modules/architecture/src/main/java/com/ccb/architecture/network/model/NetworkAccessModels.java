@@ -3,6 +3,7 @@ package com.ccb.architecture.network.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /** 网络分区、外部网络地址、访问申请与访问关系模型（REQ-20260826-054）。 */
@@ -50,8 +51,41 @@ public final class NetworkAccessModels {
         }
     }
 
+    public enum ValidityType {
+        LIMITED,
+        LONG_TERM;
+
+        public static ValidityType fromDatabase(String value) {
+            return enumValue(ValidityType.class, value, "validity_type");
+        }
+    }
+
+    public enum AccessDecision {
+        NEEDS_APPLICATION,
+        NOT_REQUIRED
+    }
+
+    public enum DecisionBasis {
+        SUBNET_INTERNAL,
+        RELATION_COVERED,
+        RULE_EXEMPT,
+        STRICT_REQUIRED
+    }
+
+    public enum NetworkAccessActionType {
+        OPEN,
+        MODIFY,
+        RENEW,
+        CLOSE;
+
+        public static NetworkAccessActionType fromDatabase(String value) {
+            return enumValue(NetworkAccessActionType.class, value, "action_type");
+        }
+    }
+
     public enum ApplicationStatus {
         DRAFT,
+        RETURNED,
         IN_REVIEW,
         APPROVED,
         REJECTED,
@@ -59,6 +93,50 @@ public final class NetworkAccessModels {
 
         public static ApplicationStatus fromDatabase(String value) {
             return enumValue(ApplicationStatus.class, value, "application_status");
+        }
+    }
+
+    public enum RelationCloseType {
+        SUPERSEDED,
+        CLOSED_BY_APPLICATION,
+        LEGACY_DIRECT;
+
+        public static RelationCloseType fromDatabase(String value) {
+            return value == null || value.isBlank() ? null
+                    : enumValue(RelationCloseType.class, value, "close_type");
+        }
+    }
+
+    public enum ExemptionRuleStatus {
+        ACTIVE,
+        DISABLED;
+
+        public static ExemptionRuleStatus fromDatabase(String value) {
+            return enumValue(ExemptionRuleStatus.class, value, "rule_status");
+        }
+    }
+
+    public enum WorkflowRoundStatus {
+        PENDING,
+        STARTED,
+        RETURNED,
+        APPROVED,
+        REJECTED,
+        TERMINATED,
+        IGNORED;
+
+        public static WorkflowRoundStatus fromDatabase(String value) {
+            return enumValue(WorkflowRoundStatus.class, value, "workflow_round_status");
+        }
+    }
+
+    public enum WorkflowReceiptStatus {
+        PROCESSED,
+        IGNORED,
+        FAILED;
+
+        public static WorkflowReceiptStatus fromDatabase(String value) {
+            return enumValue(WorkflowReceiptStatus.class, value, "workflow_receipt_status");
         }
     }
 
@@ -151,6 +229,13 @@ public final class NetworkAccessModels {
             String networkZoneName) {
     }
 
+    public record EndpointInstanceStatus(
+            long id,
+            String machineName,
+            String ipAddress,
+            String status) {
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record EndpointCommand(
             EndpointKind kind,
@@ -160,7 +245,7 @@ public final class NetworkAccessModels {
             Long externalAddressId,
             List<Long> instanceIds) {
         public EndpointCommand {
-            instanceIds = List.copyOf(instanceIds == null ? List.of() : instanceIds);
+            instanceIds = List.copyOf(new LinkedHashSet<>(instanceIds == null ? List.of() : instanceIds));
         }
     }
 
@@ -169,6 +254,8 @@ public final class NetworkAccessModels {
             long tenantId,
             String applicationNo,
             long applicantId,
+            NetworkAccessActionType actionType,
+            Long targetRelationId,
             EndpointKind sourceKind,
             Long sourcePhysicalSubsystemId,
             Long sourceEnvironmentId,
@@ -187,12 +274,39 @@ public final class NetworkAccessModels {
             String processDescription,
             LocalDateTime validFrom,
             LocalDateTime validUntil,
+            ValidityType validityType,
             ApplicationStatus status,
+            int currentBusinessRound,
+            Long currentWorkflowDefinitionId,
+            Long currentWorkflowVersionId,
+            Long currentWorkflowInstanceId,
+            String currentPayloadDigest,
+            boolean cancellationRequested,
             long rowVersion,
             long createdBy,
             long updatedBy,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
+        public NetworkAccessApplication(long id, long tenantId, String applicationNo, long applicantId,
+                                        EndpointKind sourceKind, Long sourcePhysicalSubsystemId,
+                                        Long sourceEnvironmentId, Long sourceDeploymentUnitId,
+                                        Long sourceExternalAddressId, String sourceSnapshotJson,
+                                        EndpointKind targetKind, Long targetPhysicalSubsystemId,
+                                        Long targetEnvironmentId, Long targetDeploymentUnitId,
+                                        Long targetExternalAddressId, String targetSnapshotJson,
+                                        AccessProtocol protocol, String ports, String purpose,
+                                        String processDescription, LocalDateTime validFrom,
+                                        LocalDateTime validUntil, ApplicationStatus status,
+                                        long rowVersion, long createdBy, long updatedBy,
+                                        LocalDateTime createdAt, LocalDateTime updatedAt) {
+            this(id, tenantId, applicationNo, applicantId, NetworkAccessActionType.OPEN, null,
+                    sourceKind, sourcePhysicalSubsystemId, sourceEnvironmentId, sourceDeploymentUnitId,
+                    sourceExternalAddressId, sourceSnapshotJson, targetKind, targetPhysicalSubsystemId,
+                    targetEnvironmentId, targetDeploymentUnitId, targetExternalAddressId, targetSnapshotJson,
+                    protocol, ports, purpose, processDescription, validFrom, validUntil,
+                    validUntil == null ? ValidityType.LONG_TERM : ValidityType.LIMITED, status,
+                    0, null, null, null, null, false, rowVersion, createdBy, updatedBy, createdAt, updatedAt);
+        }
     }
 
     public record NetworkAccessRelation(
@@ -200,6 +314,9 @@ public final class NetworkAccessModels {
             long tenantId,
             String relationNo,
             long applicationId,
+            Long replacesRelationId,
+            Long replacedByRelationId,
+            Long closedApplicationId,
             EndpointKind sourceKind,
             String sourceSnapshotJson,
             EndpointKind targetKind,
@@ -210,15 +327,120 @@ public final class NetworkAccessModels {
             String processDescription,
             LocalDateTime validFrom,
             LocalDateTime validUntil,
+            ValidityType validityType,
             RelationStatus status,
             String closeReason,
+            RelationCloseType closeType,
             Long closedBy,
             LocalDateTime closedAt,
+            boolean hasOfflineEndpointRisk,
+            int offlineEndpointCount,
+            List<String> offlineEndpointSummaries,
             long rowVersion,
             long createdBy,
             long updatedBy,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
+        public NetworkAccessRelation {
+            offlineEndpointSummaries = List.copyOf(offlineEndpointSummaries == null
+                    ? List.of() : offlineEndpointSummaries);
+        }
+
+        public NetworkAccessRelation(long id, long tenantId, String relationNo, long applicationId,
+                                     EndpointKind sourceKind, String sourceSnapshotJson,
+                                     EndpointKind targetKind, String targetSnapshotJson,
+                                     AccessProtocol protocol, String ports, String purpose,
+                                     String processDescription, LocalDateTime validFrom,
+                                     LocalDateTime validUntil, RelationStatus status,
+                                     String closeReason, Long closedBy, LocalDateTime closedAt,
+                                     long rowVersion, long createdBy, long updatedBy,
+                                     LocalDateTime createdAt, LocalDateTime updatedAt) {
+            this(id, tenantId, relationNo, applicationId, null, null, null, sourceKind, sourceSnapshotJson,
+                    targetKind, targetSnapshotJson, protocol, ports, purpose, processDescription, validFrom,
+                    validUntil, validUntil == null ? ValidityType.LONG_TERM : ValidityType.LIMITED, status,
+                    closeReason, null, closedBy, closedAt, false, 0, List.of(), rowVersion, createdBy,
+                    updatedBy, createdAt, updatedAt);
+        }
+    }
+
+    public record NetworkAccessExemptionRule(
+            long id,
+            long tenantId,
+            String ruleCode,
+            String ruleName,
+            long sourceNetworkZoneId,
+            String sourceNetworkZoneName,
+            long targetNetworkZoneId,
+            String targetNetworkZoneName,
+            AccessProtocol protocol,
+            String ports,
+            LocalDateTime validFrom,
+            LocalDateTime validUntil,
+            ValidityType validityType,
+            ExemptionRuleStatus status,
+            String remark,
+            long rowVersion,
+            long createdBy,
+            long updatedBy,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+    }
+
+    public record NetworkAccessHistoryEvent(
+            long id,
+            long tenantId,
+            long applicationId,
+            String eventType,
+            ApplicationStatus fromStatus,
+            ApplicationStatus toStatus,
+            int businessRound,
+            String summary,
+            String snapshotJson,
+            String diffJson,
+            long operatorId,
+            LocalDateTime occurredAt) {
+    }
+
+    public record WorkflowRound(
+            long id,
+            long tenantId,
+            long applicationId,
+            int roundNo,
+            Long workflowDefinitionId,
+            Long workflowVersionId,
+            Long workflowInstanceId,
+            String payloadDigest,
+            WorkflowRoundStatus status,
+            LocalDateTime startedAt,
+            LocalDateTime endedAt,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+    }
+
+    public record WorkflowReceiptStart(
+            long id,
+            long tenantId,
+            String eventId,
+            String subscriberKey,
+            long applicationId,
+            int roundNo,
+            long workflowInstanceId,
+            String eventType) {
+    }
+
+    public record WorkflowReceipt(
+            long id,
+            long tenantId,
+            String eventId,
+            String subscriberKey,
+            Long applicationId,
+            Integer roundNo,
+            Long workflowInstanceId,
+            String eventType,
+            WorkflowReceiptStatus processingStatus,
+            String detail,
+            LocalDateTime receivedAt,
+            LocalDateTime processedAt) {
     }
 
     private static <T extends Enum<T>> T enumValue(Class<T> type, String value, String column) {

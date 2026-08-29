@@ -37,6 +37,11 @@ import type {
   ManagedEndpointInstance,
   NetworkAccessApplication,
   NetworkAccessApplicationStatus,
+  NetworkAccessDecisionPayload,
+  NetworkAccessDecisionResult,
+  NetworkAccessExemptionRule,
+  NetworkAccessExemptionRulePayload,
+  NetworkAccessExemptionRuleStatus,
   NetworkAccessPayload,
   NetworkAccessRelation,
   NetworkAccessRelationStatus,
@@ -578,6 +583,40 @@ export async function listNetworkAccessApplications(query: {
 
 export async function createNetworkAccessApplication(payload: NetworkAccessPayload) {
   return (await http.post<ApiResponse<NetworkAccessApplication>>('/architecture/network-access-applications', payload)).data.data
+}
+
+export async function evaluateNetworkAccessDecision(payload: NetworkAccessDecisionPayload) {
+  return (await http.post<ApiResponse<NetworkAccessDecisionResult>>('/architecture/network-access/decision', payload)).data.data
+}
+
+export async function listNetworkAccessExemptionRules(query: {
+  status?: NetworkAccessExemptionRuleStatus | ''
+} = {}) {
+  return (await http.get<ApiResponse<NetworkAccessExemptionRule[]>>('/architecture/network-access-exemption-rules', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function createNetworkAccessExemptionRule(payload: NetworkAccessExemptionRulePayload) {
+  return (await http.post<ApiResponse<NetworkAccessExemptionRule>>('/architecture/network-access-exemption-rules', payload)).data.data
+}
+
+export async function updateNetworkAccessExemptionRule(id: number, payload: NetworkAccessExemptionRulePayload) {
+  return (await http.put<ApiResponse<NetworkAccessExemptionRule>>(`/architecture/network-access-exemption-rules/${id}`, payload)).data.data
+}
+
+export async function enableNetworkAccessExemptionRule(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<NetworkAccessExemptionRule>>(
+    `/architecture/network-access-exemption-rules/${id}/enable`,
+    { rowVersion }
+  )).data.data
+}
+
+export async function disableNetworkAccessExemptionRule(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<NetworkAccessExemptionRule>>(
+    `/architecture/network-access-exemption-rules/${id}/disable`,
+    { rowVersion }
+  )).data.data
 }
 
 export async function submitNetworkAccessApplication(id: number, rowVersion: number) {

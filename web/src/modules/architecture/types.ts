@@ -514,8 +514,14 @@ export type ResourceRequestStatus = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'APPROV
 export type NetworkAddressType = 'IP' | 'CIDR' | 'DOMAIN'
 export type NetworkEndpointKind = 'MANAGED' | 'EXTERNAL'
 export type NetworkAccessProtocol = 'TCP' | 'UDP' | 'HTTP' | 'HTTPS' | 'OTHER'
-export type NetworkAccessApplicationStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type NetworkAccessValidityType = 'LIMITED' | 'LONG_TERM'
+export type NetworkAccessActionType = 'OPEN' | 'MODIFY' | 'RENEW' | 'CLOSE'
+export type NetworkAccessApplicationStatus = 'DRAFT' | 'RETURNED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 export type NetworkAccessRelationStatus = 'ACTIVE' | 'CLOSED'
+export type NetworkAccessDecision = 'NEEDS_APPLICATION' | 'NOT_REQUIRED'
+export type NetworkAccessDecisionBasis = 'SUBNET_INTERNAL' | 'RELATION_COVERED' | 'RULE_EXEMPT' | 'STRICT_REQUIRED'
+export type NetworkAccessExemptionRuleStatus = 'ACTIVE' | 'DISABLED'
+export type NetworkAccessRelationCloseType = 'SUPERSEDED' | 'CLOSED_BY_APPLICATION' | 'LEGACY_DIRECT'
 
 export interface NetworkZone {
   id: number
@@ -607,14 +613,36 @@ export interface NetworkEndpointPayload {
 }
 
 export interface NetworkAccessPayload {
-  source: NetworkEndpointPayload
-  target: NetworkEndpointPayload
+  source?: NetworkEndpointPayload | null
+  target?: NetworkEndpointPayload | null
   protocol: NetworkAccessProtocol
   ports: string
   purpose: string
   processDescription?: string | null
   validFrom?: string | null
   validUntil?: string | null
+  validityType?: NetworkAccessValidityType | null
+  actionType?: NetworkAccessActionType | null
+  targetRelationId?: number | null
+}
+
+export interface NetworkAccessDecisionPayload {
+  source: NetworkEndpointPayload
+  target: NetworkEndpointPayload
+  protocol: NetworkAccessProtocol
+  ports: string
+  validFrom: string | null
+  validUntil: string | null
+  validityType: NetworkAccessValidityType
+}
+
+export interface NetworkAccessDecisionResult {
+  decision: NetworkAccessDecision
+  needsApplication: boolean
+  basis: NetworkAccessDecisionBasis
+  reasonCodes: string[]
+  coveringRelationNos: string[]
+  coveringRuleCodes: string[]
 }
 
 export interface NetworkAccessApplication {
@@ -622,6 +650,8 @@ export interface NetworkAccessApplication {
   tenantId: number
   applicationNo: string
   applicantId: number
+  actionType: NetworkAccessActionType
+  targetRelationId: number | null
   sourceKind: NetworkEndpointKind
   sourcePhysicalSubsystemId: number | null
   sourceEnvironmentId: number | null
@@ -640,7 +670,14 @@ export interface NetworkAccessApplication {
   processDescription: string | null
   validFrom: string | null
   validUntil: string | null
+  validityType: NetworkAccessValidityType
   status: NetworkAccessApplicationStatus
+  currentBusinessRound: number
+  currentWorkflowDefinitionId: number | null
+  currentWorkflowVersionId: number | null
+  currentWorkflowInstanceId: number | null
+  currentPayloadDigest: string | null
+  cancellationRequested: boolean
   rowVersion: number
   createdBy: number
   updatedBy: number
@@ -653,6 +690,9 @@ export interface NetworkAccessRelation {
   tenantId: number
   relationNo: string
   applicationId: number
+  replacesRelationId: number | null
+  replacedByRelationId: number | null
+  closedApplicationId: number | null
   sourceKind: NetworkEndpointKind
   sourceSnapshotJson: string | null
   targetKind: NetworkEndpointKind
@@ -663,15 +703,57 @@ export interface NetworkAccessRelation {
   processDescription: string | null
   validFrom: string | null
   validUntil: string | null
+  validityType: NetworkAccessValidityType
   status: NetworkAccessRelationStatus
   closeReason: string | null
+  closeType: NetworkAccessRelationCloseType | null
   closedBy: number | null
   closedAt: string | null
+  hasOfflineEndpointRisk: boolean
+  offlineEndpointCount: number
+  offlineEndpointSummaries: string[]
   rowVersion: number
   createdBy: number
   updatedBy: number
   createdAt: string
   updatedAt: string
+}
+
+export interface NetworkAccessExemptionRule {
+  id: number
+  tenantId: number
+  ruleCode: string
+  ruleName: string
+  sourceNetworkZoneId: number
+  sourceNetworkZoneName: string
+  targetNetworkZoneId: number
+  targetNetworkZoneName: string
+  protocol: NetworkAccessProtocol
+  ports: string
+  validFrom: string | null
+  validUntil: string | null
+  validityType: NetworkAccessValidityType
+  status: NetworkAccessExemptionRuleStatus
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NetworkAccessExemptionRulePayload {
+  ruleCode: string
+  ruleName: string
+  sourceNetworkZoneId: number | null
+  targetNetworkZoneId: number | null
+  protocol: NetworkAccessProtocol
+  ports: string
+  validFrom: string | null
+  validUntil: string | null
+  validityType: NetworkAccessValidityType
+  remark?: string | null
+  rowVersion?: number | null
 }
 
 export interface EnvironmentType {

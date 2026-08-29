@@ -70,7 +70,7 @@ class NetworkAccessServiceTest {
                 "443",
                 "应用访问外部 API",
                 "RDDMP 内记录关系，外部策略线下开通",
-                null,
+                TIME,
                 null,
                 null));
 
@@ -93,11 +93,31 @@ class NetworkAccessServiceTest {
                 "443",
                 "应用访问外部 API",
                 null,
-                null,
+                TIME,
                 null,
                 null)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("实例缺少结构化网络分区");
+        verify(store, never()).insertApplication(any(NetworkAccessApplication.class));
+    }
+
+    @Test
+    void 来源目标不能选择同一环境部署实例() {
+        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+                .thenReturn(List.of(instance(11L, 300L, 800L, "vm-same", "10.10.1.1")));
+
+        assertThatThrownBy(() -> service.createApplication(ACTOR, new NetworkAccessService.NetworkAccessCommand(
+                managed(100L, 200L, 300L, List.of(11L)),
+                managed(100L, 200L, 300L, List.of(11L)),
+                AccessProtocol.TCP,
+                "443",
+                "同实例误选",
+                null,
+                TIME,
+                null,
+                null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("来源端点和目标端点不能选择同一环境部署实例");
         verify(store, never()).insertApplication(any(NetworkAccessApplication.class));
     }
 

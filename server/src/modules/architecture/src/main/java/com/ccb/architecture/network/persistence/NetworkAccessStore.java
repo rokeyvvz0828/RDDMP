@@ -4,19 +4,33 @@ import com.ccb.architecture.network.model.NetworkAccessModels.AccessProtocol;
 import com.ccb.architecture.network.model.NetworkAccessModels.AddressType;
 import com.ccb.architecture.network.model.NetworkAccessModels.ApplicationStatus;
 import com.ccb.architecture.network.model.NetworkAccessModels.EndpointKind;
+import com.ccb.architecture.network.model.NetworkAccessModels.EndpointInstanceStatus;
+import com.ccb.architecture.network.model.NetworkAccessModels.ExemptionRuleStatus;
 import com.ccb.architecture.network.model.NetworkAccessModels.ExternalNetworkAddress;
 import com.ccb.architecture.network.model.NetworkAccessModels.ManagedEndpointInstance;
+import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessActionType;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessApplication;
+import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessExemptionRule;
+import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessHistoryEvent;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessRelation;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkZone;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkZoneSubnet;
 import com.ccb.architecture.network.model.NetworkAccessModels.RecordStatus;
+import com.ccb.architecture.network.model.NetworkAccessModels.RelationCloseType;
 import com.ccb.architecture.network.model.NetworkAccessModels.RelationStatus;
+import com.ccb.architecture.network.model.NetworkAccessModels.ValidityType;
+import com.ccb.architecture.network.model.NetworkAccessModels.WorkflowReceipt;
+import com.ccb.architecture.network.model.NetworkAccessModels.WorkflowReceiptStart;
+import com.ccb.architecture.network.model.NetworkAccessModels.WorkflowReceiptStatus;
+import com.ccb.architecture.network.model.NetworkAccessModels.WorkflowRound;
+import com.ccb.architecture.network.model.NetworkAccessModels.WorkflowRoundStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,16 +57,29 @@ public class NetworkAccessStore {
             subnet.row_version, subnet.created_by, subnet.updated_by, subnet.created_at, subnet.updated_at
             """;
     private static final String APP_COLUMNS = """
-            id, tenant_id, application_no, applicant_id, source_kind, source_physical_subsystem_id,
-            source_environment_id, source_deployment_unit_id, source_external_address_id, source_snapshot_json,
+            id, tenant_id, application_no, applicant_id, action_type, target_relation_id,
+            source_kind, source_physical_subsystem_id, source_environment_id,
+            source_deployment_unit_id, source_external_address_id, source_snapshot_json,
             target_kind, target_physical_subsystem_id, target_environment_id, target_deployment_unit_id,
             target_external_address_id, target_snapshot_json, protocol, ports, purpose, process_description,
-            valid_from, valid_until, status, row_version, created_by, updated_by, created_at, updated_at
+            valid_from, valid_until, validity_type, status, current_business_round,
+            current_workflow_definition_id, current_workflow_version_id, current_workflow_instance_id,
+            current_payload_digest, cancellation_requested, row_version, created_by, updated_by,
+            created_at, updated_at
             """;
     private static final String RELATION_COLUMNS = """
-            id, tenant_id, relation_no, application_id, source_kind, source_snapshot_json, target_kind,
-            target_snapshot_json, protocol, ports, purpose, process_description, valid_from, valid_until,
-            status, close_reason, closed_by, closed_at, row_version, created_by, updated_by, created_at, updated_at
+            id, tenant_id, relation_no, application_id, replaces_relation_id, replaced_by_relation_id,
+            closed_application_id, source_kind, source_snapshot_json, target_kind, target_snapshot_json,
+            protocol, ports, purpose, process_description, valid_from, valid_until, validity_type,
+            status, close_reason, close_type, closed_by, closed_at, row_version, created_by, updated_by,
+            created_at, updated_at
+            """;
+    private static final String EXEMPTION_RULE_COLUMNS = """
+            rule.id, rule.tenant_id, rule.rule_code, rule.rule_name, rule.source_network_zone_id,
+            source_zone.name AS source_network_zone_name, rule.target_network_zone_id,
+            target_zone.name AS target_network_zone_name, rule.protocol, rule.ports, rule.valid_from,
+            rule.valid_until, rule.validity_type, rule.status, rule.remark, rule.row_version,
+            rule.created_by, rule.updated_by, rule.created_at, rule.updated_at
             """;
 
     private static final RowMapper<NetworkZone> ZONE_MAPPER = (rs, rowNum) -> new NetworkZone(
@@ -130,6 +157,8 @@ public class NetworkAccessStore {
                     rs.getLong("tenant_id"),
                     rs.getString("application_no"),
                     rs.getLong("applicant_id"),
+                    NetworkAccessActionType.fromDatabase(rs.getString("action_type")),
+                    nullableLong(rs, "target_relation_id"),
                     EndpointKind.fromDatabase(rs.getString("source_kind")),
                     nullableLong(rs, "source_physical_subsystem_id"),
                     nullableLong(rs, "source_environment_id"),
@@ -148,7 +177,14 @@ public class NetworkAccessStore {
                     rs.getString("process_description"),
                     localDateTime(rs.getTimestamp("valid_from")),
                     localDateTime(rs.getTimestamp("valid_until")),
+                    ValidityType.fromDatabase(rs.getString("validity_type")),
                     ApplicationStatus.fromDatabase(rs.getString("status")),
+                    rs.getInt("current_business_round"),
+                    nullableLong(rs, "current_workflow_definition_id"),
+                    nullableLong(rs, "current_workflow_version_id"),
+                    nullableLong(rs, "current_workflow_instance_id"),
+                    rs.getString("current_payload_digest"),
+                    rs.getBoolean("cancellation_requested"),
                     rs.getLong("row_version"),
                     rs.getLong("created_by"),
                     rs.getLong("updated_by"),
@@ -161,6 +197,9 @@ public class NetworkAccessStore {
                     rs.getLong("tenant_id"),
                     rs.getString("relation_no"),
                     rs.getLong("application_id"),
+                    nullableLong(rs, "replaces_relation_id"),
+                    nullableLong(rs, "replaced_by_relation_id"),
+                    nullableLong(rs, "closed_application_id"),
                     EndpointKind.fromDatabase(rs.getString("source_kind")),
                     rs.getString("source_snapshot_json"),
                     EndpointKind.fromDatabase(rs.getString("target_kind")),
@@ -171,15 +210,89 @@ public class NetworkAccessStore {
                     rs.getString("process_description"),
                     localDateTime(rs.getTimestamp("valid_from")),
                     localDateTime(rs.getTimestamp("valid_until")),
+                    ValidityType.fromDatabase(rs.getString("validity_type")),
                     RelationStatus.fromDatabase(rs.getString("status")),
                     rs.getString("close_reason"),
+                    RelationCloseType.fromDatabase(rs.getString("close_type")),
                     nullableLong(rs, "closed_by"),
                     localDateTime(rs.getTimestamp("closed_at")),
+                    false,
+                    0,
+                    List.of(),
                     rs.getLong("row_version"),
                     rs.getLong("created_by"),
                     rs.getLong("updated_by"),
                     localDateTime(rs.getTimestamp("created_at")),
                     localDateTime(rs.getTimestamp("updated_at")));
+
+    private static final RowMapper<NetworkAccessExemptionRule> EXEMPTION_RULE_MAPPER = (rs, rowNum) ->
+            new NetworkAccessExemptionRule(
+                    rs.getLong("id"),
+                    rs.getLong("tenant_id"),
+                    rs.getString("rule_code"),
+                    rs.getString("rule_name"),
+                    rs.getLong("source_network_zone_id"),
+                    rs.getString("source_network_zone_name"),
+                    rs.getLong("target_network_zone_id"),
+                    rs.getString("target_network_zone_name"),
+                    AccessProtocol.fromDatabase(rs.getString("protocol")),
+                    rs.getString("ports"),
+                    localDateTime(rs.getTimestamp("valid_from")),
+                    localDateTime(rs.getTimestamp("valid_until")),
+                    ValidityType.fromDatabase(rs.getString("validity_type")),
+                    ExemptionRuleStatus.fromDatabase(rs.getString("status")),
+                    rs.getString("remark"),
+                    rs.getLong("row_version"),
+                    rs.getLong("created_by"),
+                    rs.getLong("updated_by"),
+                    localDateTime(rs.getTimestamp("created_at")),
+                    localDateTime(rs.getTimestamp("updated_at")));
+
+    private static final RowMapper<NetworkAccessHistoryEvent> HISTORY_MAPPER = (rs, rowNum) ->
+            new NetworkAccessHistoryEvent(
+                    rs.getLong("id"),
+                    rs.getLong("tenant_id"),
+                    rs.getLong("application_id"),
+                    rs.getString("event_type"),
+                    nullableStatus(rs, "from_status"),
+                    nullableStatus(rs, "to_status"),
+                    rs.getInt("business_round"),
+                    rs.getString("summary"),
+                    rs.getString("snapshot_json"),
+                    rs.getString("diff_json"),
+                    rs.getLong("operator_id"),
+                    localDateTime(rs.getTimestamp("occurred_at")));
+
+    private static final RowMapper<WorkflowRound> WORKFLOW_ROUND_MAPPER = (rs, rowNum) ->
+            new WorkflowRound(
+                    rs.getLong("id"),
+                    rs.getLong("tenant_id"),
+                    rs.getLong("application_id"),
+                    rs.getInt("round_no"),
+                    nullableLong(rs, "workflow_definition_id"),
+                    nullableLong(rs, "workflow_version_id"),
+                    nullableLong(rs, "workflow_instance_id"),
+                    rs.getString("payload_digest"),
+                    WorkflowRoundStatus.fromDatabase(rs.getString("status")),
+                    localDateTime(rs.getTimestamp("started_at")),
+                    localDateTime(rs.getTimestamp("ended_at")),
+                    localDateTime(rs.getTimestamp("created_at")),
+                    localDateTime(rs.getTimestamp("updated_at")));
+
+    private static final RowMapper<WorkflowReceipt> WORKFLOW_RECEIPT_MAPPER = (rs, rowNum) ->
+            new WorkflowReceipt(
+                    rs.getLong("id"),
+                    rs.getLong("tenant_id"),
+                    rs.getString("event_id"),
+                    rs.getString("subscriber_key"),
+                    nullableLong(rs, "application_id"),
+                    nullableInteger(rs, "round_no"),
+                    nullableLong(rs, "workflow_instance_id"),
+                    rs.getString("event_type"),
+                    WorkflowReceiptStatus.fromDatabase(rs.getString("processing_status")),
+                    rs.getString("detail"),
+                    localDateTime(rs.getTimestamp("received_at")),
+                    localDateTime(rs.getTimestamp("processed_at")));
 
     private final JdbcTemplate jdbc;
 
@@ -461,21 +574,27 @@ public class NetworkAccessStore {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_network_access_application
-                    (id, tenant_id, application_no, applicant_id, source_kind,
+                    (id, tenant_id, application_no, applicant_id, action_type, target_relation_id, source_kind,
                      source_physical_subsystem_id, source_environment_id, source_deployment_unit_id,
                      source_external_address_id, source_snapshot_json, target_kind,
                      target_physical_subsystem_id, target_environment_id, target_deployment_unit_id,
                      target_external_address_id, target_snapshot_json, protocol, ports, purpose,
-                     process_description, valid_from, valid_until, status, row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     process_description, valid_from, valid_until, validity_type, status, current_business_round,
+                     current_workflow_definition_id, current_workflow_version_id, current_workflow_instance_id,
+                     current_payload_digest, cancellation_requested, row_version, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, application.id(), application.tenantId(), application.applicationNo(), application.applicantId(),
-                application.sourceKind().name(), application.sourcePhysicalSubsystemId(), application.sourceEnvironmentId(),
+                application.actionType().name(), application.targetRelationId(), application.sourceKind().name(),
+                application.sourcePhysicalSubsystemId(), application.sourceEnvironmentId(),
                 application.sourceDeploymentUnitId(), application.sourceExternalAddressId(), application.sourceSnapshotJson(),
                 application.targetKind().name(), application.targetPhysicalSubsystemId(), application.targetEnvironmentId(),
                 application.targetDeploymentUnitId(), application.targetExternalAddressId(), application.targetSnapshotJson(),
                 application.protocol().name(), application.ports(), application.purpose(), application.processDescription(),
-                timestamp(application.validFrom()), timestamp(application.validUntil()), application.status().name(),
+                timestamp(application.validFrom()), timestamp(application.validUntil()), application.validityType().name(),
+                application.status().name(), application.currentBusinessRound(), application.currentWorkflowDefinitionId(),
+                application.currentWorkflowVersionId(), application.currentWorkflowInstanceId(),
+                application.currentPayloadDigest(), application.cancellationRequested(),
                 application.rowVersion(), application.createdBy(), application.updatedBy());
     }
 
@@ -522,19 +641,60 @@ public class NetworkAccessStore {
                 """, to.name(), actorId, tenantId, id, from.name(), expectedRowVersion) == 1;
     }
 
+    public boolean compareAndSetApplicationWorkflowContext(long tenantId, long applicationId,
+                                                           int expectedCurrentBusinessRound,
+                                                           long expectedRowVersion,
+                                                           int nextBusinessRound,
+                                                           long workflowDefinitionId,
+                                                           long workflowVersionId,
+                                                           long workflowInstanceId,
+                                                           String payloadDigest,
+                                                           long updatedBy) {
+        requireTransaction();
+        return jdbc.update("""
+                UPDATE arch_network_access_application
+                SET current_business_round = ?, current_workflow_definition_id = ?,
+                    current_workflow_version_id = ?, current_workflow_instance_id = ?,
+                    current_payload_digest = ?, row_version = row_version + 1, updated_by = ?
+                WHERE tenant_id = ? AND id = ? AND current_business_round = ? AND row_version = ?
+                  AND status = 'IN_REVIEW'
+                """, nextBusinessRound, workflowDefinitionId, workflowVersionId, workflowInstanceId,
+                payloadDigest, updatedBy, tenantId, applicationId, expectedCurrentBusinessRound,
+                expectedRowVersion) == 1;
+    }
+
+    public boolean compareAndSetCancellationRequested(long tenantId, long applicationId,
+                                                      long expectedRowVersion, boolean requested,
+                                                      long updatedBy) {
+        requireTransaction();
+        return jdbc.update("""
+                UPDATE arch_network_access_application
+                SET cancellation_requested = ?, row_version = row_version + 1, updated_by = ?
+                WHERE tenant_id = ? AND id = ? AND row_version = ? AND status = 'IN_REVIEW'
+                """, requested, updatedBy, tenantId, applicationId, expectedRowVersion) == 1;
+    }
+
     public void insertRelation(NetworkAccessRelation relation) {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_network_access_relation
-                    (id, tenant_id, relation_no, application_id, source_kind, source_snapshot_json,
+                    (id, tenant_id, relation_no, application_id, replaces_relation_id, source_kind, source_snapshot_json,
                      target_kind, target_snapshot_json, protocol, ports, purpose, process_description,
-                     valid_from, valid_until, status, row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     valid_from, valid_until, validity_type, status, row_version, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, relation.id(), relation.tenantId(), relation.relationNo(), relation.applicationId(),
-                relation.sourceKind().name(), relation.sourceSnapshotJson(), relation.targetKind().name(),
+                relation.replacesRelationId(), relation.sourceKind().name(), relation.sourceSnapshotJson(),
+                relation.targetKind().name(),
                 relation.targetSnapshotJson(), relation.protocol().name(), relation.ports(), relation.purpose(),
                 relation.processDescription(), timestamp(relation.validFrom()), timestamp(relation.validUntil()),
-                relation.status().name(), relation.rowVersion(), relation.createdBy(), relation.updatedBy());
+                relation.validityType().name(), relation.status().name(), relation.rowVersion(),
+                relation.createdBy(), relation.updatedBy());
+    }
+
+    public Optional<NetworkAccessRelation> findRelation(long tenantId, long id) {
+        return jdbc.query("SELECT " + RELATION_COLUMNS
+                        + " FROM arch_network_access_relation WHERE tenant_id = ? AND id = ?",
+                RELATION_MAPPER, tenantId, id).stream().findFirst();
     }
 
     public List<NetworkAccessRelation> listRelations(long tenantId, RelationStatus status, int limit, int offset) {
@@ -564,10 +724,223 @@ public class NetworkAccessStore {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_network_access_relation
-                SET status = 'CLOSED', close_reason = ?, closed_by = ?, closed_at = ?,
+                SET status = 'CLOSED', close_reason = ?, close_type = 'LEGACY_DIRECT',
+                    closed_by = ?, closed_at = ?,
                     updated_by = ?, row_version = row_version + 1
                 WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
                 """, reason, actorId, Timestamp.valueOf(closedAt), actorId, tenantId, id, rowVersion) == 1;
+    }
+
+    public boolean closeRelationByApplication(long tenantId, long id, Long replacedByRelationId,
+                                              long applicationId, RelationCloseType closeType,
+                                              String reason, long actorId, LocalDateTime closedAt) {
+        requireTransaction();
+        Objects.requireNonNull(closeType, "关闭类型不能为空");
+        return jdbc.update("""
+                UPDATE arch_network_access_relation
+                SET status = 'CLOSED', close_reason = ?, close_type = ?, closed_application_id = ?,
+                    replaced_by_relation_id = ?, closed_by = ?, closed_at = ?, updated_by = ?,
+                    row_version = row_version + 1
+                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE'
+                """, reason, closeType.name(), applicationId, replacedByRelationId, actorId,
+                timestamp(closedAt), actorId, tenantId, id) == 1;
+    }
+
+    public List<NetworkAccessExemptionRule> listExemptionRules(long tenantId, ExemptionRuleStatus status) {
+        StringBuilder filter = new StringBuilder("WHERE rule.tenant_id = ?");
+        List<Object> args = new ArrayList<>();
+        args.add(tenantId);
+        if (status != null) {
+            filter.append(" AND rule.status = ?");
+            args.add(status.name());
+        }
+        filter.append(" ORDER BY rule.updated_at DESC, rule.id DESC");
+        return jdbc.query(exemptionRuleSelect(filter.toString()), EXEMPTION_RULE_MAPPER, args.toArray());
+    }
+
+    public Optional<NetworkAccessExemptionRule> findExemptionRule(long tenantId, long id) {
+        return jdbc.query(exemptionRuleSelect("WHERE rule.tenant_id = ? AND rule.id = ?"),
+                EXEMPTION_RULE_MAPPER, tenantId, id).stream().findFirst();
+    }
+
+    public Optional<NetworkAccessExemptionRule> lockExemptionRule(long tenantId, long id) {
+        requireTransaction();
+        return jdbc.query(exemptionRuleSelect("WHERE rule.tenant_id = ? AND rule.id = ? FOR UPDATE"),
+                EXEMPTION_RULE_MAPPER, tenantId, id).stream().findFirst();
+    }
+
+    public boolean exemptionRuleCodeExists(long tenantId, String ruleCode, Long excludeId) {
+        return exists("arch_network_access_exemption_rule", "rule_code", tenantId, ruleCode, excludeId);
+    }
+
+    public void insertExemptionRule(NetworkAccessExemptionRule rule) {
+        requireTransaction();
+        jdbc.update("""
+                INSERT INTO arch_network_access_exemption_rule
+                    (id, tenant_id, rule_code, rule_name, source_network_zone_id, target_network_zone_id,
+                     protocol, ports, valid_from, valid_until, validity_type, status, remark,
+                     row_version, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, rule.id(), rule.tenantId(), rule.ruleCode(), rule.ruleName(), rule.sourceNetworkZoneId(),
+                rule.targetNetworkZoneId(), rule.protocol().name(), rule.ports(), timestamp(rule.validFrom()),
+                timestamp(rule.validUntil()), rule.validityType().name(), rule.status().name(), rule.remark(),
+                rule.rowVersion(), rule.createdBy(), rule.updatedBy());
+    }
+
+    public boolean updateExemptionRule(long tenantId, long id, long rowVersion, String ruleCode, String ruleName,
+                                       long sourceNetworkZoneId, long targetNetworkZoneId,
+                                       AccessProtocol protocol, String ports, LocalDateTime validFrom,
+                                       LocalDateTime validUntil, ValidityType validityType,
+                                       String remark, long actorId) {
+        requireTransaction();
+        return jdbc.update("""
+                UPDATE arch_network_access_exemption_rule
+                SET rule_code = ?, rule_name = ?, source_network_zone_id = ?, target_network_zone_id = ?,
+                    protocol = ?, ports = ?, valid_from = ?, valid_until = ?, validity_type = ?,
+                    remark = ?, updated_by = ?, row_version = row_version + 1
+                WHERE tenant_id = ? AND id = ? AND row_version = ? AND status = 'ACTIVE'
+                """, ruleCode, ruleName, sourceNetworkZoneId, targetNetworkZoneId, protocol.name(), ports,
+                timestamp(validFrom), timestamp(validUntil), validityType.name(), remark, actorId,
+                tenantId, id, rowVersion) == 1;
+    }
+
+    public boolean updateExemptionRuleStatus(long tenantId, long id, long rowVersion,
+                                             ExemptionRuleStatus from, ExemptionRuleStatus to, long actorId) {
+        requireTransaction();
+        return jdbc.update("""
+                UPDATE arch_network_access_exemption_rule
+                SET status = ?, updated_by = ?, row_version = row_version + 1
+                WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
+                """, to.name(), actorId, tenantId, id, from.name(), rowVersion) == 1;
+    }
+
+    public List<EndpointInstanceStatus> listEndpointInstanceStatuses(long tenantId, List<Long> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return List.of();
+        }
+        StringBuilder sql = new StringBuilder("""
+                SELECT id, machine_name, ip_address, status
+                FROM arch_environment_instance
+                WHERE tenant_id = ? AND id IN (
+                """);
+        List<Object> args = new ArrayList<>();
+        args.add(tenantId);
+        for (int i = 0; i < instanceIds.size(); i++) {
+            if (i > 0) {
+                sql.append(", ");
+            }
+            sql.append("?");
+            args.add(instanceIds.get(i));
+        }
+        sql.append(")");
+        return jdbc.query(sql.toString(), (rs, rowNum) -> new EndpointInstanceStatus(
+                rs.getLong("id"), rs.getString("machine_name"), rs.getString("ip_address"),
+                rs.getString("status")), args.toArray());
+    }
+
+    public void insertHistory(NetworkAccessHistoryEvent event) {
+        requireTransaction();
+        Objects.requireNonNull(event, "历史事件不能为空");
+        jdbc.update("""
+                INSERT INTO arch_network_access_application_history
+                    (id, tenant_id, application_id, event_type, from_status, to_status, business_round,
+                     summary, snapshot_json, diff_json, operator_id, occurred_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, event.id(), event.tenantId(), event.applicationId(), event.eventType(),
+                event.fromStatus() == null ? null : event.fromStatus().name(),
+                event.toStatus() == null ? null : event.toStatus().name(), event.businessRound(),
+                event.summary(), event.snapshotJson(), event.diffJson(), event.operatorId(),
+                timestamp(event.occurredAt()));
+    }
+
+    public void insertPendingWorkflowRound(WorkflowRound round) {
+        requireTransaction();
+        Objects.requireNonNull(round, "工作流轮次不能为空");
+        jdbc.update("""
+                INSERT INTO arch_network_access_workflow_round
+                    (id, tenant_id, application_id, round_no, workflow_definition_id,
+                     workflow_version_id, workflow_instance_id, payload_digest, status, started_at, ended_at)
+                VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL)
+                """, round.id(), round.tenantId(), round.applicationId(), round.roundNo());
+    }
+
+    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long workflowInstanceId) {
+        requireTransaction();
+        return jdbc.query("""
+                SELECT id, tenant_id, application_id, round_no, workflow_definition_id,
+                       workflow_version_id, workflow_instance_id, payload_digest, status,
+                       started_at, ended_at, created_at, updated_at
+                FROM arch_network_access_workflow_round
+                WHERE tenant_id = ? AND workflow_instance_id = ? FOR UPDATE
+                """, WORKFLOW_ROUND_MAPPER, tenantId, workflowInstanceId).stream().findFirst();
+    }
+
+    public boolean isLatestWorkflowRound(long tenantId, long applicationId, int roundNo) {
+        Integer latest = jdbc.queryForObject("""
+                SELECT MAX(round_no) FROM arch_network_access_workflow_round
+                WHERE tenant_id = ? AND application_id = ?
+                """, Integer.class, tenantId, applicationId);
+        return latest != null && latest == roundNo;
+    }
+
+    public boolean bindWorkflowRoundStarted(long tenantId, long applicationId, int roundNo,
+                                            long workflowDefinitionId, long workflowVersionId,
+                                            long workflowInstanceId, String payloadDigest,
+                                            LocalDateTime startedAt) {
+        requireTransaction();
+        return jdbc.update("""
+                UPDATE arch_network_access_workflow_round
+                SET workflow_definition_id = ?, workflow_version_id = ?, workflow_instance_id = ?,
+                    payload_digest = ?, status = 'STARTED', started_at = ?
+                WHERE tenant_id = ? AND application_id = ? AND round_no = ? AND status = 'PENDING'
+                """, workflowDefinitionId, workflowVersionId, workflowInstanceId, payloadDigest,
+                timestamp(startedAt), tenantId, applicationId, roundNo) == 1;
+    }
+
+    public boolean completeStartedWorkflowRound(long tenantId, long applicationId, int roundNo,
+                                                WorkflowRoundStatus nextStatus, LocalDateTime endedAt) {
+        requireTransaction();
+        Objects.requireNonNull(nextStatus, "轮次目标状态不能为空");
+        return jdbc.update("""
+                UPDATE arch_network_access_workflow_round
+                SET status = ?, ended_at = ?
+                WHERE tenant_id = ? AND application_id = ? AND round_no = ? AND status = 'STARTED'
+                """, nextStatus.name(), timestamp(endedAt), tenantId, applicationId, roundNo) == 1;
+    }
+
+    public boolean beginReceipt(WorkflowReceiptStart receipt) {
+        requireTransaction();
+        Objects.requireNonNull(receipt, "工作流回执不能为空");
+        return jdbc.update("""
+                INSERT IGNORE INTO arch_network_access_workflow_receipt
+                    (id, tenant_id, event_id, subscriber_key, application_id, round_no,
+                     workflow_instance_id, event_type, processing_status, detail)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, receipt.id(), receipt.tenantId(), receipt.eventId(), receipt.subscriberKey(),
+                receipt.applicationId(), receipt.roundNo(), receipt.workflowInstanceId(), receipt.eventType(),
+                WorkflowReceiptStatus.FAILED.name(), "事务内事件尚未完成") == 1;
+    }
+
+    public boolean completeReceipt(long tenantId, String eventId, String subscriberKey,
+                                   WorkflowReceiptStatus status, String detail) {
+        requireTransaction();
+        Objects.requireNonNull(status, "回执状态不能为空");
+        return jdbc.update("""
+                UPDATE arch_network_access_workflow_receipt
+                SET processing_status = ?, detail = ?, processed_at = CURRENT_TIMESTAMP
+                WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
+                  AND processing_status = 'FAILED'
+                """, status.name(), detail, tenantId, eventId, subscriberKey) == 1;
+    }
+
+    public Optional<WorkflowReceipt> findReceipt(long tenantId, String eventId, String subscriberKey) {
+        return jdbc.query("""
+                SELECT id, tenant_id, event_id, subscriber_key, application_id, round_no,
+                       workflow_instance_id, event_type, processing_status, detail,
+                       received_at, processed_at
+                FROM arch_network_access_workflow_receipt
+                WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
+                """, WORKFLOW_RECEIPT_MAPPER, tenantId, eventId, subscriberKey).stream().findFirst();
     }
 
     private String zoneSelect(String filter) {
@@ -602,6 +975,14 @@ public class NetworkAccessStore {
                 """ + filter;
     }
 
+    private String exemptionRuleSelect(String filter) {
+        return "SELECT " + EXEMPTION_RULE_COLUMNS + " FROM arch_network_access_exemption_rule rule "
+                + "JOIN arch_network_zone source_zone ON source_zone.tenant_id = rule.tenant_id "
+                + "AND source_zone.id = rule.source_network_zone_id "
+                + "JOIN arch_network_zone target_zone ON target_zone.tenant_id = rule.tenant_id "
+                + "AND target_zone.id = rule.target_network_zone_id " + filter;
+    }
+
     private boolean exists(String table, String column, long tenantId, String value, Long excludeId) {
         String exclude = excludeId == null ? "" : " AND id <> ?";
         List<Object> args = new ArrayList<>(List.of(tenantId, value));
@@ -617,9 +998,19 @@ public class NetworkAccessStore {
         return value == null ? null : Timestamp.valueOf(value);
     }
 
-    private static Long nullableLong(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+    private static Long nullableLong(ResultSet rs, String column) throws SQLException {
         long value = rs.getLong(column);
         return rs.wasNull() ? null : value;
+    }
+
+    private static Integer nullableInteger(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    private static ApplicationStatus nullableStatus(ResultSet rs, String column) throws SQLException {
+        String value = rs.getString(column);
+        return value == null ? null : ApplicationStatus.fromDatabase(value);
     }
 
     private static LocalDateTime localDateTime(Timestamp value) {
