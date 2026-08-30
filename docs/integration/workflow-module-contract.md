@@ -36,7 +36,7 @@
 
 业务流程状态变化会写入不可变生命周期事件，类型包括 `STARTED`、`RETURNED`、`APPROVED`、`REJECTED`、`TERMINATED`。业务模块实现 `WorkflowLifecycleConsumer`，以 `subscriberKey + eventId` 保证幂等；消费失败由平台持久重试，耗尽后进入 `DEAD`，不得回滚已完成的流程状态。
 
-审批节点可配置 `config.signatureRequired=true`。要求签名时，前端仅提交 `signatureConfirmed=true`，签署人、租户、业务轮次和数据摘要全部由服务端取得；签名与审批决定在同一事务写入，证据不可修改或物理删除。
+平台内部电子签名当前暂停使用。流程设计器不再提供签名配置，任务上下文中的 `signature_required` 固定为 `false`，服务端忽略兼容请求中的 `signatureConfirmed` 且不新增签名记录。存量流程 JSON 中的 `config.signatureRequired`、公开接口字段、`wf_signature` 表和历史签名查询继续保留；历史证据不可修改或物理删除。
 
 ## 页面职责与审批接入
 
@@ -53,7 +53,7 @@
 
 服务端必须按当前租户和当前登录人校验任务归属。非当前处理人返回 `403`；任务不存在、上下文不完整、路由不安全或任务状态已变化返回冲突错误并关闭审批控件。已办任务可以展示为只读，但 `allowed_actions` 必须为空且 `actionable=false`。
 
-提交 `POST /api/workflows/tasks/{id}/decision` 时，前端只能从 `allowed_actions` 中选择动作，不传签署人身份。服务端在同一请求中重新校验处理人、任务状态、允许动作和电子签名要求，避免页面打开后任务被其他操作处理造成重复审批。成功后业务详情页保持在当前页面并刷新业务状态、流程进度和审计记录。
+提交 `POST /api/workflows/tasks/{id}/decision` 时，前端只能从 `allowed_actions` 中选择动作，不传签署人身份。服务端在同一请求中重新校验处理人、任务状态和允许动作，避免页面打开后任务被其他操作处理造成重复审批。成功后业务详情页保持在当前页面并刷新业务状态、流程进度和审计记录。
 
 ## API
 

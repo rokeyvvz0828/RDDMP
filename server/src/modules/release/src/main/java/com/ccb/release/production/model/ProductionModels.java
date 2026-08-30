@@ -14,7 +14,21 @@ public final class ProductionModels {
                         String artifactType, String artifactVersion, String itemType, String filePath, String itemKey,
                         String versionType, String characteristic,
                         Result productionResult, LocalDateTime productionAt, String resultReason,
-                        boolean activeCandidate, long rowVersion, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                        boolean activeCandidate, long rowVersion, LocalDateTime createdAt, LocalDateTime updatedAt,
+                        String windowName) {
+        public Entry(long id, long tenantId, long windowId, long applicationId, String applicationCode,
+                     LocalDateTime approvedAt, String subsystemId, String subsystemCode, String subsystemName,
+                     String deliveryUnitId, String deliveryUnitCode, String deliveryUnitName,
+                     String artifactType, String artifactVersion, String itemType, String filePath, String itemKey,
+                     String versionType, String characteristic,
+                     Result productionResult, LocalDateTime productionAt, String resultReason,
+                     boolean activeCandidate, long rowVersion, LocalDateTime createdAt, LocalDateTime updatedAt) {
+            this(id, tenantId, windowId, applicationId, applicationCode, approvedAt, subsystemId, subsystemCode,
+                    subsystemName, deliveryUnitId, deliveryUnitCode, deliveryUnitName, artifactType, artifactVersion,
+                    itemType, filePath, itemKey, versionType, characteristic, productionResult, productionAt,
+                    resultReason, activeCandidate, rowVersion, createdAt, updatedAt, null);
+        }
+
         public Entry(long id, long tenantId, long windowId, long applicationId, String applicationCode,
                      LocalDateTime approvedAt, String subsystemId, String subsystemCode, String subsystemName,
                      String deliveryUnitId, String deliveryUnitCode, String deliveryUnitName,
@@ -25,6 +39,13 @@ public final class ProductionModels {
                     subsystemName, deliveryUnitId, deliveryUnitCode, deliveryUnitName, artifactType, artifactVersion,
                     "DELIVERY_UNIT", null, "UNIT:" + deliveryUnitCode, versionType, characteristic, productionResult,
                     productionAt, resultReason, activeCandidate, rowVersion, createdAt, updatedAt);
+        }
+
+        public Entry withWindowName(String value) {
+            return new Entry(id, tenantId, windowId, applicationId, applicationCode, approvedAt, subsystemId,
+                    subsystemCode, subsystemName, deliveryUnitId, deliveryUnitCode, deliveryUnitName, artifactType,
+                    artifactVersion, itemType, filePath, itemKey, versionType, characteristic, productionResult,
+                    productionAt, resultReason, activeCandidate, rowVersion, createdAt, updatedAt, value);
         }
     }
 

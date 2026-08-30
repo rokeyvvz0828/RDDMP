@@ -1,0 +1,59 @@
+{
+  "task_id": "T5",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "补充组件、结构化列表、Excel 导入检查和导出 API"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/DataMigrationModule.vue",
+      "purpose": "建立 content/base section 注册，呈现组件表格、结构化列表和 Excel 操作"
+    }
+  ],
+  "requirements_addressed": ["R2", "R5", "R6", "R8"],
+  "commands": [
+    {
+      "command": "node /home/song/workspace/RDDMP/web/node_modules/vue-tsc/bin/vue-tsc.js --noEmit -p /tmp/rddmp-web-tsconfig.json",
+      "exit_code": 0,
+      "salient_output": "TypeScript check passed"
+    },
+    {
+      "command": "node /home/song/workspace/RDDMP/web/node_modules/vite/bin/vite.js build --config /tmp/rddmp-vite-req031.config.cjs --outDir /tmp/rddmp-web-dist",
+      "exit_code": 0,
+      "salient_output": "production bundle built"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "section route browser probe",
+      "result": "pass",
+      "evidence": "/data-migration/base/components、/data-migration/content/validation-rules、/data-migration/base/target-tables 均返回 200 页面，无异常且无横向溢出"
+    }
+  ],
+  "diff_summary": [
+    "组件清单专用读取视图",
+    "结构化资产列表和 Excel 导入检查/导出控件",
+    "base/content section 到后端结构化类型的注册映射"
+  ],
+  "assumptions_falsified": [],
+  "invariants_checked": [
+    {
+      "invariant": "section 只决定已注册页面和类型，不决定权限或 SQL",
+      "result": "pass",
+      "evidence": "类型映射为前端常量，服务端仍执行权限和数据范围"
+    },
+    {
+      "invariant": "不引入 Mock 运行数据",
+      "result": "pass",
+      "evidence": "新增视图均通过 data-migration API 读取"
+    }
+  ],
+  "disturbances": [],
+  "unresolved_items": [
+    "Excel 导入后端当前为检查响应，尚未完成逐行持久化",
+    "基础资料编辑、关联校验删除和筛选导出仍未完整实现",
+    "普通用户 HTTP 权限和正式 npm build 仍未复验"
+  ],
+  "recommended_next": "独立观测纠正结果；保留 F-0001 直到专用维护契约和导入持久化验收完成"
+}

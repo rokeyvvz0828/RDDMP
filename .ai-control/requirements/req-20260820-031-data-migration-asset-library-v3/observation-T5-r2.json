@@ -1,0 +1,78 @@
+{
+  "sample_label": "T5 增量实现采样 2026-08-21",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S4 authenticated HTTP and menu route probe",
+      "result": "pass",
+      "raw_evidence": "MOCK_DATA_ENABLED=false；/api/auth/routes 返回 3 个根菜单和 17 个子菜单；看板 overall/component 均返回 200",
+      "limitation": ["未验证每日 02:00 调度实际运行"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S4 unauthenticated and administrator HTTP probe",
+      "result": "partial",
+      "raw_evidence": "无 Authorization 访问资产接口返回 401；admin 真实 token 可执行资产生命周期；普通用户实体授权未取得独立账号采样",
+      "limitation": ["普通用户拒绝路径未完成独立 HTTP 复验"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S4 real object and lifecycle probe",
+      "result": "pass",
+      "raw_evidence": "管理员真实 API 上传、列表、下载、逻辑删除、回收站查询、恢复、再次删除、彻底清理均返回预期 200；清理后列表为空",
+      "limitation": ["对象探针使用本地临时文本文件；未验证超大文件边界"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S3 temporary dependency-mapped frontend build",
+      "result": "pass",
+      "raw_evidence": "vue-tsc exit 0；Vite 2328 modules transformed and production bundle built",
+      "limitation": ["正式 npm --prefix web run build 仍因隔离树缺少 vue-tsc 二进制返回 127"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S5 Chromium four viewport probe",
+      "result": "pass",
+      "raw_evidence": "1280x800、375x812、390x844、430x932 均 ready complete、无 exception、scrollWidth 等于 clientWidth；资产工具栏和回收站操作可见",
+      "limitation": ["仅管理员会话；未覆盖暗色主题"]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R5",
+      "expected": "结构化资产和基础资料页面提供独立列表、导入/导出及维护交互",
+      "observed": "当前统一页面仍将结构化入口和基础资料入口降级为通用资产/项目列表，缺少完整导入、导出和专用维护操作",
+      "reproduction": "打开 /data-migration/content/validation-rules 或 /data-migration/base/components，检查页面操作和 API 调用",
+      "evidence": "DataMigrationModule.vue 的 activeView 仅覆盖 dashboard、projects、assets、recycle-bin；未发现结构化导入/导出控件",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "静态代码和浏览器路由均可观测，但未覆盖完整业务数据写入",
+      "causal_hypothesis": "T5 首轮实现先完成通用资产外壳，未完成 section 注册表和结构化页面契约",
+      "correction_check": "为结构化和基础资料 section 建立专用 API/视图，重新执行四视口和 HTTP 交互检查",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "隔离工作树 node_modules 仅有 Vite 缓存目录，缺少 vue-tsc 可执行文件",
+      "effect": "正式 npm build 传感器返回 127；临时只读映射后等价编译和生产打包通过",
+      "detectable": true
+    },
+    {
+      "source": "后端旧进程 MINIO_ENDPOINT=host.docker.internal:9000 不可解析",
+      "effect": "首轮上传 400 File storage service unavailable；重启本地进程指向 127.0.0.1:9000 后对象生命周期探针通过",
+      "detectable": true
+    }
+  ],
+  "coverage_gaps": [
+    "普通用户查看/下载全部资料及编辑/删除他人资料拒绝",
+    "结构化资产 Excel 持久化导入、导出和逐行错误",
+    "基础资料目标表/中间表字段级编辑和关联删除",
+    "每日 02:00 看板快照任务",
+    "暗色主题和完整提交中/部分导入失败状态"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

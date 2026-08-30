@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-T13-report-material",
+  "decision": "accept",
+  "decision_reason": "运行探针和代码复核确认 MD5 算法不可用、专用角色项目选项可能 403、移动端存在重复表格以及失败写入可能遗留对象。",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "实现直接依赖浏览器未提供的 MD5 能力，并把项目选项权限绑定到平台项目接口；列表模板未按桌面/移动容器隔离。",
+    "supporting_evidence": ["crypto.subtle.digest('MD5') 在标准浏览器不受支持", "data-migration role seed 不包含 project:access", "ReportsPage 同时渲染 UiDataTable 和 dm-mobile-list"],
+    "falsifier": "真实浏览器能稳定生成 MD5、无 project:access 角色能成功读取项目选项且移动视口只呈现一种列表"
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "汇报材料页面与专属服务接口",
+    "write_scope": ["web/src/api/data-migration.ts", "web/src/modules/data-migration/views/content/ReportsPage.vue", "web/src/modules/data-migration/data-migration.css", "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java", "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReportController.java"],
+    "invariants": ["租户过滤", "REPORT 类型隔离", "服务端权限和审计不变", "不修改平台公共模块"],
+    "impact_limit": "汇报材料功能",
+    "rollback": "恢复 T13 前上述文件内容",
+    "correction_check": ["聚焦 Maven 测试", "前端构建", "MD5 向量", "认证项目选项/列表 API", "390px 浏览器无横向溢出"],
+    "route": "executing"
+  },
+  "resolution": "verified",
+  "residual_risk": ["MinIO 当前本地上传探针返回 storage service unavailable，完整对象生命周期仍需环境恢复后复验"]
+}

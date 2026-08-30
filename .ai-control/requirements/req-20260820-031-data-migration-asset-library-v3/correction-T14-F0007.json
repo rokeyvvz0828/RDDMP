@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0007",
+  "decision": "accept",
+  "decision_reason": "Computed browser visibility proves the report page violates the approved mobile card presentation at every required phone width.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "The media query enables dm-mobile-list but no selector hides the report UiDataTable.",
+    "supporting_evidence": ["data-migration.css has a mobile display rule only for dm-mobile-list", "Playwright reports both roots visible"],
+    "falsifier": "A report-specific desktop table selector is already hidden at max-width 760px."
+  },
+  "control_action": {
+    "gain": "high",
+    "target": "Report desktop/mobile presentation roots",
+    "write_scope": ["web/src/modules/data-migration/views/content/ReportsPage.vue", "web/src/modules/data-migration/data-migration.css", "web/src/modules/data-migration/t14-browser-check.mjs"],
+    "invariants": ["desktop table remains visible", "mobile cards remain visible", "no page-level overflow", "recycle-bin presentation follows the same rule"],
+    "impact_limit": "report page active and recycle tabs",
+    "rollback": "remove dm-desktop-table class and media selector",
+    "correction_check": ["frontend build", "1280/375/390/430 computed visibility", "API and console error capture"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": []
+}

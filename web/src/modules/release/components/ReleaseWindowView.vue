@@ -62,6 +62,12 @@ function tone(statusCode: ReleaseWindowDto['status']) {
   return statusCode === 'CLOSED' ? 'info' : statusCode === 'DECLARATION_OPEN' ? 'primary'
     : statusCode === 'IN_PRODUCTION' ? 'danger' : statusCode === 'URGENT' ? 'warning' : 'info'
 }
+function isRegularEnabled(item: ReleaseWindowDto) {
+  return item.regularEnabled && item.status !== 'CLOSED'
+}
+function canToggleRegular(item: ReleaseWindowDto) {
+  return props.canUpdate && item.status !== 'CLOSED'
+}
 function openCreate() {
   Object.assign(form, emptyForm(), { projectId: props.project?.ref || '', projectCode: props.project?.ref || '', projectName: props.project?.name || '' })
   selected.value = null
@@ -136,7 +142,7 @@ watch(() => props.windows, items => {
         <el-table-column label="投产窗口" min-width="230"><template #default="scope"><button type="button" class="release-primary-cell" @click="openDetail(scope.row)"><strong>{{ scope.row.windowName }}</strong><span>{{ scope.row.windowCode }}</span></button></template></el-table-column>
         <el-table-column label="申报周期" min-width="205"><template #default="scope"><div class="release-date-cell"><strong>{{ localMinute(scope.row.declarationStart) }}</strong><span>至 {{ localMinute(scope.row.declarationEnd) }}</span></div></template></el-table-column>
         <el-table-column label="计划投产" min-width="205"><template #default="scope"><div class="release-date-cell"><strong>{{ localMinute(scope.row.productionStart) }}</strong><span>至 {{ localMinute(scope.row.productionEnd) }}</span></div></template></el-table-column>
-        <el-table-column label="常规申请" width="126"><template #default="scope"><div class="release-date-cell"><el-switch :model-value="scope.row.regularEnabled" :disabled="!canUpdate" inline-prompt active-text="开" inactive-text="关" @click.prevent="canUpdate && toggleRegular(scope.row)" /><span v-if="scope.row.unavailableReason">{{ scope.row.unavailableReason }}</span><span v-else>允许提交</span></div></template></el-table-column>
+        <el-table-column label="常规申请" width="126"><template #default="scope"><div class="release-date-cell"><el-switch :model-value="isRegularEnabled(scope.row)" :disabled="!canToggleRegular(scope.row)" inline-prompt active-text="开" inactive-text="关" @click.prevent="canToggleRegular(scope.row) && toggleRegular(scope.row)" /><span v-if="scope.row.unavailableReason">{{ scope.row.unavailableReason }}</span><span v-else>允许提交</span></div></template></el-table-column>
         <el-table-column label="状态" width="112"><template #default="scope"><UiStatusTag :value="scope.row.statusLabel" :tone="tone(scope.row.status)" /></template></el-table-column>
         <el-table-column label="操作" width="140" fixed="right"><template #default="scope"><el-button link type="primary" @click="openDetail(scope.row)"><el-icon><View /></el-icon>详情</el-button><el-button v-if="canUpdate" link type="primary" @click="openEdit(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button></template></el-table-column>
       </UiDataTable>
@@ -144,7 +150,7 @@ watch(() => props.windows, items => {
     </template>
 
     <el-dialog v-model="detailOpen" title="投产窗口详情" width="min(760px, 92vw)">
-      <template v-if="selected"><div class="release-detail-heading"><div><span class="release-panel-kicker">{{ selected.windowCode }}</span><h3>{{ selected.windowName }}</h3><p>{{ selected.description || '无窗口说明' }}</p></div><UiStatusTag :value="selected.statusLabel" :tone="tone(selected.status)" /></div><el-descriptions :column="2" border><el-descriptions-item label="所属项目">{{ selected.projectName }}</el-descriptions-item><el-descriptions-item label="常规申请">{{ selected.regularEnabled ? '开启' : '关闭' }}</el-descriptions-item><el-descriptions-item label="申报开始">{{ localMinute(selected.declarationStart) }}</el-descriptions-item><el-descriptions-item label="申报截止">{{ localMinute(selected.declarationEnd) }}</el-descriptions-item><el-descriptions-item label="投产开始">{{ localMinute(selected.productionStart) }}</el-descriptions-item><el-descriptions-item label="投产结束">{{ localMinute(selected.productionEnd) }}</el-descriptions-item><el-descriptions-item label="可选状态" :span="2">{{ selected.regularApplicationSelectable ? '可用于版本申请' : selected.unavailableReason || '不可选择' }}</el-descriptions-item></el-descriptions></template>
+      <template v-if="selected"><div class="release-detail-heading"><div><span class="release-panel-kicker">{{ selected.windowCode }}</span><h3>{{ selected.windowName }}</h3><p>{{ selected.description || '无窗口说明' }}</p></div><UiStatusTag :value="selected.statusLabel" :tone="tone(selected.status)" /></div><el-descriptions :column="2" border><el-descriptions-item label="所属项目">{{ selected.projectName }}</el-descriptions-item><el-descriptions-item label="常规申请">{{ isRegularEnabled(selected) ? '开启' : '关闭' }}</el-descriptions-item><el-descriptions-item label="申报开始">{{ localMinute(selected.declarationStart) }}</el-descriptions-item><el-descriptions-item label="申报截止">{{ localMinute(selected.declarationEnd) }}</el-descriptions-item><el-descriptions-item label="投产开始">{{ localMinute(selected.productionStart) }}</el-descriptions-item><el-descriptions-item label="投产结束">{{ localMinute(selected.productionEnd) }}</el-descriptions-item><el-descriptions-item label="可选状态" :span="2">{{ selected.regularApplicationSelectable ? '可用于版本申请' : selected.unavailableReason || '不可选择' }}</el-descriptions-item></el-descriptions></template>
       <template #footer><el-button @click="detailOpen = false">关闭</el-button><el-button v-if="selected && canUpdate" type="primary" @click="detailOpen = false; openEdit(selected)">编辑</el-button></template>
     </el-dialog>
 

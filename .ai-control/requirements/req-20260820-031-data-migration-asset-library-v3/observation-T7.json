@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T7",
+  "phase": "observing",
+  "control_prefix": "T7",
+  "observation_status": "converged",
+  "trigger": "T7 execution complete（组件编号/组件名称字段清理）",
+  "sensors": [
+    "vue-tsc --noEmit -p tsconfig.json",
+    "npm run build",
+    "mvn -pl server/src/modules/data-migration -am test",
+    "node scripts/check-all-governance.mjs",
+    "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+    "grep component_code|component_name（全仓引用复查）"
+  ],
+  "evidence": [
+    {
+      "check": "前端类型检查与构建",
+      "observed": "vue-tsc 0 类型错误；vite build built in 11.31s 成功",
+      "pass": true
+    },
+    {
+      "check": "后端编译与测试",
+      "observed": "mvn -pl server/src/modules/data-migration -am test 退出码 0（含 DataMigrationModuleRegistrationTest 断言 V84）",
+      "pass": true
+    },
+    {
+      "check": "governance 治理检查",
+      "observed": "17 个模块规则通过；AI control layout 失败条目均为其他历史需求（req-20260813-030/031/032、req-20260817-031、req-20260818-032、req-20260819-033/034/035），本任务 req-20260820-031 无任何告警",
+      "pass": true
+    },
+    {
+      "check": "scope 越界检查",
+      "observed": "REQ-20260820-031 passed；80 changed file(s)，writable_paths 全部覆盖，0 越界",
+      "pass": true
+    },
+    {
+      "check": "字段残留复查",
+      "observed": "全仓 grep component_code/component_name 仅剩 requirement 模块 business_component_code/name（无关）与 V84 清理逻辑自身（DROP 语句/注释）；dm_component 相关代码无残留读写",
+      "pass": true
+    },
+    {
+      "check": "账本一致性",
+      "observed": "design.json design_revision=3 且含 D9；state.json revision=72、phase_history 追加 T7 两条；execution-T7.json/observation-T7.json 存在",
+      "pass": true
+    }
+  ],
+  "known_deviation": [
+    "count SQL 原缺陷（未 JOIN 而引用 s.* 筛选列）在本次修复中发现并顺带修复，属同一筛选逻辑区域",
+    "T6 acceptance 回归（375/390/430 视口渲染与导出文件二进制校验）未在本任务重跑；字段清理不改变布局结构与导出格式（仅少两列），导出列变更建议在上线验证中一并抽查"
+  ],
+  "result": "converged",
+  "observed_at": "2026-08-22T02:50:00+00:00",
+  "next": "pending user review；上线验证：Flyway V84 先于服务发布，抽查组件清单增改查/导出（14 列）与组件看板系统维度展示"
+}

@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T8",
+  "phase": "executing",
+  "control_prefix": "T8",
+  "execution_status": "complete",
+  "trigger": "用户指令 2026-08-22：组件简介（dm_component.description）字段亦为冗余字段（T7 清理后遗留）",
+  "scope": {
+    "writable": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+      "docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/**"
+    ],
+    "read_only": [
+      "web/src/components/ui/**",
+      "server/src/platform/**（除 V84 授权文件）",
+      "governance/**"
+    ],
+    "forbidden": [
+      "production systems / real data"
+    ],
+    "non_goals": [
+      "不清理 dm_project.description（项目简介，项目管理功能保留）",
+      "不清理 arch_physical_subsystem 侧的系统描述 system_description（列表/抽屉动态带出列，非 dm_component 字段）",
+      "不调整菜单、权限与删除能力"
+    ]
+  },
+  "input_facts": [
+    "dm_component.description（组件简介）为历史遗留字段，规格中新增仅需项目/系统编号/总分核对，简介无录入项",
+    "V84 尚未提交（untracked），直接在建表语句移除 description 列并追加幂等 DROP COLUMN 逻辑（列存在才删，V62 先例）",
+    "引用点：ProjectComponentService（components/export/createComponent/componentView 的 c.description、关键字筛选 OR c.description LIKE、导出 columns/headers 组件简介）、data-migration.ts（DataMigrationComponent.description）、ComponentsPage.vue（createForm.description/新增抽屉组件简介/关键字 placeholder）",
+    "dm_project.description 在 projects()/createProject()/updateProject() 中继续使用，明确保留"
+  ],
+  "plan_steps": [
+    {
+      "id": "T8-S1",
+      "action": "V84：建表语句移除 description 列；字段清理段追加幂等 DROP COLUMN description（information_schema 存在性判断），注释更新清理范围为三字段",
+      "evidence": "V84 diff：建表 7 列；新增 5 段 PREPARE DROP description 逻辑"
+    },
+    {
+      "id": "T8-S2",
+      "action": "ProjectComponentService：components()/componentView() 移除 c.description，exportComponents() SELECT/columns/headers 移除（14→13 列），createComponent() INSERT 移除 description，applyFilter() 关键字移除 c.description LIKE",
+      "evidence": "ProjectComponentService diff：dm_component 相关 SQL 与导出列不再出现 description"
+    },
+    {
+      "id": "T8-S3",
+      "action": "前端：data-migration.ts DataMigrationComponent 移除 description 可选字段；ComponentsPage.vue 移除 createForm.description、新增抽屉组件简介表单项、关键字 placeholder 移除「描述」",
+      "evidence": "data-migration.ts / ComponentsPage.vue diff；grep 无 c.description/组件简介 残留"
+    },
+    {
+      "id": "T8-S4",
+      "action": "文档与账本：设计文档设计修订 3→4、关键字/POST 契约/新增抽屉/字段清理决策章节更新为三字段；design.json design_revision 3→4 追加 D10；state.json revision 72→73 追加 phase_history",
+      "evidence": "docs/design diff；design.json/state.json diff"
+    },
+    {
+      "id": "T8-S5",
+      "action": "验证：前端 vue-tsc + vite build、后端 mvn test、governance、scope",
+      "command": "cd web && npx vue-tsc --noEmit -p tsconfig.json && timeout 240 npm run build; cd .. && mvn -q -pl server/src/modules/data-migration -am test; node scripts/check-all-governance.mjs; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "evidence": "vue-tsc 0 错误、build built in 11.56s；mvn test MVN_EXIT=0；scope passed 82 changed file(s)；AI control layout 失败条目均为其他历史需求（req-20260813-030/032、req-20260817-031、req-20260818-032、req-20260819-033/034/035），本任务无"
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-T8-1",
+      "text": "DROP COLUMN description 对存量库 dm_component 数据为破坏性操作",
+      "mitigation": "V84 列存在性判断幂等执行；组件清单为 V3 全新功能，存量数据属历史遗留",
+      "residual": "若有历史程序依赖组件简介列，需随发布同步下线；本仓库无其他引用"
+    },
+    {
+      "id": "R-T8-2",
+      "text": "误伤 dm_project.description（项目简介）",
+      "mitigation": "清理仅针对 dm_component 表；dm_project 的 description 保留并在 projects()/createProject()/updateProject() 继续使用",
+      "residual": "无"
+    }
+  ],
+  "compliance_check": {
+    "scope_clean": true,
+    "no_prod": true,
+    "no_pii": true,
+    "no_bypass": true,
+    "writable_paths_respected": true,
+    "no_rollback_of_others": true
+  },
+  "executed_at": "2026-08-22T03:20:00+00:00",
+  "result": "pass",
+  "next": "T8 observation in observation-T8.json"
+}

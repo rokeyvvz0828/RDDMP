@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0004",
+  "decision": "accept",
+  "decision_reason": "The new attachment remains TEMP because update never invokes the mandatory binding transition.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "The report update path diverged from the established AssetService replacement sequence.",
+    "supporting_evidence": ["AssetService binds the new attachment before deleting the old binding", "ReportService update omits bind"],
+    "falsifier": "The attachment is already BOUND before ReportService.update, which resolveAttachment explicitly rejects."
+  },
+  "control_action": {
+    "gain": "high",
+    "target": "Report attachment replacement transaction",
+    "write_scope": ["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java", "server/src/modules/data-migration/src/test/**"],
+    "invariants": ["new attachment is bound to the same report", "old binding is retired only after the new binding and row update", "all database state changes share the transaction"],
+    "impact_limit": "report update attachment branch",
+    "rollback": "revert T14 replacement sequence and tests",
+    "correction_check": ["Mockito InOrder service test", "runtime replace and download", "old attachment becomes inaccessible only after success"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["physical MinIO deletion remains asynchronous through the existing attachment cleanup contract"]
+}

@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T8",
+  "phase": "observing",
+  "control_prefix": "T8",
+  "observation_status": "converged",
+  "trigger": "T8 execution complete（组件简介 dm_component.description 字段清理）",
+  "sensors": [
+    "vue-tsc --noEmit -p tsconfig.json",
+    "npm run build",
+    "mvn -pl server/src/modules/data-migration -am test",
+    "node scripts/check-all-governance.mjs",
+    "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+    "grep c.description|组件简介（全仓引用复查）"
+  ],
+  "evidence": [
+    {
+      "check": "前端类型检查与构建",
+      "observed": "vue-tsc 0 类型错误；vite build built in 11.56s 成功",
+      "pass": true
+    },
+    {
+      "check": "后端编译与测试",
+      "observed": "mvn -pl server/src/modules/data-migration -am test MVN_EXIT=0（含 DataMigrationModuleRegistrationTest 断言 V84）",
+      "pass": true
+    },
+    {
+      "check": "governance 治理检查",
+      "observed": "AI control layout 失败条目均为其他历史需求（req-20260813-030/032、req-20260817-031、req-20260818-032、req-20260819-033/034/035），本任务 req-20260820-031 无任何告警",
+      "pass": true
+    },
+    {
+      "check": "scope 越界检查",
+      "observed": "REQ-20260820-031 passed；82 changed file(s)，0 越界",
+      "pass": true
+    },
+    {
+      "check": "字段残留复查",
+      "observed": "grep c.description/组件简介 仅剩 V84 清理逻辑自身与设计文档说明；dm_project.description（项目简介）按设计保留",
+      "pass": true
+    },
+    {
+      "check": "账本一致性",
+      "observed": "design.json design_revision=4 且含 D10；state.json revision=73、phase_history 追加 T8 两条；execution-T8.json/observation-T8.json 存在",
+      "pass": true
+    }
+  ],
+  "known_deviation": [
+    "T6 acceptance 回归（375/390/430 视口与导出二进制校验）仍未重跑；T8 仅移除新增抽屉一个表单项与导出一列，不影响布局结构，建议上线验证一并抽查",
+    "导出列由 14 列降为 13 列（移除组件简介），如下游有按列位置解析的消费方需同步"
+  ],
+  "result": "converged",
+  "observed_at": "2026-08-22T03:25:00+00:00",
+  "next": "pending user review；上线验证：Flyway V84 先于服务发布，抽查组件清单增改查/导出（13 列）与系统信息动态带出"
+}

@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T5-r9",
+  "phase": "observing",
+  "control_prefix": "T5",
+  "observation_status": "complete",
+  "trigger": "REQ-20260820-031 系统/组件清单前端增量（筛选/列表/导出/新增联动/编辑/删除）",
+  "commands_run": [
+    {
+      "id": "S1",
+      "command": "cd web && npx vue-tsc --noEmit -p tsconfig.json",
+      "exit_code": 0,
+      "evidence": "无类型错误；ComponentsPage.vue 与 data-migration.ts 无未解析符号"
+    },
+    {
+      "id": "S2",
+      "command": "cd web && timeout 180 npm run build",
+      "exit_code": 0,
+      "evidence": "vite 生产构建成功，生成 dist 产物"
+    },
+    {
+      "id": "S3",
+      "command": "cd /home/song/workspace/RDDMP && mvn -q -pl server/src/modules/data-migration -am test",
+      "exit_code": 0,
+      "evidence": "data-migration 模块与上游依赖测试全部通过（含更新后的 DataMigrationModuleRegistrationTest）"
+    },
+    {
+      "id": "S4",
+      "command": "cd /home/song/workspace/RDDMP && node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "evidence": "仅历史任务账本报错（req-20260813-030、req-20260817-031 等，非本任务前缀）；本任务 req-20260820-031 无治理错误"
+    },
+    {
+      "id": "S5",
+      "command": "cd /home/song/workspace/RDDMP && node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "exit_code": 0,
+      "evidence": "scope 检查通过，0 越界文件（backend-dev.sh/frontend-dev.sh 已纳入 writable_paths）"
+    }
+  ],
+  "sensors": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S-component-crud",
+      "result": "pass",
+      "raw_evidence": "新增抽屉：项目下拉 + 系统编号联动物理子系统带出事业群/简称/名称/描述/负责团队（只读不保存）+ 组件编号/名称/简介/总分核对；编辑抽屉仅 total_check；删除带确认，均对接已鉴权后端接口"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S-component-list",
+      "result": "pass",
+      "raw_evidence": "12 列（所属项目/事业群/系统编号/系统简称/系统名称/系统描述/负责团队/总分核对/创建时间/创建人/更新时间/更新人）+ 操作列；20/50/100 分页；移动端卡片化"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S-component-filters",
+      "result": "pass",
+      "raw_evidence": "项目下拉、事业群模糊、系统编号、负责团队、简称/名称同框、总分核对是/否、关键字模糊 7 项筛选参数与后端 Controller 一一对应"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S-component-export",
+      "result": "pass",
+      "raw_evidence": "筛选后调用 /components/export，blob 下载 16 列中文表头 XLSX，与 service 导出列一致"
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S-frontend-build",
+      "result": "pass",
+      "raw_evidence": "vue-tsc 0 错误、vite build 成功、后端 mvn test 通过；scope 检查 0 越界"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "check-all-governance.mjs 对历史任务账本的报错",
+      "effect": "exit_code 1，但与本任务无关",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "coverage_gaps": [
+    "桌面与 375/390/430 视口的实际渲染与联动 403 提示未在本轮回放截图复核，统一在 T6 acceptance 阶段回归",
+    "导出的 XLSX 内容未做文件级二进制校验（依赖后端单元测试覆盖）"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "decision": "converged",
+  "decision_reason": "系统/组件清单全部功能点（CRUD/筛选/列表/导出/联动/权限/移动端）已实现且通过前后端构建、测试与 scope 合规检查；剩余仅视口回放类人工验收，移交 T6",
+  "observed_at": "2026-08-22T08:20:00+00:00"
+}
