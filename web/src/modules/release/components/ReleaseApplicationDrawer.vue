@@ -6,6 +6,7 @@ import { deleteTemporaryAttachment, uploadAttachment } from '../../../api/attach
 import { apiErrorMessage } from '../../../api/error'
 import { listReleaseApplicationAttachments, type ProductionEntryDto, type ReleaseApplicationDto, type ReleaseApplicationWrite, type ReleaseAttachmentInput, type ReleaseWindowDto } from '../../../api/release'
 import type { ProjectContextItem } from '../../../types/project-context'
+import { useAuthStore } from '../../../stores/auth'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
 import { releaseSubsystemOptions } from '../release-master-data.mock'
 
@@ -44,6 +45,7 @@ const emit = defineEmits<{
   save: [payload: ReleaseApplicationWrite, mode: 'draft' | 'submit', attachments: ReleaseAttachmentInput[]]
   'delete-attachment': [application: ReleaseApplicationDto, attachmentId: number]
 }>()
+const auth = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const uploadBusy = ref(false)
@@ -54,6 +56,11 @@ const subsystem = computed(() => releaseSubsystemOptions.find(item => item.id ==
 const selectedWindow = computed(() => props.windows.find(item => item.id === draft.windowId))
 const windowOptions = computed(() => [...props.windows].sort((a, b) => a.productionStart.localeCompare(b.productionStart)))
 const estimatedType = computed(() => draft.emergency ? 'EMERGENCY' : selectedWindow.value?.status === 'URGENT' ? 'URGENT' : 'REGULAR')
+const requesterDisplay = computed(() => {
+  const name = props.application?.requesterName || auth.user?.displayName || auth.user?.username
+  const department = props.application?.requesterDepartment || (!props.application ? auth.user?.orgName : undefined)
+  return [name, department].filter(Boolean).join(' / ') || '用户信息加载中'
+})
 const versionLabels = { REGULAR: '常规版本', URGENT: '紧急版本', EMERGENCY: '应急版本' } as const
 
 function emptyDraft(): DraftState {
@@ -186,9 +193,9 @@ async function save(mode: 'draft' | 'submit') {
       <el-alert v-if="saveError" :title="saveError" type="error" :closable="false" show-icon />
       <section class="release-form-section"><header><span>01</span><div><strong>申请基础</strong></div></header>
         <el-form-item label="是否应急版本"><el-radio-group v-model="draft.emergency"><el-radio-button :value="false">否</el-radio-button><el-radio-button :value="true">是</el-radio-button></el-radio-group></el-form-item>
-        <div class="release-form-grid"><el-form-item label="所属项目"><el-input :model-value="project?.name" disabled /></el-form-item><el-form-item label="申请人"><el-input :model-value="application?.requesterName || '当前登录用户'" disabled /></el-form-item>
-          <el-form-item v-if="!draft.emergency" label="投产窗口" required class="is-wide"><el-select v-model="draft.windowId" placeholder="选择投产窗口" popper-class="release-window-select-popper"><el-option v-for="item in windowOptions" :key="item.id" :value="item.id" :label="`${item.windowCode} · ${item.windowName}`" :disabled="!item.regularApplicationSelectable"><div class="release-window-option"><span><strong>{{ item.windowCode }} · {{ item.windowName }}</strong><small>{{ minute(item.declarationStart) }} 至 {{ minute(item.declarationEnd) }} / {{ item.statusLabel }}</small></span><el-tag :type="item.regularApplicationSelectable ? 'success' : 'info'" size="small">{{ item.regularApplicationSelectable ? '可选择' : item.unavailableReason }}</el-tag></div></el-option></el-select></el-form-item>
-          <el-form-item v-if="!draft.emergency" label="版本类型"><div class="release-scenario-preview"><UiStatusTag :value="versionLabels[estimatedType]" :tone="versionTone()" /><span>以服务端提交校验结果为准</span></div></el-form-item>
+        <div class="release-form-grid"><el-form-item label="所属项目"><el-input :model-value="project?.name" disabled /></el-form-item><el-form-item label="申请人"><el-input :model-value="requesterDisplay" disabled /></el-form-item>
+          <el-form-item v-if="!draft.emergency" label="投产窗口" required><el-select v-model="draft.windowId" placeholder="选择投产窗口" popper-class="release-window-select-popper"><el-option v-for="item in windowOptions" :key="item.id" :value="item.id" :label="`${item.windowCode} · ${item.windowName}`" :disabled="!item.regularApplicationSelectable"><div class="release-window-option"><span><strong>{{ item.windowCode }} · {{ item.windowName }}</strong><small>{{ minute(item.declarationStart) }} 至 {{ minute(item.declarationEnd) }} / {{ item.statusLabel }}</small></span><el-tag :type="item.regularApplicationSelectable ? 'success' : 'info'" size="small">{{ item.regularApplicationSelectable ? '可选择' : item.unavailableReason }}</el-tag></div></el-option></el-select></el-form-item>
+          <el-form-item v-if="!draft.emergency" label="版本类型"><div class="release-scenario-preview"><UiStatusTag :value="versionLabels[estimatedType]" :tone="versionTone()" /></div></el-form-item>
         </div>
       </section>
 

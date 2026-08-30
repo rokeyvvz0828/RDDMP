@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260826-048",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260826-048-disable-internal-signature/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "platform/workflow",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/private/tmp/rddmp-rokey-test-management"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowSignatureService.java",
+      "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowSignatureServiceTest.java",
+      "web/src/components/workflow/WorkflowNodeInspector.vue",
+      "docs/integration/workflow-module-contract.md",
+      "docs/requirements/REQ-20260826-048-disable-internal-signature/**",
+      "docs/engineering-control/designs/2026-08-26-disable-internal-signature-design.md",
+      "docs/engineering-control/plans/2026-08-26-disable-internal-signature-plan.md",
+      ".ai-control/requirements/req-20260826-048-disable-internal-signature/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/infrastructure/**",
+      "web/src/api/workflow.ts",
+      "web/src/modules/release/**",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260826-048",
+    "owner_approved": true,
+    "old_behavior_preserved": false,
+    "regression_tests": ["workflow-focused-tests", "backend-full-tests", "frontend-build"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "Keep wf_signature and all historical records unchanged; rollback is application-code only."
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-workflow-metadata"},
+  "required_tests": [
+    {"name": "development-entry", "command": "node scripts/check-development-entry.mjs --require-plugin"},
+    {"name": "workflow-focused-tests", "command": "mvn -pl :ccb-workflow -am test"},
+    {"name": "backend-full-tests", "command": "mvn test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --requirement REQ-20260826-048"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["disables new internal signature evidence", "must not weaken task authorization or modify historical evidence"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260826-048-disable-internal-signature",
+    "control_justification": "shared workflow audit behavior changes while API and historical data remain compatible",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260826-048-disable-internal-signature/execution-T1.json",
+      ".ai-control/requirements/req-20260826-048-disable-internal-signature/observation-T1.json",
+      ".ai-control/requirements/req-20260826-048-disable-internal-signature/convergence.json"
+    ],
+    "release_verification": ["workflow-focused-tests", "backend-full-tests", "frontend-build", "governance"],
+    "rollback": "Revert REQ-20260826-048 application and frontend changes; keep wf_signature and historical evidence unchanged."
+  }
+}

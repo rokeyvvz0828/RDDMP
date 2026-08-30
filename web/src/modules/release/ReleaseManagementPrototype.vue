@@ -83,6 +83,8 @@ const applications = ref<ReleaseApplicationDto[]>([])
 const applicationTotal = ref(0)
 const applicationPage = ref(1)
 const applicationPageSize = ref(12)
+const applicationWindowId = ref<number>()
+let applicationWindowInitialized = false
 const applicationKeyword = ref<string>()
 const applicationStatus = ref<ReleaseApplicationStatusCode>()
 const applicationsLoading = ref(false)
@@ -149,7 +151,12 @@ async function loadWindows() {
   windowsError.value = ''
   try {
     const response = await listReleaseWindows({ page: 1, size: 200, projectId: projectStore.current.ref })
-    windows.value = response.data.data.records
+    const records = response.data.data.records
+    if (!applicationWindowInitialized && canViewApplications.value && records.length) {
+      applicationWindowId.value = records[0].id
+      applicationWindowInitialized = true
+    }
+    windows.value = records
   } catch (error) {
     windows.value = []
     windowsError.value = apiErrorMessage(error, '投产窗口加载失败，请稍后重试')
@@ -167,6 +174,7 @@ async function loadApplications() {
       page: applicationPage.value,
       size: applicationPageSize.value,
       projectId: projectStore.current.ref,
+      windowId: applicationWindowId.value,
       keyword: applicationKeyword.value,
       status: applicationStatus.value
     })
@@ -190,7 +198,7 @@ function resetApplicationSearch() {
   applicationSearchError.value = ''
 }
 
-function searchApplicationOptions(query: string) {
+function searchApplicationOptions(query: string, windowId?: number) {
   window.clearTimeout(applicationSearchTimer)
   const requestGeneration = ++applicationSearchGeneration
   applicationSearchLoading.value = true
@@ -209,6 +217,7 @@ function searchApplicationOptions(query: string) {
         page: 1,
         size: 20,
         projectId: projectRef,
+        windowId,
         keyword: query || undefined
       })
       if (requestGeneration !== applicationSearchGeneration) return
@@ -238,10 +247,8 @@ async function loadCurrentProduction() {
 }
 
 async function refreshPrimaryData() {
-  const requests: Promise<void>[] = []
-  if (canViewWindows.value) requests.push(loadWindows())
-  if (canViewApplications.value) requests.push(loadApplications())
-  await Promise.all(requests)
+  if (canViewWindows.value || canViewApplications.value) await loadWindows()
+  if (canViewApplications.value) await loadApplications()
 }
 
 async function createWindow(payload: ReleaseWindowWrite) {
@@ -278,9 +285,10 @@ async function toggleRegular(window: ReleaseWindowDto, enabled: boolean, reason:
   }
 }
 
-function queryApplications(query: { page: number; size: number; keyword?: string; status?: ReleaseApplicationStatusCode }) {
+function queryApplications(query: { page: number; size: number; windowId?: number; keyword?: string; status?: ReleaseApplicationStatusCode }) {
   applicationPage.value = query.page
   applicationPageSize.value = query.size
+  applicationWindowId.value = query.windowId
   applicationKeyword.value = query.keyword
   applicationStatus.value = query.status
   void loadApplications()
@@ -314,6 +322,29 @@ async function openEditApplication(application: ReleaseApplicationDto) {
 
 function openApplicationDetail(application: ReleaseApplicationDto) {
   void router.push(`/release/applications/${encodeURIComponent(application.applicationCode)}`)
+}
+
+async function copyApplicationApprovalLink(application: ReleaseApplicationDto) {
+  const routeLocation = router.resolve(`/release/applications/${encodeURIComponent(application.applicationCode)}`)
+  const approvalLink = new URL(routeLocation.href, window.location.origin).toString()
+  try {
+    await navigator.clipboard.writeText(approvalLink)
+  } catch {
+    const textarea = document.createElement('textarea')
+    textarea.value = approvalLink
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const copied = document.execCommand('copy')
+    textarea.remove()
+    if (!copied) {
+      ElMessage.error('审批链接复制失败，请打开详情页后复制浏览器地址。')
+      return
+    }
+  }
+  ElMessage.success('审批链接已复制')
 }
 
 function buildApplicationOperation(payload: ReleaseApplicationWrite, mode: 'draft' | 'submit', attachments: ReleaseAttachmentInput[]): BlockedApplicationOperation {
@@ -661,6 +692,8 @@ watch(() => projectStore.currentRef, async (next, previous) => {
   if (!next || next === previous) return
   resetApplicationSearch()
   applicationPage.value = 1
+  applicationWindowId.value = undefined
+  applicationWindowInitialized = false
   applicationDrawerOpen.value = false
   conflictOpen.value = false
   clearBlockedApplicationOperation()
@@ -683,7 +716,7 @@ onBeforeUnmount(() => {
     </nav>
 
     <ReleaseWindowView v-if="activeView === 'windows'" ref="windowViewRef" :windows="windows" :project="projectStore.current" :loading="windowsLoading" :error="windowsError" :can-create="canCreateWindows" :can-update="canUpdateWindows" @refresh="loadWindows" @create="createWindow" @update="updateWindow" @toggle-regular="toggleRegular" />
-    <ReleaseApplicationView v-else-if="activeView === 'applications'" :key="projectStore.currentRef" :applications="applications" :total="applicationTotal" :page="applicationPage" :page-size="applicationPageSize" :loading="applicationsLoading" :error="applicationsError" :search-options="applicationSearchOptions" :search-loading="applicationSearchLoading" :search-error="applicationSearchError" :can-create="canCreateApplications" :can-update="canUpdateApplications" :can-submit="canSubmitApplications" :can-withdraw="canWithdrawApplications" :can-cancel="canCancelApplications" @search-options="searchApplicationOptions" @query="queryApplications" @refresh="loadApplications" @create="openCreateApplication" @edit="openEditApplication" @detail="openApplicationDetail" @action="handleApplicationAction" />
+    <ReleaseApplicationView v-else-if="activeView === 'applications'" :key="projectStore.currentRef" :applications="applications" :total="applicationTotal" :page="applicationPage" :page-size="applicationPageSize" :window-id="applicationWindowId" :windows="windows" :windows-loading="windowsLoading" :loading="applicationsLoading" :error="applicationsError" :search-options="applicationSearchOptions" :search-loading="applicationSearchLoading" :search-error="applicationSearchError" :can-create="canCreateApplications" :can-update="canUpdateApplications" :can-submit="canSubmitApplications" :can-withdraw="canWithdrawApplications" :can-cancel="canCancelApplications" @search-options="searchApplicationOptions" @query="queryApplications" @refresh="loadApplications" @create="openCreateApplication" @edit="openEditApplication" @detail="openApplicationDetail" @copy-approval-link="copyApplicationApprovalLink" @action="handleApplicationAction" />
     <ReleaseBaselineView v-else-if="activeView === 'production-ledger'" :can-update="canUpdateBaseline" />
     <ReleaseCurrentProductionView v-else-if="activeView === 'current-production'" />
     <ReleaseAnalyticsView v-else-if="activeView === 'analytics'" />

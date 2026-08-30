@@ -22,6 +22,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AttachmentServiceTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "developer", "", "研发人员", 1L, true);
@@ -41,15 +42,18 @@ class AttachmentServiceTest {
         assertEquals("TEMP", item.status());
         assertEquals(USER.id(), item.uploaderId());
         assertEquals(storage.objectKey, jdbc.row.get("object_key"));
+        assertTrue(storage.objectKey.endsWith("." + "a".repeat(32)));
     }
 
     @Test
     void treatsTrailingDotAsNoExtension() {
-        AttachmentService service = service(new StubJdbcTemplate(), new StubStorage());
+        StubStorage storage = new StubStorage();
+        AttachmentService service = service(new StubJdbcTemplate(), storage);
 
         var item = service.upload(new MockMultipartFile("file", "说明材料.", "text/plain", "x".getBytes()), USER);
 
         assertNull(item.fileExtension());
+        assertTrue(storage.objectKey.endsWith(".bin"));
     }
 
     @Test

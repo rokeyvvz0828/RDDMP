@@ -34,12 +34,17 @@ public class ReleaseApplicationStore {
 
     public ReleaseApplicationStore(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    public PageResult<Application> findPage(long tenantId, String projectId, String keyword, String status,
+    public PageResult<Application> findPage(long tenantId, String projectId, Long windowId, String keyword, String status,
                                             boolean mineOnly, long requesterId, PageQuery page) {
         StringBuilder where = new StringBuilder(" FROM rel_release_application WHERE tenant_id = ? AND deleted = 0");
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
         if (projectId != null && !projectId.isBlank()) { where.append(" AND project_id = ?"); args.add(projectId.trim()); }
+        if (windowId != null) {
+            where.append(" AND (window_id = ? OR assigned_window_id = ?)");
+            args.add(windowId);
+            args.add(windowId);
+        }
         if (status != null && !status.isBlank()) { where.append(" AND application_status = ?"); args.add(status.trim()); }
         if (mineOnly) { where.append(" AND requester_id = ?"); args.add(requesterId); }
         if (keyword != null && !keyword.isBlank()) {

@@ -1,0 +1,1175 @@
+{
+  "schema_version": 5,
+  "revision": 19,
+  "created_at": "2026-08-26T10:40:50+00:00",
+  "updated_at": "2026-08-26T11:13:38+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化 full 工作流",
+      "recorded_at": "2026-08-26T10:40:50+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "基线含三项可测must需求且无阻塞未知项",
+      "recorded_at": "2026-08-26T10:41:24+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "三项must需求均有因果链传感器执行器和回退路径",
+      "recorded_at": "2026-08-26T10:42:59+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "T1覆盖全部must需求且写入范围检查回退和升级条件完整",
+      "recorded_at": "2026-08-26T10:44:33+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "实现边界内完成且局部自动化输出可独立复验",
+      "recorded_at": "2026-08-26T10:57:47+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1已验证且三次采样P0P1均为零",
+      "recorded_at": "2026-08-26T11:12:09+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "三项must需求经三次采样验证且账本门禁PASS",
+      "recorded_at": "2026-08-26T11:13:38+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "用户确认兼容性停用方案且新需求范围已建立",
+        "recorded_at": "2026-08-26T10:41:08+00:00",
+        "data": {
+          "objective": "暂停新内部电子签名要求，使审批无需签名确认即可完成，同时完整保留历史证据和接口兼容。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "流程设计器不得再提供内部电子签名配置入口。",
+              "acceptance": [
+                "审批节点检查器不展示需要电子签名控件"
+              ],
+              "priority": "must",
+              "source": "用户于 2026-08-26 明确要求先去掉电子签名",
+              "counterexample": [
+                "管理员仍可把审批节点设置为需要电子签名"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "所有审批任务在运行时均不得要求签名确认或新增签名记录。",
+              "acceptance": [
+                "存量 signatureRequired=true 的任务上下文返回 false",
+                "未确认签名的审批决定不被签名服务阻止",
+                "审批决定不新增 wf_signature 记录"
+              ],
+              "priority": "must",
+              "source": "用户确认采用兼容性停用方案",
+              "counterexample": [
+                "旧流程实例仍要求勾选确认签署",
+                "审批后写入新的签名记录"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "历史签名数据和公开接口字段必须保持兼容。",
+              "acceptance": [
+                "历史签名查询继续返回既有记录",
+                "signature_required 和 signatureConfirmed 字段不删除",
+                "无数据库迁移"
+              ],
+              "priority": "must",
+              "source": "用户确认保留历史数据的兼容性方案",
+              "counterexample": [
+                "删除 wf_signature 或历史记录",
+                "旧前端因字段删除而失败"
+              ]
+            }
+          ],
+          "invariants": [
+            "任务授权、状态和允许动作继续由服务端校验",
+            "历史签名记录不可修改或删除",
+            "不修改业务模块审批逻辑"
+          ],
+          "constraints": [
+            "Java 17 与现有 Spring/Vue 技术栈",
+            "不修改数据库和公开 API",
+            "只修改批准写入范围"
+          ],
+          "non_goals": [
+            "手写签名",
+            "密码复核",
+            "CA 或第三方签署",
+            "审批流程重构"
+          ],
+          "assumptions": [
+            {
+              "text": "业务审批页面依据 signature_required 决定是否展示签署控件",
+              "basis": "只读代码勘察",
+              "falsifier": "存在不依赖该字段的其他签署入口"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "停用时是否删除历史结构",
+              "options": [
+                "保留兼容",
+                "物理删除"
+              ],
+              "selected": "保留兼容",
+              "blocking": false,
+              "source": "用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "节点配置模板中无签名控件",
+              "candidate_sensor": "源码检查与前端构建"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "required=false 且 confirm 不写入",
+              "candidate_sensor": "WorkflowSignatureServiceTest"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "历史查询仍执行且接口类型未删除",
+              "candidate_sensor": "服务测试、编译和差异审计"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "全仓调用链勘察确认签名配置运行时和历史查询边界可观察可控制",
+        "recorded_at": "2026-08-26T10:42:47+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "WorkflowNodeInspector 电子签名配置入口",
+              "WorkflowSignatureService 运行时要求与签名写入",
+              "WorkflowMonitorService 历史签名查询"
+            ],
+            "environment": [
+              "工作流定义 JSON",
+              "业务审批页面",
+              "wf_signature 历史数据",
+              "任务授权与状态校验"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "signature_runtime_required",
+              "owner": "WorkflowSignatureService",
+              "valid_values": [
+                false
+              ]
+            },
+            {
+              "name": "historical_signature_records",
+              "owner": "wf_signature",
+              "valid_values": [
+                "preserved"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "管理员选择审批节点",
+              "transitions": [
+                "WorkflowNodeInspector 渲染节点字段"
+              ],
+              "outputs": [
+                "不展示电子签名配置"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "任务上下文查询或审批决定",
+              "transitions": [
+                "WorkflowService 调用 WorkflowSignatureService",
+                "签名服务固定返回不要求并跳过确认写入"
+              ],
+              "outputs": [
+                "signature_required=false",
+                "审批不被签名阻塞",
+                "无新增签名"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "流程监控查询历史签名",
+              "transitions": [
+                "WorkflowMonitorService 调用 signatures"
+              ],
+              "outputs": [
+                "返回既有 wf_signature 记录"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "workflow_task_context.signature_required",
+              "producers": [
+                "WorkflowService"
+              ],
+              "consumers": [
+                "业务审批页面"
+              ],
+              "invariant": "字段保留且停用期固定为 false"
+            },
+            {
+              "name": "workflow_decision.signatureConfirmed",
+              "producers": [
+                "前端调用方"
+              ],
+              "consumers": [
+                "WorkflowSignatureService"
+              ],
+              "invariant": "字段保留且停用期不触发签名写入"
+            },
+            {
+              "name": "workflow_monitor.signatures",
+              "producers": [
+                "WorkflowSignatureService"
+              ],
+              "consumers": [
+                "流程监控和业务详情"
+              ],
+              "invariant": "历史记录继续可读"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "节点配置入口",
+              "method": "模板源码断言加 TypeScript 生产构建",
+              "blind_spots": [
+                "浏览器缓存旧静态资源"
+              ],
+              "independence": "静态模板与编译器两类检查"
+            },
+            {
+              "id": "S2",
+              "target": "运行时签名要求和写入",
+              "method": "WorkflowSignatureService 聚焦单元测试",
+              "blind_spots": [
+                "未覆盖的外部调用方自定义 UI"
+              ],
+              "independence": "直接调用服务公开方法并观察 JDBC 写入次数"
+            },
+            {
+              "id": "S3",
+              "target": "历史签名兼容",
+              "method": "服务测试观察历史查询 SQL 及 Maven 编译回归",
+              "blind_spots": [
+                "生产数据库内容不在本任务访问范围"
+              ],
+              "independence": "查询行为与接口编译检查"
+            },
+            {
+              "id": "S4",
+              "target": "范围与无迁移约束",
+              "method": "scope、git diff 和治理检查",
+              "blind_spots": [],
+              "independence": "仓库治理脚本"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "WorkflowNodeInspector",
+              "action": "移除签名配置表单项",
+              "authority": "REQ-20260826-048 writable_paths",
+              "impact_radius": "流程设计器审批节点",
+              "rollback": "恢复单个模板块"
+            },
+            {
+              "id": "A2",
+              "target": "WorkflowSignatureService",
+              "action": "固定 required=false 并使 confirmIfRequired 无操作，保留 signatures 查询",
+              "authority": "REQ-20260826-048 writable_paths",
+              "impact_radius": "所有平台工作流审批任务",
+              "rollback": "恢复原服务校验与写入实现"
+            },
+            {
+              "id": "A3",
+              "target": "WorkflowSignatureServiceTest",
+              "action": "把测试设定值改为停用语义并覆盖历史查询",
+              "authority": "REQ-20260826-048 writable_paths",
+              "impact_radius": "工作流聚焦回归",
+              "rollback": "随服务实现一并恢复"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "当前工作区已有未提交的版本申请和附件改动",
+              "effect": "全量 diff 含无关文件",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "存量流程定义含 signatureRequired=true",
+              "effect": "若仅隐藏前端则旧任务仍被阻塞",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "前端静态资源由 Nginx 容器挂载",
+              "consequence": "构建后浏览器可能仍缓存旧资源",
+              "sampling_rule": "使用新构建并刷新资源后验收"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "所有运行时签名要求均经 WorkflowSignatureService",
+              "evidence": "全仓 rg 仅发现 WorkflowService 与 FlowableWorkflowService 调用该服务",
+              "falsifier": "后续发现旁路签名校验或直接 wf_signature 写入"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2+A3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 保留查询并由 S3/S4 验证"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "单任务边界覆盖配置运行时历史兼容且包含三次异质采样和回退条件",
+        "recorded_at": "2026-08-26T10:44:18+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "在不删除历史证据和公开字段的前提下关闭内部电子签名配置与运行时要求",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "REQ-20260826-048 为 ready",
+                "开发入口检查通过",
+                "现有签名调用链已完成只读勘察"
+              ],
+              "input_facts": [
+                "WorkflowNodeInspector 是节点签名配置入口",
+                "WorkflowSignatureService 是签名要求与写入的集中服务",
+                "WorkflowMonitorService 通过 signatures 方法查询历史记录"
+              ],
+              "write_scope": [
+                "web/src/components/workflow/WorkflowNodeInspector.vue",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowSignatureService.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowSignatureServiceTest.java",
+                "docs/integration/workflow-module-contract.md"
+              ],
+              "invariants": [
+                "任务授权状态与动作校验不变",
+                "历史签名查询不变",
+                "不删除 API 字段和数据库结构",
+                "不覆盖工作区无关改动"
+              ],
+              "interface_contracts": [
+                "signature_required 字段保留且固定 false",
+                "signatureConfirmed 请求字段继续兼容",
+                "signatures 历史列表继续返回"
+              ],
+              "non_goals": [
+                "修改版本申请业务代码",
+                "删除存量 signatureRequired JSON",
+                "增加新签署方案",
+                "数据库迁移"
+              ],
+              "action_bounds": [
+                "只移除一个配置表单项",
+                "只在签名服务集中关闭 required 和 confirm 行为",
+                "只调整直接服务测试和契约文档"
+              ],
+              "acceptance_checks": [
+                "WorkflowSignatureServiceTest 覆盖旧配置为 true 仍返回 false 且零写入",
+                "历史 signatures 查询测试通过",
+                "节点检查器不包含签名配置文案",
+                "工作流聚焦测试通过",
+                "前端构建通过",
+                "全量后端测试通过",
+                "范围和差异检查通过"
+              ],
+              "evidence_required": [
+                "限定文件实际 diff",
+                "聚焦测试命令与退出码",
+                "前端构建和全量测试结果",
+                "治理范围与 diff 检查结果"
+              ],
+              "rollback": "恢复四个任务文件的本需求差异；数据库无补偿",
+              "stop_conditions": [
+                "发现签名校验存在 WorkflowSignatureService 之外的旁路",
+                "需要删除公开字段或数据库结构",
+                "测试表明任务授权或审批动作语义被改变"
+              ],
+              "escalation_conditions": [
+                "用户要求物理删除历史签名",
+                "出现外部消费者依赖 signature_required=true",
+                "必须修改业务模块才能完成停用"
+              ]
+            }
+          ],
+          "dependency_edges": [],
+          "parallel_groups": [
+            [
+              "T1"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "工作流聚焦测试",
+                "前端生产构建",
+                "全量后端测试",
+                "范围和差异审计"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "局部行为采样",
+              "trigger": "代码与直接测试完成",
+              "observer": "独立测试命令",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "跨模块回归采样",
+              "trigger": "聚焦检查通过",
+              "observer": "Maven 与 TypeScript 构建",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "最终范围采样",
+              "trigger": "全量回归完成",
+              "observer": "治理与差异检查",
+              "sensors": [
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1限定四个授权文件完成且直接测试工作流回归前端构建和diff检查已产生可复查输出",
+        "recorded_at": "2026-08-26T10:57:22+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/components/workflow/WorkflowNodeInspector.vue",
+              "purpose": "移除审批节点电子签名配置入口"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowSignatureService.java",
+              "purpose": "关闭运行时签名要求与新签名写入，保留历史查询"
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowSignatureServiceTest.java",
+              "purpose": "验证停用语义与历史兼容"
+            },
+            {
+              "path_or_resource": "docs/integration/workflow-module-contract.md",
+              "purpose": "记录暂停期间的兼容契约"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-workflow -am -Dtest=WorkflowSignatureServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "WorkflowSignatureServiceTest: 2 tests, 0 failures, BUILD SUCCESS"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc passed; Vite transformed 2449 modules and built production assets"
+            },
+            {
+              "command": "mvn -pl :ccb-workflow -am test (sandbox)",
+              "exit_code": 1,
+              "salient_output": "Mockito Byte Buddy could not self-attach in sandbox; workflow module was not reached"
+            },
+            {
+              "command": "env JAVA_HOME=<JDK17> /opt/homebrew/bin/mvn -pl :ccb-workflow -am test (host)",
+              "exit_code": 0,
+              "salient_output": "45 workflow tests plus dependencies passed; BUILD SUCCESS"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "no whitespace errors"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "停用签名服务行为",
+              "result": "pass",
+              "evidence": "旧配置路径 required=false、两次确认调用零 JDBC 写入且历史查询返回记录",
+              "limitations": [
+                "未访问生产数据库"
+              ]
+            },
+            {
+              "check": "工作流模块回归",
+              "result": "pass",
+              "evidence": "JDK 17 宿主环境 45 个工作流测试全部通过",
+              "limitations": []
+            },
+            {
+              "check": "节点配置构建",
+              "result": "pass",
+              "evidence": "vue-tsc 与 Vite 生产构建退出码 0",
+              "limitations": [
+                "浏览器视觉验收留给观察阶段"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "移除一个签名配置表单项",
+            "签名服务 required 固定 false 且 confirmIfRequired 不再写入",
+            "历史 signatures 查询保持原 SQL",
+            "测试和契约改为暂停语义"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "公开字段保持兼容",
+              "result": "pass",
+              "evidence": "未修改 WorkflowController、web/src/api/workflow.ts 或任务上下文字段"
+            },
+            {
+              "invariant": "历史签名不可修改或删除",
+              "result": "pass",
+              "evidence": "无迁移、删除或更新 SQL；只保留原 SELECT"
+            },
+            {
+              "invariant": "任务授权状态与动作校验不变",
+              "result": "pass",
+              "evidence": "WorkflowService 与 FlowableWorkflowService 未修改且工作流回归通过"
+            },
+            {
+              "invariant": "不覆盖用户无关改动",
+              "result": "pass",
+              "evidence": "任务 diff 限定四个授权文件；版本申请和附件改动未触碰"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "默认 Maven 使用 JDK 26 且沙箱禁止 Mockito 自附加",
+              "impact": "两次依赖测试在 infrastructure 模块环境失败；改用 JDK 17 宿主环境后同一完整命令通过"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "全量后端测试、治理、范围和运行验收由 observing 阶段执行"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "三次异质采样未观察到本需求阻塞偏差",
+        "recorded_at": "2026-08-26T11:11:48+00:00",
+        "data": {
+          "sample_label": "T1 最终观测",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "节点检查器源码检查、TypeScript 检查与 Vite 生产构建",
+              "result": "pass",
+              "raw_evidence": "WorkflowNodeInspector 不再包含需要电子签名表单项；vue-tsc 与 Vite 构建成功，2449 个模块完成转换；5173 返回最新构建资源",
+              "limitation": [
+                "浏览器会话位于登录页，未执行登录后的视觉点击验收"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "WorkflowSignatureServiceTest、工作流模块回归与运行健康检查",
+              "result": "pass",
+              "raw_evidence": "直接测试 2/2 通过，旧签名配置下 required=false、confirmIfRequired 零写入；工作流 45 个测试通过；新后端健康状态为 UP",
+              "limitation": [
+                "未在生产数据库执行审批"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "历史查询单元测试、编译和差异审计",
+              "result": "pass",
+              "raw_evidence": "历史 signatures 查询测试返回存量记录；signature_required 和 signatureConfirmed 调用链保留；无数据库迁移；git diff --check 通过",
+              "limitation": [
+                "未连接生产数据库抽样历史记录"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "全量 Maven 测试在既有 PhysicalSubsystemConcurrencyMySqlTest 处因 architecture_concurrency.arch_physical_subsystem 表缺失失败；工作流及此前模块均已通过",
+            "仓库治理检查存在本需求之外的历史账本错误和当前工作区无关改动，不能作为本次产品偏差",
+            "沙箱内 Mockito Byte Buddy 无法自附加，改用 JDK 17 宿主环境完成工作流回归"
+          ],
+          "coverage_gaps": [
+            "未执行登录后的流程设计器视觉验收",
+            "全量后端测试未越过既有架构模块数据库夹具故障"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "三项must需求证据链完整且三次采样P0P1为零",
+        "recorded_at": "2026-08-26T11:13:09+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "节点检查器已移除签名配置控件",
+                "vue-tsc 与 Vite 生产构建通过",
+                "5173 返回最新构建资源"
+              ],
+              "limitations": [
+                "浏览器会话未登录，未做设计器点击验收"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "WorkflowSignatureServiceTest 2/2 通过",
+                "工作流模块 45 个测试通过",
+                "重启后端健康状态 UP"
+              ],
+              "limitations": [
+                "未在生产数据库执行真实审批"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "历史 signatures 查询测试通过",
+                "公开请求和响应字段保留",
+                "无数据库迁移",
+                "git diff --check 通过"
+              ],
+              "limitations": [
+                "未抽样生产历史签名数据"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "实现、直接测试、工作流回归、前端构建、运行健康和差异检查完成"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "WorkflowSignatureServiceTest",
+              "result": "pass",
+              "evidence": "2 tests, 0 failures"
+            },
+            {
+              "check": "工作流模块回归",
+              "result": "pass",
+              "evidence": "45 workflow tests and dependencies passed"
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "2449 modules transformed; build completed"
+            },
+            {
+              "check": "后端打包与健康检查",
+              "result": "pass",
+              "evidence": "ccb-boot package success; actuator status UP"
+            },
+            {
+              "check": "全量 Maven 回归",
+              "result": "disturbed",
+              "evidence": "既有 PhysicalSubsystemConcurrencyMySqlTest 因 architecture_concurrency.arch_physical_subsystem 表缺失失败；工作流与此前模块通过"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "任务授权、状态和允许动作校验不变",
+              "result": "pass",
+              "evidence": "WorkflowService 与 FlowableWorkflowService 未修改且回归通过"
+            },
+            {
+              "invariant": "历史签名记录不可修改或删除",
+              "result": "pass",
+              "evidence": "保留原查询，无更新、删除 SQL 或迁移"
+            },
+            {
+              "invariant": "公开字段保持兼容",
+              "result": "pass",
+              "evidence": "signature_required 和 signatureConfirmed 字段与调用链保留"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": [
+              "工作区存在版本申请、附件和部署相关的既有未提交改动，未纳入或修改本任务"
+            ]
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "旧后端进程退出延迟并被既有启动会话重拉起",
+              "result": "pass",
+              "evidence": "当前进程使用 19:04:26 新打包 JAR，8080 健康状态 UP"
+            },
+            {
+              "disturbance": "沙箱禁止 Mockito 自附加",
+              "result": "pass",
+              "evidence": "使用 JDK 17 宿主环境完成同一工作流回归"
+            }
+          ],
+          "residual_risks": [
+            "登录后流程设计器视觉验收尚未执行",
+            "全量回归受既有架构数据库夹具缺表阻塞",
+            "仓库级治理检查存在本需求之外的历史账本问题"
+          ],
+          "gate_result": "pass",
+          "route_reason": "三项 must 需求均由 T1 覆盖并经三次采样验证，P0/P1 为零；外部失败与本次签名停用无因果关联并已披露"
+        }
+      }
+    ]
+  },
+  "objective": "暂停新内部电子签名要求，使审批无需签名确认即可完成，同时完整保留历史证据和接口兼容。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "流程设计器不得再提供内部电子签名配置入口。",
+      "acceptance": [
+        "审批节点检查器不展示需要电子签名控件"
+      ],
+      "priority": "must",
+      "source": "用户于 2026-08-26 明确要求先去掉电子签名",
+      "counterexample": [
+        "管理员仍可把审批节点设置为需要电子签名"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "所有审批任务在运行时均不得要求签名确认或新增签名记录。",
+      "acceptance": [
+        "存量 signatureRequired=true 的任务上下文返回 false",
+        "未确认签名的审批决定不被签名服务阻止",
+        "审批决定不新增 wf_signature 记录"
+      ],
+      "priority": "must",
+      "source": "用户确认采用兼容性停用方案",
+      "counterexample": [
+        "旧流程实例仍要求勾选确认签署",
+        "审批后写入新的签名记录"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "历史签名数据和公开接口字段必须保持兼容。",
+      "acceptance": [
+        "历史签名查询继续返回既有记录",
+        "signature_required 和 signatureConfirmed 字段不删除",
+        "无数据库迁移"
+      ],
+      "priority": "must",
+      "source": "用户确认保留历史数据的兼容性方案",
+      "counterexample": [
+        "删除 wf_signature 或历史记录",
+        "旧前端因字段删除而失败"
+      ]
+    }
+  ],
+  "invariants": [
+    "任务授权、状态和允许动作继续由服务端校验",
+    "历史签名记录不可修改或删除",
+    "不修改业务模块审批逻辑"
+  ],
+  "constraints": [
+    "Java 17 与现有 Spring/Vue 技术栈",
+    "不修改数据库和公开 API",
+    "只修改批准写入范围"
+  ],
+  "non_goals": [
+    "手写签名",
+    "密码复核",
+    "CA 或第三方签署",
+    "审批流程重构"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"工作流定义 JSON\", \"业务审批页面\", \"wf_signature 历史数据\", \"任务授权与状态校验\"], \"inside\": [\"WorkflowNodeInspector 电子签名配置入口\", \"WorkflowSignatureService 运行时要求与签名写入\", \"WorkflowMonitorService 历史签名查询\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"浏览器缓存旧静态资源\"], \"id\": \"S1\", \"independence\": \"静态模板与编译器两类检查\", \"method\": \"模板源码断言加 TypeScript 生产构建\", \"target\": \"节点配置入口\"}",
+      "{\"blind_spots\": [\"未覆盖的外部调用方自定义 UI\"], \"id\": \"S2\", \"independence\": \"直接调用服务公开方法并观察 JDBC 写入次数\", \"method\": \"WorkflowSignatureService 聚焦单元测试\", \"target\": \"运行时签名要求和写入\"}",
+      "{\"blind_spots\": [\"生产数据库内容不在本任务访问范围\"], \"id\": \"S3\", \"independence\": \"查询行为与接口编译检查\", \"method\": \"服务测试观察历史查询 SQL 及 Maven 编译回归\", \"target\": \"历史签名兼容\"}",
+      "{\"blind_spots\": [], \"id\": \"S4\", \"independence\": \"仓库治理脚本\", \"method\": \"scope、git diff 和治理检查\", \"target\": \"范围与无迁移约束\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"移除签名配置表单项\", \"authority\": \"REQ-20260826-048 writable_paths\", \"id\": \"A1\", \"impact_radius\": \"流程设计器审批节点\", \"rollback\": \"恢复单个模板块\", \"target\": \"WorkflowNodeInspector\"}",
+      "{\"action\": \"固定 required=false 并使 confirmIfRequired 无操作，保留 signatures 查询\", \"authority\": \"REQ-20260826-048 writable_paths\", \"id\": \"A2\", \"impact_radius\": \"所有平台工作流审批任务\", \"rollback\": \"恢复原服务校验与写入实现\", \"target\": \"WorkflowSignatureService\"}",
+      "{\"action\": \"把测试设定值改为停用语义并覆盖历史查询\", \"authority\": \"REQ-20260826-048 writable_paths\", \"id\": \"A3\", \"impact_radius\": \"工作流聚焦回归\", \"rollback\": \"随服务实现一并恢复\", \"target\": \"WorkflowSignatureServiceTest\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"全量 diff 含无关文件\", \"source\": \"当前工作区已有未提交的版本申请和附件改动\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"若仅隐藏前端则旧任务仍被阻塞\", \"source\": \"存量流程定义含 signatureRequired=true\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"全仓 rg 仅发现 WorkflowService 与 FlowableWorkflowService 调用该服务\", \"falsifier\": \"后续发现旁路签名校验或直接 wf_signature 写入\", \"text\": \"所有运行时签名要求均经 WorkflowSignatureService\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "在不删除历史证据和公开字段的前提下关闭内部电子签名配置与运行时要求",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "REQ-20260826-048 为 ready",
+        "开发入口检查通过",
+        "现有签名调用链已完成只读勘察"
+      ],
+      "input_facts": [
+        "WorkflowNodeInspector 是节点签名配置入口",
+        "WorkflowSignatureService 是签名要求与写入的集中服务",
+        "WorkflowMonitorService 通过 signatures 方法查询历史记录"
+      ],
+      "write_scope": [
+        "web/src/components/workflow/WorkflowNodeInspector.vue",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowSignatureService.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowSignatureServiceTest.java",
+        "docs/integration/workflow-module-contract.md"
+      ],
+      "invariants": [
+        "任务授权状态与动作校验不变",
+        "历史签名查询不变",
+        "不删除 API 字段和数据库结构",
+        "不覆盖工作区无关改动"
+      ],
+      "interface_contracts": [
+        "signature_required 字段保留且固定 false",
+        "signatureConfirmed 请求字段继续兼容",
+        "signatures 历史列表继续返回"
+      ],
+      "non_goals": [
+        "修改版本申请业务代码",
+        "删除存量 signatureRequired JSON",
+        "增加新签署方案",
+        "数据库迁移"
+      ],
+      "action_bounds": [
+        "只移除一个配置表单项",
+        "只在签名服务集中关闭 required 和 confirm 行为",
+        "只调整直接服务测试和契约文档"
+      ],
+      "acceptance": [
+        "WorkflowSignatureServiceTest 覆盖旧配置为 true 仍返回 false 且零写入",
+        "历史 signatures 查询测试通过",
+        "节点检查器不包含签名配置文案",
+        "工作流聚焦测试通过",
+        "前端构建通过",
+        "全量后端测试通过",
+        "范围和差异检查通过"
+      ],
+      "evidence_required": [
+        "限定文件实际 diff",
+        "聚焦测试命令与退出码",
+        "前端构建和全量测试结果",
+        "治理范围与 diff 检查结果"
+      ],
+      "rollback": "恢复四个任务文件的本需求差异；数据库无补偿",
+      "stop_conditions": [
+        "发现签名校验存在 WorkflowSignatureService 之外的旁路",
+        "需要删除公开字段或数据库结构",
+        "测试表明任务授权或审批动作语义被改变"
+      ],
+      "escalation_conditions": [
+        "用户要求物理删除历史签名",
+        "出现外部消费者依赖 signature_required=true",
+        "必须修改业务模块才能完成停用"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-26T10:45:30+00:00",
+          "text": "执行前确认目标文件无既有差异且调用链与模型一致"
+        },
+        {
+          "recorded_at": "2026-08-26T10:58:04+00:00",
+          "text": "执行报告已记录并进入独立复验"
+        },
+        {
+          "recorded_at": "2026-08-26T11:12:00+00:00",
+          "text": "直接测试工作流回归前端构建历史兼容和运行健康检查均通过"
+        }
+      ],
+      "updated_at": "2026-08-26T11:12:00+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "局部行为采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "WorkflowSignatureServiceTest两项通过且源码无配置控件",
+      "recorded_at": "2026-08-26T11:11:21+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "跨模块回归采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "工作流45项测试与前端生产构建通过",
+      "recorded_at": "2026-08-26T11:11:28+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "最终范围采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "git-diff-check通过且后端健康状态UP；全量测试受既有架构测试表缺失干扰",
+      "recorded_at": "2026-08-26T11:11:36+00:00"
+    }
+  ]
+}
