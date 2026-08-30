@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "requirement_id": "REQ-20260828-055",
+  "control_prefix": "req-20260828-055-network-access-decision-lifecycle",
+  "task_id": "T18",
+  "recorded_at": "2026-08-29T21:59:36+08:00",
+  "trigger": "用户要求提交此需求。",
+  "scope": {
+    "module": "business/architecture/network-access",
+    "intent": "选择性暂存并提交 REQ-20260828-055 相关文件；保留本需求外未跟踪文件不动。",
+    "excluded_unrelated_files": [
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/observation-T11.json"
+    ],
+    "production_access": false
+  },
+  "pre_commit_verification": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "result": "passed",
+      "evidence": "Development entry check passed."
+    },
+    {
+      "command": "node JSON parse for .ai-control/requirements/req-20260828-055-network-access-decision-lifecycle/*.json",
+      "result": "passed",
+      "evidence": "14 个当前需求账本 JSON 文件解析通过。"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "passed",
+      "evidence": "99 个迁移和 1 个已批准 callback 通过检查。"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "evidence": "退出码 0；仅有 LF/CRLF 工作区提示。"
+    },
+    {
+      "command": "npm.cmd --prefix web run build",
+      "result": "passed",
+      "evidence": "vue-tsc 通过，Vite 构建成功；保留既有第三方 PURE 注释和大 chunk warning。"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=NetworkAccessServiceTest,NetworkAccessDecisionServiceTest,NetworkAccessLifecycleServiceTest,NetworkAccessWorkflowLifecycleConsumerTest,NetworkPortRangesTest,NetworkAccessControllerTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "evidence": "28 个非 Testcontainers 聚焦测试通过，Failures=0，Errors=0。"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=NetworkAccessServiceTest,NetworkAccessDecisionServiceTest,NetworkAccessLifecycleServiceTest,NetworkAccessWorkflowLifecycleConsumerTest,NetworkPortRangesTest,NetworkAccessControllerTest,NetworkAccessMigrationMySqlTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "blocked_by_testcontainers_environment",
+      "evidence": "28 个非容器测试通过；NetworkAccessMigrationMySqlTest 因 Testcontainers 无法识别有效 Docker 环境报错，非业务断言失败。"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "result": "blocked_by_pre_existing_repository_ledger",
+      "evidence": "治理、仓库 Skill、开发准入通过；AI control layout 失败集中在历史 req-20260813/17/18/19/22 账本。"
+    }
+  ],
+  "residual_risks": [
+    "本地 UAT 浏览器验收仍由用户进行，提交不代表浏览器验收已完成。",
+    "Testcontainers Docker 探测异常仍阻塞迁移单测在当前 shell 中全绿；本地运行态 MySQL/Flyway 已由后端启动与工作流发布验证覆盖。"
+  ]
+}

@@ -6,6 +6,8 @@ import com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitKind;
 import com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitQuery;
 import com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitStatus;
 import com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitVersion;
+import com.ccb.architecture.network.service.NetworkAccessService;
+import com.ccb.architecture.network.service.NetworkAccessService.ZoneRef;
 import com.ccb.architecture.persistence.DeploymentUnitNumberCapacityExceededException;
 import com.ccb.architecture.persistence.DeploymentUnitStore;
 import com.ccb.architecture.persistence.DeploymentUnitStore.PhysicalSubsystemRef;
@@ -49,6 +51,7 @@ public class DeploymentUnitService {
     private static final Set<String> PUBLISHED_STATUSES = Set.of(
             DeploymentUnitStatus.ACTIVE.name(), DeploymentUnitStatus.INACTIVE.name(),
             DeploymentUnitStatus.VOIDED.name());
+    private static final Set<String> REGISTRATION_TYPES = Set.of("DB", "AP", "WB", "PL");
 
     private final DeploymentUnitStore store;
     private final DeploymentUnitReferenceGuard referenceGuard;
@@ -56,15 +59,18 @@ public class DeploymentUnitService {
     private final SystemOperationAudit operationAudit;
     private final TransactionTemplate transactions;
     private final LongSupplier identifiers;
+    private final NetworkAccessService networkAccessService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public DeploymentUnitService(DeploymentUnitStore store,
                                  DeploymentUnitReferenceGuard referenceGuard,
                                  SystemReferenceQuery referenceQuery,
                                  SystemOperationAudit operationAudit,
-                                 TransactionTemplate transactions) {
+                                 TransactionTemplate transactions,
+                                 NetworkAccessService networkAccessService) {
         this(store, referenceGuard, referenceQuery, operationAudit, transactions,
-                () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000));
+                () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000),
+                networkAccessService);
     }
 
     DeploymentUnitService(DeploymentUnitStore store,
@@ -73,12 +79,23 @@ public class DeploymentUnitService {
                           SystemOperationAudit operationAudit,
                           TransactionTemplate transactions,
                           LongSupplier identifiers) {
+        this(store, referenceGuard, referenceQuery, operationAudit, transactions, identifiers, null);
+    }
+
+    DeploymentUnitService(DeploymentUnitStore store,
+                          DeploymentUnitReferenceGuard referenceGuard,
+                          SystemReferenceQuery referenceQuery,
+                          SystemOperationAudit operationAudit,
+                          TransactionTemplate transactions,
+                          LongSupplier identifiers,
+                          NetworkAccessService networkAccessService) {
         this.store = store;
         this.referenceGuard = referenceGuard;
         this.referenceQuery = referenceQuery;
         this.operationAudit = operationAudit;
         this.transactions = transactions;
         this.identifiers = identifiers;
+        this.networkAccessService = networkAccessService;
     }
 
     // ---------- 查询 ----------
@@ -110,7 +127,9 @@ public class DeploymentUnitService {
         Map<Long, Optional<SystemUserReference>> users = new HashMap<>();
         return store.findVersions(actor.tenantId(), id).stream()
                 .map(version -> new DeploymentUnitVersionView(
-                        version.versionNo(), version.shortName(), version.name(), version.kind(),
+                        version.versionNo(), version.shortName(), version.name(),
+                        version.relatedDeploymentUnitName(), version.deploymentUnitType(), version.kind(),
+                        version.defaultNetworkZoneId(), version.defaultNetworkZoneName(),
                         version.description(), version.remark(),
                         version.publishedBy(), displayName(actor, version.publishedBy(), users),
                         version.publishedAt()))
@@ -126,7 +145,8 @@ public class DeploymentUnitService {
         try {
             unitId = transactions.execute(status -> publishInitial(actor, prepared.physicalSubsystemId(),
                     prepared.shortName(), prepared.name(), prepared.kind(), prepared.description(),
-                    prepared.remark()));
+                    prepared.relatedDeploymentUnitName(), prepared.deploymentUnitType(),
+                    prepared.defaultNetworkZoneId(), prepared.defaultNetworkZoneName(), prepared.remark()));
         } catch (DuplicateKeyException exception) {
             throw recordFailure(actor, CREATE_OPERATION, "POST", conflict("部署单元名称已被占用，停用或作废后也不可复用"), traceId);
         } catch (RuntimeException exception) {
@@ -158,15 +178,30 @@ public class DeploymentUnitService {
                 if (store.unitNameExists(actor.tenantId(), locked.physicalSubsystemId(), prepared.name(), id)) {
                     throw conflict("部署单元名称已被占用，停用或作废后也不可复用");
                 }
-                int updated = store.updateUnitContent(actor.tenantId(), id, prepared.rowVersion(),
-                        prepared.shortName(), prepared.name(), prepared.kind(), prepared.description(),
+                int updated = hasDefaultNetworkZone(prepared)
+                        ? store.updateUnitContent(actor.tenantId(), id, prepared.rowVersion(),
+                        prepared.shortName(), prepared.name(), prepared.relatedDeploymentUnitName(),
+                        prepared.deploymentUnitType(), prepared.kind(),
+                        prepared.defaultNetworkZoneId(), prepared.defaultNetworkZoneName(), prepared.description(),
+                        prepared.remark(), actor.id())
+                        : store.updateUnitContent(actor.tenantId(), id, prepared.rowVersion(),
+                        prepared.shortName(), prepared.name(), prepared.relatedDeploymentUnitName(),
+                        prepared.deploymentUnitType(), prepared.kind(), prepared.description(),
                         prepared.remark(), actor.id());
                 if (updated != 1) {
                     throw conflict("部署单元已被其他操作修改，请刷新后重试");
                 }
                 int nextVersion = locked.currentVersion() + 1;
-                store.insertVersion(nextId(), actor.tenantId(), id, nextVersion, prepared.shortName(),
-                        prepared.name(), prepared.kind(), prepared.description(), prepared.remark(), actor.id());
+                if (hasDefaultNetworkZone(prepared)) {
+                    store.insertVersion(nextId(), actor.tenantId(), id, nextVersion, prepared.shortName(),
+                            prepared.name(), prepared.relatedDeploymentUnitName(), prepared.deploymentUnitType(),
+                            prepared.kind(), prepared.defaultNetworkZoneId(), prepared.defaultNetworkZoneName(),
+                            prepared.description(), prepared.remark(), actor.id());
+                } else {
+                    store.insertVersion(nextId(), actor.tenantId(), id, nextVersion, prepared.shortName(),
+                            prepared.name(), prepared.relatedDeploymentUnitName(), prepared.deploymentUnitType(),
+                            prepared.kind(), prepared.description(), prepared.remark(), actor.id());
+                }
                 store.updateUnitCurrentVersion(actor.tenantId(), id, nextVersion, actor.id());
             });
         } catch (DuplicateKeyException exception) {
@@ -238,7 +273,9 @@ public class DeploymentUnitService {
      * 避免失败行消耗序号。导入服务在事务内调用本方法。
      */
     long publishInitial(AuthUser actor, long physicalSubsystemId, String shortName, String name,
-                        String kind, String description, String remark) {
+                        String kind, String description, String relatedDeploymentUnitName,
+                        String deploymentUnitType, Long defaultNetworkZoneId,
+                        String defaultNetworkZoneName, String remark) {
         long tenantId = actor.tenantId();
         PhysicalSubsystemRef physical = store.findPhysical(tenantId, physicalSubsystemId)
                 .orElseThrow(() -> badRequest("物理子系统不存在或不属于当前租户"));
@@ -258,10 +295,27 @@ public class DeploymentUnitService {
         } catch (DeploymentUnitNumberCapacityExceededException exception) {
             throw conflict(exception.getMessage());
         }
-        store.insertUnit(unitId, tenantId, code, physicalSubsystemId, shortName, name, kind,
-                description, remark, actor.id());
-        store.insertVersion(nextId(), tenantId, unitId, 1, shortName, name, kind, description, remark, actor.id());
+        if (hasDefaultNetworkZone(defaultNetworkZoneId, defaultNetworkZoneName)) {
+            store.insertUnit(unitId, tenantId, code, physicalSubsystemId, shortName, name,
+                    relatedDeploymentUnitName, deploymentUnitType, kind, defaultNetworkZoneId,
+                    defaultNetworkZoneName, description, remark, actor.id());
+            store.insertVersion(nextId(), tenantId, unitId, 1, shortName, name,
+                    relatedDeploymentUnitName, deploymentUnitType, kind, defaultNetworkZoneId,
+                    defaultNetworkZoneName, description, remark, actor.id());
+        } else {
+            store.insertUnit(unitId, tenantId, code, physicalSubsystemId, shortName, name,
+                    relatedDeploymentUnitName, deploymentUnitType, kind, description, remark, actor.id());
+            store.insertVersion(nextId(), tenantId, unitId, 1, shortName, name,
+                    relatedDeploymentUnitName, deploymentUnitType, kind, description, remark, actor.id());
+        }
         return unitId;
+    }
+
+    long publishInitial(AuthUser actor, long physicalSubsystemId, String shortName, String name,
+                        String kind, String description, String relatedDeploymentUnitName,
+                        String deploymentUnitType, String remark) {
+        return publishInitial(actor, physicalSubsystemId, shortName, name, kind, description,
+                relatedDeploymentUnitName, deploymentUnitType, null, null, remark);
     }
 
     // ---------- 校验与投影 ----------
@@ -281,8 +335,23 @@ public class DeploymentUnitService {
         }
         String shortName = required(command.shortName(), "部署单元简称", 2, 100);
         String name = required(command.name(), "部署单元名称", 2, 200);
+        String relatedDeploymentUnitName = optional(command.relatedDeploymentUnitName(), "关联部署单元名称", 500);
+        String deploymentUnitType = optional(command.deploymentUnitType(), "登记表部署单元类型", 32);
+        deploymentUnitType = deploymentUnitType == null
+                ? defaultDeploymentUnitType(kind.name())
+                : deploymentUnitType.toUpperCase(Locale.ROOT);
+        if (!REGISTRATION_TYPES.contains(deploymentUnitType)) {
+            throw badRequest("登记表部署单元类型仅支持 DB、AP、WB、PL");
+        }
+        if (kind == DeploymentUnitKind.DATABASE && !"DB".equals(deploymentUnitType)) {
+            throw badRequest("数据库部署单元的登记表类型必须为 DB");
+        }
+        if (kind != DeploymentUnitKind.DATABASE && "DB".equals(deploymentUnitType)) {
+            throw badRequest("非数据库部署单元不能登记为 DB");
+        }
         String description = optional(command.description(), "描述", 2000);
         String remark = optional(command.remark(), "备注", 1000);
+        ZoneRef zone = validateDefaultNetworkZone(actor, command.defaultNetworkZoneId());
         if (targetId == null) {
             long physicalSubsystemId = requiredId(command.physicalSubsystemId(), "所属物理子系统");
             PhysicalSubsystemRef physical = store.findPhysical(actor.tenantId(), physicalSubsystemId)
@@ -293,10 +362,24 @@ public class DeploymentUnitService {
             if (!physical.status().equals("ACTIVE")) {
                 throw badRequest("只能选择已发布的物理子系统创建部署单元（当前状态 " + physical.status() + "）");
             }
-            return new PreparedCommand(physicalSubsystemId, shortName, name, kind.name(), description, remark, null);
+            return new PreparedCommand(physicalSubsystemId, shortName, name, relatedDeploymentUnitName,
+                    deploymentUnitType, kind.name(), zone == null ? null : zone.id(),
+                    zone == null ? null : zone.name(), description, remark, null);
         }
-        return new PreparedCommand(null, shortName, name, kind.name(), description, remark,
+        return new PreparedCommand(null, shortName, name, relatedDeploymentUnitName, deploymentUnitType,
+                kind.name(), zone == null ? null : zone.id(), zone == null ? null : zone.name(),
+                description, remark,
                 requiredRowVersion(command.rowVersion()));
+    }
+
+    private ZoneRef validateDefaultNetworkZone(AuthUser actor, Long zoneId) {
+        if (zoneId == null) {
+            return null;
+        }
+        if (networkAccessService == null) {
+            return new ZoneRef(zoneId, null, null);
+        }
+        return networkAccessService.requireActiveLeafZone(actor.tenantId(), zoneId, "部署单元默认网络分区");
     }
 
     /** 乐观锁版本允许从 0 开始；负数视为无效。 */
@@ -317,7 +400,9 @@ public class DeploymentUnitService {
         return new DeploymentUnitView(item.id(), item.code(), item.physicalSubsystemId(),
                 physical == null ? null : physical.code(), physical == null ? null : physical.name(),
                 physical == null ? null : physical.status(), item.shortName(), item.name(), item.kind(),
-                item.status(), item.currentVersion(), item.description(), item.remark(), item.createdBy(),
+                item.relatedDeploymentUnitName(), item.deploymentUnitType(), item.status(),
+                item.defaultNetworkZoneId(), item.defaultNetworkZoneName(),
+                item.currentVersion(), item.description(), item.remark(), item.createdBy(),
                 creator == null ? null : creator.displayName(), item.updatedBy(),
                 updater == null ? null : updater.displayName(), item.createdAt(), item.updatedAt(),
                 item.rowVersion());
@@ -449,7 +534,21 @@ public class DeploymentUnitService {
         return identifiers.getAsLong();
     }
 
-    private record PreparedCommand(Long physicalSubsystemId, String shortName, String name, String kind,
+    private String defaultDeploymentUnitType(String kind) {
+        return "DATABASE".equalsIgnoreCase(kind) ? "DB" : "AP";
+    }
+
+    private boolean hasDefaultNetworkZone(PreparedCommand prepared) {
+        return hasDefaultNetworkZone(prepared.defaultNetworkZoneId(), prepared.defaultNetworkZoneName());
+    }
+
+    private boolean hasDefaultNetworkZone(Long zoneId, String zoneName) {
+        return zoneId != null || zoneName != null;
+    }
+
+    private record PreparedCommand(Long physicalSubsystemId, String shortName, String name,
+                                   String relatedDeploymentUnitName, String deploymentUnitType, String kind,
+                                   Long defaultNetworkZoneId, String defaultNetworkZoneName,
                                    String description, String remark, Long rowVersion) {
     }
 
@@ -463,7 +562,11 @@ public class DeploymentUnitService {
             String shortName,
             String name,
             String kind,
+            String relatedDeploymentUnitName,
+            String deploymentUnitType,
             String status,
+            Long defaultNetworkZoneId,
+            String defaultNetworkZoneName,
             int currentVersion,
             String description,
             String remark,
@@ -480,7 +583,11 @@ public class DeploymentUnitService {
             int versionNo,
             String shortName,
             String name,
+            String relatedDeploymentUnitName,
+            String deploymentUnitType,
             String kind,
+            Long defaultNetworkZoneId,
+            String defaultNetworkZoneName,
             String description,
             String remark,
             long publishedBy,

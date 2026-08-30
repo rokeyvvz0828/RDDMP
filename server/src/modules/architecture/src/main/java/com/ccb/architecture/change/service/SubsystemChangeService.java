@@ -479,10 +479,24 @@ public class SubsystemChangeService {
 
     public record PhysicalDraftInput(int lineNo, Long targetLogicalSubsystemId, String shortName,
                                      String name, String englishName, String businessGroupName,
+                                     String businessContinuityLevel, String collectedSystemLevel,
+                                     String deploymentPlatform, String disasterRecoveryMode,
                                      Long responsibleTeamOrgId, String responsibleTeamNameSnapshot,
                                      String runtimeCode, String systemLevelCode,
                                      String developmentFrameworkCode, Long ownerUserId,
                                      String description, String remark, Long sourceRowVersion) {
+
+        public PhysicalDraftInput(int lineNo, Long targetLogicalSubsystemId, String shortName,
+                                  String name, String englishName, String businessGroupName,
+                                  Long responsibleTeamOrgId, String responsibleTeamNameSnapshot,
+                                  String runtimeCode, String systemLevelCode,
+                                  String developmentFrameworkCode, Long ownerUserId,
+                                  String description, String remark, Long sourceRowVersion) {
+            this(lineNo, targetLogicalSubsystemId, shortName, name, englishName, businessGroupName,
+                    null, null, null, null, responsibleTeamOrgId, responsibleTeamNameSnapshot,
+                    runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId,
+                    description, remark, sourceRowVersion);
+        }
     }
 
     public record ApplicationDetail(ChangeApplication application, LogicalDraft logicalDraft,
@@ -585,6 +599,10 @@ public class SubsystemChangeService {
         return new PhysicalDraftInput(input.lineNo(), targetLogicalSubsystemId,
                 required(input.shortName(), "物理子系统简称", 100), required(input.name(), "物理子系统名称", 200),
                 optional(input.englishName(), "英文名称", 200), optional(input.businessGroupName(), "业务群组", 100),
+                optional(input.businessContinuityLevel(), "农信业务连续性等级", 32),
+                optional(input.collectedSystemLevel(), "项目组收集系统等级", 32),
+                optional(input.deploymentPlatform(), "部署平台", 64),
+                optional(input.disasterRecoveryMode(), "灾备模式", 128),
                 requiredId(input.responsibleTeamOrgId(), "负责团队"),
                 required(input.responsibleTeamNameSnapshot(), "负责团队名称", 200),
                 optional(input.runtimeCode(), "运行环境", 64), optional(input.systemLevelCode(), "系统级别", 64),
@@ -669,7 +687,9 @@ public class SubsystemChangeService {
         Long sourceVersion = existing == null ? input.sourceRowVersion() : existing.sourceRowVersion();
         return new PhysicalDraft(application.id(), input.lineNo(), application.tenantId(), sourceId,
                 input.targetLogicalSubsystemId(), input.shortName(), input.name(), input.englishName(),
-                input.businessGroupName(), input.responsibleTeamOrgId(), input.responsibleTeamNameSnapshot(),
+                input.businessGroupName(), input.businessContinuityLevel(), input.collectedSystemLevel(),
+                input.deploymentPlatform(), input.disasterRecoveryMode(),
+                input.responsibleTeamOrgId(), input.responsibleTeamNameSnapshot(),
                 input.runtimeCode(), input.systemLevelCode(), input.developmentFrameworkCode(), input.ownerUserId(),
                 input.description(), input.remark(), reservedNumberSlot, sourceVersion, draftRevision,
                 submittedSnapshotJson, existing == null ? now() : existing.createdAt(), now());
@@ -930,8 +950,9 @@ public class SubsystemChangeService {
     private PhysicalDraft withReservedNumber(PhysicalDraft draft, String slot) {
         return new PhysicalDraft(draft.applicationId(), draft.lineNo(), draft.tenantId(),
                 draft.sourcePhysicalSubsystemId(), draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(),
-                draft.englishName(), draft.businessGroupName(), draft.responsibleTeamOrgId(),
-                draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
+                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
+                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(), slot,
                 draft.sourceRowVersion(), draft.draftRevision(), draft.submittedSnapshotJson(), draft.createdAt(), now());
     }
@@ -950,8 +971,9 @@ public class SubsystemChangeService {
     private PhysicalDraft withSubmittedSnapshot(PhysicalDraft draft, String snapshot) {
         return new PhysicalDraft(draft.applicationId(), draft.lineNo(), draft.tenantId(),
                 draft.sourcePhysicalSubsystemId(), draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(),
-                draft.englishName(), draft.businessGroupName(), draft.responsibleTeamOrgId(),
-                draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
+                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
+                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
                 draft.reservedNumberSlot(), draft.sourceRowVersion(), draft.draftRevision(), snapshot,
                 draft.createdAt(), now());
@@ -1058,6 +1080,10 @@ public class SubsystemChangeService {
             appendCanonical(canonical, prefix + "name", physicalDraft.name());
             appendCanonical(canonical, prefix + "englishName", physicalDraft.englishName());
             appendCanonical(canonical, prefix + "businessGroupName", physicalDraft.businessGroupName());
+            appendCanonical(canonical, prefix + "businessContinuityLevel", physicalDraft.businessContinuityLevel());
+            appendCanonical(canonical, prefix + "collectedSystemLevel", physicalDraft.collectedSystemLevel());
+            appendCanonical(canonical, prefix + "deploymentPlatform", physicalDraft.deploymentPlatform());
+            appendCanonical(canonical, prefix + "disasterRecoveryMode", physicalDraft.disasterRecoveryMode());
             appendCanonical(canonical, prefix + "responsibleTeamOrgId", physicalDraft.responsibleTeamOrgId());
             appendCanonical(canonical, prefix + "responsibleTeamNameSnapshot",
                     physicalDraft.responsibleTeamNameSnapshot());

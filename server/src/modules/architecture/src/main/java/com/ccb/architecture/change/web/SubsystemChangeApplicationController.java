@@ -296,7 +296,9 @@ public class SubsystemChangeApplicationController {
     private PhysicalDraftResponse toPhysicalDraft(PhysicalDraft draft) {
         return new PhysicalDraftResponse(draft.lineNo(), draft.sourcePhysicalSubsystemId(),
                 draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(), draft.englishName(),
-                draft.businessGroupName(), draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(),
+                draft.businessGroupName(), draft.businessContinuityLevel(), draft.collectedSystemLevel(),
+                draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(),
                 draft.runtimeCode(), draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
                 draft.description(), draft.remark(), draft.reservedNumberSlot(), draft.sourceRowVersion(),
                 draft.draftRevision(), draft.submittedSnapshotJson(), draft.createdAt(), draft.updatedAt());
@@ -364,7 +366,10 @@ public class SubsystemChangeApplicationController {
 
     public record PhysicalDraftResponse(int lineNo, Long sourcePhysicalSubsystemId,
                                         Long targetLogicalSubsystemId, String shortName, String name,
-                                        String englishName, String businessGroupName, long responsibleTeamOrgId,
+                                        String englishName, String businessGroupName,
+                                        String businessContinuityLevel, String collectedSystemLevel,
+                                        String deploymentPlatform, String disasterRecoveryMode,
+                                        long responsibleTeamOrgId,
                                         String responsibleTeamNameSnapshot, String runtimeCode,
                                         String systemLevelCode, String developmentFrameworkCode, Long ownerUserId,
                                         String description, String remark, String reservedNumberSlot,

@@ -44,6 +44,8 @@ public class PhysicalSubsystemService {
     static final String RUNTIME_CATEGORY = "ARCH_RUNTIME";
     static final String SYSTEM_LEVEL_CATEGORY = "ARCH_SYSTEM_LEVEL";
     static final String DEVELOPMENT_FRAMEWORK_CATEGORY = "ARCH_DEVELOPMENT_FRAMEWORK";
+    static final String DEPLOYMENT_PLATFORM_CATEGORY = LogicalSubsystemService.DEPLOYMENT_PLATFORM_CATEGORY;
+    static final String DISASTER_RECOVERY_MODE_CATEGORY = "ARCH_DISASTER_RECOVERY_MODE";
 
     private static final Logger log = LoggerFactory.getLogger(PhysicalSubsystemService.class);
     private static final Pattern CODE_PATTERN = Pattern.compile("[A-Z0-9_-]{2,32}");
@@ -129,8 +131,15 @@ public class PhysicalSubsystemService {
         String systemLevelCode = validateParameter(actor, SYSTEM_LEVEL_CATEGORY, command.systemLevelCode(), "系统级别");
         String developmentFrameworkCode = validateParameter(actor, DEVELOPMENT_FRAMEWORK_CATEGORY,
                 command.developmentFrameworkCode(), "开发平台框架");
+        String deploymentPlatform = validateParameter(actor, DEPLOYMENT_PLATFORM_CATEGORY,
+                command.deploymentPlatform(), "部署平台");
+        String disasterRecoveryMode = validateParameter(actor, DISASTER_RECOVERY_MODE_CATEGORY,
+                command.disasterRecoveryMode(), "灾备模式");
         PhysicalSubsystemCommand normalized = new PhysicalSubsystemCommand(code, shortName, name,
                 logicalSubsystemId, optional(command.businessGroupName(), "所属事业群", 100),
+                optional(command.businessContinuityLevel(), "农信业务连续性等级", 32),
+                optional(command.collectedSystemLevel(), "项目组收集系统等级", 32),
+                deploymentPlatform, disasterRecoveryMode,
                 responsibleTeamOrgId, runtimeCode, systemLevelCode, developmentFrameworkCode,
                 ownerUserId, optional(command.description(), "系统描述", 2000),
                 optional(command.remark(), "备注", 1000));
@@ -156,7 +165,8 @@ public class PhysicalSubsystemService {
         SystemUserReference creator = userReference(actor, item.createdBy(), context.users());
         return new PhysicalSubsystemView(item.id(), item.code(), item.shortName(), item.name(),
                 item.logicalSubsystemId(), logical == null ? null : logical.code(), logical == null ? null : logical.name(),
-                item.businessGroupName(), item.responsibleTeamOrgId(), responsibleTeamDisplayName,
+                item.businessGroupName(), item.businessContinuityLevel(), item.collectedSystemLevel(),
+                item.deploymentPlatform(), item.disasterRecoveryMode(), item.responsibleTeamOrgId(), responsibleTeamDisplayName,
                 responsibleTeamValid, item.runtimeCode(), item.systemLevelCode(), item.developmentFrameworkCode(),
                 item.ownerUserId(), owner == null ? null : owner.displayName(),
                 item.description(), item.remark(), item.createdBy(), creator == null ? null : creator.displayName(),
@@ -383,6 +393,10 @@ public class PhysicalSubsystemService {
             String logicalSubsystemCode,
             String logicalSubsystemName,
             String businessGroupName,
+            String businessContinuityLevel,
+            String collectedSystemLevel,
+            String deploymentPlatform,
+            String disasterRecoveryMode,
             long responsibleTeamOrgId,
             String responsibleTeamDisplayName,
             boolean responsibleTeamValid,
@@ -415,10 +429,30 @@ public class PhysicalSubsystemService {
                                      long createdBy, String createdByDisplayName, long updatedBy,
                                      LocalDateTime createdAt, LocalDateTime updatedAt) {
             this(id, code, shortName, name, logicalSubsystemId, logicalSubsystemCode, logicalSubsystemName,
-                    businessGroupName, responsibleTeamOrgId, responsibleTeamDisplayName, responsibleTeamValid,
+                    businessGroupName, null, null, null, null,
+                    responsibleTeamOrgId, responsibleTeamDisplayName, responsibleTeamValid,
                     runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId, ownerDisplayName,
                     description, remark, createdBy, createdByDisplayName, updatedBy, createdAt, updatedAt,
                     null, null, "ACTIVE", 0, null, null);
+        }
+
+        public PhysicalSubsystemView(long id, String code, String shortName, String name, long logicalSubsystemId,
+                                     String logicalSubsystemCode, String logicalSubsystemName,
+                                     String businessGroupName, long responsibleTeamOrgId,
+                                     String responsibleTeamDisplayName, boolean responsibleTeamValid,
+                                     String runtimeCode, String systemLevelCode, String developmentFrameworkCode,
+                                     Long ownerUserId, String ownerDisplayName, String description, String remark,
+                                     long createdBy, String createdByDisplayName, long updatedBy,
+                                     LocalDateTime createdAt, LocalDateTime updatedAt, String numberSlot,
+                                     String englishName, String status, long rowVersion,
+                                     Integer logicalSubsystemNumberSequence, String logicalSubsystemStatus) {
+            this(id, code, shortName, name, logicalSubsystemId, logicalSubsystemCode, logicalSubsystemName,
+                    businessGroupName, null, null, null, null,
+                    responsibleTeamOrgId, responsibleTeamDisplayName, responsibleTeamValid,
+                    runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId, ownerDisplayName,
+                    description, remark, createdBy, createdByDisplayName, updatedBy, createdAt, updatedAt,
+                    numberSlot, englishName, status, rowVersion, logicalSubsystemNumberSequence,
+                    logicalSubsystemStatus);
         }
     }
 }

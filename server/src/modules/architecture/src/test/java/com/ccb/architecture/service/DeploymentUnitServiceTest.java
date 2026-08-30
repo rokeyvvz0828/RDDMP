@@ -72,9 +72,9 @@ class DeploymentUnitServiceTest {
         assertThat(view.code()).isEqualTo("DW0001A001");
         assertThat(view.currentVersion()).isEqualTo(1);
         verify(store).insertUnit(1_001L, TENANT_ID, "DW0001A001", PHYSICAL_ID, "ECIP-AP", "电子渠道接入应用",
+                null, "AP", "APPLICATION", null, null, operator.id());
+        verify(store).insertVersion(1_002L, TENANT_ID, 1_001L, 1, "ECIP-AP", "电子渠道接入应用", null, "AP",
                 "APPLICATION", null, null, operator.id());
-        verify(store).insertVersion(1_002L, TENANT_ID, 1_001L, 1, "ECIP-AP", "电子渠道接入应用", "APPLICATION",
-                null, null, operator.id());
         verify(operationAudit).recordSuccess(any());
     }
 
@@ -87,7 +87,7 @@ class DeploymentUnitServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST));
         verify(store, never()).insertUnit(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyString(),
-                anyString(), any(), any(), anyLong());
+                any(), anyString(), anyString(), any(), any(), anyLong());
     }
 
     @Test
@@ -130,8 +130,8 @@ class DeploymentUnitServiceTest {
         when(store.lockUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.unitNameExists(TENANT_ID, PHYSICAL_ID, "电子渠道接入应用 V2", 1_001L)).thenReturn(false);
-        when(store.updateUnitContent(TENANT_ID, 1_001L, 7L, "ECIP-AP", "电子渠道接入应用 V2", "DATABASE",
-                "迁移到数据库服务", null, operator.id())).thenReturn(1);
+        when(store.updateUnitContent(TENANT_ID, 1_001L, 7L, "ECIP-AP", "电子渠道接入应用 V2",
+                null, "DB", "DATABASE", "迁移到数据库服务", null, operator.id())).thenReturn(1);
         when(store.findUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unitWithVersion(1_001L, "DW0001A001", "ACTIVE", 2, "电子渠道接入应用 V2")));
 
@@ -140,8 +140,8 @@ class DeploymentUnitServiceTest {
                         "迁移到数据库服务", null, 7L), "trace");
 
         assertThat(view.currentVersion()).isEqualTo(2);
-        verify(store).insertVersion(1_001L, TENANT_ID, 1_001L, 2, "ECIP-AP", "电子渠道接入应用 V2", "DATABASE",
-                "迁移到数据库服务", null, operator.id());
+        verify(store).insertVersion(1_001L, TENANT_ID, 1_001L, 2, "ECIP-AP", "电子渠道接入应用 V2", null,
+                "DB", "DATABASE", "迁移到数据库服务", null, operator.id());
         verify(store).updateUnitCurrentVersion(TENANT_ID, 1_001L, 2, operator.id());
         verify(operationAudit).recordSuccess(any());
     }
@@ -155,7 +155,7 @@ class DeploymentUnitServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         verify(store, never()).insertVersion(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), anyString(),
-                anyString(), any(), any(), anyLong());
+                any(), anyString(), anyString(), any(), any(), anyLong());
     }
 
     @Test
@@ -163,15 +163,15 @@ class DeploymentUnitServiceTest {
         when(store.lockUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.unitNameExists(TENANT_ID, PHYSICAL_ID, "新名称", 1_001L)).thenReturn(false);
-        when(store.updateUnitContent(anyLong(), anyLong(), anyLong(), anyString(), anyString(), anyString(),
-                any(), any(), anyLong())).thenReturn(0);
+        when(store.updateUnitContent(anyLong(), anyLong(), anyLong(), anyString(), anyString(), any(),
+                anyString(), anyString(), any(), any(), anyLong())).thenReturn(0);
 
         assertThatThrownBy(() -> service.update(operator, 1_001L,
                 new DeploymentUnitCommand(null, "ECIP-AP", "新名称", "APPLICATION", null, null, 7L), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         verify(store, never()).insertVersion(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), anyString(),
-                anyString(), any(), any(), anyLong());
+                any(), anyString(), anyString(), any(), any(), anyLong());
     }
 
     // ---------- 生命周期 ----------

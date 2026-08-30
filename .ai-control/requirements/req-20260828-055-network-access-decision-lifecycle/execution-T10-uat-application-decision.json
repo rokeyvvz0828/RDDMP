@@ -1,0 +1,59 @@
+{
+  "task_id": "T10",
+  "status": "implemented",
+  "recorded_at": "2026-08-29T09:59:43+08:00",
+  "trigger": "用户 UAT 反馈：在申请网络关系时，填入环境部署实例后做访问判定。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/NetworkAccessPage.vue",
+      "purpose": "在新建网络访问申请弹窗内增加访问判定状态、自动防抖判定、手动重判和保存前兜底判定。"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/architecture.css",
+      "purpose": "补充申请表单内判定区的桌面和移动端样式。"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R6",
+    "R10"
+  ],
+  "commands": [
+    {
+      "command": "npm.cmd --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit 与 vite build 通过，NetworkAccessPage-CAii-7n6.js 生成。"
+    },
+    {
+      "command": "Invoke-RestMethod http://127.0.0.1:8080/actuator/health",
+      "exit_code": 0,
+      "salient_output": "{\"status\":\"UP\"}"
+    },
+    {
+      "command": "Invoke-WebRequest http://127.0.0.1:5173/architecture/network-access",
+      "exit_code": 0,
+      "salient_output": "FRONT_STATUS=200。"
+    },
+    {
+      "command": "git diff --check -- web/src/modules/architecture/NetworkAccessPage.vue web/src/modules/architecture/architecture.css",
+      "exit_code": 0,
+      "salient_output": "无空白错误；仅输出 Git LF/CRLF 提示。"
+    }
+  ],
+  "behavior": [
+    "OPEN/MODIFY 申请弹窗在来源、目标、协议端口和有效期完整后自动调用现有判定 API。",
+    "判定结果在申请弹窗内持续展示。",
+    "判定为无需申请时禁用保存草稿；即使绕过按钮，保存前兜底判定也会阻止创建申请。",
+    "RENEW/CLOSE 不显示此判定区，因为它们基于既有目标访问关系办理。"
+  ],
+  "runtime_evidence": [
+    "Docker Desktop 已恢复，ccb-platform-mysql/minio/kkfileview 均 Up。",
+    "Boot PID 41268 运行中，启动时 Flyway 从 V103 成功迁移到 V105。",
+    "Vite 5173 运行中，HMR 已接收 NetworkAccessPage.vue 与 architecture.css 更新。"
+  ],
+  "limitations": [
+    "用户真实浏览器 UAT 尚在进行中，未由 Codex 标记为通过。",
+    "本次只调整前端申请弹窗交互，未修改后端判定 API 或数据库结构。"
+  ]
+}

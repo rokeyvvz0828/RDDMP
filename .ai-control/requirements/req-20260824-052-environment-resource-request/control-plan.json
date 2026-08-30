@@ -1,0 +1,99 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立正式批次、迁移和模块边界说明",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": [],
+      "input_facts": ["用户授权实现 03", "V90 是当前最高迁移", "049 前置已 converged", "用户纠正环境类型由系统字典 ARCH_ENVIRONMENT_TYPE 维护", "用户要求资源申请按现有登记表口径重写"],
+      "write_scope": ["docs/requirements/REQ-20260824-052-environment-resource-request/**", ".ai-control/requirements/req-20260824-052-environment-resource-request/*.json", "server/src/platform/infrastructure/src/main/resources/db/migration/V91__create_architecture_environment_resource_requests.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V92__seed_architecture_environment_resource_requests.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V93__move_environment_type_to_system_dictionary.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V94__expand_resource_request_registration_items.sql", "governance/modules.yaml", "docs/architecture/MODULES.md", "docs/integration/architecture-module-contract.md", "server/src/modules/architecture/AGENTS.md", "web/src/modules/architecture/AGENTS.md"],
+      "invariants": ["Flyway 只追加", "不修改历史账本和前置需求账本"],
+      "interface_contracts": ["arch_resource_request 与 workflow context 的 businessType 固定"],
+      "non_goals": ["实际资源分配表和实例表"],
+      "action_bounds": ["新增 V91/V92/V93/V94 与说明文本，不触碰 V1-V90"],
+      "acceptance_checks": ["迁移文件存在且命名唯一", "REQ/scope JSON 可解析", "模块边界说明包含环境资源能力", "环境类型维护归属到系统字典而非架构自维护", "资源申请明细扩展为登记表字段"],
+      "evidence_required": ["diff", "check-flyway-migrations 或失败原因"],
+      "rollback": "删除本批次新增文档和 V91/V92",
+      "stop_conditions": ["发现已有 V91/V92 或 scope 冲突"],
+      "escalation_conditions": ["需要修改 platform/workflow 内部实现"]
+    },
+    {
+      "id": "T2",
+      "goal": "实现后端环境和资源申请工作流纵向路径",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": ["T1"],
+      "input_facts": ["部署单元和网络工单模式可复用", "环境资源数据属于 business/architecture"],
+      "write_scope": ["server/src/modules/architecture/**"],
+      "invariants": ["租户只从 AuthUser 注入", "服务端校验权限和实体状态", "批准不创建实际实例"],
+      "interface_contracts": ["统一 ApiResponse", "WorkflowBusinessContext 摘要和业务键校验"],
+      "non_goals": ["外部资源自动下发", "真实搭建任务关联"],
+      "action_bounds": ["新增 environment 包和相关测试，复用已有公共契约"],
+      "acceptance_checks": ["EnvironmentResourceServiceTest 覆盖资源申请创建、提交协调、审批生命周期、权限、字典环境类型校验和零节点数据库存储登记明细"],
+      "evidence_required": ["测试命令退出码和关键输出", "实际 diff"],
+      "rollback": "删除新增 environment 后端文件和测试",
+      "stop_conditions": ["必须改 workflow/system 私有包", "必须扩展 04 实际实例范围"],
+      "escalation_conditions": ["工作流公开契约无法表达资源申请"]
+    },
+    {
+      "id": "T3",
+      "goal": "实现前端具体环境与资源申请入口",
+      "requirement_ids": ["R1", "R2", "R3", "R6"],
+      "prerequisites": ["T2"],
+      "input_facts": ["web architecture 模块已有列表/表单/移动卡片样式", "API 契约由 T2 稳定"],
+      "write_scope": ["web/src/modules/architecture/**", "web/src/router/index.ts"],
+      "invariants": ["前端不保存密钥或 tenantId", "前端权限仅改善体验"],
+      "interface_contracts": ["architecture environment/resource request API 类型"],
+      "non_goals": ["搭建任务来源入口", "实际资源分配编辑"],
+      "action_bounds": ["新增页面和局部样式，复用现有 architecture.css"],
+      "acceptance_checks": ["npm --prefix web run build", "页面包含加载/空/失败/无权限/提交中状态", "资源申请表单按登记表字段分组录入并回显"],
+      "evidence_required": ["构建结果", "路由和页面 diff"],
+      "rollback": "删除新增页面和路由",
+      "stop_conditions": ["需要修改公共组件行为"],
+      "escalation_conditions": ["移动端无法在现有组件体系内完成核心路径"]
+    },
+    {
+      "id": "T4",
+      "goal": "运行验证、范围审计和收敛记录",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+      "prerequisites": ["T1", "T2", "T3"],
+      "input_facts": ["后端和前端实现完成"],
+      "write_scope": [".ai-control/requirements/req-20260824-052-environment-resource-request/*.json"],
+      "invariants": ["只记录真实执行过的命令", "未运行验证不得标为通过"],
+      "interface_contracts": ["completion evidence 文件名与 scope 一致"],
+      "non_goals": ["提交、推送或发布"],
+      "action_bounds": ["运行聚焦测试、构建、范围和静态检查，记录执行/观测/收敛"],
+      "acceptance_checks": ["聚焦测试和构建通过或失败原因清晰", "scope 审计没有本任务外修改", "convergence 说明剩余风险"],
+      "evidence_required": ["命令、退出码、关键输出、未执行原因"],
+      "rollback": "保留执行证据并由代码回退恢复",
+      "stop_conditions": ["P0/P1 未关闭", "范围检查发现未授权修改"],
+      "escalation_conditions": ["本地环境无法提供必须验收且无替代传感器"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "迁移和范围先于后端实现"},
+    {"from": "T2", "to": "T3", "reason": "前端消费后端 API 契约"},
+    {"from": "T3", "to": "T4", "reason": "最终验证需要完整实现"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"]],
+  "integration_points": [
+    {"after_tasks": ["T2"], "checks": ["后端聚焦单元测试"]},
+    {"after_tasks": ["T3"], "checks": ["前端构建"]},
+    {"after_tasks": ["T4"], "checks": ["范围、Flyway、diff 审计"]}
+  ],
+  "sampling_plan": [
+    {"label": "后端完成采样", "trigger": "T2 执行报告", "observer": "主 Agent 非独立采样", "sensors": ["S1", "S3", "S4", "S5"], "requirement_ids": ["R1", "R3", "R4", "R5"]},
+    {"label": "前端完成采样", "trigger": "T3 执行报告", "observer": "主 Agent 非独立采样", "sensors": ["S2", "S6"], "requirement_ids": ["R2", "R6"]},
+    {"label": "最终收敛采样", "trigger": "T4 验证完成", "observer": "主 Agent 非独立最终采样", "sensors": ["S1", "S2", "S3", "S4", "S5", "S6"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T3", "T4"], "sensor_ids": ["S1"]},
+    {"requirement_id": "R2", "task_ids": ["T2", "T3", "T4"], "sensor_ids": ["S2", "S6"]},
+    {"requirement_id": "R3", "task_ids": ["T2", "T3", "T4"], "sensor_ids": ["S3"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2", "T4"], "sensor_ids": ["S4"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T2", "T4"], "sensor_ids": ["S5"]},
+    {"requirement_id": "R6", "task_ids": ["T3", "T4"], "sensor_ids": ["S6"]}
+  ],
+  "plan_status": "ready"
+}

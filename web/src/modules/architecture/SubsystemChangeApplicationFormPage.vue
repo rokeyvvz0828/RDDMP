@@ -64,6 +64,7 @@ const ownerships = ref<ParameterOption[]>([])
 const runtimes = ref<ParameterOption[]>([])
 const levels = ref<ParameterOption[]>([])
 const frameworks = ref<ParameterOption[]>([])
+const disasterRecoveryModes = ref<ParameterOption[]>([])
 const loading = ref(true)
 const loadError = ref('')
 const saving = ref(false)
@@ -124,6 +125,10 @@ function emptyPhysicalDraft(lineNo: number, logicalId: number | null = null): Ph
     name: '',
     englishName: null,
     businessGroupName: null,
+    businessContinuityLevel: null,
+    collectedSystemLevel: null,
+    deploymentPlatform: null,
+    disasterRecoveryMode: null,
     responsibleTeamOrgId: null,
     responsibleTeamNameSnapshot: '',
     runtimeCode: null,
@@ -160,6 +165,10 @@ function physicalInput(source: SubsystemChangeApplicationDetail['physicalDrafts'
     name: source.name,
     englishName: source.englishName,
     businessGroupName: source.businessGroupName,
+    businessContinuityLevel: source.businessContinuityLevel,
+    collectedSystemLevel: source.collectedSystemLevel,
+    deploymentPlatform: source.deploymentPlatform,
+    disasterRecoveryMode: source.disasterRecoveryMode,
     responsibleTeamOrgId: source.responsibleTeamOrgId,
     responsibleTeamNameSnapshot: source.responsibleTeamNameSnapshot,
     runtimeCode: source.runtimeCode,
@@ -195,7 +204,8 @@ async function loadReferences() {
     loadParameterOptions('logical-subsystem', 'ARCH_SYSTEM_OWNERSHIP'),
     loadParameterOptions('physical-subsystem', 'ARCH_RUNTIME'),
     loadParameterOptions('physical-subsystem', 'ARCH_SYSTEM_LEVEL'),
-    loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK')
+    loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK'),
+    loadParameterOptions('physical-subsystem', 'ARCH_DISASTER_RECOVERY_MODE')
   ])
   if (results[0].status === 'fulfilled') organizations.value = results[0].value
   if (results[1].status === 'fulfilled') users.value = results[1].value
@@ -206,6 +216,7 @@ async function loadReferences() {
   if (results[6].status === 'fulfilled') runtimes.value = results[6].value
   if (results[7].status === 'fulfilled') levels.value = results[7].value
   if (results[8].status === 'fulfilled') frameworks.value = results[8].value
+  if (results[9].status === 'fulfilled') disasterRecoveryModes.value = results[9].value
   if (results.some(item => item.status === 'rejected')) ElMessage.warning('部分选项加载失败，仍可保留当前草稿并稍后重试')
 }
 
@@ -240,6 +251,10 @@ async function initializeFromPublished() {
     name: source.name,
     englishName: source.englishName,
     businessGroupName: source.businessGroupName,
+    businessContinuityLevel: source.businessContinuityLevel,
+    collectedSystemLevel: source.collectedSystemLevel,
+    deploymentPlatform: source.deploymentPlatform,
+    disasterRecoveryMode: source.disasterRecoveryMode,
     responsibleTeamOrgId: source.responsibleTeamValid ? source.responsibleTeamOrgId : null,
     responsibleTeamNameSnapshot: source.responsibleTeamValid ? source.responsibleTeamDisplayName : '',
     runtimeCode: source.runtimeCode,
@@ -302,6 +317,10 @@ function normalizeDrafts() {
     name: item.name.trim(),
     englishName: normalizeText(item.englishName),
     businessGroupName: normalizeText(item.businessGroupName),
+    businessContinuityLevel: normalizeText(item.businessContinuityLevel),
+    collectedSystemLevel: normalizeText(item.collectedSystemLevel),
+    deploymentPlatform: normalizeText(item.deploymentPlatform),
+    disasterRecoveryMode: normalizeText(item.disasterRecoveryMode),
     responsibleTeamNameSnapshot: item.responsibleTeamNameSnapshot.trim(),
     description: normalizeText(item.description),
     remark: normalizeText(item.remark)
@@ -563,6 +582,8 @@ onMounted(() => { void initialize() })
             :runtimes="runtimes"
             :levels="levels"
             :frameworks="frameworks"
+            :deployment-platforms="deploymentPlatforms"
+            :disaster-recovery-modes="disasterRecoveryModes"
             :title="`物理子系统 ${index + 1}`"
             :number-label="physicalNumberLabel(draft)"
             removable
@@ -584,6 +605,8 @@ onMounted(() => { void initialize() })
           :runtimes="runtimes"
           :levels="levels"
           :frameworks="frameworks"
+          :deployment-platforms="deploymentPlatforms"
+          :disaster-recovery-modes="disasterRecoveryModes"
           :number-label="physicalNumberLabel(physicalDrafts[0])"
           show-logical-target
           :logical-target-locked="actionType !== 'CREATE' && actionType !== 'REPLACE'"

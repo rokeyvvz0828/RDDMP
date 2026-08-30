@@ -17,22 +17,54 @@ import type {
   DeploymentUnit,
   DeploymentUnitImportBatch,
   DeploymentUnitImportBatchDetail,
+  DeploymentUnitOption,
   DeploymentUnitPayload,
   DeploymentUnitVersion,
+  DisasterRecoveryPayload,
+  Environment,
+  EnvironmentDetail,
+  EnvironmentInstance,
+  EnvironmentPayload,
+  EnvironmentRecordStatus,
+  EnvironmentType,
+  ExternalNetworkAddress,
+  FulfillmentPayload,
+  InstanceDisasterRecovery,
+  InstanceStatus,
   LogicalSubsystem,
   LogicalSubsystemOption,
   MaterialKind,
+  ManagedEndpointInstance,
+  NetworkAccessApplication,
+  NetworkAccessApplicationStatus,
+  NetworkAccessDecisionPayload,
+  NetworkAccessDecisionResult,
+  NetworkAccessExemptionRule,
+  NetworkAccessExemptionRulePayload,
+  NetworkAccessExemptionRuleStatus,
+  NetworkAccessPayload,
+  NetworkAccessRelation,
+  NetworkAccessRelationStatus,
+  OfflineInstancePayload,
   OrganizationOption,
   PageResult,
   ParameterOption,
   PhysicalSubsystem,
+  ProvisionPreviewResult,
   PublicationIntentView,
   ReviewMethod,
+  ResourceRequestDetail,
+  ResourceRequestPayload,
+  ResourceRequestStatus,
+  ResourceRequestSummary,
   StandardCategory,
   StandardDocumentDetail,
   StandardDocumentStatus,
   StandardDocumentSummary,
   StandardVersion,
+  NetworkZone,
+  NetworkZoneOption,
+  NetworkZoneSubnet,
   PhysicalSubsystemOption,
   SubsystemApplicationStatus,
   SubsystemChangeApplicationDetail,
@@ -360,6 +392,307 @@ export async function loadPhysicalSubsystemOptions(keyword = '', size = 50) {
   })).data.data.records
 }
 
+// ---------- 具体环境与资源申请 ----------
+
+export async function listEnvironmentTypes(query: { status?: EnvironmentRecordStatus | '' } = {}) {
+  return (await http.get<ApiResponse<EnvironmentType[]>>('/architecture/environment-types', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function listEnvironments(query: {
+  typeCode?: string | null
+  status?: EnvironmentRecordStatus | ''
+  keyword?: string
+  limit?: number
+  offset?: number
+}) {
+  return (await http.get<ApiResponse<Environment[]>>('/architecture/environments', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function getEnvironment(id: number) {
+  return (await http.get<ApiResponse<EnvironmentDetail>>(`/architecture/environments/${id}`)).data.data
+}
+
+export async function createEnvironment(payload: EnvironmentPayload) {
+  return (await http.post<ApiResponse<Environment>>('/architecture/environments', payload)).data.data
+}
+
+export async function updateEnvironment(id: number, payload: EnvironmentPayload) {
+  return (await http.put<ApiResponse<Environment>>(`/architecture/environments/${id}`, payload)).data.data
+}
+
+export async function deactivateEnvironment(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<Environment>>(`/architecture/environments/${id}/deactivate`, { rowVersion })).data.data
+}
+
+export async function reactivateEnvironment(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<Environment>>(`/architecture/environments/${id}/reactivate`, { rowVersion })).data.data
+}
+
+export async function deleteEnvironment(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<void>>(`/architecture/environments/${id}/delete`, { rowVersion })).data
+}
+
+export async function loadResourceDeploymentUnitOptions(physicalSubsystemId: number, limit = 100) {
+  return (await http.get<ApiResponse<DeploymentUnitOption[]>>('/architecture/resource-requests/options/deployment-units', {
+    params: compact({ physicalSubsystemId, limit })
+  })).data.data
+}
+
+export async function listNetworkZones(query: {
+  status?: EnvironmentRecordStatus | ''
+  keyword?: string
+} = {}) {
+  return (await http.get<ApiResponse<NetworkZone[]>>('/architecture/network-zones', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function loadNetworkZoneOptions(leafOnly = true) {
+  return (await http.get<ApiResponse<NetworkZoneOption[]>>('/architecture/network-zones/options', {
+    params: compact({ leafOnly })
+  })).data.data
+}
+
+export async function createNetworkZone(payload: {
+  parentId?: number | null
+  code: string
+  name: string
+  restrictionLevel: number
+  description?: string | null
+  remark?: string | null
+}) {
+  return (await http.post<ApiResponse<NetworkZone>>('/architecture/network-zones', payload)).data.data
+}
+
+export async function updateNetworkZone(id: number, payload: {
+  parentId?: number | null
+  code: string
+  name: string
+  restrictionLevel: number
+  description?: string | null
+  remark?: string | null
+  rowVersion: number
+}) {
+  return (await http.put<ApiResponse<NetworkZone>>(`/architecture/network-zones/${id}`, payload)).data.data
+}
+
+export async function deactivateNetworkZone(id: number) {
+  return (await http.post<ApiResponse<NetworkZone>>(`/architecture/network-zones/${id}/deactivate`)).data.data
+}
+
+export async function reactivateNetworkZone(id: number) {
+  return (await http.post<ApiResponse<NetworkZone>>(`/architecture/network-zones/${id}/reactivate`)).data.data
+}
+
+export async function listNetworkZoneSubnets(zoneId: number, query: {
+  status?: EnvironmentRecordStatus | ''
+} = {}) {
+  return (await http.get<ApiResponse<NetworkZoneSubnet[]>>(`/architecture/network-zones/${zoneId}/subnets`, {
+    params: compact(query)
+  })).data.data
+}
+
+export async function createNetworkZoneSubnet(zoneId: number, payload: {
+  cidrBlock: string
+  gatewayIp?: string | null
+  purpose?: string | null
+  remark?: string | null
+}) {
+  return (await http.post<ApiResponse<NetworkZoneSubnet>>(`/architecture/network-zones/${zoneId}/subnets`, payload)).data.data
+}
+
+export async function updateNetworkZoneSubnet(zoneId: number, subnetId: number, payload: {
+  cidrBlock: string
+  gatewayIp?: string | null
+  purpose?: string | null
+  remark?: string | null
+  rowVersion: number
+}) {
+  return (await http.put<ApiResponse<NetworkZoneSubnet>>(`/architecture/network-zones/${zoneId}/subnets/${subnetId}`, payload)).data.data
+}
+
+export async function deactivateNetworkZoneSubnet(zoneId: number, subnetId: number) {
+  return (await http.post<ApiResponse<NetworkZoneSubnet>>(`/architecture/network-zones/${zoneId}/subnets/${subnetId}/deactivate`)).data.data
+}
+
+export async function reactivateNetworkZoneSubnet(zoneId: number, subnetId: number) {
+  return (await http.post<ApiResponse<NetworkZoneSubnet>>(`/architecture/network-zones/${zoneId}/subnets/${subnetId}/reactivate`)).data.data
+}
+
+export async function listExternalNetworkAddresses(query: {
+  status?: EnvironmentRecordStatus | ''
+  keyword?: string
+} = {}) {
+  return (await http.get<ApiResponse<ExternalNetworkAddress[]>>('/architecture/external-network-addresses', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function createExternalNetworkAddress(payload: {
+  addressType: 'IP' | 'CIDR' | 'DOMAIN'
+  addressValue: string
+  displayName: string
+  purpose?: string | null
+  remark?: string | null
+}) {
+  return (await http.post<ApiResponse<ExternalNetworkAddress>>('/architecture/external-network-addresses', payload)).data.data
+}
+
+export async function updateExternalNetworkAddress(id: number, payload: {
+  addressType: 'IP' | 'CIDR' | 'DOMAIN'
+  addressValue: string
+  displayName: string
+  purpose?: string | null
+  remark?: string | null
+  rowVersion: number
+}) {
+  return (await http.put<ApiResponse<ExternalNetworkAddress>>(`/architecture/external-network-addresses/${id}`, payload)).data.data
+}
+
+export async function deactivateExternalNetworkAddress(id: number) {
+  return (await http.post<ApiResponse<ExternalNetworkAddress>>(`/architecture/external-network-addresses/${id}/deactivate`)).data.data
+}
+
+export async function reactivateExternalNetworkAddress(id: number) {
+  return (await http.post<ApiResponse<ExternalNetworkAddress>>(`/architecture/external-network-addresses/${id}/reactivate`)).data.data
+}
+
+export async function listNetworkEndpointInstances(query: {
+  physicalSubsystemId?: number | null
+  environmentId?: number | null
+  deploymentUnitId?: number | null
+}) {
+  return (await http.get<ApiResponse<ManagedEndpointInstance[]>>('/architecture/network-access/options/instances', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function listNetworkAccessApplications(query: {
+  status?: NetworkAccessApplicationStatus | ''
+  limit?: number
+  offset?: number
+} = {}) {
+  return (await http.get<ApiResponse<NetworkAccessApplication[]>>('/architecture/network-access-applications', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function createNetworkAccessApplication(payload: NetworkAccessPayload) {
+  return (await http.post<ApiResponse<NetworkAccessApplication>>('/architecture/network-access-applications', payload)).data.data
+}
+
+export async function evaluateNetworkAccessDecision(payload: NetworkAccessDecisionPayload) {
+  return (await http.post<ApiResponse<NetworkAccessDecisionResult>>('/architecture/network-access/decision', payload)).data.data
+}
+
+export async function listNetworkAccessExemptionRules(query: {
+  status?: NetworkAccessExemptionRuleStatus | ''
+} = {}) {
+  return (await http.get<ApiResponse<NetworkAccessExemptionRule[]>>('/architecture/network-access-exemption-rules', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function createNetworkAccessExemptionRule(payload: NetworkAccessExemptionRulePayload) {
+  return (await http.post<ApiResponse<NetworkAccessExemptionRule>>('/architecture/network-access-exemption-rules', payload)).data.data
+}
+
+export async function updateNetworkAccessExemptionRule(id: number, payload: NetworkAccessExemptionRulePayload) {
+  return (await http.put<ApiResponse<NetworkAccessExemptionRule>>(`/architecture/network-access-exemption-rules/${id}`, payload)).data.data
+}
+
+export async function enableNetworkAccessExemptionRule(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<NetworkAccessExemptionRule>>(
+    `/architecture/network-access-exemption-rules/${id}/enable`,
+    { rowVersion }
+  )).data.data
+}
+
+export async function disableNetworkAccessExemptionRule(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<NetworkAccessExemptionRule>>(
+    `/architecture/network-access-exemption-rules/${id}/disable`,
+    { rowVersion }
+  )).data.data
+}
+
+export async function submitNetworkAccessApplication(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<NetworkAccessApplication>>(
+    `/architecture/network-access-applications/${id}/submit`,
+    { rowVersion }
+  )).data.data
+}
+
+export async function approveNetworkAccessApplication(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<NetworkAccessApplication>>(
+    `/architecture/network-access-applications/${id}/approve`,
+    { rowVersion }
+  )).data.data
+}
+
+export async function rejectNetworkAccessApplication(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<NetworkAccessApplication>>(
+    `/architecture/network-access-applications/${id}/reject`,
+    { rowVersion }
+  )).data.data
+}
+
+export async function cancelNetworkAccessApplication(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<NetworkAccessApplication>>(
+    `/architecture/network-access-applications/${id}/cancel`,
+    { rowVersion }
+  )).data.data
+}
+
+export async function listNetworkAccessRelations(query: {
+  status?: NetworkAccessRelationStatus | ''
+  limit?: number
+  offset?: number
+} = {}) {
+  return (await http.get<ApiResponse<NetworkAccessRelation[]>>('/architecture/network-access-relations', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function closeNetworkAccessRelation(id: number, payload: { closeReason: string; rowVersion: number }) {
+  return (await http.post<ApiResponse<NetworkAccessRelation>>(`/architecture/network-access-relations/${id}/close`, payload)).data.data
+}
+
+export async function listResourceRequests(query: {
+  status?: ResourceRequestStatus | ''
+  environmentId?: number | null
+  physicalSubsystemId?: number | null
+  limit?: number
+  offset?: number
+}) {
+  return (await http.get<ApiResponse<ResourceRequestSummary[]>>('/architecture/resource-requests', {
+    params: compact(query)
+  })).data.data
+}
+
+export async function getResourceRequest(id: number) {
+  return (await http.get<ApiResponse<ResourceRequestDetail>>(`/architecture/resource-requests/${id}`)).data.data
+}
+
+export async function createResourceRequest(payload: ResourceRequestPayload) {
+  return (await http.post<ApiResponse<ResourceRequestDetail>>('/architecture/resource-requests', payload)).data.data
+}
+
+export async function updateResourceRequest(id: number, payload: ResourceRequestPayload) {
+  return (await http.put<ApiResponse<ResourceRequestDetail>>(`/architecture/resource-requests/${id}`, payload)).data.data
+}
+
+export async function submitResourceRequest(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<ResourceRequestDetail>>(`/architecture/resource-requests/${id}/submit`, { rowVersion })).data.data
+}
+
+export async function cancelResourceRequest(id: number, rowVersion: number) {
+  return (await http.post<ApiResponse<ResourceRequestDetail>>(`/architecture/resource-requests/${id}/cancel`, { rowVersion })).data.data
+}
+
 // ---------- 部署单元初始化导入 ----------
 
 export async function uploadDeploymentUnitImport(file: File) {
@@ -399,4 +732,56 @@ export async function downloadDeploymentUnitImportTemplate() {
   link.download = 'deployment-unit-import-template.xlsx'
   link.click()
   URL.revokeObjectURL(link.href)
+}
+
+// ---------- 环境部署实例与资源下发 ----------
+
+export async function previewAutomatedProvision(requestId: number) {
+  return (await http.get<ApiResponse<ProvisionPreviewResult>>(`/architecture/resource-requests/${requestId}/preview-automated-provision`)).data.data
+}
+
+export async function fulfillResourceRequest(requestId: number, payload: FulfillmentPayload) {
+  return (await http.post<ApiResponse<EnvironmentInstance[]>>(`/architecture/resource-requests/${requestId}/fulfill`, payload)).data.data
+}
+
+export async function listEnvironmentInstances(query: {
+  environmentId?: number
+  physicalSubsystemId?: number
+  deploymentUnitId?: number
+  status?: InstanceStatus
+  keyword?: string
+  limit?: number
+  offset?: number
+}) {
+  return (await http.get<ApiResponse<EnvironmentInstance[]>>('/architecture/instances', { params: compact(query) })).data.data
+}
+
+export async function getEnvironmentInstance(id: number) {
+  return (await http.get<ApiResponse<EnvironmentInstance>>(`/architecture/instances/${id}`)).data.data
+}
+
+export async function offlineEnvironmentInstance(id: number, payload: OfflineInstancePayload) {
+  return (await http.post<ApiResponse<EnvironmentInstance>>(`/architecture/instances/${id}/offline`, payload)).data.data
+}
+
+export async function listInstanceDisasterRecoveries(instanceId: number) {
+  return (await http.get<ApiResponse<InstanceDisasterRecovery[]>>(`/architecture/instances/${instanceId}/disaster-recoveries`)).data.data
+}
+
+export async function listAllDisasterRecoveries(query?: { deploymentUnitId?: number; instanceId?: number }) {
+  return (await http.get<ApiResponse<InstanceDisasterRecovery[]>>('/architecture/instance-disaster-recoveries', { params: compact(query || {}) })).data.data
+}
+
+export async function createInstanceDisasterRecovery(payload: DisasterRecoveryPayload) {
+  return (await http.post<ApiResponse<InstanceDisasterRecovery>>('/architecture/instance-disaster-recoveries', payload)).data.data
+}
+
+export async function deleteInstanceDisasterRecovery(id: number) {
+  return (await http.delete<ApiResponse<void>>(`/architecture/instance-disaster-recoveries/${id}`)).data
+}
+
+export async function listAvailableStandbyInstances(deploymentUnitId: number, excludeInstanceId?: number) {
+  return (await http.get<ApiResponse<EnvironmentInstance[]>>('/architecture/instances/options/available-standbys', {
+    params: compact({ deploymentUnitId, excludeInstanceId })
+  })).data.data
 }

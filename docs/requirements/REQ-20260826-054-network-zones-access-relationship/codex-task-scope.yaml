@@ -1,0 +1,162 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260826-054",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260826-054-network-zones-access-relationship/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260826-054-network-zones-access-relationship",
+    "worktree": "C:/Users/missa/source/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/architecture/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V100__create_architecture_network_zones_access.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V101__seed_architecture_network_zones_access.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V102__create_architecture_network_zone_subnets.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V103__seed_architecture_network_zones_from_reference_diagram.sql",
+      "web/src/modules/architecture/**",
+      "web/src/router/index.ts",
+      "docs/requirements/REQ-20260826-054-network-zones-access-relationship/**",
+      ".ai-control/requirements/req-20260826-054-network-zones-access-relationship/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/attachment/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V89__create_architecture_network_work_orders.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V90__seed_architecture_network_work_orders.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V91__create_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__expand_resource_request_registration_items.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V97__create_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V98__seed_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V99__extend_architecture_resource_request_fulfillment_status.sql",
+      "web/src/api/http.ts",
+      "web/src/api/workflow.ts",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/stores/auth.ts",
+      "docs/integration/frontend-ui-contract.md",
+      "design-h5.md",
+      "temp/CONTEXT.md",
+      "temp/spec.md",
+      "temp/implementation/issues/09-network-zones-and-access-relationship.md",
+      "docs/original/tech/网络权限管理.md"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/internal/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      ".ai-control/original/**",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260826-054",
+    "owner_approved": true,
+    "approval_evidence": "用户下达“实现09 网络权限管理，并且实现部署单元、资源申请、资源下发中的网络分区功能”，批准在 business/architecture 内新增网络分区、外部网络地址、网络访问申请/关系，并将网络分区贯通至部署单元、资源申请和资源下发。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "既有 CLB/DNS/证书专项工单保持兼容",
+      "旧 networkZone 文本字段保留兼容显示",
+      "V100-V103 只追加，不修改 V1-V99"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V100__create_architecture_network_zones_access.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V101__seed_architecture_network_zones_access.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V102__create_architecture_network_zone_subnets.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V103__seed_architecture_network_zones_from_reference_diagram.sql"
+    ],
+    "compatibility_and_rollback": "只追加 V100-V103。应用回退保留迁移和数据，通过后续补偿迁移隐藏菜单、撤销授权、停用网段或恢复兼容结构。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "api",
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=NetworkAccessServiceTest,EnvironmentResourceServiceTest,DeploymentUnitServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test"
+    },
+    {
+      "name": "permission",
+      "command": "rg \"architecture:network-zone|architecture:network-access\" server/src/modules/architecture server/src/platform/infrastructure/src/main/resources/db/migration/V101__seed_architecture_network_zones_access.sql web/src/modules/architecture web/src/router/index.ts"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "flyway",
+      "command": "node scripts/check-flyway-migrations.mjs"
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260826-054-network-zones-access-relationship/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"
+    },
+    {
+      "name": "diff",
+      "command": "git diff --check"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "新增迁移、实例网络分区强校验和网络访问关系快照",
+      "新增网络分区网段台账和下发 IP 子网匹配校验",
+      "新增按网络架构图初始化的 UAT 分区和网段种子数据",
+      "既有资源申请和实例历史数据存在旧文本网络分区，需要兼容",
+      "批准网络访问申请只形成 RDDMP 关系记录，不代表真实网络设备开通"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260826-054-network-zones-access-relationship",
+    "control_justification": "涉及数据库迁移、部署单元版本、资源申请、资源下发、网络访问关系、权限菜单和前端旅程，需要完整工程控制账本。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260826-054-network-zones-access-relationship/state.json",
+      ".ai-control/requirements/req-20260826-054-network-zones-access-relationship/design.json",
+      ".ai-control/requirements/req-20260826-054-network-zones-access-relationship/control-plan.json",
+      ".ai-control/requirements/req-20260826-054-network-zones-access-relationship/execution.json",
+      ".ai-control/requirements/req-20260826-054-network-zones-access-relationship/observation.json",
+      ".ai-control/requirements/req-20260826-054-network-zones-access-relationship/convergence.json"
+    ],
+    "release_verification": [
+      "空库与既有库迁移到 V103",
+      "网络分区树维护和叶子分区校验",
+      "网络分区网段维护和下发 IP 子网匹配校验",
+      "部署单元、资源申请、资源下发网络分区贯通",
+      "网络访问申请、批准、关系生成和关闭",
+      "桌面与移动视口页面验收"
+    ],
+    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V100-V103 与业务数据；通过后续补偿迁移隐藏菜单、撤销授权、停用网段或恢复兼容结构。"
+  }
+}

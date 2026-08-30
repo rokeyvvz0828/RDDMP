@@ -53,6 +53,10 @@ export interface PhysicalSubsystem {
   logicalSubsystemCode: string
   logicalSubsystemName: string
   businessGroupName: string | null
+  businessContinuityLevel: string | null
+  collectedSystemLevel: string | null
+  deploymentPlatform: string | null
+  disasterRecoveryMode: string | null
   responsibleTeamOrgId: number
   responsibleTeamDisplayName: string
   responsibleTeamValid: boolean
@@ -97,6 +101,10 @@ export interface PhysicalDraftInput {
   name: string
   englishName: string | null
   businessGroupName: string | null
+  businessContinuityLevel: string | null
+  collectedSystemLevel: string | null
+  deploymentPlatform: string | null
+  disasterRecoveryMode: string | null
   responsibleTeamOrgId: number | null
   responsibleTeamNameSnapshot: string
   runtimeCode: string | null
@@ -396,8 +404,12 @@ export interface DeploymentUnit {
   physicalSubsystemStatus: string | null
   shortName: string
   name: string
+  relatedDeploymentUnitName: string | null
+  deploymentUnitType: string
   kind: DeploymentUnitKind
   status: DeploymentUnitStatus
+  defaultNetworkZoneId: number | null
+  defaultNetworkZoneName: string | null
   currentVersion: number
   description: string | null
   remark: string | null
@@ -414,7 +426,11 @@ export interface DeploymentUnitVersion {
   versionNo: number
   shortName: string
   name: string
+  relatedDeploymentUnitName: string | null
+  deploymentUnitType: string
   kind: DeploymentUnitKind
+  defaultNetworkZoneId: number | null
+  defaultNetworkZoneName: string | null
   description: string | null
   remark: string | null
   publishedBy: number
@@ -426,7 +442,10 @@ export interface DeploymentUnitPayload {
   physicalSubsystemId: number | null
   shortName: string
   name: string
+  relatedDeploymentUnitName: string | null
+  deploymentUnitType: string | null
   kind: DeploymentUnitKind | ''
+  defaultNetworkZoneId: number | null
   description: string | null
   remark: string | null
   rowVersion?: number | null
@@ -476,6 +495,618 @@ export interface DeploymentUnitImportBatchDetail {
 export interface PhysicalSubsystemOption {
   id: number
   code: string
+  shortName: string | null
   name: string
+  businessGroupName: string | null
+  businessContinuityLevel: string | null
+  collectedSystemLevel: string | null
+  deploymentPlatform: string | null
+  disasterRecoveryMode: string | null
+  systemLevelCode: string | null
   status: string
+}
+
+// ---------- 具体环境与资源申请 ----------
+
+export type EnvironmentRecordStatus = 'ACTIVE' | 'INACTIVE'
+export type ResourceRequestType = 'INITIAL' | 'EXPANSION' | 'SHRINK' | 'ADJUSTMENT'
+export type ResourceRequestStatus = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'APPROVED' | 'FULFILLED' | 'DIFF_FULFILLED' | 'REJECTED' | 'CANCELLED'
+export type NetworkAddressType = 'IP' | 'CIDR' | 'DOMAIN'
+export type NetworkEndpointKind = 'MANAGED' | 'EXTERNAL'
+export type NetworkAccessProtocol = 'TCP' | 'UDP' | 'HTTP' | 'HTTPS' | 'OTHER'
+export type NetworkAccessValidityType = 'LIMITED' | 'LONG_TERM'
+export type NetworkAccessActionType = 'OPEN' | 'MODIFY' | 'RENEW' | 'CLOSE'
+export type NetworkAccessApplicationStatus = 'DRAFT' | 'RETURNED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type NetworkAccessRelationStatus = 'ACTIVE' | 'CLOSED'
+export type NetworkAccessDecision = 'NEEDS_APPLICATION' | 'NOT_REQUIRED'
+export type NetworkAccessDecisionBasis = 'SUBNET_INTERNAL' | 'RELATION_COVERED' | 'RULE_EXEMPT' | 'STRICT_REQUIRED'
+export type NetworkAccessExemptionRuleStatus = 'ACTIVE' | 'DISABLED'
+export type NetworkAccessRelationCloseType = 'SUPERSEDED' | 'CLOSED_BY_APPLICATION' | 'LEGACY_DIRECT'
+
+export interface NetworkZone {
+  id: number
+  tenantId: number
+  parentId: number | null
+  parentName: string | null
+  code: string
+  name: string
+  restrictionLevel: number
+  status: EnvironmentRecordStatus
+  description: string | null
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NetworkZoneOption {
+  id: number
+  code: string
+  name: string
+  parentId: number | null
+  parentName: string | null
+  restrictionLevel: number
+  leaf: boolean
+}
+
+export interface NetworkZoneSubnet {
+  id: number
+  tenantId: number
+  networkZoneId: number
+  networkZoneCode: string
+  networkZoneName: string
+  cidrBlock: string
+  gatewayIp: string | null
+  purpose: string | null
+  status: EnvironmentRecordStatus
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ExternalNetworkAddress {
+  id: number
+  tenantId: number
+  addressType: NetworkAddressType
+  addressValue: string
+  displayName: string
+  purpose: string | null
+  status: EnvironmentRecordStatus
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ManagedEndpointInstance {
+  id: number
+  instanceNo: string
+  physicalSubsystemId: number
+  physicalSubsystemCode: string
+  physicalSubsystemName: string
+  environmentId: number
+  environmentCode: string
+  environmentName: string
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  machineName: string
+  ipAddress: string
+  networkZoneId: number | null
+  networkZoneName: string | null
+}
+
+export interface NetworkEndpointPayload {
+  kind: NetworkEndpointKind
+  physicalSubsystemId?: number | null
+  environmentId?: number | null
+  deploymentUnitId?: number | null
+  externalAddressId?: number | null
+  instanceIds?: number[]
+}
+
+export interface NetworkAccessPayload {
+  source?: NetworkEndpointPayload | null
+  target?: NetworkEndpointPayload | null
+  protocol: NetworkAccessProtocol
+  ports: string
+  purpose: string
+  processDescription?: string | null
+  validFrom?: string | null
+  validUntil?: string | null
+  validityType?: NetworkAccessValidityType | null
+  actionType?: NetworkAccessActionType | null
+  targetRelationId?: number | null
+}
+
+export interface NetworkAccessDecisionPayload {
+  source: NetworkEndpointPayload
+  target: NetworkEndpointPayload
+  protocol: NetworkAccessProtocol
+  ports: string
+  validFrom: string | null
+  validUntil: string | null
+  validityType: NetworkAccessValidityType
+}
+
+export interface NetworkAccessDecisionResult {
+  decision: NetworkAccessDecision
+  needsApplication: boolean
+  basis: NetworkAccessDecisionBasis
+  reasonCodes: string[]
+  coveringRelationNos: string[]
+  coveringRuleCodes: string[]
+}
+
+export interface NetworkAccessApplication {
+  id: number
+  tenantId: number
+  applicationNo: string
+  applicantId: number
+  actionType: NetworkAccessActionType
+  targetRelationId: number | null
+  sourceKind: NetworkEndpointKind
+  sourcePhysicalSubsystemId: number | null
+  sourceEnvironmentId: number | null
+  sourceDeploymentUnitId: number | null
+  sourceExternalAddressId: number | null
+  sourceSnapshotJson: string | null
+  targetKind: NetworkEndpointKind
+  targetPhysicalSubsystemId: number | null
+  targetEnvironmentId: number | null
+  targetDeploymentUnitId: number | null
+  targetExternalAddressId: number | null
+  targetSnapshotJson: string | null
+  protocol: NetworkAccessProtocol
+  ports: string
+  purpose: string
+  processDescription: string | null
+  validFrom: string | null
+  validUntil: string | null
+  validityType: NetworkAccessValidityType
+  status: NetworkAccessApplicationStatus
+  currentBusinessRound: number
+  currentWorkflowDefinitionId: number | null
+  currentWorkflowVersionId: number | null
+  currentWorkflowInstanceId: number | null
+  currentPayloadDigest: string | null
+  cancellationRequested: boolean
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NetworkAccessRelation {
+  id: number
+  tenantId: number
+  relationNo: string
+  applicationId: number
+  replacesRelationId: number | null
+  replacedByRelationId: number | null
+  closedApplicationId: number | null
+  sourceKind: NetworkEndpointKind
+  sourceSnapshotJson: string | null
+  targetKind: NetworkEndpointKind
+  targetSnapshotJson: string | null
+  protocol: NetworkAccessProtocol
+  ports: string
+  purpose: string
+  processDescription: string | null
+  validFrom: string | null
+  validUntil: string | null
+  validityType: NetworkAccessValidityType
+  status: NetworkAccessRelationStatus
+  closeReason: string | null
+  closeType: NetworkAccessRelationCloseType | null
+  closedBy: number | null
+  closedAt: string | null
+  hasOfflineEndpointRisk: boolean
+  offlineEndpointCount: number
+  offlineEndpointSummaries: string[]
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NetworkAccessExemptionRule {
+  id: number
+  tenantId: number
+  ruleCode: string
+  ruleName: string
+  sourceNetworkZoneId: number
+  sourceNetworkZoneName: string
+  targetNetworkZoneId: number
+  targetNetworkZoneName: string
+  protocol: NetworkAccessProtocol
+  ports: string
+  validFrom: string | null
+  validUntil: string | null
+  validityType: NetworkAccessValidityType
+  status: NetworkAccessExemptionRuleStatus
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NetworkAccessExemptionRulePayload {
+  ruleCode: string
+  ruleName: string
+  sourceNetworkZoneId: number | null
+  targetNetworkZoneId: number | null
+  protocol: NetworkAccessProtocol
+  ports: string
+  validFrom: string | null
+  validUntil: string | null
+  validityType: NetworkAccessValidityType
+  remark?: string | null
+  rowVersion?: number | null
+}
+
+export interface EnvironmentType {
+  code: string
+  name: string
+}
+
+export interface Environment {
+  id: number
+  code: string
+  name: string
+  typeCode: string
+  typeName: string
+  status: EnvironmentRecordStatus
+  description: string | null
+  remark: string | null
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EnvironmentResourceSummary {
+  environmentId: number
+  requestCount: number
+  approvedRequestCount: number
+  pendingRequestCount: number
+  requestedCpuCores: number
+  requestedMemoryGb: number
+  requestedStorageGb: number
+  requestedNodeCount: number
+  actualCpuCores: number
+  actualMemoryGb: number
+  actualStorageGb: number
+  actualNodeCount: number
+}
+
+export interface EnvironmentDetail {
+  environment: Environment
+  resourceSummary: EnvironmentResourceSummary
+}
+
+export interface EnvironmentPayload {
+  code: string
+  name: string
+  typeCode: string | null
+  description: string | null
+  remark: string | null
+  rowVersion?: number | null
+}
+
+export interface ResourceRequestItemPayload {
+  deploymentUnitId: number | null
+  databaseStorageGb: number
+  fileStorageGb: number
+  networkZoneId: number | null
+  networkZone: string | null
+  serverType: string | null
+  cpuCores: number
+  memoryGb: number
+  appWebGroupCount: number
+  plannedNodeCount: number
+  sidecarCpuCores: number
+  sidecarMemoryGb: number
+  hasSidecar: boolean
+  databaseName: string | null
+  databaseVersion: string | null
+  jdkVersion: string | null
+  middleware: string | null
+  operatingSystem: string | null
+  extraCbsGb: number
+  localDiskGb: number
+  needsNft: boolean
+  needsFserver: boolean
+  needsJobexecutor: boolean
+  remark: string | null
+}
+
+export interface ResourceRequestPayload {
+  physicalSubsystemId: number | null
+  environmentId: number | null
+  contactUserId: number | null
+  requestType: ResourceRequestType | ''
+  reason: string | null
+  items: ResourceRequestItemPayload[]
+  rowVersion?: number | null
+}
+
+export interface DeploymentUnitOption {
+  id: number
+  code: string
+  name: string
+  kind: DeploymentUnitKind
+  physicalSubsystemId: number
+  relatedDeploymentUnitName: string | null
+  deploymentUnitType: string | null
+  description: string | null
+  defaultNetworkZoneId: number | null
+  defaultNetworkZoneName: string | null
+}
+
+export interface ResourceRequestSummary {
+  id: number
+  requestNo: string
+  physicalSubsystemId: number
+  physicalSubsystemCode: string
+  physicalSubsystemShortName: string | null
+  physicalSubsystemName: string
+  physicalSubsystemBusinessGroupName: string | null
+  physicalSubsystemSystemLevelCode: string | null
+  physicalSubsystemDeploymentPlatform: string | null
+  physicalSubsystemDisasterRecoveryMode: string | null
+  environmentId: number
+  environmentCode: string
+  environmentName: string
+  environmentTypeName: string
+  applicantId: number
+  contactUserId: number
+  requestType: ResourceRequestType
+  reason: string | null
+  status: ResourceRequestStatus
+  currentBusinessRound: number
+  cancellationRequested: boolean
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ResourceRequestItem {
+  id: number
+  itemSeq: number
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  deploymentUnitKind: DeploymentUnitKind
+  relatedDeploymentUnitName: string | null
+  deploymentUnitDescription: string | null
+  deploymentUnitType: string | null
+  databaseStorageGb: number
+  fileStorageGb: number
+  networkZoneId: number | null
+  networkZoneName: string | null
+  networkZone: string | null
+  serverType: string | null
+  cpuCores: number
+  memoryGb: number
+  appWebGroupCount: number
+  plannedNodeCount: number
+  totalCpuCores: number
+  totalMemoryGb: number
+  sidecarCpuCores: number
+  sidecarMemoryGb: number
+  sidecarMemoryRatio: string | null
+  hasSidecar: boolean
+  databaseName: string | null
+  databaseVersion: string | null
+  jdkVersion: string | null
+  middleware: string | null
+  operatingSystem: string | null
+  extraCbsGb: number
+  localDiskGb: number
+  needsNft: boolean
+  needsFserver: boolean
+  needsJobexecutor: boolean
+  remark: string | null
+}
+
+export interface ResourceRequestHistory {
+  id: number
+  eventType: string
+  fromStatus: ResourceRequestStatus | null
+  toStatus: ResourceRequestStatus | null
+  businessRound: number
+  summary: string
+  snapshotJson: string | null
+  diffJson: string | null
+  operatorId: number
+  occurredAt: string
+}
+
+export interface ResourceRequestDetail {
+  request: ResourceRequestSummary
+  items: ResourceRequestItem[]
+  history: ResourceRequestHistory[]
+}
+
+export type InstanceStatus = 'ACTIVE' | 'OFFLINE'
+export type FulfillmentMode = 'MANUAL' | 'AUTOMATED'
+export type DisasterRecoveryMode = 'PRIMARY_STANDBY' | 'ACTIVE_ACTIVE' | 'COLD_STANDBY'
+
+export interface EnvironmentInstance {
+  id: number
+  instanceNo: string
+  environmentId: number
+  environmentCode: string
+  environmentName: string
+  environmentTypeName?: string
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  deploymentUnitKind: string
+  deploymentUnitVersionId?: number | null
+  deploymentUnitVersionNo: number
+  latestDeploymentUnitVersionNo: number
+  hasVersionDifference: boolean
+  physicalSubsystemId: number
+  physicalSubsystemCode: string
+  physicalSubsystemName: string
+  sourceRequestId: number
+  sourceRequestNo: string
+  sourceItemId?: number | null
+  machineName: string
+  ipAddress: string
+  serverType?: string
+  deploymentPlatform?: string
+  networkZoneId?: number | null
+  networkZoneName?: string | null
+  networkZone?: string
+  status: InstanceStatus
+  cpuCores: number
+  memoryGb: number
+  databaseStorageGb: number
+  fileStorageGb: number
+  extraCbsGb: number
+  localDiskGb: number
+  databaseName?: string
+  databaseVersion?: string
+  jdkVersion?: string
+  middleware?: string
+  operatingSystem?: string
+  needsNft: boolean
+  needsFserver: boolean
+  needsJobexecutor: boolean
+  fulfillmentMode: FulfillmentMode
+  differenceReason?: string
+  remark?: string
+  offlinedAt?: string
+  offlinedBy?: number
+  offlineReason?: string
+  rowVersion: number
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface InstanceDisasterRecovery {
+  id: number
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  primaryInstanceId: number
+  primaryMachineName: string
+  primaryIpAddress: string
+  primaryEnvironmentCode: string
+  primaryEnvironmentName: string
+  standbyInstanceId: number
+  standbyMachineName: string
+  standbyIpAddress: string
+  standbyEnvironmentCode: string
+  standbyEnvironmentName: string
+  drMode: DisasterRecoveryMode
+  description?: string
+  createdBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ProvisionedInstance {
+  sourceItemId: number
+  itemSeq: number
+  deploymentUnitId: number
+  deploymentUnitCode: string
+  deploymentUnitName: string
+  machineName: string
+  ipAddress: string
+  serverType?: string
+  deploymentPlatform?: string
+  networkZoneId?: number | null
+  networkZoneName?: string | null
+  networkZone?: string
+  cpuCores: number
+  memoryGb: number
+  databaseStorageGb: number
+  fileStorageGb: number
+  extraCbsGb: number
+  localDiskGb: number
+  databaseName?: string
+  databaseVersion?: string
+  jdkVersion?: string
+  middleware?: string
+  operatingSystem?: string
+  needsNft: boolean
+  needsFserver: boolean
+  needsJobexecutor: boolean
+  remark?: string
+  mockExecutionLog?: string
+}
+
+export interface ProvisionPreviewResult {
+  success: boolean
+  executionId: string
+  message: string
+  instances: ProvisionedInstance[]
+}
+
+export interface FulfillInstanceItemPayload {
+  sourceItemId?: number | null
+  deploymentUnitId: number
+  machineName: string
+  ipAddress: string
+  serverType?: string | null
+  deploymentPlatform?: string | null
+  networkZoneId?: number | null
+  networkZoneName?: string | null
+  networkZone?: string | null
+  cpuCores: number
+  memoryGb: number
+  databaseStorageGb: number
+  fileStorageGb: number
+  extraCbsGb: number
+  localDiskGb: number
+  databaseName?: string | null
+  databaseVersion?: string | null
+  jdkVersion?: string | null
+  middleware?: string | null
+  operatingSystem?: string | null
+  needsNft?: boolean
+  needsFserver?: boolean
+  needsJobexecutor?: boolean
+  fulfillmentMode?: FulfillmentMode
+  remark?: string | null
+}
+
+export interface FulfillmentPayload {
+  fulfillmentMode: FulfillmentMode
+  differenceReason?: string
+  instances: FulfillInstanceItemPayload[]
+  rowVersion?: number
+}
+
+export interface OfflineInstancePayload {
+  offlineReason: string
+  rowVersion?: number
+}
+
+export interface DisasterRecoveryPayload {
+  deploymentUnitId?: number
+  primaryInstanceId: number
+  standbyInstanceId: number
+  drMode: DisasterRecoveryMode
+  description?: string
 }

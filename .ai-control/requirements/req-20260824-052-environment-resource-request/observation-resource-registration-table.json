@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T10:27:41+08:00",
+  "phase": "observing",
+  "observations": [
+    {
+      "sensor": "development-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "result": "pass",
+      "evidence": "Development entry check passed."
+    },
+    {
+      "sensor": "environment-resource-unit",
+      "command": "mvn -pl :ccb-architecture -am clean \"-Dtest=EnvironmentResourceServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "pass",
+      "evidence": "EnvironmentResourceServiceTest 7 tests, 0 failures, 0 errors；新增“登记表明细允许零节点数据库存储需求”用例通过。"
+    },
+    {
+      "sensor": "frontend-build",
+      "command": "npm --prefix web run build",
+      "result": "pass",
+      "evidence": "vue-tsc --noEmit 与 vite build 成功；ResourceRequestPage 构建产物生成。"
+    },
+    {
+      "sensor": "flyway-static",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "pass",
+      "evidence": "Flyway migration check passed for 88 migration(s) and 1 approved callback(s)."
+    },
+    {
+      "sensor": "boot-package",
+      "command": "mvn -pl :ccb-boot -am clean \"-Dmaven.test.skip=true\" package",
+      "result": "pass-after-retry",
+      "evidence": "首次打包因旧 8080 Java 进程锁定 ccb-boot JAR 失败；停止 PID 22664 后重试成功，14 个 reactor 模块 BUILD SUCCESS。"
+    },
+    {
+      "sensor": "flyway-runtime",
+      "command": "启动 ccb-boot local profile 并检查日志",
+      "result": "pass",
+      "evidence": "Boot PID 52172 启动成功；/actuator/health 返回 UP；Flyway 日志显示 schema 当前版本 93，迁移到 94 - expand resource request registration items，并成功应用 1 个迁移后到 v94。"
+    },
+    {
+      "sensor": "resource-api-runtime",
+      "command": "使用本地 JWT secret 生成临时 token 调用资源申请相关只读接口",
+      "result": "pass",
+      "evidence": "GET /api/architecture/environment-types、/api/architecture/resource-requests、/api/architecture/options/deployment-unit/physical-subsystems 均 HTTP 200 code=0；物理子系统选项包含 shortName 与 businessGroupName；遍历样本物理子系统后，部署单元选项包含 description。"
+    },
+    {
+      "sensor": "diff-whitespace",
+      "command": "git diff --check",
+      "result": "pass-with-line-ending-warnings",
+      "evidence": "未报告空白错误；仅输出 Git 对若干既有工作区文件的 LF/CRLF 提示。"
+    },
+    {
+      "sensor": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "result": "blocked",
+      "evidence": "范围脚本在读取 diff 前因当前分支 dev-ivanh 不满足 <type>/REQ-YYYYMMDD-NNN-short-name 命名门禁退出。"
+    },
+    {
+      "sensor": "architecture-module-full-test",
+      "command": "mvn -pl :ccb-architecture -am test",
+      "result": "blocked",
+      "evidence": "238 tests run, 0 failures, 13 errors；错误均为 Testcontainers 无法找到有效 Docker 环境或前一次 Docker 探测失败，非本次资源申请登记表代码断言失败。"
+    },
+    {
+      "sensor": "browser-uat",
+      "command": "尝试打开 http://localhost:5173/architecture/resource-requests 到 Codex 右侧预览",
+      "result": "partial",
+      "evidence": "Codex 已排队打开页面；当前会话未暴露交互式浏览器控制工具，且项目未安装 Playwright，未完成自动截图或点击验收。"
+    }
+  ],
+  "residual_risks": [
+    "真实浏览器桌面/移动 UAT 仍需人工或可用浏览器控制工具确认。",
+    "完整架构模块 MySQL 集成测试需本地 Docker/Testcontainers 环境恢复后重跑。",
+    "scope 脚本需在符合门禁命名的分支上重跑。"
+  ],
+  "conclusion": "登记表字段扩展、前后端构建、运行时 V94 迁移和资源申请只读接口均已通过当前可用传感器；外部环境阻塞项已单独记录。"
+}

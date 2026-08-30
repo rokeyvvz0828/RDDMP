@@ -1,0 +1,145 @@
+{
+  "sample_label": "REQ-20260828-055 实现后采样",
+  "task_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6",
+    "T7",
+    "T8",
+    "T9"
+  ],
+  "baseline_revision": "requirement.md@ready-2026-08-28",
+  "recorded_at": "2026-08-29T09:06:36+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "NetworkAccessControllerTest + NetworkAccessDecisionServiceTest",
+      "result": "pass",
+      "raw_evidence": "聚焦 Maven 命令退出码 0；判定响应包含 decision、needsApplication、basis、reasonCodes、coveringRelationNos。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "NetworkAccessDecisionServiceTest",
+      "result": "pass",
+      "raw_evidence": "缺失/非法输入、端口异常、端点不可解析和覆盖不足均回落 NEEDS_APPLICATION。",
+      "limitation": [
+        "数据库运行异常路径以服务异常兜底代码和单元可控分支覆盖，未在真实数据库故障中采样。"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "NetworkAccessCoverage + 判定服务测试",
+      "result": "pass",
+      "raw_evidence": "内部端点按快照实例/分区/IP 证明覆盖；外部 IP/CIDR 按包含关系、域名精确匹配。",
+      "limitation": [
+        "未接真实环境实例库做浏览器级选择校验。"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "NetworkPortRangesTest + NetworkAccessDecisionServiceTest",
+      "result": "pass",
+      "raw_evidence": "端口范围归并、完整包含、长期/有限期覆盖边界测试通过。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "NetworkAccessDecisionServiceTest + ControllerTest",
+      "result": "pass",
+      "raw_evidence": "启用免申请规则完整覆盖时返回 NOT_REQUIRED/RULE_EXEMPT；停用或不覆盖不构成证据。",
+      "limitation": [
+        "真实 MySQL 规则表迁移和种子受 Docker 阻塞未执行。"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "NetworkAccessLifecycleServiceTest",
+      "result": "pass",
+      "raw_evidence": "OPEN 创建新关系；MODIFY/RENEW 替代旧关系；CLOSE 关闭目标关系；直接关闭返回冲突。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "NetworkAccessWorkflowLifecycleConsumerTest + 提交服务代码路径",
+      "result": "pass",
+      "raw_evidence": "STARTED/RETURNED/APPROVED/REJECTED/TERMINATED 事件按实例、轮次、摘要和回执幂等处理。",
+      "limitation": [
+        "真实 Flowable/工作流发布部署未运行。"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "NetworkAccessLifecycleServiceTest + 前端构建",
+      "result": "pass",
+      "raw_evidence": "新申请拒绝 OFFLINE 实例；关系投影下线实例数量和摘要；前端列表/详情渲染风险字段。",
+      "limitation": [
+        "未用真实浏览器和后端数据验证风险提示视觉效果。"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "sensor": "NetworkAccessControllerTest",
+      "result": "pass",
+      "raw_evidence": "view/apply/manage 分权、判定 API、申请 API、规则 API 和管理入口 MockMvc 测试通过。",
+      "limitation": [
+        "未执行真实登录会话和跨租户 HTTP 测试。"
+      ]
+    },
+    {
+      "requirement_id": "R10",
+      "sensor": "npm.cmd --prefix web run build",
+      "result": "pass",
+      "raw_evidence": "vue-tsc 与 Vite 构建通过。",
+      "limitation": [
+        "桌面和移动视口浏览器 UAT 未运行。"
+      ]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "git diff --check + scope script",
+      "result": "partial",
+      "raw_evidence": "git diff --check 退出码 0；scope script 仅因既有无关未跟踪文件失败。",
+      "limitation": [
+        "working-tree 范围脚本未取得全绿。"
+      ]
+    },
+    {
+      "requirement_id": "R12",
+      "sensor": "Maven/Testcontainers/boot/front build",
+      "result": "incomplete",
+      "raw_evidence": "聚焦后端和前端构建通过；NetworkAccessMigrationMySqlTest 与 boot 回归因 Docker 无效环境失败。",
+      "limitation": [
+        "真实 MySQL/Flyway、平台工作流集成路径和浏览器旅程未形成完整证据。"
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "kind": "environment",
+      "evidence": "Testcontainers: Could not find a valid Docker environment."
+    },
+    {
+      "kind": "working_tree",
+      "evidence": "scope script reported only req-20260812 unrelated .ai-control files and .dsh/**."
+    }
+  ],
+  "coverage_gaps": [
+    "真实 MySQL/Flyway V104/V105 迁移未执行到 SQL 断言。",
+    "mvn -q -pl :ccb-boot -am test 未全绿，阻塞点为 Docker/Testcontainers。",
+    "桌面和移动浏览器 UAT 未运行。",
+    "真实工作流 definition 发布部署和端到端审批旅程未运行。"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "incomplete",
+  "summary": "本次采样未观察到已证实的实现偏差，但高保证验收所需的真实数据库、boot 全量和浏览器传感器被环境或尚未运行项阻塞。"
+}

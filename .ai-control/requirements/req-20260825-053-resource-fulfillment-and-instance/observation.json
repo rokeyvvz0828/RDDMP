@@ -1,0 +1,127 @@
+{
+  "sample_label": "04 资源下发与环境部署实例完成采样及 UAT 反馈复验",
+  "task_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+  ],
+  "baseline_revision": "revision-1",
+  "measurements": [
+    {
+      "requirement_id": "AC1",
+      "sensor": "后端聚焦服务测试",
+      "result": "pass",
+      "raw_evidence": "mvn test -pl :ccb-architecture -am \"-Dtest=EnvironmentResourceServiceTest,EnvironmentInstanceServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" 退出码 0；EnvironmentResourceServiceTest Tests run: 16, Failures: 0, Errors: 0；新增覆盖一致下发 FULFILLED、差异下发 DIFF_FULFILLED、自增主机名和随机 IP 预览",
+      "limitation": [
+        "EnvironmentInstanceServiceTest 未作为独立类运行；命令允许无指定测试失败",
+        "本地单元测试使用 Mock/Mockito，不代表真实自动部署平台验收"
+      ]
+    },
+    {
+      "requirement_id": "AC1-AC7",
+      "sensor": "代码与类型链路采样",
+      "result": "pass",
+      "raw_evidence": "sourceItemId 从 ProvisionItemRequest/ProvisionedInstance 到前端 fulfill payload、后端来源明细校验和实例插入均有字段链路；实例版本使用部署单元 currentVersionId/currentVersion 快照",
+      "limitation": [
+        "基于本地代码扫描和编译结果，未做真实页面点击 UAT"
+      ]
+    },
+    {
+      "requirement_id": "AC8",
+      "sensor": "前端生产构建",
+      "result": "pass",
+      "raw_evidence": "npm --prefix web run build 退出码 0；vue-tsc --noEmit 通过，Vite built 2438 modules",
+      "limitation": [
+        "存在既有 chunk size warning",
+        "未启动浏览器检查桌面/移动视口"
+      ]
+    },
+    {
+      "requirement_id": "AC8",
+      "sensor": "前端本地入口可达性",
+      "result": "pass",
+      "raw_evidence": "Vite dev server 监听 127.0.0.1:5173；Invoke-WebRequest http://127.0.0.1:5173/architecture/requests 与 /architecture/instances 均返回 HTTP 200 OK",
+      "limitation": [
+        "只验证入口 HTML 可达，不等同于浏览器交互 UAT"
+      ]
+    },
+    {
+      "requirement_id": "runtime",
+      "sensor": "UAT 启动可达性",
+      "result": "pass",
+      "raw_evidence": "Docker mysql/minio/kkfileview Up；前端 http://127.0.0.1:5173/architecture/requests 与 /architecture/instances 返回 200；后端 http://127.0.0.1:8080/actuator/health 返回 UP；Flyway 启动日志显示从 schema 98 迁移到 v99",
+      "limitation": [
+        "仅完成运行可达，不等同于人工业务 UAT 通过"
+      ]
+    },
+    {
+      "requirement_id": "AC8",
+      "sensor": "Flyway 迁移静态检查",
+      "result": "pass",
+      "raw_evidence": "node scripts/check-flyway-migrations.mjs 退出码 0；Flyway migration check passed for 93 migration(s) and 1 approved callback(s)",
+      "limitation": [
+        "本地既有 MySQL 已执行 V99；空库迁移未单独执行"
+      ]
+    },
+    {
+      "requirement_id": "AC8",
+      "sensor": "diff 空白检查",
+      "result": "pass",
+      "raw_evidence": "git diff --check 退出码 0",
+      "limitation": [
+        "Git 输出 LF-to-CRLF 工作区提示，不是空白错误"
+      ]
+    },
+    {
+      "requirement_id": "scope",
+      "sensor": "Codex scope 审计",
+      "result": "pass_for_committed_range",
+      "raw_evidence": "check-codex-scope --working-tree 退出码 1，失败项为 .ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json、observation-T11.json、.dsh/README.md、.dsh/skills/rddmp-dev-environment/SKILL.md outside writable_paths；提交后按 --base dev-ivanh --head HEAD 复核退出码 0，26 changed file(s) 全部在 04 writable_paths 内",
+      "limitation": [
+        "阻塞来自 04 外既有无关未跟踪文件；按保护工作树规则未删除或移动"
+      ]
+    },
+    {
+      "requirement_id": "repository-governance",
+      "sensor": "全仓治理检查",
+      "result": "blocked_by_existing_repository_state",
+      "raw_evidence": "node scripts/check-all-governance.mjs 退出码 1；Governance check、Repository skill check、Development entry check 通过；AI control layout 因历史 .ai-control 旧账本 topic mismatch、invalid JSON 和缺失 acceptance evidence 失败",
+      "limitation": [
+        "失败项不属于 04 writable_paths，本次未修改、未暂存"
+      ]
+    }
+  ],
+  "feedback": [
+    {
+      "source": "UAT 反馈",
+      "request": "确认下发如果规格和申请一致则工单状态更新成已下发；不一致则记录为已差异下发；mock 结果 IP 随机生成，主机名自增",
+      "result": "accepted-and-implemented",
+      "evidence": "RequestStatus 新增 FULFILLED/DIFF_FULFILLED；fulfillRequest 在同事务中更新工单状态并写历史；MockAutomatedDeploymentProvider 生成随机私网 IP 并按环境/部署单元已有实例数延续主机名序号；V99 扩展数据库状态约束"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "scope 传感器受无关工作区状态影响",
+      "impact": "无法给出全工作区 scope pass；本次 04 代码与文档改动仍在批准路径内"
+    },
+    {
+      "event": "全仓治理传感器受历史账本状态影响",
+      "impact": "无法给出 check-all-governance pass；失败项为 04 外历史 .ai-control 文件"
+    }
+  ],
+  "coverage_gaps": [
+    "未连接真实自动部署平台，当前为 Mock Provider",
+    "未跑真实 MySQL 空库迁移；本地既有库已迁移到 V99",
+    "未执行浏览器桌面/移动视口 UAT",
+    "未执行完整后端 test 全量回归",
+    "全仓治理检查失败项来自历史 .ai-control 旧账本，需单独治理需求处理"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

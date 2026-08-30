@@ -1,0 +1,53 @@
+{
+  "requirement_id": "REQ-20260826-054",
+  "control_prefix": "req-20260826-054-network-zones-access-relationship",
+  "architecture_design": {
+    "module": "business/architecture",
+    "entities": [
+      "NetworkZone (arch_network_zone)",
+      "ExternalNetworkAddress (arch_external_network_address)",
+      "NetworkAccessApplication (arch_network_access_application)",
+      "NetworkAccessRelation (arch_network_access_relation)",
+      "NetworkZoneSubnet (arch_network_zone_subnet)",
+      "DeploymentUnit.defaultNetworkZoneId",
+      "ResourceRequestItem.networkZoneId",
+      "EnvironmentInstance.networkZoneId"
+    ],
+    "services": [
+      "NetworkAccessService",
+      "NetworkCidr (IPv4 CIDR normalization, containment, mock IP suggestion)",
+      "EnvironmentResourceService (structured network zone validation and subnet IP containment)",
+      "DeploymentUnitService (default network zone snapshot)"
+    ],
+    "controllers": [
+      "NetworkAccessController",
+      "EnvironmentResourceController (networkZoneId passthrough)",
+      "DeploymentUnitController (defaultNetworkZoneId passthrough)"
+    ],
+    "migrations": [
+      "V100__create_architecture_network_zones_access.sql",
+      "V101__seed_architecture_network_zones_access.sql",
+      "V102__create_architecture_network_zone_subnets.sql",
+      "V103__seed_architecture_network_zones_from_reference_diagram.sql"
+    ],
+    "ui_components": [
+      "NetworkZonePage.vue (zone CRUD and subnet drawer)",
+      "NetworkAccessPage.vue",
+      "DeploymentUnitPage.vue (default network zone)",
+      "ResourceRequestPage.vue (network zone selectors)",
+      "InstanceListPage.vue (zone display)"
+    ],
+    "subnet_rules": [
+      "Only active leaf network zones can maintain active CIDR subnets.",
+      "CIDR blocks are normalized before persistence, and tenant-level duplicate CIDR blocks are rejected.",
+      "Gateway IP must be inside the CIDR block when provided.",
+      "Manual fulfillment rejects new instance IP addresses outside the selected zone's active subnets.",
+      "Mock automated fulfillment uses the selected zone's primary active subnet CIDR to generate addresses."
+    ],
+    "uat_seed_data": [
+      "V103 seeds the confirmed reference diagram as P1/P2/P5/P8 root zones, leaf zones, and CIDR subnet data for tenant 1.",
+      "V103 preserves V101/V102 default demo zones for compatibility and does not delete or disable existing data.",
+      "P2_OFFICE_TERMINAL is created without subnet rows because the diagram only says 20-prefix and does not provide exact CIDR."
+    ]
+  }
+}
