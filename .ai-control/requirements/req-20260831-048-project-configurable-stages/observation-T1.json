@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-048-project-configurable-stages",
+  "phase": "observing",
+  "recorded_at": "2026-08-31T11:55:00+08:00",
+  "independence": "same Codex context; automated observation is not an independent human review",
+  "measurements": [
+    {"id": "S1", "target": "后端项目服务及 reactor 测试", "result": "passed", "evidence": "mvn -pl :ccb-system -am test; 49 tests, 0 failures, 0 errors"},
+    {"id": "S2", "target": "前端类型检查和生产构建", "result": "passed", "evidence": "npm --prefix web run build completed; only existing chunk-size warnings"},
+    {"id": "S3", "target": "Flyway 文件检查", "result": "passed", "evidence": "check-flyway-migrations passed for 77 migrations"},
+    {"id": "S4", "target": "项目阶段业务契约", "result": "passed", "evidence": "tests cover creation, no-master update, and master-plan update/delete rejection; code exposes tenant/project scoped CRUD"},
+    {"id": "S5", "target": "本地数据库迁移和运行态", "result": "environment_blocked", "evidence": "latest JAR stopped during Flyway validation because existing version 51 is recorded failed; no V83 migration or API runtime assertion claimed"},
+    {"id": "S6", "target": "治理检查", "result": "environment_blocked", "evidence": "governance modules and repository skill checks passed, but existing historical .ai-control ledgers report topic/format/evidence issues; control-engineering plugin check warns unknown error"},
+    {"id": "S7", "target": "浏览器验收", "result": "not_observed", "evidence": "no real browser interaction performed for the new settings flow"}
+  ],
+  "deviations": [
+    "本地运行验证受 version 51 失败迁移阻断，未绕过 Flyway 保护",
+    "全仓治理检查受既有历史账本问题阻断，未修改无关任务账本"
+  ],
+  "continue": false
+}

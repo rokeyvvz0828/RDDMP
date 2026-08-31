@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-048-project-configurable-stages",
+  "task_id": "T2/T3",
+  "phase": "observing",
+  "recorded_at": "2026-08-31T12:50:00+08:00",
+  "actual_changes": [
+    "修复项目计划阶段操作：只有本次点击新增阶段创建的阶段行显示新增主计划入口，既有阶段行不允许直接新增主计划",
+    "使用最新 ProjectService 补丁重新打包后端并重启本地 mainmix 测试实例"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am test '-Dnet.bytebuddy.experimental=true'", "result": "passed; 50 tests, 0 failures, 0 errors"},
+    {"command": "npm --prefix web run build", "result": "passed outside restricted sandbox; vue-tsc and Vite production build completed with existing chunk-size warnings"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 77 migrations and 1 approved callback"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "module and repository skill checks passed; historical AI control ledger errors and missing control-engineering plugin remain"},
+    {"command": "git diff --check", "result": "passed"},
+    {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed; latest boot JAR packaged"},
+    {"command": "start latest boot JAR with SPRING_CONFIG_IMPORT=optional:file:.env[.properties], SPRING_PROFILES_ACTIVE=local and mainmix datasource override", "result": "passed; health HTTP 200 and Flyway schema version 83"}
+  ],
+  "constraints_checked": [
+    "未输出 .env 内容",
+    "未修改历史迁移和历史失败的 ccb_platform_licon 数据库",
+    "未回退附件相关未关联改动",
+    "当前补丁仅修改 REQ-20260831-048 scope 内 ProjectView.vue"
+  ],
+  "open_items": [
+    "control-engineering@control-engineering-local 插件检查仍因本地插件清单 unknown error 未通过",
+    "全仓治理检查仍受其他历史任务账本问题阻断"
+  ]
+}

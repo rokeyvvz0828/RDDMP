@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-048-project-configurable-stages",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-31-project-configurable-stages-design.md",
+  "objective": "将项目计划阶段改为项目级可配置，并锁定已有主计划的阶段。",
+  "requirements": ["默认七阶段", "阶段新增编辑排序删除", "有主计划禁止编辑删除", "计划阶段按项目校验"],
+  "decisions": [
+    {"id": "D1", "decision": "新增 pm_project_stage 表", "reason": "阶段名称和顺序必须按项目持久化，不能继续复用全局参数作为业务配置"},
+    {"id": "D2", "decision": "stage_code 作为计划 phase 关联键", "reason": "保留现有计划表契约并支持阶段改名"},
+    {"id": "D3", "decision": "服务端派生 has_master_plans 并强制锁定", "reason": "前端禁用不能替代并发和越权场景的业务校验"}
+  ],
+  "risks": ["历史项目初始化和迁移顺序", "阶段删除后的历史计划只读展示", "设置列表与计划时间轴名称一致性"],
+  "approval": {"status": "approved", "evidence": "用户确认默认七阶段可配置且有主计划不可编辑删除", "confirmed_at": "2026-08-31T00:00:00+08:00"}
+}

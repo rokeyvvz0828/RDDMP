@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
     </section>
 
     <section class="dashboard-grid">
-      <el-card shadow="never" class="surface-card activity-card"><template #header><div class="card-heading"><div><span class="panel-kicker">系统状态</span><h3>平台状态</h3></div><span class="muted">实时</span></div></template><div class="signal-row"><span class="signal-icon blue"><Connection /></span><div><strong>认证服务</strong><p>当前登录会话有效</p></div><span class="signal-ok">在线</span></div><div class="signal-row"><span class="signal-icon green"><Calendar /></span><div><strong>项目上下文</strong><p>{{ projectContext.current?.shortName || '加载中' }}</p></div><span class="signal-ok">Mock</span></div></el-card>
+      <el-card shadow="never" class="surface-card activity-card"><template #header><div class="card-heading"><div><span class="panel-kicker">系统状态</span><h3>平台状态</h3></div><span class="muted">实时</span></div></template><div class="signal-row"><span class="signal-icon blue"><Connection /></span><div><strong>认证服务</strong><p>当前登录会话有效</p></div><span class="signal-ok">在线</span></div><div class="signal-row"><span class="signal-icon green"><Calendar /></span><div><strong>项目上下文</strong><p>{{ projectContext.current?.shortName || '加载中' }}</p></div><span class="signal-ok">已接入</span></div></el-card>
     </section>
   </div>
 </template>

@@ -1,5 +1,10 @@
 package com.ccb.system.project;
 
+import com.ccb.attachment.model.AttachmentCategory;
+import com.ccb.attachment.model.AttachmentItem;
+import com.ccb.attachment.model.AttachmentPort;
+import com.ccb.common.api.PageQuery;
+import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
@@ -30,9 +35,54 @@ class ProjectServiceTest {
     private JdbcTemplate jdbc;
     @Mock
     private MinioStorageService storage;
+    @Mock
+    private AttachmentPort attachmentPort;
 
     private final AuthUser member = new AuthUser(7L, 1L, "member", "", "Member", 1L, true);
     private final AuthUser admin = new AuthUser(1L, 1L, "admin", "", "Admin", 1L, true);
+
+    @Test
+    void readsProjectAttachmentCategoriesThroughPublicPort() {
+        ProjectService service = new ProjectService(jdbc, storage, attachmentPort);
+        AttachmentCategory category = new AttachmentCategory(3001L, "需求文档", 1);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(attachmentPort.listCategories("PROJECT", 9001L, admin.tenantId())).thenReturn(List.of(category));
+
+        assertEquals(List.of(category), service.attachmentCategories(9001L, admin));
+    }
+
+    @Test
+    void createsAndUpdatesProjectAttachmentCategoryThroughPublicPort() {
+        ProjectService service = new ProjectService(jdbc, storage, attachmentPort);
+        AttachmentCategory category = new AttachmentCategory(3001L, "需求文档", 1);
+        AttachmentItem item = new AttachmentItem(4001L, "说明.pdf", "application/pdf", 12L, admin.id(), null,
+                "2026-08-28 10:00:00", category.id(), category.name());
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(attachmentPort.createCategory("PROJECT", 9001L, "需求文档", admin.tenantId(), admin.id()))
+                .thenReturn(category);
+        when(attachmentPort.updateCategory(4001L, "PROJECT", 9001L, category.id(), admin.tenantId()))
+                .thenReturn(item);
+
+        assertEquals(category, service.createAttachmentCategory(9001L, Map.of("name", "需求文档"), admin));
+        assertEquals(category.id(), service.updateAttachmentCategory(9001L, 4001L, category.id(), admin).categoryId());
+    }
+
+    @Test
+    void forwardsAttachmentCategoryFilterThroughPublicPort() {
+        ProjectService service = new ProjectService(jdbc, storage, attachmentPort);
+        AttachmentItem item = new AttachmentItem(4001L, "说明.pdf", "application/pdf", 12L, admin.id(), null,
+                "2026-08-28 10:00:00", 3001L, "需求文档");
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(attachmentPort.list(eq("PROJECT"), eq(9001L), eq(admin.tenantId()), any(PageQuery.class),
+                eq("说明"), eq(3001L))).thenReturn(new PageResult<>(List.of(item), 1L, 1L, 20L));
+
+        PageResult<AttachmentItem> result = service.attachments(9001L, 1L, 20L, "说明", 3001L, admin);
+
+        assertEquals(1L, result.total());
+        assertEquals("需求文档", result.records().get(0).categoryName());
+        verify(attachmentPort).list(eq("PROJECT"), eq(9001L), eq(admin.tenantId()), any(PageQuery.class),
+                eq("说明"), eq(3001L));
+    }
 
     @Test
     void rejectsDetailForUserOutsideProjectMembership() {
@@ -65,6 +115,71 @@ class ProjectServiceTest {
         input.put("planned_end_date", "2026-08-19");
 
         assertThrows(BusinessException.class, () -> service.create(input, admin));
+    }
+
+    @Test
+    void createsProjectStageWhenStageHasNoPlans() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 1, 0, 1, 0);
+        Map<String, Object> result = service.createStage(9001L, Map.of("stage_name", "新阶段"), admin);
+
+        assertEquals("新阶段", result.get("stage_name"));
+        verify(jdbc).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_stage"),
+                org.mockito.ArgumentMatchers.any(), eq(1L), eq(9001L), org.mockito.ArgumentMatchers.any(), eq("新阶段"), eq(0));
+    }
+
+    @Test
+    void backfillsDefaultProjectStagesBeforeReadingStages() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("SELECT s.id"), eq(9001L), eq(1L)))
+                .thenReturn(List.of());
+
+        assertEquals(List.of(), service.stages(9001L, admin));
+
+        verify(jdbc, org.mockito.Mockito.times(7)).update(
+                org.mockito.ArgumentMatchers.contains("INSERT IGNORE INTO pm_project_stage"),
+                org.mockito.ArgumentMatchers.any(), eq(1L), eq(9001L),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void updatesProjectStageWhenNoMainPlanExists() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 1, 0, 1, 0);
+        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FROM pm_project_stage"), eq(9801L), eq(9001L), eq(1L)))
+                .thenReturn(Map.of("id", 9801L, "project_id", 9001L, "stage_code", "CUSTOM", "stage_name", "旧名称", "sort_no", 1));
+        when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of(new HashMap<>(Map.of(
+                "id", 9801L, "project_id", 9001L, "stage_code", "CUSTOM", "phase", "CUSTOM", "stage_name", "新名称",
+                "sort_no", 2, "status", 1, "has_master_plans", 0))));
+
+        Map<String, Object> result = service.updateStage(9001L, 9801L, Map.of("stage_name", "新名称", "sort_no", 2), admin);
+
+        assertEquals("新名称", result.get("stage_name"));
+        verify(jdbc).update(org.mockito.ArgumentMatchers.contains("UPDATE pm_project_stage SET stage_name = ?, sort_no = ?"),
+                eq("新名称"), eq(2), eq(9801L), eq(9001L), eq(1L));
+    }
+
+    @Test
+    void rejectsProjectStageUpdateWhenMainPlanExists() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 1, 0, 1, 1);
+        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FROM pm_project_stage"), eq(9801L), eq(9001L), eq(1L)))
+                .thenReturn(Map.of("id", 9801L, "project_id", 9001L, "stage_code", "CUSTOM", "stage_name", "锁定阶段", "sort_no", 1));
+
+        assertThrows(BusinessException.class, () -> service.updateStage(9001L, 9801L, Map.of("stage_name", "不应修改"), admin));
+        verify(jdbc, org.mockito.Mockito.never()).update(org.mockito.ArgumentMatchers.contains("UPDATE pm_project_stage SET"), org.mockito.ArgumentMatchers.any(Object[].class));
+    }
+
+    @Test
+    void rejectsProjectStageDeleteWhenMainPlanExists() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 1, 0, 1, 1);
+        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FROM pm_project_stage"), eq(9801L), eq(9001L), eq(1L)))
+                .thenReturn(Map.of("id", 9801L, "project_id", 9001L, "stage_code", "CUSTOM", "stage_name", "锁定阶段", "sort_no", 1));
+
+        assertThrows(BusinessException.class, () -> service.deleteStage(9001L, 9801L, admin));
+        verify(jdbc, org.mockito.Mockito.never()).update(org.mockito.ArgumentMatchers.contains("UPDATE pm_project_stage SET deleted"), org.mockito.ArgumentMatchers.any(Object[].class));
     }
 
     @Test
@@ -157,7 +272,7 @@ class ProjectServiceTest {
         when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FOR UPDATE"), eq(9001L), eq(1L)))
                 .thenReturn(Map.of("project_code", "RDC", "plan_number_rule", "{PROJECT_CODE}-P{SEQ:3}", "next_plan_sequence", 2L));
         Map<String, Object> group = new HashMap<>(Map.of("id", 8001L, "project_id", 9001L, "phase", "PLAN_INITIATION", "group_name", "1-1"));
-        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT id, project_id, phase"), eq(8001L), eq(9001L), eq(1L)))
+        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT g.id, g.project_id, g.phase"), eq(8001L), eq(9001L), eq(1L)))
                 .thenReturn(group);
         when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("SELECT id, parent_id, planned_start_date, planned_end_date"), eq(9001L), eq(1L), eq(8001L)))
                 .thenReturn(List.of(Map.of("id", 9002L, "parent_id", 0L, "planned_start_date", "2026-08-01", "planned_end_date", "2026-08-31")));
@@ -239,7 +354,7 @@ class ProjectServiceTest {
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
         when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FOR UPDATE"), eq(9101L), eq(9101L), eq(1L)))
                 .thenReturn(Map.of("id", 9101L, "parent_id", 0L, "group_id", 11L));
-        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT id, project_id, phase, group_name"), eq(22L), eq(9101L), eq(1L)))
+        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT g.id, g.project_id, g.phase, g.group_name"), eq(22L), eq(9101L), eq(1L)))
                 .thenReturn(new HashMap<>(Map.of("id", 22L, "project_id", 9101L, "phase", "PLAN_REQUIREMENT", "group_name", "需求阶段", "color_key", "brand", "sort_no", 1)));
         doAnswer(invocation -> {
             long parentId = ((Number) invocation.getArgument(2)).longValue();
@@ -277,12 +392,12 @@ class ProjectServiceTest {
     void persistsSemanticColorTokenWhenCreatingPlanGroup() {
         ProjectService service = new ProjectService(jdbc, storage);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 1, 1, 1, 0);
-        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("SELECT c.config_key AS value"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("value", "PLAN_INITIATION"), Map.of("value", "PLAN_REQUIREMENT")));
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM pm_project_stage"), eq(9001L), eq(1L)))
+                .thenReturn(List.of(Map.of("stage_code", "PLAN_INITIATION", "stage_name", "立项", "sort_no", 0, "has_master_plans", 0)));
         when(jdbc.queryForObject(org.mockito.ArgumentMatchers.contains("MAX(CASE"), eq(Long.class), any(Object[].class))).thenReturn(0L);
         when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT id, project_code, plan_number_rule"), eq(9001L), eq(1L)))
                 .thenReturn(Map.of("id", 9001L, "project_code", "RDC", "plan_number_rule", "{PROJECT_CODE}-P{SEQ:3}", "child_plan_number_rule", "{PARENT_CODE}-S{SEQ:3}", "next_plan_sequence", 1L));
-        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT id, project_id, phase, group_name"), any(Object[].class)))
+        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT g.id, g.project_id, g.phase, g.group_name"), any(Object[].class)))
                 .thenReturn(new HashMap<>(Map.of("id", 9301L, "project_id", 9001L, "phase", "PLAN_INITIATION", "group_name", "1-1", "color_key", "accent", "sort_no", 1)));
 
         service.createPlanGroup(9001L, Map.of("phase", "PLAN_INITIATION", "color_key", "accent", "sort_no", 1), admin);
@@ -298,7 +413,7 @@ class ProjectServiceTest {
     void persistsSemanticColorTokenWhenUpdatingPlanGroup() {
         ProjectService service = new ProjectService(jdbc, storage);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 1);
-        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT id, project_id, phase, group_name"), any(Object[].class)))
+        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("SELECT g.id, g.project_id, g.phase, g.group_name"), any(Object[].class)))
                 .thenReturn(new HashMap<>(Map.of("id", 9301L, "project_id", 9001L, "phase", "PLAN_INITIATION", "group_name", "重点交付", "color_key", "success", "sort_no", 1)));
 
         service.updatePlanGroup(9001L, 9301L, Map.of("color_key", "success"), admin);

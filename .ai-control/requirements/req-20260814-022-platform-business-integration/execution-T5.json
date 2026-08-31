@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "task_id": "T5",
+  "recorded_at": "2026-08-25T10:07:27+08:00",
+  "objective": "Replace the shell project-context Mock provider with the authenticated project workbench API while preserving the existing Store contract.",
+  "actual_files": [
+    "web/src/stores/project-context.ts",
+    "web/src/types/project-context.ts",
+    "web/src/views/AppLayout.vue",
+    "web/src/views/DashboardView.vue",
+    "web/src/styles.css"
+  ],
+  "changes": [
+    "Mapped project_code to the stable context ref and project_name to the selector label.",
+    "Added loading failure state and retry action to the shared project Store.",
+    "Added empty/error retry presentation to desktop, side-header, and mobile-drawer selectors.",
+    "Updated the dashboard context status from Mock to connected project data."
+  ],
+  "commands": [
+    {"command": "node scripts/check-development-entry.mjs --require-plugin", "result": "passed"},
+    {"command": "git diff --check", "result": "passed"},
+    {"command": "npm --prefix web run build", "result": "sandbox spawn EPERM during Vite/esbuild startup; rerun in authorized environment passed"},
+    {"command": "npm --prefix web run build (authorized environment)", "result": "passed; 2405 modules transformed and production bundle built"},
+    {"command": "browser desktop and 390x844 acceptance", "result": "passed; real project options rendered, selection switched, mobile drawer exposed selector"}
+  ],
+  "scope_audit": "All changed source files match the writable_paths for REQ-20260814-022; no backend, database, environment, or production data was changed.",
+  "open_risks": [
+    "The repository-wide governance command still reports pre-existing failures in unrelated requirement ledgers.",
+    "No backend contract change was made; the existing authenticated GET /api/project/workbench remains the data source."
+  ]
+}
