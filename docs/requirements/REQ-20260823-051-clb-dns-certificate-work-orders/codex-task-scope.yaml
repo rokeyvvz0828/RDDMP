@@ -25,8 +25,8 @@
       "server/src/modules/architecture/pom.xml",
       "governance/modules.yaml",
       "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/**",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V89__create_architecture_network_work_orders.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V90__seed_architecture_network_work_orders.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V100__create_architecture_network_work_orders.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V101__seed_architecture_network_work_orders.sql",
       "web/src/modules/architecture/NetworkWorkOrderListPage.vue",
       "web/src/modules/architecture/NetworkWorkOrderFormPage.vue",
       "web/src/modules/architecture/NetworkWorkOrderDetailPage.vue",
@@ -56,9 +56,9 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V5__create_workflow_schema.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V77__create_architecture_subsystems.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V78__seed_architecture_subsystem_catalog.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__seed_architecture_subsystem_workflow.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__seed_architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__seed_architecture_subsystem_workflow.sql",
       "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/**",
       "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/LogicalSubsystemController.java",
       "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/PhysicalSubsystemController.java",
@@ -108,12 +108,12 @@
     "required": true,
     "issue": "REQ-20260823-051",
     "owner_approved": true,
-    "approval_evidence": "用户于 2026-08-23 直接下达“实施 11「CLB、DNS 与证书工单」”任务并确认模块落点 business/architecture；批准在 business/architecture 内新增网络专项工单能力、登记 platform/attachment 依赖（governance/modules.yaml 与 pom.xml）、追加 V89-V90 迁移与 808/8081-8083/113 菜单权限角色。platform/attachment 只通过既有公开 integration 契约消费，无平台行为变更。",
+    "approval_evidence": "用户于 2026-08-23 直接下达“实施 11「CLB、DNS 与证书工单」”任务并确认模块落点 business/architecture；批准在 business/architecture 内新增网络专项工单能力、登记 platform/attachment 依赖（governance/modules.yaml 与 pom.xml）、追加 V100-V101 迁移与 808/8081-8083/113 菜单权限角色。platform/attachment 只通过既有公开 integration 契约消费，无平台行为变更。",
     "old_behavior_preserved": true,
     "regression_tests": [
       "既有逻辑/物理子系统与变更工单 API 契约不变，全部原测试继续通过",
       "com.ccb.architecture 只新增 com.ccb.architecture.network 子包，不改变既有包与路由",
-      "V89-V90 只追加，不修改 V1-V88；空库与既有库均可迁移",
+      "V100-V101 只追加，不修改 V1-V99；空库与既有库均可迁移",
       "附件/工作流/审计只新增 businessType 与权限记录，不改变平台模块行为",
       "现有 system、security、workflow、release、requirement、test-management 和 Boot 测试无回归"
     ]
@@ -121,10 +121,10 @@
   "database": {
     "changed": true,
     "migration_files": [
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V89__create_architecture_network_work_orders.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V90__seed_architecture_network_work_orders.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V100__create_architecture_network_work_orders.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V101__seed_architecture_network_work_orders.sql"
     ],
-    "compatibility_and_rollback": "只追加 V89-V90。V89 建立 arch_network_work_order（kind 专属 JSON 载荷、附件 id 列表、办理结果、工作流上下文、行版本）、arch_network_work_order_history、arch_network_workflow_round 与 arch_network_workflow_receipt，全部 arch_ 前缀归属 architecture 模块。V90 追加菜单 808、权限 8081-8083、角色 113 NETWORK_MANAGER 及兼容映射，并预置草稿流程 architecture.network.work-order（定义 900000000000032、版本 900000000000033，审批节点 ROLE 113 ANY，动作 APPROVE/RETURN/REJECT），必须经平台既有发布入口生成 Flowable deployment 后才能提交。V90 对稳定 ID 身份冲突失败关闭。应用回退保留迁移、工单、历史、轮次与审计，使用后续补偿迁移关闭入口和撤销授权，不手工删除生产数据。注意：本批次 V89-V90 相对 dev-ivanh 既有 V85-V88 纯追加，无编号冲突。"
+    "compatibility_and_rollback": "只追加 V100-V101。V100 建立 arch_network_work_order（kind 专属 JSON 载荷、附件 id 列表、办理结果、工作流上下文、行版本）、arch_network_work_order_history、arch_network_workflow_round 与 arch_network_workflow_receipt，全部 arch_ 前缀归属 architecture 模块。V90 追加菜单 808、权限 8081-8083、角色 113 NETWORK_MANAGER 及兼容映射，并预置草稿流程 architecture.network.work-order（定义 900000000000032、版本 900000000000033，审批节点 ROLE 113 ANY，动作 APPROVE/RETURN/REJECT），必须经平台既有发布入口生成 Flowable deployment 后才能提交。V101 对稳定 ID 身份冲突失败关闭。应用回退保留迁移、工单、历史、轮次与审计，使用后续补偿迁移关闭入口和撤销授权，不手工删除生产数据。注意：本批次 V100-V101 相对 dev-ivanh 既有 V93-V99 纯追加，无编号冲突。"
   },
   "external_access": {
     "changed": false,
@@ -198,7 +198,7 @@
   "risk": {
     "level": "high",
     "items": [
-      "V89-V90 相对 dev-ivanh 既有 V85-V88 纯追加，无重号；Flyway 追加性由 check-flyway 守护",
+      "V100-V101 相对 dev-ivanh 既有 V93-V99 纯追加，无重号；Flyway 追加性由 check-flyway 守护",
       "固定流程必须经平台发布入口发布后才能提交工单，未发布时提交必须返回明确错误",
       "办理结果与附件授权必须服务端校验，前端显隐不能替代实体授权",
       "证书工单私钥文件黑名单必须服务端生效，避免私钥进入平台存储",
@@ -228,6 +228,6 @@
       "四个视口与明暗主题真实浏览器 UAT",
       "Maven/Vue/Boot/治理/范围/模块边界/Flyway 全量检查"
     ],
-    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V89-V90、工单、历史、轮次与审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
+    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V100-V101、工单、历史、轮次与审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
   }
 }

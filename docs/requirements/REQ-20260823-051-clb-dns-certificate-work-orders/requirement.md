@@ -116,11 +116,11 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
     404/code `40400` 当前租户资源不存在；409 行版本、状态机、流程实例已结束。
 - 数据 Owner：`business/architecture`（`arch_` 前缀表）。
 - 数据库迁移与存量兼容：仅追加
-  `V89__create_architecture_network_work_orders.sql` 与
-  `V90__seed_architecture_network_work_orders.sql`；不修改 V1-V88。V89 建立
+  `V100__create_architecture_network_work_orders.sql` 与
+  `V101__seed_architecture_network_work_orders.sql`；不修改 V1-V99。V100 建立
   `arch_network_work_order`（主表，含 kind 专属 JSON 载荷、附件 id 列表、办理结果、
   工作流上下文、行版本）、`arch_network_work_order_history`、`arch_network_workflow_round`
-  与 `arch_network_workflow_receipt`；V90 追加菜单 808、权限 8081-8083、角色 113 及
+  与 `arch_network_workflow_receipt`；V101 追加菜单 808、权限 8081-8083、角色 113 及
   兼容映射，并预置草稿流程 `architecture.network.work-order`（定义
   `900000000000032`、版本 `900000000000033`，审批节点 ROLE 113、ANY、空处理人 ERROR、
   动作 `APPROVE/RETURN/REJECT`，必须经平台既有发布入口生成 Flowable deployment 后才可
@@ -160,10 +160,10 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
   （`POST /api/workflows/definitions/900000000000032/publish`）；以申请人创建三类工单
   并提交，以网络办理人员完成退回/批准/结果登记，核对状态、历史、附件与审计；普通
   查看角色验证 403；真实浏览器桌面/移动视口 UAT。
-- 回退或补偿：按前端、服务、迁移登记逆序回退应用代码；保留 V89-V90 与工单数据；
+- 回退或补偿：按前端、服务、迁移登记逆序回退应用代码；保留 V100-V101 与工单数据；
   通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。
-- 风险与人工复核人：数据库迁移与权限变更需模块 Owner 复核；V89-V90 与在途
-  REQ-20260823-049 的 V85-V86 无编号冲突，但合并顺序需保证 049 先于本批次入库，
+- 风险与人工复核人：数据库迁移与权限变更需模块 Owner 复核；V100-V101 与在途
+  REQ-20260823-049 的 V96-V97 无编号冲突，但合并顺序需保证 049 先于本批次入库，
   否则 Flyway 会因 out-of-order 拒绝补位迁移；审批流程必须发布后才能提交工单。
 - 运行时验收发现平台存量缺陷（非本批次引入）：`V36__persistent_attachments.sql` 将
   `att_file.expires_at` 定义为 `TIMESTAMP`，而平台 `AttachmentService.bind` 写入

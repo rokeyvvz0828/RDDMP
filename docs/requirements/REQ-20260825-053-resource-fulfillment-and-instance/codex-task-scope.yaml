@@ -21,9 +21,9 @@
   "scope": {
     "writable_paths": [
       "server/src/modules/architecture/**",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V97__create_architecture_environment_instances.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V98__seed_architecture_environment_instances.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V99__extend_architecture_resource_request_fulfillment_status.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V108__create_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V109__seed_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V110__extend_architecture_resource_request_fulfillment_status.sql",
       "web/src/modules/architecture/**",
       "web/src/router/index.ts",
       "docs/requirements/REQ-20260825-053-resource-fulfillment-and-instance/**",
@@ -36,13 +36,13 @@
       "server/src/platform/workflow/**",
       "server/src/platform/attachment/**",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V91__create_architecture_environment_resource_requests.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__seed_architecture_environment_resource_requests.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__move_environment_type_to_system_dictionary.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__expand_resource_request_registration_items.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__refine_resource_request_registration_ownership.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V96__refine_resource_request_resource_catalogs.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V96__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V102__create_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V103__seed_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V104__move_environment_type_to_system_dictionary.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V105__expand_resource_request_registration_items.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V106__refine_resource_request_registration_ownership.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V107__refine_resource_request_resource_catalogs.sql",
       "web/src/api/http.ts",
       "web/src/api/workflow.ts",
       "web/src/components/ui/**",
@@ -74,11 +74,11 @@
     "required": true,
     "issue": "REQ-20260825-053",
     "owner_approved": true,
-    "approval_evidence": "用户下达“实现 04 资源下发与环境部署实例，留出对接真实自动部署的接口，目前先mock；实现手动输入和自动部署，自动部署带出资源信息（目前mock）”，并在 UAT 反馈中明确确认下发后需按差异状态更新工单、mock IP 随机生成且主机名自增；批准在 business/architecture 内实现资源下发、环境部署实例、灾备关系、差异记录、工单下发状态和实际态资源聚合，追加 V97-V99 迁移与 811 菜单权限。",
+    "approval_evidence": "用户下达“实现 04 资源下发与环境部署实例，留出对接真实自动部署的接口，目前先mock；实现手动输入和自动部署，自动部署带出资源信息（目前mock）”，并在 UAT 反馈中明确确认下发后需按差异状态更新工单、mock IP 随机生成且主机名自增；批准在 business/architecture 内实现资源下发、环境部署实例、灾备关系、差异记录、工单下发状态和实际态资源聚合，追加 V108-V110 迁移与 811 菜单权限。",
     "old_behavior_preserved": true,
     "regression_tests": [
       "现有逻辑/物理子系统、部署单元、架构规范决策、具体环境与资源申请工单 API 契约保持兼容",
-      "V97-V99 只追加，不修改 V1-V96",
+      "V108-V110 只追加，不修改 V1-V107",
       "环境实际态资源汇总从实际部署实例动态聚合计算",
       "新增菜单、权限和角色只补充，不删除既有授权"
     ]
@@ -86,11 +86,11 @@
   "database": {
     "changed": true,
     "migration_files": [
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V97__create_architecture_environment_instances.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V98__seed_architecture_environment_instances.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V99__extend_architecture_resource_request_fulfillment_status.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V108__create_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V109__seed_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V110__extend_architecture_resource_request_fulfillment_status.sql"
     ],
-    "compatibility_and_rollback": "只追加 V97-V99。V97 建立环境部署实例主表与实例间灾备关系表；V98 追加菜单 811、权限 architecture:instance:view/manage 并授予管理员与角色 114；V99 扩展资源工单下发状态约束。应用回退保留迁移和数据，通过后续补偿迁移关闭入口、撤销授权或恢复兼容结构。"
+    "compatibility_and_rollback": "只追加 V108-V110。V108 建立环境部署实例主表与实例间灾备关系表；V109 追加菜单 811、权限 architecture:instance:view/manage 并授予管理员与角色 114；V110 扩展资源工单下发状态约束。应用回退保留迁移和数据，通过后续补偿迁移关闭入口、撤销授权或恢复兼容结构。"
   },
   "external_access": {
     "changed": false,
@@ -158,6 +158,6 @@
       "环境实际态资源汇总动态计算",
       "桌面与移动视口页面验收"
     ],
-    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V97-V99 与业务数据；通过后续补偿迁移隐藏菜单、撤销授权或恢复兼容结构。"
+    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V108-V110 与业务数据；通过后续补偿迁移隐藏菜单、撤销授权或恢复兼容结构。"
   }
 }

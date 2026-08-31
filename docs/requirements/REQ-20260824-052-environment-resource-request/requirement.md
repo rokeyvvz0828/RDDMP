@@ -72,12 +72,12 @@ source_issue: 03-environment-and-resource-request
   - `PUT /api/architecture/resource-requests/{id}`
   - `POST /api/architecture/resource-requests/{id}/submit|cancel`
 - 数据 Owner：`business/architecture` 拥有具体环境和资源申请数据；环境类型由 `platform/system` 字典拥有，架构模块通过 `SystemReferenceQuery` 读取。
-- 数据库迁移：追加 `V91__create_architecture_environment_resource_requests.sql` 与
-  `V92__seed_architecture_environment_resource_requests.sql`；用户于 2026-08-25 确认环境类型改由系统字典维护后追加
-  `V93__move_environment_type_to_system_dictionary.sql`；用户于 2026-08-25 要求按现有登记表重写资源申请后追加
-  `V94__expand_resource_request_registration_items.sql` 扩展资源申请明细；
-  `V95__refine_resource_request_registration_ownership.sql` 将服务器类型、灾备模式迁入字典，补齐物理子系统和部署单元模型字段，资源申请改为联系人选择并移除来源任务号和明细确认人；
-  `V96__refine_resource_request_resource_catalogs.sql` 将技术栈字段迁入系统字典、资源容量字段改为整数，并移除资源申请明细层旧等级与物理字段，不修改 V1-V95。
+- 数据库迁移：追加 `V102__create_architecture_environment_resource_requests.sql` 与
+  `V103__seed_architecture_environment_resource_requests.sql`；用户于 2026-08-25 确认环境类型改由系统字典维护后追加
+  `V104__move_environment_type_to_system_dictionary.sql`；用户于 2026-08-25 要求按现有登记表重写资源申请后追加
+  `V105__expand_resource_request_registration_items.sql` 扩展资源申请明细；
+  `V106__refine_resource_request_registration_ownership.sql` 将服务器类型、灾备模式迁入字典，补齐物理子系统和部署单元模型字段，资源申请改为联系人选择并移除来源任务号和明细确认人；
+  `V107__refine_resource_request_resource_catalogs.sql` 将技术栈字段迁入系统字典、资源容量字段改为整数，并移除资源申请明细层旧等级与物理字段，不修改 V1-V101。
 - 权限：
   - `architecture:environment:view/manage`
   - `architecture:resource-request:view/apply/manage`

@@ -70,8 +70,8 @@ T0 -> T1 -> T2 -> T3 -> T4 -> T5 -> T6 -> T7 -> T8 -> T9
 
 - `server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkAccessModels.java`
 - `server/src/modules/architecture/src/main/java/com/ccb/architecture/network/persistence/NetworkAccessStore.java`
-- `server/src/platform/infrastructure/src/main/resources/db/migration/V104__extend_architecture_network_access_lifecycle.sql`
-- `server/src/platform/infrastructure/src/main/resources/db/migration/V105__seed_architecture_network_access_lifecycle_workflow.sql`
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V115__extend_architecture_network_access_lifecycle.sql`
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V116__seed_architecture_network_access_lifecycle_workflow.sql`
 - `server/src/modules/architecture/src/test/java/com/ccb/architecture/network/persistence/NetworkAccessStoreMySqlTest.java`
 
 **步骤：**
@@ -274,7 +274,7 @@ git diff --check
 
 - `server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkAccessController.java`
 - `server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java`
-- `server/src/platform/infrastructure/src/main/resources/db/migration/V105__seed_architecture_network_access_lifecycle_workflow.sql`
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V116__seed_architecture_network_access_lifecycle_workflow.sql`
 
 **步骤：**
 

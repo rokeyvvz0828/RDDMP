@@ -210,14 +210,14 @@ POST /api/architecture/network-access/decision
 
 候选迁移：
 
-- `V104__extend_architecture_network_access_lifecycle.sql`
+- `V115__extend_architecture_network_access_lifecycle.sql`
   - 扩展访问申请动作类型、目标关系、有效期类型、流程字段、历史表、回执表。
   - 扩展访问关系有效期类型、来源申请、替代关系、关闭申请和关闭原因。
   - 新增免申请规则表。
-- `V105__seed_architecture_network_access_lifecycle_workflow.sql`
+- `V116__seed_architecture_network_access_lifecycle_workflow.sql`
   - 补齐判定与生命周期所需菜单/权限/Mock 种子和访问申请工作流草稿定义。
 
-历史迁移 V100-V103 只读，不修改。
+历史迁移 V111-V114 只读，不修改。
 
 ## 验收标准
 
@@ -239,7 +239,7 @@ POST /api/architecture/network-access/decision
 - 必须执行的测试：
   - 判定引擎单元测试：端口解析、CIDR 覆盖、协议覆盖、时间边界、严格失败。
   - 生命周期服务测试：开通、修改、续期、关闭、退回、拒绝、撤销、重复审批和并发版本。
-  - 真实 MySQL 迁移测试：V104-V105 在空库和 09 后续库均可迁移。
+  - 真实 MySQL 迁移测试：V115-V116 在空库和 09 后续库均可迁移。
   - Web/API 权限测试：view/apply/manage 分权、越权和租户隔离。
   - 前端构建与浏览器 UAT：桌面和手机视口。
 - 上线验证：

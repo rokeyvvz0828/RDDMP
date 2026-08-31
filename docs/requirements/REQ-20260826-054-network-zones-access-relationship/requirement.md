@@ -63,8 +63,8 @@ source_issue: 09-network-zones-and-access-relationship
   - `GET /api/architecture/network-access-relations`
   - `POST /api/architecture/network-access-relations/{id}/close`
 - 数据 Owner：`business/architecture` 拥有网络分区、外部网络地址、网络访问申请和关系；部署单元、资源申请、环境部署实例仍由架构模块原 Owner 维护。
-- 数据库迁移：追加 `V100__create_architecture_network_zones_access.sql`、`V101__seed_architecture_network_zones_access.sql`、`V102__create_architecture_network_zone_subnets.sql` 与 `V103__seed_architecture_network_zones_from_reference_diagram.sql`，不修改已发布迁移。
-- UAT 分区数据：`V103` 按用户确认的网络架构图初始化 P1/P2/P5/P8 分区和 CIDR 网段；P2 办公电脑区因原图仅标注“20 开头”暂不初始化网段。
+- 数据库迁移：追加 `V111__create_architecture_network_zones_access.sql`、`V112__seed_architecture_network_zones_access.sql`、`V113__create_architecture_network_zone_subnets.sql` 与 `V114__seed_architecture_network_zones_from_reference_diagram.sql`，不修改已发布迁移。
+- UAT 分区数据：`V114` 按用户确认的网络架构图初始化 P1/P2/P5/P8 分区和 CIDR 网段；P2 办公电脑区因原图仅标注“20 开头”暂不初始化网段。
 - 权限：
   - `architecture:network-zone:view/manage`
   - `architecture:network-access:view/apply/manage`
@@ -89,5 +89,5 @@ source_issue: 09-network-zones-and-access-relationship
   - `node scripts/check-flyway-migrations.mjs`
   - `node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260826-054-network-zones-access-relationship/codex-task-scope.yaml --base HEAD --head HEAD --working-tree`
   - `git diff --check`
-- 上线验证：空库和既有库迁移到 V103；以网络管理角色维护分区、网段和外部地址；以申请角色提交网络访问申请；以管理角色批准并生成关系；资源申请、资源下发和实例列表验证网络分区贯通；桌面和移动视口检查页面无横向溢出。
+- 上线验证：空库和既有库迁移到 V114；以网络管理角色维护分区、网段和外部地址；以申请角色提交网络访问申请；以管理角色批准并生成关系；资源申请、资源下发和实例列表验证网络分区贯通；桌面和移动视口检查页面无横向溢出。
 - 回退或补偿：应用代码按前端、服务、迁移登记逆序回退；已执行迁移保留数据，通过后续补偿迁移隐藏菜单、撤销授权、停用网段或恢复兼容结构，不在生产手工删除表或数据。

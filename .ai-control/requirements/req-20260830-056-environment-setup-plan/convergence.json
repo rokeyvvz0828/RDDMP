@@ -10,16 +10,24 @@
       "查询/看板/时间视图/报告": "已满足：列表筛选（含阻塞/逾期/豁免）、详情下钻、看板、时间视图、报告导出 Excel（端点返回值验证，导出由前端 xlsx 生成）",
       "通知/权限/审计": "已满足：SystemNotificationPublisher 挂点与每日扫描、菜单权限 814/815 种子、服务端 @PreAuthorize 与实体授权、操作审计与活动留痕（代码与种子验证）"
     },
-    "task_results": ["T1-T5 implemented，全部通过聚焦测试/构建/迁移/运行验证"],
-    "regression": ["现有环境/资源申请/实例/网络/部署单元 API 未改动契约；仅资源申请与网络工单创建接口新增可选 planTaskId 参数（向后兼容）", "V106-V109 只追加，未修改 V1-V105", "菜单权限只追加不删除"],
-    "scope_audit": "check-codex-scope.mjs 通过：37 个变更文件全部在 writable_paths 内",
+    "task_results": [
+      "T1-T5 implemented，全部通过聚焦测试/构建/迁移/运行验证",
+      "T6 migration renumber repair：architecture V82-V111 整体顺延为 V93-V122，解决与 origin/main V84/V86-V92 的 Flyway 重复版本冲突。"
+    ],
+    "regression": [
+      "现有环境/资源申请/实例/网络/部署单元 API 未改动契约；仅资源申请与网络工单创建接口新增可选 planTaskId 参数（向后兼容）",
+      "architecture 迁移链重编号为 V93-V122，SQL 业务语义不变；origin/main 已有 data-migration/attachment V84/V86-V92 保持不变",
+      "菜单权限只追加不删除"
+    ],
+    "scope_audit": "本轮已更新 codex-task-scope.yaml 记录 V93-V122 迁移重编号与相关文档同步范围；working-tree 范围检查受既有 req-20260812 未跟踪账本文件影响，需以提交范围复验。",
     "remaining_risks": [
       "浏览器桌面/移动 UAT 待人工验收（角色：超管/环境资源办理人员/普通用户；视口 1280+ 与 375x812/390x844/430x932）",
-      "存量 Flyway 重复版本 V84-V92 与 V80 collation 缺陷（历史批次遗留，建议单独治理批次）",
+      "V80 collation 缺陷仍需独立治理或真实 MySQL 回归确认",
+      "重编号后的空库/既有库真实 MySQL 迁移未在本轮执行，上线前需从 main V92 库验证到 V122",
       "跨模块工单终态枚举变化需回归门禁判断",
       "配置与密钥：本地 .env 按 README 创建（git 忽略），未提交"
     ],
     "gate_result": "pass",
-    "rollback": "按前端→architecture 服务→V106-V109 迁移逆序回退本需求提交；数据保留，补偿迁移可关闭菜单/撤销授权；分支 feat/REQ-20260830-056-environment-setup-plan"
+    "rollback": "保留 main 侧 V84/V86-V92；如需回退本轮修复，在未发布前可恢复 architecture 迁移文件名，发布后通过后续补偿迁移关闭入口/撤销授权，不执行生产逆向删除。"
   }
 }
