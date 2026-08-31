@@ -40,13 +40,14 @@ public class RequirementLegacyController {
 
     @GetMapping("/legacy")
     @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
-    public ApiResponse<Object> legacyList(@RequestParam(required = false) String businessGroup,
+    public ApiResponse<Object> legacyList(@RequestParam(required = false) Long projectId,
+                                          @RequestParam(required = false) String businessGroup,
                                           @RequestParam(required = false) String stage,
                                           @RequestParam(required = false) String stageStatus,
                                           @RequestParam(required = false) String keyword,
                                           PageQuery query,
                                           @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(legacyService.list(businessGroup, stage, stageStatus, keyword, query, user),
+        return ApiResponse.success(legacyService.list(projectId, businessGroup, stage, stageStatus, keyword, query, user),
                 TraceId.getOrCreate());
     }
 

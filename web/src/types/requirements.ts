@@ -63,6 +63,10 @@ export interface RequirementDifference {
   test_status: string
   baseline_id?: number | null
   source?: string
+  created_by?: number | null
+  current_handler_user_id?: number | null
+  current_handler_user_name?: string | null
+  can_edit?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -105,6 +109,7 @@ export interface BaselineItem {
 
 export interface LegacyRequirement {
   id: number
+  project_id?: number | null
   requirement_no: string
   requirement_name: string
   business_group: string
@@ -121,6 +126,7 @@ export interface LegacyRequirement {
   workload_change?: string | null
   current_flow_user_id?: number | null
   current_flow_user_name?: string | null
+  can_edit?: boolean
   system_items?: LegacySystemItem[]
   flow_logs?: LegacyFlowLog[]
   versions?: RequirementVersionRow[]

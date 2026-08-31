@@ -47,16 +47,12 @@ public class RequirementProjectService {
             params.add("%" + keyword + "%");
             params.add("%" + keyword + "%");
         }
-        if (!security.isAdmin(user)) {
-            sql += " AND EXISTS (SELECT 1 FROM req_project_member pm WHERE pm.project_id = p.id AND pm.user_id = ? AND pm.tenant_id = p.tenant_id AND pm.deleted = 0)";
-            params.add(user.id());
-        }
         sql += " ORDER BY p.created_at DESC, p.id DESC";
         return jdbc.queryForList(sql, params.toArray());
     }
 
     public Map<String, Object> get(long id, AuthUser user) {
-        security.requireProjectAccess(user, id);
+        security.requireProjectVisible(user, id);
         Map<String, Object> row = jdbc.queryForMap("""
                 SELECT p.id, p.project_code, p.project_name, p.project_type, p.start_time, p.status,
                        p.description, p.created_at, p.updated_at,

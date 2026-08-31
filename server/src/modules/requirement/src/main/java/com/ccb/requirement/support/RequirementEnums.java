@@ -82,7 +82,7 @@ public final class RequirementEnums {
      * 需求编号、需求名称、业务组是列表检索、数据范围与跨阶段识别的标识，不允许为空。
      */
     public static final List<String> LEGACY_CORE_REQUIRED_FIELDS = List.of(
-            "requirement_no", "requirement_name", "business_group");
+            "requirement_no", "requirement_name");
 
     /**
      * 存量项目阶段 → 业务字段映射（与前端阶段表单一致）。

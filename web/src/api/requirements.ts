@@ -88,6 +88,10 @@ export function deleteDifference(id: number) {
   return http.delete<ApiResponse<void>>(`/requirements/differences/${id}`)
 }
 
+export function transferDifference(id: number, data: { userId: number; comment?: string }) {
+  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/transfer`, data)
+}
+
 export interface RequirementReviewer {
   id: number
   username: string
@@ -96,6 +100,10 @@ export interface RequirementReviewer {
 
 export function listReviewers() {
   return http.get<ApiResponse<RequirementReviewer[]>>('/requirements/reviewers')
+}
+
+export function listRequirementUserOptions(keyword?: string) {
+  return http.get<ApiResponse<Array<{ id: number; username: string; display_name?: string }>>>('/requirements/users', { params: { keyword } })
 }
 
 export function submitReview(id: number, approverIds: number[], reportDocName?: string) {
@@ -176,6 +184,7 @@ export function deleteAttachment(id: number) {
 }
 
 export function listLegacy(params: {
+  projectId?: number
   businessGroup?: string
   stage?: string
   stageStatus?: string

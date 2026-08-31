@@ -38,7 +38,8 @@ public class RequirementDifferenceService {
             adapt_mode, handle_status, coord_group, solution, is_special, decision_level,
             decision_conclusion, monshang_confirm_dept, jinke_confirmer, review_status,
             review_comment, review_report_name, reviewed_by, reviewed_at, workflow_instance_id, dev_status,
-            test_status, baseline_id, source, import_batch_id, created_at, updated_at
+            test_status, baseline_id, source, import_batch_id, created_by,
+            current_handler_user_id, current_handler_user_name, created_at, updated_at
             """;
 
     private final JdbcTemplate jdbc;
@@ -60,7 +61,7 @@ public class RequirementDifferenceService {
 
     public PageResult<Map<String, Object>> list(long projectId, String reviewStatus, String devStatus,
                                                 String testStatus, String keyword, PageQuery query, AuthUser user) {
-        security.requireProjectAccess(user, projectId);
+        security.requireProjectVisible(user, projectId);
         StringBuilder where = new StringBuilder(" WHERE tenant_id = ? AND project_id = ? AND deleted = 0");
         List<Object> params = new ArrayList<>(List.of(user.tenantId(), projectId));
         appendLike(where, params, "review_status", reviewStatus);
@@ -78,12 +79,17 @@ public class RequirementDifferenceService {
         List<Map<String, Object>> records = jdbc.queryForList(
                 "SELECT " + SELECT_COLUMNS + " FROM req_difference" + where
                         + " ORDER BY seq_no, id LIMIT ? OFFSET ?", params.toArray());
+        boolean admin = security.isAdmin(user);
+        for (Map<String, Object> record : records) {
+            record.put("can_edit", security.canEditDifference(user, record, admin));
+        }
         return new PageResult<>(records, total == null ? 0 : total, query.page(), query.size());
     }
 
     public Map<String, Object> get(long id, AuthUser user) {
         Map<String, Object> row = row(id, user);
-        security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
+        security.requireProjectVisible(user, ((Number) row.get("project_id")).longValue());
+        row.put("can_edit", security.canEditDifference(user, row, security.isAdmin(user)));
         return row;
     }
 
@@ -107,6 +113,8 @@ public class RequirementDifferenceService {
         values.putIfAbsent("test_status", "未开始");
         values.putIfAbsent("source", "ONLINE");
         values.put("created_by", user.id());
+        values.put("current_handler_user_id", user.id());
+        values.put("current_handler_user_name", user.displayName());
         values.put("deleted", 0);
         RequirementSql.insert(jdbc, "req_difference", values);
         changeLog.recordCreate("NEW_PROJECT_DIFF", id, values, user, "ONLINE");
@@ -117,7 +125,7 @@ public class RequirementDifferenceService {
     public Map<String, Object> update(long id, Map<String, Object> body, AuthUser user) {
         Map<String, Object> before = row(id, user);
         requireEditable(before);
-        security.requireProjectAccess(user, ((Number) before.get("project_id")).longValue());
+        security.requireDifferenceEditable(user, before);
         Map<String, Object> values = normalized(body);
         validate(values, user);
         if (values.isEmpty()) {
@@ -134,7 +142,7 @@ public class RequirementDifferenceService {
     public void delete(long id, AuthUser user) {
         Map<String, Object> row = row(id, user);
         requireEditable(row);
-        security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
+        security.requireDifferenceEditable(user, row);
         jdbc.update("UPDATE req_difference SET deleted = 1, updated_by = ? WHERE tenant_id = ? AND id = ?",
                 user.id(), user.tenantId(), id);
         changeLog.record("NEW_PROJECT_DIFF", id, "DELETE", "deleted", "0", "1", user, "ONLINE");
@@ -149,7 +157,7 @@ public class RequirementDifferenceService {
     @Transactional
     public Map<String, Object> submitReview(long id, List<Long> approverIds, String reportDocName, AuthUser user) {
         Map<String, Object> row = row(id, user);
-        security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
+        security.requireDifferenceEditable(user, row);
         String status = String.valueOf(row.get("review_status"));
         if (!"待评审".equals(status) && !"已退回".equals(status)) {
             throw new BusinessException(ErrorCode.CONFLICT, "当前状态不可提交评审：" + status);
@@ -201,7 +209,7 @@ public class RequirementDifferenceService {
     @Transactional
     public Map<String, Object> cancelReview(long id, String reason, AuthUser user) {
         Map<String, Object> row = row(id, user);
-        security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
+        security.requireDifferenceEditable(user, row);
         String status = String.valueOf(row.get("review_status"));
         if (!"评审中".equals(status) && !"已退回".equals(status)) {
             throw new BusinessException(ErrorCode.CONFLICT, "当前状态不可撤销评审：" + status);
@@ -212,6 +220,39 @@ public class RequirementDifferenceService {
                 reason == null || reason.isBlank() ? null : reason.substring(0, Math.min(500, reason.length())),
                 user.id(), user.tenantId(), id);
         changeLog.record("NEW_PROJECT_DIFF", id, "CANCEL_REVIEW", "review_status", status, "待评审", user, "ONLINE");
+        return get(id, user);
+    }
+
+    /**
+     * 差异流转：管理员/创建人/当前处理人将差异流转给下一个人，接收人成为新的当前处理人并可编辑。
+     * 流转记录写入 req_difference_flow_log，并留改动记录。
+     */
+    @Transactional
+    public Map<String, Object> transfer(long id, long toUserId, String comment, AuthUser user) {
+        Map<String, Object> row = row(id, user);
+        security.requireDifferenceEditable(user, row);
+        requireEditable(row);
+        if (toUserId <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择流转目标用户");
+        }
+        List<Map<String, Object>> users = jdbc.queryForList(
+                "SELECT id, display_name FROM sys_user WHERE tenant_id = ? AND id = ? AND deleted = 0 AND status = 1",
+                user.tenantId(), toUserId);
+        if (users.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "流转目标用户不存在或已停用");
+        }
+        String targetName = users.get(0).get("display_name") == null ? "" : String.valueOf(users.get(0).get("display_name"));
+        Object oldHandler = row.get("current_handler_user_id");
+        jdbc.update("UPDATE req_difference SET current_handler_user_id = ?, current_handler_user_name = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
+                toUserId, targetName, user.id(), user.tenantId(), id);
+        jdbc.update("""
+                INSERT INTO req_difference_flow_log
+                (id, tenant_id, difference_id, action, from_user_id, from_user_name, to_user_id, to_user_name, comment, created_by, deleted)
+                VALUES (?, ?, ?, 'SEND', ?, ?, ?, ?, ?, ?, 0)
+                """, RequirementIds.next(), user.tenantId(), id,
+                user.id(), user.displayName(), toUserId, targetName, comment == null ? "" : comment, user.id());
+        changeLog.record("NEW_PROJECT_DIFF", id, "FLOW_SEND", "current_handler_user_id",
+                oldHandler == null ? null : String.valueOf(oldHandler), String.valueOf(toUserId), user, "ONLINE");
         return get(id, user);
     }
 
@@ -249,6 +290,23 @@ public class RequirementDifferenceService {
                 """, user.tenantId());
     }
 
+    /** 系统用户选项：需求模块内所有登录用户可选（差异流转接收人等选择，不依赖系统管理权限）。 */
+    public List<Map<String, Object>> userOptions(String keyword, AuthUser user) {
+        String filter = keyword == null || keyword.isBlank() ? "" : " AND (u.username LIKE ? OR u.display_name LIKE ?)";
+        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
+        if (!filter.isBlank()) {
+            String like = "%" + keyword.trim() + "%";
+            args.add(like);
+            args.add(like);
+        }
+        args.add(100);
+        return jdbc.queryForList("""
+                SELECT u.id, u.username, u.display_name, u.org_id
+                FROM sys_user u
+                WHERE u.tenant_id = ? AND u.status = 1 AND u.deleted = 0
+                """ + filter + " ORDER BY u.display_name, u.id LIMIT ?", args.toArray());
+    }
+
     /** 按流程编码取已发布流程定义 id；不存在或未发布抛业务异常。 */
     private long lookupDefinitionId(long tenantId, String code) {
         List<Map<String, Object>> rows = jdbc.queryForList(
@@ -272,7 +330,7 @@ public class RequirementDifferenceService {
      */
     public List<Map<String, Object>> approvalLogs(long id, AuthUser user) {
         Map<String, Object> row = row(id, user);
-        security.requireProjectAccess(user, ((Number) row.get("project_id")).longValue());
+        security.requireProjectVisible(user, ((Number) row.get("project_id")).longValue());
         Object raw = row.get("workflow_instance_id");
         if (raw == null) return List.of();
         long instanceId;

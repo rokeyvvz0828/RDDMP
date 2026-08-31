@@ -41,7 +41,7 @@ public class RequirementLegacyService {
             "actual_launch_date", "launch_mode", "requirement_status", "remark",
             "change_involved", "change_info", "change_review_conclusion",
             "change_conclusion_status", "change_remark", "not_project_developed",
-            "version_no", "workload_change");
+            "version_no", "workload_change", "workload_person_months");
 
     private static final List<String> DATE_FIELDS = List.of(
             "expected_launch_date", "regulation_launch_date", "requirement_received_date",
@@ -49,7 +49,7 @@ public class RequirementLegacyService {
             "soft_review_date", "planned_launch_date", "actual_launch_date");
 
     private static final String SELECT_COLUMNS = """
-            id, legacy_doc_name, requirement_no, requirement_name, content_summary, propose_dept,
+            id, project_id, legacy_doc_name, requirement_no, requirement_name, content_summary, propose_dept,
             proposer, monshang_ba, monshang_architect, expected_launch_date, regulator,
             regulation_doc_no, regulation_desc, regulation_launch_date, requirement_received_date,
             requirement_type, regulation_category, business_group, sub_group, jinke_contact,
@@ -59,7 +59,7 @@ public class RequirementLegacyService {
             soft_review_date, planned_launch_date, actual_launch_date, launch_mode,
             requirement_status, remark, change_involved, change_info, change_review_conclusion,
             change_conclusion_status, change_remark, not_project_developed, version_no,
-            workload_change, current_flow_user_id, current_flow_user_name, current_stage,
+            workload_change, current_flow_user_id, current_flow_user_name, created_by, current_stage,
             propose_stage_status, docking_stage_status, workload_stage_status, project_stage_status,
             soft_stage_status, launch_stage_status, source, created_at, updated_at
             """;
@@ -75,45 +75,18 @@ public class RequirementLegacyService {
         this.security = security;
     }
 
-    public PageResult<Map<String, Object>> list(String businessGroup, String stage, String stageStatus,
+    public PageResult<Map<String, Object>> list(Long projectId, String businessGroup, String stage, String stageStatus,
                                                 String keyword, PageQuery query, AuthUser user) {
         StringBuilder where = new StringBuilder(" WHERE tenant_id = ? AND deleted = 0");
         List<Object> params = new ArrayList<>(List.of(user.tenantId()));
+        if (projectId != null) {
+            // 存量需求与左上角项目关联：直接按 project_id 归属
+            where.append(" AND project_id = ?");
+            params.add(projectId);
+        }
         if (businessGroup != null && !businessGroup.isBlank()) {
-            if (!security.isPmo(user) && !security.isAdmin(user)) {
-                security.requireLegacyAccess(user, businessGroup);
-            }
             where.append(" AND business_group = ?");
             params.add(businessGroup);
-        } else if (!security.isPmo(user) && !security.isAdmin(user)) {
-            // 普通业务人员：业务组成员、主责/协同系统行负责人或成员、当前流转处理人可见
-            List<String> groups = security.myBusinessGroups(user);
-            where.append(" AND (");
-            if (groups.isEmpty()) {
-                where.append("1 = 0");
-            } else {
-                where.append("business_group IN (");
-                where.append(String.join(", ", groups.stream().map(group -> "?").toList()));
-                where.append(")");
-                params.addAll(groups);
-            }
-            where.append("""
-                     OR id IN (
-                         SELECT si.requirement_id FROM req_legacy_system_item si
-                         LEFT JOIN req_legacy_system_member m
-                                ON m.system_item_id = si.id AND m.tenant_id = si.tenant_id AND m.deleted = 0
-                         WHERE si.tenant_id = ? AND si.deleted = 0
-                           AND (si.owner_user_id = ? OR m.user_id = ?))
-                     OR current_flow_user_id = ?
-                     OR id IN (SELECT requirement_id FROM req_legacy_member
-                               WHERE tenant_id = ? AND user_id = ? AND deleted = 0))
-                     """);
-            params.add(user.tenantId());
-            params.add(user.id());
-            params.add(user.id());
-            params.add(user.id());
-            params.add(user.tenantId());
-            params.add(user.id());
         }
         if (stage != null && !stage.isBlank()) {
             if (!RequirementEnums.LEGACY_STAGES.contains(stage)) {
@@ -139,9 +112,11 @@ public class RequirementLegacyService {
                 "SELECT " + SELECT_COLUMNS + " FROM req_legacy_requirement" + where
                         + " ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?", params.toArray());
         Map<Long, List<Map<String, Object>>> itemsByReq = loadSystemItemsByRequirements(records, user);
+        boolean admin = security.isAdmin(user);
         for (Map<String, Object> record : records) {
             long reqId = ((Number) record.get("id")).longValue();
             record.put("system_items", itemsByReq.getOrDefault(reqId, List.of()));
+            record.put("can_edit", security.canEditLegacy(user, record, admin));
         }
         return new PageResult<>(records, total == null ? 0 : total, query.page(), query.size());
     }
@@ -149,13 +124,16 @@ public class RequirementLegacyService {
     public Map<String, Object> get(long id, AuthUser user) {
         Map<String, Object> row = row(id, user);
         requireAccessById(id, user);
+        row.put("can_edit", security.canEditLegacy(user, row, security.isAdmin(user)));
         return enrich(row, user);
     }
 
     @Transactional
     public Map<String, Object> create(Map<String, Object> body, AuthUser user) {
-        String businessGroup = RequirementValues.requireText(body, "business_group", "业务组不能为空");
-        if (!security.isPmo(user) && !security.isAdmin(user)) {
+        String businessGroup = RequirementValues.text(body, "business_group");
+        // 业务组改为非必填：填写时按业务组做数据范围校验，未填写则仅要求模块访问权限
+        if (businessGroup != null && !businessGroup.isBlank()
+                && !security.isPmo(user) && !security.isAdmin(user)) {
             security.requireLegacyAccess(user, businessGroup);
         }
         RequirementValues.requireText(body, "requirement_no", "需求编号不能为空");
@@ -165,8 +143,14 @@ public class RequirementLegacyService {
         long id = RequirementIds.next();
         values.put("id", id);
         values.put("tenant_id", user.tenantId());
+        // 创建时绑定当前项目（左上角项目下拉），列表按 project_id 归属展示
+        Object projectIdRaw = body.get("project_id");
+        if (projectIdRaw != null && !String.valueOf(projectIdRaw).isBlank()) {
+            values.put("project_id", Long.parseLong(String.valueOf(projectIdRaw)));
+        }
         values.putIfAbsent("current_stage", "PROPOSE");
-        values.putIfAbsent("propose_stage_status", "未开始");
+        // 创建需求后“需求提出”阶段默认为进行中
+        values.putIfAbsent("propose_stage_status", "进行中");
         values.putIfAbsent("docking_stage_status", "未开始");
         values.putIfAbsent("workload_stage_status", "未开始");
         values.putIfAbsent("project_stage_status", "未开始");
@@ -187,7 +171,7 @@ public class RequirementLegacyService {
     @Transactional
     public Map<String, Object> update(long id, Map<String, Object> body, AuthUser user) {
         Map<String, Object> before = row(id, user);
-        security.requireLegacyRequirementAccess(user, id, String.valueOf(before.get("business_group")));
+        security.requireLegacyEditable(user, before);
         Map<String, Object> values = normalized(body);
         values.remove("business_group");
         validate(values);
@@ -209,7 +193,7 @@ public class RequirementLegacyService {
     @Transactional
     public void delete(long id, AuthUser user) {
         Map<String, Object> row = row(id, user);
-        security.requireLegacyRequirementAccess(user, id, String.valueOf(row.get("business_group")));
+        security.requireLegacyEditable(user, row);
         jdbc.update("UPDATE req_legacy_requirement SET deleted = 1, updated_by = ? WHERE tenant_id = ? AND id = ?",
                 user.id(), user.tenantId(), id);
         jdbc.update("UPDATE req_legacy_system_item SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
@@ -242,10 +226,7 @@ public class RequirementLegacyService {
     public Map<String, Object> stageTransition(long id, String stage, String action, String comment,
                                                 boolean ignoreMissingStageFields, AuthUser user) {
         Map<String, Object> row = row(id, user);
-        security.requireLegacyRequirementAccess(user, id, String.valueOf(row.get("business_group")));
-        if (!security.isPmo(user) && !security.isAdmin(user) && !isCurrentFlowAssignee(row, user)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅 PMO 或当前流转处理人可推进阶段");
-        }
+        security.requireLegacyEditable(user, row);
         if (!RequirementEnums.LEGACY_STAGES.contains(stage)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "阶段不在受控枚举内：" + stage);
         }
@@ -451,10 +432,9 @@ public class RequirementLegacyService {
             @SuppressWarnings("unchecked")
             Map<String, Object> item = (Map<String, Object>) m;
             String role = RequirementValues.text(item, "system_role");
-            if (role == null) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "系统子表行缺少角色（主责/协同）");
+            if (!"主责".equals(role)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "系统子表行仅支持主责，不支持协同");
             }
-            RequirementValues.requireOption("systemRoles", role);
             String code = RequirementValues.text(item, "system_code");
             String name = RequirementValues.text(item, "system_name");
             if (code == null && name == null) {
@@ -527,10 +507,7 @@ public class RequirementLegacyService {
     @Transactional
     public Map<String, Object> sendFlow(long id, long toUserId, String comment, AuthUser user) {
         Map<String, Object> row = row(id, user);
-        security.requireLegacyRequirementAccess(user, id, String.valueOf(row.get("business_group")));
-        if (!security.isPmo(user) && !security.isAdmin(user) && !isCurrentFlowAssignee(row, user)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅 PMO 或当前流转处理人可发起流转");
-        }
+        security.requireLegacyEditable(user, row);
         List<Map<String, Object>> users = jdbc.queryForList(
                 "SELECT id, display_name FROM sys_user WHERE tenant_id = ? AND id = ? AND deleted = 0 AND status = 1",
                 user.tenantId(), toUserId);
@@ -550,10 +527,7 @@ public class RequirementLegacyService {
     @Transactional
     public Map<String, Object> returnFlow(long id, String comment, AuthUser user) {
         Map<String, Object> row = row(id, user);
-        security.requireLegacyRequirementAccess(user, id, String.valueOf(row.get("business_group")));
-        if (!security.isPmo(user) && !security.isAdmin(user) && !isCurrentFlowAssignee(row, user)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅当前流转处理人可回传");
-        }
+        security.requireLegacyEditable(user, row);
         Object current = row.get("current_flow_user_id");
         if (current == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "当前无流转处理人，无需回传");
@@ -605,7 +579,7 @@ public class RequirementLegacyService {
     @Transactional
     public Map<String, Object> saveChange(long id, Map<String, Object> body, AuthUser user) {
         Map<String, Object> before = row(id, user);
-        security.requireLegacyRequirementAccess(user, id, String.valueOf(before.get("business_group")));
+        security.requireLegacyEditable(user, before);
         Map<String, Object> values = new LinkedHashMap<>();
         for (String field : List.of("change_involved", "change_info", "change_review_conclusion",
                 "change_conclusion_status", "change_remark", "workload_change")) {
@@ -673,12 +647,11 @@ public class RequirementLegacyService {
 
     private void requireAccessById(long id, AuthUser user) {
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT business_group FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
+                "SELECT id FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
                 user.tenantId(), id);
         if (rows.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "存量需求不存在");
         }
-        security.requireLegacyRequirementAccess(user, id, String.valueOf(rows.get(0).get("business_group")));
     }
 
     Map<String, Object> row(long id, AuthUser user) {

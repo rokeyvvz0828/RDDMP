@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, Check, Clock, Close, Delete, Download, Edit, MoreFilled, Plus, Promotion, Refresh, RefreshRight, Tickets, UploadFilled } from '@element-plus/icons-vue'
+import { Check, Clock, Close, Delete, Download, Edit, MoreFilled, Plus, Promotion, Refresh, RefreshRight, Tickets, UploadFilled } from '@element-plus/icons-vue'
 import UiDataTable from '../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../components/ui/UiFormDrawer.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
@@ -10,25 +10,18 @@ import UiToolbar from '../components/ui/UiToolbar.vue'
 import UiPagination from '../components/ui/UiPagination.vue'
 import UiEmptyState from '../components/ui/UiEmptyState.vue'
 import { apiErrorMessage } from '../api/error'
-import { listSystem } from '../api/system'
 import { decideWorkflowTask, getWorkflowTaskContext, type WorkflowTaskAction, type WorkflowTaskContext } from '../api/workflow'
+import { useProjectContextStore } from '../stores/project-context'
 import {
-  addProjectMember,
-  addLegacyMember,
   confirmImport,
   createBaseline,
   createDifference,
   createLegacy,
-  createProject,
-  createSystem,
   deleteCoordination,
   deleteDeliverable,
   deleteDifference,
   deleteLegacy,
-  deleteProject,
-  deleteSystem,
   differenceChanges,
-  listDifferenceApprovalLogs,
   downloadTemplate,
   fetchRequirementEnums,
   getLegacy,
@@ -43,15 +36,12 @@ import {
   listDeliverables,
   listDifferences,
   listLegacy,
-  listLegacyMembers,
-  listProjectMembers,
   listProjects,
+  listRequirementUserOptions,
   listReviewers,
   listReviewRecords,
   listSystems,
   previewImport,
-  removeProjectMember,
-  removeLegacyMember,
   returnLegacyFlow,
   reviewDeliverable,
   saveCoordination,
@@ -62,10 +52,9 @@ import {
   submitDeliverableReview,
   submitReview,
   cancelReview,
+  transferDifference,
   updateDifference,
-  updateLegacy,
-  updateProject,
-  updateSystem
+  updateLegacy
 } from '../api/requirements'
 import type {
   BaselineItem,
@@ -74,11 +63,8 @@ import type {
   ImportPreviewReport,
   LegacyDeliverable,
   LegacyFlowLog,
-  LegacyMember,
   LegacyRequirement,
   LegacySystemItem,
-  ProjectMember,
-  RequirementApprovalLog,
   RequirementBaseline,
   RequirementDifference,
   RequirementEnums,
@@ -134,7 +120,6 @@ watch(section, () => {
     loadLegacy()
     loadSystems()
   }
-  if (section.value === 'systems') loadSystems()
 })
 
 // ---------------- 工作流审批抽屉（从"我的代办"点击业务事项带 taskId 进入时） ----------------
@@ -201,8 +186,10 @@ watch(() => route.query.taskId, (value) => {
 onMounted(() => {
   void loadEnums()
   if (section.value === 'new-project') loadProjects()
-  if (section.value === 'legacy') loadLegacy()
-  if (section.value === 'systems') loadSystems()
+  if (section.value === 'legacy') {
+    loadLegacy()
+    loadSystems()
+  }
 })
 
 // ---------------- 新建项目 ----------------
@@ -210,23 +197,31 @@ const projects = ref<RequirementProject[]>([])
 const projectsLoading = ref(false)
 const selectedProject = ref<RequirementProject | null>(null)
 const selectedProjectId = ref<number | null>(null)
-const projectFormVisible = ref(false)
-const projectSaving = ref(false)
-const projectForm = reactive<Record<string, unknown>>({ project_code: '', project_name: '', project_type: '0~1 新建', start_time: '', status: '进行中', description: '' })
+const projectContext = useProjectContextStore()
+
+// 差异数据与顶部全局项目下拉框绑定：下拉框以 project-context（ref=项目编码）为准，
+// 按 project_code 匹配 req_project；无匹配时以最上方（最新创建）项目为默认
+function resolveTargetProject(): RequirementProject | null {
+  if (!projects.value.length) return null
+  const contextRef = projectContext.currentRef
+  const contextName = projectContext.current?.name?.trim()
+  if (contextRef || contextName) {
+    const matched = projects.value.find(project =>
+      (contextRef && String(project.project_code) === contextRef) ||
+      (contextName && project.project_name?.trim() === contextName)
+    )
+    if (matched) return matched
+  }
+  return projects.value[0]
+}
 
 async function loadProjects() {
   projectsLoading.value = true
   try {
     projects.value = (await listProjects()).data.data
-    if (projects.value.length) {
-      const keep = projects.value.find(project => project.id === selectedProjectId.value)
-      selectedProjectId.value = keep ? keep.id : projects.value[0].id
-      selectedProject.value = projects.value.find(project => project.id === selectedProjectId.value) || null
-      await loadDifferences()
-    } else {
-      selectedProjectId.value = null
-      selectedProject.value = null
-    }
+    selectedProject.value = resolveTargetProject()
+    selectedProjectId.value = selectedProject.value?.id ?? null
+    if (selectedProject.value) await loadDifferences()
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '项目加载失败'))
   } finally {
@@ -234,109 +229,30 @@ async function loadProjects() {
   }
 }
 
-function openProjectCreate() {
-  Object.assign(projectForm, { project_code: '', project_name: '', project_type: '0~1 新建', start_time: '', status: '进行中', description: '' })
-  projectFormVisible.value = true
-}
-
-function openProjectEdit(row: RequirementProject) {
-  Object.assign(projectForm, row)
-  projectFormVisible.value = true
-}
-
-async function saveProject() {
-  projectSaving.value = true
-  try {
-    let createdId: number | null = null
-    if (projectForm.id) {
-      await updateProject(Number(projectForm.id), projectForm)
-    } else {
-      createdId = (await createProject(projectForm)).data.data.id
+watch(() => projectContext.currentRef, () => {
+  const target = resolveTargetProject()
+  if (section.value === 'new-project') {
+    if (target && target.id !== selectedProject.value?.id) {
+      selectedProject.value = target
+      selectedProjectId.value = target.id
+      differencePage.value = 1
+      void loadDifferences()
     }
-    if (createdId) {
-      selectedProjectId.value = createdId
-    }
-    projectFormVisible.value = false
-    ElMessage.success('项目已保存')
-    await loadProjects()
-  } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '项目保存失败'))
-  } finally {
-    projectSaving.value = false
+  } else if (section.value === 'legacy') {
+    selectedProject.value = target
+    selectedProjectId.value = target?.id ?? null
+    legacyPage.value = 1
+    void loadLegacy()
   }
-}
+})
 
-function onProjectChange(id: number) {
-  selectedProject.value = projects.value.find(project => project.id === id) || null
-  if (selectedProject.value) {
-    differencePage.value = 1
-    void loadDifferences()
-  }
-}
-
-function projectCommand(command: string) {
-  if (!selectedProject.value) return
-  if (command === 'edit') openProjectEdit(selectedProject.value)
-  if (command === 'delete') void removeProject(selectedProject.value)
-}
-
-async function removeProject(row: RequirementProject) {
-  try {
-    await ElMessageBox.confirm(`确认删除项目「${row.project_name}」？`, '删除确认', { type: 'warning' })
-    await deleteProject(row.id)
-    ElMessage.success('项目已删除')
-    await loadProjects()
-  } catch (error) {
-    if (error === 'cancel' || error === 'close') return
-    ElMessage.error(apiErrorMessage(error, '项目删除失败'))
-  }
-}
-
-// 项目成员
-const memberDialogVisible = ref(false)
-const members = ref<ProjectMember[]>([])
-const memberUserId = ref<number | null>(null)
 const userOptions = ref<Array<{ id: number; display_name?: string; username?: string }>>([])
-
-async function openMembers(project: RequirementProject) {
-  selectedProject.value = project
-  memberUserId.value = null
-  try {
-    members.value = (await listProjectMembers(project.id)).data.data
-    const page = (await listSystem('users', { page: 1, size: 100 })).data.data
-    userOptions.value = (page as { records: Array<{ id: number; display_name?: string; username?: string }> }).records || []
-    memberDialogVisible.value = true
-  } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '成员加载失败'))
-  }
-}
-
-async function addMember() {
-  if (!selectedProject.value || !memberUserId.value) return
-  try {
-    await addProjectMember(selectedProject.value.id, { userId: memberUserId.value })
-    members.value = (await listProjectMembers(selectedProject.value.id)).data.data
-    ElMessage.success('成员已添加')
-  } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '成员添加失败'))
-  }
-}
-
-async function removeMember(row: ProjectMember) {
-  try {
-    await removeProjectMember(row.id)
-    members.value = members.value.filter(item => item.id !== row.id)
-    ElMessage.success('成员已移除')
-  } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '成员移除失败'))
-  }
-}
 
 // 差异清单
 const differences = ref<RequirementDifference[]>([])
 const differencesTotal = ref(0)
 const differencePage = ref(1)
-const differenceSize = ref(20)
+const differenceSize = ref(10)
 const differencesLoading = ref(false)
 const diffFilters = reactive<{ reviewStatus: string; devStatus: string; testStatus: string; keyword: string }>({ reviewStatus: '', devStatus: '', testStatus: '', keyword: '' })
 
@@ -361,9 +277,13 @@ async function loadDifferences() {
 
 const diffFormVisible = ref(false)
 const diffSaving = ref(false)
+const diffProjectId = ref<number | null>(null)
 const diffForm = reactive<Record<string, unknown>>({})
 
 function openDiffCreate() {
+  if (!selectedProject.value) return
+  // 新建差异与顶部下拉框绑定的项目绑定：记录打开表单时的项目，保证保存到当前项目
+  diffProjectId.value = selectedProject.value.id
   const blank: Record<string, unknown> = { name: '', business_conglomerate: '', business_section: '', business_group: '', requirement_no: '', category: '', system_id: undefined, jinke_practice: '', difference_type: '', monshang_practice: '', difference_desc: '', monshang_dept: '', monshang_analyst: '', jinke_analyst: '', adapt_mode: '', handle_status: '', coord_group: '', solution: '', is_special: '否', decision_level: '', decision_conclusion: '', monshang_confirm_dept: '', jinke_confirmer: '', dev_status: '未开始', test_status: '未开始' }
   Object.keys(diffForm).forEach(key => delete diffForm[key])
   Object.assign(diffForm, blank)
@@ -371,19 +291,21 @@ function openDiffCreate() {
 }
 
 function openDiffEdit(row: RequirementDifference) {
+  if (!selectedProject.value) return
+  diffProjectId.value = selectedProject.value.id
   Object.keys(diffForm).forEach(key => delete diffForm[key])
   Object.assign(diffForm, { id: row.id }, row)
   diffFormVisible.value = true
 }
 
 async function saveDifference() {
-  if (!selectedProject.value) return
+  if (!diffProjectId.value) return
   diffSaving.value = true
   try {
     if (diffForm.id) {
       await updateDifference(Number(diffForm.id), diffForm)
     } else {
-      await createDifference(selectedProject.value.id, diffForm)
+      await createDifference(diffProjectId.value, diffForm)
     }
     diffFormVisible.value = false
     ElMessage.success('差异已保存')
@@ -518,59 +440,29 @@ async function openChangeLogs(bizType: 'NEW_PROJECT_DIFF' | 'LEGACY_REQUIREMENT'
   }
 }
 
-// 审批记录（差异专属，独立于修改记录，直接读工作流 wf_task_action）
-const approvalLogDialogVisible = ref(false)
-const approvalLogs = ref<RequirementApprovalLog[]>([])
-const approvalLogTitle = ref('审批记录')
-const approvalLogsLoading = ref(false)
-
-const approvalActionLabels: Record<string, string> = {
-  APPROVE: '通过', REJECT: '驳回', ADD_SIGN: '加签', CC: '抄送'
-}
-const approvalTaskTypeLabels: Record<string, string> = {
-  APPROVAL: '审批', CC: '抄送', ADD_SIGN: '加签'
-}
-const approvalTaskStatusLabels: Record<string, string> = {
-  PENDING: '待处理', APPROVED: '已通过', REJECTED: '已驳回', CANCELLED: '已取消', SENT: '已送达'
-}
-
-function approvalActionTagType(action: string): 'success' | 'warning' | 'info' | 'primary' {
-  if (action === 'APPROVE') return 'success'
-  if (action === 'REJECT') return 'warning'
-  return 'info'
-}
-
-async function openApprovalLogs(row: RequirementDifference) {
-  approvalLogTitle.value = `审批记录：${row.requirement_no || row.name}`
-  approvalLogDialogVisible.value = true
-  approvalLogs.value = []
-  approvalLogsLoading.value = true
-  try {
-    approvalLogs.value = (await listDifferenceApprovalLogs(row.id)).data.data
-  } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '审批记录加载失败'))
-  } finally {
-    approvalLogsLoading.value = false
-  }
-}
-
 // 导入
 const importDialogVisible = ref(false)
 const importReport = ref<ImportPreviewReport | null>(null)
 const importFile = ref<File | null>(null)
 const importing = ref(false)
+const importBizType = ref<'DIFF' | 'LEGACY'>('DIFF')
 
-function openImport() {
+function openImport(bizType: 'DIFF' | 'LEGACY' = 'DIFF') {
+  importBizType.value = bizType
   importReport.value = null
   importFile.value = null
   importDialogVisible.value = true
 }
 
 async function onImportFile(file: File) {
-  if (!selectedProject.value) return
+  if (importBizType.value === 'DIFF' && !selectedProject.value) return
   importing.value = true
   try {
-    importReport.value = (await previewImport('DIFF', selectedProject.value.id, file)).data.data
+    importReport.value = (await previewImport(
+      importBizType.value,
+      importBizType.value === 'DIFF' ? selectedProject.value?.id ?? null : null,
+      file
+    )).data.data
     importFile.value = file
     ElMessage.success(`校验完成：成功 ${importReport.value.successRows} 行，错误 ${importReport.value.errorRows} 行`)
   } catch (error) {
@@ -585,14 +477,15 @@ async function confirmImportRows() {
   importing.value = true
   try {
     const result = (await confirmImport({
-      bizType: 'DIFF',
-      projectId: selectedProject.value?.id,
+      bizType: importBizType.value,
+      projectId: importBizType.value === 'DIFF' ? selectedProject.value?.id : null,
       fileName: importFile.value?.name,
       rows: importReport.value.rows
     })).data.data
     ElMessage.success(`导入完成：${result.successRows} 行`)
     importDialogVisible.value = false
-    await loadDifferences()
+    if (importBizType.value === 'DIFF') await loadDifferences()
+    else await loadLegacy()
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '确认导入失败'))
   } finally {
@@ -604,7 +497,7 @@ async function confirmImportRows() {
 const legacyRows = ref<LegacyRequirement[]>([])
 const legacyTotal = ref(0)
 const legacyPage = ref(1)
-const legacySize = ref(20)
+const legacySize = ref(10)
 const legacyLoading = ref(false)
 const legacyFilters = reactive<{ businessGroup: string; stage: string; stageStatus: string; keyword: string }>({ businessGroup: '', stage: '', stageStatus: '', keyword: '' })
 // 软需阶段主责/协同系统选择：数据源为需求管理系统清单（req_system，含事业群），先选事业群再选系统
@@ -622,9 +515,11 @@ function systemCodeOf(value: string) {
 }
 
 async function loadLegacy() {
+  if (!selectedProject.value) await loadProjects()
   legacyLoading.value = true
   try {
     const page = (await listLegacy({
+      projectId: selectedProject.value?.id,
       businessGroup: legacyFilters.businessGroup || undefined,
       stage: legacyFilters.stage || undefined,
       stageStatus: legacyFilters.stageStatus || undefined,
@@ -666,48 +561,6 @@ const workloadDocs = ref<LegacyDeliverable[]>([])
 const softDocs = ref<LegacyDeliverable[]>([])
 const coordItems = ref<CoordinationItem[]>([])
 const versionRows = ref<RequirementVersionRow[]>([])
-// 存量需求成员（参考新建项目成员）
-const legacyMembers = ref<LegacyMember[]>([])
-const legacyMemberUserId = ref<number | null>(null)
-const legacyMemberSaving = ref(false)
-
-async function loadLegacyMembers() {
-  if (!legacyForm.id) {
-    legacyMembers.value = []
-    return
-  }
-  legacyMembers.value = (await listLegacyMembers(Number(legacyForm.id))).data.data
-}
-
-async function addLegacyMemberAction() {
-  if (!legacyForm.id || !legacyMemberUserId.value) {
-    ElMessage.warning('请选择成员用户')
-    return
-  }
-  legacyMemberSaving.value = true
-  try {
-    await addLegacyMember(Number(legacyForm.id), { userId: legacyMemberUserId.value })
-    legacyMemberUserId.value = null
-    ElMessage.success('成员已添加')
-    await loadLegacyMembers()
-  } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '添加成员失败'))
-  } finally {
-    legacyMemberSaving.value = false
-  }
-}
-
-async function removeLegacyMemberAction(member: LegacyMember) {
-  try {
-    await ElMessageBox.confirm(`确认移除成员「${member.display_name || member.username || member.user_id}」？`, '移除确认', { type: 'warning' })
-    await removeLegacyMember(member.id)
-    ElMessage.success('成员已移除')
-    await loadLegacyMembers()
-  } catch (error) {
-    if (error === 'cancel' || error === 'close') return
-    ElMessage.error(apiErrorMessage(error, '移除成员失败'))
-  }
-}
 
 function openLegacyCreate() {
   Object.keys(legacyForm).forEach(key => delete legacyForm[key])
@@ -725,8 +578,6 @@ function openLegacyCreate() {
   workloadDocs.value = []
   softDocs.value = []
   coordItems.value = []
-  legacyMembers.value = []
-  legacyMemberUserId.value = null
   legacyDetailTab.value = 'stage'
   void loadUserOptions()
   legacyFormVisible.value = true
@@ -747,7 +598,7 @@ async function openLegacyEdit(row: LegacyRequirement) {
     versionRows.value = detail.versions || []
     legacyDetailTab.value = 'stage'
     legacyFormVisible.value = true
-    await Promise.all([loadDeliverables(), loadCoordination(), loadLegacyMembers()])
+    await Promise.all([loadDeliverables(), loadCoordination()])
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '存量需求加载失败'))
   } finally {
@@ -766,7 +617,7 @@ async function refreshLegacyDetail() {
     }))
     flowLogRows.value = detail.flow_logs || []
     versionRows.value = detail.versions || []
-    await Promise.all([loadDeliverables(), loadCoordination(), loadLegacyMembers()])
+    await Promise.all([loadDeliverables(), loadCoordination()])
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '存量需求刷新失败'))
   }
@@ -792,10 +643,10 @@ async function loadCoordination() {
 async function loadUserOptions() {
   if (userOptions.value.length > 0) return
   try {
-    const page = (await listSystem('users', { page: 1, size: 100 })).data.data
-    userOptions.value = (page as { records: Array<{ id: number; display_name?: string; username?: string }> }).records || []
-  } catch {
+    userOptions.value = (await listRequirementUserOptions()).data.data || []
+  } catch (error) {
     userOptions.value = []
+    ElMessage.error(apiErrorMessage(error, '用户列表加载失败'))
   }
 }
 
@@ -836,9 +687,11 @@ const flowSaving = ref(false)
 const flowComment = ref('')
 const flowToUserId = ref<number | null>(null)
 
-function openFlowDialog() {
+function openFlowDialog(row?: LegacyRequirement) {
+  if (row && typeof row.id === 'number') legacyForm.id = row.id
   flowToUserId.value = null
   flowComment.value = ''
+  void loadUserOptions()
   flowDialogVisible.value = true
 }
 
@@ -883,24 +736,46 @@ const deliverableSaving = ref(false)
 const deliverableType = ref<'WORKLOAD' | 'SOFT'>('WORKLOAD')
 const deliverableForm = reactive<Record<string, unknown>>({})
 
-function openDeliverableCreate(type: 'WORKLOAD' | 'SOFT', systemItemId?: number) {
+function openDeliverableCreate(type: 'WORKLOAD' | 'SOFT') {
   deliverableType.value = type
   Object.keys(deliverableForm).forEach(key => delete deliverableForm[key])
-  const defaultItem = systemItemRows.value.find(r => r.system_role === '主责') || null
-  const item = systemItemId != null
-    ? systemItemRows.value.find(r => r.id === Number(systemItemId)) || null
-    : defaultItem
+  const defaultCode = systemItemRows.value.find(r => r.system_role === '主责')?.system_code || ''
   Object.assign(deliverableForm, {
-    system_item_id: item && item.id > 0 ? item.id : null,
-    system_code: item ? (item.system_code || '') : '',
+    system_item_id: null,
+    system_code: defaultCode,
     doc_name: '', remark: ''
   })
   deliverableDialogVisible.value = true
 }
 
+// 工作量表/软需文档可选系统：仅当前需求的主责系统 + 协同系统
+// （主责=系统子表主责行；协同=该需求协同事项中的系统；按编码去重）
+const deliverableSystemOptions = computed(() => {
+  const seen = new Map<string, string>()
+  const add = (code: string, label: string) => {
+    const key = String(code || '').trim()
+    if (key && !seen.has(key)) seen.set(key, label.trim() || key)
+  }
+  // 主责系统：系统子表主责行
+  for (const item of systemItemRows.value.filter(r => r.system_role === '主责')) {
+    if (item.system_code || item.system_name) {
+      add(item.system_code || '', `${item.system_code || ''} ${item.system_name || ''}`)
+    }
+  }
+  // 协同系统：该需求协同事项中已选的系统
+  for (const item of coordItems.value) {
+    if (item.system_code) {
+      add(item.system_code, `${item.system_code} ${item.system_name || ''}`)
+    }
+  }
+  return Array.from(seen, ([value, label]) => ({ value, label }))
+})
+
 function onDeliverableSystemChange() {
-  const item = systemItemRows.value.find(r => r.id === Number(deliverableForm.system_item_id))
-  deliverableForm.system_code = item ? (item.system_code || '') : ''
+  const code = String(deliverableForm.system_code || '').split(/[+\s]/)[0]
+  const system = systems.value.find(s => s.system_code === code)
+  deliverableForm.system_code = code
+  deliverableForm.system_name = system ? system.system_name : ''
 }
 
 async function saveDeliverableAction() {
@@ -1104,7 +979,8 @@ async function advanceStage() {
     const idx = LEGACY_STAGE_ORDER.indexOf(cur)
     const next = LEGACY_STAGE_ORDER[idx + 1]
     if (next && String(result[STAGE_FIELD_MAP[next]] || '未开始') === '未开始') {
-      await stageTransition(Number(legacyForm.id), { stage: next, action: 'START', comment: '进入下一阶段' })
+      // 完成当前阶段后自动启动下一阶段：忽略下一阶段字段未填提醒，直接置为“进行中”
+      await stageTransition(Number(legacyForm.id), { stage: next, action: 'START', comment: '进入下一阶段', ignoreMissingStageFields: true })
     }
     ElMessage.success('阶段已推进')
     await refreshLegacyDetail()
@@ -1186,6 +1062,8 @@ async function saveLegacy() {
       const result = (await updateLegacy(Number(legacyForm.id), payload)).data.data
       Object.assign(legacyForm, result)
     } else {
+      // 创建时绑定当前项目（左上角项目下拉），保证在对应项目列表可见
+      payload.project_id = selectedProject.value?.id ?? null
       const result = (await createLegacy(payload)).data.data
       Object.assign(legacyForm, result)
       systemItemRows.value = (result.system_items || []).map(item => ({
@@ -1369,7 +1247,8 @@ const STAGE_FIELD_GROUPS: Record<string, Array<{ key: string; label: string; pla
     { key: 'ba_review_date', label: '业需评审完成日', placeholder: '6月11日' }
   ],
   WORKLOAD: [
-    { key: 'workload_date', label: '工作量评估完成日', placeholder: '不涉及' }
+    { key: 'workload_date', label: '工作量评估完成日', placeholder: '不涉及' },
+    { key: 'workload_person_months', label: '工作量（多少人月）', placeholder: '例如：3.5 人月' }
   ],
   PROJECT: [
     { key: 'finance_project_date', label: '财务立项完成日（任务书）', placeholder: '不涉及' }
@@ -1453,7 +1332,7 @@ function getOptionsForField(key: string) {
 }
 
 // 核心标识字段：保存与阶段推进强校验；阶段业务字段不强卡流转
-const CORE_REQUIRED_FIELDS = new Set(['requirement_no', 'requirement_name', 'business_group'])
+const CORE_REQUIRED_FIELDS = new Set(['requirement_no', 'requirement_name'])
 
 function isStageRequired(key: string) {
   return CORE_REQUIRED_FIELDS.has(key)
@@ -1570,9 +1449,6 @@ async function showStageLogs(row: LegacyRequirement) {
 // ---------------- 系统清单 ----------------
 const systems = ref<RequirementSystem[]>([])
 const systemsLoading = ref(false)
-const systemFormVisible = ref(false)
-const systemSaving = ref(false)
-const systemForm = reactive<Record<string, unknown>>({})
 
 async function loadSystems() {
   systemsLoading.value = true
@@ -1585,48 +1461,6 @@ async function loadSystems() {
   }
 }
 
-function openSystemCreate() {
-  Object.keys(systemForm).forEach(key => delete systemForm[key])
-  Object.assign(systemForm, { system_code: '', system_name: '', english_name: '', conglomerate: '', status: '启用', logical_subsystem_code: '', logical_subsystem_name: '', business_component_code: '', business_component_name: '', business_domain: '', product_view: '', launch_point: '', category: '', introduction: '', disaster_level: '', source_type: '' })
-  systemFormVisible.value = true
-}
-
-function openSystemEdit(row: RequirementSystem) {
-  Object.keys(systemForm).forEach(key => delete systemForm[key])
-  Object.assign(systemForm, { id: row.id }, row)
-  systemFormVisible.value = true
-}
-
-async function saveSystem() {
-  systemSaving.value = true
-  try {
-    if (systemForm.id) {
-      await updateSystem(Number(systemForm.id), systemForm)
-    } else {
-      await createSystem(systemForm)
-    }
-    systemFormVisible.value = false
-    ElMessage.success('系统已保存')
-    await loadSystems()
-  } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '系统保存失败'))
-  } finally {
-    systemSaving.value = false
-  }
-}
-
-async function removeSystem(row: RequirementSystem) {
-  try {
-    await ElMessageBox.confirm(`确认删除系统「${row.system_name}」？`, '删除确认', { type: 'warning' })
-    await deleteSystem(row.id)
-    ElMessage.success('系统已删除')
-    await loadSystems()
-  } catch (error) {
-    if (error === 'cancel' || error === 'close') return
-    ElMessage.error(apiErrorMessage(error, '系统删除失败'))
-  }
-}
-
 function stageLabel(stage: string) {
   const map = options.value.legacyStageLabelMap as unknown as Record<string, string> | undefined
   return map?.[stage] || stage
@@ -1635,6 +1469,37 @@ function stageLabel(stage: string) {
 function canEditDiff(row: RequirementDifference) {
   return row.review_status === '待评审' || row.review_status === '已退回'
 }
+
+// 差异流转：仅管理员/创建人/当前处理人可发起，接收人成为新的当前处理人
+const diffFlowDialogVisible = ref(false)
+const diffFlowSaving = ref(false)
+const diffFlowDifferenceId = ref<number | null>(null)
+const diffFlowToUserId = ref<number | null>(null)
+const diffFlowComment = ref('')
+
+function openDiffFlow(row: RequirementDifference) {
+  if (!row.can_edit || !canEditDiff(row)) return
+  diffFlowDifferenceId.value = row.id
+  diffFlowToUserId.value = null
+  diffFlowComment.value = ''
+  void loadUserOptions()
+  diffFlowDialogVisible.value = true
+}
+
+async function submitDiffFlow() {
+  if (!diffFlowDifferenceId.value || !diffFlowToUserId.value) return
+  diffFlowSaving.value = true
+  try {
+    await transferDifference(diffFlowDifferenceId.value, { userId: diffFlowToUserId.value, comment: diffFlowComment.value })
+    diffFlowDialogVisible.value = false
+    ElMessage.success('差异已流转')
+    await loadDifferences()
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '差异流转失败'))
+  } finally {
+    diffFlowSaving.value = false
+  }
+}
 </script>
 
 <template>
@@ -1642,29 +1507,14 @@ function canEditDiff(row: RequirementDifference) {
     <el-tabs :model-value="section" class="requirements-tabs" @tab-change="(name: string) => router.replace('/requirements/' + name)">
       <el-tab-pane label="新建项目" name="new-project" />
       <el-tab-pane label="存量项目" name="legacy" />
-      <el-tab-pane label="系统清单" name="systems" />
     </el-tabs>
 
     <!-- 新建项目 -->
     <div v-if="section === 'new-project'" class="req-section">
       <UiToolbar>
-        <el-select v-model="selectedProjectId" filterable placeholder="选择项目" class="req-project-select" @change="onProjectChange">
-          <el-option v-for="project in projects" :key="project.id" :label="`${project.project_code} ${project.project_name}`" :value="project.id" />
-        </el-select>
         <span v-if="selectedProject" class="muted">已评审 {{ selectedProject.reviewed_count || 0 }} / {{ selectedProject.difference_count || 0 }}</span>
         <template #actions>
           <el-button @click="loadProjects"><el-icon><Refresh /></el-icon>刷新</el-button>
-          <el-button type="primary" @click="openProjectCreate"><el-icon><Plus /></el-icon>新建项目</el-button>
-          <el-dropdown v-if="selectedProject" trigger="click" @command="projectCommand">
-            <el-button>项目操作<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="edit">编辑项目</el-dropdown-item>
-                <el-dropdown-item command="delete" divided>删除项目</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-button v-if="selectedProject" @click="openMembers(selectedProject)">成员</el-button>
           <el-button v-if="selectedProject" @click="openBaselines()">基线</el-button>
           <el-button v-if="selectedProject" type="success" @click="formBaseline">形成基线</el-button>
         </template>
@@ -1683,9 +1533,8 @@ function canEditDiff(row: RequirementDifference) {
             <el-input v-model="diffFilters.keyword" placeholder="名称/需求编号" clearable style="width: 180px" @keyup.enter="loadDifferences" @clear="loadDifferences" />
             <el-button @click="loadDifferences"><el-icon><Refresh /></el-icon>查询</el-button>
             <el-button @click="downloadTemplate('DIFF')"><el-icon><Download /></el-icon>模板下载</el-button>
-            <el-button @click="openImport"><el-icon><UploadFilled /></el-icon>导入</el-button>
+            <el-button @click="openImport('DIFF')"><el-icon><UploadFilled /></el-icon>导入</el-button>
             <el-button type="primary" @click="openDiffCreate"><el-icon><Plus /></el-icon>新增差异</el-button>
-            <el-button type="success" @click="formBaseline">形成基线</el-button>
           </template>
         </UiToolbar>
         <UiDataTable :data="differences" :loading="differencesLoading" row-key="id" border>
@@ -1695,27 +1544,27 @@ function canEditDiff(row: RequirementDifference) {
               <el-button link type="primary" class="req-link-cell" @click="openDiffPreview(scope.row)">{{ scope.row.requirement_no || '-' }}</el-button>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="名称" min-width="220" show-overflow-tooltip />
-          <el-table-column prop="category" label="分类" width="90" />
+          <el-table-column prop="name" label="名称" min-width="150" show-overflow-tooltip />
           <el-table-column prop="difference_type" label="差异类型" min-width="150" show-overflow-tooltip />
           <el-table-column prop="business_group" label="业务组" width="100" />
           <el-table-column label="差异状态" width="110"><template #default="scope"><UiStatusTag :value="scope.row.review_status" /></template></el-table-column>
           <el-table-column label="开发状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.dev_status" /></template></el-table-column>
           <el-table-column label="测试状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.test_status" /></template></el-table-column>
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="当前处理人" min-width="120"><template #default="scope"><span>{{ scope.row.current_handler_user_name || '—' }}</span></template></el-table-column>
+          <el-table-column label="操作" width="320" fixed="right">
             <template #default="scope">
               <div class="req-table-actions">
+                <el-button link type="primary" :disabled="!scope.row.can_edit || !canEditDiff(scope.row)" @click="openDiffFlow(scope.row)"><el-icon><Promotion /></el-icon>流转</el-button>
+                <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" :disabled="!scope.row.can_edit" @click="submitDifferenceReview(scope.row)"><el-icon><Promotion /></el-icon>提交评审</el-button>
                 <el-button link type="primary" @click="openChangeLogs('NEW_PROJECT_DIFF', scope.row.id, `修改记录：${scope.row.name}`)"><el-icon><Clock /></el-icon>修改记录</el-button>
-                <el-button v-if="scope.row.workflow_instance_id" link type="primary" @click="openApprovalLogs(scope.row)"><el-icon><Tickets /></el-icon>审批记录</el-button>
                 <el-button link type="primary" @click="openReviewRecords('DIFFERENCE', scope.row.id, `评审记录：${scope.row.name}`)"><el-icon><Tickets /></el-icon>评审记录</el-button>
-                <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDifferenceReview(scope.row)"><el-icon><Promotion /></el-icon>提交评审</el-button>
-                <el-button v-if="scope.row.review_status === '评审中' || scope.row.review_status === '已退回'" link type="info" @click="cancelDifferenceReview(scope.row)" title="撤销评审流程，回到待评审后可重新编辑提交"><el-icon><RefreshRight /></el-icon>撤销评审</el-button>
-                <el-dropdown v-if="canEditDiff(scope.row)" @command="(command: string) => command === 'edit' ? openDiffEdit(scope.row) : removeDifference(scope.row)">
+                <el-button v-if="scope.row.review_status === '评审中'" link type="info" :disabled="!scope.row.can_edit" @click="cancelDifferenceReview(scope.row)" title="撤销评审流程，回到待评审后可重新编辑提交"><el-icon><RefreshRight /></el-icon>撤销评审</el-button>
+                <el-dropdown @command="(command: string) => command === 'edit' ? openDiffEdit(scope.row) : removeDifference(scope.row)">
                   <el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item command="edit"><el-icon><Edit /></el-icon>编辑</el-dropdown-item>
-                      <el-dropdown-item command="delete" divided><el-icon><Delete /></el-icon>删除</el-dropdown-item>
+                      <el-dropdown-item command="edit" :disabled="!scope.row.can_edit || !canEditDiff(scope.row)"><el-icon><Edit /></el-icon>编辑</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided :disabled="!scope.row.can_edit || !canEditDiff(scope.row)"><el-icon><Delete /></el-icon>删除</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -1737,6 +1586,7 @@ function canEditDiff(row: RequirementDifference) {
         <template #actions>
           <el-button @click="loadLegacy"><el-icon><Refresh /></el-icon>查询</el-button>
           <el-button @click="downloadTemplate('LEGACY')"><el-icon><Download /></el-icon>模板下载</el-button>
+          <el-button @click="openImport('LEGACY')"><el-icon><UploadFilled /></el-icon>导入</el-button>
           <el-button type="primary" @click="openLegacyCreate"><el-icon><Plus /></el-icon>新增存量需求</el-button>
         </template>
       </UiToolbar>
@@ -1746,28 +1596,29 @@ function canEditDiff(row: RequirementDifference) {
             <el-button link type="primary" class="req-link-cell" @click="openLegacyPreview(scope.row)">{{ scope.row.requirement_no || '-' }}</el-button>
           </template>
         </el-table-column>
-        <el-table-column prop="requirement_name" label="需求名称" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="business_group" label="业务组" width="110" />
+        <el-table-column prop="requirement_name" label="需求名称" min-width="150" show-overflow-tooltip />
         <el-table-column label="当前阶段" width="120"><template #default="scope"><UiStatusTag :value="stageLabel(scope.row.current_stage)" /></template></el-table-column>
-        <el-table-column label="主责系统" min-width="170" show-overflow-tooltip>
+        <el-table-column label="主责系统" min-width="120" show-overflow-tooltip>
           <template #default="scope"><span>{{ systemSummary(scope.row, '主责') }}</span></template>
         </el-table-column>
         <!-- 需求状态及备注：每条数据的最后两列 -->
         <el-table-column label="需求状态" width="120"><template #default="scope"><span>{{ scope.row.requirement_status || '-' }}</span></template></el-table-column>
         <el-table-column label="备注" min-width="180" show-overflow-tooltip><template #default="scope"><span>{{ scope.row.remark || '-' }}</span></template></el-table-column>
+        <el-table-column label="当前处理人" min-width="120"><template #default="scope"><span>{{ scope.row.current_flow_user_name || '—' }}</span></template></el-table-column>
         <el-table-column label="操作" width="360" fixed="right">
           <template #default="scope">
             <div class="req-table-actions">
-              <el-button link type="primary" @click="openLegacyPreview(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button>
+              <el-button link type="primary" :disabled="!scope.row.can_edit" @click="openFlowDialog(scope.row)"><el-icon><Promotion /></el-icon>流转</el-button>
               <el-button link type="primary" @click="openFlowLogsFromRow(scope.row)"><el-icon><Promotion /></el-icon>流转记录</el-button>
               <el-button link type="primary" @click="openChangeLogs('LEGACY_REQUIREMENT', scope.row.id, `修改记录：${scope.row.requirement_name}`)"><el-icon><Clock /></el-icon>修改记录</el-button>
-              <el-dropdown @command="(command: string) => command === 'change' ? openLegacyChange(scope.row) : command === 'stage-logs' ? showStageLogs(scope.row) : removeLegacy(scope.row)">
+              <el-dropdown @command="(command: string) => command === 'edit' ? openLegacyPreview(scope.row) : command === 'change' ? openLegacyChange(scope.row) : command === 'stage-logs' ? showStageLogs(scope.row) : removeLegacy(scope.row)">
                 <el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="change"><el-icon><RefreshRight /></el-icon>需求变更</el-dropdown-item>
+                    <el-dropdown-item command="edit" :disabled="!scope.row.can_edit"><el-icon><Edit /></el-icon>编辑</el-dropdown-item>
+                    <el-dropdown-item command="change" :disabled="!scope.row.can_edit"><el-icon><RefreshRight /></el-icon>需求变更</el-dropdown-item>
                     <el-dropdown-item command="stage-logs"><el-icon><Tickets /></el-icon>阶段记录</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided><el-icon><Delete /></el-icon>删除</el-dropdown-item>
+                    <el-dropdown-item command="delete" divided :disabled="!scope.row.can_edit"><el-icon><Delete /></el-icon>删除</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -1784,62 +1635,22 @@ function canEditDiff(row: RequirementDifference) {
       <UiEmptyState :title="`${PARAM_SECTION_TITLES[String(section)]}`" description="页面建设中，敬请期待。" />
     </div>
 
-    <!-- 系统清单 -->
-    <div v-if="section === 'systems'" class="req-section">
-      <UiToolbar>
-        <span class="muted">系统清单主数据（新建项目与存量项目共用）</span>
-        <template #actions>
-          <el-button @click="loadSystems"><el-icon><Refresh /></el-icon>刷新</el-button>
-          <el-button type="primary" @click="openSystemCreate"><el-icon><Plus /></el-icon>新增系统</el-button>
-        </template>
-      </UiToolbar>
-      <UiDataTable :data="systems" :loading="systemsLoading" row-key="id" border>
-        <el-table-column prop="system_code" label="系统编号" min-width="120" />
-        <el-table-column prop="system_name" label="系统名称" min-width="200" />
-        <el-table-column prop="english_name" label="英文简称" min-width="120" />
-        <el-table-column prop="conglomerate" label="事业群" min-width="130" />
-        <el-table-column prop="business_domain" label="业务领域" min-width="120" />
-        <el-table-column prop="source_type" label="引入/保留" width="110" />
-        <el-table-column label="状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.status" /></template></el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="scope">
-            <div class="req-table-actions">
-              <el-button link type="primary" @click="openSystemEdit(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button>
-              <el-dropdown @command="() => removeSystem(scope.row)">
-                <el-button link type="info"><el-icon><MoreFilled /></el-icon>更多</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="delete"><el-icon><Delete /></el-icon>删除</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </UiDataTable>
-    </div>
-
-    <!-- 项目表单 -->
-    <UiFormDrawer v-model="projectFormVisible" :title="projectForm.id ? '编辑项目' : '新建项目'" :loading="projectSaving" width="min(560px, calc(100vw - 24px))" @submit="saveProject">
+    <!-- 差异流转 -->
+    <el-dialog v-model="diffFlowDialogVisible" title="流转差异" width="min(480px, calc(100vw - 24px))" destroy-on-close>
       <el-form label-position="top">
-        <el-form-item label="项目编码" required><el-input v-model="projectForm.project_code" :disabled="Boolean(projectForm.id)" /></el-form-item>
-        <el-form-item label="项目名称" required><el-input v-model="projectForm.project_name" /></el-form-item>
-        <el-form-item label="项目类型"><el-select v-model="projectForm.project_type" style="width: 100%"><el-option v-for="item in options.projectTypes || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="启动时间"><el-date-picker v-model="projectForm.start_time" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="状态"><el-select v-model="projectForm.status" style="width: 100%"><el-option v-for="item in options.projectStatuses || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="说明"><el-input v-model="projectForm.description" type="textarea" :rows="3" /></el-form-item>
+        <el-form-item label="接收人" required>
+          <el-select v-model="diffFlowToUserId" filterable placeholder="选择接收人" style="width: 100%" @visible-change="(visible: boolean) => { if (visible) void loadUserOptions() }">
+            <el-option v-for="user in userOptions" :key="user.id" :label="`${user.display_name || user.username}（${user.username}）`" :value="user.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="流转说明">
+          <el-input v-model="diffFlowComment" type="textarea" :rows="3" maxlength="500" show-word-limit />
+        </el-form-item>
       </el-form>
-    </UiFormDrawer>
-
-    <!-- 成员管理 -->
-    <el-dialog v-model="memberDialogVisible" title="项目成员" width="min(560px, calc(100vw - 24px))">
-      <div class="req-member-row"><el-select v-model="memberUserId" placeholder="选择成员用户" filterable style="flex: 1"><el-option v-for="user in userOptions" :key="user.id" :label="`${user.display_name || user.username}（${user.username}）`" :value="user.id" /></el-select><el-button type="primary" @click="addMember">添加</el-button></div>
-      <el-table :data="members" border size="small">
-        <el-table-column prop="display_name" label="姓名" min-width="120" />
-        <el-table-column prop="username" label="账号" min-width="140" />
-        <el-table-column prop="member_role" label="角色" width="90" />
-        <el-table-column label="操作" width="90"><template #default="scope"><el-button link type="danger" @click="removeMember(scope.row)">移除</el-button></template></el-table-column>
-      </el-table>
+      <template #footer>
+        <el-button @click="diffFlowDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="diffFlowSaving" @click="submitDiffFlow">确认流转</el-button>
+      </template>
     </el-dialog>
 
     <!-- 差异表单 -->
@@ -1923,7 +1734,7 @@ function canEditDiff(row: RequirementDifference) {
       <div class="req-import-box">
         <el-upload drag :auto-upload="false" :show-file-list="false" accept=".xlsx,.xls" :on-change="(file: any) => onImportFile(file.raw)">
           <el-icon :size="30"><UploadFilled /></el-icon>
-          <div>拖拽或点击选择差异清单 Excel 文件</div>
+          <div>拖拽或点击选择 Excel 文件</div>
           <template #tip><div class="el-upload__tip">仅支持 xlsx/xls，按标准模板逐行校验</div></template>
         </el-upload>
       </div>
@@ -1949,7 +1760,7 @@ function canEditDiff(row: RequirementDifference) {
           <span v-if="legacyForm.current_flow_user_name" class="req-form-hint"> · 当前流转处理人：{{ legacyForm.current_flow_user_name }}</span>
           <span v-if="legacyForm.version_no" class="req-form-hint"> · 版本：{{ legacyForm.version_no }}</span>
         </div>
-        <el-button type="success" @click="advanceStage"><el-icon><Promotion /></el-icon>完成（进入下一阶段）</el-button>
+        <el-button type="success" :disabled="!legacyForm.can_edit" @click="advanceStage"><el-icon><Promotion /></el-icon>完成（进入下一阶段）</el-button>
       </div>
       <el-tabs v-model="legacyDetailTab" class="req-legacy-tabs">
         <el-tab-pane label="阶段信息" name="stage">
@@ -2001,7 +1812,9 @@ function canEditDiff(row: RequirementDifference) {
               <el-button v-if="legacyForm.id" link type="warning" size="small" @click="openLegacyChange(null)"><el-icon><RefreshRight /></el-icon>需求变更</el-button>
             </div>
             <el-form-item label="需求状态">
-              <el-input :model-value="(legacyForm as any).requirement_status || '需求分析'" disabled placeholder="由阶段推进自动维护" />
+              <el-select v-model="(legacyForm as any).requirement_status" clearable style="width: 100%" :disabled="legacyForm.id ? !legacyForm.can_edit : false" placeholder="选择需求状态">
+                <el-option v-for="item in options.requirementStatuses || []" :key="item" :label="item" :value="item" />
+              </el-select>
             </el-form-item>
             <el-form-item label="备注">
               <el-input v-model="(legacyForm as any).remark" type="textarea" :rows="2" placeholder="【0611】713前投产，纳入建设合同" />
@@ -2039,13 +1852,13 @@ function canEditDiff(row: RequirementDifference) {
             </el-table-column>
             <el-table-column label="操作" width="80"><template #default="scope"><el-button link type="danger" @click="removeSystemItemRow(scope.$index)">移除</el-button></template></el-table-column>
           </el-table>
-          <el-button class="req-add-row-btn" plain type="primary" size="small" @click="addSystemItemRow"><el-icon><Plus /></el-icon>添加系统行（主责/协同）</el-button>
-          <div class="req-form-hint">页面只展示主责系统；系统行负责人/系统人员与当前流转处理人可见该需求，PMO/管理员全量可见。</div>
+          <el-button class="req-add-row-btn" plain type="primary" size="small" @click="addSystemItemRow"><el-icon><Plus /></el-icon>添加系统行（主责）</el-button>
+          <div class="req-form-hint">系统子表仅支持主责，所有登录用户均可查看需求。</div>
         </el-tab-pane>
         <el-tab-pane label="流转记录" name="flow">
           <div class="req-flow-actions">
-            <el-button type="primary" size="small" @click="openFlowDialog"><el-icon><Promotion /></el-icon>发起流转</el-button>
-            <el-button size="small" @click="returnFlowAction"><el-icon><RefreshRight /></el-icon>回传</el-button>
+            <el-button type="primary" size="small" :disabled="!legacyForm.can_edit" @click="openFlowDialog()"><el-icon><Promotion /></el-icon>发起流转</el-button>
+            <el-button size="small" :disabled="!legacyForm.can_edit" @click="returnFlowAction"><el-icon><RefreshRight /></el-icon>回传</el-button>
             <el-button size="small" @click="showStageLogs(legacyForm as unknown as LegacyRequirement)"><el-icon><Tickets /></el-icon>阶段记录</el-button>
           </div>
           <el-table :data="flowLogRows" border size="small">
@@ -2131,22 +1944,6 @@ function canEditDiff(row: RequirementDifference) {
           </el-table>
           <el-empty v-if="versionRows.length === 0" description="暂无版本记录" :image-size="80" />
         </el-tab-pane>
-        <el-tab-pane label="成员" name="members">
-          <div class="req-member-row">
-            <el-select v-model="legacyMemberUserId" placeholder="选择成员用户" filterable style="flex: 1">
-              <el-option v-for="user in userOptions" :key="user.id" :label="`${user.display_name || user.username}（${user.username}）`" :value="user.id" />
-            </el-select>
-            <el-button type="primary" :loading="legacyMemberSaving" @click="addLegacyMemberAction">添加</el-button>
-          </div>
-          <el-table :data="legacyMembers" border size="small">
-            <el-table-column prop="display_name" label="姓名" min-width="130" />
-            <el-table-column prop="username" label="账号" min-width="150" />
-            <el-table-column prop="member_role" label="角色" width="100" />
-            <el-table-column label="操作" width="90"><template #default="scope"><el-button link type="danger" @click="removeLegacyMemberAction(scope.row)">移除</el-button></template></el-table-column>
-          </el-table>
-          <el-empty v-if="legacyMembers.length === 0" description="暂无成员" :image-size="80" />
-          <div class="req-form-hint">需求成员（参考新建项目成员）与 PMO/管理员可见该需求；系统行负责人/系统人员、当前流转处理人同样可见。</div>
-        </el-tab-pane>
       </el-tabs>
     </UiFormDrawer>
 
@@ -2204,8 +2001,8 @@ function canEditDiff(row: RequirementDifference) {
     <el-dialog v-model="deliverableDialogVisible" :title="deliverableType === 'WORKLOAD' ? '新增工作量表记录' : '新增软需文档记录'" width="min(560px, calc(100vw - 24px))">
       <el-form label-position="top" class="req-form-grid">
         <el-form-item label="所属系统" class="req-span-2">
-          <el-select v-model="deliverableForm.system_item_id" filterable clearable style="width: 100%" placeholder="选择系统子表行" @change="onDeliverableSystemChange">
-            <el-option v-for="item in systemItemRows" :key="item.id" :label="`${item.system_role}：${item.system_code || ''} ${item.system_name || ''}`" :value="item.id" />
+          <el-select v-model="deliverableForm.system_code" filterable clearable style="width: 100%" placeholder="选择所属系统（仅本需求主责/协同系统）" @change="onDeliverableSystemChange">
+            <el-option v-for="opt in deliverableSystemOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="文档名称"><el-input v-model="deliverableForm.doc_name" placeholder="如：工作量评估表-XX系统-V0.3" /></el-form-item>
@@ -2248,8 +2045,8 @@ function canEditDiff(row: RequirementDifference) {
           <el-select v-model="coordForm.item_type" style="width: 100%"><el-option v-for="t in options.coordTypes || []" :key="t" :label="t" :value="t" /></el-select>
         </el-form-item>
         <el-form-item label="所属系统">
-          <el-select v-model="coordForm.system_item_id" filterable clearable style="width: 100%" placeholder="选择系统子表行" @change="onCoordSystemItemChange">
-            <el-option v-for="item in systemItemRows" :key="item.id" :label="`${item.system_role}：${item.system_code || ''} ${item.system_name || ''}`" :value="item.id" />
+          <el-select v-model="coordForm.system_code" filterable clearable style="width: 100%" placeholder="选择系统（系统清单）" @change="onCoordSystemChange">
+            <el-option v-for="s in systems" :key="s.system_code" :label="`${s.system_code} ${s.system_name}`" :value="s.system_code" />
           </el-select>
         </el-form-item>
         <el-form-item label="负责人">
@@ -2324,22 +2121,6 @@ function canEditDiff(row: RequirementDifference) {
       </el-table>
     </el-dialog>
 
-    <!-- 审批记录 -->
-    <el-dialog v-model="approvalLogDialogVisible" :title="approvalLogTitle" width="min(900px, calc(100vw - 24px))">
-      <el-empty v-if="!approvalLogsLoading && approvalLogs.length === 0" description="暂无审批记录（差异未走审批流或工作流未产生动作）" />
-      <el-table v-else v-loading="approvalLogsLoading" :data="approvalLogs" border size="small">
-        <el-table-column prop="created_at" label="审批时间" width="170" />
-        <el-table-column label="审批人" width="140"><template #default="scope">{{ scope.row.operator_name || scope.row.operator_id || '-' }}</template></el-table-column>
-        <el-table-column label="审批结果" width="100"><template #default="scope"><el-tag size="small" :type="approvalActionTagType(scope.row.action_code)">{{ approvalActionLabels[scope.row.action_code] || scope.row.action_code }}</el-tag></template></el-table-column>
-        <el-table-column label="任务类型" width="90"><template #default="scope">{{ approvalTaskTypeLabels[scope.row.task_type] || scope.row.task_type || '-' }}</template></el-table-column>
-        <el-table-column label="审批对象" width="140"><template #default="scope">{{ scope.row.assignee_name || '-' }}</template></el-table-column>
-        <el-table-column label="任务状态" width="100"><template #default="scope">{{ approvalTaskStatusLabels[scope.row.task_status] || scope.row.task_status || '-' }}</template></el-table-column>
-        <el-table-column label="目标用户" width="120"><template #default="scope">{{ scope.row.target_user_name || (scope.row.action_code === 'ADD_SIGN' ? '-' : '—') }}</template></el-table-column>
-        <el-table-column label="审批意见" min-width="200"><template #default="scope"><span>{{ scope.row.comment || '-' }}</span></template></el-table-column>
-      </el-table>
-      <template #footer><el-button @click="approvalLogDialogVisible = false">关闭</el-button></template>
-    </el-dialog>
-
     <!-- 差异预览 -->
     <el-dialog v-model="diffPreviewVisible" :title="`差异预览：${diffPreviewRow?.requirement_no || ''}`" width="min(820px, calc(100vw - 24px))" top="6vh">
       <div v-if="diffPreviewRow">
@@ -2359,28 +2140,6 @@ function canEditDiff(row: RequirementDifference) {
         <el-button v-if="canEditDiff(diffPreviewRow as RequirementDifference)" type="primary" @click="diffPreviewVisible = false; diffPreviewRow && openDiffEdit(diffPreviewRow)">编辑</el-button>
       </template>
     </el-dialog>
-
-    <!-- 系统表单 -->
-    <UiFormDrawer v-model="systemFormVisible" :title="systemForm.id ? '编辑系统' : '新增系统'" :loading="systemSaving" width="min(640px, calc(100vw - 24px))" @submit="saveSystem">
-      <el-form label-position="top" class="req-form-grid">
-        <el-form-item label="系统编号" required><el-input v-model="systemForm.system_code" :disabled="Boolean(systemForm.id)" /></el-form-item>
-        <el-form-item label="系统名称" required><el-input v-model="systemForm.system_name" /></el-form-item>
-        <el-form-item label="英文简称"><el-input v-model="systemForm.english_name" /></el-form-item>
-        <el-form-item label="事业群"><el-input v-model="systemForm.conglomerate" /></el-form-item>
-        <el-form-item label="状态"><el-select v-model="systemForm.status" style="width: 100%"><el-option v-for="item in options.systemStatuses || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="引入/保留"><el-input v-model="systemForm.source_type" /></el-form-item>
-        <el-form-item label="所属逻辑子系统编号"><el-input v-model="systemForm.logical_subsystem_code" /></el-form-item>
-        <el-form-item label="所属逻辑子系统名称"><el-input v-model="systemForm.logical_subsystem_name" /></el-form-item>
-        <el-form-item label="归属业务组件编号"><el-input v-model="systemForm.business_component_code" /></el-form-item>
-        <el-form-item label="归属业务组件名称"><el-input v-model="systemForm.business_component_name" /></el-form-item>
-        <el-form-item label="业务领域"><el-input v-model="systemForm.business_domain" /></el-form-item>
-        <el-form-item label="产品视图"><el-input v-model="systemForm.product_view" /></el-form-item>
-        <el-form-item label="投产点"><el-input v-model="systemForm.launch_point" /></el-form-item>
-        <el-form-item label="类别"><el-input v-model="systemForm.category" /></el-form-item>
-        <el-form-item label="灾备等级"><el-input v-model="systemForm.disaster_level" /></el-form-item>
-        <el-form-item label="系统介绍" class="req-span-2"><el-input v-model="systemForm.introduction" type="textarea" :rows="2" /></el-form-item>
-      </el-form>
-    </UiFormDrawer>
 
     <!-- 工作流任务审批抽屉（从我的代办点击业务事项进入） -->
     <el-dialog v-model="approvalDialogVisible" :title="approvalContext ? '审批 - ' + (approvalContext.business_title || ('任务 #' + approvalContext.task_id)) : '审批任务'" width="min(640px, calc(100vw - 24px))" @close="approvalSubmitting = false">

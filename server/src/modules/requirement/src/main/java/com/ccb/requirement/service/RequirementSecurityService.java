@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 /** 服务端数据范围与实体授权：管理员豁免，项目组成员/业务组成员按映射表校验。 */
 @Service
@@ -106,6 +107,46 @@ public class RequirementSecurityService {
         if (!isAdmin(user) && !isProjectMember(user, projectId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "无该项目数据访问权限");
         }
+    }
+
+    /** 项目可见性：需求模块内所有登录用户可查看项目及差异（不再限制项目成员）。 */
+    public void requireProjectVisible(AuthUser user, long projectId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM req_project WHERE tenant_id = ? AND id = ? AND deleted = 0",
+                Integer.class, user.tenantId(), projectId);
+        if (count == null || count == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "项目不存在");
+        }
+    }
+
+    /** 差异是否可编辑：管理员、创建人或当前处理人。admin 由调用方预计算，避免列表逐行查库。 */
+    public boolean canEditDifference(AuthUser user, Map<String, Object> row, boolean admin) {
+        if (admin) return true;
+        Number creator = (Number) row.get("created_by");
+        Number handler = (Number) row.get("current_handler_user_id");
+        return (creator != null && creator.longValue() == user.id())
+                || (handler != null && handler.longValue() == user.id());
+    }
+
+    /** 差异编辑授权：管理员、创建人或当前处理人，否则 403。 */
+    public void requireDifferenceEditable(AuthUser user, Map<String, Object> row) {
+        if (canEditDifference(user, row, isAdmin(user))) return;
+        throw new BusinessException(ErrorCode.FORBIDDEN, "仅管理员、创建人或当前处理人可编辑该差异");
+    }
+
+    /** 存量需求是否可编辑：管理员、创建人或当前流转处理人（与新建项目差异同一规则）。admin 由调用方预计算。 */
+    public boolean canEditLegacy(AuthUser user, Map<String, Object> row, boolean admin) {
+        if (admin) return true;
+        Number creator = (Number) row.get("created_by");
+        Number handler = (Number) row.get("current_flow_user_id");
+        return (creator != null && creator.longValue() == user.id())
+                || (handler != null && handler.longValue() == user.id());
+    }
+
+    /** 存量需求编辑授权：管理员、创建人或当前流转处理人，否则 403。 */
+    public void requireLegacyEditable(AuthUser user, Map<String, Object> row) {
+        if (canEditLegacy(user, row, isAdmin(user))) return;
+        throw new BusinessException(ErrorCode.FORBIDDEN, "仅管理员、创建人或当前流转处理人可编辑该需求");
     }
 
     public boolean isBusinessGroupMember(AuthUser user, String businessGroup) {

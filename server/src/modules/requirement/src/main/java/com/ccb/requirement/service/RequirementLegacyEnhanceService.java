@@ -54,7 +54,7 @@ public class RequirementLegacyEnhanceService {
     public Map<String, Object> saveDeliverable(long requirementId, String type,
                                                Map<String, Object> body, AuthUser user) {
         String table = requireType(type);
-        requireAccess(requirementId, user);
+        requireEditable(requirementId, user);
         String docName = RequirementValues.text(body, "doc_name");
         String systemCode = RequirementValues.text(body, "system_code");
         if (docName == null && systemCode == null) {
@@ -85,7 +85,7 @@ public class RequirementLegacyEnhanceService {
     public void deleteDeliverable(long id, String type, AuthUser user) {
         String table = requireType(type);
         Map<String, Object> row = deliverableRow(table, id, user.tenantId());
-        requireAccess(((Number) row.get("requirement_id")).longValue(), user);
+        requireEditable(((Number) row.get("requirement_id")).longValue(), user);
         jdbc.update("UPDATE " + table + " SET deleted = 1 WHERE tenant_id = ? AND id = ?",
                 user.tenantId(), id);
         changeLog.record(bizTypeOf(type), id, "DELETE", "deleted", "0", "1", user, "ONLINE");
@@ -96,7 +96,7 @@ public class RequirementLegacyEnhanceService {
     public Map<String, Object> submitDeliverableReview(long id, String type, String reviewNo, AuthUser user) {
         String table = requireType(type);
         Map<String, Object> row = deliverableRow(table, id, user.tenantId());
-        requireAccess(((Number) row.get("requirement_id")).longValue(), user);
+        requireEditable(((Number) row.get("requirement_id")).longValue(), user);
         String status = String.valueOf(row.get("review_status"));
         if (!"待评审".equals(status) && !"已退回".equals(status)) {
             throw new BusinessException(ErrorCode.CONFLICT, "当前状态不可提交评审：" + status);
@@ -146,7 +146,7 @@ public class RequirementLegacyEnhanceService {
 
     @Transactional
     public Map<String, Object> saveCoordination(long requirementId, Map<String, Object> body, AuthUser user) {
-        requireAccess(requirementId, user);
+        requireEditable(requirementId, user);
         String itemType = RequirementValues.requireText(body, "item_type", "协同事项类型不能为空");
         RequirementValues.requireOption("coordTypes", itemType);
         RequirementValues.requireOption("coordStatuses", RequirementValues.text(body, "status"));
@@ -188,7 +188,7 @@ public class RequirementLegacyEnhanceService {
     @Transactional
     public void deleteCoordination(long id, AuthUser user) {
         Map<String, Object> row = coordinationRow(id, user.tenantId());
-        requireAccess(((Number) row.get("requirement_id")).longValue(), user);
+        requireEditable(((Number) row.get("requirement_id")).longValue(), user);
         jdbc.update("UPDATE req_coordination_item SET deleted = 1 WHERE tenant_id = ? AND id = ?",
                 user.tenantId(), id);
         changeLog.record("LEGACY_COORDINATION", id, "DELETE", "deleted", "0", "1", user, "ONLINE");
@@ -222,12 +222,21 @@ public class RequirementLegacyEnhanceService {
 
     private void requireAccess(long requirementId, AuthUser user) {
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT business_group FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
+                "SELECT id FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
                 user.tenantId(), requirementId);
         if (rows.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "存量需求不存在");
         }
-        security.requireLegacyRequirementAccess(user, requirementId, String.valueOf(rows.get(0).get("business_group")));
+    }
+
+    private void requireEditable(long requirementId, AuthUser user) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT created_by, current_flow_user_id FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
+                user.tenantId(), requirementId);
+        if (rows.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "存量需求不存在");
+        }
+        security.requireLegacyEditable(user, rows.get(0));
     }
 
     private String nextDeliverableVersion(long requirementId, String table, Long systemItemId,
