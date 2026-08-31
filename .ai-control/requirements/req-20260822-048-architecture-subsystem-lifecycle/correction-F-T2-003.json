@@ -1,0 +1,18 @@
+{
+  "feedback_id": "F-T2-003",
+  "task_id": "T2",
+  "requirement_id": "R11",
+  "severity": "P2",
+  "decision": "accept",
+  "expected": "旧写入口并发调用统一返回工单冲突且不修改发布事实；新并发由工单锁和编号存储传感器覆盖",
+  "observed": "T0 旧 CRUD 并发测试仍等待旧 create/delete 的持锁钩子，但 T2 已按需求在认证后立即返回 409，导致两个等待超时",
+  "causal_hypothesis": "产品契约有意移除旧写路径后，旧传感器前提失效",
+  "correction": "把两个场景改为真实 MySQL 并发兼容断言，验证全部旧写 409 且逻辑/物理发布事实不变；保留新增编号与工单 Store 并发测试",
+  "verification": [
+    "PhysicalSubsystemConcurrencyMySqlTest 与 JdbcSubsystemNumberReservationStoreMySqlTest 合计 7/7",
+    "完整 architecture 142/142",
+    "独立观察确认不是生产回归"
+  ],
+  "status": "verified",
+  "resolved_at": "2026-08-23T00:14:29Z"
+}

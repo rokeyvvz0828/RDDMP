@@ -1,0 +1,90 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "独立观测子代理（独立上下文、只读）核对范围合规、版本不可改写、作废 fail-closed、权限、迁移只追加、编号永久占用、审计、前端状态与台账 JSON；全部通过，无违规项。",
+  "recorded_at": "2026-08-24T02:00:00+00:00",
+  "data": {
+    "task_id": "T1-T5",
+    "observer": "independent-subagent-155f3e05",
+    "independence": "独立上下文只读复核，不复述执行者结论",
+    "measurements": [
+      {
+        "check": "scope_compliant",
+        "result": "pass",
+        "detail": "全部改动在 writable_paths 内；唯一非 scope 未跟踪项为任务开始前已存在的 temp/** 与 docs/original/** 用户材料"
+      },
+      {
+        "check": "version_immutable",
+        "result": "pass",
+        "detail": "生产代码对 arch_deployment_unit_version 仅 INSERT/SELECT；UPDATE/DELETE 仅测试清理"
+      },
+      {
+        "check": "void_fail_closed",
+        "result": "pass",
+        "detail": "voidUnit→transition(referenceCheck=true)→requireClear；REFERENCED→409、INDETERMINATE→503，仅 CLEAR 放行"
+      },
+      {
+        "check": "permissions_ok",
+        "result": "pass",
+        "detail": "查询 hasAnyAuthority(view, view/apply/manage)；写与导入仅 manage"
+      },
+      {
+        "check": "migrations_append_only",
+        "result": "pass",
+        "detail": "migration/ 仅新增 V85/V86，V1-V84 无改动"
+      },
+      {
+        "check": "number_permanent",
+        "result": "pass",
+        "detail": "GET_LOCK + FOR UPDATE；仅递增不回收；CHECK 1..1000；code 唯一索引"
+      },
+      {
+        "check": "audit_complete",
+        "result": "pass",
+        "detail": "7 个写操作均同时具备 recordSuccess 与 recordFailure"
+      },
+      {
+        "check": "frontend_states_ok",
+        "result": "pass",
+        "detail": "两页覆盖权限确认/无权限/失败/空/提交中，复用 components/ui"
+      },
+      {
+        "check": "ledger_json_ok",
+        "result": "pass",
+        "detail": "台账 10 个 JSON 全部可解析"
+      }
+    ],
+    "runtime_evidence": [
+      {
+        "sensor": "真实 MySQL 空库迁移",
+        "result": "pass",
+        "detail": "80 迁移至 V86 success，health UP"
+      },
+      {
+        "sensor": "公开 API 全旅程",
+        "result": "pass",
+        "detail": "编号/版本/生命周期/权限 403/导入预览确认/幂等重导/整批回滚/审计 14 条"
+      },
+      {
+        "sensor": "浏览器 UAT",
+        "result": "pass",
+        "detail": "16/17；唯一失败为既有页面同样存在的 404 噪声（非本任务引入）"
+      }
+    ],
+    "open_feedback": [
+      {
+        "id": "F-0001",
+        "severity": "low",
+        "detail": "recordFailure 审计方法字段硬编码 POST",
+        "disposition": "已修复：改为透传真实 HTTP 方法，DeploymentUnitServiceTest 14/14 复验通过"
+      },
+      {
+        "id": "F-0002",
+        "severity": "low",
+        "detail": "导入上传与确认共用单一操作码",
+        "disposition": "接受：请求路径已区分上传与确认，操作码细分留待后续批次"
+      }
+    ],
+    "allows_continue": true
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "requirement_id": "REQ-20260828-055",
+  "control_prefix": "req-20260828-055-network-access-decision-lifecycle",
+  "task_id": "T12",
+  "recorded_at": "2026-08-29T17:07:13+08:00",
+  "trigger": "用户 UAT 反馈：访问判断功能的展示改为一张卡片，标题显示需要申请/无需申请，主要内容显示原因，次要显示原因代码。",
+  "scope": {
+    "module": "business/architecture/network-access",
+    "changed_files": [
+      "web/src/modules/architecture/NetworkAccessPage.vue",
+      "web/src/modules/architecture/architecture.css"
+    ],
+    "database_changed": false,
+    "backend_changed": false,
+    "permission_or_audit_changed": false
+  },
+  "implementation": {
+    "entry_points": [
+      "独立访问判定页签的判定结果区",
+      "网络访问申请弹窗中的内联访问判定结果区"
+    ],
+    "ui_contract": [
+      "卡片标题使用二值判定文案：需要申请或无需申请。",
+      "卡片主内容显示业务原因，例如同一启用子网内部访问、已有访问关系完整覆盖、命中免申请规则完整覆盖、未证明已有关系或免申请规则覆盖本次访问。",
+      "卡片次要内容显示原因代码，多个代码用顿号分隔，缺失时显示无。",
+      "无需申请使用 success 色条和浅底色，需要申请使用 warning 色条和浅底色。"
+    ]
+  },
+  "verification": [
+    {
+      "command": "npm.cmd --prefix web run build",
+      "result": "passed",
+      "evidence": "退出码 0；NetworkAccessPage 打包产物生成，存在既有第三方 PURE 注释和大 chunk warning。"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "evidence": "退出码 0；仅有 Windows LF/CRLF 提示。"
+    },
+    {
+      "command": "Invoke-WebRequest -Uri http://127.0.0.1:5173/architecture/network-access -UseBasicParsing",
+      "result": "passed",
+      "evidence": "HTTP 200；当前 Vite 路由可达。"
+    },
+    {
+      "command": "Invoke-RestMethod -Uri http://127.0.0.1:8080/actuator/health",
+      "result": "passed",
+      "evidence": "status=UP；后端保持上一轮最新规则运行。"
+    }
+  ],
+  "residual_risks": [
+    "本轮未使用已认证浏览器实际点击生成判定结果；最终视觉 UAT 仍由用户在当前运行页面审计。",
+    "scope working-tree 检查仍会受本需求外既有未跟踪 req-20260812-021 账本文件影响。"
+  ]
+}

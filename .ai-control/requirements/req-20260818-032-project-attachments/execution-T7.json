@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "task_id": "T7",
+  "status": "implemented",
+  "objective": "移除项目附件页面的上传分类选择和附件分类修改入口",
+  "scope": [
+    "web/src/views/ProjectView.vue",
+    "web/src/styles.css",
+    "docs/engineering-control/designs/2026-08-18-project-attachments-design.md"
+  ],
+  "changes": [
+    "移除右侧工具栏上传目标分类选择，上传统一调用默认未分类语义",
+    "移除附件行修改分类按钮、修改分类弹框及对应前端状态和函数",
+    "保留分类导航、分类筛选、新建分类、文件名检索及其他附件操作"
+  ],
+  "commands": [
+    {"command": "npm run build", "result": "passed", "evidence": "vue-tsc and Vite production build succeeded"},
+    {"command": "git diff --check", "result": "passed", "evidence": "no whitespace errors"}
+  ],
+  "impact": {"api": "unchanged", "permissions": "unchanged", "audit": "unchanged", "database": "unchanged", "external_access": "unchanged"},
+  "runtime": {"browser": "partial", "evidence": "fresh local browser tab loaded the login entry and showed no console errors", "limitation": "the project attachment tab could not be opened without an authenticated local browser session"},
+  "rollback": "恢复 web/src/views/ProjectView.vue、web/src/styles.css 和对应设计记录即可；不涉及数据库或服务端回滚"
+}

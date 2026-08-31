@@ -1,12 +1,16 @@
 import http from './http'
 import type { ApiResponse } from '../types/auth'
-import type { Project, ProjectMember, ProjectOptions, ProjectPlan, ProjectPlanGroup, ProjectPlanGroupPayload, ProjectRisk, ProjectRiskComment, ProjectRole, ProjectUserOption, ProjectOrganization } from '../types/project'
+import type { Project, ProjectMember, ProjectOptions, ProjectPlan, ProjectPlanGroup, ProjectPlanGroupPayload, ProjectRisk, ProjectRiskComment, ProjectRole, ProjectUserOption, ProjectOrganization, ProjectStage } from '../types/project'
 
 export function getProjectWorkbench() { return http.get<ApiResponse<Project[]>>('/project/workbench') }
 export function getProject(id: number) { return http.get<ApiResponse<Project>>(`/project/${id}`) }
 export function createProject(payload: Record<string, unknown>) { return http.post<ApiResponse<Project>>('/project', payload) }
 export function updateProject(id: number, payload: Record<string, unknown>) { return http.put<ApiResponse<Project>>(`/project/${id}`, payload) }
 export function updateProjectSettings(id: number, payload: Record<string, unknown>) { return http.put<ApiResponse<Project>>(`/project/${id}/settings`, payload) }
+export function getProjectStages(id: number) { return http.get<ApiResponse<ProjectStage[]>>(`/project/${id}/stages`) }
+export function createProjectStage(id: number, payload: { stage_name: string; sort_no?: number }) { return http.post<ApiResponse<ProjectStage>>(`/project/${id}/stages`, payload) }
+export function updateProjectStage(id: number, stageId: number, payload: Record<string, unknown>) { return http.put<ApiResponse<ProjectStage>>(`/project/${id}/stages/${stageId}`, payload) }
+export function deleteProjectStage(id: number, stageId: number) { return http.delete<ApiResponse<void>>(`/project/${id}/stages/${stageId}`) }
 export function deleteProject(id: number) { return http.delete<ApiResponse<void>>(`/project/${id}`) }
 export function getProjectUserOptions(keyword?: string) { return http.get<ApiResponse<ProjectUserOption[]>>('/project/options/users', { params: { keyword } }) }
 export function getProjectOptions() { return http.get<ApiResponse<ProjectOptions>>('/project/options') }

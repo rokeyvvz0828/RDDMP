@@ -1,0 +1,122 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "business/architecture 发布主记录、查询服务和 REST",
+      "business/architecture 强类型变更申请、草稿、锁、值保留、编号、历史和发布事务",
+      "business/architecture 工作流提交适配与生命周期消费者",
+      "com.ccb.architecture.integration 引用检查公开 SPI",
+      "V82-V84 生命周期、权限和流程迁移",
+      "web architecture 主数据与工单页面"
+    ],
+    "environment": [
+      "platform/workflow 的 WorkflowBusinessGateway、WorkflowLifecycleConsumer、任务决定 API 和 ROLE 处理人解析",
+      "platform/security 的 AuthUser 与服务端权限表达式",
+      "platform/system 的组织、用户、参数和操作审计公开能力",
+      "MySQL 8.4、Flyway、Docker Desktop 和 Testcontainers",
+      "Vue 应用壳、共享 UI、HTTP 和认证 store",
+      "未来通过 SPI 接入的其他业务引用 provider",
+      "浏览器桌面与移动视口"
+    ]
+  },
+  "state_variables": [
+    {"name": "published_subsystem_status", "owner": "arch_logical_subsystem/arch_physical_subsystem", "valid_values": ["ACTIVE", "OFFLINE", "VOIDED"]},
+    {"name": "published_row_version", "owner": "architecture publication service", "valid_values": ["non-negative integer"]},
+    {"name": "application_status", "owner": "arch_subsystem_change_application", "valid_values": ["DRAFT", "IN_REVIEW", "RETURNED", "APPROVED", "REJECTED", "CANCELLED"]},
+    {"name": "application_round_digest", "owner": "application and workflow round tables", "valid_values": ["positive round with SHA-256 digest"]},
+    {"name": "target_lock", "owner": "arch_subsystem_change_lock", "valid_values": ["absent", "owned by one active application"]},
+    {"name": "number_namespace", "owner": "number namespace/recycled/reservation tables", "valid_values": ["global logical 1..9999", "per-logical physical 1..35"]},
+    {"name": "workflow_receipt", "owner": "architecture lifecycle consumer", "valid_values": ["PROCESSED", "IGNORED"]},
+    {"name": "replacement_relation", "owner": "arch_subsystem_replacement", "valid_values": ["immutable old/new/application tuple"]},
+    {"name": "frontend_request_state", "owner": "Vue architecture pages", "valid_values": ["loading", "ready", "empty", "failed", "forbidden", "submitting", "conflict"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "具有 architecture:view 的租户用户发起发布主数据查询", "transitions": ["Controller 认证/RBAC", "Repository tenant/status/filter 查询", "关联摘要投影"], "outputs": ["只含当前租户发布逻辑/物理记录的分页、详情和双向关联"]},
+    {"requirement_id": "R2", "input": "申请人创建、编辑或提交逻辑/物理变更", "transitions": ["强类型 DTO 校验", "申请状态机和数据范围校验", "提交快照/摘要", "批准生命周期事件触发 publication service"], "outputs": ["非批准状态主记录不变；批准后发布事实和完整历史"]},
+    {"requirement_id": "R3", "input": "逻辑 CREATE 草稿包含 0..N 个有序物理草稿", "transitions": ["保存稳定 line_no", "提交时一次性校验并保留编号/值", "APPROVED 事务先逻辑后全部物理发布"], "outputs": ["全部发布或零发布，独立物理 CREATE 也可执行"]},
+    {"requirement_id": "R4", "input": "未分配编号的 CREATE 申请首次提交", "transitions": ["锁全系统逻辑 namespace 或每逻辑物理 namespace", "优先取最小 recycled 否则 next", "策略格式化 A/W 编号", "写 reservation", "按终态保留/释放/消费"], "outputs": ["逻辑序号跨租户全局唯一且符合 A0001，物理符合 W00011；RETURNED 保留；未批准终态可复用；发布后永久占用"]},
+    {"requirement_id": "R5", "input": "同一发布目标的提交或物理归属迁移", "transitions": ["唯一 target lock", "提交冲突 409", "REPLACE 创建新物理并锁旧目标", "批准事务下线旧记录并写替换关系"], "outputs": ["最多一张活动申请；父级不被普通 UPDATE 改写；替换历史完整"]},
+    {"requirement_id": "R6", "input": "OFFLINE/REACTIVATE/VOID 或新引用请求", "transitions": ["主记录状态和子项历史检查", "内部逻辑-物理检查", "遍历外部 reference checker", "异常转不可判定"], "outputs": ["可逆下线、不可逆作废、禁止非法新引用，作废检查异常 fail-closed"]},
+    {"requirement_id": "R7", "input": "用户请求建议并选择是否采用", "transitions": ["本地 deterministic provider 计算候选", "no-op AI provider 返回空", "前端检查 dirty 并等待显式采用"], "outputs": ["建议来源可见但不自动写申请/主记录，无真实 AI/网络请求"]},
+    {"requirement_id": "R8", "input": "view/apply/manage/无权限用户访问主数据、本人/全部申请或审批", "transitions": ["服务端权限包含关系", "申请人/管理数据范围", "工作流当前任务与 manage 双重校验", "tenant 约束"], "outputs": ["权限矩阵正确且 manage 可自申请自审批但不能绕过流程"]},
+    {"requirement_id": "R9", "input": "提交、退回重提、批准、拒绝或取消", "transitions": ["startByCode 建立新 instance/round/digest", "生命周期 receipt 去重", "校验 tenant/business/instance/round/digest", "按事件发布、保留或释放"], "outputs": ["固定真实流程、当前轮次一致、重复/旧事件无副作用、发布失败可重试"]},
+    {"requirement_id": "R10", "input": "用户在桌面或手机访问主数据/工单列表、表单和详情", "transitions": ["路由加载真实 REST", "桌面表格或展开卡片", "移动纵向卡片", "加载/失败/403/409/提交中状态处理"], "outputs": ["核心旅程可达、无页面级横滚、审批区不修改业务字段"]},
+    {"requirement_id": "R11", "input": "既有调用方使用旧 GET 或写路径，或既有库升级", "transitions": ["V82 只补内部元数据且不改 code", "GET 兼容投影", "旧写路径返回稳定 409", "architecture 只依赖 workflow integration 包"], "outputs": ["既有查询/编号兼容，写调用获得明确迁移信号，迁移与模块边界通过"]},
+    {"requirement_id": "R12", "input": "T1-T5 实现候选", "transitions": ["单元/MockMvc", "MySQL/Flyway/并发", "真实 workflow/HTTP/Boot", "Vue build/真实浏览器", "治理/范围/独立观测"], "outputs": ["R1-R12 可重复证据、开放反馈为零和 convergence pass"]}
+  ],
+  "interfaces": [
+    {"name": "architecture_master_rest", "producers": ["LogicalSubsystemController", "PhysicalSubsystemController"], "consumers": ["Vue master pages", "legacy callers"], "invariant": "GET 只返回认证租户发布事实；旧写路径无数据库副作用并返回 ARCHITECTURE_WORK_ORDER_REQUIRED"},
+    {"name": "architecture_change_rest", "producers": ["SubsystemChangeApplicationController"], "consumers": ["Vue application pages"], "invariant": "DTO 不接受 tenant/申请人/权限，状态转换和数据范围由服务端判定"},
+    {"name": "subsystem_number_strategy", "producers": ["FixedPrefixIncrementalSubsystemNumberStrategy"], "consumers": ["SubsystemChangeService"], "invariant": "逻辑 A+4 位，物理 W+逻辑 4 位+1..9/A..Z，容量外失败"},
+    {"name": "workflow_integration", "producers": ["platform/workflow public integration"], "consumers": ["architecture submission and lifecycle consumer"], "invariant": "固定 code；事件必须匹配 tenant、business key、instance、round 和 digest"},
+    {"name": "subsystem_reference_checker", "producers": ["architecture internal checker", "future business providers"], "consumers": ["SubsystemReferenceGuard"], "invariant": "provider key 稳定；异常或不可判定不能放行 VOID"},
+    {"name": "suggestion_provider", "producers": ["deterministic provider", "no-op AI provider"], "consumers": ["change suggestion endpoint and Vue form"], "invariant": "只返回候选；用户显式采用；AI provider 无外部调用"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "领域状态机、权限、DTO 和错误映射", "method": "JUnit/Mockito/MockMvc 聚焦及模块回归", "blind_spots": ["真实 MySQL 锁语义", "真实浏览器布局"], "independence": "直接执行 Java 服务和 HTTP 适配层"},
+    {"id": "S2", "target": "V82-V84、编号并发、唯一性和原子发布", "method": "Testcontainers MySQL 8.4 + Flyway + SQL 前后断言", "blind_spots": ["生产数据规模", "浏览器交互"], "independence": "真实数据库引擎，不依赖 Mockito"},
+    {"id": "S3", "target": "真实流程定义、instance/task、轮次和生命周期回执", "method": "Boot/工作流集成测试与 HTTP/DB 对账", "blind_spots": ["人工浏览器可用性"], "independence": "通过平台公开运行契约观察，不复刻业务状态机"},
+    {"id": "S4", "target": "旧 GET/写接口兼容和既有 code 保持", "method": "MockMvc + MySQL 迁移前后快照/计数", "blind_spots": ["未知外部调用方的错误处理"], "independence": "接口响应与数据库副作用双传感器"},
+    {"id": "S5", "target": "AI 和模块依赖边界", "method": "rg 静态依赖/网络调用搜索 + module-boundary/governance 检查", "blind_spots": ["反射加载的运行时调用"], "independence": "仓库结构传感器，与业务测试假设独立"},
+    {"id": "S6", "target": "Vue DTO、路由和构建完整性", "method": "vue-tsc 与 Vite production build", "blind_spots": ["真实交互和几何"], "independence": "前端编译工具链"},
+    {"id": "S7", "target": "桌面/移动核心旅程、状态、网络、控制台和页面几何", "method": "真实浏览器 1280x800/375x812/390x844/430x932 明暗主题 UAT", "blind_spots": ["未选取设备特有浏览器差异"], "independence": "渲染运行时观察，与静态 build 独立"},
+    {"id": "S8", "target": "scope、Flyway、公开包、依赖和代码差异", "method": "仓库治理脚本、scope check、git diff --check", "blind_spots": ["业务语义正确性"], "independence": "治理元数据和 Git 结构检查"},
+    {"id": "S9", "target": "所有 R1-R12 的最终运行事实", "method": "脱敏 HTTP、MySQL、workflow、审计 trace 和重启后重新查询对账", "blind_spots": ["生产流量性能"], "independence": "跨层事实对账，不依赖单一测试断言"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "生命周期和编号持久化", "action": "追加 V82 并实现 architecture stores/strategy/tests", "authority": "scope writable paths", "impact_radius": "architecture 表和 V82", "rollback": "回退应用代码；共享环境保留迁移并用补偿迁移关闭入口"},
+    {"id": "A2", "target": "申请、发布、引用和建议语义", "action": "修改 architecture 服务、repository、REST、SPI 和局部测试", "authority": "scope writable paths", "impact_radius": "business/architecture", "rollback": "回退 T2 提交并保留 V82"},
+    {"id": "A3", "target": "工作流、权限和目录闭环", "action": "追加 V83/V84、增加 ccb-workflow 依赖和 lifecycle consumer", "authority": "scope writable paths and approved public change", "impact_radius": "architecture + workflow public contract consumer + tenant 1 seeds", "rollback": "停止 consumer/提交入口；补偿迁移撤权和隐藏菜单"},
+    {"id": "A4", "target": "用户交互与响应式表现", "action": "替换直写抽屉并新增工单列表/全页表单/详情路由和样式", "authority": "web architecture/router writable paths", "impact_radius": "architecture frontend routes", "rollback": "回退到发布主数据只读入口，不恢复直写"},
+    {"id": "A5", "target": "已发现测试或实现偏差", "action": "在原任务边界内实施最小纠偏并复验同一传感器", "authority": "当前任务 scope", "impact_radius": "单一反馈因果来源", "rollback": "回退纠偏提交"},
+    {"id": "A6", "target": "不安全运行环境", "action": "停止本地服务、拒绝非隔离数据库、为 Maven 子进程设置 Docker 兼容参数", "authority": "本地测试环境", "impact_radius": "当前子进程和隔离容器", "rollback": "终止子进程；不修改全局配置"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2", "S7", "S9"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S2", "S3", "S9"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S2", "S7", "S9"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2", "S9"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S2", "S3", "S9"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S1", "S2", "S9"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S1", "S5", "S7"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S1", "S3", "S7", "S9"], "observable": "yes"},
+    {"requirement_id": "R9", "sensor_ids": ["S2", "S3", "S9"], "observable": "yes"},
+    {"requirement_id": "R10", "sensor_ids": ["S6", "S7"], "observable": "yes"},
+    {"requirement_id": "R11", "sensor_ids": ["S2", "S4", "S5", "S8"], "observable": "yes"},
+    {"requirement_id": "R12", "sensor_ids": ["S1", "S2", "S3", "S6", "S7", "S8", "S9"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "用户级 Testcontainers 属性固定 Npipe strategy 且 Docker Engine 29 API 不兼容默认协商", "effect": "MySQL 测试在发现环境或 dummy info 时失败", "detectable": true, "controllable": true},
+    {"source": "并发提交或审批事件重复/乱序", "effect": "重号、双申请或旧轮次污染", "detectable": true, "controllable": true},
+    {"source": "其他分支占用 V82-V84 或稳定 ID", "effect": "迁移/种子冲突", "detectable": true, "controllable": false},
+    {"source": "既有数据超过逻辑 9999 或每逻辑物理历史 35", "effect": "内部编号无法无损回填", "detectable": true, "controllable": false},
+    {"source": "未来引用 provider 抛错或超时", "effect": "作废判断不可判定", "detectable": true, "controllable": true},
+    {"source": "原 checkout 用户未跟踪文件和并行开发", "effect": "误覆盖或范围污染", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "workflow lifecycle 异步投递与重试", "consequence": "工作流已批准但业务申请短时仍为 IN_REVIEW", "sampling_rule": "等待 receipt PROCESSED 后再对账业务发布"},
+    {"source": "Testcontainers MySQL 启动和全量 Flyway", "consequence": "单次测试约 1-3 分钟且日志噪声大", "sampling_rule": "等待 Maven 终态并读取 Surefire 汇总，不用中途日志判失败"},
+    {"source": "前端审批后重新加载业务与工作流", "consequence": "立即 DOM 采样可能观察旧状态", "sampling_rule": "等待两个请求完成和提交态解除后采样"}
+  ],
+  "assumptions": [
+    {"text": "workflow 公开 integration 契约支持固定 ROLE 流程和业务生命周期", "evidence": "已读取 WorkflowBusinessGateway、WorkflowLifecycleConsumer、WorkflowAssigneeResolver ROLE 路径和现有 release consumer", "falsifier": "聚焦编译或真实流程测试必须访问 workflow 内部或修改公共签名"},
+    {"text": "当前仓库没有必须参与的外部子系统引用 provider", "evidence": "现有 modules.yaml 与代码搜索只有 architecture 自身拥有逻辑/物理关系", "falsifier": "发现已落地业务模块直接持有 subsystem ID 且本需求必须保护"},
+    {"text": "候选迁移和稳定 ID 在基线提交未占用", "evidence": "V82-V84、803/8031-8033、role 110、workflow 900000000000030/31 精确搜索无冲突", "falsifier": "执行前同步或工作树搜索出现实际占用"},
+    {"text": "隔离工作树能保护原 checkout 的用户改动", "evidence": "当前 worktree 分支独立且原 checkout 未跟踪文件未出现于本工作树", "falsifier": "git status 显示非本需求文件或共享路径被其他进程修改"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "用 A1/A2/A4 实现并由 S1/S2/S7/S9 采样"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "用 A2/A3 控制写入口和批准发布"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "用 A1/A2/A4 控制级联模型、事务和表单"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "用 A1 控制策略、行锁和回收池"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "用 A1/A2/A3 控制唯一锁和 REPLACE"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "用 A2 控制状态机和引用 guard"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "用 A2/A4 控制 provider 和显式采用"},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "用 A2/A3/A4 控制服务端权限和 UI"},
+    {"requirement_id": "R9", "observable": "yes", "controllable": "yes", "action": "用 A3 控制流程轮次、receipt 和发布"},
+    {"requirement_id": "R10", "observable": "yes", "controllable": "yes", "action": "用 A4 控制页面并由 S6/S7 测量"},
+    {"requirement_id": "R11", "observable": "yes", "controllable": "yes", "action": "用 A1/A2/A3 控制迁移、兼容和模块边界"},
+    {"requirement_id": "R12", "observable": "yes", "controllable": "yes", "action": "用 A5/A6 维持验证闭环并进入 planning"}
+  ],
+  "model_status": "ready"
+}

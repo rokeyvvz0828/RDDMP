@@ -1,0 +1,84 @@
+{
+ "requirement_id": "REQ-20260830-056",
+ "control_prefix": "req-20260830-056-environment-setup-plan",
+ "executions": [
+  {
+   "task_id": "T1",
+   "status": "implemented",
+   "summary": "追加迁移 V106-V109：计划模板/模板版本/环节模板/任务模板/任务模板版本（V106）、搭建计划/目标快照/环节/任务/参与人/检查项（V107）、依赖/阻塞/取消建议/事件/工单关联/操作历史（V108）、菜单 814/815 与权限角色种子（V109）。因 812/813 与 V100-V105 已被网络批次占用而调整编号。",
+   "results": "空库验证：scratch 库从零迁移至 v109 成功（Flyway Successfully applied ... now at version v109）；既有库验证：主库 V105→V109 成功应用 4 个迁移（success=1）；菜单 814/815 与 8141/8142/8151/8152 权限种子确认存在；13 张 arch_plan_* 表确认创建。",
+   "commands": [
+    "mvn spring-boot:run (local profile, scratch DB)",
+    "SELECT version FROM flyway_schema_history ...",
+    "SHOW TABLES LIKE 'arch_plan%'"
+   ]
+  },
+  {
+   "task_id": "T2",
+   "status": "implemented",
+   "summary": "实现计划模板与任务模板草稿维护、发布版本（不可变快照、任务模板版本 diff 后递增）、版本历史、启用/停用、结构与检查项校验、模板操作历史。",
+   "results": "PlanTemplateServiceTest 7 条通过（含发布空环节/无任务模板拒绝、版本快照写入、并发行版本、检查项校验）。",
+   "commands": [
+    "mvn test -pl :ccb-architecture -am -Dtest=PlanTemplateServiceTest -Dsurefire.failIfNoSpecifiedTests=false"
+   ]
+  },
+  {
+   "task_id": "T3",
+   "status": "implemented",
+   "summary": "实现计划生成（已发布模板+环境+目标，按维度 NONE/按物理子系统/按部署单元展开任务、检查项与快照固化、责任人/参与人）、任务开始、检查项完成/重开/取消/恢复、取消建议、任务/环节/计划取消与恢复、状态与进度计算引擎（完成传播、全部豁免、存在豁免、重开传播、逾期标识、实际时间事件聚合）。",
+   "results": "PlanStatusCalculatorTest 9 条通过；真实 API 验证：创建计划生成 2 环节 2 任务（DEPLOYMENT_UNIT 与 PHYSICAL_SUBSYSTEM 维度）且检查项独立复制；开始→IN_PROGRESS+实际开始；完成全部检查项→任务/环节/计划 COMPLETED 且进度 100%；取消检查项→存在豁免聚合；计划取消/恢复往返正确。",
+   "commands": [
+    "curl 模板/计划/执行 API 全旅程",
+    "mvn test -pl :ccb-architecture -am -Dtest=PlanStatusCalculatorTest -Dsurefire.failIfNoSpecifiedTests=false"
+   ]
+  },
+  {
+   "task_id": "T4",
+   "status": "implemented",
+   "summary": "实现前置依赖（全量替换/移除/循环校验）、阻塞登记/修改/解除与聚合、计划/环节/任务计划时间维护与调整留痕、执行事件附原因更正（原事件保留）、任务-工单关联（资源申请环境校验、网络专项工单类型映射、加密机入池预留拒绝、未结束工单完成门禁）、工单创建回写钩子（资源申请与网络工单创建接口可选 planTaskId）、站内通知挂点（分派/阻塞/临期逾期扫描）。",
+   "results": "真实 API 验证：依赖建立后开始被拦截（“存在未完成的前置任务”）；阻塞登记→任务 BLOCKED+计划 hasBlocked=true；计划时间调整接口正常；dep 循环校验逻辑由 DFS 实现。",
+   "commands": [
+    "curl 依赖/阻塞/时间/事件 API"
+   ]
+  },
+  {
+   "task_id": "T5",
+   "status": "implemented",
+   "summary": "实现计划模板页（列表/新建/编辑/发布/启停/结构维护抽屉/任务模板与检查项编辑器/版本历史）、计划列表页（筛选/新建三步向导/进度与标识列/取消恢复）、计划详情页（汇总条、目标快照与差异提示、执行视图/按环节看板/时间视图/报告导出 Excel/操作历史、任务抽屉含检查项/依赖/阻塞/工单/时间/事件、取消建议处理、运行中调整入口）、planApi/planTypes、路由 3 条、xlsx 导出（复用 data-migration 同款库并补齐本地安装）。",
+   "results": "npm --prefix web run build 通过；SPA 路由 /architecture/plans、/architecture/plan-templates、/architecture/plans/:id 在 vite dev 返回 HTTP 200；xlsx 本地依赖安装（package.json 已存在该依赖，node_modules 缺失）。",
+   "commands": [
+    "npm --prefix web run build",
+    "curl http://localhost:5173/architecture/plans"
+   ]
+  },
+  {
+   "task_id": "T6-uad-guide",
+   "status": "implemented",
+   "summary": "UAT 反馈迭代：检查项增加“检查指标及内容”guide 字段（V110 迁移 + 模型/Store/服务/控制器/前端全链路：任务模板检查项编辑带指标、计划检查项展示列、新增检查项可填指标、报告导出含指标列）；演示模板按 UAT 检查表更新（资源下发保留；系统部署→环境部署：应用版本与参数部署[1.1-1.6，按物理子系统]、技术绿灯：技术绿灯检查[2.1-2.3，按物理子系统]、基础业务参数导入：业务参数导入检查[3.1-3.3，不展开]），发布 v2-v4，并修复 TaskTemplateView 缺 rowVersion 导致的编辑 409 与 guide 未透传问题。",
+   "results": "V110 迁移成功（主库 v110 success=1）；演示模板发布 v4；新演示计划 SP1788063830551999 生成 4 环节（资源下发/环境部署/技术绿灯/基础业务参数导入），21 个检查项 guide 全部非空；前端 build 通过。"
+  },
+  {
+   "task_id": "T7-flow-editor",
+   "status": "implemented",
+   "summary": "流程图编排：模板与计划均以流程图展示（参考 workflow definitions 的 VueFlow 模式）。后端：V111 迁移（环节时间字段与 3 张依赖表）、模板环节时间范围（相对偏移+持续天数）、环节模板依赖、任务模板依赖（同环节、维度兼容校验）、发布快照携带模板环节id与依赖、生成计划时推算环节起止并落库环节/任务依赖（任务依赖按目标对齐：同维度同目标映射、不展开全量）、状态引擎增加环节级前置（目标对齐语义：对应目标任务完成才解锁；取消任务视为豁免）。前端：模板结构维护新增“流程图”页签（节点=环节，拖拽连线建立依赖、点击连线移除、点击节点配置时间范围与任务模板依赖）、计划详情新增“流程图”页签（只读：环节+任务节点、两类依赖连线、状态标注）。",
+   "results": "API 实测：环节时间（0/2天→9-01~9-03、2/2→9-03~9-05、4/1→9-05~9-06、5/1→9-06~9-07）正确；环节依赖 3 条落库并返回；任务依赖目标对齐（移动渠道→移动渠道、员工门户→员工门户）正确；演示模板发布 v8、新演示计划 SP1788078178804260；npm build 通过。"
+  }
+ ],
+ "verification": {
+  "focused_tests": "PlanStatusCalculatorTest(9)+PlanTemplateServiceTest(7)+NetworkWorkOrderControllerTest(7)+EnvironmentResourceServiceTest(18)=41 通过，BUILD SUCCESS",
+  "module_full_suite": "首次全量 mvn test 302 例中 280 通过、22 错误全部为既有重复迁移版本（V84-V92）导致 Flyway 报错；临时排除重复文件后架构核心 MySQL 迁移测试（ArchitectureMigrationMySqlTest/ArchitectureSubsystemLifecycleMySqlTest/ArchitectureCatalogMigrationMySqlTest）通过；剩余 SubsystemChangeStore 等错误与该批测依赖 V80 collation 存量缺陷相关（V80 在 MySQL 8.4 默认排序规则下失败），均为未改动文件，属存量问题",
+  "frontend_build": "npm --prefix web run build ✓ built in 12.5s",
+  "flyway_check": "scripts/check-flyway-migrations.mjs 仅报存量 V84-V92 重复，本批次 V106-V109 无重复、无缺失",
+  "scope_check": "node scripts/check-codex-scope.mjs 通过（37 个变更文件均在 writable_paths 内）",
+  "governance_check": "check-all-governance.mjs 失败项均为历史其他批次账本缺失（REQ-20260813-030 等），本批次 REQ-20260830-056 无告警",
+  "runtime": "后端 8080 ACTUATOR UP、Flyway 迁移主库至 v109；前端 5173 路由 200",
+  "api_uat": "admin 登录→模板创建/发布→计划创建（维度生成/快照）→任务开始→检查项完成→状态进度传播 COMPLETED 100%→依赖拦截→阻塞聚合→检查项豁免→计划取消/恢复→列表/看板/时间视图/报告/事件/建议接口；均返回预期结果"
+ },
+ "known_limitations": [
+  "真实浏览器桌面/移动 UAT 未执行（本会话无浏览器工具）：需按角色（管理员/环境资源办理人员/普通用户）在桌面 1280+ 与 375/390/430 视口走完整旅程并检查控制台与溢出",
+  "存量 Flyway 重复版本（V84-V92）与 V80 collation 缺陷导致干净环境全量迁移/全量测试受阻，属历史批次问题，建议单独治理批次修复",
+  "跨模块工单状态门禁按当前状态枚举判断（资源申请终态 FULFILLED/DIFF_FULFILLED/REJECTED/CANCELLED；网络工单终态 COMPLETED/REJECTED/CANCELLED），枚举扩展需回归",
+  "事件更正仅支持更正 START/COMPLETE/REOPEN 原始事件；通知扫描 cron 默认每日 09:30",
+  "移动端详情页信息密度高的部分（时间视图/任务抽屉）样式已在 scoped CSS 适配 760px 以下，需浏览器复核"
+ ]
+}

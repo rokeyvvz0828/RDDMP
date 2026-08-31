@@ -1,0 +1,50 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/model/StandardModels.java",
+      "purpose": "规范文档/版本/命令/查询模型"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/persistence/StandardStore.java",
+      "purpose": "文档与版本快照 JDBC 存储（行版本乐观锁、发布事务）"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/service/ArchitectureStandardService.java",
+      "purpose": "类别校验、状态机、发布/下线/删除规则、附件绑定"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/web/ArchitectureStandardController.java",
+      "purpose": "HTTP 边界：categories/list/detail/versions/publish/offline/delete/attachments，权限与审计"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/integration/StandardAttachmentAccessPolicy.java",
+      "purpose": "architecture-standard 附件实体授权策略"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/pom.xml",
+      "purpose": "新增 ccb-attachment 依赖"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R7", "R8"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am compile",
+      "exit_code": 0,
+      "salient_output": "编译通过"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureStandardServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "10 个用例：类别校验、下线不可编辑、重复发布拒绝、仅草稿可删、404、版本历史等"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "模块边界",
+      "result": "architecture 新增 platform/attachment 依赖已在 modules.yaml 登记；com.ccb.attachment.model 登记为 attachment 公开包；本任务零新增边界违规"
+    }
+  ],
+  "notes": "附件读取/预览/下载只要求文档存在（服务端方法级权限兜底）；DELETE 仅 DRAFT/PUBLISHED。"
+}

@@ -1,0 +1,413 @@
+{
+ "requirement_id": "REQ-20260830-056",
+ "control_prefix": "req-20260830-056-environment-setup-plan",
+ "design_revision": 1,
+ "module": "business/architecture",
+ "product_design": {
+  "menus": [
+   {
+    "id": 814,
+    "parent": 800,
+    "name": "环境搭建计划",
+    "route": "/architecture/plans",
+    "component": "architecture/plans/index",
+    "permission": "architecture:plan:view",
+    "icon": "tickets",
+    "sort_no": 58,
+    "permissions": [
+     {
+      "id": 8141,
+      "action": "view",
+      "code": "architecture:plan:view"
+     },
+     {
+      "id": 8142,
+      "action": "manage",
+      "code": "architecture:plan:manage"
+     }
+    ]
+   },
+   {
+    "id": 815,
+    "parent": 800,
+    "name": "搭建计划模板",
+    "route": "/architecture/plan-templates",
+    "component": "architecture/plan-templates/index",
+    "permission": "architecture:plan-template:view",
+    "icon": "document",
+    "sort_no": 59,
+    "permissions": [
+     {
+      "id": 8151,
+      "action": "view",
+      "code": "architecture:plan-template:view"
+     },
+     {
+      "id": 8152,
+      "action": "manage",
+      "code": "architecture:plan-template:manage"
+     }
+    ]
+   }
+  ],
+  "role_grants": {
+   "super_admin_role_1": [
+    "814",
+    "8141",
+    "8142",
+    "815",
+    "8151",
+    "8152"
+   ],
+   "environment_resource_manager_role_114": [
+    "814",
+    "8141",
+    "8142",
+    "815",
+    "8151"
+   ]
+  },
+  "pages": [
+   {
+    "name": "PlanTemplateListPage",
+    "route": "architecture/plan-templates/index",
+    "layout": "列表(模板状态/关键字) + 新建/编辑抽屉(名称、说明) + 发布/停用/启用 + 版本历史抽屉"
+   },
+   {
+    "name": "PlanTemplateDetailPage",
+    "route": "architecture/plan-templates/detail",
+    "layout": "环节列表 + 每环节任务模板列表(名称、生成维度、检查项) + 任务模板编辑抽屉(名称、维度、检查项动态列表) + 版本历史查看"
+   },
+   {
+    "name": "PlanListPage",
+    "route": "architecture/plans/index",
+    "layout": "筛选(环境/状态/责任人/目标/存在阻塞/逾期/豁免/关键字) + 进度列 + 新建计划向导(环境→模板→目标→责任人/参与人/计划时间) + 取消/恢复 + 详情入口"
+   },
+   {
+    "name": "PlanDetailPage",
+    "route": "architecture/plans/detail",
+    "layout": "页头(名称/状态/进度/标识列 + 主操作) + 页签[执行视图|看板|时间视图|报告|操作历史]；执行视图=环节分组→任务卡片→检查项列表；任务抽屉(信息、检查项操作、依赖、阻塞、工单、时间、历史) + 目标快照区(差异提示) + 运行中调整入口"
+   }
+  ],
+  "mobile_layout": "列表页=业务卡片(身份区/事实区/操作区)；详情页=任务卡片+检查项纵向列表，操作按主/高频/更多菜单分层；看板=环节分组卡片；时间视图=按日时间轴局部滚动；表单抽屉近全宽单列",
+  "design_showcase_reuse": "列表/表格/抽屉/状态标签/空态复用 web/src/components/ui 与 delivery-showcase 模式；时间视图复用 DeliveryGantt 思路（自绘横向时间轴容器，移动端局部滚动）；不需要新增公共组件"
+ },
+ "domain_design": {
+  "entities": [
+   {
+    "table": "arch_plan_template (V106)",
+    "desc": "计划模板主记录",
+    "key_fields": [
+     "name",
+     "status(DRAFT/ACTIVE/INACTIVE)",
+     "latest_version_no"
+    ]
+   },
+   {
+    "table": "arch_plan_template_version",
+    "desc": "计划模板已发布版本快照（不可变）",
+    "key_fields": [
+     "template_id",
+     "version_no",
+     "content_json(环节+任务模板结构快照)",
+     "published_by/at"
+    ]
+   },
+   {
+    "table": "arch_plan_template_stage",
+    "desc": "环节模板（草稿结构，发布时快照进版本）",
+    "key_fields": [
+     "template_id",
+     "name",
+     "sort_no"
+    ]
+   },
+   {
+    "table": "arch_task_template",
+    "desc": "任务模板（草稿结构）",
+    "key_fields": [
+     "template_id",
+     "stage_id",
+     "name",
+     "dimension(NONE/PHYSICAL_SUBSYSTEM/DEPLOYMENT_UNIT)",
+     "check_items_json",
+     "status",
+     "latest_version_no"
+    ]
+   },
+   {
+    "table": "arch_task_template_version",
+    "desc": "任务模板已发布版本快照",
+    "key_fields": [
+     "task_template_id",
+     "version_no",
+     "name",
+     "dimension",
+     "check_items_json",
+     "published_by/at"
+    ]
+   },
+   {
+    "table": "arch_setup_plan",
+    "desc": "搭建计划",
+    "key_fields": [
+     "plan_no",
+     "name",
+     "environment_id",
+     "status(NOT_STARTED/IN_PROGRESS/COMPLETED/CANCELLED)",
+     "template_id",
+     "template_version_no",
+     "plan_owner_user_id",
+     "planned_start/end",
+     "actual_start/end(聚合值)",
+     "cancelled/cancel_reason/cancelled_by/at"
+    ]
+   },
+   {
+    "table": "arch_plan_target",
+    "desc": "计划目标快照",
+    "key_fields": [
+     "plan_id",
+     "target_type(PHYSICAL_SUBSYSTEM/DEPLOYMENT_UNIT)",
+     "target_id",
+     "target_no/name",
+     "target_snapshot_json",
+     "status(ACTIVE/REMOVED)",
+     "remove_reason/by/at"
+    ]
+   },
+   {
+    "table": "arch_plan_stage",
+    "desc": "环节",
+    "key_fields": [
+     "plan_id",
+     "stage_no",
+     "name",
+     "sort_no",
+     "owner_user_id",
+     "planned_start/end",
+     "actual_start/end",
+     "status(NOT_STARTED/IN_PROGRESS/COMPLETED/CANCELLED)",
+     "cancelled/cancel_reason/…"
+    ]
+   },
+   {
+    "table": "arch_plan_task",
+    "desc": "任务",
+    "key_fields": [
+     "plan_id",
+     "stage_id",
+     "task_no",
+     "name",
+     "target_type",
+     "target_id",
+     "target_snapshot_json",
+     "task_template_id/version_no",
+     "snapshot_json",
+     "owner_user_id",
+     "participants(子表)",
+     "status(NOT_STARTED/WAITING_PRECEDING/IN_PROGRESS/BLOCKED/COMPLETED/CANCELLED)",
+     "waived_all",
+     "planned_start/end",
+     "actual_start/end",
+     "cancelled/…"
+    ]
+   },
+   {
+    "table": "arch_plan_task_participant",
+    "desc": "任务参与人",
+    "key_fields": [
+     "task_id",
+     "user_id"
+    ]
+   },
+   {
+    "table": "arch_plan_check_item",
+    "desc": "检查项",
+    "key_fields": [
+     "task_id",
+     "check_no",
+     "name",
+     "sort_no",
+     "status(PENDING/COMPLETED/CANCELLED)",
+     "remark",
+     "completed_by/at",
+     "cancelled/…"
+    ]
+   },
+   {
+    "table": "arch_plan_task_dependency",
+    "desc": "前置依赖",
+    "key_fields": [
+     "task_id(后续)",
+     "predecessor_id(前置)",
+     "status(ACTIVE/REMOVED)",
+     "removed_by/at/reason"
+    ]
+   },
+   {
+    "table": "arch_plan_block",
+    "desc": "阻塞记录",
+    "key_fields": [
+     "task_id",
+     "description",
+     "impact",
+     "owner_user_id",
+     "expected_resolve_at",
+     "status(OPEN/RESOLVED)",
+     "resolved_by/at/note"
+    ]
+   },
+   {
+    "table": "arch_plan_check_item_cancel_suggestion",
+    "desc": "检查项取消建议",
+    "key_fields": [
+     "check_item_id",
+     "reason",
+     "submitter_user_id",
+     "status(PENDING/ACCEPTED/REJECTED)",
+     "handled_by/at/note"
+    ]
+   },
+   {
+    "table": "arch_plan_event",
+    "desc": "执行事件（实际时间事实源）",
+    "key_fields": [
+     "plan_id",
+     "object_type(PLAN/STAGE/TASK/CHECK_ITEM)",
+     "object_id",
+     "event_type(START/COMPLETE/REOPEN/CANCEL/RESTORE/TIME_CORRECT)",
+     "occurred_at",
+     "operator_user_id",
+     "reason",
+     "correct_of_event_id",
+     "before/after_json"
+    ]
+   },
+   {
+    "table": "arch_plan_work_order",
+    "desc": "任务-工单关联",
+    "key_fields": [
+     "plan_id",
+     "task_id",
+     "work_order_type(RESOURCE_REQUEST/NETWORK_CLB/NETWORK_DNS/NETWORK_CERT/CRYPTO_POOL保留)",
+     "work_order_id",
+     "source(CREATED_FROM_TASK/ATTACHED_LATER)",
+     "status(ACTIVE/REMOVED)",
+     "remove_reason/by/at"
+    ]
+   },
+   {
+    "table": "arch_setup_plan_activity",
+    "desc": "模板与计划操作历史总账",
+    "key_fields": [
+     "scope_type(TEMPLATE/PLAN)",
+     "scope_id",
+     "object_type",
+     "object_id",
+     "action",
+     "operator_user_id",
+     "reason",
+     "before_json/after_json"
+    ]
+   }
+  ],
+  "status_rules": {
+   "task_status_precedence": "CANCELLED > BLOCKED(存在未解除阻塞) > COMPLETED(全部未取消检查项完成且检查项数>0，或全部检查项被取消→waived_all) > WAITING_PRECEDING(任一前置任务未完成且未取消) > IN_PROGRESS(已开始) > NOT_STARTED",
+   "stage_status": "CANCELLED > 全部有效任务完成或全部任务被取消(COMPLETED+豁免标识) > 有任务已开始/进行中/阻塞(IN_PROGRESS) > NOT_STARTED；环节无任务时 NOT_STARTED 且不可完成（提示补充任务或取消环节）",
+   "plan_status": "CANCELLED(动作) > 全部未取消环节完成且非空(COMPLETED) > 有子项已开始(IN_PROGRESS) > NOT_STARTED；无未取消环节时不自动完成（提示由计划责任人取消计划）",
+   "progress": "任务/环节/计划进度=有效范围已完成检查项数/全部未取消检查项数（已取消环节及任务下的检查项整体退出）；全部检查项取消的任务进度=100%+全部豁免；不做人工覆盖",
+   "waived_flags": "task.waived_all=全部检查项被取消；存在豁免标识从任务向环节、计划聚合；已全部取消环节显示已完成（全部豁免）；全部环节均被取消的计划不得自动完成",
+   "overdue": "对象未完成且未取消且 now>planned_end 时置逾期；任务逾期向环节/计划聚合为“存在逾期”；取消后不计当前逾期（取消前逾期留历史），恢复后重判；计划时间调整后按新时间重算",
+   "actual_time": "任务实际开始=START 事件时间；实际完成=最近一次 COMPLETE（重开再完成后取最近）；实际完成后再重开则实际完成置空；环节/计划实际开始=首个有效子项实际开始，实际完成=最近完成事件聚合；TIME_CORRECT 事件附原因，被更正事件保留并标记，聚合取最新有效事件",
+   "completion": "完成不是动作：检查项通过 complete；任务/环节/计划完成状态在子项变化后重算；有效子项重开后上级立即退出已完成"
+  },
+  "business_rules": {
+   "plan_creation": "仅从已发布模板创建；同环境可多计划并存；保存模板版本、目标快照与结构快照；按维度生成：NONE=每任务模板每环节1个任务，PHYSICAL_SUBSYSTEM=每个已选物理子系统1个，DEPLOYMENT_UNIT=每个已选部署单元1个；检查项从任务模板快照复制",
+   "cancel_restore": "计划责任人可取消/恢复检查项、任务、环节、计划（附原因，留痕）；任务/环节取消后子项停用但保留；已完成任务必须先重开才能取消；计划恢复沿用快照与既有任务状态",
+   "suggestion": "任务责任人与参与人只能对检查项提交附原因取消建议（PENDING），计划责任人接受（同步取消检查项）或拒绝；建议不与审批流绑定",
+   "dependency": "依赖仅任务级；前后置同计划；前置完成后才允许开始；前置取消≠完成（后续保持等待并提示依赖已取消）；移除/改绑由计划责任人；建立时全路径校验循环",
+   "block": "阻塞记录独立于依赖；登记/解除留痕；解除后按实际进度重算状态；任务取消后阻塞记录保留但不再传播；任务恢复后未解除阻塞重新传播",
+   "work_order_gate": "任务存在状态非终态的关联资源申请（DRAFT/IN_REVIEW/RETURNED…）或网络专项工单（DRAFT/IN_REVIEW/RETURNED…）时不能完成任务；工单结束仅解除门禁；加密机入池类型仅预留",
+   "adjustment": "计划开始后计划责任人可附原因新增环节/任务/检查项/目标（新目标走计划自身模板快照生成）；移出目标=未完成任务自动取消+已完成保留；未执行错误内容可附原因删除并留痕",
+   "schedule": "计划/环节/任务计划时间可维护；计划开始后调整必须附原因并记录前后值；子项超出上级范围提示风险但不阻止",
+   "notification": "通过 SystemNotificationPublisher 发送：任务分派、检查项完成/重开（关键状态）、阻塞登记/解除、临期、逾期、关键状态变更；由 @Scheduled 每日扫描临期/逾期 + 业务动作触发；失败不影响业务（try/catch+日志）",
+   "entity_authz": "任务开始/检查项操作=任务责任人或参与人；取消/恢复/依赖/目标/计划时间/事件更正=对应层级责任人（计划、环节、任务）或超管；模板发布/停用=architecture:plan-template:manage"
+  },
+  "attachments": "检查项附件与说明复用平台附件能力（attachment 集成），实体授权继承检查项；工单附件沿用既有工单附件"
+ },
+ "api_design": {
+  "prefix": "/api/architecture",
+  "template_apis": [
+   "GET /plan-templates (分页/关键字/状态)",
+   "POST /plan-templates {name,description}",
+   "GET /plan-templates/{id} (含环节与任务模板草稿结构+已发布版本列表)",
+   "PUT /plan-templates/{id} {name,description}",
+   "POST /plan-templates/{id}/stages {name,sortNo?}",
+   "PUT /plan-templates/stages/{id} {name,sortNo}",
+   "DELETE /plan-templates/stages/{id}",
+   "POST /plan-templates/{id}/task-templates {stageId,name,dimension,checkItems[]}",
+   "PUT /task-templates/{id} {name,dimension,checkItems[]}",
+   "DELETE /task-templates/{id}",
+   "POST /plan-templates/{id}/publish {note}",
+   "POST /plan-templates/{id}/status {status:ACTIVE|INACTIVE}",
+   "GET /plan-templates/{id}/versions"
+  ],
+  "plan_apis": [
+   "GET /plans (筛选 environmentId/status/ownerUserId/targetType-targetId/keyword/blocked/overdue/waived + 分页 + 汇总字段)",
+   "POST /plans {environmentId,templateId,name?,targetPhysicalSubsystemIds[],targetDeploymentUnitIds[],planOwnerUserId,participantUserIds?,plannedStart,plannedEnd} → 生成",
+   "GET /plans/{id} (聚合详情：进度、标识、目标快照+差异、环节→任务→检查项、依赖、阻塞、工单、历史摘要)",
+   "POST /plans/{id}/cancel {reason} / POST /plans/{id}/restore {reason}",
+   "POST /plans/{id}/targets {targetType,targetIds[],reason} / POST /plans/{id}/targets/{targetId}/remove {reason}",
+   "POST /plans/{id}/stages {name,ownerUserId,plannedStart,plannedEnd}",
+   "POST /plans/{id}/tasks {stageId,name,targetId,ownerUserId,participantUserIds[],checkItemNames[],plannedStart,plannedEnd}",
+   "POST /stages/{id}/cancel|restore {reason}；POST /tasks/{id}/cancel|restore {reason}；DELETE /tasks/{id} {reason}；DELETE /check-items/{id} {reason}",
+   "POST /tasks/{id}/start；POST /check-items/{id}/complete {remark}；POST /check-items/{id}/reopen {reason}；POST /check-items/{id}/cancel {reason}；POST /check-items/{id}/restore {reason}；POST /check-items/{id}/attach {attachmentIds}",
+   "POST /check-items/{id}/suggest-cancel {reason}；GET /plans/{id}/suggestions；POST /suggestions/{id}/accept|reject {note}",
+   "POST /tasks/{id}/dependencies {predecessorTaskIds[]}(全量替换，含移除/改绑) ；DELETE /tasks/{id}/dependencies/{predecessorId}",
+   "POST /tasks/{id}/blocks {description,impact,ownerUserId,expectedResolveAt}；POST /blocks/{id}/resolve {note}；PUT /blocks/{id}",
+   "PUT /plans/{id}/schedule {plannedStart,plannedEnd,reason?}；PUT /stages/{id}/schedule；PUT /tasks/{id}/schedule；POST /events/{id}/correct {newEventTime,reason}",
+   "POST /tasks/{id}/work-orders {type,workOrderIds[]}；DELETE /work-orders/{id} {reason}；GET /plans/{id}/work-orders",
+   "GET /plans/{id}/dashboard (按环节分组看板+标识)；GET /plans/{id}/timeline (时间视图数据)；GET /plans/{id}/report (报告全量数据，前端经 xlsx 导出)",
+   "GET /plan-options/environments|templates|targets (创建向导级联选项)"
+  ],
+  "work_order_creation_hook": "资源申请/网络专项工单创建接口接受可选 planTaskId：创建成功即写 arch_plan_work_order(source=CREATED_FROM_TASK)"
+ },
+ "verification_design": {
+  "unit_tests": [
+   "PlanTemplateServiceTest",
+   "PlanGenerationServiceTest",
+   "PlanExecutionServiceTest(状态/进度/豁免/重开)",
+   "PlanDependencyServiceTest(循环/等待/取消前置)",
+   "PlanBlockServiceTest",
+   "PlanTimeServiceTest(事件聚合/更正/逾期)",
+   "PlanWorkOrderServiceTest(门禁)",
+   "PlanAdjustmentServiceTest(目标增删/删除限制)"
+  ],
+  "api_scope_tests": "聚焦需覆盖 create/cancel/restore、权限403、非责任人拒绝、并发 row_version",
+  "browser_uat": [
+   "模板维护与发布旅程",
+   "计划创建→执行→取消/恢复旅程",
+   "依赖/阻塞/时间/逾期查看",
+   "调整与工单关联",
+   "看板/时间视图/报告",
+   "移动视口375/390/430"
+  ]
+ },
+ "risks": [
+  "状态与进度传播规则多，必须用确定性单元测试锁定各分支",
+  "跨模块工单状态读取只读公开契约，状态枚举变化需回归",
+  "模板结构与生成快照一致性：发布版本不可变，生成必须读已发布版本快照",
+  "大量新表与索引需空库+既有库迁移验证",
+  "前端信息密度高的详情页与甘特图需按 design-h5 验收移动端"
+ ],
+ "non_goals": [
+  "验收审批流",
+  "加密机入池工单实现",
+  "关键路径",
+  "邮件通知",
+  "CMDB 对接",
+  "模板-环境类型绑定",
+  "任务外部系统自动回写"
+ ]
+}

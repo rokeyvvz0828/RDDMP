@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-048-project-configurable-stages",
+  "phase": "observing",
+  "tasks": [
+    {"id": "T1", "goal": "Implement V83 and backend project stage contract", "writes": ["V83__project_configurable_stages.sql", "ProjectService.java", "ProjectController.java", "ProjectServiceTest.java"], "acceptance": ["default stages", "CRUD", "lock with master plans", "project scope"]},
+    {"id": "T2", "goal": "Implement project settings stage maintenance and timeline source", "writes": ["project.ts", "project.ts types", "ProjectView.vue", "styles.css"], "acceptance": ["add/edit/reorder/delete", "locked UI", "timeline uses plan_stages"]},
+    {"id": "T3", "goal": "Run automated and local verification", "writes": ["execution-T1.json", "observation-T1.json", "state.json", "handoff.json"], "acceptance": ["tests/build/migration/diff", "local API check or recorded blocker"]}
+  ],
+  "stop_conditions": ["scope violation", "migration validation failure", "backend compilation failure", "authorization or tenant check failure"],
+  "rollback": "Revert application changes by task boundary; retain V83 data and migration history."
+}

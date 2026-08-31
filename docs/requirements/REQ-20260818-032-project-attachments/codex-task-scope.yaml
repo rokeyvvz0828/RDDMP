@@ -29,7 +29,8 @@
       "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
       "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
       "server/src/platform/boot/pom.xml",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V45__persistent_project_attachments.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V61__persistent_project_attachments.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V82__project_attachment_categories.sql",
       "web/src/api/attachments.ts",
       "web/src/api/project.ts",
       "web/src/types/attachments.ts",
@@ -61,8 +62,8 @@
   },
   "database": {
     "changed": true,
-    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V45__persistent_project_attachments.sql"],
-    "compatibility_and_rollback": "Append-only V45; retain metadata on application rollback and disable new entry when needed."
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V82__project_attachment_categories.sql"],
+    "compatibility_and_rollback": "Append-only V82 after existing V61; retain attachment metadata and categories on application rollback and disable new entry when needed."
   },
   "external_access": {"changed": true, "systems": ["local MinIO", "local kkFileView"], "data_classification": "internal-test-only"},
   "required_tests": [
@@ -78,6 +79,6 @@
     "control_prefix": "req-20260818-032-project-attachments",
     "control_justification": "Cross-module public attachment capability with MinIO, kkFileView, permissions, migration and project UI integration.",
     "acceptance_evidence": [".ai-control/requirements/req-20260818-032-project-attachments/execution-T1.json", ".ai-control/requirements/req-20260818-032-project-attachments/observation-T1.json", ".ai-control/requirements/req-20260818-032-project-attachments/convergence.json"],
-    "rollback": "Restore only scoped code and disable the attachment entry; retain V45 metadata and storage evidence."
+    "rollback": "Restore only scoped code and disable the attachment entry; retain V61/V82 metadata and storage evidence."
   }
 }

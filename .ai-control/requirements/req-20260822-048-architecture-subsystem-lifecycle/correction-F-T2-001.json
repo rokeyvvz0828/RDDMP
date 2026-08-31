@@ -1,0 +1,18 @@
+{
+  "feedback_id": "F-T2-001",
+  "task_id": "T2",
+  "requirement_id": "R2",
+  "severity": "P1",
+  "decision": "accept",
+  "expected": "草稿更新必须在同一事务中持久化申请原因、业务草稿和历史，并由行版本 CAS 防止覆盖",
+  "observed": "初始 update 仅替换业务草稿并返回新原因，申请主表 reason 未更新",
+  "causal_hypothesis": "工单主记录 Store 缺少原因 CAS 写入口",
+  "correction": "新增 compareAndSetApplicationReason，并在草稿写入前按状态和行版本更新原因",
+  "verification": [
+    "SubsystemChangeStoreMySqlTest 6/6",
+    "SubsystemChangeServiceTest 纠正后聚焦通过",
+    "完整 architecture 142/142"
+  ],
+  "status": "verified",
+  "resolved_at": "2026-08-23T00:14:29Z"
+}

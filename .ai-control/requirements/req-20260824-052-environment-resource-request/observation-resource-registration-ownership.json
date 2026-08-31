@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T11:56:00+08:00",
+  "phase": "observing",
+  "observations": [
+    {
+      "sensor": "frontend-build",
+      "command": "npm --prefix web run build",
+      "result": "pass",
+      "evidence": "vue-tsc --noEmit 与 vite build 成功；ResourceRequestPage 生产包生成，Vite 仅报告既有第三方 PURE 注释和大 chunk 警告。"
+    },
+    {
+      "sensor": "focused-backend-tests",
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=DeploymentUnitServiceTest,EnvironmentResourceServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "pass",
+      "evidence": "DeploymentUnitServiceTest 14 tests 与 EnvironmentResourceServiceTest 7 tests 均 0 failures、0 errors。"
+    },
+    {
+      "sensor": "flyway-static",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "pass",
+      "evidence": "Flyway migration check passed for 89 migration(s) and 1 approved callback(s)."
+    },
+    {
+      "sensor": "boot-package",
+      "command": "mvn -pl :ccb-boot -am \"-Dmaven.test.skip=true\" package",
+      "result": "pass",
+      "evidence": "14 个 reactor 模块 BUILD SUCCESS；生成最新 server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar。"
+    },
+    {
+      "sensor": "flyway-runtime-v95",
+      "command": "停止旧 8080 Boot 进程后启动最新 ccb-boot local profile",
+      "result": "pass",
+      "evidence": "新 Boot PID 36916 启动成功；日志显示 Migrating schema ccb_platform to version 95 - refine resource request registration ownership，并 Successfully applied 1 migration，now at version v95。"
+    },
+    {
+      "sensor": "local-db-v95-check",
+      "command": "docker exec ccb-platform-mysql mysql --batch SELECT flyway/dict/column checks",
+      "result": "pass",
+      "evidence": "flyway_schema_history 最新版本 95 success=1；ARCH_SERVER_TYPE 启用选项 3 个，ARCH_DISASTER_RECOVERY_MODE 启用选项 4 个；source_task_id、confirmer_name、confirmer_contact 旧列计数 0；contact_user_id、physical disaster_recovery_mode、deployment_unit_type 新归属列计数 3。"
+    },
+    {
+      "sensor": "runtime-health",
+      "command": "Invoke-RestMethod http://127.0.0.1:8080/actuator/health",
+      "result": "pass",
+      "evidence": "返回 {\"status\":\"UP\"}；前端 Vite PID 41620 仍监听 127.0.0.1:5173。"
+    },
+    {
+      "sensor": "resource-option-api-runtime",
+      "command": "用临时 admin access token 调用 ARCH_SERVER_TYPE、ARCH_DISASTER_RECOVERY_MODE、物理子系统选项和资源申请部署单元选项接口",
+      "result": "pass",
+      "evidence": "服务器类型返回 3 项，灾备模式返回 4 项；物理子系统选项包含 businessContinuityLevel 与 disasterRecoveryMode；物理子系统 910000000003101 下部署单元选项返回 1 项，包含 relatedDeploymentUnitName、deploymentUnitType、description，示例 deploymentUnitType=AP。"
+    },
+    {
+      "sensor": "diff-whitespace",
+      "command": "git diff --check",
+      "result": "pass-with-line-ending-warnings",
+      "evidence": "未报告空白错误；仅输出 Git 对若干工作区文件的 LF/CRLF 提示。"
+    },
+    {
+      "sensor": "stale-field-scan",
+      "command": "rg -n \"sourceTaskId|source_task_id|confirmerName|confirmerContact|确认人|联系方式\" server/src/modules/architecture web/src/modules/architecture docs/requirements/REQ-20260824-052-environment-resource-request docs/integration/architecture-module-contract.md",
+      "result": "pass-with-document-history-mentions",
+      "evidence": "源代码和前端无旧字段命中；需求/范围文档仅在 V95 变更说明中保留“移除来源任务号/明细确认人/最终确认人与联系方式”的历史文字。"
+    },
+    {
+      "sensor": "architecture-module-full-test",
+      "command": "mvn -pl :ccb-architecture -am test",
+      "result": "blocked",
+      "evidence": "238 tests run, 0 failures, 13 errors；错误均为 Testcontainers 无法找到有效 Docker 环境或前一次 Docker 探测失败，受影响业务单测已单独通过。"
+    },
+    {
+      "sensor": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "result": "blocked",
+      "evidence": "脚本在读取 diff 前因当前分支 dev-ivanh 不满足 <type>/REQ-YYYYMMDD-NNN-short-name 命名门禁退出。"
+    },
+    {
+      "sensor": "browser-uat",
+      "command": "未执行",
+      "result": "not-run",
+      "evidence": "本轮完成前端构建、运行时健康与数据库迁移验证；未做真实浏览器桌面/移动点击验收。"
+    }
+  ],
+  "residual_risks": [
+    "真实浏览器桌面/移动 UAT 仍需人工或可用浏览器控制工具确认资源申请新建/编辑/详情的实际交互。",
+    "完整架构模块 MySQL 集成测试需本地 Testcontainers Docker 探测恢复后重跑。",
+    "scope 脚本需在符合门禁命名的分支上重跑。"
+  ],
+  "conclusion": "V95 字段归属纠偏已通过聚焦后端测试、前端构建、Flyway 静态检查、本地库实际迁移和运行健康检查；外部环境门禁与浏览器 UAT 残余风险已分级记录。"
+}

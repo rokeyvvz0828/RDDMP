@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260824-052-environment-resource-request",
+  "requirement_id": "REQ-20260824-052",
+  "recorded_at": "2026-08-25T08:51:48+08:00",
+  "incident": {
+    "symptom": "页面 /architecture/environments 显示“具体环境加载失败”。",
+    "cause": "本地 8080 后端仍运行 2026-08-24 17:02 生成的旧 ccb-boot JAR；该可执行包未嵌入新增的 EnvironmentResourceController、EnvironmentResourceService 和 EnvironmentResourceStore。数据库已迁移到 V92，前端已加载新页面，但后端接口仍为旧包行为，导致 environment-types 与 environments 接口返回 500。",
+    "scope": "本地开发运行态恢复；未修改业务源码或数据库结构。"
+  },
+  "actions": [
+    {
+      "kind": "diagnosis",
+      "command": "curl with temporary local JWT token against /api/auth/me, /api/architecture/environment-types, /api/architecture/environments, /api/architecture/logical-subsystems",
+      "result": "failed-before-restart",
+      "evidence": "管理员登录态和 architecture:environment 权限可用；旧逻辑子系统接口 200，新 environment-types 与 environments 接口 500。"
+    },
+    {
+      "kind": "package",
+      "command": "mvn -pl :ccb-boot -am clean '-Dmaven.test.skip=true' package",
+      "result": "passed",
+      "evidence": "首次 clean 被旧 Java 进程占用 JAR 阻断；停止旧 8080 进程后重新 clean package 成功。新 ccb-boot JAR 时间为 2026-08-25 08:44:46，嵌套 ccb-architecture JAR 已包含 EnvironmentResourceController、EnvironmentResourceService 和 EnvironmentResourceStore。"
+    },
+    {
+      "kind": "runtime",
+      "command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local --ccb.mock-data.enabled=false",
+      "result": "running",
+      "evidence": "后端进程 PID 8496 监听 8080；启动日志显示 Flyway 当前版本 V92 且 schema up to date。"
+    },
+    {
+      "kind": "api-regression",
+      "command": "curl through 8080 and Vite proxy 5173 for /api/architecture/environment-types and /api/architecture/environments",
+      "result": "passed",
+      "evidence": "8080 /actuator/health 返回 200 UP；8080 和 5173 代理下 environment-types 与 environments 均返回 code=0、HTTP 200。"
+    }
+  ],
+  "warnings": [
+    "本次以临时本地 JWT 访问接口，只用于运行回归，未打印 token 或 JWT_SECRET。",
+    "未执行真实浏览器点击验收；依据为后端健康和 Vite 代理接口 200。用户浏览器刷新后应从错误态恢复为空状态或列表状态。"
+  ],
+  "conclusion": "截图中的加载失败已定位为旧后端运行包问题，并已通过重打包和重启本地后端恢复。"
+}

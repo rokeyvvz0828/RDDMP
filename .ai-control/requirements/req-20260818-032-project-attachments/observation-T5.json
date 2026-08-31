@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "task_id": "T5",
+  "observer": "same-context-independent-recheck",
+  "result": "automated_checks_passed_runtime_pending",
+  "measurements": [
+    "JDK 23 下目标 Maven reactor 共 44 个测试通过，含项目附件分类查询、新建和改分类权限调用测试",
+    "JDK 25 下原始测试命令因 Byte Buddy 1.15.11 不支持 Java 25 而失败，未归因于本次代码；使用已安装 JDK 23 重跑通过",
+    "Vue 类型检查和生产构建通过，构建仅保留既有大 chunk 警告",
+    "Flyway migration check 通过，V82 为追加迁移且未修改 V61",
+    "模块边界检查确认 attachment 公开模型和 system 依赖登记通过；剩余 4 项为既有 requirement/workflow 非公开包问题",
+    "git diff --check 通过"
+  ],
+  "contract_observation": [
+    "分类 ID 由服务端按 tenant_id、business_type、business_id 校验，跨项目或跨租户分类不能绑定",
+    "category_id 为空时列表和详情返回未分类展示语义，前端也保留未分类回退",
+    "项目服务沿用既有项目读取/更新权限，前端显隐不替代服务端校验",
+    "前端未接收或提交对象存储键，分类修改失败会重新读取附件列表"
+  ],
+  "feedback": [
+    "需在具备登录态、MinIO 和 kkFileView 的本地环境完成新建分类、分类上传、刷新持久化、附件改分类、未分类回退和非成员拒绝的真实浏览器验收",
+    "node scripts/check-all-governance.mjs 仍受历史任务账本和 control-engineering 插件不可用影响，本次未修改无关账本"
+  ]
+}

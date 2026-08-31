@@ -1,0 +1,46 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/requirements/REQ-20260823-050-architecture-standards-decisions/requirement.md",
+      "purpose": "ready 需求：架构规范与架构决策，覆盖 User Stories 120-131 与全局 132-137"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260823-050-architecture-standards-decisions/codex-task-scope.yaml",
+      "purpose": "任务范围：writable/read_only/forbidden 路径、公共能力变更、迁移、测试与回退"
+    },
+    {
+      "path_or_resource": "docs/engineering-control/designs/2026-08-23-architecture-standards-decisions-design.md",
+      "purpose": "设计修订 1：规范子域与决策子域方案、状态机、数据模型与测试接缝"
+    },
+    {
+      "path_or_resource": "docs/engineering-control/plans/2026-08-23-architecture-standards-decisions-implementation-plan.md",
+      "purpose": "实施计划修订 1：T1-T6 任务包、采样点与回滚"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/",
+      "purpose": "baseline/model/control-plan/state 账本"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"],
+  "commands": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed."
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260823-050-architecture-standards-decisions/codex-task-scope.yaml --base 1f61cb8 --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "Codex scope check passed for REQ-20260823-050; 37 changed file(s)."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "worktree 隔离基线",
+      "result": "基于 1f61cb8（048 收敛合并）创建 feat/REQ-20260823-050-architecture-standards-decisions，主检出未受产品改动污染（误改的 api.ts/types.ts/modules.yaml 已恢复）"
+    }
+  ],
+  "notes": "外部票据 13 的 Wayfinder 门禁由用户 2026-08-23 直接开工指令覆盖；公共能力变更（architecture 新增 platform/attachment 依赖与 com.ccb.attachment.model 公开登记）在 scope 中登记为已批准。"
+}

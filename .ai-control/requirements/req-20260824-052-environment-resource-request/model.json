@@ -1,0 +1,83 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "business/architecture 后端模型、持久化、服务、控制器",
+      "V91-V94 Flyway 迁移与菜单权限种子",
+      "web/src/modules/architecture 具体环境和资源申请页面",
+      "architecture.resource-request 工作流集成消费者"
+    ],
+    "environment": [
+      "MySQL 8.4/Flyway",
+      "platform/security RBAC",
+      "platform/system 系统字典、操作审计和用户引用",
+      "platform/workflow 公开网关与生命周期事件",
+      "现有物理子系统与部署单元数据"
+    ]
+  },
+  "state_variables": [
+    {"name": "environment_status", "owner": "arch_environment", "valid_values": ["ACTIVE", "INACTIVE"]},
+    {"name": "environment_type_code", "owner": "sys_config under ARCH_ENVIRONMENT_TYPE", "valid_values": ["active dictionary config_key"]},
+    {"name": "resource_request_status", "owner": "arch_resource_request", "valid_values": ["DRAFT", "IN_REVIEW", "RETURNED", "APPROVED", "REJECTED", "CANCELLED"]},
+    {"name": "workflow_round_status", "owner": "arch_resource_request_workflow_round", "valid_values": ["PENDING", "STARTED", "RETURNED", "APPROVED", "REJECTED", "TERMINATED", "IGNORED"]},
+    {"name": "deployment_unit_status", "owner": "arch_deployment_unit", "valid_values": ["ACTIVE", "INACTIVE", "VOIDED"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "系统字典环境类型和具体环境维护命令", "transitions": ["Controller 权限", "SystemReferenceQuery 读取启用字典项", "Service 校验", "Store 持久化/删除引用检查", "审计"], "outputs": ["字典选项、环境记录、409 或 403"]},
+    {"requirement_id": "R2", "input": "具体环境详情查询", "transitions": ["读取环境", "聚合非取消/拒绝资源申请明细", "实际态返回空态说明"], "outputs": ["资源分区 DTO"]},
+    {"requirement_id": "R3", "input": "资源申请创建/更新命令", "transitions": ["固定物理和环境", "校验部署单元归属和状态", "校验登记表字段和资源容量", "保存主表和明细"], "outputs": ["草稿申请、登记表明细和历史"]},
+    {"requirement_id": "R4", "input": "submit/cancel 或工作流生命周期事件", "transitions": ["CAS 状态", "写入轮次", "调用工作流网关", "消费事件", "写历史和回执"], "outputs": ["IN_REVIEW/RETURNED/APPROVED/REJECTED/CANCELLED"]},
+    {"requirement_id": "R5", "input": "越权或失效实体请求", "transitions": ["PreAuthorize", "AuthUser 租户注入", "实体状态校验", "异常映射"], "outputs": ["403/400/409"]},
+    {"requirement_id": "R6", "input": "浏览器访问架构环境/资源申请路由", "transitions": ["路由加载", "API 请求", "表格/移动卡片/表单状态渲染"], "outputs": ["可用页面或明确无权限/失败状态"]}
+  ],
+  "interfaces": [
+    {"name": "architecture_resource_request_api", "producers": ["EnvironmentResourceController", "ResourceRequestController"], "consumers": ["web architecture module"], "invariant": "不暴露 tenantId，统一 ApiResponse"},
+    {"name": "environment_type_dictionary", "producers": ["platform/system SystemReferenceQuery"], "consumers": ["EnvironmentResourceService"], "invariant": "业务模块只读取 ARCH_ENVIRONMENT_TYPE 启用项，不直接写 sys_config"},
+    {"name": "workflow_business_context", "producers": ["ResourceRequestSubmissionService"], "consumers": ["platform/workflow"], "invariant": "module=architecture, businessType=architecture_resource_request, digest 64 位"},
+    {"name": "deployment_unit_reference", "producers": ["arch_deployment_unit"], "consumers": ["ResourceRequestService"], "invariant": "新申请只接受 ACTIVE 且归属当前物理子系统的部署单元"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1 环境维护", "method": "EnvironmentResourceServiceTest 与删除引用场景", "blind_spots": ["真实浏览器菜单授权"], "independence": "服务层直接观察状态与异常"},
+    {"id": "S2", "target": "R2 资源分区", "method": "环境详情 DTO 断言和页面渲染", "blind_spots": ["04 实际资源接入"], "independence": "DTO 与页面异质证据"},
+    {"id": "S3", "target": "R3 资源申请登记表明细", "method": "Service 测试校验归属、重复明细、零节点数据库存储和数值边界", "blind_spots": ["真实数据库约束边界"], "independence": "业务规则断言"},
+    {"id": "S4", "target": "R4 工作流", "method": "SubmissionService 和 LifecycleConsumer 测试", "blind_spots": ["真实 Flowable 发布状态"], "independence": "网关 mock 与事件消费"},
+    {"id": "S5", "target": "R5 权限与服务端校验", "method": "Controller/Service 403/409/400 断言和代码审计", "blind_spots": ["全量角色矩阵"], "independence": "权限注解和服务校验"},
+    {"id": "S6", "target": "R6 前端", "method": "npm build 与浏览器视口 UAT", "blind_spots": ["无法启动本地服务时的真实交互"], "independence": "构建器和浏览器"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "数据库结构与种子", "action": "追加 V91/V92/V93/V94 迁移", "authority": "REQ-20260824-052 writable scope", "impact_radius": "arch_ 表、sys_dict_type/sys_config、sys_menu/sys_role/sys_permission、wf_definition/version", "rollback": "应用回退并以后续补偿迁移隐藏入口"},
+    {"id": "A2", "target": "后端业务行为", "action": "新增 environment/resource request 包、服务、控制器和测试", "authority": "REQ-20260824-052 writable scope", "impact_radius": "business/architecture", "rollback": "还原新增文件和引用"},
+    {"id": "A3", "target": "前端页面", "action": "新增 API、类型、路由、页面和局部样式", "authority": "REQ-20260824-052 writable scope", "impact_radius": "web architecture module", "rollback": "还原新增页面和路由"},
+    {"id": "A4", "target": "模块边界说明", "action": "更新 modules/MODULES/architecture AGENTS 摘要", "authority": "REQ-20260824-052 public capability change", "impact_radius": "治理说明", "rollback": "恢复说明文本"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S6"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S4"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S5"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S6"], "observable": "partial"}
+  ],
+  "disturbances": [
+    {"source": "Docker/Testcontainers 不可用", "effect": "MySQL 集成验收无法运行", "detectable": true, "controllable": false},
+    {"source": "当前工作树已有无关未跟踪文件", "effect": "范围检查可能包含非本任务改动", "detectable": true, "controllable": true},
+    {"source": "固定工作流草稿未发布", "effect": "真实提交可能被工作流网关拒绝", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "工作流生命周期事件异步回调", "consequence": "提交后状态不会同步进入批准/退回", "sampling_rule": "通过 LifecycleConsumer 单独采样事件"},
+    {"source": "前端动态菜单需重新登录或刷新权限", "consequence": "菜单可见性可能滞后", "sampling_rule": "直接路由与菜单刷新分别验证"}
+  ],
+  "assumptions": [
+    {"text": "V91/V92 是原始实现迁移，V93 用于纠正环境类型归属到系统字典，V94 用于按现有登记表扩展资源申请明细。", "evidence": "用户于 2026-08-25 明确环境类型放到字典里维护，并要求按现有登记表重写资源申请", "falsifier": "实施期间出现新的 V91/V92/V93/V94"},
+    {"text": "现有网络专项工单模式可复用于资源申请工作流。", "evidence": "REQ-20260823-051 已收敛并有服务/消费者测试", "falsifier": "工作流契约差异导致无法复用"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R6", "observable": "partial", "controllable": "yes", "action": "先用构建和静态视口实现，运行 UAT 视本地服务条件执行"}
+  ],
+  "model_status": "ready"
+}

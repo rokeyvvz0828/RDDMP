@@ -1,0 +1,253 @@
+{
+  "baseline_revision": "revision-1",
+  "requirement_results": [
+    {
+      "id": "AC1",
+      "result": "pass",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "evidence": [
+        "自动部署预览 API、Mock Provider、前端带出和确认下发 payload 已编译通过",
+        "Mock Provider 按环境/部署单元已有实例数延续主机名序号并随机生成私网 IP",
+        "Maven 聚焦测试退出码 0"
+      ],
+      "limitations": [
+        "真实自动部署平台未对接"
+      ]
+    },
+    {
+      "id": "AC2",
+      "result": "pass",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "evidence": [
+        "服务端实现差异检测和差异原因校验，实例保留 source_request_id/source_item_id",
+        "确认下发后，申请/实际汇总值一致流转为 FULFILLED，存在差异流转为 DIFF_FULFILLED，并写入资源工单历史",
+        "Maven 聚焦测试退出码 0"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "AC3",
+      "result": "pass",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "evidence": [
+        "服务端按工单办理生成实例并校验部署单元归属",
+        "服务层下发前查询同环境 ACTIVE 实例并拒绝机器名或 IP 重复"
+      ],
+      "limitations": [
+        "当前未追加数据库级并发唯一约束；如需补强应新建后续迁移"
+      ]
+    },
+    {
+      "id": "AC4",
+      "result": "pass",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "evidence": [
+        "实例创建保存 deploymentUnitVersionId/deploymentUnitVersionNo/latestDeploymentUnitVersionNo",
+        "新增版本快照测试通过"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "AC5",
+      "result": "pass",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "evidence": [
+        "灾备创建校验主备实例 ACTIVE 且同部署单元，支持跨环境实例关系",
+        "前端详情抽屉支持创建、展示和解除灾备关系"
+      ],
+      "limitations": [
+        "未做浏览器点击 UAT"
+      ]
+    },
+    {
+      "id": "AC6",
+      "result": "pass",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "evidence": [
+        "下线接口记录下线原因、操作人、时间并保留历史",
+        "前端下线弹窗加载关联灾备关系并提示风险"
+      ],
+      "limitations": [
+        "未做浏览器点击 UAT"
+      ]
+    },
+    {
+      "id": "AC7",
+      "result": "pass",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "evidence": [
+        "Environment 实际态资源从 ACTIVE 环境部署实例动态聚合",
+        "前端环境页展示实际分配资源"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "AC8",
+      "result": "pass",
+      "task_ids": [
+        "T4"
+      ],
+      "evidence": [
+        "development-entry、Maven 聚焦测试、npm build、Flyway 静态检查、git diff --check 均退出码 0",
+        "本地后端 8080 新进程健康检查 UP，启动日志显示 Flyway 迁移到 v99；前端 5173 资源申请页和实例页返回 200",
+        "scope 检查被 04 外既有无关未跟踪文件阻塞"
+      ],
+      "limitations": [
+        "未执行真实 MySQL 空库迁移",
+        "未执行浏览器 UAT",
+        "全仓治理检查与带 working-tree 的 scope gate 受 04 外既有历史账本/未跟踪文件影响，按当前提交范围另行复核"
+      ]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": [
+        "V97-V99 追加迁移，Flyway 静态检查通过，本地既有库启动迁移到 V99"
+      ]
+    },
+    {
+      "id": "T2",
+      "status": "verified",
+      "evidence": [
+        "后端聚焦测试通过，编译通过"
+      ]
+    },
+    {
+      "id": "T3",
+      "status": "verified",
+      "evidence": [
+        "前端生产构建通过"
+      ]
+    },
+    {
+      "id": "T4",
+      "status": "verified_with_residual_risk",
+      "evidence": [
+        "scope 工作区检查因 04 外无关未跟踪文件失败；提交范围复核用于关闭当前需求"
+      ]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {
+      "P2": 0,
+      "P3": 0
+    }
+  },
+  "sample_trend": [
+    {
+      "sample_id": "S-20260826-01",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0
+    }
+  ],
+  "regression_checks": [
+    {
+      "check": "后端聚焦服务测试",
+      "result": "pass",
+      "evidence": "EnvironmentResourceServiceTest 16 个用例通过，BUILD SUCCESS"
+    },
+    {
+      "check": "前端生产构建",
+      "result": "pass",
+      "evidence": "npm --prefix web run build 退出码 0"
+    },
+    {
+      "check": "前端本地入口可达性",
+      "result": "pass",
+      "evidence": "127.0.0.1:5173/architecture/requests 与 /architecture/instances 返回 HTTP 200 OK"
+    },
+    {
+      "check": "Flyway 迁移静态检查",
+      "result": "pass",
+      "evidence": "check-flyway-migrations 退出码 0"
+    },
+    {
+      "check": "diff 空白检查",
+      "result": "pass",
+      "evidence": "git diff --check 退出码 0"
+    },
+    {
+      "check": "Codex scope 审计",
+      "result": "pass_for_committed_range",
+      "evidence": "working-tree scope 仍因 04 外既有无关未跟踪文件失败；提交后按 dev-ivanh...HEAD committed range 复核通过，26 个变更文件全部在 04 writable_paths 内"
+    },
+    {
+      "check": "全仓治理检查",
+      "result": "blocked_by_existing_repository_state",
+      "evidence": "node scripts/check-all-governance.mjs：Governance、Repository skill、Development entry 通过；AI control layout 因历史 .ai-control 旧账本 topic mismatch、invalid JSON、缺失 acceptance evidence 失败"
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "追加迁移，不修改既有 V1-V96",
+      "result": "pass",
+      "evidence": "本次迁移文件为 V97、V98 和 V99；V99 仅扩展 arch_resource_request 状态约束"
+    },
+    {
+      "invariant": "真实自动部署仅预留接口，当前使用 Mock",
+      "result": "pass",
+      "evidence": "AutomatedDeploymentProvider 接口和 Mock Provider 组件 Bean"
+    },
+    {
+      "invariant": "04 不读取或执行附件中的额外指令",
+      "result": "pass",
+      "evidence": "实现基于 ready requirement 和用户请求；附件仅作为需求证据"
+    }
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": [
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/observation-T11.json",
+      ".dsh/README.md",
+      ".dsh/skills/rddmp-dev-environment/SKILL.md"
+    ],
+    "note": "上述路径为 04 外既有未跟踪文件，本次未修改、未暂存；当前需求提交范围仅包含 codex-task-scope.yaml 授权路径，提交后用 committed range 复核。"
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "04 外未跟踪文件存在",
+      "result": "contained",
+      "evidence": "未删除、移动或修改无关路径；scope 失败如实记录"
+    }
+  ],
+  "residual_risks": [
+    "真实 MySQL 空库迁移未执行；本地既有库已随后端启动迁移到 V99",
+    "浏览器桌面/移动视口 UAT 未执行",
+    "完整后端 test 全量回归未执行",
+    "同环境同机器名/IP 的在用防重当前为服务层校验，数据库级并发防重需后续追加迁移补强",
+    "全仓治理检查失败项来自历史 .ai-control 旧账本，需单独治理需求清理",
+    "带 --working-tree 的 scope gate 需清理或暂存 04 外无关未跟踪文件后复跑"
+  ],
+  "gate_result": "converged_with_accepted_residual_risk",
+  "route_reason": "功能实现、UAT 反馈修正、自动化采样、运行可达和迁移到 V99 均已完成；全仓治理检查与 working-tree scope 的失败项均来自 04 外既有历史账本或未跟踪文件，不进入本次提交范围，按用户关闭/提交/合并/推送授权作为已记录残余风险处理。"
+}

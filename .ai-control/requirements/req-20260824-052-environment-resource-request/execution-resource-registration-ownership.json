@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T11:56:00+08:00",
+  "trigger": "用户明确服务器类型、灾备模式由数据字典维护；部署单元类型从部署单元模型带出；资源申请按 DB 与 AP/WB/PL 分流录入；移除来源任务号、最终确认人及联系方式；物理子系统和部署单元信息均从主数据带出；附加需求默认折叠。",
+  "phase": "executing",
+  "tasks": [
+    {
+      "id": "R3-ownership-migration",
+      "files": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V95__refine_resource_request_registration_ownership.sql",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/PhysicalSubsystem.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/PhysicalSubsystemCommand.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java"
+      ],
+      "summary": "追加 V95：种子化 ARCH_SERVER_TYPE 与 ARCH_DISASTER_RECOVERY_MODE，补齐物理子系统业务连续性等级、收集系统等级、部署平台和灾备模式字段，补齐部署单元关联名称和登记表部署单元类型，资源申请主单新增 contact_user_id，并删除 source_task_id、confirmer_name、confirmer_contact。"
+    },
+    {
+      "id": "R3-ownership-backend",
+      "files": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java"
+      ],
+      "summary": "资源申请后端只接收联系人和可填写资源需求字段；物理子系统字段和部署单元字段由服务端查主数据并快照；服务器类型按 ARCH_SERVER_TYPE 校验并默认容器；灾备模式由物理子系统按字典值带出；DB 明细只保留数据库存储、数据库、数据库版本，AP/WB/PL 明细清空 DB 专属字段。"
+    },
+    {
+      "id": "R3-ownership-frontend",
+      "files": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+        "web/src/modules/architecture/DeploymentUnitPage.vue",
+        "web/src/modules/architecture/SubsystemChangeApplicationFormPage.vue",
+        "web/src/modules/architecture/SubsystemChangeApplicationDetailPage.vue",
+        "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+        "web/src/modules/architecture/components/SubsystemChangePhysicalCard.vue",
+        "web/src/modules/architecture/types.ts",
+        "web/src/modules/architecture/architecture.css"
+      ],
+      "summary": "资源申请弹窗移除来源任务号和明细最终确认人/联系方式，主单改为资源申请联系人选择；选中物理子系统后只读展示物理字段，选中部署单元后只读展示部署单元字段；DB 与 AP/WB/PL 分流展示字段；附加需求使用折叠面板且默认收起；物理子系统和部署单元维护页补齐对应主数据字段。"
+    },
+    {
+      "id": "contract-and-tests",
+      "files": [
+        "docs/requirements/REQ-20260824-052-environment-resource-request/requirement.md",
+        "docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml",
+        "docs/integration/architecture-module-contract.md",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitServiceTest.java"
+      ],
+      "summary": "同步需求、范围和集成契约至 V95 字段归属；更新资源申请服务测试和部署单元服务测试，覆盖联系人校验、字典服务器类型、主数据带出、DB 与非 DB 明细分流，以及新增部署单元模型字段。"
+    }
+  ],
+  "non_goals_preserved": [
+    "不创建环境部署实例、机器、IP 或实际资源分配",
+    "不把用户粘贴的登记表样例写入数据库种子",
+    "不在架构模块内自维护环境类型、服务器类型或灾备模式，均走系统字典",
+    "不把来源任务号继续作为资源申请字段"
+  ]
+}

@@ -1,0 +1,238 @@
+{
+  "requirement_id": "REQ-20260830-056",
+  "control_prefix": "req-20260830-056-environment-setup-plan",
+  "observation": {
+    "observer": "主 Agent（同一上下文，标记为非独立验证）",
+    "samples": [
+      {
+        "label": "T1 后采样",
+        "sensors": [
+          "迁移空库/既有库"
+        ],
+        "result": "pass",
+        "evidence": "scratch v109 全量成功；主库 V105→V109 增量成功；菜单/权限/表确认"
+      },
+      {
+        "label": "T2 后采样",
+        "sensors": [
+          "模板服务测试"
+        ],
+        "result": "pass",
+        "evidence": "PlanTemplateServiceTest 7/7"
+      },
+      {
+        "label": "T3 后采样",
+        "sensors": [
+          "生成与执行 API"
+        ],
+        "result": "pass",
+        "evidence": "创建→开始→完成→COMPLETED/100%/豁免/取消恢复全旅程符合预期"
+      },
+      {
+        "label": "T4 后采样",
+        "sensors": [
+          "依赖/阻塞/时间 API"
+        ],
+        "result": "pass",
+        "evidence": "依赖拦截、阻塞聚合、事件与时间接口正常"
+      },
+      {
+        "label": "T5 后采样",
+        "sensors": [
+          "前端构建/路由"
+        ],
+        "result": "pass",
+        "evidence": "build 通过；SPA 路由 200"
+      },
+      {
+        "label": "UAT 迭代：独立编辑页 + 同屏流程图/列表 + 双向联动",
+        "sensors": [
+          "vue-tsc 构建",
+          "Playwright 真实浏览器（chromium headless）"
+        ],
+        "result": "pass",
+        "evidence": "build 通过；编辑页 /architecture/plan-templates/:id/edit 200；画布环节容器(4)/任务子节点(5)/两类依赖连线渲染；点击列表环节→画布高亮+居中；点击画布环节/任务→列表 is-active 高亮；拖拽环节连线→POST 依赖建立+边即时出现；点击连线→确认删除+边即时消失（数据已复原）；跨环节任务拖拽正确拦截；同环节重复依赖提示；移动视口无横向溢出"
+      },
+      {
+        "label": "UAT 迭代：模板编辑页对齐工作流设计器（单屏布局+工具栏）",
+        "sensors": [
+          "vue-tsc 构建",
+          "Playwright 真实浏览器（chromium headless）"
+        ],
+        "result": "pass",
+        "evidence": "编辑页 flex 单屏布局：页面 141→969px 填满 app-main，文档无滚动、右侧面板内部滚动；工具栏横贯画布顶部（添加环节/任务模板+纵向横向/整理布局/删除选中/全屏绘制）；全屏绘制 fixed 铺满 1000px 且可退出；选中环节后「删除选中」可用；900px 窄屏回退单列+页面滚动（app-main overflow auto 可达）"
+      },
+      {
+        "label": "UAT 迭代修复：依赖误删 + 任务线不显示 + 弹窗选前置 + 折线样式",
+        "sensors": [
+          "mvn 测试",
+          "vue-tsc 构建",
+          "Playwright 真实浏览器",
+          "API 复现"
+        ],
+        "result": "pass",
+        "evidence": "1) deleteStageDependencies/deleteTaskTemplateDependencies 删除范围收窄为「仅自身作为后续」：API 复现设置 B 前置不再丢失 A→B 依赖；2) 任务依赖线：edges z-index 提至节点层之上 + 任务节点间距加大(50/60) + smoothstep 折线，浏览器确认可见；3) 环节配置/任务编辑弹窗增加前置多选（回显+保存验证通过，场景1 后 deps 正确且不误删）；4) 新增 4 个回归单测（重设前置不误删/自依赖与跨模板拒绝/同环节与维度校验），PlanTemplateServiceTest 11/11 通过"
+      },
+      {
+        "label": "UAT 迭代：计划详情流程图对齐模板编辑页样式",
+        "sensors": [
+          "vue-tsc 构建",
+          "Playwright 真实浏览器（桌面/移动）"
+        ],
+        "result": "pass",
+        "evidence": "PlanStageNode 容器化(460px 头部+进度+虚线任务槽+containerHeight)，PlanTaskNode 150x68 网格化，buildFlowchart 改用与编辑页相同布局参数(2列/间隙50/行距60)；边 smoothstep 折线+品牌色/灰色箭头；edges z-index 提升到节点层之上；浏览器验证 12 节点 5 边(3 sd + 2 td) 渲染正常，任务线可见，移动端 420px 无横向溢出"
+      },
+      {
+        "label": "UAT 迭代：计划详情执行视图=流程图+执行列表同屏，任务下直接展示检查项",
+        "sensors": [
+          "vue-tsc 构建",
+          "Playwright 真实浏览器（桌面/移动）"
+        ],
+        "result": "pass",
+        "evidence": "执行视图页签改为左画布+右执行列表双栏（删除独立流程图页签）；任务取消折叠、检查项直接平铺在任务下；双向联动：点画布节点→列表滚动高亮，点列表任务→画布选中+居中（实测 stage/task 节点 is-selected 生效）；移动端 420px 无横向溢出；8 任务 25 检查项全部渲染"
+      },
+      {
+        "label": "UAT 迭代：计划时间视图参考交付示范中心计划排期（甘特图）",
+        "sensors": [
+          "vue-tsc 构建",
+          "Playwright 真实浏览器（桌面/移动）"
+        ],
+        "result": "pass",
+        "evidence": "新建 PlanGantt.vue（echarts custom 系列甘特图，参考 DeliveryGantt：tooltip 含计划/实际时间·状态·进度·逾期；category inverse y 轴 计划/环节/任务 三层缩进；dataZoom slider+inside 缩放；颜色按状态：进行中蓝/已完成绿/逾期橙/阻塞红/等待前置橙/取消灰；图例+缩放按钮+提示条）；时间视图页签替换旧 CSS 条形图；旧 timelineRange/barStyle/plan-timeline 样式清理；浏览器实测 22 行渲染、tooltip 正常、移动端无溢出"
+      },
+      {
+        "label": "UAT 修复：前置依赖未完成仍可开始（生成后未重算状态）",
+        "sensors": [
+          "mvn 测试",
+          "API 实测",
+          "Playwright 浏览器"
+        ],
+        "result": "pass",
+        "evidence": "根因：createPlan 生成后未调用 engine.recompute，任务依赖/环节前置未推导状态，有前置任务却显示 NOT_STARTED 且可点开始。修复：1) createPlan 末尾加 recompute；2) PlanQueryService.detail 惰性 recompute（幂等，自动修复存量）；实测新计划生成后 应用版本与参数部署/技术绿灯检查/绿灯专项复核 全部正确 WAITING_PRECEDING；存量计划 SP1788078178804260 查看详情后自动修复（7 等待前置 + 仅 1 可开始）；startTask 后端拦截保持不变"
+      },
+      {
+        "label": "UAT 修复：等待前置任务仍可完成检查项",
+        "sensors": [
+          "mvn 测试",
+          "API 实测",
+          "Playwright 浏览器"
+        ],
+        "result": "pass",
+        "evidence": "根因：completeCheckItem 无前置校验（startTask 有）；且 hasMissingPreceding 只查任务级依赖，未覆盖环节级前置（demo 计划为环节级）。修复：1) completeCheckItem 加 hasMissingPreceding 拦截；2) PlanEngine 新增公共 hasMissingPreceding（任务级+环节级统一口径），PlanExecutionService 委托复用；3) 前端详情抽屉检查项按钮：等待前置显示『前置完成后方可完成』禁用。API 实测等待前置任务完成检查项 → 40000 拦截；浏览器实测 6 检查项全部禁用、0 可点；测试误完成数据已回滚"
+      }
+    ],
+    "atomic_findings": [
+      {
+        "id": "F1",
+        "severity": "P0",
+        "status": "closed",
+        "description": "发布校验读取空环节任务列表导致发布误拒绝（publish 校验用未装配 tasks 的 StageDraft）",
+        "action": "修正 publish 装配 tasksByStage 后校验",
+        "verified": "发布 API 返回 versionNo=1"
+      },
+      {
+        "id": "F2",
+        "severity": "P0",
+        "status": "closed",
+        "description": "任务开始后状态仍为 NOT_STARTED（started 标志取自事件聚合前）",
+        "action": "recomputeTask 改用聚合 actual.start 判定 started",
+        "verified": "开始后返回 IN_PROGRESS 且 actualStart 正确"
+      },
+      {
+        "id": "F3",
+        "severity": "P0",
+        "status": "closed",
+        "description": "计划列表 SQL 拼接错误（文本块内联 %s / 缺逗号 / 缺 FROM）导致接口 500",
+        "action": "重构 searchPlans 为 columnsPart + 文本块 + where，列前置、FROM/JOIN 入块",
+        "verified": "列表 2 条记录返回，waived 筛选=1 正确"
+      },
+      {
+        "id": "F4",
+        "severity": "P1",
+        "status": "closed",
+        "description": "多构造函数服务引发 Spring 无默认构造错误",
+        "action": "公共构造函数加 @Autowired",
+        "verified": "应用启动成功"
+      },
+      {
+        "id": "F5",
+        "severity": "P2",
+        "status": "open",
+        "description": "真实浏览器桌面/移动 UAT 未执行（无浏览器工具）",
+        "handler": "需人工按角色/视口验收"
+      },
+      {
+        "id": "F6",
+        "severity": "P1",
+        "status": "open-workspace",
+        "description": "存量 Flyway V84-V92 重复版本与 V80 collation 缺陷，干净环境全量迁移/全量测试受阻（非本批次引入）",
+        "handler": "建议独立治理批次修复，本批次验证采用临时排除并已恢复文件"
+      },
+      {
+        "id": "F7",
+        "severity": "P2",
+        "status": "closed",
+        "description": "UAT 反馈：模板结构维护需独立编辑页，流程图与列表同屏即时联动，画布需展示环节+任务两级依赖",
+        "action": "新建 PlanTemplateEditPage（左画布右列表，双击联动），PlanTemplateStageFlowNode 改容器节点，新增 PlanTemplateTaskFlowNode 子节点，列表页结构维护入口改跳转编辑页",
+        "verified": "浏览器验证双向联动/拖拽建边/点线删除/移动端无溢出"
+      },
+      {
+        "id": "F8",
+        "severity": "P2",
+        "status": "closed",
+        "description": "UAT 反馈：模板编辑页需参照工作流设计器——工具栏与其他操作、布局适应单屏高度、无需上下滚动",
+        "action": "plan-editor-page flex 列布局 calc(100dvh-172px)；工具栏改 workflow-designer__toolbar 横贯样式；新增删除选中/添加环节/任务模板按钮与全屏绘制；画布 flex 填满、面板独立滚动；1080px 以下回退单列可滚动",
+        "verified": "浏览器实测单屏 1000px 视口零页面滚动、全屏/退出正常、窄屏回退正常、删除按钮状态正确"
+      },
+      {
+        "id": "F9",
+        "severity": "P1",
+        "status": "closed",
+        "description": "bug：设置环节前置依赖时误删其他环节依赖本环节的记录（delete 含 OR predecessor_stage_id）；任务依赖线被环节容器背景遮挡不可见；依赖线为曲线非工作流折线",
+        "action": "PlanTemplateStore 两处 delete 收窄为仅删自身作为后续（外键 CASCADE 兜底删除场景）；前端任务线 z-index 提升+节点间距加大+smoothstep；弹窗增加前置多选；补充单测",
+        "verified": "API 复现通过；浏览器任务线可见；弹窗保存/回显正常；单测 11/11；build 通过"
+      },
+      {
+        "id": "F10",
+        "severity": "P2",
+        "status": "closed",
+        "description": "UAT 反馈：搭建计划详情页流程图需与模板编辑页相同样式（容器节点/任务网格/折线）",
+        "action": "详情页 PlanStageNode/PlanTaskNode 与 buildFlowchart 对齐编辑页布局参数；边改 smoothstep；画布 edges z-index 提升",
+        "verified": "浏览器 12 节点 5 边正常渲染、任务线可见、移动端无溢出；build 通过"
+      },
+      {
+        "id": "F11",
+        "severity": "P2",
+        "status": "closed",
+        "description": "UAT 反馈：计划详情需将流程图与执行视图合并同页，任务下直接展示检查项",
+        "action": "执行视图双栏化（左 canvas 右 panel，复用 plan-flow-canvas 样式与 edges z-index 规则）；任务改平铺卡片展示检查项；画布/列表双向联动（focusExecList/flowFocusCanvasNode/onFlowNodeClick）；1080px 以下回退单列",
+        "verified": "浏览器实测布局+双向联动正常、移动端无溢出；build 通过"
+      },
+      {
+        "id": "F12",
+        "severity": "P2",
+        "status": "closed",
+        "description": "UAT 反馈：计划时间视图需参考 /delivery-showcase 计划排期页面（甘特图）绘制",
+        "action": "新建 PlanGantt.vue 复用 echarts custom 甘特图模式；时间视图页签替换；清理旧 CSS 条形图代码",
+        "verified": "浏览器实测渲染/tooltip/缩放/移动端正常；build 通过"
+      },
+      {
+        "id": "F13",
+        "severity": "P1",
+        "status": "closed",
+        "description": "bug：计划生成后未执行状态重算，前置任务未完成的任务显示 NOT_STARTED 且前端出现开始按钮（点击后端拦截，体验为逻辑错误）",
+        "action": "PlanGenerationService.createPlan 加 engine.recompute；PlanQueryService.detail 加惰性 recompute 修复存量",
+        "verified": "新计划+存量计划 API/浏览器实测全部正确；计划模块测试通过；build 通过"
+      },
+      {
+        "id": "F14",
+        "severity": "P1",
+        "status": "closed",
+        "description": "bug：等待前置状态的任务仍可完成检查项（completeCheckItem 缺前置校验，且原判断忽略环节级前置）",
+        "action": "completeCheckItem 加前置拦截；PlanEngine.hasMissingPreceding 统一任务级+环节级口径；前端按钮禁用提示",
+        "verified": "API/浏览器实测拦截生效；测试通过；数据回滚"
+      }
+    ],
+    "conclusion": "must 需求均有可观察证据（构建/API/数据库/迁移），P0 偏差已全部纠正并复验；剩余开放项为人工浏览器验收与存量治理问题。"
+  }
+}

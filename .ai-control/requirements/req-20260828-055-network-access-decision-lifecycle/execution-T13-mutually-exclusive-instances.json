@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "requirement_id": "REQ-20260828-055",
+  "control_prefix": "req-20260828-055-network-access-decision-lifecycle",
+  "task_id": "T13",
+  "recorded_at": "2026-08-29T17:56:31+08:00",
+  "trigger": "用户 UAT 反馈：选择部署实例时，来源实例和目标实例需要互斥，通过判断和去重实现。",
+  "scope": {
+    "module": "business/architecture/network-access",
+    "changed_files": [
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkAccessModels.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessDecisionServiceTest.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessServiceTest.java",
+      "web/src/modules/architecture/NetworkAccessPage.vue"
+    ],
+    "database_changed": false,
+    "permission_or_audit_changed": false
+  },
+  "implementation": {
+    "frontend": [
+      "独立访问判定页签和申请弹窗中的来源/目标实例选择均禁用对侧已选实例。",
+      "实例选择变更时对当前侧去重，并自动移除已被对侧选择的实例。",
+      "加载实例后默认全选时，按对侧已选实例再次去重。",
+      "发起访问判定和保存申请前再次判断来源/目标受管实例是否重叠。"
+    ],
+    "backend": [
+      "EndpointCommand.instanceIds 按传入顺序去重。",
+      "decideAccess 和 createApplication 均校验来源/目标受管实例不得重叠。",
+      "判定接口遇到重叠实例按 INVALID_OR_INCOMPLETE_INPUT 返回需要申请；创建申请接口直接拒绝保存。"
+    ]
+  },
+  "verification": [
+    {
+      "command": "mvn -q -pl :ccb-architecture -am \"-Dtest=NetworkPortRangesTest,NetworkAccessDecisionServiceTest,NetworkAccessServiceTest,NetworkAccessControllerTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "evidence": "退出码 0；覆盖来源/目标选择同一实例的判定和保存兜底。"
+    },
+    {
+      "command": "npm.cmd --prefix web run build",
+      "result": "passed",
+      "evidence": "退出码 0；存在既有第三方 PURE 注释和大 chunk warning。"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "evidence": "退出码 0；仅有 Windows LF/CRLF 提示。"
+    },
+    {
+      "command": "mvn -q -pl :ccb-boot -am \"-DskipTests\" package",
+      "result": "passed",
+      "evidence": "退出码 0；停止旧后端后重新打包。"
+    },
+    {
+      "command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local",
+      "result": "running",
+      "evidence": "PID 17608；Flyway 当前 schema 105，No migration necessary。"
+    },
+    {
+      "command": "Invoke-RestMethod -Uri http://127.0.0.1:8080/actuator/health",
+      "result": "passed",
+      "evidence": "status=UP。"
+    },
+    {
+      "command": "Invoke-WebRequest -Uri http://127.0.0.1:5173/architecture/network-access -UseBasicParsing",
+      "result": "passed",
+      "evidence": "HTTP 200。"
+    }
+  ],
+  "runtime_note": "项目已用包含服务端互斥校验的新包启动；前端 Vite 路由可达，可继续真实 UAT。",
+  "residual_risks": [
+    "本轮未使用已认证浏览器实际点击验证禁用项、自动去重 toast 和提交拦截；最终交互 UAT 仍由用户在当前页面审计。",
+    "scope working-tree 检查仍会受本需求外既有未跟踪 req-20260812-021 账本文件影响。"
+  ]
+}

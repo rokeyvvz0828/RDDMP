@@ -1,0 +1,127 @@
+{
+  "sample_label": "T4 前端交付独立观察",
+  "task_ids": ["T4"],
+  "baseline_revision": "设计修订 2；实施计划修订 1；观察基线 commit 179bbab（物理归属纠偏已含）",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "主数据页零直写、无 FormDrawer、发起变更权限与状态门控",
+      "result": "pass",
+      "raw_evidence": "LogicalSubsystemPage.vue 与 PhysicalSubsystemPage.vue 仅导入 list/get 只读 API；grep FormDrawer 在 architecture 模块无匹配；grep create/update/delete 主记录调用无匹配；发起变更门控 canApply && allowedPublishedActions(kind,status).length，beginChange 携带 targetKind/actionType/targetId 进入新建页。",
+      "limitation": ["仅静态核查，未在真实浏览器点击 dropdown 跳转"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "工单列表权限范围、筛选、分页、加载/空/失败/403、防竞态、编辑条件",
+      "result": "pass",
+      "raw_evidence": "列表不传 scope（后端按权限派生 OWN/MANAGE，manage 自动全量）；scopeLabel/canManage 与本人范围提示；状态筛选；前后端分页；加载/空/失败/403 独立状态；请求序列保护；编辑按钮 canApply && owns && canEditApplication(DRAFT/RETURNED)。",
+      "limitation": ["后端列表返回纯数组无 total 字段，分页以 rows.length === pageSize 启发式，缺总数展示"]
+    },
+    {
+      "requirement_id": "R3/R4",
+      "sensor": "全页表单结构、0..N 物理卡片、防重复提交、409 保留输入、脏表单确认、提交跳转",
+      "result": "pass",
+      "raw_evidence": "逻辑 CREATE 上方逻辑区、下方 0..N 物理卡片可增删并重排行号；物理工单恰好一张且只渲染 physicalDrafts[0]；草稿编号显示待生成/保留编号；保存与提交双锁防重复点击；409 捕获时保留当前输入不 hydrate 覆盖；onBeforeRouteLeave 脏表单确认；提交成功跳详情。",
+      "limitation": ["未在真实浏览器触发 409 回填验证"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "targetLogicalSubsystemId 前端锁定与 REPLACE 排除（与后端契约一致性）",
+      "result": "pass",
+      "raw_evidence": "FormPage 对 actionType !== CREATE && !== REPLACE 传 logical-target-locked；REPLACE 预填 null 并传 logical-target-exclusions=[sourceLogicalSubsystemId]；PhysicalCard 的 :disabled=readonly||logicalTargetLocked 与排除过滤；级联物理卡片不渲染逻辑选择。后端 SubsystemChangeService 非 REPLACE 普通物理工单修改归属返回 conflict(409)、REPLACE 必须指定不同目标、逻辑 CREATE 级联物理 targetLogicalSubsystemId 必须为 null；CONFLICT→409 由 ArchitectureExceptionAdvice 映射。",
+      "limitation": ["409 映射为静态确认，未运行时触发"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "建议链路无真实 AI、逐条确认、不自动回写、仅空字段候选",
+      "result": "pass",
+      "raw_evidence": "api.ts 仅调用本地 /suggestions；FormPage 对每条建议 ElMessageBox.confirm 后采用，无批量自动回写；DeterministicSubsystemSuggestionProvider 仅对无文本字段返回候选；web/src 无 openai/anthropic/gemini 或外部 AI URL；http baseURL=/api。",
+      "limitation": ["生产建议 bean 为 Noop（恒空）、Deterministic 仅在测试实例化，属后端接线，T4 范围外"]
+    },
+    {
+      "requirement_id": "R2/R9",
+      "sensor": "详情快照只读、对比区、业务历史时间线、审批动作白名单、申请人按钮",
+      "result": "pass",
+      "raw_evidence": "逻辑/物理快照只读渲染；当前发布 vs 申请值对比（CREATE 为空）；业务历史时间线；审批区仅 manage && IN_REVIEW && workflowTask.actionable，动作过滤为 allowed_actions ∩ {APPROVE,RETURN,REJECT}，无任何业务输入控件；申请人编辑（DRAFT/RETURNED）与取消（DRAFT/RETURNED/IN_REVIEW）条件正确。",
+      "limitation": ["IN_REVIEW 且 actionable=false 时仍展示任务元数据（无按钮），属可接受 UX"]
+    },
+    {
+      "requirement_id": "R11/R12",
+      "sensor": "前端 DTO URL/body/返回类型与后端 Controller 一致性",
+      "result": "pass",
+      "raw_evidence": "create/update/submit/cancel/suggestions 的 URL 与 body 字段（targetKind/actionType/targetId/reason/logicalDraft/physicalDrafts/physicalDraft、rowVersion、fieldValues）与后端 Controller 与 Service 记录定义逐字段一致。",
+      "limitation": ["静态字段名比对，未验证运行时 Jackson 序列化"]
+    },
+    {
+      "requirement_id": "R10",
+      "sensor": "响应式与语义主题",
+      "result": "pass",
+      "raw_evidence": "页面根 min-width:0；无页面级 overflow-x:auto；760/480 断点卡片化；全部使用语义主题变量；状态采用 UiStatusTag 且语义色与文字并存；移动端粘性操作栏静态化、按钮全宽可达。",
+      "limitation": ["未真实浏览器四视口渲染（属 T5）"]
+    },
+    {
+      "requirement_id": "R10/前端规则状态覆盖",
+      "sensor": "加载/空/失败/403/提交中/只读/长文本覆盖",
+      "result": "partial",
+      "raw_evidence": "加载/空/失败/提交中/只读/长文本（overflow-wrap/ellipsis）已覆盖；主数据页与工单列表页有专用 forbidden 态，表单页有 !canApply/!ownsApplication 态；唯一缺口为工单详情页 403 落入通用 loadError，无专用无权限态。",
+      "limitation": ["详情页无权限呈现为失败态而非专用态"]
+    }
+  ],
+  "negative_feedback": [
+    {
+      "id": "F-T4-OBS-001",
+      "requirement_id": "R10",
+      "expected": "工单详情页应像主数据页与列表页一样，用专用 forbidden/无权限状态呈现 403。",
+      "observed": "SubsystemChangeApplicationDetailPage.vue 无 forbidden 标志，403 仅落入 loadError 通用失败态，标题仍为'工单详情加载失败'。",
+      "reproduction": "以无 architecture 权限用户访问 /architecture/subsystem-change-applications/:id，或对跨租户 id 发起 GET 得到 403。",
+      "evidence": "DetailPage load() 与模板无 403 分支；对比 Logical/Physical 主数据页与工单列表页均有 forbidden 专用态。",
+      "severity": "P3",
+      "confidence": "high",
+      "sensor_limit": "静态只读；未真实浏览器触发 403 确认渲染文案",
+      "causal_hypothesis": "详情页遗漏了与列表/主数据页一致的 forbidden 状态分支",
+      "correction_check": "为详情页 load() 增加 httpStatus===403→forbidden 分支并在模板渲染专用无权限 el-result；重跑 npm --prefix web run build。",
+      "classification": "deviation"
+    }
+  ],
+  "correction_reobservation": {
+    "result": "pass",
+    "evidence": [
+      "SubsystemChangeApplicationDetailPage.vue 新增 const forbidden = ref(false)，从 ./utils 引入 httpStatus，load() 重置并分支 403，模板新增 v-if=forbidden 专用 el-result 且置于 loadError 之前。",
+      "文案与主数据/列表页保持同一'暂无…查看权限'族，未改变后端契约或业务逻辑。",
+      "修复已提交 52d76e5；npm --prefix web run build 退出码 0；git diff --check 退出码 0；工作树与 HEAD 一致。",
+      "403 判定依据 httpStatus===403，与后端 ArchitectureExceptionAdvice FORBIDDEN→HttpStatus.FORBIDDEN 语义一致。"
+    ],
+    "residual_risks": [
+      "未在真实浏览器以无权限/跨租户身份触发 403 确认渲染（属 T5 运行时验收）。",
+      "forbidden 分支无'重新加载'按钮，与主数据/列表页一致，权限变化时依赖页面刷新。"
+    ]
+  },
+  "blind_spots": [
+    "未运行真实浏览器四视口验收（T5）。",
+    "未运行真实后端/MySQL/工作流（T5）；DTO 一致性为静态字段名比对，未验证运行时 Jackson 序列化。",
+    "未实际触发 409 以确认前端保留输入与提示文案。",
+    "未确认明暗主题真实渲染效果。",
+    "生产 suggestions 接线（Noop 恒空）为后端范围，未在 T4 内裁决。"
+  ],
+  "repeatability": {
+    "commands": [
+      "git branch --show-current && git log --oneline -5",
+      "npm --prefix web run build",
+      "git diff --check",
+      "git status --short",
+      "grep -rniE 'openai|anthropic|gemini|https?://' web/src/modules/architecture web/src/api",
+      "grep -rn 'FormDrawer' web/src/modules/architecture",
+      "grep -rnE '(create|update|delete)(Logical|Physical)Subsystem' web/src/modules/architecture",
+      "完整阅读：三个工单页面、物理卡片、时间线、两个主数据页、详情抽屉、api/types/utils/css、router、后端 Controller/Service 关键校验与建议 provider"
+    ],
+    "environment": "隔离工作树；观察子代理严格只读；未启动浏览器或后端"
+  },
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 1},
+  "assessment": {
+    "verdict": "pass-with-runtime-defer",
+    "summary": "T4 前端交付独立静态观察通过：vue-tsc+vite 构建退出码 0；主数据只读化、工单列表/全页表单/详情审批、DTO 契约、物理归属锁定纠偏与建议边界均前后端一致；唯一负反馈为详情页缺专用 403 态（P3，deviation），实现者已限幅修复并经独立复验 resolved。真实浏览器四视口、明暗主题、真实 MySQL/工作流/API 运行验收按批准计划保留 T5。"
+  },
+  "recommended_next": ["T4 verified；启动 T5 集成与收敛验收（真实 MySQL/Boot/Vite/工作流与四视口浏览器，convergence gate）"],
+  "observation_status": "complete",
+  "recorded_at": "2026-08-23T11:42:00Z"
+}

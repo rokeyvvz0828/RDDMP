@@ -1,0 +1,49 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "com.ccb.architecture.network.web.NetworkWorkOrderController",
+      "purpose": "三级权限 HTTP 边界：列表/详情/创建/更新/提交/取消/结果登记/附件移除，审计包装，载荷解析"
+    },
+    {
+      "path_or_resource": "com.ccb.architecture.web.ArchitectureExceptionAdvice",
+      "purpose": "覆盖 NetworkWorkOrderController，保持 40400/403/409 语义一致"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/web/NetworkWorkOrderControllerTest",
+      "purpose": "权限注解、端点接线、审计、40400/409 映射、载荷与历史响应断言"
+    }
+  ],
+  "requirements_addressed": ["R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=NetworkWorkOrderControllerTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test",
+      "salient_output": "7/7 通过；BUILD SUCCESS",
+      "exit_code": 0
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "写操作权限注解",
+      "evidence": "list/view-apply-manage、create/update/submit/cancel/remove=apply+manage、result=manage",
+      "result": "pass",
+      "limitations": []
+    },
+    {
+      "check": "错误码映射",
+      "evidence": "非法 kind 400、不存在 40400、业务冲突 409",
+      "result": "pass",
+      "limitations": []
+    },
+    {
+      "check": "审计包装",
+      "evidence": "成功与失败写操作均调用 SystemOperationAudit",
+      "result": "pass",
+      "limitations": []
+    }
+  ],
+  "diff_summary": ["HTTP 层不接收/返回 tenantId；DTO 白名单；无表单 schema"]
+}

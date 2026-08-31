@@ -2,7 +2,7 @@
 
 > 执行要求：使用 `$control-engineering` 逐任务实施。开发前计划是候选控制输入，必须先完成需求基准复核和系统建模，不得直接跳到执行阶段。
 
-**目标：** 建立可复用持久附件能力，并在项目详情提供上传、列表、预览、下载和删除页签。
+**目标：** 建立可复用持久附件能力，并在项目详情提供上传、列表、预览、下载、删除和项目自定义分类维护。
 
 **架构：** 新增 `ccb-attachment` 平台模块管理附件表和 MinIO 对象，通过公开 `AttachmentPort` 被项目模块调用。项目模块负责项目范围和既有权限校验；前端使用项目附件 API 和 `UiFilePreview`，不拼接存储地址。
 
@@ -10,7 +10,7 @@
 
 ## 全局约束
 
-- 只追加 V45，不修改已发布迁移。
+- 只追加当前版本之后的 V82，不修改已发布 V61 附件迁移。
 - 只使用服务端认证用户的租户和用户 ID；不信任客户端对象键、租户、项目或上传人。
 - 不改变临时 `file-preview` 上传接口语义。
 - 业务模块不直接读取附件表和 MinIO 对象键。
@@ -32,7 +32,7 @@
 - 新建：`server/src/platform/attachment/src/main/java/com/ccb/attachment/service/AttachmentService.java`
 - 新建：`server/src/platform/attachment/src/test/java/com/ccb/attachment/service/AttachmentServiceTest.java`
 - 修改：`pom.xml`、`server/src/platform/boot/pom.xml`、`server/src/platform/file-preview/.../model/FilePreviewUrlProvider.java`、`KkFileViewUrlBuilder.java`
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V45__persistent_project_attachments.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V82__project_attachment_categories.sql`
 
 **接口：**
 
@@ -41,10 +41,12 @@
 
 - [ ] 建立空文件、超限、类型、租户和对象清理失败的测试基线。
 - [ ] 实现对象写入、元数据写入、短时下载地址和预览地址。
-- [ ] 追加 V45 中文注释、索引和软删除字段。
+- [ ] 追加 V82 中文注释、索引和软删除字段。
 - [ ] 运行 `mvn -pl :ccb-attachment -am test` 和 `node scripts/check-flyway-migrations.mjs`。
 
-**回滚：** 删除新增附件模块代码并按部署流程保留/回退 V45，不修改历史迁移。
+分类补充：`sys_attachment_category` 按租户、业务类型和项目维护分类；`sys_attachment.category_id` 可为空，空值表示“未分类”。上传和改分类均由附件平台校验分类必须属于同一项目。
+
+**回滚：** 删除新增附件模块代码并按部署流程保留/回退 V82，不修改历史迁移。
 
 **停止条件：** 无法保证元数据与对象存储的一致性，或需要修改基础 MinIO 公共实现。
 
@@ -74,7 +76,7 @@
 - [ ] 实现中文错误、审计动作和项目删除时附件逻辑删除处理。
 - [ ] 运行 `mvn -pl :ccb-attachment,:ccb-system -am test`。
 
-**回滚：** 恢复项目接口和 Maven 依赖；保留 V45 元数据，入口可关闭。
+**回滚：** 恢复项目接口和 Maven 依赖；保留 V61/V82 元数据，入口可关闭。
 
 **停止条件：** 项目服务无法在不读取附件表的前提下完成项目授权。
 
@@ -102,6 +104,7 @@
 - [ ] 预览请求短时 URL 后打开 `UiFilePreview`；下载通过临时链接，不保存 URL。
 - [ ] 桌面和 375px 检查列表、按钮、空/加载/失败和横向滚动。
 - [ ] 运行 `npm --prefix web run build`。
+- [ ] 新建分类、按分类上传、已有附件改分类和未分类回退路径可观察。
 
 **回滚：** 恢复附件 API、类型、页签和样式修改，不动公共预览组件。
 
@@ -122,7 +125,7 @@
 - [ ] 使用非成员和跨租户数据验证 403/拒绝，检查服务端无对象键泄露。
 - [ ] 记录执行、观察、反馈和收敛证据；范围检查受 `licon` 历史任务文件影响时如实记录。
 
-**回滚：** 保留证据，关闭附件入口并按部署回退 V45 应用兼容策略。
+**回滚：** 保留证据，关闭附件入口并按部署回退 V61/V82 应用兼容策略。
 
 **停止条件：** 出现跨项目访问、对象键泄露、预览白屏或附件元数据/对象不一致。
 

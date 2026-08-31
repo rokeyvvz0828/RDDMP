@@ -3,6 +3,7 @@ package com.ccb.architecture.web;
 import com.ccb.architecture.model.LogicalSubsystemOption;
 import com.ccb.architecture.model.OrganizationOption;
 import com.ccb.architecture.model.ParameterOption;
+import com.ccb.architecture.model.PhysicalSubsystemOption;
 import com.ccb.architecture.model.UserOption;
 import com.ccb.architecture.service.ArchitectureOptionsService;
 import com.ccb.common.api.ApiResponse;
@@ -30,7 +31,7 @@ public class ArchitectureOptionsController {
     }
 
     @GetMapping("/logical-subsystem/organizations")
-    @PreAuthorize("hasAuthority('architecture:logical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<OrganizationOption>> logicalOrganizations(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
@@ -38,7 +39,7 @@ public class ArchitectureOptionsController {
     }
 
     @GetMapping("/physical-subsystem/organizations")
-    @PreAuthorize("hasAuthority('architecture:physical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<OrganizationOption>> physicalOrganizations(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
@@ -46,7 +47,7 @@ public class ArchitectureOptionsController {
     }
 
     @GetMapping("/logical-subsystem/users")
-    @PreAuthorize("hasAuthority('architecture:logical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<UserOption>> logicalUsers(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
@@ -54,7 +55,7 @@ public class ArchitectureOptionsController {
     }
 
     @GetMapping("/physical-subsystem/users")
-    @PreAuthorize("hasAuthority('architecture:physical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<UserOption>> physicalUsers(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
@@ -62,26 +63,35 @@ public class ArchitectureOptionsController {
     }
 
     @GetMapping("/logical-subsystem/parameters/{categoryCode}")
-    @PreAuthorize("hasAuthority('architecture:logical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<List<ParameterOption>> logicalParameters(
             @PathVariable String categoryCode, @AuthenticationPrincipal AuthUser actor) {
         return success(service.parameters(actor, ArchitectureOptionsService.LOGICAL_RESOURCE, categoryCode));
     }
 
     @GetMapping("/physical-subsystem/parameters/{categoryCode}")
-    @PreAuthorize("hasAuthority('architecture:physical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<List<ParameterOption>> physicalParameters(
             @PathVariable String categoryCode, @AuthenticationPrincipal AuthUser actor) {
         return success(service.parameters(actor, ArchitectureOptionsService.PHYSICAL_RESOURCE, categoryCode));
     }
 
     @GetMapping("/physical-subsystem/logical-subsystems")
-    @PreAuthorize("hasAuthority('architecture:physical:list')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<LogicalSubsystemOption>> physicalLogicalSubsystems(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String code, @RequestParam(required = false) String name,
             @AuthenticationPrincipal AuthUser actor) {
         return success(service.logicalSubsystems(actor, new PageQuery(page, size), code, name));
+    }
+
+    @GetMapping("/deployment-unit/physical-subsystems")
+    @PreAuthorize("hasAnyAuthority('architecture:deployment-unit:view', 'architecture:deployment-unit:manage', 'architecture:view', 'architecture:apply', 'architecture:manage')")
+    public ApiResponse<PageResult<PhysicalSubsystemOption>> deploymentUnitPhysicalSubsystems(
+            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String code, @RequestParam(required = false) String name,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.physicalSubsystems(actor, new PageQuery(page, size), code, name));
     }
 
     @GetMapping("/{resource}/organizations")
