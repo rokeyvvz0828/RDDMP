@@ -456,7 +456,7 @@ public class ArchitectureDecisionService {
         requireActor(actor);
         requireMatter(actor.tenantId(), id);
         return attachmentPort.list(MATTER_ATTACHMENT_BUSINESS_TYPE, id, actor.tenantId(),
-                new PageQuery(1, 100), null).records();
+                new PageQuery(1, 100), null, null).records();
     }
 
     @Transactional
