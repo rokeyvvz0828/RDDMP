@@ -1,0 +1,55 @@
+{
+  "requirement_id": "REQ-20260826-054",
+  "control_prefix": "req-20260826-054-network-zones-access-relationship",
+  "checked_at": "2026-08-28T13:57:57+08:00",
+  "coverage": [
+    {
+      "acceptance": "网络分区维护、限制级别和叶子分区校验",
+      "status": "implemented",
+      "evidence": "NetworkAccessService and NetworkZonePage; backend rejects child level below parent, requireActiveLeafZone rejects non-leaf zones for structured references, and subnet maintenance is limited to active leaf zones."
+    },
+    {
+      "acceptance": "网络分区网段维护和 CIDR 校验",
+      "status": "implemented",
+      "evidence": "V102 arch_network_zone_subnet, NetworkCidr, NetworkAccessService subnet APIs, and NetworkZonePage subnet drawer. Tests cover CIDR normalization, non-leaf rejection, and IP containment rejection."
+    },
+    {
+      "acceptance": "部署单元默认网络分区和版本快照",
+      "status": "implemented",
+      "evidence": "DeploymentUnitModels, DeploymentUnitStore, DeploymentUnitService, DeploymentUnitPage, DeploymentUnitDetailDrawer."
+    },
+    {
+      "acceptance": "资源申请、资源下发、环境部署实例网络分区贯通",
+      "status": "implemented",
+      "evidence": "EnvironmentResourceModels, EnvironmentResourceStore, EnvironmentResourceService, EnvironmentResourceController, ResourceRequestPage, InstanceListPage. Mock automated deployment receives networkSubnetCidr and generated instance IPs match the selected active subnet; manual fulfillment validates IP containment."
+    },
+    {
+      "acceptance": "网络访问申请批准后生成关系快照",
+      "status": "implemented",
+      "evidence": "NetworkAccessService.approveApplication and NetworkAccessServiceTest."
+    },
+    {
+      "acceptance": "网络访问申请、访问关系和外部地址详情可查看",
+      "status": "implemented",
+      "evidence": "NetworkAccessPage.vue application, relation, and external address identity columns/detail actions/mobile cards open read-only drawers with metadata and snapshots; frontend build passed after both detail fixes."
+    },
+    {
+      "acceptance": "权限、菜单和审计",
+      "status": "implemented",
+      "evidence": "V101 menu/permission seed, NetworkAccessController @PreAuthorize, SystemOperationAudit calls, frontend permission checks."
+    },
+    {
+      "acceptance": "按网络架构图初始化 UAT 网络分区与网段",
+      "status": "implemented",
+      "evidence": "V103 seeds 13 P1/P2/P5/P8 root and leaf zones plus 34 exact CIDR rows from the confirmed diagram; Flyway check passed with 97 migrations and local startup applied schema version v103."
+    }
+  ],
+  "convergence_result": "closed_by_user_after_verified_runtime_reachable_and_v103_seeded",
+  "residual_risks": [
+    "scope required command returned exit 1 because unrelated untracked files outside this requirement are present in the shared worktree.",
+    "Authenticated browser click-through UAT has not been performed by Codex; runtime checks show backend health UP, Flyway at v103, frontend route HTTP 200, and protected API returning expected unauthenticated 401.",
+    "P2_OFFICE_TERMINAL is intentionally seeded without subnet rows until an exact 20-prefix CIDR is provided.",
+    "V101/V102 default demo zones remain active for compatibility and may be retired later through a separate data cleanup decision.",
+    "Approval creates only RDDMP internal access relation records; it does not prove or trigger external firewall/network-device opening."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T13:49:47+08:00",
+  "phase": "observing",
+  "requirement": "REQ-20260824-052",
+  "checks": [
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build",
+      "result": "passed",
+      "evidence": "vue-tsc --noEmit 通过，Vite 生产构建完成；仅保留既有大 chunk 提示。"
+    },
+    {
+      "name": "diff-check",
+      "command": "git diff --check -- web/src/router/index.ts web/src/modules/architecture/ResourceRequestPage.vue",
+      "result": "passed",
+      "evidence": "退出码 0；仅提示 Windows 下 router/index.ts 工作区 LF 将在 Git 触碰时转换为 CRLF。"
+    }
+  ],
+  "observed_behavior": [
+    "静态检查确认 /architecture/resource-requests/:id 已进入前端路由表，资源申请工作流 action_path 不再落入 catch-all /dashboard。",
+    "dashboard 带 taskId 的入口会在路由守卫中查询任务上下文，并在业务路由有效时携带 taskId 跳转；异常时回退到 /workbench/tasks?tab=pending。",
+    "资源申请详情抽屉新增审批处理区，使用当前工作流任务上下文展示节点、任务状态、流程实例和批准/退回/拒绝动作。"
+  ],
+  "remaining_risk": [
+    "本次未执行真实浏览器点击审批 UAT；需要用有资源办理权限的账号访问用户反馈的 taskId 链接，确认跳转到资源申请详情并点击批准后业务状态刷新。",
+    "完整架构模块 Maven 集成测试仍继承既有 Testcontainers Docker 识别阻塞，不由本前端修复关闭。"
+  ]
+}

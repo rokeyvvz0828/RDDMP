@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T15:29:20+08:00",
+  "trigger": "用户反馈资源申请登记表中边车内存占比计算异常：有边车开关为否、生产环境节点数为 0、总边车内存存在残留值时，页面显示总内存 1G 且边车内存占比 100%。",
+  "phase": "executing",
+  "tasks": [
+    {
+      "id": "sidecar-frontend-calculation",
+      "files": [
+        "web/src/modules/architecture/ResourceRequestPage.vue"
+      ],
+      "summary": "新增有效边车 CPU/内存计算口径：只有 hasSidecar=true 时边车资源才参与总 CPU、总内存和占比；节点数为 0 时边车内存占比展示为空；关闭有边车开关时清零并禁用总边车 CPU/总边车内存输入，提交载荷同步置 0。"
+    },
+    {
+      "id": "sidecar-backend-calculation",
+      "files": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java"
+      ],
+      "summary": "服务端不再因 sidecarCpu/sidecarMemory 大于 0 自动将 hasSidecar 置为 true；hasSidecar=false 时保存边车资源为 0；明细模型和环境申请态汇总 SQL 均按 hasSidecar=1 才计入边车资源，边车占比要求存在基础内存配额。"
+    },
+    {
+      "id": "sidecar-regression-test",
+      "files": [
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java"
+      ],
+      "summary": "新增回归用例，覆盖关闭边车时忽略前端残留边车容量，并覆盖生产环境节点数为 0 时边车内存占比为空。"
+    }
+  ],
+  "non_goals_preserved": [
+    "不调整数据库结构或追加 Flyway 迁移",
+    "不改变 DB/AP/WB/PL 字段分流规则",
+    "不改变资源申请审批流和权限模型",
+    "不读取或输出本地环境密钥"
+  ]
+}

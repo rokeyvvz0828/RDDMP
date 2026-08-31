@@ -1,0 +1,154 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "recorded_at": "2026-08-23T00:14:29Z",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/model/**",
+      "purpose": "扩展强类型工单、草稿、发布状态和历史模型"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/**",
+      "purpose": "实现租户隔离工单、草稿、目标锁、值保留、替换关系与发布事实的事务存储"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/**",
+      "purpose": "实现工单 CRUD、提交准备、编号/锁/快照、引用 fail-closed 与批准原子发布"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/web/**",
+      "purpose": "提供工单读取、创建、编辑、取消和本地建议 REST，数据范围只从认证权限派生"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/**",
+      "purpose": "提供公开引用检查 SPI；首期允许零实现且异常 fail-closed"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/**; repository/**; service/**; web/**",
+      "purpose": "扩展发布事实状态和双向摘要；旧写入口认证后统一 409 且不触发副作用"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/**",
+      "purpose": "覆盖状态机、权限、级联、REPLACE、引用、原子性、真实 MySQL 持久化与旧写兼容"
+    },
+    {
+      "path_or_resource": "governance/modules.yaml; docs/architecture/MODULES.md",
+      "purpose": "登记 architecture 公开 integration SPI"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R11", "R12"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=SubsystemChangeServiceTest,SubsystemPublicationServiceTest,SubsystemReferenceGuardTest,SubsystemChangeApplicationControllerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "75/75 通过：工单 24、发布 35、引用 10、Controller 6"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=SubsystemChangeStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "6/6 通过：租户隔离、CAS、发布写、回滚和事务守卫"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am -Dtest=PhysicalSubsystemConcurrencyMySqlTest,JdbcSubsystemNumberReservationStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "7/7 通过：编号并发/回收和旧写并发 409 无发布事实变化"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "20 个报告，142 tests，0 failures，0 errors，0 skipped"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "F-T2-004 权限纠偏后 20 个报告，143 tests，0 failures，0 errors，0 skipped"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260822-048-architecture-subsystem-lifecycle/codex-task-scope.yaml --base e5b57473beabc9d2a9c2c63bd32635b2f708d8a8 --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "范围检查通过；65 个变更文件"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "76 migrations 与 1 callback 检查通过"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误，仅工作区 LF 到 CRLF 提示"
+    },
+    {
+      "command": "rg -n -i openai|anthropic|gemini|ollama|httpclient|webclient|resttemplate|https?:// architecture change/integration",
+      "exit_code": 1,
+      "salient_output": "无匹配；未接入真实 AI 或网络客户端"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "工单和提交准备",
+      "result": "pass",
+      "evidence": "DRAFT/RETURNED 编辑和提交、0..N 级联、编号保留、目标/值锁、不可变快照与摘要均有单元测试",
+      "limitations": ["真实工作流启动和轮次持久化属于 T3"]
+    },
+    {
+      "check": "批准原子发布",
+      "result": "pass",
+      "evidence": "CREATE/UPDATE/OFFLINE/REACTIVATE/VOID/REPLACE 共 35 项服务测试；失败通过同一事务回滚",
+      "limitations": ["可信 workflow lifecycle consumer 属于 T3"]
+    },
+    {
+      "check": "真实 MySQL 存储与兼容",
+      "result": "pass",
+      "evidence": "SubsystemChangeStore 6/6、编号/兼容并发 7/7、完整 architecture 142/142",
+      "limitations": ["T3 需补真实工作流 round/receipt MySQL 测试"]
+    },
+    {
+      "check": "权限、引用与无 AI",
+      "result": "pass",
+      "evidence": "view/apply/manage 数据范围、引用异常 503 fail-closed、本地建议不写草稿、无外部客户端均有测试或静态证据",
+      "limitations": ["权限种子和工作流 ROLE 处理人属于 T3"]
+    }
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "未批准工单不写发布事实",
+      "result": "pass",
+      "evidence": "CRUD/提交服务仅写工单表；发布服务无 HTTP 入口并要求可信工作流上下文"
+    },
+    {
+      "invariant": "逻辑 CREATE 的 0..N 物理与 REPLACE 原子化",
+      "result": "pass",
+      "evidence": "发布服务事务测试覆盖零、一、多物理和失败零部分写入"
+    },
+    {
+      "invariant": "拒绝/取消释放未发布资源，退回保留",
+      "result": "pass",
+      "evidence": "状态机和编号策略测试覆盖编号、目标锁和值保留"
+    },
+    {
+      "invariant": "旧写入口无副作用",
+      "result": "pass",
+      "evidence": "服务、MockMvc 和真实 MySQL 并发测试均断言 409 ARCHITECTURE_WORK_ORDER_REQUIRED"
+    },
+    {
+      "invariant": "首期不调用真实 AI",
+      "result": "pass",
+      "evidence": "Noop provider、本地确定性候选和源码网络客户端扫描"
+    }
+  ],
+  "disturbances": [
+    "首次完整 142 项回归中，既有 PhysicalSubsystemConcurrencyMySqlTest 仍等待已被兼容 409 合同移除的旧持锁路径，2 项超时；纠正传感器为并发旧写 409 且数据库不变后完整回归通过",
+    "ArchitectureExceptionAdvice 初始只覆盖旧 controller 包锚点，新增 change.web 的 BusinessException 未被模块 advice 捕获；扩展 advice 包范围后 Controller 6/6 与组合 75/75 通过",
+    "部分观察发现申请原因未由 CAS 持久化；补 compareAndSetApplicationReason 与 MySQL/服务断言后通过"
+  ],
+  "assumptions_falsified": [
+    "T0 的旧主数据 create/delete 持锁测试在旧写入口改为强制工单后仍可作为有效传感器",
+    "以 LogicalSubsystemController 单一 basePackageClasses 锚点可自动覆盖 change.web 子包"
+  ],
+  "unresolved_items": [
+    "T3 接入 WorkflowBusinessGateway、轮次、回执、审批事件和审批中取消",
+    "T4 实现桌面/移动前端"
+  ],
+  "recommended_next": "observe"
+}

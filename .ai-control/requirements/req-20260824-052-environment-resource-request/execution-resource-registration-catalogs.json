@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T14:50:30+08:00",
+  "trigger": "用户明确农信业务连续性等级和项目组收集系统等级不是资源申请字段，应换成从物理子系统数据带出的系统等级；部署单元明细层移除所属事业群、部署平台和灾备模式；服务器类型放在首位；容量、CPU、内存等资源字段为整数；JDK、中间件和操作系统由系统字典维护。",
+  "phase": "executing",
+  "tasks": [
+    {
+      "id": "R3-catalog-migration",
+      "files": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V96__refine_resource_request_resource_catalogs.sql"
+      ],
+      "summary": "追加 V96：新增 ARCH_JDK_VERSION、ARCH_MIDDLEWARE、ARCH_OPERATING_SYSTEM 字典及默认选项；资源申请明细容量类列从 DECIMAL 收口为 BIGINT；移除明细层 business_continuity_level、collected_system_level、business_group_name、deployment_platform、disaster_recovery_mode 等物理子系统归属字段。"
+    },
+    {
+      "id": "R3-catalog-backend",
+      "files": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/PhysicalSubsystemOption.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java"
+      ],
+      "summary": "资源申请主信息从物理子系统联表带出 businessGroupName、systemLevelCode、deploymentPlatform、disasterRecoveryMode；资源明细 DTO 不再返回旧等级和物理层字段；服务端校验 JDK/中间件/操作系统字典 key，并拒绝容量、CPU、内存、存储类字段的小数。"
+    },
+    {
+      "id": "R3-catalog-frontend",
+      "files": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/types.ts"
+      ],
+      "summary": "资源申请详情和表单只在物理子系统摘要层显示系统等级、所属事业群、部署平台和灾备模式；部署单元明细层只显示部署单元主数据和资源规格；服务器类型调整为非 DB 明细首项；容量控件改整数；JDK、中间件和操作系统改为系统字典下拉。"
+    },
+    {
+      "id": "contract-and-tests",
+      "files": [
+        "docs/requirements/REQ-20260824-052-environment-resource-request/requirement.md",
+        "docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml",
+        "docs/integration/architecture-module-contract.md",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java"
+      ],
+      "summary": "同步正式需求、范围和集成契约至 V96 字段口径；资源申请服务测试改用技术栈字典 key，并新增资源容量不允许小数的用例。"
+    }
+  ],
+  "non_goals_preserved": [
+    "不把系统等级作为资源申请可编辑字段",
+    "不把物理子系统旧等级继续放入资源申请明细",
+    "不创建环境部署实例、机器、IP 或实际资源分配",
+    "不读取 .env 或输出数据库口令"
+  ]
+}

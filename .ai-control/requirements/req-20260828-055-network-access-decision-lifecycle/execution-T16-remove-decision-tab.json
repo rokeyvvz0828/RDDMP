@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "requirement_id": "REQ-20260828-055",
+  "control_prefix": "req-20260828-055-network-access-decision-lifecycle",
+  "task_id": "T16",
+  "recorded_at": "2026-08-29T21:29:41+08:00",
+  "trigger": "用户要求去掉网络访问关系页面的“访问判定”标签页。",
+  "scope": {
+    "module": "business/architecture/network-access",
+    "changed_files": [
+      "web/src/modules/architecture/NetworkAccessPage.vue",
+      "web/src/modules/architecture/architecture.css"
+    ],
+    "backend_changed": false,
+    "database_changed": false,
+    "permission_or_audit_changed": false
+  },
+  "implementation": [
+    "移除独立“访问判定”标签页，页面默认标签改为“访问申请”。",
+    "删除独立判定页签专用的 decisionForm、decisionLoading、decisionResult、evaluateDecision 和带入申请函数。",
+    "删除独立判定面板和操作区样式，保留访问申请弹窗内的自动判定结果卡片。"
+  ],
+  "verification": [
+    {
+      "command": "rg -n \"label=\\\"访问判定\\\"|name=\\\"decision\\\"|decisionForm|decisionLoading|createApplicationFromDecision|evaluateDecision|architecture-network-decision-panel|architecture-network-decision-actions\" web/src/modules/architecture/NetworkAccessPage.vue web/src/modules/architecture/architecture.css",
+      "result": "passed",
+      "evidence": "退出码 1；旧独立判定页签标识和专用状态/函数/样式均无命中。"
+    },
+    {
+      "command": "npm.cmd --prefix web run build",
+      "result": "passed",
+      "evidence": "退出码 0；vue-tsc 通过，Vite 构建成功；保留既有第三方 PURE 注释和大 chunk warning。"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "evidence": "退出码 0；仅有 Windows LF/CRLF 提示。"
+    },
+    {
+      "command": "(Invoke-WebRequest http://127.0.0.1:5173/architecture/network-access -UseBasicParsing).StatusCode",
+      "result": "passed",
+      "evidence": "HTTP 200。"
+    },
+    {
+      "command": "Invoke-RestMethod http://127.0.0.1:8080/actuator/health",
+      "result": "passed",
+      "evidence": "status=UP。"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260828-055-network-access-decision-lifecycle/codex-task-scope.yaml --base origin/dev-ivanh --head HEAD --working-tree",
+      "result": "blocked_by_pre_existing_unrelated_files",
+      "evidence": "退出码 1；仅报告 .ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json 和 observation-T11.json forbidden path。"
+    }
+  ],
+  "residual_risks": [
+    "本轮未代替用户在已认证浏览器中确认标签页实际消失；当前验证为构建、残留扫描和路由可达。",
+    "访问申请弹窗内仍保留自动访问判定，这是申请保存前的业务校验能力。"
+  ]
+}

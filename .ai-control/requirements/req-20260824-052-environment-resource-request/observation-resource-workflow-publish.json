@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T12:02:00+08:00",
+  "phase": "observing",
+  "trigger": "用户反馈提交资源申请时报错：提交进入资源审批的流程编码未发布或不存在。",
+  "observations": [
+    {
+      "sensor": "workflow-definition-db-before",
+      "command": "SELECT wf_definition/wf_version WHERE code='architecture.resource-request'",
+      "result": "confirmed-not-published",
+      "evidence": "wf_definition id=900000000000050 code=architecture.resource-request status=DRAFT current_version=1；wf_version id=900000000000051 status=DRAFT，deployment_id 与 bpmn_xml 均不存在。"
+    },
+    {
+      "sensor": "workflow-publish-api",
+      "command": "POST /api/workflows/definitions/900000000000050/publish",
+      "result": "pass",
+      "evidence": "使用本地 admin 临时 access token 调用平台工作流发布入口，接口返回 code=0,message=OK。"
+    },
+    {
+      "sensor": "workflow-definition-db-after",
+      "command": "SELECT wf_definition/wf_version WHERE definition_id=900000000000050",
+      "result": "pass",
+      "evidence": "wf_definition status=PUBLISHED；wf_version version_no=1 status=PUBLISHED，deployment_id IS NOT NULL=1，bpmn_xml IS NOT NULL=1。"
+    },
+    {
+      "sensor": "workflow-definition-api-after",
+      "command": "GET /api/workflows/definitions/900000000000050 与 /versions",
+      "result": "pass",
+      "evidence": "定义详情返回 code=architecture.resource-request,status=PUBLISHED；版本接口返回 version_no=1,status=PUBLISHED,model_schema_version=2。"
+    },
+    {
+      "sensor": "runtime-health",
+      "command": "GET /actuator/health",
+      "result": "pass",
+      "evidence": "后端 PID 36916 返回 {\"status\":\"UP\"}。"
+    }
+  ],
+  "conclusion": "资源申请固定审批流程已通过平台发布入口发布到本地环境；再次提交资源申请不应再触发“流程编码未发布或不存在”。",
+  "residual_risks": [
+    "未代替用户提交既有资源申请单，避免改变业务单据状态；需要用户在页面重新点击提交验证完整交互。",
+    "新环境迁移后仍需执行一次平台工作流发布入口，或在上线/UAT准备清单中确认该定义已发布。"
+  ]
+}

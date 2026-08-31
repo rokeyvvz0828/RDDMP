@@ -23,13 +23,16 @@ public class ArchitectureSubsystemRepository {
     private static final String LOGICAL_COLUMNS = """
             id, code, short_name, name, business_org_id, deployment_platform_code,
             system_type_code, system_ownership_code, contact_user_id, description, remark,
-            created_by, updated_by, created_at, updated_at
+            created_by, updated_by, created_at, updated_at,
+            number_sequence, status, sort_no, row_version
             """;
     private static final String PHYSICAL_COLUMNS = """
             id, code, short_name, name, logical_subsystem_id, business_group_name,
+            business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
             responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
             development_framework_code, owner_user_id, description, remark,
-            created_by, updated_by, created_at, updated_at
+            created_by, updated_by, created_at, updated_at,
+            number_slot, english_name, status, row_version
             """;
 
     private static final RowMapper<LogicalSubsystem> LOGICAL_MAPPER = (rs, rowNum) -> new LogicalSubsystem(
@@ -38,17 +41,23 @@ public class ArchitectureSubsystemRepository {
             rs.getString("system_type_code"), rs.getString("system_ownership_code"),
             rs.getLong("contact_user_id"), rs.getString("description"), rs.getString("remark"),
             rs.getLong("created_by"), rs.getLong("updated_by"),
-            localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")));
+            localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")),
+            rs.getObject("number_sequence", Integer.class), rs.getString("status"), rs.getInt("sort_no"),
+            rs.getLong("row_version"), List.of());
 
     private static final RowMapper<PhysicalSubsystem> PHYSICAL_MAPPER = (rs, rowNum) -> new PhysicalSubsystem(
             rs.getLong("id"), rs.getString("code"), rs.getString("short_name"), rs.getString("name"),
             rs.getLong("logical_subsystem_id"), rs.getString("business_group_name"),
+            rs.getString("business_continuity_level"), rs.getString("collected_system_level"),
+            rs.getString("deployment_platform"), rs.getString("disaster_recovery_mode"),
             rs.getLong("responsible_team_org_id"), rs.getString("responsible_team_name_snapshot"),
             rs.getString("runtime_code"), rs.getString("system_level_code"),
             rs.getString("development_framework_code"), nullableLong(rs, "owner_user_id"),
             rs.getString("description"), rs.getString("remark"),
             rs.getLong("created_by"), rs.getLong("updated_by"),
-            localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")));
+            localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")),
+            rs.getString("number_slot"), rs.getString("english_name"), rs.getString("status"),
+            rs.getLong("row_version"));
     private static final RowMapper<LogicalSubsystemLock> LOGICAL_LOCK_MAPPER = (rs, rowNum) ->
             new LogicalSubsystemLock(rs.getLong("id"), rs.getBoolean("deleted"));
 
@@ -71,6 +80,7 @@ public class ArchitectureSubsystemRepository {
             filter.append(" AND business_org_id = ?");
             args.add(normalizedQuery.businessOrgId());
         }
+        addStatus(filter, args, normalizedQuery.status());
         Long total = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM arch_logical_subsystem WHERE tenant_id = ? AND deleted = 0" + filter,
                 Long.class,
@@ -78,7 +88,7 @@ public class ArchitectureSubsystemRepository {
         List<Object> listArgs = pageArgs(args, normalizedPage);
         List<LogicalSubsystem> records = jdbc.query(
                 "SELECT " + LOGICAL_COLUMNS + " FROM arch_logical_subsystem WHERE tenant_id = ? AND deleted = 0"
-                        + filter + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                        + filter + " ORDER BY sort_no ASC, id DESC LIMIT ? OFFSET ?",
                 LOGICAL_MAPPER,
                 listArgs.toArray());
         return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
@@ -133,7 +143,19 @@ public class ArchitectureSubsystemRepository {
 
     public long countActivePhysicalByLogical(long tenantId, long logicalSubsystemId) {
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_physical_subsystem WHERE tenant_id = ? AND logical_subsystem_id = ? AND deleted = 0",
+                "SELECT COUNT(*) FROM arch_physical_subsystem "
+                        + "WHERE tenant_id = ? AND logical_subsystem_id = ? AND deleted = 0 AND status = 'ACTIVE'",
+                Long.class, tenantId, logicalSubsystemId);
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * 统计逻辑子系统名下全部物理历史，包括已软删除、下线和作废记录。
+     * 逻辑作废规则使用该事实，避免通过软删除历史绕过不可逆约束。
+     */
+    public long countPhysicalHistoryByLogical(long tenantId, long logicalSubsystemId) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM arch_physical_subsystem WHERE tenant_id = ? AND logical_subsystem_id = ?",
                 Long.class, tenantId, logicalSubsystemId);
         return count == null ? 0 : count;
     }
@@ -156,6 +178,7 @@ public class ArchitectureSubsystemRepository {
             filter.append(" AND logical_subsystem_id = ?");
             args.add(normalizedQuery.logicalSubsystemId());
         }
+        addStatus(filter, args, normalizedQuery.status());
         Long total = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM arch_physical_subsystem WHERE tenant_id = ? AND deleted = 0" + filter,
                 Long.class,
@@ -174,6 +197,14 @@ public class ArchitectureSubsystemRepository {
                 PHYSICAL_MAPPER, tenantId, id).stream().findFirst();
     }
 
+    /** 逻辑详情只汇总当前可查看的已发布物理事实，不包含软删除历史。 */
+    public List<PhysicalSubsystem> findPhysicalByLogical(long tenantId, long logicalSubsystemId) {
+        return jdbc.query("SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem "
+                        + "WHERE tenant_id = ? AND logical_subsystem_id = ? AND deleted = 0 "
+                        + "ORDER BY number_slot ASC, id ASC",
+                PHYSICAL_MAPPER, tenantId, logicalSubsystemId);
+    }
+
     public boolean physicalCodeExists(long tenantId, String code, Long excludeId) {
         return exists("arch_physical_subsystem", "code", tenantId, code, excludeId);
     }
@@ -187,11 +218,14 @@ public class ArchitectureSubsystemRepository {
         jdbc.update("""
                 INSERT INTO arch_physical_subsystem
                     (id, tenant_id, code, short_name, name, logical_subsystem_id, business_group_name,
+                     business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
                      responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
                      development_framework_code, owner_user_id, description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, tenantId, command.code(), command.shortName(), command.name(), command.logicalSubsystemId(),
-                command.businessGroupName(), command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
+                command.businessGroupName(), command.businessContinuityLevel(), command.collectedSystemLevel(),
+                command.deploymentPlatform(), command.disasterRecoveryMode(),
+                command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
                 command.ownerUserId(), command.description(), command.remark(), actorId, actorId);
     }
@@ -201,12 +235,15 @@ public class ArchitectureSubsystemRepository {
         return jdbc.update("""
                 UPDATE arch_physical_subsystem
                 SET code = ?, short_name = ?, name = ?, logical_subsystem_id = ?, business_group_name = ?,
-                    responsible_team_org_id = ?, responsible_team_name_snapshot = ?, runtime_code = ?,
-                    system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
+                    business_continuity_level = ?, collected_system_level = ?, deployment_platform = ?,
+                    disaster_recovery_mode = ?, responsible_team_org_id = ?, responsible_team_name_snapshot = ?,
+                    runtime_code = ?, system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
                     description = ?, remark = ?, updated_by = ?
                 WHERE tenant_id = ? AND id = ? AND deleted = 0
                 """, command.code(), command.shortName(), command.name(), command.logicalSubsystemId(),
-                command.businessGroupName(), command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
+                command.businessGroupName(), command.businessContinuityLevel(), command.collectedSystemLevel(),
+                command.deploymentPlatform(), command.disasterRecoveryMode(),
+                command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
                 command.ownerUserId(), command.description(), command.remark(),
                 actorId, tenantId, id);
@@ -236,6 +273,14 @@ public class ArchitectureSubsystemRepository {
         }
         filter.append(" AND ").append(column).append(" LIKE ? ESCAPE '\\\\'");
         args.add("%" + escapeLike(value.trim()) + "%");
+    }
+
+    private void addStatus(StringBuilder filter, List<Object> args, String status) {
+        if (status == null) {
+            return;
+        }
+        filter.append(" AND status = ?");
+        args.add(status);
     }
 
     private String escapeLike(String value) {

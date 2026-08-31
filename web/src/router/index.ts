@@ -33,6 +33,7 @@ import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationD
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
 import TestManagementList from '../modules/test-management/TestManagementList.vue'
 import BusinessDayManagement from '../modules/test-management/business-day/BusinessDayManagement.vue'
+import { getWorkflowTaskContext } from '../api/workflow'
 import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
@@ -344,6 +345,30 @@ const router = createRouter({
         { path: 'requirements/:section', name: 'requirements', component: RequirementsView, props: true, meta: { title: '需求管理平台' } },
         { path: 'architecture/logical-subsystems', name: 'architecture-logical-subsystems', component: () => import('../modules/architecture/LogicalSubsystemPage.vue'), meta: { title: '逻辑子系统' } },
         { path: 'architecture/physical-subsystems', name: 'architecture-physical-subsystems', component: () => import('../modules/architecture/PhysicalSubsystemPage.vue'), meta: { title: '物理子系统' } },
+        { path: 'architecture/subsystem-change-applications', name: 'architecture-subsystem-change-applications', component: () => import('../modules/architecture/SubsystemChangeApplicationListPage.vue'), meta: { title: '架构子系统变更工单' } },
+        { path: 'architecture/subsystem-change-applications/new', name: 'architecture-subsystem-change-application-new', component: () => import('../modules/architecture/SubsystemChangeApplicationFormPage.vue'), meta: { title: '新建架构子系统变更工单' } },
+        { path: 'architecture/subsystem-change-applications/:id/edit', name: 'architecture-subsystem-change-application-edit', component: () => import('../modules/architecture/SubsystemChangeApplicationFormPage.vue'), meta: { title: '编辑架构子系统变更工单' } },
+        { path: 'architecture/subsystem-change-applications/:id', name: 'architecture-subsystem-change-application-detail', component: () => import('../modules/architecture/SubsystemChangeApplicationDetailPage.vue'), meta: { title: '架构子系统变更工单详情' } },
+        { path: 'architecture/standards', name: 'architecture-standards', component: () => import('../modules/architecture/StandardDocumentListPage.vue'), meta: { title: '架构规范' } },
+        { path: 'architecture/decisions', name: 'architecture-decisions', component: () => import('../modules/architecture/DecisionMatterListPage.vue'), meta: { title: '架构决策' } },
+        { path: 'architecture/decisions/new', name: 'architecture-decision-new', component: () => import('../modules/architecture/DecisionMatterFormPage.vue'), meta: { title: '提交架构决策事项' } },
+        { path: 'architecture/decisions/:id', name: 'architecture-decision-detail', component: () => import('../modules/architecture/DecisionMatterDetailPage.vue'), meta: { title: '架构决策事项详情' } },
+        { path: 'architecture/deployment-units', name: 'architecture-deployment-units', component: () => import('../modules/architecture/DeploymentUnitPage.vue'), meta: { title: '部署单元' } },
+        { path: 'architecture/deployment-unit-imports', name: 'architecture-deployment-unit-imports', component: () => import('../modules/architecture/DeploymentUnitImportPage.vue'), meta: { title: '部署单元初始化导入' } },
+        { path: 'architecture/environments', name: 'architecture-environments', component: () => import('../modules/architecture/EnvironmentPage.vue'), meta: { title: '具体环境' } },
+        { path: 'architecture/instances', name: 'architecture-instances', component: () => import('../modules/architecture/InstanceListPage.vue'), meta: { title: '环境部署实例' } },
+        { path: 'architecture/plans', name: 'architecture-plans', component: () => import('../modules/architecture/PlanListPage.vue'), meta: { title: '环境搭建计划' } },
+        { path: 'architecture/plans/:id', name: 'architecture-plan-detail', component: () => import('../modules/architecture/PlanDetailPage.vue'), meta: { title: '环境搭建计划详情', menuPath: '/architecture/plans' } },
+        { path: 'architecture/plan-templates', name: 'architecture-plan-templates', component: () => import('../modules/architecture/PlanTemplateListPage.vue'), meta: { title: '搭建计划模板' } },
+        { path: 'architecture/plan-templates/:id/edit', name: 'architecture-plan-template-edit', component: () => import('../modules/architecture/PlanTemplateEditPage.vue'), meta: { title: '搭建计划模板编辑', menuPath: '/architecture/plan-templates' } },
+        { path: 'architecture/resource-requests', name: 'architecture-resource-requests', component: () => import('../modules/architecture/ResourceRequestPage.vue'), meta: { title: '资源申请' } },
+        { path: 'architecture/resource-requests/:id', name: 'architecture-resource-request-detail', component: () => import('../modules/architecture/ResourceRequestPage.vue'), meta: { title: '资源申请详情', menuPath: '/architecture/resource-requests' } },
+        { path: 'architecture/network-work-orders', name: 'architecture-network-work-orders', component: () => import('../modules/architecture/NetworkWorkOrderListPage.vue'), meta: { title: '网络专项工单' } },
+        { path: 'architecture/network-work-orders/new', name: 'architecture-network-work-order-new', component: () => import('../modules/architecture/NetworkWorkOrderFormPage.vue'), meta: { title: '新建网络专项工单' } },
+        { path: 'architecture/network-work-orders/:id/edit', name: 'architecture-network-work-order-edit', component: () => import('../modules/architecture/NetworkWorkOrderFormPage.vue'), meta: { title: '编辑网络专项工单' } },
+        { path: 'architecture/network-work-orders/:id', name: 'architecture-network-work-order-detail', component: () => import('../modules/architecture/NetworkWorkOrderDetailPage.vue'), meta: { title: '网络专项工单详情' } },
+        { path: 'architecture/network-zones', name: 'architecture-network-zones', component: () => import('../modules/architecture/NetworkZonePage.vue'), meta: { title: '网络分区' } },
+        { path: 'architecture/network-access', name: 'architecture-network-access', component: () => import('../modules/architecture/NetworkAccessPage.vue'), meta: { title: '网络访问关系' } },
         { path: 'test-management/business-day', name: 'business-day-management', component: BusinessDayManagement, meta: { title: '营业日管理' } },
         { path: 'test-management/business-day/calendar-overview', redirect: '/test-management/business-day' },
         { path: 'test-management/business-day/calendar-schedule', redirect: { path: '/test-management/business-day', query: { view: 'schedule' } } },
@@ -358,6 +383,24 @@ const router = createRouter({
     }
   ]
 })
+
+function queryString(value: unknown) {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' ? raw : ''
+}
+
+function safeBusinessPath(path: string | undefined | null) {
+  if (!path || !path.startsWith('/') || path.startsWith('//') || /[\\\r\n]/.test(path)) return ''
+  try {
+    const decoded = decodeURIComponent(path)
+    if (!decoded.startsWith('/') || decoded.startsWith('//') || /[\\\r\n]/.test(decoded)) return ''
+    const resolved = router.resolve(path)
+    if (!resolved.matched.length || resolved.matched.some(record => record.path === '/:pathMatch(.*)*')) return ''
+    return path
+  } catch {
+    return ''
+  }
+}
 
 router.beforeEach(async (to) => {
   const hasToken = Boolean(localStorage.getItem('ccb.access_token'))
@@ -390,6 +433,31 @@ router.beforeEach(async (to) => {
 
   if (to.name === 'login') {
     return { name: 'dashboard' }
+  }
+
+  if (to.path === '/dashboard') {
+    const taskId = queryString(to.query.taskId)
+    if (/^\d+$/.test(taskId)) {
+      if (to.query.workflowTaskRedirected === '1') {
+        return { path: '/workbench/tasks', query: { tab: 'pending' }, replace: true }
+      }
+      try {
+        const context = (await getWorkflowTaskContext(Number(taskId))).data.data
+        const path = safeBusinessPath(context.action_path)
+        if (path) {
+          const resolved = router.resolve(path)
+          return {
+            path: resolved.path,
+            query: { ...resolved.query, taskId, workflowTaskRedirected: '1' },
+            hash: resolved.hash,
+            replace: true
+          }
+        }
+      } catch {
+        // Invalid, stale and unauthorized dashboard task links fall back to task center.
+      }
+      return { path: '/workbench/tasks', query: { tab: 'pending' }, replace: true }
+    }
   }
 
   if (to.path === '/release') {

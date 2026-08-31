@@ -1,0 +1,144 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
+      "purpose": "追加子系统生命周期、工单草稿、编号命名空间/回收/预留、发布历史、工作流轮次与回执表，并为既有主数据补齐稳定序号和状态字段"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/model/**",
+      "purpose": "定义发布状态、编号种类、分配请求、预留结果与释放原因等强类型模型"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/number/**",
+      "purpose": "以策略模式实现固定前缀加全局递增逻辑序号及父逻辑下 1..9/A..Z 物理槽位"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/**",
+      "purpose": "实现事务内命名空间锁、最小释放值优先复用、永久编号冲突跳过和发布主记录生命周期读取/加锁"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/number/**",
+      "purpose": "验证策略语义、真实 MySQL 并发唯一、回收、历史占号、容量与事务回滚"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureSubsystemLifecycleMySqlTest.java",
+      "purpose": "验证 V81 到 V82、跨租户全局序号、历史记录占位、容量保护、约束和失败不留半成品"
+    }
+  ],
+  "requirements_addressed": ["R1", "R3", "R4", "R5", "R6", "R9", "R11", "R12"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am -DskipTests compile",
+      "exit_code": 0,
+      "salient_output": "ccb-architecture 编译成功；BUILD SUCCESS"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureSubsystemLifecycleMySqlTest,FixedPrefixIncrementalSubsystemNumberStrategyTest,JdbcSubsystemNumberReservationStoreMySqlTest,PhysicalSubsystemConcurrencyMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 17, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS；Total time: 03:41 min"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test",
+      "exit_code": 0,
+      "salient_output": "architecture 及依赖模块 Tests run: 62, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS；Total time: 05:31 min"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "Flyway migration check passed for 76 migration(s) and 1 approved callback(s)"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误；仅报告既有测试文件工作区 LF 到 CRLF 提示"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=JdbcSubsystemNumberReservationStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "F-T1-001 纠偏后 Tests run: 6, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureSubsystemLifecycleMySqlTest,FixedPrefixIncrementalSubsystemNumberStrategyTest,JdbcSubsystemNumberReservationStoreMySqlTest,PhysicalSubsystemConcurrencyMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "F-T1-001 纠偏后 Tests run: 17, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS；Total time: 03:46 min"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "V82 迁移与边界保护",
+      "result": "pass",
+      "evidence": "ArchitectureSubsystemLifecycleMySqlTest 3/3；覆盖正向迁移、全局 9999/10000、物理 35/36、deleted 历史占位、约束/FK 和失败无半 DDL",
+      "limitations": ["仍需独立观察者复核 SQL 约束与重新运行关键传感器"]
+    },
+    {
+      "check": "固定前缀递增策略",
+      "result": "pass",
+      "evidence": "FixedPrefixIncrementalSubsystemNumberStrategyTest 6/6；逻辑 A0001..A9999，物理 W+逻辑序号+槽位，RETURNED 保留，REJECTED/CANCELLED 释放，APPROVED 永久消费",
+      "limitations": ["仍需独立观察者检查策略与 store 的幂等边界"]
+    },
+    {
+      "check": "真实 MySQL 并发与事务",
+      "result": "pass",
+      "evidence": "JdbcSubsystemNumberReservationStoreMySqlTest 6/6；覆盖无事务 fail-closed、跨租户并发不重号、最小值复用、历史 code 冲突、容量和回滚",
+      "limitations": ["单机 MySQL 8.4 Testcontainers；未在集群数据库上验证"]
+    },
+    {
+      "check": "architecture 全量回归",
+      "result": "pass",
+      "evidence": "62/62 通过；新增 15 个 T1 用例与既有迁移、仓储、服务、控制器用例全部通过",
+      "limitations": ["T2 业务服务尚未接入本基座"]
+    },
+    {
+      "check": "F-T1-001 事务边界纠偏",
+      "result": "pass",
+      "evidence": "isPublishedCodeOccupied 增加真实事务守卫和无事务断言；JDBC 6/6、组合 17/17 通过",
+      "limitations": ["仍需独立观察者关闭反馈"]
+    }
+  ],
+  "diff_summary": [
+    "新增 V82，不修改 V1-V81；迁移前先执行容量保护，再创建持久表和约束",
+    "逻辑编号序列为跨租户全局命名空间，既有 code 保持不变；物理槽位按租户和逻辑归属稳定回填",
+    "编号分配锁顺序为申请行、命名空间、最小回收值，所有 reserve/release/consume 均要求真实事务",
+    "为避免让 V77 并发基线依赖 V82，新增独立 SubsystemChangeStore 读取生命周期字段，未扩写旧仓储模型"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "不修改已发布 Flyway V1-V81",
+      "result": "pass",
+      "evidence": "实际新增文件仅 V82；Flyway 顺序/命名检查通过"
+    },
+    {
+      "invariant": "全局逻辑编号并发唯一且既有 code 不改写",
+      "result": "pass",
+      "evidence": "迁移与 JDBC 测试覆盖跨租户并发和旧 code 原值断言；数据库全局唯一 number_sequence"
+    },
+    {
+      "invariant": "未批准释放值最小优先，已发布/下线/作废和 deleted 历史编号永久不复用",
+      "result": "pass",
+      "evidence": "策略与 MySQL 用例覆盖 RELEASED 最小值、CONSUMED 永久占用及主表含 deleted 的 code 冲突扫描"
+    },
+    {
+      "invariant": "事务失败不消耗编号且无事务调用拒绝执行",
+      "result": "pass",
+      "evidence": "真实 MySQL 回滚和无事务 fail-closed 用例通过"
+    },
+    {
+      "invariant": "不修改用户级 Testcontainers 配置",
+      "result": "pass",
+      "evidence": "Docker 参数仅注入 Maven 子进程"
+    }
+  ],
+  "disturbances": [
+    "Windows 下 rg 对路径尾部 *.txt 通配符返回 os error 123；改为对 surefire-reports 目录搜索后成功读取各测试报告",
+    "MySQL 8.4/Flyway 输出既有 utf8mb3、重复 seed 和版本支持警告，未影响迁移与测试退出码"
+  ],
+  "assumptions_falsified": [
+    "只在策略层先查询既有预留即可保证事务边界；修正为策略始终调用 store.reserve，由 JDBC store 在同一事务和锁序内完成幂等查询与分配"
+  ],
+  "unresolved_items": [
+    "T2 尚需把工单服务和原子发布接入本数据/编号基座"
+  ],
+  "recommended_next": "T2"
+}

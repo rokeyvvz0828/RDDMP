@@ -1,0 +1,22 @@
+{
+  "feedback_id": "F-T3-002",
+  "task_id": "T3",
+  "requirement_id": "R8/R9",
+  "severity": "P1",
+  "decision": "accept-with-bounds",
+  "expected": "固定 ROLE110 管理员可以通过已批准的既有 workflow web API 完成当前任务三动作",
+  "observed": "WorkflowController 需要 system:access/workflow:access，V83 未给 ROLE110 对应菜单权限",
+  "causal_hypothesis": "固定角色种子遗漏既有工作流 API 的访问前置权限",
+  "decision_reason": "scope 明确 workflow 只读且 T4 必须复用现有 web workflow API；因此不新增代理端点、不修改 workflow 公共契约，只补 ROLE110 最小既有 workflow 菜单授权。",
+  "correction": "已执行：V83 恢复既有待办菜单 202，为 ROLE110 仅绑定 workflow 根 200 与待办 202；显式守卫排除 201/203/204，审批仍由 workflow assignee、轮次和 allowedActions 约束。",
+  "residual_risk": "WorkflowController 的 workflow:access 为平台既有粗粒度权限；本任务不扩大到修改 workflow 模块，T5 需核验菜单和 API 实际可达范围。",
+  "verification": [
+    "主代理静态复核 V83：ROLE110 的 workflow 菜单白名单为 200/202，失败关闭守卫拒绝缺少 200/202 或拥有 201/203/204。",
+    "ArchitectureWorkflowIntegrationMySqlTest 已覆盖 ROLE110 菜单精确集合及 workflow:access；本次主代理复跑两次均在测试容器启动前被 docker-java npipe /info HTTP 400 阻断，docker CLI version/info 正常，记为环境盲区而非产品通过或失败。",
+    "git diff --check exit 0；仅有 Windows LF/CRLF 提示。"
+  ],
+  "independent_reobservation": "独立观察者 Curie 复核新增稳定菜单 803 身份冲突用例及 4/4 MySQL 运行证据后判定 resolved；其他稳定 ID 由同一失败关闭守卫静态覆盖，真实 Flowable 留 T5。",
+  "status": "resolved",
+  "resolved_at": "2026-08-23T10:03:38+08:00",
+  "decided_at": "2026-08-23T09:22:43+08:00"
+}

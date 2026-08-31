@@ -1,0 +1,155 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "基于 temp/implementation/issues/11（US110-113）、temp/spec.md 与 temp/CONTEXT.md 收敛；用户于 2026-08-23 直接下达实施任务并确认模块落点为 business/architecture。",
+  "recorded_at": "2026-08-23T16:10:00+00:00",
+  "data": {
+    "objective": "在 business/architecture 内提供 CLB 开通/调整、DNS 新增/变更/注销、证书申请/续期/吊销三类网络专项工单：创建/保存/提交/查询/跟踪、办理结果与凭证登记、操作历史，复用平台工作流而不执行任何外部平台动作。",
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "申请人（apply/manage）按类型创建并保存 CLB/DNS/证书草稿，字段契约与动作集按类型服务端校验；草稿仅本人可编辑，提交后进入审批并固化快照。",
+        "acceptance": ["per-kind 字段/动作校验 400", "本人 DRAFT/RETURNED 可编辑", "提交固化快照+摘要并启动新轮次", "非本人/错误状态 403/409"],
+        "priority": "must",
+        "source": "US110/US111/US113 + issue 11",
+        "counterexample": ["跨类型字段混用", "非本人改写他人草稿"]
+      },
+      {
+        "id": "R2",
+        "statement": "工单状态机只由业务动作与工作流生命周期事件驱动：DRAFT/IN_REVIEW/RETURNED/COMPLETED/REJECTED/CANCELLED，批准仅表示外部配置已办理并登记，平台不执行外部动作。",
+        "acceptance": ["提交/退回重提轮次递增", "APPROVED→COMPLETED", "RETURNED/REJECTED 事件正确落地", "取消需 TERMINATED 确认"],
+        "priority": "must",
+        "source": "US110-113 + spec 决策 13",
+        "counterexample": ["通用状态下拉改写", "绕过工作流直接终态化"]
+      },
+      {
+        "id": "R3",
+        "statement": "网络办理人员（manage）可登记办理结果（SUCCESS/FAILED、说明、凭证附件），结果随详情展示并进入历史；完成后仍可补登。",
+        "acceptance": ["IN_REVIEW/COMPLETED 可登记", "rowVersion 防并发覆盖", "RESULT_REGISTERED 历史事件", "附件继承实体授权"],
+        "priority": "must",
+        "source": "issue 11 + CONTEXT 证书工单词条",
+        "counterexample": ["结果无留痕", "并发覆盖结果"]
+      },
+      {
+        "id": "R4",
+        "statement": "附件只承载申请材料或公开证书，复用平台附件能力并继承工单实体授权；证书工单禁止上传私钥类文件。",
+        "acceptance": ["下载/预览需可读工单", "删除仅草稿/退回且本人或管理", "私钥扩展名 400 且不绑定"],
+        "priority": "must",
+        "source": "US113 + issue 11",
+        "counterexample": ["私钥进入平台存储", "任意用户读取附件"]
+      },
+      {
+        "id": "R5",
+        "statement": "只有 view/apply/manage 权限可查询（view/apply 仅本人，manage 租户全部）；写操作服务端认证、RBAC、租户隔离、实体授权与操作审计。",
+        "acceptance": ["无权限 403", "跨租户 404", "操作审计含 trace", "HTTP DTO 无 tenantId"],
+        "priority": "must",
+        "source": "US132/133 + spec 决策 15",
+        "counterexample": ["前端隐藏代替后端校验"]
+      },
+      {
+        "id": "R6",
+        "statement": "公开 API、真实 MySQL/Flyway、真实工作流集成、越权与敏感数据测试，以及桌面/移动端主要旅程通过验收。",
+        "acceptance": ["Testcontainers 真实迁移", "工作流轮次/回执持久化与幂等", "越权与私钥拒绝测试", "浏览器 UAT 桌面/移动"],
+        "priority": "must",
+        "source": "spec Testing Decisions",
+        "counterexample": ["内存数据库代替 MySQL"]
+      }
+    ],
+    "invariants": [
+      "工单状态只能由业务动作与工作流事件改变",
+      "提交快照与摘要固化，退回重提递增轮次",
+      "平台不执行任何外部 CLB/DNS/证书动作",
+      "私钥文件永不进入平台存储",
+      "写操作服务端 RBAC + 租户 + 实体授权 + 审计",
+      "Flyway 只追加"
+    ],
+    "constraints": [
+      "Java 17 / Spring Boot 3.4.4 / MySQL 8.4 / Vue 3",
+      "business/architecture 模块内实现（用户确认）",
+      "复用 REQ-048 工单+工作流模式与既有公开契约",
+      "附件/工作流/审计通过平台公开契约接入"
+    ],
+    "non_goals": [
+      "CLB 实例/监听器/后端池/健康检查生命周期",
+      "DNS 解析管理平台或自动 DNS 操作",
+      "证书生成/私钥保存/自动部署",
+      "网络分区与访问关系（issue 09/10）、加密机入池（issue 12）",
+      "多租户扩展/动态表单元数据"
+    ],
+    "assumptions": [
+      {
+        "text": "三类工单共享一个工单引擎，kind 专属字段以强类型 DTO 校验后存 JSON 载荷",
+        "basis": "三类流程/状态/权限一致，仅字段契约不同",
+        "falsifier": "后续批次要求三类独立审批人或独立表"
+      },
+      {
+        "text": "办理结果可在审批中或完成后登记，完成不强制要求已登记结果",
+        "basis": "issue 11 只要求可查看办理意见、结果和操作历史",
+        "falsifier": "产品要求完成必须携带结果"
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "三类工单的具体业务字段是否需要在后续批次扩展（如 DNS 记录类型、CLB 端口）",
+        "impact": "仅影响 payload DTO 与前端表单",
+        "owner": "后续批次",
+        "blocking": false
+      }
+    ],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "模块落点 business/architecture，新增 com.ccb.architecture.network 子包",
+        "reason": "用户确认；复用架构模块工单+工作流模式",
+        "source": "用户 2026-08-23 确认"
+      },
+      {
+        "id": "D2",
+        "decision": "单工单引擎 + kind 专属 JSON 载荷，独立字段契约由服务端强类型 DTO 保证",
+        "reason": "三类流程与权限一致，避免三套平行实现",
+        "source": "本任务设计"
+      },
+      {
+        "id": "D3",
+        "decision": "新增角色 113 NETWORK_MANAGER 与三级权限 architecture:network-work-order:view/apply/manage",
+        "reason": "网络办理人员与架构管理员职责分离",
+        "source": "本任务设计"
+      },
+      {
+        "id": "D4",
+        "decision": "单一固定流程 architecture.network.work-order（ROLE 113 ANY，APPROVE/RETURN/REJECT）",
+        "reason": "三类工单复用平台流程，保持各自字段契约独立即可",
+        "source": "本任务设计"
+      },
+      {
+        "id": "D5",
+        "decision": "证书工单附件扩展名黑名单 key/pem/pfx/p12/jks/keystore",
+        "reason": "spec 明确平台不保存私钥",
+        "source": "本任务设计"
+      }
+    ],
+    "measurement_intents": [
+      {
+        "requirement_ids": ["R1", "R2"],
+        "signal": "状态机与校验",
+        "method": "领域测试 + MySQL 断言"
+      },
+      {
+        "requirement_ids": ["R3", "R4"],
+        "signal": "结果登记与附件授权",
+        "method": "服务级测试 + 附件黑名单测试"
+      },
+      {
+        "requirement_ids": ["R5"],
+        "signal": "权限矩阵",
+        "method": "HTTP/服务级 403 测试"
+      },
+      {
+        "requirement_ids": ["R6"],
+        "signal": "迁移与工作流",
+        "method": "Testcontainers 全流程 + 构建"
+      }
+    ],
+    "baseline_status": "ready"
+  }
+}

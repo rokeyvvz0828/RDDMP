@@ -1,0 +1,28 @@
+{
+  "requirement_id": "REQ-20260825-053",
+  "control_prefix": "req-20260825-053-resource-fulfillment-and-instance",
+  "architecture_design": {
+    "module": "business/architecture",
+    "entities": [
+      "EnvironmentInstance (arch_environment_instance)",
+      "InstanceDisasterRecovery (arch_instance_disaster_recovery)",
+      "AutomatedDeploymentProvider (Extensible interface + Mock provider)"
+    ],
+    "services": [
+      "EnvironmentResourceService (extended with fulfill, instance lifecycle, DR relations, actual resource summary)",
+      "AutomatedDeploymentProvider / MockAutomatedDeploymentProvider"
+    ],
+    "controllers": [
+      "EnvironmentResourceController (extended with fulfill, preview provision, instances, offline, disaster recovery endpoints)"
+    ],
+    "migrations": [
+      "V97__create_architecture_environment_instances.sql",
+      "V98__seed_architecture_environment_instances.sql"
+    ],
+    "ui_components": [
+      "InstanceListPage.vue",
+      "ResourceRequestPage.vue (extended with fulfillment modal/drawer)",
+      "EnvironmentPage.vue (extended with live actual resources)"
+    ]
+  }
+}

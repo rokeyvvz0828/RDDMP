@@ -1,0 +1,168 @@
+{
+  "requirement_id": "REQ-20260826-054",
+  "control_prefix": "req-20260826-054-network-zones-access-relationship",
+  "observed_at": "2026-08-28T13:57:57+08:00",
+  "commands": [
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "result": "vue-tsc and vite production build succeeded. Vite reported existing Rollup pure annotation notices and large chunk warning."
+    },
+    {
+      "name": "api",
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=NetworkAccessServiceTest,EnvironmentResourceServiceTest,DeploymentUnitServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "exit_code": 0,
+      "result": "37 tests run, 0 failures, 0 errors, 0 skipped. Coverage includes network subnet CRUD rules, automated subnet IP generation, manual fulfillment subnet rejection, network access, resource fulfillment, and deployment unit regressions."
+    },
+    {
+      "name": "flyway",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "result": "Flyway migration check passed for 96 migration(s) and 1 approved callback(s)."
+    },
+    {
+      "name": "permission",
+      "command": "rg \"architecture:network-zone|architecture:network-access\" server/src/modules/architecture server/src/platform/infrastructure/src/main/resources/db/migration/V101__seed_architecture_network_zones_access.sql web/src/modules/architecture web/src/router/index.ts",
+      "exit_code": 0,
+      "result": "Located seeded permissions, Controller PreAuthorize rules, and frontend permission checks for network-zone and network-access."
+    },
+    {
+      "name": "diff",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "No whitespace errors. Git emitted LF-to-CRLF working copy warnings."
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260826-054-network-zones-access-relationship/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "exit_code": 1,
+      "result": "Failed on pre-existing unrelated untracked paths: .ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json, observation-T11.json, and .dsh/ files. 09 changed files are inside writable paths."
+    },
+    {
+      "name": "boot-package",
+      "command": "mvn -pl :ccb-boot -am -DskipTests package",
+      "exit_code": 0,
+      "result": "First attempt failed because the old backend process held the boot jar; after stopping the confirmed current-repo java process, package succeeded and produced the repackaged ccb-boot jar."
+    },
+    {
+      "name": "runtime-backend",
+      "command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local",
+      "exit_code": null,
+      "result": "Started as PID 33456. Startup log shows Flyway successfully applied 1 migration and schema is now at version v102; /actuator/health returned {\"status\":\"UP\"}."
+    },
+    {
+      "name": "runtime-frontend",
+      "command": "Invoke-WebRequest http://127.0.0.1:5173/architecture/network-zones",
+      "exit_code": 0,
+      "result": "Frontend dev server returned HTTP 200 and served the SPA entry for the network zone route."
+    },
+    {
+      "name": "runtime-api-auth",
+      "command": "Invoke-WebRequest http://127.0.0.1:8080/api/architecture/network-zones/tree",
+      "exit_code": 1,
+      "result": "Unauthenticated request returned expected 40100 Authentication required, confirming the protected API path is reachable and still guarded."
+    },
+    {
+      "name": "frontend-build-after-application-detail-fix",
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "result": "vue-tsc and vite production build succeeded after adding the network access application detail drawer. Vite reported existing Rollup pure annotation notices and large chunk warning."
+    },
+    {
+      "name": "runtime-frontend-network-access-route",
+      "command": "Invoke-WebRequest http://127.0.0.1:5173/architecture/network-access",
+      "exit_code": 0,
+      "result": "Frontend dev server was restarted on 127.0.0.1:5173 and the network access route returned HTTP 200."
+    },
+    {
+      "name": "frontend-build-after-relation-address-detail-fix",
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "result": "vue-tsc and vite production build succeeded after adding network access relation and external address detail drawers. Vite reported existing Rollup pure annotation notices and large chunk warning."
+    },
+    {
+      "name": "runtime-frontend-network-access-route-after-relation-address-detail-fix",
+      "command": "Invoke-WebRequest http://127.0.0.1:5173/architecture/network-access",
+      "exit_code": 0,
+      "result": "Frontend dev server returned HTTP 200 for the network access route after the detail follow-up."
+    },
+    {
+      "name": "flyway-after-v103",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "result": "Flyway migration check passed for 97 migration(s) and 1 approved callback(s), including V103 reference diagram seed data."
+    },
+    {
+      "name": "diff-after-v103",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "No whitespace errors. Git emitted LF-to-CRLF working copy warnings."
+    },
+    {
+      "name": "boot-package-after-v103",
+      "command": "mvn -pl :ccb-boot -am -DskipTests package",
+      "exit_code": 0,
+      "result": "Boot package rebuilt successfully with V103 copied into the infrastructure resources."
+    },
+    {
+      "name": "runtime-backend-after-v103",
+      "command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local",
+      "exit_code": null,
+      "result": "Started as PID 75392. Startup log shows Flyway successfully applied 1 migration and schema ccb_platform is now at version v103; /actuator/health returned {\"status\":\"UP\"}."
+    },
+    {
+      "name": "runtime-frontend-network-zones-after-v103",
+      "command": "Invoke-WebRequest http://127.0.0.1:5173/architecture/network-zones",
+      "exit_code": 0,
+      "result": "Frontend dev server returned HTTP 200 for the network zones route after V103."
+    },
+    {
+      "name": "runtime-frontend-network-access-after-v103",
+      "command": "Invoke-WebRequest http://127.0.0.1:5173/architecture/network-access",
+      "exit_code": 0,
+      "result": "Frontend dev server returned HTTP 200 for the network access route after V103."
+    },
+    {
+      "name": "scope-after-v103",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260826-054-network-zones-access-relationship/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "exit_code": 1,
+      "result": "Failed only on unrelated pre-existing untracked paths: .ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json, observation-T11.json, and .dsh/ files. V103 and 09 work files are inside this requirement's writable paths."
+    },
+    {
+      "name": "closure-api",
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=NetworkAccessServiceTest,EnvironmentResourceServiceTest,DeploymentUnitServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "exit_code": 0,
+      "result": "Final pre-commit run passed: 37 tests, 0 failures, 0 errors, 0 skipped."
+    },
+    {
+      "name": "closure-frontend-build",
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "result": "Final pre-commit run passed: vue-tsc and Vite production build completed. Vite reported existing pure annotation notices and large chunk warning."
+    },
+    {
+      "name": "closure-flyway",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "result": "Final pre-commit run passed for 97 migration(s) and 1 approved callback(s)."
+    },
+    {
+      "name": "closure-diff",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "Final pre-commit run reported no whitespace errors. Git emitted LF-to-CRLF working copy warnings."
+    },
+    {
+      "name": "closure-runtime",
+      "command": "Invoke-RestMethod http://127.0.0.1:8080/actuator/health; Invoke-WebRequest http://127.0.0.1:5173/architecture/network-access",
+      "exit_code": 0,
+      "result": "Backend health returned UP and frontend network access route returned HTTP 200 before commit."
+    }
+  ],
+  "not_performed": [
+    "Authenticated browser click-through UAT was not performed by Codex because the local workspace has no Playwright package available; the network access page was opened in the Codex browser panel for manual verification.",
+    "No mobile viewport browser UAT was performed.",
+    "No external firewall, network device, CLB, DNS, or certificate platform verification was performed."
+  ]
+}

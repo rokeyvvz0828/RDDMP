@@ -1,0 +1,66 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "com.ccb.architecture.network.model.NetworkWorkOrderModels",
+      "purpose": "kind/动作/状态/结果枚举、工单/历史/轮次/回执记录、CLB/DNS/证书载荷 DTO"
+    },
+    {
+      "path_or_resource": "com.ccb.architecture.network.persistence.NetworkWorkOrderStore",
+      "purpose": "JDBC 存储：行版本 CAS、状态机守卫、草稿更新、结果登记、轮次绑定、回执幂等"
+    },
+    {
+      "path_or_resource": "com.ccb.architecture.network.service.NetworkWorkOrderService",
+      "purpose": "状态机与业务规则：per-kind 载荷校验、subject 投影、SHA-256 摘要、结果登记、附件校验/绑定/移除、工作流事件落地"
+    },
+    {
+      "path_or_resource": "com.ccb.architecture.network.service.NetworkWorkOrderSubmissionService",
+      "purpose": "提交/取消与平台工作流网关的事务协调（轮次绑定、上下文校验）"
+    },
+    {
+      "path_or_resource": "com.ccb.architecture.network.integration.NetworkWorkflowLifecycleConsumer",
+      "purpose": "STARTED/APPROVED/RETURNED/REJECTED/TERMINATED 幂等消费，批准只推进 COMPLETED"
+    },
+    {
+      "path_or_resource": "com.ccb.architecture.network.integration.NetworkAttachmentAccessPolicy",
+      "purpose": "附件实体授权：读/预览/下载需可读工单，删除仅草稿/退回且本人或管理"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am -DskipTests compile",
+      "salient_output": "BUILD SUCCESS",
+      "exit_code": 0
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=NetworkWorkOrderServiceTest,NetworkWorkOrderSubmissionServiceTest,NetworkWorkflowLifecycleConsumerTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test",
+      "salient_output": "21/21 + 5/5 + 6/6 全部通过；BUILD SUCCESS",
+      "exit_code": 0
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "per-kind 校验与动作集",
+      "evidence": "跨 kind 动作、非法证书类型、私钥附件黑名单均返回 400",
+      "result": "pass",
+      "limitations": []
+    },
+    {
+      "check": "状态机与轮次",
+      "evidence": "提交/退回/拒绝/完成/取消与轮次递增测试通过",
+      "result": "pass",
+      "limitations": ["真实 Flowable 时序由运行时验收覆盖"]
+    },
+    {
+      "check": "结果登记与附件",
+      "evidence": "IN_REVIEW/COMPLETED 登记、rowVersion 守卫、凭证绑定、私钥拒绝",
+      "result": "pass",
+      "limitations": []
+    }
+  ],
+  "diff_summary": ["全部改动位于 com.ccb.architecture.network 子包与既有公开契约接入，未触碰其他模块"]
+}

@@ -1,0 +1,69 @@
+{
+  "task_id": "T6",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260823-050-architecture-standards-decisions/execution-T*.json",
+      "purpose": "执行账本"
+    },
+    {
+      "path_or_resource": "governance/modules.yaml",
+      "purpose": "architecture.allowed_dependencies 增加 platform/attachment；attachment.public_packages 增加 com.ccb.attachment.model"
+    },
+    {
+      "path_or_resource": "docs/architecture/MODULES.md",
+      "purpose": "模块说明与附件/工作流契约更新"
+    },
+    {
+      "path_or_resource": "docs/integration/architecture-module-contract.md",
+      "purpose": "规范与决策 HTTP 契约登记"
+    }
+  ],
+  "requirements_addressed": [
+    "R8"
+  ],
+  "commands": [
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope ... --base 1f61cb8 --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "Codex scope check passed for REQ-20260823-050; 37 changed file(s)."
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "Flyway migration check passed for 80 migration(s)."
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "Governance/skill/development-entry passed；check-ai-control-layout 的失败全部来自既有历史账本（030/032/031/033/034/035/048），与 REQ-20260823-050 无关（基线复现）"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs",
+      "exit_code": 1,
+      "salient_output": "10 条违规全部为 1f61cb8 既有基线问题（platform/system 依赖 attachment、business/requirement 引用 workflow 非公开包），两检出（主检出与 worktree）违规集合完全一致，本任务零新增"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test（Testcontainers 参数同上）",
+      "exit_code": 0,
+      "salient_output": "ccb-architecture Tests run: 198, Failures: 0, Errors: 0；BUILD SUCCESS（既有测试零回归）"
+    },
+    {
+      "command": "mvn -pl :ccb-workflow -am test",
+      "exit_code": 0,
+      "salient_output": "ccb-workflow Tests run: 47, Failures: 0, Errors: 0；BUILD SUCCESS"
+    },
+    {
+      "command": "mvn test（全反应堆，Testcontainers 参数同上）",
+      "exit_code": 0,
+      "salient_output": "全部 13 个模块 SUCCESS（architecture 198、workflow 47、boot 装配通过）；BUILD SUCCESS"
+    }
+  ],
+  "local_checks": [],
+  "notes": "全反应堆测试已通过；剩余未执行：真实工作流端到端、浏览器 UAT、手工权限矩阵。"
+}

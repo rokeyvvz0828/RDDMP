@@ -1,0 +1,53 @@
+{
+  "sample_label": "F-0001 纠正后独立复验",
+  "task_ids": ["T0"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R11",
+      "sensor": "Git 精确 diff 静态检查",
+      "result": "pass",
+      "raw_evidence": "唯一 tracked diff 为并发测试 Flyway target 从 V36 改为 V77；两个测试方法体和断言均未出现在 diff 中。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R12",
+      "sensor": "聚焦 Testcontainers MySQL 8.4 测试",
+      "result": "pass",
+      "raw_evidence": "仅向 Maven 子进程设置 Docker 参数后运行 PhysicalSubsystemConcurrencyMySqlTest；Flyway 成功迁移至 V77；Tests run: 2, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS；退出码 0。",
+      "limitation": ["Flyway 提示 MySQL 8.4 高于当前已验证支持版本，并产生既有 utf8mb3 弃用警告，但未影响测试结果。"]
+    },
+    {
+      "requirement_id": "R12",
+      "sensor": "完整 architecture Maven 回归",
+      "result": "pass",
+      "raw_evidence": "使用相同 Maven 子进程 Docker 参数运行 ccb-architecture 及依赖；Tests run: 47, Failures: 0, Errors: 0, Skipped: 0；所有 reactor 模块 SUCCESS；退出码 0。",
+      "limitation": ["本次只执行 architecture 及其依赖 reactor，不等同于全仓 mvn test。"]
+    },
+    {
+      "requirement_id": "R11",
+      "sensor": "Git diff 完整性与范围检查",
+      "result": "pass",
+      "raw_evidence": "git diff --check 退出码 0；tracked diff 名单仅包含目标测试文件，numstat 为 1/1。",
+      "limitation": ["当前需求自己的 requirement、design、plan 和前缀账本目录尚未跟踪，不属于 F-0001 tracked diff。", "Git 有 LF/CRLF 提示，但 diff check 通过。"]
+    },
+    {
+      "requirement_id": "R12",
+      "sensor": "F-0001 correction_check",
+      "result": "pass",
+      "raw_evidence": "target 精确限定为 V77；聚焦 2/2、完整 architecture 47/47、diff check 和范围检查均通过。",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "Maven 子进程参数成功覆盖用户级旧 Npipe 策略，观察者未修改全局配置。",
+    "Flyway/MySQL 既有版本支持、utf8mb3 和重复种子警告未转化为失败。",
+    "Git LF/CRLF 转换提示未产生空白错误。"
+  ],
+  "coverage_gaps": [
+    "未复验 T1-T5、全仓 Maven、前端构建、真实 HTTP/工作流或浏览器路径；这些不属于 T0/F-0001 范围。"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,149 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "recorded_at": "2026-08-23T13:55:00Z",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/integration/ArchitectureWorkflowLifecycleConsumer.java",
+      "purpose": "T5 真实 Boot 装配纠偏：类存在两个构造器（公共 3 参 + 包私有 4 参测试注入），Spring 无法选择导致 No default constructor 启动失败；公共构造器补 @Autowired"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/ArchitectureSubsystemSubmissionService.java",
+      "purpose": "T5 真实流程纠偏：审批中取消对已结束（APPROVED 等非 RUNNING）实例调用 terminate 触发平台 EmptyResultDataAccessException→500；在调用前经 WorkflowBusinessGateway.progress 预检，非 RUNNING 返回 409 冲突并说明运维处置或重试"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/web/SubsystemChangeApplicationController.java",
+      "purpose": "T2 归因纠偏：工单 create/update/submit/cancel 关键写操作补统一操作审计（成功 recordSuccess、业务失败 recordFailure、审计失败不阻断业务），operationCode=architecture.subsystem-change.*"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/web/SubsystemChangeApplicationControllerTest.java; .../service/ArchitectureSubsystemSubmissionServiceTest.java",
+      "purpose": "补审计期望（3 次 success、无 failure）与已结束实例取消 CONFLICT 且不调用 terminate 的聚焦测试"
+    },
+    {
+      "path_or_resource": "docs/integration/architecture-module-contract.md; docs/architecture/MODULES.md",
+      "purpose": "冻结稳定契约：旧写 409 ARCHITECTURE_WORK_ORDER_REQUIRED、主记录新增状态/编号/行版本字段、变更工单 REST/状态机/工作流/审计、明确不提供边界；MODULES 模块描述同步生命周期"
+    },
+    {
+      "path_or_resource": "运行环境（不改代码）：隔离 MySQL 8.4 容器 t5-rddmp-mysql:3308、Boot jar、Vite dev server 5173、本地 Playwright-core + 系统 Chromium",
+      "purpose": "空库 Flyway V1→V84；真实 Flowable 发布；真实 API 与浏览器验证"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"],
+  "commands": [
+    {
+      "command": "mvn -Dapi.version=1.44 test（全量 reactor）",
+      "exit_code": 0,
+      "salient_output": "两次 BUILD SUCCESS（首次 10:08、纠偏后 9:59）；ccb-architecture 含真实 MySQL/工作流测试；所有模块 SUCCESS"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit && vite build 通过"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "78 migrations 与 1 approved callback 检查通过"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 0,
+      "salient_output": "通过（仅有与要求的其他需求旧账本 topic/acceptance 提示，与本任务无关）"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs",
+      "exit_code": 1,
+      "salient_output": "仅既有基线：system→attachment、requirement→workflow 非公开包；architecture 相关违规 0"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260822-048-architecture-subsystem-lifecycle/codex-task-scope.yaml --base e5b57473beabc9d2a9c2c63bd32635b2f708d8a8 --head HEAD",
+      "exit_code": 0,
+      "salient_output": "范围检查通过；--working-tree 变体仅报告预先存在且与本任务无关的未跟踪 docs/original/tech/**"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    },
+    {
+      "command": "隔离 MySQL：空库启动 Boot（SPRING_PROFILES_ACTIVE=local，MOCK_DATA_ENABLED=false，DB 端口 3308）",
+      "exit_code": 0,
+      "salient_output": "Flyway V1→V84 共 78 个迁移全部 success；/actuator/health UP；未连接任何原开发库或生产（端口 3306 的既有 ccb-platform-mysql 未使用）"
+    },
+    {
+      "command": "POST /api/workflows/definitions/900000000000030/publish（平台既有发布入口）",
+      "exit_code": 200,
+      "salient_output": "V84 DRAFT 定义经 BPMN 编译并生成真实 Flowable deployment；definition status=PUBLISHED"
+    },
+    {
+      "command": "python3 /tmp/t5/run_t5_api.py（真实 HTTP 全生命周期脚本，重放命令见观察记录）",
+      "exit_code": 0,
+      "salient_output": "62/62 通过：健康/发布/测试用户、view/apply/none 权限、空库主数据、逻辑单独/级联双物理/物理新增、自审批、编号 A0001-A0006 与 W0001x/W0002x、退回重提 round2、拒绝后编号最小复用、草稿/审批中取消、REPLACE 新旧物理与替换关系、OFFLINE/REACTIVATE/VOID、锁并发 409、旧写 409 无副作用、建议 Noop、管理 403 不能编辑他人工单、本人/全部范围、wf 实例 30/任务 32/轮次 18/回执 33/历史 55、wf_audit_event TASK_* 18、sys_operation_log architecture.subsystem-change.* 44"
+    },
+    {
+      "command": "node /tmp/t5/uat.js（Playwright + 系统 Chromium 148，4 视口 × 明暗主题，重放命令见观察记录）",
+      "exit_code": 0,
+      "salient_output": "67/67 通过：桌面完整旅程（新建→级联卡片增删→保存→提交→详情 3 动作审批→批准→刷新 APPROVED→主数据可见）、403 专用态、12 组（4 视口×明暗）列表/主数据/表单/详情无页面级横滚、无 JS 控制台错误、无外部网络请求、移动端粘性操作栏与提交按钮在视口内；截图 31 张于 /tmp/t5/shots/"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureSubsystemSubmissionServiceTest,SubsystemChangeApplicationControllerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "6/6 + 6/6"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "T5-S1 完整静态/构建门禁",
+      "result": "pass",
+      "evidence": "mvn test 全绿、Vue build 0、flyway 0、all-governance 0、scope 0、diff 0；module-boundaries 仅既有基线且 architecture 0 项"
+    },
+    {
+      "check": "T5-S2 隔离 MySQL + 真实工作流/HTTP/DB/审计对账",
+      "result": "pass",
+      "evidence": "空库迁移 V84；真实定义发布；业务/流程/数据库/审计一致（详见 62/62 抽查与观察报告）；失败路径 fail-closed 且无部分发布"
+    },
+    {
+      "check": "T5-S3 四视口明暗主题浏览器验收",
+      "result": "pass",
+      "evidence": "67/67；核心旅程完成、无页面级横滚、无 JS 错误、无外部请求、403 专用态"
+    },
+    {
+      "check": "T5-S4 偏差纠偏（三项，均限幅于 architecture 模块）",
+      "result": "pass",
+      "evidence": "Boot 装配 @Autowired、取消已结束实例 409、写操作审计；聚焦 12/12、全量 reactor 绿"
+    }
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "不连接生产/原开发库",
+      "result": "pass",
+      "evidence": "只使用 t5-rddmp-mysql 3308 新容器；既有 3306 ccb-platform-mysql 未触碰"
+    },
+    {
+      "invariant": "不手工插业务表制造验收结果",
+      "result": "pass",
+      "evidence": "业务数据全部经真实 HTTP/工作流/迁移；仅平台基础表存在随附 fixture（租户 2 用户/菜单副本用于隔离验证，因平台登录固定 tenant_id=1 未完成 HTTP 侧登录，见盲区）"
+    },
+    {
+      "invariant": "未执行验证不声明通过",
+      "result": "pass",
+      "evidence": "所有通过项均有命令/退出码/结果；未运行项（容量耗尽、provider 异常、跨租户 HTTP 登录）明确列在盲区"
+    }
+  ],
+  "disturbances": [
+    "首次真实 Boot 启动暴露 ArchitectureWorkflowLifecycleConsumer 双构造器无 @Autowired（单测/集成测试不启动完整上下文），context 启动失败；限幅修复",
+    "REPLACE 同名被既有约束 uk_arch_physical_name(tenant_id,name) 拒绝（发布事务整单回滚）；确认为既有业务约束而非本需求缺陷，验收场景改为新名称并记录",
+    "审批中取消对已结束实例 500；限幅改为 progress 预检 + 409",
+    "工单写操作缺操作审计；补 SystemOperationAudit 接线与测试",
+    "本机代理环境变量影响 Python 请求（client 显式 ProxyHandler({}) 绕过）；Vite 绑定 [::1] 需用 localhost 访问；V71 演示哈希与注释不符（自生成 admin123 哈希）"
+  ],
+  "assumptions_falsified": [
+    "T1-T4 单测/集成测试通过即可认为 Boot 装配可用——真实上下文装配仍失败（@Autowired 缺失）",
+    "REPLACE 可保持同名——受既有 uk_arch_physical_name 约束，需新名称"
+  ],
+  "unresolved_items": [
+    "平台登录固定 tenant_id=1（AuthRepository.findByUsername），真实 HTTP 无法以租户 2 用户登录；跨租户隔离依赖服务层 AuthUser.tenantId 过滤，由单元/MySQL 测试证明；平台约束不在本需求范围",
+    "9999/35 号码容量、引用 provider 异常 fail-closed、重复/乱序事件幂等由聚焦单元+MySQL 测试覆盖，未在运行时构造容量耗尽/注入故障 provider"
+  ],
+  "recommended_next": "独立观察 T5 证据并写 observation-T5；全部反馈闭合后写 convergence 并收敛账本"
+}

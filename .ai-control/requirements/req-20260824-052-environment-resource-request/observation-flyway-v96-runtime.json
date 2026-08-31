@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260824-052-environment-resource-request",
+  "requirement_id": "REQ-20260824-052",
+  "recorded_at": "2026-08-25T15:14:36+08:00",
+  "checks": [
+    {
+      "kind": "local-db-before",
+      "command": "docker exec ccb-platform-mysql mysql SELECT latest flyway_schema_history",
+      "result": "observed",
+      "evidence": "本次执行前本地开发库 flyway_schema_history 最新成功版本为 95。"
+    },
+    {
+      "kind": "boot-start",
+      "command": "Start-Process java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local",
+      "result": "passed",
+      "evidence": "使用本地 .env 仅注入 Java 子进程环境变量且未打印变量值；Boot 进程 PID=44732，8080 启动成功。"
+    },
+    {
+      "kind": "flyway-runtime-migrate",
+      "command": "Spring Boot local profile startup Flyway migrate",
+      "result": "passed",
+      "evidence": "后端日志显示 Flyway validated 90 migrations，schema ccb_platform 当前版本从 95 迁移到 96，并成功应用 V96__refine_resource_request_resource_catalogs.sql。"
+    },
+    {
+      "kind": "boot-health",
+      "command": "Invoke-RestMethod http://127.0.0.1:8080/actuator/health",
+      "result": "passed",
+      "evidence": "健康检查返回 {\"status\":\"UP\"}。"
+    },
+    {
+      "kind": "flyway-history-check",
+      "command": "docker exec ccb-platform-mysql mysql SELECT version, description, success FROM flyway_schema_history WHERE version = '96'",
+      "result": "passed",
+      "evidence": "V96 refine resource request resource catalogs success=1；最近历史版本依次为 V96、V95、V94、V93、V92、V91。"
+    },
+    {
+      "kind": "schema-and-dictionary-sampling",
+      "command": "docker exec ccb-platform-mysql mysql information_schema/sys_dict_type/sys_config sampling",
+      "result": "passed",
+      "evidence": "ARCH_SERVER_TYPE=3、ARCH_DISASTER_RECOVERY_MODE=4、ARCH_JDK_VERSION=3、ARCH_MIDDLEWARE=2、ARCH_OPERATING_SYSTEM=3；arch_resource_request_item 的 database_storage_gb、cpu_cores、memory_gb、storage_gb、extra_cbs_gb、local_disk_gb 均为 bigint scale=0，明细层旧物理子系统字段未返回。"
+    }
+  ],
+  "warnings": [
+    "Flyway 输出 MySQL 8.4 新于当前 Flyway 已测试 MySQL 8.1 的兼容性警告；迁移结果和后端健康均为成功。",
+    "本次仅使用本地开发库执行 Flyway；未执行生产、UAT 或其他环境数据库迁移。"
+  ],
+  "negative_space": [
+    "未执行浏览器 UAT。",
+    "未重新验证资源申请审批全流程提交和办理。"
+  ],
+  "conclusion": "本地开发库 Flyway 已从 V95 执行到 V96，后端 8080 保持 UP，V96 相关字典和资源明细整数列抽样回查通过。"
+}

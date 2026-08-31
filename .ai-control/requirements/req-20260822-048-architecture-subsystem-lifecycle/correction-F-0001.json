@@ -1,0 +1,40 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "独立观察以 V77 DDL、测试直接依赖和既有历史迁移测试证明 V77 已满足并发测试所需 schema；当前无 target 的运行证据显示传感器被无关 V80 阻断。",
+  "dynamic_pattern": "sensor-fault",
+  "causal_assessment": {
+    "hypothesis": "删除 Flyway target 使测试迁移边界从架构 schema 扩大到所有最新迁移，导致无关 V80 排序规则冲突先于并发断言发生。",
+    "supporting_evidence": [
+      "V77 创建 arch_logical_subsystem 与 arch_physical_subsystem 及测试所需列",
+      "既有 ArchitectureMigrationMySqlTest 以 V77 作为架构 schema 边界",
+      "execution-T0 证明无 target 时 V77-V79 成功、V80 失败且并发用例未执行"
+    ],
+    "falsifier": "把 target 精确设为 V77 后，聚焦测试仍在迁移阶段失败或因缺少 V78 以后对象失败"
+  },
+  "control_action": {
+    "gain": "high",
+    "target": "PhysicalSubsystemConcurrencyMySqlTest 的 Flyway 迁移目标",
+    "write_scope": [
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/PhysicalSubsystemConcurrencyMySqlTest.java"
+    ],
+    "invariants": [
+      "两个并发用例方法体和断言不变",
+      "不修改产品代码、历史迁移或用户全局 Testcontainers 配置",
+      "测试只加载满足被测对象所需的最小架构 schema"
+    ],
+    "impact_limit": "单一架构并发测试文件中的 import 与 Flyway target",
+    "rollback": "恢复 F-0001 纠正动作前该测试文件",
+    "correction_check": [
+      "使用 target V77 运行 PhysicalSubsystemConcurrencyMySqlTest，2 个用例通过",
+      "运行完整 ccb-architecture 测试套件并核对 Surefire 汇总",
+      "git diff 仅显示 target 从 V36 调整为 V77"
+    ],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": [
+    "V80 排序规则冲突仍是仓库既有问题，但不属于本并发传感器或当前需求写入边界",
+    "T1 新增 V82 测试必须使用独立迁移入口，不能依赖这个固定 V77 的历史传感器"
+  ]
+}

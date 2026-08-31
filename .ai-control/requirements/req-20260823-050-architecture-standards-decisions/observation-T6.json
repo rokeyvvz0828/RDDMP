@@ -1,0 +1,62 @@
+{
+  "task_id": "T6",
+  "status": "verified",
+  "sensors": [
+    {
+      "sensor": "maven-focused",
+      "result": "pass",
+      "evidence": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureStandardServiceTest,ArchitectureDecisionServiceTest,ArchitectureDecisionWorkflowLifecycleConsumerTest,ArchitectureStandardsDecisionsMySqlTest ... test：单元 29/29 通过；MySQL 集成 4/4 通过（空库迁移 V88、规范版本快照、编号并发 16 不重号、决策生命周期与替代链、约束）"
+    },
+    {
+      "sensor": "mysql-flyway",
+      "result": "pass",
+      "evidence": "Testcontainers MySQL 8.4 空库迁移到 V88 成功；字典/菜单/权限/角色/流程草稿种子断言通过；约束与索引断言通过"
+    },
+    {
+      "sensor": "frontend-build",
+      "result": "pass",
+      "evidence": "npm --prefix web run build（vue-tsc --noEmit && vite build）通过"
+    },
+    {
+      "sensor": "governance",
+      "result": "pass-with-baseline-noise",
+      "evidence": "check-codex-scope、check-flyway-migrations、git diff --check 通过；check-module-boundaries 与 check-ai-control-layout 的失败全部为 1f61cb8 既有基线问题（主检出与 worktree 违规集合完全一致，本任务零新增）"
+    },
+    {
+      "sensor": "workflow-lifecycle",
+      "result": "partial",
+      "evidence": "消费者单元测试覆盖 APPROVED/RETURNED/REJECTED/TERMINATED 与幂等；真实 Flowable 实例端到端发布（需先经平台发布入口部署 V88 流程草稿）未在本批次执行"
+    },
+    {
+      "sensor": "browser-uat",
+      "result": "not-run",
+      "evidence": "四视口明暗主题真实浏览器验收未执行；前端已构建通过并覆盖全状态组件，列入上线前验证清单"
+    },
+    {
+      "sensor": "reactor-full",
+      "result": "pass",
+      "evidence": "mvn test 全反应堆 BUILD SUCCESS：13 模块全部通过（architecture 198/198、workflow 47/47、boot 装配）"
+    }
+  ],
+  "deviations": [
+    {
+      "id": "D-001",
+      "finding": "本机 Testcontainers 默认无法发现 Docker 环境；docker CLI 可用但 JVM 连接失败",
+      "root_cause": "Docker daemon 位于 unix socket，Testcontainers 需显式指定 host 与 API 版本（与 048 记录的 Windows npipe 问题同类）",
+      "correction": "测试命令显式传入 -Ddocker.host=unix:///var/run/docker.sock -Ddocker.client.strategy=...EnvironmentAndSystemPropertyClientProviderStrategy -Dapi.version=1.44；不改用户全局配置",
+      "status": "closed"
+    },
+    {
+      "id": "D-002",
+      "finding": "check-module-boundaries / check-ai-control-layout 在 1f61cb8 基线即失败",
+      "root_cause": "既有 platform/system 依赖 attachment 未登记、business/requirement 引用 workflow 非公开包、历史账本 topic 不匹配（含 048 自身缺失 baseline.json）",
+      "correction": "不扩大本任务范围修复；在报告与账本中记录为基线问题，供治理任务单独处理",
+      "status": "closed-as-baseline"
+    }
+  ],
+  "open_feedback": [
+    "真实工作流实例端到端发布验证（需发布 V88 流程草稿）",
+    "浏览器四视口 UAT 与手工 API/权限矩阵验收",
+    "基线边界检查失败项治理"
+  ]
+}

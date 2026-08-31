@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T14:50:45+08:00",
+  "phase": "observing",
+  "observations": [
+    {
+      "sensor": "development-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "result": "pass",
+      "evidence": "Development entry check passed."
+    },
+    {
+      "sensor": "flyway-static",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "pass",
+      "evidence": "Flyway migration check passed for 90 migration(s) and 1 approved callback(s)."
+    },
+    {
+      "sensor": "focused-backend-tests",
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=EnvironmentResourceServiceTest,DeploymentUnitServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "pass",
+      "evidence": "EnvironmentResourceServiceTest 8 tests 与 DeploymentUnitServiceTest 14 tests 均 0 failures、0 errors。新增覆盖资源容量小数被拒绝。"
+    },
+    {
+      "sensor": "frontend-build",
+      "command": "npm --prefix web run build",
+      "result": "pass",
+      "evidence": "vue-tsc --noEmit 与 vite build 成功；ResourceRequestPage 生产包生成，Vite 仅报告既有第三方 PURE 注释和大 chunk 警告。"
+    },
+    {
+      "sensor": "diff-whitespace",
+      "command": "git diff --check",
+      "result": "pass-with-line-ending-warnings",
+      "evidence": "未报告空白错误；仅输出 Git 对若干工作区文件的 LF/CRLF 提示。"
+    },
+    {
+      "sensor": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "result": "blocked",
+      "evidence": "脚本在读取 diff 前因当前分支 dev-ivanh 不满足 <type>/REQ-YYYYMMDD-NNN-short-name 命名门禁退出。"
+    },
+    {
+      "sensor": "architecture-module-full-test",
+      "command": "mvn -pl :ccb-architecture -am test",
+      "result": "blocked",
+      "evidence": "239 tests run, 0 failures, 13 errors；错误均为 Testcontainers 无法找到有效 Docker 环境或前一次 Docker 探测失败。非 MySQL/非 Testcontainers 测试和本轮聚焦测试已通过。"
+    },
+    {
+      "sensor": "boot-package",
+      "command": "mvn -pl :ccb-boot -am \"-Dmaven.test.skip=true\" package",
+      "result": "blocked",
+      "evidence": "14 个 reactor 模块编译至 ccb-boot 均成功，spring-boot repackage 阶段失败：当前 8080 Java 进程占用 ccb-boot-0.1.0-SNAPSHOT.jar，无法 rename 为 .original。随后执行 -Dspring-boot.repackage.skip=true package 通过。"
+    },
+    {
+      "sensor": "runtime-flyway-v96",
+      "command": "未执行本地 Boot 重启迁移",
+      "result": "blocked",
+      "evidence": "当前 8080 进程为运行中的 JAR；当前 shell 未设置 DB_PASSWORD/DB_USERNAME/DB_URL，且任务范围禁止读取 .env。为避免停止后端后无法无密重启，未停止现有服务，V96 仅完成静态迁移检查，尚未实际应用到本地库。"
+    },
+    {
+      "sensor": "browser-uat",
+      "command": "未执行",
+      "result": "not-run",
+      "evidence": "本轮完成前端构建、后端聚焦测试和 Flyway 静态检查；由于后端未重启应用 V96，未进行真实浏览器创建/编辑/详情 UAT。"
+    }
+  ],
+  "residual_risks": [
+    "本地开发库尚未实际执行 V96；需要在可安全重启并具备 DB 环境变量的 shell 中重启 Boot。",
+    "真实浏览器桌面/移动 UAT 仍需在后端应用 V96 后执行。",
+    "完整架构模块 MySQL 集成测试需本地 Testcontainers Docker 探测恢复后重跑。",
+    "scope 脚本需在符合门禁命名的分支上重跑。"
+  ],
+  "conclusion": "V96 字段口径已通过静态迁移检查、聚焦后端测试、前端构建和空白检查；本地实际 Flyway 迁移与浏览器 UAT 因运行环境限制未完成。"
+}

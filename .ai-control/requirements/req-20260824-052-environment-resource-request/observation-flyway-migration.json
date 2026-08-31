@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260824-052-environment-resource-request",
+  "requirement_id": "REQ-20260824-052",
+  "recorded_at": "2026-08-25T08:35:45+08:00",
+  "checks": [
+    {
+      "kind": "flyway-static-gate",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "passed",
+      "evidence": "Flyway migration check passed for 86 migration(s) and 1 approved callback(s)."
+    },
+    {
+      "kind": "migration-resource-refresh",
+      "command": "mvn -q -pl :ccb-infrastructure resources:resources",
+      "result": "passed",
+      "evidence": "刷新 ccb-infrastructure target/classes，确保 Flyway API 使用当前源目录中的 V91/V92。"
+    },
+    {
+      "kind": "local-flyway-migrate",
+      "command": "Flyway API via jshell with ccb-infrastructure classpath, local profile datasource from .env",
+      "target": "jdbc:mysql://127.0.0.1:3306/ccb_platform, user=ccb",
+      "result": "passed",
+      "evidence": "Flyway validated 86 migrations, schema ccb_platform current version 90, applied V91 create architecture environment resource requests and V92 seed architecture environment resource requests, then reached version 92. flyway.info reported V91 and V92 state SUCCESS."
+    },
+    {
+      "kind": "local-db-menu-check",
+      "command": "docker exec ccb-platform-mysql mysql --batch --raw SELECT flyway/menu/role_menu checks",
+      "result": "passed",
+      "evidence": "flyway_schema_history V91/V92 success=1；sys_menu 存在 809/810 且 parent_id=800，路由分别为 /architecture/environments 和 /architecture/resource-requests；sys_role 存在 114 ENVIRONMENT_RESOURCE_MANAGER；sys_role_menu 中角色 1 和 114 均已关联 809/810。"
+    }
+  ],
+  "warnings": [
+    "Flyway 输出 MySQL 8.4 新于当前 Flyway 已测试 MySQL 8.1 的兼容性警告；迁移结果仍为 success。",
+    "V92 执行期间出现 INSERT IGNORE 命中的重复授权映射警告，Flyway 最终成功并写入 V92 历史。",
+    "mysql CLI 输出中文字段时受终端编码影响显示为问号；ID、路由、权限码和角色编码已完成回查。"
+  ],
+  "negative_space": [
+    "本次只执行本地开发库 Flyway 迁移，未启动后端服务或前端服务。",
+    "未执行浏览器 UAT。",
+    "未发布 V92 预置的资源申请工作流草稿；真实提交审批前仍需通过平台工作流发布入口发布定义。"
+  ],
+  "conclusion": "REQ-20260824-052 的本地开发库迁移已执行并到达 V92，菜单挂载和办理角色授权已在数据库回查中确认；剩余验证为运行可达和浏览器 UAT。"
+}

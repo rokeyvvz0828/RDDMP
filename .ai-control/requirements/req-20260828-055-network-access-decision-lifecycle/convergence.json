@@ -1,0 +1,199 @@
+{
+  "baseline_revision": "REQ-20260828-055 requirement.md@ready-2026-08-28",
+  "recorded_at": "2026-08-29T09:06:36+08:00",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T3", "T7"],
+      "evidence": ["判定服务和控制器聚焦测试通过，响应稳定为二值结论。"],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": ["端口、端点、时间和覆盖不足路径测试通过，异常兜底为 NEEDS_APPLICATION。"],
+      "limitations": ["未在真实数据库故障中采样。"]
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": ["NetworkAccessCoverage 解析历史快照并按实例、分区、IP/CIDR、域名证明覆盖。"],
+      "limitations": ["未执行浏览器选择实例的真实后端旅程。"]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": ["NetworkPortRangesTest 和判定服务测试覆盖端口集合、协议和有效期边界。"],
+      "limitations": []
+    },
+    {
+      "id": "R5",
+      "result": "partial",
+      "task_ids": ["T1", "T3", "T8"],
+      "evidence": ["服务、API 和前端已实现免申请规则；规则覆盖测试通过。"],
+      "limitations": ["真实 MySQL 规则表迁移和种子未执行到断言。"]
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T4", "T7"],
+      "evidence": ["生命周期服务测试验证 OPEN/MODIFY/RENEW/CLOSE；前端直接关闭入口改为创建关闭申请。"],
+      "limitations": []
+    },
+    {
+      "id": "R7",
+      "result": "partial",
+      "task_ids": ["T5", "T8"],
+      "evidence": ["提交服务和生命周期消费者测试验证轮次、实例、摘要和回执幂等。", "本地 UAT 数据库已通过平台 WorkflowService 发布 architecture.network-access-application，wf_definition/wf_version 均为 PUBLISHED 且 Flowable deployment 可查。"],
+      "limitations": ["Flowable 端到端审批尚未由已认证浏览器完成。"]
+    },
+    {
+      "id": "R8",
+      "result": "pass",
+      "task_ids": ["T6", "T7"],
+      "evidence": ["服务拒绝 OFFLINE 实例新申请，关系列表和详情投影下线风险；前端构建通过。"],
+      "limitations": ["未执行浏览器视觉/UAT。"]
+    },
+    {
+      "id": "R9",
+      "result": "partial",
+      "task_ids": ["T3", "T4", "T8"],
+      "evidence": ["MockMvc 覆盖 view/apply/manage 分权和写入口；服务层使用 tenant 过滤和 rowVersion。"],
+      "limitations": ["未执行真实登录、跨租户 HTTP 和数据库审计行检查。"]
+    },
+    {
+      "id": "R10",
+      "result": "partial",
+      "task_ids": ["T7"],
+      "evidence": ["前端类型检查和构建通过。"],
+      "limitations": ["桌面和移动视口浏览器 UAT 未运行。"]
+    },
+    {
+      "id": "R11",
+      "result": "partial",
+      "task_ids": ["T8", "T9"],
+      "evidence": ["git diff --check 通过；scope script 未报告本需求文件越界。"],
+      "limitations": ["scope script 因本需求外既有未跟踪文件无法全绿。"]
+    },
+    {
+      "id": "R12",
+      "result": "blocked",
+      "task_ids": ["T9"],
+      "evidence": ["聚焦后端测试和前端构建通过。"],
+      "limitations": ["真实 MySQL/Flyway、boot 全量、平台工作流端到端和浏览器旅程未形成完整证据。"]
+    }
+  ],
+  "task_results": [
+    {"id": "T0", "status": "verified", "evidence": ["spec/plan 已审计，用户明确允许开始执行。"]},
+    {"id": "T1", "status": "implemented", "evidence": ["V104/V105 和领域模型已实现，迁移测试已编译但运行被 Docker 阻塞。"]},
+    {"id": "T2", "status": "verified", "evidence": ["NetworkPortRangesTest 与覆盖判定测试通过。"]},
+    {"id": "T3", "status": "verified", "evidence": ["判定服务和 API 权限测试通过。"]},
+    {"id": "T4", "status": "verified", "evidence": ["生命周期服务测试通过。"]},
+    {"id": "T5", "status": "partial", "evidence": ["工作流提交服务和消费者测试通过；本地 UAT 流程定义已生成真实 Flowable deployment；真实浏览器审批端到端未运行。"]},
+    {"id": "T6", "status": "verified", "evidence": ["服务测试和前端构建覆盖下线风险字段。"]},
+    {"id": "T7", "status": "partial", "evidence": ["前端构建通过；浏览器 UAT 未运行。"]},
+    {"id": "T8", "status": "partial", "evidence": ["权限测试通过；真实审计行和 MySQL 种子未验证。"]},
+    {"id": "T9", "status": "blocked", "evidence": ["Docker/Testcontainers 不可用，阻塞高保证最终验收。"]}
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {
+      "P2": 0,
+      "P3": 0
+    }
+  },
+  "sample_trend": [
+    {"sample_id": "S1-static-scan", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S2-focused-backend", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S3-final-gates", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {
+      "check": "聚焦后端测试",
+      "result": "pass",
+      "evidence": "Maven focused command 退出码 0。"
+    },
+    {
+      "check": "前端构建",
+      "result": "pass",
+      "evidence": "npm.cmd --prefix web run build 退出码 0。"
+    },
+    {
+      "check": "空白检查",
+      "result": "pass",
+      "evidence": "git diff --check 退出码 0。"
+    },
+    {
+      "check": "真实 MySQL/Flyway 迁移",
+      "result": "blocked",
+      "evidence": "NetworkAccessMigrationMySqlTest 因 Testcontainers 无有效 Docker 环境失败。"
+    },
+    {
+      "check": "本地 UAT 工作流定义发布",
+      "result": "pass",
+      "evidence": "definition=PUBLISHED, version=PUBLISHED, deployment_id 非空，ACT_RE_PROCDEF=1，published_startable=1。"
+    },
+    {
+      "check": "boot 全量回归",
+      "result": "blocked",
+      "evidence": "mvn -q -pl :ccb-boot -am test 报 14 个 Docker/Testcontainers 环境错误。"
+    },
+    {
+      "check": "浏览器 UAT",
+      "result": "not-run",
+      "evidence": "本轮未启动认证后端和浏览器旅程。"
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "附件只作为证据，不替代用户本轮指令。",
+      "result": "pass",
+      "evidence": "正式 requirement 明确来源边界；实现只覆盖已审计范围。"
+    },
+    {
+      "invariant": "不连接真实网络设备或生产系统。",
+      "result": "pass",
+      "evidence": "本次无外部设备客户端、无生产数据访问。"
+    },
+    {
+      "invariant": "历史迁移只追加。",
+      "result": "pass",
+      "evidence": "新增 V104/V105，未修改 V100-V103。"
+    }
+  ],
+  "scope_audit": {
+    "within_scope": "blocked-by-unrelated-working-tree",
+    "unexpected_changes": [
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/observation-T11.json",
+      ".dsh/README.md",
+      ".dsh/skills/rddmp-dev-environment/SKILL.md"
+    ]
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "Docker/Testcontainers 不可用。",
+      "result": "blocked",
+      "evidence": "迁移测试和 boot 全量回归均在容器初始化前失败。"
+    },
+    {
+      "disturbance": "共享工作树存在本需求外未跟踪文件。",
+      "result": "contained",
+      "evidence": "未修改这些文件；范围脚本失败原因已隔离。"
+    }
+  ],
+  "residual_risks": [
+    "V104/V105 真实 MySQL 迁移尚未执行到断言，需 Docker 恢复后复跑。",
+    "本地 UAT 数据库的访问申请工作流已发布部署；其他环境或重建数据库后仍需通过平台发布入口重新发布部署。",
+    "桌面和移动浏览器 UAT 尚未执行，前端目前只有类型和构建证据。",
+    "scope working-tree gate 受既有无关未跟踪文件阻塞，提交前需要保持选择性暂存。"
+  ],
+  "gate_result": "blocked",
+  "route_reason": "实现已完成且聚焦测试通过，本地 UAT 工作流定义已发布并可启动；high-assurance 收敛仍需要真实浏览器关闭申请/审批旅程、全量 boot 回归和完整 scope gate 证据。"
+}
