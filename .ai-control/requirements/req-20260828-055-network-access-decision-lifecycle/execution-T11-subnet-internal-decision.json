@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "requirement_id": "REQ-20260828-055",
+  "control_prefix": "req-20260828-055-network-access-decision-lifecycle",
+  "task_id": "T11",
+  "recorded_at": "2026-08-29T16:57:15+08:00",
+  "trigger": "用户 UAT 前追加规则：子网内部都是可以互相访问的。",
+  "scope": {
+    "module": "business/architecture/network-access",
+    "writable_paths_checked": [
+      "server/src/modules/architecture/**",
+      "web/src/modules/architecture/**",
+      ".ai-control/requirements/req-20260828-055-network-access-decision-lifecycle/*.json"
+    ],
+    "database_changed": false,
+    "public_capability_changed": true
+  },
+  "implementation": {
+    "decision_rule": "来源与目标均为受管环境部署实例，且所有实例 IP 都落在同一条启用 arch_network_zone_subnet.cidr_block 内时，判定为 NOT_REQUIRED。",
+    "fail_closed_conditions": [
+      "来源或目标不是受管实例。",
+      "任一端点快照缺少有效 IP 或网络分区。",
+      "不存在一条启用网段同时覆盖两端所有实例 IP。",
+      "网段 CIDR 或实例 IP 无法解析。"
+    ],
+    "decision_order": [
+      "输入、端点、端口和有效期校验。",
+      "同子网内部访问短路判定。",
+      "已有访问关系覆盖判定。",
+      "免申请规则覆盖判定。",
+      "严格返回需要申请。"
+    ],
+    "changed_files": [
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkAccessModels.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessCoverage.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessDecisionServiceTest.java",
+      "web/src/modules/architecture/types.ts",
+      "web/src/modules/architecture/NetworkAccessPage.vue"
+    ]
+  },
+  "verification": [
+    {
+      "command": "mvn -q -pl :ccb-architecture -am \"-Dtest=NetworkPortRangesTest,NetworkAccessDecisionServiceTest,NetworkAccessControllerTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "evidence": "退出码 0；新增同一启用子网无需申请、同分区不同 CIDR 仍需申请、缺失 IP 仍需申请测试通过。"
+    },
+    {
+      "command": "npm.cmd --prefix web run build",
+      "result": "passed",
+      "evidence": "退出码 0；Vite 构建完成，存在既有大 chunk warning。"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "evidence": "退出码 0；仅有 Windows LF/CRLF 提示。"
+    },
+    {
+      "command": "mvn -q -pl :ccb-boot -am \"-DskipTests\" package",
+      "result": "passed_after_stopping_old_backend",
+      "evidence": "首次因旧后端锁定 JAR repackage 失败；停止旧后端后退出码 0。"
+    },
+    {
+      "command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local",
+      "result": "running",
+      "evidence": "PID 27392；profile=local；Flyway 当前 schema 105，No migration necessary。"
+    },
+    {
+      "command": "Invoke-RestMethod -Uri http://127.0.0.1:8080/actuator/health",
+      "result": "passed",
+      "evidence": "status=UP。"
+    },
+    {
+      "command": "Invoke-WebRequest -Uri http://127.0.0.1:5173/architecture/network-access -UseBasicParsing",
+      "result": "passed",
+      "evidence": "HTTP 200。"
+    }
+  ],
+  "intermediate_feedback": [
+    {
+      "kind": "test_stub_strictness",
+      "detail": "多实例缺 IP 场景首次复跑因 Mockito 未使用网段桩失败；修正为完整成员失败关闭并将该防回归桩设为 lenient 后，同一聚焦测试命令退出码 0。"
+    }
+  ],
+  "uat_note": "项目已用最新代码启动；用户可在网络访问申请中选择同一启用 CIDR 内的来源和目标环境部署实例，补齐协议、端口和有效期后查看内联访问判定。",
+  "residual_risks": [
+    "真实浏览器 UAT 由用户执行中，本记录不替代已认证业务路径验收。",
+    "Testcontainers/boot 全量回归本次未重跑；本次仅复跑判定相关聚焦测试、前端构建和本地运行健康。"
+  ]
+}

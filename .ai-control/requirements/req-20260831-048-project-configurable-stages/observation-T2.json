@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-048-project-configurable-stages",
+  "phase": "observing",
+  "independence": "same Codex context; runtime observation performed after rebuild and restart",
+  "measurements": [
+    {"id": "R1", "target": "最新后端运行实例", "result": "passed", "evidence": "health HTTP 200; ccb_platform_licon_mainmix Flyway version 83; application started on port 8080"},
+    {"id": "R2", "target": "默认项目阶段", "result": "passed", "evidence": "浏览器项目设置页显示立项、需求、设计开发、数据迁移、测试与验收、培训及投产演练、投产上线七个阶段"},
+    {"id": "R3", "target": "已有主计划阶段锁定", "result": "passed", "evidence": "需求阶段显示“该阶段已有主计划，不能编辑或删除”，未显示编辑/排序/删除按钮"},
+    {"id": "R4", "target": "阶段操作新增主计划入口", "result": "passed", "evidence": "项目计划页既有阶段行仅显示新增阶段和必要的删除行入口，不显示新增主计划；模板由 newlyCreatedStageRowIds 控制新建行入口"},
+    {"id": "R5", "target": "移动端布局", "result": "passed", "evidence": "390x844 viewport; project plan and settings document width 375, no horizontal overflow; settings contains 7 stage rows"},
+    {"id": "R6", "target": "前端控制台", "result": "observed", "evidence": "补丁热更新曾产生一次 Vite ProjectView 初始化重载提示；整页刷新后页面正常加载，未发现持续运行错误"}
+  ],
+  "deviations": [
+    "默认 .env 数据库 ccb_platform_licon 存在既有 V53 duplicate column phase，未修改该库；运行验收使用本地 ccb_platform_licon_mainmix 并显式覆盖 datasource URL",
+    "治理检查中的历史账本问题和 control-engineering 插件缺失与当前任务无关，未修改其他任务账本"
+  ],
+  "continue": false
+}

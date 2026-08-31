@@ -5,9 +5,11 @@
 .architecture-filter-select { width: 208px; }
 .architecture-page__actions { display: flex; gap: 8px; }
 .architecture-state-panel { display: grid; min-height: 360px; place-items: center; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
-.architecture-table-identity { display: grid; min-width: 0; gap: 4px; color: var(--text); text-align: left; background: transparent; border: 0; cursor: pointer; }
+.architecture-table-identity { display: grid; width: 100%; min-width: 0; gap: 4px; padding: 0; color: var(--text); font: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }
 .architecture-table-identity strong, .architecture-table-identity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .architecture-table-identity small { color: var(--muted); font-size: 11px; }
+.architecture-table-identity:hover strong,
+.architecture-table-identity:focus-visible strong { color: var(--el-color-primary); text-decoration: underline; text-underline-offset: 3px; }
 .architecture-table-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .architecture-table-actions .el-button { margin-left: 0; }
 .architecture-table-actions .el-dropdown { display: inline-flex; align-items: center; }
@@ -27,6 +29,10 @@
 .architecture-form-grid .is-wide { grid-column: span 2; }
 .architecture-form-grid .el-select { width: 100%; }
 .architecture-form-alert { margin-bottom: 16px; }
+.architecture-subnet-drawer { display: grid; min-width: 0; gap: 16px; }
+.architecture-subnet-form { padding: 14px 16px 16px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+.architecture-subnet-form__actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.architecture-subnet-form__actions .el-button { margin-left: 0; }
 .architecture-detail-heading { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .architecture-detail-heading strong { display: block; overflow-wrap: anywhere; font-size: 18px; }
 .architecture-detail-heading span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
@@ -298,9 +304,37 @@
   padding: 14px; border: 1px dashed var(--line); border-radius: 8px;
 }
 .architecture-network-result-form .el-button { align-self: flex-start; }
+.architecture-network-endpoint-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.architecture-network-endpoint-card { display: grid; min-width: 0; gap: 2px; padding: 14px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 8px; }
+.architecture-network-endpoint-card header { margin-bottom: 8px; color: var(--text); font-size: 14px; }
+.architecture-network-endpoint-card .el-select,
+.architecture-network-endpoint-card .el-input,
+.architecture-network-endpoint-card .el-radio-group { width: 100%; }
+.architecture-network-access-form .architecture-form-section { padding-bottom: 0; border-bottom: 0; }
+.architecture-network-decision-result { display: grid; min-width: 0; gap: 8px; padding: 14px 16px; background: var(--panel-bg); border: 1px solid var(--line); border-left: 4px solid var(--warning); border-radius: 6px; }
+.architecture-network-decision-result.is-not-required { background: color-mix(in srgb, var(--success) 7%, var(--panel-bg)); border-left-color: var(--success); }
+.architecture-network-decision-result.is-needs-application { background: color-mix(in srgb, var(--warning) 8%, var(--panel-bg)); border-left-color: var(--warning); }
+.architecture-network-decision-result header { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; }
+.architecture-network-decision-result header strong { min-width: 0; overflow-wrap: anywhere; color: var(--text); font-size: 18px; line-height: 1.35; }
+.architecture-network-decision-result__reason { margin: 0; overflow-wrap: anywhere; color: var(--text); font-size: 14px; line-height: 1.55; }
+.architecture-network-decision-result__code { margin: 0; overflow-wrap: anywhere; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.architecture-network-inline-decision { display: grid; gap: 10px; margin: 16px 0 0; padding: 12px 14px; background: var(--panel-bg); border: 1px dashed var(--line); border-radius: 6px; }
+.architecture-network-inline-decision > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.architecture-network-inline-decision > header strong { color: var(--text); font-size: 14px; }
+.architecture-network-inline-decision .architecture-form-hint { margin: 0; }
+.architecture-network-snapshot-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.architecture-network-snapshot-list li { min-width: 0; padding: 12px 14px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+.architecture-network-snapshot-list strong,
+.architecture-network-snapshot-list span { display: block; overflow-wrap: anywhere; }
+.architecture-network-snapshot-list strong { color: var(--text); font-size: 13px; }
+.architecture-network-snapshot-list span { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 @media (max-width: 760px) {
   .architecture-network-attachment-list article { align-items: stretch; flex-direction: column; }
   .architecture-network-result-form .el-button { width: 100%; }
+  .architecture-network-decision-result { padding: 12px 14px; }
+  .architecture-network-inline-decision > header { align-items: stretch; flex-direction: column; }
+  .architecture-network-inline-decision > header .el-button { width: 100%; margin-left: 0; }
+  .architecture-network-endpoint-grid { grid-template-columns: 1fr; }
 }
 
 /* ---------- 具体环境与资源申请（REQ-20260824-052） ---------- */

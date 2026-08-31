@@ -42,9 +42,9 @@
 
 | 路径 | 状态 | 职责 |
 | --- | --- | --- |
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql` | candidate-new | 主表兼容扩展、申请/编号/锁/历史/替换/回执表及既有内部序号迁移 |
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql` | candidate-new | 菜单 803、三级权限、旧权限映射、角色 110 与 admin 本地绑定 |
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V84__seed_architecture_subsystem_workflow.sql` | candidate-new | 固定流程 `architecture.subsystem.change` 及 ROLE 审批节点 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V93__architecture_subsystem_lifecycle.sql` | candidate-new | 主表兼容扩展、申请/编号/锁/历史/替换/回执表及既有内部序号迁移 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V94__seed_architecture_subsystem_lifecycle.sql` | candidate-new | 菜单 803、三级权限、旧权限映射、角色 110 与 admin 本地绑定 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V95__seed_architecture_subsystem_workflow.sql` | candidate-new | 固定流程 `architecture.subsystem.change` 及 ROLE 审批节点 |
 | `server/src/modules/architecture/pom.xml` | existing | 增加 `ccb-workflow` 公开契约依赖 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/model/**` | existing | 发布主记录增加状态、内部编号、行版本和关联摘要 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java` | existing | 发布查询、审批事务内受控写入和主记录行锁 |
@@ -133,7 +133,7 @@ T1 数据与编号基座
 
 新建：
 
-- `server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql`
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V93__architecture_subsystem_lifecycle.sql`
 - `server/src/modules/architecture/src/main/java/com/ccb/architecture/change/model/SubsystemChangeModels.java`
 - `server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/SubsystemChangeStore.java`
 - `server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/SubsystemNumberStore.java`
@@ -228,8 +228,8 @@ T1 数据与编号基座
 
 新建：
 
-- `server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql`
-- `server/src/platform/infrastructure/src/main/resources/db/migration/V84__seed_architecture_subsystem_workflow.sql`
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V94__seed_architecture_subsystem_lifecycle.sql`
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V95__seed_architecture_subsystem_workflow.sql`
 - `server/src/modules/architecture/src/main/java/com/ccb/architecture/change/integration/ArchitectureWorkflowLifecycleConsumer.java`
 - `server/src/modules/architecture/src/test/java/com/ccb/architecture/change/integration/ArchitectureWorkflowLifecycleConsumerTest.java`
 - `server/src/modules/architecture/src/test/java/com/ccb/architecture/change/integration/ArchitectureWorkflowIntegrationMySqlTest.java`

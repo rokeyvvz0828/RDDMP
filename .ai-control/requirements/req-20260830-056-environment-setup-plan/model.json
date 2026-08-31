@@ -1,0 +1,60 @@
+{
+  "requirement_id": "REQ-20260830-056",
+  "control_prefix": "req-20260830-056-environment-setup-plan",
+  "model_revision": 1,
+  "plant_boundary": {
+    "inside": ["server/src/modules/architecture/**", "web/src/modules/architecture/**", "web/src/router/index.ts", "V100-V103 迁移", "mock/mock-data.json"],
+    "environment": ["MySQL 8.4/Flyway", "platform/system 能力(用户/字典/通知 SystemNotificationPublisher)", "platform/attachment 能力", "platform/workflow(跨模块工单状态)", "浏览器"]
+  },
+  "state_variables": [
+    {"name": "template_draft_state", "owner": "计划模板/任务模板草稿行", "values": ["DRAFT-编辑中", "ACTIVE-已发布且可用", "INACTIVE-已停用"]},
+    {"name": "template_version_state", "owner": "arch_plan_template_version/arch_task_template_version", "values": ["PUBLISHED(不可变)"]},
+    {"name": "plan_status", "owner": "arch_setup_plan", "values": ["NOT_STARTED/IN_PROGRESS/COMPLETED/CANCELLED(计算+动作)"]},
+    {"name": "task_status", "owner": "arch_plan_task", "values": ["NOT_STARTED/WAITING_PRECEDING/IN_PROGRESS/BLOCKED/COMPLETED/CANCELLED(计算)"]},
+    {"name": "progress_value", "owner": "任务/环节/计划", "values": ["0-100 按检查项比例"]},
+    {"name": "waived_flags", "owner": "任务/环节/计划", "values": ["waived_all(全部豁免)/has_waived(存在豁免)"]},
+    {"name": "overdue_flag", "owner": "任务(向上聚合)", "values": ["逾期/正常(按 now>planned_end 且未完成)"]},
+    {"name": "actual_time", "owner": "任务/环节/计划", "values": ["由 START/COMPLETE/REOPEN 事件聚合，TIME_CORRECT 可更正"]}
+  ],
+  "causal_paths": [
+    {"requirement": "模板发布", "input": "草稿结构(环节/任务模板/检查项)", "transitions": ["校验非空", "写版本快照(不可变)", "提升 latest_version_no", "发布活动留痕"], "outputs": ["可生成计划的版本"]},
+    {"requirement": "计划生成", "input": "已发布模板版本+环境+目标集合+责任人", "transitions": ["复制环节", "按维度展开任务", "复制检查项", "固化模板/目标/结构快照"], "outputs": ["NOT_STARTED 计划结构"]},
+    {"requirement": "执行与豁免", "input": "开始/完成/重开/取消/恢复动作", "transitions": ["实体授权校验", "写事件", "重算任务状态与进度", "向上传播阶段/计划状态"], "outputs": ["计算状态+进度+豁免标识"]},
+    {"requirement": "依赖阻塞", "input": "依赖建立/移除、阻塞登记/解除", "transitions": ["循环校验", "重算等待前置/阻塞状态并聚合"], "outputs": ["任务状态+聚合标识"]},
+    {"requirement": "时间逾期", "input": "计划时间维护/调整、执行事件、事件更正", "transitions": ["聚合实际时间", "按 now 计算逾期并聚合"], "outputs": ["实际时间+逾期标识"]},
+    {"requirement": "调整与工单", "input": "新增/移出目标、新增结构、工单关联/解除", "transitions": ["校验状态与权限", "自动取消未完成任务", "重算", "未结束工单阻止完成"], "outputs": ["调整后结构+门禁"]},
+    {"requirement": "通知", "input": "分派/阻塞/临期/逾期/关键状态变更/工单结束", "transitions": ["构造 NotificationPublishCommand", "try/catch 发布"], "outputs": ["站内通知；失败只记日志"]}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "模板版本与快照", "method": "PlanTemplateServiceTest + API 发布/版本历史", "blind_spots": ["并发发布"]},
+    {"id": "S2", "target": "计划生成与快照", "method": "PlanGenerationServiceTest + API 创建计划", "blind_spots": ["超大目标集合"]},
+    {"id": "S3", "target": "状态/进度/豁免传播", "method": "PlanExecutionServiceTest 确定性用例", "blind_spots": ["极端并发"]},
+    {"id": "S4", "target": "依赖/阻塞", "method": "PlanDependencyServiceTest/PlanBlockServiceTest", "blind_spots": []},
+    {"id": "S5", "target": "时间聚合/更正/逾期", "method": "PlanTimeServiceTest", "blind_spots": ["时区"]},
+    {"id": "S6", "target": "工单门禁与调整", "method": "PlanWorkOrderServiceTest/PlanAdjustmentServiceTest + 真实 API", "blind_spots": ["外部工单状态漂移"]},
+    {"id": "S7", "target": "权限与实体授权", "method": "API 越权场景(非责任人/无权限403)", "blind_spots": []},
+    {"id": "S8", "target": "前端旅程与移动端", "method": "真实浏览器 UAT(桌面1280+/移动375/390/430)", "blind_spots": ["真实数据量"]}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "迁移 V100-V103", "action": "追加建表+菜单权限种子", "impact_radius": "新增表/授权", "rollback": "补偿迁移"},
+    {"id": "A2", "target": "architecture 服务", "action": "模板/计划/执行/依赖/时间/工单服务与控制器", "impact_radius": "模块内新增包", "rollback": "回退本需求提交"},
+    {"id": "A3", "target": "前端", "action": "模板与计划页面、路由、api.ts、类型", "impact_radius": "架构模块前端", "rollback": "回退页面提交"},
+    {"id": "A4", "target": "验证", "action": "单元测试/构建/Flyway 检查/浏览器 UAT", "impact_radius": "证据", "rollback": "无"}
+  ],
+  "disturbances": [
+    {"source": "既有数据库为 V99，新迁移顺序依赖", "effect": "迁移失败", "detectable": true, "controllable": true},
+    {"source": "工作流/工单状态枚举变化", "effect": "门禁判断漂移", "detectable": true, "controllable": false},
+    {"source": "浏览器/环境不可用", "effect": "UAT 缺失", "detectable": true, "controllable": false}
+  ],
+  "assumptions": [
+    {"text": "平台 SystemNotificationPublisher 可直接注入使用", "evidence": "modules.yaml 允许依赖 platform/system，通知为公开包", "falsifier": "注入失败"},
+    {"text": "附件能力支持按业务对象绑定并继承实体授权", "evidence": "attachment 公开契约", "falsifier": "接口不匹配"}
+  ],
+  "control_assessment": [
+    {"requirement": "模板与生成", "observable": true, "controllable": true, "action": "planning"},
+    {"requirement": "执行与豁免", "observable": true, "controllable": true, "action": "planning"},
+    {"requirement": "依赖/阻塞/时间", "observable": true, "controllable": true, "action": "planning"},
+    {"requirement": "调整/工单/视图/通知", "observable": true, "controllable": true, "action": "planning"}
+  ],
+  "model_status": "ready"
+}

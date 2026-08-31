@@ -1,0 +1,202 @@
+{
+  "task_id": "T1-T9",
+  "status": "implemented",
+  "recorded_at": "2026-08-29T09:06:36+08:00",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkAccessModels.java",
+      "purpose": "扩展网络访问申请、关系、判定、规则、工作流和风险投影领域模型。"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/persistence/NetworkAccessStore.java",
+      "purpose": "补齐访问申请、关系、免申请规则、历史、工作流轮次和回执持久化。"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkPortRanges.java",
+      "purpose": "实现端口集合解析、归并和完整覆盖判断。"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessCoverage.java",
+      "purpose": "实现历史快照端点、地址和分区覆盖判断，无法证明时失败保守。"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java",
+      "purpose": "实现二值判定、开通/修改/续期/关闭申请动作、关系替代和下线风险投影。"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessApplicationSubmissionService.java",
+      "purpose": "接入平台工作流 startByCode/terminate，维护业务轮次和提交摘要。"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/integration/NetworkAccessWorkflowLifecycleConsumer.java",
+      "purpose": "消费平台工作流生命周期事件，按轮次和摘要幂等驱动业务状态。"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkAccessController.java",
+      "purpose": "新增判定 API、免申请规则 API，并将提交/取消改为走工作流协调服务。"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V104__extend_architecture_network_access_lifecycle.sql",
+      "purpose": "追加申请生命周期、关系替代、历史、轮次、回执和免申请规则表结构。"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V105__seed_architecture_network_access_lifecycle_workflow.sql",
+      "purpose": "追加示例免申请规则和网络访问申请工作流草稿定义。"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/NetworkAccessPage.vue",
+      "purpose": "新增判定入口、判定结果带入申请、生命周期申请入口、风险提示和规则维护页签。"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/api.ts",
+      "purpose": "新增判定和免申请规则前端 API 客户端。"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/types.ts",
+      "purpose": "补齐前端网络访问判定、规则、申请动作和生命周期类型。"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/**",
+      "purpose": "补充端口解析、判定、生命周期、工作流消费者、控制器权限和 MySQL/Flyway 迁移测试。"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "R10",
+    "R11",
+    "R12"
+  ],
+  "commands": [
+    {
+      "command": "mvn -q -pl :ccb-architecture -am \"-Dtest=NetworkPortRangesTest,NetworkAccessDecisionServiceTest,NetworkAccessLifecycleServiceTest,NetworkAccessServiceTest,NetworkAccessWorkflowLifecycleConsumerTest,NetworkAccessControllerTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "exit_code": 0,
+      "salient_output": "后端聚焦测试退出码 0，覆盖端口解析、判定、生命周期、工作流消费者和控制器权限。"
+    },
+    {
+      "command": "npm.cmd --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit 与 vite build 通过；生成 NetworkAccessPage-CMDhpUO7.js。"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "未发现空白错误；仅输出 Git LF/CRLF 提示。"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am \"-Dtest=NetworkAccessMigrationMySqlTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "exit_code": 1,
+      "salient_output": "Testcontainers 启动前失败：Could not find a valid Docker environment；未执行 MySQL/Flyway SQL 断言。"
+    },
+    {
+      "command": "mvn -q -pl :ccb-boot -am test",
+      "exit_code": 1,
+      "salient_output": "273 tests, 0 failures, 14 errors；14 个错误均为 MySQL/Testcontainers 找不到有效 Docker 环境或前次 Docker 探测失败。"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260828-055-network-access-decision-lifecycle/codex-task-scope.yaml --base origin/dev-ivanh --head HEAD --working-tree",
+      "exit_code": 1,
+      "salient_output": "范围检查被既有无关未跟踪文件阻塞：req-20260812 execution/observation 与 .dsh/**；未报告本需求新增文件越界。"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "二值判定与严格失败保守",
+      "result": "pass",
+      "evidence": "NetworkAccessDecisionServiceTest 与 NetworkPortRangesTest 退出码 0。",
+      "limitations": [
+        "真实 MySQL 迁移验证受 Docker 环境阻塞。"
+      ]
+    },
+    {
+      "check": "申请动作与关系生命周期",
+      "result": "pass",
+      "evidence": "NetworkAccessLifecycleServiceTest 与 NetworkAccessWorkflowLifecycleConsumerTest 退出码 0。",
+      "limitations": [
+        "真实平台工作流部署和浏览器端审批旅程未运行。"
+      ]
+    },
+    {
+      "check": "服务端接口和权限",
+      "result": "pass",
+      "evidence": "NetworkAccessControllerTest 退出码 0。",
+      "limitations": [
+        "未连接真实认证会话执行 HTTP/UAT。"
+      ]
+    },
+    {
+      "check": "前端类型和构建",
+      "result": "pass",
+      "evidence": "npm.cmd --prefix web run build 退出码 0。",
+      "limitations": [
+        "未执行桌面和移动浏览器 UAT。"
+      ]
+    },
+    {
+      "check": "任务范围",
+      "result": "blocked-by-disturbance",
+      "evidence": "范围脚本仅列出 4 个既有无关未跟踪文件。",
+      "limitations": [
+        "共享工作树存在本需求外未跟踪文件，无法获得 working-tree 范围脚本全绿。"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "新增网络访问判定 API，输出固定为 NEEDS_APPLICATION 或 NOT_REQUIRED，并返回依据、原因码和覆盖编号。",
+    "判定覆盖同时校验端点集合、协议、端口集合和有效期；异常、缺失和不可证明覆盖均返回需要申请。",
+    "新增免申请规则台账及管理 API，规则必须启用且完整覆盖才可形成不需申请依据。",
+    "申请新增 OPEN/MODIFY/RENEW/CLOSE 动作；修改和续期创建替代关系并关闭旧关系，关闭申请只关闭目标关系。",
+    "提交和取消接入平台工作流，生命周期消费者按事件、轮次、实例和摘要幂等更新业务状态。",
+    "前端新增判定页签、生命周期申请入口、关系下线风险展示和免申请规则维护入口。",
+    "V104/V105 追加结构和种子；V104 对旧数据缺失 valid_from 的情况进行迁移补正后再加约束。"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "网络访问判定只有两个业务结论。",
+      "result": "pass",
+      "evidence": "NetworkAccessDecisionResult 使用 AccessDecision.NEEDS_APPLICATION/NOT_REQUIRED；控制器测试校验响应字段。"
+    },
+    {
+      "invariant": "已开通关系不能被页面直接关闭，关闭必须通过申请。",
+      "result": "pass",
+      "evidence": "前端移除直接关闭按钮；服务端 closeRelation 保留兼容入口但返回 409 引导创建关闭申请。"
+    },
+    {
+      "invariant": "长期有效不使用遥远日期占位。",
+      "result": "pass",
+      "evidence": "服务端和迁移均要求 LONG_TERM 的 valid_until 为 NULL；控制器和服务测试覆盖长期有效路径。"
+    },
+    {
+      "invariant": "不连接真实网络设备或外部系统。",
+      "result": "pass",
+      "evidence": "本次只新增本地服务、数据库表、工作流接入和前端交互；无外部设备客户端。"
+    }
+  ],
+  "disturbances": [
+    {
+      "kind": "docker_unavailable",
+      "detail": "Testcontainers 报告 Could not find a valid Docker environment，阻塞真实 MySQL/Flyway 与 boot 全量含容器测试。"
+    },
+    {
+      "kind": "pre_existing_untracked_files",
+      "detail": ".ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json、observation-T11.json 与 .dsh/** 在本需求前已存在并阻塞 working-tree scope gate。"
+    }
+  ],
+  "assumptions_falsified": [
+    "本机 Docker/Testcontainers 可用于真实 MySQL 迁移验证。"
+  ],
+  "unresolved_items": [
+    "待 Docker 环境恢复后运行 NetworkAccessMigrationMySqlTest，验证 V104/V105 空库和 V103 后续库迁移。",
+    "待 Docker 环境恢复后重跑 mvn -q -pl :ccb-boot -am test。",
+    "待后端、认证用户和前端服务可用后执行桌面/移动浏览器 UAT。",
+    "真实提交前需要发布并部署 workflow definition code architecture.network-access-application。"
+  ],
+  "recommended_next": "observe"
+}

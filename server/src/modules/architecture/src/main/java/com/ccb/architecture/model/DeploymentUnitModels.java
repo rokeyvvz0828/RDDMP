@@ -51,6 +51,8 @@ public final class DeploymentUnitModels {
             String relatedDeploymentUnitName,
             String deploymentUnitType,
             String kind,
+            Long defaultNetworkZoneId,
+            String defaultNetworkZoneName,
             String status,
             int currentVersion,
             String description,
@@ -65,8 +67,9 @@ public final class DeploymentUnitModels {
                               String kind, String status, int currentVersion, String description, String remark,
                               long createdBy, long updatedBy, LocalDateTime createdAt, LocalDateTime updatedAt,
                               long rowVersion) {
-            this(id, code, physicalSubsystemId, shortName, name, null, defaultRegistrationType(kind), kind, status,
-                    currentVersion, description, remark, createdBy, updatedBy, createdAt, updatedAt, rowVersion);
+            this(id, code, physicalSubsystemId, shortName, name, null, defaultRegistrationType(kind), kind,
+                    null, null, status, currentVersion, description, remark, createdBy, updatedBy,
+                    createdAt, updatedAt, rowVersion);
         }
     }
 
@@ -80,6 +83,8 @@ public final class DeploymentUnitModels {
             String relatedDeploymentUnitName,
             String deploymentUnitType,
             String kind,
+            Long defaultNetworkZoneId,
+            String defaultNetworkZoneName,
             String description,
             String remark,
             long publishedBy,
@@ -88,8 +93,8 @@ public final class DeploymentUnitModels {
         public DeploymentUnitVersion(long id, long unitId, int versionNo, String shortName, String name,
                                      String kind, String description, String remark,
                                      long publishedBy, LocalDateTime publishedAt) {
-            this(id, unitId, versionNo, shortName, name, null, defaultRegistrationType(kind), kind, description,
-                    remark, publishedBy, publishedAt);
+            this(id, unitId, versionNo, shortName, name, null, defaultRegistrationType(kind), kind,
+                    null, null, description, remark, publishedBy, publishedAt);
         }
     }
 
@@ -101,13 +106,14 @@ public final class DeploymentUnitModels {
             String relatedDeploymentUnitName,
             String deploymentUnitType,
             String kind,
+            Long defaultNetworkZoneId,
             String description,
             String remark,
             Long rowVersion) {
 
         public DeploymentUnitCommand(Long physicalSubsystemId, String shortName, String name, String kind,
                                      String description, String remark, Long rowVersion) {
-            this(physicalSubsystemId, shortName, name, null, null, kind, description, remark, rowVersion);
+            this(physicalSubsystemId, shortName, name, null, null, kind, null, description, remark, rowVersion);
         }
     }
 

@@ -1,0 +1,109 @@
+{
+  "requirement_id": "REQ-20260826-054",
+  "control_prefix": "req-20260826-054-network-zones-access-relationship",
+  "executed_at": "2026-08-27T13:50:03+08:00",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "status": "completed",
+      "evidence": [
+        "Added V100__create_architecture_network_zones_access.sql for network zones, external addresses, access applications/relations, and network zone columns on deployment unit, resource request item, and environment instance.",
+        "Added V101__seed_architecture_network_zones_access.sql for menus, permissions, grants, and default tenant-1 zones."
+      ]
+    },
+    {
+      "task_id": "T2",
+      "status": "completed",
+      "evidence": [
+        "Added NetworkAccessModels, NetworkAccessStore, NetworkAccessService, and NetworkAccessController.",
+        "DeploymentUnitService validates and snapshots default network zone when present while preserving old overloads.",
+        "EnvironmentResourceService resolves explicit/request/default network zones and validates structured zones for new production flows.",
+        "MockAutomatedDeploymentProvider echoes network zone id/name into provision preview."
+      ]
+    },
+    {
+      "task_id": "T3",
+      "status": "completed",
+      "evidence": [
+        "Added NetworkZonePage.vue and NetworkAccessPage.vue with route entries.",
+        "DeploymentUnitPage and DeploymentUnitDetailDrawer show and edit default network zone.",
+        "ResourceRequestPage uses network zone selectors for request items and fulfillment rows.",
+        "InstanceListPage displays structured network zone name with legacy text fallback."
+      ]
+    },
+    {
+      "task_id": "T4",
+      "status": "completed_with_scope_noise",
+      "evidence": [
+        "Added NetworkAccessServiceTest for application snapshot, missing network zone rejection, and approval relation snapshot.",
+        "Ran required build and test commands; see observation.json."
+      ]
+    },
+    {
+      "task_id": "T5",
+      "status": "completed",
+      "evidence": [
+        "Added V102__create_architecture_network_zone_subnets.sql with arch_network_zone_subnet and tenant-1 demo CIDR seeds.",
+        "Added NetworkCidr and NetworkZoneSubnet model/store/service/controller APIs under /api/architecture/network-zones/{zoneId}/subnets.",
+        "NetworkZonePage.vue now opens a subnet drawer for CIDR/gateway/purpose maintenance on active leaf zones.",
+        "EnvironmentResourceService requires manual fulfillment IPs to be inside the selected zone's active subnets.",
+        "MockAutomatedDeploymentProvider generates automated fulfillment addresses from ProvisionItemRequest.networkSubnetCidr."
+      ]
+    },
+    {
+      "task_id": "T6",
+      "status": "completed",
+      "evidence": [
+        "NetworkAccessPage.vue now opens a read-only application detail drawer from the application number, desktop detail action, and mobile card title/footer.",
+        "The detail drawer renders application status, applicant, protocol/ports, purpose, validity, process description, timestamps, and source/target endpoint snapshots from the existing list DTO."
+      ]
+    },
+    {
+      "task_id": "T7",
+      "status": "completed",
+      "evidence": [
+        "NetworkAccessPage.vue now opens read-only relation and external address detail drawers from desktop identity columns, operation actions, and mobile card title/footer.",
+        "Relation detail renders relation status, linked application id, protocol/ports, purpose, validity, close reason, timestamps, and source/target snapshots.",
+        "External address detail renders address type, value, status, purpose, remark, and timestamps while keeping edit/enable/disable actions permission-gated."
+      ]
+    },
+    {
+      "task_id": "T8",
+      "status": "completed",
+      "evidence": [
+        "Added V103__seed_architecture_network_zones_from_reference_diagram.sql after the user approved the listed network partition data.",
+        "V103 seeds 13 P1/P2/P5/P8 root and leaf network zones plus 34 exact CIDR subnet rows from the diagram without manual direct database inserts.",
+        "P2_OFFICE_TERMINAL is seeded as a zone only; no subnet row was inserted because the diagram only marks the office computer range as 20-prefix without exact CIDR."
+      ]
+    }
+  ],
+  "changed_surface": {
+    "backend": [
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/**",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java"
+    ],
+    "frontend": [
+      "web/src/modules/architecture/NetworkZonePage.vue",
+      "web/src/modules/architecture/NetworkAccessPage.vue",
+      "web/src/modules/architecture/DeploymentUnitPage.vue",
+      "web/src/modules/architecture/ResourceRequestPage.vue",
+      "web/src/modules/architecture/InstanceListPage.vue",
+      "web/src/modules/architecture/api.ts",
+      "web/src/modules/architecture/types.ts",
+      "web/src/router/index.ts"
+    ],
+    "database": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V100__create_architecture_network_zones_access.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V101__seed_architecture_network_zones_access.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V102__create_architecture_network_zone_subnets.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V103__seed_architecture_network_zones_from_reference_diagram.sql"
+    ]
+  },
+  "out_of_scope_kept": [
+    "No real firewall, network device, CLB/DNS/certificate platform, external notification, scheduled reclaim, or attachment flow was implemented.",
+    "Existing CLB/DNS/certificate special network work orders remain separate and compatible."
+  ]
+}

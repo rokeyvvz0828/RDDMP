@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "requirement_id": "REQ-20260828-055",
+  "control_prefix": "req-20260828-055-network-access-decision-lifecycle",
+  "task_id": "T14",
+  "recorded_at": "2026-08-29T18:09:08+08:00",
+  "trigger": "用户 UAT 反馈：多对多选择来源和目标部署实例后，申请弹窗访问判定一直停留在判定中。",
+  "scope": {
+    "module": "business/architecture/network-access",
+    "changed_files": [
+      "web/src/modules/architecture/NetworkAccessPage.vue"
+    ],
+    "database_changed": false,
+    "backend_changed": false,
+    "permission_or_audit_changed": false
+  },
+  "diagnosis": [
+    "申请弹窗自动判定使用 applicationDecisionSequence 丢弃过期请求。",
+    "buildEndpointPayload 在构造请求时会把 normalize 后的 instanceIds 写回表单，多选场景下可能触发 watcher 再次调度判定，使当前请求变为过期请求。",
+    "过期请求 finally 不会回收 applicationDecisionLoading，后续无新有效判定时页面会停留在“判定中”。"
+  ],
+  "implementation": [
+    "scheduleApplicationDecision 在废弃旧自动判定时同步清除 applicationDecisionLoading。",
+    "evaluateApplicationFormDecision 在每次手动或自动判定入口先递增序号、清除旧 timer、复位 loading 和旧结果，确保校验失败也能废弃旧请求。",
+    "buildEndpointPayload 改为只读取并归一化实例 ID，将去重后的 instanceIds 放入请求体，不再反写 endpoint.instanceIds。"
+  ],
+  "verification": [
+    {
+      "command": "npm.cmd --prefix web run build",
+      "result": "passed",
+      "evidence": "退出码 0；vue-tsc 通过，Vite 构建成功；保留既有第三方 PURE 注释和大 chunk warning。"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "evidence": "退出码 0；仅有 Windows LF/CRLF 提示。"
+    },
+    {
+      "command": "Invoke-RestMethod http://127.0.0.1:8080/actuator/health",
+      "result": "passed",
+      "evidence": "status=UP。"
+    },
+    {
+      "command": "(Invoke-WebRequest http://127.0.0.1:5173/architecture/network-access -UseBasicParsing).StatusCode",
+      "result": "passed",
+      "evidence": "HTTP 200。"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260828-055-network-access-decision-lifecycle/codex-task-scope.yaml --base origin/dev-ivanh --head HEAD --working-tree",
+      "result": "blocked_by_pre_existing_unrelated_files",
+      "evidence": "退出码 1；仅报告 .ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json 和 observation-T11.json forbidden path。"
+    }
+  ],
+  "runtime_note": "本轮仅改前端源文件，Vite 可热更新；后端仍为上一轮已启动的本地服务，健康状态为 UP。",
+  "residual_risks": [
+    "未代替用户在已认证浏览器中完成真实多对多点击 UAT；当前浏览器如出现 401，需先重新登录再验证。",
+    "scope working-tree 检查仍会受本需求外既有未跟踪 req-20260812-021 账本文件影响。"
+  ]
+}

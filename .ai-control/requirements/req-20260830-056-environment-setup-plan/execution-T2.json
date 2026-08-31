@@ -1,0 +1,39 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "recorded_at": "2026-08-31T10:00:00+08:00",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/PlanDetailPage.vue",
+      "purpose": "摘要栏模仿 /delivery-showcase 流程审批页签（panel+context）"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/PlanListPage.vue",
+      "purpose": "三步向导与计划列表"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/planApi.ts",
+      "purpose": "计划/模板 API 与类型"
+    }
+  ],
+  "requirements_addressed": [
+    "模板与生成",
+    "执行与豁免",
+    "依赖/阻塞/时间",
+    "调整与跟踪"
+  ],
+  "commands": [
+    "mvn -pl :ccb-architecture -am test -Dtest='PlanTemplateServiceTest,PlanStatusCalculatorTest'",
+    "npm --prefix web run build",
+    "node scripts/check-codex-scope.mjs"
+  ],
+  "local_checks": [
+    "计划模块测试 20/20",
+    "vue-tsc 通过"
+  ],
+  "invariants_checked": [
+    "依赖删除仅针对自身作为后续",
+    "前置未完成不能开始/完成检查项",
+    "生成与查看后状态按依赖重算"
+  ]
+}

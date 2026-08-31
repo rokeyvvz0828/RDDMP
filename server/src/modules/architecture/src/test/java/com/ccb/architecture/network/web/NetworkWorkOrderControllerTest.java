@@ -69,7 +69,8 @@ class NetworkWorkOrderControllerTest {
         operationAudit = mock(SystemOperationAudit.class);
         NetworkWorkOrderController controller =
                 new NetworkWorkOrderController(service, workflowService, operationAudit,
-                        new com.fasterxml.jackson.databind.ObjectMapper());
+                        new com.fasterxml.jackson.databind.ObjectMapper(),
+                        mock(com.ccb.architecture.plan.service.PlanWorkOrderService.class));
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalResolver())

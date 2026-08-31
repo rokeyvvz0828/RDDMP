@@ -63,15 +63,18 @@ public class EnvironmentResourceController {
     private static final String ARCHITECTURE_MANAGE_AUTHORITY = "architecture:manage";
 
     private final EnvironmentResourceService service;
+    private final com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService;
     private final ResourceRequestSubmissionService workflowService;
     private final SystemOperationAudit operationAudit;
 
     public EnvironmentResourceController(EnvironmentResourceService service,
                                          ResourceRequestSubmissionService workflowService,
-                                         SystemOperationAudit operationAudit) {
+                                         SystemOperationAudit operationAudit,
+                                         com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService) {
         this.service = service;
         this.workflowService = workflowService;
         this.operationAudit = operationAudit;
+        this.planWorkOrderService = planWorkOrderService;
     }
 
     @GetMapping("/environment-types")
@@ -212,6 +215,11 @@ public class EnvironmentResourceController {
         ResourceRequestDetail detail = audited(actor, "architecture.resource-request.create", "POST",
                 "/api/architecture/resource-requests", () -> service.createRequest(actor,
                         toRequestCommand(request, null)));
+        if (request != null && request.planTaskId() != null) {
+            planWorkOrderService.registerCreatedWorkOrder(actor.tenantId(), request.planTaskId(),
+                    com.ccb.architecture.plan.model.PlanModels.WorkOrderType.RESOURCE_REQUEST,
+                    detail.request().id());
+        }
         return success(toRequestDetail(detail));
     }
 
@@ -477,7 +485,7 @@ public class EnvironmentResourceController {
     private DeploymentUnitOptionResponse toDeploymentUnit(DeploymentUnitRef unit) {
         return new DeploymentUnitOptionResponse(unit.id(), unit.code(), unit.name(), unit.kind(),
                 unit.physicalSubsystemId(), unit.relatedDeploymentUnitName(), unit.deploymentUnitType(),
-                unit.description());
+                unit.description(), unit.defaultNetworkZoneId(), unit.defaultNetworkZoneName());
     }
 
     private ResourceRequestSummaryResponse toRequestSummary(ResourceRequest request) {
@@ -505,7 +513,8 @@ public class EnvironmentResourceController {
                 item.deploymentUnitCode(), item.deploymentUnitName(), item.deploymentUnitKind(),
                 item.relatedDeploymentUnitName(), item.deploymentUnitDescription(),
                 item.deploymentUnitType(), item.databaseStorageGb(),
-                item.fileStorageGb(), item.networkZone(), item.serverType(), item.cpuCores(), item.memoryGb(),
+                item.fileStorageGb(), item.networkZoneId(), item.networkZoneName(), item.networkZone(),
+                item.serverType(), item.cpuCores(), item.memoryGb(),
                 item.appWebGroupCount(), item.plannedNodeCount(), item.totalCpuCores(), item.totalMemoryGb(),
                 item.sidecarCpuCores(), item.sidecarMemoryGb(), item.sidecarMemoryRatio(), item.hasSidecar(),
                 item.databaseName(), item.databaseVersion(), item.jdkVersion(), item.middleware(),
@@ -528,7 +537,8 @@ public class EnvironmentResourceController {
             ignoreUnknown = true)
     public record UpsertResourceRequestRequest(Long physicalSubsystemId, Long environmentId,
                                                Long contactUserId, String requestType, String reason,
-                                               List<ResourceItemCommand> items, Long rowVersion) {
+                                               List<ResourceItemCommand> items, Long rowVersion,
+                                               Long planTaskId) {
         public UpsertResourceRequestRequest {
             items = List.copyOf(items == null ? List.of() : items);
         }
@@ -560,7 +570,8 @@ public class EnvironmentResourceController {
 
     public record DeploymentUnitOptionResponse(long id, String code, String name, String kind,
                                                long physicalSubsystemId, String relatedDeploymentUnitName,
-                                               String deploymentUnitType, String description) {
+                                               String deploymentUnitType, String description,
+                                               Long defaultNetworkZoneId, String defaultNetworkZoneName) {
     }
 
     public record ResourceRequestSummaryResponse(long id, String requestNo, long physicalSubsystemId,
@@ -594,6 +605,7 @@ public class EnvironmentResourceController {
                                               String deploymentUnitKind, String relatedDeploymentUnitName,
                                               String deploymentUnitDescription, String deploymentUnitType,
                                               BigDecimal databaseStorageGb, BigDecimal fileStorageGb,
+                                              Long networkZoneId, String networkZoneName,
                                               String networkZone, String serverType, BigDecimal cpuCores,
                                               BigDecimal memoryGb, int appWebGroupCount,
                                               int plannedNodeCount, BigDecimal totalCpuCores,
@@ -624,7 +636,8 @@ public class EnvironmentResourceController {
                 instance.physicalSubsystemId(), instance.physicalSubsystemCode(), instance.physicalSubsystemName(),
                 instance.sourceRequestId(), instance.sourceRequestNo(), instance.sourceItemId(),
                 instance.machineName(), instance.ipAddress(), instance.serverType(),
-                instance.deploymentPlatform(), instance.networkZone(), instance.status(),
+                instance.deploymentPlatform(), instance.networkZoneId(), instance.networkZoneName(),
+                instance.networkZone(), instance.status(),
                 instance.cpuCores(), instance.memoryGb(), instance.databaseStorageGb(),
                 instance.fileStorageGb(), instance.extraCbsGb(), instance.localDiskGb(),
                 instance.databaseName(), instance.databaseVersion(), instance.jdkVersion(),
@@ -655,7 +668,8 @@ public class EnvironmentResourceController {
             boolean hasVersionDifference, long physicalSubsystemId, String physicalSubsystemCode,
             String physicalSubsystemName, long sourceRequestId, String sourceRequestNo,
             Long sourceItemId, String machineName, String ipAddress, String serverType,
-            String deploymentPlatform, String networkZone, InstanceStatus status,
+            String deploymentPlatform, Long networkZoneId, String networkZoneName,
+            String networkZone, InstanceStatus status,
             BigDecimal cpuCores, BigDecimal memoryGb, BigDecimal databaseStorageGb,
             BigDecimal fileStorageGb, BigDecimal extraCbsGb, BigDecimal localDiskGb,
             String databaseName, String databaseVersion, String jdkVersion,

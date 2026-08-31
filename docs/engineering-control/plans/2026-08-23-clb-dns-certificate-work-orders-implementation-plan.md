@@ -3,10 +3,10 @@
 适用需求：`REQ-20260823-051`。每项任务以命令与证据收口，先集成契约再集成实现，
 最终由独立观测确认。
 
-## T1 数据库迁移 V89-V90
+## T1 数据库迁移 V100-V101
 
-- 产物：`V89__create_architecture_network_work_orders.sql`（4 张表 + CHECK/索引/FK）、
-  `V90__seed_architecture_network_work_orders.sql`（菜单 808、权限 8081-8083、角色 113、
+- 产物：`V100__create_architecture_network_work_orders.sql`（4 张表 + CHECK/索引/FK）、
+  `V101__seed_architecture_network_work_orders.sql`（菜单 808、权限 8081-8083、角色 113、
   兼容映射、流程草稿 900000000000032/033、身份冲突守卫）。
 - 证据：`node scripts/check-flyway-migrations.mjs`；
   `mvn -pl :ccb-architecture -am -Dtest=NetworkWorkOrderMySqlTest,NetworkWorkflowIntegrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false -Dapi.version=1.44 test`。
