@@ -16,10 +16,11 @@
 | 公共 | `server/src/shared/common` | 统一响应、分页、异常和 trace，不拥有业务数据 |
 | 业务 | `server/src/modules/ai` | AI 模型、路由、能力执行与审计接入 |
 | 业务 | `server/src/modules/release` | 投产窗口、版本申请、审批关联、投产基线、生产版本和统计分析 |
+| 业务 | `server/src/modules/data-migration` | 数据迁移资产库 V3 的基础资料、文件资产、结构化资产、Excel 与看板 |
 | 业务 | `server/src/modules/requirement` | 需求管理平台：新建项目差异清单、存量需求阶段、系统清单、基线与统一改动记录 |
 | 业务 | `server/src/modules/architecture` | 逻辑子系统、物理子系统及其关联关系管理 |
 
-`boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。
+`boot` 可以组合全部模块；其他 platform/shared 不得反向依赖具体业务模块。system 和 workflow 是后续业务统一复用的平台能力；业务模块按清单依赖 common 与 platform 能力，不直接访问其他业务模块内部实现。数据迁移模块是已登记的例外：仅对 `pm_project` 与 `arch_physical_subsystem` 做带租户条件的只读投影，不写入或调用其私有服务，依赖边界以 `governance/modules.yaml` 为准。
 
 ## 前端边界
 

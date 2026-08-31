@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T7",
+  "phase": "executing",
+  "control_prefix": "T7",
+  "execution_status": "complete",
+  "trigger": "用户指令 2026-08-22：组件编号（component_code）、组件名称（component_name）为多余字段清理（组件身份由系统编号 physical_subsystem_code 承担）",
+  "scope": {
+    "writable": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+      "web/src/modules/data-migration/views/dashboard/ComponentDashboardPage.vue",
+      "docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/**"
+    ],
+    "read_only": [
+      "web/src/components/ui/**",
+      "server/src/platform/**（除 V84 授权文件）",
+      "governance/**"
+    ],
+    "forbidden": [
+      "production systems / real data"
+    ],
+    "non_goals": [
+      "不清理 requirement 模块的 business_component_code/name（归属业务组件，与本需求无关）",
+      "不修改其他已发布 Flyway 脚本（字段清理随未发布的 V84 一次完成）",
+      "不调整菜单、权限与删除能力（保留现有行为）"
+    ]
+  },
+  "input_facts": [
+    "dm_component 的 component_code/component_name 为历史遗留字段，与系统编号/系统名称重复，V3 系统/组件清单规格无需维护",
+    "V84 迁移尚未提交（untracked），可直接修改并随迁移幂等清理旧库（information_schema 列/索引存在性判断，V62 先例）",
+    "引用点：ProjectComponentService（列表/导出/创建/单条视图/关键字筛选）、DashboardService（组件维度统计）、data-migration.ts（接口）、ComponentsPage.vue（表单/抽屉/移动端卡片/删除文案）、ComponentDashboardPage.vue（看板列）",
+    "count SQL 原未 JOIN arch_physical_subsystem 却引用 s.* 筛选列，存在筛选+分页计数潜在缺陷，本次一并修复",
+    "测试 DataMigrationModuleRegistrationTest 仅断言 V84 存在，不涉及组件字段"
+  ],
+  "plan_steps": [
+    {
+      "id": "T7-S1",
+      "action": "V84 迁移：dm_component 建表移除 component_code/component_name 列与 uk_dm_component_code；新增幂等 DROP 两列/唯一键逻辑（列与索引存在才删）与 uk_dm_component_subsystem（系统编号项目内唯一，存在重复历史数据时跳过）",
+      "evidence": "V84__data_migration_component_enrichment.sql diff：建表 8 列；新增 5 段动态 PREPARE 清理/重建逻辑"
+    },
+    {
+      "id": "T7-S2",
+      "action": "ProjectComponentService：列表/导出/单条视图 SELECT 移除两列，导出列 16→14；createComponent 移除 componentCode/componentName 必填与唯一性，physicalSubsystemCode 必填并校验项目内唯一；关键字筛选改为系统编号/简介/系统名称/系统简称；count SQL 补齐与主查询一致的 JOIN",
+      "evidence": "ProjectComponentService.java diff：applyFilter/countSql/createComponent/exportComponents/componentView 均不再读写 component_code/component_name"
+    },
+    {
+      "id": "T7-S3",
+      "action": "DashboardService.component()：JOIN arch_physical_subsystem，返回 system_code（physical_subsystem_code）与 system_name（COALESCE(s.short_name, s.name, code)），GROUP BY/ORDER BY 相应调整",
+      "evidence": "DashboardService.java diff：组件维度 SQL 改为系统维度字段"
+    },
+    {
+      "id": "T7-S4",
+      "action": "前端：data-migration.ts DataMigrationComponent 移除两字段；ComponentsPage.vue 移除新增表单/编辑抽屉两字段、移动端卡片与删除文案改用 system_name/system_code、关键字 placeholder 更新；ComponentDashboardPage.vue 看板列改为系统编号/系统名称",
+      "evidence": "web 三文件 diff；全局 grep component_code|component_name 仅剩 requirement 模块 business_component_* 与 V84 清理逻辑自身"
+    },
+    {
+      "id": "T7-S5",
+      "action": "设计文档与账本：增量设计章节更新（限制条件/筛选/数据设计/POST 契约/新增抽屉/字段清理决策 D9），design.json design_revision 2→3 并追加 D9，state.json revision 71→72 追加 phase_history",
+      "evidence": "docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md diff；design.json/state.json diff"
+    },
+    {
+      "id": "T7-S6",
+      "action": "验证：前端 vue-tsc + vite build、后端 mvn test、governance 检查、scope 检查",
+      "command": "cd web && npx vue-tsc --noEmit -p tsconfig.json && timeout 240 npm run build; cd .. && mvn -q -pl server/src/modules/data-migration -am test; node scripts/check-all-governance.mjs; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "expected": "0 类型错误；vite build 成功；mvn test exit 0；本任务无治理违规；scope 0 越界",
+      "evidence": "vue-tsc 退出 0、build built in 11.31s；mvn test exit 0；governance 17 模块通过、AI control 布局仅历史任务报错（本任务无）；scope passed、80 changed file(s) 无越界"
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-T7-1",
+      "text": "DROP COLUMN 对存量库 dm_component 历史数据是破坏性操作",
+      "mitigation": "V84 以列/索引存在性判断幂等执行；组件清单为 V3 全新功能（V84 才建表），存量数据属历史遗留，字段本身为多余字段",
+      "residual": "若存量库存在依赖 component_code/component_name 的历史程序，需随发布同步下线；本仓库无其他引用"
+    },
+    {
+      "id": "R-T7-2",
+      "text": "uk_dm_component_subsystem 在存量重复数据下无法建立",
+      "mitigation": "先检测重复组合，存在重复则跳过建键，由服务层 exists 校验兜底",
+      "residual": "存量重复数据需人工清理后手动补键（预期本功能上线前无数据）"
+    },
+    {
+      "id": "R-T7-3",
+      "text": "组件看板按系统维度展示后，无系统编号关联的组件（物理编号为空的旧记录）显示为编号回退值",
+      "mitigation": "COALESCE(s.short_name, s.name, c.physical_subsystem_code) 回退，页面仍可见",
+      "residual": "正常视图不受影响"
+    }
+  ],
+  "compliance_check": {
+    "scope_clean": true,
+    "no_prod": true,
+    "no_pii": true,
+    "no_bypass": true,
+    "writable_paths_respected": true,
+    "no_rollback_of_others": true
+  },
+  "executed_at": "2026-08-22T02:45:00+00:00",
+  "result": "pass",
+  "next": "T7 observation in observation-T7.json"
+}

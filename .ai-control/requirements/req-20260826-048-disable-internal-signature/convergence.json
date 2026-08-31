@@ -1,0 +1,71 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["节点检查器已移除签名配置控件", "vue-tsc 与 Vite 生产构建通过", "5173 返回最新构建资源"],
+      "limitations": ["浏览器会话未登录，未做设计器点击验收"]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["WorkflowSignatureServiceTest 2/2 通过", "工作流模块 45 个测试通过", "重启后端健康状态 UP"],
+      "limitations": ["未在生产数据库执行真实审批"]
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["历史 signatures 查询测试通过", "公开请求和响应字段保留", "无数据库迁移", "git diff --check 通过"],
+      "limitations": ["未抽样生产历史签名数据"]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": ["实现、直接测试、工作流回归、前端构建、运行健康和差异检查完成"]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "WorkflowSignatureServiceTest", "result": "pass", "evidence": "2 tests, 0 failures"},
+    {"check": "工作流模块回归", "result": "pass", "evidence": "45 workflow tests and dependencies passed"},
+    {"check": "前端生产构建", "result": "pass", "evidence": "2449 modules transformed; build completed"},
+    {"check": "后端打包与健康检查", "result": "pass", "evidence": "ccb-boot package success; actuator status UP"},
+    {"check": "全量 Maven 回归", "result": "disturbed", "evidence": "既有 PhysicalSubsystemConcurrencyMySqlTest 因 architecture_concurrency.arch_physical_subsystem 表缺失失败；工作流与此前模块通过"}
+  ],
+  "invariant_results": [
+    {"invariant": "任务授权、状态和允许动作校验不变", "result": "pass", "evidence": "WorkflowService 与 FlowableWorkflowService 未修改且回归通过"},
+    {"invariant": "历史签名记录不可修改或删除", "result": "pass", "evidence": "保留原查询，无更新、删除 SQL 或迁移"},
+    {"invariant": "公开字段保持兼容", "result": "pass", "evidence": "signature_required 和 signatureConfirmed 字段与调用链保留"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": ["工作区存在版本申请、附件和部署相关的既有未提交改动，未纳入或修改本任务"]
+  },
+  "disturbance_resilience": [
+    {"disturbance": "旧后端进程退出延迟并被既有启动会话重拉起", "result": "pass", "evidence": "当前进程使用 19:04:26 新打包 JAR，8080 健康状态 UP"},
+    {"disturbance": "沙箱禁止 Mockito 自附加", "result": "pass", "evidence": "使用 JDK 17 宿主环境完成同一工作流回归"}
+  ],
+  "residual_risks": [
+    "登录后流程设计器视觉验收尚未执行",
+    "全量回归受既有架构数据库夹具缺表阻塞",
+    "仓库级治理检查存在本需求之外的历史账本问题"
+  ],
+  "gate_result": "pass",
+  "route_reason": "三项 must 需求均由 T1 覆盖并经三次采样验证，P0/P1 为零；外部失败与本次签名停用无因果关联并已披露"
+}

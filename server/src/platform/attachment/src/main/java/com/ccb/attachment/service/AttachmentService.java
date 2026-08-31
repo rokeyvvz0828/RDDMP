@@ -46,7 +46,8 @@ public class AttachmentService implements AttachmentGateway {
         if (file.getSize() > properties.getMaxFileSizeBytes()) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件大小超过限制");
         String fileName = safeFileName(file.getOriginalFilename());
         String extension = extension(fileName);
-        String objectKey = "attachments/" + user.tenantId() + "/" + UUID.randomUUID();
+        String objectExtension = extension == null ? "bin" : extension;
+        String objectKey = "attachments/" + user.tenantId() + "/" + UUID.randomUUID() + "." + objectExtension;
         try {
             storage.put(objectKey, file.getInputStream(), file.getSize(), file.getContentType());
         } catch (BusinessException exception) {

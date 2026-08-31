@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0005",
+  "decision": "accept",
+  "decision_reason": "An audit record for a no-op restore is observably false and violates write-audit accuracy.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "The restore loop omitted the same state guard used by delete and purge.",
+    "supporting_evidence": ["restore ignores update count", "findById already supports deleted-state lookup"],
+    "falsifier": "The controller guarantees every ID is a current deleted row under the same transaction, which it does not."
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "Report restore state guard and audit",
+    "write_scope": ["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java", "server/src/modules/data-migration/src/test/**"],
+    "invariants": ["admin-only authorization remains", "tenant predicate remains", "one successful restore creates one audit"],
+    "impact_limit": "report recycle-bin restore",
+    "rollback": "revert T14 restore guard and tests",
+    "correction_check": ["missing/active ID produces no audit", "deleted ID restores and audits once"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": []
+}

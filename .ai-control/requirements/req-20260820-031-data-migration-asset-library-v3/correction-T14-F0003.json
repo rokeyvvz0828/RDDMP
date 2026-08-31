@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0003",
+  "decision": "accept",
+  "decision_reason": "The empty digest implementation deterministically violates per-file duplicate detection in the required report batch flow.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "The batch contract omitted client-computed digests even though the public attachment metadata does not expose object bytes or a checksum.",
+    "supporting_evidence": ["AttachmentItem has no checksum", "computeAttachmentMd5 returns an empty string", "the single upload path already accepts a client-computed MD5"],
+    "falsifier": "A supported public server-side API can return or compute each attachment digest without platform changes."
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "Report batch upload digest contract",
+    "write_scope": ["server/src/modules/data-migration/**", "web/src/api/data-migration.ts", "web/src/modules/data-migration/views/content/ReportsPage.vue"],
+    "invariants": ["digest format is validated server-side", "attachment order and digest order must match", "tenant duplicate check remains server-side"],
+    "impact_limit": "report batch upload only",
+    "rollback": "revert T14 report batch contract and tests",
+    "correction_check": ["behavioral service tests", "controller contract test", "frontend build", "runtime multi-file upload"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["MD5 is integrity metadata supplied by the browser, consistent with the existing single-upload contract; it is not a security hash"]
+}

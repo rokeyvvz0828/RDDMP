@@ -1,0 +1,44 @@
+{
+  "sample_label": "T16 authenticated kkFileView attachment preview failure",
+  "task_ids": [
+    "T5",
+    "T6"
+  ],
+  "baseline_revision": "state-revision-135",
+  "measurements": [
+    {
+      "requirement_id": "R8",
+      "sensor": "authenticated Chromium report preview",
+      "result": "fail",
+      "raw_evidence": "attachment preview API returns 200 and the source host is trusted, but the kkFileView iframe renders a 500 Whitelabel Error Page",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "kkFileView 4.1.0 container log and bytecode inspection",
+      "result": "fail",
+      "raw_evidence": "WebUtils.encodeUrlFileName throws StringIndexOutOfBoundsException because the attachment object URL ends with an extensionless UUID",
+      "limitation": [
+        "platform file-preview and attachment implementations are read-only in the current requirement"
+      ]
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0009",
+      "severity": "P1",
+      "expected": "an authorized report attachment opens as a rendered document after the trusted source check",
+      "observed": "kkFileView 4.1.0 returns HTTP 500 while deriving a file type from the extensionless attachment object key",
+      "evidence": "authenticated browser iframe and container stack trace at WebUtils.encodeUrlFileName"
+    }
+  ],
+  "disturbances": [],
+  "coverage_gaps": [],
+  "error_counts": {
+    "P0": 0,
+    "P1": 1,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

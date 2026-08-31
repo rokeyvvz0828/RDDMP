@@ -1,0 +1,23 @@
+{
+  "iteration_id":"I2",
+  "task_id":"T2",
+  "status":"verified",
+  "changed_surfaces":[
+    {"path_or_resource":"web/src/utils/workflow-task-events.ts","purpose":"同页和同源标签页广播任务变化并监听页面激活"},
+    {"path_or_resource":"web/src/modules/release/components/ReleaseApprovalPanel.vue","purpose":"审批成功或任务冲突后发布任务变化"},
+    {"path_or_resource":"web/src/views/TaskCenterView.vue","purpose":"监听任务变化和页面激活并只采用最新列表响应"},
+    {"path_or_resource":"web/src/views/DashboardView.vue","purpose":"监听任务变化和页面激活并只采用最新列表响应"}
+  ],
+  "commands":[
+    {"command":"npm --prefix web run build","exit_code":0,"salient_output":"TypeScript与Vue模板编译通过"},
+    {"command":"mvn -pl :ccb-workflow -am -Dtest=WorkflowServiceTaskContextTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"WorkflowServiceTaskContextTest 7个测试全部通过"},
+    {"command":"docker exec rddmp-local-web wget /actuator/health","exit_code":0,"salient_output":"后端状态UP"}
+  ],
+  "checks":[
+    {"requirement_id":"R2","result":"pass","evidence":"审批面板仅在panelState=ready且上下文actionable时提交；服务测试确认assignee和PENDING过滤","limitations":[]},
+    {"requirement_id":"R3","result":"pass","evidence":"审批成功后触发页内事件和同源storage事件；任务中心与工作台监听事件、focus和visibilitychange并重新查询；请求序号阻止旧响应覆盖新状态","limitations":["跨设备不主动推送，重新打开或激活页面时刷新"]}
+  ],
+  "feedback":[],
+  "correction":null,
+  "next":"controlling"
+}

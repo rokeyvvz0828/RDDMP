@@ -1,0 +1,40 @@
+{
+  "task_id": "T6",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "Database flyway_schema_history table", "purpose": "V36 migration applied"},
+    {"path_or_resource": "sys_menu table", "purpose": "Data migration menu hierarchy created"},
+    {"path_or_resource": "sys_role_menu table", "purpose": "Administrator role bindings updated"},
+    {"path_or_resource": "sys_menu_permission table", "purpose": "Menu permissions created"},
+    {"path_or_resource": "sys_role_permission table", "purpose": "Role permissions updated"}
+  ],
+  "requirements_addressed": ["R1", "R7", "R8"],
+  "commands": [
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "ccb-data-migration and upstream tests passed"},
+    {"command": "mvn test", "exit_code": 0, "salient_output": "full Maven reactor BUILD SUCCESS"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "All repository governance checks passed"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 0, "salient_output": "Codex scope check passed for REQ-20260820-031; 53 changed file(s)"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "built in 8.26s"},
+    {"command": "mvn spring-boot:run -pl server/src/platform/boot -Dspring-boot.run.profiles=local with SPRING_FLYWAY_OUT_OF_ORDER=true", "exit_code": 0, "salient_output": "Successfully applied 1 migration to schema `ccb_platform`, now at version v36"},
+    {"command": "curl -s http://localhost:8080/actuator/health", "exit_code": 0, "salient_output": "{\"status\":\"UP\"}"}
+  ],
+  "local_checks": [
+    {"check": "Flyway V36 migration applied", "result": "pass", "evidence": "flyway_schema_history shows version 36 with success=1"},
+    {"check": "Menu hierarchy created", "result": "pass", "evidence": "sys_menu shows 21 data migration menu entries"},
+    {"check": "Backend health", "result": "pass", "evidence": "actuator/health returns UP"},
+    {"check": "All tests pass", "result": "pass", "evidence": "Maven reactor BUILD SUCCESS"},
+    {"check": "Frontend build", "result": "pass", "evidence": "Vite production build succeeds"},
+    {"check": "Governance checks", "result": "pass", "evidence": "All repository governance checks passed"},
+    {"check": "Scope check", "result": "pass", "evidence": "Codex scope check passed for REQ-20260820-031; 53 changed file(s)"}
+  ],
+  "diff_summary": ["Flyway V36 migration applied", "Data migration menu hierarchy created", "Role bindings updated", "Permissions created"],
+  "invariants_checked": [
+    {"invariant": "Flyway migrations are additive only", "result": "pass", "evidence": "V36 migration applied without modifying existing migrations"},
+    {"invariant": "Menu hierarchy follows V3 design", "result": "pass", "evidence": "21 menu entries created with correct parent-child relationships"},
+    {"invariant": "Administrator access maintained", "result": "pass", "evidence": "sys_role_menu and sys_role_permission tables updated for role_id=1"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

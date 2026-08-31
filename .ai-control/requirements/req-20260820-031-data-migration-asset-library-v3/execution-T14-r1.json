@@ -1,0 +1,41 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java", "purpose": "validate batch digests, bind replacement before retiring the old attachment, and guard restore audit"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReportController.java", "purpose": "accept ordered batch checksumMd5s"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java", "purpose": "behavioral regression coverage for the three server deviations"},
+    {"path_or_resource": "web/src/api/data-migration.ts", "purpose": "send ordered batch checksums"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue", "purpose": "compute and preflight each batch file digest"},
+    {"path_or_resource": "web/src/modules/data-migration/t14-browser-check.mjs", "purpose": "temporary four-viewport acceptance sensor"}
+  ],
+  "requirements_addressed": ["R3", "R4", "R7", "R8"],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "focused reactor including ReportServiceTest passed"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite production build passed"},
+    {"command": "local authenticated report and attachment API lifecycle", "exit_code": 0, "salient_output": "A upload/download, B replacement/download, delete, restore, purge and asynchronous object cleanup all matched expected state"},
+    {"command": "node web/src/modules/data-migration/t14-browser-check.mjs", "exit_code": 1, "salient_output": "mobile widths had no page overflow but showed desktop table and mobile cards simultaneously"}
+  ],
+  "local_checks": [
+    {"check": "replacement attachment state", "result": "pass", "evidence": "old attachment download returned 400; replacement object returned 200 with byte-identical content", "limitations": []},
+    {"check": "purge object cleanup", "result": "pass", "evidence": "saved presigned URL changed from HTTP 200 before cleanup to 404 NoSuchKey after scheduled cleanup", "limitations": ["cleanup is asynchronous by platform contract"]},
+    {"check": "responsive presentation", "result": "fail", "evidence": "375/390/430 measured tableVisible=true and mobileListVisible=true", "limitations": ["empty-state page was sampled after synthetic lifecycle cleanup"]}
+  ],
+  "diff_summary": [
+    "replaced the empty server digest placeholder with an ordered validated batch digest contract",
+    "made replacement bind the new attachment before updating and retiring the old binding",
+    "made restore audit conditional on a real deleted-row state change",
+    "added service behavior tests and a real runtime lifecycle probe"
+  ],
+  "invariants_checked": [
+    {"invariant": "tenant and server-side duplicate checks remain authoritative", "result": "pass", "evidence": "existing tenant predicates and assertMd5Available are preserved"},
+    {"invariant": "object keys remain outside business API responses", "result": "pass", "evidence": "business API continued returning only attachment download routes"},
+    {"invariant": "mobile renders one presentation mode", "result": "fail", "evidence": "browser computed both presentation roots as visible"}
+  ],
+  "disturbances": [
+    {"event": "desktop browser console reported one non-API 404", "impact": "resource path must be identified during recheck"}
+  ],
+  "assumptions_falsified": ["T13 CSS already hid the desktop report table on mobile"],
+  "unresolved_items": ["mobile duplicate presentation requires a bounded CSS/template correction"],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "design_revision": 6,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md",
+  "objective": "Build the V3 data migration asset library from main as a new isolated business module, with the system/component catalog increment (2026-08-22).",
+  "scope": ["three menu groups", "seventeen feature entries", "domain APIs", "MySQL migration", "MinIO files", "RBAC and ownership", "daily dashboards", "responsive frontend", "system/component catalog with pagination, filters and Excel export"],
+  "non_goals": ["previous asset-library design", "directory tree", "sharing", "favorites", "tags", "remarks", "approval", "file version UI", "mock runtime data"],
+  "constraints": ["Java 17", "Spring Boot 3.4.4", "MySQL 8.4", "Vue 3", "additive Flyway", "tenant and entity authorization", "no platform private table writes"],
+  "decisions": [
+    {"id": "D1", "decision": "V3 supersedes all previous asset-library designs", "source": "user confirmation"},
+    {"id": "D2", "decision": "Create ccb-data-migration and an independent frontend module from latest main", "source": "user confirmation"},
+    {"id": "D3", "decision": "Component codes are unique within a project and chapter 6 owns enum values", "source": "approved design resolution"},
+    {"id": "D4", "decision": "Re-upload replaces the current file without a user-visible version history", "source": "approved design resolution"},
+    {"id": "D5", "decision": "Catalog derived fields (business group, short/name, description, responsible team) are not stored; the backend joins arch_physical_subsystem by tenant and code", "source": "user confirmation 2026-08-22"},
+    {"id": "D6", "decision": "Add V84 data_migration_component_enrichment migration that idempotently creates dm_project/dm_component and enriches dm_component, and update codex-task-scope.yaml", "source": "user confirmation 2026-08-22"},
+    {"id": "D7", "decision": "Only data-migration:manage or system:admin may edit total_check; other catalog writes follow the same manage/admin gate", "source": "user confirmation 2026-08-22"},
+    {"id": "D8", "decision": "Keep the existing delete endpoint and recycle-bin behavior unchanged", "source": "user confirmation 2026-08-22"},
+    {"id": "D9", "decision": "component_code/component_name are redundant and removed (identity carried by physical_subsystem_code); V84 idempotently drops both columns and uk_dm_component_code, adds uk_dm_component_subsystem, and catalog/dashboard stop reading/writing these fields", "source": "user instruction 2026-08-22"},
+    {"id": "D10", "decision": "dm_component.description (组件简介) is also redundant and removed: V84 idempotently drops the column, service list/export/view/creation no longer read or write it, keyword filter drops the description clause, and the create drawer drops the 组件简介 input (dm_project.description 项目简介 kept)", "source": "user instruction 2026-08-22"},
+    {"id": "D11", "decision": "数迁项目概念全链路收敛到根菜单\"项目管理\"(pm_project via Platform project workbench contract, project:project:list + member scope; read-only SQL JOIN/COUNT to pm_project for display and existence checks, no new module dependency); dm_project 项目清单维护废弃(projects/options CRUD、前端项目清单页/路由/API 移除); dm_component 有效数据为0,无存量迁移负担; 非超管下拉仅见成员项目, 后端 JOIN 不做成员过滤(与切换前 dm_project 行为一致)", "source": "user confirmation 2026-08-22"},
+    {"id": "D12", "decision": "新增数据迁移角色并写入初始化脚本：V87 幂等新增 sys_role.role_description 列（information_schema 检查，不改平台 Java 代码）；创建 DATA_MIGRATION_ADMIN(200) 数据迁移管理员（创建/监控/管理，分配全部数据迁移菜单 20 项与全部 data-migration 动作权限 66 项）与 DATA_MIGRATION_DEVELOPER(201) 数据迁移开发人员（执行/调试，分配同样 20 项菜单仅 read 动作权限 18 项）；角色 INSERT 用 WHERE NOT EXISTS、菜单/权限用 INSERT IGNORE 保证幂等；id 与既有 1/100/101 隔离、不授 system:admin，兼容现有角色体系", "source": "user instruction 2026-08-22"},
+    {"id": "D13", "decision": "目标表结构采用新建独立表方案：dm_target_table（表信息：表编号/项目/系统编号/表英文名/中文名/含义/类别）+ dm_target_table_field（字段明细：字段编号/表编号/字段属性）；彻底替代复用 dm_asset.structured_data JSON 的半成品实现，满足字段级 CRUD、唯一性与钻取溯源", "source": "user confirmation 2026-08-22"},
+    {"id": "D14", "decision": "数据字典编号字段作为自由文本保存，仅做去空格/非空格式校验，不关联 sys_dict_type；后续如需下拉选项需单独 ready 需求升级", "source": "user confirmation 2026-08-22"},
+    {"id": "D15", "decision": "目标表结构与中间表结构共用一套表结构与接口，用 table_category='TARGET'|'INTERMEDIATE' 区分；本次实现聚焦 TARGET，INTERMEDIATE 仅预留类型与参数", "source": "user confirmation 2026-08-22"},
+    {"id": "D16", "decision": "目标表结构详细设计见 docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/design-target-table-structure.md（DB 设计 V88、调用既有接口清单、新建接口清单 13 项、前端设计与实施计划），当前处于方案待确认阶段，未进入实现", "source": "user instruction 2026-08-22"},
+    {"id": "D17", "decision": "目标表结构 + 中间表结构功能已落地实现：V88 迁移（建表/菜单权限/角色种子/历史数据迁移）；TargetTableService/TargetTableController/TargetTableFieldController（13 接口、字段粒度分页、归属/唯一/空格校验、Excel 导入导出、审计）；前端 TargetTablesPage.vue（通用页面 props.category 区分 TARGET/INTERMEDIATE，上下结构、查看/修改/字段行编辑/删除/批量上传/导出、系统编号联动、移动端卡片化、权限按钮）；api/data-migration.ts 新增分组。编译(mvn -am compile)与类型检查(vue-tsc)均通过；运行期集成（DB/Flyway/接口联调/权限联调）待本地环境启动验证", "source": "implementation 2026-08-22"},
+    {"id": "D18", "decision": "运行期验证(2026-08-22)结果：后端经 ./backend-dev.sh 启动，Flyway V88 成功执行（无失败标记）；四项验收项全部通过——(1)V88 执行成功；(2)菜单743/744 permission_code 已改写为 table-fields-target/-intermediate，8 条 sys_menu_permission 名称正确；(3)Excel 模板上传一条数据成功(accepted:1,failed:0)并正确回表+联表 project_name/business_group_name/system_name/owner_name；(4)字段行编辑唯一性拦截：重复 field_name_en 经 POST /fields 与 PUT /target-table-fields 均返回 HTTP 409『字段英文名称在该表下已存在』。验证期间修复：V88 原误用 menu_code/sys_permission/sort_order/created_by/real_name 等不存在的列(已改为复用既有菜单743/744的 sys_menu_permission、business_group_name、display_name、owner_id，并删除原第7节对 dm_asset 的改写)；TargetTableService 联表列 business_group→business_group_name、real_name→display_name 已修正。为验证插入一条有效 dm_component(项目1111↔W0741Y)种子后已清理导入测试表。注意：INTERMEDIATE 经 category=INTERMEDIATE 正确返回空，前端按 category 传参无偏差", "source": "runtime verification 2026-08-22"},
+    {"id": "D19", "decision": "删除逻辑调整(2026-08-22)：字段删除增加级联删表——执行字段删除(单条 DELETE /target-table-fields/{id} 与批量 POST /target-table-fields/batch-delete)时，先软删除字段，再判断该表剩余未删除字段数；若字段全部删除则同步软删除对应表(新私有方法 cascadeDeleteTableIfEmpty，audit TARGET_TABLE_DELETE)，否则仅删除字段。新增后端批量字段删除接口与前端字段抽屉『批量删除字段』按钮+勾选列；removeField/批量删除后若表已空则关闭抽屉并刷新主列表。表级删除(DELETE /{id}、POST /batch-delete)保持原『删表+同步删全部字段』语义不变。编译(mvn -am compile)与 vue-tsc 通过；运行期验证：单字段删除剩 1 字段时表保留，删最后一字段表 cascade-deleted(GET 返回 400)；批量删 2/3 字段表保留 1，再批量删剩余字段表 cascade-deleted，均符合预期", "source": "implementation 2026-08-22"}
+  ],
+  "risks": ["module registration", "database migration", "RBAC and ownership", "MinIO compensation", "Excel resource limits", "seventeen route entries", "responsive regression", "cross-module read-only join to arch_physical_subsystem", "missing source migration scripts for dm tables", "drop of legacy dm_component columns (component_code/component_name/description) is destructive to legacy data", "read-only pm_project cross-module access and deprecation of dm_project project maintenance"],
+  "approval": {
+    "status": "approved",
+    "evidence": "User confirmed the stated V3 design, formal REQ-20260820-031 scope and control ledger, and requested implementation.",
+    "confirmed_at": "2026-08-20T10:52:54+08:00"
+  }
+}

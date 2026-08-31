@@ -1,0 +1,30 @@
+{
+  "sample_label": "T14 correction and runtime recheck r1",
+  "task_ids": ["T3", "T5", "T6"],
+  "baseline_revision": "state-revision-96",
+  "measurements": [
+    {"requirement_id": "R3", "sensor": "ReportService behavioral tests", "result": "pass", "raw_evidence": "restore no-op fails without audit and successful restore audits once", "limitation": []},
+    {"requirement_id": "R4", "sensor": "focused Maven plus authenticated API lifecycle", "result": "pass", "raw_evidence": "ordered MD5 values persisted; upload/download/replace/delete/restore/purge succeeded", "limitation": []},
+    {"requirement_id": "R7", "sensor": "attachment authorization and presigned-object probes", "result": "pass", "raw_evidence": "old binding became inaccessible after replace; replacement bytes matched; purged object returned 404 after cleanup", "limitation": ["physical cleanup is asynchronous by platform contract"]},
+    {"requirement_id": "R8", "sensor": "Playwright computed-style and overflow probe at 1280/375/390/430", "result": "fail", "raw_evidence": "all viewports had overflow=0, but 375/390/430 reported tableVisible=true and mobileListVisible=true", "limitation": ["desktop also logged one non-API 404 to identify during recheck"]}
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R8",
+      "expected": "report pages use the desktop table above 760px and only mobile cards at 375/390/430",
+      "observed": "all mobile widths render both the desktop UiDataTable and dm-mobile-list",
+      "reproduction": "run t14-browser-check.mjs and inspect computed visibility at 375x812, 390x844 and 430x932",
+      "evidence": "tableVisible=true and mobileListVisible=true at every mobile viewport",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "sample used the empty report state after lifecycle cleanup",
+      "causal_hypothesis": "dm-mobile-list is enabled in the media query but UiDataTable has no report-specific desktop-only class",
+      "correction_check": "desktop reports tableVisible=true/mobileListVisible=false; all mobile widths report the inverse with overflow<=1",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": ["one desktop non-API 404 requires URL-level filtering in the next browser sample"],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

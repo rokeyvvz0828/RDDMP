@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "task": "T10",
+  "phase": "executing",
+  "control_prefix": "T10",
+  "execution_status": "completed",
+  "trigger": "用户指令 2026-08-22：增加角色「数据迁移管理员」和「数据迁移开发人员」，写入初始化脚本（含角色创建语句、角色描述、权限分配；幂等；兼容现有角色体系）",
+  "scope": {
+    "writable": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V87__data_migration_roles_seed.sql",
+      "docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/**"
+    ],
+    "read_only": [
+      "server/src/platform/**（仅读取角色/权限表结构与既有迁移脚本，不改动平台 Java 代码）",
+      "web/src/**",
+      "governance/**"
+    ],
+    "forbidden": [
+      "production systems / real data"
+    ],
+    "non_goals": [
+      "不修改 platform/system 的 SystemService 与角色管理界面（role_description 仅落库，界面展示由平台另行评估）",
+      "不授予新角色 system:admin 或 SUPER_ADMIN 角色码",
+      "不调整既有 SUPER_ADMIN（id=1）与需求角色（100/101）的既有分配"
+    ]
+  },
+  "input_facts": [
+    "sys_role 表（V1）无 role_description 字段，需在 V87 中幂等新增该列（information_schema 检查，与 V84 风格一致）",
+    "现有角色：1=SUPER_ADMIN、100=REQUIREMENT_COORDINATOR、101=REQUIREMENT_MEMBER；新角色 id 取 200/201 避免冲突",
+    "权限来源：findPermissions UNION 1 = sys_role_permission→sys_menu_permission.permission_code（动作权限）；UNION 2 = sys_role_menu→sys_menu.permission_code（菜单权限码，如 data-migration:access / data-migration:manage）",
+    "数据迁移现存菜单：700-744 区间 20 项（741 项目清单已由 V86 清理）；菜单 740 的 permission_code=data-migration:manage，700/720 的 permission_code=data-migration:access",
+    "Controller 写操作 @PreAuthorize 要求 data-migration:manage 或 system:admin；类级访问为 data-migration:access/write/manage/dashboard/components/system:admin 任一",
+    "data-migration:write/dashboard/components 权限码不存在于任何菜单/权限表，无法通过 DB 授予；管理员经菜单 740 获得 manage、经菜单 700/720 获得 access 即可覆盖接口权限需求"
+  ],
+  "plan_steps": [
+    {
+      "id": "T10-S1",
+      "action": "创建 V87__data_migration_roles_seed.sql：幂等新增 sys_role.role_description 列（information_schema 检查）；INSERT...WHERE NOT EXISTS 创建 DATA_MIGRATION_ADMIN(200) 与 DATA_MIGRATION_DEVELOPER(201)（含 role_description 描述）；INSERT IGNORE 分配 700-744 全部现存菜单给两角色；管理员分配全部 data-migration:% 动作权限，开发人员仅分配 action_code='read' 的动作权限",
+      "evidence": "V87 脚本创建，四个语句块（加列/两角色/菜单/权限）齐备"
+    },
+    {
+      "id": "T10-S2",
+      "action": "重启后端应用 V87（Flyway migrate 到 version 87），确认无校验错误、应用正常启动",
+      "command": "bash backend-dev.sh stop; nohup bash backend-dev.sh start",
+      "evidence": "日志：Migrating schema to version 87 - data migration roles seed；Successfully applied 1 migration；Started CcbApplication"
+    },
+    {
+      "id": "T10-S3",
+      "action": "数据库验证：两个角色存在且 role_name/role_description 中文正确（utf8mb4）；菜单分配各 20 项；管理员权限 66 项、开发人员权限 18 项且无非 read 动作；角色可重复执行性由 WHERE NOT EXISTS + INSERT IGNORE 保证",
+      "command": "docker exec -i ccb-platform-mysql mysql --default-character-set=utf8mb4 -e \"SELECT id,role_code,role_name,role_description FROM sys_role WHERE role_code LIKE 'DATA_MIGRATION%'; ...\"",
+      "evidence": "200/201 两行；角色名与描述中文正确；menu_cnt=20/20；perm_cnt=66/18；dev 非 read 权限=0"
+    },
+    {
+      "id": "T10-S4",
+      "action": "更新台账：design.json 追加 D12（角色初始化决策）与 design_revision 5→6；state.json revision 74→75 追加 phase_history；新增 execution-T10.json / observation-T10.json",
+      "evidence": "台账 diff 通过 json 校验"
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-T10-1",
+      "text": "sys_role 加列影响平台角色管理代码（SystemService roles Spec 未包含新列，界面不展示描述，不影响既有读写）",
+      "mitigation": "仅 ADD COLUMN NULL 列、不改平台 Java 代码；既有 INSERT/SELECT 显式列名不受影响；界面展示角色描述如需支持，由平台角色管理另行评估（不在本次范围）",
+      "residual": "role_description 字段当前无界面维护入口，仅初始化脚本写入"
+    },
+    {
+      "id": "R-T10-2",
+      "text": "data-migration:write/dashboard/components 权限码不在菜单/权限表中，数据库层面无法直接授予",
+      "mitigation": "管理员/开发人员均通过菜单 700/720 获得 data-migration:access 覆盖类级访问；管理员经菜单 740 获得 data-migration:manage 覆盖写操作；接口行为与既有 SUPER_ADMIN 一致",
+      "residual": "若未来出现仅凭这些权限码放行的接口且不包含 access/manage，需在权限体系中登记对应权限码"
+    },
+    {
+      "id": "R-T10-3",
+      "text": "角色分配与既有角色/用户绑定体系冲突",
+      "mitigation": "id 取 200/201 与既有 1/100/101 隔离；不动 SUPER_ADMIN/需求角色既有 sys_role_menu/sys_role_permission 记录；用户可通过角色管理界面将新角色绑定给用户",
+      "residual": "新角色默认未绑定任何用户，需管理员在用户管理/角色管理界面分配"
+    }
+  ],
+  "compliance_check": {
+    "scope_clean": true,
+    "no_prod": true,
+    "no_pii": true,
+    "no_bypass": true,
+    "writable_paths_respected": true,
+    "no_rollback_of_others": true
+  },
+  "executed_at": "2026-08-22T05:00:00+00:00",
+  "result": "success",
+  "next": "T10 observation completed in observation-T10.json"
+}

@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0006",
+  "decision": "accept",
+  "decision_reason": "R7 and R8 explicitly require local MinIO lifecycle and four viewport evidence; the prior sample did not provide it.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "The local MinIO process or backend endpoint configuration was unavailable during T13, and the browser sample stopped after 390x844.",
+    "supporting_evidence": ["observation-T13 reports storage service unavailable", "observation-T13 lists 375/430 as unsampled"],
+    "falsifier": "A running local MinIO still yields the same storage error or the page fails at the required viewports."
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "Local runtime and browser acceptance sensors",
+    "write_scope": [".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"],
+    "invariants": ["MOCK_DATA_ENABLED=false", "local test data only", "no production access", "no viewport-level overflow"],
+    "impact_limit": "local test processes and acceptance evidence",
+    "rollback": "stop local processes and delete only synthetic acceptance records through the application APIs",
+    "correction_check": ["upload/download/replace/delete/restore/purge object lifecycle", "1280x800", "375x812", "390x844", "430x932"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["full Maven contains an unrelated architecture migration-target defect outside this correction write scope"]
+}

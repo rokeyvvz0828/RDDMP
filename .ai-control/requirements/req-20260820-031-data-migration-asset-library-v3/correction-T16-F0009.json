@@ -1,0 +1,42 @@
+{
+  "feedback_id": "F-0009",
+  "decision": "accept",
+  "decision_reason": "Authenticated browser and container evidence reproduce the failure after trust validation, and the public temporary preview API provides a scoped compatibility path without changing read-only platform code.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "kkFileView 4.1.0 cannot derive a filename suffix from generic attachment object keys that end in a UUID.",
+    "supporting_evidence": [
+      "the trusted source URL path ends with an extensionless UUID",
+      "the container stack fails in WebUtils.encodeUrlFileName while searching for a dot suffix",
+      "the platform temporary preview service stores objects as UUID plus the validated extension"
+    ],
+    "falsifier": "the same real attachment renders successfully through the generic attachment preview URL without a filename hint"
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "data-migration report preview workflow",
+    "write_scope": [
+      "web/src/modules/data-migration/views/content/ReportsPage.vue",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+    ],
+    "invariants": [
+      "attachment authorization remains enforced by the platform APIs",
+      "platform file-preview and attachment source code remains unchanged",
+      "the original filename and content type are preserved",
+      "temporary preview objects are deleted when the dialog closes or the page unmounts"
+    ],
+    "impact_limit": "report material preview action only",
+    "rollback": "restore ReportsPage previewReport to the generic attachment preview call and remove temporary preview cleanup state",
+    "correction_check": [
+      "frontend production build",
+      "authenticated real XLSX preview renders a non-empty table",
+      "no trust, HTTP 500 or loading error appears",
+      "closing the dialog returns HTTP 200 from DELETE /api/file-previews/{previewId}"
+    ],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": [
+    "the compatibility flow transfers the attachment through the browser once before preview upload"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "sample_label": "Flyway V36 migration and backend verification",
+  "task_ids": ["T6"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R7",
+      "sensor": "S1 Flyway migration inspection",
+      "result": "pass",
+      "raw_evidence": "flyway_schema_history table shows version 36 with success=1, installed_by=ccb, installed_on=2026-08-21 02:42:09",
+      "limitation": ["This validates the migration was applied, not that all menu data is correct"]
+    },
+    {
+      "requirement_id": "R1",
+      "sensor": "S5 menu structure probe",
+      "result": "pass",
+      "raw_evidence": "sys_menu table shows 21 data migration menu entries with correct parent-child relationships",
+      "limitation": ["Menu names show as question marks due to character encoding, but structure is correct"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S4 backend health probe",
+      "result": "pass",
+      "raw_evidence": "curl http://localhost:8080/actuator/health returns {\"status\":\"UP\"}",
+      "limitation": ["This validates the backend is running, not specific data migration API endpoints"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "source": "Flyway outOfOrder mode was required to apply V36 migration after V37",
+      "effect": "Migration applied successfully but with outOfOrder warning",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "coverage_gaps": ["Menu names not fully verified due to character encoding", "Data migration API endpoints not tested"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}
