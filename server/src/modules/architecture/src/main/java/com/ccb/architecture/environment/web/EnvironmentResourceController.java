@@ -63,15 +63,18 @@ public class EnvironmentResourceController {
     private static final String ARCHITECTURE_MANAGE_AUTHORITY = "architecture:manage";
 
     private final EnvironmentResourceService service;
+    private final com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService;
     private final ResourceRequestSubmissionService workflowService;
     private final SystemOperationAudit operationAudit;
 
     public EnvironmentResourceController(EnvironmentResourceService service,
                                          ResourceRequestSubmissionService workflowService,
-                                         SystemOperationAudit operationAudit) {
+                                         SystemOperationAudit operationAudit,
+                                         com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService) {
         this.service = service;
         this.workflowService = workflowService;
         this.operationAudit = operationAudit;
+        this.planWorkOrderService = planWorkOrderService;
     }
 
     @GetMapping("/environment-types")
@@ -212,6 +215,11 @@ public class EnvironmentResourceController {
         ResourceRequestDetail detail = audited(actor, "architecture.resource-request.create", "POST",
                 "/api/architecture/resource-requests", () -> service.createRequest(actor,
                         toRequestCommand(request, null)));
+        if (request != null && request.planTaskId() != null) {
+            planWorkOrderService.registerCreatedWorkOrder(actor.tenantId(), request.planTaskId(),
+                    com.ccb.architecture.plan.model.PlanModels.WorkOrderType.RESOURCE_REQUEST,
+                    detail.request().id());
+        }
         return success(toRequestDetail(detail));
     }
 
@@ -529,7 +537,8 @@ public class EnvironmentResourceController {
             ignoreUnknown = true)
     public record UpsertResourceRequestRequest(Long physicalSubsystemId, Long environmentId,
                                                Long contactUserId, String requestType, String reason,
-                                               List<ResourceItemCommand> items, Long rowVersion) {
+                                               List<ResourceItemCommand> items, Long rowVersion,
+                                               Long planTaskId) {
         public UpsertResourceRequestRequest {
             items = List.copyOf(items == null ? List.of() : items);
         }

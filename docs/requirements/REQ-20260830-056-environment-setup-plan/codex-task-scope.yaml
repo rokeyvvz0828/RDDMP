@@ -1,0 +1,194 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260830-056",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260830-056-environment-setup-plan/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260830-056-environment-setup-plan",
+    "worktree": "/home/ivanh/source/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/architecture/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V106__create_architecture_setup_plan_templates.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V107__create_architecture_setup_plan.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V108__create_architecture_plan_execution_support.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V109__seed_architecture_setup_plan_menus.sql",
+      "web/src/modules/architecture/**",
+      "web/src/router/index.ts",
+      "web/src/styles.css",
+      "mock/mock-data.json",
+      "docs/requirements/REQ-20260830-056-environment-setup-plan/**",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/attachment/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V91__create_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__seed_architecture_environment_resource_requests.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__move_environment_type_to_system_dictionary.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__expand_resource_request_registration_items.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__refine_resource_request_registration_ownership.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V96__refine_resource_request_resource_catalogs.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V97__create_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V98__seed_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V99__extend_architecture_resource_request_fulfillment_status.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V89__create_architecture_network_work_orders.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V90__seed_architecture_network_work_orders.sql",
+      "web/src/api/http.ts",
+      "web/src/api/**",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/stores/auth.ts",
+      "web/src/utils/**",
+      "docs/integration/architecture-module-contract.md",
+      "docs/integration/frontend-ui-contract.md",
+      "docs/integration/system-notification-contract.md",
+      "design-h5.md",
+      "temp/**",
+      ".ai-control/original/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**",
+      "server/src/modules/release/**",
+      "server/src/modules/requirement/**",
+      "server/src/modules/data-migration/**",
+      "server/src/modules/test-management/**",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/internal/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      ".ai-control/original/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260830-056",
+    "owner_approved": true,
+    "approval_evidence": "用户下达“实现测试环境搭建管理，功能点菜单名为环境搭建计划”，并确认一个批次全量实施 issues 05-08、环境搭建计划与搭建计划模板两个菜单平行；批准在 business/architecture 内实现模板版本化、计划生成、执行豁免、依赖阻塞、时间逾期、调整与工单关联、看板报告与通知，追加 V106-V109 迁移与 814/815 菜单权限，复用平台字典/附件/通知/RBAC 而不改动 platform 实现。用户 UAT 反馈“修复全局按钮组件中图标颜色，使其和文字颜色匹配”，批准对 web/src/styles.css 追加一条最小全局规则（.el-button 图标颜色继承按钮文字颜色，不改变其他行为）。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "现有逻辑/物理子系统、部署单元、具体环境、资源申请、环境部署实例、网络工单、架构规范决策 API 契约保持兼容",
+      "V106-V109 只追加，不修改 V1-V99",
+      "平台字典、附件、通知、工作流能力只复用不修改",
+      "新增菜单、权限与角色授权只补充，不删除既有授权",
+      "全局规则只影响按钮图标颜色继承，回归交付示范中心、资源申请等既有页面的按钮图标颜色"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V106__create_architecture_setup_plan_templates.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V107__create_architecture_setup_plan.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V108__create_architecture_plan_execution_support.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V109__seed_architecture_setup_plan_menus.sql"
+    ],
+    "compatibility_and_rollback": "只追加 V106-V109。V106 建立计划模板/模板版本/环节模板/任务模板/任务模板版本表；V107 建立搭建计划/环节/任务/检查项/计划目标快照表；V108 建立依赖/阻塞/事件/取消记录/工单关联/取消建议/操作历史表；V109 追加菜单 814/815、权限 architecture:plan:view/manage 与 architecture:plan-template:view/manage 并授予超管与角色 114。应用回退保留迁移与数据，通过后续补偿迁移关闭入口、撤销授权或恢复兼容结构。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "plan-template-unit",
+      "command": "mvn test -pl :ccb-architecture -am \"-Dtest=PlanTemplateServiceTest,PlanServiceTest,PlanExecutionServiceTest,PlanDependencyServiceTest,PlanTimeServiceTest,PlanWorkOrderServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\""
+    },
+    {
+      "name": "api",
+      "command": "后端 8080 + 真实 MySQL 下的 API 旅程：模板创建/发布、计划创建（维度生成/快照）、任务开始/检查项完成/状态传播、依赖/阻塞/豁免、计划取消恢复、看板/时间视图/报告与列表筛选均值测通过"
+    },
+    {
+      "name": "permission",
+      "command": "mvn test -pl :ccb-architecture -am \"-Dtest=PlanServiceTest,PlanExecutionServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\""
+    },
+    {
+      "name": "development-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "flyway",
+      "command": "node scripts/check-flyway-migrations.mjs"
+    },
+    {
+      "name": "diff",
+      "command": "git diff --check"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "新增 V106-V109 迁移与多表约束，必须保留服务端校验、实体授权与审计",
+      "状态/进度/全部豁免/逾期与完成传播规则计算复杂，必须由确定性规则单元测试覆盖",
+      "跨模块读取资源申请与网络工单状态作为完成门禁，必须只读公开契约",
+      "前端看板/时间视图/移动端布局信息密度高，必须按 design-h5.md 验收"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260830-056-environment-setup-plan",
+    "control_justification": "跨数据库迁移、模板版本与快照、状态与进度计算状态机、豁免/依赖/阻塞/时间/公告门禁、前后端用户旅程与移动端验收，需要完整工程控制账本。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/state.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/design.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/model.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/control-plan.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/execution-T1.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/observation-T1.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/execution-T2.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/observation-T2.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/execution-T3.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/observation-T3.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/execution-T4.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/observation-T4.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/execution-T5.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/observation-T5.json",
+      ".ai-control/requirements/req-20260830-056-environment-setup-plan/convergence.json"
+    ],
+    "release_verification": [
+      "空库与既有库迁移到最新版本",
+      "模板维护与发布：版本历史、停用、生成维度",
+      "从已发布模板创建计划：环境/目标选择、任务与检查项生成、责任人继承与调整、快照保存",
+      "任务执行：开始、检查项完成/重开/备注/附件、状态与进度计算、重开传播",
+      "取消/恢复：检查项、任务、环节、计划，全部豁免与存在豁免标识",
+      "前置依赖：等待前置、依赖取消提示、移除/改绑、循环校验",
+      "阻塞：登记/解除、任务阻塞状态、环节与计划聚合、下钻",
+      "时间：计划时间维护与调整、实际时间聚合、事件更正、逾期标识",
+      "调整：新增环节/任务/检查项/目标、移出目标、错误内容删除",
+      "工单关联：发起/事后关联、未结束工单门禁、解除",
+      "看板/时间视图/报告与 Excel 导出",
+      "通知发送与失败不影响业务",
+      "权限校验：无权限 403、非责任人操作拒绝",
+      "桌面与移动视口页面验收"
+    ],
+    "rollback": "按前端、architecture 服务与迁移登记逆序回退应用代码；保留 V106-V109 与业务数据；通过后续补偿迁移隐藏菜单、撤销授权或恢复兼容结构。"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "requirement_id": "REQ-20260830-056",
+  "control_prefix": "req-20260830-056-environment-setup-plan",
+  "plan_revision": 1,
+  "tasks": [
+    {
+      "task_id": "T1",
+      "name": "数据库迁移 V100-V103",
+      "goal": "建立计划模板/任务模板/版本快照、计划/环节/任务/检查项/目标快照、依赖/阻塞/事件/取消记录/工单关联/取消建议/操作历史表，以及 812/813 菜单权限种子",
+      "dependency": [],
+      "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V100*.sql", "V101*.sql", "V102*.sql", "V103*.sql"],
+      "acceptance": ["空库迁移通过", "既有库(V99)升级通过", "菜单与角色授权幂等", "check-flyway-migrations.mjs 通过"],
+      "evidence": ["迁移执行输出", "check-flyway 输出"],
+      "stop_conditions": ["修改 V1-V99", "破坏性变更"],
+      "rollback": "仅追加补偿迁移"
+    },
+    {
+      "task_id": "T2",
+      "name": "模板管理后端",
+      "goal": "实现计划模板/环节模板/任务模板草稿维护、发布新版本（不可变快照）、版本历史、停用/启用、校验（非空、维度取值）与操作留痕",
+      "dependency": ["T1"],
+      "write_scope": ["server/src/modules/architecture/**/plantemplate/**", "计划包内 model/persistence/service/web"],
+      "acceptance": ["PlanTemplateServiceTest 通过", "发布后版本内容不可变", "停用模板不影响既有计划"]
+    },
+    {
+      "task_id": "T3",
+      "name": "计划生成与执行后端",
+      "goal": "从已发布模板创建计划并按维度生成环节/任务/检查项与快照；实现任务开始、检查项完成/重开/取消/恢复、状态与进度计算、全部豁免与存在豁免、完成传播、计划/环节取消与恢复、重新打开传播、责任人继承与调整留痕",
+      "dependency": ["T2"],
+      "write_scope": ["server/src/modules/architecture/**/plan/**"],
+      "acceptance": ["PlanGenerationServiceTest/PlanExecutionServiceTest 覆盖状态与进度分支", "重开传播与豁免标识正确"]
+    },
+    {
+      "task_id": "T4",
+      "name": "依赖/阻塞/时间/调整/工单后端",
+      "goal": "前置依赖（循环校验、等待前置、取消前置提示、移除改绑）；阻塞记录与聚合；计划/环节/任务计划时间维护与调整、执行事件实际时间聚合与事件更正、逾期计算聚合；运行中新增结构/目标、移出目标、错误内容删除；任务-工单关联与未结束门禁；通知发布挂点",
+      "dependency": ["T3"],
+      "write_scope": ["server/src/modules/architecture/**/plan/**", "environment/ResourceRequestController 关联挂点", "network/NetworkWorkOrderController 关联挂点"],
+      "acceptance": ["对应服务测试通过", "跨模块只读公开契约"]
+    },
+    {
+      "task_id": "T5",
+      "name": "前端页面与路由",
+      "goal": "web/src/modules/architecture 下实现 api/types、PlanTemplateListPage/PlanTemplateDetailPage、PlanListPage（新建向导与筛选）、PlanDetailPage（执行视图/看板/时间视图/报告/操作历史、任务抽屉、目标快照差异）、移动端卡片与局部滚动、路由与菜单映射、mock 数据",
+      "dependency": ["T3", "T4"],
+      "write_scope": ["web/src/modules/architecture/**", "web/src/router/index.ts", "mock/mock-data.json"],
+      "acceptance": ["npm run build 通过", "加载/空/失败/无权限/提交中状态覆盖", "375/390/430 视口无整页横向溢出"]
+    },
+    {
+      "task_id": "T6",
+      "name": "验证与收敛",
+      "goal": "全量聚焦测试、治理检查、范围检查、Flyway 检查、diff 检查、真实后端/前端/MySQL 运行验证与关键旅程浏览器 UAT（桌面+移动）、收敛结论与残余风险记录",
+      "dependency": ["T1", "T2", "T3", "T4", "T5"],
+      "acceptance": ["全部 required_tests 通过（或记录残余）", "UAT 证据（角色/路由/视口/结果）", "convergence.json 完成"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "表结构先于服务"},
+    {"from": "T2", "to": "T3", "reason": "生成依赖模板版本"},
+    {"from": "T3", "to": "T4", "reason": "依赖/时间/调整作用于已生成执行结构"},
+    {"from": "T3", "to": "T5", "reason": "前端依赖 API 契约"},
+    {"from": "T4", "to": "T5", "reason": "前端依赖完整 API"},
+    {"from": "T5", "to": "T6", "reason": "验收依赖实现完备"}
+  ],
+  "sampling_plan": [
+    {"label": "T1/T2 后采样", "sensors": ["S1"], "check": "迁移与模板服务测试"},
+    {"label": "T3 后采样", "sensors": ["S2", "S3"], "check": "生成与执行测试+API"},
+    {"label": "T4 后采样", "sensors": ["S4", "S5", "S6"], "check": "依赖/时间/工单测试"},
+    {"label": "T5 后采样", "sensors": ["S7", "S8"], "check": "构建+浏览器巡检"},
+    {"label": "最终采样", "sensors": ["S1-S8"], "check": "全量收敛门禁"}
+  ],
+  "plan_status": "ready"
+}

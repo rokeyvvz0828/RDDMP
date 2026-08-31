@@ -13,6 +13,7 @@ import com.ccb.architecture.network.service.NetworkWorkOrderService.CreateComman
 import com.ccb.architecture.network.service.NetworkWorkOrderService.UpdateCommand;
 import com.ccb.architecture.network.service.NetworkWorkOrderService.WorkOrderDetail;
 import com.ccb.architecture.network.service.NetworkWorkOrderSubmissionService;
+import com.ccb.architecture.plan.model.PlanModels.WorkOrderType;
 import com.ccb.common.api.ApiResponse;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
@@ -59,15 +60,18 @@ public class NetworkWorkOrderController {
     private final NetworkWorkOrderSubmissionService workflowService;
     private final SystemOperationAudit operationAudit;
     private final ObjectMapper objectMapper;
+    private final com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService;
 
     public NetworkWorkOrderController(NetworkWorkOrderService service,
                                       NetworkWorkOrderSubmissionService workflowService,
                                       SystemOperationAudit operationAudit,
-                                      ObjectMapper objectMapper) {
+                                      ObjectMapper objectMapper,
+                                      com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService) {
         this.service = service;
         this.workflowService = workflowService;
         this.operationAudit = operationAudit;
         this.objectMapper = objectMapper;
+        this.planWorkOrderService = planWorkOrderService;
     }
 
     /** 关键写操作统一审计：成功记录成功，业务失败记录失败；审计失败不阻断业务结果。 */
@@ -144,7 +148,22 @@ public class NetworkWorkOrderController {
                 "/api/architecture/network-work-orders", () -> service.create(actor,
                         new CreateCommand(kind, actionType, request.payload(), request.reason(),
                                 request.attachmentIds())));
+        registerCreatedFromTask(actor, request, detail.workOrder().id());
         return success(toDetail(detail));
+    }
+
+    private void registerCreatedFromTask(AuthUser actor, CreateWorkOrderRequest request, long workOrderId) {
+        if (request == null || request.planTaskId() == null) {
+            return;
+        }
+        Kind kind = requiredKind(request == null ? null : request.kind());
+        WorkOrderType workOrderType = switch (kind) {
+            case CLB -> WorkOrderType.NETWORK_CLB;
+            case DNS -> WorkOrderType.NETWORK_DNS;
+            case CERT -> WorkOrderType.NETWORK_CERT;
+        };
+        planWorkOrderService.registerCreatedWorkOrder(actor.tenantId(), request.planTaskId(),
+                workOrderType, workOrderId);
     }
 
     @PutMapping("/{id}")
@@ -313,6 +332,7 @@ public class NetworkWorkOrderController {
     /** 输入 DTO 不含 tenantId、applicantId 或 accessScope；这些字段即使出现在 JSON 中也会被忽略。 */
     @JsonIgnoreProperties({"tenantId", "applicantId", "accessScope"})
     public record CreateWorkOrderRequest(String kind, String actionType, String reason,
+                                         Long planTaskId,
                                          Map<String, Object> payload, List<Long> attachmentIds) {
         public CreateWorkOrderRequest {
             attachmentIds = List.copyOf(attachmentIds == null ? List.of() : attachmentIds);
