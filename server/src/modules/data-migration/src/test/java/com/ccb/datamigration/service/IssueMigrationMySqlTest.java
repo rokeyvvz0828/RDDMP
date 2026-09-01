@@ -42,8 +42,6 @@ class IssueMigrationMySqlTest {
     @Test
     void v93DeletesOnlyLegacyIssuesAndV94EnforcesActiveCodeLifecycle() throws Exception {
         prepareIsolatedSchema();
-        Flyway flyway92 = flyway("92");
-        assertTrue(flyway92.migrate().success);
 
         try (Connection connection = connection()) {
             execute(connection, """
@@ -60,14 +58,14 @@ class IssueMigrationMySqlTest {
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'REPORT' AND asset_name = 'Keep report'"));
         }
 
-        assertTrue(flyway("93").migrate().success);
+        assertTrue(flyway("123").migrate().success);
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'ISSUE'"));
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_asset_relation WHERE source_asset_type = 'ISSUE'"));
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'REPORT' AND asset_name = 'Keep report'"));
         }
 
-        assertTrue(flyway("94").migrate().success);
+        assertTrue(flyway("124").migrate().success);
         try (Connection connection = connection()) {
             assertEquals("STORED GENERATED", value(connection, """
                     SELECT EXTRA FROM information_schema.columns
@@ -139,7 +137,7 @@ class IssueMigrationMySqlTest {
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
                 .baselineOnMigrate(true)
-                .baselineVersion(MigrationVersion.fromVersion("91"))
+                .baselineVersion(MigrationVersion.fromVersion("122"))
                 .target(MigrationVersion.fromVersion(target))
                 .cleanDisabled(false)
                 .load();
@@ -155,11 +153,11 @@ class IssueMigrationMySqlTest {
 
     private void migrateFreshTo94() {
         prepareIsolatedSchema();
-        assertTrue(flyway("94").migrate().success);
+        assertTrue(flyway("124").migrate().success);
     }
 
     private void prepareIsolatedSchema() {
-        flyway("91").clean();
+        flyway("122").clean();
         try (Connection connection = connection()) {
             execute(connection, """
                     CREATE TABLE dm_asset (
@@ -174,6 +172,21 @@ class IssueMigrationMySqlTest {
                         deleted TINYINT NOT NULL DEFAULT 0,
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         created_by BIGINT NULL
+                    )
+                    """);
+            execute(connection, """
+                    CREATE TABLE dm_asset_relation (
+                        id BIGINT PRIMARY KEY,
+                        tenant_id BIGINT NOT NULL,
+                        source_asset_id BIGINT NOT NULL,
+                        source_asset_type VARCHAR(32) NOT NULL,
+                        target_asset_id BIGINT NOT NULL,
+                        target_asset_type VARCHAR(32) NOT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        created_by BIGINT NOT NULL,
+                        INDEX idx_asset_relation_source (tenant_id, source_asset_id, source_asset_type),
+                        INDEX idx_asset_relation_target (tenant_id, target_asset_id, target_asset_type),
+                        UNIQUE KEY uk_asset_relation (tenant_id, source_asset_id, source_asset_type, target_asset_id, target_asset_type)
                     )
                     """);
             execute(connection, """
