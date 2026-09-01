@@ -51,7 +51,7 @@ public class TargetTableService {
         String cat = categoryOf(category);
         permissions.requireCategoryPermission(user, cat, "read");
         StringBuilder sql = new StringBuilder(
-                "SELECT t.id, f.id AS field_id, f.field_code, f.table_id, f.table_code, f.field_name_en, f.field_name_cn, f.field_meaning, " +
+                "SELECT t.id, f.id AS field_id, f.field_code, f.table_id, t.table_code AS table_code, f.field_name_en, f.field_name_cn, f.field_meaning, " +
                         "f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
                         "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, t.owner_id, t.created_at, t.updated_at, " +
                         "p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name " +
@@ -121,7 +121,7 @@ public class TargetTableService {
         if (tables.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "目标表不存在");
         Map<String, Object> table = tables.get(0);
         List<Map<String, Object>> fields = jdbc.queryForList(
-                "SELECT * FROM dm_target_table_field WHERE table_id = ? AND tenant_id = ? AND deleted = 0 ORDER BY id ASC",
+                "SELECT f.*, t.table_code AS table_code FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id WHERE f.table_id = ? AND f.tenant_id = ? AND f.deleted = 0 ORDER BY f.id ASC",
                 id, user.tenantId());
         table.put("fields", fields);
         return table;
@@ -190,7 +190,7 @@ public class TargetTableService {
         String cat = categoryOf(category);
         permissions.requireCategoryPermission(user, cat, "read");
         requireTable(tableId, cat, user);
-        return jdbc.queryForList("SELECT * FROM dm_target_table_field WHERE table_id = ? AND tenant_id = ? AND deleted = 0 ORDER BY id ASC", tableId, user.tenantId());
+        return jdbc.queryForList("SELECT f.*, t.table_code AS table_code FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id WHERE f.table_id = ? AND f.tenant_id = ? AND f.deleted = 0 ORDER BY f.id ASC", tableId, user.tenantId());
     }
 
     // ============ 字段：新增 ============
@@ -213,7 +213,7 @@ public class TargetTableService {
         String cat = categoryOf(category);
         permissions.requireCategoryPermission(user, cat, "update");
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT f.*, t.table_code, t.owner_id, t.project_id, t.system_code FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id AND t.deleted = 0 WHERE f.id = ? AND f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?",
+                "SELECT f.*, t.table_code AS table_code, t.owner_id, t.project_id, t.system_code FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id AND t.deleted = 0 WHERE f.id = ? AND f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?",
                 fieldId, user.tenantId(), cat);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "字段不存在");
         Map<String, Object> current = rows.get(0);
@@ -233,7 +233,7 @@ public class TargetTableService {
         jdbc.update("UPDATE dm_target_table_field SET field_name_en = ?, field_name_cn = ?, field_meaning = ?, code_description = ?, is_key_field = ?, oracle_type = ?, mysql_type = ?, is_nullable = ?, is_primary_key = ?, dict_code = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ? AND tenant_id = ? AND deleted = 0",
                 fieldNameEn, fieldNameCn, fieldMeaning, codeDescription, isKeyField, oracleType, mysqlType, isNullable, isPrimaryKey, dictCode, user.id(), fieldId, user.tenantId());
         audit(user, "TARGET_TABLE_FIELD_UPDATE", tableId);
-        return jdbc.queryForMap("SELECT * FROM dm_target_table_field WHERE id = ? AND tenant_id = ? AND deleted = 0", fieldId, user.tenantId());
+        return jdbc.queryForMap("SELECT f.*, t.table_code AS table_code FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id WHERE f.id = ? AND f.tenant_id = ? AND f.deleted = 0", fieldId, user.tenantId());
     }
 
     // ============ 字段：删除（单条，级联删空表） ============
@@ -419,7 +419,7 @@ public class TargetTableService {
         if (ids != null && !ids.isEmpty()) {
             String placeholders = ids.stream().map(i -> "?").collect(Collectors.joining(","));
             rows = jdbc.queryForList(
-                    "SELECT f.field_code, f.table_code, f.field_name_en, f.field_name_cn, f.field_meaning, f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
+                    "SELECT f.field_code, t.table_code AS table_code, f.field_name_en, f.field_name_cn, f.field_meaning, f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
                             "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
                             "FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                     "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
@@ -431,7 +431,7 @@ public class TargetTableService {
             // 复用 list 的筛选逻辑但导出全量（不分页）
             Map<String, Object> p = params == null ? Map.of() : params;
             StringBuilder sql = new StringBuilder(
-                    "SELECT f.field_code, f.table_code, f.field_name_en, f.field_name_cn, f.field_meaning, f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
+                            "SELECT f.field_code, t.table_code AS table_code, f.field_name_en, f.field_name_cn, f.field_meaning, f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
                             "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
                             "FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                             "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
@@ -524,9 +524,9 @@ public class TargetTableService {
         int isNullable = bool(body.get("isNullable"));
         int isPrimaryKey = bool(body.get("isPrimaryKey"));
         String dictCode = noSpaceOpt(body.get("dictCode"), "dictCode");
-        jdbc.update("INSERT INTO dm_target_table_field (id, tenant_id, field_code, table_id, table_code, field_name_en, field_name_cn, field_meaning, code_description, is_key_field, oracle_type, mysql_type, is_nullable, is_primary_key, dict_code, owner_id, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                id, user.tenantId(), fieldCode, tableId, tableCode, fieldNameEn, fieldNameCn, fieldMeaning, codeDescription, isKeyField, oracleType, mysqlType, isNullable, isPrimaryKey, dictCode, user.id(), user.id(), user.id());
-        return jdbc.queryForMap("SELECT * FROM dm_target_table_field WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId());
+        jdbc.update("INSERT INTO dm_target_table_field (id, tenant_id, field_code, table_id, field_name_en, field_name_cn, field_meaning, code_description, is_key_field, oracle_type, mysql_type, is_nullable, is_primary_key, dict_code, owner_id, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                id, user.tenantId(), fieldCode, tableId, fieldNameEn, fieldNameCn, fieldMeaning, codeDescription, isKeyField, oracleType, mysqlType, isNullable, isPrimaryKey, dictCode, user.id(), user.id(), user.id());
+        return jdbc.queryForMap("SELECT f.*, t.table_code AS table_code FROM dm_target_table_field f JOIN dm_target_table t ON t.id = f.table_id AND t.tenant_id = f.tenant_id WHERE f.id = ? AND f.tenant_id = ? AND f.deleted = 0", id, user.tenantId());
     }
 
     private Map<String, Object> requireTable(long id, String cat, AuthUser user) {

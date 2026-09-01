@@ -37,7 +37,7 @@ async function load() {
   loading.value = true
   selectedIds.value = []
   try {
-    assets.value = (await listDataMigrationAssets({ type: props.assetType, keyword: keyword.value || undefined })).data.data ?? []
+    assets.value = (await listDataMigrationAssets(props.assetType, keyword.value || undefined)).data.data ?? []
   } catch (e) { ElMessage.error(messageOf(e)) }
   finally { loading.value = false }
 }
@@ -73,7 +73,7 @@ async function saveUpload() {
   }
   saving.value = true
   try {
-    await uploadDataMigrationAsset(props.assetType || 'REPORT', projectId, uploadAssetCode.value.trim(), uploadFile.value)
+    await uploadDataMigrationAsset(props.assetType, projectId, uploadAssetCode.value.trim(), uploadFile.value)
     ElMessage.success('上传成功')
     drawerOpen.value = false
     await load()
@@ -84,7 +84,7 @@ async function saveUpload() {
 async function downloadAsset(row: DataMigrationAsset) {
   actionBusy.value = true
   try {
-    const url = (await downloadDataMigrationAsset(row.id)).data.data
+    const url = (await downloadDataMigrationAsset(props.assetType, row.id)).data.data
     if (url) window.open(url, '_blank', 'noopener,noreferrer')
   } catch (e) { ElMessage.error(messageOf(e)) }
   finally { actionBusy.value = false }
@@ -94,7 +94,7 @@ async function moveToRecycleBin() {
   if (!selectedIds.value.length) return
   try {
     await ElMessageBox.confirm(`确认将选中的 ${selectedIds.value.length} 个资产移入回收站吗？`, '移入回收站', { type: 'warning' })
-    await deleteDataMigrationAssets(selectedIds.value)
+    await deleteDataMigrationAssets(props.assetType, selectedIds.value)
     ElMessage.success('已移入回收站')
     await load()
   } catch (error) {

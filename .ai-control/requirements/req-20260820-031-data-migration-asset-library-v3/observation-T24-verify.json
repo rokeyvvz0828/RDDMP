@@ -1,0 +1,37 @@
+{
+  "sample_label": "T24 runtime reachability verification (post-implementation)",
+  "task_ids": ["T24"],
+  "purpose": "在 T24 主体实现与聚焦检查通过后，用户要求执行运行期验证以将证据等级从「检查通过」提升到「运行可达」。",
+  "commands": [
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "17 modules passed + skill + dev-entry；唯一失败步骤为 AI-control-layout 历史违规，与 req-20260820-031 无关（grep 命中 0）"},
+    {"command": "node scripts/check-ai-control-layout.mjs", "exit_code": 1, "salient_output": "req-20260820-031 相关命中 0；execution-T24.json / observation-T24.json 匹配白名单；违规全属其他历史目录"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base main --head HEAD --working-tree", "exit_code": 0, "salient_output": "Codex scope check passed for REQ-20260820-031; 95 changed file(s)（含本次 execution/observation-T24.json）"},
+    {"command": "mvn install -DskipTests -pl :ccb-data-migration -am", "exit_code": 0, "salient_output": "BUILD SUCCESS；jar 更新到 /tmp/m2-repo/.../ccb-data-migration-0.1.0-SNAPSHOT.jar；jar 内含 MeetingRecycleBinSource.class (3693 bytes) + ReportRecycleBinSource.class + ContentAssetRecycleBinSource.class"},
+    {"command": "bash ./backend-dev.sh restart", "exit_code": 0, "salient_output": "Tomcat started on port 8080 (http) with context path '/'; Started CcbApplication in 3.744 seconds; /actuator/health 返回 {\"status\":\"UP\"} HTTP 200；启动日志 grep IllegalStateException|duplicate|Error creating bean|UnsatisfiedDependency|Circular 结果 0 命中"},
+    {"command": "curl http://localhost:8080/api/data-migration/recycle-bin", "exit_code": 0, "salient_output": "HTTP 401 {\"code\":40100,\"message\":\"Authentication required\"} — 统一入口路由已注册且受 Spring Security 保护"},
+    {"command": "curl http://localhost:8080/api/data-migration/reports/recycle-bin", "exit_code": 0, "salient_output": "HTTP 401 {\"code\":40100,\"message\":\"Authentication required\"} — 旧 REPORT 端点保留（向后兼容不变）"},
+    {"command": "curl http://localhost:8080/api/data-migration/meetings/recycle-bin", "exit_code": 0, "salient_output": "HTTP 401 {\"code\":40100,\"message\":\"Authentication required\"} — 旧 MEETING 端点保留（向后兼容不变）"},
+    {"command": "curl http://127.0.0.1:5173/ 与 http://127.0.0.1:5173/api/data-migration/recycle-bin", "exit_code": 0, "salient_output": "Vite dev 前端 GET / HTTP 200；同路径代理转发到后端返回 HTTP 401（proxy 配置正常）"}
+  ],
+  "measurements": [
+    {"requirement_id": "R8", "sensor": "Spring context load with new RecycleBinSource @Components", "result": "pass", "raw_evidence": "backend-dev.sh restart 后 Started CcbApplication in 3.744 seconds；ContentRecycleBinService 构造接受 List<RecycleBinSource>（含 ContentAssetRecycleBinSource + ReportRecycleBinSource + MeetingRecycleBinSource），若类型重复认领或依赖注入失败会抛 IllegalStateException 并阻断启动，实测无该异常 → 三个 @Component 均被 scanBasePackages=com.ccb 组件扫描纳入且注册表无冲突", "limitation": ["只证明上下文装配与注册表构造期不变量，未通过认证 GET 验证跨类型列表实际聚合内容"]},
+    {"requirement_id": "R8", "sensor": "unified + legacy endpoints routing", "result": "pass", "raw_evidence": "统一入口 /api/data-migration/recycle-bin 与旧端点 /reports/recycle-bin、/meetings/recycle-bin 三个 HTTP GET 均返回 401 Authentication required（同一 traceId 结构），说明 @RequestMapping 已注册且 @PreAuthorize 生效", "limitation": ["未拿到明文 ADMIN 密码，无法完成登录 + 授权 + 数据回读；因此不能断言跨类型列表内容、信封列渲染与按类型恢复/销毁在浏览器中的实际结果"]},
+    {"requirement_id": "R8", "sensor": "frontend dev proxy", "result": "pass", "raw_evidence": "Vite dev 5173 已运行；GET / HTTP 200；GET /api/data-migration/recycle-bin 通过 proxy 命中后端返回 HTTP 401，与直连 8080 一致", "limitation": ["代理可达不代表 UI 渲染正确；未做真实浏览器 1280x800 与 375/390/430 视口验收"]},
+    {"requirement_id": "R8", "sensor": "static + focused regression re-check after ledger additions", "result": "pass", "raw_evidence": "governance 17 模块通过；layout 对本任务前缀命中 0；check-codex-scope 95 文件全部在 writable_paths 内；T24 主体 mvn -pl :ccb-data-migration -am test 45/45 与 npm --prefix web run build EXIT=0 已在 execution-T24.json 记录", "limitation": ["未重跑 mvn/web build（本次 verify 未触及代码，仅追加 ledger）"]}
+  ],
+  "evidence_level_advance": {
+    "from": "检查通过（Maven/Vue build/governance/scope）",
+    "to": "运行可达（Spring 上下文装配 + 后端 health + 路由鉴权 + 前端代理）",
+    "not_yet": "浏览器已验收（需要明文 ADMIN 凭据登录，或注入 dev 环境专用可测账号）"
+  },
+  "unresolved_items": [
+    "未执行真实浏览器 1280x800 桌面与 375x812 / 390x844 / 430x932 移动视口验收；受限于 README 明确不落盘明文 ADMIN 密码，AGENTS.md 禁止索要凭据",
+    "未通过认证 GET /api/data-migration/recycle-bin 读取真实数据，验证 MEETING 与 REPORT 同时出现在跨类型聚合列表中、按 deleted_at desc 排序、恢复/销毁按钮路由到统一 /restore /purge",
+    "未跑全量 mvn test（其他模块由统一发布门执行）",
+    "统一列表分页与 per-type 筛选为后续演进"
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "T24 的实现满足运行可达：新增 MeetingRecycleBinSource 与 T23 的 ContentAssetRecycleBinSource / ReportRecycleBinSource 一起被 CcbApplication 组件扫描纳入，ContentRecycleBinService 注册表构造无重复认领异常，Spring 上下文成功启动（3.744s），/actuator/health UP，统一入口 /api/data-migration/recycle-bin 与旧 REPORT/MEETING 端点均按 @PreAuthorize 正确响应 401，Vite dev 代理与后端一致。真实浏览器多视口验收与授权后的数据回读需 Owner 提供 dev 明文凭据或部署带预置测试账号的环境后单独执行；本任务不假装已完成该等级验证。仅本地，未提交。"
+}

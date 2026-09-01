@@ -21,6 +21,6 @@ public class DashboardSnapshotScheduler {
         jdbc.update("DELETE FROM dm_dashboard_snapshot WHERE snapshot_date = ?", date);
         jdbc.update("INSERT INTO dm_dashboard_snapshot (tenant_id, snapshot_date, metric_code, metric_value) SELECT tenant_id, ?, 'PROJECT_TOTAL', COUNT(*) FROM pm_project WHERE deleted = 0 GROUP BY tenant_id", date);
         jdbc.update("INSERT INTO dm_dashboard_snapshot (tenant_id, snapshot_date, metric_code, metric_value) SELECT tenant_id, ?, 'COMPONENT_TOTAL', COUNT(*) FROM dm_component WHERE deleted = 0 GROUP BY tenant_id", date);
-        jdbc.update("INSERT INTO dm_dashboard_snapshot (tenant_id, snapshot_date, project_id, metric_code, metric_value) SELECT tenant_id, ?, project_id, 'ASSET_TOTAL', COUNT(*) FROM dm_asset WHERE deleted = 0 GROUP BY tenant_id, project_id", date);
+        jdbc.update("INSERT INTO dm_dashboard_snapshot (tenant_id, snapshot_date, project_id, metric_code, metric_value) SELECT tenant_id, ?, project_id, 'ASSET_TOTAL', SUM(cnt) FROM (" + ContentAssetTables.tenantProjectCountUnionSql(ContentAssetTables.ALL_TABLES) + ") x GROUP BY tenant_id, project_id", date);
     }
 }

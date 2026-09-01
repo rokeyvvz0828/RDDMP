@@ -1,53 +1,142 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "requirement_id": "REQ-20260820-031",
   "control_prefix": "req-20260820-031-data-migration-asset-library-v3",
-  "converged_at": "2026-08-23T01:00:47.186826+08:00",
-  "decision": "converged",
-  "push_allowed": true,
-  "verification_results": {
-    "frontend_build": "PASS - npm --prefix web run build succeeds cleanly",
-    "scope_check": "PASS - node scripts/check-codex-scope.mjs passes with 106 changed files",
-    "implementation": "PASS - all backend and frontend files complete"
-  },
-  "completed_tasks": [
-    "T1",
-    "T2",
-    "T3",
-    "T4",
-    "T5",
-    "T6",
-    "T7",
-    "T8",
-    "T9",
-    "T10",
-    "T11",
-    "T12"
+  "baseline_revision": "design-8-governance-increment with user-approved V93/V94 development cleanup semantics",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T5", "T6", "T21"],
+      "evidence": ["Database menu/module tests and authenticated route probes passed", "Snapshot and real-time dashboard drill-down observations are verified", "Final focused Reactor regression passed"],
+      "limitations": ["Production scheduling topology is intentionally outside local acceptance"]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T5", "T6", "T21"],
+      "evidence": ["Project, component and table-structure create/update/uniqueness/relation tests passed", "XLSX import/export and authenticated runtime observations passed", "Final data-migration suite passed 32/32"],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3", "T4", "T5", "T6", "T19", "T21"],
+      "evidence": ["Server-side RBAC and entity authorization tests passed", "No-role issue list/create/restore returned 403 and anonymous list returned 401", "Authenticated list returned 200 and 25 ISSUE audit entries remain after purge"],
+      "limitations": ["Local virtual identities do not substitute for production IAM verification"]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T2", "T3", "T4", "T5", "T6", "T19", "T20", "T21"],
+      "evidence": ["Eleven content workflows and recycle lifecycle are covered by verified task observations", "Issue delete and purge both returned HTTP 200", "Final fixture rows and ISSUE relations are zero while audit history remains"],
+      "limitations": []
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T2", "T4", "T5", "T6", "T18", "T19", "T20", "T21"],
+      "evidence": ["IssueService relation preserve/clear/replace, uniqueness and atomic restore tests pass", "Isolated MySQL 8.4 V92 to V94 tests pass", "Browser observed detail-before-edit and all three explicit relation arrays", "Development database reached V94 with active_issue_code stored generated column"],
+      "limitations": []
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T2", "T4", "T5", "T6", "T21"],
+      "evidence": ["Bounded XLSX import, per-row failure and valid export observations are verified", "Dashboard filter-to-detail mappings are verified", "Final module regression passes without changing import/export paths"],
+      "limitations": []
+    },
+    {
+      "id": "R7",
+      "result": "pass",
+      "task_ids": ["T1", "T3", "T5", "T6", "T18", "T19", "T21", "T22"],
+      "evidence": ["V93 remained unchanged and V94/V98 are appended migrations", "Isolated and development MySQL 8.4 migration checks passed for the scoped changes", "Legacy ISSUE assets are zero and the non-ISSUE asset count remains one", "Attachment/MinIO lifecycle and preview corrections have verified observations", "V98 removed the authorized compatibility columns and dm_topic_type, deduplicated active meeting attachments, and rebuilt tenant-prefixed indexes"],
+      "limitations": ["Approved V93 cleanup makes legacy test ISSUE rows unrecoverable by application rollback", "Before V98 production rollout, historical dm_asset.object_key rows must be compensated into att_file bindings or explicitly dispositioned"]
+    },
+    {
+      "id": "R8",
+      "result": "pass",
+      "task_ids": ["T5", "T6", "T20", "T21"],
+      "evidence": ["Vue TypeScript and production Vite build pass", "Non-Mock Playwright checks passed 22/22 at 1280x800, 375x812, 390x844 and 430x932", "No page/drawer overflow, unexpected console error or failed detail-open state was observed"],
+      "limitations": ["Unlisted browser engines remain a release-stage concern"]
+    }
   ],
-  "deliverables": {
-    "database": [
-      "V89__data_migration_report_material_enrichment.sql"
-    ],
-    "backend": [
-      "ReportService.java",
-      "ReportController.java"
-    ],
-    "frontend": [
-      "ReportsPage.vue",
-      "data-migration.ts (report APIs)",
-      "data-migration.css (report styles)"
-    ],
-    "design": [
-      "design-report-material.md"
-    ],
-    "scope": [
-      "codex-task-scope.yaml (updated writable_paths)"
-    ]
-  },
-  "known_limitations": [
-    "Full Maven test suite blocked by Testcontainers Docker API version mismatch (pre-existing environment issue)",
-    "Governance check blocked by historical requirement ledger issues (pre-existing repository issue)",
-    "Module boundary check blocked by pre-existing violations (pre-existing repository issue)"
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["Module/schema/menu implementation and independent observation passed"]},
+    {"id": "T2", "status": "verified", "evidence": ["Structured business services and API observations passed"]},
+    {"id": "T3", "status": "verified", "evidence": ["Authenticated object lifecycle and compensation observations passed"]},
+    {"id": "T4", "status": "verified", "evidence": ["Dashboard and structured workflow observations passed"]},
+    {"id": "T5", "status": "verified", "evidence": ["Frontend, runtime and four-viewport acceptance passed"]},
+    {"id": "T6", "status": "verified", "evidence": ["T21 completed the final acceptance package; external repository failures are excluded by approved acceptance criterion 9"]},
+    {"id": "T18", "status": "verified", "evidence": ["Scope increment, V94 authorization and V93 immutability observed with zero deviations"]},
+    {"id": "T19", "status": "verified", "evidence": ["Backend/MySQL issue contract observed with zero P0-P3"]},
+    {"id": "T20", "status": "verified", "evidence": ["Frontend build and browser network/geometry/failure probes observed with zero P0-P3"]},
+    {"id": "T21", "status": "verified", "evidence": ["Final focused Maven, HTTP, database, scope and browser evidence observed with zero P0-P3"]},
+    {"id": "T22", "status": "verified", "evidence": ["V98 applied successfully in disposable MySQL 8.4; compatibility columns and dm_topic_type are absent, duplicate active meeting attachments were removed, and focused module tests passed"]}
   ],
-  "rollback": "Disable data-migration menu roots and scheduled snapshot job, revert application commits, retain additive tables and MinIO objects."
+  "feedback_summary": {
+    "total": 9,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0002", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0003", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0004", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0005", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0006", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0007", "P0": 0, "P1": 3, "P2": 1, "P3": 0, "score": 65},
+    {"sample_id": "S-0008", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0009", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0010", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0011", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0012", "P0": 0, "P1": 1, "P2": 0, "P3": 0, "score": 20},
+    {"sample_id": "S-0013", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0014", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0015", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0016", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0017", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "Focused Maven", "result": "pass", "evidence": "mvn -pl :ccb-data-migration -am test: BUILD SUCCESS; data-migration 32 tests, 0 failures/errors"},
+    {"check": "Frontend production build", "result": "pass", "evidence": "npm --prefix web run build: vue-tsc and Vite succeeded"},
+    {"check": "Current task scope and whitespace", "result": "pass", "evidence": "REQ-031 scope check and git diff --check exited 0"},
+    {"check": "Authenticated runtime and database", "result": "pass", "evidence": "Health 200/UP, authenticated issue list 200, anonymous list 401, Flyway 94 and cleanup invariants pass"},
+    {"check": "Four-viewport browser", "result": "pass", "evidence": "22/22 network, interaction, failure-state and geometry checks passed"},
+    {"check": "Full Maven", "result": "external-failure", "evidence": "ccb-data-migration succeeds; ccb-architecture has 2 setup errors because its test baseline stops before the required table migration"},
+    {"check": "V98 migration", "result": "pass", "evidence": "Disposable MySQL 8.4 applied V98 and verified all six compatibility columns plus dm_topic_type are absent; active meeting attachment uniqueness and tenant-prefixed indexes are present"},
+    {"check": "Global governance", "result": "external-failure", "evidence": "Module governance, repository skill and development entry pass; only other requirement ledgers fail layout validation"}
+  ],
+  "invariant_results": [
+    {"invariant": "Tenant identity comes from AuthUser", "result": "pass", "evidence": "Service tests and runtime authorization probes reject unauthenticated/unauthorized access"},
+    {"invariant": "Backend RBAC plus entity authorization", "result": "pass", "evidence": "Controller boundaries, service ownership tests and 401/403 runtime probes pass"},
+    {"invariant": "Object keys remain server-side", "result": "pass", "evidence": "Existing file lifecycle and browser/API observations expose no object key"},
+    {"invariant": "Migration history is append-only", "result": "pass", "evidence": "V93 checksum surface is unchanged; V94 and V98 are newly appended, with V98's authorized physical cleanup explicitly verified"},
+    {"invariant": "Old design and biz_form remain excluded", "result": "pass", "evidence": "Scope/diff inspection finds no reintroduction of old collaboration or biz_form behavior"},
+    {"invariant": "Non-ISSUE data remains unchanged during cleanup", "result": "pass", "evidence": "Final non-ISSUE dm_asset count remains one"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Missing relation keys versus explicit empty arrays", "result": "pass", "evidence": "Service tests and real browser payload capture distinguish preserve from clear"},
+    {"disturbance": "Concurrent duplicate/restore uniqueness", "result": "pass", "evidence": "MySQL uniqueness races return conflict and batch restore remains atomic"},
+    {"disturbance": "Detail or option request failure", "result": "pass", "evidence": "Browser failure injection leaves the edit drawer closed"},
+    {"disturbance": "External Maven and historical ledger failures", "result": "contained", "evidence": "Failures are reproducibly owned outside data-migration; focused, scope and current-prefix sensors remain green"}
+  ],
+  "residual_risks": [
+    "Flyway's bundled version declares MySQL support only through 8.1 and warns on the project's MySQL 8.4 target",
+    "Vite retains existing large-chunk and third-party PURE annotation warnings",
+    "Full Maven remains red in ccb-architecture and global governance remains red for other historical requirement ledgers",
+    "V93-deleted legacy development ISSUE rows cannot be restored by application rollback",
+    "Production topology, identities and deployment remain untested and require Owner release verification",
+    "V98 physically removes compatibility columns; rollback requires database backup or a separately approved compensation migration",
+    "Historical dm_asset.object_key rows without att_file bindings must be reconciled before V98 rollout"
+  ],
+  "rollback": "Stop local services and revert application changes if needed; retain applied migrations and hide data-migration menus or stop snapshot jobs for application rollback. V98-dropped columns and dm_topic_type require a database backup or separately approved forward compensation migration to restore; legacy ISSUE rows intentionally deleted by V93 are not application-recoverable.",
+  "gate_result": "pass",
+  "route_reason": "All eight must requirements have verified task-to-sensor evidence, all eleven current tasks are verified, all nine feedback items are closed, the V98 migration and cleanup evidence is recorded, current scope and invariants pass, and remaining failures are explicitly external under approved acceptance criterion 9."
 }

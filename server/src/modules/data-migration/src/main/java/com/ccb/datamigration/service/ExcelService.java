@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ExcelService {
     private static final long MAX_SIZE = 50L * 1024 * 1024;
     private static final int MAX_ROWS = 5000;
-    private static final Set<String> TYPES = Set.of("RULE", "PARAMETER", "TABLE_STRUCTURE", "INTERMEDIATE_TABLE");
+    private static final Set<String> TYPES = Set.of("RULE", "PARAMETER", "INTERMEDIATE_TABLE");
     private final JdbcTemplate jdbc;
     public ExcelService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
     public byte[] export(String type, AuthUser user) {
@@ -29,11 +29,11 @@ public class ExcelService {
             Sheet sheet = workbook.createSheet("data-migration");
             Row header = sheet.createRow(0); String[] columns = {"asset_code","asset_name","project_id","component_id","asset_type","structured_data"};
             for (int i=0;i<columns.length;i++) header.createCell(i).setCellValue(columns[i]);
-            StringBuilder sql = new StringBuilder("SELECT asset_code, asset_name, project_id, component_id, asset_type, CAST(structured_data AS CHAR) AS structured_data FROM dm_asset WHERE tenant_id = ? AND asset_type = ? AND deleted = 0");
-            List<Object> args = new ArrayList<>(List.of(user.tenantId(), type));
+            StringBuilder sql = new StringBuilder("SELECT doc_code AS asset_code, doc_name AS asset_name, project_id, component_id, '" + type + "' AS asset_type, CAST(structured_data AS CHAR) AS structured_data FROM " + table(type) + " WHERE tenant_id = ? AND deleted = 0");
+            List<Object> args = new ArrayList<>(List.of(user.tenantId()));
             if (projectId != null) { sql.append(" AND project_id = ?"); args.add(projectId); }
             if (componentId != null) { sql.append(" AND component_id = ?"); args.add(componentId); }
-            if (keyword != null && !keyword.isBlank()) { sql.append(" AND (asset_code LIKE ? OR asset_name LIKE ?)"); args.add("%" + keyword.trim() + "%"); args.add("%" + keyword.trim() + "%"); }
+            if (keyword != null && !keyword.isBlank()) { sql.append(" AND (doc_code LIKE ? OR doc_name LIKE ?)"); args.add("%" + keyword.trim() + "%"); args.add("%" + keyword.trim() + "%"); }
             sql.append(" ORDER BY id");
             List<Map<String,Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
             int index = 1; for (Map<String,Object> data : rows) { Row row = sheet.createRow(index++); for (int i=0;i<columns.length;i++) row.createCell(i).setCellValue(String.valueOf(data.getOrDefault(columns[i], ""))); }
@@ -59,7 +59,7 @@ public class ExcelService {
                     String structuredData = text(row, 5, formatter); String assetType = text(row, 4, formatter);
                     if (assetType.isBlank()) assetType = type;
                     if (!type.equals(assetType)) throw new IllegalArgumentException("asset_type does not match import type");
-                    jdbc.update("INSERT INTO dm_asset (id, tenant_id, project_id, component_id, asset_type, asset_code, asset_name, structured_data, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", nextId(), user.tenantId(), projectId, componentId, type, code, name, structuredData.isBlank() ? "{}" : structuredData, user.id());
+                    jdbc.update("INSERT INTO " + table(type) + " (id, tenant_id, project_id, component_id, doc_code, doc_name, structured_data, owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", nextId(), user.tenantId(), projectId, componentId, code, name, structuredData.isBlank() ? "{}" : structuredData, user.id(), user.id(), user.id());
                     accepted++; audit(user, code);
                 } catch (Exception ex) { errors.add("row " + (i + 1) + ": " + ex.getMessage()); }
             }
@@ -67,6 +67,7 @@ public class ExcelService {
         return Map.of("rows", rows, "accepted", accepted, "failed", errors.size(), "errors", errors);
     }
 
+    private static String table(String type) { return ContentAssetTables.tableFor(type); }
     private static String text(Row row, int index, DataFormatter formatter) { return row == null || row.getCell(index) == null ? "" : formatter.formatCellValue(row.getCell(index)).trim(); }
     private static long number(Row row, int index, DataFormatter formatter) { String value = text(row, index, formatter); if (value.isBlank()) throw new IllegalArgumentException("project_id is required"); return Long.parseLong(value); }
     private boolean exists(String sql, Object... args) { Integer count = jdbc.queryForObject(sql, Integer.class, args); return count != null && count > 0; }

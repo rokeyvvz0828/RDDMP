@@ -1,6 +1,6 @@
 # 汇报材料（数迁资产内容）功能设计方案 v2
 
-> **实现变更说明（2026-08-23）**：本方案中的专属 `ReportController`、`ReportService` 和 `ReportsPage.vue` 已废止。汇报材料现在统一作为 `asset_type=REPORT` 接入通用文件资产接口和 `AssetListView`，上传使用公共附件 ID；MD5 在公共附件上传前预检、服务端再次校验，并由数据库唯一约束兜底。以下历史设计仅作为字段迁移和兼容背景，不再作为当前接口实现依据。
+> **实现变更说明（2026-08-23，V98 收敛于 2026-08-31）**：本方案中的专属 `ReportController`、`ReportService` 和 `ReportsPage.vue` 已废止。汇报材料现在统一作为 `asset_type=REPORT` 接入通用文件资产接口和 `AssetListView`，上传使用公共附件 ID；MD5 在公共附件上传前预检、服务端再次校验，并由数据库唯一约束兜底。V98 进一步物理删除 `dm_asset.object_key`，因此下文涉及对象键写入或 MinIO 直连的内容仅为历史迁移背景，不再作为当前接口实现依据。
 
 > 需求前缀：`req-20260820-031-data-migration-asset-library-v3`
 > 菜单路径：`数据迁移 / 数迁资产内容管理 / 汇报材料`（菜单 721，route `/data-migration/content/reports`）

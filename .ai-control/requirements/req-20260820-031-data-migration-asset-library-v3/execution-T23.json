@@ -1,0 +1,36 @@
+{
+  "task_id": "T23",
+  "status": "implemented",
+  "trigger": "Owner 指示：细化并执行『统一回收站可扩展化』方案（模块内合并 Tier 1），把 REPORT 纳入统一入口并引入 RecycleBinSource 注册表，为未来 ISSUE/MEETING 与新类型演进预留零改动接入点。",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/RecycleBinSource.java", "purpose": "新增：内容回收站来源 SPI（supports/listDeleted/restore/purge），列表返回公共信封列 + 类型专属列"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java", "purpose": "新增：把现有 6 文件型 + 3 结构化型原分发等价封为一个来源（@Component 注册）"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportRecycleBinSource.java", "purpose": "新增：REPORT 接入统一入口，listDeleted/restore/purge 全部委托 ReportService，原样保留其管理员校验、MD5 域、附件解绑与审计"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentRecycleBinService.java", "purpose": "改写：由注入的 List<RecycleBinSource> 构建 type→source 注册表；list/restore/purge 走注册表分发；移除 CONTENT_TYPES 常量，新增 supportedTypes()；构造期检测重复认领并抛 IllegalStateException"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/RecycleBinPage.vue", "purpose": "前端：CONTENT_TYPE_LABELS 新增 REPORT 标签；顶部注释与页头描述更新以反映 REPORT 已纳入统一"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentRecycleBinRegistryTest.java", "purpose": "新增：聚焦单元测试，覆盖注册表纳入 REPORT、按类型薄分发到属主、重复认领拒绝、未知类型拒绝"}
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "BUILD SUCCESS; data-migration 模块 42 tests, 0 failures; ContentRecycleBinRegistryTest 5/5; ReportServiceTest 5/5; ContentAssetMigrationMySqlTest 5/5; DataMigrationModuleRegistrationTest 13/13"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "built in 11.64s；RecycleBinPage.vue 通过 vue-tsc 与 vite 构建"},
+    {"command": "node scripts/check-ai-control-layout.mjs", "exit_code": 1, "salient_output": "对 req-20260820-031 命中数=0；违规全属其他历史目录（030/032/017-031-project-risk/018-032/019-033~035/027-049），非本任务引入；execution-T23.json 与 observation-T23.json 匹配白名单"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "Governance check passed for 17 module(s); Repository skill check passed; Development entry check passed; 唯一 FAIL 步骤为 AI control layout 上列历史违规，与本次改动无关"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 0, "salient_output": "Codex scope check passed for REQ-20260820-031; 89 changed file(s)"}
+  ],
+  "invariants_checked": [
+    {"invariant": "旧行为保留：/reports/recycle-bin 端点与其语义未被删除或改变", "result": "pass", "evidence": "未触及 ReportController；ReportService.recycleBinList/restore/purge 签名与行为未改；ReportServiceTest 5/5 通过"},
+    {"invariant": "模块边界未被跨越", "result": "pass", "evidence": "所有新增/改动文件均落在 server/src/modules/data-migration/** 与 web/src/modules/data-migration/** 与 .ai-control/requirements/req-20260820-031.../*.json；check-all-governance 17 模块通过"},
+    {"invariant": "无 Spring 循环依赖", "result": "pass", "evidence": "ContentRecycleBinService→List<RecycleBinSource>→(ContentFileAssetService|StructuredAssetService|ReportService)；无回指；mvn compile 通过（EXIT=0）"},
+    {"invariant": "类型→来源分发唯一", "result": "pass", "evidence": "构造期 map.putIfAbsent 检测冲突并抛 IllegalStateException；单测 duplicateTypeClaimIsRejectedAtConstruction 断言"},
+    {"invariant": "无数据库/Flyway 变更", "result": "pass", "evidence": "仅代码/账本/前端文案；dm_report 与既有表结构未动"},
+    {"invariant": "本地不 commit / 不 push / 不改 origin", "result": "pass", "evidence": "全程未 git add/commit/push；工作树仍 dirty，与本任务先前状态同模式"}
+  ],
+  "unresolved_items": [
+    "未启动本地 MySQL/MinIO/后端/前端做运行期健康验收；未做浏览器 1280x800 与移动视口 375x812 / 390x844 / 430x932 视觉与操作验收",
+    "未运行全量 mvn test（仅跑聚焦 -pl :ccb-data-migration -am test）；全仓其他模块由后续统一发布门执行",
+    "ISSUE 与 MEETING（文档级）作为 Tier 2/3 尚未接入；会议附件级回收站按设计保留在 /meetings 下不并入",
+    "统一列表保持不分页语义（跨类型全量 + 按 deleted_at 内存排序）；若 REPORT/ISSUE/MEETING 累积规模显著，需要引入分组分页与 per-type 筛选（属后续演进）",
+    "REPORT 行返回缺 deleted_by_name（与结构化类型当前行为一致）；若前端要显示删除人姓名，后续在 ReportService.recycleBinList 增补 sys_user LEFT JOIN（属向后兼容的加法，不在本次）"
+  ],
+  "recommended_next": "observe"
+}

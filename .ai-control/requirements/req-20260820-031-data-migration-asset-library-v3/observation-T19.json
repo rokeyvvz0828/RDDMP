@@ -1,0 +1,48 @@
+{
+  "sample_label": "T19 backend and MySQL contract",
+  "task_ids": ["T19"],
+  "baseline_revision": "design-8-governance-increment",
+  "measurements": [
+    {
+      "requirement_id": "R3",
+      "sensor": "S1 focused Maven and S4 MySQL 8.4 integration",
+      "result": "pass",
+      "raw_evidence": "Independent rerun completed with BUILD SUCCESS: 18 tests, 0 failures, 0 errors; MySQL applied isolated V92, V93 and V94 and transaction rollback assertions passed",
+      "limitation": ["Development HTTP permission and audit flows remain for T21", "Flyway declares tested MySQL support through 8.1 while the sensor runs MySQL 8.4"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S1 service tests plus S5 exact contract inspection",
+      "result": "pass",
+      "raw_evidence": "Relation keys are guarded by containsKey; tests pass preserve, empty-array clear, explicit replace, invalid-target rollback, duplicate conflict and atomic restore behavior",
+      "limitation": ["Frontend explicit-array submission is measured by T20"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S4 migration lifecycle plus S6 scope and immutable-history checks",
+      "result": "pass",
+      "raw_evidence": "Generated STORED active_issue_code and uk_dm_issue_active_code are present; deleted duplicates coexist, active restore conflict is rejected, REPORT row remains, V93 has no diff, scope check passes for 28 files",
+      "limitation": ["The confirmed development database application is measured by T21"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "Complete historical Flyway replay is blocked before the governed range by the existing V80 collation mismatch",
+      "classification": "external migration disturbance",
+      "effect": "T19 uses a minimal version-91 baseline and verifies only V92-V94; V80 remains external evidence"
+    },
+    {
+      "event": "MySQL 8.4 and legacy utf8mb3 deprecation warnings are emitted by Flyway/migrations",
+      "classification": "compatibility warning",
+      "effect": "No observed failure in V92-V94; warning retained for final residual-risk audit"
+    }
+  ],
+  "coverage_gaps": [
+    "Authenticated HTTP RBAC and business 409 envelope are deferred to T21 runtime acceptance",
+    "Frontend detail-gated editing and explicit relation arrays are deferred to T20"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "observer_independence": "Separate observing phase in the same Codex context; Maven rerun, MySQL database assertions, exact-path static inspection and scope tooling are independent sensors, but this is not an independent human review."
+}

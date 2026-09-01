@@ -23,7 +23,6 @@
 - `dm_component`：项目、事业群、组件编号/名称、总分核对标记和简介；项目内编号唯一。
 - `dm_asset`：11 类内容资产的公共归属、类型、颗粒度、名称、限定搜索字段、类型码、组件关系、业务元数据 JSON、当前文件信息、上传人、逻辑删除和乐观版本。
 - `dm_check_rule`、`dm_parameter`、`dm_issue`、`dm_table_field`：高密度结构化数据采用独立表，保留项目、组件、上传人和删除状态。
-- `dm_topic_type`：管理员维护的项目级/组件级专题类型。
 - `dm_dashboard_snapshot`：按统计日期、项目、组件和指标保存每日快照。
 - `dm_operation_log`：模块写操作审计，不直接写平台私有审计表。
 
@@ -223,7 +222,7 @@ V84 以**幂等**方式补齐 `dm_project`/`dm_component` 建表（`CREATE TABLE
 
 ## 数据结构与状态流
 
-`dm_issue` 至少包含：`id`、`tenant_id`、`project_id`、`issue_code`、`issue_name`、`granularity`、`system_code`、`system_name`、`issue_source`、`defect_type`、`issue_description`、`solution`、`meeting_conclusion`、`processing_steps`、`business_scenario`、`handler`、`responsible_party`、`keywords`、`frequency`、`owner_id`、`created_at`、`created_by`、`updated_at`、`updated_by`、`deleted`、`deleted_by`、`deleted_at`。
+`dm_issue` 至少包含：`id`、`tenant_id`、`project_id`、`issue_code`、`issue_name`、`granularity`、`system_code`、`issue_source`、`defect_type`、`issue_description`、`solution`、`meeting_conclusion`、`processing_steps`、`business_scenario`、`handler`、`responsible_party`、`keywords`、`frequency`、`owner_id`、`created_at`、`created_by`、`updated_at`、`updated_by`、`deleted`、`deleted_by`、`deleted_at`。
 
 迁移顺序：创建 `dm_issue` 和索引 → 清理 `dm_asset_relation` 中 `source_asset_type='ISSUE'` 的关系 → 删除 `dm_asset` 中 `asset_type='ISSUE'` 行 → 切换应用 SQL/服务 → 验证新表、权限、审计和通用资产回归。由于用户明确不留存历史数据，不执行 ISSUE 数据复制。
 
@@ -232,7 +231,7 @@ V84 以**幂等**方式补齐 `dm_project`/`dm_component` 建表（`CREATE TABLE
 - 新表不存在或迁移未完成：应用启动检查失败，不回退到 `dm_asset`，避免双写和数据源漂移。
 - 关系目标不存在、租户不一致或实体已删除：返回业务校验错误，不写入关系。
 - 普通用户编辑他人问题：返回 `403`；管理员可按现有权限策略处理。
-- 历史清理前必须完成迁移前计数和备份策略评估；本需求选择不保留历史业务数据，恢复只能依靠数据库备份，不通过应用回收站恢复旧 ISSUE 数据。
+- 历史清理前记录迁移前计数；当前环境已确认是开发测试环境，本需求选择不保留历史业务数据且无需备份，旧 ISSUE 数据不能通过应用回收站或应用回退恢复。环境身份不确定时停止迁移。
 
 ## 验证策略
 
@@ -243,6 +242,57 @@ V84 以**幂等**方式补齐 `dm_project`/`dm_component` 建表（`CREATE TABLE
 
 ## 风险与回退原则
 
-- 风险：历史数据直接删除不可逆；通过迁移前计数、明确清理语句、事务边界和数据库备份降低风险。
+- 风险：历史数据直接删除不可逆；当前开发测试环境已接受该风险，通过迁移前计数、明确清理语句和事务边界控制，不建立备份。
 - 风险：关系表是多态契约，源 ID 类型切换错误会造成孤立关系；通过关系类型/租户/目标实体校验和专项测试控制。
-- 回退：应用回退不得重新启用 `dm_asset` ISSUE 路径；若需要恢复历史数据，仅从数据库备份执行经审批的数据恢复，不在生产执行 DROP 或手工补数据。
+- 回退：应用回退不得重新启用 `dm_asset` ISSUE 路径；本次没有历史备份，旧 ISSUE 数据不具备恢复路径，不在生产执行 DROP 或手工补数据。
+
+---
+
+# V98 数据模型收敛增量（2026-08-31）
+
+本增量 supersede 早期关于专题类型和对象键的未实施设计：`dm_topic_type` 不再启用并由 V98 删除；文件资产统一保存公共 `att_file.id`，业务服务不再生成、读取或持久化 `dm_asset.object_key`。
+
+V98 追加物理删除 `dm_meeting.project_name`、`dm_meeting.attachment_id/file_name`、`dm_issue.system_name` 和 `dm_target_table_field.table_code`。服务层通过项目、系统、目标表 JOIN 或会议附件首行子查询继续提供必要的响应投影，不恢复重复事实列。
+
+V98 同步修复 V96/V97 遗留缺口：清理会议附件活动重复行，增加活动附件唯一约束，重建会议及附件租户前缀索引，并校正 `dm_asset` 注释。发布前必须核对历史对象键均已补偿为 `att_file` 绑定；物理删除后的恢复只能依赖数据库备份或单独审批的前向补偿迁移。
+
+---
+
+# 问题清单治理增量设计（2026-08-30）
+
+## 文档状态
+
+- 设计修订：2（问题清单治理）
+- 状态：已确认
+- 用户确认依据：用户逐项确认治理边界、关系更新、软删除唯一性、迁移验证、测试矩阵和当前前缀账本策略，并于 2026-08-30 明确当前为开发测试环境、旧数据无需备份、连续治理到最终状态。
+
+## 目标与范围
+
+仅治理数据迁移问题清单的关系编辑丢失、软删除唯一性生命周期、恢复事务、V93/V94 迁移验证和专项证据。架构模块测试、历史全局账本和全局前端性能不属于本增量；这些检查仍运行并留证，只有可归因于数据迁移模块的失败阻塞收敛。
+
+## 关系更新契约
+
+- 编辑入口先调用 `GET /api/data-migration/issues/{id}`，详情加载成功后才打开可提交抽屉；列表接口保持轻量。
+- 服务端对 `relatedMeetingMinutes`、`relatedTables`、`relatedFields` 采用三态更新：键缺失保留现值，显式空数组清空，显式 ID 数组校验后替换。
+- 前端保存始终提交三类关系数组，保证用户显式清空可达；业务字段更新、关系变更和审计在同一事务内完成，任一目标无效时整体回滚。
+- 继续复用 `UiDataTable`、`UiToolbar`、`UiFormDrawer` 和既有移动卡片模式，不新增视觉体系；详情加载期间保留明确反馈，失败后不进入编辑态。
+
+## 活动问题编号唯一性
+
+- 不修改已发布 V93，追加 `V94__data_migration_issue_active_code_uniqueness.sql`。
+- V94 删除 `uk_dm_issue_code (tenant_id, project_id, issue_code, deleted)`，新增存储生成列 `active_issue_code VARCHAR(96)`：`deleted=0` 时等于 `issue_code`，已删除时为 `NULL`；唯一键改为 `(tenant_id, project_id, active_issue_code)`。
+- 删除后允许使用相同编号创建新活动记录；存在同编号活动记录时恢复旧记录返回 HTTP 409。创建、更新和恢复的并发数据库唯一键冲突统一转换为业务 409。
+- 批量恢复保持单事务、全有或全无；失败批次的状态更新和审计全部回滚。
+
+## 迁移与验证
+
+- 执行前确认目标仍为开发测试环境；无法确认时停止。记录旧 ISSUE 行数和 ISSUE 源关系数，非零不阻塞 V93。
+- 隔离 MySQL 8.4 验证 `V92 -> V93 -> V94`。V93 后旧 ISSUE 与旧关系为 0，非 ISSUE 数据计数与抽样内容不变；V94 后活动编号唯一、已删除重复编号可并存。
+- 覆盖 CRUD、筛选、删除/重建/再删除/恢复、彻底清理、关系保留/清空/替换/无效目标回滚、409、批量恢复原子性、RBAC、所有者、租户、实体授权和审计。
+- 浏览器验证编辑保留关系和显式清空；桌面及 375x812、390x844、430x932 视口不得出现页面级横向溢出。
+
+## 账本与收敛
+
+- 仅更新 `.ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/`。旧 `convergence.json` 保留历史决定并标记由本轮治理取代，执行和观测使用后续任务序号追加。
+- 不读取或修改 `.ai-control/original/**`、全局账本或其他需求前缀。
+- 数据迁移专项门禁全部通过后才重新收敛；范围外失败记录命令、归属判断和残余风险，但不触发跨模块修复。

@@ -57,32 +57,75 @@ export function deleteDataMigrationComponent(id: number) {
   return http.delete<ApiResponse<null>>(`/data-migration/components/${id}`)
 }
 
+/** 文件型内容类型 -> 资源路径段（REQ-20260831-050：一菜单一端点，替代旧 /assets/{type}）。 */
+const FILE_RESOURCE_SEGMENTS: Record<string, string> = {
+  PLAN: 'plans', MAPPING_DOC: 'mappings', DEPENDENCY: 'dependencies',
+  SCRIPT: 'programs', TOPIC: 'topics', RELEASE_DRILL: 'release-drills',
+}
+/** 结构化内容类型 -> 新资源段；INTERMEDIATE_TABLE 属基础资料页，沿用 /structured/{type}。 */
+const STRUCTURED_RESOURCE_SEGMENTS: Record<string, string> = {
+  RULE: 'rules', PARAMETER: 'parameters',
+}
+function fileSegment(type: string): string {
+  const segment = FILE_RESOURCE_SEGMENTS[type]
+  if (!segment) throw new Error(`不支持的文件内容类型：${type}`)
+  return segment
+}
+/** 结构化端点基路径：新资源段优先，未登记类型回退 /structured/{type}。 */
+function structuredBase(type: string): string {
+  const segment = STRUCTURED_RESOURCE_SEGMENTS[type]
+  return segment ? `/data-migration/${segment}` : `/data-migration/structured/${encodeURIComponent(type)}`
+}
+
+export interface DataMigrationContentRecycleRow {
+  id: number
+  asset_type: string
+  asset_code: string
+  asset_name: string
+  project_id: number
+  component_id?: number
+  owner_id: number
+  checksum_md5?: string
+  deleted_by?: number
+  deleted_at?: string
+  deleted_by_name?: string
+}
+
 export function listDataMigrationStructured(type: string, params?: Record<string, unknown>) {
-  return http.get<ApiResponse<DataMigrationAsset[]>>(`/data-migration/structured/${encodeURIComponent(type)}`, { params })
+  return http.get<ApiResponse<DataMigrationAsset[]>>(`${structuredBase(type)}`, { params })
 }
 
 export function updateDataMigrationStructured(type: string, id: number, body: Record<string, unknown>) {
-  return http.put<ApiResponse<DataMigrationAsset>>(`/data-migration/structured/${encodeURIComponent(type)}/${id}`, body)
+  return http.put<ApiResponse<DataMigrationAsset>>(`${structuredBase(type)}/${id}`, body)
 }
 
 export function deleteDataMigrationStructured(type: string, ids: number[]) {
-  return http.post<ApiResponse<null>>(`/data-migration/structured/${encodeURIComponent(type)}/delete`, ids)
+  return http.post<ApiResponse<null>>(`${structuredBase(type)}/delete`, ids)
 }
 
 export function listDataMigrationMenus() {
   return http.get<ApiResponse<DataMigrationMenu[]>>('/data-migration/menus')
 }
 
-export function listDataMigrationAssets(params?: Record<string, unknown>) {
-  return http.get<ApiResponse<DataMigrationAsset[]>>('/data-migration/assets', { params })
+export function listDataMigrationAssets(type: string, keyword?: string) {
+  return http.get<ApiResponse<DataMigrationAsset[]>>(`/data-migration/${fileSegment(type)}`, { params: { keyword: keyword || undefined } })
 }
 
 export function checkDataMigrationAssetMd5(md5: string) {
-  return http.get<ApiResponse<{ available: boolean }>>('/data-migration/assets/check-md5', { params: { md5 } })
+  return http.get<ApiResponse<{ available: boolean }>>('/data-migration/content/check-md5', { params: { md5 } })
 }
 
-export function listDataMigrationRecycleBin(params?: Record<string, unknown>) {
-  return http.get<ApiResponse<DataMigrationAsset[]>>('/data-migration/recycle-bin', { params })
+/** 统一回收站列表：contentTypes 为内容类型数组，逗号拼接传参（Spring 侧按 List 解析）；
+ * T26 新增分页与统一排序（后端以业务编号 asset_code 字典序升序，同编号时按 deleted_at DESC 回退）。 */
+export function listDataMigrationRecycleBin(params: { contentTypes?: string[]; keyword?: string; page?: number; size?: number }) {
+  return http.get<ApiResponse<DataMigrationPage<DataMigrationContentRecycleRow>>>('/data-migration/recycle-bin', {
+    params: {
+      contentTypes: params.contentTypes?.length ? params.contentTypes.join(',') : undefined,
+      keyword: params.keyword || undefined,
+      page: params.page ?? 1,
+      size: params.size ?? 20,
+    },
+  })
 }
 
 export async function uploadDataMigrationAsset(type: string, projectId: number, assetCode: string, file: File, componentId?: number) {
@@ -98,23 +141,25 @@ export async function uploadDataMigrationAsset(type: string, projectId: number, 
   if (componentId != null) form.append('componentId', String(componentId))
   form.append('attachmentId', String(attachmentId))
   form.append('md5', md5)
-  return http.post<ApiResponse<DataMigrationAsset>>(`/data-migration/assets/${encodeURIComponent(type)}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return http.post<ApiResponse<DataMigrationAsset>>(`/data-migration/${fileSegment(type)}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
-export function deleteDataMigrationAssets(ids: number[]) {
-  return http.post<ApiResponse<null>>('/data-migration/assets/delete', ids)
+export function deleteDataMigrationAssets(type: string, ids: number[]) {
+  return http.post<ApiResponse<null>>(`/data-migration/${fileSegment(type)}/delete`, ids)
 }
 
-export function restoreDataMigrationAssets(ids: number[]) {
-  return http.post<ApiResponse<null>>('/data-migration/recycle-bin/restore', ids)
+/** 统一回收站恢复：请求体携带内容类型以分发到对应服务（管理员权限、审计由后端负责）。 */
+export function restoreDataMigrationAssets(type: string, ids: number[]) {
+  return http.post<ApiResponse<null>>('/data-migration/recycle-bin/restore', { type, ids })
 }
 
-export function purgeDataMigrationAssets(ids: number[]) {
-  return http.post<ApiResponse<null>>('/data-migration/recycle-bin/purge', ids)
+/** 统一回收站彻底删除：请求体携带内容类型以分发到对应服务。 */
+export function purgeDataMigrationAssets(type: string, ids: number[]) {
+  return http.post<ApiResponse<null>>('/data-migration/recycle-bin/purge', { type, ids })
 }
 
-export function downloadDataMigrationAsset(id: number) {
-  return http.get<ApiResponse<string>>(`/data-migration/assets/${id}/download`).then(async (response) => {
+export function downloadDataMigrationAsset(type: string, id: number) {
+  return http.get<ApiResponse<string>>(`/data-migration/${fileSegment(type)}/${id}/download`).then(async (response) => {
     const attachmentPath = response.data.data
     const match = typeof attachmentPath === 'string' && attachmentPath.match(/^\/api\/attachments\/(\d+)\/download$/)
     if (!match) return response
@@ -127,13 +172,13 @@ export function downloadDataMigrationAsset(id: number) {
 }
 
 export function exportDataMigrationStructured(type: string, params?: Record<string, unknown>) {
-  return http.get(`/data-migration/structured/${encodeURIComponent(type)}/export`, { params, responseType: 'blob' })
+  return http.get(`${structuredBase(type)}/export`, { params, responseType: 'blob' })
 }
 
 export function inspectDataMigrationStructuredImport(type: string, file: File) {
   const form = new FormData()
   form.append('file', file)
-  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration/structured/${encodeURIComponent(type)}/import`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return http.post<ApiResponse<Record<string, unknown>>>(`${structuredBase(type)}/import`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
 export function getDataMigrationDashboard(view: 'overall' | 'component' = 'overall') {
@@ -427,25 +472,21 @@ export function deleteReportMaterials(ids: number[]) {
   return http.delete<ApiResponse<null>>('/data-migration/reports', { data: ids })
 }
 
-/** 下载汇报材料 */
+/** 下载汇报材料（自动解析附件真实下载地址） */
 export function downloadReportMaterial(id: number) {
-  return http.get<ApiResponse<string>>(`/data-migration/reports/${id}/download`)
+  return http.get<ApiResponse<string>>(`/data-migration/reports/${id}/download`).then(async (response) => {
+    const attachmentPath = response.data.data
+    const match = typeof attachmentPath === 'string' && attachmentPath.match(/^\/api\/attachments\/(\d+)\/download$/)
+    if (!match) return response
+    const attachment = await getAttachmentDownload(Number(match[1]))
+    return {
+      ...response,
+      data: { ...response.data, data: attachment.data.data?.downloadUrl ?? '' }
+    }
+  })
 }
 
-/** 回收站列表 */
-export function listReportRecycleBin(params: ReportPageQuery) {
-  return http.get<ApiResponse<DataMigrationPage<ReportMaterial>>>('/data-migration/reports/recycle-bin', { params })
-}
-
-/** 恢复汇报材料 */
-export function restoreReportMaterials(ids: number[]) {
-  return http.post<ApiResponse<null>>('/data-migration/reports/recycle-bin/restore', ids)
-}
-
-/** 确认清理汇报材料 */
-export function purgeReportMaterials(ids: number[]) {
-  return http.post<ApiResponse<null>>('/data-migration/reports/recycle-bin/purge', ids)
-}
+/** 汇报材料回收站相关旧前端入口已于 T26 下线（无 web 端调用方，旧后端 @RequestMapping 同步已删）；统一回收站入口使用 listDataMigrationRecycleBin/restoreDataMigrationAssets/purgeDataMigrationAssets 与 asset_type=REPORT 分发。 */
 
 /** 检查MD5是否可用 */
 export function checkReportMd5(md5: string) {
@@ -480,8 +521,11 @@ export interface IssueRecord {
   keywords?: string
   frequency?: string
   relatedMeetingMinutes?: number[]
+  relatedMeetingMinuteNames?: string
   relatedTables?: number[]
+  relatedTableNames?: string
   relatedFields?: number[]
+  relatedFieldNames?: string
   owner_id: number
   created_at?: string
   updated_at?: string
@@ -532,9 +576,18 @@ export interface IssueFormData {
   relatedFieldNames?: string
 }
 
+export type IssueUpdateData = IssueFormData & Required<Pick<IssueFormData,
+  'relatedMeetingMinutes' | 'relatedTables' | 'relatedFields'>>
+
 export interface SelectOption {
   value: number | string
   label: string
+}
+
+export interface IssueImportResult {
+  successCount: number
+  failureCount: number
+  rowErrors: Array<{ row: number; message: string }>
 }
 
 /** 分页查询问题清单列表 */
@@ -552,8 +605,21 @@ export function createIssue(body: IssueFormData) {
   return http.post<ApiResponse<IssueRecord>>('/data-migration/issues', body)
 }
 
+/** 批量导入问题，服务端逐行校验并返回完整结果 */
+export function importIssues(projectId: number, file: File) {
+  const form = new FormData()
+  form.append('projectId', String(projectId))
+  form.append('file', file)
+  return http.post<ApiResponse<IssueImportResult>>('/data-migration/issues/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
+
+/** 导出当前问题筛选结果 */
+export function exportIssues(params: Omit<IssueQuery, 'page' | 'size'>) {
+  return http.get('/data-migration/issues/export', { params, responseType: 'blob' })
+}
+
 /** 更新问题 */
-export function updateIssue(id: number, body: Partial<IssueFormData>) {
+export function updateIssue(id: number, body: IssueUpdateData) {
   return http.put<ApiResponse<IssueRecord>>(`/data-migration/issues/${id}`, body)
 }
 
@@ -582,11 +648,6 @@ export function purgeAllIssues() {
   return http.delete<ApiResponse<null>>('/data-migration/issues/purge-all')
 }
 
-/** 获取项目选项 */
-export function getIssueProjectOptions() {
-  return http.get<ApiResponse<SelectOption[]>>('/data-migration/issues/options/projects')
-}
-
 /** 获取系统选项（根据项目） */
 export function getIssueSystemOptions(projectId?: number) {
   return http.get<ApiResponse<SelectOption[]>>('/data-migration/issues/options/systems', { params: { projectId } })
@@ -610,4 +671,159 @@ export function getIssueTargetTableOptions(projectId?: number) {
 /** 获取目标表字段选项（根据表ID） */
 export function getIssueTargetFieldOptions(tableId: number) {
   return http.get<ApiResponse<SelectOption[]>>('/data-migration/issues/options/target-fields', { params: { tableId } })
+}
+
+// ========== 会议纪要专属接口 ==========
+
+export interface MeetingAttachment {
+  id: number
+  attachment_id: number
+  file_name: string
+  sort_order: number
+  created_by: number
+  created_at?: string
+  deleted_by?: number
+  deleted_at?: string
+  deleted_by_name?: string
+}
+
+export interface MeetingRecord {
+  meeting_id: number
+  /** V103 后新增的业务编号，与统一回收站信封 asset_code 同构。 */
+  meeting_code?: string
+  asset_code?: string
+  tenant_id: number
+  project_id: number
+  project_name?: string
+  granularity: string
+  meeting_source: string
+  meeting_title: string
+  meeting_content?: string
+  meeting_conclusion?: string
+  business_scenario?: string
+  keywords?: string
+  attachment_id?: number
+  file_name?: string
+  attachments?: MeetingAttachment[]
+  attachment_count?: number
+  created_by: number
+  created_at?: string
+  updated_by?: number
+  updated_at?: string
+  deleted_by?: number
+  deleted_at?: string
+  created_by_name?: string
+  updated_by_name?: string
+  deleted_by_name?: string
+  system_names?: string
+  system_ids?: string
+  related_issue_names?: string
+  related_issue_ids?: string
+}
+
+export interface MeetingQuery {
+  projectId?: number
+  meetingSource?: string
+  granularity?: string
+  systemId?: number
+  keyword?: string
+  page?: number
+  size?: number
+}
+
+export interface MeetingFormData {
+  projectId: number
+  granularity: string
+  meetingSource: string
+  meetingTitle: string
+  /** 会议编号；新增时留空则后端自动生成 MEET-{id}，编辑时可调整。 */
+  meetingCode?: string
+  meetingContent?: string
+  meetingConclusion?: string
+  businessScenario?: string
+  keywords?: string[]
+  systemIds?: number[]
+  issueIds?: number[]
+  attachmentId?: number
+  fileName?: string
+  attachments?: { attachmentId: number; fileName: string }[]
+}
+
+/** 分页查询会议纪要列表 */
+export function listMeetings(params: MeetingQuery) {
+  return http.get<ApiResponse<DataMigrationPage<MeetingRecord>>>('/data-migration/meetings', { params })
+}
+
+/** 获取单条会议纪要详情 */
+export function getMeeting(meetingId: number) {
+  return http.get<ApiResponse<MeetingRecord>>(`/data-migration/meetings/${meetingId}`)
+}
+
+/** 创建会议纪要 */
+export function createMeeting(body: MeetingFormData) {
+  return http.post<ApiResponse<MeetingRecord>>('/data-migration/meetings', body)
+}
+
+/** 更新会议纪要 */
+export function updateMeeting(meetingId: number, body: MeetingFormData) {
+  return http.put<ApiResponse<MeetingRecord>>(`/data-migration/meetings/${meetingId}`, body)
+}
+
+/** 批量删除会议纪要（逻辑删除） */
+export function deleteMeetings(meetingIds: number[]) {
+  return http.delete<ApiResponse<null>>('/data-migration/meetings', { data: meetingIds })
+}
+
+/** 会议回收站相关旧前端入口已于 T26 下线（无 web 端调用方，旧后端 @RequestMapping 同步已删）；统一回收站入口使用 listDataMigrationRecycleBin/restoreDataMigrationAssets/purgeDataMigrationAssets 与 asset_type=MEETING 分发。附件级回收站 (listMeetingAttachmentsRecycleBin 等) 仍保留在会议页。 */
+
+/** 获取系统选项（根据项目） */
+export function getMeetingSystemOptions(projectId?: number) {
+  return http.get<ApiResponse<SelectOption[]>>('/data-migration/meetings/options/systems', { params: { projectId } })
+}
+
+/** 获取问题选项（根据项目） */
+export function getMeetingIssueOptions(projectId?: number) {
+  return http.get<ApiResponse<SelectOption[]>>('/data-migration/meetings/options/issues', { params: { projectId } })
+}
+
+/** 获取会议纪要附件列表 */
+export function getMeetingAttachments(meetingId: number) {
+  return http.get<ApiResponse<MeetingAttachment[]>>(`/data-migration/meetings/${meetingId}/attachments`)
+}
+
+/** 删除会议纪要附件（移入回收站） */
+export function deleteMeetingAttachment(meetingId: number, attachmentId: number) {
+  return http.delete<ApiResponse<null>>(`/data-migration/meetings/${meetingId}/attachments/${attachmentId}`)
+}
+
+/** 获取附件回收站列表 */
+export function getMeetingAttachmentRecycleBin(meetingId: number) {
+  return http.get<ApiResponse<MeetingAttachment[]>>(`/data-migration/meetings/${meetingId}/attachments/recycle-bin`)
+}
+
+/** 恢复附件（单个，指定会议） */
+export function restoreMeetingAttachment(meetingId: number, attachmentId: number) {
+  return http.post<ApiResponse<null>>(`/data-migration/meetings/${meetingId}/attachments/${attachmentId}/restore`)
+}
+
+/** 全局附件回收站列表（跨会议） */
+export function listAttachmentRecycleBin(params: { projectId?: number; keyword?: string; page?: number; size?: number }) {
+  return http.get<ApiResponse<DataMigrationPage<MeetingAttachment & { meeting_id: number; meeting_title: string }>>>(
+    '/data-migration/meetings/attachments/recycle-bin', { params }
+  )
+}
+
+/** 批量恢复附件 */
+export function restoreAttachments(ids: number[]) {
+  return http.post<ApiResponse<null>>('/data-migration/meetings/attachments/restore', ids)
+}
+
+/** 彻底删除附件 */
+export function purgeAttachments(ids: number[]) {
+  return http.delete<ApiResponse<null>>('/data-migration/meetings/attachments/purge', { data: ids })
+}
+
+/** 清空附件回收站 */
+export function purgeAllAttachments() {
+  return http.delete<ApiResponse<null>>('/data-migration/meetings/attachments/purge-all')
 }

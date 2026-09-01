@@ -403,3 +403,164 @@ node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-da
 ## 历史范围阻断（已解除）
 
 此前 V93 未列入 `codex-task-scope.yaml`，因此 T-I2 至 T-I5 曾被阻断。用户已授权执行，授权维护者已将 V93 加入 `scope.writable_paths`、`database.migration_files` 和回滚说明；重新检查时仅报告工作区既有的 `application-local.yml` 越界，该文件不属于本次 data-migration 改动并按用户要求忽略。
+
+---
+
+# 问题清单治理实施计划（2026-08-30）
+
+> 执行要求：使用 `$control-engineering` 逐任务实施。当前为迁移和权限高保证模式；用户已批准在开发测试环境删除旧 ISSUE 数据且不备份，并要求连续治理到最终状态。
+
+## 状态与来源
+
+- 计划修订：2（问题清单治理增量）
+- 设计修订：8
+- 设计文档：`docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md`
+- 状态：可移交
+- 批准依据：用户于 2026-08-30 确认完整治理设计，并明确“当前环境为开发测试环境，删除旧数据，无需备份，一步到位治理到最终状态”。
+
+## 目标与全局约束
+
+修复问题编辑关系丢失和软删除编号生命周期，追加 V94，补齐问题接口权限、事务与行为测试，在隔离 MySQL 8.4 和真实浏览器完成专项验收，最后仅收敛 REQ-031 当前前缀。
+
+- 只修改当前 `codex-task-scope.yaml` 的 `writable_paths`；不读取或修改 `.ai-control/original/**` 和其他需求账本。
+- V93 已发布且不得修改；数据库结构只追加 V94。
+- 仅连接开发测试环境；环境身份不确定时停止迁移。
+- V93 前记录旧 ISSUE 和关系计数，非零不阻塞；删除无需备份，删除后不可恢复。
+- 保持 Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3 和现有 `/api/data-migration/issues` 路由。
+- 仅数据迁移专项失败阻塞；全量 Maven 和全局治理的范围外失败只记录，不在本计划修复。
+
+## 文件职责地图
+
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V94__data_migration_issue_active_code_uniqueness.sql`：新增活动问题编号生成列与唯一键。
+- `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java`：关系三态更新、并发冲突转换、原子恢复与审计事务。
+- `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/IssueController.java`：问题接口 RBAC 边界。
+- `server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueServiceTest.java`：关系、冲突、权限调用与恢复行为单元测试。
+- `server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueMigrationMySqlTest.java`：MySQL 8.4 V92/V93/V94、旧数据删除、非 ISSUE 保护和恢复原子性。
+- `server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java`：迁移与控制器权限静态契约。
+- `server/src/modules/data-migration/pom.xml`：复用根 BOM，增加现有 Testcontainers MySQL 测试依赖。
+- `web/src/api/data-migration.ts`：更新请求类型，编辑更新显式要求三类关系数组。
+- `web/src/modules/data-migration/views/content/IssuesPage.vue`：编辑前加载详情，失败不开放抽屉，保存始终提交三类数组。
+- 当前需求文档、计划、范围及当前前缀 JSON：记录真实设计、执行、观测和收敛证据。
+
+## 任务依赖与并行策略
+
+`T18 -> T19 -> T20 -> T21` 全部串行。T19 固定数据库与服务契约后 T20 才消费；T21 使用完整组合进行迁移和浏览器验收，禁止并行共享数据库。
+
+### T18：治理基线、范围和控制输入
+
+**需求映射：** R-G1, R-G2, R-G3, R-G4, R-G5
+
+**前置任务：** 无
+
+**文件：** 修改当前 requirement、scope、设计、计划及当前前缀 `design.json`、`handoff.json`、`state.json`、`control-plan.json`；保留旧 `convergence.json` 历史并登记被本轮取代。
+
+**接口：** 产出 V94 可写授权、批准设计、增量任务包和高保证控制输入。
+
+- [x] 记录用户确认的开发测试环境、无备份和连续执行授权。
+- [x] 将 V94 加入 `writable_paths` 与 `database.migration_files`，补充专项测试命令。
+- [ ] 校验当前需求 JSON、计划占位符、范围和账本序号，确认没有其他前缀写入。
+
+**验收与证据：** JSON 解析通过，`git diff --check` 通过，V94 路径已授权，设计无阻塞未知项。
+
+**回滚：** 在产品代码执行前回退本轮需求、范围和控制文档增量；不触碰历史执行证据。
+
+**停止条件：** V94 未获范围授权、当前分支不匹配、环境不再是开发测试环境。
+
+**升级条件：** 需要修改平台公共异常模型、其他模块或其他账本前缀。
+
+### T19：数据库、后端事务与权限契约
+
+**需求映射：** R-G1, R-G2, R-G3, R-G4
+
+**前置任务：** T18
+
+**文件：** 新建 V94、`IssueServiceTest.java`、`IssueMigrationMySqlTest.java`；修改 `IssueService.java`、`IssueController.java`、模块 `pom.xml` 和 `DataMigrationModuleRegistrationTest.java`。
+
+**接口：** 关系键缺失保留、`[]` 清空、显式 ID 替换；活动编号唯一；冲突为 `BusinessException(ErrorCode.CONFLICT)`；恢复批次原子提交。
+
+- [ ] 先建立关系 preserve/clear/replace、无效目标、并发 409、批量恢复回滚和权限注解测试，运行目标测试确认当前行为失败。
+- [ ] 追加 V94，删除旧四列唯一索引，增加 `active_issue_code` 存储生成列和三列唯一键，不修改 V93。
+- [ ] 在 `IssueService` 仅对请求中存在的关系键执行替换；捕获问题主表唯一冲突并转换为 409；恢复先校验批次并在单事务内更新和审计。
+- [ ] 为 `IssueController` 增加类级读取权限、写方法权限和恢复/彻底清理管理权限。
+- [ ] 运行 `mvn -pl :ccb-data-migration -am -Dtest=IssueServiceTest,IssueMigrationMySqlTest,DataMigrationModuleRegistrationTest test`，预期全部通过。
+
+**验收与证据：** 测试断言三态关系、事务回滚、409、RBAC 注解、V93 删除旧 ISSUE、非 ISSUE 不变及 V94 生命周期。
+
+**回滚：** 回退 Java/POM/测试和未应用的 V94 文件；V94 一旦应用只通过新的补偿迁移回退，不修改 V94 历史。
+
+**停止条件：** V94 会影响非 ISSUE 表、MySQL 8.4 不支持生成列方案、事务测试出现部分提交或需要平台公共异常变更。
+
+**升级条件：** 发现生产连接、需要保留旧 ISSUE、或需要跨模块写表。
+
+### T20：前端完整详情编辑契约
+
+**需求映射：** R-G1
+
+**前置任务：** T19
+
+**文件：** 修改 `web/src/api/data-migration.ts`、`web/src/modules/data-migration/views/content/IssuesPage.vue`。
+
+**接口：** `getIssue(id)` 成功后初始化编辑表单；`updateIssue` 请求类型要求三类关系数组；失败不打开抽屉。
+
+- [ ] 将 `openEdit` 改为异步详情加载，复用当前忙碌反馈，详情或选项加载失败时展示错误且不设置可提交编辑态。
+- [ ] 保存请求无条件提交 `relatedMeetingMinutes`、`relatedTables`、`relatedFields`，空选择发送 `[]`，不再用 `undefined` 表示空。
+- [ ] 运行 `npm --prefix web run build` 和 `git diff --check`，预期 Vue 类型检查和 Vite 构建通过。
+
+**验收与证据：** 编辑已有关系后保存不会丢失；显式清空产生空数组；详情失败无抽屉和提交入口。
+
+**回滚：** 回退两个前端文件；后端三态契约保持向后兼容。
+
+**停止条件：** 必须修改公共 UI 组件、加载失败仍可提交、移动端产生页面级横向溢出。
+
+**升级条件：** 需要新增公共状态组件或改变 `/api/data-migration/issues` 路由。
+
+### T21：迁移、运行、浏览器与收敛
+
+**需求映射：** R-G1, R-G2, R-G3, R-G4, R-G5
+
+**前置任务：** T20
+
+**文件：** 仅追加当前前缀的 execution/observation，更新 state/handoff/convergence；不修改范围外实现。
+
+**接口：** 产出数据库、单元/集成、HTTP、浏览器、构建、范围和治理异质证据。
+
+- [ ] 运行开发入口检查、聚焦 Maven、前端构建、当前范围检查和 `git diff --check`。
+- [ ] 在隔离 MySQL 8.4 完成 V92/V93/V94 测试；在已确认开发测试环境执行 Flyway，记录执行前后 ISSUE/关系/非 ISSUE 计数。
+- [ ] 启动非 Mock 后端与前端，验证问题 CRUD、关系保留/清空、删除重建、恢复 409、批量恢复、权限和审计。
+- [ ] 在 1280x800、375x812、390x844、430x932 验证编辑与清空路径、控制台、接口和页面横向溢出。
+- [ ] 运行 `mvn test` 与 `node scripts/check-all-governance.mjs`；对范围外失败记录归属证据，不实施修复。
+- [ ] 更新当前前缀执行/观测/收敛证据，只有数据迁移专项门禁全部通过才将 phase 设为 `converged`。
+
+**验收与证据：** 至少数据库、自动测试、HTTP/浏览器三类采样一致；当前范围无越界；没有数据迁移 P0/P1 未关闭反馈。
+
+**回滚：** 停止本地进程，回退应用文件；保留已应用 V94，后续结构回退只能追加补偿迁移；V93 删除的旧 ISSUE 无恢复路径。
+
+**停止条件：** 环境身份不确定、迁移影响非 ISSUE 数据、越权、部分事务提交、白屏或数据迁移专项测试失败。
+
+**升级条件：** 需要生产访问、推送、合并、发布或修改范围外模块。
+
+---
+
+## V98 收敛补充任务（2026-08-31）
+
+追加 `V98__data_migration_remove_compatibility_columns.sql`，物理删除会议、问题、目标字段和资产对象键兼容列，并删除未使用的 `dm_topic_type`。迁移同时清理会议附件活动重复数据、补充活动唯一约束、统一租户前缀索引和表注释；不修改已发布 V96/V97。
+
+应用侧移除上述列的 SQL 读写：项目名、系统名和目标表编号由关系 JOIN 投影，会议首附件由 `dm_meeting_attachment` 投影，文件资产仅通过公共附件 ID 访问。验证包括聚焦 Maven 32 项测试、前端生产构建、scope/JSON/diff 检查及 disposable MySQL 8.4 的 V98 实际执行。
+
+发布前置条件是完成 `dm_asset.object_key` 到 `att_file` 的历史补偿并确认无未绑定记录；V98 物理删除不可由应用回滚恢复，需依赖备份或单独审批的补偿迁移。
+
+## 需求覆盖
+
+- R-G1：T19、T20、T21
+- R-G2：T19、T21
+- R-G3：T19、T21
+- R-G4：T18、T19、T21
+- R-G5：T18、T21
+
+## 控制模型种子
+
+以下均为 `hypotheses-only`，由高保证建模阶段复核：被控边界是 `dm_issue`、问题关系、问题 API/页面和当前前缀证据；状态变量包括活动编号集合、删除状态、关系集合、审计条目、Flyway 版本和编辑详情加载状态；传感器包括 MySQL 约束、模块测试、HTTP 响应、浏览器请求与 DOM 溢出；执行器包括 V94、IssueService/Controller 和 IssuesPage；扰动包括并发请求、既有测试数据、Docker/MySQL 可用性和范围外仓库失败。
+
+## 风险与批准
+
+高风险动作是 V93 删除旧 ISSUE 数据以及 V94 唯一键切换。用户已确认当前为开发测试环境、无需备份并批准连续执行；任何生产迹象或非 ISSUE 数据变化都会触发停止，不以该授权推定生产权限。

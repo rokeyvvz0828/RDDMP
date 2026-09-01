@@ -1,0 +1,26 @@
+{
+  "task_id": "T7",
+  "status": "verified",
+  "trigger": "收敛后用户反馈：前端侧边栏看不到「统一回收站」菜单。定位为 R5 交付缺陷——T4 只注册了前端路由，未在 sys_menu 建菜单节点，动态侧边栏（sys_menu→sys_role_menu→sys_user_role 过滤）无此项；T6 浏览器验收是经 URL 直达回收站页，未验证菜单项本身，故漏检。",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V102__data_migration_recycle_bin_menu.sql", "purpose": "新增追加式 Flyway 迁移，幂等注册「统一回收站」菜单：sys_menu id=732 挂在 720 数迁资产内容管理 下、route_name=DataMigrationRecycleBin、route_path=/data-migration/content/recycle-bin、component_path=data-migration、permission_code=data-migration:content:recycle-bin、icon=delete、sort_no=120、visible=1/status=1；补 sys_menu_permission(7321 read) 与 sys_role_menu/sys_role_permission 授予管理员角色(role_id=1)。仅追加，未改历史脚本；接口访问仍由 ContentRecycleBinController 的 data-migration:manage/system:admin 服务端守卫"},
+    {"path_or_resource": "docs/requirements/REQ-20260831-050-data-migration-content-table-split/codex-task-scope.yaml", "purpose": "将 V102 纳入 writable_paths 与 database.migration_files；更新 public_capability_change.note（追加 V102 菜单注册，仍为 platform/infrastructure 追加式迁移、storage 契约未改）与 completion.rollback（纠正原「菜单种子未变、无需菜单补偿」表述，说明 V102 及回退方式）"}
+  ],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 93 migration(s) and 1 approved callback(s)（含新增 V102，命名合法、无版本重复）"},
+    {"command": "./backend-dev.sh restart", "exit_code": 0, "salient_output": "Migrating schema ccb_platform to version \"102 - data migration recycle bin menu\"; Successfully applied 1 migration, now at version v102; Started CcbApplication in 3.936 seconds; 无异常"},
+    {"command": "docker exec ccb-platform-mysql mysql ... 'SELECT ... FROM sys_menu WHERE id=732; sys_role_menu; sys_role_permission'", "exit_code": 0, "salient_output": "sys_menu 732：parent_id=720、route_name=DataMigrationRecycleBin、sort_no=120、visible=1、status=1；role_menu(role 1,menu 732)=1；role_permission(role 1,perm 7321)=1"},
+    {"command": "curl -X POST /api/auth/login(admin) 后 GET /api/auth/routes", "exit_code": 0, "salient_output": "admin 动态路由树已包含 \"routePath\":\"/data-migration/content/recycle-bin\"（回收站节点已进入侧边栏数据源）"}
+  ],
+  "invariants_checked": [
+    {"invariant": "V102 落在 codex-task-scope.yaml 声明的 writable_paths 内", "result": "pass", "evidence": "已先把 V102 加入 writable_paths/migration_files，再创建脚本；scope 文件本身在 REQ-20260831-050/** 可写目录内"},
+    {"invariant": "Flyway 只追加、历史脚本未改、版本未冲突", "result": "pass", "evidence": "check-flyway-migrations 93 通过；V102>V101 顺序追加；id 732/权限 7321 经查库确认此前空闲"},
+    {"invariant": "菜单授权与既有 RBAC 模型一致（不新增绕过）", "result": "pass", "evidence": "可见性仍走 sys_role_menu；服务端 API 守卫未改，admin 既有 data-migration:manage 权限不变"},
+    {"invariant": "未触达其他任务/历史目录", "result": "pass", "evidence": "仅改本任务 scope、本任务 V102、本任务账本"}
+  ],
+  "unresolved_items": [
+    "浏览器肉眼验收（侧边栏菜单项可见/可点）由用户本人确认（用户选择自行在浏览器验证，两次取消自动化浏览器子代理）；运行时证据已证明回收站进入 admin 动态路由树，侧边栏据此渲染",
+    "菜单树在登录时加载：已登录会话需退出重登或刷新，才能取到含 732 的更新后 /auth/routes"
+  ],
+  "recommended_next": "converge"
+}

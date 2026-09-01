@@ -87,7 +87,7 @@ public class ReportController {
     /**
      * 4. 编辑汇报材料
      */
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     @PreAuthorize("hasAnyAuthority('data-migration:content:reports:update','data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Map<String, Object>> update(
             @PathVariable long id,
@@ -117,7 +117,7 @@ public class ReportController {
     /**
      * 6. 下载汇报材料
      */
-    @GetMapping("/{id}/download")
+    @GetMapping("/{id:\\d+}/download")
     @PreAuthorize("hasAnyAuthority('data-migration:content:reports','data-migration:access','data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<String> download(
             @PathVariable long id,
@@ -126,43 +126,13 @@ public class ReportController {
     }
 
     /**
-     * 7. 回收站列表
+     * 回收站入口已收敛到统一回收站（{@code /api/data-migration/recycle-bin}）。
+     *
+     * <p>T26 下线旧前端入口：{@code GET /reports/recycle-bin}、{@code POST /reports/recycle-bin/restore}、
+     * {@code POST /reports/recycle-bin/purge}。内部 {@code ReportService#recycleBinList}
+     * 与 {@code restore}/{@code purge} 保留供 {@code ReportRecycleBinSource} SPI 调用，
+     * 业务规则（管理员校验、MD5 唯一、附件级联、审计）不变。
      */
-    @GetMapping("/recycle-bin")
-    @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
-    public ApiResponse<PageResult<Map<String, Object>>> recycleBinList(
-            @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) String reportPeriod,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(reportService.recycleBinList(projectId, reportPeriod, keyword, page, size, user), TraceId.getOrCreate());
-    }
-
-    /**
-     * 8. 恢复汇报材料
-     */
-    @PostMapping("/recycle-bin/restore")
-    @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
-    public ApiResponse<Void> restore(
-            @RequestBody List<Long> ids,
-            @AuthenticationPrincipal AuthUser user) {
-        reportService.restore(ids, user);
-        return ApiResponse.success(null, TraceId.getOrCreate());
-    }
-
-    /**
-     * 9. 确认清理汇报材料
-     */
-    @PostMapping("/recycle-bin/purge")
-    @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
-    public ApiResponse<Void> purge(
-            @RequestBody List<Long> ids,
-            @AuthenticationPrincipal AuthUser user) {
-        reportService.purge(ids, user);
-        return ApiResponse.success(null, TraceId.getOrCreate());
-    }
 
     /**
      * 检查MD5是否可用

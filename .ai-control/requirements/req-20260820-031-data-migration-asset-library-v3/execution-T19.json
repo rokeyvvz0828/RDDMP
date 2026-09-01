@@ -1,0 +1,65 @@
+{
+  "task_id": "T19",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V94__data_migration_issue_active_code_uniqueness.sql", "purpose": "Replace deleted-state uniqueness with generated active-code uniqueness"},
+    {"path_or_resource": "server/src/modules/data-migration/pom.xml", "purpose": "Add existing Testcontainers JUnit and MySQL test dependencies"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java", "purpose": "Implement relation tri-state updates, conflict translation and atomic batch restore"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/IssueController.java", "purpose": "Enforce read, write and manage RBAC boundaries"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java", "purpose": "Assert V94, service contract and controller RBAC registration"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueServiceTest.java", "purpose": "Exercise relation tri-state, conflict and prevalidation behavior"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueMigrationMySqlTest.java", "purpose": "Exercise isolated MySQL migrations and real transaction rollback"}
+  ],
+  "requirements_addressed": ["R3", "R5", "R7"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=IssueServiceTest,IssueMigrationMySqlTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 1,
+      "salient_output": "Initial full-history Flyway sensor stopped at existing V80 collation conflict before reaching V92; 16 tests ran, one external migration error"
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=IssueServiceTest,IssueMigrationMySqlTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "BUILD SUCCESS; 18 tests run, 0 failures, 0 errors, 0 skipped; isolated MySQL 8.4 applied V92, V93 and V94"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Relation update and conflict contract",
+      "result": "pass",
+      "evidence": "IssueServiceTest passed preserve, clear, replace, duplicate conflict and whole-batch prevalidation assertions",
+      "limitations": ["HTTP envelope and browser behavior remain for T21"]
+    },
+    {
+      "check": "MySQL migration and transaction behavior",
+      "result": "pass",
+      "evidence": "IssueMigrationMySqlTest passed three MySQL 8.4 tests covering V92-V94, active-code lifecycle, injected restore race rollback and invalid-relation rollback",
+      "limitations": ["Flyway reports MySQL 8.4 is newer than its tested 8.1 support level"]
+    },
+    {
+      "check": "Issue controller permission boundaries",
+      "result": "pass",
+      "evidence": "DataMigrationModuleRegistrationTest static RBAC assertions passed",
+      "limitations": ["Authenticated HTTP role behavior remains for T21"]
+    }
+  ],
+  "diff_summary": [
+    "Added V94 active-only issue-code uniqueness without modifying V93",
+    "Preserved missing relations while clearing or replacing explicitly supplied arrays",
+    "Converted database uniqueness races to CONFLICT and made batch restore prevalidated and transactional",
+    "Added method-security boundaries and focused unit/MySQL tests"
+  ],
+  "invariants_checked": [
+    {"invariant": "V93 is not edited", "result": "pass", "evidence": "V93 has no working-tree diff and the integration test consumes it unchanged"},
+    {"invariant": "Only active issue codes are unique per tenant/project", "result": "pass", "evidence": "MySQL permits repeated deleted rows and rejects restoring one while an active duplicate exists"},
+    {"invariant": "Business state and audit share one transaction", "result": "pass", "evidence": "Injected second-row restore conflict leaves both rows deleted, no active injected row and no restore audits"},
+    {"invariant": "No non-ISSUE migration data is changed", "result": "pass", "evidence": "Isolated migration test retains the seeded REPORT row while deleting legacy ISSUE rows and relations"}
+  ],
+  "disturbances": [
+    {"event": "The repository-wide migration chain fails at historical V80 on a MySQL collation mismatch", "impact": "The T19 migration sensor was isolated with a version-91 baseline so only approved V92-V94 behavior determines REQ-031"},
+    {"event": "Flyway warns that MySQL 8.4 exceeds its declared tested support through MySQL 8.1", "impact": "No observed migration failure; retain as compatibility evidence for T21"}
+  ],
+  "assumptions_falsified": ["Running the complete historical Flyway chain is not a valid focused sensor because existing V80 fails before the governed migrations"],
+  "unresolved_items": ["Independent observing-phase checks and HTTP runtime verification remain"],
+  "recommended_next": "observe"
+}

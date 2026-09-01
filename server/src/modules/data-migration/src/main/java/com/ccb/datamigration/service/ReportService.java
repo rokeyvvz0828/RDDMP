@@ -1,14 +1,13 @@
 package com.ccb.datamigration.service;
 
-import com.ccb.attachment.integration.AttachmentBindingCommand;
 import com.ccb.attachment.integration.AttachmentGateway;
 import com.ccb.attachment.integration.AttachmentItem;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
-import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,24 +17,33 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 汇报材料专属服务。
- * 复用 dm_asset 表，asset_type='REPORT'，支持多维度筛选、批量上传、编辑、逻辑删除和回收站。
+ * 存储于 dm_report（REQ-20260831-050 一菜单一表），主文件经 dm_content_attachment（sort_order=0）登记，
+ * 支持多维度筛选、批量上传、编辑、逻辑删除和回收站。
  */
 @Service
 public class ReportService {
-    public static final String BUSINESS_TYPE = "DATA_MIGRATION_ASSET";
+    public static final String BUSINESS_TYPE = ContentFileAssetService.BUSINESS_TYPE;
+    private static final String CONTENT_TYPE = "REPORT";
     private static final long MAX_FILE_SIZE = 50L * 1024 * 1024;
     private static final String MD5_PATTERN = "[0-9a-fA-F]{32}";
     private static final Set<String> REPORT_PERIODS = Set.of("DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY", "IRREGULAR");
 
+    private static final String MAIN_FILE_JOIN =
+        " LEFT JOIN dm_content_attachment m ON m.tenant_id = a.tenant_id AND m.business_type = 'REPORT' AND m.business_id = a.id AND m.sort_order = 0 AND m.deleted = 0 " +
+        " LEFT JOIN att_file f ON f.id = m.attachment_id AND f.tenant_id = m.tenant_id ";
+
     private final JdbcTemplate jdbc;
     private final AttachmentGateway attachmentGateway;
-    private final MinioStorageService storage;
+    private final ContentAttachmentService attachments;
+    private final ContentFileAssetService fileAssets;
     private final DataMigrationPermissionService permissions;
 
-    public ReportService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, MinioStorageService storage, DataMigrationPermissionService permissions) {
+    public ReportService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, ContentAttachmentService attachments,
+                         ContentFileAssetService fileAssets, DataMigrationPermissionService permissions) {
         this.jdbc = jdbc;
         this.attachmentGateway = attachmentGateway;
-        this.storage = storage;
+        this.attachments = attachments;
+        this.fileAssets = fileAssets;
         this.permissions = permissions;
     }
 
@@ -44,12 +52,12 @@ public class ReportService {
      */
     public PageResult<Map<String, Object>> list(Long projectId, String reportPeriod, String keyword, int page, int size, AuthUser user) {
         StringBuilder sql = new StringBuilder(
-            "SELECT a.id, a.project_id, p.project_name, a.asset_type, a.asset_code, a.asset_name, " +
-            "a.content_type, a.file_size, a.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, " +
+            "SELECT a.id, a.project_id, p.project_name, 'REPORT' AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, " +
+            "f.content_type, f.file_size, m.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, " +
             "a.owner_id, a.created_at, a.updated_at, a.created_by, a.updated_by " +
-            "FROM dm_asset a " +
+            "FROM dm_report a " + MAIN_FILE_JOIN +
             "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-            "WHERE a.tenant_id = ? AND a.asset_type = 'REPORT' AND a.deleted = 0"
+            "WHERE a.tenant_id = ? AND a.deleted = 0"
         );
         List<Object> args = new ArrayList<>(List.of(user.tenantId()));
 
@@ -63,7 +71,7 @@ public class ReportService {
         }
         if (keyword != null && !keyword.isBlank()) {
             String value = "%" + keyword.trim() + "%";
-            sql.append(" AND (a.asset_name LIKE ? OR a.keywords LIKE ?)");
+            sql.append(" AND (a.doc_name LIKE ? OR a.keywords LIKE ?)");
             args.add(value);
             args.add(value);
         }
@@ -74,7 +82,7 @@ public class ReportService {
         if (total == null) total = 0L;
 
         // 分页查询
-        sql.append(" ORDER BY a.updated_at DESC, a.id DESC");
+        sql.append(" ORDER BY a.doc_code ASC, a.id ASC");
         sql.append(" LIMIT ? OFFSET ?");
         args.add(size);
         args.add((page - 1) * size);
@@ -105,19 +113,19 @@ public class ReportService {
         }
 
         String md5 = normalizeMd5(checksumMd5);
-        assertMd5Available(md5, user.tenantId(), 0L);
+        fileAssets.assertMd5Available(md5, user.tenantId(), null);
 
         long id = nextId();
         jdbc.update(
-            "INSERT INTO dm_asset (id, tenant_id, project_id, asset_type, asset_code, asset_name, " +
-            "content_type, file_size, attachment_id, checksum_md5, report_period, report_date, keywords, " +
-            "owner_id, created_by, updated_by) VALUES (?, ?, ?, 'REPORT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            id, user.tenantId(), projectId, "REPORT-" + id, reportName, attachment.contentType(),
-            attachment.fileSize(), attachment.id(), md5, reportPeriod, reportDate, keywords,
+            "INSERT INTO dm_report (id, tenant_id, project_id, doc_code, doc_name, " +
+            "checksum_md5, report_period, report_date, keywords, " +
+            "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            id, user.tenantId(), projectId, "REPORT-" + id, reportName,
+            md5, reportPeriod, reportDate, keywords,
             user.id(), user.id(), user.id()
         );
 
-        attachmentGateway.bind(new AttachmentBindingCommand(attachment.id(), BUSINESS_TYPE, String.valueOf(id), String.valueOf(projectId)), user);
+        fileAssets.replaceMainFile(CONTENT_TYPE, id, projectId, attachment, user);
         audit(user, "REPORT_UPLOAD", id);
 
         return findById(id, user.tenantId());
@@ -146,7 +154,7 @@ public class ReportService {
             }
 
             String md5 = normalizeMd5(checksumMd5s.get(index));
-            assertMd5Available(md5, user.tenantId(), 0L);
+            fileAssets.assertMd5Available(md5, user.tenantId(), null);
 
             long id = nextId();
             String reportName = attachment.fileName();
@@ -156,14 +164,14 @@ public class ReportService {
             }
 
             jdbc.update(
-                "INSERT INTO dm_asset (id, tenant_id, project_id, asset_type, asset_code, asset_name, " +
-                "content_type, file_size, attachment_id, checksum_md5, report_period, " +
-                "owner_id, created_by, updated_by) VALUES (?, ?, ?, 'REPORT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                id, user.tenantId(), projectId, "REPORT-" + id, reportName, attachment.contentType(),
-                attachment.fileSize(), attachment.id(), md5, reportPeriod, user.id(), user.id(), user.id()
+                "INSERT INTO dm_report (id, tenant_id, project_id, doc_code, doc_name, " +
+                "checksum_md5, report_period, " +
+                "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id, user.tenantId(), projectId, "REPORT-" + id, reportName,
+                md5, reportPeriod, user.id(), user.id(), user.id()
             );
 
-            attachmentGateway.bind(new AttachmentBindingCommand(attachment.id(), BUSINESS_TYPE, String.valueOf(id), String.valueOf(projectId)), user);
+            fileAssets.replaceMainFile(CONTENT_TYPE, id, projectId, attachment, user);
             audit(user, "REPORT_BATCH_UPLOAD", id);
 
             results.add(findById(id, user.tenantId()));
@@ -192,7 +200,7 @@ public class ReportService {
             ensureProject(projectId, user);
         }
 
-        // 处理文件更新
+        // 处理文件更新：替换 sort_order=0 主文件行，旧主文件解绑
         if (attachmentId != null) {
             AttachmentItem attachment = resolveAttachment(attachmentId, user);
             if (attachment.fileSize() <= 0 || attachment.fileSize() > MAX_FILE_SIZE) {
@@ -200,30 +208,14 @@ public class ReportService {
             }
 
             String md5 = normalizeMd5(checksumMd5);
-            assertMd5Available(md5, user.tenantId(), id);
-            long bindingProjectId = projectId != null
-                ? projectId
-                : ((Number) existing.get("project_id")).longValue();
-            Long oldAttachmentId = existing.get("attachment_id") == null
-                ? null
-                : ((Number) existing.get("attachment_id")).longValue();
-
-            attachmentGateway.bind(new AttachmentBindingCommand(
-                attachment.id(), BUSINESS_TYPE, String.valueOf(id), String.valueOf(bindingProjectId)), user);
-
-            jdbc.update(
-                "UPDATE dm_asset SET attachment_id = ?, checksum_md5 = ?, content_type = ?, file_size = ?, " +
-                "updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?",
-                attachment.id(), md5, attachment.contentType(), attachment.fileSize(), user.id(), id, user.tenantId()
-            );
-
-            if (oldAttachmentId != null) {
-                attachmentGateway.deleteBound(oldAttachmentId, BUSINESS_TYPE, String.valueOf(id), user);
-            }
+            fileAssets.assertMd5Available(md5, user.tenantId(), id);
+            jdbc.update("UPDATE dm_report SET checksum_md5 = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?",
+                    md5, user.id(), id, user.tenantId());
+            fileAssets.replaceMainFile(CONTENT_TYPE, id, ((Number) existing.get("project_id")).longValue(), attachment, user);
         }
 
         // 更新元数据
-        StringBuilder updateSql = new StringBuilder("UPDATE dm_asset SET updated_by = ?, updated_at = CURRENT_TIMESTAMP");
+        StringBuilder updateSql = new StringBuilder("UPDATE dm_report SET updated_by = ?, updated_at = CURRENT_TIMESTAMP");
         List<Object> args = new ArrayList<>(List.of(user.id()));
 
         if (projectId != null) {
@@ -235,7 +227,7 @@ public class ReportService {
             args.add(reportPeriod);
         }
         if (reportName != null) {
-            updateSql.append(", asset_name = ?");
+            updateSql.append(", doc_name = ?");
             args.add(reportName);
         }
         if (reportDate != null) {
@@ -267,7 +259,7 @@ public class ReportService {
             permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
 
             jdbc.update(
-                "UPDATE dm_asset SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP " +
+                "UPDATE dm_report SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP " +
                 "WHERE id = ? AND tenant_id = ? AND deleted = 0",
                 user.id(), id, user.tenantId()
             );
@@ -283,26 +275,47 @@ public class ReportService {
         if (existing.get("attachment_id") != null) {
             return "/api/attachments/" + ((Number) existing.get("attachment_id")).longValue() + "/download";
         }
-        return storage.presignedUrl((String) existing.get("object_key"));
+        throw new BusinessException(ErrorCode.BAD_REQUEST, "汇报材料未绑定公共附件");
     }
 
     /**
-     * 7. 回收站列表
+     * 7. 统一回收站原生分页：汇报软删总数（SQL COUNT，不拉明细）。
      */
-    public PageResult<Map<String, Object>> recycleBinList(Long projectId, String reportPeriod, 
-                                                         String keyword, int page, int size, AuthUser user) {
+    public long countRecycleBin(Long projectId, String reportPeriod, String keyword, AuthUser user) {
         permissions.requireAdmin(user);
-
-        StringBuilder sql = new StringBuilder(
-            "SELECT a.id, a.project_id, p.project_name, a.asset_type, a.asset_code, a.asset_name, " +
-            "a.content_type, a.file_size, a.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, " +
-            "a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at " +
-            "FROM dm_asset a " +
-            "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-            "WHERE a.tenant_id = ? AND a.asset_type = 'REPORT' AND a.deleted = 1"
-        );
+        StringBuilder sql = new StringBuilder(recycleBinSelect());
         List<Object> args = new ArrayList<>(List.of(user.tenantId()));
+        appendRecycleBinFilters(sql, args, projectId, reportPeriod, keyword);
+        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + sql + ") t", Long.class, args.toArray());
+        return total == null ? 0L : total;
+    }
 
+    /**
+     * 7b. 统一回收站原生分页：按 {@code doc_code ASC, id ASC} 取软删汇报前 {@code limit} 行（原生 LIMIT，不走页大小白名单）。
+     */
+    public List<Map<String, Object>> fetchRecycleBinPage(Long projectId, String reportPeriod, String keyword, int limit, AuthUser user) {
+        permissions.requireAdmin(user);
+        if (limit <= 0) {
+            return List.of();
+        }
+        StringBuilder sql = new StringBuilder(recycleBinSelect());
+        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
+        appendRecycleBinFilters(sql, args, projectId, reportPeriod, keyword);
+        sql.append(" ORDER BY a.doc_code ASC, a.id ASC LIMIT ?");
+        args.add(limit);
+        return jdbc.queryForList(sql.toString(), args.toArray());
+    }
+
+    private static String recycleBinSelect() {
+        return "SELECT a.id, a.project_id, p.project_name, 'REPORT' AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, " +
+            "f.content_type, f.file_size, m.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, " +
+            "a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at " +
+            "FROM dm_report a " + MAIN_FILE_JOIN +
+            "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
+            "WHERE a.tenant_id = ? AND a.deleted = 1";
+    }
+
+    private void appendRecycleBinFilters(StringBuilder sql, List<Object> args, Long projectId, String reportPeriod, String keyword) {
         if (projectId != null) {
             sql.append(" AND a.project_id = ?");
             args.add(projectId);
@@ -313,24 +326,10 @@ public class ReportService {
         }
         if (keyword != null && !keyword.isBlank()) {
             String value = "%" + keyword.trim() + "%";
-            sql.append(" AND (a.asset_name LIKE ? OR a.keywords LIKE ?)");
+            sql.append(" AND (a.doc_name LIKE ? OR a.keywords LIKE ?)");
             args.add(value);
             args.add(value);
         }
-
-        // 计算总数
-        String countSql = "SELECT COUNT(*) FROM (" + sql + ") t";
-        Long total = jdbc.queryForObject(countSql, Long.class, args.toArray());
-        if (total == null) total = 0L;
-
-        // 分页查询
-        sql.append(" ORDER BY a.deleted_at DESC, a.id DESC");
-        sql.append(" LIMIT ? OFFSET ?");
-        args.add(size);
-        args.add((page - 1) * size);
-
-        List<Map<String, Object>> records = jdbc.queryForList(sql.toString(), args.toArray());
-        return new PageResult<>(records, total, page, size);
     }
 
     /**
@@ -341,13 +340,18 @@ public class ReportService {
         permissions.requireAdmin(user);
         for (Long id : ids) {
             findById(id, user.tenantId(), true);
-            int changed = jdbc.update(
-                "UPDATE dm_asset SET deleted = 0, deleted_by = NULL, deleted_at = NULL " +
-                "WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                id, user.tenantId()
-            );
-            if (changed != 1) {
-                throw new BusinessException(ErrorCode.CONFLICT, "汇报材料状态已变化，请刷新后重试");
+            try {
+                int changed = jdbc.update(
+                    "UPDATE dm_report SET deleted = 0, deleted_by = NULL, deleted_at = NULL " +
+                    "WHERE id = ? AND tenant_id = ? AND deleted = 1",
+                    id, user.tenantId()
+                );
+                if (changed != 1) {
+                    throw new BusinessException(ErrorCode.CONFLICT, "汇报材料状态已变化，请刷新后重试");
+                }
+            } catch (DataIntegrityViolationException ex) {
+                // 恢复后活动行 doc_code 与既有活动行冲突（uk_dm_report_active_code）：与统一方案同构，翻译为 CONFLICT(40900)。
+                throw new BusinessException(ErrorCode.CONFLICT, "汇报材料编号在该项目下已存在，无法恢复");
             }
             audit(user, "REPORT_RESTORE", id);
         }
@@ -361,15 +365,12 @@ public class ReportService {
         permissions.requireAdmin(user);
         for (Long id : ids) {
             Map<String, Object> existing = findById(id, user.tenantId(), true);
-            
-            // 删除附件
-            if (existing.get("attachment_id") != null) {
-                attachmentGateway.deleteBound(((Number) existing.get("attachment_id")).longValue(),
-                    BUSINESS_TYPE, String.valueOf(id), user);
-            }
-            
+
+            // 解绑并删除附件关系行
+            attachments.unbindAndRemoveAll(CONTENT_TYPE, BUSINESS_TYPE, id, user);
+
             // 物理删除记录
-            jdbc.update("DELETE FROM dm_asset WHERE id = ? AND tenant_id = ? AND deleted = 1", 
+            jdbc.update("DELETE FROM dm_report WHERE id = ? AND tenant_id = ? AND deleted = 1",
                        id, user.tenantId());
             audit(user, "REPORT_PURGE", id);
         }
@@ -379,12 +380,7 @@ public class ReportService {
      * 检查MD5是否可用
      */
     public boolean isMd5Available(String checksumMd5, AuthUser user) {
-        String md5 = normalizeMd5(checksumMd5);
-        Integer count = jdbc.queryForObject(
-            "SELECT COUNT(*) FROM dm_asset WHERE tenant_id = ? AND checksum_md5 = ? AND deleted = 0",
-            Integer.class, user.tenantId(), md5
-        );
-        return count == null || count == 0;
+        return fileAssets.isMd5Available(checksumMd5, user);
     }
 
     /**
@@ -439,26 +435,17 @@ public class ReportService {
         return value;
     }
 
-    private void assertMd5Available(String md5, long tenantId, long currentId) {
-        Integer count = jdbc.queryForObject(
-            "SELECT COUNT(*) FROM dm_asset WHERE tenant_id = ? AND checksum_md5 = ? AND deleted = 0 AND id <> ?",
-            Integer.class, tenantId, md5, currentId
-        );
-        if (count != null && count > 0) {
-            throw new BusinessException(ErrorCode.CONFLICT, "文件 MD5 已存在，不允许重复提交");
-        }
-    }
-
     private Map<String, Object> findById(long id, long tenantId) {
         return findById(id, tenantId, false);
     }
 
     private Map<String, Object> findById(long id, long tenantId, boolean deleted) {
         List<Map<String, Object>> rows = jdbc.queryForList(
-            "SELECT id, project_id, asset_type, asset_code, asset_name, content_type, file_size, " +
-            "attachment_id, checksum_md5, report_period, report_date, keywords, owner_id, " +
-            "created_at, updated_at, created_by, updated_by, deleted_by, deleted_at " +
-            "FROM dm_asset WHERE id = ? AND tenant_id = ? AND deleted = ?",
+            "SELECT a.id, a.project_id, 'REPORT' AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, " +
+            "f.content_type, f.file_size, m.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, a.owner_id, " +
+            "a.created_at, a.updated_at, a.created_by, a.updated_by, a.deleted_by, a.deleted_at " +
+            "FROM dm_report a " + MAIN_FILE_JOIN +
+            "WHERE a.id = ? AND a.tenant_id = ? AND a.deleted = ?",
             id, tenantId, deleted ? 1 : 0
         );
         if (rows.isEmpty()) {

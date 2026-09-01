@@ -1,0 +1,16 @@
+{
+  "sample_label": "T7 统一回收站菜单注册纠正观测",
+  "task_ids": ["T7"],
+  "measurements": [
+    {"requirement_id": "R5", "sensor": "sys_menu 落库 + admin /auth/routes 动态路由树", "result": "pass", "raw_evidence": "V102 应用后 flyway_schema_history 至 v102 success=1；sys_menu id=732(parent 720, route_name=DataMigrationRecycleBin, route_path=/data-migration/content/recycle-bin, visible=1, status=1, sort_no=120)；sys_role_menu(1,732)=1；sys_role_permission(1,7321)=1；admin 登录 GET /api/auth/routes 返回含 \"routePath\":\"/data-migration/content/recycle-bin\"", "limitation": ["侧边栏肉眼可见/可点由用户本人浏览器确认（用户选择自行验证并两次取消自动化浏览器子代理）；菜单树在登录时加载，旧会话需重登/刷新才见新菜单"]},
+    {"requirement_id": "治理与范围", "sensor": "check-flyway-migrations + scope 声明核对", "result": "pass", "raw_evidence": "Flyway check passed for 93 migration(s)（V102 命名合法、无版本重复）；V102 已先加入 codex-task-scope.yaml writable_paths/migration_files，rollback 与 public_capability note 同步修订；仅改动本任务文件", "limitation": ["未重跑整仓 check-all-governance/check-codex-scope（其整仓退出码仍因兄弟 REQ-20260820-031 未提交产物为 1，与本 T7 无关）"]}
+  ],
+  "feedback": [
+    "根因：内容菜单为 sys_menu 数据驱动，前端仅加 router 不足以让菜单出现在侧边栏；新增用户可见菜单必须同时提供 sys_menu 注册与角色授权迁移。",
+    "验收盲区：T6 浏览器验收经 URL 直达回收站页，未验证「菜单项本身可见可点」，导致漏检。教训：用户可发现性（可发现性=能从导航进入）须纳入浏览器验收断言，不能只测直达路由。"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "error_notes": "P1：统一回收站菜单未注册 sys_menu，用户无法从导航发现该功能（R5 可发现性缺陷）；已由 V102 修复并经运行时证据复验，肉眼验收由用户确认",
+  "observation_status": "complete",
+  "conclusion": "T7 纠正收敛：R5 统一回收站菜单不可见缺陷根因明确（缺 sys_menu 注册），V102 追加式迁移已幂等注册菜单+读权限+管理员授权，后端重启应用至 v102，DB 落库与 admin /auth/routes 动态树均确认回收站节点存在，与既有 11 个内容菜单同一渲染机制。侧边栏肉眼可见性由用户在浏览器确认。缺陷闭环，REQ-20260831-050 维持 converged。"
+}

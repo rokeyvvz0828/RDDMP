@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import '../../data-migration.css'
 import { onMounted, ref, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Plus, Refresh, Search, FolderOpened, UploadFilled } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete, Download, Edit, Plus, Refresh, Search, FolderOpened, UploadFilled } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../../../../components/ui/UiFormDrawer.vue'
 import UiToolbar from '../../../../components/ui/UiToolbar.vue'
@@ -17,12 +17,13 @@ import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
 import { useAuthStore } from '../../../../stores/auth'
 import {
-  listIssues, createIssue, updateIssue, deleteIssues,
+  listIssues, getIssue, createIssue, updateIssue, deleteIssues, importIssues, exportIssues,
   listIssueRecycleBin, restoreIssues, purgeIssues, purgeAllIssues,
-  getIssueProjectOptions, getIssueSystemOptions, getIssueSystemName,
+  getIssueSystemOptions, getIssueSystemName,
   getIssueMeetingOptions, getIssueTargetTableOptions, getIssueTargetFieldOptions,
-  type IssueRecord, type IssueFormData, type SelectOption
+  type IssueRecord, type IssueFormData, type IssueUpdateData, type IssueImportResult, type SelectOption
 } from '../../../../api/data-migration'
+import { getProjectWorkbench } from '../../../../api/project'
 
 const auth = useAuthStore()
 const loading = ref(false), records = ref<IssueRecord[]>([]), total = ref(0), page = ref(1), size = ref(20), selectedIds = ref<number[]>([]), busy = ref(false)
@@ -36,16 +37,23 @@ const FREQ = [{ value: 'CLASSIC', label: '经典问题' }, { value: 'HIGH_FREQ',
 const drawer = ref(false), saving = ref(false), editing = ref(false), editId = ref<number | null>(null)
 const fv = ref({ projectId: null as number | null, issueCode: '', issueName: '', granularity: '', systemCode: '', systemName: '', issueSource: '', defectType: '', issueDescription: '', solution: '', meetingConclusion: '', processingSteps: '', businessScenario: '', handler: '', responsibleParty: '', keywords: [] as string[], relatedMeetingMinutes: [] as number[], frequency: '', relatedTables: [] as number[], relatedFields: [] as number[] })
 const fSystemOpts = ref<SelectOption[]>([]), fMeetingOpts = ref<SelectOption[]>([]), fTableOpts = ref<SelectOption[]>([]), fFieldOpts = ref<SelectOption[]>([]), kwInput = ref('')
+const fieldTableMap = new Map<number, number>()
 const filterSysOpts = ref<SelectOption[]>([])
 const tab = ref<'list' | 'recycle'>('list'), recLoading = ref(false), recRecords = ref<IssueRecord[]>([]), recTotal = ref(0), recPage = ref(1), recSize = ref(20), recSelected = ref<number[]>([]), recKeyword = ref('')
-const importDlg = ref(false), importData = ref<IssueFormData[]>([]), importPreview = ref<any[]>([]), importErrors = ref<string[]>([]), importProject = ref<number | null>(null)
+const importDlg = ref(false), importFile = ref<File | null>(null), importResult = ref<IssueImportResult | null>(null), importProject = ref<number | null>(null)
+const importData = ref<IssueFormData[]>([]), importPreview = ref<any[]>([]), importErrors = ref<string[]>([])
 const canCreate = computed(() => auth.hasPermission('data-migration:content:issues:create') || auth.hasPermission('data-migration:write') || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const hasUpdatePermission = computed(() => auth.hasPermission('data-migration:content:issues:update') || auth.hasPermission('data-migration:write') || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const hasDeletePermission = computed(() => auth.hasPermission('data-migration:content:issues:delete') || auth.hasPermission('data-migration:write') || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canManage = computed(() => auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canEdit = (item: IssueRecord) => hasUpdatePermission.value && (canManage.value || item.owner_id === auth.user?.id)
+const canDelete = (item: IssueRecord) => hasDeletePermission.value && (canManage.value || item.owner_id === auth.user?.id)
 const msg = (e: unknown) => e instanceof Error ? e.message : '操作失败'
 const cancelled = (e: unknown): boolean => { if (e === 'cancel' || e === 'close') return true; if (e instanceof Error && (e.message === 'cancel' || e.message === 'close')) return true; if (typeof e === 'object' && e !== null && ((e as any).action === 'cancel' || (e as any).action === 'close')) return true; return false }
 const sd = (i: IssueRecord): Record<string, any> => i as Record<string, any>
 const fmtDate = (v?: string | null) => { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? String(v) : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
 const lbl = (o: SelectOption[], v?: string) => o.find(x => x.value === v)?.label ?? v ?? '—'
-async function loadOpts() { try { projectOpts.value = (await getIssueProjectOptions()).data.data ?? [] } catch {} }
+async function loadOpts() { try { projectOpts.value = ((await getProjectWorkbench()).data.data ?? []).map(p => ({ value: p.id, label: p.project_name })) } catch { projectOpts.value = [] } }
 async function getCached(m: Map<number, SelectOption[]>, id: number, l: (id: number) => Promise<SelectOption[]>): Promise<SelectOption[]> { if (m.has(id)) return m.get(id)!; const r = await l(id); m.set(id, r); return r }
 async function loadList() { loading.value = true; selectedIds.value = []; try { const p: any = { page: page.value, size: size.value }; if (fProject.value) p.projectId = fProject.value; if (fGranularity.value) p.granularity = fGranularity.value; if (fSystem.value) p.systemCode = fSystem.value; if (fSource.value) p.issueSource = fSource.value; if (fDefect.value) p.defectType = fDefect.value; if (fFreq.value) p.frequency = fFreq.value; if (fKeyword.value.trim()) p.keyword = fKeyword.value.trim(); const d = (await listIssues(p)).data.data; records.value = d?.records ?? []; total.value = d?.total ?? 0 } catch (e) { ElMessage.error(msg(e)); records.value = []; total.value = 0 } finally { loading.value = false } }
 async function loadRecycle() { recLoading.value = true; recSelected.value = []; try { const p: any = { page: recPage.value, size: recSize.value }; if (fProject.value) p.projectId = fProject.value; if (recKeyword.value.trim()) p.keyword = recKeyword.value.trim(); const d = (await listIssueRecycleBin(p)).data.data; recRecords.value = d?.records ?? []; recTotal.value = d?.total ?? 0 } catch (e) { ElMessage.error(msg(e)); recRecords.value = []; recTotal.value = 0 } finally { recLoading.value = false } }
@@ -54,74 +62,65 @@ function doReset() { fProject.value = null; fGranularity.value = ''; fSystem.val
 function switchTab(t: string) { t === 'recycle' ? loadRecycle() : loadList() }
 function resetForm() { fv.value = { projectId: null, issueCode: '', issueName: '', granularity: '', systemCode: '', systemName: '', issueSource: '', defectType: '', issueDescription: '', solution: '', meetingConclusion: '', processingSteps: '', businessScenario: '', handler: '', responsibleParty: '', keywords: [], relatedMeetingMinutes: [], frequency: '', relatedTables: [], relatedFields: [] }; kwInput.value = ''; fSystemOpts.value = []; fMeetingOpts.value = []; fTableOpts.value = []; fFieldOpts.value = [] }
 function openAdd() { editing.value = false; editId.value = null; resetForm(); drawer.value = true }
-function openEdit(item: IssueRecord) { editing.value = true; editId.value = item.id; const d = sd(item); const kw = typeof d.keywords === 'string' ? d.keywords.split(',').map((v: string) => v.trim()).filter(Boolean) : (Array.isArray(d.keywords) ? [...d.keywords] : []); fv.value = { projectId: item.project_id, issueCode: item.asset_code, issueName: item.asset_name, granularity: d.granularity ?? '', systemCode: d.systemCode ?? '', systemName: d.systemName ?? '', issueSource: d.issueSource ?? '', defectType: d.defectType ?? '', issueDescription: d.issueDescription ?? '', solution: d.solution ?? '', meetingConclusion: d.meetingConclusion ?? '', processingSteps: d.processingSteps ?? '', businessScenario: d.businessScenario ?? '', handler: d.handler ?? '', responsibleParty: d.responsibleParty ?? '', keywords: kw, relatedMeetingMinutes: Array.isArray(d.relatedMeetingMinutes) ? [...d.relatedMeetingMinutes] : [], frequency: d.frequency ?? '', relatedTables: Array.isArray(d.relatedTables) ? [...d.relatedTables] : [], relatedFields: Array.isArray(d.relatedFields) ? [...d.relatedFields] : [] }; if (fv.value.projectId) loadFormOpts(fv.value.projectId); drawer.value = true }
 async function loadFormOpts(pid: number) { const [s, m, t] = await Promise.all([getCached(cache.sys, pid, id => getIssueSystemOptions(id).then(r => r.data.data ?? [])), getCached(cache.meet, pid, id => getIssueMeetingOptions(id).then(r => r.data.data ?? [])), getCached(cache.tbl, pid, id => getIssueTargetTableOptions(id).then(r => r.data.data ?? []))]); fSystemOpts.value = s; fMeetingOpts.value = m; fTableOpts.value = t }
+async function loadFieldOpts(tableIds: number[]) { fFieldOpts.value = []; fieldTableMap.clear(); for (const id of tableIds) { const r = await getCached(cache.fld, id, tid => getIssueTargetFieldOptions(tid).then(res => res.data.data ?? [])); r.forEach(o => fieldTableMap.set(Number(o.value), id)); fFieldOpts.value.push(...r) } }
+async function openEdit(item: IssueRecord) {
+  if (busy.value) return
+  busy.value = true
+  drawer.value = false
+  editing.value = false
+  editId.value = null
+  resetForm()
+  try {
+    const detail = (await getIssue(item.id)).data.data
+    if (!detail) throw new Error('未获取到问题详情')
+    const d = sd(detail)
+    const relatedMeetingMinutes = Array.isArray(d.relatedMeetingMinutes) ? [...d.relatedMeetingMinutes] : []
+    const relatedTables = Array.isArray(d.relatedTables) ? [...d.relatedTables] : []
+    const relatedFields = Array.isArray(d.relatedFields) ? [...d.relatedFields] : []
+    const kw = typeof d.keywords === 'string' ? d.keywords.split(',').map((v: string) => v.trim()).filter(Boolean) : (Array.isArray(d.keywords) ? [...d.keywords] : [])
+    await loadFormOpts(detail.project_id)
+    await loadFieldOpts(relatedTables)
+    fv.value = { projectId: detail.project_id, issueCode: detail.asset_code, issueName: detail.asset_name, granularity: d.granularity ?? '', systemCode: d.systemCode ?? '', systemName: d.systemName ?? '', issueSource: d.issueSource ?? '', defectType: d.defectType ?? '', issueDescription: d.issueDescription ?? '', solution: d.solution ?? '', meetingConclusion: d.meetingConclusion ?? '', processingSteps: d.processingSteps ?? '', businessScenario: d.businessScenario ?? '', handler: d.handler ?? '', responsibleParty: d.responsibleParty ?? '', keywords: kw, relatedMeetingMinutes, frequency: d.frequency ?? '', relatedTables, relatedFields }
+    editing.value = true
+    editId.value = detail.id
+    drawer.value = true
+  } catch (e) {
+    resetForm()
+    ElMessage.error(`问题详情加载失败：${msg(e)}`)
+  } finally {
+    busy.value = false
+  }
+}
 async function onProjectChange(pid: number | null) { fv.value.systemCode = ''; fv.value.systemName = ''; fv.value.relatedMeetingMinutes = []; fv.value.relatedTables = []; fv.value.relatedFields = []; fSystemOpts.value = []; fMeetingOpts.value = []; fTableOpts.value = []; fFieldOpts.value = []; if (pid) await loadFormOpts(pid) }
 async function onSysChange(code: string) { fv.value.systemName = ''; if (code?.trim()) try { fv.value.systemName = (await getIssueSystemName(code.trim())).data.data ?? '' } catch {} }
 async function onTblChange(ids: number[]) {
-  const oldIds = fv.value.relatedTables
+  const oldIds = [...fv.value.relatedTables]
   const removedIds = oldIds.filter(id => !ids.includes(id))
-  // 检查删除的表是否有关联字段
-  if (removedIds.length > 0 && fv.value.relatedFields.length > 0) {
+  const removedFieldIds = fv.value.relatedFields.filter(id => removedIds.includes(fieldTableMap.get(id) ?? -1))
+  if (removedFieldIds.length > 0) {
     try {
       await ElMessageBox.confirm(
-        `删除表将同步删除所有关联字段（${fv.value.relatedFields.length} 个）。是否继续？`,
+        `移除目标表将同步移除其关联字段（${removedFieldIds.length} 个）。是否继续？`,
         '确认删除',
         { type: 'warning' }
       )
-      // 同步删除所有关联字段
-      fv.value.relatedFields = []
     } catch {
-      // 用户取消，恢复表选择
-      fv.value.relatedTables = [...oldIds]
       return
     }
   }
-  fv.value.relatedTables = ids
-  fv.value.relatedFields = []
-  fFieldOpts.value = []
-  for (const id of ids) { const r = await getCached(cache.fld, id, tid => getIssueTargetFieldOptions(tid).then(res => res.data.data ?? [])); fFieldOpts.value.push(...r) }
+  fv.value.relatedTables = [...ids]
+  fv.value.relatedFields = fv.value.relatedFields.filter(id => !removedFieldIds.includes(id))
+  await loadFieldOpts(ids)
 }
 
 async function onFieldChange(fieldIds: number[]) {
-  // 检查新添加的字段是否需要自动关联其所属表
-  const newFieldIds = fieldIds.filter(id => !fv.value.relatedFields.includes(id))
-  if (newFieldIds.length > 0 && fv.value.relatedTables.length === 0) {
-    try {
-      await ElMessageBox.confirm(
-        `当前未关联任何表，是否先关联表再选择字段？`,
-        '关联表',
-        { type: 'info' }
-      )
-      // 用户确认，不修改字段选择
-    } catch {
-      // 用户取消，移除新添加的字段
-      fv.value.relatedFields = fv.value.relatedFields.filter(id => !newFieldIds.includes(id))
-      return
-    }
-  }
-  fv.value.relatedFields = fieldIds
-  // 检查删除字段后是否需要提示删除空表
-  const removedFieldIds = fv.value.relatedFields.filter(id => !fieldIds.includes(id))
-  if (removedFieldIds.length > 0 && fv.value.relatedFields.length === 0 && fv.value.relatedTables.length > 0) {
-    try {
-      await ElMessageBox.confirm(
-        `所有字段已删除，是否同时删除关联的表？`,
-        '删除表',
-        { type: 'info' }
-      )
-      // 删除所有表
-      fv.value.relatedTables = []
-      fFieldOpts.value = []
-    } catch {
-      // 用户取消，不做操作
-    }
-  }
+  fv.value.relatedFields = [...fieldIds]
 }
 function addKw() { const v = kwInput.value.trim(); if (v && !fv.value.keywords.includes(v)) fv.value.keywords.push(v); kwInput.value = '' }
 function rmKw(i: number) { fv.value.keywords.splice(i, 1) }
 function validate(): string | null { if (!fv.value.projectId) return '请选择项目'; if (!fv.value.issueCode.trim()) return '请输入问题编号'; if (!fv.value.issueName.trim()) return '请输入问题名称'; if (!fv.value.issueDescription.trim()) return '请输入问题描述'; if (!fv.value.granularity) return '请选择颗粒度'; if (!fv.value.issueSource) return '请选择问题来源'; if (!fv.value.defectType) return '请选择缺陷类型'; if (!fv.value.frequency) return '请选择问题频率分类'; return null }
-async function doSave() { const err = validate(); if (err) { ElMessage.warning(err); return }; saving.value = true; try { const body: IssueFormData = { projectId: fv.value.projectId!, issueCode: fv.value.issueCode.trim(), issueName: fv.value.issueName.trim(), granularity: fv.value.granularity || undefined, systemCode: fv.value.systemCode || undefined, systemName: fv.value.systemName || undefined, issueSource: fv.value.issueSource || undefined, defectType: fv.value.defectType || undefined, issueDescription: fv.value.issueDescription.trim() || undefined, solution: fv.value.solution.trim() || undefined, meetingConclusion: fv.value.meetingConclusion.trim() || undefined, processingSteps: fv.value.processingSteps.trim() || undefined, businessScenario: fv.value.businessScenario.trim() || undefined, handler: fv.value.handler.trim() || undefined, responsibleParty: fv.value.responsibleParty.trim() || undefined, keywords: fv.value.keywords.length ? fv.value.keywords : undefined, relatedMeetingMinutes: fv.value.relatedMeetingMinutes.length ? fv.value.relatedMeetingMinutes : undefined, relatedMeetingMinuteNames: fv.value.relatedMeetingMinutes.length ? fv.value.relatedMeetingMinutes.map(id => fMeetingOpts.value.find(o => o.value === id)?.label ?? String(id)).join(', ') : undefined, frequency: fv.value.frequency || undefined, relatedTables: fv.value.relatedTables.length ? fv.value.relatedTables : undefined, relatedTableNames: fv.value.relatedTables.length ? fv.value.relatedTables.map(id => fTableOpts.value.find(o => o.value === id)?.label ?? String(id)).join(', ') : undefined, relatedFields: fv.value.relatedFields.length ? fv.value.relatedFields : undefined, relatedFieldNames: fv.value.relatedFields.length ? fv.value.relatedFields.map(id => fFieldOpts.value.find(o => o.value === id)?.label ?? String(id)).join(', ') : undefined }; if (editing.value && editId.value) { await updateIssue(editId.value, body); ElMessage.success('更新成功') } else { await createIssue(body); ElMessage.success('新增成功') }; drawer.value = false; loadList() } catch (e) { ElMessage.error(msg(e)) } finally { saving.value = false } }
+async function doSave() { const err = validate(); if (err) { ElMessage.warning(err); return }; saving.value = true; try { const body: IssueUpdateData = { projectId: fv.value.projectId!, issueCode: fv.value.issueCode.trim(), issueName: fv.value.issueName.trim(), granularity: fv.value.granularity || undefined, systemCode: fv.value.systemCode || undefined, systemName: fv.value.systemName || undefined, issueSource: fv.value.issueSource || undefined, defectType: fv.value.defectType || undefined, issueDescription: fv.value.issueDescription.trim() || undefined, solution: fv.value.solution.trim() || undefined, meetingConclusion: fv.value.meetingConclusion.trim() || undefined, processingSteps: fv.value.processingSteps.trim() || undefined, businessScenario: fv.value.businessScenario.trim() || undefined, handler: fv.value.handler.trim() || undefined, responsibleParty: fv.value.responsibleParty.trim() || undefined, keywords: fv.value.keywords.length ? fv.value.keywords : undefined, relatedMeetingMinutes: [...fv.value.relatedMeetingMinutes], relatedMeetingMinuteNames: fv.value.relatedMeetingMinutes.length ? fv.value.relatedMeetingMinutes.map(id => fMeetingOpts.value.find(o => o.value === id)?.label ?? String(id)).join(', ') : undefined, frequency: fv.value.frequency || undefined, relatedTables: [...fv.value.relatedTables], relatedTableNames: fv.value.relatedTables.length ? fv.value.relatedTables.map(id => fTableOpts.value.find(o => o.value === id)?.label ?? String(id)).join(', ') : undefined, relatedFields: [...fv.value.relatedFields], relatedFieldNames: fv.value.relatedFields.length ? fv.value.relatedFields.map(id => fFieldOpts.value.find(o => o.value === id)?.label ?? String(id)).join(', ') : undefined }; if (editing.value && editId.value) { await updateIssue(editId.value, body); ElMessage.success('更新成功') } else { await createIssue(body); ElMessage.success('新增成功') }; drawer.value = false; loadList() } catch (e) { ElMessage.error(msg(e)) } finally { saving.value = false } }
 async function doDelete() { if (!selectedIds.value.length) return; try { await ElMessageBox.confirm(`确认将选中的 ${selectedIds.value.length} 条问题移入回收站？`, '移入回收站', { type: 'warning' }); busy.value = true; await deleteIssues(selectedIds.value); ElMessage.success('已移入回收站'); loadList() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 async function doDeleteOne(item: IssueRecord) { try { await ElMessageBox.confirm(`确认将"${item.asset_name}"移入回收站？`, '移入回收站', { type: 'warning' }); busy.value = true; await deleteIssues([item.id]); ElMessage.success('已移入回收站'); loadList() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 async function doRestore() { if (!recSelected.value.length) return; try { await ElMessageBox.confirm(`确认恢复选中的 ${recSelected.value.length} 条问题？`, '恢复问题'); busy.value = true; await restoreIssues(recSelected.value); ElMessage.success('恢复成功'); loadRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
@@ -194,7 +193,7 @@ onMounted(async () => { await loadOpts(); loadList(); getIssueSystemOptions().th
           <el-table-column label="更新时间" width="150"><template #default="{ row }">{{ fmtDate(row.updated_at) }}</template></el-table-column>
           <el-table-column label="操作" width="140" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" size="small" @click="openEdit(row)"><el-icon><Edit /></el-icon>编辑</el-button>
+              <el-button link type="primary" size="small" :disabled="busy" @click="openEdit(row)"><el-icon><Edit /></el-icon>编辑</el-button>
               <el-button link type="danger" size="small" @click="doDeleteOne(row)"><el-icon><Delete /></el-icon>删除</el-button>
             </template>
           </el-table-column>

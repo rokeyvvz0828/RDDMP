@@ -176,7 +176,7 @@ public class ProjectComponentService {
     public void deleteComponent(long id, AuthUser user) {
         Map<String, Object> row = find("SELECT id, owner_id FROM dm_component WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId());
         permissions.requireWrite(user, ((Number) row.get("owner_id")).longValue());
-        if (exists("SELECT COUNT(*) FROM dm_asset WHERE tenant_id = ? AND component_id = ? AND deleted = 0", user.tenantId(), id)) throw new BusinessException(ErrorCode.CONFLICT, "Component has related assets");
+        if (hasContentAssets(id, user)) throw new BusinessException(ErrorCode.CONFLICT, "Component has related assets");
         jdbc.update("UPDATE dm_component SET deleted = 1 WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId()); audit(user, "COMPONENT_DELETE", "COMPONENT", id);
     }
 
@@ -198,6 +198,15 @@ public class ProjectComponentService {
     private Map<String, Object> find(String sql, Object... args) { try { return jdbc.queryForMap(sql, args); } catch (Exception ex) { throw new BusinessException(ErrorCode.BAD_REQUEST, "Record not found"); } }
     private void ensureProject(long id, AuthUser user) { if (!exists("SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId())) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project not found"); }
     private boolean exists(String sql, Object... args) { Integer count = jdbc.queryForObject(sql, Integer.class, args); return count != null && count > 0; }
+
+    /** 跨全部内容与结构化表统计组件占用，任一表有活动行即视为占用。 */
+    private boolean hasContentAssets(long componentId, AuthUser user) {
+        String where = "tenant_id = ? AND component_id = ? AND deleted = 0";
+        List<Object> args = new ArrayList<>();
+        for (int i = 0; i < ContentAssetTables.ALL_TABLES.size(); i++) { args.add(user.tenantId()); args.add(componentId); }
+        Integer total = jdbc.queryForObject("SELECT COALESCE(SUM(cnt), 0) FROM (" + ContentAssetTables.activeCountUnionSql(where, ContentAssetTables.ALL_TABLES) + ") x", Integer.class, args.toArray());
+        return total != null && total > 0;
+    }
     private void audit(AuthUser user, String op, String type, long id) { jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, operation_code, entity_type, entity_id) VALUES (?, ?, ?, ?, ?)", user.tenantId(), user.id(), op, type, id); }
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }
     private static void requireText(Map<String, Object> body, String key) { if (body.get(key) == null || String.valueOf(body.get(key)).trim().isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, key + " is required"); }

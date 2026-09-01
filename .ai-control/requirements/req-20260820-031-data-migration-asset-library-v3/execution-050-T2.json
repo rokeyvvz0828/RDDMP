@@ -1,0 +1,24 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "trigger": "继续 REQ-20260831-050 执行：V100 搬迁脚本与 Testcontainers 迁移测试在前一会话已写出，本会话补齐受控验证",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V100__data_migration_content_table_backfill.sql", "purpose": "断言保护先行（未登记类型/空结构化主体/错位附件/未映射关系组合非 0 即 SIGNAL 失败），再 INSERT...SELECT 复制 dm_asset、dm_meeting_attachment、dm_asset_relation 到新表并保留原 id，不删源表"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java", "purpose": "V98 基线造数的三个迁移用例：正向全量搬迁断言、未登记 asset_type 失败回退、未映射关系组合失败回退"}
+  ],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-data-migration -am test -Dtest=ContentAssetMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 16.58 s"},
+    {"command": "mvn -q -pl :ccb-data-migration -am test -Dtest=ContentAssetMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false (rerun for exit code confirmation)", "exit_code": 0, "salient_output": "exit=0"}
+  ],
+  "invariants_checked": [
+    {"invariant": "各 asset_type 行数与目标表一致且原 id 保留", "result": "pass", "evidence": "dm_plan 2 行（id 10001/10011）、mapping_doc/dependency/script/topic/release_drill/rule/parameter/intermediate_table 各 1 行，id 与 created_at/updated_at 逐字段断言"},
+    {"invariant": "会议附件排序/软删保留", "result": "pass", "evidence": "dm_content_attachment 中 MEETING 3 行原 id 迁入，90003 保持 deleted=1 与 deleted_at"},
+    {"invariant": "关系行映射含断言保护", "result": "pass", "evidence": "ISSUE→MEETING/TABLE/FIELD 原样、MEETING→ISSUE 反转归一（INSERT IGNORE 去重后共 4 行）、MEETING→SYSTEM 落 dm_meeting_system 2 行；未登记类型与未映射组合用例均触发 V100 失败且目标表零残留"},
+    {"invariant": "源表在 V100 后未被删除", "result": "pass", "evidence": "断言 dm_asset 11 行、dm_asset_relation 7 行仍在；断言过程 dm_v100_assert_zero 已清理"},
+    {"invariant": "无生产访问", "result": "pass", "evidence": "Testcontainers 一次性 mysql:8.4 容器，全部虚构数据"}
+  ],
+  "unresolved_items": [
+    "V100 与 V101 分发布版本执行的发布约束由 T5/T6 和上线流程承接"
+  ],
+  "recommended_next": "observe"
+}

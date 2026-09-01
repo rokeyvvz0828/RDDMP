@@ -1,0 +1,39 @@
+{
+  "task_id": "T6",
+  "status": "verified",
+  "trigger": "继续 REQ-20260831-050 执行：T1-T5 自动化收敛后进入 T6 全量验证（治理与范围检查、全量 mvn test、前端构建、运行时与浏览器验收）",
+  "changed_surfaces": [
+    {"path_or_resource": ".ai-control/requirements/req-20260831-050-data-migration-content-table-split/model.json", "purpose": "将前序会话创建的 control-definition.json 重命名为白名单合法名 model.json（check-ai-control-layout 的 requirementFilePattern 不含 control-definition），八项需求定义内容原样保留（objective/requirements/boundary/invariants/constraints/measurements/action_bounds/assumptions/unknowns）"},
+    {"path_or_resource": "docs/requirements/REQ-20260831-050-data-migration-content-table-split/codex-task-scope.yaml", "purpose": "修正 public_capability_change 申报：由 required=false/issue=null/old_behavior_preserved=false 改为 required=true/issue=REQ-20260831-050/old_behavior_preserved=true 并补 note。根因：moduleForFile 将 platform/infrastructure 下的追加式 Flyway 迁移（V99-V101）判定为 platform 模块变更，治理模型要求申报公共能力影响；此为收紧治理、未扩展 writable_paths/branch 权限"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/integration/DataMigrationAssetAttachmentAccessPolicy.java", "purpose": "修复真实启动暴露的 Spring Bean 循环依赖（T3 遗留）：attachmentAccessPolicyRegistry→DataMigrationAssetAttachmentAccessPolicy→ContentFileAssetService→AttachmentGateway(=AttachmentService)→registry。改为按旧设计直接注入 JdbcTemplate，跨 10 张内容表内联 UNION 定位 owner；businessType() 仍引用 ContentFileAssetService.BUSINESS_TYPE 静态常量（编译期引用，非 Bean 依赖）。单测用手工/桩装配不加载 boot 全上下文，故未捕获"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java", "purpose": "新增 md5UnionArgs(tenantId, md5)，与 md5UnionSql 的 2×FILE_TABLES 占位符严格配对（单一事实源）"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java", "purpose": "修复 check-md5/上传查重 500（T3 遗留）：md5Hits 与 assertMd5Available 对 md5UnionSql（14 个占位符）只传了 2 个参数导致 SQLException: No value specified for parameter 3；改用 md5UnionArgs 逐表重复传参；移除随之无用的 locateOwnerById"}
+  ],
+  "commands": [
+    {"command": "node scripts/check-governance.mjs", "exit_code": 0, "salient_output": "Governance check passed for 17 module(s)."},
+    {"command": "node scripts/check-repo-skill.mjs", "exit_code": 0, "salient_output": "Repository skill check passed."},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 92 migration(s) and 1 approved callback(s)"},
+    {"command": "node scripts/check-ai-control-layout.mjs", "exit_code": 1, "salient_output": "重命名 control-definition.json→model.json 后，grep 'req-20260831-050' 命中数=0（本任务违规已消除）；剩余失败全部属其他历史需求目录的 pre-existing 违规（030/032/017-031/018-032/019-033,034,035/027-049，含其自身 control-definition.json、iteration-*.json、modeling.json 等非白名单命名与 topic mismatch）"},
+    {"command": "node scripts/check-module-boundaries.mjs", "exit_code": 1, "salient_output": "grep 'data-migration' 命中数=0；违规全部为 pre-existing：platform/system ProjectService 引 attachment、business/requirement 引 workflow 私有包，均非本任务改动文件"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260831-050-.../codex-task-scope.yaml --base HEAD --head HEAD --working-tree", "exit_code": 1, "salient_output": "public capability 违规已消除（计数=0）；剩余违规逐行均属兄弟任务 REQ-20260820-031 的未提交产物（V94-V98、031 账本/文档，标记 ?? 未跟踪 / M），非本任务文件"},
+    {"command": "node 隔离校验（对本任务 54 个改动文件跑 matches/moduleForFile + public_capability 门）", "exit_code": 0, "salient_output": "my changed files: 54 | public capability detected: true | ALL MY FILES IN SCOPE + PUBLIC CAPABILITY OK"},
+    {"command": "mvn -q -fae -Dmaven.test.failure.ignore=true test", "exit_code": 0, "salient_output": "全 reactor 聚合 324 tests；唯一有问题套件 com.ccb.architecture.service.PhysicalSubsystemConcurrencyMySqlTest errors=2（该用例 target V36 但 DELETE arch_physical_subsystem，而该表由 V77 创建，属 pre-existing 缺陷，与本任务无关，非 data-migration 模块）；data-migration 模块全部通过"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit + vite build：✓ 2451 modules transformed, ✓ built in 11.89s"},
+        {"command": "./backend-dev.sh restart (修复循环依赖后真实启动)", "exit_code": 0, "salient_output": "Started CcbApplication in 3.684 seconds; Tomcat on 8080; 无循环引用异常；Flyway 启动时 flyway_schema_history 新增 99/100/101 均 success=1，information_schema 查旧表 dm_asset/dm_asset_relation/dm_meeting_attachment 计数=0，新内容表命中 7/7"},
+        {"command": "curl 接口冒烟（admin/admin123 登录后）", "exit_code": 0, "salient_output": "/data-migration/{plans,mappings,rules,parameters,dependencies,programs,topics,release-drills,structured/INTERMEDIATE_TABLE,recycle-bin} 均 200；/content/check-md5 修复后 200 {available:true}（修复前 500）；meetings/issues/reports 返回含记录；旧端点 /assets/PLAN 已不存在（NoResourceFoundException）"},
+        {"command": "Browser 子代理真实浏览器验收（登录 admin，桌面+移动视口遍历 11 菜单+统一回收站）", "exit_code": 0, "salient_output": "24 项路由检查 0 失败：无白屏/无错误 toast/无无限 loading/0 console error/0 个 4xx/5xx；plans 上传弹层、recycle-bin 9 类内容下拉、issues 编辑抽屉（含关联区）正常弹出；移动端 scrollWidth==clientWidth==386 无横向溢出。局限：WM 限制导致桌面实际 1472x893（≥1280）、移动用同源 iframe 390x844+DOM 量测；窗口中途隐藏未能补拍 3 张移动截图；parameters/recycle-bin 因无演示数据未实机演示表单/列体（界面本身正常）"}
+  ],
+  "invariants_checked": [
+    {"invariant": "本任务改动文件全部落在 codex-task-scope.yaml writable_paths 内", "result": "pass", "evidence": "54 个改动文件逐一 matches 通过；无 forbidden/read-only/outside 命中"},
+    {"invariant": "公共能力变更已按治理模型申报（追加式 Flyway 迁移落在 platform/infrastructure）", "result": "pass", "evidence": "public_capability_change 修正为 required=true，com.ccb.infrastructure.storage 契约未改，平台能力向后兼容"},
+    {"invariant": "Flyway 只追加、历史脚本未改", "result": "pass", "evidence": "check-flyway-migrations 92 通过；仅新增 V99-V101"},
+    {"invariant": "全量回归（data-migration 模块 + 跨模块）通过", "result": "pass_with_known_preexisting_exception", "evidence": "324 tests，唯一错误为兄弟/历史 pre-existing 的 architecture V36/V77 用例；本模块 37 用例全绿"}
+  ],
+  "unresolved_items": [
+    "上传提交（multipart + TEMP 附件 + assertMd5Available）因只读验收约束未在浏览器实机提交；但其依赖的 md5UnionSql 传参 bug 已修（check-md5 GET 200 与单元路径共用同一 helper），且上传弹层形态已验收",
+    "check-ai-control-layout 与 check-codex-scope 整仓退出码=1，全部由其他历史需求目录与兄弟 REQ-20260820-031 未提交产物导致，超出本任务 writable scope（AGENTS.md：其他任务账本只读），不予改动",
+    "浏览器验收发现演示数据中文乱码（dm_issue ISS-2026-001/002 及会议关联问题列 UTF-8→Latin-1）与枚举未本地化（MEETING_MINUTES/MANUAL/DATA_ISSUE），属存量演示数据/展示层，不在本任务内容拆表数据流（V100 只搬迁 dm_asset 系）内，列为遗留建议",
+    "工作分支为 feat/REQ-20260820-031-data-migration，与 scope 声明的 feat/REQ-20260831-050 不符；改动均未提交，需在提交/发布环节处理"
+  ],
+  "recommended_next": "converge"
+}

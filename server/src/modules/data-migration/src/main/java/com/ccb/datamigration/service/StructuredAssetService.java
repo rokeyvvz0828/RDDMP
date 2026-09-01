@@ -7,13 +7,14 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StructuredAssetService {
-    private static final Set<String> TYPES = Set.of("RULE","PARAMETER","TABLE_STRUCTURE","INTERMEDIATE_TABLE");
+    private static final Set<String> TYPES = Set.of("RULE","PARAMETER","INTERMEDIATE_TABLE");
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
     private final DataMigrationPermissionService permissions;
@@ -23,13 +24,14 @@ public class StructuredAssetService {
         this.permissions = permissions;
     }
     public List<Map<String,Object>> list(String type, String keyword, AuthUser user) {
-        if (!TYPES.contains(type)) throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported structured asset type");
-        String q = "SELECT id, project_id, component_id, asset_type, asset_code, asset_name, structured_data, owner_id, created_at, updated_at FROM dm_asset WHERE tenant_id = ? AND asset_type = ? AND deleted = 0 AND (asset_code LIKE ? OR asset_name LIKE ?) ORDER BY updated_at DESC, id DESC";
+        String table = table(type);
+        String q = "SELECT id, project_id, component_id, '" + type + "' AS asset_type, doc_code AS asset_code, doc_name AS asset_name, structured_data, owner_id, created_at, updated_at FROM " + table + " WHERE tenant_id = ? AND deleted = 0 AND (doc_code LIKE ? OR doc_name LIKE ?) ORDER BY updated_at DESC, id DESC";
         String k = "%" + Optional.ofNullable(keyword).orElse("") + "%";
-        return jdbc.queryForList(q, user.tenantId(), type, k, k);
+        return jdbc.queryForList(q, user.tenantId(), k, k);
     }
     public Map<String,Object> save(String type, Map<String,Object> body, AuthUser user) {
-        if (!TYPES.contains(type) || body.get("projectId") == null || body.get("assetCode") == null || body.get("assetName") == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "Structured asset fields are required");
+        String table = table(type);
+        if (body.get("projectId") == null || body.get("assetCode") == null || body.get("assetName") == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "Structured asset fields are required");
         long projectId;
         try { projectId = Long.parseLong(String.valueOf(body.get("projectId"))); }
         catch (NumberFormatException ex) { throw new BusinessException(ErrorCode.BAD_REQUEST, "projectId must be numeric"); }
@@ -39,15 +41,15 @@ public class StructuredAssetService {
         try { structuredData = objectMapper.writeValueAsString(body.getOrDefault("structuredData", Map.of())); }
         catch (JsonProcessingException ex) { throw new BusinessException(ErrorCode.BAD_REQUEST, "structuredData must be valid JSON"); }
         long id = System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000);
-        jdbc.update("INSERT INTO dm_asset (id, tenant_id, project_id, component_id, asset_type, asset_code, asset_name, structured_data, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, body.get("componentId"), type, body.get("assetCode"), body.get("assetName"), structuredData, user.id());
+        jdbc.update("INSERT INTO " + table + " (id, tenant_id, project_id, component_id, doc_code, doc_name, structured_data, owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, body.get("componentId"), body.get("assetCode"), body.get("assetName"), structuredData, user.id(), user.id(), user.id());
         jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, operation_code, entity_type, entity_id) VALUES (?, ?, 'STRUCTURED_CREATE', 'ASSET', ?)", user.tenantId(), user.id(), id);
-        return jdbc.queryForMap("SELECT id, project_id, component_id, asset_type, asset_code, asset_name, structured_data, owner_id, created_at, updated_at FROM dm_asset WHERE id = ? AND tenant_id = ?", id, user.tenantId());
+        return jdbc.queryForMap("SELECT id, project_id, component_id, '" + type + "' AS asset_type, doc_code AS asset_code, doc_name AS asset_name, structured_data, owner_id, created_at, updated_at FROM " + table + " WHERE id = ? AND tenant_id = ?", id, user.tenantId());
     }
 
     @Transactional
     public Map<String,Object> update(String type, long id, Map<String,Object> body, AuthUser user) {
-        validateType(type);
-        Map<String,Object> current = find(id, type, user, false);
+        String table = table(type);
+        Map<String,Object> current = find(id, table, user, false);
         permissions.requireWrite(user, ((Number) current.get("owner_id")).longValue());
         if (body.get("projectId") == null || body.get("assetCode") == null || body.get("assetName") == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Structured asset fields are required");
@@ -59,40 +61,103 @@ public class StructuredAssetService {
         if (componentId != null) ensureComponent(componentId, projectId, user);
         String code = text(body.get("assetCode"), "assetCode");
         String name = text(body.get("assetName"), "assetName");
-        if (exists("SELECT COUNT(*) FROM dm_asset WHERE tenant_id = ? AND project_id = ? AND asset_type = ? AND asset_code = ? AND deleted = 0 AND id <> ?", user.tenantId(), projectId, type, code, id)) {
+        if (exists("SELECT COUNT(*) FROM " + table + " WHERE tenant_id = ? AND project_id = ? AND doc_code = ? AND deleted = 0 AND id <> ?", user.tenantId(), projectId, code, id)) {
             throw new BusinessException(ErrorCode.CONFLICT, "Structured asset code already exists");
         }
         String structuredData = json(body.getOrDefault("structuredData", Map.of()));
-        jdbc.update("UPDATE dm_asset SET project_id = ?, component_id = ?, asset_code = ?, asset_name = ?, structured_data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND asset_type = ? AND deleted = 0", projectId, componentId, code, name, structuredData, id, user.tenantId(), type);
+        jdbc.update("UPDATE " + table + " SET project_id = ?, component_id = ?, doc_code = ?, doc_name = ?, structured_data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0", projectId, componentId, code, name, structuredData, id, user.tenantId());
         audit(user, "STRUCTURED_UPDATE", id);
-        return find(id, type, user, false);
+        return find(id, table, user, false);
     }
 
     @Transactional
     public void delete(Collection<Long> ids, String type, AuthUser user) {
-        validateType(type);
+        String table = table(type);
         for (Long id : ids == null ? List.<Long>of() : ids) {
-            Map<String,Object> row = find(id, type, user, false);
+            Map<String,Object> row = find(id, table, user, false);
             permissions.requireWrite(user, ((Number) row.get("owner_id")).longValue());
             if (hasRelation(id, user)) throw new BusinessException(ErrorCode.CONFLICT, "Structured asset has related records");
-            jdbc.update("UPDATE dm_asset SET deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND asset_type = ? AND deleted = 0", id, user.tenantId(), type);
+            jdbc.update("UPDATE " + table + " SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0", user.id(), id, user.tenantId());
             audit(user, "STRUCTURED_DELETE", id);
         }
     }
 
-    private void validateType(String type) {
-        if (!TYPES.contains(type)) throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported structured asset type");
+    /** 统一回收站：结构化表软删总数（SQL COUNT，不拉明细）。 */
+    public long countDeleted(String type, String keyword, AuthUser user) {
+        String table = table(type);
+        StringBuilder q = new StringBuilder("SELECT COUNT(*) FROM " + table + " WHERE tenant_id = ? AND deleted = 1");
+        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
+        appendRecycleBinKeyword(q, args, keyword);
+        Long total = jdbc.queryForObject(q.toString(), Long.class, args.toArray());
+        return total == null ? 0L : total;
     }
 
-    private Map<String,Object> find(long id, String type, AuthUser user, boolean deleted) {
-        List<Map<String,Object>> rows = jdbc.queryForList("SELECT id, project_id, component_id, asset_type, asset_code, asset_name, structured_data, owner_id, created_at, updated_at FROM dm_asset WHERE id = ? AND tenant_id = ? AND asset_type = ? AND deleted = ?", id, user.tenantId(), type, deleted ? 1 : 0);
+    /** 统一回收站原生分页：结构化表软删按业务编号（doc_code）升序、空值末尾，取前 {@code limit} 行。 */
+    public List<Map<String,Object>> listDeletedPage(String type, String keyword, int limit, AuthUser user) {
+        String table = table(type);
+        if (limit <= 0) return List.of();
+        StringBuilder q = new StringBuilder("SELECT id, project_id, component_id, '" + type + "' AS asset_type, doc_code AS asset_code, doc_name AS asset_name, structured_data, owner_id, created_at, updated_at, deleted_by, deleted_at FROM " + table + " WHERE tenant_id = ? AND deleted = 1");
+        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
+        appendRecycleBinKeyword(q, args, keyword);
+        q.append(" ORDER BY (doc_code IS NULL OR doc_code = ''), doc_code ASC, deleted_at DESC, id ASC LIMIT ?");
+        args.add(limit);
+        return jdbc.queryForList(q.toString(), args.toArray());
+    }
+
+    private static void appendRecycleBinKeyword(StringBuilder q, List<Object> args, String keyword) {
+        if (keyword != null && !keyword.isBlank()) {
+            q.append(" AND (doc_code LIKE ? OR doc_name LIKE ?)");
+            String k = "%" + keyword.trim() + "%";
+            args.add(k); args.add(k);
+        }
+    }
+
+    /** 统一回收站：结构化表恢复（管理员权限由回收站入口统一校验）。 */
+    @Transactional
+    public void restore(String type, Collection<Long> ids, AuthUser user) {
+        String table = table(type);
+        for (Long id : ids) {
+            try {
+                int changed = jdbc.update("UPDATE " + table + " SET deleted = 0, deleted_by = NULL, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+                if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "Structured asset state changed, please retry");
+            } catch (DataIntegrityViolationException ex) {
+                // 恢复后活动行 doc_code 与既有活动行冲突（uk_dm_*_active_code）：与统一方案同构，翻译为 CONFLICT(40900)。
+                throw new BusinessException(ErrorCode.CONFLICT, "内容编号在该项目下已存在，无法恢复");
+            }
+            audit(user, "STRUCTURED_RESTORE", id);
+        }
+    }
+
+    /** 统一回收站：结构化表彻底删除。 */
+    @Transactional
+    public void purge(String type, Collection<Long> ids, AuthUser user) {
+        String table = table(type);
+        for (Long id : ids) {
+            int changed = jdbc.update("DELETE FROM " + table + " WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+            if (changed != 1) throw new BusinessException(ErrorCode.BAD_REQUEST, "Structured asset not found in recycle bin");
+            audit(user, "STRUCTURED_PURGE", id);
+        }
+    }
+
+    private static String table(String type) {
+        if (type == null || !TYPES.contains(type)) throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported structured asset type");
+        return ContentAssetTables.tableFor(type);
+    }
+
+    private Map<String,Object> find(long id, String table, AuthUser user, boolean deleted) {
+        List<Map<String,Object>> rows = jdbc.queryForList("SELECT id, project_id, component_id, '" + ContentAssetTables.typeFor(table) + "' AS asset_type, doc_code AS asset_code, doc_name AS asset_name, structured_data, owner_id, created_at, updated_at FROM " + table + " WHERE id = ? AND tenant_id = ? AND deleted = ?", id, user.tenantId(), deleted ? 1 : 0);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "Structured asset not found");
         return rows.get(0);
     }
 
     private boolean hasRelation(long id, AuthUser user) {
-        String sql = "SELECT COUNT(*) FROM dm_asset WHERE tenant_id = ? AND deleted = 0 AND id <> ? AND (JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.tableStructureId')) = ? OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.intermediateTableId')) = ? OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.targetTableId')) = ? OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.sourceTableId')) = ?)";
-        return exists(sql, user.tenantId(), id, String.valueOf(id), String.valueOf(id), String.valueOf(id), String.valueOf(id));
+        String condition = "tenant_id = ? AND deleted = 0 AND id <> ? AND (JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.tableStructureId')) = ? OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.intermediateTableId')) = ? OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.targetTableId')) = ? OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.sourceTableId')) = ?)";
+        String sql = ContentAssetTables.activeCountUnionSql(condition, ContentAssetTables.STRUCTURED_TABLES);
+        Object[] args = new Object[]{user.tenantId(), id, String.valueOf(id), String.valueOf(id), String.valueOf(id), String.valueOf(id),
+                                     user.tenantId(), id, String.valueOf(id), String.valueOf(id), String.valueOf(id), String.valueOf(id),
+                                     user.tenantId(), id, String.valueOf(id), String.valueOf(id), String.valueOf(id), String.valueOf(id)};
+        List<Long> counts = jdbc.queryForList(sql, Long.class, args);
+        return counts.stream().mapToLong(Long::longValue).sum() > 0;
     }
 
     private void ensureProject(long id, AuthUser user) {

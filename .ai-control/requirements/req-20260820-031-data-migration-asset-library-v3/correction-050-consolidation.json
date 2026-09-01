@@ -1,0 +1,678 @@
+{
+  "record_type": "requirement_consolidation",
+  "schema_note": "REQ-20260831-050 文档+账本逻辑合并载体（方案2）：不改动 git 分支/提交，仅本地工作树，不 push、不开 PR、不改 origin。",
+  "merged_from": "REQ-20260831-050",
+  "merged_from_title": "数迁资产内容一菜单一表与公共关系表重组",
+  "merged_into": "REQ-20260820-031",
+  "merged_into_title": "数据迁移资产库 V3",
+  "control_prefix_of_record": "req-20260820-031-data-migration-asset-library-v3",
+  "consolidated_at": "2026-09-01T10:00:00+08:00",
+  "authorized_by": "需求 Owner（rokeyvvz0828）明确指示：050 本质是 031 的演进/优化，统一合并进 031，不作为平行需求保留。",
+  "rationale": [
+    "050 建立在 031 的数据模型之上继续演进：V100 从 031 建的 dm_asset 复制搬迁；V101 物理删除 031 引入的 dm_asset / dm_asset_relation(V92) / dm_meeting_attachment(V96)；V102 为 031 的数迁内容菜单补注册统一回收站菜单节点。",
+    "迁移号 V94-V98(031) → V99-V102(050) 是同一条连续演进线；工作树与开发分支(feat/REQ-20260820-031-data-migration)本就合一，050 从未产生独立提交。"
+  ],
+  "local_only_no_remote": true,
+  "git_actions_performed": "无（未 checkout 新分支、未 commit、未 push、未改 origin）。",
+  "evidence_files_carried_into_031_prefix": {
+    "execution": [
+      "execution-050-T1.json",
+      "execution-050-T2.json",
+      "execution-050-T3.json",
+      "execution-050-T4.json",
+      "execution-050-T5.json",
+      "execution-050-T6.json",
+      "execution-050-T7.json"
+    ],
+    "observation": [
+      "observation-050-T1-T2.json",
+      "observation-050-T3.json",
+      "observation-050-T4.json",
+      "observation-050-T5.json",
+      "observation-050-T6.json",
+      "observation-050-T7.json"
+    ],
+    "note": "以上 13 个文件由 050 账本逐字节复制（cmp 校验一致），内部 task_id 仍为原 T1-T7，provenance 由本记录与文件名 050 后缀标识。model/control-plan/state 因布局白名单不允许后缀、且与 031 同名文件语义/编号冲突，故在本记录内逐字快照保留。"
+  },
+  "design_baseline_registered_in_031": "docs/engineering-control/designs/2026-08-31-data-migration-content-table-split-design.md（原位保留，已登记进 031 scope.writable_paths 与需求正文）",
+  "migrations_absorbed": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V99__data_migration_content_tables.sql",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V100__data_migration_content_table_backfill.sql",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V101__data_migration_drop_legacy_asset_tables.sql",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V102__data_migration_recycle_bin_menu.sql"
+  ],
+  "supersedes": {
+    "where": "REQ-20260820-031 requirement.md 验收标准 #1",
+    "was": "回收站保留为受控路由能力，不单独计入正式菜单",
+    "now": "统一回收站经 V102 注册为 sys_menu 正式菜单（id 732，挂在 720 数迁资产内容管理下，sort 120），与其余内容菜单同级可见",
+    "introduced_by": "REQ-20260831-050 T7（收敛后用户反馈“看不到统一回收站菜单”而补）"
+  },
+  "preserved_source_state": {
+    "schema_version": 5,
+    "revision": 9,
+    "created_at": "2026-08-31T18:56:19+08:00",
+    "updated_at": "2026-09-01T09:20:00+08:00",
+    "mode": "standard",
+    "workflow": "compact",
+    "phase": "converged",
+    "phase_history": [
+      {
+        "from": null,
+        "to": "defining",
+        "evidence": "初始化 compact 工作流，需求 REQ-20260831-050 已由 Owner 确认方向并置为 ready",
+        "recorded_at": "2026-08-31T18:56:19+08:00"
+      },
+      {
+        "from": "defining",
+        "to": "planning",
+        "evidence": "八项需求均有传感器与受控动作，control-plan 覆盖 V99-V101、后端、前端与验收六个任务",
+        "recorded_at": "2026-08-31T18:58:00+08:00"
+      },
+      {
+        "from": "planning",
+        "to": "executing",
+        "evidence": "planning gate passed：任务依赖无环、写范围与 codex-task-scope.yaml writable_paths 一致；V99/V100 与迁移测试产物已存在，本会话完成 T1/T2 受控验证（3 用例通过，exit=0）",
+        "recorded_at": "2026-08-31T19:50:00+08:00"
+      },
+      {
+        "from": "executing",
+        "to": "converged",
+        "evidence": "T1-T6 全部 verified：治理/范围（本任务 54 文件）通过、全量 mvn test(324，唯一失败为无关 pre-existing 架构用例) 与 npm build 通过、重启后端真实加载 T3 代码并应用 V99-V101（旧表计数=0）、修复启动循环依赖与 check-md5/上传 500 两处运行期缺陷、真实浏览器 11 菜单+统一回收站桌面/移动 24 项 0 异常。详见 observation-T6.json（含局限性说明）",
+        "recorded_at": "2026-08-31T21:46:00+08:00"
+      },
+      {
+        "from": "converged",
+        "to": "executing",
+        "evidence": "收敛后用户反馈：侧边栏看不到「统一回收站」菜单。定位为 R5 可发现性缺陷——T4 只注册前端路由，未在 sys_menu 建节点，动态侧边栏无此项；T6 浏览器验收经 URL 直达回收站页、未验菜单项本身故漏检。回到执行纠正",
+        "recorded_at": "2026-09-01T09:10:00+08:00"
+      },
+      {
+        "from": "executing",
+        "to": "converged",
+        "evidence": "T7 verified：新增追加式迁移 V102 幂等注册统一回收站 sys_menu(732, parent 720, sort 120)+查看权限(7321)+管理员授权(role 1)；重启后端应用至 v102，DB 落库与 admin /api/auth/routes 动态树均含 /data-migration/content/recycle-bin，与其他 11 菜单同一渲染机制；scope 已先纳入 V102。侧边栏肉眼可见性由用户在浏览器自行确认。详见 execution-T7/observation-T7",
+        "recorded_at": "2026-09-01T09:20:00+08:00"
+      }
+    ],
+    "objective": "数迁资产内容管理 11 个二级菜单各自落独立数据库表，附件与问题关联收敛为两张公共关系表，存量数据无损迁移后物理删除 dm_asset / dm_asset_relation / dm_meeting_attachment。",
+    "requirement_ref": {
+      "id": "REQ-20260831-050",
+      "document": "docs/requirements/REQ-20260831-050-data-migration-content-table-split/requirement.md",
+      "scope": "docs/requirements/REQ-20260831-050-data-migration-content-table-split/codex-task-scope.yaml",
+      "control_prefix": "req-20260831-050-data-migration-content-table-split"
+    },
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "V99 建表：9 张内容表 + dm_content_attachment + dm_issue_relation",
+        "requirements": [
+          "R1"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "T2",
+        "goal": "V100 复制搬迁与 Testcontainers 迁移测试",
+        "requirements": [
+          "R2"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "T3",
+        "goal": "后端切换：新服务、新资源端点、统一回收站、MD5 跨表查重",
+        "requirements": [
+          "R3",
+          "R4",
+          "R5",
+          "R6"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "T4",
+        "goal": "前端切换：API 客户端与组件端点映射",
+        "requirements": [
+          "R3",
+          "R5",
+          "R8"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "T5",
+        "goal": "V101 删旧表脚本与测试",
+        "requirements": [
+          "R7"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "T6",
+        "goal": "全量验证与浏览器验收",
+        "requirements": [
+          "R3",
+          "R8"
+        ],
+        "status": "verified",
+        "note": "治理/范围/全量 mvn test(324)/前端构建/真实启动(修复循环依赖+md5传参)/浏览器 11菜单+回收站 均通过；详见 execution-T6/observation-T6"
+      },
+      {
+        "id": "T7",
+        "goal": "纠正 R5 统一回收站菜单不可见：V102 注册 sys_menu 节点+权限+管理员授权",
+        "requirements": [
+          "R5"
+        ],
+        "status": "verified",
+        "note": "收敛后用户反馈发现；V102 应用至 v102，DB+admin /auth/routes 确认回收站进入侧边栏数据源；肉眼可见性由用户浏览器确认；详见 execution-T7/observation-T7"
+      }
+    ],
+    "feedback": [],
+    "samples": []
+  },
+  "preserved_source_model": {
+    "definition_revision": "definition-1",
+    "objective": "数迁资产内容管理 11 个二级菜单各自落独立数据库表，附件与问题关联收敛为两张公共关系表，存量数据无损迁移后物理删除 dm_asset / dm_asset_relation / dm_meeting_attachment。",
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "V99 执行后 11 张新表存在，含生成列活动唯一键、租户前缀索引和中文注释。",
+        "acceptance": [
+          "9 张内容表 + dm_content_attachment + dm_issue_relation 全部创建",
+          "活动唯一键用生成列实现（deleted=0 取值否则 NULL）",
+          "索引以 tenant_id 为前缀",
+          "聚焦后端测试通过"
+        ],
+        "priority": "must",
+        "source": "Owner 确认方向",
+        "counterexample": [
+          "旧表直接改名复用",
+          "唯一键把 deleted 直接放入键中"
+        ]
+      },
+      {
+        "id": "R2",
+        "statement": "V100 搬迁保留原 id 且行数一致，无未映射行。",
+        "acceptance": [
+          "各 asset_type 行数与目标表一致",
+          "资产原 id 保留以维持 att_file 绑定",
+          "dm_meeting_attachment 排序与软删状态原样迁入",
+          "关系行映射数量一致且有断言保护"
+        ],
+        "priority": "must",
+        "source": "Owner 确认方向",
+        "counterexample": [
+          "搬迁重新生成 id 导致附件绑定失效",
+          "MEETING→SYSTEM 行被静默丢弃"
+        ]
+      },
+      {
+        "id": "R3",
+        "statement": "11 个内容菜单的列表、上传、下载/预览、编辑、软删、回收站恢复与彻底删除在接口层全部通过。",
+        "acceptance": [
+          "新资源端点覆盖文件型 6 类 + 规则 + 参数",
+          "报告/会议/问题端点行为不变",
+          "权限与租户隔离行为不变",
+          "写操作继续记录审计"
+        ],
+        "priority": "must",
+        "source": "需求范围",
+        "counterexample": [
+          "旧 /assets/{type} 端点残留可用",
+          "跨租户可读取他租户内容"
+        ]
+      },
+      {
+        "id": "R4",
+        "statement": "会议多附件与问题关联切换到公共关系表后行为一致。",
+        "acceptance": [
+          "会议附件上传/删除/附件回收站走 dm_content_attachment",
+          "问题关联会议/表/字段走 dm_issue_relation",
+          "会议关联系统与问题经 dm_issue_relation 读写"
+        ],
+        "priority": "must",
+        "source": "需求范围",
+        "counterexample": [
+          "会议附件排序丢失",
+          "问题关联目标表字段级联清理失效"
+        ]
+      },
+      {
+        "id": "R5",
+        "statement": "回收站页面展示全部内容类型的软删记录并可分类恢复与彻底删除。",
+        "acceptance": [
+          "文件型 6 类 + 规则 + 参数 + 报告进入统一回收站",
+          "附件级回收站保留在公共附件表语义下",
+          "恢复与彻底删除带审计"
+        ],
+        "priority": "must",
+        "source": "需求范围",
+        "counterexample": [
+          "回收站仍仅覆盖汇报材料"
+        ]
+      },
+      {
+        "id": "R6",
+        "statement": "MD5 查重跨 6 张文件表生效。",
+        "acceptance": [
+          "同一租户同文件在任一文件型菜单重复上传被拦截",
+          "查重响应包含命中来源表信息"
+        ],
+        "priority": "must",
+        "source": "需求范围",
+        "counterexample": [
+          "拆表后跨菜单重复文件无法拦截"
+        ]
+      },
+      {
+        "id": "R7",
+        "statement": "V101 执行后 dm_asset、dm_asset_relation、dm_meeting_attachment 物理删除且全量构建通过。",
+        "acceptance": [
+          "三张旧表不存在",
+          "残留行校验为 0 后才删表",
+          "mvn test 与前端构建通过"
+        ],
+        "priority": "must",
+        "source": "Owner 确认方向",
+        "counterexample": [
+          "未校验残留直接删表",
+          "旧表保留成为死表"
+        ]
+      },
+      {
+        "id": "R8",
+        "statement": "管理员在桌面与移动视口完成 11 个菜单上传→预览→软删→回收站恢复路径。",
+        "acceptance": [
+          "1280x800 与 390x844 验收",
+          "无控制台错误、无遮挡溢出",
+          "加载/空/失败/提交中状态正常"
+        ],
+        "priority": "must",
+        "source": "需求范围",
+        "counterexample": [
+          "移动端上传入口不可达"
+        ]
+      }
+    ],
+    "boundary": {
+      "inside": [
+        "数迁资产内容管理 11 个菜单的后端服务与接口",
+        "回收站聚合",
+        "db/migration V99-V101",
+        "web/src/modules/data-migration 与 api/data-migration.ts"
+      ],
+      "environment": [
+        "平台 AttachmentGateway 与 att_file",
+        "pm_project / dm_component / arch_physical_subsystem / sys_user 只读投影",
+        "菜单与权限种子",
+        "本地 MySQL/MinIO"
+      ]
+    },
+    "invariants": [
+      "菜单、权限码、角色绑定不变",
+      "平台模块代码不改，仅复用公开包",
+      "搬迁保留资产原 id",
+      "不接触生产数据，测试数据全部虚构",
+      "不覆盖工作区无关改动"
+    ],
+    "constraints": [
+      "Flyway 只追加，V100 与 V101 分发布版本",
+      "保持 com.ccb 包名与现有 Maven artifact",
+      "JdbcTemplate 直写风格保持一致",
+      "破坏性 API 变更需前后端同版本发布"
+    ],
+    "measurements": [
+      {
+        "requirement_id": "R1",
+        "sensor": "Flyway 启动执行 + information_schema 断言 + 聚焦测试",
+        "expected": "11 张新表结构与索引符合设计",
+        "blind_spots": [
+          "MySQL 版本差异仅在 8.4 容器验证"
+        ]
+      },
+      {
+        "requirement_id": "R2",
+        "sensor": "Testcontainers V98 基线造数逐版本迁移断言",
+        "expected": "行数/id/排序/关系映射全部一致",
+        "blind_spots": [
+          "生产存量分布未知，断言覆盖构造数据形态"
+        ]
+      },
+      {
+        "requirement_id": "R3",
+        "sensor": "接口层测试与权限用例",
+        "expected": "11 菜单 CRUD/上传/回收站通过且租户隔离",
+        "blind_spots": [
+          "并发上传未压测"
+        ]
+      },
+      {
+        "requirement_id": "R4",
+        "sensor": "会议附件与问题关联接口用例",
+        "expected": "行为与切换前一致",
+        "blind_spots": [
+          "历史附件文件名展示依赖迁移字段完整"
+        ]
+      },
+      {
+        "requirement_id": "R5",
+        "sensor": "回收站聚合端点用例",
+        "expected": "全类型可见、可恢复、可彻底删除",
+        "blind_spots": [
+          "附件级回收站与实体级回收站交互边界"
+        ]
+      },
+      {
+        "requirement_id": "R6",
+        "sensor": "check-md5 跨表用例",
+        "expected": "重复文件被拦截",
+        "blind_spots": [
+          "超大文件哈希性能"
+        ]
+      },
+      {
+        "requirement_id": "R7",
+        "sensor": "Testcontainers V101 断言 + mvn test + 前端构建",
+        "expected": "旧表删除且无引用残留",
+        "blind_spots": [
+          "V101 需观察期后发布，本次仅验证脚本行为"
+        ]
+      },
+      {
+        "requirement_id": "R8",
+        "sensor": "真实浏览器 1280x800 与 390x844 操作",
+        "expected": "11 菜单全路径可用无异常",
+        "blind_spots": [
+          "未覆盖全部移动内核"
+        ]
+      }
+    ],
+    "action_bounds": [
+      {
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R7"
+        ],
+        "target": "db/migration V99-V101",
+        "authority": "新增三个迁移脚本",
+        "impact_limit": "dm_ 前缀表",
+        "rollback": "回滚应用版本；V101 后依赖备份恢复"
+      },
+      {
+        "requirement_ids": [
+          "R3",
+          "R4",
+          "R5",
+          "R6"
+        ],
+        "target": "com.ccb.datamigration service/web",
+        "authority": "新增服务与端点、切换关系与附件读写、移除旧资产端点",
+        "impact_limit": "数据迁移模块接口",
+        "rollback": "还原服务与控制器"
+      },
+      {
+        "requirement_ids": [
+          "R3",
+          "R5",
+          "R8"
+        ],
+        "target": "web/src/api/data-migration.ts 与 data-migration 模块组件",
+        "authority": "API 客户端与组件端点映射切换",
+        "impact_limit": "数据迁移模块页面",
+        "rollback": "还原前端改动"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "当前存量极小（dm_asset 1 行、dm_asset_relation 0 行、会议附件 0 行），但迁移脚本按生产标准设计并带断言保护",
+        "evidence": "REQ-20260820-031 database-schema-and-relations.md 本地脱敏统计",
+        "falsifier": "迁移测试出现未映射行或断言失败"
+      }
+    ],
+    "unknowns": [
+      {
+        "text": "TABLE_STRUCTURE/INTERMEDIATE_TABLE 在 StructuredAssetService 是否有真实写入路径",
+        "owner": "设计定稿时核实",
+        "blocking": false
+      }
+    ],
+    "status": "ready"
+  },
+  "preserved_source_control_plan": {
+    "definition_revision": "definition-1",
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "V99 建表：9 张内容表 + dm_content_attachment + dm_issue_relation",
+        "requirement_ids": [
+          "R1"
+        ],
+        "prerequisites": [],
+        "write_scope": [
+          "server/src/platform/infrastructure/src/main/resources/db/migration/V99__data_migration_content_tables.sql"
+        ],
+        "checks": [
+          "Flyway 启动执行成功",
+          "生成列活动唯一键与租户前缀索引存在",
+          "中文注释完整"
+        ],
+        "evidence_required": [
+          "迁移脚本内容",
+          "启动或迁移测试退出码"
+        ],
+        "rollback": "删除 V99 脚本（未发布前）",
+        "stop_conditions": [
+          "生成列语法在 MySQL 8.4 容器不兼容"
+        ],
+        "escalation_conditions": [
+          "表结构设计需偏离已批准计划"
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "V100 复制搬迁与 Testcontainers 迁移测试",
+        "requirement_ids": [
+          "R2"
+        ],
+        "prerequisites": [
+          "T1"
+        ],
+        "write_scope": [
+          "server/src/platform/infrastructure/src/main/resources/db/migration/V100__data_migration_content_table_backfill.sql",
+          "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java"
+        ],
+        "checks": [
+          "各 asset_type 行数一致",
+          "原 id 保留",
+          "会议附件排序/软删保留",
+          "关系行映射含断言保护",
+          "未映射行为 0"
+        ],
+        "evidence_required": [
+          "迁移测试退出码与断言输出"
+        ],
+        "rollback": "删除 V100 脚本（未发布前）",
+        "stop_conditions": [
+          "MEETING→SYSTEM 行无法锚定问题",
+          "出现未映射多态类型"
+        ],
+        "escalation_conditions": [
+          "映射规则需变更，回设计评审"
+        ]
+      },
+      {
+        "id": "T3",
+        "goal": "后端切换：新服务、新资源端点、统一回收站、MD5 跨表查重",
+        "requirement_ids": [
+          "R3",
+          "R4",
+          "R5",
+          "R6"
+        ],
+        "prerequisites": [
+          "T2"
+        ],
+        "write_scope": [
+          "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/**",
+          "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/**",
+          "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**"
+        ],
+        "checks": [
+          "聚焦测试通过",
+          "新端点权限与租户校验",
+          "回收站聚合全类型",
+          "审计写入保持"
+        ],
+        "evidence_required": [
+          "mvn -pl :ccb-data-migration -am test 退出码",
+          "关键用例清单"
+        ],
+        "rollback": "还原服务与控制器改动",
+        "stop_conditions": [
+          "权限模型无法在新表上等价实现"
+        ],
+        "escalation_conditions": [
+          "需要修改平台 attachment 模块"
+        ]
+      },
+      {
+        "id": "T4",
+        "goal": "前端切换：API 客户端与组件端点映射",
+        "requirement_ids": [
+          "R3",
+          "R5",
+          "R8"
+        ],
+        "prerequisites": [
+          "T3"
+        ],
+        "write_scope": [
+          "web/src/api/data-migration.ts",
+          "web/src/modules/data-migration/**"
+        ],
+        "checks": [
+          "npm --prefix web run build 通过",
+          "AssetListView/StructuredListView 端点映射",
+          "回收站页接统一端点"
+        ],
+        "evidence_required": [
+          "前端构建退出码"
+        ],
+        "rollback": "还原前端改动",
+        "stop_conditions": [
+          "IntermediateTablesPage 共用组件被破坏"
+        ],
+        "escalation_conditions": [
+          "需要改公共 ui 组件"
+        ]
+      },
+      {
+        "id": "T5",
+        "goal": "V101 删旧表脚本与测试",
+        "requirement_ids": [
+          "R7"
+        ],
+        "prerequisites": [
+          "T2"
+        ],
+        "write_scope": [
+          "server/src/platform/infrastructure/src/main/resources/db/migration/V101__data_migration_drop_legacy_asset_tables.sql"
+        ],
+        "checks": [
+          "残留校验为 0 才删表",
+          "三张旧表删除",
+          "全量测试通过"
+        ],
+        "evidence_required": [
+          "迁移测试退出码",
+          "mvn test 退出码"
+        ],
+        "rollback": "删除 V101 脚本（未发布前）",
+        "stop_conditions": [
+          "TABLE_STRUCTURE/INTERMEDIATE_TABLE 仍有活跃引用"
+        ],
+        "escalation_conditions": [
+          "发现未登记的旧表依赖"
+        ]
+      },
+      {
+        "id": "T6",
+        "goal": "全量验证与浏览器验收",
+        "requirement_ids": [
+          "R3",
+          "R8"
+        ],
+        "prerequisites": [
+          "T3",
+          "T4",
+          "T5"
+        ],
+        "write_scope": [],
+        "checks": [
+          "mvn test",
+          "npm build",
+          "治理与范围检查",
+          "本地运行时健康",
+          "11 菜单浏览器路径（1280x800、390x844）"
+        ],
+        "evidence_required": [
+          "各命令退出码",
+          "浏览器验收记录"
+        ],
+        "rollback": "无需回滚",
+        "stop_conditions": [
+          "无可用登录环境"
+        ],
+        "escalation_conditions": [
+          "发现越权或数据丢失"
+        ]
+      }
+    ],
+    "dependencies": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "reason": "搬迁建立在目标表存在后"
+      },
+      {
+        "from": "T2",
+        "to": "T3",
+        "reason": "后端切换建立在数据就位后"
+      },
+      {
+        "from": "T3",
+        "to": "T4",
+        "reason": "前端契约跟随后端端点"
+      },
+      {
+        "from": "T2",
+        "to": "T5",
+        "reason": "删旧表建立在搬迁验证后"
+      },
+      {
+        "from": "T4",
+        "to": "T6",
+        "reason": "验收需要前后端都切换完成"
+      }
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T3",
+          "T4",
+          "T5"
+        ],
+        "check": "mvn test、npm build、治理检查、本地启动与浏览器验收"
+      }
+    ],
+    "status": "ready"
+  },
+  "preserved_source_requirement_document": "---\nid: REQ-20260831-050\nstatus: ready\nowner: rokeyvvz0828\nmodule: business/data-migration\n---\n\n# 数迁资产内容一菜单一表与公共关系表重组\n\n## 业务目标\n\n数据迁移模块 Owner 决定对「数迁资产内容管理」做结构优化：每个二级菜单拥有独立数据库表，替代当前 11 种内容类型共用 `dm_asset`（靠 `asset_type` 分区）的过渡模型，方便按菜单维护字段、索引和生命周期；同时把分散的附件关联和问题关联收敛为两张公共关系表。可观察的成功结果：11 个内容菜单的数据各自落在独立表中，附件管理统一走公共附件关系表，问题关联统一走公共问题关系表，`dm_asset`/`dm_asset_relation`/`dm_meeting_attachment` 物理删除，全部存量数据无丢失，11 个菜单的上传、预览、编辑、回收站、关联功能在桌面和移动端保持可用。\n\n## 范围\n\n### 本次实施\n\n- 新建 9 张内容表：`dm_plan`、`dm_mapping_doc`、`dm_dependency`、`dm_script`、`dm_topic`、`dm_release_drill`、`dm_report`、`dm_rule`、`dm_parameter`（`dm_meeting`、`dm_issue` 已独立，保留不动）。\n- 新建 2 张公共关系表：`dm_content_attachment`（公共附件关系，统一收编含 `dm_meeting_attachment`）、`dm_issue_relation`（公共问题关系）。\n- Flyway V99（建表）→ V100（复制搬迁、保留原 id）→ V101（校验后删旧表），配套 Testcontainers 迁移测试。\n- 后端改造：`ContentFileAssetService`（表名参数化承接文件型资产）、`ReportService` 改指 `dm_report`、`StructuredAssetService` 收窄到 RULE/PARAMETER、`ContentAttachmentService`（承接会议附件逻辑）、`IssueService`/`MeetingService` 关系读写改指 `dm_issue_relation`；新资源 API 路径 `/api/data-migration/{plans|mappings|dependencies|programs|topics|release-drills|rules|parameters}`，移除 `/assets/{type}`；回收站聚合端点覆盖全部内容类型；MD5 查重跨文件表。\n- 前端切换：`api/data-migration.ts` 新资源函数、`AssetListView` type→endpoint 映射、`StructuredListView` 规则/参数切新端点、`RecycleBinPage` 接统一回收站、上传链路契约不变。\n- 新需求目录、任务范围、控制账本与设计基线文档。\n\n### 本次不实施\n\n- 基础资料管理（系统/组件清单、目标表/中间表结构）表结构不动；`TABLE_STRUCTURE/INTERMEDIATE_TABLE` 类型在 `StructuredAssetService` 的真实使用度核实后随旧表处置，不新增基础资料表。\n- 菜单、权限码、角色绑定、看板快照、操作审计表结构不变。\n- 平台模块（attachment/security/infrastructure 等）代码不改，仅复用公开包。\n- 工作流、AI、其他业务模块不涉及。\n\n## 现状与规则\n\n- 当前入口、流程和数据来源：11 个内容菜单位于「数迁资产内容管理」目录（路由 `/data-migration/content/*`）；6 个文件型菜单共用 `AssetListView` + `AssetService`（`dm_asset` 按 `asset_type` 分区）；规则/参数共用 `StructuredListView` + `StructuredAssetService`；汇报材料、会议纪要、问题清单各自独立服务。\n- 业务规则和边界：文件型资产上传链路为前端算 MD5 → `check-md5` 查重 → 公共附件上传 → 业务保存；回收站为软删（delete/restore/purge）；会议附件有排序和附件级回收站；问题关联支持会议/目标表/字段，会议关联支持系统/问题。\n- 角色、权限、数据范围和审计：沿用现有数据迁移菜单权限与 `DataMigrationPermissionService`；写操作继续写 `dm_operation_log`。\n- 外部系统、附件或敏感信息：附件经平台 `AttachmentGateway` 绑定 `att_file`（业务类型常量 `DATA_MIGRATION_ASSET`/`DATA_MIGRATION_MEETING` 保留，不动存量绑定）；不接触生产数据，测试数据全部虚构。\n\n## 接口与数据\n\n- API/事件契约：新增按资源路径（见范围）；`/reports`、`/meetings`、`/issues` 路径不变；`/assets/{type}` 与旧 `/recycle-bin` 端点由聚合端点替代。破坏性变更，前后端同版本发布。\n- 数据 Owner：business/data-migration（rokeyvvz0828）。\n- 数据库迁移与存量兼容：V99 纯 DDL；V100 `INSERT...SELECT` 复制搬迁并保留原 id（公共附件 businessKey=资产 id，保住 `att_file` 存量绑定），`dm_meeting_attachment` 行原样迁入 `dm_content_attachment`，`dm_asset_relation` 行按映射规则迁入 `dm_issue_relation`（MEETING→ISSUE 反转、MEETING→SYSTEM 以关联问题为锚点并加行数断言保护）；V101 校验残留为 0 后删源表。V100 与 V101 分发布版本执行，保留回退窗口。\n- 脱敏输入输出示例：本需求文档与迁移测试只使用虚构数据。\n\n## 验收标准\n\n1. V99 执行后 11 张新表存在，含生成列活动唯一键、租户前缀索引和中文注释；`mvn -pl :ccb-data-migration -am test` 通过。\n2. V100 迁移测试（Testcontainers，V98 基线造数）断言：各 `asset_type` 行数与目标表一致、原 id 保留、`dm_meeting_attachment` 排序与软删状态保留、关系行映射数量一致且无未映射行。\n3. 11 个内容菜单的列表、上传、下载/预览、编辑、软删、回收站恢复与彻底删除在接口层全部通过，权限与租户隔离行为不变。\n4. 会议纪要多附件（上传、删除、附件回收站）切换到公共附件表后行为一致；问题清单关联会议/表/字段、会议关联系统/问题在 `dm_issue_relation` 上读写正确。\n5. 回收站页面展示全部内容类型的软删记录，可分类恢复与彻底删除。\n6. MD5 查重跨 6 张文件表生效：同一租户同文件重复上传任一文件型菜单被拦截。\n7. V101 执行后 `dm_asset`、`dm_asset_relation`、`dm_meeting_attachment` 不存在，`mvn test` 与 `npm --prefix web run build` 通过。\n8. 浏览器验收：管理员在 1280x800 与 390x844 完成 11 个菜单上传→预览→软删→回收站恢复路径，无控制台错误、无遮挡溢出。\n\n## 测试与发布\n\n- 必须执行的测试：`mvn -pl :ccb-data-migration -am test`（含新增迁移测试）、`mvn test`、`npm --prefix web run build`、`node scripts/check-all-governance.mjs`、任务范围检查、本地运行时健康检查、真实浏览器验收。\n- 上线验证：发布 A（V99+V100+后端前端切换）后逐菜单验证上传/回收站/关联；观察期后发布 B（V101 删旧表），执行前全量备份。\n- 回退或补偿：V99/V100 纯追加，回滚应用版本即可恢复旧行为；V101 前强制备份，回退依赖数据库备份恢复（Flyway 只追加，不提供反向脚本）。\n- 风险与人工复核人：数据库迁移与破坏性 API 变更属高风险，Owner rokeyvvz0828 专项复核；关键风险为搬迁保留 id、关系行映射断言、MD5 跨表查重语义、TABLE_STRUCTURE/INTERMEDIATE_TABLE 边界。\n\n需求已由模块 Owner 于 2026-08-31 确认方向（全部独立成表、公共附件表统一收编、旧表迁移后删除），状态为 ready。\n",
+  "preserved_source_scope_document": "{\n  \"schema_version\": \"1.0\",\n  \"requirement\": {\n    \"id\": \"REQ-20260831-050\",\n    \"status\": \"ready\",\n    \"document\": \"docs/requirements/REQ-20260831-050-data-migration-content-table-split/requirement.md\",\n    \"codex_allowed\": true\n  },\n  \"assignment\": {\n    \"developer\": \"codex\",\n    \"module\": \"business/data-migration\",\n    \"module_owner\": \"rokeyvvz0828\",\n    \"branch\": \"feat/REQ-20260831-050-data-migration-content-table-split\"\n  },\n  \"codex\": {\n    \"production_access\": false,\n    \"contains_confidential_information\": false,\n    \"allowed_tools\": [\"local-shell\", \"codex\", \"browser\"]\n  },\n  \"scope\": {\n    \"writable_paths\": [\n      \"server/src/modules/data-migration/**\",\n      \"server/src/platform/infrastructure/src/main/resources/db/migration/V99__data_migration_content_tables.sql\",\n      \"server/src/platform/infrastructure/src/main/resources/db/migration/V100__data_migration_content_table_backfill.sql\",\n      \"server/src/platform/infrastructure/src/main/resources/db/migration/V101__data_migration_drop_legacy_asset_tables.sql\",\n      \"server/src/platform/infrastructure/src/main/resources/db/migration/V102__data_migration_recycle_bin_menu.sql\",\n      \"web/src/api/data-migration.ts\",\n      \"web/src/modules/data-migration/**\",\n      \"docs/requirements/REQ-20260831-050-data-migration-content-table-split/**\",\n      \"docs/engineering-control/designs/2026-08-31-data-migration-content-table-split-design.md\",\n      \"docs/engineering-control/plans/2026-08-31-data-migration-content-table-split-implementation-plan.md\",\n      \".ai-control/requirements/req-20260831-050-data-migration-content-table-split/*.json\"\n    ],\n    \"read_only_paths\": [\n      \"server/src/shared/common/**\",\n      \"server/src/platform/security/**\",\n      \"server/src/platform/system/**\",\n      \"server/src/platform/workflow/**\",\n      \"server/src/platform/file-preview/**\",\n      \"server/src/platform/attachment/**\",\n      \"server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/storage/**\",\n      \"web/src/components/ui/**\",\n      \"web/src/modules/delivery-showcase/**\",\n      \"web/src/api/http.ts\",\n      \"web/src/api/attachments.ts\",\n      \"web/src/stores/**\",\n      \"design-h5.md\",\n      \"governance/modules.yaml\",\n      \"docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/**\"\n    ],\n    \"forbidden_paths\": [\n      \".env\",\n      \"**/*.pem\",\n      \"**/*.key\",\n      \"**/target/**\",\n      \"**/node_modules/**\",\n      \"mock/mock-data.json\",\n      \".ai-control/original/**\"\n    ]\n  },\n  \"public_capability_change\": {\n    \"required\": true,\n    \"issue\": \"REQ-20260831-050\",\n    \"owner_approved\": true,\n    \"old_behavior_preserved\": true,\n    \"regression_tests\": [\"module-boundary\", \"maven-reactor\", \"frontend-build\"],\n    \"note\": \"平台影响仅为 platform/infrastructure 下的追加式 Flyway 迁移（V99 建表、V100 无损回填、V101 断言后删旧表、V102 幂等注册统一回收站菜单节点及管理员授权）；com.ccb.infrastructure.storage 公共契约未改动，平台能力向后兼容。V101 删旧表须在 V100 之后的独立发布版本、全量备份后执行。业务 API 的破坏性变更属 business/data-migration 模块，非平台公共能力。\"\n  },\n  \"database\": {\n    \"changed\": true,\n    \"migration_files\": [\n      \"server/src/platform/infrastructure/src/main/resources/db/migration/V99__data_migration_content_tables.sql\",\n      \"server/src/platform/infrastructure/src/main/resources/db/migration/V100__data_migration_content_table_backfill.sql\",\n      \"server/src/platform/infrastructure/src/main/resources/db/migration/V101__data_migration_drop_legacy_asset_tables.sql\",\n      \"server/src/platform/infrastructure/src/main/resources/db/migration/V102__data_migration_recycle_bin_menu.sql\"\n    ],\n    \"compatibility_and_rollback\": \"Append-only MySQL 8.4 migrations. V99 creates nine content tables plus dm_content_attachment and dm_issue_relation (pure DDL). V100 copies data from dm_asset / dm_meeting_attachment / dm_asset_relation preserving original ids so existing att_file bindings remain valid; it does not delete source rows, keeping a dual-read window. V101 verifies no residual writes remain and then deletes leftover rows and drops dm_asset / dm_asset_relation / dm_meeting_attachment; it must ship in a later release than V100 and only after a full database backup. Rollback before V101 is application rollback only; after V101 restore requires the pre-V101 database backup (Flyway is append-only, no reverse script).\"\n  },\n  \"external_access\": {\n    \"changed\": false,\n    \"systems\": [\"local MinIO through existing platform storage contract\"],\n    \"data_classification\": \"internal-test-only\"\n  },\n  \"required_tests\": [\n    {\"name\": \"flyway-content-split\", \"command\": \"verify isolated MySQL 8.4 migration V98 -> V99 -> V100 (and V101 separately) with row-count, id-preservation, attachment-relation and issue-relation assertions\"},\n    {\"name\": \"focused-backend\", \"command\": \"mvn -pl :ccb-data-migration -am test\"},\n    {\"name\": \"full-backend\", \"command\": \"mvn test\"},\n    {\"name\": \"frontend\", \"command\": \"npm --prefix web run build\"},\n    {\"name\": \"governance\", \"command\": \"node scripts/check-all-governance.mjs\"},\n    {\"name\": \"scope\", \"command\": \"node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260831-050-data-migration-content-table-split/codex-task-scope.yaml --base origin/main --head HEAD --working-tree\"},\n    {\"name\": \"api\", \"command\": \"verify new /api/data-migration resource endpoints, unified recycle bin, MD5 cross-table dedup and response envelope\"},\n    {\"name\": \"permission\", \"command\": \"verify administrator and normal-user authorization paths and tenant isolation on the new tables\"},\n    {\"name\": \"runtime\", \"command\": \"start local MySQL, MinIO, backend and frontend and verify health plus Flyway V99/V100 execution\"},\n    {\"name\": \"browser\", \"command\": \"verify administrator flows for all 11 content menus at 1280x800 and 390x844\"}\n  ],\n  \"risk\": {\n    \"level\": \"high\",\n    \"items\": [\"database migration with data backfill and table drops\", \"breaking API change requiring synchronized frontend release\", \"attachment binding preservation via id preservation\", \"dm_asset_relation polymorphic row mapping (MEETING->SYSTEM / MEETING->ISSUE)\", \"MD5 cross-table dedup semantics\", \"TABLE_STRUCTURE/INTERMEDIATE_TABLE residual usage boundary\"]\n  },\n  \"completion\": {\n    \"control_mode\": \"full\",\n    \"control_prefix\": \"req-20260831-050-data-migration-content-table-split\",\n    \"control_justification\": \"Database restructuring with data backfill, breaking API contract changes and full-stack regression across 11 business menus.\",\n    \"acceptance_evidence\": [\n      \".ai-control/requirements/req-20260831-050-data-migration-content-table-split/state.json\",\n      \".ai-control/requirements/req-20260831-050-data-migration-content-table-split/execution-T6.json\",\n      \".ai-control/requirements/req-20260831-050-data-migration-content-table-split/observation-T6.json\"\n    ],\n    \"release_verification\": [\"flyway-content-split\", \"focused-backend\", \"full-backend\", \"frontend\", \"governance\", \"scope\", \"runtime\", \"browser\"],\n    \"rollback\": \"Before V101: revert application commits to restore dm_asset-backed services; new tables remain harmless. After V101: restore the pre-V101 database backup, then revert application commits. V102 追加了统一回收站菜单（sys_menu 732 及查看权限、管理员授权）；如需回退，可追加脚本将 id=732 置 visible=0/status=0，前端路由保留但不再显示菜单，不影响其他菜单与既有授权。\"\n  }\n}\n",
+  "remaining_risks_and_unresolved": [
+    "工作分支为 feat/REQ-20260820-031-data-migration；合并后 REQ-20260831-050 作为独立需求不再存在，其全部交付物（V99-V102、后端 Content*、前端、账本证据）与 031 产物同处一个未提交工作树，需在后续授权环节统一提交（本指令不做提交/push）。",
+    "生产上线约束：V100 与 V101 必须分发布版本执行，V101 删旧表前须全量备份；V102 对非管理员的菜单可见性取决于是否授予 data-migration:content:recycle-bin。",
+    "浏览器“统一回收站菜单可见性”肉眼验收由用户本人确认；自动化浏览器验收两次被用户取消。",
+    "存量演示数据中文乱码与枚举未本地化（超本演进范围，仅记录）。"
+  ]
+}

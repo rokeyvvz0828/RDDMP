@@ -1,13 +1,14 @@
 <!--
   用途：数迁资产内容 - 汇报材料页
-  说明：支持多维度筛选、单条/批量上传、编辑、下载、逻辑删除和回收站管理。
+  说明：支持多维度筛选、单条/批量上传、编辑、下载与逻辑删除。
+        回收站已收敛到统一页（数迁内容 › 回收站，REPORT 作为内容类型纳入）。
         桌面端使用表格展示，移动端使用卡片展示。
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
-import { Delete, Download, Edit, Plus, Refresh, Search, UploadFilled, FolderOpened, View } from '@element-plus/icons-vue'
+import { Delete, Download, Edit, Plus, Refresh, Search, UploadFilled, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../../../../components/ui/UiFormDrawer.vue'
 import UiToolbar from '../../../../components/ui/UiToolbar.vue'
@@ -23,9 +24,6 @@ import {
   updateReportMaterial,
   deleteReportMaterials,
   downloadReportMaterial,
-  listReportRecycleBin,
-  restoreReportMaterials,
-  purgeReportMaterials,
   checkReportMd5,
   computeFileMd5 as computeFileMd5Api,
   getReportProjectOptions,
@@ -34,6 +32,7 @@ import {
 } from '../../../../api/data-migration'
 import { uploadAttachment, getAttachment, getAttachmentDownload } from '../../../../api/attachments'
 import { deleteFilePreview, uploadFilePreview } from '../../../../api/file-preview'
+import { apiErrorMessage } from '../../../../api/error'
 
 const authStore = useAuthStore()
 const loading = ref(false)
@@ -49,6 +48,7 @@ const filePreviewVisible = ref(false)
 const filePreviewUrl = ref<string | null>(null)
 const filePreviewName = ref('')
 const filePreviewId = ref<string | null>(null)
+const uploadPreviewing = ref(false)
 
 async function cleanupFilePreview() {
   const previewId = filePreviewId.value
@@ -170,25 +170,11 @@ function removeEditKeyword(index: number) {
   editKeywords.value = list.join(',')
 }
 
-// 回收站
-const activeTab = ref<'list' | 'recycle'>('list')
-const recycleLoading = ref(false)
-const recycleReports = ref<ReportMaterial[]>([])
-const recycleTotal = ref(0)
-const recycleCurrentPage = ref(1)
-const recyclePageSize = ref(20)
-const recycleSelectedIds = ref<number[]>([])
-
-// 权限检查
+// 权限检查（回收站已收敛到统一页）
 const hasCreatePermission = computed(() => {
   return authStore.hasPermission('data-migration:content:reports:create') ||
          authStore.hasPermission('data-migration:write') ||
          authStore.hasPermission('data-migration:manage') ||
-         authStore.hasPermission('system:admin')
-})
-
-const hasManagePermission = computed(() => {
-  return authStore.hasPermission('data-migration:manage') ||
          authStore.hasPermission('system:admin')
 })
 
@@ -246,49 +232,10 @@ async function loadReports() {
   }
 }
 
-// 加载回收站列表
-async function loadRecycleBin() {
-  recycleLoading.value = true
-  recycleSelectedIds.value = []
-  try {
-    const params: ReportPageQuery = {
-      page: recycleCurrentPage.value,
-      size: recyclePageSize.value
-    }
-    if (filterProjectId.value) params.projectId = filterProjectId.value
-    if (filterReportPeriod.value) params.reportPeriod = filterReportPeriod.value
-    if (filterKeyword.value.trim()) params.keyword = filterKeyword.value.trim()
-
-    const response = await listReportRecycleBin(params)
-    const pageData = response.data.data
-    recycleReports.value = pageData?.records ?? []
-    recycleTotal.value = pageData?.total ?? 0
-  } catch (e) {
-    ElMessage.error(messageOf(e))
-  } finally {
-    recycleLoading.value = false
-  }
-}
-
-// 切换Tab
-function switchTab(tab: 'list' | 'recycle') {
-  activeTab.value = tab
-  if (tab === 'list') {
-    loadReports()
-  } else {
-    loadRecycleBin()
-  }
-}
-
 // 筛选查询
 function handleSearch() {
   currentPage.value = 1
-  recycleCurrentPage.value = 1
-  if (activeTab.value === 'list') {
-    loadReports()
-  } else {
-    loadRecycleBin()
-  }
+  loadReports()
 }
 
 // 重置筛选
@@ -301,11 +248,7 @@ function handleReset() {
 
 // 刷新
 function handleRefresh() {
-  if (activeTab.value === 'list') {
-    loadReports()
-  } else {
-    loadRecycleBin()
-  }
+  loadReports()
 }
 
 // 分页变化
@@ -320,24 +263,9 @@ function handleSizeChange(size: number) {
   loadReports()
 }
 
-function handleRecyclePageChange(page: number) {
-  recycleCurrentPage.value = page
-  loadRecycleBin()
-}
-
-function handleRecycleSizeChange(size: number) {
-  recyclePageSize.value = size
-  recycleCurrentPage.value = 1
-  loadRecycleBin()
-}
-
 // 选择变化
 function onSelectionChange(rows: ReportMaterial[]) {
   selectedIds.value = rows.map(row => row.id)
-}
-
-function onRecycleSelectionChange(rows: ReportMaterial[]) {
-  recycleSelectedIds.value = rows.map(row => row.id)
 }
 
 // 打开单条上传抽屉
@@ -414,6 +342,10 @@ async function saveSingleUpload() {
   }
   if (!uploadReportName.value.trim()) {
     ElMessage.warning('请填写资料名称')
+    return
+  }
+  if (!uploadKeywords.value.trim()) {
+    ElMessage.warning('请填写关键字索引')
     return
   }
   if (!uploadFile.value) {
@@ -588,25 +520,17 @@ async function downloadReport(row: ReportMaterial) {
   actionBusy.value = true
   try {
     const response = await downloadReportMaterial(row.id)
-    let url = response.data.data
+    const url = response.data.data
     if (!url) return
-    // 后端返回的可能是附件 API 地址（需二次请求获取真实 URL），也可能是直链
-    const match = url.match(/\/attachments\/(\d+)\/download/)
-    if (match) {
-      const res = await getAttachmentDownload(Number(match[1]))
-      url = res.data.data?.downloadUrl || ''
-    }
-    if (url) {
-      const a = document.createElement('a')
-      a.href = url
-      a.download = row.asset_name || ''
-      a.style.display = 'none'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-    }
+    const a = document.createElement('a')
+    a.href = url
+    a.download = row.asset_name || ''
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   } catch (e) {
-    ElMessage.error(messageOf(e))
+    ElMessage.error(apiErrorMessage(e, '下载汇报材料失败'))
   } finally {
     actionBusy.value = false
   }
@@ -643,6 +567,7 @@ async function previewReport(row: ReportMaterial) {
     filePreviewName.value = preview.fileName || attachment.fileName
     filePreviewVisible.value = true
   } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '预览附件失败'))
     // 预览失败时，提示用户并建议下载
     ElMessageBox.confirm(
       '预览服务暂时不可用，是否下载文件查看？',
@@ -657,6 +582,25 @@ async function previewReport(row: ReportMaterial) {
     }).catch(() => {})
   } finally {
     actionBusy.value = false
+  }
+}
+
+// 预览上传抽屉中尚未提交的文件，复用平台临时预览能力。
+async function previewUploadFile(file: File | null) {
+  if (!file || uploadPreviewing.value) return
+  uploadPreviewing.value = true
+  try {
+    await cleanupFilePreview()
+    const preview = (await uploadFilePreview(file)).data.data
+    if (!preview?.previewUrl || !preview.previewId) throw new Error('无法获取预览地址')
+    filePreviewId.value = preview.previewId
+    filePreviewUrl.value = preview.previewUrl
+    filePreviewName.value = preview.fileName || file.name
+    filePreviewVisible.value = true
+  } catch (error) {
+    ElMessage.error(messageOf(error))
+  } finally {
+    uploadPreviewing.value = false
   }
 }
 
@@ -681,6 +625,11 @@ function onEditFileChange(file: UploadFile) {
       editMd5.value = md5
     })
   }
+}
+
+function onEditFileRemove() {
+  editFile.value = null
+  editMd5.value = ''
 }
 
 // 保存编辑
@@ -713,7 +662,13 @@ async function saveEdit() {
       }
 
       params.attachmentId = attachmentId
-      if (editMd5.value) params.checksumMd5 = editMd5.value
+      const md5 = editMd5.value || await computeFileMd5(editFile.value)
+      if (!md5) {
+        ElMessage.error('无法计算文件 MD5，暂不能替换附件')
+        return
+      }
+      editMd5.value = md5
+      params.checksumMd5 = md5
     }
 
     await updateReportMaterial(editId.value, params)
@@ -773,97 +728,7 @@ async function deleteSingleReport(row: ReportMaterial) {
   }
 }
 
-// 恢复汇报材料
-async function restoreReports() {
-  if (recycleSelectedIds.value.length === 0) return
-
-  try {
-    await ElMessageBox.confirm(
-      `确认恢复选中的 ${recycleSelectedIds.value.length} 个汇报材料吗？`,
-      '恢复汇报材料',
-      { type: 'info' }
-    )
-
-    actionBusy.value = true
-    await restoreReportMaterials(recycleSelectedIds.value)
-    ElMessage.success('恢复成功')
-    loadRecycleBin()
-  } catch (error) {
-    if (!isUserCancel(error)) {
-      ElMessage.error(messageOf(error))
-    }
-  } finally {
-    actionBusy.value = false
-  }
-}
-
-// 恢复单个汇报材料
-async function restoreSingleReport(row: ReportMaterial) {
-  try {
-    await ElMessageBox.confirm(
-      `确认恢复"${row.asset_name}"吗？`,
-      '恢复汇报材料',
-      { type: 'info' }
-    )
-
-    actionBusy.value = true
-    await restoreReportMaterials([row.id])
-    ElMessage.success('恢复成功')
-    loadRecycleBin()
-  } catch (error) {
-    if (!isUserCancel(error)) {
-      ElMessage.error(messageOf(error))
-    }
-  } finally {
-    actionBusy.value = false
-  }
-}
-
-// 确认清理汇报材料
-async function purgeReports() {
-  if (recycleSelectedIds.value.length === 0) return
-
-  try {
-    await ElMessageBox.confirm(
-      `确认彻底销毁选中的 ${recycleSelectedIds.value.length} 个汇报材料吗？此操作不可恢复，但会保留审计日志。`,
-      '确认清理',
-      { type: 'error', confirmButtonText: '彻底销毁', cancelButtonText: '取消' }
-    )
-
-    actionBusy.value = true
-    await purgeReportMaterials(recycleSelectedIds.value)
-    ElMessage.success('清理完成')
-    loadRecycleBin()
-  } catch (error) {
-    if (!isUserCancel(error)) {
-      ElMessage.error(messageOf(error))
-    }
-  } finally {
-    actionBusy.value = false
-  }
-}
-
-// 确认清理单个汇报材料
-async function purgeSingleReport(row: ReportMaterial) {
-  try {
-    await ElMessageBox.confirm(
-      `确认彻底销毁"${row.asset_name}"吗？此操作不可恢复，但会保留审计日志。`,
-      '确认清理',
-      { type: 'error', confirmButtonText: '彻底销毁', cancelButtonText: '取消' }
-    )
-
-    actionBusy.value = true
-    await purgeReportMaterials([row.id])
-    ElMessage.success('清理完成')
-    loadRecycleBin()
-  } catch (error) {
-    if (!isUserCancel(error)) {
-      ElMessage.error(messageOf(error))
-    }
-  } finally {
-    actionBusy.value = false
-  }
-}
+// 恢复/彻底销毁已收敛到统一回收站页（REPORT 作为内容类型），本页不再提供局部入口。
 
 // 格式化汇报周期
 function formatReportPeriod(period: string): string {
@@ -923,9 +788,7 @@ onMounted(() => {
       </template>
     </UiPageHeader>
 
-    <!-- Tab切换 -->
-    <el-tabs v-model="activeTab" @tab-click="(tab: any) => switchTab(tab.paneName)">
-      <el-tab-pane label="汇报材料" name="list">
+    <!-- 列表主体（回收站已收敛到统一页，REPORT 在统一回收站中作为内容类型） -->
         <!-- 筛选工具栏 -->
         <UiToolbar>
           <el-select
@@ -1135,144 +998,7 @@ onMounted(() => {
             @update:page-size="handleSizeChange"
           />
         </div>
-      </el-tab-pane>
 
-      <!-- 回收站Tab（仅管理员可见） -->
-      <el-tab-pane v-if="hasManagePermission" label="回收站" name="recycle">
-        <!-- 回收站工具栏 -->
-        <UiToolbar>
-          <el-select
-            v-model="filterProjectId"
-            placeholder="选择项目"
-            clearable
-            filterable
-            style="width: 200px"
-          >
-            <el-option
-              v-for="project in projectOptions"
-              :key="project.id"
-              :label="project.project_name"
-              :value="project.id"
-            />
-          </el-select>
-          <el-select
-            v-model="filterReportPeriod"
-            placeholder="汇报周期"
-            clearable
-            style="width: 140px"
-          >
-            <el-option
-              v-for="option in reportPeriodOptions"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            />
-          </el-select>
-          <el-input
-            v-model="filterKeyword"
-            clearable
-            placeholder="搜索资料名称或关键字"
-            style="width: 240px"
-            @keyup.enter="handleSearch"
-          >
-            <template #prefix><el-icon><Search /></el-icon></template>
-          </el-input>
-          <template #actions>
-            <el-button :disabled="recycleLoading" @click="handleRefresh">
-              <el-icon><Refresh /></el-icon>刷新
-            </el-button>
-            <el-button type="primary" :disabled="recycleLoading" @click="handleSearch">
-              <el-icon><Search /></el-icon>查询
-            </el-button>
-            <el-button :disabled="recycleLoading" @click="handleReset">重置</el-button>
-            <el-button
-              v-if="recycleSelectedIds.length > 0"
-              type="success"
-              plain
-              :disabled="actionBusy"
-              @click="restoreReports"
-            >
-              <el-icon><FolderOpened /></el-icon>恢复 ({{ recycleSelectedIds.length }})
-            </el-button>
-            <el-button
-              v-if="recycleSelectedIds.length > 0"
-              type="danger"
-              plain
-              :disabled="actionBusy"
-              @click="purgeReports"
-            >
-              <el-icon><Delete /></el-icon>彻底销毁 ({{ recycleSelectedIds.length }})
-            </el-button>
-          </template>
-        </UiToolbar>
-
-        <!-- 回收站表格 -->
-        <UiDataTable
-          class="dm-desktop-table"
-          :data="recycleReports"
-          :loading="recycleLoading"
-          row-key="id"
-          border
-          empty-text="回收站为空"
-          @selection-change="onRecycleSelectionChange"
-        >
-          <el-table-column type="selection" width="46" />
-          <el-table-column prop="id" label="ID" width="80" show-overflow-tooltip />
-          <el-table-column prop="project_name" label="所属项目" min-width="150" show-overflow-tooltip />
-          <el-table-column label="汇报周期" width="120">
-            <template #default="{ row }">
-              {{ formatReportPeriod(row.report_period) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="asset_name" label="资料名称" min-width="200" show-overflow-tooltip />
-          <el-table-column label="汇报日期" width="120">
-            <template #default="{ row }">
-              {{ row.report_date || '—' }}
-            </template>
-          </el-table-column>
-          <el-table-column label="删除时间" width="160">
-            <template #default="{ row }">
-              {{ row.deleted_at || '—' }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="160" fixed="right">
-            <template #default="{ row }">
-              <div class="dm-table-actions">
-                <el-button
-                  link
-                  type="success"
-                  :disabled="actionBusy"
-                  @click="restoreSingleReport(row)"
-                >
-                  <el-icon><FolderOpened /></el-icon>恢复
-                </el-button>
-                <el-button
-                  link
-                  type="danger"
-                  :disabled="actionBusy"
-                  @click="purgeSingleReport(row)"
-                >
-                  <el-icon><Delete /></el-icon>彻底销毁
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </UiDataTable>
-
-        <!-- 回收站分页 -->
-        <div class="dm-table-footer">
-          <span>共 {{ recycleTotal }} 条</span>
-          <UiPagination
-            :page="recycleCurrentPage"
-            :page-size="recyclePageSize"
-            :total="recycleTotal"
-            :page-sizes="[20, 50, 100]"
-            @update:page="handleRecyclePageChange"
-            @update:page-size="handleRecycleSizeChange"
-          />
-        </div>
-      </el-tab-pane>
-    </el-tabs>
 
     <!-- 单条上传抽屉 -->
     <UiFormDrawer
@@ -1326,7 +1052,7 @@ onMounted(() => {
               style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label="关键字索引">
+          <el-form-item label="关键字索引" required>
             <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;">
               <el-tag
                 v-for="(kw, idx) in (uploadKeywords ? uploadKeywords.split(',').map(s => s.trim()).filter(Boolean) : [])"
@@ -1358,8 +1084,19 @@ onMounted(() => {
             <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
             <div class="el-upload__text">拖拽文件到此处，或 <em>点击选择</em></div>
           </el-upload>
+          <div v-if="uploadFile" class="dm-upload-preview-action">
+            <span class="dm-upload-preview-name">{{ uploadFile.name }}</span>
+            <el-button
+              link
+              type="primary"
+              :disabled="uploadSaving || uploadPreviewing"
+              @click="previewUploadFile(uploadFile)"
+            >
+              <el-icon><View /></el-icon>预览文件
+            </el-button>
+          </div>
           <el-upload
-            v-else
+            v-if="uploadType === 'batch'"
             :auto-upload="false"
             :multiple="true"
             drag
@@ -1369,6 +1106,19 @@ onMounted(() => {
             <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
             <div class="el-upload__text">拖拽文件到此处，或 <em>点击选择多个文件</em></div>
           </el-upload>
+          <div v-if="uploadType === 'batch' && uploadFiles.length" class="dm-upload-batch-files">
+            <div v-for="file in uploadFiles" :key="`${file.name}-${file.size}-${file.lastModified}`" class="dm-upload-preview-action">
+              <span class="dm-upload-preview-name">{{ file.name }}</span>
+              <el-button
+                link
+                type="primary"
+                :disabled="uploadSaving || uploadPreviewing"
+                @click="previewUploadFile(file)"
+              >
+                <el-icon><View /></el-icon>预览
+              </el-button>
+            </div>
+          </div>
         </el-form-item>
 
         <!-- 批量上传提示 -->
@@ -1450,6 +1200,33 @@ onMounted(() => {
             >{{ kw }}</el-tag>
           </div>
           <el-input v-model="newEditKeyword" placeholder="输入关键字后回车添加" @keyup.enter="addEditKeyword" @blur="addEditKeyword" />
+        </el-form-item>
+        <el-form-item label="重新上传文件">
+          <el-upload
+            :auto-upload="false"
+            :limit="1"
+            drag
+            style="width: 100%"
+            @change="onEditFileChange"
+            @remove="onEditFileRemove"
+          >
+            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+            <div class="el-upload__text">拖拽新文件到此处，或 <em>点击选择</em></div>
+            <template #tip>
+              <div class="el-upload__tip">不选择文件则保留当前附件</div>
+            </template>
+          </el-upload>
+          <div v-if="editFile" class="dm-upload-preview-action">
+            <span class="dm-upload-preview-name">{{ editFile.name }}</span>
+            <el-button
+              link
+              type="primary"
+              :disabled="editSaving || uploadPreviewing"
+              @click="previewUploadFile(editFile)"
+            >
+              <el-icon><View /></el-icon>预览文件
+            </el-button>
+          </div>
         </el-form-item>
         <el-form-item label="MD5">
           <el-input v-model="editMd5" placeholder="系统自动计算" disabled />
@@ -1546,5 +1323,28 @@ onMounted(() => {
 .dm-mobile-list dd {
   margin: 0;
   font-size: 14px;
+}
+
+.dm-upload-preview-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 4px;
+}
+
+.dm-upload-preview-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dm-upload-batch-files {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
 }
 </style>
