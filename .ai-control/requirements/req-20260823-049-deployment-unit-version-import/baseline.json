@@ -1,0 +1,148 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "基于 temp/implementation/issues/02（US15-23）、temp/spec.md 与 temp/CONTEXT.md 收敛；用户直接下达实现任务作为批准。",
+  "recorded_at": "2026-08-23T15:30:00+00:00",
+  "data": {
+    "objective": "部署单元成为可跨环境复用、编号永久唯一、版本可追溯、导入受控的架构定义。",
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "技术架构师在已发布物理子系统下创建部署单元（应用/数据库/MQ），创建即分配编号并发布版本 1。",
+        "acceptance": ["编号格式 D<物理编号><三位序号>", "版本 1 快照可查", "ACTIVE 状态"],
+        "priority": "must",
+        "source": "US15/US16/US17/US18",
+        "counterexample": ["无编号创建", "无版本记录"]
+      },
+      {
+        "id": "R2",
+        "statement": "编号发布后不可修改、不可复用；已发布部署单元不能改挂物理子系统；显示内容变更形成新版本且版本行不可原地改写。",
+        "acceptance": ["编号/归属更新被拒绝", "每次变更产生新版本", "旧版本不可改写", "审计完整"],
+        "priority": "must",
+        "source": "US17/US18/US19",
+        "counterexample": ["原地改写版本", "改挂物理子系统"]
+      },
+      {
+        "id": "R3",
+        "statement": "停用阻止新引用并保留历史；从未被引用的错误部署单元可作废，作废后编号仍不可复用；引用检查异常失败关闭。",
+        "acceptance": ["停用/启用状态机", "作废引用守卫", "VOIDED 终态", "编号不复用"],
+        "priority": "must",
+        "source": "US20/US21",
+        "counterexample": ["有引用仍作废", "作废后编号复用"]
+      },
+      {
+        "id": "R4",
+        "statement": "只有技术架构师可执行维护写操作和导入；查询、导出与批次查看遵循服务端 RBAC、租户隔离与审计。",
+        "acceptance": ["manage 权限执行写", "view 无写权限 403", "租户隔离", "操作审计"],
+        "priority": "must",
+        "source": "US23 验收/治理",
+        "counterexample": ["前端隐藏代替后端校验"]
+      },
+      {
+        "id": "R5",
+        "statement": "初始化导入具备文件预览、关系校验、确认写入、批次记录、成功失败明细和错误报告；失败行不阻断成功行，修正后可重新导入。",
+        "acceptance": ["Excel 解析", "物理子系统关系校验", "预览批次", "确认逐行事务", "幂等重导", "错误报告导出"],
+        "priority": "must",
+        "source": "US22/US23",
+        "counterexample": ["无校验直接入库", "失败行阻断全部"]
+      },
+      {
+        "id": "R6",
+        "statement": "公开 API、真实 MySQL/Flyway、导入失败回滚及桌面/移动端主要旅程通过验收。",
+        "acceptance": ["Testcontainers 真实迁移", "并发编号不重号", "整批回滚", "浏览器 UAT 桌面/移动"],
+        "priority": "must",
+        "source": "spec Testing Decisions",
+        "counterexample": ["内存数据库代替 MySQL"]
+      }
+    ],
+    "invariants": [
+      "编号发布后永久占用",
+      "版本行不可原地改写",
+      "已发布部署单元归属不可变更",
+      "作废引用检查 fail-closed",
+      "写操作服务端 RBAC + 租户 + 审计",
+      "Flyway 只追加"
+    ],
+    "constraints": [
+      "Java 17 / Spring Boot 3.4.4 / MySQL 8.4 / Vue 3",
+      "business/architecture 模块内实现",
+      "POI 5.5.1 与既有模块一致",
+      "com.ccb.architecture.integration 只暴露中性 SPI"
+    ],
+    "non_goals": [
+      "资源申请/计划/实例引用方模块",
+      "实例级部署平台与服务器类型",
+      "交付映射/部署记录/灾备",
+      "多租户扩展/动态表单元数据"
+    ],
+    "assumptions": [
+      {
+        "text": "部署单元编号格式采用 D<物理编号><三位序号>，由本任务设计决定",
+        "basis": "spec 只要求永久唯一且确定",
+        "falsifier": "后续批次对编号格式提出新要求"
+      },
+      {
+        "text": "首次创建即发布版本 1",
+        "basis": "US17 直接维护并发布",
+        "falsifier": "产品要求独立草稿态"
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "未来模块对部署单元引用的具体语义",
+        "impact": "仅影响 SPI provider 接入",
+        "owner": "后续批次",
+        "blocking": false
+      }
+    ],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "部署单元归属 business/architecture 模块",
+        "reason": "架构资产域，物理子系统直接下级",
+        "source": "issue 01 模块边界延续"
+      },
+      {
+        "id": "D2",
+        "decision": "编号 D<物理编号><三位序号>，每物理 999 个永久占用",
+        "reason": "确定、唯一、可参与交付制品命名",
+        "source": "本任务设计"
+      },
+      {
+        "id": "D3",
+        "decision": "更新即发布新版本，无草稿态",
+        "reason": "版本不可改写且审计完整",
+        "source": "本任务设计"
+      },
+      {
+        "id": "D4",
+        "decision": "导入格式 Excel xlsx，复用 POI",
+        "reason": "与 requirement/test-management 一致，中文业务友好",
+        "source": "本任务设计"
+      }
+    ],
+    "measurement_intents": [
+      {
+        "requirement_ids": ["R1", "R2"],
+        "signal": "编号与版本",
+        "method": "领域测试 + MySQL 断言"
+      },
+      {
+        "requirement_ids": ["R3"],
+        "signal": "生命周期与引用守卫",
+        "method": "状态机测试 + SPI 异常测试"
+      },
+      {
+        "requirement_ids": ["R4"],
+        "signal": "权限矩阵",
+        "method": "HTTP/服务级 403 测试"
+      },
+      {
+        "requirement_ids": ["R5", "R6"],
+        "signal": "导入与迁移",
+        "method": "Testcontainers 全流程 + 构建"
+      }
+    ],
+    "baseline_status": "ready"
+  }
+}

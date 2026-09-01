@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "requirement_id": "REQ-20260828-055",
+  "control_prefix": "req-20260828-055-network-access-decision-lifecycle",
+  "task_id": "T15",
+  "recorded_at": "2026-08-29T20:54:28+08:00",
+  "trigger": "用户要求删除导致网络访问判定输入无效的本地 UAT 脏实例数据。",
+  "scope": {
+    "module": "business/architecture/network-access",
+    "changed_files": [],
+    "local_database_changed": true,
+    "migration_changed": false,
+    "production_access": false
+  },
+  "target_data": {
+    "database": "local Docker MySQL ccb_platform",
+    "tenant_id": 1,
+    "physical_subsystem_code": "PHY_PORTAL",
+    "environment_code": "SIT",
+    "deployment_unit_code": "DPHY_PORTAL001",
+    "instance_condition": "status='ACTIVE' AND network_zone_id IS NULL",
+    "instance_ids": [
+      1787729661270985,
+      1787729661280741,
+      1787729669152908,
+      1787714673366339,
+      1787727091409931,
+      1787727561668483
+    ]
+  },
+  "pre_delete_checks": [
+    {
+      "check": "同范围脏实例数量",
+      "result": "6"
+    },
+    {
+      "check": "网络访问申请和访问关系快照引用",
+      "result": "0"
+    },
+    {
+      "check": "灾备关系引用",
+      "result": "1",
+      "detail": "arch_instance_disaster_recovery id=1787727608518054 引用实例 1787727561668483 与 1787727091409931。"
+    }
+  ],
+  "execution": [
+    "在本地 Docker MySQL 事务中先删除 1 条引用脏实例的 arch_instance_disaster_recovery 记录。",
+    "随后按租户、物理子系统、环境、部署单元、实例 ID、ACTIVE 状态和 network_zone_id IS NULL 条件删除 6 条 arch_environment_instance 记录。"
+  ],
+  "post_delete_checks": [
+    {
+      "check": "同范围 ACTIVE 且 network_zone_id IS NULL 实例数量",
+      "result": "0"
+    },
+    {
+      "check": "全库 tenant=1 ACTIVE 且 network_zone_id IS NULL 实例数量",
+      "result": "0"
+    },
+    {
+      "check": "PHY_PORTAL/SIT/DPHY_PORTAL001 剩余 ACTIVE 实例",
+      "result": "2",
+      "detail": "仅剩 sit-dphy-portal001-0008 和 sit-dphy-portal001-0009，均有结构化 network_zone_id。"
+    },
+    {
+      "check": "后端健康",
+      "result": "UP"
+    }
+  ],
+  "residual_risks": [
+    "本操作是本地 UAT 数据清理，不是 Flyway 迁移；重新初始化数据库或重新执行旧种子后可能再次出现同类脏数据。",
+    "未代替用户在已认证浏览器中重新完成多对多访问判定 UAT。"
+  ]
+}

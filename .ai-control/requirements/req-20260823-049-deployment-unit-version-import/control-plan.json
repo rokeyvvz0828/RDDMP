@@ -1,0 +1,95 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "T1-T5 覆盖 R1-R6，写入边界、依赖、采样、回滚、停止与升级条件完整。",
+  "recorded_at": "2026-08-23T15:30:00+00:00",
+  "data": {
+    "baseline_revision": "baseline-1",
+    "model_revision": "model-1",
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "V85 建表与 V86 菜单/权限/角色种子",
+        "requirement_ids": ["R1", "R4", "R6"],
+        "prerequisites": [],
+        "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V85__create_architecture_deployment_units.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V86__seed_architecture_deployment_units.sql"],
+        "invariants": ["Flyway 只追加", "不修改 V1-V84"],
+        "acceptance_checks": ["空库迁移至 V86", "种子断言通过"],
+        "evidence_required": ["迁移输出", "exit code 0"],
+        "rollback": "保留迁移，后续补偿迁移关闭入口",
+        "stop_conditions": ["修改历史迁移", "破坏既有角色授权"]
+      },
+      {
+        "id": "T2",
+        "goal": "部署单元编号/生命周期/版本/导入后端领域与控制器",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+        "prerequisites": ["T1"],
+        "write_scope": ["server/src/modules/architecture/src/main/**"],
+        "invariants": ["编号永久占用", "版本不可改写", "作废 fail-closed", "写操作服务端权限+审计"],
+        "acceptance_checks": ["领域测试通过", "MySQL 测试通过"],
+        "evidence_required": ["聚焦测试输出", "exit code 0"],
+        "rollback": "逆序回退服务代码",
+        "stop_conditions": ["版本更新路径出现", "绕过引用守卫", "跨模块直接写表"]
+      },
+      {
+        "id": "T3",
+        "goal": "编号/生命周期/导入领域测试与 MySQL 集成测试",
+        "requirement_ids": ["R1", "R2", "R3", "R5", "R6"],
+        "prerequisites": ["T2"],
+        "write_scope": ["server/src/modules/architecture/src/test/**"],
+        "invariants": ["真实 MySQL", "真实迁移"],
+        "acceptance_checks": ["mvn -pl :ccb-architecture -am test"],
+        "evidence_required": ["测试报告", "exit code 0"],
+        "rollback": "回退测试代码",
+        "stop_conditions": ["内存数据库替代"]
+      },
+      {
+        "id": "T4",
+        "goal": "部署单元与导入前端页面、API、类型、路由",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+        "prerequisites": ["T2"],
+        "write_scope": ["web/src/modules/architecture/**", "web/src/router/index.ts"],
+        "invariants": ["复用 components/ui", "全状态设计", "权限显隐不替代后端"],
+        "acceptance_checks": ["npm --prefix web run build"],
+        "evidence_required": ["构建输出", "exit code 0"],
+        "rollback": "回退页面与路由",
+        "stop_conditions": ["复制公共组件", "整页横向滚动"]
+      },
+      {
+        "id": "T5",
+        "goal": "契约文档、MODULES.md 同步与全量验证",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+        "prerequisites": ["T3", "T4"],
+        "write_scope": ["docs/integration/architecture-module-contract.md", "docs/architecture/MODULES.md"],
+        "invariants": ["契约与实现一致"],
+        "acceptance_checks": ["全仓 mvn test", "治理/范围/Flyway/模块边界检查", "独立观测"],
+        "evidence_required": ["各检查命令输出", "exit code 0"],
+        "rollback": "回退文档",
+        "stop_conditions": ["范围外文件被修改"]
+      }
+    ],
+    "dependency_edges": [
+      {"from": "T1", "to": "T2", "reason": "表结构先于代码"},
+      {"from": "T2", "to": "T3", "reason": "测试依赖实现"},
+      {"from": "T2", "to": "T4", "reason": "前端契约依赖后端 DTO"},
+      {"from": "T3", "to": "T5", "reason": "全量验证依赖测试"},
+      {"from": "T4", "to": "T5", "reason": "前端构建依赖页面"}
+    ],
+    "sampling_plan": [
+      {"label": "migration sample", "observer": "main agent", "sensors": ["S4"], "trigger": "T1 complete"},
+      {"label": "domain sample", "observer": "main agent", "sensors": ["S1", "S2"], "trigger": "T2 complete"},
+      {"label": "integration sample", "observer": "main agent", "sensors": ["S1", "S2", "S3", "S4"], "trigger": "T3 complete"},
+      {"label": "frontend sample", "observer": "main agent", "sensors": ["S4"], "trigger": "T4 complete"},
+      {"label": "final sample", "observer": "independent subagent", "sensors": ["S1", "S2", "S3", "S4"], "trigger": "T5 complete"}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T1", "T2", "T3", "T5"], "sensor_ids": ["S1"]},
+      {"requirement_id": "R2", "task_ids": ["T2", "T3", "T4", "T5"], "sensor_ids": ["S1"]},
+      {"requirement_id": "R3", "task_ids": ["T2", "T3", "T4", "T5"], "sensor_ids": ["S2"]},
+      {"requirement_id": "R4", "task_ids": ["T1", "T2", "T4", "T5"], "sensor_ids": ["S3"]},
+      {"requirement_id": "R5", "task_ids": ["T2", "T3", "T4", "T5"], "sensor_ids": ["S4"]},
+      {"requirement_id": "R6", "task_ids": ["T1", "T3", "T5"], "sensor_ids": ["S4"]}
+    ],
+    "plan_status": "ready"
+  }
+}

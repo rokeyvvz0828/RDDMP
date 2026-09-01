@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-048-project-configurable-stages",
+  "task_id": "T1/T2",
+  "phase": "executing",
+  "recorded_at": "2026-08-31T11:54:00+08:00",
+  "actual_changes": [
+    "追加 V83__project_configurable_stages.sql，创建 pm_project_stage 并为活动存量项目补齐默认七阶段",
+    "ProjectService 增加项目阶段查询、创建、更新、删除、锁定校验、项目创建初始化和计划阶段校验",
+    "ProjectController 增加 /stages CRUD 接口",
+    "ProjectView、项目 API 和类型增加项目设置阶段维护及项目阶段时间轴数据源",
+    "ProjectServiceTest 增加阶段新增、无主计划修改、有主计划拒绝修改/删除场景"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am test '-Dnet.bytebuddy.experimental=true'", "result": "passed; 49 tests, 0 failures, 0 errors"},
+    {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite production build completed"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed; 77 migrations and 1 approved callback"},
+    {"command": "git diff --check", "result": "passed"},
+    {"command": "mvn -pl :ccb-boot -am package -DskipTests", "result": "passed after stopping the exact old backend process; latest boot JAR packaged"},
+    {"command": "start latest boot JAR with SPRING_CONFIG_IMPORT=optional:file:.env[.properties] and SPRING_PROFILES_ACTIVE=local", "result": "blocked by pre-existing Flyway failed migration version 51; V83 was not applied"}
+  ],
+  "constraints_checked": [
+    "未读取或输出 .env 内容",
+    "未修改已发布迁移，仅新增 V83",
+    "未回退其他人员未关联改动",
+    "当前任务改动面限于 REQ-20260831-048 scope"
+  ],
+  "open_items": [
+    "本地数据库需按 Flyway 流程 repair version 51 后重新启动验证 V83",
+    "真实浏览器视口和设置页运行态验收未执行"
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "control_prefix": "req-20260824-052-environment-resource-request",
+  "requirement_id": "REQ-20260824-052",
+  "recorded_at": "2026-08-25T09:36:31+08:00",
+  "observations": [
+    {
+      "kind": "runtime-migration",
+      "command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local --ccb.mock-data.enabled=false",
+      "result": "passed",
+      "evidence": "Boot 启动日志显示 Flyway 从 schema V92 迁移到 V93，Tomcat 监听 8080，/actuator/health 返回 {\"status\":\"UP\"}。"
+    },
+    {
+      "kind": "runtime-api",
+      "command": "GET /api/architecture/environment-types 与 GET /api/architecture/environments",
+      "result": "passed",
+      "evidence": "使用本地临时 JWT 访问后端 8080：environment-types code=0，返回 4 个字典项，包含 architecture.environment-type.sit；environments code=0。Vite 5173 代理 environment-types 同样 code=0。"
+    },
+    {
+      "kind": "runtime-api-write-cleanup",
+      "command": "POST /api/architecture/environments 后 POST /api/architecture/environments/{id}/delete",
+      "result": "passed",
+      "evidence": "以 typeCode=architecture.environment-type.sit 创建临时 CODEX-SIT 环境返回 code=0、typeName=SIT环境；随后按 rowVersion 删除返回 code=0，临时数据已清理。"
+    },
+    {
+      "kind": "backend-test",
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=EnvironmentResourceServiceTest,ResourceRequestSubmissionServiceTest,ResourceRequestWorkflowLifecycleConsumerTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed-with-narrow-match",
+      "evidence": "Reactor BUILD SUCCESS；Surefire 实际匹配并运行 EnvironmentResourceServiceTest，6 tests, 0 failures, 0 errors。当前工程不存在 ResourceRequestSubmissionServiceTest 和 ResourceRequestWorkflowLifecycleConsumerTest 独立测试类。"
+    },
+    {
+      "kind": "backend-test-focused",
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=EnvironmentResourceServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "evidence": "Reactor BUILD SUCCESS；EnvironmentResourceServiceTest 运行 6 tests, 0 failures, 0 errors。"
+    },
+    {
+      "kind": "backend-test-full",
+      "command": "mvn -pl :ccb-architecture -am test",
+      "result": "blocked-by-local-docker",
+      "evidence": "完整 reactor 共运行 237 tests，0 failures，13 errors；错误均来自 *MySqlTest 的 Testcontainers Docker 环境识别失败：Could not find a valid Docker environment / Previous attempts to find a Docker environment failed。非 MySQL 单测已运行通过。"
+    },
+    {
+      "kind": "frontend-build",
+      "command": "npm --prefix web run build",
+      "result": "passed",
+      "evidence": "vue-tsc --noEmit 与 vite build 通过；Vite 输出既有 Rollup PURE 注释和大 chunk 警告。"
+    },
+    {
+      "kind": "flyway-static",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "passed",
+      "evidence": "Flyway migration check passed for 87 migration(s) and 1 approved callback(s)。"
+    },
+    {
+      "kind": "diff-whitespace",
+      "command": "git diff --check",
+      "result": "passed",
+      "evidence": "未发现空白错误；仅提示若干既有工作副本文件未来会 LF 转 CRLF。"
+    },
+    {
+      "kind": "scope-check",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "result": "blocked-by-branch-gate",
+      "evidence": "脚本在文件范围检查前失败：Branch must follow <type>/REQ-YYYYMMDD-NNN-short-name。当前分支 dev-ivanh 不满足脚本门禁。"
+    },
+    {
+      "kind": "docker-diagnostic",
+      "command": "docker context ls; docker info; docker -H tcp://127.0.0.1:2375 info; Testcontainers 单 MySQL 探针",
+      "result": "diagnosed",
+      "evidence": "Docker CLI 当前 desktop-linux context 可见 ServerVersion 29.7.2；2375 TCP 未开放；带 DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine 的 Testcontainers 探针仍返回 Docker /info 空壳并失败。"
+    }
+  ],
+  "feedback_closure": [
+    {
+      "feedback": "环境类型放到字典里维护，不要自行维护",
+      "status": "closed",
+      "closure_evidence": "V93 数据迁移、后端只读字典查询、前端移除环境类型自维护入口、运行时 environment-types 字典接口和 SIT 新增环境路径均通过。"
+    }
+  ],
+  "residual_risk": [
+    "未执行真实浏览器点击 UAT；已做后端直连和 Vite 代理 API 验证，前端构建通过。",
+    "完整架构模块测试中的 Testcontainers MySQL 测试受本机 docker-java/npipe 识别问题阻塞；本次未修改用户全局 Testcontainers 配置。",
+    "范围检查受当前分支名 dev-ivanh 的脚本门禁阻塞，未进入文件范围比对阶段。",
+    "系统字典的完整维护页面属于 platform/system 能力，本次只验证架构模块读取 ARCH_ENVIRONMENT_TYPE 字典项。"
+  ],
+  "conclusion": "纠偏后，环境类型维护归属已从 business/architecture 自维护表和 UI 收敛到 platform/system 字典；具体环境保存路径可使用字典 SIT 项成功创建。"
+}

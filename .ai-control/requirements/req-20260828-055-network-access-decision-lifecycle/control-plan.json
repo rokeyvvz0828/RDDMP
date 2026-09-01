@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "requirement_id": "REQ-20260828-055",
+  "plan_document": "docs/engineering-control/plans/2026-08-28-network-access-decision-lifecycle-implementation-plan.md",
+  "status": "approved",
+  "tasks": [
+    "T0 审计后准入复核",
+    "T1 数据迁移与领域模型",
+    "T2 端口、地址和时间覆盖基础库",
+    "T3 判定服务和 API",
+    "T4 申请动作和关系生命周期服务",
+    "T5 平台工作流接入",
+    "T6 下线实例风险投影",
+    "T7 前端判定、申请和风险交互",
+    "T8 权限、审计、种子数据和端到端整理",
+    "T9 集成验证与收敛验收"
+  ],
+  "minimum_checks": [
+    "mvn -pl :ccb-architecture -am \"-Dtest=NetworkAccessServiceTest,NetworkAccessDecisionServiceTest,NetworkAccessLifecycleServiceTest,NetworkAccessWorkflowLifecycleConsumerTest,NetworkAccessStoreMySqlTest\" test",
+    "mvn -pl :ccb-boot -am test",
+    "npm --prefix web run build",
+    "git diff --check",
+    "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260828-055-network-access-decision-lifecycle/codex-task-scope.yaml --base origin/dev-ivanh --head HEAD --working-tree"
+  ]
+}

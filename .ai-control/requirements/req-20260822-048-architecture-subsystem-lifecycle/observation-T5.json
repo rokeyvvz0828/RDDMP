@@ -1,0 +1,120 @@
+{
+  "sample_label": "S-0011-T5-真实集成与浏览器独立观察-2026-08-23",
+  "task_ids": ["T5"],
+  "baseline_revision": "设计修订 2；实施计划修订 1；观察基线 commit 4b54939 + eec9406",
+  "measurements": [
+    {
+      "requirement_id": "R12",
+      "sensor": "API 场景套件结果文件独立核验",
+      "result": "pass",
+      "raw_evidence": "python json 解析 /tmp/t5/results.json：passed=62, failed=[]；抽查 PASS 项 detail 与 DB 事实一致。",
+      "limitation": ["未重放整套脚本，使用执行侧产物并记录为传感器限制；抽查了数据库事实对应关系"]
+    },
+    {
+      "requirement_id": "R10",
+      "sensor": "浏览器 UAT 结果文件独立核验",
+      "result": "pass",
+      "raw_evidence": "/tmp/t5/uat-results.json：checked=67, failed=0；首次核验命令误用 passed 键产生 KeyError（观测脚本 schema 不匹配，非 UAT 失败），修正后 67/67、0 failed。",
+      "limitation": ["未重放浏览器测试，使用产物与截图抽查"]
+    },
+    {
+      "requirement_id": "R11/R12",
+      "sensor": "Flyway 迁移与范围/差异/边界",
+      "result": "pass",
+      "raw_evidence": "check-flyway-migrations.mjs exit 0（78 migrations）；独立查询 flyway_schema_history COUNT=78、SUM(success)=78；git diff --check 干净；check-module-boundaries.mjs 中 architecture 违规 0（其余为既有基线 system→attachment、requirement→workflow）。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R1/R3/R5",
+      "sensor": "发布主数据与替换关系真实数据库事实",
+      "result": "pass",
+      "raw_evidence": "arch_logical_subsystem：A0001..A0004（观察时点）ACTIVE；arch_physical_subsystem：W00021/W00022/W00023 ACTIVE、W00011 OFFLINE；arch_subsystem_replacement=1。",
+      "limitation": ["观察为时点快照，UAT 后续写入会新增记录"]
+    },
+    {
+      "requirement_id": "R6/R9",
+      "sensor": "生命周期交付与 fail-closed 运行事实",
+      "result": "pass",
+      "raw_evidence": "wf_lifecycle_delivery：DELIVERED=85、DEAD=3（设计内 fail-closed 事件重试耗尽）；业务申请保持未误标 APPROVED。",
+      "limitation": ["未观察重试到 DEAD 的中间时刻（使用终态事实）"]
+    },
+    {
+      "requirement_id": "R8/R9/R12",
+      "sensor": "操作审计与工作流审计真实事实",
+      "result": "pass",
+      "raw_evidence": "sys_operation_log operation_code LIKE 'architecture.subsystem-change.%' = 98；wf_audit_event event_type LIKE 'TASK_%' = 22（含浏览器/API 全部动作）。",
+      "limitation": ["审计内容为脱敏计数"]
+    },
+    {
+      "requirement_id": "R12",
+      "sensor": "运行时健康与证据资产",
+      "result": "pass",
+      "raw_evidence": "GET /actuator/health = {\"status\":\"UP\"}；/tmp/t5/shots 存在 31 张截图；git log 含纠偏提交 4b54939 与文档提交 eec9406。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R1-R12",
+      "sensor": "三项纠偏代码抽查（Boot 装配/终止保护/写审计）",
+      "result": "pass",
+      "raw_evidence": "ArchitectureWorkflowLifecycleConsumer 公共三参构造器 @Autowired；ArchitectureSubsystemSubmissionService.terminateWorkflow 经 workflowGateway.progress 预检非 RUNNING 抛 conflict；SubsystemChangeApplicationController 统一 audited(...) 包装 create/update/submit/cancel。",
+      "limitation": ["静态复核，未重跑单测"]
+    }
+  ],
+  "negative_feedback": [
+    {
+      "id": "F-T5-OBS-001",
+      "requirement_id": "R12",
+      "expected": "观测脚本应正确读取 UAT 结果文件 schema（checked/failed）。",
+      "observed": "首次核验用 d['passed'] 触发 KeyError（文件键为 checked/failed），被判为 fail；实际 checked=67、failed=0，无底层失败。",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "观测指令 schema 错误，非产品偏差",
+      "causal_hypothesis": "观测命令假设了不存在的 passed 键",
+      "correction_check": "改用 checked/failed 键复读；结论 UAT 67 checked / 0 failed",
+      "decision": "accept",
+      "decision_reason": "属测量脚本缺陷；修正后所有实质检查通过，无产品偏差",
+      "created_at": "2026-08-23T13:58:16Z",
+      "resolved_at": "2026-08-23T13:59:00Z",
+      "resolution_evidence": "以正确键复读：checked=67, failed=0；其余 11/12 传感器 pass"
+    }
+  ],
+  "correction_reobservation": {
+    "result": "pass",
+    "evidence": [
+      "修正测量键后 UAT=67 checked/0 failed",
+      "其余传感器全绿：Flyway 78/78、architecture 边界 0 违规、diff 干净、health UP、DB 事实一致",
+      "独立观察者总结：所有实质检查通过；唯一失败为测量 schema 不匹配"
+    ],
+    "residual_risks": [
+      "平台登录固定 tenant_id=1（AuthRepository.findByUsername），真实 HTTP 无法以租户 2 用户登录；跨租户隔离依赖服务层 AuthUser.tenantId 过滤（单元+MySQL 测试证明），平台约束不在本需求范围",
+      "9999/35 容量耗尽、外部引用 provider 异常 fail-closed、重复/乱序事件幂等由聚焦单元+MySQL 测试覆盖，未在运行时构造",
+      "同名 REPLACE 被既有 uk_arch_physical_name 约束拒绝，为既有业务约束（新记录需新名称），已验证场景通过"
+    ]
+  },
+  "blind_spots": [
+    "未重放整套 API/浏览器脚本（使用执行侧产物+数据库独立抽查对账）",
+    "跨租户真实 HTTP 登录受平台认证限制（tenant_id=1 固定）",
+    "生产规模（容量边界）与外部引用 provider 故障注入未在运行时构造"
+  ],
+  "repeatability": {
+    "commands": [
+      "python3 -c \"import json;d=json.load(open('/tmp/t5/results.json'));print(d['passed'],d['failed'])\"",
+      "python3 -c \"import json;d=json.load(open('/tmp/t5/uat-results.json'));print(d['checked'],d['failed'])\"",
+      "git log --oneline -3",
+      "node scripts/check-flyway-migrations.mjs",
+      "git diff --check",
+      "node scripts/check-module-boundaries.mjs 2>&1 | grep -c architecture",
+      "docker exec t5-rddmp-mysql mysql -uroot -pt5-root-pw ccb_platform -N -e \"<flyway/主数据/物理/交付/审计查询>\"",
+      "curl -s --noproxy '*' http://127.0.0.1:8080/actuator/health"
+    ],
+    "environment": "观察子代理严格只读；运行中隔离 Boot/Vite/MySQL；不重放长时套件"
+  },
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "assessment": {
+    "verdict": "pass-with-runtime-defer",
+    "summary": "T5 独立观察实质通过：API 62/62、浏览器 67/67（首个 fail 为观测脚本 schema 缺陷，已修正）、Flyway 78/78、architecture 边界 0 违规、diff 干净、health UP、DB 事实（主数据/替换/交付/审计）与执行报告一致；三项纠偏代码静态核实合理。延迟项：跨租户真实 HTTP 登录（平台 AuthRepository 固定 tenant_id=1 的既有约束）、容量耗尽与引用 provider 异常注入（聚焦测试覆盖）、同名 REPLACE（既有唯一约束），均已记录且不阻断 R1-R12 可验证证据。"
+  },
+  "recommended_next": ["开放反馈 0，判定收敛；由主 Agent 写 convergence 并转移账本至 converged"],
+  "observation_status": "complete",
+  "recorded_at": "2026-08-23T13:59:00Z"
+}

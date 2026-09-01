@@ -1,0 +1,194 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "T1-T6 覆盖 R1-R6，写入边界、依赖、采样、回滚、停止与升级条件完整。",
+  "recorded_at": "2026-08-23T16:10:00+00:00",
+  "data": {
+    "baseline_revision": "baseline-1",
+    "model_revision": "model-1",
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "V89 建表与 V90 菜单/权限/角色/流程种子",
+        "requirement_ids": ["R1", "R5", "R6"],
+        "prerequisites": [],
+        "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V89__create_architecture_network_work_orders.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V90__seed_architecture_network_work_orders.sql"],
+        "invariants": ["Flyway 只追加", "不修改 V1-V86", "稳定 ID 冲突失败关闭"],
+        "acceptance_checks": ["空库迁移至 V90", "种子断言通过", "身份冲突库迁移失败"],
+        "evidence_required": ["迁移输出", "exit code 0"],
+        "rollback": "保留迁移，后续补偿迁移关闭入口",
+        "stop_conditions": ["修改历史迁移", "破坏既有角色授权"]
+      },
+      {
+        "id": "T2",
+        "goal": "网络工单模型/存储/服务/工作流/附件策略",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+        "prerequisites": ["T1"],
+        "write_scope": ["server/src/modules/architecture/src/main/java/com/ccb/architecture/network/**"],
+        "invariants": ["状态只由动作与事件改变", "摘要与轮次固化", "结果登记 rowVersion 守卫", "私钥黑名单 fail-closed", "写操作服务端权限+审计"],
+        "acceptance_checks": ["领域测试通过", "MySQL 测试通过"],
+        "evidence_required": ["聚焦测试输出", "exit code 0"],
+        "rollback": "逆序回退服务代码",
+        "stop_conditions": ["绕过工作流直接终态化", "跨模块直接写表", "HTTP DTO 出现 tenantId"]
+      },
+      {
+        "id": "T3",
+        "goal": "领域测试与 MySQL/工作流集成测试",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R6"],
+        "prerequisites": ["T2"],
+        "write_scope": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/network/**"],
+        "invariants": ["真实 MySQL", "真实迁移", "回执幂等"],
+        "acceptance_checks": ["mvn -pl :ccb-architecture -am test"],
+        "evidence_required": ["测试报告", "exit code 0"],
+        "rollback": "回退测试代码",
+        "stop_conditions": ["内存数据库替代"]
+      },
+      {
+        "id": "T4",
+        "goal": "HTTP 边界与越权/黑名单测试",
+        "requirement_ids": ["R3", "R4", "R5"],
+        "prerequisites": ["T2"],
+        "write_scope": ["server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/**", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/**"],
+        "invariants": ["三级权限与数据范围", "审计包装", "私钥黑名单"],
+        "acceptance_checks": ["Controller 测试通过", "403/404/409 断言"],
+        "evidence_required": ["测试输出", "exit code 0"],
+        "rollback": "回退控制器代码",
+        "stop_conditions": ["信任前端权限"]
+      },
+      {
+        "id": "T5",
+        "goal": "前端三页面、类型、API、路由",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+        "prerequisites": ["T2"],
+        "write_scope": ["web/src/modules/architecture/NetworkWorkOrder*.vue", "web/src/modules/architecture/network*.ts", "web/src/modules/architecture/api.ts", "web/src/modules/architecture/types.ts", "web/src/modules/architecture/utils.ts", "web/src/modules/architecture/architecture.css", "web/src/router/index.ts"],
+        "invariants": ["复用 ui 组件与 architecture 样式", "桌面/移动全状态", "无整页横向滚动"],
+        "acceptance_checks": ["npm --prefix web run build"],
+        "evidence_required": ["构建输出", "exit code 0"],
+        "rollback": "回退页面与路由 diff",
+        "stop_conditions": ["绕过公共组件", "移动视口溢出"]
+      },
+      {
+        "id": "T6",
+        "goal": "全量验证与收敛",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+        "prerequisites": ["T1", "T2", "T3", "T4", "T5"],
+        "write_scope": ["docs/**", ".ai-control/requirements/req-20260823-051-clb-dns-certificate-work-orders/**"],
+        "invariants": ["证据分级", "风险逐项复核"],
+        "acceptance_checks": ["mvn test", "web build", "治理/范围/Flyway/模块边界检查", "git diff --check"],
+        "evidence_required": ["全部命令输出", "exit code 0"],
+        "rollback": "保留证据，逆序回退",
+        "stop_conditions": ["证据缺失", "构建失败"]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "reason": "迁移先于代码"
+      },
+      {
+        "from": "T2",
+        "to": "T3",
+        "reason": "测试依赖实现"
+      },
+      {
+        "from": "T2",
+        "to": "T4",
+        "reason": "HTTP 依赖服务"
+      },
+      {
+        "from": "T2",
+        "to": "T5",
+        "reason": "前端契约依赖后端 DTO"
+      }
+    ],
+    "parallel_groups": [
+      ["T1"],
+      ["T2"],
+      ["T3", "T4"],
+      ["T5"],
+      ["T6"]
+    ],
+    "integration_points": [
+      {
+        "after_tasks": ["T1"],
+        "checks": ["空库迁移 V90", "冲突库失败关闭"]
+      },
+      {
+        "after_tasks": ["T2", "T3", "T4"],
+        "checks": ["架构模块全量测试通过"]
+      },
+      {
+        "after_tasks": ["T5"],
+        "checks": ["前端构建通过"]
+      },
+      {
+        "after_tasks": ["T6"],
+        "checks": ["reactor + 治理全量通过"]
+      }
+    ],
+    "sampling_plan": [
+      {
+        "label": "T1 采样",
+        "observer": "主 Agent",
+        "sensors": ["S2"],
+        "requirement_ids": ["R6"],
+        "trigger": "T1 完成"
+      },
+      {
+        "label": "T3 采样",
+        "observer": "主 Agent",
+        "sensors": ["S1", "S2"],
+        "requirement_ids": ["R1", "R2", "R6"],
+        "trigger": "T3 完成"
+      },
+      {
+        "label": "T4 采样",
+        "observer": "主 Agent",
+        "sensors": ["S3", "S4"],
+        "requirement_ids": ["R3", "R4", "R5"],
+        "trigger": "T4 完成"
+      },
+      {
+        "label": "T6 采样",
+        "observer": "主 Agent",
+        "sensors": ["S1", "S2", "S3", "S4", "S5"],
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+        "trigger": "T6 完成"
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R1",
+        "task_ids": ["T1", "T2", "T3", "T5", "T6"],
+        "sensor_ids": ["S1"]
+      },
+      {
+        "requirement_id": "R2",
+        "task_ids": ["T2", "T3", "T5", "T6"],
+        "sensor_ids": ["S1", "S2"]
+      },
+      {
+        "requirement_id": "R3",
+        "task_ids": ["T2", "T4", "T5", "T6"],
+        "sensor_ids": ["S3"]
+      },
+      {
+        "requirement_id": "R4",
+        "task_ids": ["T2", "T4", "T5", "T6"],
+        "sensor_ids": ["S3"]
+      },
+      {
+        "requirement_id": "R5",
+        "task_ids": ["T1", "T2", "T4", "T5", "T6"],
+        "sensor_ids": ["S4"]
+      },
+      {
+        "requirement_id": "R6",
+        "task_ids": ["T1", "T3", "T5", "T6"],
+        "sensor_ids": ["S5"]
+      }
+    ],
+    "plan_status": "ready"
+  }
+}

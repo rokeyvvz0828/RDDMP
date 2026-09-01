@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "task_id": "T5",
+  "status": "implemented",
+  "objective": "项目附件支持项目级自定义分类、新建分类、上传分类选择、未分类回退和已有附件改分类",
+  "scope": [
+    "server/src/platform/attachment/**",
+    "server/src/platform/system/src/main/java/com/ccb/system/project/**",
+    "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V82__project_attachment_categories.sql",
+    "web/src/api/attachments.ts",
+    "web/src/types/attachments.ts",
+    "web/src/views/ProjectView.vue",
+    "web/src/styles.css",
+    "governance/modules.yaml",
+    "docs/requirements/REQ-20260818-032-project-attachments/**",
+    "docs/engineering-control/designs/2026-08-18-project-attachments-design.md",
+    "docs/engineering-control/plans/2026-08-18-project-attachments-implementation-plan.md",
+    "docs/integration/attachment-module-contract.md"
+  ],
+  "changes": [
+    "新增项目附件分类表并在 sys_attachment 增加可空 category_id，历史附件按空值显示未分类",
+    "AttachmentPort 增加分类查询、新建和改分类契约，附件平台校验租户、业务类型和项目范围",
+    "项目服务增加分类 HTTP 适配和项目权限审计，上传接受可选 categoryId",
+    "附件页增加新建分类、上传分类选择、分类失败重试和已有附件改分类交互"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-attachment,:ccb-system -am test", "result": "passed_with_jdk23", "evidence": "44 tests run, 0 failures, 0 errors"},
+    {"command": "npm --prefix web run build", "result": "passed", "evidence": "vue-tsc and Vite production build succeeded"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "result": "passed", "evidence": "migration check passed"},
+    {"command": "git diff --check", "result": "passed", "evidence": "no whitespace errors"},
+    {"command": "node scripts/check-module-boundaries.mjs", "result": "partial", "evidence": "attachment dependency registration passes; pre-existing requirement/workflow public-package findings remain"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "partial", "evidence": "pre-existing ledger topic/encoding/evidence findings and unavailable control-engineering plugin remain"}
+  ],
+  "runtime": {"browser": "not_run", "reason": "no authenticated browser acceptance was executed in this turn; no credentials or environment secrets were read"},
+  "rollback": "回退应用代码并保留 V61/V82 附件元数据和分类数据，必要时关闭附件分类入口；不删除生产表",
+  "open_risks": ["未在本地登录态、MinIO 和 kkFileView 环境完成真实上传与改分类浏览器链路验收"]
+}

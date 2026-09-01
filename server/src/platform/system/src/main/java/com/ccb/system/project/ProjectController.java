@@ -1,9 +1,12 @@
 package com.ccb.system.project;
 
 import com.ccb.attachment.model.AttachmentItem;
+import com.ccb.attachment.model.AttachmentCategory;
 import com.ccb.attachment.model.AttachmentLink;
 import com.ccb.common.api.ApiResponse;
 import com.ccb.common.api.PageResult;
+import com.ccb.common.exception.BusinessException;
+import com.ccb.common.exception.ErrorCode;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,6 +54,15 @@ public class ProjectController {
     @PutMapping("/{projectId}/settings")
     public ApiResponse<Map<String, Object>> updateSettings(@PathVariable long projectId, @RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.updateSettings(projectId, input, user)); }
 
+    @GetMapping("/{projectId}/stages")
+    public ApiResponse<List<Map<String, Object>>> stages(@PathVariable long projectId, @AuthenticationPrincipal AuthUser user) { return ok(service.stages(projectId, user)); }
+    @PostMapping("/{projectId}/stages")
+    public ApiResponse<Map<String, Object>> createStage(@PathVariable long projectId, @RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.createStage(projectId, input, user)); }
+    @PutMapping("/{projectId}/stages/{stageId}")
+    public ApiResponse<Map<String, Object>> updateStage(@PathVariable long projectId, @PathVariable long stageId, @RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.updateStage(projectId, stageId, input, user)); }
+    @DeleteMapping("/{projectId}/stages/{stageId}")
+    public ApiResponse<Void> deleteStage(@PathVariable long projectId, @PathVariable long stageId, @AuthenticationPrincipal AuthUser user) { service.deleteStage(projectId, stageId, user); return ok(null); }
+
     @DeleteMapping("/{projectId}")
     public ApiResponse<Void> delete(@PathVariable long projectId, @AuthenticationPrincipal AuthUser user) { service.delete(projectId, user); return ok(null); }
 
@@ -68,18 +80,46 @@ public class ProjectController {
                                                                 @RequestParam(defaultValue = "1") long page,
                                                                 @RequestParam(defaultValue = "20") long size,
                                                                 @RequestParam(required = false) String keyword,
+                                                                @RequestParam(required = false) Long categoryId,
                                                                 @AuthenticationPrincipal AuthUser user) {
-        return ok(service.attachments(projectId, page, size, keyword, user));
+        return ok(service.attachments(projectId, page, size, keyword, categoryId, user));
+    }
+
+    @GetMapping("/{projectId}/attachment-categories")
+    public ApiResponse<List<AttachmentCategory>> attachmentCategories(@PathVariable long projectId,
+                                                                       @AuthenticationPrincipal AuthUser user) {
+        return ok(service.attachmentCategories(projectId, user));
+    }
+
+    @PostMapping("/{projectId}/attachment-categories")
+    public ApiResponse<AttachmentCategory> createAttachmentCategory(@PathVariable long projectId,
+                                                                      @RequestBody Map<String, Object> input,
+                                                                      @AuthenticationPrincipal AuthUser user) {
+        return ok(service.createAttachmentCategory(projectId, input, user));
     }
 
     @PostMapping("/{projectId}/attachments")
-    public ApiResponse<AttachmentItem> uploadAttachment(@PathVariable long projectId, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal AuthUser user) { return ok(service.uploadAttachment(projectId, file, user)); }
+    public ApiResponse<AttachmentItem> uploadAttachment(@PathVariable long projectId,
+                                                        @RequestParam("file") MultipartFile file,
+                                                        @RequestParam(required = false) Long categoryId,
+                                                        @AuthenticationPrincipal AuthUser user) {
+        return ok(service.uploadAttachment(projectId, file, categoryId, user));
+    }
 
     @GetMapping("/{projectId}/attachments/{attachmentId}/preview")
     public ApiResponse<AttachmentLink> previewAttachment(@PathVariable long projectId, @PathVariable long attachmentId, @AuthenticationPrincipal AuthUser user) { return ok(service.previewAttachment(projectId, attachmentId, user)); }
 
     @GetMapping("/{projectId}/attachments/{attachmentId}/download")
     public ApiResponse<AttachmentLink> downloadAttachment(@PathVariable long projectId, @PathVariable long attachmentId, @AuthenticationPrincipal AuthUser user) { return ok(service.downloadAttachment(projectId, attachmentId, user)); }
+
+    @PutMapping("/{projectId}/attachments/{attachmentId}/category")
+    public ApiResponse<AttachmentItem> updateAttachmentCategory(@PathVariable long projectId,
+                                                                 @PathVariable long attachmentId,
+                                                                 @RequestBody Map<String, Object> input,
+                                                                 @AuthenticationPrincipal AuthUser user) {
+        return ok(service.updateAttachmentCategory(projectId, attachmentId,
+                input == null ? null : nullableLong(input.get("categoryId")), user));
+    }
 
     @DeleteMapping("/{projectId}/attachments/{attachmentId}")
     public ApiResponse<Void> deleteAttachment(@PathVariable long projectId, @PathVariable long attachmentId, @AuthenticationPrincipal AuthUser user) { service.deleteAttachment(projectId, attachmentId, user); return ok(null); }
@@ -135,4 +175,15 @@ public class ProjectController {
     public ApiResponse<Void> deleteRole(@PathVariable long projectId, @PathVariable long roleId, @AuthenticationPrincipal AuthUser user) { service.deleteRole(projectId, roleId, user); return ok(null); }
 
     private <T> ApiResponse<T> ok(T data) { return ApiResponse.success(data, TraceId.getOrCreate()); }
+
+    private static Long nullableLong(Object value) {
+        if (value == null || String.valueOf(value).isBlank()) return null;
+        try {
+            long parsed = Long.parseLong(String.valueOf(value));
+            if (parsed <= 0) throw new NumberFormatException();
+            return parsed;
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "分类编号无效");
+        }
+    }
 }

@@ -1,0 +1,298 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T0",
+      "goal": "修复 architecture 既有并发测试错误迁移目标并恢复产品修改前的完整绿色基线。",
+      "requirement_ids": ["R11", "R12"],
+      "prerequisites": [],
+      "input_facts": [
+        "PhysicalSubsystemConcurrencyMySqlTest 将 Flyway target 固定为 V36",
+        "arch_logical_subsystem 和 arch_physical_subsystem 由 V77 创建",
+        "完整 architecture 基线为 45/47，两个错误都发生在 setUp 访问不存在的 V77 表"
+      ],
+      "write_scope": [
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/PhysicalSubsystemConcurrencyMySqlTest.java",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/execution-T0.json",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/observation-T0.json"
+      ],
+      "invariants": [
+        "不修改产品代码或 V1-V81",
+        "并发测试的两个锁顺序断言保持不变",
+        "不修改用户级 Docker/Testcontainers 配置"
+      ],
+      "interface_contracts": ["测试必须从实际迁移目录迁移到当前最新版本后再访问 arch 表"],
+      "non_goals": ["不实现生命周期功能", "不重构测试工具", "不调整 Docker 全局配置"],
+      "action_bounds": ["只修正错误的 Flyway target 或等价的测试基线设置，并运行聚焦及完整 architecture 测试"],
+      "acceptance_checks": [
+        "PhysicalSubsystemConcurrencyMySqlTest 两项通过",
+        "mvn -pl :ccb-architecture -am test 中 architecture 47/47 且 reactor 退出码 0",
+        "git diff 仅含 T0 允许文件和已批准准入/账本文件"
+      ],
+      "evidence_required": ["实际 diff", "聚焦与完整 Maven 命令、退出码和 Surefire 汇总", "任何 Docker 兼容参数和环境扰动"],
+      "rollback": "恢复 T0 开始前测试文件；账本保留失败证据。",
+      "stop_conditions": ["修正 target 后出现与本文件无关的新基线失败", "必须修改历史迁移或产品代码才能通过"],
+      "escalation_conditions": ["Testcontainers 只能通过修改用户全局配置运行", "发现基线产品缺陷而非测试目标错误"]
+    },
+    {
+      "id": "T1",
+      "goal": "建立 V82 生命周期数据模型、内部序号迁移和并发安全的固定前缀编号策略。",
+      "requirement_ids": ["R1", "R3", "R4", "R5", "R6", "R9", "R11", "R12"],
+      "prerequisites": ["T0"],
+      "input_facts": [
+        "最高迁移为 V81且 V82 当前空闲",
+        "既有 code 必须保持，逻辑/物理表由 V77 创建",
+        "MySQL 8.4 Testcontainers 与 Flyway 测试入口已可运行"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V82__architecture_subsystem_lifecycle.sql",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/LogicalSubsystem.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/PhysicalSubsystem.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/model/**",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/**",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/number/**",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureMigrationMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureCatalogMigrationMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureSubsystemLifecycleMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/number/**",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/execution-T1.json",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/observation-T1.json"
+      ],
+      "invariants": [
+        "V1-V81 和既有 code 不修改",
+        "逻辑序号在全系统唯一且上限 9999，物理槽位顺序为 1..9,A..Z 且每逻辑上限 35",
+        "RETURNED 保留、未批准拒绝/取消释放、已发布永久占用",
+        "业务数据、锁和值保留显式限定 tenant；逻辑编号 namespace 为全系统，物理编号 namespace 为每个全局逻辑序号"
+      ],
+      "interface_contracts": [
+        "SubsystemNumberStrategy 只表达 reserve/release 语义，固定实现生成 A%04d 和 W%04d<slot>",
+        "store 使用 MySQL 行锁和唯一约束保证并发",
+        "发布模型增加状态、内部序号/槽位和 rowVersion 而保持既有查询字段"
+      ],
+      "non_goals": ["不实现 REST 和工作流", "不创建权限/菜单/流程种子", "不修改旧 code 格式"],
+      "action_bounds": [
+        "先添加能区分空库/V81 增量、容量、回收和并发错误的测试",
+        "只追加 V82 和 architecture 内部 model/store/number 代码",
+        "在 T1 边界内修复测试暴露的直接 schema/strategy 偏差"
+      ],
+      "acceptance_checks": [
+        "空库和 V81 增量迁移到 V82 通过且既有 code 不变，逻辑内部序号跨租户全局唯一",
+        "既有内部序号/槽位按稳定顺序回填，超限迁移失败",
+        "A/W 格式、最小 recycled、RETURNED 保留、批准消费和并发唯一测试通过",
+        "architecture 模块与 Flyway 治理通过"
+      ],
+      "evidence_required": ["实际 diff", "MySQL schema/迁移前后断言", "编号单元与并发测试", "模块/Flyway/diff 命令和退出码"],
+      "rollback": "回退 T1 Java/测试；V82 若进入共享环境则保留并用补偿迁移关闭入口。",
+      "stop_conditions": ["V82 被其他提交占用", "全系统逻辑历史超出 9999 或任一逻辑物理历史超出 35", "必须修改 V77/V78 或重写 code"],
+      "escalation_conditions": ["编号范围或历史槽位规则需改变", "迁移不能前向兼容"]
+    },
+    {
+      "id": "T2",
+      "goal": "交付强类型工单、状态/引用/建议边界、原子发布服务和旧写接口兼容。",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R11", "R12"],
+      "prerequisites": ["T1"],
+      "input_facts": ["T1 schema、store 和 number strategy 已验证", "现有 architecture 直接 CRUD 路径和审计能力已定位", "当前无外部 reference provider"],
+      "write_scope": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/model/**",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/SubsystemChangeStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/**",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/suggestion/**",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/web/**",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/SubsystemReferenceChecker.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/**",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/LogicalSubsystemService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/**",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/**",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/persistence/**",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/web/**",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/**",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/**",
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/execution-T2.json",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/observation-T2.json"
+      ],
+      "invariants": [
+        "非 APPROVED 不修改主记录",
+        "一个目标最多一张 IN_REVIEW/RETURNED",
+        "普通物理 UPDATE 不改父级，REPLACE 原子新建并下线",
+        "作废检查异常 fail-closed",
+        "审批人和建议不修改人工业务值",
+        "AI provider 无真实调用"
+      ],
+      "interface_contracts": [
+        "工单 REST 不接受 tenant/申请人/权限码",
+        "SubsystemReferenceChecker 公开中性输入/结果，异常不能放行 VOID",
+        "建议返回 field/value/source/explanation 且前端显式采用",
+        "旧写路径返回 ARCHITECTURE_WORK_ORDER_REQUIRED 且不调用 repository 写入"
+      ],
+      "non_goals": ["不接真实 workflow", "不改平台模块", "不实现前端", "不调用真实 AI"],
+      "action_bounds": ["只修改 architecture Java、直接测试及 architecture 公开包登记", "先固定状态/权限/原子性失败信号，再实现最小服务边界"],
+      "acceptance_checks": [
+        "DRAFT/RETURNED 编辑和锁/编号语义通过",
+        "逻辑 0/1/N 物理与 REPLACE 全成全不成",
+        "状态/引用/权限/租户矩阵通过",
+        "旧 GET 回归且旧写 409 无副作用",
+        "AI/provider 静态搜索和测试证明无外部调用"
+      ],
+      "evidence_required": ["实际 diff", "状态和权限矩阵", "MySQL 前后计数", "MockMvc 响应", "AI/依赖静态搜索", "模块回归退出码"],
+      "rollback": "回退 T2 Java/API，保留 V82 和 T1 基座。",
+      "stop_conditions": ["需要修改 shared/security/system", "强类型表无法表达字段", "原子发布不能用单事务保证"],
+      "escalation_conditions": ["需要审批人编辑字段", "需要直接改父级", "需要真实 AI 或新公共平台接口"]
+    },
+    {
+      "id": "T3",
+      "goal": "通过固定真实工作流、三级权限和幂等生命周期消费闭合提交到发布。",
+      "requirement_ids": ["R2", "R3", "R5", "R6", "R8", "R9", "R11", "R12"],
+      "prerequisites": ["T2"],
+      "input_facts": ["workflow public integration 和 ROLE resolver 已核验", "T2 submission/publication 边界稳定", "候选菜单/权限/角色/流程 ID 在基线未占用"],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_architecture_subsystem_lifecycle.sql",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V84__seed_architecture_subsystem_workflow.sql",
+        "server/src/modules/architecture/pom.xml",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/integration/**",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemChangeService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/SubsystemChangeStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/web/SubsystemChangeApplicationController.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/integration/**",
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/execution-T3.json",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/observation-T3.json"
+      ],
+      "invariants": [
+        "只依赖 com.ccb.workflow.integration，不访问 workflow 内部或表",
+        "流程只允许 APPROVE/RETURN/REJECT",
+        "manage 可自审批但 submit 仍启动流程",
+        "事件必须匹配 tenant/business/instance/round/digest",
+        "发布失败保持可重试且不标 APPROVED"
+      ],
+      "interface_contracts": [
+        "workflow code=architecture.subsystem.change，businessType=architecture_subsystem_change",
+        "subscriberKey=architecture.subsystem.change.lifecycle.v1",
+        "ROLE 110 ANY，emptyAssigneeAction=ERROR",
+        "权限 architecture:view/apply/manage 按包含关系"
+      ],
+      "non_goals": ["不修改 workflow 实现", "不增加动态审批人", "不增加职责分离", "不实现前端"],
+      "action_bounds": ["只追加 V83/V84、architecture workflow adapter、POM/治理和直接测试"],
+      "acceptance_checks": [
+        "固定流程定义可迁移、发布和启动",
+        "管理角色可处理本人申请",
+        "RETURN 新 instance/round，重复/旧事件 IGNORED",
+        "APPROVED 原子发布，REJECTED/CANCELLED 释放",
+        "workflow/architecture 模块和治理/Flyway 通过"
+      ],
+      "evidence_required": ["实际 diff", "definition JSON", "instance/task/round/receipt 数据", "生命周期测试", "模块与治理退出码"],
+      "rollback": "停止 consumer 和提交入口；回退 Java；V83/V84 保留并用补偿迁移撤权/隐藏菜单。",
+      "stop_conditions": ["需要 workflow 内部改动", "事件不可安全重试", "稳定 ID 冲突"],
+      "escalation_conditions": ["需要职责分离/动态审批人/新动作", "需要扩大 workflow 公共契约"]
+    },
+    {
+      "id": "T4",
+      "goal": "交付发布主数据只读页、响应式工单列表、全页表单和业务详情审批。",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12"],
+      "prerequisites": ["T3"],
+      "input_facts": ["T3 REST/权限/流程契约稳定", "design-h5 与 delivery-showcase 已作为设计基线", "用户批准全页和响应式卡片"],
+      "write_scope": [
+        "web/src/modules/architecture/**",
+        "web/src/router/index.ts",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/execution-T4.json",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/observation-T4.json"
+      ],
+      "invariants": [
+        "主数据页不再直接写记录",
+        "复杂工单使用全页表单",
+        "建议不覆盖 dirty 字段",
+        "审批区不提供业务编辑",
+        "页面级无横向滚动并覆盖全状态"
+      ],
+      "interface_contracts": [
+        "主数据和工单 DTO 与 T2/T3 REST 一致",
+        "工作流决定继续使用现有 web workflow API",
+        "路由为列表/new/:id，权限由服务端为准"
+      ],
+      "non_goals": ["不修改共享 UI/http/auth", "不引入新前端框架", "不恢复直写抽屉"],
+      "action_bounds": ["只修改 architecture Vue/TS/CSS 和静态 router，先构建再真实浏览器采样"],
+      "acceptance_checks": [
+        "Vue typecheck/Vite build 通过",
+        "逻辑 0/1/N 物理全页表单可操作",
+        "主数据只读且发起变更入口正确",
+        "详情快照/差异/时间线/审批三动作正确",
+        "四视口明暗主题无页面级横滚且控制台无新增错误"
+      ],
+      "evidence_required": ["实际 diff", "build 输出", "静态引用搜索", "关键状态截图", "network/console/scrollWidth"],
+      "rollback": "回退工单页面和路由到发布主数据只读入口，不恢复直写。",
+      "stop_conditions": ["需要共享 UI/http/auth 变更", "REST DTO 未稳定", "手机必须整页横滚"],
+      "escalation_conditions": ["需要改变全页布局、权限降级或建议采用规则"]
+    },
+    {
+      "id": "T5",
+      "goal": "完成真实 MySQL、工作流、HTTP、浏览器和治理集成，关闭反馈并判定收敛。",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"],
+      "prerequisites": ["T4"],
+      "input_facts": ["T0-T4 局部任务已观察通过", "验收必须使用隔离数据库和真实浏览器", "high-assurance 至少需要三次采样和两类独立传感器"],
+      "write_scope": [
+        "docs/integration/architecture-module-contract.md",
+        "docs/architecture/MODULES.md",
+        ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/*.json"
+      ],
+      "invariants": ["不连接生产或原开发数据库", "不手工插业务表制造结果", "未执行验证不声明通过", "所有反馈必须裁决并闭合"],
+      "interface_contracts": ["稳定 contract 必须与实际 REST/流程/SPI/兼容行为一致"],
+      "non_goals": ["不推送/建 PR/合并/发布", "不扩大功能范围"],
+      "action_bounds": ["只补契约/证据并在已批准实现范围内做受控纠偏"],
+      "acceptance_checks": [
+        "Maven reactor、Vue build、scope/governance/module/Flyway/diff 全绿",
+        "隔离 MySQL V84、Boot health、真实 workflow/HTTP/DB/audit 对账",
+        "权限、编号、级联、REPLACE、引用、兼容和失败路径通过",
+        "四视口明暗主题浏览器 UAT 通过",
+        "R1-R12 证据完整、开放反馈为 0、gate pass"
+      ],
+      "evidence_required": ["全部命令/退出码", "脱敏 HTTP/DB/workflow/audit", "浏览器截图/network/console/geometry", "execution/observation/correction/convergence"],
+      "rollback": "停止本地服务；按 T4 到 T1 逆序回退应用代码，保留迁移和历史，以补偿迁移关闭入口。",
+      "stop_conditions": ["误连非隔离数据库", "Flyway checksum 异常", "真实流程不可启动", "权限越界或部分发布", "浏览器与 API 事实不一致"],
+      "escalation_conditions": ["需要生产访问", "需要外部 provider", "需要平台公共接口或真实 AI", "需求必须变化"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T0", "to": "T1", "reason": "必须先恢复绿色基线，才能把后续失败归因于 V82 和编号改动。"},
+    {"from": "T1", "to": "T2", "reason": "工单服务依赖已验证的表、store 和 number strategy。"},
+    {"from": "T2", "to": "T3", "reason": "生命周期 consumer 依赖稳定 submission/publication 边界。"},
+    {"from": "T3", "to": "T4", "reason": "前端依赖固定 REST、权限和工作流轮次契约。"},
+    {"from": "T4", "to": "T5", "reason": "真实浏览器和端到端验收需要完整前后端。"}
+  ],
+  "parallel_groups": [["T0"], ["T1"], ["T2"], ["T3"], ["T4"], ["T5"]],
+  "integration_points": [
+    {"after_tasks": ["T0"], "checks": ["architecture 47/47 绿色基线", "独立观察 diff 仅修复测试 target"]},
+    {"after_tasks": ["T1"], "checks": ["V82 空库/增量与编号并发", "architecture/Flyway/diff"]},
+    {"after_tasks": ["T2"], "checks": ["工单状态/权限/原子性/引用/no-op AI", "旧接口数据库副作用对账"]},
+    {"after_tasks": ["T3"], "checks": ["真实固定流程和 lifecycle receipts", "workflow/architecture/governance/Flyway"]},
+    {"after_tasks": ["T4"], "checks": ["Vue build", "主数据无直写", "浏览器预采样"]},
+    {"after_tasks": ["T5"], "checks": ["完整自动化与运行对账", "四视口 UAT", "convergence gate"]}
+  ],
+  "sampling_plan": [
+    {"label": "基线恢复采样", "trigger": "T0 执行报告返回", "observer": "独立观察子代理", "sensors": ["S1", "S2", "S8"], "requirement_ids": ["R11", "R12"]},
+    {"label": "数据编号采样", "trigger": "T1 执行报告返回", "observer": "独立观察子代理", "sensors": ["S1", "S2", "S8"], "requirement_ids": ["R1", "R3", "R4", "R5", "R6", "R9", "R11", "R12"]},
+    {"label": "后端工作流集成采样", "trigger": "T2 与 T3 完成", "observer": "独立观察子代理", "sensors": ["S1", "S2", "S3", "S4", "S5", "S8", "S9"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R11", "R12"]},
+    {"label": "前端渲染采样", "trigger": "T4 完成并启动真实服务", "observer": "独立观察子代理或主线程浏览器传感器", "sensors": ["S6", "S7", "S9"], "requirement_ids": ["R1", "R2", "R3", "R7", "R8", "R9", "R10", "R12"]},
+    {"label": "最终收敛采样", "trigger": "T5 全量自动化和 UAT 完成", "observer": "主线程独立复核与收敛 Skill", "sensors": ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T4", "T5"], "sensor_ids": ["S1", "S2", "S7", "S9"]},
+    {"requirement_id": "R2", "task_ids": ["T2", "T3", "T4", "T5"], "sensor_ids": ["S1", "S2", "S3", "S9"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2", "T3", "T4", "T5"], "sensor_ids": ["S1", "S2", "S7", "S9"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2", "T4", "T5"], "sensor_ids": ["S1", "S2", "S9"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T2", "T3", "T4", "T5"], "sensor_ids": ["S1", "S2", "S3", "S9"]},
+    {"requirement_id": "R6", "task_ids": ["T1", "T2", "T3", "T4", "T5"], "sensor_ids": ["S1", "S2", "S9"]},
+    {"requirement_id": "R7", "task_ids": ["T2", "T4", "T5"], "sensor_ids": ["S1", "S5", "S7"]},
+    {"requirement_id": "R8", "task_ids": ["T2", "T3", "T4", "T5"], "sensor_ids": ["S1", "S3", "S7", "S9"]},
+    {"requirement_id": "R9", "task_ids": ["T1", "T3", "T4", "T5"], "sensor_ids": ["S2", "S3", "S9"]},
+    {"requirement_id": "R10", "task_ids": ["T4", "T5"], "sensor_ids": ["S6", "S7"]},
+    {"requirement_id": "R11", "task_ids": ["T0", "T1", "T2", "T3", "T5"], "sensor_ids": ["S2", "S4", "S5", "S8"]},
+    {"requirement_id": "R12", "task_ids": ["T0", "T1", "T2", "T3", "T4", "T5"], "sensor_ids": ["S1", "S2", "S3", "S6", "S7", "S8", "S9"]}
+  ],
+  "plan_status": "ready"
+}

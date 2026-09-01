@@ -1,0 +1,55 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/NetworkWorkOrderListPage.vue",
+      "purpose": "类型页签/状态筛选/分页，桌面表格与移动卡片全状态"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/NetworkWorkOrderFormPage.vue",
+      "purpose": "按 kind 渲染固定强类型字段、附件上传/移除、保存/保存并提交"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/NetworkWorkOrderDetailPage.vue",
+      "purpose": "快照/附件/办理结果登记/业务历史时间线/工作流审批/申请人操作"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/networkTypes.ts / networkUtils.ts / network.ts",
+      "purpose": "类型契约、标签/权限工具、API 封装"
+    },
+    {
+      "path_or_resource": "web/src/router/index.ts",
+      "purpose": "四段路由：列表/新建/编辑/详情"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/architecture.css",
+      "purpose": ".architecture-network-* 追加样式（附件/结果/页签），复用 architecture 既有样式体系"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "salient_output": "vue-tsc --noEmit 通过；vite build 成功（chunk 体积告警为既有）",
+      "exit_code": 0
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "类型检查与构建",
+      "evidence": "vue-tsc 无错误；dist 产物生成",
+      "result": "pass",
+      "limitations": ["浏览器验收为 manual 项，尚未执行"]
+    },
+    {
+      "check": "复用与全状态",
+      "evidence": "复用 UiPageHeader/UiDataTable/UiStatusTag/UiToolbar/UiEmptyState 与 architecture 样式；加载/空/失败/无权限/提交中齐备",
+      "result": "pass",
+      "limitations": []
+    }
+  ],
+  "diff_summary": ["新增页面与类型文件；api.ts/types.ts/utils.ts 仅追加网络工单相关导出（未触碰既有导出）"]
+}

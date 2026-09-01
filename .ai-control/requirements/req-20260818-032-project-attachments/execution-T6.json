@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "task_id": "T6",
+  "status": "implemented",
+  "objective": "重构项目附件分类导航、筛选工具栏和附件列表布局，提升桌面与移动端可读性",
+  "scope": [
+    "web/src/views/ProjectView.vue",
+    "web/src/styles.css",
+    "docs/engineering-control/designs/2026-08-18-project-attachments-design.md"
+  ],
+  "changes": [
+    "将分类入口从顶部横向标签改为左侧分类导航，并保留下拉分类筛选",
+    "将文件名检索、分类筛选、上传目标和上传操作整理为统一工具栏",
+    "将附件行调整为文件信息、所属分类和操作三列，操作使用带提示的图标按钮",
+    "为 760px 以下视口增加分类横向导航、工具栏纵向布局和独立操作行"
+  ],
+  "commands": [
+    {"command": "npm run build", "result": "passed", "evidence": "vue-tsc and Vite production build succeeded"},
+    {"command": "git diff --check", "result": "passed", "evidence": "no whitespace errors"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "partial", "evidence": "module and skill checks passed; existing ledger topic/encoding findings and unavailable control-engineering plugin remain"}
+  ],
+  "runtime": {
+    "browser": "partial",
+    "evidence": "fresh local browser tab loaded http://localhost:5173/login?redirect=/dashboard with login DOM present and no console errors",
+    "limitation": "no authenticated local browser session was available, so the project attachment tab and 375px visual path could not be operated in-browser"
+  },
+  "impact": {"api": "unchanged", "permissions": "unchanged", "audit": "unchanged", "database": "unchanged", "external_access": "unchanged"},
+  "rollback": "恢复 web/src/views/ProjectView.vue、web/src/styles.css 和对应设计记录即可；不涉及数据库或服务端回滚"
+}

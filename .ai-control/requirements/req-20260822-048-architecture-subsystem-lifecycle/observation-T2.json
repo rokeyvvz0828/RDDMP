@@ -1,0 +1,93 @@
+{
+  "sample_label": "S-0005/S-0006-T2-独立观察与纠偏复验-2026-08-23",
+  "task_ids": ["T2"],
+  "baseline_revision": "design_revision=2; plan_revision=2",
+  "measurements": [
+    {
+      "requirement_id": "R2/R3/R4/R5/R6",
+      "sensor": "工单、发布、引用和真实 MySQL 代码/测试复核",
+      "result": "pass",
+      "raw_evidence": "工单准备、逻辑 0..N 物理、编号保留/释放、REPLACE、引用 fail-closed 和批准事务均有强类型实现；执行侧工单/发布/引用/Controller 组合 75/75，Store 6/6，编号与兼容并发 7/7。",
+      "limitation": ["真实 workflow lifecycle 属于 T3。"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "provider 边界和源码网络客户端扫描",
+      "result": "pass",
+      "raw_evidence": "存在 NoopAiSubsystemSuggestionProvider，本地候选不写草稿；architecture change/integration 无真实 AI 或网络客户端匹配。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "权限矩阵静态审查",
+      "result": "fail-then-corrected",
+      "raw_evidence": "首次观察发现 MANAGE 被同时用于读取和维护，管理者可编辑/取消他人草稿；纠偏后 update/cancel/coordinateSubmission 均由 Service lockOwned 强制 applicantId=actor.id，Controller 更新/取消固定 OWN。",
+      "limitation": ["工作流当前任务处理人校验属于 T3。"]
+    },
+    {
+      "requirement_id": "R11/R12",
+      "sensor": "兼容和静态门禁",
+      "result": "pass",
+      "raw_evidence": "旧写并发 409 且真实 MySQL 发布事实不变；scope、Flyway、diff 检查通过；首次完整 architecture 142/142，权限纠偏后完整 architecture 143/143。",
+      "limitation": []
+    }
+  ],
+  "negative_feedback": [
+    {
+      "id": "F-T2-004",
+      "observer_feedback_id": "F-T2-001",
+      "requirement_id": "R8",
+      "expected": "申请、管理用户都只能编辑、提交和取消本人申请；manage 只扩展全量读取和审批。",
+      "observed": "Controller 把管理者更新/取消传为 MANAGE，Service 只在 OWN 时校验申请人。",
+      "evidence": "初始 Controller update/cancel 使用 accessScope(authentication)，Service requireAccess 仅在 OWN 校验 applicantId。",
+      "severity": "P1",
+      "confidence": "high",
+      "causal_hypothesis": "把管理读取范围误复用于申请人写入范围。",
+      "correction_check": "Service 对 update/cancel/submit 强制 owner；Controller 固定 OWN；补管理者操作他人 403 和本人成功测试。"
+    }
+  ],
+  "correction_reobservation": {
+    "feedback_id": "F-T2-004",
+    "measurements": [
+      "静态确认 Service update、cancel、coordinateSubmission 即使接收 MANAGE 也通过 lockOwned 校验 applicantId",
+      "静态确认 Controller update、cancel 固定传 AccessScope.OWN",
+      "管理者修改、取消、提交他人工单测试均断言 FORBIDDEN 且无 CAS 写入",
+      "执行侧 SubsystemChangeServiceTest 25/25、SubsystemChangeApplicationControllerTest 6/6"
+    ],
+    "negative_feedback": [],
+    "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+    "assessment": "pass",
+    "recorded_at": "2026-08-23T00:18:00Z"
+  },
+  "blind_spots": [
+    "独立观察未重复运行 Maven；采用执行侧聚焦和全量测试退出码。",
+    "真实工作流、权限迁移和浏览器不属于 T2。"
+  ],
+  "repeatability": {
+    "commands": [
+      {
+        "command": "mvn -pl :ccb-architecture -am -Dtest=SubsystemChangeServiceTest,SubsystemChangeApplicationControllerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+        "exit_code": 0,
+        "result": "31 tests, 0 failures, 0 errors, 0 skipped"
+      },
+      {
+        "command": "mvn -q -pl :ccb-architecture -am test",
+        "exit_code": 0,
+        "result": "纠偏前 142 tests；F-T2-004 纠偏后 143 tests；均为 0 failures, 0 errors, 0 skipped"
+      },
+      {
+        "command": "node scripts/check-codex-scope.mjs; node scripts/check-flyway-migrations.mjs; git diff --check",
+        "exit_code": 0,
+        "result": "all passed"
+      }
+    ],
+    "environment": "隔离工作树；Docker 参数仅注入 Maven 子进程；观察 agent 严格只读。"
+  },
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "assessment": {
+    "verdict": "pass",
+    "summary": "首次 P1 权限偏差已完成有界纠偏并由独立观察复验；T2 范围内无剩余原子反馈。"
+  },
+  "recommended_next": ["标记 T2 verified 并进入 T3。"],
+  "observation_status": "complete"
+}

@@ -1,0 +1,186 @@
+{
+  "task_id": "T1-T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V97__create_architecture_environment_instances.sql",
+      "purpose": "新增环境部署实例与实例灾备关系表；同环境同机器名/IP 在用防重由服务层校验承担"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V98__seed_architecture_environment_instances.sql",
+      "purpose": "新增环境部署实例菜单、权限与角色授权初始化数据"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V99__extend_architecture_resource_request_fulfillment_status.sql",
+      "purpose": "扩展资源工单确认下发后的已下发与已差异下发状态约束"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+      "purpose": "实现自动部署 Provider 接口和 Mock Bean、资源下发、实例持久化、灾备关系、下线与实际资源聚合"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/**",
+      "purpose": "实现资源申请办理下发弹窗、自动部署预览带出、实例列表详情、灾备关系和下线风险提示"
+    },
+    {
+      "path_or_resource": "web/src/router/index.ts",
+      "purpose": "注册环境部署实例前端路由"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260825-053-resource-fulfillment-and-instance/codex-task-scope.yaml",
+      "purpose": "补齐 scope 检查要求的 api、permission required_tests 与 V99 迁移元数据"
+    }
+  ],
+  "requirements_addressed": [
+    "自动部署 Mock 带出自增机器名、随机私网 IP、资源规格和技术栈",
+    "已审批资源工单支持手动输入和自动部署确认下发",
+    "确认下发后按申请汇总值与实际汇总值是否一致将工单更新为已下发或已差异下发",
+    "实例与部署单元 1:1 且保存采用的部署单元版本快照",
+    "实际值与申请值差异需要差异原因",
+    "同环境同机器名/IP 仅允许一个在用实例",
+    "同部署单元实例支持主备、双活、冷备灾备关系",
+    "实例下线保留历史并提示关联灾备风险",
+    "具体环境实际态资源从 ACTIVE 实例动态聚合",
+    "新增菜单、路由和查看/管理权限"
+  ],
+  "commands": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed."
+    },
+    {
+      "command": "mvn test -pl :ccb-architecture -am \"-Dtest=EnvironmentResourceServiceTest,EnvironmentInstanceServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\"",
+      "exit_code": 0,
+      "salient_output": "EnvironmentResourceServiceTest: Tests run: 16, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit && vite build completed; Vite built 2438 modules"
+    },
+    {
+      "command": "Start-Process npm.cmd --prefix web run dev -- --host 127.0.0.1 --port 5174; Invoke-WebRequest http://127.0.0.1:5174/architecture/instances",
+      "exit_code": 0,
+      "salient_output": "Vite dev server listening on 127.0.0.1:5174; HTTP 200 OK returned for /architecture/instances"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "Flyway migration check passed for 93 migration(s) and 1 approved callback(s)."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors; Git reported LF-to-CRLF warnings only."
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260825-053-resource-fulfillment-and-instance/codex-task-scope.yaml --base origin/dev-ivanh --head HEAD --working-tree",
+      "exit_code": 1,
+      "salient_output": "Scope check failed only on existing unrelated untracked paths outside 04 writable_paths: .ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json, observation-T11.json, .dsh/README.md, .dsh/skills/rddmp-dev-environment/SKILL.md"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260825-053-resource-fulfillment-and-instance/codex-task-scope.yaml --base dev-ivanh --head HEAD",
+      "exit_code": 0,
+      "salient_output": "Codex scope check passed for REQ-20260825-053; 26 changed file(s)."
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "Governance check、Repository skill check、Development entry check 通过；AI control layout 因历史 .ai-control 旧账本 topic mismatch、invalid JSON 和缺失 acceptance evidence 失败"
+    },
+    {
+      "command": "mvn -pl :ccb-boot -am \"-Dmaven.test.skip=true\" package",
+      "exit_code": 0,
+      "salient_output": "首次 repackage 因旧后端占用 JAR 失败；停止旧 8080 Java 进程 47716 后重跑成功，ccb-boot BUILD SUCCESS"
+    },
+    {
+      "command": "java -jar server/src/platform/boot/target/ccb-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local; Invoke-RestMethod http://127.0.0.1:8080/actuator/health",
+      "exit_code": 0,
+      "salient_output": "后端新进程 PID 48616；启动日志显示 Flyway 从 schema 98 迁移到 v99；/actuator/health 返回 UP"
+    },
+    {
+      "command": "Invoke-WebRequest http://127.0.0.1:5173/architecture/requests; Invoke-WebRequest http://127.0.0.1:5173/architecture/instances",
+      "exit_code": 0,
+      "salient_output": "前端 5173 进程 41040 保持监听；资源申请页和环境部署实例页均返回 HTTP 200"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "后端聚焦服务测试",
+      "result": "pass",
+      "evidence": "Maven 命令退出码 0，EnvironmentResourceServiceTest 16 个用例通过",
+      "limitations": [
+        "单元测试使用 Mock/Mockito，不代表真实自动部署平台验收"
+      ]
+    },
+    {
+      "check": "前端生产构建",
+      "result": "pass",
+      "evidence": "npm --prefix web run build 退出码 0",
+      "limitations": [
+        "未执行浏览器桌面/移动视口 UAT"
+      ]
+    },
+    {
+      "check": "Flyway 迁移静态检查",
+      "result": "pass",
+      "evidence": "check-flyway-migrations 退出码 0",
+      "limitations": [
+        "启动时已在本地既有 MySQL 执行 V99；空库迁移未单独执行"
+      ]
+    },
+    {
+      "check": "scope 审计",
+      "result": "blocked",
+      "evidence": "check-codex-scope 退出码 1，阻塞项均为 04 外既有未跟踪文件",
+      "limitations": [
+        "未移动或删除用户/其他任务文件"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "新增环境部署实例模型、接口 DTO、控制器 API、Store SQL 和实例灾备关系能力",
+    "新增 AutomatedDeploymentProvider 与 MockAutomatedDeploymentProvider，真实自动部署可通过新增 Provider 并明确主 Bean 对接",
+    "资源申请详情页新增办理下发弹窗，支持自动部署预览带出与手动逐台录入",
+    "新增环境部署实例列表页、详情抽屉、灾备拓扑操作、下线风险提示与分页",
+    "具体环境列表/详情使用 ACTIVE 实例动态汇总实际态资源",
+    "确认下发后工单按一致/差异流转为已下发或已差异下发",
+    "追加 V97-V99 迁移并注册前端路由"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "不修改已发布 Flyway 迁移",
+      "result": "pass",
+      "evidence": "V91-V98 未再修改；新增 V99 补偿迁移，迁移静态检查通过且本地既有库启动迁移到 v99"
+    },
+    {
+      "invariant": "业务分类复用 platform/system 字典",
+      "result": "pass",
+      "evidence": "服务器类型、JDK、中间件、操作系统继续走既有系统参数校验"
+    },
+    {
+      "invariant": "普通用户不能绕过资源工单手动建实例",
+      "result": "pass",
+      "evidence": "实例创建只暴露在 resource-requests/{id}/fulfill 下发接口，控制器要求 architecture:instance:manage"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "工作区已有 04 外未跟踪文件",
+      "impact": "scope 检查包含 --working-tree 时失败，但未修改这些路径"
+    },
+    {
+      "event": "旧后端进程占用 boot JAR",
+      "impact": "首次 repackage 无法重命名正在运行的 JAR；停止旧 8080 进程后重跑成功"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实自动部署平台对接未实施，仅保留 Provider 接口和 Mock",
+    "真实 MySQL 空库迁移未执行；本地既有库已随后端启动迁移到 V99",
+    "浏览器桌面/移动视口 UAT 未执行",
+    "scope 审计需先处理既有无关未跟踪文件后复验"
+  ],
+  "recommended_next": "observe"
+}

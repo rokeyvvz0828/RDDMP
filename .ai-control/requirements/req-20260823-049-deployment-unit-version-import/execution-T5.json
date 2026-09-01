@@ -1,0 +1,97 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "evidence": "契约文档同步与全量验证完成：架构模块 195/195 测试、前端构建、真实 MySQL 空库迁移至 V86、公开 API 全旅程、真实浏览器桌面/移动 UAT。",
+  "recorded_at": "2026-08-24T01:30:00+00:00",
+  "data": {
+    "task_id": "T5",
+    "status": "implemented",
+    "changed_surfaces": [
+      {
+        "path_or_resource": "docs/integration/architecture-module-contract.md",
+        "purpose": "部署单元 API、权限、版本与导入契约；选项上下文扩展；明确不提供补充"
+      },
+      {
+        "path_or_resource": "docs/architecture/MODULES.md",
+        "purpose": "architecture 模块职责描述同步"
+      }
+    ],
+    "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+    "commands": [
+      {
+        "command": "mvn -pl :ccb-architecture -am test（DOCKER_HOST=tcp://127.0.0.1:2376 DOCKER_CLIENT_STRATEGY=EnvironmentAndSystemProperty DOCKER_API_VERSION=1.44）",
+        "salient_output": "架构模块 195/195 通过（含 issue 01 全部既有回归：工作流集成、编号并发、迁移基线）",
+        "exit_code": 0
+      },
+      {
+        "command": "npm --prefix web run build",
+        "salient_output": "vue-tsc + vite 构建成功",
+        "exit_code": 0
+      },
+      {
+        "command": "node scripts/check-all-governance.mjs",
+        "salient_output": "exit 0；仅历史任务的既有提示信息",
+        "exit_code": 0
+      },
+      {
+        "command": "node scripts/check-flyway-migrations.mjs",
+        "salient_output": "80 个迁移检查通过",
+        "exit_code": 0
+      },
+      {
+        "command": "node scripts/check-module-boundaries.mjs",
+        "salient_output": "仅既有 system→attachment、requirement→workflow 违规（与 HEAD 一致），architecture 相关违规 0",
+        "exit_code": 1
+      },
+      {
+        "command": "node scripts/check-codex-scope.mjs --scope .../codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+        "salient_output": "仅预先存在且与本任务无关的未跟踪 temp/** 与 docs/original/**；本任务全部改动均在 writable_paths 内",
+        "exit_code": 0
+      },
+      {
+        "command": "git diff --check",
+        "salient_output": "无空白错误",
+        "exit_code": 0
+      },
+      {
+        "command": "隔离 MySQL 8.4 空库（rddmp-049-mysql:3310）启动 Boot（SPRING_PROFILES_ACTIVE=local，MOCK_DATA_ENABLED=false）",
+        "salient_output": "Flyway V1→V86 共 80 个迁移全部 success；/actuator/health UP；未触碰任何既有开发库",
+        "exit_code": 0
+      },
+      {
+        "command": "公开 API 脚本（curl + python）",
+        "salient_output": "创建 DW0001A001 版本1→更新版本2→版本历史2条→陈旧 rowVersion 409→停用/停用中修改409/启用/作废/重复作废409/名称不复用409；导入预览 5行(2有效3无效原因精确)→确认 PARTIAL 2成功3失败→错误报告 CSV(BOM) 3行→幂等重导 SKIPPED→重复确认409；viewer 角色列表200/创建403/导入上传403/批次200；审计 ARCHITECTURE_DEPLOYMENT_UNIT_* 14条含失败记录",
+        "exit_code": 0
+      },
+      {
+        "command": "node /tmp/t49-uat.js（Playwright-core + 系统 Chromium 148，1280x800 与 375x812）",
+        "salient_output": "16/17 通过：登录/列表/创建对话框/详情版本时间线/编号展示/导入预览/确认写入/批次台账/停用操作；移动端卡片列表、详情与导入页均无横向溢出；唯一 FAIL 为既有页面同样存在的 favicon 类 404 控制台错误（在未改动的物理子系统页可复现），非本任务引入；截图 9 张",
+        "exit_code": 1
+      }
+    ],
+    "local_checks": [
+      {
+        "check": "空库迁移至 V86",
+        "result": "pass",
+        "evidence": "隔离空库 80 迁移 success 且 health UP"
+      },
+      {
+        "check": "浏览器 UAT 桌面/移动",
+        "result": "pass",
+        "evidence": "16/17；唯一失败为既有 404 噪声"
+      }
+    ],
+    "diff_summary": ["契约文档与 MODULES.md 更新；未改动其他模块"],
+    "disturbances": [
+      {
+        "source": "本机并行 REQ-050 会话周期性地终止 8080 后端进程",
+        "effect": "运行时验证窗口被压缩",
+        "handling": "以受管后台任务重启后端完成全部验证；最终验证数据留存于隔离库与截图"
+      }
+    ],
+    "unresolved_issues": [
+      "控制台 404 为仓库既有问题（favicon 类），未在本任务范围内修复",
+      "真实浏览器验收未覆盖 390x844/430x932 与明暗主题（375x812 已覆盖移动端主要旅程）；模块级自动化与 1280x800/375x812 UAT 已通过"
+    ]
+  }
+}

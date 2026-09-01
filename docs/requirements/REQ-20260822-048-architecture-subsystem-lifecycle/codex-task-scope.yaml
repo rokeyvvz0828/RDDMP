@@ -1,0 +1,206 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260822-048",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260822-048-architecture-subsystem-lifecycle/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260822-048-architecture-subsystem-lifecycle",
+    "worktree": "C:/Users/missa/.codex/visualizations/2026/08/22/01a0292f-9dff-7b01-b159-98bab10ec8c9/RDDMP-REQ-20260822-048"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/architecture/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__seed_architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__seed_architecture_subsystem_workflow.sql",
+      "web/src/modules/architecture/**",
+      "web/src/router/index.ts",
+      "governance/modules.yaml",
+      "docs/architecture/MODULES.md",
+      "docs/integration/architecture-module-contract.md",
+      "docs/requirements/REQ-20260822-048-architecture-subsystem-lifecycle/**",
+      "docs/engineering-control/designs/2026-08-22-architecture-subsystem-lifecycle-design.md",
+      "docs/engineering-control/plans/2026-08-22-architecture-subsystem-lifecycle-implementation-plan.md",
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V5__create_workflow_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V35__workflow_business_integration.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V77__create_architecture_subsystems.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V78__seed_architecture_subsystem_catalog.sql",
+      "server/src/modules/release/**",
+      "web/src/api/http.ts",
+      "web/src/api/workflow.ts",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/views/AppLayout.vue",
+      "web/src/stores/auth.ts",
+      "docs/integration/frontend-ui-contract.md",
+      "design-h5.md"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/internal/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      ".ai-control/original/**",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260822-048",
+    "owner_approved": true,
+    "approval_evidence": "用户于 2026-08-22 批准 architecture 增加 workflow 公开契约依赖、对外预留引用检查 SPI、三级权限和旧写接口转工单兼容方案，并要求按仓库规则实施。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "逻辑和物理主数据 GET 路径与既有字段保持兼容并增加状态",
+      "旧 POST/PUT/DELETE 路径与 HTTP 可达性保留；原直接写入语义按批准需求改为稳定返回 ARCHITECTURE_WORK_ORDER_REQUIRED 且数据库无写入",
+      "既有主记录 code 不改写，内部序号只用于后续新编号",
+      "architecture 只依赖 com.ccb.workflow.integration，不访问 workflow 内部包或表",
+      "com.ccb.architecture.integration 只暴露中性引用检查契约，不暴露持久化或 Web 类型",
+      "现有 system、security、workflow、release 和 Boot 测试无回归"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__seed_architecture_subsystem_lifecycle.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__seed_architecture_subsystem_workflow.sql"
+    ],
+    "compatibility_and_rollback": "只追加 V93-V95，不修改 V1-V92。V93 为既有主表追加可兼容默认列，保留 code，并建立强类型申请、编号、锁、历史、替换和工作流回执表；既有逻辑与所有物理历史按稳定顺序补内部序号/槽位，超出 9999/35 时迁移失败。V94 追加菜单 803、权限 8031-8033、角色 110 及旧权限映射；V95 追加 definition 900000000000030 和 version 900000000000031。应用回退保留迁移、编号、申请、发布和审计，使用后续补偿迁移关闭入口，不手工删除生产数据。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "development-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin"
+    },
+    {
+      "name": "architecture-numbering-and-domain",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=FixedPrefixIncrementalSubsystemNumberStrategyTest,SubsystemChangeServiceTest,SubsystemPublicationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "architecture-mysql-and-workflow",
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureSubsystemLifecycleMySqlTest,ArchitectureWorkflowLifecycleConsumerTest,PhysicalSubsystemConcurrencyMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test"
+    },
+    {
+      "name": "architecture-module",
+      "command": "mvn -pl :ccb-architecture -am test"
+    },
+    {
+      "name": "workflow-regression",
+      "command": "mvn -pl :ccb-workflow -am test"
+    },
+    {
+      "name": "boot-and-reactor",
+      "command": "mvn test"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260822-048-architecture-subsystem-lifecycle/codex-task-scope.yaml --base e5b57473beabc9d2a9c2c63bd32635b2f708d8a8 --head HEAD --working-tree"
+    },
+    {
+      "name": "governance",
+      "command": "node scripts/check-all-governance.mjs"
+    },
+    {
+      "name": "module-boundaries",
+      "command": "node scripts/check-module-boundaries.mjs"
+    },
+    {
+      "name": "flyway",
+      "command": "node scripts/check-flyway-migrations.mjs"
+    },
+    {
+      "name": "diff",
+      "command": "git diff --check"
+    },
+    {
+      "name": "api",
+      "type": "manual",
+      "procedure": "在隔离 MySQL 8.4 空库启动正式 Boot/Vite；通过业务 API 创建逻辑单独新增、逻辑带多物理新增、独立物理新增工单，首次提交启动 architecture.subsystem.change 真实实例；使用绑定 ARCHITECTURE_MANAGER 的账号在业务详情完成批准、退回重提、自审批、拒绝和取消；验证主表只在批准事件后原子变化、轮次/摘要/编号/锁/历史一致。",
+      "evidence": "保存脱敏 HTTP、workflow instance/task、数据库断言、操作审计和重启后复核证据"
+    },
+    {
+      "name": "permission",
+      "type": "manual",
+      "procedure": "以 view/apply/manage/无权限及 tenant 2 用户验证主数据、本人/全部工单、审批和跨租户拒绝；验证旧 GET 兼容、旧写 409 无数据库变化；验证引用存在与检查器异常时作废 fail-closed，OFFLINE 不接受新引用。",
+      "evidence": "保存脱敏权限矩阵、错误码、前后数据库计数和审计记录"
+    },
+    {
+      "name": "browser-uat",
+      "type": "manual",
+      "procedure": "在 1280x800、375x812、390x844、430x932 和明暗主题完成发布列表、工单列表、全页逻辑级联表单、详情审批、退回重提、冲突恢复、只读/403/失败/提交中/长文本验收；确认控制台无新增错误、网络无真实 AI 请求、documentElement.scrollWidth 不大于 innerWidth。",
+      "evidence": "保存每个视口关键状态截图、网络、控制台、页面宽度和操作结果"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "确定性编号包含可复用保留值和并发分配，必须由 MySQL 行锁与唯一约束共同保证",
+      "逻辑级联创建和物理替换包含多主记录发布，任何失败必须整单回滚",
+      "工作流事件与业务发布异步，必须按事件、实例、轮次和摘要幂等并允许平台重试",
+      "作废引用检查采用 fail-closed；未来 provider 接入需要相应模块治理批准",
+      "既有编号不改写但会占用内部序号/槽位，迁移前必须检查 9999/35 容量",
+      "旧写接口从直接 CRUD 变为 409 是已批准的不兼容行为，需要明确前端入口和契约",
+      "当前本机 Testcontainers 需子进程指定 Docker Desktop npipe 与 API 1.44；不得修改用户全局配置",
+      "实施前完整 architecture 基线有 2 个既有错误，原因是并发测试错误固定在 V36，T1 必须先修复并复验"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260822-048-architecture-subsystem-lifecycle",
+    "control_justification": "高风险跨数据库、编号并发、工作流生命周期、公开 SPI、权限迁移和响应式前端功能，需要完整需求定标、建模、计划、受控执行、独立观测、纠偏和收敛。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/baseline.json",
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/model.json",
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/control-plan.json",
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/execution-T*.json",
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/observation-T*.json",
+      ".ai-control/requirements/req-20260822-048-architecture-subsystem-lifecycle/convergence.json"
+    ],
+    "release_verification": [
+      "空库和 V81 增量库迁移到 V84，既有 code 不变",
+      "编号并发、释放复用、退回保留和永久占用",
+      "真实工作流批准、退回重提、自审批、拒绝、取消和事件幂等",
+      "逻辑级联与物理替换原子发布",
+      "权限、租户、引用 fail-closed、旧接口兼容和审计",
+      "四个视口与明暗主题真实浏览器 UAT",
+      "Maven/Vue/Boot/治理/范围/模块边界/Flyway 全量检查"
+    ],
+    "rollback": "按前端、architecture 消费者与服务、workflow 依赖和治理登记逆序回退应用代码；保留 V93-V95、编号、申请、发布、历史和审计；通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。"
+  }
+}

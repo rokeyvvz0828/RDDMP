@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "closed_at": "2026-08-25T15:43:34+08:00",
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "control_plan_revision": "control-plan-1",
+  "gate_result": "accepted_with_residual_risks",
+  "user_acceptance": {
+    "accepted": true,
+    "source": "用户于 2026-08-25 明确要求“可以，关闭此需求并提交、合并、推送”。"
+  },
+  "requirement_results": [
+    {
+      "requirement_id": "R1",
+      "status": "pass_with_limitations",
+      "evidence": [
+        "环境类型改由系统字典 ARCH_ENVIRONMENT_TYPE 维护，具体环境只引用启用字典项。",
+        "EnvironmentResourceServiceTest 覆盖字典读取、具体环境 CRUD、删除引用守卫和停用限制。",
+        "本地运行接口曾验证 /api/architecture/environment-types 与 /api/architecture/environments 返回 HTTP 200。"
+      ],
+      "limitations": ["真实浏览器维护环境类型路径未执行。"]
+    },
+    {
+      "requirement_id": "R2",
+      "status": "pass_with_limitations",
+      "evidence": [
+        "具体环境详情 DTO 与页面区分基础信息、申请态资源汇总和实际态空态。",
+        "资源汇总 SQL 已修正为仅在 hasSidecar=true 时计入边车资源。"
+      ],
+      "limitations": ["真实浏览器桌面和移动视口详情页未执行。"]
+    },
+    {
+      "requirement_id": "R3",
+      "status": "pass_with_limitations",
+      "evidence": [
+        "资源申请已按登记表字段重写，物理子系统字段和部署单元字段由主数据带出。",
+        "DB 明细仅填写数据库存储需求、数据库和数据库版本；AP/WB/PL 明细填写非 DB 资源字段。",
+        "服务器类型、JDK、中间件、操作系统、灾备模式均转入系统字典；容量、CPU、内存和节点数字段为整数。",
+        "边车占比修正为 hasSidecar=false 时不参与总量和占比，节点数为 0 或基础内存为 0 时占比为空。"
+      ],
+      "limitations": ["登记表完整人工浏览器录入 UAT 未执行。"]
+    },
+    {
+      "requirement_id": "R4",
+      "status": "pass_with_limitations",
+      "evidence": [
+        "资源申请提交复用平台工作流 architecture.resource-request。",
+        "本地库工作流定义已发布，Flowable deployment 已生成；详情页支持从 taskId 工作台入口跳转到资源审批处理区。"
+      ],
+      "limitations": ["未代用户提交真实业务单据完成端到端审批。"]
+    },
+    {
+      "requirement_id": "R5",
+      "status": "pass_with_limitations",
+      "evidence": [
+        "服务端保留权限、状态、租户和实体校验，EnvironmentResourceServiceTest 覆盖无权限、停用环境、停用部署单元和跨物理子系统明细拒绝。",
+        "HTTP DTO 不暴露 tenantId，写操作通过 AuthUser 注入租户和操作者。"
+      ],
+      "limitations": ["完整 HTTP 权限矩阵浏览器验收未执行。"]
+    },
+    {
+      "requirement_id": "R6",
+      "status": "pass_with_limitations",
+      "evidence": [
+        "新增具体环境和资源申请页面、路由、API 类型与移动端卡片布局。",
+        "前端生产构建通过。"
+      ],
+      "limitations": ["真实浏览器桌面和移动视口 UAT 未执行。"]
+    }
+  ],
+  "task_results": [
+    {
+      "task_id": "T1",
+      "status": "pass_with_limitations",
+      "evidence": ["V91-V96 迁移追加完成，模块边界、需求和范围文档更新完成。"],
+      "limitations": ["全仓治理检查受历史账本旧问题影响失败。"]
+    },
+    {
+      "task_id": "T2",
+      "status": "pass_with_limitations",
+      "evidence": ["后端 environment 包、服务、控制器、持久化和服务测试完成；聚焦服务测试通过。"],
+      "limitations": ["完整架构模块测试受本地 Testcontainers/Docker 识别问题影响未形成通过结论。"]
+    },
+    {
+      "task_id": "T3",
+      "status": "pass_with_limitations",
+      "evidence": ["具体环境页、资源申请页、审批入口、路由和类型契约完成；前端构建通过。"],
+      "limitations": ["真实浏览器点击路径未执行。"]
+    },
+    {
+      "task_id": "T4",
+      "status": "accepted_with_residual_risks",
+      "evidence": ["Flyway 静态迁移检查、聚焦后端测试、前端构建、空白检查和本地运行可达证据已记录。"],
+      "limitations": ["带 --working-tree 的范围检查被无关未跟踪文件阻塞。"]
+    }
+  ],
+  "regression_checks": [
+    {
+      "command": "mvn -pl :ccb-architecture -am \"-Dtest=EnvironmentResourceServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "status": "pass",
+      "evidence": "EnvironmentResourceServiceTest 通过，含边车占比修正场景。"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "status": "pass",
+      "evidence": "Vite 生产构建通过，保留既有第三方注解和 chunk size 警告。"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "status": "pass",
+      "evidence": "90 个迁移与 1 个 callback 检查通过。"
+    },
+    {
+      "command": "git diff --check",
+      "status": "pass",
+      "evidence": "未发现空白错误，仅出现 Windows 行尾提示。"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "status": "blocked_by_existing_repository_state",
+      "evidence": "模块、仓库 Skill 和开发入口检查通过；失败项为历史 .ai-control 旧账本 topic mismatch、invalid JSON 和缺失 convergence 证据。"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "status": "blocked_by_unrelated_working_tree_files",
+      "evidence": "修正 assignment.branch 后，脚本仍因未跟踪 .dsh/ 与 req-20260812-021 文件不在本需求 writable_paths 内而失败；这些文件未暂存。"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml --base HEAD~1 --head HEAD",
+      "status": "pass",
+      "evidence": "提交后按 committed range 复核通过；73 个变更文件均在 REQ-20260824-052 writable_paths 内。"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test",
+      "status": "blocked_by_local_test_environment",
+      "evidence": "2026-08-25T15:50:06+08:00 收尾运行：Tests run: 240, Failures: 0, Errors: 13；13 个 *MySqlTest/WorkflowIntegrationMySqlTest 均因 Testcontainers 无法找到有效 Docker 环境失败，未形成通过结论。"
+    },
+    {
+      "command": "8080 /actuator/health 与 5173 SPA 入口",
+      "status": "pass",
+      "evidence": "后端健康接口返回 UP，前端入口返回 HTTP 200。"
+    }
+  ],
+  "scope_audit": {
+    "selected_files_within_scope": true,
+    "excluded_untracked_files": [
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/observation-T11.json",
+      ".dsh/"
+    ],
+    "notes": "本需求提交只包含 codex-task-scope.yaml 授权路径；无关未跟踪文件保留在工作区。"
+  },
+  "residual_risks": [
+    {
+      "risk": "真实浏览器桌面和移动 UAT 未执行。",
+      "impact": "仍需人工在实际登录角色下确认页面交互、遮挡、控制台和审批路径。",
+      "accepted_by_user": true
+    },
+    {
+      "risk": "完整架构模块测试未形成通过结论。",
+      "impact": "需要在 Docker/Testcontainers 可识别的环境补跑全量架构模块测试。",
+      "accepted_by_user": true
+    },
+    {
+      "risk": "全仓治理检查失败项来自历史账本。",
+      "impact": "不阻断本需求代码提交，但后续仓库治理需要单独清理历史账本问题。",
+      "accepted_by_user": true
+    },
+    {
+      "risk": "带 --working-tree 的范围检查被无关未跟踪文件阻塞。",
+      "impact": "已提交范围检查通过；工作区中的无关未跟踪文件仍保留，后续处理它们时需使用对应需求范围。",
+      "accepted_by_user": true
+    }
+  ],
+  "release_verification_required": [
+    "在干净工作区补跑范围检查。",
+    "在 CI 或 Docker/Testcontainers 正常环境补跑完整架构模块测试。",
+    "在真实浏览器下用环境管理、资源申请、资源办理和普通查看角色完成桌面与移动 UAT。",
+    "在目标环境确认 V91-V96 Flyway 增量迁移、字典项、菜单、权限和 workflow definition 发布状态。"
+  ],
+  "rollback": "按前端页面和路由、architecture 服务代码、迁移登记逆序回退应用代码；已执行 V91-V96 的库保留迁移和数据，通过后续补偿迁移隐藏菜单、撤销授权或恢复兼容结构，不在生产手工删除表或数据。"
+}

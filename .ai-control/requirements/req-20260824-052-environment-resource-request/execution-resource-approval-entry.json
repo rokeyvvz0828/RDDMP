@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T13:49:47+08:00",
+  "phase": "executing",
+  "trigger": "用户反馈资源申请待办链接 http://127.0.0.1:5173/dashboard?taskId=1787636200689022 进入工作台，无法直达审批。",
+  "scope": {
+    "requirement": "REQ-20260824-052",
+    "writable_paths_used": [
+      "web/src/router/index.ts",
+      "web/src/modules/architecture/ResourceRequestPage.vue"
+    ],
+    "backend_changed": false,
+    "database_changed": false
+  },
+  "changes": [
+    "在前端路由中新增 /architecture/resource-requests/:id，复用 ResourceRequestPage 展示资源申请详情，并将菜单归属指向 /architecture/resource-requests。",
+    "在路由守卫中兼容 /dashboard?taskId=... 的历史或错误入口：登录后读取工作流任务上下文，校验站内业务路由存在后跳转到业务详情；失效、无权或路由不可解析时回到任务中心。",
+    "ResourceRequestPage 支持按路由参数自动打开资源申请详情抽屉，并在关闭详情时回到资源申请列表路由。",
+    "ResourceRequestPage 复用工作流 current-context/task-context 和 decideWorkflowTask，在 IN_REVIEW 且办理人有 manage 权限时展示批准、退回、拒绝审批动作。"
+  ],
+  "non_goals": [
+    "不改变资源申请后端状态机、工作流定义、权限模型和数据库结构。",
+    "不修改 DashboardView、TaskCenterView 或平台 workflow/system 私有实现。"
+  ]
+}

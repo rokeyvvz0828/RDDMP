@@ -1,0 +1,42 @@
+{
+  "task_id": "T2",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V87__create_architecture_standards_decisions.sql",
+      "purpose": "规范文档/版本快照、决策事项/材料/评审/参与人/行动项/结论/发布准备意图/替代关系/编号序列/工作流回执与轮次表"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V88__seed_architecture_standards_decisions.sql",
+      "purpose": "字典 360007/360008 与参数 360201-360305；菜单 806/807；权限 8061/8062/8071-8074；角色 112 与授权；工作流草稿 900000000000040/041"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R8"
+  ],
+  "commands": [
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "Flyway migration check passed for 80 migration(s) and 1 approved callback(s)."
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureStandardsDecisionsMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test（-Ddocker.host=unix:///var/run/docker.sock 等 Testcontainers 参数）",
+      "exit_code": 0,
+      "salient_output": "真实 MySQL 8.4：空库迁移到 V88、规范版本快照、编号并发 16/16 不重号、决策全生命周期与替代链、约束断言全部通过"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "唯一约束与状态约束",
+      "result": "matter_no 唯一、同事项唯一结论、替代对唯一、状态 CHECK、首次处理结果与评审方式 CHECK 均由测试覆盖"
+    }
+  ],
+  "notes": "编号并发依赖行锁与唯一约束；生产实现的三步骤在同一事务中执行，测试以真实事务模拟验证。"
+}

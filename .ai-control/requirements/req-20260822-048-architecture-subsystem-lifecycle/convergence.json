@@ -1,0 +1,64 @@
+{
+  "requirement_id": "REQ-20260822-048-architecture-subsystem-lifecycle",
+  "requirement_results": [
+    {"id": "R1", "verdict": "pass", "evidence": "空库迁移 V84 后 view 用户 GET 逻辑/物理主数据 200 且只读；状态 ACTIVE/OFFLINE/VOIDED 由真实审批驱动；逻辑→物理摘要、物理→逻辑信息双向关联验证通过；无权限 403"},
+    {"id": "R2", "verdict": "pass", "evidence": "所有写入均经工单：创建→提交→审批→发布全链路真实实例验证；旧 POST/PUT/DELETE 统一 409 ARCHITECTURE_WORK_ORDER_REQUIRED 且主表行数不变；审批中管理编辑他人工单 403，业务值未被篡改"},
+    {"id": "R3", "verdict": "pass", "evidence": "逻辑单独创建、逻辑+2 物理级联创建（W00021/W00022 同事务）、独立物理创建均发布；浏览器级联卡片 0..N 增删可用"},
+    {"id": "R4", "verdict": "pass", "evidence": "编号 A0001..A0006 全局序号；物理 W00011、W00021/W00022、W00023 槽位 1..3；草稿待生成→提交后保留；拒绝后最小复用（seq4=seq5=4）；退回保留；9999/35 容量由聚焦单元+MySQL 测试覆盖"},
+    {"id": "R5", "verdict": "pass", "evidence": "同目标双提交仅首个成功，第二个 409 目标锁定；REPLACE 新建 W00023+旧 W00011 OFFLINE+替换关系持久，旧记录未删除"},
+    {"id": "R6", "verdict": "pass", "evidence": "OFFLINE→REACTIVATE→VOIDED 全链路；VOID 带物理历史被拒（事件重试至 DEAD 且业务保持 IN_REVIEW 不误标 APPROVED）；有 ACTIVE 物理的逻辑 OFFLINE 被拒（fail-closed）；引用 SPI 异常 fail-closed 由聚焦测试覆盖"},
+    {"id": "R7", "verdict": "pass", "evidence": "建议接口真实返回 []（Noop 接线）；浏览器网络捕获零外部域名+静态搜索无外部客户端；前端逐条确认后采用，未自动回写"},
+    {"id": "R8", "verdict": "pass", "evidence": "view/apply/manage/无权限真实 HTTP 矩阵正确；manage 自动全量、view 仅本人；自审批通过；当前任务处理人一致；旧权限兼容与写权限分离由控制器测试 16/16；跨租户真实 HTTP 登录受限（残余风险）"},
+    {"id": "R9", "verdict": "pass", "evidence": "真实 Flowable 定义发布+startByCode+instance/task/round/receipt/delivery（85 DELIVERED + 3 DEAD）；批准/退回重提（round2 新实例）/拒绝/取消全链路；APPROVED 发布失败保持未批准；幂等与摘要校验由聚焦测试覆盖"},
+    {"id": "R10", "verdict": "pass", "evidence": "浏览器 67/67：四视口×明暗主题 12 组列表/主数据/表单/详情无页面级横滚、无 JS 控制台错误、无外部请求；核心旅程完成；403 专用态；移动端粘性操作栏与提交按钮可达"},
+    {"id": "R11", "verdict": "pass", "evidence": "旧 GET 兼容与旧写 409 无副作用；既有编号保持；只依赖 com.ccb.workflow.integration（静态+真实装配）；Flyway 只追加 V82-V84（78/78，重启 0 重跑）"},
+    {"id": "R12", "verdict": "pass", "evidence": "单元/MockMvc/真实 MySQL/真实工作流/真实 HTTP/真实浏览器证据齐备；execution-T0..T5 与 observation-T0..T5 完整；开放反馈 0"}
+  ],
+  "task_results": {
+    "T0": "verified",
+    "T1": "verified",
+    "T2": "verified",
+    "T3": "verified-with-runtime-defer",
+    "T4": "verified",
+    "T5": "verified"
+  },
+  "regression": {
+    "command": "mvn -Dapi.version=1.44 test",
+    "exit_code": 0,
+    "evidence": "两次 BUILD SUCCESS（10:08 / 9:59）；聚合 surefire 395 tests, 0 failures, 0 errors；全部 14 模块 SUCCESS"
+  },
+  "runtime_gates": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "evidence": "vue-tsc + vite 通过"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "evidence": "78 migrations + 1 callback"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "evidence": "通过（无关旧账本提示除外）"},
+    {"command": "node scripts/check-codex-scope.mjs --base e5b5747... --head HEAD", "exit_code": 0, "evidence": "范围通过；--working-tree 仅报告预先存在未触及的 docs/original/tech/**"},
+    {"command": "node scripts/check-module-boundaries.mjs", "exit_code": 1, "evidence": "仅既有基线；architecture 违规 0"},
+    {"command": "git diff --check", "exit_code": 0, "evidence": "无空白错误"}
+  ],
+  "runtime_evidence": {
+    "mysql": "隔离容器 t5-rddmp-mysql:3308 空库 Flyway V1→V84（78/78 success）；重启 0 重跑；3306 既有开发库未触碰",
+    "workflow": "真实 Flowable deployment；实例 35、任务 38（观察时点累计）；round 18、receipt 33、history 55+；delivery 85 DELIVERED + 3 DEAD（设计内 fail-closed）",
+    "api": "62/62 全生命周期场景（含权限/编号/锁/引用/兼容/失败路径）",
+    "browser": "67/67；31 张截图 /tmp/t5/shots/；四视口×明暗主题几何/控制台/网络全部通过",
+    "audit": "sys_operation_log architecture.subsystem-change.*=98；wf_audit_event TASK_*=22",
+    "persistence": "重启后主数据/工单/实例/审计与重启前一致（9/35/98 快照）"
+  },
+  "scope_audit": "全部提交改动在码任务 writable_paths 内；docs/original/ 与本任务无关且未修改",
+  "flyway": "78/78 success；V82-V84 存在；重启不重跑",
+  "module_boundaries": "architecture 违规 0；仅既有存量基线（system→attachment、requirement→workflow 非公开包）",
+  "diff_check": "git diff --check 退出 0",
+  "residual_risks": [
+    "平台认证 AuthRepository.findByUsername 固定 tenant_id=1，真实 HTTP 无法以租户 2 用户登录；跨租户隔离依赖服务层 AuthUser.tenantId 过滤（单元+MySQL 测试证明），属平台既有约束，不在本需求范围",
+    "9999/35 容量耗尽、外部引用 provider 异常 fail-closed 与重复/乱序事件幂等由聚焦单元+MySQL 测试覆盖，未在运行时构造容量耗尽/故障 provider；生产数据规模未验证",
+    "同名 REPLACE 被既有 uk_arch_physical_name 约束拒绝：新记录必须使用新名称（既有业务约束，已验证新名称场景）",
+    "fail-closed 事件（OFFLINE 带 ACTIVE 物理、VOID 带物理历史）批准后重试至 DEAD，业务保持 IN_REVIEW，恢复需运维处置（错误消息已含指引）",
+    "生产建议接线为 Noop（恒空）；确定性建议 Provider 仅在测试实例化"
+  ],
+  "rollback": "按 T4→T3→T2→T1 逆序回退应用提交（eec9406→4b54939→3a71afc→52d76e5→179bbab→a43442d），保留 V82-V84、编号、申请、发布与审计；关闭入口使用后续补偿迁移",
+  "gate": {
+    "verdict": "pass",
+    "open_feedback": 0,
+    "remaining_items": []
+  },
+  "recorded_at": "2026-08-23T14:02:00Z"
+}

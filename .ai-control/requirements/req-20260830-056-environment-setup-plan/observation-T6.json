@@ -1,0 +1,54 @@
+{
+  "task_id": "T6-migration-renumber-main-conflict",
+  "status": "observed",
+  "recorded_at": "2026-08-31T11:31:47+08:00",
+  "measurements": [
+    {
+      "sensor": "main migration scan",
+      "command": "git ls-tree -r --name-only origin/main -- server/src/platform/infrastructure/src/main/resources/db/migration",
+      "result": "origin/main 当前最高迁移为 V92__data_migration_asset_relation.sql，且 V84/V86-V92 已由 data-migration/attachment 占用。"
+    },
+    {
+      "sensor": "working-tree migration scan",
+      "command": "rg --files server/src/platform/infrastructure/src/main/resources/db/migration",
+      "result": "architecture 迁移文件已整体顺延到 V93-V122；未发现 __renumber_tmp__ 临时文件。"
+    },
+    {
+      "sensor": "flyway static gate",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "通过：113 个版本化迁移 + 1 个 approved callback，无重复版本。"
+    },
+    {
+      "sensor": "flyway append-only gate against main",
+      "command": "node scripts/check-flyway-migrations.mjs --base origin/main --head HEAD",
+      "result": "通过：113 个版本化迁移 + 1 个 approved callback，against origin/main 无非追加迁移状态。"
+    },
+    {
+      "sensor": "whitespace gate",
+      "command": "git diff --check",
+      "result": "通过；仅输出 CRLF 工作区提示，无空白错误。"
+    },
+    {
+      "sensor": "scope gate",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260830-056-environment-setup-plan/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "result": "失败原因仅为既有未跟踪 .ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json 与 observation-T11.json 超出本需求 writable_paths。"
+    },
+    {
+      "sensor": "repository governance subset",
+      "command": "node scripts/check-governance.mjs; node scripts/check-repo-skill.mjs; node scripts/check-development-entry.mjs --require-plugin",
+      "result": "三项均通过。"
+    },
+    {
+      "sensor": "known repository blockers",
+      "command": "node scripts/check-all-governance.mjs; node scripts/check-module-boundaries.mjs",
+      "result": "失败于既有账本 layout/topic/BOM 问题及 system/requirement 的既有跨模块依赖；与本轮迁移重编号无关。"
+    }
+  ],
+  "feedback": [],
+  "limitations": [
+    "未执行真实 MySQL 空库/既有库迁移和 Maven 全量测试。",
+    "node scripts/check-all-governance.mjs 受既有 AI control layout 问题阻塞，node scripts/check-module-boundaries.mjs 受既有 system/requirement 跨模块依赖阻塞。",
+    "工作区仍存在用户/历史未跟踪文件 .ai-control/requirements/req-20260812-021-architecture-subsystems/execution-T11.json 与 observation-T11.json，范围检查包含 working-tree 时会如实失败。"
+  ],
+  "conclusion": "数据库迁移脚本重复版本冲突已在静态门禁层关闭；运行时迁移仍需上线前复验。"
+}

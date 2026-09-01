@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-25T10:27:41+08:00",
+  "trigger": "用户要求“按此现有登记表重写资源申请”。附件截图和粘贴表格只作为字段口径证据，不作为批量导入样例数据。",
+  "phase": "executing",
+  "tasks": [
+    {
+      "id": "R3-registration-migration",
+      "files": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V94__expand_resource_request_registration_items.sql",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java"
+      ],
+      "summary": "追加 V94，将 arch_resource_request_item 从简化 CPU/内存/存储/节点规格扩展为资源登记表字段；存量 storage_gb 作为文件存储需求兼容保留，新增数据库存储、网络分区、服务器类型、边车、技术栈、CBS、本地盘、附加需求和确认人字段。"
+    },
+    {
+      "id": "R3-registration-service",
+      "files": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/PhysicalSubsystemOption.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java"
+      ],
+      "summary": "扩展 ResourceItemCommand、响应 DTO、部署单元选项和物理子系统选项；服务端校验登记表字段长度、非负数值、部署单元归属和 ACTIVE 状态，允许零节点数据库存储需求，并在历史快照中记录总 CPU、总内存和边车内存占比。"
+    },
+    {
+      "id": "R3-registration-frontend",
+      "files": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/types.ts",
+        "web/src/modules/architecture/architecture.css"
+      ],
+      "summary": "重写资源申请弹窗明细区为登记表分组录入，覆盖部署口径、容量节点、技术栈、附加需求与确认人；详情抽屉按登记字段分组回显，并展示总 CPU、总内存和边车内存占比。"
+    },
+    {
+      "id": "contract-and-control",
+      "files": [
+        "docs/requirements/REQ-20260824-052-environment-resource-request/requirement.md",
+        "docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml",
+        "docs/integration/architecture-module-contract.md",
+        ".ai-control/requirements/req-20260824-052-environment-resource-request/baseline.json",
+        ".ai-control/requirements/req-20260824-052-environment-resource-request/model.json",
+        ".ai-control/requirements/req-20260824-052-environment-resource-request/control-plan.json"
+      ],
+      "summary": "同步需求、任务范围、集成契约和控制账本，明确资源申请按现有登记表口径维护，V94 只追加不修改历史迁移，不引入真实资源分配或样例联系人数据。"
+    }
+  ],
+  "non_goals_preserved": [
+    "不创建环境部署实例、机器、IP 或实际资源分配",
+    "不把用户粘贴的登记表样例写入数据库种子",
+    "不在架构模块内自维护环境类型，仍由系统字典 ARCH_ENVIRONMENT_TYPE 维护"
+  ]
+}

@@ -2,6 +2,7 @@ import http from './http'
 import type { ApiResponse } from '../types/auth'
 import type {
   AttachmentLink,
+  AttachmentCategory,
   ProjectAttachment,
   ProjectAttachmentPage
 } from '../types/attachments'
@@ -50,7 +51,7 @@ export function deleteTemporaryAttachment(id: number) {
 
 export function getProjectAttachments(
   projectId: number,
-  params: { page: number; size: number; keyword?: string }
+  params: { page: number; size: number; keyword?: string; categoryId?: number }
 ) {
   return http.get<ApiResponse<ProjectAttachmentPage>>(
     `/project/${projectId}/attachments`,
@@ -58,9 +59,23 @@ export function getProjectAttachments(
   )
 }
 
-export function uploadProjectAttachment(projectId: number, file: File) {
+export function getProjectAttachmentCategories(projectId: number) {
+  return http.get<ApiResponse<AttachmentCategory[]>>(
+    `/project/${projectId}/attachment-categories`
+  )
+}
+
+export function createProjectAttachmentCategory(projectId: number, name: string) {
+  return http.post<ApiResponse<AttachmentCategory>>(
+    `/project/${projectId}/attachment-categories`,
+    { name }
+  )
+}
+
+export function uploadProjectAttachment(projectId: number, file: File, categoryId?: number | null) {
   const data = new FormData()
   data.append('file', file)
+  if (categoryId) data.append('categoryId', String(categoryId))
   return http.post<ApiResponse<ProjectAttachment>>(
     `/project/${projectId}/attachments`,
     data,
@@ -68,6 +83,17 @@ export function uploadProjectAttachment(projectId: number, file: File) {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 60_000
     }
+  )
+}
+
+export function updateProjectAttachmentCategory(
+  projectId: number,
+  attachmentId: number,
+  categoryId: number | null
+) {
+  return http.put<ApiResponse<ProjectAttachment>>(
+    `/project/${projectId}/attachments/${attachmentId}/category`,
+    { categoryId }
   )
 }
 
