@@ -288,13 +288,14 @@ a { color: inherit; text-decoration: none; }
 .project-member-strip .ui-user-identity { margin-left: -5px; padding: 2px; border-radius: 50%; background: var(--panel-bg); }
 .project-role-tag { margin: 2px 5px 2px 0; }
 .project-tab-panel .ui-data-table { margin-top: 4px; }
+.project-organization-panel { min-height: max(560px, calc(100dvh - 210px)); }
 .project-organization-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr); gap: 16px; align-items: start; }
 .project-organization-section { min-width: 0; padding: 18px; border: 1px solid var(--line); background: var(--panel-bg); }
 .project-organization-section .project-section-heading { align-items: flex-start; margin-bottom: 14px; }
 .project-organization-section .project-section-heading h2 { margin-top: 6px; }
 .project-organization__hint { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.project-organization-layout { display: grid; grid-template-columns: minmax(230px, .32fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.project-organization-tree-panel { min-width: 0; padding: 18px; border: 1px solid var(--line); background: var(--panel-bg); }
+.project-organization-layout { display: grid; min-height: inherit; grid-template-columns: minmax(230px, .32fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.project-organization-tree-panel { min-width: 0; height: 100%; box-sizing: border-box; padding: 18px; border: 1px solid var(--line); background: var(--panel-bg); }
 .project-organization-tree-panel .project-section-heading { align-items: flex-start; margin-bottom: 12px; }
 .project-organization-tree__all { display: flex; width: 100%; align-items: center; gap: 8px; margin-bottom: 8px; padding: 9px 10px; border: 1px solid transparent; color: var(--text); background: transparent; cursor: pointer; text-align: left; }
 .project-organization-tree__all strong { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 600; }
@@ -307,7 +308,8 @@ a { color: inherit; text-decoration: none; }
 .project-organization-tree__node-actions { display: inline-flex; flex: 0 0 auto; margin-left: auto; opacity: 0; transition: opacity .16s linear; }
 .project-organization-tree__node:hover .project-organization-tree__node-actions, .project-organization-tree .el-tree-node.is-current .project-organization-tree__node-actions { opacity: 1; }
 .project-organization-tree__node-actions .el-button { width: 24px; height: 24px; padding: 0; }
-.project-organization-maintenance { display: grid; min-width: 0; gap: 16px; }
+.project-organization-maintenance { display: grid; min-width: 0; height: 100%; gap: 16px; }
+.project-organization-maintenance .project-organization-section { height: 100%; box-sizing: border-box; }
 .project-plans-table .el-table__header-wrapper th:first-child,
 .project-plans-table .el-table__body-wrapper td:first-child { width: 230px !important; min-width: 230px !important; }
 .project-plan-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
@@ -406,7 +408,9 @@ a { color: inherit; text-decoration: none; }
 .project-plan-group-manage__swatch { width: 12px; height: 34px; flex: 0 0 auto; border-radius: 3px; background: var(--plan-group-color); }
 .project-plan-group-manage__actions { display: flex; flex: 0 0 auto; gap: 2px; }
 @media (max-width: 760px) {
-  .project-organization-layout { grid-template-columns: 1fr; }
+  .project-organization-panel { min-height: 0; }
+  .project-organization-layout { min-height: 0; grid-template-columns: 1fr; align-items: start; }
+  .project-organization-tree-panel, .project-organization-maintenance, .project-organization-maintenance .project-organization-section { height: auto; }
   .project-organization-tree-panel { padding: 14px; }
   .project-organization-tree__node-actions { opacity: 1; }
   .project-organization-maintenance { min-width: 0; }
@@ -458,10 +462,13 @@ a { color: inherit; text-decoration: none; }
 .project-plan-palette-option.is-selected { box-shadow: 0 0 0 2px var(--palette-accent), 0 0 0 4px var(--panel-bg), 0 0 0 5px var(--palette-color); }
 .project-plan-palette-option__swatch { width: 25px; height: 25px; border-radius: 50%; background: var(--palette-color); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--palette-accent) 38%, transparent); }
 .project-settings { max-width: 1280px; }
-.project-settings__layout { display: grid; grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr); align-items: start; gap: 18px; }
-.project-settings__form { padding: 22px; border: 1px solid var(--line); background: var(--panel-bg); }
+.project-settings__layout { display: grid; grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr); grid-template-areas: "form stages" "roles roles"; align-items: start; gap: 18px; }
+.project-settings__form { grid-area: form; padding: 22px; border: 1px solid var(--line); background: var(--panel-bg); }
+.project-settings__form-heading { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.project-settings__form-heading h3 { margin: 5px 0 0; color: var(--text); font-size: 16px; }
+.project-settings__form-heading p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .project-settings__hint { margin: -6px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.project-settings__stages { min-width: 0; padding: 20px 22px; border: 1px solid var(--line); background: var(--panel-bg); }
+.project-settings__stages { grid-area: stages; min-width: 0; padding: 20px 22px; border: 1px solid var(--line); background: var(--panel-bg); }
 .project-settings__stages-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .project-settings__stages-heading h3 { margin: 0; color: var(--text); font-size: 16px; }
 .project-settings__stages-heading p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
@@ -476,12 +483,18 @@ a { color: inherit; text-decoration: none; }
 .project-settings__stage-actions { display: flex; align-items: center; gap: 2px; }
 .project-settings__stage-actions .el-button { margin: 0; }
 .project-settings__stage-lock { color: var(--warning); font-size: 17px; }
+.project-settings__roles { grid-area: roles; min-width: 0; padding: 20px 22px; border: 1px solid var(--line); background: var(--panel-bg); }
+.project-settings__roles-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.project-settings__roles-heading h3 { margin: 0; color: var(--text); font-size: 16px; }
+.project-settings__roles-heading p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 @media (max-width: 960px) {
-  .project-settings__layout { grid-template-columns: minmax(0, 1fr); }
+  .project-settings__layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "form" "stages" "roles"; }
 }
 @media (max-width: 760px) {
   .project-settings__stages-heading { align-items: stretch; flex-direction: column; }
   .project-settings__stages-heading .el-button { align-self: flex-start; }
+  .project-settings__roles-heading { align-items: stretch; flex-direction: column; }
+  .project-settings__roles-heading .el-button { align-self: flex-start; }
   .project-settings__stage-row { grid-template-columns: 30px minmax(0, 1fr); }
   .project-settings__stage-actions { grid-column: 2; justify-content: flex-start; }
 }
