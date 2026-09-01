@@ -1,10 +1,12 @@
 {
   "schema_version": 4,
-  "revision": 6,
+  "revision": 7,
   "created_at": "2026-08-31T09:24:27+00:00",
-  "updated_at": "2026-08-31T09:30:14+00:00",
+  "updated_at": "2026-09-01T08:07:23+00:00",
   "mode": "standard",
-  "phase": "executing",
+  "phase": "closed",
+  "closure_status": "accepted",
+  "closed_at": "2026-09-01T16:07:23.8597860+08:00",
   "phase_history": [
     {
       "from": null,
@@ -29,6 +31,18 @@
       "to": "executing",
       "evidence": "计划门禁通过：所有 must 需求均映射任务、传感器和验收检查",
       "recorded_at": "2026-08-31T09:30:14+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "verifying",
+      "evidence": "execution-T5/T6/T7 与 observation-T5/T6/T7 已记录实现、用户反馈修正和验证证据；convergence.json 标记为 conditionally-converged。",
+      "recorded_at": "2026-09-01T08:07:23+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "closed",
+      "evidence": "用户于 2026-09-01 要求推送并关闭此需求；实现提交 f3ff8955853ee226a434b280ef246062b7344678 作为关闭基线，残余风险继续披露。",
+      "recorded_at": "2026-09-01T08:07:23+00:00"
     }
   ],
   "stage_artifacts": {
@@ -1345,7 +1359,25 @@
     "executing": [],
     "observing": [],
     "correcting": [],
-    "verifying": []
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "用户接受当前实现并要求推送关闭；聚焦后端、迁移、Mock、前端构建、Flyway 静态和 diff 检查已有通过证据，未执行浏览器 UAT 与范围外全量回归失败作为残余风险保留。",
+        "recorded_at": "2026-09-01T08:07:23+00:00",
+        "data": {
+          "status": "accepted-with-residual-risks",
+          "implementation_commit": "f3ff8955853ee226a434b280ef246062b7344678",
+          "closure_status": "accepted",
+          "closed_at": "2026-09-01T16:07:23.8597860+08:00",
+          "residual_risks": [
+            "全量架构回归存在范围外历史失败。",
+            "真实浏览器 UAT 未由 Codex 执行。",
+            "V123 是破坏性迁移，上线前需数据库备份和预发演练。",
+            "scope 检查被无关未跟踪 T11 账本文件和方案 B 有意公共契约删除阻断。"
+          ]
+        }
+      }
+    ]
   },
   "objective": "将架构模块从逻辑子系统和物理子系统父子模型收敛为物理子系统单一主模型，移除独立逻辑模型和接口，并为物理子系统提供人工编号、可选逻辑文本和业务组件编号字典字段。",
   "requirements": [
@@ -2948,6 +2980,21 @@
       "updated_at": "2026-08-31T09:30:08+00:00"
     }
   ],
+  "closure": {
+    "status": "accepted",
+    "closed_at": "2026-09-01T16:07:23.8597860+08:00",
+    "requested_by": "user",
+    "request": "推送并关闭此需求",
+    "implementation_commit": "f3ff8955853ee226a434b280ef246062b7344678",
+    "final_decision": "按用户确认关闭；允许推送到 origin/dev-ivanh。",
+    "residual_risks": [
+      "全量 mvn -pl server/src/modules/architecture -am test 因范围外 standards/decisions 与 network 测试失败，未全绿。",
+      "真实浏览器 UAT 未由 Codex 执行。",
+      "scope 检查受无关未跟踪 T11 账本文件，以及方案 B 有意破坏性公共契约变更阻断。",
+      "V123 是破坏性迁移，上线前必须备份并在预发演练。"
+    ],
+    "rollback": "应用代码按本需求提交逆序回退；已执行 V123 后须使用数据库备份或追加补偿迁移恢复逻辑结构与数据。"
+  },
   "feedback": [],
   "samples": []
 }
