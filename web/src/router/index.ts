@@ -342,7 +342,9 @@ const router = createRouter({
           meta: { title: '中间表结构', category: 'INTERMEDIATE' }
         },
         { path: 'requirements', redirect: '/requirements/new-project' },
+        { path: 'requirements/systems', redirect: '/requirements/new-project' },
         { path: 'requirements/:section', name: 'requirements', component: RequirementsView, props: true, meta: { title: '需求管理平台' } },
+        { path: 'requirements/params/:section', name: 'requirement-params-section', component: RequirementsView, props: true, meta: { title: '八大参数管理' } },
         { path: 'architecture/logical-subsystems', name: 'architecture-logical-subsystems', component: () => import('../modules/architecture/LogicalSubsystemPage.vue'), meta: { title: '逻辑子系统' } },
         { path: 'architecture/physical-subsystems', name: 'architecture-physical-subsystems', component: () => import('../modules/architecture/PhysicalSubsystemPage.vue'), meta: { title: '物理子系统' } },
         { path: 'architecture/subsystem-change-applications', name: 'architecture-subsystem-change-applications', component: () => import('../modules/architecture/SubsystemChangeApplicationListPage.vue'), meta: { title: '架构子系统变更工单' } },

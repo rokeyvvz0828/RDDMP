@@ -23,8 +23,18 @@ let unsubscribePageActivation: (() => void) | undefined
 let taskRequestId = 0
 const currentHour = new Date().getHours()
 const greeting = computed(() => currentHour < 12 ? '早上好' : currentHour < 18 ? '下午好' : '晚上好')
-const projectInbox = computed(() => inbox.value.filter(item => !item.project_ref || item.project_ref === projectContext.currentRef))
-const projectDone = computed(() => done.value.filter(item => !item.project_ref || item.project_ref === projectContext.currentRef))
+// 项目关联过滤：需求模块(req_project)和系统模块(pm_project)是两套独立项目体系，project_ref 格式可能不兼容。
+// 兜底策略：currentRef 为空 OR task 无项目关联 OR project_ref 精确相等 OR project_name 匹配当前项目名，均保留显示。
+function matchesProject(item: { project_ref?: string | null; project_name?: string | null }): boolean {
+  if (!projectContext.currentRef) return true
+  if (!item.project_ref) return true
+  if (item.project_ref === projectContext.currentRef) return true
+  const currentName = projectContext.current?.name?.trim()
+  const itemName = item.project_name?.trim()
+  return !!currentName && !!itemName && currentName === itemName
+}
+const projectInbox = computed(() => inbox.value.filter(item => matchesProject(item)))
+const projectDone = computed(() => done.value.filter(item => matchesProject(item)))
 
 async function loadTasks() {
   const requestId = ++taskRequestId

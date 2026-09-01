@@ -18,7 +18,7 @@ public final class RequirementEnums {
     public static final List<String> DECISION_LEVELS = List.of("版块内", "总体组", "领导小组");
     public static final List<String> YES_NO = List.of("是", "否");
     public static final List<String> SYSTEM_STATUSES = List.of("启用", "停用");
-    public static final List<String> STAGE_STATUSES = List.of("未开始", "审批中", "进行中", "已完成");
+    public static final List<String> STAGE_STATUSES = List.of("未开始", "进行中", "已完成");
     public static final List<String> REQUIREMENT_TYPES = List.of("监管", "业务", "技术");
     public static final List<String> REGULATION_CATEGORIES = List.of("国家级", "地方级", "处罚整改");
     public static final List<String> REQUIREMENT_STATUSES = List.of(
@@ -26,6 +26,13 @@ public final class RequirementEnums {
     public static final List<String> LAUNCH_MODES = List.of("常规版本", "紧急版本");
     public static final List<String> CHANGE_REVIEW_CONCLUSIONS = List.of("评审通过", "评审不通过");
     public static final List<String> CHANGE_CONCLUSION_STATUSES = List.of("审核通过", "评估工作量", "蒙商立项完成");
+    public static final List<String> SYSTEM_ROLES = List.of("主责", "协同");
+    public static final List<String> FLOW_ACTIONS = List.of("SEND", "RETURN", "COMPLETE");
+    public static final List<String> REVIEW_CONCLUSIONS = List.of("通过", "退回");
+    public static final List<String> DELIVERABLE_TYPES = List.of("WORKLOAD", "SOFT");
+    public static final List<String> DELIVERABLE_REVIEW_STATUSES = List.of("待评审", "评审中", "已评审", "已退回");
+    public static final List<String> COORD_TYPES = List.of("改造", "测试");
+    public static final List<String> COORD_STATUSES = List.of("未开始", "进行中", "已完成");
     public static final List<String> LEGACY_STAGES = List.of("PROPOSE", "DOCKING", "WORKLOAD", "PROJECT", "SOFT", "LAUNCH");
     public static final Map<String, String> LEGACY_STAGE_LABELS = Map.of(
             "PROPOSE", "需求提出", "DOCKING", "需求对接", "WORKLOAD", "工作量评估",
@@ -71,25 +78,37 @@ public final class RequirementEnums {
     );
 
     /**
-     * 存量项目阶段 → 字段映射：每个阶段列出该阶段推进前必须校验的必填字段。
-     * key = 阶段编码，value = 字段名列表（校验时逐个检查非空）。
-     * 注：通用字段（需求状态/备注/变更信息）不纳入阶段校验，由表单自身维护。
+     * 存量需求核心标识字段：保存与阶段推进时的强校验字段。
+     * 需求编号、需求名称、业务组是列表检索、数据范围与跨阶段识别的标识，不允许为空。
      */
-    public static final Map<String, List<String>> LEGACY_STAGE_REQUIRED_FIELDS = Map.of(
+    public static final List<String> LEGACY_CORE_REQUIRED_FIELDS = List.of(
+            "requirement_no", "requirement_name");
+
+    /**
+     * 存量项目阶段 → 业务字段映射（与前端阶段表单一致）。
+     * 仅用于阶段推进时的缺失字段提醒：缺字段不拦截流转，由用户确认后继续。
+     * 核心标识字段由 LEGACY_CORE_REQUIRED_FIELDS 强校验，不在此提醒范围内。
+     */
+    public static final Map<String, List<String>> LEGACY_STAGE_FIELDS = Map.of(
             "PROPOSE", List.of(
                     "legacy_doc_name", "requirement_no", "requirement_name", "content_summary",
-                    "propose_dept", "proposer", "business_group"),
+                    "propose_dept", "proposer", "monshang_ba", "monshang_architect",
+                    "expected_launch_date", "regulator", "regulation_doc_no", "regulation_desc",
+                    "regulation_launch_date"),
             "DOCKING", List.of(
-                    "jinke_contact", "ba_review_date"),
+                    "requirement_received_date", "requirement_type", "regulation_category",
+                    "business_group", "sub_group", "jinke_contact", "need_jinke_arch_decision",
+                    "jinke_architect", "ba_review_date"),
             "WORKLOAD", List.of(
                     "workload_date"),
             "PROJECT", List.of(
-                    "finance_project_date", "soft_doc_name", "owner_conglomerate",
-                    "owner_system", "owner_contact"),
+                    "finance_project_date"),
             "SOFT", List.of(
+                    "soft_doc_name", "owner_conglomerate", "owner_system", "owner_contact",
+                    "involve_cooperation", "coord_conglomerate", "coord_system",
                     "soft_submit_date", "soft_review_date"),
             "LAUNCH", List.of(
-                    "planned_launch_date", "launch_mode")
+                    "planned_launch_date", "actual_launch_date", "launch_mode")
     );
 
     public static final Map<String, Object> OPTIONS = new LinkedHashMap<>();
@@ -117,6 +136,13 @@ public final class RequirementEnums {
         OPTIONS.put("launchModes", LAUNCH_MODES);
         OPTIONS.put("changeReviewConclusions", CHANGE_REVIEW_CONCLUSIONS);
         OPTIONS.put("changeConclusionStatuses", CHANGE_CONCLUSION_STATUSES);
+        OPTIONS.put("systemRoles", SYSTEM_ROLES);
+        OPTIONS.put("flowActions", FLOW_ACTIONS);
+        OPTIONS.put("reviewConclusions", REVIEW_CONCLUSIONS);
+        OPTIONS.put("deliverableTypes", DELIVERABLE_TYPES);
+        OPTIONS.put("deliverableReviewStatuses", DELIVERABLE_REVIEW_STATUSES);
+        OPTIONS.put("coordTypes", COORD_TYPES);
+        OPTIONS.put("coordStatuses", COORD_STATUSES);
     }
 
     public static final Map<String, String> FIELD_LABELS = fieldLabels();
@@ -204,6 +230,10 @@ public final class RequirementEnums {
         labels.put("change_conclusion_status", "变更结论及状态（审核通过/评估工作量/蒙商立项完成）");
         labels.put("change_remark", "需求变更备注");
         labels.put("not_project_developed", "未立项已开发");
+        labels.put("version_no", "需求版本号");
+        labels.put("workload_change", "工作量需求变更记录");
+        labels.put("current_flow_user_name", "当前流转处理人");
+        labels.put("review_report_name", "评审报告信息文档");
         labels.put("current_stage", "当前阶段");
         labels.put("propose_stage_status", "需求提出阶段状态");
         labels.put("docking_stage_status", "需求对接阶段状态");

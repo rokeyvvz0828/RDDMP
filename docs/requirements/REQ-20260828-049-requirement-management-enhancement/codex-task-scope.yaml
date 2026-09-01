@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260828-049",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260828-049-requirement-management-enhancement/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "zbx",
+    "module": "business/requirement",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260816-001-requirement-management-platform",
+    "worktree": "/Users/zbx/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260828-049-requirement-management-enhancement/**",
+      "server/src/modules/requirement/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__requirement_management_enhancement.sql",
+      "web/src/api/requirements.ts",
+      "web/src/types/requirements.ts",
+      "web/src/views/RequirementsView.vue",
+      ".ai-control/requirements/req-20260828-049-requirement-management-enhancement/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/modules/delivery-showcase/**",
+      "web/src/components/ui/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/file-preview/**",
+      "server/src/platform/attachment/**",
+      "design-h5.md"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": "",
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": []
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V93__requirement_management_enhancement.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V94__legacy_system_member.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V95__legacy_requirement_member.sql"
+    ],
+    "compatibility_and_rollback": "只追加新表与 req_legacy_requirement/req_difference 新字段；回退停用新菜单权限并保留新增表。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only-with-desensitization"
+  },
+  "required_tests": [],
+  "risk": {
+    "level": "important",
+    "items": [
+      "数据库迁移与存量表新增字段",
+      "PMO 权限与数据范围（系统行负责人/业务组）",
+      "存量数据模型（需求头 + 系统子表）与前端统一编辑抽屉重构",
+      "流转/评审/版本记录的事务一致性"
+    ]
+  },
+  "completion": {
+    "control_mode": "minimal",
+    "control_prefix": "req-20260828-049-requirement-management-enhancement",
+    "control_justification": "按用户要求本次仅交付代码，不执行测试与启动验证，验证由开发者自行完成；涉及数据库与权限属重要风险。",
+    "acceptance_evidence": [],
+    "release_verification": [],
+    "rollback": "回退本需求提交并保留新增 Flyway 表；停用 requirement:pmo 权限即可停止 PMO 能力。"
+  }
+}

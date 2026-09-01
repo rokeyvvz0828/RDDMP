@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260816-001-requirement-management-platform",
+  "task_id": "T7",
+  "status": "implemented-checks-passed",
+  "coverage": [
+    "修复八大参数管理菜单不显示问题：V82/V83 种子迁移重命名为全新版本号 V84/V85"
+  ],
+  "requirement_source": "用户反馈需求管理页面未显示八大参数管理；排查根因：后端未重启（Flyway 未执行菜单迁移）且旧审批流迁移曾占用 V82/V83 版本号，复用会产生校验和冲突",
+  "actual_changes": [
+    "git mv V82__seed_requirement_system_catalog.sql -> V84__seed_requirement_system_catalog.sql",
+    "git mv V83__seed_requirement_param_menus.sql -> V85__seed_requirement_param_menus.sql",
+    "更新两个迁移文件头部版本注释与 codex-task-scope.yaml 中的路径引用"
+  ],
+  "commands": [
+    {
+      "command": "git mv V82 -> V84 / V83 -> V85",
+      "result": "exit 0，git 识别为 rename"
+    },
+    {
+      "command": "git diff --check",
+      "result": "exit 0"
+    }
+  ],
+  "not_executed": [
+    "本地 MySQL flyway_schema_history 只读核对：本地 root 免密连接不可用且不读取 .env 密钥，未能直连确认；已用全新版本号规避校验和冲突"
+  ],
+  "unresolved_issues": [
+    "用户侧需重启后端（Flyway 执行 V84/V85）并刷新浏览器（重新拉取 /auth/routes）后查看左侧菜单：需求管理平台 -> 八大参数管理"
+  ]
+}

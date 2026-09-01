@@ -12,6 +12,13 @@ import type {
   RequirementEnums,
   RequirementProject,
   RequirementSystem,
+  LegacySystemItem,
+  LegacyFlowLog,
+  RequirementVersionRow,
+  LegacyDeliverable,
+  LegacyMember,
+  CoordinationItem,
+  ReviewRecord,
   BaselineItem,
   ChangeLogRow,
   StageLogRow
@@ -81,6 +88,10 @@ export function deleteDifference(id: number) {
   return http.delete<ApiResponse<void>>(`/requirements/differences/${id}`)
 }
 
+export function transferDifference(id: number, data: { userId: number; comment?: string }) {
+  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/transfer`, data)
+}
+
 export interface RequirementReviewer {
   id: number
   username: string
@@ -91,8 +102,19 @@ export function listReviewers() {
   return http.get<ApiResponse<RequirementReviewer[]>>('/requirements/reviewers')
 }
 
-export function submitReview(id: number, approverIds: number[]) {
-  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/submit-review`, { approverIds })
+export function listRequirementUserOptions(keyword?: string) {
+  return http.get<ApiResponse<Array<{ id: number; username: string; display_name?: string }>>>('/requirements/users', { params: { keyword } })
+}
+
+export function submitReview(id: number, approverIds: number[], reportDocName?: string) {
+  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/submit-review`, {
+    approverIds,
+    reportDocName: reportDocName || undefined
+  })
+}
+
+export function cancelReview(id: number, reason?: string) {
+  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/cancel-review`, reason != null ? { reason } : {})
 }
 
 export function differenceChanges(id: number) {
@@ -162,6 +184,7 @@ export function deleteAttachment(id: number) {
 }
 
 export function listLegacy(params: {
+  projectId?: number
   businessGroup?: string
   stage?: string
   stageStatus?: string
@@ -188,16 +211,84 @@ export function deleteLegacy(id: number) {
   return http.delete<ApiResponse<void>>(`/requirements/legacy/${id}`)
 }
 
-export function stageTransition(id: number, data: { stage: string; action: 'START' | 'COMPLETE' | 'BACK'; comment?: string; approverIds: number[] }) {
+export function stageTransition(id: number, data: { stage: string; action: 'START' | 'COMPLETE' | 'BACK'; comment?: string; ignoreMissingStageFields?: boolean }) {
   return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/stage`, data)
-}
-
-export function listLegacyReviewers(id: number) {
-  return http.get<ApiResponse<RequirementReviewer[]>>(`/requirements/legacy/${id}/reviewers`)
 }
 
 export function legacyStageLogs(id: number) {
   return http.get<ApiResponse<StageLogRow[]>>(`/requirements/legacy/${id}/stage-logs`)
+}
+
+export function legacySystemItems(id: number) {
+  return http.get<ApiResponse<LegacySystemItem[]>>(`/requirements/legacy/${id}/system-items`)
+}
+
+export function legacyFlowLogs(id: number) {
+  return http.get<ApiResponse<LegacyFlowLog[]>>(`/requirements/legacy/${id}/flow-logs`)
+}
+
+export function listLegacyMembers(id: number) {
+  return http.get<ApiResponse<LegacyMember[]>>(`/requirements/legacy/${id}/members`)
+}
+
+export function addLegacyMember(id: number, data: { userId: number; memberRole?: string }) {
+  return http.post<ApiResponse<LegacyMember>>(`/requirements/legacy/${id}/members`, data)
+}
+
+export function removeLegacyMember(id: number) {
+  return http.delete<ApiResponse<void>>(`/requirements/legacy-members/${id}`)
+}
+
+export function sendLegacyFlow(id: number, data: { toUserId: number; comment?: string }) {
+  return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/flow`, data)
+}
+
+export function returnLegacyFlow(id: number, comment?: string) {
+  return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/flow/return`, comment ? { comment } : {})
+}
+
+export function legacyVersions(id: number) {
+  return http.get<ApiResponse<RequirementVersionRow[]>>(`/requirements/legacy/${id}/versions`)
+}
+
+export function saveLegacyChange(id: number, data: Record<string, unknown>) {
+  return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/change`, data)
+}
+
+export function listDeliverables(id: number, type: 'WORKLOAD' | 'SOFT') {
+  return http.get<ApiResponse<LegacyDeliverable[]>>(`/requirements/legacy/${id}/deliverables`, { params: { type } })
+}
+
+export function saveDeliverable(id: number, type: 'WORKLOAD' | 'SOFT', data: Record<string, unknown>) {
+  return http.post<ApiResponse<LegacyDeliverable>>(`/requirements/legacy/${id}/deliverables`, data, { params: { type } })
+}
+
+export function deleteDeliverable(id: number, type: 'WORKLOAD' | 'SOFT') {
+  return http.delete<ApiResponse<void>>(`/requirements/deliverables/${id}`, { params: { type } })
+}
+
+export function submitDeliverableReview(id: number, type: 'WORKLOAD' | 'SOFT', reviewNo?: string) {
+  return http.post<ApiResponse<LegacyDeliverable>>(`/requirements/deliverables/${id}/submit-review`, reviewNo ? { reviewNo } : {}, { params: { type } })
+}
+
+export function reviewDeliverable(id: number, type: 'WORKLOAD' | 'SOFT', data: { conclusion: string; comment?: string; reportDocName?: string }) {
+  return http.post<ApiResponse<LegacyDeliverable>>(`/requirements/deliverables/${id}/review`, data, { params: { type } })
+}
+
+export function listCoordination(id: number) {
+  return http.get<ApiResponse<CoordinationItem[]>>(`/requirements/legacy/${id}/coordination`)
+}
+
+export function saveCoordination(id: number, data: Record<string, unknown>) {
+  return http.post<ApiResponse<CoordinationItem>>(`/requirements/legacy/${id}/coordination`, data)
+}
+
+export function deleteCoordination(id: number) {
+  return http.delete<ApiResponse<void>>(`/requirements/coordination/${id}`)
+}
+
+export function listReviewRecords(bizType: string, bizId: number) {
+  return http.get<ApiResponse<ReviewRecord[]>>('/requirements/review-records', { params: { bizType, bizId } })
 }
 
 export function legacyChanges(id: number) {

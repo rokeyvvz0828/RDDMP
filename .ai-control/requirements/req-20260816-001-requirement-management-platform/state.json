@@ -4,7 +4,7 @@
   "objective": "实现需求管理平台（新建项目差异清单、存量需求阶段、系统清单、基线、统一改动记录与 Excel 导入），生成脱敏测试数据；审批流（Flowable 集成）本轮不做",
   "mode": "full",
   "phase": "executing",
-  "revision": 1,
+  "revision": 6,
   "requirement_id": "REQ-20260816-001",
   "branch": "zbx_dev",
   "phase_history": [
@@ -19,10 +19,46 @@
       "to": "executing",
       "evidence": "编码前预检已输出并获用户指示直接实施；设计决策记录于 design.json；实施完成并记录 execution-T1",
       "recorded_at": "2026-08-16T13:20:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "executing",
+      "evidence": "用户 2026-08-25 校正存量需求阶段字段：按 6 阶段重组字段、需求状态及备注固定最后两列、需求变更移出阶段改为独立按钮弹窗；实施记录于 execution-T2，需求模块 14 项测试与前端构建通过，浏览器验收待运行环境补做",
+      "recorded_at": "2026-08-25T06:20:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "executing",
+      "evidence": "用户 2026-08-25 追加存量阶段推进改造：保存与推进分离、核心标识字段强校验+阶段业务字段缺失弹窗确认、回退不清空数据仅改状态写日志、阶段流转不做审批节点（移除 legacy.stage.transition 审批流，改为 req_stage_log 状态变更日志留痕）；实施记录于 execution-T3，需求模块 16 项测试与前端构建通过",
+      "recorded_at": "2026-08-25T07:05:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "executing",
+      "evidence": "用户 2026-08-25 追加：一并回收审批流遗留（删除 V82/V83）、预览展示全部阶段字段、软需阶段主责/协同系统改为架构物理子系统下拉、列表去来源换主责/协同系统列并弹窗显示明细；用户需求拆分多系统需求完成调研与方案设计待确认；实施记录于 execution-T4，前端构建与需求模块 16 项测试通过",
+      "recorded_at": "2026-08-25T08:10:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "executing",
+      "evidence": "用户 2026-08-25 提供《系统清单》参考信息：V82 种子迁移初始化 req_system 416 个系统；软需阶段主责/协同系统改为系统清单数据源（先选事业群再选系统）；支持一个用户需求多个协同系统；实施记录于 execution-T5，前端构建与需求模块 16 项测试通过",
+      "recorded_at": "2026-08-25T09:20:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "executing",
+      "evidence": "用户 2026-08-25 新增『八大参数管理』二级菜单与 8 个三级菜单（产品目录/定价管理/财务会计/机构员工/员工渠道/参数管理/授权复核/凭证回单），页面内容暂缓；V83 菜单种子迁移 + 路由 + 占位页 + 演示角色授权；实施记录于 execution-T6，前端构建与需求模块 16 项测试通过",
+      "recorded_at": "2026-08-25T10:05:00+08:00"
     }
   ],
   "open_feedback": [
     "审批流（requirement.diff.review 接入平台 workflow）未实施，由用户本轮明确推迟",
-    "mvn 测试、npm build、浏览器验收由用户自行执行；agent 未声称这些检查通过"
+    "mvn 测试、npm build、浏览器验收由用户自行执行；agent 未声称这些检查通过",
+    "存量阶段字段校正（execution-T2）已实现并通过需求模块聚焦测试与前端构建；真实浏览器验收待运行环境可用后补做",
+    "check-all-governance 的 AI control layout 失败源于其他历史任务账本，需单独治理任务修复",
+    "存量阶段推进已改为直接流转（execution-T3）：不做审批节点，流转痕迹由 req_stage_log 留痕；V82/V83 遗留迁移已回收（execution-T4），旧‘审批中’存量行与 V70 workflow_instance_id 列待迁移授权后清理",
+    "用户需求拆分多系统需求（execution-T4 方案待确认）：建议新增 req_legacy_system_requirement 子表，每添加一个协同系统生成一条子记录供平台其他组件消费；当前多协同以分隔字符串暂存父记录字段",
+    "V82/V83 种子迁移（execution-T5/T6）未在真实 MySQL 执行，SQL 结构校验通过；浏览器验收待运行环境补做",
+    "八大参数管理 8 个三级菜单页面内容未实施（用户暂缓）；演示角色历史 600-603 失效菜单授权待单独清理"
   ]
 }
