@@ -26,7 +26,9 @@ import com.ccb.requirement.support.RequirementValues;
 public class RequirementLegacyEnhanceService {
     private static final List<String> DELIVERABLE_COLUMNS = List.of(
             "id", "requirement_id", "system_item_id", "system_code", "doc_name", "version_no",
-            "review_status", "review_record_id", "file_preview_id", "remark", "created_at", "updated_at");
+            "review_status", "review_record_id", "file_preview_id", "remark",
+            "review_approver_ids", "review_approver_names", "review_report_name",
+            "created_at", "updated_at");
 
     private final JdbcTemplate jdbc;
     private final RequirementSecurityService security;
@@ -44,9 +46,11 @@ public class RequirementLegacyEnhanceService {
     public List<Map<String, Object>> deliverables(long requirementId, String type, AuthUser user) {
         String table = requireType(type);
         requireAccess(requirementId, user);
-        return jdbc.queryForList("SELECT " + String.join(", ", DELIVERABLE_COLUMNS)
-                + " FROM " + table + " WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0"
-                + " ORDER BY system_item_id, version_no DESC, id DESC", user.tenantId(), requirementId);
+        return jdbc.queryForList("SELECT d." + String.join(", d.", DELIVERABLE_COLUMNS)
+                + ", r.remark AS review_remark FROM " + table + " d"
+                + " LEFT JOIN req_review_record r ON r.id = d.review_record_id AND r.deleted = 0"
+                + " WHERE d.tenant_id = ? AND d.requirement_id = ? AND d.deleted = 0"
+                + " ORDER BY d.system_item_id, d.version_no DESC, d.id DESC", user.tenantId(), requirementId);
     }
 
     /** 保存交付件记录；带 id 视为替换（新版本），无 id 新增版本 1.0。历史版本行保留。 */
@@ -91,30 +95,39 @@ public class RequirementLegacyEnhanceService {
         changeLog.record(bizTypeOf(type), id, "DELETE", "deleted", "0", "1", user, "ONLINE");
     }
 
-    /** 提交评审：待评审/已退回 → 评审中。 */
+    /** 提交评审：待评审/已退回 → 评审中；与新建项目差异一致，提交时选择审批人并填写评审报告文档名称。 */
     @Transactional
-    public Map<String, Object> submitDeliverableReview(long id, String type, String reviewNo, AuthUser user) {
+    public Map<String, Object> submitDeliverableReview(long id, String type, List<Long> approverIds,
+                                                       String reportDocName, AuthUser user) {
         String table = requireType(type);
         Map<String, Object> row = deliverableRow(table, id, user.tenantId());
         requireEditable(((Number) row.get("requirement_id")).longValue(), user);
+        if (approverIds == null || approverIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择审批人");
+        }
         String status = String.valueOf(row.get("review_status"));
         if (!"待评审".equals(status) && !"已退回".equals(status)) {
             throw new BusinessException(ErrorCode.CONFLICT, "当前状态不可提交评审：" + status);
         }
-        jdbc.update("UPDATE " + table + " SET review_status = '评审中' WHERE tenant_id = ? AND id = ?",
+        String approverNames = approverNames(user.tenantId(), approverIds);
+        jdbc.update("UPDATE " + table
+                        + " SET review_status = '评审中', review_approver_ids = ?, review_approver_names = ?, review_report_name = ?"
+                        + " WHERE tenant_id = ? AND id = ?",
+                joinIds(approverIds), approverNames,
+                reportDocName == null || reportDocName.isBlank() ? null : reportDocName.substring(0, Math.min(200, reportDocName.length())),
                 user.tenantId(), id);
         changeLog.record(bizTypeOf(type), id, "SUBMIT_REVIEW", "review_status", status, "评审中", user, "ONLINE");
         return deliverableRow(table, id, user.tenantId());
     }
 
-    /** 评审确认（PMO/管理员）：通过/退回，写评审记录并锁定或解锁交付件。 */
+    /** 评审确认（被选审批人或 PMO/管理员）：通过/退回，写评审记录并锁定或解锁交付件。 */
     @Transactional
     public Map<String, Object> reviewDeliverable(long id, String type, Map<String, Object> body, AuthUser user) {
         String table = requireType(type);
-        if (!security.isPmo(user) && !security.isAdmin(user)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅 PMO 可确认交付件评审");
-        }
         Map<String, Object> row = deliverableRow(table, id, user.tenantId());
+        if (!security.isPmo(user) && !security.isAdmin(user) && !isSelectedApprover(row, user)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "仅被选审批人或 PMO 可确认交付件评审");
+        }
         requireAccess(((Number) row.get("requirement_id")).longValue(), user);
         String conclusion = RequirementValues.requireText(body, "conclusion", "评审结论不能为空");
         RequirementValues.requireOption("reviewConclusions", conclusion);
@@ -123,6 +136,7 @@ public class RequirementLegacyEnhanceService {
         }
         long recordId = writeReviewRecord(bizTypeOf(type), id, conclusion,
                 RequirementValues.text(body, "comment"),
+                RequirementValues.text(body, "remark"),
                 RequirementValues.text(body, "report_doc_name"), user);
         String newStatus = "通过".equals(conclusion) ? "已评审" : "已退回";
         jdbc.update("UPDATE " + table + " SET review_status = ?, review_record_id = ? WHERE tenant_id = ? AND id = ?",
@@ -199,7 +213,7 @@ public class RequirementLegacyEnhanceService {
     public List<Map<String, Object>> reviewRecords(String bizType, long bizId, AuthUser user) {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT id, biz_type, biz_id, review_no, reviewer_id, reviewer_name, review_time,
-                       conclusion, comment, report_doc_name, created_at
+                       conclusion, comment, remark, report_doc_name, created_at
                 FROM req_review_record WHERE tenant_id = ? AND biz_type = ? AND biz_id = ? AND deleted = 0
                 ORDER BY created_at DESC, id DESC
                 """, user.tenantId(), bizType, bizId);
@@ -208,16 +222,56 @@ public class RequirementLegacyEnhanceService {
 
     // ---------------- 内部工具 ----------------
 
-    private long writeReviewRecord(String bizType, long bizId, String conclusion, String comment,
+    private long writeReviewRecord(String bizType, long bizId, String conclusion, String comment, String remark,
                                    String reportDocName, AuthUser user) {
         long recordId = RequirementIds.next();
         jdbc.update("""
                 INSERT INTO req_review_record (id, tenant_id, biz_type, biz_id, reviewer_id, reviewer_name,
-                    review_time, conclusion, comment, report_doc_name, created_by, deleted)
-                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, 0)
+                    review_time, conclusion, comment, remark, report_doc_name, created_by, deleted)
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, 0)
                 """, recordId, user.tenantId(), bizType, bizId, user.id(), user.displayName(),
-                conclusion, comment, reportDocName, user.id());
+                conclusion, comment, remark, reportDocName, user.id());
         return recordId;
+    }
+
+    private boolean isSelectedApprover(Map<String, Object> row, AuthUser user) {
+        Object raw = row.get("review_approver_ids");
+        if (raw == null || String.valueOf(raw).isBlank()) {
+            return false;
+        }
+        String target = "," + String.valueOf(raw).replaceAll("\\s", "") + ",";
+        return target.contains("," + user.id() + ",");
+    }
+
+    private String approverNames(long tenantId, List<Long> approverIds) {
+        if (approverIds.isEmpty()) {
+            return null;
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(approverIds.size(), "?"));
+        List<Object> args = new ArrayList<>();
+        args.add(tenantId);
+        args.addAll(approverIds);
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id, COALESCE(display_name, username) AS name FROM sys_user"
+                        + " WHERE tenant_id = ? AND id IN (" + placeholders + ") AND deleted = 0",
+                args.toArray());
+        java.util.Set<Long> ids = new java.util.HashSet<>(approverIds);
+        java.util.Map<Long, String> nameByUser = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> r : rows) {
+            nameByUser.put(((Number) r.get("id")).longValue(), String.valueOf(r.get("name")));
+        }
+        List<String> names = new ArrayList<>();
+        for (Long id : ids) {
+            String name = nameByUser.get(id);
+            if (name != null) {
+                names.add(name);
+            }
+        }
+        return names.isEmpty() ? null : String.join("、", names);
+    }
+
+    private String joinIds(List<Long> ids) {
+        return ids.stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse(null);
     }
 
     private void requireAccess(long requirementId, AuthUser user) {
@@ -266,8 +320,10 @@ public class RequirementLegacyEnhanceService {
 
     private Map<String, Object> deliverableRow(String table, long id, long tenantId) {
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT " + String.join(", ", DELIVERABLE_COLUMNS) + " FROM " + table
-                        + " WHERE tenant_id = ? AND id = ? AND deleted = 0", tenantId, id);
+                "SELECT d." + String.join(", d.", DELIVERABLE_COLUMNS)
+                        + ", r.remark AS review_remark FROM " + table + " d"
+                        + " LEFT JOIN req_review_record r ON r.id = d.review_record_id AND r.deleted = 0"
+                        + " WHERE d.tenant_id = ? AND d.id = ? AND d.deleted = 0", tenantId, id);
         if (rows.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "交付件记录不存在");
         }

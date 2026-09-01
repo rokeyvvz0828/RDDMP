@@ -273,19 +273,12 @@ public class RequirementDifferenceService {
         jdbc.update("UPDATE req_difference SET workflow_instance_id = NULL WHERE tenant_id = ? AND id = ?", tenantId, diffId);
     }
 
-    /** 可选审批人列表：有差异评审权限（requirement:diff:review）或需求统筹管理员角色的启用用户。 */
+    /** 可选审批人列表：与差异流转一致，展示需求模块全部启用用户，可由提交人任意选择。 */
     public List<Map<String, Object>> reviewers(AuthUser user) {
         return jdbc.queryForList("""
-                SELECT DISTINCT u.id, u.username, u.display_name
+                SELECT u.id, u.username, u.display_name
                 FROM sys_user u
-                LEFT JOIN sys_user_role ur ON ur.user_id = u.id AND ur.tenant_id = u.tenant_id
-                LEFT JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id
-                LEFT JOIN sys_role_permission rp ON rp.role_id = r.id AND rp.tenant_id = r.tenant_id
-                LEFT JOIN sys_menu_permission mp ON mp.id = rp.permission_id AND mp.tenant_id = rp.tenant_id
                 WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1
-                  AND (mp.permission_code = 'requirement:diff:review'
-                       OR r.role_code = 'REQUIREMENT_COORDINATOR'
-                       OR u.id = 1)
                 ORDER BY u.id
                 """, user.tenantId());
     }

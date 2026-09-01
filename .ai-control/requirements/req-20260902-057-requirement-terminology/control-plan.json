@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260902-057-requirement-terminology",
+  "baseline_revision": 1,
+  "model_revision": 1,
+  "revision": 1,
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "需求管理运行面与存量数据术语替换为「同业/我方」，新旧表头导入兼容",
+      "requirement_ids": ["R1", "R2", "R3", "R4"],
+      "prerequisites": [],
+      "input_facts": [
+        "运行面旧词命中：RequirementsView.vue 18、RequirementEnums.java 19、RequirementImportService.java 15、测试 3、mock 6",
+        "V131 为当前最大迁移号，新增 V132",
+        "用户 2026-09-02 确认方案 A"
+      ],
+      "write_scope": [
+        "web/src/views/RequirementsView.vue",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/support/RequirementEnums.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementImportService.java",
+        "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementImportServiceTest.java",
+        "mock/mock-data.json",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V132__requirement_terminology_rename.sql"
+      ],
+      "invariants": [
+        "monshang_*/jinke_* 标识符与列名不变",
+        "已发布迁移不变",
+        "历史文档不变"
+      ],
+      "interface_contracts": [
+        "Excel 表头：新表头为主映射，旧表头 alias 到同一字段",
+        "API JSON 键不变"
+      ],
+      "non_goals": ["不重命名标识符", "不新增功能", "不改历史脚本"],
+      "action_bounds": [
+        "只替换用户可见字符串与数据值",
+        "迁移仅 UPDATE 数据与 ALTER 注释"
+      ],
+      "acceptance_checks": [
+        "运行面 rg '蒙商|金科' 0 命中",
+        "rg 'monshang|jinke' 标识符仍存在",
+        "新旧表头用例通过",
+        "前端构建/治理/范围检查通过",
+        "V132 存在且未修改历史脚本"
+      ],
+      "evidence_required": [
+        "rg 复扫输出",
+        "mvn 测试输出",
+        "npm build 输出",
+        "governance/scope 检查输出",
+        "V132 文件内容"
+      ],
+      "rollback": "回退本需求提交；V132 追加式可单独停用",
+      "stop_conditions": ["发现需重命名标识符或修改历史脚本", "新旧表头解析冲突"],
+      "escalation_conditions": ["超出 writable_paths 的文件需修改", "本地 MySQL 无法启动导致迁移执行待补验"]
+    }
+  ],
+  "dependency_edges": [],
+  "parallel_groups": [["T1"]],
+  "integration_points": [
+    {
+      "after_tasks": ["T1"],
+      "checks": [
+        "mvn -pl :ccb-requirement -am test",
+        "npm --prefix web run build",
+        "node scripts/check-all-governance.mjs",
+        "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260902-057-requirement-terminology/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {"label": "baseline", "trigger": "执行前", "observer": "主 Agent", "sensors": ["S1"], "requirement_ids": ["R1", "R2", "R3"]},
+    {"label": "task-complete", "trigger": "T1 完成后", "observer": "主 Agent", "sensors": ["S1", "S2", "S3", "S4", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4"]},
+    {"label": "final", "trigger": "全部任务完成后", "observer": "主 Agent（非独立标记）", "sensors": ["S1", "S2", "S3", "S4", "S5", "S6"], "requirement_ids": ["R1", "R2", "R3", "R4"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S1", "S4"]},
+    {"requirement_id": "R3", "task_ids": ["T1"], "sensor_ids": ["S1", "S6"]},
+    {"requirement_id": "R4", "task_ids": ["T1"], "sensor_ids": ["S2"]}
+  ],
+  "plan_status": "ready"
+}
