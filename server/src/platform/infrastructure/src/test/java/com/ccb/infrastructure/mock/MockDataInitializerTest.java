@@ -136,11 +136,8 @@ class MockDataInitializerTest {
                 .thenReturn("研发工程中心");
         MockDataInitializer initializer = initializer(jdbc, """
                 {"datasetKey":"test","datasetVersion":"1","database":[
-                  {"table":"arch_logical_subsystem","keyColumns":["id"],"rows":[
-                    {"id":9101,"tenant_id":1,"code":"LOGICAL_DEMO","short_name":"逻辑演示","name":"逻辑演示系统","business_org_id":910000000000002,"contact_user_id":910000000000002,"deleted":0,"created_by":1,"updated_by":1}
-                  ]},
                   {"table":"arch_physical_subsystem","keyColumns":["id"],"rows":[
-                    {"id":9201,"tenant_id":1,"code":"PHYSICAL_DEMO","short_name":"物理演示","name":"物理演示系统","logical_subsystem_id":9101,"responsible_team_org_id":910000000000002,"responsible_team_name_snapshot":"研发工程中心","owner_user_id":910000000000002,"deleted":0,"created_by":1,"updated_by":1}
+                    {"id":9201,"tenant_id":1,"code":"PHYSICAL_DEMO","short_name":"物理演示","name":"物理演示系统","logical_subsystem_name":"逻辑演示系统","business_component_code":"architecture.business-component.employee-portal","responsible_team_org_id":910000000000002,"responsible_team_name_snapshot":"研发工程中心","owner_user_id":910000000000002,"deleted":0,"created_by":1,"updated_by":1}
                   ]}
                 ]}
                 """);
@@ -148,14 +145,14 @@ class MockDataInitializerTest {
         initializer.run(new DefaultApplicationArguments());
         initializer.run(new DefaultApplicationArguments());
 
-        verify(jdbc, atLeast(6)).update(anyString(), any(Object[].class));
+        verify(jdbc, atLeast(4)).update(anyString(), any(Object[].class));
     }
 
     @Test
     void rejectsArchitectureRowWithoutExplicitPositiveTenant() throws Exception {
         MockDataInitializer initializer = initializer(mock(JdbcTemplate.class), """
                 {"datasetKey":"test","datasetVersion":"1","database":[{
-                  "table":"arch_logical_subsystem","keyColumns":["id"],"rows":[{"id":9101}]
+                  "table":"arch_physical_subsystem","keyColumns":["id"],"rows":[{"id":9101}]
                 }]}
                 """);
 
@@ -168,7 +165,7 @@ class MockDataInitializerTest {
     void rejectsArchitectureTenantWithoutRootOrganization() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
-        MockDataInitializer initializer = initializer(jdbc, logicalRow());
+        MockDataInitializer initializer = initializer(jdbc, physicalRow("研发工程中心"));
 
         IllegalStateException error = assertThrows(IllegalStateException.class,
                 () -> initializer.run(new DefaultApplicationArguments()));
@@ -176,15 +173,24 @@ class MockDataInitializerTest {
     }
 
     @Test
-    void rejectsCrossTenantLogicalReference() throws Exception {
+    void rejectsBusinessComponentOutsideTenantCategory() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(contains("parent_id = 0"), eq(Long.class), any(Object[].class))).thenReturn(1L);
-        when(jdbc.queryForObject(contains("arch_logical_subsystem"), eq(Long.class), any(Object[].class))).thenReturn(0L);
-        MockDataInitializer initializer = initializer(jdbc, physicalRow("研发工程中心"));
+        when(jdbc.queryForObject(contains("sys_config c"), eq(Long.class), any(Object[].class))).thenReturn(0L);
+        MockDataInitializer initializer = initializer(jdbc, """
+                {"datasetKey":"test","datasetVersion":"1","database":[{
+                  "table":"arch_physical_subsystem","keyColumns":["id"],"rows":[{
+                    "id":9201,"tenant_id":1,"logical_subsystem_name":"逻辑演示系统",
+                    "business_component_code":"wrong.category.option",
+                    "responsible_team_org_id":910000000000002,
+                    "responsible_team_name_snapshot":"研发工程中心","owner_user_id":null
+                  }]
+                }]}
+                """);
 
         IllegalStateException error = assertThrows(IllegalStateException.class,
                 () -> initializer.run(new DefaultApplicationArguments()));
-        assertTrue(error.getMessage().contains("所属逻辑子系统不是当前租户活动引用"));
+        assertTrue(error.getMessage().contains("不是当前租户分类选项"));
     }
 
     @Test
@@ -209,9 +215,11 @@ class MockDataInitializerTest {
                 .thenReturn("产品交付中心");
         MockDataInitializer initializer = initializer(jdbc, """
                 {"datasetKey":"test","datasetVersion":"1","database":[{
-                  "table":"arch_logical_subsystem","keyColumns":["id"],"rows":[{
-                    "id":9101,"tenant_id":1,"business_org_id":9201,"contact_user_id":9301,
-                    "deployment_platform_code":"wrong.category.option"
+                  "table":"arch_physical_subsystem","keyColumns":["id"],"rows":[{
+                    "id":9201,"tenant_id":1,"logical_subsystem_name":"逻辑演示系统",
+                    "deployment_platform":"wrong.category.option",
+                    "responsible_team_org_id":910000000000002,
+                    "responsible_team_name_snapshot":"产品交付中心","owner_user_id":null
                   }]
                 }]}
                 """);
@@ -240,13 +248,12 @@ class MockDataInitializerTest {
         try (InputStream input = new ClassPathResource("mock/mock-data.json").getInputStream()) {
             root = objectMapper.readTree(input);
         }
-        JsonNode logical = table(root, "arch_logical_subsystem");
         JsonNode physical = table(root, "arch_physical_subsystem");
-        assertEquals(2, logical.path("rows").size());
         assertEquals(3, physical.path("rows").size());
-        logical.path("rows").forEach(row -> assertTrue(row.path("tenant_id").asLong() > 0));
         physical.path("rows").forEach(row -> {
             assertTrue(row.path("tenant_id").asLong() > 0);
+            assertTrue(row.path("logical_subsystem_name").isTextual());
+            assertTrue(row.path("business_component_code").isTextual());
             assertTrue(row.path("responsible_team_name_snapshot").isTextual());
             assertTrue(row.path("contact_user_id").isMissingNode());
             assertEquals("虚构演示数据", row.path("remark").asText());
@@ -256,7 +263,7 @@ class MockDataInitializerTest {
         when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
         when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
         when(jdbc.queryForObject(contains("SELECT MAX(org_name)"), eq(String.class), any(Object[].class)))
-                .thenReturn("产品交付中心", "研发工程中心", "研发工程中心", "研发工程中心", "质量保障中心");
+                .thenReturn("研发工程中心", "研发工程中心", "质量保障中心");
         MockDataProperties properties = new MockDataProperties();
         properties.setResource("classpath:mock/mock-data.json");
         new MockDataInitializer(jdbc, objectMapper, new DefaultResourceLoader(), properties)
@@ -276,21 +283,12 @@ class MockDataInitializerTest {
         return new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties);
     }
 
-    private String logicalRow() {
-        return """
-                {"datasetKey":"test","datasetVersion":"1","database":[{
-                  "table":"arch_logical_subsystem","keyColumns":["id"],"rows":[{
-                    "id":9101,"tenant_id":2,"business_org_id":9201,"contact_user_id":9301
-                  }]
-                }]}
-                """;
-    }
-
     private String physicalRow(String snapshot) {
         return """
                 {"datasetKey":"test","datasetVersion":"1","database":[{
                   "table":"arch_physical_subsystem","keyColumns":["id"],"rows":[{
-                    "id":9201,"tenant_id":1,"logical_subsystem_id":9101,"responsible_team_org_id":910000000000002,
+                    "id":9201,"tenant_id":1,"logical_subsystem_name":"逻辑演示系统",
+                    "responsible_team_org_id":910000000000002,
                     "responsible_team_name_snapshot":"%s","owner_user_id":null
                   }]
                 }]}

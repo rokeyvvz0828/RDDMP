@@ -71,10 +71,10 @@
     {
       "module": "architecture",
       "name": "架构管理",
-      "features": ["逻辑子系统", "物理子系统", "组织与人员引用", "父子关联"],
+      "features": ["物理子系统", "逻辑子系统名称", "业务组件编号", "组织与人员引用"],
       "entry": "/architecture",
       "dataStrategy": "database",
-      "tables": ["arch_logical_subsystem", "arch_physical_subsystem"]
+      "tables": ["arch_physical_subsystem"]
     },
     {
       "module": "new-business-template",
@@ -153,7 +153,8 @@
       "keyColumns": ["id"],
       "rows": [
         {"id": 910000000000201, "tenant_id": 1, "dict_code": "MOCK_DELIVERY_STATUS", "dict_name": "演示交付状态", "status": 1, "deleted": 0},
-        {"id": 910000000000202, "tenant_id": 1, "dict_code": "MOCK_RELEASE_STAGE", "dict_name": "演示交付阶段", "status": 1, "deleted": 0}
+        {"id": 910000000000202, "tenant_id": 1, "dict_code": "MOCK_RELEASE_STAGE", "dict_name": "演示交付阶段", "status": 1, "deleted": 0},
+        {"id": 360015, "tenant_id": 1, "dict_code": "ARCH_BUSINESS_COMPONENT", "dict_name": "业务组件编号", "status": 1, "deleted": 0}
       ]
     },
     {
@@ -174,7 +175,10 @@
       "keyColumns": ["id"],
       "rows": [
         {"id": 910000000000301, "tenant_id": 1, "category_id": 4001, "config_key": "mock.data.dataset", "config_value": "rddmp-local-platform", "config_type": "string", "status": 1, "remark": "本地 mock 数据集标识", "deleted": 0},
-        {"id": 910000000000302, "tenant_id": 1, "category_id": 4001, "config_key": "mock.data.refresh-policy", "config_value": "startup-upsert", "config_type": "string", "status": 1, "remark": "本地启动时幂等同步", "deleted": 0}
+        {"id": 910000000000302, "tenant_id": 1, "category_id": 4001, "config_key": "mock.data.refresh-policy", "config_value": "startup-upsert", "config_type": "string", "status": 1, "remark": "本地启动时幂等同步", "deleted": 0},
+        {"id": 970000000000001, "tenant_id": 1, "category_id": 360015, "config_key": "architecture.business-component.employee-portal", "config_value": "员工门户", "config_type": "string", "status": 1, "remark": "架构物理子系统业务组件选项", "deleted": 0},
+        {"id": 970000000000002, "tenant_id": 1, "category_id": 360015, "config_key": "architecture.business-component.mobile-channel", "config_value": "移动渠道", "config_type": "string", "status": 1, "remark": "架构物理子系统业务组件选项", "deleted": 0},
+        {"id": 970000000000003, "tenant_id": 1, "category_id": 360015, "config_key": "architecture.business-component.delivery-operations", "config_value": "交付运营", "config_type": "string", "status": 1, "remark": "架构物理子系统业务组件选项", "deleted": 0}
       ]
     },
     {
@@ -396,20 +400,12 @@
       ]
     },
     {
-      "table": "arch_logical_subsystem",
-      "keyColumns": ["id"],
-      "rows": [
-        {"id": 910000000003001, "tenant_id": 1, "code": "LOG_CHANNEL", "short_name": "渠道接入", "name": "渠道接入逻辑子系统", "business_org_id": 910000000000001, "deployment_platform_code": "architecture.deployment-platform.employee-channel-p2", "system_type_code": "architecture.system-type.application-platform", "system_ownership_code": "architecture.system-ownership.channel-integration", "contact_user_id": 910000000000001, "description": "承载本地演示环境的统一渠道接入能力。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1},
-        {"id": 910000000003002, "tenant_id": 1, "code": "LOG_DELIVERY", "short_name": "交付支撑", "name": "交付支撑逻辑子系统", "business_org_id": 910000000000002, "deployment_platform_code": "architecture.deployment-platform.employee-channel-p2", "system_type_code": "architecture.system-type.application-platform", "system_ownership_code": "architecture.system-ownership.channel-integration", "contact_user_id": 910000000000002, "description": "承载本地演示环境的研发与交付支撑能力。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1}
-      ]
-    },
-    {
       "table": "arch_physical_subsystem",
       "keyColumns": ["id"],
       "rows": [
-        {"id": 910000000003101, "tenant_id": 1, "code": "PHY_PORTAL", "short_name": "员工门户", "name": "员工门户物理子系统", "logical_subsystem_id": 910000000003001, "business_group_name": "数字渠道事业群", "responsible_team_org_id": 910000000000002, "responsible_team_name_snapshot": "研发工程中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000002, "description": "面向员工的本地演示门户。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1},
-        {"id": 910000000003102, "tenant_id": 1, "code": "PHY_MOBILE", "short_name": "移动渠道", "name": "移动渠道物理子系统", "logical_subsystem_id": 910000000003001, "business_group_name": null, "responsible_team_org_id": 910000000000002, "responsible_team_name_snapshot": "研发工程中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000004, "description": "用于移动端渠道联调的虚构物理子系统。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1},
-        {"id": 910000000003103, "tenant_id": 1, "code": "PHY_OPERATIONS", "short_name": "交付运营", "name": "交付运营物理子系统", "logical_subsystem_id": 910000000003002, "business_group_name": "技术交付事业群", "responsible_team_org_id": 910000000000003, "responsible_team_name_snapshot": "质量保障中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000003, "description": "用于研发交付与质量联调的虚构物理子系统。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1}
+        {"id": 910000000003101, "tenant_id": 1, "code": "PHY_PORTAL", "short_name": "员工门户", "name": "员工门户物理子系统", "logical_subsystem_name": "渠道接入逻辑子系统", "business_component_code": "architecture.business-component.employee-portal", "business_group_name": "数字渠道事业群", "responsible_team_org_id": 910000000000002, "responsible_team_name_snapshot": "研发工程中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000002, "description": "面向员工的本地演示门户。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000003102, "tenant_id": 1, "code": "PHY_MOBILE", "short_name": "移动渠道", "name": "移动渠道物理子系统", "logical_subsystem_name": "渠道接入逻辑子系统", "business_component_code": "architecture.business-component.mobile-channel", "business_group_name": null, "responsible_team_org_id": 910000000000002, "responsible_team_name_snapshot": "研发工程中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000004, "description": "用于移动端渠道联调的虚构物理子系统。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1},
+        {"id": 910000000003103, "tenant_id": 1, "code": "PHY_OPERATIONS", "short_name": "交付运营", "name": "交付运营物理子系统", "logical_subsystem_name": "交付支撑逻辑子系统", "business_component_code": "architecture.business-component.delivery-operations", "business_group_name": "技术交付事业群", "responsible_team_org_id": 910000000000003, "responsible_team_name_snapshot": "质量保障中心", "runtime_code": "architecture.runtime.7x24", "system_level_code": "architecture.system-level.a-plus", "development_framework_code": "architecture.development-framework.employee-channel-p2", "owner_user_id": 910000000000003, "description": "用于研发交付与质量联调的虚构物理子系统。", "remark": "虚构演示数据", "deleted": 0, "created_by": 1, "updated_by": 1}
       ]
     },
     {

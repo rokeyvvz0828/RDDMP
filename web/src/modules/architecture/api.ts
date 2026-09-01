@@ -31,8 +31,6 @@ import type {
   FulfillmentPayload,
   InstanceDisasterRecovery,
   InstanceStatus,
-  LogicalSubsystem,
-  LogicalSubsystemOption,
   MaterialKind,
   ManagedEndpointInstance,
   NetworkAccessApplication,
@@ -80,14 +78,6 @@ type Query = Record<string, QueryValue>
 
 function compact(query: Query) {
   return Object.fromEntries(Object.entries(query).filter(([, value]) => value !== '' && value !== null && value !== undefined))
-}
-
-export async function listLogicalSubsystems(query: Query) {
-  return (await http.get<ApiResponse<PageResult<LogicalSubsystem>>>('/architecture/logical-subsystems', { params: compact(query) })).data.data
-}
-
-export async function getLogicalSubsystem(id: number) {
-  return (await http.get<ApiResponse<LogicalSubsystem>>(`/architecture/logical-subsystems/${id}`)).data.data
 }
 
 export async function listPhysicalSubsystems(query: Query) {
@@ -167,11 +157,8 @@ export async function loadParameterOptions(resource: ArchitectureResource, categ
   return (await http.get<ApiResponse<ParameterOption[]>>(`/architecture/options/${resource}/parameters/${categoryCode}`)).data.data
 }
 
-export async function loadLogicalSubsystemOptions(keyword = '', size = 50) {
-  const filter = keyword && /^[A-Za-z0-9_-]+$/.test(keyword) ? { code: keyword } : { name: keyword }
-  return (await http.get<ApiResponse<PageResult<LogicalSubsystemOption>>>('/architecture/options/physical-subsystem/logical-subsystems', {
-    params: compact({ page: 1, size, ...filter })
-  })).data.data.records
+export async function loadBusinessComponentOptions() {
+  return (await http.get<ApiResponse<ParameterOption[]>>('/architecture/options/physical-subsystem/business-components')).data.data
 }
 
 // ---------- 架构规范 ----------

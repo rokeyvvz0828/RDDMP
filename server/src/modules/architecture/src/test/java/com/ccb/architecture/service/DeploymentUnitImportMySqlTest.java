@@ -45,7 +45,6 @@ import static org.mockito.Mockito.mock;
 class DeploymentUnitImportMySqlTest {
     private static final String DATABASE = "deployment_unit_import";
     private static final long TENANT_ID = 1L;
-    private static final long LOGICAL_ID = 11L;
     private static final long PHYSICAL_ID = 501L;
 
     @Container
@@ -71,7 +70,7 @@ class DeploymentUnitImportMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("86"))
+                .target(MigrationVersion.fromVersion("123"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
@@ -94,17 +93,11 @@ class DeploymentUnitImportMySqlTest {
         jdbc.update("DELETE FROM arch_deployment_unit_import_batch");
         jdbc.update("DELETE FROM arch_deployment_unit_number_seq");
         jdbc.update("DELETE FROM arch_physical_subsystem WHERE tenant_id = ?", TENANT_ID);
-        jdbc.update("DELETE FROM arch_logical_subsystem WHERE tenant_id = ?", TENANT_ID);
-        jdbc.update("INSERT INTO arch_logical_subsystem "
-                        + "(id, tenant_id, code, short_name, name, business_org_id, contact_user_id, number_sequence,"
-                        + " status, sort_no, row_version, created_by, updated_by) "
-                        + "VALUES (?, ?, 'A0001', '渠道域', '渠道域逻辑子系统', 1, 1, 1, 'ACTIVE', 0, 0, 1, 1)",
-                LOGICAL_ID, TENANT_ID);
         jdbc.update("INSERT INTO arch_physical_subsystem "
-                        + "(id, tenant_id, code, short_name, name, logical_subsystem_id, responsible_team_org_id,"
-                        + " responsible_team_name_snapshot, number_slot, status, row_version, created_by, updated_by) "
-                        + "VALUES (?, ?, 'W0001A', '渠道接入', '渠道接入系统', ?, 1, '渠道团队', 'A', 'ACTIVE', 0, 1, 1)",
-                PHYSICAL_ID, TENANT_ID, LOGICAL_ID);
+                        + "(id, tenant_id, code, short_name, name, logical_subsystem_name, responsible_team_org_id,"
+                        + " responsible_team_name_snapshot, status, row_version, created_by, updated_by) "
+                        + "VALUES (?, ?, 'W0001A', '渠道接入', '渠道接入系统', '渠道域逻辑子系统', 1, '渠道团队', 'ACTIVE', 0, 1, 1)",
+                PHYSICAL_ID, TENANT_ID);
     }
 
     @AfterAll

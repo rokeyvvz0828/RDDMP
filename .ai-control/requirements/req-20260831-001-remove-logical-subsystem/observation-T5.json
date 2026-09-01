@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0",
+  "requirementId": "REQ-20260831-001",
+  "topic": "req-20260831-001-remove-logical-subsystem",
+  "task": "T5",
+  "phase": "observed",
+  "commands": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "result": "passed"
+    },
+    {
+      "command": "mvn -pl server/src/modules/architecture -am \"-DskipTests\" compile",
+      "result": "passed"
+    },
+    {
+      "command": "mvn -pl server/src/modules/architecture -am \"-Dtest=PhysicalSubsystemControllerTest,PhysicalSubsystemServiceTest,ArchitectureOptionsControllerTest,ArchitectureSubsystemRepositoryTest,SubsystemReferenceGuardTest,SubsystemChangeApplicationControllerTest,SubsystemChangeServiceTest,SubsystemPublicationServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "summary": "Tests run 39, failures 0, errors 0"
+    },
+    {
+      "command": "mvn -pl server/src/modules/architecture -am \"-Dtest=SubsystemChangeStoreMySqlTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "summary": "Tests run 8, failures 0, errors 0"
+    },
+    {
+      "command": "mvn -pl server/src/modules/architecture -am \"-Dtest=ArchitectureWorkflowIntegrationMySqlTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "summary": "Tests run 4, failures 0, errors 0"
+    },
+    {
+      "command": "mvn -pl server/src/platform/infrastructure -am \"-Dtest=MockDataInitializerTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "summary": "Tests run 12, failures 0, errors 0"
+    },
+    {
+      "command": "npm run build",
+      "workingDirectory": "web",
+      "result": "passed",
+      "summary": "vue-tsc and vite build passed with existing chunk and VueUse PURE-comment warnings"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "passed",
+      "summary": "Flyway migration check passed for 114 migrations and 1 approved callback"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "summary": "Only CRLF normalization warnings were reported"
+    },
+    {
+      "command": "mvn -pl server/src/modules/architecture -am test",
+      "result": "failed",
+      "summary": "Current subsystem-related tests passed; remaining failures are in standards/decisions and network migration/workflow tests outside this task scope"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "result": "failed",
+      "summary": "Failed on pre-existing historical .ai-control ledger layout issues outside the current control prefix"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260831-001-remove-logical-subsystem/codex-task-scope.yaml --base origin/dev-ivanh --head HEAD --working-tree",
+      "result": "failed",
+      "summary": "Failed on unrelated untracked T11 ledger files under a forbidden prefix and on the checker requirement that public capability changes preserve old behavior; option B intentionally removes logical subsystem APIs"
+    }
+  ],
+  "residualRisks": [
+    "完整架构模块回归仍受范围外历史标准/决策和网络用例失败影响。",
+    "真实浏览器 UAT、真实审批流和生产发布未执行。",
+    "V123 是破坏性迁移，发布前需要数据库备份和回退演练。"
+  ]
+}

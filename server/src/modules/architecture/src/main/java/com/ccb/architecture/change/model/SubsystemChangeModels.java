@@ -105,43 +105,19 @@ public final class SubsystemChangeModels {
             LocalDateTime updatedAt) {
     }
 
-    /** V82 逻辑子系统草稿。 */
-    public record LogicalDraft(
-            long applicationId,
-            long tenantId,
-            Long sourceLogicalSubsystemId,
-            String shortName,
-            String name,
-            long businessOrgId,
-            String deploymentPlatformCode,
-            String systemTypeCode,
-            String systemOwnershipCode,
-            long contactUserId,
-            String description,
-            String remark,
-            int sortNo,
-            Integer reservedNumberSequence,
-            Long sourceRowVersion,
-            int draftRevision,
-            String submittedSnapshotJson,
-            LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
-
-    }
-
     /** V82 物理子系统草稿，lineNo 保持草稿内稳定顺序。 */
     public record PhysicalDraft(
             long applicationId,
             int lineNo,
             long tenantId,
             Long sourcePhysicalSubsystemId,
-            Long targetLogicalSubsystemId,
+            String code,
             String shortName,
             String name,
+            String logicalSubsystemName,
+            String businessComponentCode,
             String englishName,
             String businessGroupName,
-            String businessContinuityLevel,
-            String collectedSystemLevel,
             String deploymentPlatform,
             String disasterRecoveryMode,
             long responsibleTeamOrgId,
@@ -152,7 +128,6 @@ public final class SubsystemChangeModels {
             Long ownerUserId,
             String description,
             String remark,
-            String reservedNumberSlot,
             Long sourceRowVersion,
             int draftRevision,
             String submittedSnapshotJson,
@@ -161,17 +136,19 @@ public final class SubsystemChangeModels {
 
         /** 兼容 V82-V94 期间不含登记表来源字段的测试与内部构造。 */
         public PhysicalDraft(long applicationId, int lineNo, long tenantId, Long sourcePhysicalSubsystemId,
-                             Long targetLogicalSubsystemId, String shortName, String name, String englishName,
+                             String code, String shortName, String name, String logicalSubsystemName,
+                             String businessComponentCode, String englishName,
                              String businessGroupName, long responsibleTeamOrgId,
                              String responsibleTeamNameSnapshot, String runtimeCode, String systemLevelCode,
                              String developmentFrameworkCode, Long ownerUserId, String description, String remark,
-                             String reservedNumberSlot, Long sourceRowVersion, int draftRevision,
+                             Long sourceRowVersion, int draftRevision,
                              String submittedSnapshotJson, LocalDateTime createdAt, LocalDateTime updatedAt) {
-            this(applicationId, lineNo, tenantId, sourcePhysicalSubsystemId, targetLogicalSubsystemId,
-                    shortName, name, englishName, businessGroupName, null, null, null, null,
+            this(applicationId, lineNo, tenantId, sourcePhysicalSubsystemId, code,
+                    shortName, name, logicalSubsystemName, businessComponentCode, englishName, businessGroupName,
+                    null, null,
                     responsibleTeamOrgId, responsibleTeamNameSnapshot, runtimeCode, systemLevelCode,
-                    developmentFrameworkCode, ownerUserId, description, remark, reservedNumberSlot,
-                    sourceRowVersion, draftRevision, submittedSnapshotJson, createdAt, updatedAt);
+                    developmentFrameworkCode, ownerUserId, description, remark, sourceRowVersion, draftRevision,
+                    submittedSnapshotJson, createdAt, updatedAt);
         }
     }
 
@@ -248,23 +225,12 @@ public final class SubsystemChangeModels {
                                       long newPhysicalSubsystemId, long applicationId, LocalDateTime approvedAt) {
     }
 
-    public record LogicalPublishedState(
-            long id,
-            long tenantId,
-            String code,
-            Integer numberSequence,
-            PublishedStatus status,
-            int sortNo,
-            long rowVersion,
-            boolean deleted) {
-    }
-
     public record PhysicalPublishedState(
             long id,
             long tenantId,
             String code,
-            String numberSlot,
-            long logicalSubsystemId,
+            String logicalSubsystemName,
+            String businessComponentCode,
             String englishName,
             PublishedStatus status,
             long rowVersion,

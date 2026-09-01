@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "1.0",
+  "requirementId": "REQ-20260831-001",
+  "topic": "req-20260831-001-remove-logical-subsystem",
+  "task": "T6",
+  "phase": "observed",
+  "commands": [
+    {
+      "command": "mvn -pl server/src/modules/architecture -am \"-DskipTests\" compile",
+      "result": "passed"
+    },
+    {
+      "command": "npm run build",
+      "workingDirectory": "web",
+      "result": "passed",
+      "summary": "vue-tsc and vite build passed with existing VueUse PURE-comment and chunk-size warnings"
+    },
+    {
+      "command": "mvn -pl server/src/modules/architecture -am \"-Dtest=PhysicalSubsystemControllerTest,PhysicalSubsystemServiceTest,ArchitectureOptionsControllerTest,ArchitectureSubsystemRepositoryTest,SubsystemReferenceGuardTest,SubsystemChangeApplicationControllerTest,SubsystemChangeServiceTest,SubsystemPublicationServiceTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "summary": "Tests run 39, failures 0, errors 0"
+    },
+    {
+      "command": "mvn -pl server/src/modules/architecture -am \"-Dtest=SubsystemChangeStoreMySqlTest,ArchitectureWorkflowIntegrationMySqlTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "summary": "Tests run 12, failures 0, errors 0; V123 migrated to latest and deleted the two physical fields"
+    },
+    {
+      "command": "mvn -pl server/src/platform/infrastructure -am \"-Dtest=MockDataInitializerTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "result": "passed",
+      "summary": "Tests run 12, failures 0, errors 0"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "passed",
+      "summary": "Flyway migration check passed for 114 migrations and 1 approved callback"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed",
+      "summary": "Only CRLF normalization warnings were reported"
+    },
+    {
+      "command": "rg -n \"businessContinuityLevel|collectedSystemLevel|农信业务连续性等级|项目组收集系统等级\" web/src/modules/architecture server/src/modules/architecture/src/main/java/com/ccb/architecture/change server/src/modules/architecture/src/main/java/com/ccb/architecture/model server/src/modules/architecture/src/main/java/com/ccb/architecture/repository server/src/modules/architecture/src/main/java/com/ccb/architecture/service server/src/modules/architecture/src/main/java/com/ccb/architecture/web mock/mock-data.json server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock",
+      "result": "passed",
+      "summary": "No residual current physical-subsystem code or UI references"
+    }
+  ],
+  "notExecuted": [
+    "真实浏览器 UAT",
+    "真实审批流验证",
+    "生产迁移执行"
+  ]
+}
