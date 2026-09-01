@@ -21,6 +21,7 @@ class RequirementLegacyServiceTest {
     private Map<String, Object> row(String stageStatus) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("id", 1L);
+        row.put("system_item_id", 1L);
         row.put("business_group", "零售一组");
         row.put("current_stage", "PROPOSE");
         row.put("propose_stage_status", stageStatus);

@@ -1,0 +1,61 @@
+{
+  "objective": "全局通知中心中的每条消息明确显示其项目归属或平台全局范围。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "系统必须在通知发布、持久化和查询链路中保留成对的项目标识与项目名称快照。",
+      "acceptance": ["项目通知查询结果返回 projectRef 与 projectName", "平台消息的两个字段均为空", "仅提供一个字段时发布失败且不写库"],
+      "priority": "must",
+      "source": "用户确认与 REQ-20260901-059",
+      "counterexample": ["只保存项目名称", "根据标题或路由推断项目"]
+    },
+    {
+      "id": "R2",
+      "statement": "工作流待办和审批结果通知必须携带工作流已有的项目上下文。",
+      "acceptance": ["待办通知读取 wf_instance 项目快照", "结果通知读取生命周期事件上下文", "原 13 参数通知发布方保持可编译"],
+      "priority": "must",
+      "source": "用户确认与现有 WorkflowBusinessContext 契约",
+      "counterexample": ["只有待办或只有结果通知携带项目", "强制所有平台通知提供项目"]
+    },
+    {
+      "id": "R3",
+      "statement": "存量工作流通知必须在能够通过稳定事件标识可靠关联时回填项目上下文。",
+      "acceptance": ["V133 在 MySQL 成功执行", "待办与生命周期通知按精确事件 ID 回填", "无法可靠关联的记录保持空值"],
+      "priority": "must",
+      "source": "用户要求已有全局通知展示项目归属",
+      "counterexample": ["按标题模糊匹配", "给未知消息填充当前项目"]
+    },
+    {
+      "id": "R4",
+      "statement": "通知抽屉必须在每条消息中清晰展示所属项目或平台全局范围，并适配桌面与移动端。",
+      "acceptance": ["项目消息显示所属项目和项目名", "平台消息显示所属范围和平台全局", "390x844 与桌面无遮挡和页面级横向溢出"],
+      "priority": "must",
+      "source": "用户确认的直接优化位置",
+      "counterexample": ["只在详情页展示", "用当前顶部项目替代消息项目"]
+    }
+  ],
+  "invariants": [
+    "通知列表、未读数和归档继续按租户与接收用户全局统计",
+    "不改变接收人、权限、已读、归档和幂等规则",
+    "不覆盖工作区既有未提交改动",
+    "Flyway 迁移只追加"
+  ],
+  "constraints": ["Java 17", "MySQL 8.4", "Vue 3 与 TypeScript", "旧 13 参数 NotificationPublishCommand 调用源码兼容"],
+  "non_goals": ["项目筛选", "按当前项目改变角标", "项目授权变更", "推断无可靠关系的历史消息项目"],
+  "assumptions": [
+    {"text": "工作流实例与生命周期事件中的项目字段是通知项目归属的可靠快照", "basis": "WorkflowBusinessContext、wf_instance 和 wf_lifecycle_event 已包含成对字段", "falsifier": "运行数据出现项目字段不成对或与业务项目不一致"}
+  ],
+  "unknowns": [
+    {"question": "非工作流业务未来是否需要显式项目上下文", "impact": "未来发布方可使用新增字段，本轮不阻塞", "owner": "对应业务模块 Owner", "blocking": false}
+  ],
+  "decisions": [
+    {"question": "消息中心是否按当前项目过滤", "options": ["保持全局并展示归属", "按当前项目过滤"], "selected": "保持全局并展示归属", "blocking": false, "source": "用户确认"}
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "发布校验、SQL 参数和查询响应字段", "candidate_sensor": "SystemNotificationService 单元测试与 API 运行检查"},
+    {"requirement_id": "R2", "observable": "桥接发布命令的项目字段", "candidate_sensor": "WorkflowSystemNotificationBridge 单元测试"},
+    {"requirement_id": "R3", "observable": "Flyway 版本和回填结果", "candidate_sensor": "本地 MySQL 迁移及 SQL 查询"},
+    {"requirement_id": "R4", "observable": "通知项文字、布局宽度与控制台", "candidate_sensor": "桌面和 390x844 真实浏览器验收"}
+  ],
+  "baseline_status": "ready"
+}

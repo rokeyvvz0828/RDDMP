@@ -1,0 +1,61 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["NotificationPublishCommand", "SystemNotificationService", "sys_notification", "WorkflowSystemNotificationBridge", "通知查询响应", "UiNotificationCenter"],
+    "environment": ["既有业务通知发布方", "wf_instance", "wf_lifecycle_event", "MySQL 8.4", "认证用户浏览器"]
+  },
+  "state_variables": [
+    {"name": "notification_project_context", "owner": "platform/system", "valid_values": ["projectRef/projectName both present", "both null"]},
+    {"name": "workflow_project_context", "owner": "platform/workflow", "valid_values": ["project snapshot pair", "both null"]},
+    {"name": "notification_scope_label", "owner": "frontend/application", "valid_values": ["所属项目", "所属范围"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "通知发布命令", "transitions": ["成对校验与规范化", "sys_notification 持久化", "按接收用户查询映射"], "outputs": ["包含可空 projectRef/projectName 的通知响应"]},
+    {"requirement_id": "R2", "input": "工作流任务分配或生命周期结果", "transitions": ["读取已有工作流项目上下文", "构造通知发布命令", "系统通知持久化"], "outputs": ["项目归属完整的工作流通知"]},
+    {"requirement_id": "R3", "input": "V133 迁移", "transitions": ["新增可空列", "按 workflow-task 事件关联 wf_task/wf_instance", "按 workflow-lifecycle 事件关联 wf_lifecycle_event"], "outputs": ["可靠关联的存量通知获得项目快照"]},
+    {"requirement_id": "R4", "input": "通知分页响应", "transitions": ["项目字段判定", "渲染归属行", "响应式换行"], "outputs": ["桌面与移动端可读的项目归属"]}
+  ],
+  "interfaces": [
+    {"name": "NotificationPublishCommand", "producers": ["业务模块与工作流桥接"], "consumers": ["SystemNotificationPublisher"], "invariant": "项目字段成对且旧 13 参数构造器保持兼容"},
+    {"name": "GET /api/notifications item", "producers": ["SystemNotificationService"], "consumers": ["UiNotificationCenter"], "invariant": "projectRef/projectName 均存在或均为空"},
+    {"name": "workflow project snapshot", "producers": ["platform/workflow"], "consumers": ["WorkflowSystemNotificationBridge"], "invariant": "不从通知文本推断项目"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1 通知契约和持久化查询", "method": "ccb-system 单元测试", "blind_spots": ["真实 MySQL 方言"], "independence": "Mock JDBC 参数与响应映射断言"},
+    {"id": "S2", "target": "R2 工作流桥接", "method": "ccb-boot 单元测试", "blind_spots": ["定时调度时间"], "independence": "记录实际发布命令"},
+    {"id": "S3", "target": "R3 迁移", "method": "本地 MySQL Flyway 执行与信息架构/数据查询", "blind_spots": ["外部生产数据分布"], "independence": "真实数据库观测"},
+    {"id": "S4", "target": "R4 用户可见布局", "method": "桌面与 390x844 浏览器 DOM、截图、宽度和控制台检查", "blind_spots": ["未抽样的设备字体差异"], "independence": "真实渲染输出"},
+    {"id": "S5", "target": "共享契约回归", "method": "Maven 聚焦测试与前端生产构建", "blind_spots": ["未执行的全仓测试"], "independence": "编译器与测试运行器"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "系统通知契约与服务", "action": "追加兼容字段、成对校验、SQL 持久化和响应映射", "authority": "REQ-059 writable_paths", "impact_radius": "platform/system 公共通知能力", "rollback": "回退 Java 与测试，保留可空数据库列"},
+    {"id": "A2", "target": "工作流通知组合根", "action": "从既有上下文传递项目快照", "authority": "REQ-059 writable_paths", "impact_radius": "工作流站内通知", "rollback": "回退桥接改动"},
+    {"id": "A3", "target": "sys_notification 模式与存量数据", "action": "追加 V133 可空列和精确回填", "authority": "REQ-059 migration scope", "impact_radius": "本地/部署数据库通知表", "rollback": "应用兼容性回退，物理列保留"},
+    {"id": "A4", "target": "通知抽屉展示", "action": "增加紧凑归属行和响应式样式", "authority": "REQ-059 writable_paths", "impact_radius": "公共通知抽屉", "rollback": "回退 Vue、类型和样式"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S4", "S5"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "工作区已有未提交修改", "effect": "全仓 diff 与测试可能包含其他需求变化", "detectable": true, "controllable": false},
+    {"source": "本地 MySQL 或服务未运行", "effect": "迁移与浏览器验收不可用", "detectable": true, "controllable": true},
+    {"source": "存量非工作流通知缺少可靠项目关系", "effect": "保持平台全局展示", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "Flyway 仅在后端重启时应用", "consequence": "代码热更新前数据库缺列", "sampling_rule": "完成代码测试后重启后端再执行 API/浏览器验收"},
+    {"source": "通知轮询", "consequence": "抽屉可能短暂显示旧响应", "sampling_rule": "迁移与服务健康后重新打开抽屉采样"}
+  ],
+  "assumptions": [
+    {"text": "当前工作流项目字段成对维护", "evidence": "WorkflowBusinessContext 与现有实例/事件表字段结构", "falsifier": "迁移前 SQL 发现单边非空记录"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "进入 planning"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "进入 planning"}
+  ],
+  "model_status": "ready"
+}

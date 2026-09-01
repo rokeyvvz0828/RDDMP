@@ -131,8 +131,24 @@ public class AuthService {
 
     public AuthMe me(AuthUser user) {
         return new AuthMe(user.id(), user.tenantId(), user.username(), user.displayName(), user.orgId(),
-                user.orgName(), storage.presignedUrl(user.avatarObjectKey()),
-                repository.findRoles(user.id(), user.tenantId()), repository.findPermissions(user.id(), user.tenantId()));
+                user.orgName(), avatarUrl(user), roles(user), permissions(user));
+    }
+
+    public List<String> roles(AuthUser user) {
+        return repository.findRoles(user.id(), user.tenantId());
+    }
+
+    public List<String> permissions(AuthUser user) {
+        return repository.findPermissions(user.id(), user.tenantId());
+    }
+
+    private String avatarUrl(AuthUser user) {
+        if (storage == null) return null;
+        try {
+            return storage.presignedUrl(user.avatarObjectKey());
+        } catch (BusinessException exception) {
+            return null;
+        }
     }
 
     public List<RouteNode> routes(AuthUser user) {

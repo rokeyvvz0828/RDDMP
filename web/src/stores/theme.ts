@@ -18,7 +18,7 @@ export const useThemeStore = defineStore('theme', () => {
   try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as Partial<Preferences> } catch { saved = {} }
 
   const appearance = ref<AppearanceMode>(saved.appearance || (localStorage.getItem('ccb.theme') as AppearanceMode) || 'light')
-  const palette = ref<PaletteKey>(saved.palette || 'ocean')
+  const palette = ref<PaletteKey>(saved.palette || 'tech-blue')
   const layout = ref<LayoutMode>(saved.layout || 'side')
   const sidebarCollapsed = ref(Boolean(saved.sidebarCollapsed))
   const density = ref<DensityMode>(saved.density || 'comfortable')

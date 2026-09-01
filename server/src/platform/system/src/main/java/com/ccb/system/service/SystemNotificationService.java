@@ -47,7 +47,7 @@ public class SystemNotificationService implements SystemNotificationPublisher {
 
         long notificationId = nextId();
         jdbc.update(
-                "INSERT INTO sys_notification (id, tenant_id, event_id, module_code, module_name, business_type, business_key, title, content, notification_level, source_name, action_path, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = id",
+                "INSERT INTO sys_notification (id, tenant_id, event_id, module_code, module_name, business_type, business_key, title, content, notification_level, source_name, action_path, project_ref, project_name, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = id",
                 notificationId,
                 notification.tenantId(),
                 notification.eventId(),
@@ -60,6 +60,8 @@ public class SystemNotificationService implements SystemNotificationPublisher {
                 notification.level().name(),
                 notification.sourceName(),
                 notification.actionPath(),
+                notification.projectRef(),
+                notification.projectName(),
                 notification.actorUserId(),
                 LocalDateTime.now(ZoneId.of("Asia/Shanghai")));
         long persistedId = jdbc.queryForObject(
@@ -94,10 +96,10 @@ public class SystemNotificationService implements SystemNotificationPublisher {
         queryArgs.add((pageQuery.page() - 1) * pageQuery.size());
         queryArgs.add(pageQuery.size());
         List<SystemNotificationItem> items = jdbc.query(
-                "SELECT n.id, n.title, n.content, n.notification_level, n.source_name, n.module_code, n.module_name, n.business_type, n.business_key, n.action_path, un.is_read, un.read_at, un.archived_at, n.created_at " +
+                "SELECT n.id, n.title, n.content, n.notification_level, n.source_name, n.module_code, n.module_name, n.business_type, n.business_key, n.action_path, n.project_ref, n.project_name, un.is_read, un.read_at, un.archived_at, n.created_at " +
                         "FROM sys_user_notification un JOIN sys_notification n ON n.id = un.notification_id AND n.tenant_id = un.tenant_id " +
                         "WHERE un.tenant_id = ? AND un.user_id = ?" + viewFilter + moduleFilter +
-                        " ORDER BY n.created_at DESC, n.id DESC LIMIT ?, ?",
+                        " ORDER BY un.is_read ASC, n.created_at DESC, n.id DESC LIMIT ?, ?",
                 (resultSet, rowNum) -> new SystemNotificationItem(
                         resultSet.getLong("id"),
                         resultSet.getString("title"),
@@ -109,6 +111,8 @@ public class SystemNotificationService implements SystemNotificationPublisher {
                         resultSet.getString("business_type"),
                         resultSet.getString("business_key"),
                         resultSet.getString("action_path"),
+                        resultSet.getString("project_ref"),
+                        resultSet.getString("project_name"),
                         resultSet.getBoolean("is_read"),
                         resultSet.getTimestamp("read_at") == null ? null : resultSet.getTimestamp("read_at").toLocalDateTime(),
                         resultSet.getTimestamp("archived_at") == null ? null : resultSet.getTimestamp("archived_at").toLocalDateTime(),
@@ -225,6 +229,11 @@ public class SystemNotificationService implements SystemNotificationPublisher {
         if (actionPath != null && (!actionPath.startsWith("/") || actionPath.startsWith("//") || actionPath.contains("://") || actionPath.contains("\\") || actionPath.contains("\r") || actionPath.contains("\n"))) {
             throw badRequest("通知只允许使用以 / 开头的站内路由");
         }
+        String projectRef = optional(command.projectRef(), 64, "项目标识");
+        String projectName = optional(command.projectName(), 128, "项目名称");
+        if ((projectRef == null) != (projectName == null)) {
+            throw badRequest("项目标识和项目名称必须同时提供");
+        }
         return new ValidatedNotification(
                 command.tenantId(),
                 required(command.eventId(), 128, "事件标识"),
@@ -238,7 +247,9 @@ public class SystemNotificationService implements SystemNotificationPublisher {
                 command.level() == null ? NotificationLevel.INFO : command.level(),
                 required(command.sourceName(), 128, "通知来源"),
                 actionPath,
-                command.actorUserId());
+                command.actorUserId(),
+                projectRef,
+                projectName);
     }
 
     private void validateUsers(ValidatedNotification notification) {
@@ -315,6 +326,8 @@ public class SystemNotificationService implements SystemNotificationPublisher {
             NotificationLevel level,
             String sourceName,
             String actionPath,
-            Long actorUserId) {
+            Long actorUserId,
+            String projectRef,
+            String projectName) {
     }
 }

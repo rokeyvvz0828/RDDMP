@@ -26,6 +26,8 @@ const drillPageSize = ref(10)
 const loading = ref(false)
 const drillLoading = ref(false)
 const error = ref('')
+let loadRequestId = 0
+let drillRequestId = 0
 const versionLabels: Record<string, string> = { REGULAR: '常规版本', URGENT: '紧急版本', EMERGENCY: '应急版本' }
 const statusLabels: Record<string, string> = { DRAFT: '草稿', IN_REVIEW: '审批中', RETURNED: '已退回', WITHDRAWN: '已撤回', CANCELLED: '已取消', RELEASED: '制品准出' }
 const resultLabels: Record<string, string> = { RELEASED: '制品准出', SUCCEEDED: '投产成功', FAILED: '投产失败', NOT_DEPLOYED: '未投产' }
@@ -40,37 +42,61 @@ function minute(value: unknown) { return value ? String(value).replace('T', ' ')
 function versionTone(value: string) { return value === 'EMERGENCY' ? 'danger' : value === 'URGENT' ? 'warning' : 'info' }
 function statusTone(value: string) { return value === 'RELEASED' ? 'success' : value === 'IN_REVIEW' ? 'primary' : value === 'RETURNED' || value === 'WITHDRAWN' ? 'warning' : 'info' }
 
-async function loadWindows() {
-  if (!projectStore.current) return
-  windows.value = (await listReleaseWindows({ page: 1, size: 200, projectId: projectStore.current.ref })).data.data.records
-}
-async function loadSummary() {
-  if (!projectStore.current) return
-  summary.value = (await getReleaseAnalyticsSummary(projectStore.current.ref, windowId.value)).data.data
-}
 async function loadDrilldown() {
-  if (!projectStore.current) return
+  const projectRef = projectStore.current?.ref
+  if (!projectRef) return
+  const requestId = ++drillRequestId
   drillLoading.value = true
   try {
     const response = await getReleaseAnalyticsDrilldown({
-      page: drillPage.value, size: drillPageSize.value, projectId: projectStore.current.ref,
+      page: drillPage.value, size: drillPageSize.value, projectId: projectRef,
       windowId: windowId.value, dimension: drill.value.dimension, value: drill.value.value
     })
+    if (requestId !== drillRequestId || projectStore.currentRef !== projectRef) return
     drillRows.value = response.data.data.records
     drillTotal.value = response.data.data.total
-  } finally { drillLoading.value = false }
+  } finally { if (requestId === drillRequestId) drillLoading.value = false }
 }
 async function load() {
+  const requestId = ++loadRequestId
   loading.value = true
   error.value = ''
   try {
     await projectStore.initialize()
-    await Promise.all([loadWindows(), loadSummary()])
+    const projectRef = projectStore.current?.ref
+    if (!projectRef) throw new Error('请选择项目后重试')
+    const [windowResponse, summaryResponse] = await Promise.all([
+      listReleaseWindows({ page: 1, size: 200, projectId: projectRef }),
+      getReleaseAnalyticsSummary(projectRef, windowId.value)
+    ])
+    if (requestId !== loadRequestId || projectStore.currentRef !== projectRef) return
+    windows.value = windowResponse.data.data.records
+    summary.value = summaryResponse.data.data
     drillPage.value = 1
     await loadDrilldown()
   } catch (requestError) {
+    if (requestId !== loadRequestId) return
     error.value = apiErrorMessage(requestError, '统计分析加载失败，请稍后重试')
-  } finally { loading.value = false }
+  } finally { if (requestId === loadRequestId) loading.value = false }
+}
+async function reloadSelection() {
+  const projectRef = projectStore.current?.ref
+  if (!projectRef) return
+  const requestId = ++loadRequestId
+  loading.value = true
+  error.value = ''
+  try {
+    const response = await getReleaseAnalyticsSummary(projectRef, windowId.value)
+    if (requestId !== loadRequestId || projectStore.currentRef !== projectRef) return
+    summary.value = response.data.data
+    drillPage.value = 1
+    await loadDrilldown()
+  } catch (requestError) {
+    if (requestId !== loadRequestId || projectStore.currentRef !== projectRef) return
+    error.value = apiErrorMessage(requestError, '统计分析加载失败，请稍后重试')
+  } finally {
+    if (requestId === loadRequestId) loading.value = false
+  }
 }
 function selectDrill(dimension: DrillDimension | undefined, value: string | undefined, title: string) {
   drill.value = { dimension, value, title }
@@ -92,8 +118,24 @@ function changePage(page: number, size = drillPageSize.value) {
 }
 
 onMounted(load)
-watch(windowId, () => { drill.value = { title: windowId.value ? '当前窗口全部申请' : '全部版本申请' }; void load() })
-watch(() => projectStore.currentRef, () => { windowId.value = undefined; void load() })
+watch(windowId, () => {
+  drill.value = { title: windowId.value ? '当前窗口全部申请' : '全部版本申请' }
+  if (windows.value.length || windowId.value !== undefined) void reloadSelection()
+})
+watch(() => projectStore.currentRef, () => {
+  loadRequestId += 1
+  drillRequestId += 1
+  windows.value = []
+  windowId.value = undefined
+  summary.value = { windowCount: 0, applicationCount: 0, subsystemCount: 0, deliveryUnitCount: 0, fileMediaCount: 0, requirementCount: 0, versionTypes: {}, productionResults: {} }
+  drill.value = { title: '全部版本申请' }
+  drillRows.value = []
+  drillTotal.value = 0
+  error.value = ''
+  loading.value = false
+  drillLoading.value = false
+  void load()
+})
 </script>
 
 <template>

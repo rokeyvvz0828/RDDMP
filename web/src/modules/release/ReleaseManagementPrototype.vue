@@ -78,6 +78,7 @@ const windows = ref<ReleaseWindowDto[]>([])
 const windowsLoading = ref(false)
 const windowsError = ref('')
 const windowViewRef = ref<InstanceType<typeof ReleaseWindowView>>()
+let windowsRequestId = 0
 
 const applications = ref<ReleaseApplicationDto[]>([])
 const applicationTotal = ref(0)
@@ -89,6 +90,7 @@ const applicationKeyword = ref<string>()
 const applicationStatus = ref<ReleaseApplicationStatusCode>()
 const applicationsLoading = ref(false)
 const applicationsError = ref('')
+let applicationsRequestId = 0
 const applicationSearchOptions = ref<ReleaseSearchOption[]>([])
 const applicationSearchLoading = ref(false)
 const applicationSearchError = ref('')
@@ -96,6 +98,7 @@ let applicationSearchTimer: number | undefined
 let applicationSearchGeneration = 0
 
 const currentProduction = ref<ProductionEntryDto[]>([])
+let currentProductionRequestId = 0
 const applicationDrawerOpen = ref(false)
 const editingApplication = ref<ReleaseApplicationDto | null>(null)
 const savingApplication = ref(false)
@@ -146,11 +149,14 @@ function clearBlockedApplicationOperation() {
 }
 
 async function loadWindows() {
-  if (!projectStore.current || (!canViewWindows.value && !canViewApplications.value)) return
+  const projectRef = projectStore.current?.ref
+  if (!projectRef || (!canViewWindows.value && !canViewApplications.value)) return
+  const requestId = ++windowsRequestId
   windowsLoading.value = true
   windowsError.value = ''
   try {
-    const response = await listReleaseWindows({ page: 1, size: 200, projectId: projectStore.current.ref })
+    const response = await listReleaseWindows({ page: 1, size: 200, projectId: projectRef })
+    if (requestId !== windowsRequestId || projectStore.currentRef !== projectRef) return
     const records = response.data.data.records
     if (!applicationWindowInitialized && canViewApplications.value && records.length) {
       applicationWindowId.value = records[0].id
@@ -158,34 +164,39 @@ async function loadWindows() {
     }
     windows.value = records
   } catch (error) {
+    if (requestId !== windowsRequestId || projectStore.currentRef !== projectRef) return
     windows.value = []
     windowsError.value = apiErrorMessage(error, '投产窗口加载失败，请稍后重试')
   } finally {
-    windowsLoading.value = false
+    if (requestId === windowsRequestId) windowsLoading.value = false
   }
 }
 
 async function loadApplications() {
-  if (!projectStore.current || !canViewApplications.value) return
+  const projectRef = projectStore.current?.ref
+  if (!projectRef || !canViewApplications.value) return
+  const requestId = ++applicationsRequestId
   applicationsLoading.value = true
   applicationsError.value = ''
   try {
     const response = await listReleaseApplications({
       page: applicationPage.value,
       size: applicationPageSize.value,
-      projectId: projectStore.current.ref,
+      projectId: projectRef,
       windowId: applicationWindowId.value,
       keyword: applicationKeyword.value,
       status: applicationStatus.value
     })
+    if (requestId !== applicationsRequestId || projectStore.currentRef !== projectRef) return
     applications.value = response.data.data.records
     applicationTotal.value = response.data.data.total
   } catch (error) {
+    if (requestId !== applicationsRequestId || projectStore.currentRef !== projectRef) return
     applications.value = []
     applicationTotal.value = 0
     applicationsError.value = apiErrorMessage(error, '版本申请加载失败，请稍后重试')
   } finally {
-    applicationsLoading.value = false
+    if (requestId === applicationsRequestId) applicationsLoading.value = false
   }
 }
 
@@ -238,10 +249,15 @@ function searchApplicationOptions(query: string, windowId?: number) {
 }
 
 async function loadCurrentProduction() {
-  if (!projectStore.current || !canViewApplications.value) return
+  const projectRef = projectStore.current?.ref
+  if (!projectRef || !canViewApplications.value) return
+  const requestId = ++currentProductionRequestId
   try {
-    currentProduction.value = (await getCurrentProductionVersions(projectStore.current.ref)).data.data
+    const response = await getCurrentProductionVersions(projectRef)
+    if (requestId !== currentProductionRequestId || projectStore.currentRef !== projectRef) return
+    currentProduction.value = response.data.data
   } catch {
+    if (requestId !== currentProductionRequestId || projectStore.currentRef !== projectRef) return
     currentProduction.value = []
   }
 }
@@ -311,9 +327,12 @@ async function openEditApplication(application: ReleaseApplicationDto) {
   conflictOpen.value = false
   clearBlockedApplicationOperation()
   pendingSubmission.value = null
+  const projectRef = projectStore.currentRef
   try {
     await Promise.all([loadWindows(), loadCurrentProduction()])
-    editingApplication.value = (await getReleaseApplication(application.applicationCode)).data.data
+    const response = await getReleaseApplication(application.applicationCode)
+    if (projectStore.currentRef !== projectRef || response.data.data.projectId !== projectRef) return
+    editingApplication.value = response.data.data
     applicationDrawerOpen.value = true
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '版本申请详情加载失败'))
@@ -690,7 +709,18 @@ onMounted(async () => {
 })
 watch(() => projectStore.currentRef, async (next, previous) => {
   if (!next || next === previous) return
+  windowsRequestId += 1
+  applicationsRequestId += 1
+  currentProductionRequestId += 1
   resetApplicationSearch()
+  windows.value = []
+  windowsError.value = ''
+  windowsLoading.value = false
+  applications.value = []
+  applicationTotal.value = 0
+  applicationsError.value = ''
+  applicationsLoading.value = false
+  currentProduction.value = []
   applicationPage.value = 1
   applicationWindowId.value = undefined
   applicationWindowInitialized = false
@@ -715,12 +745,12 @@ onBeforeUnmount(() => {
       <button v-for="view in views" :key="view.key" type="button" :class="{ active: activeView === view.key }" @click="router.push(view.path)"><el-icon><component :is="view.icon" /></el-icon><span>{{ view.label }}</span></button>
     </nav>
 
-    <ReleaseWindowView v-if="activeView === 'windows'" ref="windowViewRef" :windows="windows" :project="projectStore.current" :loading="windowsLoading" :error="windowsError" :can-create="canCreateWindows" :can-update="canUpdateWindows" @refresh="loadWindows" @create="createWindow" @update="updateWindow" @toggle-regular="toggleRegular" />
+    <ReleaseWindowView v-if="activeView === 'windows'" :key="projectStore.currentRef" ref="windowViewRef" :windows="windows" :project="projectStore.current" :loading="windowsLoading" :error="windowsError" :can-create="canCreateWindows" :can-update="canUpdateWindows" @refresh="loadWindows" @create="createWindow" @update="updateWindow" @toggle-regular="toggleRegular" />
     <ReleaseApplicationView v-else-if="activeView === 'applications'" :key="projectStore.currentRef" :applications="applications" :total="applicationTotal" :page="applicationPage" :page-size="applicationPageSize" :window-id="applicationWindowId" :windows="windows" :windows-loading="windowsLoading" :loading="applicationsLoading" :error="applicationsError" :search-options="applicationSearchOptions" :search-loading="applicationSearchLoading" :search-error="applicationSearchError" :can-create="canCreateApplications" :can-update="canUpdateApplications" :can-submit="canSubmitApplications" :can-withdraw="canWithdrawApplications" :can-cancel="canCancelApplications" @search-options="searchApplicationOptions" @query="queryApplications" @refresh="loadApplications" @create="openCreateApplication" @edit="openEditApplication" @detail="openApplicationDetail" @copy-approval-link="copyApplicationApprovalLink" @action="handleApplicationAction" />
-    <ReleaseBaselineView v-else-if="activeView === 'production-ledger'" :can-update="canUpdateBaseline" />
-    <ReleaseCurrentProductionView v-else-if="activeView === 'current-production'" />
-    <ReleaseAnalyticsView v-else-if="activeView === 'analytics'" />
-    <ReleaseWorkflowBindingView v-else-if="projectStore.current" :project="projectStore.current" :can-update="canUpdateWorkflowBindings" />
+    <ReleaseBaselineView v-else-if="activeView === 'production-ledger'" :key="projectStore.currentRef" :can-update="canUpdateBaseline" />
+    <ReleaseCurrentProductionView v-else-if="activeView === 'current-production'" :key="projectStore.currentRef" />
+    <ReleaseAnalyticsView v-else-if="activeView === 'analytics'" :key="projectStore.currentRef" />
+    <ReleaseWorkflowBindingView v-else-if="projectStore.current" :key="projectStore.currentRef" :project="projectStore.current" :can-update="canUpdateWorkflowBindings" />
 
     <ReleaseApplicationDrawer v-model="applicationDrawerOpen" :application="editingApplication" :windows="windows" :project="projectStore.current" :current-production="currentProduction" :saving="savingApplication" :save-error="applicationSaveError" :can-submit="canSubmitApplications" :can-delete-attachment="canUpdateApplications" @save="saveApplication" @delete-attachment="deleteAttachment" />
     <ReleaseConflictDialog

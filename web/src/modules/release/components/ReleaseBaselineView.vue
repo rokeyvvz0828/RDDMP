@@ -29,6 +29,8 @@ const batchMode = ref(false)
 const saving = ref(false)
 const now = ref(Date.now())
 let clockTimer: number | undefined
+let windowsRequestId = 0
+let entriesRequestId = 0
 const resultForm = reactive<{ productionResult: MaintainedProductionResult; productionAt: string; resultReason: string; changeReason: string }>({ productionResult: 'SUCCEEDED', productionAt: '', resultReason: '', changeReason: '' })
 
 const resultLabels: Record<ProductionResult, string> = { RELEASED: '制品准出', SUCCEEDED: '投产成功', FAILED: '投产失败', NOT_DEPLOYED: '未投产' }
@@ -83,27 +85,36 @@ function maintenanceState(item: ProductionEntryDto) {
 }
 
 async function loadWindows() {
-  if (!projectStore.current) return
-  const response = await listReleaseWindows({ page: 1, size: 200, projectId: projectStore.current.ref })
+  const projectRef = projectStore.current?.ref
+  if (!projectRef) return
+  const requestId = ++windowsRequestId
+  const response = await listReleaseWindows({ page: 1, size: 200, projectId: projectRef })
+  if (requestId !== windowsRequestId || projectStore.currentRef !== projectRef) return
   windows.value = response.data.data.records
   if (!windows.value.some(item => item.id === windowId.value)) {
     windowId.value = windows.value.find(item => item.status === 'IN_PRODUCTION')?.id || windows.value[0]?.id
   }
 }
 async function loadEntries() {
+  const projectRef = projectStore.currentRef
+  const selectedWindowId = windowId.value
+  const requestId = ++entriesRequestId
   selectedEntries.value = []
   loading.value = true
   error.value = ''
   try {
-    if (!windowId.value) {
+    if (!selectedWindowId) {
       entries.value = []
       return
     }
-    entries.value = (await getProductionBaseline(windowId.value)).data.data
+    const response = await getProductionBaseline(selectedWindowId)
+    if (requestId !== entriesRequestId || projectStore.currentRef !== projectRef || windowId.value !== selectedWindowId) return
+    entries.value = response.data.data
   } catch (requestError) {
+    if (requestId !== entriesRequestId || projectStore.currentRef !== projectRef) return
     entries.value = []
     error.value = apiErrorMessage(requestError, '投产基线加载失败，请稍后重试')
-  } finally { loading.value = false }
+  } finally { if (requestId === entriesRequestId) loading.value = false }
 }
 async function initialize() {
   loading.value = true
@@ -155,6 +166,7 @@ async function saveResult() {
   if (resultForm.productionResult === 'SUCCEEDED' && !resultForm.productionAt) { ElMessage.warning('投产成功必须填写投产时间'); return }
   if (['FAILED', 'NOT_DEPLOYED'].includes(resultForm.productionResult) && !resultForm.resultReason.trim()) { ElMessage.warning('投产失败或未投产必须填写结果原因'); return }
   saving.value = true
+  const projectRef = projectStore.currentRef
   try {
     const payload = {
       productionResult: resultForm.productionResult,
@@ -167,6 +179,7 @@ async function saveResult() {
     } else {
       await batchUpdateProductionResults({ ...payload, entries: items.map(item => ({ id: item.id, rowVersion: item.rowVersion })) })
     }
+    if (projectStore.currentRef !== projectRef) return
     resultDialogOpen.value = false
     ElMessage.success(batchMode.value ? `已批量维护 ${items.length} 条投产结果` : '投产结果已更新')
     await loadEntries()
@@ -190,6 +203,16 @@ watch(entries, items => {
   if (selectedSearchId.value !== undefined && !items.some(item => item.id === selectedSearchId.value)) selectedSearchId.value = undefined
 })
 watch(() => projectStore.currentRef, () => {
+  windowsRequestId += 1
+  entriesRequestId += 1
+  windows.value = []
+  windowId.value = undefined
+  entries.value = []
+  selectedEntries.value = []
+  editingEntries.value = []
+  resultDialogOpen.value = false
+  error.value = ''
+  loading.value = false
   selectedSearchId.value = undefined
   void initialize()
 })

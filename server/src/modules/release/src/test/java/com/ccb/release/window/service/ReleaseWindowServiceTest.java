@@ -10,6 +10,8 @@ import com.ccb.release.window.model.UpdateReleaseWindowRequest;
 import com.ccb.release.window.model.WindowFieldChange;
 import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -39,13 +41,17 @@ class ReleaseWindowServiceTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "developer", "", "研发人员", 11L, true);
 
     private ReleaseWindowStore store;
+    private ProjectAccessService projectAccessService;
     private ReleaseWindowService service;
 
     @BeforeEach
     void setUp() {
         store = mock(ReleaseWindowStore.class);
+        projectAccessService = mock(ProjectAccessService.class);
         Clock clock = Clock.fixed(Instant.parse("2026-08-15T04:00:00Z"), ZONE);
-        service = new ReleaseWindowService(store, clock);
+        service = new ReleaseWindowService(store, projectAccessService, clock);
+        when(projectAccessService.requireAccessible(any(), eq(USER))).thenAnswer(invocation ->
+                new ProjectAccess(1L, invocation.getArgument(0), "统一研发交付平台升级项目"));
     }
 
     @Test
@@ -67,11 +73,11 @@ class ReleaseWindowServiceTest {
 
     @Test
     void rejectsInvalidMinuteOrderAndOverlapBeforeInsert() {
-        CreateReleaseWindowRequest invalid = new CreateReleaseWindowRequest("八月窗口", "P-001", "P001", "项目",
+        CreateReleaseWindowRequest invalid = new CreateReleaseWindowRequest("八月窗口", "P-001", "P-001", "统一研发交付平台升级项目",
                 time(10, 0), time(9, 0), time(20, 0), time(21, 0), true, null);
         assertCode(ErrorCode.BAD_REQUEST, () -> service.create(invalid, USER));
 
-        CreateReleaseWindowRequest seconds = new CreateReleaseWindowRequest("八月窗口", "P-001", "P001", "项目",
+        CreateReleaseWindowRequest seconds = new CreateReleaseWindowRequest("八月窗口", "P-001", "P-001", "统一研发交付平台升级项目",
                 time(1, 0).withSecond(1), time(10, 0), time(20, 0), time(21, 0), true, null);
         assertCode(ErrorCode.BAD_REQUEST, () -> service.create(seconds, USER));
 
@@ -141,6 +147,15 @@ class ReleaseWindowServiceTest {
     }
 
     @Test
+    void rejectsWindowWhenProjectAccessIsDenied() {
+        when(store.findById(10L, 1L)).thenReturn(Optional.of(window(true, 3)));
+        when(projectAccessService.requireAccessible("P-001", USER))
+                .thenThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该项目数据访问权限"));
+
+        assertCode(ErrorCode.FORBIDDEN, () -> service.detail(10L, USER));
+    }
+
+    @Test
     void derivesAllWindowStatusesAtBoundaries() {
         ReleaseWindow window = window(true, 3);
         assertEquals(ReleaseWindowStatus.UPCOMING, service.status(window, time(1, 0).minusMinutes(1)));
@@ -151,7 +166,7 @@ class ReleaseWindowServiceTest {
     }
 
     private CreateReleaseWindowRequest createRequest() {
-        return new CreateReleaseWindowRequest("八月投产窗口", "P-001", "P001", "统一研发交付平台升级项目",
+        return new CreateReleaseWindowRequest("八月投产窗口", "P-001", "P-001", "统一研发交付平台升级项目",
                 time(1, 0), time(10, 0), time(20, 0), time(21, 0), true, "月度窗口");
     }
 

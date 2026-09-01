@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-release-project-scope",
+  "task_id": "T4",
+  "phase": "controlling",
+  "recorded_at": "2026-08-31T19:55:40+08:00",
+  "status": "implemented",
+  "actual_changes": [
+    "复跑 system、release 及其依赖模块的 JDK 17 后端测试",
+    "复跑前端类型检查和生产构建，并检查全工作区差异格式",
+    "在桌面视口验证两个可访问项目切换及配置管理六菜单",
+    "在 390x844 视口验证项目切换、六菜单路由和页面宽度",
+    "通过项目启动脚本加载本地配置，以 JDK 17 重启当前代码后端"
+  ],
+  "commands": [
+    {"command": "JAVA_HOME=OpenJDK17 mvn -pl :ccb-release -am test", "result": "passed; reactor build success; ccb-release 86 tests, 0 failures, 0 errors"},
+    {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite build succeeded"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "module governance, repository skill and development entry passed; overall command blocked by pre-existing historical AI control files outside this task"},
+    {"command": "git diff --check and jq empty on current task JSON", "result": "passed"},
+    {"command": "desktop and 390x844 browser journeys", "result": "passed for two accessible projects and all six configuration menus; no console errors or page-width overflow"},
+    {"command": "backend-dev.sh start and actuator health", "result": "passed; Java 17 service started on 8080; Flyway validated 116 migrations at V123; status UP"}
+  ],
+  "constraints_checked": [
+    "验收未创建、修改或删除业务数据",
+    "未修复任务范围外的历史 AI 控制账本错误",
+    "未修改数据库、审批状态机、权限种子或全局 HTTP/路由契约",
+    "本地服务使用当前工作区代码而非重启前旧进程"
+  ],
+  "disturbances": [
+    "全仓治理命令因多组既有历史 AI 控制文件 topic、JSON 和收敛证据问题返回失败；本次主题文件均可解析且已被 control_loop 接受",
+    "本地两个可访问项目均没有版本申请，且管理员可访问全部项目，无法在浏览器构造详情直链自动切换和 403 的真实样本"
+  ],
+  "open_items": []
+}

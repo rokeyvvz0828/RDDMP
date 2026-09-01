@@ -11,6 +11,8 @@ import com.ccb.release.workflow.model.ReleaseWorkflowBindingModels.Scene;
 import com.ccb.release.workflow.model.ReleaseWorkflowBindingModels.UpdateBindingRequest;
 import com.ccb.release.workflow.persistence.ReleaseWorkflowBindingStore;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowDefinitionCatalog;
 import com.ccb.workflow.integration.WorkflowDefinitionSummary;
 import org.springframework.stereotype.Service;
@@ -28,14 +30,17 @@ import java.util.stream.Collectors;
 public class ReleaseWorkflowBindingService {
     private final ReleaseWorkflowBindingStore store;
     private final WorkflowDefinitionCatalog catalog;
+    private final ProjectAccessService projectAccessService;
 
-    public ReleaseWorkflowBindingService(ReleaseWorkflowBindingStore store, WorkflowDefinitionCatalog catalog) {
+    public ReleaseWorkflowBindingService(ReleaseWorkflowBindingStore store, WorkflowDefinitionCatalog catalog,
+                                         ProjectAccessService projectAccessService) {
         this.store = store;
         this.catalog = catalog;
+        this.projectAccessService = projectAccessService;
     }
 
     public List<BindingView> list(String projectRef, AuthUser user) {
-        String project = required(projectRef, "项目标识", 64);
+        String project = projectAccessService.requireAccessible(projectRef, user).projectRef();
         Map<Scene, Binding> bindings = store.findProject(user.tenantId(), project).stream()
                 .collect(Collectors.toMap(Binding::scene, Function.identity()));
         Map<Long, WorkflowDefinitionSummary> published = publishedMap(user);
@@ -50,8 +55,12 @@ public class ReleaseWorkflowBindingService {
     @Transactional
     public BindingView update(Scene scene, UpdateBindingRequest request, AuthUser user) {
         if (request == null) throw badRequest("审批流程配置不能为空");
-        String projectRef = required(request.projectRef(), "项目标识", 64);
-        String projectName = required(request.projectName(), "项目名称", 128);
+        ProjectAccess project = projectAccessService.requireAccessible(request.projectRef(), user);
+        String projectRef = project.projectRef();
+        if (!Objects.equals(project.projectName(), required(request.projectName(), "项目名称", 128))) {
+            throw badRequest("项目信息与当前项目不一致，请刷新后重试");
+        }
+        String projectName = project.projectName();
         String reason = required(request.reason(), "修改原因", 500);
         if (request.rowVersion() == null || request.rowVersion() < 0) throw badRequest("rowVersion 不能为空");
 
@@ -75,11 +84,12 @@ public class ReleaseWorkflowBindingService {
     }
 
     public List<BindingHistoryView> history(String projectRef, Scene scene, AuthUser user) {
-        return store.history(user.tenantId(), required(projectRef, "项目标识", 64), scene);
+        ProjectAccess project = projectAccessService.requireAccessible(projectRef, user);
+        return store.history(user.tenantId(), project.projectRef(), scene);
     }
 
     public ResolvedBinding resolve(String projectRef, Scene scene, AuthUser user) {
-        String project = required(projectRef, "项目标识", 64);
+        String project = projectAccessService.requireAccessible(projectRef, user).projectRef();
         Binding binding = store.find(user.tenantId(), project, scene, false)
                 .orElseThrow(() -> conflict(scene.label() + "未配置审批流程"));
         if (binding.workflowDefinitionId() == null) throw conflict(scene.label() + "未配置审批流程");

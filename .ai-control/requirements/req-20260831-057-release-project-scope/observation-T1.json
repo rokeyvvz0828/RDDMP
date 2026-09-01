@@ -1,0 +1,22 @@
+{
+  "iteration_id": "I-T1-1",
+  "task_id": "T1",
+  "status": "verified",
+  "changed_surfaces": [
+    {"path_or_resource": "com.ccb.system.capability", "purpose": "公开项目访问契约"},
+    {"path_or_resource": "com.ccb.system.internal.capability.JdbcProjectAccessService", "purpose": "项目解析和有效成员授权"},
+    {"path_or_resource": "business/release dependency", "purpose": "正式消费 system 公开能力"}
+  ],
+  "commands": [
+    {"command": "JAVA_HOME=OpenJDK17 mvn -pl :ccb-system -am -Dtest=JdbcProjectAccessServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "5 tests, 0 failures, 0 errors; reactor build success"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "module governance passed for 17 modules; failure only reports historical AI control ledgers"},
+    {"command": "git diff --check -- T1-files", "exit_code": 0, "salient_output": "no whitespace errors"}
+  ],
+  "checks": [
+    {"requirement_id": "R2", "result": "pass", "evidence": "测试验证有效成员与超级管理员通过，非成员/停用成员为 403，空项目和不存在项目被拒绝。", "limitations": ["同一 Codex 上下文复核；自动测试为主要传感器"]},
+    {"requirement_id": "R5", "result": "pass", "evidence": "公开契约/internal 实现边界符合 package-info；module governance 通过；无迁移和 ProjectService 改动。", "limitations": ["全仓治理最终退出码受历史账本问题影响"]}
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "controlling"
+}

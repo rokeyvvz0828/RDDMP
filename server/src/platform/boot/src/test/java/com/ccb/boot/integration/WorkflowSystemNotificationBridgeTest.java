@@ -32,6 +32,8 @@ class WorkflowSystemNotificationBridgeTest {
         assertEquals(List.of(7L), command.recipientUserIds());
         assertEquals("待审批：版本申请 SQ-001", command.title());
         assertEquals("/release/applications/SQ-001", command.actionPath());
+        assertEquals("P1", command.projectRef());
+        assertEquals("项目一", command.projectName());
     }
 
     @Test
@@ -47,6 +49,8 @@ class WorkflowSystemNotificationBridgeTest {
         assertEquals("配置管理", command.moduleName());
         assertEquals("审批已通过：版本申请 SQ-001", command.title());
         assertEquals("workflow-lifecycle:event-1", command.eventId());
+        assertEquals("P1", command.projectRef());
+        assertEquals("项目一", command.projectName());
     }
 
     @Test
@@ -104,6 +108,8 @@ class WorkflowSystemNotificationBridgeTest {
                     Map.entry("business_type", "release_application"),
                     Map.entry("business_key", "SQ-001"),
                     Map.entry("business_title", "版本申请 SQ-001"),
+                    Map.entry("project_ref", "P1"),
+                    Map.entry("project_name", "项目一"),
                     Map.entry("action_path", "/release/applications/SQ-001")));
         }
 

@@ -27,11 +27,14 @@ const historyOpen = ref(false)
 const historyLoading = ref(false)
 const historyScene = ref('')
 const history = ref<ReleaseWorkflowBindingHistoryDto[]>([])
+let loadRequestId = 0
+let historyRequestId = 0
 
 const configuredCount = computed(() => rows.value.filter(row => row.valid).length)
 
 async function load() {
   const projectRef = props.project.ref
+  const requestId = ++loadRequestId
   loading.value = true
   error.value = ''
   try {
@@ -39,15 +42,16 @@ async function load() {
       listReleaseWorkflowBindings(projectRef),
       listPublishedReleaseWorkflows()
     ])
-    if (projectRef !== props.project.ref) return
+    if (requestId !== loadRequestId || projectRef !== props.project.ref) return
     rows.value = bindingResponse.data.data
     definitions.value = definitionResponse.data.data
   } catch (loadError) {
+    if (requestId !== loadRequestId || projectRef !== props.project.ref) return
     rows.value = []
     definitions.value = []
     error.value = apiErrorMessage(loadError, '审批流程配置加载失败')
   } finally {
-    loading.value = false
+    if (requestId === loadRequestId) loading.value = false
   }
 }
 
@@ -68,14 +72,16 @@ async function save() {
     return
   }
   saving.value = true
+  const projectRef = props.project.ref
   try {
     await updateReleaseWorkflowBinding(editing.value.sceneCode, {
-      projectRef: props.project.ref,
+      projectRef,
       projectName: props.project.name,
       workflowDefinitionId: form.workflowDefinitionId,
       rowVersion: editing.value.rowVersion,
       reason: form.reason.trim()
     })
+    if (props.project.ref !== projectRef) return
     editOpen.value = false
     ElMessage.success('审批流程配置已保存')
     await load()
@@ -87,6 +93,7 @@ async function save() {
 }
 
 async function unbind(row: ReleaseWorkflowBindingDto) {
+  const projectRef = props.project.ref
   try {
     const answer = await ElMessageBox.prompt(`解除“${row.sceneName}”的流程绑定`, '解除绑定', {
       inputType: 'textarea',
@@ -97,12 +104,13 @@ async function unbind(row: ReleaseWorkflowBindingDto) {
       type: 'warning'
     })
     await updateReleaseWorkflowBinding(row.sceneCode, {
-      projectRef: props.project.ref,
+      projectRef,
       projectName: props.project.name,
       workflowDefinitionId: undefined,
       rowVersion: row.rowVersion,
       reason: answer.value.trim()
     })
+    if (props.project.ref !== projectRef) return
     ElMessage.success('流程绑定已解除')
     await load()
   } catch (unbindError) {
@@ -111,16 +119,21 @@ async function unbind(row: ReleaseWorkflowBindingDto) {
 }
 
 async function openHistory(row: ReleaseWorkflowBindingDto) {
+  const projectRef = props.project.ref
+  const requestId = ++historyRequestId
   historyScene.value = row.sceneName
   history.value = []
   historyOpen.value = true
   historyLoading.value = true
   try {
-    history.value = (await listReleaseWorkflowBindingHistory(row.sceneCode, props.project.ref)).data.data
+    const response = await listReleaseWorkflowBindingHistory(row.sceneCode, projectRef)
+    if (requestId !== historyRequestId || props.project.ref !== projectRef) return
+    history.value = response.data.data
   } catch (historyError) {
+    if (requestId !== historyRequestId || props.project.ref !== projectRef) return
     ElMessage.error(apiErrorMessage(historyError, '变更历史加载失败'))
   } finally {
-    historyLoading.value = false
+    if (requestId === historyRequestId) historyLoading.value = false
   }
 }
 
@@ -134,8 +147,17 @@ function formatTime(value?: string) {
 }
 
 watch(() => props.project.ref, () => {
+  loadRequestId += 1
+  historyRequestId += 1
+  rows.value = []
+  definitions.value = []
+  history.value = []
+  editing.value = null
   editOpen.value = false
   historyOpen.value = false
+  loading.value = false
+  historyLoading.value = false
+  error.value = ''
   void load()
 })
 onMounted(load)

@@ -1,0 +1,40 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1"], "evidence": ["SystemNotificationServiceTest 18/18", "MySQL 项目字段成对持久化与查询映射已验证"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T1"], "evidence": ["WorkflowSystemNotificationBridgeTest 3/3", "反应堆编译验证旧 13 参数调用兼容"], "limitations": []},
+    {"id": "R3", "result": "pass", "task_ids": ["T1"], "evidence": ["Flyway V124 success=1", "34/34 条工作流通知具有项目快照，3 条无可靠项目关系消息保持平台全局"], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T2"], "evidence": ["生产构建通过", "桌面与 390x844 精确文案、宽度和控制台检查通过"], "limitations": []}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["21 个聚焦测试、Flyway 和数据回填检查通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["前端构建和真实浏览器响应式检查通过"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "backend-contract", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "database-runtime", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "frontend-runtime", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "通知服务与工作流桥接聚焦测试", "result": "pass", "evidence": "21 个测试，退出码 0"},
+    {"check": "前端生产构建", "result": "pass", "evidence": "退出码 0"},
+    {"check": "服务与数据库运行检查", "result": "pass", "evidence": "健康状态 UP、Flyway 124、历史回填完整"}
+  ],
+  "invariant_results": [
+    {"invariant": "通知中心保持租户用户维度全局视图", "result": "pass", "evidence": "查询、角标和筛选逻辑未增加当前项目条件"},
+    {"invariant": "旧发布入口兼容且幂等行为不变", "result": "pass", "evidence": "反应堆编译和兼容测试通过"},
+    {"invariant": "Flyway 只追加且历史关联可靠", "result": "pass", "evidence": "V124 只增可空列并使用稳定事件 ID"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "本地服务重启及迁移执行", "result": "pass", "evidence": "重启后健康状态 UP，迁移后通知接口与页面正常"},
+    {"disturbance": "工作区存在其他需求改动", "result": "pass", "evidence": "本次修改和验证限定在 REQ-059 文件与接口链路"}
+  ],
+  "residual_risks": [
+    "全仓 MySQL 回归仍有既存 default_network_zone_id 缺列导致的架构测试失败；与通知项目上下文无调用或数据依赖，本次未越界修改。",
+    "未来非工作流项目通知需要各业务发布方显式传入项目快照，否则按契约展示为平台全局。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R4 均有任务、实际修改、异质传感器和最终证据，三次采样无 P0/P1，范围与不变量通过。"
+}
