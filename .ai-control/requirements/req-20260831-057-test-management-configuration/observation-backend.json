@@ -1,0 +1,16 @@
+{
+  "sample_label": "配置后端与迁移静态采样",
+  "task_ids": ["T1", "T2"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "JDK 17 Maven reactor", "result": "pass", "raw_evidence": "mvn -pl :ccb-test-management -am test exit code 0; ccb-test-management 13 tests passed", "limitation": ["未启动数据库和 HTTP 服务"]},
+    {"requirement_id": "R2", "sensor": "配置服务测试与源码范围检查", "result": "pass", "raw_evidence": "非法 domain 在触发 JDBC 前被拒绝；参测系统、角色、租户和项目条件均在服务实现中绑定", "limitation": ["缺少真实 MySQL 数据路径"]},
+    {"requirement_id": "R3", "sensor": "编译与 Flyway 脚本检查", "result": "pass", "raw_evidence": "V123 名称检查通过，后端模块编译通过", "limitation": ["Flyway 尚未连接 MySQL 执行"]},
+    {"requirement_id": "R4", "sensor": "Workbook 单元测试", "result": "pass", "raw_evidence": "模板 ZIP 文件头和缺失必填表头测试通过", "limitation": ["原子回滚尚未连接真实事务验证"]}
+  ],
+  "feedback": [],
+  "disturbances": [{"source": "Docker daemon 不可用", "effect": "无法启动临时 MySQL 8.4 运行 V123 和后端 HTTP 验收", "evidence": "docker run 返回 unix socket 不存在"}],
+  "coverage_gaps": ["V123 的真实 MySQL 执行", "RBAC 403 HTTP 验证", "导入错误批次的数据库回滚"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

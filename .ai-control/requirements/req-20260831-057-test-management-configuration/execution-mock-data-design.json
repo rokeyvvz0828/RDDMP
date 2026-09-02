@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-test-management-configuration",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-31-test-management-configuration-design.md",
+  "objective": "为本地平台能力升级项目提供完整、脱敏、可关联并能驱动实时分析统计的测试管理模拟数据。",
+  "users": ["本地开发与验收人员"],
+  "requirements": [
+    {
+      "id": "MD1",
+      "statement": "应用组装测试必须覆盖当前项目全部物理子系统，并完成用户测试约二分之一、安全测试与非功能测试约五分之一的数据规模。",
+      "acceptance": ["按大类统计参测系统、范围、案例、执行、缺陷、报告记录数符合规模表和最小值"],
+      "priority": "must",
+      "source": "用户 2026-09-02 数据规模要求",
+      "counterexample": ["只为单一系统生成应用组装数据"]
+    },
+    {
+      "id": "MD2",
+      "statement": "应用组装测试必须提供完整轮次周期、公告、方案版本、范围案例、执行缺陷、报告和分析统计关联。",
+      "acceptance": ["失败执行可查看关联缺陷；报告和预置统计均由已写入业务数据生成"],
+      "priority": "must",
+      "source": "用户 2026-09-02 模块明细要求",
+      "counterexample": ["仅插入列表行，详情、报告或统计无可用内容"]
+    },
+    {
+      "id": "MD3",
+      "statement": "种子只能作用于本地带模拟标识的数据，重复执行不得删除或重复未标识数据。",
+      "acceptance": ["第二次执行的记录数稳定；未标识记录数不变"],
+      "priority": "must",
+      "source": "用户确认使用可重复本地数据种子",
+      "counterexample": ["执行种子前先清空项目的全部测试数据"]
+    }
+  ],
+  "invariants": [
+    "不修改生产系统、平台公共能力、数据库迁移或现有业务数据",
+    "不写入真实个人信息、口令、Token 或外部附件链接",
+    "统计数据由同一批测试管理数据实时计算或按现有服务归档"
+  ],
+  "constraints": [
+    "仅使用 codex-task-scope.yaml 允许的测试管理模块和当前任务账本路径",
+    "附件不属于本次模拟数据范围",
+    "项目不存在时明确失败并可重试"
+  ],
+  "non_goals": ["新增生产接口", "启动时自动灌数", "清空任何未标识本地数据", "变更分析统计计算逻辑"],
+  "selected_approach": {
+    "name": "显式触发的本地幂等服务级种子",
+    "reason": "保留审计、引用校验和真实报告/统计，同时不干扰正常启动。",
+    "alternatives": [
+      {"name": "启动自动灌数", "rejected_because": "会在每次本地启动时改变手工验证数据。"},
+      {"name": "直接 SQL 批量写入", "rejected_because": "绕过服务、审计和真实报告快照。"}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["测试管理模块内的本地种子工具、脱敏内容模板和执行摘要"], "outside": ["平台附件实现、项目/系统/用户主数据、生产环境"]},
+    "components": [
+      {"name": "本地种子编排器", "responsibility": "查询项目和系统、按领域数量规则编排写入与摘要", "depends_on": ["既有测试管理服务"]},
+      {"name": "脱敏模板", "responsibility": "提供公告 HTML、范围、案例、执行备注、缺陷描述和报告命名", "depends_on": []}
+    ],
+    "interfaces": [
+      {"name": "现有测试管理服务", "producer": "测试管理模块", "consumers": ["本地种子编排器"], "contract": "通过现有业务校验和审计创建配置、方案、范围、案例、执行、缺陷、报告与统计快照。"}
+    ],
+    "data_flows": [
+      {"input": "本地项目、系统和演示用户", "transitions": ["配置", "范围", "案例", "执行", "缺陷", "报告", "统计"], "output": "可关联的脱敏模拟数据与模块级摘要"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "项目/系统/管理员不存在", "behavior": "拒绝开始并报告缺失对象", "recovery": "补齐本地主数据后重试"},
+    {"condition": "附件未提供", "behavior": "方案仅保留脱敏版本元数据，不创建附件绑定", "recovery": "后续可手工上传附件补充"}
+  ],
+  "quality_attributes": {
+    "security": ["所有文本与文件均为虚构脱敏内容", "不嵌入任何连接凭证"],
+    "performance": ["分模块批量写入并限制应用组装每周期 12 条执行记录"],
+    "compatibility": ["不修改既有表结构、接口或统计语义"],
+    "operations": ["显式本地触发、模块级摘要、按模拟标识幂等重跑"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["MD1"], "signal": "按大类、系统和模块的数据库/API计数", "method": "本地种子执行后查询与服务端列表核验"},
+    {"requirement_ids": ["MD2"], "signal": "页面详情、关联和统计非空", "method": "本地 API 与浏览器只读路径核验"},
+    {"requirement_ids": ["MD3"], "signal": "重复运行前后模拟记录稳定且非模拟记录不变", "method": "执行前后按标识和项目计数对比"}
+  ],
+  "assumptions": [
+    {"text": "本地项目名称为平台能力升级且至少有一个物理子系统。", "basis": "用户当前本地页面和已提供项目上下文", "falsifier": "本地查询没有唯一匹配项目或无可用系统"}
+  ],
+  "unknowns": [
+    {"question": "无", "impact": "无", "owner": "无", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "MD-D1", "decision": "采用可重复的本地数据种子，不在启动期自动执行。", "reason": "用户已确认推荐方案", "source": "用户“确认”"}
+  ],
+  "risks": [
+    {"risk": "本地数据与已有手工验证数据混杂", "impact": "重跑可能出现重复或误删", "mitigation": "只处理明确模拟标识的数据，绝不清空未标识记录。"}
+  ],
+  "approval": {"status": "approved", "evidence": "用户在阅读落盘规则后回复“开始”。", "confirmed_at": "2026-09-02T00:00:00+08:00"}
+}

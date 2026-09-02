@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-test-management-configuration",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-01-test-management-scope-case-design.md",
+  "objective": "在现有测试管理分支内交付按测试大类、项目和参测系统隔离的完整测试范围与测试案例能力。",
+  "users": ["测试人员维护范围和案例", "测试经理及以上执行置无效与批量移动", "具备阅读权限的测试角色查看数据"],
+  "requirements": [
+    {"id":"SC1","statement":"范围和案例按大类、项目和参测系统隔离，并且不重复项目选择器。","acceptance":["未选项目不请求数据","非参测系统不可见","跨项目或跨大类读取失败"],"priority":"must","source":"V1.6 模块 4、5","counterexample":["业务页自行再渲染项目下拉","未参测系统仍显示数据"]},
+    {"id":"SC2","statement":"范围和案例各自提供五层目录、CRUD、筛选分页、列设置、导入导出和软删除。","acceptance":["目录最多五层","删除目录移交子数据","导入错误零写入","导出反映当前筛选"],"priority":"must","source":"V1.6 模块 4、5","counterexample":["范围和案例共用同一目录树","导入部分写入"]},
+    {"id":"SC3","statement":"范围序号与案例编号遵循唯一性和原子前缀联动规则。","acceptance":["范围改号同步案例前缀","案例改所属范围同步前缀","案例流水号不复用","缺陷编号不受影响"],"priority":"must","source":"V1.6 编号规则与模块 4、5","counterexample":["只更新范围序号导致案例编号失配"]},
+    {"id":"SC4","statement":"案例支持富文本、附件、核算核对、批量调整、移动和引用保护。","acceptance":["富文本字段保存并净化","附件可预览下载","执行引用案例只能置无效","批量范围变更提供影响预览"],"priority":"must","source":"V1.6 模块 5","counterexample":["附件绕过平台能力","核算结果由执行结果自动覆盖"]},
+    {"id":"SC5","statement":"所有写入执行服务端权限、实体范围校验和审计。","acceptance":["未认证 401","未授权 403","写操作有审计记录"],"priority":"must","source":"V1.6 权限矩阵与仓库规约","counterexample":["仅前端隐藏写按钮"]}
+  ],
+  "invariants": ["不改平台附件、文件预览和公共 UI 源码", "仅追加 V126 迁移", "项目、物理子系统、用户和字典主数据只读复用", "执行模块未交付时状态安全为未执行"],
+  "constraints": ["Java 17、Spring Boot 3.4.4、Vue 3/TypeScript/Element Plus", "复用现有全局项目上下文、UiDataTable、UiFormDrawer、附件与公告板富文本能力", "仅修改当前 REQ-20260831-057 已扩展的任务范围"],
+  "non_goals": ["测试执行、缺陷、报告、统计和独立回收站", "项目或物理子系统主数据", "新的平台文件预览能力"],
+  "selected_approach": {"name":"同一迁移、范围与案例两个领域服务、最小共享支持代码", "reason":"范围是案例的编号和归属前置条件；两者需要事务联动但不应形成巨型服务或越界实现执行模块。", "alternatives":[{"name":"单一巨型服务和页面","rejected_because":"目录、导入、附件、批量和编号职责混杂，难以安全扩展。"},{"name":"预先实现执行/缺陷来完成最终状态","rejected_because":"越出当前已确认模块范围；现阶段可安全派生未执行。"}]},
+  "architecture": {"boundary":{"inside":["V126 范围/案例数据", "测试管理范围与案例服务、控制器、工作簿服务、附件策略", "测试管理范围与案例前端页面"],"outside":["平台附件/预览实现", "项目、系统、用户主数据", "执行、缺陷、报告、统计模块"]},"components":[{"name":"TestScopeService","responsibility":"范围树、范围、编号、导入导出和范围审计","depends_on":["configuration dictionaries","participating systems"]},{"name":"TestCaseService","responsibility":"案例、案例树、编号联动、批量调整、附件和审计","depends_on":["TestScopeService contract","AttachmentGateway","configuration dictionaries"]},{"name":"ScopeCaseWorkbookService","responsibility":"模板、预校验、原子导入和导出","depends_on":["Apache POI existing dependency"]}],"interfaces":[{"name":"scope/case REST API","producer":"test-management","consumers":["scope/case Vue pages"],"contract":"统一 ApiResponse；所有读取和写入显式携带项目上下文并由服务端校验"}],"data_flows":[{"input":"范围序号变更","transitions":["验证唯一性","计算影响案例","确认后事务更新范围与案例编号","写审计"],"output":"新范围序号和同步案例前缀"},{"input":"XLSX 导入","transitions":["解析","逐行校验","返回预览","确认后一次事务写入"],"output":"导入结果与目录/编号清单"}]},
+  "error_handling": [{"condition":"未选项目或无参测系统","behavior":"显示统一空态，不请求或写入数据","recovery":"通过现有全局项目选择器选择项目或开启参测系统"},{"condition":"导入含错误行","behavior":"确认导入禁用且数据库零写入","recovery":"返回逐行错误，修正后重新上传"},{"condition":"案例已被执行引用","behavior":"删除拒绝并提供置无效路径","recovery":"置无效或等待执行引用解除"}],
+  "quality_attributes":{"security":["服务端认证、RBAC、租户/项目/大类/参测系统范围校验","写入审计"],"performance":["服务端分页/排序","导入单批限制现有 50MB 限制"],"compatibility":["不改 V123-V125 与公共平台契约","未来执行模块可按稳定编号接入"],"operations":["本地真实 MySQL、MinIO、kkFileView 浏览器验证"]},
+  "verification_strategy":[{"requirement_ids":["SC1","SC2"],"signal":"隔离、目录和导入行为","method":"服务测试、迁移和浏览器路径"},{"requirement_ids":["SC3","SC4"],"signal":"编号联动、附件和引用保护","method":"事务测试、附件策略测试和浏览器验收"},{"requirement_ids":["SC5"],"signal":"认证、授权和审计","method":"MVC/API 探测与数据库审计采样"}],
+  "assumptions":[{"text":"执行模块尚未有持久记录时，范围和案例状态为未执行。","basis":"V1.6 状态规则与当前实现状态。","falsifier":"执行模块发布稳定的执行记录契约。"}],
+  "unknowns":[{"question":"未来执行、缺陷、报告对快照字段的精确接口","impact":"不影响本次范围/案例数据所有权；后续模块需按稳定编号接入。","owner":"后续模块需求负责人","blocking":false}],
+  "decisions":[{"id":"D1","decision":"在现有 REQ-20260831-057 和现有分支内扩展范围，不创建新分支或需求目录。","reason":"用户明确要求敏捷连续交付。","source":"用户消息"},{"id":"D2","decision":"范围和案例使用独立目录树与领域服务。","reason":"V1.6 明确两套目录相互独立，同时保留清晰维护边界。","source":"V1.6 模块 4、5"}],
+  "risks":[{"risk":"范围改号或批量改范围造成多案例编号不一致","impact":"数据关系损坏","mitigation":"先预览、确认后单事务同步并逐条审计"},{"risk":"导入创建多级目录时部分成功","impact":"目录和业务数据不一致","mitigation":"预校验和提交阶段重复验证，任一失败整单回滚"}],
+  "approval":{"status":"approved","evidence":"用户回复：好的，开始实施。","confirmed_at":"2026-09-01T13:00:00+08:00"}
+}

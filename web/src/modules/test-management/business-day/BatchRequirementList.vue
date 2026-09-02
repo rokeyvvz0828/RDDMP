@@ -12,7 +12,7 @@ import { apiErrorMessage } from '../../../api/error'
 import { useAuthStore } from '../../../stores/auth'
 import UiDataTable from '../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
-import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
+import TestManagementFormDialog from '../components/TestManagementFormDialog.vue'
 import UiPagination from '../../../components/ui/UiPagination.vue'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../../components/ui/UiToolbar.vue'
@@ -155,7 +155,7 @@ onMounted(async () => { await loadOptions(); await load() })
       <UiPagination v-model:page="page" v-model:page-size="pageSize" :total="total" />
     </template>
 
-    <UiFormDrawer v-model="drawerOpen" :title="editing ? '编辑跑批需求' : '登记跑批需求'" width="min(680px, 96vw)" :loading="saving" @submit="save">
+    <TestManagementFormDialog v-model="drawerOpen" :title="editing ? '编辑跑批需求' : '登记跑批需求'" width="min(680px, 96vw)" :loading="saving" @submit="save">
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <div class="business-day-form-grid"><el-form-item label="测试环境" prop="env_code"><el-select v-model="form.env_code" filterable><el-option v-for="item in environments" :key="item.id" :label="`${item.env_name}（${item.env_code}）`" :value="item.env_code" /></el-select></el-form-item><el-form-item label="提出人" prop="proposer_id"><el-select v-model="form.proposer_id" filterable remote :remote-method="searchUsers" :loading="usersLoading" placeholder="搜索姓名、账号或手机号"><el-option v-for="item in users" :key="item.id" :label="`${item.displayName}（${item.username}）`" :value="item.id"><div class="business-day-user-option"><strong>{{ item.displayName }}</strong><span>{{ item.orgName || '未分配组织' }} · {{ item.mobilePhone || item.username }}</span></div></el-option></el-select></el-form-item></div>
         <div class="business-day-form-grid"><el-form-item label="需求月份/日期" prop="natural_date"><el-input v-model="form.natural_date" placeholder="YYYY-MM 或 YYYY-MM-DD" /></el-form-item><el-form-item label="营业日" prop="business_date"><el-date-picker v-model="form.business_date" type="date" value-format="YYYYMMDD" /></el-form-item></div>
@@ -163,6 +163,6 @@ onMounted(async () => { await loadOptions(); await load() })
         <el-form-item label="涉及系统（手工输入）" prop="systems" :required="requiresBatchDetails()"><el-select v-model="form.systems" multiple filterable allow-create default-first-option :reserve-keyword="false" placeholder="输入系统名称后按回车，可添加多个" /></el-form-item>
         <el-form-item label="验证内容" prop="validation_content" :required="requiresBatchDetails()"><el-input v-model="form.validation_content" type="textarea" :rows="4" maxlength="1000" show-word-limit /></el-form-item>
       </el-form>
-    </UiFormDrawer>
+    </TestManagementFormDialog>
   </section>
 </template>

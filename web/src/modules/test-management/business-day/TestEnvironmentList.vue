@@ -11,7 +11,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { apiErrorMessage } from '../../../api/error'
 import UiDataTable from '../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
-import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
+import TestManagementFormDialog from '../components/TestManagementFormDialog.vue'
 import UiPagination from '../../../components/ui/UiPagination.vue'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../../components/ui/UiToolbar.vue'
@@ -117,7 +117,7 @@ onMounted(load)
       <UiPagination v-model:page="page" v-model:page-size="pageSize" :total="total" />
     </template>
 
-    <UiFormDrawer v-model="drawerOpen" :title="editing ? '编辑测试环境' : '新增测试环境'" width="min(560px, 94vw)" :loading="saving" @submit="save">
+    <TestManagementFormDialog v-model="drawerOpen" :title="editing ? '编辑测试环境' : '新增测试环境'" width="min(560px, 94vw)" :loading="saving" @submit="save">
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <div class="business-day-form-grid"><el-form-item label="环境编码" prop="env_code"><el-input v-model="form.env_code" maxlength="64" placeholder="如 SIT1" /></el-form-item><el-form-item label="环境名称" prop="env_name"><el-input v-model="form.env_name" maxlength="128" /></el-form-item></div>
         <el-form-item label="环境用途"><el-input v-model="form.purpose" maxlength="255" show-word-limit /></el-form-item>
@@ -125,6 +125,6 @@ onMounted(load)
         <el-form-item label="状态"><el-switch v-model="form.enabled" active-text="启用" inactive-text="停用" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="4" maxlength="500" show-word-limit /></el-form-item>
       </el-form>
-    </UiFormDrawer>
+    </TestManagementFormDialog>
   </section>
 </template>

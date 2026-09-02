@@ -1,0 +1,33 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource":"server/src/platform/infrastructure/src/main/resources/db/migration/V126__test_management_scope_case.sql","purpose":"追加独立范围/案例目录、业务、附件绑定、审计表及既有菜单的导入导出动作权限"}
+  ],
+  "requirements_addressed": ["SC1", "SC2", "SC5"],
+  "commands": [
+    {"command":"node scripts/check-flyway-migrations.mjs","exit_code":0,"salient_output":"Flyway migration check passed for 119 migration(s) and 1 approved callback(s)."},
+    {"command":"JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-infrastructure -am test -DskipTests=false","exit_code":0,"salient_output":"ccb-common 2 tests and ccb-infrastructure 15 tests passed; BUILD SUCCESS."},
+    {"command":"git diff --check -- server/src/platform/infrastructure/src/main/resources/db/migration/V126__test_management_scope_case.sql","exit_code":0,"salient_output":"no whitespace error"}
+  ],
+  "local_checks": [
+    {"check":"Flyway version/filename continuity","result":"pass","evidence":"V126 is the next valid migration and the migration checker returned 0","limitations":["does not apply migration to local MySQL; runtime application is scheduled for integration sampling"]},
+    {"check":"infrastructure resource packaging and regression","result":"pass","evidence":"Maven copied 120 resources and all 17 reactor tests passed","limitations":["does not validate scope/case service behavior"]}
+  ],
+  "diff_summary": [
+    "新增两棵独立、按项目与参测系统隔离的目录树表。",
+    "新增范围、案例、案例附件绑定和统一审计表，包含软删除、唯一性、索引与外键。",
+    "补充八个既有 scope/cases 菜单的导入、导出权限并赋予本地管理员角色。"
+  ],
+  "invariants_checked": [
+    {"invariant":"仅追加 V126","result":"pass","evidence":"新增文件名为 V126__test_management_scope_case.sql，未修改 V123-V125。"},
+    {"invariant":"不修改平台附件、文件预览和公共 UI 源码","result":"pass","evidence":"T1 唯一生产变更是允许的 infrastructure migration。"},
+    {"invariant":"隔离字段可由 schema 承载","result":"pass","evidence":"所有目录/范围/案例/审计表都包含 tenant_id、test_domain 和 project_id。"}
+  ],
+  "disturbances": [
+    {"event":"工作树包含早先配置/公告/方案的未跟踪变更","impact":"检查限定在新增 V126 与 infrastructure reactor，未将其他任务结果归因于 T1。"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["V126 的本地 Flyway 应用与 schema 查询将在运行时观测阶段采样。"],
+  "recommended_next": "observe"
+}

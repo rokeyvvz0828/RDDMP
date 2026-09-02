@@ -11,7 +11,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { apiErrorMessage } from '../../../api/error'
 import UiDataTable from '../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
-import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
+import TestManagementFormDialog from '../components/TestManagementFormDialog.vue'
 import UiPagination from '../../../components/ui/UiPagination.vue'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../../components/ui/UiToolbar.vue'
@@ -149,7 +149,7 @@ onMounted(async () => { await loadEnvironments(); await load() })
       <UiPagination v-model:page="page" v-model:page-size="pageSize" :total="total" />
     </template>
 
-    <UiFormDrawer v-model="drawerOpen" :title="editing ? '编辑日历安排' : '新增日历安排'" width="min(680px, 96vw)" :loading="saving" @submit="save">
+    <TestManagementFormDialog v-model="drawerOpen" :title="editing ? '编辑日历安排' : '新增日历安排'" width="min(680px, 96vw)" :loading="saving" @submit="save">
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <div class="business-day-form-grid"><el-form-item label="测试环境" prop="env_code"><el-select v-model="form.env_code" filterable><el-option v-for="item in environments" :key="item.id" :label="`${item.env_name}（${item.env_code}）`" :value="item.env_code" /></el-select></el-form-item><el-form-item label="自然日" prop="natural_date"><el-date-picker v-model="form.natural_date" type="date" value-format="YYYY-MM-DD" /></el-form-item></div>
         <div class="business-day-form-grid"><el-form-item label="营业日" prop="business_date"><el-date-picker v-model="form.business_date" type="date" value-format="YYYYMMDD" /></el-form-item><el-form-item label="是否跑批"><el-switch v-model="form.has_batch" active-text="是" inactive-text="否" /></el-form-item></div>
@@ -158,6 +158,6 @@ onMounted(async () => { await loadEnvironments(); await load() })
         <el-form-item v-if="form.has_batch" label="验证内容" prop="validation_content" :required="requiresBatchDetails()"><el-input v-model="form.validation_content" type="textarea" :rows="4" maxlength="1000" show-word-limit /></el-form-item>
         <el-form-item label="维护人"><el-input v-model="form.maintainer" maxlength="128" placeholder="留空时使用当前登录人" /></el-form-item>
       </el-form>
-    </UiFormDrawer>
+    </TestManagementFormDialog>
   </section>
 </template>

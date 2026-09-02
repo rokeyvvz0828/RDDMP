@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-test-management-configuration",
+  "handoff_status": "approved",
+  "created_at": "2026-08-31T17:57:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260831-057-test-management-configuration",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-31-test-management-configuration-design.md",
+    "objective": "交付四大测试大类隔离的测试管理配置后端与前端。",
+    "users": ["测试管理", "机构负责人"],
+    "requirements": [
+      {"id": "R1", "statement": "提供四大测试大类的管理配置入口和受保护 API", "acceptance": ["有权限用户可访问", "无权限请求被拒绝"], "priority": "must", "source": "用户确认与 V1.6", "counterexample": ["仅隐藏按钮而接口仍成功"]},
+      {"id": "R2", "statement": "维护参测系统和系统级角色", "acceptance": ["配置可持久化读取", "角色不能分配给未参测系统"], "priority": "must", "source": "V1.6", "counterexample": ["跨大类或跨项目读取配置"]},
+      {"id": "R3", "statement": "维护轮次、周期和字典", "acceptance": ["日期、排序和引用约束可验证", "派生和只读字典不可编辑"], "priority": "must", "source": "V1.6", "counterexample": ["结束轮次自动生成报告"]},
+      {"id": "R4", "statement": "支持配置导入预校验和原子写入", "acceptance": ["任意错误行导致零写入", "成功返回汇总"], "priority": "must", "source": "V1.6", "counterexample": ["导入半成功"]}
+    ],
+    "invariants": ["测试管理不维护项目、用户或物理子系统主数据", "所有写入受租户、实体范围、RBAC 和审计保护", "V106 只追加不修改历史迁移"],
+    "constraints": ["JDK 17", "Vue 3/TypeScript/Element Plus", "MySQL 8.4", "临时每项目全量物理子系统候选规则"],
+    "non_goals": ["其他八个业务页面", "项目—子系统主数据关系", "营业日管理改造"],
+    "selected_approach": {"name": "测试管理参测映射 + 全量物理子系统候选", "reason": "满足当前可用需求并保持架构数据 Owner", "alternatives": [{"name": "先改架构关系", "rejected_because": "超出当前模块"}]},
+    "architecture": {"boundary": {"inside": ["测试管理配置", "菜单迁移", "专属前端页面"], "outside": ["项目、用户、物理子系统主数据", "后续测试业务页面"]}, "components": [{"name": "配置服务", "responsibility": "规则、事务、审计", "depends_on": ["平台项目/用户", "物理子系统只读数据"]}], "interfaces": [{"name": "/api/test-management/configuration/**", "producer": "TestConfigurationController", "consumers": ["TestConfigurationPage"], "contract": "认证、权限、范围校验后的统一 API 响应"}], "data_flows": [{"input": "大类、项目和配置表单", "transitions": ["服务端认证和范围校验", "事务写入和审计"], "output": "隔离的测试配置"}]},
+    "error_handling": [{"condition": "导入校验失败", "behavior": "返回逐行错误并不写入", "recovery": "用户修正后重试"}],
+    "quality_attributes": {"security": ["服务端 RBAC、租户和实体范围校验"], "performance": ["分页读取和数据库唯一索引"], "compatibility": ["保留营业日功能"], "operations": ["审计写操作"]},
+    "verification_strategy": [{"requirement_ids": ["R1", "R2", "R3", "R4"], "signal": "后端、构建、迁移和浏览器证据", "method": "自动化检查和真实用户路径"}],
+    "assumptions": [{"text": "每个项目暂时展示全部启用物理子系统", "basis": "用户确认", "falsifier": "架构模块提供项目—子系统关系"}],
+    "unknowns": [{"question": "架构关系字段和可见范围", "impact": "未来替换候选查询", "owner": "架构模块", "blocking": false}],
+    "decisions": [{"id": "D1", "decision": "采用全量候选的参测映射", "reason": "不等待后续架构关系", "source": "用户确认"}],
+    "risks": [{"risk": "配置将成为后续模块依赖", "impact": "接口稳定性要求高", "mitigation": "使用范围键、唯一约束与测试"}],
+    "approval": {"status": "approved", "evidence": "用户回复确认并要求开始实施", "confirmed_at": "2026-08-31T17:57:00+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-31-test-management-configuration-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["仅使用任务范围可写路径", "V106 仅追加", "Maven 使用 JDK 17"],
+    "file_map": [
+      {"path": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/TestConfigurationService.java", "status": "candidate-new", "responsibility": "配置规则、事务和审计", "evidence": "设计 R1-R4"},
+      {"path": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java", "status": "candidate-new", "responsibility": "配置 HTTP 适配", "evidence": "设计 R1-R4"},
+      {"path": "server/src/platform/infrastructure/src/main/resources/db/migration/V106__test_management_configuration.sql", "status": "candidate-new", "responsibility": "配置数据和菜单权限", "evidence": "设计 R1"},
+      {"path": "web/src/modules/test-management/configuration/TestConfigurationPage.vue", "status": "candidate-new", "responsibility": "四个配置子页面", "evidence": "设计 R1-R4"}
+    ],
+    "tasks": [
+      {"id": "T1", "goal": "配置持久化、菜单与受保护 API", "requirement_ids": ["R1", "R2", "R3"], "prerequisites": [], "input_facts": ["现有模块只有营业日持久化", "V106 是下一可用迁移号"], "files": {"create": ["server/src/platform/infrastructure/src/main/resources/db/migration/V106__test_management_configuration.sql", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/TestConfigurationService.java", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/TestConfigurationModels.java", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java"], "modify": [], "test": ["server/src/modules/test-management/src/test/java/com/ccb/testmanagement/configuration/TestConfigurationServiceTest.java"]}, "interfaces": {"consumes": ["AuthUser", "SystemOperationAudit", "平台项目/用户/物理子系统只读接口"], "produces": ["/api/test-management/configuration/{domain}/systems|roles|rounds|cycles|dictionaries"]}, "steps": [{"id": "T1-S1", "action": "建立服务测试", "command": "mvn -pl :ccb-test-management -am test", "expected": "新增行为在实现前失败", "evidence": "测试输出"}, {"id": "T1-S2", "action": "追加 V106 并实现服务和控制器", "command": null, "expected": "配置 API 可编译", "evidence": "受限 diff"}, {"id": "T1-S3", "action": "运行后端回归", "command": "mvn -pl :ccb-test-management -am test", "expected": "全部通过", "evidence": "退出码 0"}], "acceptance_checks": ["隔离、唯一性、权限、日期和引用保护测试"], "risks": ["迁移和权限"], "rollback": "回退 T1 代码与菜单入口，保留 V106 数据", "stop_conditions": ["需要修改平台或架构公开契约"], "escalation_conditions": ["物理子系统读取无受支持入口"]},
+      {"id": "T2", "goal": "导入预校验与原子提交", "requirement_ids": ["R4"], "prerequisites": ["T1"], "input_facts": ["Apache POI 已在模块依赖中"], "files": {"create": ["server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/TestConfigurationWorkbookService.java"], "modify": ["server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java"], "test": ["server/src/modules/test-management/src/test/java/com/ccb/testmanagement/configuration/TestConfigurationWorkbookServiceTest.java"]}, "interfaces": {"consumes": ["T1 配置服务"], "produces": ["模板、预校验、确认导入接口"]}, "steps": [{"id": "T2-S1", "action": "建立原子导入测试", "command": "mvn -pl :ccb-test-management -am test", "expected": "实现前失败", "evidence": "测试输出"}, {"id": "T2-S2", "action": "实现工作簿解析和事务提交", "command": null, "expected": "错误批次零写入", "evidence": "单元断言"}, {"id": "T2-S3", "action": "运行回归", "command": "mvn -pl :ccb-test-management -am test", "expected": "全部通过", "evidence": "退出码 0"}], "acceptance_checks": ["错误行、重复行和零写入"], "risks": ["模板兼容性"], "rollback": "回退导入端点", "stop_conditions": ["需访问生产 XLSX"], "escalation_conditions": ["需新增未经授权依赖"]},
+      {"id": "T3", "goal": "管理配置前端页面与路由", "requirement_ids": ["R1", "R2", "R3", "R4"], "prerequisites": ["T1", "T2"], "input_facts": ["动态通用测试路由位于 router 尾部"], "files": {"create": ["web/src/modules/test-management/configuration/TestConfigurationPage.vue", "web/src/modules/test-management/configuration/test-configuration.css"], "modify": ["web/src/modules/test-management/api.ts", "web/src/modules/test-management/catalog.ts", "web/src/modules/test-management/application-assembly/catalog.ts", "web/src/modules/test-management/user-testing/catalog.ts", "web/src/modules/test-management/non-functional/catalog.ts", "web/src/modules/test-management/security/catalog.ts", "web/src/router/index.ts"], "test": []}, "interfaces": {"consumes": ["T1/T2 API", "既有项目 API", "UiDataTable 与 UiFormDrawer"], "produces": ["四个配置页面和专属路由"]}, "steps": [{"id": "T3-S1", "action": "注册专属路由和菜单", "command": null, "expected": "专属路由在通配动态路由前匹配", "evidence": "router 差异"}, {"id": "T3-S2", "action": "实现四个配置子页和移动端布局", "command": null, "expected": "具备加载、空、失败、无权限和提交中状态", "evidence": "页面实现"}, {"id": "T3-S3", "action": "运行前端构建", "command": "npm --prefix web run build", "expected": "构建通过", "evidence": "退出码 0"}], "acceptance_checks": ["路由、表单、禁用原因和移动布局"], "risks": ["公共壳边界"], "rollback": "回退页面和专属路由", "stop_conditions": ["需修改公共 UI 或 AppLayout"], "escalation_conditions": ["全局项目选择器成为阻塞"]},
+      {"id": "T4", "goal": "集成验证与浏览器验收", "requirement_ids": ["R1", "R2", "R3", "R4"], "prerequisites": ["T1", "T2", "T3"], "input_facts": ["JDK 17 基线测试已通过"], "files": {"create": [], "modify": [".ai-control/requirements/req-20260831-057-test-management-configuration/execution-T1.json", ".ai-control/requirements/req-20260831-057-test-management-configuration/observation-T1.json", ".ai-control/requirements/req-20260831-057-test-management-configuration/convergence.json"], "test": []}, "interfaces": {"consumes": ["完整模块"], "produces": ["实际验证证据"]}, "steps": [{"id": "T4-S1", "action": "运行自动化与治理检查", "command": "mvn -pl :ccb-test-management -am test; npm --prefix web run build; node scripts/check-flyway-migrations.mjs; node scripts/check-all-governance.mjs", "expected": "实际结果记录", "evidence": "命令退出码"}, {"id": "T4-S2", "action": "执行 API 和浏览器路径", "command": "真实浏览器桌面与移动视口", "expected": "管理员可写且无权限用户被拒绝", "evidence": "可复现路径"}], "acceptance_checks": ["权限、隔离、导入和移动端路径"], "risks": ["本地运行环境"], "rollback": "回退代码保留迁移数据", "stop_conditions": ["越权或部分导入"], "escalation_conditions": ["架构关系与已确认规则冲突"]}
+    ],
+    "dependency_edges": [
+      {"from": "T1", "to": "T2", "reason": "导入复用配置范围与事务"},
+      {"from": "T2", "to": "T3", "reason": "页面依赖稳定的导入与配置 API"},
+      {"from": "T3", "to": "T4", "reason": "集成验收需要完整用户路径"}
+    ],
+    "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"]],
+    "integration_checks": [{"after_tasks": ["T4"], "command": "mvn -pl :ccb-test-management -am test; npm --prefix web run build; node scripts/check-flyway-migrations.mjs; node scripts/check-all-governance.mjs", "expected": "检查实际通过或记录环境阻断"}],
+    "coverage": [{"requirement_id": "R1", "task_ids": ["T1", "T3", "T4"]}, {"requirement_id": "R2", "task_ids": ["T1", "T3", "T4"]}, {"requirement_id": "R3", "task_ids": ["T1", "T3", "T4"]}, {"requirement_id": "R4", "task_ids": ["T2", "T3", "T4"]}],
+    "approval": {"status": "approved", "evidence": "用户回复确认并要求开始实施", "confirmed_at": "2026-08-31T17:57:00+08:00"}
+  },
+  "control_seed": {"seed_status": "hypotheses-only", "plant_boundary_candidates": ["测试管理配置数据和页面"], "state_variable_candidates": ["大类、项目、参测系统、角色、轮次、周期、字典项"], "interface_candidates": ["配置 API、项目 API、物理子系统只读 API"], "sensor_candidates": ["JUnit", "Flyway 检查", "Vite 构建", "API 权限探测", "浏览器路径"], "actuator_candidates": ["V106 迁移", "配置服务", "专属路由和页面"], "disturbance_candidates": ["架构关系尚未提供", "主数据候选权限", "后续模块引用"], "delay_candidates": ["迁移应用和前端刷新"], "assumptions": [{"text": "每个项目暂时使用全部启用物理子系统", "basis": "用户确认", "falsifier": "架构模块提供项目—子系统关系"}]}
+}
