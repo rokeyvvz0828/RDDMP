@@ -1,0 +1,135 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260901-057",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260901-057-deployment-unit-model/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260901-057-deployment-unit-model",
+    "worktree": "C:/Users/missa/source/RDDMP/.worktrees/REQ-20260901-057-deployment-unit-model"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/architecture/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+      "web/src/modules/architecture/**",
+      "mock/mock-data.json",
+      "docs/integration/architecture-module-contract.md",
+      "docs/requirements/REQ-20260901-057-deployment-unit-model/**",
+      "docs/engineering-control/designs/2026-09-02-deployment-unit-model-design.md",
+      "docs/engineering-control/plans/2026-09-02-deployment-unit-model-implementation-plan.md",
+      ".ai-control/requirements/req-20260901-057-deployment-unit-model/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/attachment/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V1__create_system_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V96__create_architecture_deployment_units.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V106__refine_resource_request_registration_ownership.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V108__create_architecture_environment_instances.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V111__create_architecture_network_zones_access.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V117__create_architecture_setup_plan_templates.sql",
+      "web/src/api/**",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/stores/auth.ts",
+      "docs/integration/frontend-ui-contract.md",
+      "design-h5.md",
+      ".ai-control/original/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "server/src/modules/ai/**",
+      "server/src/modules/release/**",
+      "server/src/modules/requirement/**",
+      "server/src/modules/data-migration/**",
+      "server/src/modules/test-management/**",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/**",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/internal/**",
+      "web/src/api/form-metadata.ts",
+      "web/src/types/form-metadata.ts",
+      ".ai-control/original/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260901-057",
+    "owner_approved": true,
+    "approval_evidence": "用户于 2026-09-01 明确要求调整部署单元模型、名称/后缀联动和可搜索多选关联，并逐段确认规范化模型、双向关系、数据可清理和完整设计。",
+    "old_behavior_preserved": false,
+    "regression_tests": [
+      "部署单元 code、生命周期、版本、权限、租户和审计保持",
+      "资源申请按 APPLICATION/DATABASE/WEB 映射 AP/DB/WB 分流",
+      "环境实例、网络访问和搭建计划继续按 deploymentUnitId 引用",
+      "初始化导入与 Mock 数据使用完整名称和新类型",
+      "旧 shortName、relatedDeploymentUnitName、deploymentUnitType 契约被有意删除"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql"
+    ],
+    "compatibility_and_rollback": "只追加候选 V124，不修改历史迁移。早期开发数据允许清理重建，不提供 MQ/PL 或旧字段兼容；已执行迁移需通过后续补偿迁移恢复结构，实施前重新检查 V124 是否被占用。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "architecture-unit", "command": "mvn -pl :ccb-architecture -am test"},
+    {"name": "api", "command": "验证部署单元创建、更新、详情、分页搜索、多选关系、生命周期和错误语义"},
+    {"name": "permission", "command": "验证 view/manage 权限、当前租户隔离、跨租户关系拒绝和实体状态校验"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "flyway", "command": "node scripts/check-flyway-migrations.mjs"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260901-057-deployment-unit-model/codex-task-scope.yaml"},
+    {"name": "diff", "command": "git diff --check"},
+    {"name": "browser", "command": "真实浏览器验收部署单元新建、编辑、搜索多选、自定义后缀、错误恢复、明暗主题和 1280/375/390/430 视口"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "删除公开 DTO 字段和数据库列",
+      "资源申请分流从 deploymentUnitType 收敛到 kind",
+      "双向关系并发与关系历史一致性",
+      "破坏性迁移和早期开发数据重建",
+      "候选 V124 在实施前可能发生版本占用冲突"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260901-057-deployment-unit-model",
+    "control_justification": "涉及数据库迁移、公开架构契约、部署单元版本、资源申请下游分流、前端用户旅程和双向关系并发，需要完整闭环工程控制。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260901-057-deployment-unit-model/execution-T*.json",
+      ".ai-control/requirements/req-20260901-057-deployment-unit-model/observation-T*.json",
+      ".ai-control/requirements/req-20260901-057-deployment-unit-model/convergence.json"
+    ],
+    "release_verification": [
+      "MySQL 空库与既有开发库迁移",
+      "真实 API 权限、租户、名称和双向关系旅程",
+      "桌面及三个手机视口明暗主题浏览器验收"
+    ],
+    "rollback": "回退本需求应用提交；已执行 V124 的环境使用后续补偿迁移或在早期开发环境重建数据库和 Mock 数据，不手工修改生产库。"
+  }
+}

@@ -1,0 +1,4521 @@
+{
+  "schema_version": 4,
+  "revision": 53,
+  "created_at": "2026-09-02T02:55:03+00:00",
+  "updated_at": "2026-09-02T07:47:36+00:00",
+  "mode": "high-assurance",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户于 2026-09-02 回复“批准”，确认落盘设计修订 1。；计划确认=用户于 2026-09-02 回复“批准”，确认实施计划修订 1 及高风险迁移、公开契约切换和双向关系并发方案。",
+      "recorded_at": "2026-09-02T02:55:03+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "用户于2026-09-02批准设计与实施计划修订1；R1-R8、反例、非目标和高风险动作复核一致，无阻塞未知项",
+      "recorded_at": "2026-09-02T02:55:30+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "系统模型覆盖全部 must 因果链、传感器、执行器、扰动和回滚；模型状态 ready",
+      "recorded_at": "2026-09-02T03:01:59+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "T1-T3 写入边界、接口、验收、回滚、停止和升级条件完整，R1-R8 全覆盖",
+      "recorded_at": "2026-09-02T03:05:42+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 执行产物已记录，局部输出可测；MySQL 阻塞交由 observing 形成正式反馈",
+      "recorded_at": "2026-09-02T04:45:17+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "T1 观察完成：所有计划内测量有结果或明确缺口；F-0001/F-0002 为待裁决 P1 偏差",
+      "recorded_at": "2026-09-02T04:58:26+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0001/F-0002 均已 accept 并记录有界纠正动作，修改面限制在模板示例、V124 语句顺序和对应测试",
+      "recorded_at": "2026-09-02T04:59:39+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 纠正执行报告已记录，模板和迁移顺序输出可由独立观察复验",
+      "recorded_at": "2026-09-02T05:05:21+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "纠正静态复验未发现新的产品偏差；迁移测试种子传感器缺陷需在执行阶段修正，T2/T3 仍待记录",
+      "recorded_at": "2026-09-02T05:09:30+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 传感器修正、T2 前端和 T3 契约/集成执行产物均已记录，三个任务输出可独立观测",
+      "recorded_at": "2026-09-02T05:12:27+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1-T3 均 verified，F-0001/F-0002 已关闭，最终采样 P0/P1 为零，进入独立收敛验收",
+      "recorded_at": "2026-09-02T07:37:10+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛报告 gate_result=pass，账本 gate 通过，所有 must 需求、任务、反馈、采样和不变量门禁满足",
+      "recorded_at": "2026-09-02T07:47:36+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户于 2026-09-02 回复“批准”，确认落盘设计修订 1。；计划确认=用户于 2026-09-02 回复“批准”，确认实施计划修订 1 及高风险迁移、公开契约切换和双向关系并发方案。",
+        "recorded_at": "2026-09-02T02:55:03+00:00",
+        "data": {
+          "objective": "将部署单元收敛为完整名称、应用/数据库/Web 类型和可搜索多选的双向结构化关联，消除简称、登记类型和自由文本关联等重复事实源。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "模型必须删除部署单元简称和重复事实源。",
+              "acceptance": [
+                "主记录、版本、DTO、前端类型、Mock 和契约不再包含 shortName、relatedDeploymentUnitName、deploymentUnitType"
+              ],
+              "priority": "must",
+              "source": "用户原始请求及规范化方案确认",
+              "counterexample": [
+                "页面隐藏简称但数据库和接口仍继续维护",
+                "资源申请继续依赖 deploymentUnitType"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "部署单元名称必须由一个输入框维护并以最后一个下划线识别主名称和后缀。",
+              "acceptance": [
+                "输入自动大写",
+                "主名称只含大写字母和数字",
+                "后缀为 1-8 位大写字母或数字",
+                "完整名称租户内唯一",
+                "页面无第二个后缀输入框"
+              ],
+              "priority": "must",
+              "source": "用户确认通过 _ 判断分割和拼接",
+              "counterexample": [
+                "主名称和后缀使用两个输入框",
+                "只在前端校验而服务端接受非法名称"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "部署单元类型必须收敛为应用、数据库、Web，并与标准后缀双向联动。",
+              "acceptance": [
+                "_AP 映射 APPLICATION",
+                "_DB 映射 DATABASE",
+                "_WB 映射 WEB",
+                "标准后缀切换自动替换",
+                "自定义后缀保留并允许手工选择类型"
+              ],
+              "priority": "must",
+              "source": "用户原始请求和格式确认",
+              "counterexample": [
+                "继续允许 MQ 或 PL 新建",
+                "选择类型覆盖自定义后缀"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "关联部署单元必须支持租户内 ACTIVE 记录的搜索、多选和跨物理子系统选择。",
+              "acceptance": [
+                "按名称、编号和物理子系统搜索",
+                "排除自身",
+                "拒绝跨租户和非 ACTIVE 目标",
+                "选择器支持多选并保留已选标签"
+              ],
+              "priority": "must",
+              "source": "用户确认关联候选范围",
+              "counterexample": [
+                "继续使用自由文本",
+                "只能选择同一物理子系统",
+                "允许选择自身"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "关联关系必须为双向无向关系并保持事务一致。",
+              "acceptance": [
+                "A-B 规范化只保存一条当前关系",
+                "双方详情均可见",
+                "任一端解除后双方不可见",
+                "重复和并发提交不产生重复或半边关系"
+              ],
+              "priority": "must",
+              "source": "用户确认双向关联",
+              "counterexample": [
+                "A 关联 B 但 B 不显示 A",
+                "同时存在 A-B 与 B-A 两行"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "版本、关系历史、审计和模块内下游契约必须同步。",
+              "acceptance": [
+                "关系变更写独立历史和审计",
+                "发起编辑端发布新版本",
+                "资源申请按 kind 映射 AP/DB/WB",
+                "初始化导入、实例、网络和计划回归通过"
+              ],
+              "priority": "must",
+              "source": "现有部署单元版本和架构模块契约",
+              "counterexample": [
+                "关系变化无历史",
+                "资源申请类型分流错误"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "权限、租户、实体、乐观锁、审计和模块边界必须保持。",
+              "acceptance": [
+                "服务端继续校验 view/manage 权限",
+                "HTTP DTO 不含 tenantId",
+                "关系目标执行租户和状态校验",
+                "不修改平台公共实现"
+              ],
+              "priority": "must",
+              "source": "仓库规约和架构模块规则",
+              "counterexample": [
+                "用前端显隐代替服务端权限",
+                "直接写平台或其他业务模块表"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "前端必须覆盖全状态并在桌面和手机视口可用。",
+              "acceptance": [
+                "加载、无结果、失败、无权限、提交中、409 和脏表单状态明确",
+                "1280x800 与 375x812、390x844、430x932 无页面级横向滚动",
+                "明暗主题和控制台验收通过"
+              ],
+              "priority": "must",
+              "source": "design-h5、前端规约和用户截图",
+              "counterexample": [
+                "多选标签撑宽弹窗",
+                "搜索失败清空已选项",
+                "手机底部提交按钮不可达"
+              ]
+            }
+          ],
+          "invariants": [
+            "只追加 Flyway 迁移，不修改历史迁移",
+            "保持部署单元 code、物理子系统归属、生命周期、网络分区、描述、备注和乐观锁职责",
+            "服务端认证、RBAC、租户隔离、实体校验和审计不能放松",
+            "业务代码和关系数据归 business/architecture",
+            "不引入动态表单元数据或 biz_form 依赖",
+            "不访问生产系统或真实敏感数据"
+          ],
+          "constraints": [
+            "候选迁移为 V124，实施前重新扫描版本占用",
+            "公开架构契约删除字段，模块内消费者必须同批更新",
+            "早期开发数据允许清理重建，但生产回退不能依赖重建数据库",
+            "前端优先复用交付示范中心、共享 UI、Element Plus 和语义主题"
+          ],
+          "non_goals": [
+            "不保留 MQ、PL 或旧 deploymentUnitType 兼容入口",
+            "不新增部署单元类型字典和维护页面",
+            "不改变权限码、菜单、编号规则和生命周期",
+            "不重构模块目录、Java 包名或公共 UI 组件",
+            "不实现生产数据灰度双写"
+          ],
+          "assumptions": [
+            {
+              "text": "主名称本身不含下划线，最后一个下划线是名称与后缀的唯一分隔符。",
+              "basis": "用户确认的格式规则",
+              "falsifier": "用户要求主名称允许下划线"
+            },
+            {
+              "text": "关系独立历史承担双方可追踪性，只有发起编辑端发布新版本。",
+              "basis": "避免一次关系变更为全部目标产生无意版本",
+              "falsifier": "用户要求双方版本号同步增长"
+            },
+            {
+              "text": "停用保留关系，作废必须先解除关系。",
+              "basis": "既有生命周期的历史可读和引用限制",
+              "falsifier": "用户要求作废自动解除"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "V124 在正式实施前是否被并行分支占用？",
+              "impact": "只影响迁移文件名和 scope，不改变业务设计。",
+              "owner": "实施任务负责人",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "名称使用一个完整输入框，通过下划线解析和拼接。",
+              "reason": "减少输入项并直接维护最终名称。",
+              "source": "用户 2026-09-01 确认"
+            },
+            {
+              "id": "D2",
+              "decision": "类型固定为应用、数据库、Web，标准后缀为 _AP/_DB/_WB，自定义后缀手工选择类型。",
+              "reason": "满足标准联动与扩展后缀并存。",
+              "source": "用户原始请求和格式确认"
+            },
+            {
+              "id": "D3",
+              "decision": "不提供旧数据和 MQ/PL 兼容。",
+              "reason": "当前为早期开发阶段，用户允许删除现有数据。",
+              "source": "用户 2026-09-01 确认"
+            },
+            {
+              "id": "D4",
+              "decision": "关联候选为当前租户全部 ACTIVE 部署单元，允许跨物理子系统并排除自身。",
+              "reason": "满足可搜索、多选且不限制业务关联范围。",
+              "source": "用户 2026-09-01 确认"
+            },
+            {
+              "id": "D5",
+              "decision": "关联为双向无向关系，规范化只保存一条当前记录。",
+              "reason": "关联语义对双方一致并避免 A-B/B-A 重复。",
+              "source": "用户 2026-09-01 确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R3"
+              ],
+              "signal": "旧字段和旧类型不再可用",
+              "method": "源码/契约负向扫描与模型、DTO、持久化测试"
+            },
+            {
+              "requirement_ids": [
+                "R2"
+              ],
+              "signal": "名称解析、联动和唯一性准确",
+              "method": "服务端单测、API 场景、前端构建和浏览器输入旅程"
+            },
+            {
+              "requirement_ids": [
+                "R4",
+                "R5"
+              ],
+              "signal": "搜索多选和双向关系原子一致",
+              "method": "MySQL 唯一键/外键、事务、重复和并发测试及真实 API"
+            },
+            {
+              "requirement_ids": [
+                "R6"
+              ],
+              "signal": "版本、历史、审计和下游契约无回归",
+              "method": "架构模块聚焦回归与资源申请三类分流测试"
+            },
+            {
+              "requirement_ids": [
+                "R7"
+              ],
+              "signal": "权限、租户和模块边界保持",
+              "method": "Controller 403/租户测试、governance、scope 和 module-boundary 检查"
+            },
+            {
+              "requirement_ids": [
+                "R8"
+              ],
+              "signal": "桌面和移动端全状态可用",
+              "method": "npm build 与 1280/375/390/430 明暗主题真实浏览器验收"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已用现有 Java/SQL/Vue/契约扫描和隔离基线验证候选边界；R1-R8 均绑定独立传感器和受权执行器",
+        "recorded_at": "2026-09-02T03:01:59+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "arch_deployment_unit、arch_deployment_unit_version 及候选 V124 关系/历史表",
+              "DeploymentUnitModels、DeploymentUnitStore、DeploymentUnitService、DeploymentUnitController",
+              "DeploymentUnitImportService 与部署单元导入批次/明细",
+              "EnvironmentResourceModels/Store/Service/Controller 的部署单元投影和资源分流",
+              "web/src/modules/architecture 的部署单元、导入、资源申请页面及类型/API",
+              "mock/mock-data.json 与 architecture-module-contract.md"
+            ],
+            "environment": [
+              "认证用户 AuthUser、Spring Security 方法权限和 SystemOperationAudit",
+              "物理子系统与网络分区公开查询能力",
+              "MySQL 8.4/Flyway/Testcontainers/Docker Desktop",
+              "Vue 3、Element Plus、共享 UI 和浏览器运行时"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "deployment_unit_identity",
+              "owner": "arch_deployment_unit",
+              "valid_values": [
+                "租户内唯一完整 name",
+                "永久 code",
+                "不可变 physical_subsystem_id"
+              ]
+            },
+            {
+              "name": "deployment_unit_kind",
+              "owner": "arch_deployment_unit/DeploymentUnitService",
+              "valid_values": [
+                "APPLICATION",
+                "DATABASE",
+                "WEB"
+              ]
+            },
+            {
+              "name": "deployment_unit_status",
+              "owner": "DeploymentUnitService",
+              "valid_values": [
+                "ACTIVE",
+                "INACTIVE",
+                "VOIDED"
+              ]
+            },
+            {
+              "name": "deployment_unit_version",
+              "owner": "arch_deployment_unit_version",
+              "valid_values": [
+                "从 1 递增的不可改写快照"
+              ]
+            },
+            {
+              "name": "current_relations",
+              "owner": "候选 arch_deployment_unit_relation",
+              "valid_values": [
+                "tenant+min(unitA,unitB)+max(unitA,unitB) 唯一集合"
+              ]
+            },
+            {
+              "name": "relation_history",
+              "owner": "候选 arch_deployment_unit_relation_history",
+              "valid_values": [
+                "LINK",
+                "UNLINK"
+              ]
+            },
+            {
+              "name": "form_state",
+              "owner": "DeploymentUnitPage.vue",
+              "valid_values": [
+                "完整名称",
+                "kind",
+                "relatedDeploymentUnitIds",
+                "loading/error/submitting/dirty"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "创建、更新、导入或资源申请读取部署单元",
+              "transitions": [
+                "HTTP/导入解析",
+                "DeploymentUnitService 校验",
+                "Store SQL 持久化",
+                "资源申请投影",
+                "Vue DTO 展示"
+              ],
+              "outputs": [
+                "仅保留完整 name、kind 和结构化关系，不再出现旧三个字段"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "用户在唯一名称框输入任意大小写文本",
+              "transitions": [
+                "前端 trim/大写",
+                "服务端按最后一个下划线解析",
+                "正则和租户唯一校验",
+                "主记录与版本写入"
+              ],
+              "outputs": [
+                "^[A-Z0-9]+_[A-Z0-9]{1,8}$ 的完整名称"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "完整名称后缀或业务类型变化",
+              "transitions": [
+                "前端标准后缀联动",
+                "服务端标准映射校验",
+                "自定义后缀保留"
+              ],
+              "outputs": [
+                "APPLICATION/_AP、DATABASE/_DB、WEB/_WB 一致，或合法自定义后缀+手工类型"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "关联选择器关键字、分页和 excludeId",
+              "transitions": [
+                "Controller 权限",
+                "Store 按当前租户 ACTIVE、名称/编号/物理子系统搜索",
+                "排除自身",
+                "前端远程多选和回显"
+              ],
+              "outputs": [
+                "可搜索、多选、跨物理子系统的合法候选"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "relatedDeploymentUnitIds 集合",
+              "transitions": [
+                "去重排序",
+                "锁定并校验目标",
+                "端点 min/max 规范化",
+                "同事务差量 LINK/UNLINK",
+                "双方详情投影"
+              ],
+              "outputs": [
+                "无重复、无半边的双向无向关系"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "部署单元内容或关系变更",
+              "transitions": [
+                "发起端发布版本",
+                "关系独立历史",
+                "系统操作审计",
+                "资源申请按 kind 映射 AP/DB/WB"
+              ],
+              "outputs": [
+                "版本、关系历史、审计和模块内下游一致"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "查看、写入或关联请求",
+              "transitions": [
+                "认证上下文注入 tenant",
+                "view/manage RBAC",
+                "实体状态/租户/乐观锁校验",
+                "只写 architecture 自有表"
+              ],
+              "outputs": [
+                "403/404/409/400 语义及租户隔离保持"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "input": "桌面或手机用户执行列表、表单、详情和远程搜索",
+              "transitions": [
+                "共享页面头/工具栏/表格",
+                "移动卡片",
+                "视口约束弹层",
+                "局部加载/空/失败/无权限/提交中状态"
+              ],
+              "outputs": [
+                "1280、375、390、430 视口和明暗主题可完成同一任务"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "DeploymentUnitCommand/View",
+              "producers": [
+                "DeploymentUnitController/Service"
+              ],
+              "consumers": [
+                "DeploymentUnitPage.vue",
+                "导入和模块内调用方"
+              ],
+              "invariant": "HTTP DTO 不含 tenantId，只含完整 name、kind、relatedDeploymentUnitIds/relatedDeploymentUnits"
+            },
+            {
+              "name": "GET /api/architecture/deployment-units/options",
+              "producers": [
+                "DeploymentUnitController/Store"
+              ],
+              "consumers": [
+                "部署单元关联远程选择器"
+              ],
+              "invariant": "当前租户、ACTIVE、分页、排除自身"
+            },
+            {
+              "name": "DeploymentUnitRef",
+              "producers": [
+                "EnvironmentResourceStore"
+              ],
+              "consumers": [
+                "EnvironmentResourceService/Controller/ResourceRequestPage"
+              ],
+              "invariant": "资源分支只由 kind 决定，不读取旧登记类型"
+            },
+            {
+              "name": "Flyway V124",
+              "producers": [
+                "platform/infrastructure 迁移链"
+              ],
+              "consumers": [
+                "MySQL 空库与增量升级"
+              ],
+              "invariant": "只追加且版本唯一，不修改 V1-V123"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Java 领域、Controller、资源申请行为",
+              "method": "JUnit/Mockito 聚焦测试及 ccb-architecture 非容器测试",
+              "blind_spots": [
+                "真实 MySQL 约束和并发"
+              ],
+              "independence": "直接执行 Java 行为断言"
+            },
+            {
+              "id": "S2",
+              "target": "V124、唯一键、外键、关系事务和并发",
+              "method": "Testcontainers MySQL 集成测试与 information_schema/SQL 断言",
+              "blind_spots": [
+                "Docker Desktop 未运行时不可采样"
+              ],
+              "independence": "真实 MySQL 运行证据"
+            },
+            {
+              "id": "S3",
+              "target": "前端 DTO 和静态交互契约",
+              "method": "vue-tsc、Vite build 和旧字段负向 rg 扫描",
+              "blind_spots": [
+                "不能证明真实交互和布局"
+              ],
+              "independence": "编译器和静态扫描"
+            },
+            {
+              "id": "S4",
+              "target": "权限、租户、HTTP/SQL/审计组合结果",
+              "method": "本地真实 API、数据库查询和审计记录",
+              "blind_spots": [
+                "本地角色与数据集覆盖有限"
+              ],
+              "independence": "运行时接口和持久化证据"
+            },
+            {
+              "id": "S5",
+              "target": "桌面/移动端全状态和可访问性",
+              "method": "真实浏览器 Network/Console/DOM 溢出与四视口明暗主题验收",
+              "blind_spots": [
+                "未覆盖所有设备浏览器差异"
+              ],
+              "independence": "用户路径可视化运行证据"
+            },
+            {
+              "id": "S6",
+              "target": "范围、迁移号、模块边界和契约残留",
+              "method": "scope、Flyway、governance、git diff 与 rg 检查",
+              "blind_spots": [
+                "不能证明业务运行正确"
+              ],
+              "independence": "仓库治理和差异传感器"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "数据库结构和开发数据",
+              "action": "追加 V124 删除旧列、调整约束并创建关系/历史表",
+              "authority": "scope 仅授权候选 V124",
+              "impact_radius": "部署单元与资源申请明细表",
+              "rollback": "提交前撤销；已执行后用补偿迁移或重建早期开发库"
+            },
+            {
+              "id": "A2",
+              "target": "后端共享契约",
+              "action": "修改 architecture 模块模型、Store、Service、Controller、导入和资源申请",
+              "authority": "server/src/modules/architecture/**",
+              "impact_radius": "架构模块 Java 编译与运行",
+              "rollback": "回退 T1 小提交"
+            },
+            {
+              "id": "A3",
+              "target": "前端用户旅程",
+              "action": "修改 architecture 模块类型、API、页面、详情和局部样式",
+              "authority": "web/src/modules/architecture/**",
+              "impact_radius": "架构前端模块",
+              "rollback": "回退 T2 小提交并与 T1 配套"
+            },
+            {
+              "id": "A4",
+              "target": "演示数据和公开说明",
+              "action": "同步 Mock、architecture-module-contract 和当前任务证据",
+              "authority": "scope 指定文档/Mock/任务前缀",
+              "impact_radius": "本地演示与公开契约",
+              "rollback": "回退 T3 小提交"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S1",
+                "S4",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R8",
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Docker Desktop 未运行",
+              "effect": "11 个 Testcontainers 基线测试无法启动",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "隔离工作树无 node_modules 且 scope 禁止修改依赖目录",
+              "effect": "标准 npm build 无法直接解析依赖；vue-tsc 可复用主检出依赖",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "V124 可能被并行分支占用",
+              "effect": "迁移版本冲突",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "历史治理账本噪声",
+              "effect": "全仓治理检查可能失败但不代表本需求偏差",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "用户在主检出的 T11 未跟踪文件",
+              "effect": "错误清理会覆盖其他任务证据",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "远程搜索请求和防抖",
+              "consequence": "旧响应可能覆盖新关键字",
+              "sampling_rule": "浏览器测试快速连续输入并验证仅最新结果生效"
+            },
+            {
+              "source": "关系端点锁和事务提交",
+              "consequence": "并发提交可能产生等待或冲突",
+              "sampling_rule": "事务完成后从双方和关系表采样"
+            },
+            {
+              "source": "Maven/Testcontainers 与四视口浏览器验收",
+              "consequence": "反馈周期较长",
+              "sampling_rule": "先局部单测，再集成 MySQL，最后全栈浏览器"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "主名称不包含下划线",
+              "evidence": "用户批准的设计修订 1",
+              "falsifier": "用户要求主名称允许下划线"
+            },
+            {
+              "text": "关系独立历史足以追踪被关联端",
+              "evidence": "用户批准只有发起端发布版本",
+              "falsifier": "用户要求双方版本同步增长"
+            },
+            {
+              "text": "停用保留关系且作废先解除",
+              "evidence": "用户批准的生命周期设计",
+              "falsifier": "用户要求作废自动解除"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2+A3+A4"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2+A3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2+A3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2+A3"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2+A3+A4"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2+A4"
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3+A4"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "开发前 T1-T3 已与模型事实对账；共享 DTO/迁移/运行资源存在依赖，保持串行并定义三次 high-assurance 采样",
+        "recorded_at": "2026-09-02T03:05:42+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "后端、V124、导入和资源申请完成部署单元新模型原子切换",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V96/V106 定义旧三个字段、MQ 和 DB/AP/WB/PL 契约",
+                "DeploymentUnitService/Store 是主记录、版本和生命周期唯一写入口",
+                "EnvironmentResourceStore/Service 是资源申请部署单元投影与分流所有者",
+                "2026-09-02 检查 V124 尚未占用"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitController.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/**"
+              ],
+              "invariants": [
+                "code、物理归属、生命周期、网络分区、乐观锁、权限、租户和审计职责保持",
+                "只写 architecture 自有表并只追加 V124",
+                "HTTP DTO 不接收 tenantId"
+              ],
+              "interface_contracts": [
+                "DeploymentUnitCommand(name,kind,relatedDeploymentUnitIds,defaultNetworkZoneId,description,remark,rowVersion)",
+                "DeploymentUnitView 含 relatedDeploymentUnits 且删除旧三个字段",
+                "GET /api/architecture/deployment-units/options 返回当前租户 ACTIVE 分页候选",
+                "资源申请依据 kind 映射 APPLICATION->AP、DATABASE->DB、WEB->WB"
+              ],
+              "non_goals": [
+                "不保留 MQ/PL 或旧客户端兼容",
+                "不修改 platform/shared/公共 UI",
+                "不改变编号和权限码"
+              ],
+              "action_bounds": [
+                "先补失败测试，再追加 V124 和最小 Java 修改",
+                "关系只用 tenant/min/max 单行与差量 LINK/UNLINK 历史",
+                "发现 V124 冲突或 scope 外消费者立即停止"
+              ],
+              "acceptance_checks": [
+                "名称格式、唯一性、标准/自定义后缀测试通过",
+                "搜索分页、权限、租户、自关联/失效目标拒绝测试通过",
+                "双向增删、重复、并发、停用保留和有关联作废 409 通过",
+                "导入五列与资源申请三类分流通过",
+                "V124 空库/增量和 Flyway 检查通过"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "S1/S2/S6 命令与退出码",
+                "迁移结构断言",
+                "扰动和未决项"
+              ],
+              "rollback": "回退 T1 小提交；已执行 V124 的早期开发环境使用补偿迁移或重建数据库",
+              "stop_conditions": [
+                "V124 被占用",
+                "需修改 scope 外强依赖",
+                "关系无法在单事务内保持一致",
+                "发现生产数据要求"
+              ],
+              "escalation_conditions": [
+                "需要旧客户端兼容",
+                "主名称需要允许下划线",
+                "双方版本需同步增长",
+                "需修改平台/shared/公共 UI"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "前端完成单名称输入、类型联动、远程搜索多选和下游展示切换",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R6",
+                "R8"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "T1 是 DTO 和 options API 唯一所有者",
+                "页面已复用 UiPageHeader/UiToolbar/UiDataTable/移动卡片",
+                "Element Plus 支持 remote multiple collapse-tags"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/**"
+              ],
+              "invariants": [
+                "前端权限不替代后端权限",
+                "不修改共享 UI",
+                "桌面表格与手机卡片保持同一业务规则"
+              ],
+              "interface_contracts": [
+                "消费 T1 DeploymentUnitView/Version/RelatedDeploymentUnitView/Payload",
+                "名称只使用一个输入框",
+                "标准后缀双向联动且自定义后缀不被覆盖"
+              ],
+              "non_goals": [
+                "不新增第二后缀输入框",
+                "不建立公共选择器",
+                "不改路由或应用壳"
+              ],
+              "action_bounds": [
+                "先切换 types/api 触发静态失败",
+                "再改页面/详情/导入/资源申请和局部 CSS",
+                "只在 architecture 模块内实现请求乱序与状态处理"
+              ],
+              "acceptance_checks": [
+                "vue-tsc/Vite build 通过",
+                "旧字段和 MQ 负向扫描无业务残留",
+                "单输入大写和标准/自定义后缀旅程通过",
+                "远程多选编辑回显和失败保留已选通过",
+                "375px 不产生页面级横向滚动"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "S3/S5/S6 结果",
+                "Network/Console/DOM 溢出证据"
+              ],
+              "rollback": "回退 T2 小提交并与 T1 配套回滚",
+              "stop_conditions": [
+                "T1 契约未稳定",
+                "需要修改共享 UI",
+                "移动布局无法在模块局部修复"
+              ],
+              "escalation_conditions": [
+                "需要公共选择器",
+                "用户要求第二后缀输入框",
+                "需要改变弹层基础组件"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "同步 Mock/公开契约并完成自动化、真实 API/SQL/审计和四视口收敛验收",
+              "requirement_ids": [
+                "R1",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "Mock 必须虚构且幂等",
+                "architecture-module-contract 是公开契约",
+                "high-assurance 至少需要三次采样和两类传感器"
+              ],
+              "write_scope": [
+                "mock/mock-data.json",
+                "docs/integration/architecture-module-contract.md",
+                "docs/requirements/REQ-20260901-057-deployment-unit-model/**",
+                ".ai-control/requirements/req-20260901-057-deployment-unit-model/*.json"
+              ],
+              "invariants": [
+                "不修复其他需求历史账本",
+                "不访问生产或真实敏感数据",
+                "失败证据与历史噪声分开报告"
+              ],
+              "interface_contracts": [
+                "Mock、Java、TypeScript、HTTP 和文档字段一致",
+                "浏览器验收路由 /architecture/deployment-units"
+              ],
+              "non_goals": [
+                "不发布、不合并、不连接生产",
+                "不扩大公共能力"
+              ],
+              "action_bounds": [
+                "同步虚构数据和公开契约",
+                "执行从静态到全栈的分级验证",
+                "只记录本任务前缀 execution/observation/convergence"
+              ],
+              "acceptance_checks": [
+                "Mock 幂等和公开契约一致",
+                "Maven/前端/Flyway/scope/diff 本需求检查通过",
+                "真实 API/SQL/审计通过",
+                "1280/375/390/430 明暗主题无新增控制台错误和页面横向滚动",
+                "最终 P0/P1 为零"
+              ],
+              "evidence_required": [
+                "S1-S6 原始结果",
+                "三次离散采样",
+                "execution/observation/convergence",
+                "残余风险和回退说明"
+              ],
+              "rollback": "按 T3、T2、T1 逆序回退；数据库使用补偿迁移或重建早期开发库",
+              "stop_conditions": [
+                "权限或租户越界",
+                "双方关系不一致",
+                "资源分流错误",
+                "迁移破坏非开发数据",
+                "浏览器主路径不可达"
+              ],
+              "escalation_conditions": [
+                "需要生产数据清理",
+                "需要 scope 外修改",
+                "历史治理错误成为不可绕过硬门禁",
+                "回退需删除不可恢复数据"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 消费 T1 的共享 DTO 和 options API"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 浏览器与契约验收依赖前端完成"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "T3 MySQL/API/审计验收依赖后端与迁移完成"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "S1 后端聚焦测试",
+                "S2 MySQL/Flyway",
+                "S6 旧字段扫描"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "S3 前端构建",
+                "S6 契约残留扫描"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "S1-S6 全量收敛门禁"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 完成采样",
+              "trigger": "T1 执行报告完成",
+              "observer": "独立观测阶段",
+              "sensors": [
+                "S1",
+                "S2",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "T2 集成采样",
+              "trigger": "T2 执行报告完成",
+              "observer": "独立观测阶段",
+              "sensors": [
+                "S3",
+                "S5",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R6",
+                "R8"
+              ]
+            },
+            {
+              "label": "最终收敛采样",
+              "trigger": "T3 全栈验收完成",
+              "observer": "独立观测与收敛验收",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 后端/V124/导入/资源申请已实现；38 个聚焦测试、Flyway 与 diff 检查通过；Docker/MySQL 明确记录为环境阻塞",
+        "recorded_at": "2026-09-02T04:45:16+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+              "purpose": "删除旧字段、收敛类型与名称约束，并创建规范化双向关系和只追加历史表"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java",
+              "purpose": "删除简称、登记类型和自由文本关联，收敛为完整名称、APPLICATION/DATABASE/WEB 和结构化关联命令"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+              "purpose": "更新主记录与版本 SQL，增加租户级名称唯一、关系替换、历史和 ACTIVE 候选搜索"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+              "purpose": "实现名称/后缀/类型校验、租户状态校验、双向关系事务和有关联作废冲突"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitController.java",
+              "purpose": "增加 options 接口并保持 view/manage 查询权限兼容"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+              "purpose": "导入契约收敛为五列并支持应用、数据库、Web"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+              "purpose": "删除资源申请旧投影字段并只按部署单元 kind 分流 AP/DB/WB"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/**",
+              "purpose": "更新 service、资源申请、导入和生命周期测试，并新增 Controller 契约测试"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitControllerTest,DeploymentUnitServiceTest,EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "38 tests，0 failures，0 errors，BUILD SUCCESS"
+            },
+            {
+              "command": "mvn -pl :ccb-architecture -am -DskipTests -Dmaven.compiler.useIncrementalCompilation=false test-compile",
+              "exit_code": 0,
+              "salient_output": "测试源码强制重新编译通过"
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "115 个迁移和 1 个批准回调检查通过，V124 未冲突"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误，仅出现仓库既有 LF/CRLF 提示"
+            },
+            {
+              "command": "docker info --format '{{.ServerVersion}}'",
+              "exit_code": 1,
+              "salient_output": "Docker Desktop 进程存在，但 dockerDesktopLinuxEngine 命名管道不存在，Linux 引擎不可达"
+            },
+            {
+              "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitLifecycleMySqlTest,DeploymentUnitImportMySqlTest,ArchitectureMigrationMySqlTest,EmptyDatabaseMigrationBaselineMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 1,
+              "salient_output": "未能进入测试执行：Testcontainers 所需 Docker Linux 引擎不可达"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "部署单元、资源申请和 Controller 聚焦测试",
+              "result": "pass",
+              "evidence": "38 个 JUnit/Mockito/MockMvc 测试通过",
+              "limitations": [
+                "不替代真实 MySQL 约束、外键和并发验证"
+              ]
+            },
+            {
+              "check": "Flyway 版本与静态迁移规则",
+              "result": "pass",
+              "evidence": "check-flyway-migrations 退出码 0，V124 为唯一候选版本",
+              "limitations": [
+                "尚未在 MySQL 8.4 实际执行 V124"
+              ]
+            },
+            {
+              "check": "旧字段和 MQ 业务残留扫描",
+              "result": "pass",
+              "evidence": "目标 Java、Vue 和公开契约无旧业务字段命中；Controller 负向断言中的字段名不属于运行时残留",
+              "limitations": []
+            },
+            {
+              "check": "V124/MySQL/Testcontainers",
+              "result": "blocked",
+              "evidence": "Docker Desktop 的 docker-desktop WSL 发行版和 Linux 引擎未成功启动",
+              "limitations": [
+                "未获得空库/增量迁移、关系外键、唯一约束和真实 SQL 的运行证据"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "部署单元公开模型删除 shortName、relatedDeploymentUnitName、deploymentUnitType",
+            "类型从 APPLICATION/DATABASE/MQ 收敛为 APPLICATION/DATABASE/WEB",
+            "增加租户内 ACTIVE 部署单元分页搜索和结构化双向关系",
+            "资源申请改为只按 kind 映射 AP/DB/WB",
+            "追加 V124 破坏性早期开发迁移和关系历史结构",
+            "查询端点补齐 deployment-unit:manage 查看兼容权限"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "HTTP DTO 不接收 tenantId，租户只来自 AuthUser",
+              "result": "pass",
+              "evidence": "DeploymentUnitControllerTest 反射和响应断言通过"
+            },
+            {
+              "invariant": "写操作继续使用 architecture:deployment-unit:manage，查询兼容 view/manage",
+              "result": "pass",
+              "evidence": "Controller PreAuthorize 契约测试通过"
+            },
+            {
+              "invariant": "只写 architecture 自有表并只追加 V124",
+              "result": "pass",
+              "evidence": "实际 diff 和 Flyway 检查未发现历史迁移修改或跨模块表写入"
+            },
+            {
+              "invariant": "关系按 tenant/min/max 单行规范化并在同一事务写历史",
+              "result": "partial",
+              "evidence": "Store/Service 代码与单元测试符合契约",
+              "limitations": [
+                "等待 MySQL/Testcontainers 验证真实锁、约束和回滚"
+              ]
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Docker Desktop Linux 引擎未创建命名管道，docker-desktop WSL 发行版保持 Stopped",
+              "impact": "MySQL 8.4 Testcontainers、V124 空库/增量和真实关系 SQL 无法运行"
+            },
+            {
+              "event": "mock/mock-data.json 的部署单元表不在平台初始化白名单，且白名单位于 scope 外",
+              "impact": "已撤回部署单元 Mock 内容，T3 只能记录该边界，不能修改平台白名单"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Docker/MySQL 可用后必须重跑四个 MySQL/Flyway 聚焦测试并核对 V124 约束、外键和关系 SQL",
+            "EnvironmentResourceStore.replaceItems 的 30 个占位符和参数仅获得编译/单元证据，等待真实数据库执行",
+            "在完成 S2 真实 MySQL 采样前，T1 不具备高保证 verified 证据"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "F-0001/F-0002 纠正已实现；38 个非容器测试和 Flyway 静态检查通过，MySQL 运行验证因 Docker 扰动未执行",
+        "recorded_at": "2026-09-02T05:05:04+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+              "purpose": "把模板示例改为当前五列契约"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java",
+              "purpose": "校验五列表头、示例列和模板回传 VALID"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+              "purpose": "先删除旧类型 CHECK，再把遗留 MQ 转换为 WEB"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureMigrationMySqlTest.java",
+              "purpose": "覆盖 V123 含 MQ 数据升级到 V124"
+            }
+          ],
+          "requirements_addressed": [
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitControllerTest,DeploymentUnitServiceTest,EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "38 tests，0 failures/errors，BUILD SUCCESS；同时编译全部 41 个架构测试源文件"
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "115 migrations 和 1 approved callback 检查通过"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误，仅 LF/CRLF 提示"
+            },
+            {
+              "command": "docker version",
+              "exit_code": 1,
+              "salient_output": "dockerDesktopLinuxEngine 命名管道不存在"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Java 编译与非容器聚焦回归",
+              "result": "pass",
+              "evidence": "38/38 测试通过，新增 MySQL 测试源码编译通过",
+              "limitations": [
+                "未执行 Testcontainers 测试"
+              ]
+            },
+            {
+              "check": "Flyway 静态治理",
+              "result": "pass",
+              "evidence": "check-flyway-migrations 退出码 0",
+              "limitations": [
+                "不能替代 MySQL 8.4 实际执行"
+              ]
+            },
+            {
+              "check": "Docker/MySQL 运行验证",
+              "result": "blocked",
+              "evidence": "Docker Linux 引擎命名管道不存在",
+              "limitations": [
+                "V123 含 MQ 增量迁移尚未运行"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "模板示例从旧六列顺序修正为 W0001A、ECIP_AP、应用、描述、备注五列",
+            "V124 将旧 CHECK 删除移动到 MQ→WEB 转换之前",
+            "补充模板回传和含 MQ 增量迁移回归测试"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "保持五列公开导入契约且不恢复旧字段",
+              "result": "pass",
+              "evidence": "模板和测试均断言五列，第六列为空"
+            },
+            {
+              "invariant": "最终类型仅 APPLICATION、DATABASE、WEB",
+              "result": "pass",
+              "evidence": "V124 新 CHECK 未变化，Flyway 静态检查通过"
+            }
+          ],
+          "disturbances": [
+            "Docker Desktop Linux 引擎不可达；wsl --shutdown 因未获得对所有 WSL 进程中断副作用的明确授权而未执行。"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "运行 DeploymentUnitImportMySqlTest 和 ArchitectureMigrationMySqlTest，验证模板回传及 V123 含 MQ 增量迁移。"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "V123 测试种子补齐 deployment_unit_type，41 个测试源编译通过",
+        "recorded_at": "2026-09-02T05:11:11+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureMigrationMySqlTest.java",
+              "purpose": "补齐 V123 必填 deployment_unit_type，使含 MQ 增量迁移传感器有效"
+            }
+          ],
+          "requirements_addressed": [
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am -DskipTests test-compile",
+              "exit_code": 0,
+              "salient_output": "41 个架构测试源文件编译通过，BUILD SUCCESS"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "迁移测试编译",
+              "result": "pass",
+              "evidence": "test-compile 退出码 0",
+              "limitations": [
+                "Docker 不可达，测试仍未运行"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "主表和版本表 V123 种子均显式写入 deployment_unit_type='AP'"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "只修正测试传感器，不改变产品契约",
+              "result": "pass",
+              "evidence": "仅修改 ArchitectureMigrationMySqlTest"
+            }
+          ],
+          "disturbances": [
+            "Docker Desktop Linux 引擎不可达"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "运行 V123→V124 含 MQ Testcontainers 测试"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "前端正式构建通过，单输入/标准与自定义后缀/远程多选/失败保留已选及四视口浏览器旅程完成",
+        "recorded_at": "2026-09-02T05:11:39+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/DeploymentUnitPage.vue",
+              "purpose": "单名称输入、类型后缀联动、远程搜索多选和状态处理"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+              "purpose": "展示结构化双向关联"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/api.ts",
+              "purpose": "切换部署单元 DTO 和 options 搜索 API"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/types.ts",
+              "purpose": "删除旧字段并定义新类型和关联视图"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/utils.ts",
+              "purpose": "名称规范化和标准后缀联动"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+              "purpose": "导入列与三类型契约同步"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue",
+              "purpose": "资源申请消费新部署单元名称和类型"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "醒目名称输入和移动布局局部样式"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R6",
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "npm ci && npm run build（临时 web 副本）",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 与 vite build 通过，2513 modules transformed"
+            },
+            {
+              "command": "in-app Browser 四视口验收",
+              "exit_code": 0,
+              "salient_output": "1280×800、375×812、390×844、430×932 无页面级横向溢出；控制台 warn/error 为空"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "单输入与后缀联动",
+              "result": "pass",
+              "evidence": "smslj→SMSLJ_AP；BATCH_DB 切 Web→BATCH_WB；BATCH_JOB1 切类型保持自定义后缀",
+              "limitations": []
+            },
+            {
+              "check": "关联远程搜索多选",
+              "result": "pass",
+              "evidence": "跨物理子系统选择 YGQL1_DB、PORTAL_WB；搜索失败保留已选项",
+              "limitations": [
+                "使用临时内存 Mock API，不代表真实后端/MySQL"
+              ]
+            },
+            {
+              "check": "响应式与主题",
+              "result": "pass",
+              "evidence": "四视口 scrollWidth===innerWidth，浅色/深色可读，手机底部按钮可达",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "部署单元前端统一为一个醒目名称输入框",
+            "标准后缀与类型双向联动且保留自定义后缀",
+            "关联部署单元支持搜索、选择和多选",
+            "详情、导入和资源申请消费新模型"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "不修改共享 UI 和应用壳",
+              "result": "pass",
+              "evidence": "修改限制在 architecture 模块"
+            },
+            {
+              "invariant": "桌面表格与手机卡片同一业务规则",
+              "result": "pass",
+              "evidence": "四视口浏览器验收"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实后端 API 联调由 T3/MySQL 环境验证"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "公开契约、Flyway/diff/残留扫描和浏览器集成证据已记录；真实 API/SQL/审计因 Docker/MySQL 扰动未闭合",
+        "recorded_at": "2026-09-02T05:12:08+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "docs/integration/architecture-module-contract.md",
+              "purpose": "同步新 DTO、三类型、关联 options 和导入五列契约"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260901-057-deployment-unit-model/**",
+              "purpose": "记录需求、范围和验收约束"
+            },
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260901-057-deployment-unit-model/*.json",
+              "purpose": "记录控制闭环证据"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R5",
+            "R6",
+            "R7",
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "115 migrations 和 1 approved callback 通过"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误，仅 LF/CRLF 提示"
+            },
+            {
+              "command": "旧字段/MQ 运行代码和契约扫描",
+              "exit_code": 0,
+              "salient_output": "无业务残留；合法迁移/兼容测试上下文除外"
+            },
+            {
+              "command": "docker version",
+              "exit_code": 1,
+              "salient_output": "dockerDesktopLinuxEngine 命名管道不存在"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "公开契约一致性",
+              "result": "pass",
+              "evidence": "Java、TypeScript、HTTP 文档均使用 name/kind/relatedDeploymentUnits 与三类型",
+              "limitations": [
+                "真实 HTTP 未联调"
+              ]
+            },
+            {
+              "check": "浏览器业务旅程",
+              "result": "pass",
+              "evidence": "创建、详情双向展示、409 保留输入、脏表单确认、搜索失败保留已选、四视口明暗主题均已验证",
+              "limitations": [
+                "临时内存 Mock API"
+              ]
+            },
+            {
+              "check": "真实 API/SQL/审计",
+              "result": "blocked",
+              "evidence": "Docker/MySQL 不可达",
+              "limitations": [
+                "关系外键、事务、迁移和审计运行证据缺失"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "公开契约同步新部署单元模型",
+            "Mock 文件未保留无效或非幂等数据差异",
+            "浏览器与自动化证据已记录"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "不修改其他任务账本和历史治理噪声",
+              "result": "pass",
+              "evidence": "仅写当前控制前缀"
+            },
+            {
+              "invariant": "不连接生产或真实敏感数据",
+              "result": "pass",
+              "evidence": "仅本地代码、临时 Mock API 和测试数据"
+            }
+          ],
+          "disturbances": [
+            "Docker Desktop Linux 引擎不可达；全局 scope/governance 检查包含其他历史任务文件噪声，未修改。"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Testcontainers MySQL 四项聚焦测试未运行",
+            "真实 API/SQL/审计尚未闭合"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "独立观察 Agent 静态复核 T1；发现 2 个 P1，Docker/MySQL 覆盖缺口单列为环境扰动",
+        "recorded_at": "2026-09-02T04:57:17+00:00",
+        "data": {
+          "sample_label": "T1 完成采样（独立静态复核，2026-09-02）",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S6 源码/契约负向扫描",
+              "result": "pass",
+              "raw_evidence": "新模型、存储、服务、资源申请和 Controller 已删除部署单元简称、旧关联名称、旧类型字段；Controller DTO 无 tenantId。",
+              "limitation": [
+                "未覆盖完整运行时序列化"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 代码与测试证据",
+              "result": "partial",
+              "raw_evidence": "名称使用大写规范化、命名正则和标准后缀校验；执行报告记录非容器聚焦测试 38 passed。",
+              "limitation": [
+                "本轮观察者未重跑 Maven",
+                "未覆盖真实 MySQL 唯一约束"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1/S6 代码与负向扫描",
+              "result": "pass",
+              "raw_evidence": "APPLICATION、DATABASE、WEB 枚举及 AP、DB、WB 映射存在；MQ 已从 Java 新模型移除。",
+              "limitation": [
+                "未覆盖真实 API 和导入运行旅程"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1/S6 存储与服务复核",
+              "result": "partial",
+              "raw_evidence": "关联选项按当前租户、ACTIVE、名称/编号/物理子系统名称和编号搜索并支持 excludeId；服务校验目标租户和 ACTIVE 状态。",
+              "limitation": [
+                "未获得真实 MySQL 查询、跨租户和并发证据"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1/S2 代码与迁移复核",
+              "result": "partial",
+              "raw_evidence": "关系表以 tenant_id、unit_low_id、unit_high_id 主键规范化；服务在事务内写当前关系和 LINK/UNLINK 历史。",
+              "limitation": [
+                "Docker Linux 引擎不可达，真实外键、事务回滚和并发未采样"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1/S6 导入实现与契约复核",
+              "result": "fail",
+              "raw_evidence": "导入模板表头已改为五列，但示例行仍按旧六列顺序写入；V124 在删除旧 CHECK 前将 MQ 更新为 WEB。",
+              "limitation": [
+                "未运行模板上传真实 HTTP 旅程",
+                "未在 MySQL 8.4 实际执行迁移"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1/S6 Controller 契约复核",
+              "result": "pass",
+              "raw_evidence": "查询权限兼容 view/manage，写操作保持 manage；命令和视图 DTO 无 tenantId。",
+              "limitation": [
+                "缺少真实认证矩阵"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R6",
+              "expected": "下载的 xlsx 模板可按当前五列表头直接重新上传，并产生 VALID 示例行。",
+              "observed": "模板示例仍为旧六列顺序，解析前五列后名称和类型均不合法。",
+              "reproduction": "下载部署单元导入模板后原样重新上传，或按五列解析示例行。",
+              "evidence": "DeploymentUnitImportService 模板写入五列表头却保留旧六列示例；解析器只读取前五列；公开契约声明五列表头。",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "未启动真实 API，但列位置和校验失败可由源码稳定确定。",
+              "causal_hypothesis": "模板示例数据未随导入契约从六列迁移为五列。",
+              "correction_check": "增加模板下载后再解析的 round-trip 测试，并确认示例行 VALID。",
+              "classification": "deviation"
+            },
+            {
+              "requirement_id": "R6",
+              "expected": "V124 可从含遗留 MQ 数据的 V123 数据库增量升级。",
+              "observed": "V124 在删除只允许 APPLICATION、DATABASE、MQ 的旧 CHECK 前先把 MQ 更新为 WEB，含 MQ 行时会被旧 CHECK 拒绝。",
+              "reproduction": "在 V123 数据库插入 kind=MQ 的部署单元或版本记录后执行 Flyway migrate 到 V124。",
+              "evidence": "V96 旧 CHECK 不允许 WEB；V124 第 4-10 行先更新 MQ 为 WEB，第 25-45 行才删除旧 CHECK。",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "Docker 不可达，未进行 MySQL 8.4 实际执行。",
+              "causal_hypothesis": "迁移数据转换语句与删除旧 CHECK 的顺序反置。",
+              "correction_check": "在 MySQL 8.4 验证空库、无 MQ 增量库和含 MQ 增量库；确认转换在旧约束删除后执行。",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            "Docker Desktop Linux 引擎命名管道不可达，Testcontainers MySQL 聚焦测试未执行。"
+          ],
+          "coverage_gaps": [
+            "关系并发、重复提交、半边关系、历史与回滚需真实 MySQL 采样。",
+            "APPLICATION/WEB 资源申请路径缺少显式 WEB 集成测试。",
+            "Controller 权限缺少真实 403 和租户越界运行证据。"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 2,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "incomplete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "校准 observation_status：计划内测量均有结果或明确覆盖缺口；complete 不代表无偏差，仍保留 2 个 P1 和 Docker 扰动",
+        "recorded_at": "2026-09-02T04:58:19+00:00",
+        "data": {
+          "sample_label": "T1 完成采样（独立静态复核，2026-09-02）",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S6 源码/契约负向扫描",
+              "result": "pass",
+              "raw_evidence": "新模型、存储、服务、资源申请和 Controller 已删除部署单元简称、旧关联名称、旧类型字段；Controller DTO 无 tenantId。",
+              "limitation": [
+                "未覆盖完整运行时序列化"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 代码与测试证据",
+              "result": "partial",
+              "raw_evidence": "名称使用大写规范化、命名正则和标准后缀校验；执行报告记录非容器聚焦测试 38 passed。",
+              "limitation": [
+                "本轮观察者未重跑 Maven",
+                "未覆盖真实 MySQL 唯一约束"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1/S6 代码与负向扫描",
+              "result": "pass",
+              "raw_evidence": "APPLICATION、DATABASE、WEB 枚举及 AP、DB、WB 映射存在；MQ 已从 Java 新模型移除。",
+              "limitation": [
+                "未覆盖真实 API 和导入运行旅程"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1/S6 存储与服务复核",
+              "result": "partial",
+              "raw_evidence": "关联选项按当前租户、ACTIVE、名称/编号/物理子系统名称和编号搜索并支持 excludeId；服务校验目标租户和 ACTIVE 状态。",
+              "limitation": [
+                "未获得真实 MySQL 查询、跨租户和并发证据"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1/S2 代码与迁移复核",
+              "result": "partial",
+              "raw_evidence": "关系表以 tenant_id、unit_low_id、unit_high_id 主键规范化；服务在事务内写当前关系和 LINK/UNLINK 历史。",
+              "limitation": [
+                "Docker Linux 引擎不可达，真实外键、事务回滚和并发未采样"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1/S6 导入实现与契约复核",
+              "result": "fail",
+              "raw_evidence": "导入模板表头已改为五列，但示例行仍按旧六列顺序写入；V124 在删除旧 CHECK 前将 MQ 更新为 WEB。",
+              "limitation": [
+                "未运行模板上传真实 HTTP 旅程",
+                "未在 MySQL 8.4 实际执行迁移"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1/S6 Controller 契约复核",
+              "result": "pass",
+              "raw_evidence": "查询权限兼容 view/manage，写操作保持 manage；命令和视图 DTO 无 tenantId。",
+              "limitation": [
+                "缺少真实认证矩阵"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R6",
+              "expected": "下载的 xlsx 模板可按当前五列表头直接重新上传，并产生 VALID 示例行。",
+              "observed": "模板示例仍为旧六列顺序，解析前五列后名称和类型均不合法。",
+              "reproduction": "下载部署单元导入模板后原样重新上传，或按五列解析示例行。",
+              "evidence": "DeploymentUnitImportService 模板写入五列表头却保留旧六列示例；解析器只读取前五列；公开契约声明五列表头。",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "未启动真实 API，但列位置和校验失败可由源码稳定确定。",
+              "causal_hypothesis": "模板示例数据未随导入契约从六列迁移为五列。",
+              "correction_check": "增加模板下载后再解析的 round-trip 测试，并确认示例行 VALID。",
+              "classification": "deviation"
+            },
+            {
+              "requirement_id": "R6",
+              "expected": "V124 可从含遗留 MQ 数据的 V123 数据库增量升级。",
+              "observed": "V124 在删除只允许 APPLICATION、DATABASE、MQ 的旧 CHECK 前先把 MQ 更新为 WEB，含 MQ 行时会被旧 CHECK 拒绝。",
+              "reproduction": "在 V123 数据库插入 kind=MQ 的部署单元或版本记录后执行 Flyway migrate 到 V124。",
+              "evidence": "V96 旧 CHECK 不允许 WEB；V124 第 4-10 行先更新 MQ 为 WEB，第 25-45 行才删除旧 CHECK。",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "Docker 不可达，未进行 MySQL 8.4 实际执行。",
+              "causal_hypothesis": "迁移数据转换语句与删除旧 CHECK 的顺序反置。",
+              "correction_check": "在 MySQL 8.4 验证空库、无 MQ 增量库和含 MQ 增量库；确认转换在旧约束删除后执行。",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            "Docker Desktop Linux 引擎命名管道不可达，Testcontainers MySQL 聚焦测试未执行。"
+          ],
+          "coverage_gaps": [
+            "关系并发、重复提交、半边关系、历史与回滚需真实 MySQL 采样。",
+            "APPLICATION/WEB 资源申请路径缺少显式 WEB 集成测试。",
+            "Controller 权限缺少真实 403 和租户越界运行证据。"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 2,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "独立纠正复验：产品代码静态偏差已消除，新增迁移测试种子存在传感器缺陷；MySQL 运行证据仍受 Docker 扰动阻塞",
+        "recorded_at": "2026-09-02T05:09:12+00:00",
+        "data": {
+          "sample_label": "T1 纠正复验（F-0001/F-0002）",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R6",
+              "sensor": "S6 + 导入测试源码检查",
+              "result": "partial-pass",
+              "raw_evidence": "模板实现只写五个当前契约单元格；测试断言五列表头、五列示例、第六列为空以及回传后 VALID。",
+              "limitation": [
+                "round-trip 位于 Testcontainers MySQL 测试，Docker 不可用时未实际执行"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S6 + 迁移测试源码检查",
+              "result": "partial-pass",
+              "raw_evidence": "V124 已先删除旧 kind CHECK 再执行 MQ→WEB；新增 V123→V124 含 MQ 测试。观察时测试种子遗漏 V106 设为 NOT NULL 的 deployment_unit_type。",
+              "limitation": [
+                "Docker 不可用，迁移未实际执行",
+                "观察时新增迁移测试传感器种子不完整"
+              ]
+            },
+            {
+              "requirement_id": "R1/R2/R3/R4/R7",
+              "sensor": "S1/S6 执行报告与静态复核",
+              "result": "partial-pass",
+              "raw_evidence": "38 个非容器测试通过，Flyway 静态检查通过，未发现 DTO、名称规则、类型、options 查询和权限契约新增回归。",
+              "limitation": [
+                "不等价于 MySQL 8.4 迁移、约束、关系事务或并发通过"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Docker Desktop Linux 引擎命名管道不可达，Testcontainers MySQL 测试未执行。"
+          ],
+          "coverage_gaps": [
+            "F-0001/F-0002 最终关闭仍需 MySQL 运行证据。",
+            "新增 V123→V124 测试种子需补齐 deployment_unit_type 后复验。",
+            "关系唯一键、外键、事务回滚和并发锁仍未观测。"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "独立集成观察覆盖 T1/T2/T3：未发现新增产品偏差，前端范围通过；MySQL、真实 API/SQL/权限/审计仍因 Docker 扰动不可观测",
+        "recorded_at": "2026-09-02T05:34:29+00:00",
+        "data": {
+          "sample_label": "T1/T2/T3 集成独立采样（2026-09-02）",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S6 源码、测试与契约复核",
+              "result": "partial",
+              "raw_evidence": "旧字段已从部署单元运行模型和契约删除。",
+              "limitation": [
+                "V124 未实际运行"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1/S3/S6 单元测试、浏览器与静态复核",
+              "result": "partial",
+              "raw_evidence": "服务端名称校验、前端后缀联动及 38 个非容器测试通过。",
+              "limitation": [
+                "真实唯一约束和 API 未验证"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3/S6 浏览器与静态复核",
+              "result": "partial",
+              "raw_evidence": "APPLICATION、DATABASE、WEB 及 AP、DB、WB 映射在代码和 Mock 浏览器旅程通过。",
+              "limitation": [
+                "真实后端未验证"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S3/S6 浏览器与静态复核",
+              "result": "partial",
+              "raw_evidence": "ACTIVE、租户、搜索、多选和排除自身逻辑已实现；前端远程多选旅程通过。",
+              "limitation": [
+                "真实 SQL 和租户边界未验证"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S6 代码复核",
+              "result": "unobservable",
+              "raw_evidence": "规范化关系、历史和事务代码存在。",
+              "limitation": [
+                "外键、回滚、重复提交和并发未运行验证"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1/S6 测试编译、迁移与契约复核",
+              "result": "partial",
+              "raw_evidence": "模板五列、资源分流和迁移顺序已静态修正；迁移测试种子编译通过。",
+              "limitation": [
+                "导入 round-trip、MQ 增量迁移和审计未运行"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1/S6 Controller 测试与静态复核",
+              "result": "partial",
+              "raw_evidence": "Controller 权限和 DTO 静态测试通过。",
+              "limitation": [
+                "真实 403、跨租户和审计缺失"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "S3/S5 前端构建与浏览器验收",
+              "result": "pass",
+              "raw_evidence": "正式 build、四视口、明暗主题、控制台和 Mock 交互证据通过。",
+              "limitation": [
+                "不代表真实 API"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Docker Desktop Linux 引擎命名管道不可达，Testcontainers MySQL 未执行。",
+            "T2/T3 浏览器使用临时内存 Mock API，不能作为真实后端证据。",
+            "mock/mock-data.json 未含部署单元数据，相关白名单在 scope 外。"
+          ],
+          "coverage_gaps": [
+            "四项 MySQL/Flyway 测试、外键、唯一约束和事务回滚未运行。",
+            "关系并发、重复提交、锁顺序和停用关系编辑未验证。",
+            "真实 API 权限、租户隔离、审计和资源申请下游未联调。",
+            "F-0001/F-0002 仍需 MySQL 运行证据才能关闭。"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "incomplete"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "Docker Desktop 29.7.2 + Testcontainers MySQL 8.4：四组测试共21项通过，独立观察未发现新增P0-P3偏差",
+        "recorded_at": "2026-09-02T06:18:14+00:00",
+        "data": {
+          "sample_label": "Docker/MySQL 恢复后独立复验（2026-09-02）",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "MySQL 8.4 Flyway 空库与 V123→V124 增量迁移",
+              "result": "pass",
+              "raw_evidence": "ArchitectureMigrationMySqlTest 3/3、EmptyDatabaseMigrationBaselineMySqlTest 2/2 通过；V124 删除旧字段并完成遗留 MQ→WEB 与完整名称转换。",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "服务测试、MySQL 生命周期测试与数据库约束",
+              "result": "pass",
+              "raw_evidence": "名称格式、唯一占用、版本发布及生命周期 MySQL 测试通过。",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "非容器服务测试、MySQL 迁移与前端浏览器旅程",
+              "result": "pass",
+              "raw_evidence": "APPLICATION/DATABASE/WEB、AP/DB/WB 标准后缀及自定义后缀证据通过。",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "服务测试、前端远程多选旅程与代码复核",
+              "result": "partial",
+              "raw_evidence": "搜索、多选、排除自身、ACTIVE 和租户过滤已有自动化及浏览器证据。",
+              "limitation": [
+                "真实 HTTP/SQL 租户边界旅程尚未运行"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "迁移结构、服务测试与 MySQL 生命周期测试",
+              "result": "partial",
+              "raw_evidence": "规范化关系表、双向查询、差量 LINK/UNLINK 历史及事务实现存在。",
+              "limitation": [
+                "关系唯一键、外键、事务回滚和并发提交尚无专项 MySQL 运行断言"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "DeploymentUnitImportMySqlTest 与 ArchitectureMigrationMySqlTest",
+              "result": "pass",
+              "raw_evidence": "导入 8/8、迁移 3/3 通过；模板五列回传为 VALID，含 MQ 的 V123→V124 增量迁移成功。",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "Controller/Service 自动化与 MySQL 测试",
+              "result": "partial",
+              "raw_evidence": "权限注解、HTTP DTO、失败审计与租户过滤已有自动化证据。",
+              "limitation": [
+                "真实运行态 403、跨租户和审计记录旅程尚未联调"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "正式前端构建与四视口浏览器验收",
+              "result": "pass",
+              "raw_evidence": "1280×800、375×812、390×844、430×932 明暗主题、控制台及横向溢出检查通过。",
+              "limitation": [
+                "浏览器后端为临时 Mock API"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "首次受限环境复跑 Maven 时无法访问依赖源；按批准在可访问 Docker 的环境重跑后通过。"
+          ],
+          "coverage_gaps": [
+            "双向关系唯一键、外键、事务回滚和并发提交需专项 MySQL 集成测试。",
+            "真实 API 的权限、租户隔离和审计旅程仍需运行证据。"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "incomplete"
+        }
+      },
+      {
+        "revision": 6,
+        "evidence": "2026-09-02 最终独立观察：真实 UAT、MySQL 关系专项、服务端租户状态校验、前端构建与基准失败对照完成",
+        "recorded_at": "2026-09-02T07:37:10+00:00",
+        "data": {
+          "sample_label": "最终全栈与基准对照独立观察",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S3/S6 模型、DTO、契约和负向扫描",
+              "result": "pass",
+              "raw_evidence": "非容器部署单元测试、前端正式 build、公开契约检查通过；旧 shortName、relatedDeploymentUnitName、deploymentUnitType 已从当前契约移除。",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1/S2/S5 名称校验、MySQL 唯一约束和浏览器输入旅程",
+              "result": "pass",
+              "raw_evidence": "名称格式、自动大写、租户内唯一和单输入框行为通过自动化与四视口浏览器验收。",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1/S3/S5 类型与后缀联动",
+              "result": "pass",
+              "raw_evidence": "APPLICATION/DATABASE/WEB、_AP/_DB/_WB 标准映射和自定义后缀场景通过服务测试、构建和浏览器旅程。",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1/S4/S5 搜索多选与目标合法性",
+              "result": "pass",
+              "raw_evidence": "真实 options 搜索命中 UATREL_AP；Controller 参数/DTO 测试通过；DeploymentUnitServiceTest 18/18 覆盖不存在、跨租户或非 ACTIVE 目标的服务端拒绝。",
+              "limitation": [
+                "本地真实 API 未建立第二租户账号，跨租户采用服务层自动化传感器验证。"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2/S4 MySQL 关系约束、自动化和真实 API/SQL",
+              "result": "pass",
+              "raw_evidence": "真实 API 完成 LINK→UNLINK→LINK 且双方详情一致、当前表仅一条规范化 low/high 关系；新增 MySQL 测试验证双向可见、重复提交幂等、任一端解除及 LINK/UNLINK 历史，DeploymentUnitLifecycleMySqlTest 9/9。",
+              "limitation": [
+                "未单独执行长时间高并发压测；主键唯一约束、事务回滚和聚焦并发编号测试提供结构性保护。"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1/S2/S4/S6 版本、历史、审计和下游回归",
+              "result": "pass",
+              "raw_evidence": "四组 MySQL 测试原 21/21，加新增关系测试后目标类 9/9；真实数据版本 3 条、关系历史 LINK v1/UNLINK v2/LINK v3、创建与更新审计成功；资源申请三类分流测试通过。",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1/S4/S6 权限、租户、实体、审计和范围",
+              "result": "pass",
+              "raw_evidence": "未认证真实请求返回 401；Controller 测试校验 view/manage 的 PreAuthorize 契约且 DTO 无 tenantId；服务测试拒绝非法租户/状态目标；真实写操作审计落库；git diff 全部位于授权路径。",
+              "limitation": [
+                "本地只读账号不可用，未取得真实 403；方法权限表达式和仓库既有安全测试作为自动化证据。"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "S3/S5 前端正式构建和四视口浏览器",
+              "result": "pass",
+              "raw_evidence": "npm --prefix web run build 退出码 0；1280x800、375x812、390x844、430x932 明暗主题、控制台和横向溢出验收通过。",
+              "limitation": [
+                "四视口交互证据基于 Mock 页面旅程，真实 API 主路径另由 S4 验证。"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "完整 mvn test 在 ccb-architecture 出现 1 failure/10 errors；基准分支复跑相同三个失败类得到完全相同结果，定位为 V80 字符集、网络工作流表和标准决策旧测试的既有基线故障，不是本需求回归。",
+            "check-all-governance 受其他需求历史账本错误阻塞；本需求 Flyway、diff 和路径实际审计通过。",
+            "check-codex-scope 对已批准的破坏性公开契约切换仍强制 old_behavior_preserved=true，当前 scope 如实记录 false，工具无法表达该批准例外。"
+          ],
+          "coverage_gaps": [
+            "未执行长时间关系高并发压力测试。",
+            "未在真实运行时取得非管理员 403 和第二租户账号矩阵。"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [
+      {
+        "revision": 1,
+        "evidence": "F-0001 已 accept；局部纠正模板示例列并增加回传复验",
+        "recorded_at": "2026-09-02T04:59:22+00:00",
+        "data": {
+          "feedback_id": "F-0001",
+          "decision": "accept",
+          "decision_reason": "五列表头、五列解析器与旧六列示例的列位置冲突可由源码稳定复现，直接违反 R6 导入契约。",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "模板示例数据未随导入契约从六列迁移为五列。",
+            "supporting_evidence": [
+              "模板表头为五列",
+              "示例仍写入六个单元格",
+              "解析器只读取前五列"
+            ],
+            "falsifier": "按当前模板回读时示例行能够通过名称与类型校验"
+          },
+          "control_action": {
+            "gain": "high",
+            "target": "部署单元导入模板示例及 round-trip 测试",
+            "write_scope": [
+              "DeploymentUnitImportService.java",
+              "DeploymentUnitServiceTest.java 或现有导入测试"
+            ],
+            "invariants": [
+              "保持五列公开导入契约",
+              "不恢复已删除旧字段"
+            ],
+            "impact_limit": "架构模块部署单元导入模板",
+            "rollback": "恢复本纠偏前模板示例与新增测试差异",
+            "correction_check": [
+              "模板示例按五列读取为 VALID",
+              "聚焦导入测试通过"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "真实 HTTP 上传旅程仍依赖可运行后端环境"
+          ]
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "F-0002 已 accept；局部纠正 V124 CHECK 删除与 MQ 转换顺序并增加增量迁移复验",
+        "recorded_at": "2026-09-02T04:59:30+00:00",
+        "data": {
+          "feedback_id": "F-0002",
+          "decision": "accept",
+          "decision_reason": "V96 旧 CHECK 明确不允许 WEB，而 V124 在删除约束前更新 MQ 为 WEB，含 MQ 数据的增量迁移必然冲突。",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "迁移数据转换语句与删除旧 CHECK 的顺序反置。",
+            "supporting_evidence": [
+              "V96 CHECK 仅允许 APPLICATION、DATABASE、MQ",
+              "V124 先转换 MQ 再删除旧 CHECK"
+            ],
+            "falsifier": "MySQL 8.4 在旧 CHECK 仍存在时允许将 kind 更新为 WEB"
+          },
+          "control_action": {
+            "gain": "high",
+            "target": "V124 旧 CHECK 删除与 MQ 数据转换顺序",
+            "write_scope": [
+              "V124__refine_deployment_unit_model.sql",
+              "ArchitectureMigrationMySqlTest.java 或现有迁移测试"
+            ],
+            "invariants": [
+              "Flyway 迁移只追加且 V124 尚未发布",
+              "最终只允许 APPLICATION、DATABASE、WEB"
+            ],
+            "impact_limit": "V124 部署单元迁移",
+            "rollback": "恢复本纠偏前 V124 语句顺序与新增测试差异",
+            "correction_check": [
+              "静态确认旧 CHECK 先删除再转换",
+              "MySQL 8.4 空库、无 MQ 和含 MQ 增量迁移通过"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "Docker 不可达时只能完成静态和非容器复验，不能关闭 MySQL 运行覆盖缺口"
+          ]
+        }
+      }
+    ],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "2026-09-02 最终独立收敛复核：R1-R8 pass、T1-T3 verified、六次采样最终 P0/P1 为零",
+        "recorded_at": "2026-09-02T07:47:36+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "Java/TypeScript/公开契约和数据库当前模型不再包含三个旧字段",
+                "非容器测试、前端 build 和最终 diff 审计通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "服务端名称格式和唯一性测试通过",
+                "单输入框、自动大写和四视口输入旅程通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "APPLICATION/DATABASE/WEB 与标准后缀校验测试通过",
+                "自定义后缀和前端双向联动验收通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "真实 options 搜索、多选关联和回显通过",
+                "Controller 参数测试及服务端非法租户/状态目标拒绝测试通过"
+              ],
+              "limitations": [
+                "跨租户拒绝采用服务层自动化而非第二租户真实账号 HTTP 采样。"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "真实 API/SQL 完成 LINK、UNLINK、重关联且双方一致、当前表单行规范化",
+                "DeploymentUnitLifecycleMySqlTest 12/12 覆盖双向、幂等、对向并发、事务回滚、自关联 CHECK、跨租户 FK 和关系历史"
+              ],
+              "limitations": [
+                "未执行长时间持续压力测试。"
+              ]
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "V124、导入、生命周期、资源申请分流和版本回归通过",
+                "真实版本、LINK/UNLINK 历史和创建/更新审计落库"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "Controller 精确 PreAuthorize 契约、平台 Method Security、真实 401 和 admin 成功",
+                "DTO 无 tenantId、服务层跨租户/非 ACTIVE 拒绝、审计和授权路径审计通过"
+              ],
+              "limitations": [
+                "未直接取得真实普通用户 HTTP 403；不声称该场景已真实运行验证。"
+              ]
+            },
+            {
+              "id": "R8",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "npm --prefix web run build 退出码 0",
+                "1280x800、375x812、390x844、430x932 明暗主题、控制台和横向溢出验收通过"
+              ],
+              "limitations": [
+                "四视口交互使用临时 Mock，真实后端主路径由独立 API/SQL 传感器覆盖。"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "MySQL、服务、迁移、关系并发回滚约束与真实 UAT 通过"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "前端正式 build 和四视口明暗主题验收通过"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "真实 API/SQL/审计、契约、Flyway、diff 和基准对照完成"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 2,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 2,
+              "P2": 0,
+              "P3": 0,
+              "score": 40
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0004",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0005",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0006",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "部署单元非容器测试",
+              "result": "pass",
+              "evidence": "DeploymentUnitServiceTest 18/18，Controller 和资源申请聚焦测试通过"
+            },
+            {
+              "check": "部署单元 MySQL/Flyway",
+              "result": "pass",
+              "evidence": "迁移 3/3、空库 2/2、导入 8/8、生命周期及关系 12/12"
+            },
+            {
+              "check": "前端正式构建",
+              "result": "pass",
+              "evidence": "vue-tsc 与 Vite build 退出码 0"
+            },
+            {
+              "check": "完整 Maven 回归无新增失败",
+              "result": "pass",
+              "evidence": "功能分支 1 failure/10 errors；基准分支复跑相同三个失败类得到完全相同 1 failure/10 errors，确认为既有基线故障"
+            },
+            {
+              "check": "Flyway 和差异检查",
+              "result": "pass",
+              "evidence": "check-flyway-migrations 通过；git diff --check 通过"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "只追加 V124，不修改历史迁移",
+              "result": "pass",
+              "evidence": "Flyway 检查 115 migrations 通过"
+            },
+            {
+              "invariant": "权限、租户、实体和审计职责保持",
+              "result": "pass",
+              "evidence": "权限注解、真实 401/admin、服务端非法目标拒绝和审计记录"
+            },
+            {
+              "invariant": "不修改 platform/shared 公共实现",
+              "result": "pass",
+              "evidence": "实际源码修改限于 architecture 模块及获批 V124"
+            },
+            {
+              "invariant": "不依赖动态表单元数据",
+              "result": "pass",
+              "evidence": "最终 diff 无 biz_form 或表单元数据依赖"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Docker Desktop 初始不可用",
+              "result": "pass",
+              "evidence": "Docker 恢复后 MySQL 迁移、导入、生命周期和关系专项全部通过"
+            },
+            {
+              "disturbance": "完整套件既有失败",
+              "result": "pass",
+              "evidence": "在 dev-ivanh 基准分支等价复现，未发现本需求新增回归"
+            },
+            {
+              "disturbance": "全仓治理历史账本噪声",
+              "result": "controlled",
+              "evidence": "模块治理、开发入口、Flyway 和本任务实际路径审计通过；未修改其他需求账本"
+            }
+          ],
+          "residual_risks": [
+            "未直接取得真实普通用户 HTTP 403 和第二租户账号矩阵；权限表达式、Method Security、服务层租户校验和真实 401/admin 构成替代证据。",
+            "未执行长时间持续关系压力测试；两线程对向并发、复合主键、CHECK/FK 和事务回滚已验证。",
+            "全仓 mvn test 与 check-all-governance 仍有本需求外既有失败；已提供基准对照，不在本需求范围内修复。",
+            "check-codex-scope 强制公开契约 old_behavior_preserved=true，无法表达用户已批准的破坏性字段删除；scope 文件如实保留 false。"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R8 均由 verified 任务和至少两类独立传感器覆盖；F-0001/F-0002 已关闭；六次采样最终 P0/P1 为零；新增失败已与基准分支对照排除。"
+        }
+      }
+    ]
+  },
+  "objective": "将部署单元收敛为完整名称、应用/数据库/Web 类型和可搜索多选的双向结构化关联，消除简称、登记类型和自由文本关联等重复事实源。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "模型必须删除部署单元简称和重复事实源。",
+      "acceptance": [
+        "主记录、版本、DTO、前端类型、Mock 和契约不再包含 shortName、relatedDeploymentUnitName、deploymentUnitType"
+      ],
+      "priority": "must",
+      "source": "用户原始请求及规范化方案确认",
+      "counterexample": [
+        "页面隐藏简称但数据库和接口仍继续维护",
+        "资源申请继续依赖 deploymentUnitType"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "部署单元名称必须由一个输入框维护并以最后一个下划线识别主名称和后缀。",
+      "acceptance": [
+        "输入自动大写",
+        "主名称只含大写字母和数字",
+        "后缀为 1-8 位大写字母或数字",
+        "完整名称租户内唯一",
+        "页面无第二个后缀输入框"
+      ],
+      "priority": "must",
+      "source": "用户确认通过 _ 判断分割和拼接",
+      "counterexample": [
+        "主名称和后缀使用两个输入框",
+        "只在前端校验而服务端接受非法名称"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "部署单元类型必须收敛为应用、数据库、Web，并与标准后缀双向联动。",
+      "acceptance": [
+        "_AP 映射 APPLICATION",
+        "_DB 映射 DATABASE",
+        "_WB 映射 WEB",
+        "标准后缀切换自动替换",
+        "自定义后缀保留并允许手工选择类型"
+      ],
+      "priority": "must",
+      "source": "用户原始请求和格式确认",
+      "counterexample": [
+        "继续允许 MQ 或 PL 新建",
+        "选择类型覆盖自定义后缀"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "关联部署单元必须支持租户内 ACTIVE 记录的搜索、多选和跨物理子系统选择。",
+      "acceptance": [
+        "按名称、编号和物理子系统搜索",
+        "排除自身",
+        "拒绝跨租户和非 ACTIVE 目标",
+        "选择器支持多选并保留已选标签"
+      ],
+      "priority": "must",
+      "source": "用户确认关联候选范围",
+      "counterexample": [
+        "继续使用自由文本",
+        "只能选择同一物理子系统",
+        "允许选择自身"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "关联关系必须为双向无向关系并保持事务一致。",
+      "acceptance": [
+        "A-B 规范化只保存一条当前关系",
+        "双方详情均可见",
+        "任一端解除后双方不可见",
+        "重复和并发提交不产生重复或半边关系"
+      ],
+      "priority": "must",
+      "source": "用户确认双向关联",
+      "counterexample": [
+        "A 关联 B 但 B 不显示 A",
+        "同时存在 A-B 与 B-A 两行"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "版本、关系历史、审计和模块内下游契约必须同步。",
+      "acceptance": [
+        "关系变更写独立历史和审计",
+        "发起编辑端发布新版本",
+        "资源申请按 kind 映射 AP/DB/WB",
+        "初始化导入、实例、网络和计划回归通过"
+      ],
+      "priority": "must",
+      "source": "现有部署单元版本和架构模块契约",
+      "counterexample": [
+        "关系变化无历史",
+        "资源申请类型分流错误"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "权限、租户、实体、乐观锁、审计和模块边界必须保持。",
+      "acceptance": [
+        "服务端继续校验 view/manage 权限",
+        "HTTP DTO 不含 tenantId",
+        "关系目标执行租户和状态校验",
+        "不修改平台公共实现"
+      ],
+      "priority": "must",
+      "source": "仓库规约和架构模块规则",
+      "counterexample": [
+        "用前端显隐代替服务端权限",
+        "直接写平台或其他业务模块表"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "前端必须覆盖全状态并在桌面和手机视口可用。",
+      "acceptance": [
+        "加载、无结果、失败、无权限、提交中、409 和脏表单状态明确",
+        "1280x800 与 375x812、390x844、430x932 无页面级横向滚动",
+        "明暗主题和控制台验收通过"
+      ],
+      "priority": "must",
+      "source": "design-h5、前端规约和用户截图",
+      "counterexample": [
+        "多选标签撑宽弹窗",
+        "搜索失败清空已选项",
+        "手机底部提交按钮不可达"
+      ]
+    }
+  ],
+  "invariants": [
+    "只追加 Flyway 迁移，不修改历史迁移",
+    "保持部署单元 code、物理子系统归属、生命周期、网络分区、描述、备注和乐观锁职责",
+    "服务端认证、RBAC、租户隔离、实体校验和审计不能放松",
+    "业务代码和关系数据归 business/architecture",
+    "不引入动态表单元数据或 biz_form 依赖",
+    "不访问生产系统或真实敏感数据"
+  ],
+  "constraints": [
+    "候选迁移为 V124，实施前重新扫描版本占用",
+    "公开架构契约删除字段，模块内消费者必须同批更新",
+    "早期开发数据允许清理重建，但生产回退不能依赖重建数据库",
+    "前端优先复用交付示范中心、共享 UI、Element Plus 和语义主题"
+  ],
+  "non_goals": [
+    "不保留 MQ、PL 或旧 deploymentUnitType 兼容入口",
+    "不新增部署单元类型字典和维护页面",
+    "不改变权限码、菜单、编号规则和生命周期",
+    "不重构模块目录、Java 包名或公共 UI 组件",
+    "不实现生产数据灰度双写"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260901-057-deployment-unit-model\\handoff.json",
+    "imported_at": "2026-09-02T02:55:03+00:00",
+    "topic": "req-20260901-057-deployment-unit-model",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260901-057-deployment-unit-model",
+      "handoff_status": "approved",
+      "created_at": "2026-09-02T10:35:37.6001921+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260901-057-deployment-unit-model",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-02-deployment-unit-model-design.md",
+        "objective": "将部署单元收敛为完整名称、应用/数据库/Web 类型和可搜索多选的双向结构化关联，消除简称、登记类型和自由文本关联等重复事实源。",
+        "users": [
+          "架构信息维护者在部署单元页面创建、编辑并发布版本",
+          "架构信息查看者在列表、详情、版本和下游页面查看统一完整名称与双向关联",
+          "资源申请和其他架构模块内下游能力按部署单元业务类型读取字段分流"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "模型必须删除部署单元简称和重复事实源。",
+            "acceptance": [
+              "主记录、版本、DTO、前端类型、Mock 和契约不再包含 shortName、relatedDeploymentUnitName、deploymentUnitType"
+            ],
+            "priority": "must",
+            "source": "用户原始请求及规范化方案确认",
+            "counterexample": [
+              "页面隐藏简称但数据库和接口仍继续维护",
+              "资源申请继续依赖 deploymentUnitType"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "部署单元名称必须由一个输入框维护并以最后一个下划线识别主名称和后缀。",
+            "acceptance": [
+              "输入自动大写",
+              "主名称只含大写字母和数字",
+              "后缀为 1-8 位大写字母或数字",
+              "完整名称租户内唯一",
+              "页面无第二个后缀输入框"
+            ],
+            "priority": "must",
+            "source": "用户确认通过 _ 判断分割和拼接",
+            "counterexample": [
+              "主名称和后缀使用两个输入框",
+              "只在前端校验而服务端接受非法名称"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "部署单元类型必须收敛为应用、数据库、Web，并与标准后缀双向联动。",
+            "acceptance": [
+              "_AP 映射 APPLICATION",
+              "_DB 映射 DATABASE",
+              "_WB 映射 WEB",
+              "标准后缀切换自动替换",
+              "自定义后缀保留并允许手工选择类型"
+            ],
+            "priority": "must",
+            "source": "用户原始请求和格式确认",
+            "counterexample": [
+              "继续允许 MQ 或 PL 新建",
+              "选择类型覆盖自定义后缀"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "关联部署单元必须支持租户内 ACTIVE 记录的搜索、多选和跨物理子系统选择。",
+            "acceptance": [
+              "按名称、编号和物理子系统搜索",
+              "排除自身",
+              "拒绝跨租户和非 ACTIVE 目标",
+              "选择器支持多选并保留已选标签"
+            ],
+            "priority": "must",
+            "source": "用户确认关联候选范围",
+            "counterexample": [
+              "继续使用自由文本",
+              "只能选择同一物理子系统",
+              "允许选择自身"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "关联关系必须为双向无向关系并保持事务一致。",
+            "acceptance": [
+              "A-B 规范化只保存一条当前关系",
+              "双方详情均可见",
+              "任一端解除后双方不可见",
+              "重复和并发提交不产生重复或半边关系"
+            ],
+            "priority": "must",
+            "source": "用户确认双向关联",
+            "counterexample": [
+              "A 关联 B 但 B 不显示 A",
+              "同时存在 A-B 与 B-A 两行"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "版本、关系历史、审计和模块内下游契约必须同步。",
+            "acceptance": [
+              "关系变更写独立历史和审计",
+              "发起编辑端发布新版本",
+              "资源申请按 kind 映射 AP/DB/WB",
+              "初始化导入、实例、网络和计划回归通过"
+            ],
+            "priority": "must",
+            "source": "现有部署单元版本和架构模块契约",
+            "counterexample": [
+              "关系变化无历史",
+              "资源申请类型分流错误"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "权限、租户、实体、乐观锁、审计和模块边界必须保持。",
+            "acceptance": [
+              "服务端继续校验 view/manage 权限",
+              "HTTP DTO 不含 tenantId",
+              "关系目标执行租户和状态校验",
+              "不修改平台公共实现"
+            ],
+            "priority": "must",
+            "source": "仓库规约和架构模块规则",
+            "counterexample": [
+              "用前端显隐代替服务端权限",
+              "直接写平台或其他业务模块表"
+            ]
+          },
+          {
+            "id": "R8",
+            "statement": "前端必须覆盖全状态并在桌面和手机视口可用。",
+            "acceptance": [
+              "加载、无结果、失败、无权限、提交中、409 和脏表单状态明确",
+              "1280x800 与 375x812、390x844、430x932 无页面级横向滚动",
+              "明暗主题和控制台验收通过"
+            ],
+            "priority": "must",
+            "source": "design-h5、前端规约和用户截图",
+            "counterexample": [
+              "多选标签撑宽弹窗",
+              "搜索失败清空已选项",
+              "手机底部提交按钮不可达"
+            ]
+          }
+        ],
+        "invariants": [
+          "只追加 Flyway 迁移，不修改历史迁移",
+          "保持部署单元 code、物理子系统归属、生命周期、网络分区、描述、备注和乐观锁职责",
+          "服务端认证、RBAC、租户隔离、实体校验和审计不能放松",
+          "业务代码和关系数据归 business/architecture",
+          "不引入动态表单元数据或 biz_form 依赖",
+          "不访问生产系统或真实敏感数据"
+        ],
+        "constraints": [
+          "候选迁移为 V124，实施前重新扫描版本占用",
+          "公开架构契约删除字段，模块内消费者必须同批更新",
+          "早期开发数据允许清理重建，但生产回退不能依赖重建数据库",
+          "前端优先复用交付示范中心、共享 UI、Element Plus 和语义主题"
+        ],
+        "non_goals": [
+          "不保留 MQ、PL 或旧 deploymentUnitType 兼容入口",
+          "不新增部署单元类型字典和维护页面",
+          "不改变权限码、菜单、编号规则和生命周期",
+          "不重构模块目录、Java 包名或公共 UI 组件",
+          "不实现生产数据灰度双写"
+        ],
+        "selected_approach": {
+          "name": "规范化完整名称、业务类型与双向关系表",
+          "reason": "只有一套名称和类型事实源，满足单输入框、后缀联动、早期数据无需兼容和双向结构化关联要求。",
+          "alternatives": [
+            {
+              "name": "主名称与后缀分列存储",
+              "rejected_because": "与模型只保留一个完整名称冲突，并增加接口拼接和一致性成本"
+            },
+            {
+              "name": "保留旧字段但前端隐藏",
+              "rejected_because": "继续保留多套冲突事实源，且用户已确认无需旧数据兼容"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "server/src/modules/architecture",
+              "web/src/modules/architecture",
+              "Flyway V124 部署单元模型迁移",
+              "mock/mock-data.json",
+              "docs/integration/architecture-module-contract.md",
+              "REQ-20260901-057 需求、设计、计划和当前前缀账本"
+            ],
+            "outside": [
+              "platform/system 和 platform/workflow 内部实现",
+              "公共 UI 组件修改",
+              "其他业务模块私有表",
+              "生产系统和真实数据"
+            ]
+          },
+          "components": [
+            {
+              "name": "部署单元领域服务",
+              "responsibility": "名称/类型校验、关系替换、版本、生命周期和审计编排",
+              "depends_on": [
+                "DeploymentUnitStore",
+                "SystemOperationAudit"
+              ]
+            },
+            {
+              "name": "部署单元持久化",
+              "responsibility": "主记录、版本、规范化当前关系和关系历史的事务读写",
+              "depends_on": [
+                "MySQL 8.4"
+              ]
+            },
+            {
+              "name": "部署单元 HTTP 与选项接口",
+              "responsibility": "稳定请求/响应 DTO、分页搜索、权限和错误语义",
+              "depends_on": [
+                "DeploymentUnitService"
+              ]
+            },
+            {
+              "name": "部署单元前端页面",
+              "responsibility": "单名称输入、类型/后缀联动、远程搜索多选和全状态响应式体验",
+              "depends_on": [
+                "Vue 3",
+                "Element Plus",
+                "共享 UI"
+              ]
+            },
+            {
+              "name": "Flyway V124",
+              "responsibility": "删除冗余列、调整类型约束、创建关系及历史结构",
+              "depends_on": [
+                "V123 及之前迁移"
+              ]
+            },
+            {
+              "name": "架构模块内下游适配",
+              "responsibility": "资源申请分流和实例、网络、计划、导入的完整名称契约回归",
+              "depends_on": [
+                "部署单元公开投影"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "DeploymentUnitCommand",
+              "producer": "architecture HTTP",
+              "consumers": [
+                "DeploymentUnitService"
+              ],
+              "contract": "physicalSubsystemId,name,kind,relatedDeploymentUnitIds,defaultNetworkZoneId,description,remark,rowVersion"
+            },
+            {
+              "name": "DeploymentUnitView",
+              "producer": "DeploymentUnitService",
+              "consumers": [
+                "架构前端和模块内下游"
+              ],
+              "contract": "完整 name、APPLICATION/DATABASE/WEB kind 和 relatedDeploymentUnits[]，不含旧三个字段"
+            },
+            {
+              "name": "DeploymentUnitSearchOption",
+              "producer": "architecture options API",
+              "consumers": [
+                "部署单元关联多选"
+              ],
+              "contract": "分页返回当前租户 ACTIVE 记录，支持名称、编号和物理子系统关键字，允许 excludeId"
+            },
+            {
+              "name": "资源申请部署单元投影",
+              "producer": "business/architecture",
+              "consumers": [
+                "EnvironmentResourceService 和前端"
+              ],
+              "contract": "按 kind 映射 AP/DB/WB，不读取 deploymentUnitType"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "名称输入与类型选择",
+              "transitions": [
+                "前端大写和标准后缀联动",
+                "服务端按最后一个下划线解析",
+                "校验格式、标准映射和租户唯一"
+              ],
+              "output": "完整 name 与 kind"
+            },
+            {
+              "input": "relatedDeploymentUnitIds[]",
+              "transitions": [
+                "去重和排序",
+                "校验租户、ACTIVE、非自身",
+                "端点规范化",
+                "事务替换当前关系",
+                "记录关系历史和审计"
+              ],
+              "output": "双方一致的 relatedDeploymentUnits[]"
+            },
+            {
+              "input": "部署单元 kind",
+              "transitions": [
+                "APPLICATION->AP",
+                "DATABASE->DB",
+                "WEB->WB"
+              ],
+              "output": "资源申请字段分支"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "名称格式错误或标准后缀与类型不一致",
+            "behavior": "返回 400 并定位名称或类型字段",
+            "recovery": "前端保留输入并提示格式或选择正确类型"
+          },
+          {
+            "condition": "完整名称重复或行版本冲突",
+            "behavior": "返回 409",
+            "recovery": "保留表单和已选关系，用户修改名称或刷新后重试"
+          },
+          {
+            "condition": "关联目标不存在、跨租户、非 ACTIVE 或为自身",
+            "behavior": "返回 400 并指出失效目标",
+            "recovery": "移除失效项后重新搜索选择"
+          },
+          {
+            "condition": "存在当前关联时作废",
+            "behavior": "返回 409",
+            "recovery": "先解除关联再作废"
+          },
+          {
+            "condition": "选项搜索失败",
+            "behavior": "显示局部失败和重试，不清空已选标签",
+            "recovery": "重试搜索或稍后提交"
+          },
+          {
+            "condition": "迁移版本冲突或未建模外键依赖",
+            "behavior": "停止实施并回到建模/计划",
+            "recovery": "重新分配迁移版本或补充迁移顺序和测试"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "服务端认证、RBAC、租户、实体、乐观锁和审计保持",
+            "HTTP DTO 不含 tenantId",
+            "不访问生产数据或密钥"
+          ],
+          "performance": [
+            "关联搜索服务端分页",
+            "关系端点具备租户查询索引",
+            "详情批量投影避免逐项查询"
+          ],
+          "compatibility": [
+            "旧三个字段和 MQ/PL 是有意删除的开发契约",
+            "模块内消费者同批适配",
+            "早期开发数据可重建"
+          ],
+          "operations": [
+            "V124 只追加且实施前重扫版本",
+            "空库和既有开发库迁移均验证",
+            "生产回退使用补偿迁移而非重建数据库"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R3"
+            ],
+            "signal": "旧字段和旧类型不再可用",
+            "method": "源码/契约负向扫描与模型、DTO、持久化测试"
+          },
+          {
+            "requirement_ids": [
+              "R2"
+            ],
+            "signal": "名称解析、联动和唯一性准确",
+            "method": "服务端单测、API 场景、前端构建和浏览器输入旅程"
+          },
+          {
+            "requirement_ids": [
+              "R4",
+              "R5"
+            ],
+            "signal": "搜索多选和双向关系原子一致",
+            "method": "MySQL 唯一键/外键、事务、重复和并发测试及真实 API"
+          },
+          {
+            "requirement_ids": [
+              "R6"
+            ],
+            "signal": "版本、历史、审计和下游契约无回归",
+            "method": "架构模块聚焦回归与资源申请三类分流测试"
+          },
+          {
+            "requirement_ids": [
+              "R7"
+            ],
+            "signal": "权限、租户和模块边界保持",
+            "method": "Controller 403/租户测试、governance、scope 和 module-boundary 检查"
+          },
+          {
+            "requirement_ids": [
+              "R8"
+            ],
+            "signal": "桌面和移动端全状态可用",
+            "method": "npm build 与 1280/375/390/430 明暗主题真实浏览器验收"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "主名称本身不含下划线，最后一个下划线是名称与后缀的唯一分隔符。",
+            "basis": "用户确认的格式规则",
+            "falsifier": "用户要求主名称允许下划线"
+          },
+          {
+            "text": "关系独立历史承担双方可追踪性，只有发起编辑端发布新版本。",
+            "basis": "避免一次关系变更为全部目标产生无意版本",
+            "falsifier": "用户要求双方版本号同步增长"
+          },
+          {
+            "text": "停用保留关系，作废必须先解除关系。",
+            "basis": "既有生命周期的历史可读和引用限制",
+            "falsifier": "用户要求作废自动解除"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "V124 在正式实施前是否被并行分支占用？",
+            "impact": "只影响迁移文件名和 scope，不改变业务设计。",
+            "owner": "实施任务负责人",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "名称使用一个完整输入框，通过下划线解析和拼接。",
+            "reason": "减少输入项并直接维护最终名称。",
+            "source": "用户 2026-09-01 确认"
+          },
+          {
+            "id": "D2",
+            "decision": "类型固定为应用、数据库、Web，标准后缀为 _AP/_DB/_WB，自定义后缀手工选择类型。",
+            "reason": "满足标准联动与扩展后缀并存。",
+            "source": "用户原始请求和格式确认"
+          },
+          {
+            "id": "D3",
+            "decision": "不提供旧数据和 MQ/PL 兼容。",
+            "reason": "当前为早期开发阶段，用户允许删除现有数据。",
+            "source": "用户 2026-09-01 确认"
+          },
+          {
+            "id": "D4",
+            "decision": "关联候选为当前租户全部 ACTIVE 部署单元，允许跨物理子系统并排除自身。",
+            "reason": "满足可搜索、多选且不限制业务关联范围。",
+            "source": "用户 2026-09-01 确认"
+          },
+          {
+            "id": "D5",
+            "decision": "关联为双向无向关系，规范化只保存一条当前记录。",
+            "reason": "关联语义对双方一致并避免 A-B/B-A 重复。",
+            "source": "用户 2026-09-01 确认"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "删除 deploymentUnitType 后遗漏资源申请消费者。",
+            "impact": "AP/DB/WB 字段分流错误。",
+            "mitigation": "全仓扫描并覆盖资源申请三类聚焦回归。"
+          },
+          {
+            "risk": "双向关系并发导致重复或丢失。",
+            "impact": "双方详情不一致或出现重复关系。",
+            "mitigation": "规范化端点、唯一键、排序锁定、事务替换和并发测试。"
+          },
+          {
+            "risk": "破坏性删列导致旧客户端不可用。",
+            "impact": "未同批更新的调用方编译或运行失败。",
+            "mitigation": "模块内消费者同批更新，契约负向扫描，实施前复核 scope。"
+          },
+          {
+            "risk": "V124 被并行分支占用。",
+            "impact": "Flyway 版本冲突。",
+            "mitigation": "实施前重扫，冲突时重新分配并同步需求和 scope。"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于 2026-09-02 回复“批准”，确认落盘设计修订 1。",
+          "confirmed_at": "2026-09-02T10:04:27.4756636+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-02-deployment-unit-model-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只修改 scope writable_paths 并保护 T11",
+          "实施前重验入口/scope/V124",
+          "只追加 V124",
+          "删除旧三个字段和 MQ/PL 入口",
+          "名称正则和标准后缀匹配",
+          "关系按 tenant/min/max 单行保存",
+          "保持 code/归属/生命周期/权限/租户/乐观锁/审计",
+          "不改平台公共代码/UI且不访问生产"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+            "status": "candidate-new",
+            "responsibility": "模型迁移、关系与历史",
+            "evidence": "当前最高 V123"
+          },
+          {
+            "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+            "status": "existing",
+            "responsibility": "名称、关系、版本和生命周期",
+            "evidence": "现有核心服务"
+          },
+          {
+            "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+            "status": "existing",
+            "responsibility": "主记录、版本、关系持久化",
+            "evidence": "现有 JdbcTemplate Store"
+          },
+          {
+            "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+            "status": "existing",
+            "responsibility": "新导入模板与确认",
+            "evidence": "现有导入含简称/MQ"
+          },
+          {
+            "path": "web/src/modules/architecture/DeploymentUnitPage.vue",
+            "status": "existing",
+            "responsibility": "单输入、联动、远程多选",
+            "evidence": "现有部署单元页面"
+          },
+          {
+            "path": "docs/integration/architecture-module-contract.md",
+            "status": "existing",
+            "responsibility": "冻结新公开契约",
+            "evidence": "现有契约含旧字段"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "后端、数据库、导入与资源申请原子切换",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "V96/V106 定义旧字段和 MQ/AP/DB/WB/PL 契约",
+              "核心服务、导入和资源申请共享旧 Java/SQL 字段",
+              "当前最高迁移为 V123"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeploymentUnitControllerTest.java"
+              ],
+              "modify": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitController.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java"
+              ],
+              "test": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitLifecycleMySqlTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureMigrationMySqlTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeploymentUnitControllerTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "AuthUser",
+                "architecture:deployment-unit:view/manage",
+                "SystemOperationAudit",
+                "DeploymentUnitReferenceChecker"
+              ],
+              "produces": [
+                "APPLICATION/DATABASE/WEB",
+                "DeploymentUnitCommand(name,kind,relatedDeploymentUnitIds,...)",
+                "DeploymentUnitView.relatedDeploymentUnits[]",
+                "GET /api/architecture/deployment-units/options",
+                "kind 到 AP/DB/WB 分流"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "重验入口、scope、Flyway 和 V124 空闲状态",
+                "command": "node scripts/check-development-entry.mjs --require-plugin; node scripts/check-flyway-migrations.mjs",
+                "expected": "退出 0 且 V124 未占用",
+                "evidence": "退出码和最高迁移"
+              },
+              {
+                "id": "T1-S2",
+                "action": "新增名称、三类型、关系、权限、迁移、导入和资源申请失败测试",
+                "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitServiceTest,DeploymentUnitLifecycleMySqlTest,DeploymentUnitImportMySqlTest,EnvironmentResourceServiceTest,ArchitectureMigrationMySqlTest,DeploymentUnitControllerTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "失败指向新契约尚未实现",
+                "evidence": "失败断言和退出码"
+              },
+              {
+                "id": "T1-S3",
+                "action": "追加 V124 并实现模型、Store、Service、Controller、导入和资源申请切换",
+                "command": null,
+                "expected": "旧列删除、三类型/名称约束和双向关系事务生效",
+                "evidence": "diff、information_schema、HTTP 和 SQL"
+              },
+              {
+                "id": "T1-S4",
+                "action": "运行架构模块回归并建立小提交",
+                "command": "mvn -pl :ccb-architecture -am test; node scripts/check-flyway-migrations.mjs; git commit -m \"feat(architecture): refine deployment unit model\"",
+                "expected": "测试 0 失败且提交仅含 T1 文件",
+                "evidence": "测试数、迁移结果、提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "名称格式/唯一性/标准与自定义后缀",
+              "三类型和 AP/DB/WB 分流",
+              "搜索分页和权限",
+              "自关联/跨租户/非 ACTIVE 拒绝",
+              "双向增删/重复/并发",
+              "版本/关系历史/审计/生命周期",
+              "导入五列",
+              "V124 空库与增量"
+            ],
+            "risks": [
+              "破坏性删列",
+              "V124 冲突",
+              "关系并发",
+              "资源申请消费者遗漏"
+            ],
+            "rollback": "revert T1；已执行 V124 使用补偿迁移或重建早期开发库",
+            "stop_conditions": [
+              "V124 被占用",
+              "发现 scope 外强依赖",
+              "需修改平台/shared/公共 UI",
+              "关系无法单事务一致"
+            ],
+            "escalation_conditions": [
+              "需要旧客户端兼容",
+              "主名称需允许下划线",
+              "双方版本需同步增长",
+              "生产存在不可规范化数据"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "前端切换为单名称输入、类型联动和远程多选",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R6",
+              "R8"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "web 仅有 vue-tsc/Vite build，无前端单测 runner",
+              "DeploymentUnitPage 当前同时维护四套旧输入",
+              "Element Plus 支持 multiple/filterable/remote/collapse-tags"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/architecture/types.ts",
+                "web/src/modules/architecture/api.ts",
+                "web/src/modules/architecture/DeploymentUnitPage.vue",
+                "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+                "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/utils.ts",
+                "web/src/modules/architecture/architecture.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 DeploymentUnitView/RelatedDeploymentUnitView/Payload",
+                "GET /deployment-units/options"
+              ],
+              "produces": [
+                "单完整名称输入",
+                "标准后缀双向联动",
+                "自定义后缀保留",
+                "远程分页多选和新下游展示"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "先切换 TypeScript 目标契约并记录旧字段编译失败",
+                "command": "npm --prefix web run build",
+                "expected": "旧字段/MQ 引用产生明确错误",
+                "evidence": "退出码和错误位置"
+              },
+              {
+                "id": "T2-S2",
+                "action": "实现大写、后缀联动、远程多选、编辑回显和搜索失败保留",
+                "command": null,
+                "expected": "单输入框和多选全状态符合设计",
+                "evidence": "Vue diff、Network 和页面状态"
+              },
+              {
+                "id": "T2-S3",
+                "action": "同步详情、导入、资源申请和响应式样式",
+                "command": null,
+                "expected": "WEB 走非 DB 分支且移动端无标签溢出",
+                "evidence": "页面结果和源码扫描"
+              },
+              {
+                "id": "T2-S4",
+                "action": "运行构建/负向扫描并建立小提交",
+                "command": "npm --prefix web run build; rg -n \"deploymentUnitType|relatedDeploymentUnitName|DeploymentUnitKind.*MQ\" web/src/modules/architecture; git commit -m \"feat(architecture): update deployment unit form\"",
+                "expected": "构建通过、旧字段无业务引用、提交仅含 T2",
+                "evidence": "构建摘要、扫描结果、提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "单输入框大写",
+              "标准后缀双向联动",
+              "自定义后缀不覆盖",
+              "远程搜索多选/编辑回显",
+              "失败保留已选",
+              "详情双向关联",
+              "导入/资源申请新契约",
+              "375px 不溢出"
+            ],
+            "risks": [
+              "watcher 递归",
+              "请求乱序",
+              "多选标签溢出",
+              "前后端版本不兼容"
+            ],
+            "rollback": "revert T2 并与 T1 配套回滚",
+            "stop_conditions": [
+              "T1 契约未稳定",
+              "必须修改共享 UI",
+              "375px 无法局部修复"
+            ],
+            "escalation_conditions": [
+              "需要公共选择器",
+              "需要第二后缀输入框",
+              "需改为新抽屉模式"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "同步契约/Mock并完成全栈与浏览器收敛验收",
+            "requirement_ids": [
+              "R1",
+              "R5",
+              "R6",
+              "R7",
+              "R8"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "Mock 必须虚构且幂等",
+              "architecture-module-contract 是公开契约",
+              "全仓存在既有历史账本噪声",
+              "浏览器需四视口与明暗主题"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "mock/mock-data.json",
+                "docs/integration/architecture-module-contract.md",
+                "docs/requirements/REQ-20260901-057-deployment-unit-model/requirement.md",
+                "docs/requirements/REQ-20260901-057-deployment-unit-model/codex-task-scope.yaml"
+              ],
+              "test": [
+                ".ai-control/requirements/req-20260901-057-deployment-unit-model/execution-T*.json",
+                ".ai-control/requirements/req-20260901-057-deployment-unit-model/observation-T*.json",
+                ".ai-control/requirements/req-20260901-057-deployment-unit-model/convergence.json"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1/T2 已验证实现"
+              ],
+              "produces": [
+                "合法虚构三类型和双向关系数据",
+                "新公开契约",
+                "自动化/API/SQL/审计/浏览器证据",
+                "回退说明"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "同步 Mock 和公开契约",
+                "command": null,
+                "expected": "Mock 幂等且 DTO/路由/导入/资源申请契约一致",
+                "evidence": "Mock diff、契约字段表、幂等结果"
+              },
+              {
+                "id": "T3-S2",
+                "action": "执行 diff、Flyway、governance、scope、Maven 全测和前端构建",
+                "command": "git diff --check; node scripts/check-flyway-migrations.mjs; node scripts/check-all-governance.mjs; mvn test; npm --prefix web run build",
+                "expected": "本需求无失败，历史治理问题单列",
+                "evidence": "退出码、测试数、构建摘要"
+              },
+              {
+                "id": "T3-S3",
+                "action": "验证真实 API/SQL/审计和四视口明暗主题浏览器旅程",
+                "command": "按 README 启动本地栈并访问 /architecture/deployment-units",
+                "expected": "R1-R8 通过且无 500、横向滚动和新增控制台错误",
+                "evidence": "脱敏 HTTP/SQL/审计、视口、Network/Console、截图"
+              },
+              {
+                "id": "T3-S4",
+                "action": "写 execution/observation/convergence 并建立最终提交",
+                "command": "git commit -m \"docs(architecture): close deployment unit model change\"",
+                "expected": "全部 must 有证据、scope 一致、无 P0/P1",
+                "evidence": "账本、提交哈希、收敛门禁"
+              }
+            ],
+            "acceptance_checks": [
+              "契约与实现一致",
+              "Mock 幂等",
+              "全部 must 有执行/观测证据",
+              "真实 API/SQL/审计",
+              "四视口明暗主题",
+              "无本需求 P0/P1",
+              "范围无越界"
+            ],
+            "risks": [
+              "历史治理噪声",
+              "本地环境不可用",
+              "移动端回归",
+              "迁移回退限制"
+            ],
+            "rollback": "revert T3；产品按 T2/T1 逆序；数据库补偿迁移或重建早期库",
+            "stop_conditions": [
+              "权限/租户越界",
+              "双方关系不一致",
+              "资源分流错误",
+              "迁移破坏非开发数据",
+              "浏览器白屏/横向滚动/提交不可达"
+            ],
+            "escalation_conditions": [
+              "历史治理错误成为硬门禁",
+              "需要生产数据清理",
+              "需要 scope 外修改",
+              "回退需删除不可恢复数据"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "前端必须消费 T1 已稳定的 DeploymentUnit DTO、类型枚举和关联搜索接口。"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "全栈契约与浏览器验收必须在前端用户旅程切换完成后执行。"
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "迁移、真实 API、SQL 和审计验收依赖 T1 的后端与数据库实现。"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -pl :ccb-architecture -am test; node scripts/check-flyway-migrations.mjs",
+            "expected": "后端/V124/关系/下游通过"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "前端构建和旧字段扫描通过"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "mvn test; npm --prefix web run build; node scripts/check-all-governance.mjs",
+            "expected": "本需求证据齐全且无 P0/P1"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于 2026-09-02 回复“批准”，确认实施计划修订 1 及高风险迁移、公开契约切换和双向关系并发方案。",
+          "confirmed_at": "2026-09-02T10:38:13.2973981+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "部署单元主记录/版本/关系/历史",
+          "导入和资源申请",
+          "部署单元 Vue",
+          "架构契约"
+        ],
+        "state_variable_candidates": [
+          "name",
+          "kind",
+          "status",
+          "rowVersion",
+          "currentVersion",
+          "currentRelations",
+          "relationHistory",
+          "optionLoading",
+          "formDirty"
+        ],
+        "interface_candidates": [
+          "DeploymentUnitCommand/View",
+          "GET /deployment-units/options",
+          "EnvironmentResource DeploymentUnitRef",
+          "Flyway V124"
+        ],
+        "sensor_candidates": [
+          "Java/Testcontainers",
+          "Flyway",
+          "Vue build",
+          "源码扫描",
+          "HTTP/SQL/审计",
+          "Browser Network/Console/viewport"
+        ],
+        "actuator_candidates": [
+          "V124",
+          "Service 事务",
+          "Store 关系替换",
+          "Vue 联动/远程多选"
+        ],
+        "disturbance_candidates": [
+          "V124 占用",
+          "既有非法数据/外键",
+          "请求乱序",
+          "并行修改",
+          "历史账本噪声"
+        ],
+        "delay_candidates": [
+          "搜索防抖",
+          "事务锁",
+          "Maven/Testcontainers",
+          "多视口 UAT"
+        ],
+        "assumptions": [
+          {
+            "text": "主名称不含下划线",
+            "basis": "用户确认",
+            "falsifier": "用户要求允许"
+          },
+          {
+            "text": "关系历史足以追踪被关联端",
+            "basis": "避免双方版本增长",
+            "falsifier": "用户要求同步版本"
+          },
+          {
+            "text": "停用保留关系且作废先解除",
+            "basis": "生命周期规则",
+            "falsifier": "用户要求自动解除"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"认证用户 AuthUser、Spring Security 方法权限和 SystemOperationAudit\", \"物理子系统与网络分区公开查询能力\", \"MySQL 8.4/Flyway/Testcontainers/Docker Desktop\", \"Vue 3、Element Plus、共享 UI 和浏览器运行时\"], \"inside\": [\"arch_deployment_unit、arch_deployment_unit_version 及候选 V124 关系/历史表\", \"DeploymentUnitModels、DeploymentUnitStore、DeploymentUnitService、DeploymentUnitController\", \"DeploymentUnitImportService 与部署单元导入批次/明细\", \"EnvironmentResourceModels/Store/Service/Controller 的部署单元投影和资源分流\", \"web/src/modules/architecture 的部署单元、导入、资源申请页面及类型/API\", \"mock/mock-data.json 与 architecture-module-contract.md\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"真实 MySQL 约束和并发\"], \"id\": \"S1\", \"independence\": \"直接执行 Java 行为断言\", \"method\": \"JUnit/Mockito 聚焦测试及 ccb-architecture 非容器测试\", \"target\": \"Java 领域、Controller、资源申请行为\"}",
+      "{\"blind_spots\": [\"Docker Desktop 未运行时不可采样\"], \"id\": \"S2\", \"independence\": \"真实 MySQL 运行证据\", \"method\": \"Testcontainers MySQL 集成测试与 information_schema/SQL 断言\", \"target\": \"V124、唯一键、外键、关系事务和并发\"}",
+      "{\"blind_spots\": [\"不能证明真实交互和布局\"], \"id\": \"S3\", \"independence\": \"编译器和静态扫描\", \"method\": \"vue-tsc、Vite build 和旧字段负向 rg 扫描\", \"target\": \"前端 DTO 和静态交互契约\"}",
+      "{\"blind_spots\": [\"本地角色与数据集覆盖有限\"], \"id\": \"S4\", \"independence\": \"运行时接口和持久化证据\", \"method\": \"本地真实 API、数据库查询和审计记录\", \"target\": \"权限、租户、HTTP/SQL/审计组合结果\"}",
+      "{\"blind_spots\": [\"未覆盖所有设备浏览器差异\"], \"id\": \"S5\", \"independence\": \"用户路径可视化运行证据\", \"method\": \"真实浏览器 Network/Console/DOM 溢出与四视口明暗主题验收\", \"target\": \"桌面/移动端全状态和可访问性\"}",
+      "{\"blind_spots\": [\"不能证明业务运行正确\"], \"id\": \"S6\", \"independence\": \"仓库治理和差异传感器\", \"method\": \"scope、Flyway、governance、git diff 与 rg 检查\", \"target\": \"范围、迁移号、模块边界和契约残留\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"追加 V124 删除旧列、调整约束并创建关系/历史表\", \"authority\": \"scope 仅授权候选 V124\", \"id\": \"A1\", \"impact_radius\": \"部署单元与资源申请明细表\", \"rollback\": \"提交前撤销；已执行后用补偿迁移或重建早期开发库\", \"target\": \"数据库结构和开发数据\"}",
+      "{\"action\": \"修改 architecture 模块模型、Store、Service、Controller、导入和资源申请\", \"authority\": \"server/src/modules/architecture/**\", \"id\": \"A2\", \"impact_radius\": \"架构模块 Java 编译与运行\", \"rollback\": \"回退 T1 小提交\", \"target\": \"后端共享契约\"}",
+      "{\"action\": \"修改 architecture 模块类型、API、页面、详情和局部样式\", \"authority\": \"web/src/modules/architecture/**\", \"id\": \"A3\", \"impact_radius\": \"架构前端模块\", \"rollback\": \"回退 T2 小提交并与 T1 配套\", \"target\": \"前端用户旅程\"}",
+      "{\"action\": \"同步 Mock、architecture-module-contract 和当前任务证据\", \"authority\": \"scope 指定文档/Mock/任务前缀\", \"id\": \"A4\", \"impact_radius\": \"本地演示与公开契约\", \"rollback\": \"回退 T3 小提交\", \"target\": \"演示数据和公开说明\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"11 个 Testcontainers 基线测试无法启动\", \"source\": \"Docker Desktop 未运行\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"标准 npm build 无法直接解析依赖；vue-tsc 可复用主检出依赖\", \"source\": \"隔离工作树无 node_modules 且 scope 禁止修改依赖目录\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"迁移版本冲突\", \"source\": \"V124 可能被并行分支占用\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"全仓治理检查可能失败但不代表本需求偏差\", \"source\": \"历史治理账本噪声\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"错误清理会覆盖其他任务证据\", \"source\": \"用户在主检出的 T11 未跟踪文件\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"用户批准的设计修订 1\", \"falsifier\": \"用户要求主名称允许下划线\", \"text\": \"主名称不包含下划线\"}",
+      "{\"evidence\": \"用户批准只有发起端发布版本\", \"falsifier\": \"用户要求双方版本同步增长\", \"text\": \"关系独立历史足以追踪被关联端\"}",
+      "{\"evidence\": \"用户批准的生命周期设计\", \"falsifier\": \"用户要求作废自动解除\", \"text\": \"停用保留关系且作废先解除\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\", \"S6\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S4\", \"S5\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S1\", \"S2\", \"S4\", \"S6\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S1\", \"S4\", \"S6\"]"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "[\"S3\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "后端、V124、导入和资源申请完成部署单元新模型原子切换",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V96/V106 定义旧三个字段、MQ 和 DB/AP/WB/PL 契约",
+        "DeploymentUnitService/Store 是主记录、版本和生命周期唯一写入口",
+        "EnvironmentResourceStore/Service 是资源申请部署单元投影与分流所有者",
+        "2026-09-02 检查 V124 尚未占用"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/**"
+      ],
+      "invariants": [
+        "code、物理归属、生命周期、网络分区、乐观锁、权限、租户和审计职责保持",
+        "只写 architecture 自有表并只追加 V124",
+        "HTTP DTO 不接收 tenantId"
+      ],
+      "interface_contracts": [
+        "DeploymentUnitCommand(name,kind,relatedDeploymentUnitIds,defaultNetworkZoneId,description,remark,rowVersion)",
+        "DeploymentUnitView 含 relatedDeploymentUnits 且删除旧三个字段",
+        "GET /api/architecture/deployment-units/options 返回当前租户 ACTIVE 分页候选",
+        "资源申请依据 kind 映射 APPLICATION->AP、DATABASE->DB、WEB->WB"
+      ],
+      "non_goals": [
+        "不保留 MQ/PL 或旧客户端兼容",
+        "不修改 platform/shared/公共 UI",
+        "不改变编号和权限码"
+      ],
+      "action_bounds": [
+        "先补失败测试，再追加 V124 和最小 Java 修改",
+        "关系只用 tenant/min/max 单行与差量 LINK/UNLINK 历史",
+        "发现 V124 冲突或 scope 外消费者立即停止"
+      ],
+      "acceptance": [
+        "名称格式、唯一性、标准/自定义后缀测试通过",
+        "搜索分页、权限、租户、自关联/失效目标拒绝测试通过",
+        "双向增删、重复、并发、停用保留和有关联作废 409 通过",
+        "导入五列与资源申请三类分流通过",
+        "V124 空库/增量和 Flyway 检查通过"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "S1/S2/S6 命令与退出码",
+        "迁移结构断言",
+        "扰动和未决项"
+      ],
+      "rollback": "回退 T1 小提交；已执行 V124 的早期开发环境使用补偿迁移或重建数据库",
+      "stop_conditions": [
+        "V124 被占用",
+        "需修改 scope 外强依赖",
+        "关系无法在单事务内保持一致",
+        "发现生产数据要求"
+      ],
+      "escalation_conditions": [
+        "需要旧客户端兼容",
+        "主名称需要允许下划线",
+        "双方版本需同步增长",
+        "需修改平台/shared/公共 UI"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-02T03:06:47+00:00",
+          "text": "执行前已确认 V124 空闲；现有 Java/SQL 旧字段链路与 T1 输入事实一致；基线非容器测试通过，Docker 未运行为已记录扰动"
+        },
+        {
+          "recorded_at": "2026-09-02T04:45:16+00:00",
+          "text": "execution-T1.json 已记录，状态 partial，输出可由独立观察器测量"
+        },
+        {
+          "recorded_at": "2026-09-02T05:04:31+00:00",
+          "text": "执行 F-0001/F-0002 已接受的有界纠正动作"
+        },
+        {
+          "recorded_at": "2026-09-02T05:05:12+00:00",
+          "text": "两项 P1 纠正已实现并有可独立测量输出；MySQL 运行覆盖缺口明确保留"
+        },
+        {
+          "recorded_at": "2026-09-02T05:11:11+00:00",
+          "text": "修正独立观察发现的 V123 测试种子传感器缺陷"
+        },
+        {
+          "recorded_at": "2026-09-02T05:11:11+00:00",
+          "text": "迁移传感器已修正并编译通过，待 Docker/MySQL 运行复验"
+        },
+        {
+          "recorded_at": "2026-09-02T07:37:10+00:00",
+          "text": "MySQL V124/导入/生命周期/关系专项通过；双向、幂等、任一端解除、非法租户或状态目标拒绝均有自动化与真实 UAT 证据"
+        }
+      ],
+      "updated_at": "2026-09-02T07:37:10+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "前端完成单名称输入、类型联动、远程搜索多选和下游展示切换",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R6",
+        "R8"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "T1 是 DTO 和 options API 唯一所有者",
+        "页面已复用 UiPageHeader/UiToolbar/UiDataTable/移动卡片",
+        "Element Plus 支持 remote multiple collapse-tags"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/**"
+      ],
+      "invariants": [
+        "前端权限不替代后端权限",
+        "不修改共享 UI",
+        "桌面表格与手机卡片保持同一业务规则"
+      ],
+      "interface_contracts": [
+        "消费 T1 DeploymentUnitView/Version/RelatedDeploymentUnitView/Payload",
+        "名称只使用一个输入框",
+        "标准后缀双向联动且自定义后缀不被覆盖"
+      ],
+      "non_goals": [
+        "不新增第二后缀输入框",
+        "不建立公共选择器",
+        "不改路由或应用壳"
+      ],
+      "action_bounds": [
+        "先切换 types/api 触发静态失败",
+        "再改页面/详情/导入/资源申请和局部 CSS",
+        "只在 architecture 模块内实现请求乱序与状态处理"
+      ],
+      "acceptance": [
+        "vue-tsc/Vite build 通过",
+        "旧字段和 MQ 负向扫描无业务残留",
+        "单输入大写和标准/自定义后缀旅程通过",
+        "远程多选编辑回显和失败保留已选通过",
+        "375px 不产生页面级横向滚动"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "S3/S5/S6 结果",
+        "Network/Console/DOM 溢出证据"
+      ],
+      "rollback": "回退 T2 小提交并与 T1 配套回滚",
+      "stop_conditions": [
+        "T1 契约未稳定",
+        "需要修改共享 UI",
+        "移动布局无法在模块局部修复"
+      ],
+      "escalation_conditions": [
+        "需要公共选择器",
+        "用户要求第二后缀输入框",
+        "需要改变弹层基础组件"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-02T05:11:23+00:00",
+          "text": "记录已完成的前端部署单元单输入、后缀联动与远程多选实现"
+        },
+        {
+          "recorded_at": "2026-09-02T05:11:47+00:00",
+          "text": "T2 输出具备正式 build、浏览器 DOM/Console/Network 和四视口可观察证据"
+        },
+        {
+          "recorded_at": "2026-09-02T06:18:15+00:00",
+          "text": "前端正式build及1280/375/390/430四视口明暗主题、控制台、横向溢出和Mock交互验收通过"
+        }
+      ],
+      "updated_at": "2026-09-02T06:18:15+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "同步 Mock/公开契约并完成自动化、真实 API/SQL/审计和四视口收敛验收",
+      "requirements": [
+        "R1",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "Mock 必须虚构且幂等",
+        "architecture-module-contract 是公开契约",
+        "high-assurance 至少需要三次采样和两类传感器"
+      ],
+      "write_scope": [
+        "mock/mock-data.json",
+        "docs/integration/architecture-module-contract.md",
+        "docs/requirements/REQ-20260901-057-deployment-unit-model/**",
+        ".ai-control/requirements/req-20260901-057-deployment-unit-model/*.json"
+      ],
+      "invariants": [
+        "不修复其他需求历史账本",
+        "不访问生产或真实敏感数据",
+        "失败证据与历史噪声分开报告"
+      ],
+      "interface_contracts": [
+        "Mock、Java、TypeScript、HTTP 和文档字段一致",
+        "浏览器验收路由 /architecture/deployment-units"
+      ],
+      "non_goals": [
+        "不发布、不合并、不连接生产",
+        "不扩大公共能力"
+      ],
+      "action_bounds": [
+        "同步虚构数据和公开契约",
+        "执行从静态到全栈的分级验证",
+        "只记录本任务前缀 execution/observation/convergence"
+      ],
+      "acceptance": [
+        "Mock 幂等和公开契约一致",
+        "Maven/前端/Flyway/scope/diff 本需求检查通过",
+        "真实 API/SQL/审计通过",
+        "1280/375/390/430 明暗主题无新增控制台错误和页面横向滚动",
+        "最终 P0/P1 为零"
+      ],
+      "evidence_required": [
+        "S1-S6 原始结果",
+        "三次离散采样",
+        "execution/observation/convergence",
+        "残余风险和回退说明"
+      ],
+      "rollback": "按 T3、T2、T1 逆序回退；数据库使用补偿迁移或重建早期开发库",
+      "stop_conditions": [
+        "权限或租户越界",
+        "双方关系不一致",
+        "资源分流错误",
+        "迁移破坏非开发数据",
+        "浏览器主路径不可达"
+      ],
+      "escalation_conditions": [
+        "需要生产数据清理",
+        "需要 scope 外修改",
+        "历史治理错误成为不可绕过硬门禁",
+        "回退需删除不可恢复数据"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-02T05:11:59+00:00",
+          "text": "记录契约、治理、浏览器集成和环境阻塞证据"
+        },
+        {
+          "recorded_at": "2026-09-02T05:12:17+00:00",
+          "text": "T3 有可观察的契约、静态治理和浏览器证据；MySQL 阻塞已单列为扰动"
+        },
+        {
+          "recorded_at": "2026-09-02T07:37:10+00:00",
+          "text": "真实 API/SQL/审计、四视口、契约、Flyway、diff 与基准对照完成；无开放 P0/P1"
+        }
+      ],
+      "updated_at": "2026-09-02T07:37:10+00:00"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0001",
+      "task": "T1",
+      "source": "T1 独立静态观察",
+      "requirement": "R6",
+      "expected": "下载的 xlsx 模板可按当前五列表头直接重新上传，并产生 VALID 示例行",
+      "observed": "模板示例仍按旧六列顺序写入，解析前五列后名称和类型均不合法",
+      "evidence": "DeploymentUnitImportService 模板表头为五列但示例仍是六列；解析器只读取前五列",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "未启动真实 API，但列位置和校验失败可由源码稳定确定",
+      "causal_hypothesis": "模板示例数据未随导入契约从六列迁移为五列",
+      "correction_check": "模板下载后按五列回读，示例行应为 VALID",
+      "decision": "accept",
+      "decision_reason": "五列表头、五列解析器与旧六列示例列位置冲突，直接违反 R6 导入契约，采用局部高增益修复和 round-trip 复验",
+      "created_at": "2026-09-02T04:57:36+00:00",
+      "resolved_at": "2026-09-02T06:18:14+00:00",
+      "resolution_evidence": "DeploymentUnitImportMySqlTest.templateDownloadsValidWorkbook 在MySQL 8.4实际运行通过，五列表头与示例回传后VALID",
+      "decided_at": "2026-09-02T04:59:00+00:00"
+    },
+    {
+      "id": "F-0002",
+      "task": "T1",
+      "source": "T1 独立静态观察",
+      "requirement": "R6",
+      "expected": "V124 可从含遗留 MQ 数据的 V123 数据库增量升级",
+      "observed": "V124 在删除旧 CHECK 前先把 MQ 更新为 WEB，含 MQ 行时会被旧 CHECK 拒绝",
+      "evidence": "V96 旧 CHECK 不允许 WEB；V124 先更新 MQ 为 WEB，后删除旧 CHECK",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "Docker 不可达，未进行 MySQL 8.4 实际执行",
+      "causal_hypothesis": "迁移数据转换语句与删除旧 CHECK 的顺序反置",
+      "correction_check": "MySQL 8.4 验证空库、无 MQ 增量库和含 MQ 增量库，转换发生在旧约束删除后",
+      "decision": "accept",
+      "decision_reason": "V96 旧 CHECK 不允许 WEB 而 V124 在删除前转换 MQ，含 MQ 增量迁移存在确定冲突，采用局部高增益调整顺序并补迁移复验",
+      "created_at": "2026-09-02T04:57:46+00:00",
+      "resolved_at": "2026-09-02T06:18:14+00:00",
+      "resolution_evidence": "ArchitectureMigrationMySqlTest.migratesLegacyMqDeploymentUnitsFromV123ToV124 在MySQL 8.4实际运行通过，MQ转WEB及完整名称断言成立",
+      "decided_at": "2026-09-02T04:59:11+00:00"
+    }
+  ],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 独立静态观察",
+      "errors": {
+        "P0": 0,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 40,
+      "evidence": "新模型与权限契约通过静态复核；模板示例列错位和 V124 CHECK 顺序构成 2 个 P1；MySQL 运行证据因 Docker 不可达缺失",
+      "recorded_at": "2026-09-02T04:57:25+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T1 纠正静态复验",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "模板五列与 V124 语句顺序静态复验通过；迁移测试种子传感器缺陷已识别，Docker/MySQL 运行覆盖缺口保留",
+      "recorded_at": "2026-09-02T05:09:21+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T1/T2/T3 集成独立观察",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "前端 build/四视口/Mock 旅程和后端静态/非容器测试未发现新增偏差；MySQL 与真实 API/SQL/权限/审计明确标为不可观测",
+      "recorded_at": "2026-09-02T05:34:38+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "Docker/MySQL恢复后独立复验",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "DeploymentUnitImportMySqlTest 8/8、DeploymentUnitLifecycleMySqlTest 8/8、ArchitectureMigrationMySqlTest 3/3、EmptyDatabaseMigrationBaselineMySqlTest 2/2，失败0错误0",
+      "recorded_at": "2026-09-02T06:18:14+00:00"
+    },
+    {
+      "id": "S-0005",
+      "label": "最终全栈与基准对照采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "真实 API/SQL/审计、DeploymentUnitLifecycleMySqlTest 9/9、DeploymentUnitServiceTest 18/18、前端 build 和四视口通过；完整套件失败已在基准分支等价复现",
+      "recorded_at": "2026-09-02T07:37:10+00:00"
+    },
+    {
+      "id": "S-0006",
+      "label": "关系并发回滚约束补充采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "DeploymentUnitLifecycleMySqlTest 12/12：双向、幂等、对向并发单行单历史、事务关系与历史共同回滚、自关联 CHECK、跨租户 FK 全通过",
+      "recorded_at": "2026-09-02T07:43:14+00:00"
+    }
+  ]
+}
