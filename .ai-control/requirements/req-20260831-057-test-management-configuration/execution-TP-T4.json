@@ -1,0 +1,76 @@
+{
+  "task_id": "TP-T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "/private/tmp/rddmp-test-plan-run.7GKHxN/ccb-boot.jar",
+      "purpose": "仅用于本地验证的临时启动包；以本任务已编译的基础设施与测试管理模块替换嵌套依赖，不纳入源码变更。"
+    }
+  ],
+  "requirements_addressed": ["TP1", "TP2", "TP3", "TP4"],
+  "commands": [
+    {
+      "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am test -Dtest=TestPlanServiceTest,TestPlanAttachmentPolicyTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "5 tests, 0 failures。"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc 与 Vite 通过。"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs && node scripts/check-governance.mjs && git diff --check",
+      "exit_code": 0,
+      "salient_output": "迁移、治理和空白检查通过。"
+    },
+    {
+      "command": "curl health；Docker MySQL 查询 flyway_schema_history 和方案表；未认证方案树 HTTP 探针",
+      "exit_code": 0,
+      "salient_output": "8080 health=UP；V125 success=1；四张方案表存在；未认证树端点返回 401。"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "真实迁移与启动",
+      "result": "pass",
+      "evidence": "Flyway 当前版本 125，tm_test_plan_special_node/tm_test_plan/tm_test_plan_version/tm_test_plan_audit 均存在；/actuator/health 返回 UP。",
+      "limitations": ["完整 ccb-boot Maven 打包被 architecture 模块两个现有 AttachmentPort 调用签名错误阻断，因此以临时本地启动包做运行验证。"]
+    },
+    {
+      "check": "认证边界",
+      "result": "pass",
+      "evidence": "GET /api/test-management/plans/application-assembly/tree?projectId=910000000003001 未携带 token 返回 HTTP 401。",
+      "limitations": ["现有浏览器会话重启后落在登录页，当前未持有具备 plans 权限的非敏感凭据，管理员读写和读者 403 未做真实 HTTP 采样。"]
+    },
+    {
+      "check": "浏览器页面入口",
+      "result": "partial",
+      "evidence": "浏览器可导航到 plans 路由，后端重启后守卫正确转到登录页面。",
+      "limitations": ["未认证状态不能观察树、双 TAB、上传或移动视口。"]
+    }
+  ],
+  "diff_summary": [
+    "本地运行证明 V125 已真实执行，且未认证读请求被 Spring Security 拦截。"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "迁移只追加且本任务不修改平台附件源码",
+      "result": "pass",
+      "evidence": "V125 真实迁移成功；文件清单不含 platform/attachment 源码。"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "architecture 模块存在两处 AttachmentPort.list 参数签名不匹配",
+      "impact": "根级 ccb-boot package 失败；不在本任务可写范围，未修改。"
+    },
+    {
+      "event": "浏览器登录会话随本地后端重启失效",
+      "impact": "无法进行已认证 UI 和正向 API 采样。"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["持有测试方案权限的本地会话后，应补做 docx/xlsx 上传、同名 V2、预览下载、删除以及 375px 视口的正向验收。"],
+  "recommended_next": "observing"
+}

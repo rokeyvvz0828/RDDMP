@@ -33,6 +33,7 @@ import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationD
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
 import TestManagementList from '../modules/test-management/TestManagementList.vue'
 import BusinessDayManagement from '../modules/test-management/business-day/BusinessDayManagement.vue'
+import TestConfigurationPage from '../modules/test-management/configuration/TestConfigurationPage.vue'
 import { getWorkflowTaskContext } from '../api/workflow'
 import { useAuthStore } from '../stores/auth'
 
@@ -374,6 +375,15 @@ const router = createRouter({
         { path: 'test-management/business-day/calendar-schedule', redirect: { path: '/test-management/business-day', query: { view: 'schedule' } } },
         { path: 'test-management/business-day/batch-requirements', redirect: { path: '/test-management/business-day', query: { view: 'requirements' } } },
         { path: 'test-management/business-day/test-environments', redirect: { path: '/test-management/business-day', query: { view: 'environments' } } },
+        { path: 'test-management/:domain/configuration', name: 'test-management-configuration', component: TestConfigurationPage, meta: { title: '管理配置' } },
+        { path: 'test-management/:domain/dashboard', name: 'test-management-announcement', component: () => import('../modules/test-management/announcement/TestAnnouncementPage.vue'), meta: { title: '测试公告板' } },
+        { path: 'test-management/:domain/plans', name: 'test-management-plan', component: () => import('../modules/test-management/plan/TestPlanPage.vue'), meta: { title: '测试方案' } },
+        { path: 'test-management/:domain/scope', name: 'test-management-scope', component: () => import('../modules/test-management/scope/TestScopePage.vue'), meta: { title: '测试范围' } },
+        { path: 'test-management/:domain/cases', name: 'test-management-cases', component: () => import('../modules/test-management/casework/TestCasePage.vue'), meta: { title: '测试案例' } },
+        { path: 'test-management/:domain/execution', name: 'test-management-execution', component: () => import('../modules/test-management/execution/TestExecutionPage.vue'), meta: { title: '测试执行' } },
+        { path: 'test-management/:domain/defects', name: 'test-management-defects', component: () => import('../modules/test-management/defect/TestDefectPage.vue'), meta: { title: '测试缺陷' } },
+        { path: 'test-management/:domain/reports', name: 'test-management-reports', component: () => import('../modules/test-management/report/TestReportPage.vue'), meta: { title: '测试报告' } },
+        { path: 'test-management/:domain/analytics', name: 'test-management-analytics', component: () => import('../modules/test-management/analytics/TestAnalyticsPage.vue'), meta: { title: '分析统计' } },
         { path: 'test-management/:domain/:section', name: 'test-management-list', component: TestManagementList },
       ]
     },

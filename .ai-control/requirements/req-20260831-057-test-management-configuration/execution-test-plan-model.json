@@ -1,0 +1,65 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["V125 plan tables and permission seeds", "TestPlanService", "TestPlanController", "TestPlanAttachmentPolicy", "TestPlanPage and plans route"],
+    "environment": ["pm_project project master", "tm_test_participating_system configuration state", "platform AttachmentGateway and AttachmentAccessPolicy", "local MySQL/MinIO/kkFileView", "global project context"]
+  },
+  "state_variables": [
+    {"name":"plan_scope","owner":"TestPlanService","valid_values":["tenant + domain + project"]},
+    {"name":"plan_node","owner":"tm_test_plan_special_node / tm_test_participating_system","valid_values":["PROJECT","SYSTEM enabled only","SPECIAL active"]},
+    {"name":"plan_version","owner":"tm_test_plan_version","valid_values":["V1..Vn, one current latest version per plan"]},
+    {"name":"plan_lifecycle","owner":"tm_test_plan","valid_values":["active","soft-deleted"]},
+    {"name":"attachment_access","owner":"TestPlanAttachmentPolicy","valid_values":["read/preview/download allowed or denied"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"TP1","input":"已认证用户选择测试大类、全局项目和树节点","transitions":["路由加载 TestPlanPage","服务端校验 domain/project","查询 tm_test_participating_system 与专项节点","前端持久化本大类节点选择"],"outputs":["仅该范围的项目级、参测系统级、专项级方案树与节点内容"]},
+    {"requirement_id":"TP2","input":"管理者上传同名方案或删除逻辑方案","transitions":["服务端锁定 tenant/domain/project/node/name","确认版本归并","写 plan/version/audit 或软删除 plan","重新查询当前与历史版本"],"outputs":["可观察的 V1..Vn、当前方案切换和已删除方案不可见"]},
+    {"requirement_id":"TP3","input":"管理者提交附件 ID，读者请求预览/下载","transitions":["服务端通过 AttachmentGateway 读取元数据并校验扩展名/大小","绑定 TEST_PLAN_VERSION","平台附件策略验证版本和方案状态","前端使用预览/下载 URL"],"outputs":["只接受 docx/xlsx；docx 公共预览；xlsx 首 Sheet 或可下载失败提示"]},
+    {"requirement_id":"TP4","input":"读者或管理者调用方案 API/附件 URL","transitions":["Spring @PreAuthorize 检查 plans 与 create/update/delete","服务层校验 scope","写入 tm_test_plan_audit","附件策略校验租户和删除状态"],"outputs":["授权请求成功；未授权写入和删除后附件访问被拒绝"]}
+  ],
+  "interfaces": [
+    {"name":"tm_test_participating_system","producers":["TestConfigurationService"],"consumers":["TestPlanService"],"invariant":"系统级树只使用 tenant/domain/project 下 enabled=1 且未删除记录"},
+    {"name":"AttachmentGateway / AttachmentAccessPolicy","producers":["platform/attachment"],"consumers":["TestPlanService","TestPlanAttachmentPolicy"],"invariant":"业务模块只绑定/读取附件，不能访问附件私有表或对象键"},
+    {"name":"test plan REST API","producers":["TestPlanController"],"consumers":["TestPlanPage"],"invariant":"所有请求以认证用户和项目 ID 验证范围"},
+    {"name":"global project context","producers":["frontend/application"],"consumers":["TestPlanPage"],"invariant":"方案页面不渲染第二个项目选择器"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"TP1/TP2/TP4 服务规则","method":"JDK17 TestPlanServiceTest 直接断言 scope、版本、节点、软删除和审计 SQL 结果","blind_spots":["真实附件预签名 URL"],"independence":"直接测量服务输入输出，不依赖前端"},
+    {"id":"S2","target":"TP3 附件权限和 API HTTP 语义","method":"本地认证 API 探针及平台附件 preview/download 响应","blind_spots":["浏览器 xlsx 渲染排版"],"independence":"HTTP 运行时与 JUnit 使用不同路径"},
+    {"id":"S3","target":"TP1-TP3 页面状态","method":"Vite 类型/生产构建和真实浏览器的桌面/375px 路径","blind_spots":["生产代理差异"],"independence":"浏览器呈现独立于服务单测"},
+    {"id":"S4","target":"V125 迁移完整性","method":"check-flyway-migrations 与本地应用启动后的 schema/API 冒烟","blind_spots":["生产数据量性能"],"independence":"迁移结构检查与业务测试独立"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"TP1/TP2/TP4 方案持久化与权限","action":"追加 V125、实现 TestPlanService 和直接服务测试","authority":"REQ-20260831-057 writable V125 与 test-management module","impact_radius":"测试管理方案数据和四个 plans 菜单细粒度权限","rollback":"回退应用代码，保留追加迁移与软删除数据"},
+    {"id":"A2","target":"TP3 附件受控访问","action":"实现 TestPlanAttachmentPolicy 和绑定验证","authority":"test-management module，可消费 attachment 公共接口","impact_radius":"TEST_PLAN_VERSION 附件访问","rollback":"回退本策略和方案端点，不修改平台附件实现"},
+    {"id":"A3","target":"TP1-TP3 用户路径","action":"实现 TestPlanPage、API DTO 和专属 plans 路由","authority":"test-management frontend 与 router writable paths","impact_radius":"四个测试大类的 plans 页面","rollback":"回退路由以恢复 TestManagementList 占位页面"}
+  ],
+  "measurements": [
+    {"requirement_id":"TP1","sensor_ids":["S1","S2","S3"],"observable":"yes"},
+    {"requirement_id":"TP2","sensor_ids":["S1","S2","S3"],"observable":"yes"},
+    {"requirement_id":"TP3","sensor_ids":["S2","S3","S4"],"observable":"yes"},
+    {"requirement_id":"TP4","sensor_ids":["S1","S2","S4"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"项目尚未配置参测系统","effect":"系统级树为空但项目/专项节点仍可使用","detectable":true,"controllable":false},
+    {"source":"MinIO/kkFileView 或浏览器跨域策略不可达","effect":"预览或 xlsx 首 Sheet无法加载","detectable":true,"controllable":false},
+    {"source":"已有工作树包含本需求的未提交公告/配置修改","effect":"不能覆盖或格式化相邻文件","detectable":true,"controllable":true},
+    {"source":"Flyway 仅在启动时应用","effect":"新增表和权限在静态测试后不可立即 API 验证","detectable":true,"controllable":true}
+  ],
+  "delays": [
+    {"source":"Flyway 启动","consequence":"迁移结构与运行 API 采样需要在重启后进行","sampling_rule":"先检查迁移，再重启本地后端后采样"},
+    {"source":"附件预签名 URL","consequence":"上传绑定和浏览器 xlsx 解析可能产生延迟或过期","sampling_rule":"每次预览实时获取 URL，失败后重新获取并保留下载入口"},
+    {"source":"前端 HMR","consequence":"页面变更需刷新当前浏览器路由才能观察","sampling_rule":"构建后刷新对应 plans 路由"}
+  ],
+  "assumptions": [
+    {"text":"测试方案模块可读取 tm_test_participating_system 作为系统节点来源","evidence":"TestConfigurationService 已持久化该表且同属 test-management 可写模块","falsifier":"表结构或范围无法提供 physical subsystem 名称/编码"},
+    {"text":"浏览器可通过现有附件受控下载 URL 读取 xlsx","evidence":"web 已有 getAttachmentDownload，xlsx 已安装","falsifier":"本地浏览器 fetch 受 CORS、过期或 URL 策略拒绝"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"TP1","observable":"yes","controllable":"yes","action":"以 A1/A3 进入 planning"},
+    {"requirement_id":"TP2","observable":"yes","controllable":"yes","action":"以 A1 进入 planning"},
+    {"requirement_id":"TP3","observable":"yes","controllable":"yes","action":"以 A2/A3 进入 planning；运行时验证下载 URL"},
+    {"requirement_id":"TP4","observable":"yes","controllable":"yes","action":"以 A1/A2 进入 planning"}
+  ],
+  "model_status":"ready"
+}

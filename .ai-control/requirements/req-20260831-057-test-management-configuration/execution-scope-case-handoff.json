@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-test-management-configuration",
+  "handoff_status": "approved",
+  "created_at": "2026-09-01T13:05:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "test-management-scope-case",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-01-test-management-scope-case-design.md",
+    "objective": "在现有测试管理分支内交付按测试大类、项目和参测系统隔离的完整测试范围与测试案例能力。",
+    "users": ["测试人员", "测试经理及以上", "具备菜单阅读权限的测试角色"],
+    "requirements": [
+      {"id":"SC1","statement":"范围和案例按大类、项目和参测系统隔离，并且不重复项目选择器。","acceptance":["未选项目不请求数据","非参测系统不可见","跨项目或跨大类读取失败"],"priority":"must","source":"V1.6 模块 4、5","counterexample":["业务页自行再渲染项目下拉"]},
+      {"id":"SC2","statement":"范围和案例各自提供五层目录、CRUD、筛选分页、列设置、导入导出和软删除。","acceptance":["目录最多五层","删除目录移交子数据","导入错误零写入","导出反映当前筛选"],"priority":"must","source":"V1.6 模块 4、5","counterexample":["范围和案例共用同一目录树"]},
+      {"id":"SC3","statement":"范围序号与案例编号遵循唯一性和原子前缀联动规则。","acceptance":["范围改号同步案例前缀","案例改所属范围同步前缀","案例流水号不复用","缺陷编号不受影响"],"priority":"must","source":"V1.6 编号规则","counterexample":["只更新范围序号导致案例编号失配"]},
+      {"id":"SC4","statement":"案例支持富文本、附件、核算核对、批量调整、移动和引用保护。","acceptance":["富文本字段保存并净化","附件可预览下载","执行引用案例只能置无效","批量范围变更提供影响预览"],"priority":"must","source":"V1.6 模块 5","counterexample":["附件绕过平台能力"]},
+      {"id":"SC5","statement":"所有写入执行服务端权限、实体范围校验和审计。","acceptance":["未认证 401","未授权 403","写操作有审计记录"],"priority":"must","source":"V1.6 权限矩阵与仓库规约","counterexample":["仅前端隐藏写按钮"]}
+    ],
+    "invariants": ["不改平台附件、文件预览和公共 UI 源码", "仅追加 V126", "执行模块未交付时状态为未执行"],
+    "constraints": ["Java 17", "Vue 3/TypeScript/Element Plus", "只修改当前 REQ-20260831-057 扩展范围"],
+    "non_goals": ["执行、缺陷、报告、统计", "项目/系统/用户主数据", "新建平台预览能力"],
+    "selected_approach": {"name":"同一迁移、范围与案例两个领域服务、最小共享支持代码", "reason":"范围是案例编号和归属前置条件，同时避免巨型服务。", "alternatives":[{"name":"单一巨型服务和页面","rejected_because":"职责混杂。"},{"name":"提前实现执行/缺陷","rejected_because":"越出范围。"}]},
+    "architecture": {"boundary":{"inside":["V126", "测试管理范围/案例服务控制器工作簿附件策略", "范围/案例 Vue 页面"],"outside":["平台附件/预览", "项目系统用户主数据", "执行缺陷报告统计"]},"components":[{"name":"TestScopeService","responsibility":"范围、目录、导入导出和审计","depends_on":["configuration","participating systems"]},{"name":"TestCaseService","responsibility":"案例、编号联动、批量、附件和审计","depends_on":["scope contract","AttachmentGateway"]}],"interfaces":[{"name":"scope/case REST API","producer":"test-management","consumers":["scope/case Vue pages"],"contract":"统一 ApiResponse；显式项目上下文并在服务端校验"}],"data_flows":[{"input":"范围序号变更","transitions":["校验","影响预览","事务同步","审计"],"output":"同步案例前缀"}]},
+    "error_handling": [{"condition":"导入含错误行","behavior":"确认禁用且零写入","recovery":"逐行错误后重新上传"},{"condition":"案例有执行引用","behavior":"删除拒绝，仅可置无效","recovery":"置无效或解除未来引用"}],
+    "quality_attributes":{"security":["服务端 RBAC/范围校验/审计"],"performance":["服务端分页和单批事务"],"compatibility":["不改公共平台和既有迁移"],"operations":["本地 MySQL/MinIO/kkFileView 验收"]},
+    "verification_strategy":[{"requirement_ids":["SC1","SC2","SC3","SC4","SC5"],"signal":"自动化、迁移、API 与浏览器路径","method":"服务测试、构建、认证探测、数据库采样和移动端浏览器验收"}],
+    "assumptions":[{"text":"执行模块尚未有持久记录时状态为未执行。","basis":"现状。","falsifier":"执行模块稳定发布。"}],
+    "unknowns":[{"question":"未来执行/缺陷快照精确字段","impact":"后续接入，不阻断当前数据所有权。","owner":"后续需求负责人","blocking":false}],
+    "decisions":[{"id":"D1","decision":"在现有 REQ 和分支内扩展。","reason":"用户明确要求。","source":"用户消息"}],
+    "risks":[{"risk":"编号联动不一致","impact":"数据关系损坏","mitigation":"预览确认、事务和审计"}],
+    "approval":{"status":"approved","evidence":"用户回复：好的，开始实施。","confirmed_at":"2026-09-01T13:00:00+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-01-test-management-scope-case-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["仅追加 V126", "不修改平台附件/预览/公共 UI", "范围与案例目录独立且最多五层", "写操作服务端校验和审计"],
+    "file_map": [
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V126__test_management_scope_case.sql","status":"candidate-new","responsibility":"持久化与权限种子","evidence":"设计 D1"},
+      {"path":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/scope/TestScopeService.java","status":"candidate-new","responsibility":"范围领域","evidence":"设计架构"},
+      {"path":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/casework/TestCaseService.java","status":"candidate-new","responsibility":"案例领域","evidence":"设计架构"},
+      {"path":"web/src/modules/test-management/scope/TestScopePage.vue","status":"candidate-new","responsibility":"范围 UI","evidence":"V1.6 模块 4"},
+      {"path":"web/src/modules/test-management/casework/TestCasePage.vue","status":"candidate-new","responsibility":"案例 UI","evidence":"V1.6 模块 5"}
+    ],
+    "tasks": [
+      {"id":"T1","goal":"V126 表、索引、软删除字段和权限种子可迁移。","requirement_ids":["SC1","SC2","SC5"],"prerequisites":[],"input_facts":["V123-V125 已发布","参与系统和字典已存在"],"files":{"create":["server/src/platform/infrastructure/src/main/resources/db/migration/V126__test_management_scope_case.sql"],"modify":[],"test":["server/src/modules/test-management/src/test/java/com/ccb/testmanagement/scope/ScopeCaseSchemaTest.java"]},"interfaces":{"consumes":["tm_test_participating_system","tm_test_dictionary"],"produces":["范围/案例表和权限"]},"steps":[{"id":"T1-S1","action":"建立迁移基准检查","command":"node scripts/check-flyway-migrations.mjs","expected":"记录当前 Flyway 连续性","evidence":"退出码和检查摘要"},{"id":"T1-S2","action":"追加 V126 和 schema 断言","command":"JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am test","expected":"迁移结构和测试通过","evidence":"测试摘要"}],"acceptance_checks":["V126 只追加","范围/案例唯一性与软删除字段存在"],"risks":["迁移版本冲突"],"rollback":"回退应用代码，保留迁移数据","stop_conditions":["迁移版本冲突"],"escalation_conditions":["需要修改公共平台模块"]},
+      {"id":"T2","goal":"范围、范围目录、编号、导入导出和审计 API 可验证。","requirement_ids":["SC1","SC2","SC3","SC5"],"prerequisites":["T1"],"input_facts":["当前模块已有 POI 和配置字典"],"files":{"create":["server/src/modules/test-management/src/main/java/com/ccb/testmanagement/scope/TestScopeService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestScopeController.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/ScopeCaseWorkbookService.java"],"modify":[],"test":["server/src/modules/test-management/src/test/java/com/ccb/testmanagement/scope/TestScopeServiceTest.java","server/src/modules/test-management/src/test/java/com/ccb/testmanagement/scope/ScopeCaseWorkbookServiceTest.java"]},"interfaces":{"consumes":["参测系统和字典"],"produces":["scope REST API","范围编号同步契约"]},"steps":[{"id":"T2-S1","action":"先编写范围约束测试","command":"mvn -pl :ccb-test-management -am -Dtest=TestScopeServiceTest test","expected":"新增行为先失败","evidence":"失败断言"},{"id":"T2-S2","action":"实现范围和工作簿服务","command":null,"expected":"树、CRUD、预校验和导出可用","evidence":"服务 diff"},{"id":"T2-S3","action":"运行范围回归","command":"mvn -pl :ccb-test-management -am test","expected":"0 失败","evidence":"测试摘要"}],"acceptance_checks":["目录五层","导入错误零写入","改号影响预览"],"risks":["字典编码差异"],"rollback":"回退 T2 Java 文件","stop_conditions":["字典无法安全读取"],"escalation_conditions":["需变更配置公共契约"]},
+      {"id":"T3","goal":"案例、附件、批量调整、编号联动和审计 API 可验证。","requirement_ids":["SC1","SC2","SC3","SC4","SC5"],"prerequisites":["T2"],"input_facts":["TestPlan 已示范 AttachmentGateway/AccessPolicy"],"files":{"create":["server/src/modules/test-management/src/main/java/com/ccb/testmanagement/casework/TestCaseService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/casework/TestCaseAttachmentPolicy.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestCaseController.java"],"modify":["server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/ScopeCaseWorkbookService.java"],"test":["server/src/modules/test-management/src/test/java/com/ccb/testmanagement/casework/TestCaseServiceTest.java","server/src/modules/test-management/src/test/java/com/ccb/testmanagement/casework/TestCaseAttachmentPolicyTest.java"]},"interfaces":{"consumes":["T2 range contract","AttachmentGateway"],"produces":["case REST API","TEST_CASE attachment policy"]},"steps":[{"id":"T3-S1","action":"建立案例编号/引用/附件失败测试","command":"mvn -pl :ccb-test-management -am -Dtest=TestCaseServiceTest,TestCaseAttachmentPolicyTest test","expected":"新增行为先失败","evidence":"失败断言"},{"id":"T3-S2","action":"实现案例服务、控制器和附件策略","command":null,"expected":"案例 CRUD、批量、导入和附件受保护","evidence":"服务 diff"},{"id":"T3-S3","action":"运行测试管理回归","command":"mvn -pl :ccb-test-management -am test","expected":"0 失败","evidence":"测试摘要"}],"acceptance_checks":["编号不复用","执行引用只能置无效","附件跨租户拒绝"],"risks":["附件策略分派冲突"],"rollback":"回退 T3 Java 文件","stop_conditions":["必须直接读附件表"],"escalation_conditions":["需要平台附件变更"]},
+      {"id":"T4","goal":"范围前端紧凑工作台符合桌面与移动要求。","requirement_ids":["SC1","SC2","SC3","SC5"],"prerequisites":["T2"],"input_facts":["计划页和配置页已提供工作台参考"],"files":{"create":["web/src/modules/test-management/scope/TestScopePage.vue","web/src/modules/test-management/scope/test-scope.css"],"modify":["web/src/modules/test-management/api.ts","web/src/router/index.ts"],"test":[]},"interfaces":{"consumes":["T2 scope API","项目上下文","UI components"],"produces":["四大类范围路由"]},"steps":[{"id":"T4-S1","action":"建立 API 类型和页面骨架","command":"npm --prefix web run build","expected":"记录构建基准","evidence":"构建摘要"},{"id":"T4-S2","action":"实现树、表格、抽屉、导入和列设置","command":null,"expected":"桌面和移动路径可操作","evidence":"页面 diff"},{"id":"T4-S3","action":"生产构建和浏览器检查","command":"npm --prefix web run build","expected":"退出 0","evidence":"构建和浏览器记录"}],"acceptance_checks":["无重复项目选择器","改号确认","375px 无页面横滚"],"risks":["通用表格能力不足"],"rollback":"移除范围路由和页面","stop_conditions":["必须改公共 UI"],"escalation_conditions":["需要全局项目上下文改动"]},
+      {"id":"T5","goal":"案例前端工作台提供富文本、附件、批量和移动能力。","requirement_ids":["SC1","SC2","SC3","SC4","SC5"],"prerequisites":["T3","T4"],"input_facts":["公告板成熟编辑器与统一附件预览已存在"],"files":{"create":["web/src/modules/test-management/casework/TestCasePage.vue","web/src/modules/test-management/casework/test-case.css"],"modify":["web/src/modules/test-management/api.ts","web/src/router/index.ts"],"test":[]},"interfaces":{"consumes":["T3 case API","T2 range API","附件和富文本能力"],"produces":["四大类案例路由"]},"steps":[{"id":"T5-S1","action":"实现案例树、列表和筛选","command":null,"expected":"列表按范围和项目正确过滤","evidence":"页面 diff"},{"id":"T5-S2","action":"实现三段抽屉、附件、批量向导和导入","command":null,"expected":"完整案例维护路径可用","evidence":"页面 diff"},{"id":"T5-S3","action":"构建和浏览器验收","command":"npm --prefix web run build","expected":"退出 0","evidence":"构建和浏览器记录"}],"acceptance_checks":["案例编号只读","富文本/附件统一能力","引用删除分支"],"risks":["编辑器上传链路"],"rollback":"移除案例路由和页面","stop_conditions":["编辑器不能安全复用"],"escalation_conditions":["需要新增公共依赖"]},
+      {"id":"T6","goal":"完成迁移、API、权限、附件和响应式端到端验收。","requirement_ids":["SC1","SC2","SC3","SC4","SC5"],"prerequisites":["T1","T2","T3","T4","T5"],"input_facts":["本地 MySQL/MinIO/kkFileView 已运行"],"files":{"create":[],"modify":[".ai-control/requirements/req-20260831-057-test-management-configuration/*.json"],"test":[]},"interfaces":{"consumes":["T1-T5"],"produces":["运行与收敛证据"]},"steps":[{"id":"T6-S1","action":"运行治理、迁移、测试和构建","command":"mvn -pl :ccb-test-management -am test && npm --prefix web run build && node scripts/check-flyway-migrations.mjs && node scripts/check-all-governance.mjs && git diff --check","expected":"各检查通过或记录范围外基线阻断","evidence":"退出码"},{"id":"T6-S2","action":"执行管理员和无权限 API/浏览器路径","command":null,"expected":"CRUD、导入、预览、401/403 和移动端均有证据","evidence":"运行采样"}],"acceptance_checks":["SC1-SC5 均有自动化和运行证据","范围审计无意外路径"],"risks":["范围外根级构建阻断"],"rollback":"回退业务代码，保留 V126 数据","stop_conditions":["跨租户访问或迁移失败"],"escalation_conditions":["需生产数据或外部系统"]}
+    ],
+    "dependency_edges":[
+      {"from":"T1","to":"T2","reason":"范围和案例表结构、索引及权限必须先可用。"},
+      {"from":"T2","to":"T3","reason":"案例归属、编号和导入依赖范围契约。"},
+      {"from":"T2","to":"T4","reason":"范围前端消费稳定范围 API。"},
+      {"from":"T3","to":"T5","reason":"案例前端消费稳定案例 API。"},
+      {"from":"T4","to":"T5","reason":"案例页需要复用范围跳转和共享 API/路由改动。"},
+      {"from":"T5","to":"T6","reason":"集成验收必须覆盖两端页面。"}
+    ],
+    "parallel_groups":[["T1"],["T2"],["T3"],["T4"],["T5"],["T6"]],
+    "integration_checks":[{"after_tasks":["T1","T2","T3","T4","T5","T6"],"command":"mvn -pl :ccb-test-management -am test && npm --prefix web run build && node scripts/check-flyway-migrations.mjs && node scripts/check-all-governance.mjs && git diff --check","expected":"通过或明确记录范围外既有阻断"}],
+    "coverage":[{"requirement_id":"SC1","task_ids":["T1","T2","T3","T4","T5","T6"]},{"requirement_id":"SC2","task_ids":["T1","T2","T3","T4","T5"]},{"requirement_id":"SC3","task_ids":["T2","T3","T6"]},{"requirement_id":"SC4","task_ids":["T3","T5","T6"]},{"requirement_id":"SC5","task_ids":["T1","T2","T3","T6"]}],
+    "approval":{"status":"approved","evidence":"用户回复：开始实施。","confirmed_at":"2026-09-01T13:10:00+08:00"}
+  },
+  "control_seed": {"seed_status":"hypotheses-only","plant_boundary_candidates":["V126、范围/案例服务/控制器/工作簿/附件策略、Vue 页面、现有项目上下文和本地基础设施"],"state_variable_candidates":["范围序号唯一性","案例编号前缀","目录深度","软删除/无效","导入事务","附件授权"],"interface_candidates":["scope REST API","case REST API","AttachmentGateway","configuration dictionary API"],"sensor_candidates":["服务测试","Flyway","API 探测","数据库审计","前端构建","浏览器"],"actuator_candidates":["迁移","领域服务事务","控制器权限","Vue 页面"],"disturbance_candidates":["未提交改动","执行模块缺失","并发导入","MinIO/kkFileView 不可用","architecture 既有编译错误"],"delay_candidates":["XLSX 解析","附件预览","异步筛选"],"assumptions":[{"text":"执行模块缺失时未执行状态可安全满足需求。","basis":"设计。","falsifier":"执行模块发布。"}]}
+}

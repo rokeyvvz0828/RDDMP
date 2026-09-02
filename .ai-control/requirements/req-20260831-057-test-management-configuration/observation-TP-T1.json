@@ -1,0 +1,33 @@
+{
+  "sample_label": "方案数据与迁移独立采样",
+  "task_ids": ["TP-T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "TP1",
+      "sensor": "JDK17 TestPlanServiceTest + 本地 MySQL 元数据查询",
+      "result": "pass",
+      "raw_evidence": "TestPlanServiceTest 3 tests passed；flyway_schema_history V125 success=1；四张 tm_test_plan* 表存在。",
+      "limitation": ["未以已认证租户实际读取树。"]
+    },
+    {
+      "requirement_id": "TP2",
+      "sensor": "服务规则测试与 V125 表结构检查",
+      "result": "pass",
+      "raw_evidence": "迁移包含逻辑方案、版本与软删除字段；服务测试覆盖非法旧格式拒绝。",
+      "limitation": ["同名 V2 与软删除的真实 HTTP 路径尚不可观测。"]
+    },
+    {
+      "requirement_id": "TP4",
+      "sensor": "迁移权限种子和审计表检查",
+      "result": "pass",
+      "raw_evidence": "V125 已写入 create/update/delete 权限种子与 tm_test_plan_audit 表。",
+      "limitation": ["需已认证会话验证实际角色矩阵。"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": ["正向管理员和跨项目 HTTP 样本"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

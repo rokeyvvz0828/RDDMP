@@ -1,0 +1,2397 @@
+{
+  "schema_version": 4,
+  "revision": 28,
+  "created_at": "2026-08-31T10:17:42+00:00",
+  "updated_at": "2026-08-31T14:13:00+00:00",
+  "mode": "standard",
+  "phase": "observing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户回复确认并要求开始实施；计划确认=用户回复确认并要求开始实施",
+      "recorded_at": "2026-08-31T10:17:42+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "需求基线门禁通过：R1-R4 均有验收条件、反例和候选测量",
+      "recorded_at": "2026-08-31T10:18:18+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "系统模型门禁通过：R1-R4 均具备因果链、独立传感器与受权执行器",
+      "recorded_at": "2026-08-31T10:19:32+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "计划门禁通过：R1-R4 全覆盖，任务串行且无共享写入冲突",
+      "recorded_at": "2026-08-31T10:20:29+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T3 execution artifacts recorded; backend, type and production build checks completed",
+      "recorded_at": "2026-08-31T11:05:41+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户回复确认并要求开始实施；计划确认=用户回复确认并要求开始实施",
+        "recorded_at": "2026-08-31T10:17:42+00:00",
+        "data": {
+          "objective": "交付四大测试大类隔离的测试管理配置后端与前端。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "提供四大测试大类的管理配置入口和受保护 API",
+              "acceptance": [
+                "有权限用户可访问",
+                "无权限请求被拒绝"
+              ],
+              "priority": "must",
+              "source": "用户确认与 V1.6",
+              "counterexample": [
+                "仅隐藏按钮而接口仍成功"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "维护参测系统和系统级角色",
+              "acceptance": [
+                "配置可持久化读取",
+                "角色不能分配给未参测系统"
+              ],
+              "priority": "must",
+              "source": "V1.6",
+              "counterexample": [
+                "跨大类或跨项目读取配置"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "维护轮次、周期和字典",
+              "acceptance": [
+                "日期、排序和引用约束可验证",
+                "派生和只读字典不可编辑"
+              ],
+              "priority": "must",
+              "source": "V1.6",
+              "counterexample": [
+                "结束轮次自动生成报告"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "支持配置导入预校验和原子写入",
+              "acceptance": [
+                "任意错误行导致零写入",
+                "成功返回汇总"
+              ],
+              "priority": "must",
+              "source": "V1.6",
+              "counterexample": [
+                "导入半成功"
+              ]
+            }
+          ],
+          "invariants": [
+            "测试管理不维护项目、用户或物理子系统主数据",
+            "所有写入受租户、实体范围、RBAC 和审计保护",
+            "V106 只追加不修改历史迁移"
+          ],
+          "constraints": [
+            "JDK 17",
+            "Vue 3/TypeScript/Element Plus",
+            "MySQL 8.4",
+            "临时每项目全量物理子系统候选规则"
+          ],
+          "non_goals": [
+            "其他八个业务页面",
+            "项目—子系统主数据关系",
+            "营业日管理改造"
+          ],
+          "assumptions": [
+            {
+              "text": "每个项目暂时展示全部启用物理子系统",
+              "basis": "用户确认",
+              "falsifier": "架构模块提供项目—子系统关系"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "架构关系字段和可见范围",
+              "impact": "未来替换候选查询",
+              "owner": "架构模块",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "采用全量候选的参测映射",
+              "reason": "不等待后续架构关系",
+              "source": "用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "signal": "后端、构建、迁移和浏览器证据",
+              "method": "自动化检查和真实用户路径"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "已复核用户确认的模块 1 范围、临时物理子系统策略和四项可测量必须需求",
+        "recorded_at": "2026-08-31T10:18:18+00:00",
+        "data": {
+          "objective": "测试管理和机构负责人能够在四大测试大类内安全维护后续测试业务模块依赖的配置数据。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "系统必须提供四大测试大类内可路由的管理配置页面及受保护 API。",
+              "acceptance": [
+                "有配置权限的用户可从每个大类进入页面并读取数据",
+                "无配置权限用户请求写接口时收到 403"
+              ],
+              "priority": "must",
+              "source": "用户确认与 V1.6 需求",
+              "counterexample": [
+                "前端隐藏入口但未授权 API 仍返回成功"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "系统必须按测试大类和项目持久化参测系统及系统级多角色分配，并禁止向未参测系统分配角色。",
+              "acceptance": [
+                "同一配置在刷新后仍可读取",
+                "跨大类或跨项目数据不可见",
+                "未参测系统的角色写入被拒绝"
+              ],
+              "priority": "must",
+              "source": "V1.6 与用户确认的临时全量候选规则",
+              "counterexample": [
+                "任意项目可读取另一大类的角色记录"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "系统必须维护轮次、周期与字典，并执行日期、排序、派生只读和引用保护规则。",
+              "acceptance": [
+                "非法日期被拒绝，周期越出轮次范围返回非阻断提醒",
+                "结束轮次不生成报告或快照",
+                "被引用字典项不可删除"
+              ],
+              "priority": "must",
+              "source": "V1.6",
+              "counterexample": [
+                "结束轮次自动生成后续模块数据"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "系统必须在参测系统和角色导入中先返回逐行预校验结果，并在确认导入时保证全量成功或零写入。",
+              "acceptance": [
+                "任意错误行时数据库无新增或更新",
+                "成功批次返回总数、成功数、失败数和重复处理结果"
+              ],
+              "priority": "must",
+              "source": "V1.6",
+              "counterexample": [
+                "导入批次部分写入"
+              ]
+            }
+          ],
+          "invariants": [
+            "项目、用户和物理子系统主数据只读",
+            "所有写入验证认证、租户、实体范围、RBAC 并记录审计",
+            "不修改营业日管理和已发布 Flyway 迁移"
+          ],
+          "constraints": [
+            "Java 17",
+            "Spring Boot 与 Vue 3 既有模式",
+            "MySQL 8.4",
+            "只修改 REQ-20260831-057 任务范围授权路径",
+            "当前每个项目的物理子系统候选为全部启用记录"
+          ],
+          "non_goals": [
+            "其他测试业务模块",
+            "全局项目选择器",
+            "项目—子系统主数据关系",
+            "营业日管理改造"
+          ],
+          "assumptions": [
+            {
+              "text": "架构模块关系字段发布前，每项目可选择所有启用物理子系统",
+              "basis": "用户确认",
+              "falsifier": "架构模块提供经授权的项目—子系统关联接口"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "未来架构关系字段和可见范围",
+              "impact": "候选系统查询需要替换",
+              "owner": "架构模块",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "当前物理子系统候选策略",
+              "options": [
+                "每项目全量启用物理子系统",
+                "等待架构模块关系"
+              ],
+              "selected": "每项目全量启用物理子系统",
+              "blocking": false,
+              "source": "用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "路由和未授权 API 响应",
+              "candidate_sensor": "Spring MVC 权限测试与浏览器路径"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "隔离读取与未参测系统角色拒绝",
+              "candidate_sensor": "服务单元测试"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "日期、状态、排序和引用保护结果",
+              "candidate_sensor": "服务单元测试与 API 探测"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "错误批次零写入和成功汇总",
+              "candidate_sensor": "工作簿服务测试"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已核对现有营业日服务、平台用户审计契约、动态路由和 JDK 17 基线传感器",
+        "recorded_at": "2026-08-31T10:19:32+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "测试管理配置路由与页面",
+              "配置控制器和服务",
+              "V106 配置表和菜单权限"
+            ],
+            "environment": [
+              "平台项目和用户数据",
+              "架构物理子系统数据",
+              "本地 MySQL、浏览器和认证会话"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "configuration_scope",
+              "owner": "TestConfigurationService",
+              "valid_values": [
+                "tenant + domain + project"
+              ]
+            },
+            {
+              "name": "test_system_status",
+              "owner": "测试管理配置表",
+              "valid_values": [
+                "enabled",
+                "disabled"
+              ]
+            },
+            {
+              "name": "role_assignment",
+              "owner": "测试管理配置表",
+              "valid_values": [
+                "manager",
+                "tester",
+                "developer"
+              ]
+            },
+            {
+              "name": "round_cycle_dictionary",
+              "owner": "测试管理配置表",
+              "valid_values": [
+                "active",
+                "ended",
+                "disabled",
+                "derived"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "认证用户打开大类管理配置或调用配置 API",
+              "transitions": [
+                "路由匹配",
+                "Spring Security 权限判断",
+                "控制器绑定 domain",
+                "服务端租户范围检查"
+              ],
+              "outputs": [
+                "页面数据或 403 响应"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "系统开关或角色分配请求",
+              "transitions": [
+                "服务验证项目、候选系统和 domain",
+                "事务写入参测系统或角色",
+                "审计写入"
+              ],
+              "outputs": [
+                "刷新后可读的隔离配置或中文拒绝"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "轮次、周期或字典写请求",
+              "transitions": [
+                "日期/唯一性/引用规则验证",
+                "事务写入或拒绝",
+                "派生报告类型查询"
+              ],
+              "outputs": [
+                "持久化配置、提醒或阻断错误"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "系统或角色 XLSX 文件",
+              "transitions": [
+                "工作簿解析",
+                "逐行校验",
+                "确认请求中的事务提交或回滚"
+              ],
+              "outputs": [
+                "预校验结果、成功汇总或零写入"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "configuration REST API",
+              "producers": [
+                "TestConfigurationController"
+              ],
+              "consumers": [
+                "TestConfigurationPage.vue"
+              ],
+              "invariant": "所有写请求只使用认证用户的 tenant 和服务端范围校验"
+            },
+            {
+              "name": "SystemReferenceQuery and SystemOperationAudit",
+              "producers": [
+                "platform/system"
+              ],
+              "consumers": [
+                "TestConfigurationService"
+              ],
+              "invariant": "业务模块不直接写平台用户数据和审计表"
+            },
+            {
+              "name": "project and physical subsystem read APIs",
+              "producers": [
+                "platform/system",
+                "business/architecture"
+              ],
+              "consumers": [
+                "configuration page/service validation"
+              ],
+              "invariant": "主数据只读且当前候选规则为全部启用物理子系统"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R1 路由与服务端权限",
+              "method": "Spring 服务/控制器权限测试和浏览器无权限路径",
+              "blind_spots": [
+                "未启动运行时的菜单种子数据"
+              ],
+              "independence": "测试直接调用后端，浏览器独立观察页面"
+            },
+            {
+              "id": "S2",
+              "target": "R2 隔离和角色约束",
+              "method": "TestConfigurationService 单元测试",
+              "blind_spots": [
+                "真实数据库索引执行计划"
+              ],
+              "independence": "直接断言服务输入输出与 JdbcTemplate 交互"
+            },
+            {
+              "id": "S3",
+              "target": "R3 规则状态",
+              "method": "服务测试与 API 探测",
+              "blind_spots": [
+                "未来执行/报告模块引用"
+              ],
+              "independence": "规则测试不同于 UI 观察"
+            },
+            {
+              "id": "S4",
+              "target": "R4 原子导入",
+              "method": "工作簿服务测试与事务错误批次断言",
+              "blind_spots": [
+                "第三方表格软件的格式差异"
+              ],
+              "independence": "直接检查解析结果和写入调用次数"
+            },
+            {
+              "id": "S5",
+              "target": "前端契约",
+              "method": "Vite 构建和真实浏览器桌面/移动视口",
+              "blind_spots": [
+                "生产代理差异"
+              ],
+              "independence": "独立于 Java 单元测试"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "配置数据与权限",
+              "action": "追加 V106 和测试管理配置服务",
+              "authority": "REQ-20260831-057 可写路径",
+              "impact_radius": "测试管理模块与新增菜单",
+              "rollback": "回退应用代码和菜单入口，保留迁移数据"
+            },
+            {
+              "id": "A2",
+              "target": "导入原子性",
+              "action": "实现配置工作簿服务和事务边界",
+              "authority": "测试管理模块可写路径",
+              "impact_radius": "配置导入 API",
+              "rollback": "回退导入端点"
+            },
+            {
+              "id": "A3",
+              "target": "用户可见配置路径",
+              "action": "添加专属管理配置路由和页面",
+              "authority": "测试管理前端与 router 可写路径",
+              "impact_radius": "测试管理菜单",
+              "rollback": "回退专属路由，动态占位页保持"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "架构模块尚无项目—物理子系统关系",
+              "effect": "候选系统集合比未来关系更宽",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "本机默认 JDK 26",
+              "effect": "Mockito 基线测试失败",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "后续业务模块引用配置",
+              "effect": "配置接口和状态变化具有兼容风险",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Flyway 迁移仅在应用启动执行",
+              "consequence": "数据库表与菜单不会在静态测试后立即出现",
+              "sampling_rule": "运行迁移检查后再做本地运行验证"
+            },
+            {
+              "source": "前端路由与菜单权限刷新",
+              "consequence": "菜单种子变更需重新登录或刷新会话",
+              "sampling_rule": "浏览器验收前刷新认证路由"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "每个项目暂时展示全部启用物理子系统",
+              "evidence": "用户确认",
+              "falsifier": "架构模块提供项目关联接口"
+            },
+            {
+              "text": "JDK 17 可用于所有 Maven 验证",
+              "evidence": "JDK 17 下基线测试通过",
+              "falsifier": "JDK 17 下目标模块无法编译或测试"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "以 A1/A3 进入 planning"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "以 A1 进入 planning"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "以 A1 进入 planning"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "以 A2 进入 planning"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T4 的写入范围、依赖、传感器、回滚与停止条件已按任务范围确认",
+        "recorded_at": "2026-08-31T10:20:29+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "建立受保护的配置持久化、菜单和 API",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V106 未被占用",
+                "测试管理允许依赖 platform/system",
+                "JDK 17 基线通过"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V106__test_management_configuration.sql",
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/**",
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java",
+                "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/configuration/**"
+              ],
+              "invariants": [
+                "不写项目、用户或物理子系统主数据",
+                "所有写入绑定 tenant/domain/project",
+                "不修改营业日行为"
+              ],
+              "interface_contracts": [
+                "/api/test-management/configuration/** 统一 ApiResponse",
+                "写接口服务端拒绝未授权和越界输入"
+              ],
+              "non_goals": [
+                "导入工作簿",
+                "前端页面"
+              ],
+              "action_bounds": [
+                "只新增 V106、测试管理配置后端和直接测试"
+              ],
+              "acceptance_checks": [
+                "R1-R3 服务测试通过",
+                "既有营业日测试通过"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "JDK 17 Maven 命令与退出码"
+              ],
+              "rollback": "回退 T1 代码和菜单入口，保留 V106 数据",
+              "stop_conditions": [
+                "需要修改平台/架构公开契约"
+              ],
+              "escalation_conditions": [
+                "物理子系统无受支持读取入口"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "实现预校验与原子导入",
+              "requirement_ids": [
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "Apache POI 已存在"
+              ],
+              "write_scope": [
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/**",
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java",
+                "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/configuration/**"
+              ],
+              "invariants": [
+                "错误导入零写入"
+              ],
+              "interface_contracts": [
+                "预校验结果含逐行错误与计数"
+              ],
+              "non_goals": [
+                "真实生产文件"
+              ],
+              "action_bounds": [
+                "只实现系统和角色导入"
+              ],
+              "acceptance_checks": [
+                "原子导入测试通过"
+              ],
+              "evidence_required": [
+                "测试输出"
+              ],
+              "rollback": "回退导入端点",
+              "stop_conditions": [
+                "需要未授权外部数据"
+              ],
+              "escalation_conditions": [
+                "模板无法表达多角色"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "实现管理配置页面与专属路由",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "动态测试路由存在"
+              ],
+              "write_scope": [
+                "web/src/modules/test-management/**",
+                "web/src/router/index.ts"
+              ],
+              "invariants": [
+                "不修改公共 UI/AppLayout"
+              ],
+              "interface_contracts": [
+                "前端仅调用 T1/T2 API"
+              ],
+              "non_goals": [
+                "全局项目选择器"
+              ],
+              "action_bounds": [
+                "专属页面和测试管理菜单"
+              ],
+              "acceptance_checks": [
+                "Vite 构建通过"
+              ],
+              "evidence_required": [
+                "构建输出和页面 diff"
+              ],
+              "rollback": "回退页面和路由",
+              "stop_conditions": [
+                "公共壳变更成为必要"
+              ],
+              "escalation_conditions": [
+                "全局选择器阻塞页面"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "完成集成和浏览器验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "input_facts": [
+                "JDK 17 基线通过"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260831-057-test-management-configuration/*.json"
+              ],
+              "invariants": [
+                "不伪造测试或浏览器证据"
+              ],
+              "interface_contracts": [
+                "管理员可写，未授权用户被拒绝"
+              ],
+              "non_goals": [
+                "后续模块"
+              ],
+              "action_bounds": [
+                "只记录当前任务证据"
+              ],
+              "acceptance_checks": [
+                "后端、构建、迁移、治理、浏览器检查"
+              ],
+              "evidence_required": [
+                "实际命令、退出码和路径"
+              ],
+              "rollback": "回退应用代码并保留迁移",
+              "stop_conditions": [
+                "越权、跨域读取或部分导入"
+              ],
+              "escalation_conditions": [
+                "架构关系与临时规则冲突"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "导入复用配置服务"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "页面依赖稳定 API"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "验收需要完整路径"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "JDK 17 Maven 测试"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "后端、前端、Flyway、治理和浏览器检查"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 完成",
+              "trigger": "T1 执行报告",
+              "observer": "独立观察上下文",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "最终",
+              "trigger": "T4",
+              "observer": "独立观察上下文",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "JDK 17 backend tests; Flyway and diff checks",
+        "recorded_at": "2026-08-31T10:41:47+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V123__test_management_configuration.sql",
+              "purpose": "配置表、审计表、四大类菜单和细粒度权限"
+            },
+            {
+              "path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java",
+              "purpose": "租户/大类/项目范围校验及配置 CRUD"
+            },
+            {
+              "path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java",
+              "purpose": "受 RBAC 保护的配置 API"
+            },
+            {
+              "path_or_resource": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationServiceTest.java",
+              "purpose": "非法测试大类输入保护"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home PATH=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin:$PATH mvn -pl :ccb-test-management -am test",
+              "exit_code": 0,
+              "salient_output": "ccb-test-management 11 tests passed"
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "Flyway migration check passed"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "no whitespace errors"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "后端模块回归",
+              "result": "pass",
+              "evidence": "JDK 17 Maven reactor success",
+              "limitations": [
+                "尚未启动集成环境执行真实 HTTP/RBAC 请求"
+              ]
+            },
+            {
+              "check": "迁移命名",
+              "result": "pass",
+              "evidence": "Flyway 脚本检查成功",
+              "limitations": [
+                "未连接数据库实际执行迁移"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "新增管理配置持久化、角色、轮次、周期、字典和审计",
+            "新增按路径大类绑定的菜单权限与服务端授权",
+            "临时候选规则读取同租户未删除项目和物理子系统"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "既有营业日模块不被修改",
+              "result": "pass",
+              "evidence": "变更仅新增配置文件和服务"
+            },
+            {
+              "invariant": "配置写入受 tenant/domain/project 范围限制",
+              "result": "pass",
+              "evidence": "服务层查询与写入均显式绑定 actor tenant 和 domain"
+            }
+          ],
+          "disturbances": [
+            "主分支最新迁移已到 V122，已将原计划 V106 顺延为 V123"
+          ],
+          "assumptions_falsified": [
+            "物理子系统没有独立 enabled 字段；临时候选按未删除状态实现"
+          ],
+          "unresolved_items": [
+            "真实数据库迁移、HTTP 权限与浏览器验证留待 T4"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "JDK 17 backend tests",
+        "recorded_at": "2026-08-31T10:41:47+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationWorkbookService.java",
+              "purpose": "XLSX 模板和受限解析"
+            },
+            {
+              "path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java",
+              "purpose": "全量校验后事务导入"
+            },
+            {
+              "path_or_resource": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationWorkbookServiceTest.java",
+              "purpose": "模板和缺失表头校验"
+            }
+          ],
+          "requirements_addressed": [
+            "R4",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home PATH=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin:$PATH mvn -pl :ccb-test-management -am test",
+              "exit_code": 0,
+              "salient_output": "ccb-test-management 13 tests passed"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "XLSX 模板与表头约束",
+              "result": "pass",
+              "evidence": "2 workbook tests passed",
+              "limitations": [
+                "未连接数据库演练多行原子回滚"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "系统和角色导入模板",
+            "最大 5MB/2000 行限制",
+            "错误批次零写入并返回行号信息"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "导入不写项目/用户/物理子系统主数据",
+              "result": "pass",
+              "evidence": "仅读取主数据并写入 tm_test_* 表"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实数据库的事务回滚场景留待 T4"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "vue-tsc passed; Vite blocked by worktree dependency boundary",
+        "recorded_at": "2026-08-31T10:46:13+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/test-management/configuration/TestConfigurationPage.vue",
+              "purpose": "四个配置区、项目上下文、抽屉、导入和移动端卡片"
+            },
+            {
+              "path_or_resource": "web/src/modules/test-management/configuration/test-configuration.css",
+              "purpose": "语义主题、桌面分区和 760px 以下重排"
+            },
+            {
+              "path_or_resource": "web/src/modules/test-management/api.ts",
+              "purpose": "配置 API 类型与请求封装"
+            },
+            {
+              "path_or_resource": "web/src/router/index.ts",
+              "purpose": "在动态占位路由前注册管理配置路由"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "node /Volumes/GuanMac/Code/RDDMP/web/node_modules/vue-tsc/bin/vue-tsc.js --noEmit -p web/tsconfig.json --typeRoots /Volumes/GuanMac/Code/RDDMP/web/node_modules --types vite/client",
+              "exit_code": 0,
+              "salient_output": "Vue/TypeScript type check passed using read-only root dependencies"
+            },
+            {
+              "command": "node /Volumes/GuanMac/Code/RDDMP/web/node_modules/vite/bin/vite.js build /Volumes/GuanMac/Code/RDDMP/.worktrees/feat-REQ-20260831-057-test-management/web --config /tmp/rddmp-vite-check/vite.config.mjs --outDir /tmp/rddmp-vite-check/dist --emptyOutDir",
+              "exit_code": 1,
+              "salient_output": "worktree lacks node_modules; Vite cannot resolve vue from worktree source"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Vue/TypeScript 类型检查",
+              "result": "pass",
+              "evidence": "vue-tsc exit code 0",
+              "limitations": [
+                "不是 Vite 完整打包"
+              ]
+            },
+            {
+              "check": "Vite 生产打包",
+              "result": "blocked",
+              "evidence": "隔离工作树不含 node_modules，且任务范围禁止创建 node_modules",
+              "limitations": [
+                "需要由环境提供依赖或在允许的环境执行"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "专属管理配置路由优先于通用动态路由",
+            "前端请求不拼装主机地址",
+            "移动端不使用整页横向滚动，系统列表改为卡片"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "不改公共 UI 或 AppLayout",
+              "result": "pass",
+              "evidence": "仅新增模块页面、样式、API 与路由"
+            }
+          ],
+          "disturbances": [
+            "隔离工作树未安装前端依赖；禁写 node_modules 使其不能在本任务内通过 npm 安装"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "完整 Vite 打包和真实浏览器桌面/移动验收"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "JDK 17 Maven, Flyway name check and Docker availability probe",
+        "recorded_at": "2026-08-31T11:06:48+00:00",
+        "data": {
+          "sample_label": "配置后端与迁移静态采样",
+          "task_ids": [
+            "T1",
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "JDK 17 Maven reactor",
+              "result": "pass",
+              "raw_evidence": "mvn -pl :ccb-test-management -am test exit code 0; ccb-test-management 13 tests passed",
+              "limitation": [
+                "未启动数据库和 HTTP 服务"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "配置服务测试与源码范围检查",
+              "result": "pass",
+              "raw_evidence": "非法 domain 在触发 JDBC 前被拒绝；参测系统、角色、租户和项目条件均在服务实现中绑定",
+              "limitation": [
+                "缺少真实 MySQL 数据路径"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "编译与 Flyway 脚本检查",
+              "result": "pass",
+              "raw_evidence": "V123 名称检查通过，后端模块编译通过",
+              "limitation": [
+                "Flyway 尚未连接 MySQL 执行"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Workbook 单元测试",
+              "result": "pass",
+              "raw_evidence": "模板 ZIP 文件头和缺失必填表头测试通过",
+              "limitation": [
+                "原子回滚尚未连接真实事务验证"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "source": "Docker daemon 不可用",
+              "effect": "无法启动临时 MySQL 8.4 运行 V123 和后端 HTTP 验收",
+              "evidence": "docker run 返回 unix socket 不存在"
+            }
+          ],
+          "coverage_gaps": [
+            "V123 的真实 MySQL 执行",
+            "RBAC 403 HTTP 验证",
+            "导入错误批次的数据库回滚"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "vue-tsc and Vite production build on temporary source mirror",
+        "recorded_at": "2026-08-31T11:06:48+00:00",
+        "data": {
+          "sample_label": "配置前端构建采样",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "vue-tsc 和 Vite 生产构建",
+              "result": "pass",
+              "raw_evidence": "vue-tsc exit code 0；临时镜像工作树源码的 Vite build exit code 0，2518 modules transformed",
+              "limitation": [
+                "没有认证后端，无法验证菜单与接口 403"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "前端 API 契约与生产构建",
+              "result": "pass",
+              "raw_evidence": "页面和 API 模块通过 TypeScript 检查与生产打包",
+              "limitation": [
+                "无法对真实候选系统和角色路径点击验收"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "前端生产构建",
+              "result": "pass",
+              "raw_evidence": "轮次、周期、字典及选项表单页面被打入产物",
+              "limitation": [
+                "无浏览器和后端运行时"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "前端生产构建",
+              "result": "pass",
+              "raw_evidence": "模板下载与导入请求均通过构建",
+              "limitation": [
+                "未上传真实模板执行端到端路径"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "source": "本机无 Docker daemon、无已启动后端",
+              "effect": "浏览器无法获得认证和真实 API 数据",
+              "evidence": "docker unix socket 不存在；3306 无监听"
+            }
+          ],
+          "coverage_gaps": [
+            "375/390/430 手机视口浏览器交互",
+            "桌面实际菜单路由",
+            "加载、无权限和导入错误的真实接口反馈"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "测试管理和机构负责人能够在四大测试大类内安全维护后续测试业务模块依赖的配置数据。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "系统必须提供四大测试大类内可路由的管理配置页面及受保护 API。",
+      "acceptance": [
+        "有配置权限的用户可从每个大类进入页面并读取数据",
+        "无配置权限用户请求写接口时收到 403"
+      ],
+      "priority": "must",
+      "source": "用户确认与 V1.6 需求",
+      "counterexample": [
+        "前端隐藏入口但未授权 API 仍返回成功"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "系统必须按测试大类和项目持久化参测系统及系统级多角色分配，并禁止向未参测系统分配角色。",
+      "acceptance": [
+        "同一配置在刷新后仍可读取",
+        "跨大类或跨项目数据不可见",
+        "未参测系统的角色写入被拒绝"
+      ],
+      "priority": "must",
+      "source": "V1.6 与用户确认的临时全量候选规则",
+      "counterexample": [
+        "任意项目可读取另一大类的角色记录"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "系统必须维护轮次、周期与字典，并执行日期、排序、派生只读和引用保护规则。",
+      "acceptance": [
+        "非法日期被拒绝，周期越出轮次范围返回非阻断提醒",
+        "结束轮次不生成报告或快照",
+        "被引用字典项不可删除"
+      ],
+      "priority": "must",
+      "source": "V1.6",
+      "counterexample": [
+        "结束轮次自动生成后续模块数据"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "系统必须在参测系统和角色导入中先返回逐行预校验结果，并在确认导入时保证全量成功或零写入。",
+      "acceptance": [
+        "任意错误行时数据库无新增或更新",
+        "成功批次返回总数、成功数、失败数和重复处理结果"
+      ],
+      "priority": "must",
+      "source": "V1.6",
+      "counterexample": [
+        "导入批次部分写入"
+      ]
+    }
+  ],
+  "invariants": [
+    "项目、用户和物理子系统主数据只读",
+    "所有写入验证认证、租户、实体范围、RBAC 并记录审计",
+    "不修改营业日管理和已发布 Flyway 迁移"
+  ],
+  "constraints": [
+    "Java 17",
+    "Spring Boot 与 Vue 3 既有模式",
+    "MySQL 8.4",
+    "只修改 REQ-20260831-057 任务范围授权路径",
+    "当前每个项目的物理子系统候选为全部启用记录"
+  ],
+  "non_goals": [
+    "其他测试业务模块",
+    "全局项目选择器",
+    "项目—子系统主数据关系",
+    "营业日管理改造"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260831-057-test-management-configuration/handoff.json",
+    "imported_at": "2026-08-31T10:17:42+00:00",
+    "topic": "req-20260831-057-test-management-configuration",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260831-057-test-management-configuration",
+      "handoff_status": "approved",
+      "created_at": "2026-08-31T17:57:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260831-057-test-management-configuration",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-08-31-test-management-configuration-design.md",
+        "objective": "交付四大测试大类隔离的测试管理配置后端与前端。",
+        "users": [
+          "测试管理",
+          "机构负责人"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "提供四大测试大类的管理配置入口和受保护 API",
+            "acceptance": [
+              "有权限用户可访问",
+              "无权限请求被拒绝"
+            ],
+            "priority": "must",
+            "source": "用户确认与 V1.6",
+            "counterexample": [
+              "仅隐藏按钮而接口仍成功"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "维护参测系统和系统级角色",
+            "acceptance": [
+              "配置可持久化读取",
+              "角色不能分配给未参测系统"
+            ],
+            "priority": "must",
+            "source": "V1.6",
+            "counterexample": [
+              "跨大类或跨项目读取配置"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "维护轮次、周期和字典",
+            "acceptance": [
+              "日期、排序和引用约束可验证",
+              "派生和只读字典不可编辑"
+            ],
+            "priority": "must",
+            "source": "V1.6",
+            "counterexample": [
+              "结束轮次自动生成报告"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "支持配置导入预校验和原子写入",
+            "acceptance": [
+              "任意错误行导致零写入",
+              "成功返回汇总"
+            ],
+            "priority": "must",
+            "source": "V1.6",
+            "counterexample": [
+              "导入半成功"
+            ]
+          }
+        ],
+        "invariants": [
+          "测试管理不维护项目、用户或物理子系统主数据",
+          "所有写入受租户、实体范围、RBAC 和审计保护",
+          "V106 只追加不修改历史迁移"
+        ],
+        "constraints": [
+          "JDK 17",
+          "Vue 3/TypeScript/Element Plus",
+          "MySQL 8.4",
+          "临时每项目全量物理子系统候选规则"
+        ],
+        "non_goals": [
+          "其他八个业务页面",
+          "项目—子系统主数据关系",
+          "营业日管理改造"
+        ],
+        "selected_approach": {
+          "name": "测试管理参测映射 + 全量物理子系统候选",
+          "reason": "满足当前可用需求并保持架构数据 Owner",
+          "alternatives": [
+            {
+              "name": "先改架构关系",
+              "rejected_because": "超出当前模块"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "测试管理配置",
+              "菜单迁移",
+              "专属前端页面"
+            ],
+            "outside": [
+              "项目、用户、物理子系统主数据",
+              "后续测试业务页面"
+            ]
+          },
+          "components": [
+            {
+              "name": "配置服务",
+              "responsibility": "规则、事务、审计",
+              "depends_on": [
+                "平台项目/用户",
+                "物理子系统只读数据"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "/api/test-management/configuration/**",
+              "producer": "TestConfigurationController",
+              "consumers": [
+                "TestConfigurationPage"
+              ],
+              "contract": "认证、权限、范围校验后的统一 API 响应"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "大类、项目和配置表单",
+              "transitions": [
+                "服务端认证和范围校验",
+                "事务写入和审计"
+              ],
+              "output": "隔离的测试配置"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "导入校验失败",
+            "behavior": "返回逐行错误并不写入",
+            "recovery": "用户修正后重试"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "服务端 RBAC、租户和实体范围校验"
+          ],
+          "performance": [
+            "分页读取和数据库唯一索引"
+          ],
+          "compatibility": [
+            "保留营业日功能"
+          ],
+          "operations": [
+            "审计写操作"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "signal": "后端、构建、迁移和浏览器证据",
+            "method": "自动化检查和真实用户路径"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "每个项目暂时展示全部启用物理子系统",
+            "basis": "用户确认",
+            "falsifier": "架构模块提供项目—子系统关系"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "架构关系字段和可见范围",
+            "impact": "未来替换候选查询",
+            "owner": "架构模块",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "采用全量候选的参测映射",
+            "reason": "不等待后续架构关系",
+            "source": "用户确认"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "配置将成为后续模块依赖",
+            "impact": "接口稳定性要求高",
+            "mitigation": "使用范围键、唯一约束与测试"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户回复确认并要求开始实施",
+          "confirmed_at": "2026-08-31T17:57:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-08-31-test-management-configuration-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "仅使用任务范围可写路径",
+          "V106 仅追加",
+          "Maven 使用 JDK 17"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/TestConfigurationService.java",
+            "status": "candidate-new",
+            "responsibility": "配置规则、事务和审计",
+            "evidence": "设计 R1-R4"
+          },
+          {
+            "path": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java",
+            "status": "candidate-new",
+            "responsibility": "配置 HTTP 适配",
+            "evidence": "设计 R1-R4"
+          },
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V106__test_management_configuration.sql",
+            "status": "candidate-new",
+            "responsibility": "配置数据和菜单权限",
+            "evidence": "设计 R1"
+          },
+          {
+            "path": "web/src/modules/test-management/configuration/TestConfigurationPage.vue",
+            "status": "candidate-new",
+            "responsibility": "四个配置子页面",
+            "evidence": "设计 R1-R4"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "配置持久化、菜单与受保护 API",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "现有模块只有营业日持久化",
+              "V106 是下一可用迁移号"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V106__test_management_configuration.sql",
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/TestConfigurationService.java",
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/TestConfigurationModels.java",
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java"
+              ],
+              "modify": [],
+              "test": [
+                "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/configuration/TestConfigurationServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "AuthUser",
+                "SystemOperationAudit",
+                "平台项目/用户/物理子系统只读接口"
+              ],
+              "produces": [
+                "/api/test-management/configuration/{domain}/systems|roles|rounds|cycles|dictionaries"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "建立服务测试",
+                "command": "mvn -pl :ccb-test-management -am test",
+                "expected": "新增行为在实现前失败",
+                "evidence": "测试输出"
+              },
+              {
+                "id": "T1-S2",
+                "action": "追加 V106 并实现服务和控制器",
+                "command": null,
+                "expected": "配置 API 可编译",
+                "evidence": "受限 diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "运行后端回归",
+                "command": "mvn -pl :ccb-test-management -am test",
+                "expected": "全部通过",
+                "evidence": "退出码 0"
+              }
+            ],
+            "acceptance_checks": [
+              "隔离、唯一性、权限、日期和引用保护测试"
+            ],
+            "risks": [
+              "迁移和权限"
+            ],
+            "rollback": "回退 T1 代码与菜单入口，保留 V106 数据",
+            "stop_conditions": [
+              "需要修改平台或架构公开契约"
+            ],
+            "escalation_conditions": [
+              "物理子系统读取无受支持入口"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "导入预校验与原子提交",
+            "requirement_ids": [
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "Apache POI 已在模块依赖中"
+            ],
+            "files": {
+              "create": [
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/TestConfigurationWorkbookService.java"
+              ],
+              "modify": [
+                "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java"
+              ],
+              "test": [
+                "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/configuration/TestConfigurationWorkbookServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 配置服务"
+              ],
+              "produces": [
+                "模板、预校验、确认导入接口"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "建立原子导入测试",
+                "command": "mvn -pl :ccb-test-management -am test",
+                "expected": "实现前失败",
+                "evidence": "测试输出"
+              },
+              {
+                "id": "T2-S2",
+                "action": "实现工作簿解析和事务提交",
+                "command": null,
+                "expected": "错误批次零写入",
+                "evidence": "单元断言"
+              },
+              {
+                "id": "T2-S3",
+                "action": "运行回归",
+                "command": "mvn -pl :ccb-test-management -am test",
+                "expected": "全部通过",
+                "evidence": "退出码 0"
+              }
+            ],
+            "acceptance_checks": [
+              "错误行、重复行和零写入"
+            ],
+            "risks": [
+              "模板兼容性"
+            ],
+            "rollback": "回退导入端点",
+            "stop_conditions": [
+              "需访问生产 XLSX"
+            ],
+            "escalation_conditions": [
+              "需新增未经授权依赖"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "管理配置前端页面与路由",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "动态通用测试路由位于 router 尾部"
+            ],
+            "files": {
+              "create": [
+                "web/src/modules/test-management/configuration/TestConfigurationPage.vue",
+                "web/src/modules/test-management/configuration/test-configuration.css"
+              ],
+              "modify": [
+                "web/src/modules/test-management/api.ts",
+                "web/src/modules/test-management/catalog.ts",
+                "web/src/modules/test-management/application-assembly/catalog.ts",
+                "web/src/modules/test-management/user-testing/catalog.ts",
+                "web/src/modules/test-management/non-functional/catalog.ts",
+                "web/src/modules/test-management/security/catalog.ts",
+                "web/src/router/index.ts"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1/T2 API",
+                "既有项目 API",
+                "UiDataTable 与 UiFormDrawer"
+              ],
+              "produces": [
+                "四个配置页面和专属路由"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "注册专属路由和菜单",
+                "command": null,
+                "expected": "专属路由在通配动态路由前匹配",
+                "evidence": "router 差异"
+              },
+              {
+                "id": "T3-S2",
+                "action": "实现四个配置子页和移动端布局",
+                "command": null,
+                "expected": "具备加载、空、失败、无权限和提交中状态",
+                "evidence": "页面实现"
+              },
+              {
+                "id": "T3-S3",
+                "action": "运行前端构建",
+                "command": "npm --prefix web run build",
+                "expected": "构建通过",
+                "evidence": "退出码 0"
+              }
+            ],
+            "acceptance_checks": [
+              "路由、表单、禁用原因和移动布局"
+            ],
+            "risks": [
+              "公共壳边界"
+            ],
+            "rollback": "回退页面和专属路由",
+            "stop_conditions": [
+              "需修改公共 UI 或 AppLayout"
+            ],
+            "escalation_conditions": [
+              "全局项目选择器成为阻塞"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "集成验证与浏览器验收",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "input_facts": [
+              "JDK 17 基线测试已通过"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260831-057-test-management-configuration/execution-T1.json",
+                ".ai-control/requirements/req-20260831-057-test-management-configuration/observation-T1.json",
+                ".ai-control/requirements/req-20260831-057-test-management-configuration/convergence.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "完整模块"
+              ],
+              "produces": [
+                "实际验证证据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "运行自动化与治理检查",
+                "command": "mvn -pl :ccb-test-management -am test; npm --prefix web run build; node scripts/check-flyway-migrations.mjs; node scripts/check-all-governance.mjs",
+                "expected": "实际结果记录",
+                "evidence": "命令退出码"
+              },
+              {
+                "id": "T4-S2",
+                "action": "执行 API 和浏览器路径",
+                "command": "真实浏览器桌面与移动视口",
+                "expected": "管理员可写且无权限用户被拒绝",
+                "evidence": "可复现路径"
+              }
+            ],
+            "acceptance_checks": [
+              "权限、隔离、导入和移动端路径"
+            ],
+            "risks": [
+              "本地运行环境"
+            ],
+            "rollback": "回退代码保留迁移数据",
+            "stop_conditions": [
+              "越权或部分导入"
+            ],
+            "escalation_conditions": [
+              "架构关系与已确认规则冲突"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "导入复用配置范围与事务"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "页面依赖稳定的导入与配置 API"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "集成验收需要完整用户路径"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "mvn -pl :ccb-test-management -am test; npm --prefix web run build; node scripts/check-flyway-migrations.mjs; node scripts/check-all-governance.mjs",
+            "expected": "检查实际通过或记录环境阻断"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户回复确认并要求开始实施",
+          "confirmed_at": "2026-08-31T17:57:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "测试管理配置数据和页面"
+        ],
+        "state_variable_candidates": [
+          "大类、项目、参测系统、角色、轮次、周期、字典项"
+        ],
+        "interface_candidates": [
+          "配置 API、项目 API、物理子系统只读 API"
+        ],
+        "sensor_candidates": [
+          "JUnit",
+          "Flyway 检查",
+          "Vite 构建",
+          "API 权限探测",
+          "浏览器路径"
+        ],
+        "actuator_candidates": [
+          "V106 迁移",
+          "配置服务",
+          "专属路由和页面"
+        ],
+        "disturbance_candidates": [
+          "架构关系尚未提供",
+          "主数据候选权限",
+          "后续模块引用"
+        ],
+        "delay_candidates": [
+          "迁移应用和前端刷新"
+        ],
+        "assumptions": [
+          {
+            "text": "每个项目暂时使用全部启用物理子系统",
+            "basis": "用户确认",
+            "falsifier": "架构模块提供项目—子系统关系"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"平台项目和用户数据\", \"架构物理子系统数据\", \"本地 MySQL、浏览器和认证会话\"], \"inside\": [\"测试管理配置路由与页面\", \"配置控制器和服务\", \"V106 配置表和菜单权限\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"未启动运行时的菜单种子数据\"], \"id\": \"S1\", \"independence\": \"测试直接调用后端，浏览器独立观察页面\", \"method\": \"Spring 服务/控制器权限测试和浏览器无权限路径\", \"target\": \"R1 路由与服务端权限\"}",
+      "{\"blind_spots\": [\"真实数据库索引执行计划\"], \"id\": \"S2\", \"independence\": \"直接断言服务输入输出与 JdbcTemplate 交互\", \"method\": \"TestConfigurationService 单元测试\", \"target\": \"R2 隔离和角色约束\"}",
+      "{\"blind_spots\": [\"未来执行/报告模块引用\"], \"id\": \"S3\", \"independence\": \"规则测试不同于 UI 观察\", \"method\": \"服务测试与 API 探测\", \"target\": \"R3 规则状态\"}",
+      "{\"blind_spots\": [\"第三方表格软件的格式差异\"], \"id\": \"S4\", \"independence\": \"直接检查解析结果和写入调用次数\", \"method\": \"工作簿服务测试与事务错误批次断言\", \"target\": \"R4 原子导入\"}",
+      "{\"blind_spots\": [\"生产代理差异\"], \"id\": \"S5\", \"independence\": \"独立于 Java 单元测试\", \"method\": \"Vite 构建和真实浏览器桌面/移动视口\", \"target\": \"前端契约\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"追加 V106 和测试管理配置服务\", \"authority\": \"REQ-20260831-057 可写路径\", \"id\": \"A1\", \"impact_radius\": \"测试管理模块与新增菜单\", \"rollback\": \"回退应用代码和菜单入口，保留迁移数据\", \"target\": \"配置数据与权限\"}",
+      "{\"action\": \"实现配置工作簿服务和事务边界\", \"authority\": \"测试管理模块可写路径\", \"id\": \"A2\", \"impact_radius\": \"配置导入 API\", \"rollback\": \"回退导入端点\", \"target\": \"导入原子性\"}",
+      "{\"action\": \"添加专属管理配置路由和页面\", \"authority\": \"测试管理前端与 router 可写路径\", \"id\": \"A3\", \"impact_radius\": \"测试管理菜单\", \"rollback\": \"回退专属路由，动态占位页保持\", \"target\": \"用户可见配置路径\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"候选系统集合比未来关系更宽\", \"source\": \"架构模块尚无项目—物理子系统关系\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Mockito 基线测试失败\", \"source\": \"本机默认 JDK 26\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"配置接口和状态变化具有兼容风险\", \"source\": \"后续业务模块引用配置\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"用户确认\", \"falsifier\": \"架构模块提供项目关联接口\", \"text\": \"每个项目暂时展示全部启用物理子系统\"}",
+      "{\"evidence\": \"JDK 17 下基线测试通过\", \"falsifier\": \"JDK 17 下目标模块无法编译或测试\", \"text\": \"JDK 17 可用于所有 Maven 验证\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S5\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立受保护的配置持久化、菜单和 API",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V106 未被占用",
+        "测试管理允许依赖 platform/system",
+        "JDK 17 基线通过"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V106__test_management_configuration.sql",
+        "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/**",
+        "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java",
+        "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/configuration/**"
+      ],
+      "invariants": [
+        "不写项目、用户或物理子系统主数据",
+        "所有写入绑定 tenant/domain/project",
+        "不修改营业日行为"
+      ],
+      "interface_contracts": [
+        "/api/test-management/configuration/** 统一 ApiResponse",
+        "写接口服务端拒绝未授权和越界输入"
+      ],
+      "non_goals": [
+        "导入工作簿",
+        "前端页面"
+      ],
+      "action_bounds": [
+        "只新增 V106、测试管理配置后端和直接测试"
+      ],
+      "acceptance": [
+        "R1-R3 服务测试通过",
+        "既有营业日测试通过"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "JDK 17 Maven 命令与退出码"
+      ],
+      "rollback": "回退 T1 代码和菜单入口，保留 V106 数据",
+      "stop_conditions": [
+        "需要修改平台/架构公开契约"
+      ],
+      "escalation_conditions": [
+        "物理子系统无受支持读取入口"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-31T10:41:47+00:00",
+          "text": "execution-T1.json"
+        },
+        {
+          "recorded_at": "2026-08-31T10:41:47+00:00",
+          "text": "execution-T1.json"
+        },
+        {
+          "recorded_at": "2026-08-31T11:06:49+00:00",
+          "text": "observation-backend.json"
+        }
+      ],
+      "updated_at": "2026-08-31T11:06:49+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "实现预校验与原子导入",
+      "requirements": [
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "Apache POI 已存在"
+      ],
+      "write_scope": [
+        "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/configuration/**",
+        "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java",
+        "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/configuration/**"
+      ],
+      "invariants": [
+        "错误导入零写入"
+      ],
+      "interface_contracts": [
+        "预校验结果含逐行错误与计数"
+      ],
+      "non_goals": [
+        "真实生产文件"
+      ],
+      "action_bounds": [
+        "只实现系统和角色导入"
+      ],
+      "acceptance": [
+        "原子导入测试通过"
+      ],
+      "evidence_required": [
+        "测试输出"
+      ],
+      "rollback": "回退导入端点",
+      "stop_conditions": [
+        "需要未授权外部数据"
+      ],
+      "escalation_conditions": [
+        "模板无法表达多角色"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-31T10:41:47+00:00",
+          "text": "execution-T2.json"
+        },
+        {
+          "recorded_at": "2026-08-31T10:41:47+00:00",
+          "text": "execution-T2.json"
+        },
+        {
+          "recorded_at": "2026-08-31T11:06:49+00:00",
+          "text": "observation-backend.json"
+        }
+      ],
+      "updated_at": "2026-08-31T11:06:49+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "实现管理配置页面与专属路由",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "动态测试路由存在"
+      ],
+      "write_scope": [
+        "web/src/modules/test-management/**",
+        "web/src/router/index.ts"
+      ],
+      "invariants": [
+        "不修改公共 UI/AppLayout"
+      ],
+      "interface_contracts": [
+        "前端仅调用 T1/T2 API"
+      ],
+      "non_goals": [
+        "全局项目选择器"
+      ],
+      "action_bounds": [
+        "专属页面和测试管理菜单"
+      ],
+      "acceptance": [
+        "Vite 构建通过"
+      ],
+      "evidence_required": [
+        "构建输出和页面 diff"
+      ],
+      "rollback": "回退页面和路由",
+      "stop_conditions": [
+        "公共壳变更成为必要"
+      ],
+      "escalation_conditions": [
+        "全局选择器阻塞页面"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-31T10:41:47+00:00",
+          "text": "frontend implementation in worktree"
+        },
+        {
+          "recorded_at": "2026-08-31T10:46:13+00:00",
+          "text": "execution-T3.json"
+        },
+        {
+          "recorded_at": "2026-08-31T11:06:49+00:00",
+          "text": "observation-frontend.json"
+        }
+      ],
+      "updated_at": "2026-08-31T11:06:49+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "完成集成和浏览器验收",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "JDK 17 基线通过"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260831-057-test-management-configuration/*.json"
+      ],
+      "invariants": [
+        "不伪造测试或浏览器证据"
+      ],
+      "interface_contracts": [
+        "管理员可写，未授权用户被拒绝"
+      ],
+      "non_goals": [
+        "后续模块"
+      ],
+      "action_bounds": [
+        "只记录当前任务证据"
+      ],
+      "acceptance": [
+        "后端、构建、迁移、治理、浏览器检查"
+      ],
+      "evidence_required": [
+        "实际命令、退出码和路径"
+      ],
+      "rollback": "回退应用代码并保留迁移",
+      "stop_conditions": [
+        "越权、跨域读取或部分导入"
+      ],
+      "escalation_conditions": [
+        "架构关系与临时规则冲突"
+      ],
+      "status": "partial",
+      "evidence": [
+        {
+          "recorded_at": "2026-08-31T11:06:49+00:00",
+          "text": "Docker daemon unavailable; no MySQL or browser runtime can be started"
+        },
+        {
+          "recorded_at": "2026-08-31T11:12:45+00:00",
+          "text": "Docker became available; V123 MySQL 8.4 smoke passed, but ccb-architecture AttachmentPort.list compile mismatch blocks aggregate boot, HTTP and browser verification"
+        },
+        {
+          "recorded_at": "2026-08-31T12:58:00+00:00",
+          "text": "User authorized reset of rddmp-local-mysql ccb_platform; disposable local overlay built and started the full stack, Flyway reached V123, /actuator/health is UP, and unauthenticated configuration requests return 401"
+        },
+        {
+          "recorded_at": "2026-08-31T14:13:00+00:00",
+          "text": "correction-F-0001.json: systems list JDBC parameter mismatch fixed; administrator direct and Vite-proxied requests return code=0 with total=3"
+        }
+      ],
+      "updated_at": "2026-08-31T14:13:00+00:00"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0001",
+      "status": "closed",
+      "severity": "P1",
+      "evidence": "correction-F-0001.json"
+    }
+  ],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "backend-static-sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Maven 13 tests passed; runtime gaps recorded",
+      "recorded_at": "2026-08-31T11:06:48+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "frontend-build-sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "vue-tsc and Vite build passed; runtime gaps recorded",
+      "recorded_at": "2026-08-31T11:06:48+00:00"
+    }
+  ]
+}
