@@ -6,7 +6,10 @@ import com.ccb.attachment.integration.AttachmentItem;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.model.UserDirectoryPort;
+import com.ccb.common.api.PageResult;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,31 +35,65 @@ public class ContentFileAssetService {
     private final AttachmentGateway attachmentGateway;
     private final ContentAttachmentService attachments;
     private final DataMigrationPermissionService permissions;
+    private final UserDirectoryPort userDirectory;
 
+    @Autowired
     public ContentFileAssetService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway,
-                                   ContentAttachmentService attachments, DataMigrationPermissionService permissions) {
+                                   ContentAttachmentService attachments, DataMigrationPermissionService permissions,
+                                   UserDirectoryPort userDirectory) {
         this.jdbc = jdbc;
         this.attachmentGateway = attachmentGateway;
         this.attachments = attachments;
         this.permissions = permissions;
+        this.userDirectory = userDirectory;
     }
 
-    public List<Map<String, Object>> list(String type, String keyword, AuthUser user) {
+    public ContentFileAssetService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway,
+                                   ContentAttachmentService attachments, DataMigrationPermissionService permissions) {
+        this(jdbc, attachmentGateway, attachments, permissions, null);
+    }
+
+    public PageResult<Map<String, Object>> list(String type, Long projectId, Long componentId, String keyword,
+                                                int page, int size, AuthUser user) {
         String table = requireManagedTable(type);
         StringBuilder sql = new StringBuilder("SELECT a.id, a.project_id, a.component_id, ? AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, ")
-                .append("f.content_type, f.file_size, m.attachment_id, a.checksum_md5, a.owner_id, a.created_at, a.updated_at ")
+                .append("m.attachment_id, a.checksum_md5, a.owner_id, a.created_at, a.updated_at ")
                 .append("FROM ").append(table).append(" a ")
                 .append("LEFT JOIN dm_content_attachment m ON m.tenant_id = a.tenant_id AND m.business_type = ? AND m.business_id = a.id AND m.sort_order = 0 AND m.deleted = 0 ")
-                .append("LEFT JOIN att_file f ON f.id = m.attachment_id AND f.tenant_id = m.tenant_id ")
                 .append("WHERE a.tenant_id = ? AND a.deleted = 0");
         List<Object> args = new ArrayList<>(List.of(type, type, user.tenantId()));
+        if (projectId != null) { sql.append(" AND a.project_id = ?"); args.add(projectId); }
+        if (componentId != null) { sql.append(" AND a.component_id = ?"); args.add(componentId); }
         if (keyword != null && !keyword.isBlank()) {
             sql.append(" AND (a.doc_code LIKE ? OR a.doc_name LIKE ?)");
             String value = "%" + keyword.trim() + "%";
             args.add(value); args.add(value);
         }
-        sql.append(" ORDER BY a.updated_at DESC, a.id DESC");
-        return jdbc.queryForList(sql.toString(), args.toArray());
+        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + sql + ") t", Long.class, args.toArray());
+        int safePage = Math.max(1, page);
+        int safeSize = normalizePageSize(size);
+        sql.append(" ORDER BY a.updated_at DESC, a.id DESC LIMIT ? OFFSET ?");
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(safeSize); pageArgs.add((safePage - 1) * safeSize);
+        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), pageArgs.toArray());
+        for (Map<String, Object> row : rows) {
+            Object rawAttachmentId = row.get("attachment_id");
+            if (rawAttachmentId instanceof Number number) {
+                try {
+                    AttachmentItem item = attachmentGateway.get(number.longValue(), user);
+                    row.put("content_type", item.contentType());
+                    row.put("file_size", item.fileSize());
+                    row.put("file_name", item.fileName());
+                } catch (BusinessException ignored) {
+                    // 关系行可能已与平台附件状态发生变化，列表仍返回业务记录。
+                }
+            }
+        }
+        return new PageResult<>(rows, total == null ? 0L : total, safePage, safeSize);
+    }
+
+    public PageResult<Map<String, Object>> list(String type, String keyword, AuthUser user) {
+        return list(type, null, null, keyword, 1, 20, user);
     }
 
     /** 上传（upsert 按 项目+编号）：替换主文件为 sort_order=0 行。 */
@@ -160,14 +197,14 @@ public class ContentFileAssetService {
         }
     }
 
-    public String download(String type, long id, AuthUser user) {
+    public long downloadAttachmentId(String type, long id, AuthUser user) {
         String table = requireManagedTable(type);
         List<Long> attachmentIds = jdbc.queryForList(
                 "SELECT m.attachment_id FROM dm_content_attachment m JOIN " + table + " a ON a.id = m.business_id AND a.tenant_id = m.tenant_id " +
                 "WHERE m.tenant_id = ? AND m.business_type = ? AND m.business_id = ? AND m.sort_order = 0 AND m.deleted = 0 AND a.deleted = 0",
                 Long.class, user.tenantId(), type, id);
         if (attachmentIds.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "资产未绑定公共附件");
-        return "/api/attachments/" + attachmentIds.get(0) + "/download";
+        return attachmentIds.get(0);
     }
 
     /** 统一回收站：某类型软删记录总数（SQL COUNT，不拉明细）。 */
@@ -187,13 +224,21 @@ public class ContentFileAssetService {
         if (limit <= 0) return List.of();
         StringBuilder sql = new StringBuilder("SELECT a.id, a.project_id, a.component_id, ? AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, ")
                 .append("a.checksum_md5, a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at, u.display_name AS deleted_by_name ")
-                .append("FROM ").append(table).append(" a LEFT JOIN sys_user u ON u.id = a.deleted_by AND u.tenant_id = a.tenant_id ")
+                .append("FROM ").append(table).append(" a ")
                 .append("WHERE a.tenant_id = ? AND a.deleted = 1");
         List<Object> args = new ArrayList<>(List.of(type, user.tenantId()));
         appendRecycleBinKeyword(sql, args, keyword);
         sql.append(" ORDER BY (a.doc_code IS NULL OR a.doc_code = ''), a.doc_code ASC, a.deleted_at DESC, a.id ASC LIMIT ?");
         args.add(limit);
-        return jdbc.queryForList(sql.toString(), args.toArray());
+        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        if (userDirectory != null) {
+            for (Map<String, Object> row : rows) {
+                Object raw = row.get("deleted_by");
+                if (raw instanceof Number number) userDirectory.findActive(user.tenantId(), number.longValue())
+                        .ifPresent(item -> row.put("deleted_by_name", item.displayName()));
+            }
+        }
+        return rows;
     }
 
     private static void appendRecycleBinKeyword(StringBuilder sql, List<Object> args, String keyword) {
@@ -251,6 +296,10 @@ public class ContentFileAssetService {
     private String requireManagedTable(String type) {
         if (type == null || !MANAGED_TYPES.contains(type)) throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported asset type");
         return ContentAssetTables.tableFor(type);
+    }
+
+    private int normalizePageSize(int size) {
+        return Set.of(20, 50, 100).contains(size) ? size : 20;
     }
 
     private String requireKnownTable(String table) {
