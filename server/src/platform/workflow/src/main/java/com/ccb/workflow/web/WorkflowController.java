@@ -83,7 +83,7 @@ public class WorkflowController {
     @PostMapping("/definitions")
     public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, String> body, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.createDefinition(body.get("code"), body.get("name"),
-                body.getOrDefault("definitionJson", "{}"), body.getOrDefault("scopeType", "PLATFORM"),
+                body.getOrDefault("definitionJson", "{}"), body.getOrDefault("scopeType", "TEMPLATE"),
                 body.get("projectRef"), user), TraceId.getOrCreate());
     }
 

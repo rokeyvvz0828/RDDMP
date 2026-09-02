@@ -64,6 +64,36 @@ class WorkflowBusinessIntegrationServiceTest {
     }
 
     @Test
+    void explicitLegacyDefinitionIdReselectsPublishedProjectDefinitionWithSameCode() {
+        Map<String, Object> legacy = Map.of("id", 88L, "code", "release-approval", "name", "版本审批",
+                "scope_type", "PLATFORM", "current_version", 3);
+        Map<String, Object> project = Map.of("id", 99L, "code", "release-approval", "name", "项目版本审批",
+                "scope_type", "PROJECT", "project_id", 10L, "current_version", 5);
+        StubJdbcTemplate jdbc = new StubJdbcTemplate(List.of(legacy), List.of(project));
+        WorkflowBusinessIntegrationService service = service(jdbc, new StubWorkflowService());
+
+        var result = service.startByDefinitionId(new WorkflowStartDefinitionCommand(88L,
+                new WorkflowBusinessContext("release", "配置管理", "release_application", "SQ-003", "版本申请 SQ-003", 1,
+                        "P1", "项目一", "/release/applications/SQ-003", DIGEST), Map.of()), USER);
+
+        assertEquals(99L, result.definitionId());
+        assertTrue(jdbc.queries.get(1).contains("ORDER BY CASE WHEN d.scope_type = 'PROJECT' THEN 0 ELSE 1 END"));
+    }
+
+    @Test
+    void missingRunnableDefinitionNamesProjectAndWorkflowCode() {
+        WorkflowBusinessIntegrationService service = service(new StubJdbcTemplate(List.of()), new StubWorkflowService());
+
+        BusinessException error = assertThrows(BusinessException.class, () -> service.startByCode(
+                new WorkflowStartCommand("release-approval",
+                        new WorkflowBusinessContext("release", "配置管理", "release_application", "SQ-004", "版本申请 SQ-004", 1,
+                                "P1", "项目一", "/release/applications/SQ-004", DIGEST), Map.of()), USER));
+
+        assertTrue(error.getMessage().contains("项目【项目一】"));
+        assertTrue(error.getMessage().contains("【release-approval】"));
+    }
+
+    @Test
     void rejectsExternalOrProtocolRelativeActionPathBeforeCreatingInstance() {
         StubWorkflowService workflow = new StubWorkflowService();
         WorkflowBusinessIntegrationService service = service(new StubJdbcTemplate(List.of()), workflow);
@@ -80,20 +110,26 @@ class WorkflowBusinessIntegrationServiceTest {
     }
 
     private static final class StubJdbcTemplate extends JdbcTemplate {
-        private final List<Map<String, Object>> rows;
+        private final List<List<Map<String, Object>>> responses;
         private final List<String> queries = new ArrayList<>();
+        private int queryIndex;
         private int updateCount;
         private String lastUpdateSql;
         private Object[] lastUpdateArgs;
 
         private StubJdbcTemplate(List<Map<String, Object>> rows) {
-            this.rows = rows;
+            this.responses = List.of(rows);
+        }
+
+        @SafeVarargs
+        private StubJdbcTemplate(List<Map<String, Object>>... responses) {
+            this.responses = List.of(responses);
         }
 
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             queries.add(sql);
-            return rows;
+            return responses.get(Math.min(queryIndex++, responses.size() - 1));
         }
 
         @Override

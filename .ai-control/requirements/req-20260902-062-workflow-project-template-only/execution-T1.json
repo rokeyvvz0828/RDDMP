@@ -1,0 +1,28 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V136__retire_platform_workflow_management.sql", "purpose": "从隐藏 PLATFORM 兼容定义派生脱敏 TEMPLATE 草稿和平台能力升级项目的 PROJECT 草稿"},
+    {"path_or_resource": "server/src/platform/workflow/pom.xml", "purpose": "为 MySQL 8.4 Testcontainers 迁移测试补充测试范围依赖"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementMigrationMySqlTest.java", "purpose": "验证 11 条输入、迁移基数、JSON 脱敏、旧引用快照和幂等性"}
+  ],
+  "requirements_addressed": ["R2", "R3", "R6", "R7"],
+  "commands": [
+    {"command": "mvn -pl :ccb-workflow -am -Dtest=WorkflowPlatformRetirementMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "MySQL 8.4 Testcontainers: Tests run: 1, Failures: 0, Errors: 0; V135 -> V136 成功且第二次 migrate 无新增迁移"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误"}
+  ],
+  "local_checks": [
+    {"check": "V136 真实 MySQL 8.4 迁移测试", "result": "pass", "evidence": "隔离容器完成 V135 基线、补入第 11 条运行期定义、升级 V136 和重复 migrate；全部断言通过", "limitations": ["未连接生产数据库；目标环境执行前仍应核对目标项目和 PLATFORM 基数"]},
+    {"check": "历史迁移与 Flowable 表写入边界", "result": "pass", "evidence": "实际差异只新增 V136，V134/V135 与 ACT_* 文件无修改", "limitations": []}
+  ],
+  "diff_summary": ["新增只追加的 V136 迁移", "模板审批节点脱敏为 TEMPLATE_PLACEHOLDER/STARTER，抄送节点移除具体 userIds", "只为项目 910000000003001 创建对应 PROJECT 草稿", "迁移测试固定验证旧定义、版本和实例快照不变"],
+  "invariants_checked": [
+    {"invariant": "V134/V135 和 Flowable ACT_* 无修改", "result": "pass", "evidence": "git diff 文件清单及迁移测试"},
+    {"invariant": "旧 PLATFORM 定义、版本和实例不被更新或删除", "result": "pass", "evidence": "迁移前后逐项快照断言通过"},
+    {"invariant": "只为平台能力升级项目生成 PROJECT 草稿", "result": "pass", "evidence": "目标项目 11 条、其他项目 0 条断言通过"}
+  ],
+  "disturbances": [{"event": "沙箱内 JVM 无权访问 Docker Unix socket", "impact": "首次测试以环境错误退出；在批准的沙箱外环境复跑后通过，未改变实现"}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["仓库全局 Flyway 治理仍受既有 V84_1 命名问题影响，由 observing 阶段如实记录"],
+  "recommended_next": "observe"
+}

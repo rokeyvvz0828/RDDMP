@@ -52,21 +52,27 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
         if (command == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程启动参数不能为空");
         String definitionCode = requireText(command.definitionCode(), "流程编码", 64);
         ResolvedProjectContext resolved = resolveProject(validate(command.context()), operator);
-        WorkflowBusinessContext context = resolved.context();
+        Map<String, Object> definition = resolvePublishedByCode(definitionCode, resolved, operator);
+        long definitionId = ((Number) definition.get("id")).longValue();
+        return startResolved(definitionId, resolved.context(), command.variables(), operator);
+    }
+
+    private Map<String, Object> resolvePublishedByCode(String definitionCode, ResolvedProjectContext resolved,
+                                                       AuthUser operator) {
         String scopeFilter = resolved.projectId() == null
                 ? " AND d.scope_type = 'PLATFORM'"
                 : " AND (d.scope_type = 'PLATFORM' OR (d.scope_type = 'PROJECT' AND d.project_id = ?))";
         List<Object> args = new java.util.ArrayList<>(List.of(operator.tenantId(), definitionCode));
         if (resolved.projectId() != null) args.add(resolved.projectId());
         List<Map<String, Object>> definitions = jdbc.queryForList(
-                "SELECT d.id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.tenant_id = ? AND d.code = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL"
+                "SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.tenant_id = ? AND d.code = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL"
                         + scopeFilter + " ORDER BY CASE WHEN d.scope_type = 'PROJECT' THEN 0 ELSE 1 END LIMIT 1",
                 args.toArray());
         if (definitions.size() != 1) {
-            throw new BusinessException(ErrorCode.CONFLICT, definitions.isEmpty() ? "流程编码未发布或不存在" : "流程编码存在多个已发布定义");
+            String target = resolved.projectId() == null ? "当前业务" : "项目【" + resolved.context().projectName() + "】";
+            throw new BusinessException(ErrorCode.CONFLICT, target + "未配置已发布流程【" + definitionCode + "】");
         }
-        long definitionId = ((Number) definitions.get(0).get("id")).longValue();
-        return startResolved(definitionId, context, command.variables(), operator);
+        return definitions.get(0);
     }
 
     @Override
@@ -75,9 +81,10 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
         if (command == null || command.definitionId() <= 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不能为空");
         }
-        WorkflowBusinessContext context = resolveProject(validate(command.context()), operator).context();
-        WorkflowDefinitionSummary definition = requirePublished(command.definitionId(), operator);
-        return startResolved(definition.definitionId(), context, command.variables(), operator);
+        ResolvedProjectContext resolved = resolveProject(validate(command.context()), operator);
+        WorkflowDefinitionSummary requested = requirePublished(command.definitionId(), operator);
+        Map<String, Object> definition = resolvePublishedByCode(requested.code(), resolved, operator);
+        return startResolved(((Number) definition.get("id")).longValue(), resolved.context(), command.variables(), operator);
     }
 
     @Override

@@ -116,7 +116,7 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
     }
 
     public PageResult<Map<String, Object>> definitions(PageQuery pageQuery, String projectRef, String scopeType, AuthUser user) {
-        String requestedScope = scopeType == null || scopeType.isBlank() ? null : normalizeScope(scopeType);
+        String requestedScope = scopeType == null || scopeType.isBlank() ? null : normalizeManagementScope(scopeType);
         Long projectId = projectRef == null || projectRef.isBlank() ? null : gateway().requireAccessible(projectRef, user).id();
         if ("PROJECT".equals(requestedScope) && projectId == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "查询项目流程时必须提供项目上下文");
@@ -124,8 +124,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
         String where;
         if (requestedScope == null) {
             where = projectId == null
-                    ? " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND scope_type IN ('PLATFORM', 'TEMPLATE')"
-                    : " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND (scope_type IN ('PLATFORM', 'TEMPLATE') OR (scope_type = 'PROJECT' AND project_id = ?))";
+                    ? " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND scope_type = 'TEMPLATE'"
+                    : " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND (scope_type = 'TEMPLATE' OR (scope_type = 'PROJECT' AND project_id = ?))";
         } else if ("PROJECT".equals(requestedScope)) {
             where = " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND scope_type = 'PROJECT' AND project_id = ?";
         } else {
@@ -138,9 +138,14 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
         args.add(offset(pageQuery));
         args.add(pageQuery.size());
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, code, name, scope_type, project_id, status, current_version, model_schema_version, created_at" + where
+                "SELECT id, code, name, scope_type, project_id, status, current_version, model_schema_version, created_at, "
+                        + "CAST((SELECT v.definition_json FROM wf_version v WHERE v.tenant_id = wf_definition.tenant_id AND v.definition_id = wf_definition.id ORDER BY v.version_no DESC LIMIT 1) AS CHAR) AS definition_json" + where
                         + " ORDER BY id DESC LIMIT ?, ?",
-                args.toArray());
+                args.toArray()).stream().map(LinkedHashMap::new).map(row -> (Map<String, Object>) row).toList();
+        rows.forEach(row -> {
+            addConfigurationState(row);
+            row.remove("definition_json");
+        });
         long total = count(where, args.subList(0, args.size() - 2).toArray());
         return new PageResult<>(rows, total, pageQuery.page(), pageQuery.size());
     }
@@ -148,15 +153,17 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
     public Map<String, Object> definition(long definitionId, AuthUser user) {
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.status, d.current_version, d.model_schema_version, d.created_at, v.version_no, CAST(v.definition_json AS CHAR) AS definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = COALESCE(NULLIF(d.current_version, 0), (SELECT MAX(v2.version_no) FROM wf_version v2 WHERE v2.definition_id = d.id AND v2.tenant_id = d.tenant_id)) WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0", definitionId, user.tenantId());
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
-        requireDefinitionAccessible(rows.get(0), user, false);
-        return rows.get(0);
+        Map<String, Object> result = new LinkedHashMap<>(rows.get(0));
+        requireDefinitionAccessible(result, user, false);
+        addConfigurationState(result);
+        return result;
     }
 
     @Transactional
     public void updateDefinition(long definitionId, String code, String name, String definitionJson, AuthUser user) {
         Map<String, Object> scopedDefinition = requireDefinition(definitionId, user.tenantId());
         requireDefinitionAccessible(scopedDefinition, user, true);
-        validateScopeAssignments(String.valueOf(scopedDefinition.get("scope_type")), number(scopedDefinition.get("project_id")), definitionJson, user);
+        validateScopeAssignments(String.valueOf(scopedDefinition.get("scope_type")), number(scopedDefinition.get("project_id")), definitionJson, user, false);
         if (enterpriseDefinition(definitionId, user.tenantId())) {
             flowableWorkflowService.updateDefinition(definitionId, code, name, definitionJson, user);
             return;
@@ -258,20 +265,20 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
 
     @Transactional
     public Map<String, Object> createDefinition(String code, String name, String definitionJson, AuthUser user) {
-        return createDefinition(code, name, definitionJson, "PLATFORM", null, user);
+        return createDefinition(code, name, definitionJson, "TEMPLATE", null, user);
     }
 
     @Transactional
     public Map<String, Object> createDefinition(String code, String name, String definitionJson, String scopeType,
                                                 String projectRef, AuthUser user) {
-        String scope = normalizeScope(scopeType);
+        String scope = normalizeManagementScope(scopeType);
         WorkflowProjectAccessGateway.ProjectScope project = null;
         if ("PROJECT".equals(scope)) {
             project = gateway().requireAccessible(projectRef, user);
             gateway().requireManageable(project.id(), user);
         }
         Long projectId = project == null ? null : project.id();
-        validateScopeAssignments(scope, projectId, definitionJson, user);
+        validateScopeAssignments(scope, projectId, definitionJson, user, false);
         if (flowableWorkflowService.isEnterpriseDefinition(definitionJson)) {
             return flowableWorkflowService.createDefinition(code, name, definitionJson, scope, projectId, user);
         }
@@ -291,8 +298,10 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
         if (!"DRAFT".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有草稿流程可以发布");
         }
-        if (enterpriseDefinition(definitionId, user.tenantId())) { flowableWorkflowService.publish(definitionId, user); return; }
         Map<String, Object> version = jdbc.queryForMap("SELECT version_no, definition_json FROM wf_version WHERE definition_id = ? AND tenant_id = ? ORDER BY version_no DESC LIMIT 1", definitionId, user.tenantId());
+        validateScopeAssignments(String.valueOf(definition.get("scope_type")), number(definition.get("project_id")),
+                String.valueOf(version.get("definition_json")), user, true);
+        if (enterpriseDefinition(definitionId, user.tenantId())) { flowableWorkflowService.publish(definitionId, user); return; }
         validator.parse(String.valueOf(version.get("definition_json")));
         int versionNo = ((Number) version.get("version_no")).intValue();
         jdbc.update("UPDATE wf_version SET status = 'PUBLISHED' WHERE definition_id = ? AND tenant_id = ? AND version_no = ?", definitionId, user.tenantId(), versionNo);
@@ -928,6 +937,9 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
     }
 
     private void requireDefinitionAccessible(Map<String, Object> definition, AuthUser user, boolean manage) {
+        if ("PLATFORM".equals(String.valueOf(definition.get("scope_type")))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "平台流程为历史兼容数据，不再支持管理");
+        }
         if (!"PROJECT".equals(String.valueOf(definition.get("scope_type")))) return;
         Long projectId = number(definition.get("project_id"));
         if (projectId == null) throw new BusinessException(ErrorCode.CONFLICT, "项目流程缺少项目归属");
@@ -999,7 +1011,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
     private record StartScope(Long projectId, WorkflowBusinessContext context) {
     }
 
-    private void validateScopeAssignments(String scope, Long projectId, String definitionJson, AuthUser user) {
+    private void validateScopeAssignments(String scope, Long projectId, String definitionJson, AuthUser user,
+                                          boolean publishing) {
         try {
             JsonNode nodes = objectMapper.readTree(definitionJson).path("nodes");
             if (!nodes.isArray()) return;
@@ -1012,16 +1025,21 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
                         if (!placeholder || !userIds.isEmpty()) {
                             throw new BusinessException(ErrorCode.BAD_REQUEST, "全局模板的抄送节点只能保留人员占位，不能选择具体人员");
                         }
-                    } else {
-                        if (placeholder) throw new BusinessException(ErrorCode.BAD_REQUEST, "只有全局模板可以使用人员占位");
+                    } else if ("PROJECT".equals(scope)) {
+                        if (placeholder && publishing) {
+                            throw new BusinessException(ErrorCode.CONFLICT, "项目流程仍有待配置的抄送人员，配置完成后才能发布");
+                        }
                         if (projectId != null) gateway().requireMembers(projectId, userIds, user);
                     }
                 }
                 if (!"APPROVAL".equals(node.path("type").asText(""))) continue;
                 String type = config.path("assigneeType").asText("").toUpperCase(Locale.ROOT);
                 if ("PROJECT".equals(scope)) {
-                    if (!Set.of("PROJECT_MEMBER", "PROJECT_ROLE", "STARTER").contains(type)) {
-                        throw new BusinessException(ErrorCode.BAD_REQUEST, "项目流程只能选择项目成员、项目角色或发起人");
+                    if (!Set.of("PROJECT_MEMBER", "PROJECT_ROLE", "TEMPLATE_PLACEHOLDER", "STARTER").contains(type)) {
+                        throw new BusinessException(ErrorCode.BAD_REQUEST, "项目流程只能选择项目成员、项目角色、待配置人员或发起人");
+                    }
+                    if ("TEMPLATE_PLACEHOLDER".equals(type) && publishing) {
+                        throw new BusinessException(ErrorCode.CONFLICT, "项目流程仍有待配置的审批人，配置完成后才能发布");
                     }
                     if ("PROJECT_MEMBER".equals(type)) gateway().requireMembers(projectId, ids(config.path("assigneeIds")), user);
                     if ("PROJECT_ROLE".equals(type)) gateway().membersForRoles(projectId, ids(config.path("assigneeIds")), user);
@@ -1045,6 +1063,38 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
         String scope = value == null || value.isBlank() ? "PLATFORM" : value.trim().toUpperCase(Locale.ROOT);
         if (!Set.of("PLATFORM", "TEMPLATE", "PROJECT").contains(scope)) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程范围无效");
         return scope;
+    }
+
+    private String normalizeManagementScope(String value) {
+        String scope = value == null || value.isBlank() ? "TEMPLATE" : value.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("TEMPLATE", "PROJECT").contains(scope)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "流程管理仅支持全局模板和项目流程");
+        }
+        return scope;
+    }
+
+    private void addConfigurationState(Map<String, Object> definition) {
+        String json = definition.get("definition_json") == null ? null : String.valueOf(definition.get("definition_json"));
+        definition.put("requires_configuration", "PROJECT".equals(String.valueOf(definition.get("scope_type")))
+                && hasConfigurationPlaceholder(json));
+    }
+
+    private boolean hasConfigurationPlaceholder(String definitionJson) {
+        if (definitionJson == null || definitionJson.isBlank()) return false;
+        try {
+            JsonNode nodes = objectMapper.readTree(definitionJson).path("nodes");
+            if (!nodes.isArray()) return false;
+            for (JsonNode node : nodes) {
+                JsonNode config = node.path("config");
+                if ("APPROVAL".equals(node.path("type").asText())
+                        && "TEMPLATE_PLACEHOLDER".equals(config.path("assigneeType").asText())) return true;
+                if ("CC".equals(node.path("type").asText())
+                        && config.path("templatePlaceholder").asBoolean(false)) return true;
+            }
+            return false;
+        } catch (JsonProcessingException ignored) {
+            return false;
+        }
     }
 
     private void rejectTemplateExecution(Map<String, Object> definition, String action) {
