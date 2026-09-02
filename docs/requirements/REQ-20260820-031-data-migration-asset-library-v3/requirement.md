@@ -128,3 +128,27 @@ module: business/data-migration
 ### 状态
 
 演进内容 T1–T7 全部 verified，REQ-20260831-050 账本收敛（revision 9）后并入本需求；合并仅为文档与账本逻辑归并，**未做 git 分支/提交操作，未 push**，050 交付物与 031 产物同处当前未提交工作树，统一提交/发布属另行授权事项。
+
+## 增量：迁移方案域化改造（对标会议纪要 / 汇报材料）
+
+> 2026-09-02 由用户提出并确认：将「数迁资产内容 › 迁移方案」从通用文件型资产链路（`ContentFileAssetService` + `AssetListView`，仅 project/component 两维）升级为对标「会议纪要/汇报材料」的专属域功能，并入 REQ-20260820-031 范围，新增追加式迁移 `V159`。
+
+### 功能目标
+
+迁移方案统一管理：多维度筛选检索、分页列表、查看、单条录入、批量上传、编辑（含源文件重传/追加）、下载、逻辑删除与统一回收站；覆盖加载/空/失败/无权限/提交中状态与桌面 + 手机视口。
+
+### 字段与规则（用户确认）
+
+- 所属项目（`pm_project` 下拉）、资产颗粒度（`PROJECT`=项目级 / `SYSTEM`=系统级，两级）、迁移方案类型（`BUSINESS`=业务迁移方案 / `DATA`=数据迁移方案）、关联系统（颗粒度为系统级时必填，数据源复用会议纪要同款 `dm_component ⋈ arch_physical_subsystem` 按项目过滤）、方案名称（必填）、方案简介、源文件。
+- 必填：方案名称、所属项目、资产颗粒度、迁移方案类型；系统级时关联系统必填；项目级 `system_id=0` 哨兵。
+- 唯一约束（软删感知生成列）：`(tenant, project, granularity, plan_type, system_id)` 仅允许一条活动记录。
+- **一条方案挂多文件**（用户决策）：批量上传的多个文件绑定为同一方案记录的多条 `dm_content_attachment` 附件，不拆成多条方案；与硬唯一约束不冲突。方案名称取首个文件名（去扩展名）。
+- 逻辑删除记录删除人/时间；写操作记 `dm_operation_log`；回收站经 `PlanRecycleBinSource` 并入统一回收站。
+- 存量 `dm_plan` 经确认为空表，`V159` 仅加列不回填。
+
+### 范围与接口
+
+- 后端：`server/src/modules/data-migration/**` 新增 `PlanService`/`PlanController`/`PlanRecycleBinSource`，`/api/data-migration/plans*`；`PLAN` 从 `ContentFileAssetService.MANAGED_TYPES` 与 `ContentAssetController.RESOURCE_TYPES` 移除（`dm_plan` 仍留在 `FILE_TABLES`，MD5 查重域与看板计数不变）。
+- 迁移：`V159__data_migration_plan_domain.sql`（`dm_plan` 加 `granularity/plan_type/system_id/plan_summary` + 活动维度唯一键 + 查询索引）。
+- 前端：`web/src/api/data-migration.ts` 新增 Plan 契约；重写 `PlansPage.vue` 为专属页；`RecycleBinPage` 的 PLAN 分发经统一类型派生，无需改动。
+- 权限：沿用 `data-migration:content:plans` 菜单码 + 动作码 `:create/:update/:delete`（未单独播种，回退 `data-migration:write/manage/system:admin`），服务端强制认证/RBAC/上传人实体授权。

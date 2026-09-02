@@ -26,8 +26,9 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class ContentFileAssetService {
     public static final String BUSINESS_TYPE = "DATA_MIGRATION_ASSET";
-    /** 本服务直接承接的六种文件型类型（REPORT 走 ReportService，结构化类型走 StructuredAssetService）。 */
-    public static final Set<String> MANAGED_TYPES = Set.of("PLAN", "MAPPING_DOC", "DEPENDENCY", "SCRIPT", "TOPIC", "RELEASE_DRILL");
+    /** 本服务直接承接的五种文件型类型（PLAN 走 PlanService，REPORT 走 ReportService，结构化类型走 StructuredAssetService）。 */
+    // PLAN 已剥离至 PlanService（REQ-20260820-031 增量）；dm_plan 仍留在 FILE_TABLES（MD5 查重域/看板计数）。
+    public static final Set<String> MANAGED_TYPES = Set.of("MAPPING_DOC", "DEPENDENCY", "SCRIPT", "TOPIC", "RELEASE_DRILL");
     private static final long MAX_FILE_SIZE = 50L * 1024 * 1024;
     private static final String MD5_PATTERN = "[0-9a-fA-F]{32}";
 

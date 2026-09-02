@@ -54,11 +54,17 @@ class DataMigrationModuleRegistrationTest {
         String assets = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ContentAssetController.java"));
         String recycle = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ContentRecycleBinController.java"));
         String structured = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/StructuredAssetController.java"));
-        assertTrue(assets.contains("/plans/upload") && assets.contains("data-migration:write"));
+        String plan = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/PlanController.java"));
+        // PLAN 已从通用文件控制器剥离至专属 PlanController（REQ-20260820-031 增量），通用侧改验 /mappings。
+        assertTrue(!assets.contains("/plans") && assets.contains("/mappings/upload") && assets.contains("data-migration:write"));
         assertTrue(assets.contains("/release-drills/delete") && assets.contains("data-migration:write"));
         assertTrue(recycle.contains("/restore") && recycle.contains("data-migration:manage"));
         assertTrue(structured.contains("/rules/import") && structured.contains("data-migration:write"));
         assertTrue(structured.contains("/parameters/delete") && structured.contains("data-migration:write"));
+        assertTrue(plan.contains("/api/data-migration/plans")
+                && plan.contains("data-migration:content:plans:create")
+                && plan.contains("data-migration:content:plans:delete")
+                && plan.contains("data-migration:write"));
     }
 
     @Test

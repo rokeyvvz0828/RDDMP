@@ -830,3 +830,104 @@ export function purgeAttachments(ids: number[]) {
 export function purgeAllAttachments() {
   return http.delete<ApiResponse<null>>('/data-migration/meetings/attachments/purge-all')
 }
+
+// ========== 迁移方案专属接口（REQ-20260820-031 增量，对标会议纪要/汇报材料） ==========
+
+export interface PlanAttachment {
+  id: number
+  attachment_id: number
+  file_name: string
+  sort_order: number
+  created_by: number
+  created_at?: string
+}
+
+export interface PlanRecord {
+  id: number
+  project_id: number
+  project_name?: string
+  /** PROJECT=项目级 / SYSTEM=系统级 */
+  granularity: string
+  /** BUSINESS=业务迁移方案 / DATA=数据迁移方案 */
+  plan_type: string
+  system_id: number
+  system_name?: string
+  asset_type?: string
+  asset_code?: string
+  asset_name?: string
+  plan_summary?: string
+  content_type?: string
+  file_size?: number
+  attachment_id?: number
+  checksum_md5?: string
+  attachment_count?: number
+  owner_id: number
+  created_by: number
+  created_at?: string
+  updated_by?: number
+  updated_at?: string
+  deleted_by?: number
+  deleted_at?: string
+  attachments?: PlanAttachment[]
+}
+
+export interface PlanQuery {
+  projectId?: number
+  granularity?: string
+  planType?: string
+  systemId?: number
+  keyword?: string
+  page?: number
+  size?: number
+}
+
+/** 一条方案挂多文件：files 至少一个；planName 留空则后端取首个文件名（去扩展名）。 */
+export interface PlanFormData {
+  projectId: number
+  granularity: string
+  planType: string
+  systemId?: number
+  planName?: string
+  summary?: string
+  files: { attachmentId: number; checksumMd5: string; fileName?: string }[]
+}
+
+/** 分页查询迁移方案列表 */
+export function listPlans(params: PlanQuery) {
+  return http.get<ApiResponse<DataMigrationPage<PlanRecord>>>('/data-migration/plans', { params })
+}
+
+/** 获取单条迁移方案详情（含多附件） */
+export function getPlan(id: number) {
+  return http.get<ApiResponse<PlanRecord>>(`/data-migration/plans/${id}`)
+}
+
+/** 新增迁移方案（单条/批量多文件） */
+export function createPlan(body: PlanFormData) {
+  return http.post<ApiResponse<PlanRecord>>('/data-migration/plans', body)
+}
+
+/** 编辑迁移方案（元数据 + 全量重设附件集合） */
+export function updatePlan(id: number, body: Partial<PlanFormData>) {
+  return http.put<ApiResponse<PlanRecord>>(`/data-migration/plans/${id}`, body)
+}
+
+/** 批量逻辑删除迁移方案 */
+export function deletePlans(ids: number[]) {
+  return http.delete<ApiResponse<null>>('/data-migration/plans', { data: ids })
+}
+
+/** 获取主源文件的平台下载路径（前端再经 getAttachmentDownload 取流） */
+export function getPlanDownloadPath(id: number) {
+  return http.get<ApiResponse<string>>(`/data-migration/plans/${id}/download`)
+}
+
+/** 获取迁移方案附件列表 */
+export function getPlanAttachments(id: number) {
+  return http.get<ApiResponse<PlanAttachment[]>>(`/data-migration/plans/${id}/attachments`)
+}
+
+/** 获取关联系统选项（根据项目） */
+export function getPlanSystemOptions(projectId?: number) {
+  return http.get<ApiResponse<SelectOption[]>>('/data-migration/plans/options/systems', { params: { projectId } })
+}

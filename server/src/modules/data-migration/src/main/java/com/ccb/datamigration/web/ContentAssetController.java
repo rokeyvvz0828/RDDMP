@@ -25,7 +25,6 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 @PreAuthorize("hasAnyAuthority('data-migration:access','data-migration:write','data-migration:manage','system:admin','data-migration:assets')")
 public class ContentAssetController {
     private static final Map<String, String> RESOURCE_TYPES = Map.of(
-            "plans", "PLAN",
             "mappings", "MAPPING_DOC",
             "dependencies", "DEPENDENCY",
             "programs", "SCRIPT",
@@ -41,7 +40,7 @@ public class ContentAssetController {
         this.attachmentStream = attachmentStream;
     }
 
-    @GetMapping({"/plans", "/mappings", "/dependencies", "/programs", "/topics", "/release-drills"})
+    @GetMapping({"/mappings", "/dependencies", "/programs", "/topics", "/release-drills"})
     public ApiResponse<PageResult<Map<String, Object>>> list(HttpServletRequest request,
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) Long componentId,
@@ -52,7 +51,7 @@ public class ContentAssetController {
         return ApiResponse.success(service.list(type(request), projectId, componentId, keyword, page, size, user), TraceId.getOrCreate());
     }
 
-    @PostMapping({"/plans/upload", "/mappings/upload", "/dependencies/upload", "/programs/upload", "/topics/upload", "/release-drills/upload"})
+    @PostMapping({"/mappings/upload", "/dependencies/upload", "/programs/upload", "/topics/upload", "/release-drills/upload"})
     @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Map<String, Object>> upload(HttpServletRequest request,
             @RequestParam long projectId, @RequestParam(required = false) Long componentId,
@@ -61,14 +60,14 @@ public class ContentAssetController {
         return ApiResponse.success(service.upload(type(request), projectId, componentId, assetCode, attachmentId, md5, user), TraceId.getOrCreate());
     }
 
-    @PostMapping({"/plans/delete", "/mappings/delete", "/dependencies/delete", "/programs/delete", "/topics/delete", "/release-drills/delete"})
+    @PostMapping({"/mappings/delete", "/dependencies/delete", "/programs/delete", "/topics/delete", "/release-drills/delete"})
     @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Void> delete(HttpServletRequest request, @RequestBody List<Long> ids, @AuthenticationPrincipal AuthUser user) {
         service.delete(type(request), ids, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
-    @GetMapping({"/plans/{id}/download", "/mappings/{id}/download", "/dependencies/{id}/download", "/programs/{id}/download", "/topics/{id}/download", "/release-drills/{id}/download"})
+    @GetMapping({"/mappings/{id}/download", "/dependencies/{id}/download", "/programs/{id}/download", "/topics/{id}/download", "/release-drills/{id}/download"})
     public ResponseEntity<StreamingResponseBody> download(HttpServletRequest request, @PathVariable long id,
                                                           @AuthenticationPrincipal AuthUser user) {
         return attachmentStream.stream(service.downloadAttachmentId(type(request), id, user), user, request);
