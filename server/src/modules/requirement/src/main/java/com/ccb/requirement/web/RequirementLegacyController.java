@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -208,8 +209,20 @@ public class RequirementLegacyController {
                                                                     @RequestParam String type,
                                                                     @RequestBody(required = false) Map<String, Object> body,
                                                                     @AuthenticationPrincipal AuthUser user) {
-        String reviewNo = body == null ? null : (body.get("reviewNo") == null ? null : String.valueOf(body.get("reviewNo")));
-        return ApiResponse.success(enhanceService.submitDeliverableReview(id, type, reviewNo, user),
+        List<Long> approverIds = new ArrayList<>();
+        Object raw = body == null ? null : body.get("approverIds");
+        if (raw instanceof List<?> list) {
+            for (Object item : list) {
+                if (item instanceof Number number) {
+                    approverIds.add(number.longValue());
+                } else if (item != null) {
+                    approverIds.add(Long.valueOf(String.valueOf(item)));
+                }
+            }
+        }
+        String reportDocName = body == null ? null : (body.get("reportDocName") == null
+                ? null : String.valueOf(body.get("reportDocName")));
+        return ApiResponse.success(enhanceService.submitDeliverableReview(id, type, approverIds, reportDocName, user),
                 TraceId.getOrCreate());
     }
 

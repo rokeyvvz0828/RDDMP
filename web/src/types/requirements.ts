@@ -182,6 +182,10 @@ export interface LegacyDeliverable {
   version_no: string
   review_status: string
   review_record_id?: number | null
+  review_approver_ids?: string | null
+  review_approver_names?: string | null
+  review_report_name?: string | null
+  review_remark?: string | null
   remark?: string | null
   created_at?: string
   updated_at?: string

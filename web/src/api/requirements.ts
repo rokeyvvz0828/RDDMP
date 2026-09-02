@@ -267,11 +267,14 @@ export function deleteDeliverable(id: number, type: 'WORKLOAD' | 'SOFT') {
   return http.delete<ApiResponse<void>>(`/requirements/deliverables/${id}`, { params: { type } })
 }
 
-export function submitDeliverableReview(id: number, type: 'WORKLOAD' | 'SOFT', reviewNo?: string) {
-  return http.post<ApiResponse<LegacyDeliverable>>(`/requirements/deliverables/${id}/submit-review`, reviewNo ? { reviewNo } : {}, { params: { type } })
+export function submitDeliverableReview(id: number, type: 'WORKLOAD' | 'SOFT', approverIds: number[], reportDocName?: string) {
+  return http.post<ApiResponse<LegacyDeliverable>>(`/requirements/deliverables/${id}/submit-review`, {
+    approverIds,
+    reportDocName: reportDocName || undefined
+  }, { params: { type } })
 }
 
-export function reviewDeliverable(id: number, type: 'WORKLOAD' | 'SOFT', data: { conclusion: string; comment?: string; reportDocName?: string }) {
+export function reviewDeliverable(id: number, type: 'WORKLOAD' | 'SOFT', data: { conclusion: string; comment?: string; remark?: string; reportDocName?: string }) {
   return http.post<ApiResponse<LegacyDeliverable>>(`/requirements/deliverables/${id}/review`, data, { params: { type } })
 }
 

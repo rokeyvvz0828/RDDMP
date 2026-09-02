@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260902-058-review-approver-remark",
+  "task_id": "T1",
+  "status": "implemented-not-verified",
+  "coverage": ["REQ-20260902-058 全部实施范围"],
+  "actual_changes": [
+    "RequirementDifferenceService.reviewers()：审批人列表放开为全部启用用户",
+    "RequirementLegacyEnhanceService.submitDeliverableReview：接收审批人列表与评审报告文档名并写入交付件",
+    "RequirementLegacyEnhanceService.reviewDeliverable：允许被选审批人或 PMO/管理员评审，写入评审备注",
+    "RequirementLegacyEnhanceService.deliverables/reviewRecords：返回评审备注",
+    "RequirementLegacyController：提交评审接口接收 approverIds/reportDocName",
+    "V133 迁移：req_workload/req_soft_doc 增加评审审批人 ID/姓名/报告文档名；req_review_record 增加 remark",
+    "前端：差异/交付件提交评审弹窗统一多人选人+报告文档名；评审弹窗加评审备注；评审记录弹窗加列；工作量/软需列表加评审备注列与评审记录入口",
+    "web/src/api/requirements.ts、web/src/types/requirements.ts 同步契约"
+  ],
+  "commands": [],
+  "local_checks": [],
+  "diff_summary": [
+    "server/src/modules/requirement/.../RequirementDifferenceService.java",
+    "server/src/modules/requirement/.../RequirementLegacyEnhanceService.java",
+    "server/src/modules/requirement/.../web/RequirementLegacyController.java",
+    "server/src/platform/infrastructure/.../db/migration/V133__requirement_review_approver_and_remark.sql",
+    "web/src/api/requirements.ts",
+    "web/src/types/requirements.ts",
+    "web/src/views/RequirementsView.vue"
+  ],
+  "invariants_checked": [
+    {"invariant": "已发布 Flyway 脚本未修改", "result": "pass", "evidence": "仅新增 V133"},
+    {"invariant": "字段标识符/API 键未破坏性重命名", "result": "pass", "evidence": "仅新增参数与字段"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "测试由用户执行（用户明确要求 Codex 不再测试）",
+    "存量交付件评审权限由服务端校验，浏览器验证待用户执行"
+  ],
+  "recommended_next": "observe"
+}

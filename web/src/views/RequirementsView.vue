@@ -333,7 +333,7 @@ async function submitDifferenceReview(row: RequirementDifference) {
   try {
     const reviewers = (await listReviewers()).data.data
     if (!reviewers || reviewers.length === 0) {
-      ElMessage.warning('当前没有可选审批人，请先为相关用户配置 requirement:diff:review 权限或统筹角色')
+      ElMessage.warning('当前没有可选用户，请先创建启用状态用户')
       return
     }
     submitReviewTarget.value = row
@@ -816,25 +816,58 @@ async function removeDeliverable(doc: LegacyDeliverable, type: 'WORKLOAD' | 'SOF
 
 async function submitDeliverable(doc: LegacyDeliverable, type: 'WORKLOAD' | 'SOFT') {
   try {
-    await ElMessageBox.confirm(`确认将「${doc.doc_name || doc.version_no}」提交评审？`, '提交评审', { type: 'warning' })
-    await submitDeliverableReview(doc.id, type)
-    ElMessage.success('已提交评审')
+    const reviewers = (await listReviewers()).data.data
+    if (!reviewers || reviewers.length === 0) {
+      ElMessage.warning('当前没有可选用户，请先创建启用状态用户')
+      return
+    }
+    deliverableSubmitTarget.value = { id: doc.id, type, title: doc.doc_name || `${type === 'WORKLOAD' ? '工作量表' : '软需文档'} ${doc.version_no}` }
+    deliverableSubmitApprovers.value = []
+    deliverableSubmitReportName.value = ''
+    deliverableSubmitOptions.value = reviewers
+    deliverableSubmitVisible.value = true
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '加载审批人失败'))
+  }
+}
+
+const deliverableSubmitVisible = ref(false)
+const deliverableSubmitSaving = ref(false)
+const deliverableSubmitTarget = ref<{ id: number; type: 'WORKLOAD' | 'SOFT'; title: string } | null>(null)
+const deliverableSubmitApprovers = ref<number[]>([])
+const deliverableSubmitReportName = ref('')
+const deliverableSubmitOptions = ref<RequirementReviewer[]>([])
+
+async function confirmDeliverableSubmit() {
+  const target = deliverableSubmitTarget.value
+  if (!target) return
+  if (deliverableSubmitApprovers.value.length === 0) {
+    ElMessage.warning('请选择至少一位审批人')
+    return
+  }
+  deliverableSubmitSaving.value = true
+  try {
+    await submitDeliverableReview(target.id, target.type, deliverableSubmitApprovers.value, deliverableSubmitReportName.value || undefined)
+    deliverableSubmitVisible.value = false
+    ElMessage.success('已提交评审，等待审批人处理')
     await loadDeliverables()
   } catch (error) {
-    if (error === 'cancel' || error === 'close') return
     ElMessage.error(apiErrorMessage(error, '提交评审失败'))
+  } finally {
+    deliverableSubmitSaving.value = false
   }
 }
 
 const deliverableReviewVisible = ref(false)
 const deliverableReviewSaving = ref(false)
 const deliverableReviewTarget = ref<{ id: number; type: 'WORKLOAD' | 'SOFT'; title: string } | null>(null)
-const deliverableReviewForm = reactive<{ conclusion: string; comment: string }>({ conclusion: '通过', comment: '' })
+const deliverableReviewForm = reactive<{ conclusion: string; comment: string; remark: string }>({ conclusion: '通过', comment: '', remark: '' })
 
 function openDeliverableReview(doc: LegacyDeliverable, type: 'WORKLOAD' | 'SOFT') {
   deliverableReviewTarget.value = { id: doc.id, type, title: doc.doc_name || `${type === 'WORKLOAD' ? '工作量表' : '软需文档'} ${doc.version_no}` }
   deliverableReviewForm.conclusion = '通过'
   deliverableReviewForm.comment = ''
+  deliverableReviewForm.remark = ''
   deliverableReviewVisible.value = true
 }
 
@@ -845,7 +878,8 @@ async function confirmDeliverableReview() {
   try {
     await reviewDeliverable(target.id, target.type, {
       conclusion: deliverableReviewForm.conclusion,
-      comment: deliverableReviewForm.comment || undefined
+      comment: deliverableReviewForm.comment || undefined,
+      remark: deliverableReviewForm.remark || undefined
     })
     deliverableReviewVisible.value = false
     ElMessage.success('评审已完成')
@@ -1221,14 +1255,14 @@ const STAGE_FIELD_MAP: Record<string, string> = {
 // 标签严格按 Excel 列头完整文字（含括号说明）
 const STAGE_FIELD_GROUPS: Record<string, Array<{ key: string; label: string; placeholder?: string }>> = {
   PROPOSE: [
-    { key: 'legacy_doc_name', label: '业需文档名称', placeholder: '【蒙商银行】业务需求说明书XXX项目-业务小组-YYYY-MM-DD' },
-    { key: 'requirement_no', label: '需求编号（来自蒙商维普系统）', placeholder: 'JG-W0332C-240507-001' },
+    { key: 'legacy_doc_name', label: '业需文档名称', placeholder: '【同业银行】业务需求说明书XXX项目-业务小组-YYYY-MM-DD' },
+    { key: 'requirement_no', label: '需求编号（来自同业维普系统）', placeholder: 'JG-W0332C-240507-001' },
     { key: 'requirement_name', label: '需求名称', placeholder: 'ATM渠道跨行转账类交易上送完整对手方姓名' },
     { key: 'content_summary', label: '需求内容简述', placeholder: '简要描述需求内容' },
     { key: 'propose_dept', label: '需求提出部门', placeholder: '运营管理部' },
     { key: 'proposer', label: '需求提出人及电话', placeholder: '谢斌 13800000000' },
-    { key: 'monshang_ba', label: '蒙商BA', placeholder: '' },
-    { key: 'monshang_architect', label: '蒙商架构', placeholder: '' },
+    { key: 'monshang_ba', label: '同业BA', placeholder: '' },
+    { key: 'monshang_architect', label: '同业架构', placeholder: '' },
     { key: 'expected_launch_date', label: '业务期望上线时间', placeholder: '2024年6月底前' },
     { key: 'regulator', label: '外部监管单位（监管需求必填）', placeholder: '中国银联股份有限公司' },
     { key: 'regulation_doc_no', label: '监管文件名称+文号（监管需求必填）', placeholder: '《关于开展ATM渠道跨行转账类交易规范性改造的函》' },
@@ -1241,9 +1275,9 @@ const STAGE_FIELD_GROUPS: Record<string, Array<{ key: string; label: string; pla
     { key: 'regulation_category', label: '监管分类（监管需求必填：国家级监管/地方级监管/处罚整改）' },
     { key: 'business_group', label: '业务组（原六小组）', placeholder: '渠道运营小组' },
     { key: 'sub_group', label: '分组', placeholder: '支付结算组' },
-    { key: 'jinke_contact', label: '金科对接人及电话（业务统筹组）', placeholder: '朱琳 13800000000' },
-    { key: 'need_jinke_arch_decision', label: '是否需要金科架构决策' },
-    { key: 'jinke_architect', label: '金科架构人员', placeholder: '瞿真' },
+    { key: 'jinke_contact', label: '我方对接人及电话（业务统筹组）', placeholder: '朱琳 13800000000' },
+    { key: 'need_jinke_arch_decision', label: '是否需要我方架构决策' },
+    { key: 'jinke_architect', label: '我方架构人员', placeholder: '瞿真' },
     { key: 'ba_review_date', label: '业需评审完成日', placeholder: '6月11日' }
   ],
   WORKLOAD: [
@@ -1254,11 +1288,11 @@ const STAGE_FIELD_GROUPS: Record<string, Array<{ key: string; label: string; pla
     { key: 'finance_project_date', label: '财务立项完成日（任务书）', placeholder: '不涉及' }
   ],
   SOFT: [
-    { key: 'soft_doc_name', label: '软需文档名称', placeholder: '附件3：【蒙商银行】需求规格说明书XXX-V0.3(发布稿)' },
-    { key: 'owner_conglomerate', label: '主责事业群（金科事业群/蒙商保留）', placeholder: '上海事业群' },
+    { key: 'soft_doc_name', label: '软需文档名称', placeholder: '附件3：【同业银行】需求规格说明书XXX-V0.3(发布稿)' },
+    { key: 'owner_conglomerate', label: '主责事业群（我方事业群/同业保留）', placeholder: '上海事业群' },
     { key: 'owner_system', label: '主责物理子系统编号+名称 示例：W05810+现金管理', placeholder: 'W0332C+银联CUPS业务子系统' },
     { key: 'owner_contact', label: '主责项目组联系人及电话', placeholder: '瞿真 13800000000' },
-    { key: 'involve_cooperation', label: '是否涉及金科引入组件协同（是/否）' },
+    { key: 'involve_cooperation', label: '是否涉及我方引入组件协同（是/否）' },
     { key: 'coord_conglomerate', label: '协同事业群 示例：1.XX事业群 2.XX事业群 3.保留项目组', placeholder: '成都事业群' },
     { key: 'coord_system', label: '协同系统名称 示例：1.W0101Z+对公资金证明 2.XX编号+XX系统名称', placeholder: 'WP106A+ATM自助渠道' },
     { key: 'soft_submit_date', label: '软需提交日', placeholder: '5月23日' },
@@ -1671,17 +1705,17 @@ async function submitDiffFlow() {
         <el-form-item label="上升决策层级"><el-select v-model="diffForm.decision_level" clearable style="width: 100%"><el-option v-for="item in options.decisionLevels || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
         <el-form-item label="开发状态"><el-select v-model="diffForm.dev_status" style="width: 100%"><el-option v-for="item in options.devStatuses || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
         <el-form-item label="测试状态"><el-select v-model="diffForm.test_status" style="width: 100%"><el-option v-for="item in options.testStatuses || []" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-        <el-form-item label="金科做法" class="req-span-2"><el-input v-model="diffForm.jinke_practice" type="textarea" :rows="2" /></el-form-item>
-        <el-form-item label="蒙商作法" class="req-span-2"><el-input v-model="diffForm.monshang_practice" type="textarea" :rows="2" /></el-form-item>
+        <el-form-item label="我方做法" class="req-span-2"><el-input v-model="diffForm.jinke_practice" type="textarea" :rows="2" /></el-form-item>
+        <el-form-item label="同业作法" class="req-span-2"><el-input v-model="diffForm.monshang_practice" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="差异描述" class="req-span-2"><el-input v-model="diffForm.difference_desc" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="解决方案" class="req-span-2"><el-input v-model="diffForm.solution" type="textarea" :rows="2" /></el-form-item>
-        <el-form-item label="蒙商分析部门"><el-input v-model="diffForm.monshang_dept" /></el-form-item>
-        <el-form-item label="蒙商分析人"><el-input v-model="diffForm.monshang_analyst" /></el-form-item>
-        <el-form-item label="金科分析人"><el-input v-model="diffForm.jinke_analyst" /></el-form-item>
+        <el-form-item label="同业分析部门"><el-input v-model="diffForm.monshang_dept" /></el-form-item>
+        <el-form-item label="同业分析人"><el-input v-model="diffForm.monshang_analyst" /></el-form-item>
+        <el-form-item label="我方分析人"><el-input v-model="diffForm.jinke_analyst" /></el-form-item>
         <el-form-item label="协同组"><el-input v-model="diffForm.coord_group" /></el-form-item>
         <el-form-item label="决策结论" class="req-span-2"><el-input v-model="diffForm.decision_conclusion" type="textarea" :rows="2" /></el-form-item>
-        <el-form-item label="蒙商确认部门"><el-input v-model="diffForm.monshang_confirm_dept" /></el-form-item>
-        <el-form-item label="金科确认人"><el-input v-model="diffForm.jinke_confirmer" /></el-form-item>
+        <el-form-item label="同业确认部门"><el-input v-model="diffForm.monshang_confirm_dept" /></el-form-item>
+        <el-form-item label="我方确认人"><el-input v-model="diffForm.jinke_confirmer" /></el-form-item>
       </el-form>
     </UiFormDrawer>
 
@@ -1880,12 +1914,14 @@ async function submitDiffFlow() {
             <el-table-column prop="doc_name" label="文档名称" min-width="200" show-overflow-tooltip />
             <el-table-column prop="version_no" label="版本" width="70" />
             <el-table-column label="评审状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.review_status" :tone="reviewStatusTagType(scope.row.review_status)" /></template></el-table-column>
-            <el-table-column label="操作" width="250" fixed="right">
+            <el-table-column prop="review_remark" label="评审备注" min-width="140" show-overflow-tooltip />
+            <el-table-column label="操作" width="310" fixed="right">
               <template #default="scope">
                 <div class="req-table-actions">
                   <el-button link type="info" @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传</el-button>
                   <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDeliverable(scope.row, 'WORKLOAD')">提交评审</el-button>
                   <el-button v-if="scope.row.review_status === '评审中'" link type="success" @click="openDeliverableReview(scope.row, 'WORKLOAD')">评审</el-button>
+                  <el-button link type="primary" @click="openReviewRecords('LEGACY_WORKLOAD', scope.row.id, `评审记录：${scope.row.doc_name || scope.row.version_no}`)"><el-icon><Tickets /></el-icon>评审记录</el-button>
                   <el-button link type="danger" @click="removeDeliverable(scope.row, 'WORKLOAD')">删除</el-button>
                 </div>
               </template>
@@ -1903,12 +1939,14 @@ async function submitDiffFlow() {
             <el-table-column prop="doc_name" label="文档名称" min-width="200" show-overflow-tooltip />
             <el-table-column prop="version_no" label="版本" width="70" />
             <el-table-column label="评审状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.review_status" :tone="reviewStatusTagType(scope.row.review_status)" /></template></el-table-column>
-            <el-table-column label="操作" width="250" fixed="right">
+            <el-table-column prop="review_remark" label="评审备注" min-width="140" show-overflow-tooltip />
+            <el-table-column label="操作" width="310" fixed="right">
               <template #default="scope">
                 <div class="req-table-actions">
                   <el-button link type="info" @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传</el-button>
                   <el-button v-if="scope.row.review_status === '待评审' || scope.row.review_status === '已退回'" link type="warning" @click="submitDeliverable(scope.row, 'SOFT')">提交评审</el-button>
                   <el-button v-if="scope.row.review_status === '评审中'" link type="success" @click="openDeliverableReview(scope.row, 'SOFT')">评审</el-button>
+                  <el-button link type="primary" @click="openReviewRecords('LEGACY_SOFT', scope.row.id, `评审记录：${scope.row.doc_name || scope.row.version_no}`)"><el-icon><Tickets /></el-icon>评审记录</el-button>
                   <el-button link type="danger" @click="removeDeliverable(scope.row, 'SOFT')">删除</el-button>
                 </div>
               </template>
@@ -1963,7 +2001,7 @@ async function submitDiffFlow() {
             <el-option v-for="item in options.changeReviewConclusions || []" :key="item" :label="item" :value="item" />
           </el-select>
         </el-form-item>
-        <el-form-item label="变更结论及状态（审核通过/评估工作量/蒙商立项完成）">
+        <el-form-item label="变更结论及状态（审核通过/评估工作量/同业立项完成）">
           <el-select v-model="legacyChangeForm.change_conclusion_status" clearable :disabled="isChangeDetailDisabled()" style="width: 100%">
             <el-option v-for="item in options.changeConclusionStatuses || []" :key="item" :label="item" :value="item" />
           </el-select>
@@ -2028,6 +2066,7 @@ async function submitDiffFlow() {
           </el-radio-group>
         </el-form-item>
         <el-form-item label="评审意见"><el-input v-model="deliverableReviewForm.comment" type="textarea" :rows="3" /></el-form-item>
+        <el-form-item label="评审备注"><el-input v-model="deliverableReviewForm.remark" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="评审报告文档">
           <el-button plain @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传评审报告（本期未开放）</el-button>
         </el-form-item>
@@ -2036,6 +2075,27 @@ async function submitDiffFlow() {
         <el-button @click="deliverableReviewVisible = false">取消</el-button>
         <el-button type="primary" :loading="deliverableReviewSaving" @click="confirmDeliverableReview">确认评审</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 提交评审：选择审批人（存量工作量表/软需文档，参考新建项目差异） -->
+    <el-dialog v-model="deliverableSubmitVisible" title="提交评审" width="min(480px, calc(100vw - 24px))">
+      <el-form label-position="top">
+        <el-form-item v-if="deliverableSubmitTarget" label="评审对象">
+          <span>{{ deliverableSubmitTarget.title }}</span>
+        </el-form-item>
+        <el-form-item label="审批人" required>
+          <el-select v-model="deliverableSubmitApprovers" multiple filterable placeholder="选择一位或多位审批人" style="width: 100%">
+            <el-option v-for="item in deliverableSubmitOptions" :key="item.id" :label="`${item.display_name}（${item.username}）`" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="评审报告信息文档">
+          <div class="req-upload-line">
+            <el-input v-model="deliverableSubmitReportName" placeholder="填写评审报告文档名称（上传能力本期未开放）" />
+            <el-button @click="uploadPlaceholder"><el-icon><UploadFilled /></el-icon>上传</el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer><el-button @click="deliverableSubmitVisible = false">取消</el-button><el-button type="primary" :loading="deliverableSubmitSaving" @click="confirmDeliverableSubmit">提交</el-button></template>
     </el-dialog>
 
     <!-- 协同事项（改造/测试） -->
@@ -2080,6 +2140,7 @@ async function submitDiffFlow() {
         <el-table-column prop="review_time" label="评审时间" width="170" />
         <el-table-column label="结论" width="90"><template #default="scope"><el-tag size="small" :type="scope.row.conclusion === '通过' ? 'success' : 'warning'">{{ scope.row.conclusion }}</el-tag></template></el-table-column>
         <el-table-column prop="comment" label="评审意见" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="remark" label="评审备注" min-width="160" show-overflow-tooltip />
         <el-table-column prop="report_doc_name" label="评审报告文档" min-width="160" show-overflow-tooltip />
       </el-table>
       <el-empty v-if="reviewRecordRows.length === 0" description="暂无评审记录" />
