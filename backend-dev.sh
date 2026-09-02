@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # 后端服务热启动脚本（调试模式）
 # 用法:
-#   ./backend-dev.sh             # 等价于 start
-#   ./backend-dev.sh start      # 启动（8080 被占用则提示并退出）
-#   ./backend-dev.sh restart    # 重启（8080 被占用则先停止旧进程再启动）
-#   ./backend-dev.sh stop       # 停止（按 PID 文件与 8080 端口清理进程）
+#   ./backend-dev.sh                 # 等价于 start
+#   ./backend-dev.sh start          # 启动（8080 被占用则提示并退出）
+#   ./backend-dev.sh restart        # 重启（8080 被占用则先停止旧进程再启动）
+#   ./backend-dev.sh stop           # 停止（按 PID 文件与 8080 端口清理进程）
+#   ./backend-dev.sh clean          # 仅清理构建产物（ccb-boot 及依赖模块的 target）
+#   ./backend-dev.sh start --clean   # 先 clean 再编译安装并启动（全新一遍）
+#   ./backend-dev.sh restart --clean # 停止旧实例后 clean 编译并重启
 # 说明: 以 spring-boot:run 调试模式启动后端。修改 Java 代码后执行 restart 即可生效，
 #       无需 mvn package。启动后保持前台运行，编译与启动日志实时输出到终端，
 #       Ctrl+C 停止。前端 /api 与 /actuator 由 Vite 代理到本服务。
+#       增量 restart 不会删除已从源码移除的旧资源副本；当重命名/删除 Flyway 迁移或
+#       其他 classpath 资源后出现“重复版本/陈旧产物”类启动错误时，用 --clean 或 clean 清理。
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,15 +20,21 @@ cd "$ROOT_DIR"
 
 PORT=8080
 PID_FILE="/tmp/backend-dev.pid"
+CLEAN=0   # 1=先清理各模块 target 再构建（start/restart --clean 或 clean 命令）
 
 usage() {
   cat <<EOF
-用法: $(basename "$0") [命令]
+用法: $(basename "$0") [命令] [--clean]
 
 命令:
   start     启动服务（端口被占用则提示并退出；前台运行，Ctrl+C 停止）
   restart   重启服务（端口被占用则先停止旧进程再启动；前台运行）
   stop      停止服务
+  clean     仅清理 ccb-boot 及其依赖模块的 target 构建产物，不启动
+
+选项:
+  --clean   与 start/restart 组合：构建前先 clean，移除陈旧编译产物
+            （如重命名/删除 Flyway 迁移后 target/classes 残留的旧文件）
 
 不传命令等价于 start。
 EOF
@@ -119,8 +130,15 @@ start_service() {
   load_env
 
   # 编译并安装全部依赖模块到本地仓库（含本次代码改动，跳过测试）
+  # --clean 时先清理各模块 target，避免重命名/删除资源后残留旧产物导致 Flyway 重复版本等
+  local goals="install"
+  if [ "$CLEAN" = 1 ]; then
+    goals="clean install"
+    echo "[清理] --clean：构建前先清理各模块 target 目录..."
+  fi
   echo "[步骤1/2] 编译并安装依赖模块(跳过测试)..."
-  mvn -DskipTests install -pl :ccb-boot -am -Dspring-boot.repackage.skip=true
+  # shellcheck disable=SC2086
+  mvn -DskipTests $goals -pl :ccb-boot -am -Dspring-boot.repackage.skip=true
 
   echo "[步骤2/2] 启动后端: http://127.0.0.1:${PORT}  (前台运行，Ctrl+C 停止)"
 
@@ -139,6 +157,17 @@ start_service() {
   rm -f "$PID_FILE"
 }
 
+# 仅清理构建产物（ccb-boot 及其上游依赖模块的 target），不启动服务
+clean_build() {
+  if ! command -v mvn >/dev/null 2>&1; then
+    echo "[错误] 未找到 mvn 命令。" >&2
+    exit 1
+  fi
+  echo "[清理] 清理 ccb-boot 及其依赖模块的 target 目录..."
+  mvn clean -pl :ccb-boot -am
+  echo "[完成] 已清理构建产物，下次 start 将从干净状态重新编译。"
+}
+
 restart_service() {
   if [ -n "$(port_pid)" ] || [ -f "$PID_FILE" ]; then
     echo "[重启] 停止旧实例..."
@@ -152,10 +181,20 @@ restart_service() {
   start_service
 }
 
-ACTION="${1:-start}"
+ACTION="start"
+for arg in "$@"; do
+  case "$arg" in
+    start|restart|stop|clean) ACTION="$arg" ;;
+    --clean)                  CLEAN=1 ;;
+    -h|--help)                usage; exit 0 ;;
+    *)                        echo "[错误] 未知参数: $arg" >&2; usage >&2; exit 1 ;;
+  esac
+done
+
 case "$ACTION" in
   start)   start_service ;;
   restart) restart_service ;;
   stop)    stop_service ;;
+  clean)   clean_build ;;
   *)       usage >&2; exit 1 ;;
 esac
