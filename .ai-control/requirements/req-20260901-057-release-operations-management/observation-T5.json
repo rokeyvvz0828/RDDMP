@@ -1,0 +1,23 @@
+{
+  "sample_label": "T5-final-runtime-and-browser-observation",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S4 HTTP authorization + S5 route probe", "result": "passed", "raw_evidence": "五个路由均可解析；五个核心投产 API 未授权均返回 401；动态菜单展示投产管理父级及五个子菜单。", "limitation": ["有权限且有项目成员资格的浏览器业务内容未进入"]},
+    {"requirement_id": "R2", "sensor": "S2 backend tests + S3 build", "result": "passed", "raw_evidence": "ccb-release reactor 84 项通过，演练计划/轮次服务和组件构建成功。", "limitation": ["无有效项目成员会话，未做浏览器 CRUD 回读"]},
+    {"requirement_id": "R3", "sensor": "S2 backend tests + S5 route/DOM", "result": "passed", "raw_evidence": "普通/回退路由均可达，类型隔离代码和时序局部滚动布局通过构建与 DOM 检查。", "limitation": ["未在浏览器创建实际节点"]},
+    {"requirement_id": "R4", "sensor": "S2 backend regression + S3 build", "result": "passed", "raw_evidence": "问题筛选及分析跟踪 API/组件构建通过，后端模块全量测试通过。", "limitation": ["未在浏览器提交实际问题"]},
+    {"requirement_id": "R5", "sensor": "S2 service tests + S4 authorization", "result": "passed", "raw_evidence": "项目成员引用校验测试通过，未授权组织 API 返回 401。", "limitation": ["未在浏览器新增组成员；当前账号缺少项目实体成员资格"]},
+    {"requirement_id": "R6", "sensor": "S2 scope tests + S5 project switch", "result": "passed", "raw_evidence": "服务端项目范围校验测试通过，浏览器从一个项目切换到另一个项目后头部项目名称/引用更新。", "limitation": ["两个项目均因当前账号实体授权不足无法加载业务数据"]},
+    {"requirement_id": "R7", "sensor": "S2 service/security tests + S3 build", "result": "passed", "raw_evidence": "84 项 release reactor 测试通过，包含投产模块服务/安全测试；构建通过。", "limitation": ["运行态审计记录和并发冲突未做真实数据库抽查"]},
+    {"requirement_id": "R8", "sensor": "S5 browser viewport/console", "result": "passed", "raw_evidence": "375x812、390x844、430x932、1280x800 均无页面级横向溢出，console error=0，手机导航保留局部横向滚动。", "limitation": ["深色/浅色主题组合和授权业务数据状态未逐项采样"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "历史工作流迁移重排造成 wf_lifecycle_delivery 缺失", "impact": "运行日志有无关错误，但未观察到投产管理接口或页面的直接错误"},
+    {"event": "测试账号无项目成员资格", "impact": "业务页面显示实体无权，属于授权边界而非越权；CRUD 浏览器采样不可观测"}
+  ],
+  "coverage_gaps": ["授权项目成员会话下五页面 CRUD、刷新回读和跨项目数据替换", "真实数据库审计/并发冲突抽查", "浅色主题逐页采样"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

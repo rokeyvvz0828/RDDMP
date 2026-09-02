@@ -254,6 +254,124 @@ export interface ReleaseWorkflowBindingHistoryDto {
   occurredAt: string
 }
 
+export type ReleaseDrillStatus = 'PLANNED' | 'RUNNING' | 'COMPLETED'
+export type ReleaseIssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+export type ReleaseIssueStatus = 'OPEN' | 'ANALYZING' | 'RESOLVED' | 'CLOSED'
+export type ReleaseTimelineType = 'NORMAL' | 'ROLLBACK'
+
+export interface ReleaseDrillRoundDto {
+  id: number
+  projectId: number
+  roundNo: number
+  roundName: string
+  plannedAt?: string
+  status: ReleaseDrillStatus
+  resultContent?: string
+  rowVersion: number
+  updatedAt?: string
+}
+export interface ReleaseDrillPlanDto {
+  id: number
+  tenantId: number
+  projectId: number
+  scenarioContent?: string
+  environmentContent?: string
+  rowVersion: number
+  updatedAt?: string
+  rounds: ReleaseDrillRoundDto[]
+}
+export interface ReleaseDrillPlanWrite { scenarioContent?: string; environmentContent?: string; rowVersion: number }
+export interface ReleaseDrillRoundWrite { roundName: string; plannedAt?: string; status: ReleaseDrillStatus; resultContent?: string; rowVersion: number }
+
+export interface ReleaseTimelineItemDto {
+  id: number
+  projectId: number
+  seqNo: number
+  itemName: string
+  plannedStart?: string
+  plannedEnd?: string
+  ownerId?: number
+  ownerName?: string
+  status: string
+  description?: string
+  rowVersion: number
+  updatedAt?: string
+}
+export interface ReleaseTimelineDto {
+  id: number
+  projectId: number
+  timelineType: ReleaseTimelineType
+  timelineName: string
+  description?: string
+  rowVersion: number
+  updatedAt?: string
+  items: ReleaseTimelineItemDto[]
+}
+export interface ReleaseTimelineWrite { timelineName: string; description?: string; rowVersion: number }
+export interface ReleaseTimelineItemWrite {
+  seqNo?: number
+  itemName: string
+  plannedStart?: string
+  plannedEnd?: string
+  ownerId?: number
+  status?: string
+  description?: string
+  rowVersion: number
+}
+
+export interface ReleaseIssueDto {
+  id: number
+  projectId: number
+  issueNo: string
+  issueTitle: string
+  priority: ReleaseIssuePriority
+  issueStatus: ReleaseIssueStatus
+  discoveredAt?: string
+  ownerId?: number
+  ownerName?: string
+  issueDescription?: string
+  analysisContent?: string
+  actionContent?: string
+  followUpContent?: string
+  closedAt?: string
+  rowVersion: number
+  updatedAt?: string
+}
+export interface ReleaseIssueWrite {
+  issueNo: string
+  issueTitle: string
+  priority: ReleaseIssuePriority
+  issueStatus: ReleaseIssueStatus
+  discoveredAt?: string
+  ownerId?: number
+  issueDescription?: string
+  analysisContent?: string
+  actionContent?: string
+  followUpContent?: string
+  closedAt?: string
+  rowVersion: number
+}
+
+export interface ReleaseGroupMemberDto {
+  id: number
+  groupId: number
+  projectMemberId: number
+  userId: number
+  memberName: string
+  createdAt?: string
+}
+export interface ReleaseGroupDto {
+  id: number
+  projectId: number
+  groupName: string
+  description?: string
+  rowVersion: number
+  updatedAt?: string
+  members: ReleaseGroupMemberDto[]
+}
+export interface ReleaseGroupWrite { groupName: string; description?: string; rowVersion: number }
+export interface ReleaseMemberOptionDto { id: number; userId: number; displayName: string; username: string }
+
 export function listReleaseWindows(params: { page?: number; size?: number; projectId?: string; keyword?: string }) {
   return http.get<ApiResponse<PageResult<ReleaseWindowDto>>>('/release/windows', { params })
 }
@@ -313,3 +431,29 @@ export function updateReleaseWorkflowBinding(sceneCode: ReleaseWorkflowSceneCode
 export function listReleaseWorkflowBindingHistory(sceneCode: ReleaseWorkflowSceneCode, projectRef: string) {
   return http.get<ApiResponse<ReleaseWorkflowBindingHistoryDto[]>>(`/release/workflow-bindings/${sceneCode}/history`, { params: { projectRef } })
 }
+
+export function getReleaseDrillPlan(projectId: number) { return http.get<ApiResponse<ReleaseDrillPlanDto | null>>('/release/operations/drill-plan', { params: { projectId } }) }
+export function saveReleaseDrillPlan(projectId: number, data: ReleaseDrillPlanWrite) { return http.put<ApiResponse<ReleaseDrillPlanDto>>('/release/operations/drill-plan', data, { params: { projectId } }) }
+export function createReleaseDrillRound(projectId: number, data: ReleaseDrillRoundWrite) { return http.post<ApiResponse<ReleaseDrillRoundDto>>('/release/operations/drill-plan/rounds', data, { params: { projectId } }) }
+export function updateReleaseDrillRound(projectId: number, id: number, data: ReleaseDrillRoundWrite) { return http.put<ApiResponse<ReleaseDrillRoundDto>>(`/release/operations/drill-plan/rounds/${id}`, data, { params: { projectId } }) }
+export function deleteReleaseDrillRound(projectId: number, id: number, rowVersion: number) { return http.delete<ApiResponse<void>>(`/release/operations/drill-plan/rounds/${id}`, { params: { projectId, rowVersion } }) }
+
+export function getReleaseTimeline(projectId: number, type: ReleaseTimelineType) { return http.get<ApiResponse<ReleaseTimelineDto | null>>(`/release/operations/timelines/${type}`, { params: { projectId } }) }
+export function saveReleaseTimeline(projectId: number, type: ReleaseTimelineType, data: ReleaseTimelineWrite) { return http.put<ApiResponse<ReleaseTimelineDto>>(`/release/operations/timelines/${type}`, data, { params: { projectId } }) }
+export function createReleaseTimelineItem(projectId: number, type: ReleaseTimelineType, data: ReleaseTimelineItemWrite) { return http.post<ApiResponse<ReleaseTimelineItemDto>>(`/release/operations/timelines/${type}/items`, data, { params: { projectId } }) }
+export function updateReleaseTimelineItem(projectId: number, type: ReleaseTimelineType, id: number, data: ReleaseTimelineItemWrite) { return http.put<ApiResponse<ReleaseTimelineItemDto>>(`/release/operations/timelines/${type}/items/${id}`, data, { params: { projectId } }) }
+export function deleteReleaseTimelineItem(projectId: number, type: ReleaseTimelineType, id: number, rowVersion: number) { return http.delete<ApiResponse<void>>(`/release/operations/timelines/${type}/items/${id}`, { params: { projectId, rowVersion } }) }
+
+export function listReleaseOperationsIssues(params: { projectId: number; keyword?: string; priority?: ReleaseIssuePriority; status?: ReleaseIssueStatus; page?: number; size?: number }) { return http.get<ApiResponse<PageResult<ReleaseIssueDto>>>('/release/operations/issues', { params }) }
+export function createReleaseOperationsIssue(projectId: number, data: ReleaseIssueWrite) { return http.post<ApiResponse<ReleaseIssueDto>>('/release/operations/issues', data, { params: { projectId } }) }
+export function updateReleaseOperationsIssue(projectId: number, id: number, data: ReleaseIssueWrite) { return http.put<ApiResponse<ReleaseIssueDto>>(`/release/operations/issues/${id}`, data, { params: { projectId } }) }
+export function deleteReleaseOperationsIssue(projectId: number, id: number, rowVersion: number) { return http.delete<ApiResponse<void>>(`/release/operations/issues/${id}`, { params: { projectId, rowVersion } }) }
+
+export function listReleaseOperationGroups(projectId: number) { return http.get<ApiResponse<ReleaseGroupDto[]>>('/release/operations/groups', { params: { projectId } }) }
+export function createReleaseOperationGroup(projectId: number, data: ReleaseGroupWrite) { return http.post<ApiResponse<ReleaseGroupDto>>('/release/operations/groups', data, { params: { projectId } }) }
+export function updateReleaseOperationGroup(projectId: number, id: number, data: ReleaseGroupWrite) { return http.put<ApiResponse<ReleaseGroupDto>>(`/release/operations/groups/${id}`, data, { params: { projectId } }) }
+export function deleteReleaseOperationGroup(projectId: number, id: number, rowVersion: number) { return http.delete<ApiResponse<void>>(`/release/operations/groups/${id}`, { params: { projectId, rowVersion } }) }
+export function listReleaseOperationGroupMembers(projectId: number, groupId: number) { return http.get<ApiResponse<ReleaseGroupMemberDto[]>>(`/release/operations/groups/${groupId}/members`, { params: { projectId } }) }
+export function addReleaseOperationGroupMember(projectId: number, groupId: number, projectMemberId: number) { return http.post<ApiResponse<ReleaseGroupMemberDto>>(`/release/operations/groups/${groupId}/members`, undefined, { params: { projectId, projectMemberId } }) }
+export function deleteReleaseOperationGroupMember(projectId: number, groupId: number, projectMemberId: number) { return http.delete<ApiResponse<void>>(`/release/operations/groups/${groupId}/members/${projectMemberId}`, { params: { projectId } }) }
+export function listReleaseOperationMemberOptions(projectId: number) { return http.get<ApiResponse<ReleaseMemberOptionDto[]>>('/release/operations/members', { params: { projectId } }) }

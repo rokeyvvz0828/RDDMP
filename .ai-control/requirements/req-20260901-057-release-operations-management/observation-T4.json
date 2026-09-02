@@ -1,0 +1,19 @@
+{
+  "sample_label": "T4-business-view-and-responsive-observation",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R2", "sensor": "S2 backend regression + S3 frontend build", "result": "passed", "raw_evidence": "演练计划/轮次 API 与组件构建通过，组件包含方案、环境说明、轮次增改删入口。", "limitation": ["当前浏览器账号非项目成员，未执行页面提交后的刷新回读"]},
+    {"requirement_id": "R3", "sensor": "S2 backend regression + S5 route/DOM probe", "result": "passed", "raw_evidence": "NORMAL 与 ROLLBACK 路由均可解析，组件按类型隔离 API 和权限；时序容器配置为局部横向滚动。", "limitation": ["未在浏览器中创建实际节点"]},
+    {"requirement_id": "R4", "sensor": "S2 backend regression + S3 frontend build", "result": "passed", "raw_evidence": "问题筛选参数和描述/分析/处理/跟踪字段已接入 typed API 与组件。", "limitation": ["未在浏览器中提交问题记录"]},
+    {"requirement_id": "R5", "sensor": "S2 service tests + S3 frontend build", "result": "passed", "raw_evidence": "服务端成员引用校验和组织组件成员选项 API 构建通过。", "limitation": ["未在浏览器中新增投产组或成员"]},
+    {"requirement_id": "R6", "sensor": "S5 browser project switch", "result": "passed", "raw_evidence": "切换项目后页面头部项目名称和引用更新，组件 key 使用项目引用重新挂载。", "limitation": ["业务数据接口因当前账号非项目成员返回 403"]},
+    {"requirement_id": "R7", "sensor": "S2 service tests + S3 build", "result": "passed", "raw_evidence": "rowVersion 条件更新、软删除、删除确认和 saving 防重复路径已通过后端测试/构建检查。", "limitation": ["审计字段未做真实数据库写入抽查"]},
+    {"requirement_id": "R8", "sensor": "S5 browser viewport/console probe", "result": "passed", "raw_evidence": "375x812、390x844、430x932、1280x800 的 documentWidth 均不超过 viewport；页面控制台错误为 0，手机导航仅自身 scrollWidth=597。", "limitation": ["未覆盖深色/浅色切换后的每个业务状态"]}
+  ],
+  "feedback": [],
+  "disturbances": [{"event": "当前账号缺少测试项目实体成员资格", "impact": "业务 CRUD 浏览器采样不可达，未将安全拒绝误判为产品缺陷"}],
+  "coverage_gaps": ["授权项目成员会话下的五页面新增/编辑/删除/刷新回读尚未完成", "真实数据库审计写入未抽查", "深浅主题组合未逐页采样"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}
