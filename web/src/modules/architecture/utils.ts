@@ -121,7 +121,7 @@ export function httpErrorCode(error: unknown) {
 export const deploymentUnitKindLabels: Record<DeploymentUnitKind, string> = {
   APPLICATION: '应用',
   DATABASE: '数据库',
-  MQ: '消息队列'
+  WEB: 'Web'
 }
 
 export const deploymentUnitStatusLabels: Record<DeploymentUnitStatus, string> = {

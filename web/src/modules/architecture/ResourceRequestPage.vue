@@ -68,13 +68,11 @@ import './architecture.css'
 
 type UnitShape = {
   deploymentUnitKind?: string | null
-  deploymentUnitType?: string | null
 }
 
 type ResourceFormItem = ResourceRequestItemPayload & UnitShape & {
   deploymentUnitCode: string | null
   deploymentUnitName: string | null
-  relatedDeploymentUnitName: string | null
   deploymentUnitDescription: string | null
   networkZoneName: string | null
 }
@@ -237,17 +235,8 @@ function requestTypeLabel(value: ResourceRequestType | string | null | undefined
   return resourceRequestTypeLabels[value as ResourceRequestType] ?? value
 }
 
-function defaultDeploymentUnitType(kind: DeploymentUnitKind | string | null | undefined) {
-  return kind === 'DATABASE' ? 'DB' : 'AP'
-}
-
-function registrationType(item: UnitShape) {
-  const normalized = text(item.deploymentUnitType)?.toUpperCase()
-  return normalized || defaultDeploymentUnitType(item.deploymentUnitKind)
-}
-
 function isDatabaseRecord(item: UnitShape) {
-  return item.deploymentUnitKind === 'DATABASE' || registrationType(item) === 'DB'
+  return item.deploymentUnitKind === 'DATABASE'
 }
 
 function serverTypeLabel(code: string | null | undefined) {
@@ -290,9 +279,7 @@ function syncDeploymentUnit(item: ResourceFormItem, resetDemand = true) {
     item.deploymentUnitCode = null
     item.deploymentUnitName = null
     item.deploymentUnitKind = null
-    item.relatedDeploymentUnitName = null
     item.deploymentUnitDescription = null
-    item.deploymentUnitType = null
     item.networkZoneId = null
     item.networkZoneName = null
     return
@@ -300,9 +287,7 @@ function syncDeploymentUnit(item: ResourceFormItem, resetDemand = true) {
   item.deploymentUnitCode = unit.code
   item.deploymentUnitName = unit.name
   item.deploymentUnitKind = unit.kind
-  item.relatedDeploymentUnitName = unit.relatedDeploymentUnitName ?? null
   item.deploymentUnitDescription = unit.description ?? null
-  item.deploymentUnitType = unit.deploymentUnitType ?? defaultDeploymentUnitType(unit.kind)
   if (resetDemand) {
     item.networkZoneId = unit.defaultNetworkZoneId ?? null
     item.networkZoneName = unit.defaultNetworkZoneName ?? null
@@ -579,9 +564,7 @@ async function openEdit(row: ResourceRequestSummary) {
       deploymentUnitCode: item.deploymentUnitCode,
       deploymentUnitName: item.deploymentUnitName,
       deploymentUnitKind: item.deploymentUnitKind,
-      relatedDeploymentUnitName: item.relatedDeploymentUnitName,
       deploymentUnitDescription: item.deploymentUnitDescription,
-      deploymentUnitType: item.deploymentUnitType,
       databaseStorageGb: Number(item.databaseStorageGb),
       fileStorageGb: Number(item.fileStorageGb),
       networkZoneId: item.networkZoneId,
@@ -624,9 +607,7 @@ function blankItem(): ResourceFormItem {
     deploymentUnitCode: null,
     deploymentUnitName: null,
     deploymentUnitKind: null,
-    relatedDeploymentUnitName: null,
     deploymentUnitDescription: null,
-    deploymentUnitType: null,
     databaseStorageGb: 0,
     fileStorageGb: 0,
     networkZoneId: null,
@@ -1173,10 +1154,9 @@ watch(deploymentUnitOptions, () => {
               <article v-for="item in detail.items" :key="item.id">
                 <header>
                   <strong>{{ item.deploymentUnitName }}（{{ item.deploymentUnitCode }}）</strong>
-                  <span>{{ displayText(item.deploymentUnitType) }} · {{ deploymentUnitKindLabels[item.deploymentUnitKind] }}</span>
+                  <span>{{ deploymentUnitKindLabels[item.deploymentUnitKind] }}</span>
                 </header>
                 <dl>
-                  <div><dt>关联部署单元名称</dt><dd>{{ displayText(item.relatedDeploymentUnitName) }}</dd></div>
                   <div class="is-wide"><dt>部署单元简述</dt><dd>{{ displayText(item.deploymentUnitDescription) }}</dd></div>
                 </dl>
                 <dl v-if="isDatabaseRecord(item)">
@@ -1298,8 +1278,7 @@ watch(deploymentUnitOptions, () => {
                     <el-option v-for="unit in deploymentUnitOptions" :key="unit.id" :label="`${unit.name}（${unit.code}）`" :value="unit.id" />
                   </el-select>
                 </el-form-item>
-                <div><dt>关联部署单元名称</dt><dd>{{ displayText(item.relatedDeploymentUnitName) }}</dd></div>
-                <div><dt>部署单元类型</dt><dd>{{ displayText(item.deploymentUnitType) }}</dd></div>
+                <div><dt>部署单元类型</dt><dd>{{ item.deploymentUnitKind ? deploymentUnitKindLabels[item.deploymentUnitKind as DeploymentUnitKind] : '—' }}</dd></div>
                 <div class="is-wide"><dt>部署单元简述</dt><dd>{{ displayText(item.deploymentUnitDescription) }}</dd></div>
               </div>
 

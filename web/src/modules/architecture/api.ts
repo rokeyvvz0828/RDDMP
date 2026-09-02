@@ -50,6 +50,7 @@ import type {
   PhysicalSubsystem,
   ProvisionPreviewResult,
   PublicationIntentView,
+  RelatedDeploymentUnit,
   ReviewMethod,
   ResourceRequestDetail,
   ResourceRequestPayload,
@@ -342,6 +343,17 @@ export async function deleteDecisionAttachment(id: number, attachmentId: number)
 
 export async function listDeploymentUnits(query: Query) {
   return (await http.get<ApiResponse<PageResult<DeploymentUnit>>>('/architecture/deployment-units', { params: compact(query) })).data.data
+}
+
+export async function searchDeploymentUnitOptions(query: {
+  keyword?: string
+  page?: number
+  size?: number
+  excludeId?: number | null
+}) {
+  return (await http.get<ApiResponse<PageResult<RelatedDeploymentUnit>>>('/architecture/deployment-units/options', {
+    params: compact(query)
+  })).data.data
 }
 
 export async function getDeploymentUnit(id: number) {

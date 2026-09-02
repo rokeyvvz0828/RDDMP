@@ -319,7 +319,7 @@ export interface PublicationIntentView {
 export interface DecisionUserReference { id: number; displayName: string; username: string }
 // ---------- 部署单元 ----------
 
-export type DeploymentUnitKind = 'APPLICATION' | 'DATABASE' | 'MQ'
+export type DeploymentUnitKind = 'APPLICATION' | 'DATABASE' | 'WEB'
 export type DeploymentUnitStatus = 'ACTIVE' | 'INACTIVE' | 'VOIDED'
 export type DeploymentUnitImportBatchStatus = 'PREVIEW' | 'SUCCESS' | 'PARTIAL' | 'FAILED'
 export type DeploymentUnitImportItemStatus = 'VALID' | 'INVALID' | 'SUCCESS' | 'FAILED' | 'SKIPPED'
@@ -331,11 +331,9 @@ export interface DeploymentUnit {
   physicalSubsystemCode: string | null
   physicalSubsystemName: string | null
   physicalSubsystemStatus: string | null
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string
   kind: DeploymentUnitKind
+  relatedDeploymentUnits: RelatedDeploymentUnit[]
   status: DeploymentUnitStatus
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -353,10 +351,7 @@ export interface DeploymentUnit {
 
 export interface DeploymentUnitVersion {
   versionNo: number
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string
   kind: DeploymentUnitKind
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -369,11 +364,9 @@ export interface DeploymentUnitVersion {
 
 export interface DeploymentUnitPayload {
   physicalSubsystemId: number | null
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string | null
   kind: DeploymentUnitKind | ''
+  relatedDeploymentUnitIds: number[]
   defaultNetworkZoneId: number | null
   description: string | null
   remark: string | null
@@ -399,11 +392,20 @@ export interface DeploymentUnitImportBatch {
 
 export interface DeploymentUnitImportRow {
   physicalCode: string | null
-  shortName: string | null
   name: string | null
   kindLabel: string | null
   description: string | null
   remark: string | null
+}
+
+export interface RelatedDeploymentUnit {
+  id: number
+  code: string
+  name: string
+  kind: DeploymentUnitKind
+  physicalSubsystemId: number
+  physicalSubsystemName: string | null
+  status: DeploymentUnitStatus
 }
 
 export interface DeploymentUnitImportItem {
@@ -776,8 +778,6 @@ export interface DeploymentUnitOption {
   name: string
   kind: DeploymentUnitKind
   physicalSubsystemId: number
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string | null
   description: string | null
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -819,9 +819,7 @@ export interface ResourceRequestItem {
   deploymentUnitCode: string
   deploymentUnitName: string
   deploymentUnitKind: DeploymentUnitKind
-  relatedDeploymentUnitName: string | null
   deploymentUnitDescription: string | null
-  deploymentUnitType: string | null
   databaseStorageGb: number
   fileStorageGb: number
   networkZoneId: number | null

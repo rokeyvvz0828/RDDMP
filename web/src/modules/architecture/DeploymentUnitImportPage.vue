@@ -195,7 +195,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
           <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
           <div class="el-upload__text">将 .xlsx 文件拖到此处，或<em>点击选择文件</em></div>
           <template #tip>
-            <div class="el-upload__tip">模板列：物理子系统编号、部署单元简称、部署单元名称、部署单元类型（应用/数据库/消息队列）、描述、备注；最多 5000 行、10MB。</div>
+            <div class="el-upload__tip">模板列：物理子系统编号、部署单元名称、部署单元类型（应用/数据库/Web）、描述、备注；最多 5000 行、10MB。</div>
           </template>
         </el-upload>
       </section>
@@ -241,7 +241,6 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
           <el-table :data="preview.items" size="small" border max-height="52vh">
             <el-table-column label="行号" prop="lineNo" width="64" />
             <el-table-column label="物理子系统" min-width="110"><template #default="scope">{{ scope.row.row.physicalCode || '—' }}</template></el-table-column>
-            <el-table-column label="简称" min-width="100"><template #default="scope">{{ scope.row.row.shortName || '—' }}</template></el-table-column>
             <el-table-column label="名称" min-width="150"><template #default="scope">{{ scope.row.row.name || '—' }}</template></el-table-column>
             <el-table-column label="类型" width="90"><template #default="scope">{{ scope.row.row.kindLabel || '—' }}</template></el-table-column>
             <el-table-column label="状态" width="90"><template #default="scope"><UiStatusTag :value="scope.row.rowStatus" :labels="importItemStatusLabels" :tone="importItemStatusTone(scope.row.rowStatus)" /></template></el-table-column>
