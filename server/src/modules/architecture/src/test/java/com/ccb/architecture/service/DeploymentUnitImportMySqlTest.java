@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 
@@ -70,7 +71,7 @@ class DeploymentUnitImportMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("123"))
+                .target(MigrationVersion.fromVersion("124"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
@@ -87,6 +88,8 @@ class DeploymentUnitImportMySqlTest {
 
     @BeforeEach
     void seedArchitecture() {
+        jdbc.update("DELETE FROM arch_deployment_unit_relation_history");
+        jdbc.update("DELETE FROM arch_deployment_unit_relation");
         jdbc.update("DELETE FROM arch_deployment_unit_version");
         jdbc.update("DELETE FROM arch_deployment_unit_import_item");
         jdbc.update("DELETE FROM arch_deployment_unit");
@@ -110,9 +113,9 @@ class DeploymentUnitImportMySqlTest {
     @Test
     void uploadPreviewConfirmCreatesUnitsWithNumbers() {
         byte[] file = workbook(
-                row("W0001A", "ECIP-AP", "电子渠道接入应用", "应用", "渠道接入", null),
-                row("W0001A", "ECIP-DB", "电子渠道数据库", "数据库", null, null),
-                row("W0001A", "ECIP-MQ", "电子渠道消息队列", "消息队列", null, null));
+                row("W0001A", "ECIP_AP", "应用", "渠道接入", null),
+                row("W0001A", "ECIP_DB", "数据库", null, null),
+                row("W0001A", "ECIP_WB", "Web", null, null));
 
         ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
         assertThat(preview.batch().status()).isEqualTo(ImportBatchStatus.PREVIEW.name());
@@ -129,11 +132,11 @@ class DeploymentUnitImportMySqlTest {
         assertThat(count).isEqualTo(3);
         String code = jdbc.queryForObject(
                 "SELECT code FROM arch_deployment_unit WHERE tenant_id = ? AND name = ?",
-                String.class, TENANT_ID, "电子渠道接入应用");
+                String.class, TENANT_ID, "ECIP_AP");
         assertThat(code).isEqualTo("DW0001A001");
         String dbCode = jdbc.queryForObject(
                 "SELECT code FROM arch_deployment_unit WHERE tenant_id = ? AND name = ?",
-                String.class, TENANT_ID, "电子渠道数据库");
+                String.class, TENANT_ID, "ECIP_DB");
         assertThat(dbCode).isEqualTo("DW0001A002");
         Integer versions = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM arch_deployment_unit_version WHERE tenant_id = ?", Integer.class, TENANT_ID);
@@ -143,10 +146,10 @@ class DeploymentUnitImportMySqlTest {
     @Test
     void previewMarksInvalidRowsAndConfirmIsPartial() {
         byte[] file = workbook(
-                row("W0001A", "ECIP-AP", "电子渠道接入应用", "应用", null, null),
-                row("W0001A", "ECIP-BAD", "坏类型单元", "中间件", null, null),
-                row("NO-SUCH", "ECIP-X", "不存在物理单元", "应用", null, null),
-                row("W0001A", "ECIP-DUP", "电子渠道接入应用", "应用", null, null));
+                row("W0001A", "ECIP_AP", "应用", null, null),
+                row("W0001A", "BAD_AP", "中间件", null, null),
+                row("NO-SUCH", "MISSING_AP", "应用", null, null),
+                row("W0001A", "ECIP_AP", "应用", null, null));
 
         ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
         assertThat(preview.batch().totalRows()).isEqualTo(4);
@@ -166,7 +169,7 @@ class DeploymentUnitImportMySqlTest {
     @Test
     void reimportIsIdempotentAndSkipsExistingActiveUnits() {
         byte[] file = workbook(
-                row("W0001A", "ECIP-AP", "电子渠道接入应用", "应用", null, null));
+                row("W0001A", "ECIP_AP", "应用", null, null));
 
         ImportBatchView first = importService.confirm(actor, importService.upload(actor, multipart(file), "t1").batch().id(), "t1");
         assertThat(first.batch().successRows()).isEqualTo(1);
@@ -188,11 +191,11 @@ class DeploymentUnitImportMySqlTest {
     @Test
     void nameConflictWithVoidedUnitFailsRow() {
         unitService.create(actor, new com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitCommand(
-                PHYSICAL_ID, "ECIP-AP", "电子渠道接入应用", "APPLICATION", null, null, null), "seed");
+                PHYSICAL_ID, "ECIP_AP", "APPLICATION", List.of(), null, null, null, null), "seed");
         jdbc.update("UPDATE arch_deployment_unit SET status = 'VOIDED' WHERE tenant_id = ? AND name = ?",
-                TENANT_ID, "电子渠道接入应用");
+                TENANT_ID, "ECIP_AP");
 
-        byte[] file = workbook(row("W0001A", "ECIP-AP", "电子渠道接入应用", "应用", null, null));
+        byte[] file = workbook(row("W0001A", "ECIP_AP", "应用", null, null));
         ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
         assertThat(preview.items().get(0).rowStatus()).isEqualTo("INVALID");
         assertThat(preview.items().get(0).errorMessage()).contains("停用或作废");
@@ -200,7 +203,7 @@ class DeploymentUnitImportMySqlTest {
 
     @Test
     void confirmRejectsFinishedBatch() {
-        byte[] file = workbook(row("W0001A", "ECIP-AP", "电子渠道接入应用", "应用", null, null));
+        byte[] file = workbook(row("W0001A", "ECIP_AP", "应用", null, null));
         ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
         importService.confirm(actor, preview.batch().id(), "trace");
 
@@ -211,7 +214,7 @@ class DeploymentUnitImportMySqlTest {
 
     @Test
     void unexpectedRowFailureRollsBackWholeBatchAndMarksFailed() {
-        byte[] file = workbook(row("W0001A", "ECIP-AP", "电子渠道接入应用", "应用", null, null));
+        byte[] file = workbook(row("W0001A", "ECIP_AP", "应用", null, null));
         ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
 
         jdbc.update("UPDATE arch_deployment_unit_import_item SET raw_json = '[\"only-one\"]' "
@@ -231,16 +234,16 @@ class DeploymentUnitImportMySqlTest {
     @Test
     void errorReportContainsOnlyInvalidAndFailedRows() {
         byte[] file = workbook(
-                row("W0001A", "ECIP-AP", "电子渠道接入应用", "应用", null, null),
-                row("W0001A", "ECIP-BAD", "坏类型单元", "中间件", null, null));
+                row("W0001A", "ECIP_AP", "应用", null, null),
+                row("W0001A", "BAD_AP", "中间件", null, null));
         ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
 
         byte[] report = importService.errorReport(actor, preview.batch().id());
         String csv = new String(report, StandardCharsets.UTF_8);
         assertThat(csv).contains("物理子系统编号");
-        assertThat(csv).contains("坏类型单元");
+        assertThat(csv).contains("BAD_AP");
         assertThat(csv).contains("部署单元类型仅支持");
-        assertThat(csv).doesNotContain("电子渠道接入应用\n");
+        assertThat(csv).doesNotContain("ECIP_AP\n");
     }
 
     @Test
@@ -248,25 +251,44 @@ class DeploymentUnitImportMySqlTest {
         byte[] template = importService.template();
         assertThat(template.length).isGreaterThan(1_000);
         try (XSSFWorkbook workbook = new XSSFWorkbook(new java.io.ByteArrayInputStream(template))) {
-            assertThat(workbook.getSheetAt(0).getRow(0).getCell(0).getStringCellValue())
-                    .isEqualTo("物理子系统编号");
+            Row header = workbook.getSheetAt(0).getRow(0);
+            assertThat(List.of(
+                    header.getCell(0).getStringCellValue(),
+                    header.getCell(1).getStringCellValue(),
+                    header.getCell(2).getStringCellValue(),
+                    header.getCell(3).getStringCellValue(),
+                    header.getCell(4).getStringCellValue()))
+                    .containsExactly("物理子系统编号", "部署单元名称", "部署单元类型", "描述", "备注");
+            Row sample = workbook.getSheetAt(0).getRow(1);
+            assertThat(List.of(
+                    sample.getCell(0).getStringCellValue(),
+                    sample.getCell(1).getStringCellValue(),
+                    sample.getCell(2).getStringCellValue(),
+                    sample.getCell(3).getStringCellValue(),
+                    sample.getCell(4).getStringCellValue()))
+                    .containsExactly("W0001A", "ECIP_AP", "应用", "渠道接入服务（示例数据）", "演示用，可删除");
+            assertThat(sample.getCell(5)).isNull();
         } catch (Exception exception) {
             throw new AssertionError("模板不是有效 xlsx", exception);
         }
+
+        ImportBatchView preview = importService.upload(actor, multipart(template), "trace");
+        assertThat(preview.batch().validRows()).isEqualTo(1);
+        assertThat(preview.items()).singleElement()
+                .satisfies(item -> assertThat(item.rowStatus()).isEqualTo("VALID"));
     }
 
     // ---------- 工具 ----------
 
-    private String[] row(String physicalCode, String shortName, String name, String kind, String description,
-                         String remark) {
-        return new String[]{physicalCode, shortName, name, kind, description, remark};
+    private String[] row(String physicalCode, String name, String kind, String description, String remark) {
+        return new String[]{physicalCode, name, kind, description, remark};
     }
 
     private byte[] workbook(String[]... rows) {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("导入");
             Row header = sheet.createRow(0);
-            String[] headers = {"物理子系统编号", "部署单元简称", "部署单元名称", "部署单元类型", "描述", "备注"};
+            String[] headers = {"物理子系统编号", "部署单元名称", "部署单元类型", "描述", "备注"};
             for (int i = 0; i < headers.length; i++) {
                 header.createCell(i).setCellValue(headers[i]);
             }

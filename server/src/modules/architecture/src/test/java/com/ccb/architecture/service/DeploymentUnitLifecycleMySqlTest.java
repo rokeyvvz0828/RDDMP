@@ -24,6 +24,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,6 +53,8 @@ class DeploymentUnitLifecycleMySqlTest {
             .withPassword("test");
 
     private static JdbcTemplate jdbc;
+    private static DeploymentUnitStore store;
+    private static TransactionTemplate transactions;
     private static DeploymentUnitService service;
     private static AtomicInteger identifiers = new AtomicInteger(90_000);
 
@@ -67,21 +70,24 @@ class DeploymentUnitLifecycleMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("123"))
+                .target(MigrationVersion.fromVersion("124"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
         flyway.migrate();
 
-        DeploymentUnitStore store = new DeploymentUnitStore(jdbc);
+        store = new DeploymentUnitStore(jdbc);
+        transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         LongSupplier idSupplier = () -> identifiers.incrementAndGet();
         service = new DeploymentUnitService(store, new DeploymentUnitReferenceGuard(List.of()),
                 mock(SystemReferenceQuery.class), mock(SystemOperationAudit.class),
-                new TransactionTemplate(new DataSourceTransactionManager(dataSource)), idSupplier);
+                transactions, idSupplier);
     }
 
     @BeforeEach
     void seedArchitecture() {
+        jdbc.update("DELETE FROM arch_deployment_unit_relation_history");
+        jdbc.update("DELETE FROM arch_deployment_unit_relation");
         jdbc.update("DELETE FROM arch_deployment_unit_version");
         jdbc.update("DELETE FROM arch_deployment_unit");
         jdbc.update("DELETE FROM arch_deployment_unit_import_item");
@@ -98,12 +104,14 @@ class DeploymentUnitLifecycleMySqlTest {
     @AfterAll
     static void clearStatics() {
         jdbc = null;
+        store = null;
+        transactions = null;
         service = null;
     }
 
     @Test
     void createPublishesVersionOneWithDeterministicNumber() {
-        var view = service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace");
+        var view = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace");
 
         assertThat(view.code()).isEqualTo("DW0001A001");
         assertThat(view.currentVersion()).isEqualTo(1);
@@ -129,7 +137,7 @@ class DeploymentUnitLifecycleMySqlTest {
                 try {
                     start.await();
                     var view = service.create(actor,
-                            command("并发应用-" + index, "APPLICATION"), "trace-" + index);
+                            command("APP" + index + "_AP", "APPLICATION"), "trace-" + index);
                     codes.add(view.code());
                 } catch (Exception exception) {
                     failureMessages.add(exception.getClass().getSimpleName() + ": "
@@ -155,10 +163,10 @@ class DeploymentUnitLifecycleMySqlTest {
 
     @Test
     void updatePublishesNewVersionAndOldVersionStaysImmutable() {
-        var created = service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace");
+        var created = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace");
 
         var updated = service.update(actor, created.id(),
-                new DeploymentUnitCommand(null, "ECIP-AP", "电子渠道接入应用 V2", "DATABASE",
+                new DeploymentUnitCommand(null, "ECIP_DB", "DATABASE", List.of(), null,
                         "迁移到数据库服务", null, created.rowVersion()), "trace");
 
         assertThat(updated.currentVersion()).isEqualTo(2);
@@ -167,21 +175,108 @@ class DeploymentUnitLifecycleMySqlTest {
                         + "WHERE tenant_id = ? AND unit_id = ? ORDER BY version_no",
                 TENANT_ID, created.id());
         assertThat(versions).hasSize(2);
-        assertThat(versions.get(0).get("name")).isEqualTo("电子渠道接入应用");
+        assertThat(versions.get(0).get("name")).isEqualTo("ECIP_AP");
         assertThat(versions.get(0).get("kind")).isEqualTo("APPLICATION");
-        assertThat(versions.get(1).get("name")).isEqualTo("电子渠道接入应用 V2");
+        assertThat(versions.get(1).get("name")).isEqualTo("ECIP_DB");
         assertThat(versions.get(1).get("kind")).isEqualTo("DATABASE");
     }
 
     @Test
+    void relationIsBidirectionalIdempotentAndCanBeUnlinkedFromEitherSide() {
+        var application = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace-application");
+        var database = service.create(actor, command("ECIP_DB", "DATABASE"), "trace-database");
+
+        var linked = service.update(actor, application.id(),
+                new DeploymentUnitCommand(null, application.name(), application.kind(), List.of(database.id()),
+                        null, null, null, application.rowVersion()), "trace-link");
+
+        assertThat(service.detail(actor, application.id()).relatedDeploymentUnits())
+                .extracting(DeploymentUnitService.RelatedDeploymentUnitView::id)
+                .containsExactly(database.id());
+        assertThat(service.detail(actor, database.id()).relatedDeploymentUnits())
+                .extracting(DeploymentUnitService.RelatedDeploymentUnitView::id)
+                .containsExactly(application.id());
+        assertThat(relationCount()).isEqualTo(1);
+        assertThat(historyCount("LINK")).isEqualTo(1);
+
+        var repeated = service.update(actor, application.id(),
+                new DeploymentUnitCommand(null, application.name(), application.kind(), List.of(database.id()),
+                        null, null, null, linked.rowVersion()), "trace-repeat");
+
+        assertThat(relationCount()).isEqualTo(1);
+        assertThat(historyCount("LINK")).isEqualTo(1);
+
+        service.update(actor, database.id(),
+                new DeploymentUnitCommand(null, database.name(), database.kind(), List.of(),
+                        null, null, null, database.rowVersion()), "trace-unlink");
+
+        assertThat(service.detail(actor, application.id()).relatedDeploymentUnits()).isEmpty();
+        assertThat(service.detail(actor, database.id()).relatedDeploymentUnits()).isEmpty();
+        assertThat(relationCount()).isZero();
+        assertThat(historyCount("UNLINK")).isEqualTo(1);
+        assertThat(repeated.currentVersion()).isEqualTo(3);
+    }
+
+    @Test
+    void concurrentRelationWritesKeepOneCanonicalRowAndOneLinkHistory() throws Exception {
+        var application = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace-application");
+        var database = service.create(actor, command("ECIP_DB", "DATABASE"), "trace-database");
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        List<RuntimeException> failures = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+        submitRelationWrite(executor, ready, start, failures, application.id(), database.id());
+        submitRelationWrite(executor, ready, start, failures, database.id(), application.id());
+        assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+        start.countDown();
+        executor.shutdown();
+        assertThat(executor.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
+
+        assertThat(failures).hasSizeLessThanOrEqualTo(1);
+        assertThat(relationCount()).isEqualTo(1);
+        assertThat(historyCount("LINK")).isEqualTo(1);
+        assertThat(service.detail(actor, application.id()).relatedDeploymentUnits()).hasSize(1);
+        assertThat(service.detail(actor, database.id()).relatedDeploymentUnits()).hasSize(1);
+    }
+
+    @Test
+    void relationAndHistoryRollBackTogetherWhenTransactionFails() {
+        var application = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace-application");
+        var database = service.create(actor, command("ECIP_DB", "DATABASE"), "trace-database");
+
+        assertThatThrownBy(() -> transactions.executeWithoutResult(status -> {
+            store.replaceRelations(TENANT_ID, application.id(), Set.of(database.id()), actor.id(), 2);
+            throw new IllegalStateException("force rollback");
+        })).isInstanceOf(IllegalStateException.class);
+
+        assertThat(relationCount()).isZero();
+        assertThat(historyCount("LINK")).isZero();
+    }
+
+    @Test
+    void relationConstraintsRejectSelfAndCrossTenantPairs() {
+        var application = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace-application");
+        var database = service.create(actor, command("ECIP_DB", "DATABASE"), "trace-database");
+
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO arch_deployment_unit_relation "
+                        + "(tenant_id, unit_low_id, unit_high_id, created_by) VALUES (?, ?, ?, ?)",
+                TENANT_ID, application.id(), application.id(), actor.id())).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO arch_deployment_unit_relation "
+                        + "(tenant_id, unit_low_id, unit_high_id, created_by) VALUES (?, ?, ?, ?)",
+                2L, application.id(), database.id(), actor.id())).isInstanceOf(RuntimeException.class);
+        assertThat(relationCount()).isZero();
+    }
+
+    @Test
     void updateRejectsStaleRowVersionAndKeepsVersionCount() {
-        var created = service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace");
+        var created = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace");
         var updated = service.update(actor, created.id(),
-                new DeploymentUnitCommand(null, "ECIP-AP", "第一次修改", "APPLICATION", null, null,
+                new DeploymentUnitCommand(null, "ECIP2_AP", "APPLICATION", List.of(), null, null, null,
                         created.rowVersion()), "trace");
 
         assertThatThrownBy(() -> service.update(actor, created.id(),
-                new DeploymentUnitCommand(null, "ECIP-AP", "陈旧并发修改", "APPLICATION", null, null,
+                new DeploymentUnitCommand(null, "STALE_AP", "APPLICATION", List.of(), null, null, null,
                         created.rowVersion()), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
@@ -194,28 +289,28 @@ class DeploymentUnitLifecycleMySqlTest {
 
     @Test
     void nameStaysOccupiedAfterDeactivateAndVoid() {
-        var created = service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace");
+        var created = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace");
 
         service.deactivate(actor, created.id(), "trace");
-        assertThatThrownBy(() -> service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(actor, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
 
         service.reactivate(actor, created.id(), "trace");
         service.voidUnit(actor, created.id(), "trace");
-        assertThatThrownBy(() -> service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(actor, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
     }
 
     @Test
     void lifecycleTransitionsAndVoidedUnitIsTerminal() {
-        var created = service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace");
+        var created = service.create(actor, command("ECIP_AP", "APPLICATION"), "trace");
 
         var inactive = service.deactivate(actor, created.id(), "trace");
         assertThat(inactive.status()).isEqualTo("INACTIVE");
         assertThatThrownBy(() -> service.update(actor, created.id(),
-                new DeploymentUnitCommand(null, "ECIP-AP", "停用中修改", "APPLICATION", null, null,
+                new DeploymentUnitCommand(null, "INACTIVE_AP", "APPLICATION", List.of(), null, null, null,
                         inactive.rowVersion()), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
@@ -238,7 +333,7 @@ class DeploymentUnitLifecycleMySqlTest {
         jdbc.update("UPDATE arch_physical_subsystem SET status = 'OFFLINE' WHERE tenant_id = ? AND id = ?",
                 TENANT_ID, PHYSICAL_ID);
 
-        assertThatThrownBy(() -> service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(actor, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST));
     }
@@ -248,7 +343,7 @@ class DeploymentUnitLifecycleMySqlTest {
         jdbc.update("INSERT INTO arch_deployment_unit_number_seq (tenant_id, physical_subsystem_id, next_ordinal) "
                 + "VALUES (?, ?, 1000)", TENANT_ID, PHYSICAL_ID);
 
-        assertThatThrownBy(() -> service.create(actor, command("电子渠道接入应用", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(actor, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit WHERE tenant_id = ?",
@@ -257,7 +352,36 @@ class DeploymentUnitLifecycleMySqlTest {
     }
 
     private DeploymentUnitCommand command(String name, String kind) {
-        return new DeploymentUnitCommand(PHYSICAL_ID, "ECIP-AP", name, kind, null, null, null);
+        return new DeploymentUnitCommand(PHYSICAL_ID, name, kind, List.of(), null, null, null, null);
+    }
+
+    private long relationCount() {
+        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit_relation WHERE tenant_id = ?",
+                Long.class, TENANT_ID);
+        return count == null ? 0 : count;
+    }
+
+    private long historyCount(String action) {
+        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit_relation_history "
+                        + "WHERE tenant_id = ? AND action = ?", Long.class, TENANT_ID, action);
+        return count == null ? 0 : count;
+    }
+
+    private void submitRelationWrite(ExecutorService executor, CountDownLatch ready, CountDownLatch start,
+                                     List<RuntimeException> failures, long sourceId, long targetId) {
+        executor.submit(() -> {
+            ready.countDown();
+            try {
+                start.await();
+                transactions.executeWithoutResult(status ->
+                        store.replaceRelations(TENANT_ID, sourceId, Set.of(targetId), actor.id(), 2));
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                failures.add(new IllegalStateException("relation write interrupted", exception));
+            } catch (RuntimeException exception) {
+                failures.add(exception);
+            }
+        });
     }
 
     private static String migrationDirectory() {

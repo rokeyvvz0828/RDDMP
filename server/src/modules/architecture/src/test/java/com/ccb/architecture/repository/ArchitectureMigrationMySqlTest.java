@@ -29,8 +29,11 @@ class ArchitectureMigrationMySqlTest {
             .withPassword("test");
 
     @BeforeEach
-    void cleanDatabase() {
+    void cleanDatabase() throws Exception {
         flyway("77").clean();
+        try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+            execute(connection, "ALTER DATABASE `architecture_empty` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        }
     }
 
     @Test
@@ -81,6 +84,31 @@ class ArchitectureMigrationMySqlTest {
             assertEquals(2, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE 'arch_%_subsystem'"));
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM FLW_EV_DATABASECHANGELOGLOCK WHERE id = 1"));
             assertEquals(71, count(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1"));
+        }
+    }
+
+    @Test
+    void migratesLegacyMqDeploymentUnitsFromV123ToV124() throws Exception {
+        assertTrue(flyway("123").migrate().success);
+        try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+            execute(connection, "INSERT INTO arch_physical_subsystem "
+                    + "(id,tenant_id,code,short_name,name,logical_subsystem_name,responsible_team_org_id,responsible_team_name_snapshot,status,row_version,created_by,updated_by) "
+                    + "VALUES (501,1,'W0001A','渠道接入','渠道接入系统','渠道域逻辑子系统',1,'渠道团队','ACTIVE',0,1,1)");
+            execute(connection, "INSERT INTO arch_deployment_unit "
+                    + "(id,tenant_id,code,physical_subsystem_id,short_name,name,kind,deployment_unit_type,status,current_version,created_by,updated_by) "
+                    + "VALUES (601,1,'DW0001A001',501,'消息服务','消息服务','MQ','AP','ACTIVE',1,1,1)");
+            execute(connection, "INSERT INTO arch_deployment_unit_version "
+                    + "(id,tenant_id,unit_id,version_no,short_name,name,kind,deployment_unit_type,published_by) "
+                    + "VALUES (701,1,601,1,'消息服务','消息服务','MQ','AP',1)");
+        }
+
+        var result = flyway("124").migrate();
+        assertTrue(result.success);
+        assertEquals(1, result.migrationsExecuted);
+        try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+            assertEquals(1, count(connection, "SELECT COUNT(*) FROM arch_deployment_unit WHERE id = 601 AND kind = 'WEB' AND name = 'DW0001A001_WB'"));
+            assertEquals(1, count(connection, "SELECT COUNT(*) FROM arch_deployment_unit_version WHERE id = 701 AND kind = 'WEB' AND name = 'DW0001A001_WB'"));
+            assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'arch_deployment_unit' AND column_name = 'short_name'"));
         }
     }
 
