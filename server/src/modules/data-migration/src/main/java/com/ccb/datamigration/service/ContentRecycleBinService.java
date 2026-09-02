@@ -94,6 +94,12 @@ public class ContentRecycleBinService {
         return new PageResult<>(records, total, safePage, safeSize);
     }
 
+    /** 按内容类型分发单条软删除详情，不改变记录状态。 */
+    public Map<String, Object> detail(String type, long id, AuthUser user) {
+        if (id <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "无效的内容 ID");
+        return resolve(type).detail(type, id, user);
+    }
+
     /** 按内容类型分发恢复（管理员权限与校验由来源下游负责）。 */
     @Transactional
     public void restore(String type, List<Long> ids, AuthUser user) {

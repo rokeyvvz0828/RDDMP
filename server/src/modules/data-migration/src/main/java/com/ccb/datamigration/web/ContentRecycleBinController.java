@@ -38,6 +38,12 @@ public class ContentRecycleBinController {
         return ApiResponse.success(service.list(filter, keyword, page, size, user), TraceId.getOrCreate());
     }
 
+    @GetMapping("/{type}/{id:\\d+}")
+    public ApiResponse<Map<String, Object>> detail(@PathVariable String type, @PathVariable long id,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.detail(type, id, user), TraceId.getOrCreate());
+    }
+
     @PostMapping("/restore")
     public ApiResponse<Void> restore(@RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) {
         service.restore(dispatchType(body), dispatchIds(body), user);

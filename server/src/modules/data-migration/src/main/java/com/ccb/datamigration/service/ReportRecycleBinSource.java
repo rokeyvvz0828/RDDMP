@@ -40,6 +40,11 @@ public class ReportRecycleBinSource implements RecycleBinSource {
     }
 
     @Override
+    public Map<String, Object> detail(String type, long id, AuthUser user) {
+        return reportService.findRecycleBinDetail(id, user);
+    }
+
+    @Override
     public void restore(String type, List<Long> ids, AuthUser user) {
         reportService.restore(ids, user);
     }

@@ -223,7 +223,7 @@ public class ContentFileAssetService {
         String table = requireManagedTable(type);
         if (limit <= 0) return List.of();
         StringBuilder sql = new StringBuilder("SELECT a.id, a.project_id, a.component_id, ? AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, ")
-                .append("a.checksum_md5, a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at, u.display_name AS deleted_by_name ")
+                .append("a.checksum_md5, a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at ")
                 .append("FROM ").append(table).append(" a ")
                 .append("WHERE a.tenant_id = ? AND a.deleted = 1");
         List<Object> args = new ArrayList<>(List.of(type, user.tenantId()));
@@ -239,6 +239,25 @@ public class ContentFileAssetService {
             }
         }
         return rows;
+    }
+
+    /** 查询文件型内容的软删除详情，不触发附件下载。 */
+    public Map<String, Object> findDeletedDetail(String type, long id, AuthUser user) {
+        String table = requireManagedTable(type);
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT a.id, a.project_id, a.component_id, ? AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, "
+                        + "m.attachment_id, f.file_name, f.content_type, f.file_size, a.checksum_md5, a.owner_id, a.created_at, a.updated_at, "
+                        + "a.deleted_by, a.deleted_at FROM " + table + " a "
+                        + "LEFT JOIN dm_content_attachment m ON m.tenant_id = a.tenant_id AND m.business_type = ? AND m.business_id = a.id AND m.sort_order = 0 AND m.deleted = 0 "
+                        + "LEFT JOIN att_file f ON f.id = m.attachment_id AND f.tenant_id = m.tenant_id "
+                        + "WHERE a.id = ? AND a.tenant_id = ? AND a.deleted = 1",
+                type, type, id, user.tenantId());
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "Asset not found in recycle bin");
+        Map<String, Object> row = rows.get(0);
+        if (userDirectory != null && row.get("deleted_by") instanceof Number number) {
+            userDirectory.findActive(user.tenantId(), number.longValue()).ifPresent(item -> row.put("deleted_by_name", item.displayName()));
+        }
+        return row;
     }
 
     private static void appendRecycleBinKeyword(StringBuilder sql, List<Object> args, String keyword) {

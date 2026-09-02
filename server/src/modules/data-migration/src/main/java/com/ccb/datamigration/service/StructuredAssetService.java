@@ -104,6 +104,17 @@ public class StructuredAssetService {
         return jdbc.queryForList(q.toString(), args.toArray());
     }
 
+    /** 查询结构化内容的软删除详情。 */
+    public Map<String, Object> findDeletedDetail(String type, long id, AuthUser user) {
+        String table = table(type);
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id, project_id, component_id, '" + type + "' AS asset_type, doc_code AS asset_code, doc_name AS asset_name, "
+                        + "structured_data, owner_id, created_at, updated_at, deleted_by, deleted_at FROM " + table
+                        + " WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "Structured asset not found in recycle bin");
+        return rows.get(0);
+    }
+
     private static void appendRecycleBinKeyword(StringBuilder q, List<Object> args, String keyword) {
         if (keyword != null && !keyword.isBlank()) {
             q.append(" AND (doc_code LIKE ? OR doc_name LIKE ?)");

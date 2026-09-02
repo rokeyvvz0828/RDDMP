@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS dm_topic_type (
 ALTER TABLE dm_asset COMMENT '数据迁移内容资产表（文件型资产、规则/参数等11类）';
 
 ALTER TABLE dm_asset
-    MODIFY COLUMN id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     MODIFY COLUMN project_id BIGINT NOT NULL COMMENT '所属项目（pm_project.id）',
     MODIFY COLUMN component_id BIGINT COMMENT '所属组件（dm_component.id）',
@@ -55,7 +55,7 @@ ALTER TABLE dm_asset
 ALTER TABLE dm_operation_log COMMENT '数据迁移模块写操作审计表';
 
 ALTER TABLE dm_operation_log
-    MODIFY COLUMN id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     MODIFY COLUMN actor_id BIGINT NOT NULL COMMENT '操作人ID',
     MODIFY COLUMN operation_code VARCHAR(64) NOT NULL COMMENT '操作码',
@@ -72,7 +72,7 @@ ALTER TABLE dm_operation_log
 ALTER TABLE dm_dashboard_snapshot COMMENT '数据迁移每日看板快照表';
 
 ALTER TABLE dm_dashboard_snapshot
-    MODIFY COLUMN id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     MODIFY COLUMN snapshot_date DATE NOT NULL COMMENT '快照日期',
     MODIFY COLUMN project_id BIGINT COMMENT '所属项目（pm_project.id）',
@@ -87,7 +87,7 @@ ALTER TABLE dm_dashboard_snapshot
 ALTER TABLE dm_project COMMENT '数据迁移项目表（历史保留，新项目使用 pm_project）';
 
 ALTER TABLE dm_project
-    MODIFY COLUMN id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     MODIFY COLUMN project_code VARCHAR(64) NOT NULL COMMENT '项目编码',
     MODIFY COLUMN project_name VARCHAR(160) NOT NULL COMMENT '项目名称',
@@ -104,7 +104,7 @@ ALTER TABLE dm_project
 ALTER TABLE dm_component COMMENT '数据迁移系统/组件清单表';
 
 ALTER TABLE dm_component
-    MODIFY COLUMN id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     MODIFY COLUMN project_id BIGINT NOT NULL COMMENT '所属项目（pm_project.id）',
     MODIFY COLUMN owner_id BIGINT NOT NULL COMMENT '负责人',
@@ -118,7 +118,7 @@ ALTER TABLE dm_component
 ALTER TABLE dm_target_table COMMENT '数据迁移目标表结构主表';
 
 ALTER TABLE dm_target_table
-    MODIFY COLUMN id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     MODIFY COLUMN owner_id BIGINT NOT NULL COMMENT '负责人',
     MODIFY COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -133,7 +133,7 @@ ALTER TABLE dm_target_table
 ALTER TABLE dm_target_table_field COMMENT '数据迁移目标表字段明细表';
 
 ALTER TABLE dm_target_table_field
-    MODIFY COLUMN id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     MODIFY COLUMN owner_id BIGINT NOT NULL COMMENT '负责人',
     MODIFY COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -146,7 +146,7 @@ ALTER TABLE dm_target_table_field
 -- 九、dm_asset_relation 缺失列级注释补齐（表级已有）
 -- ============================================================
 ALTER TABLE dm_asset_relation
-    MODIFY COLUMN id BIGINT PRIMARY KEY COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户ID',
     MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     MODIFY COLUMN created_by BIGINT NOT NULL COMMENT '创建人';
@@ -155,7 +155,7 @@ ALTER TABLE dm_asset_relation
 -- 十、dm_issue 列级注释补齐（表级已有）
 -- ============================================================
 ALTER TABLE dm_issue
-    MODIFY COLUMN id BIGINT PRIMARY KEY COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     MODIFY COLUMN project_id BIGINT NOT NULL COMMENT '所属项目（pm_project.id）',
     MODIFY COLUMN issue_code VARCHAR(96) NOT NULL COMMENT '问题编号，项目内唯一',
@@ -187,7 +187,7 @@ ALTER TABLE dm_issue
 -- 十一、dm_meeting 缺失列级注释补齐（表级已有）
 -- ============================================================
 ALTER TABLE dm_meeting
-    MODIFY COLUMN meeting_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    MODIFY COLUMN meeting_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户ID',
     MODIFY COLUMN project_id BIGINT NOT NULL COMMENT '所属项目（pm_project.id）',
     MODIFY COLUMN project_name VARCHAR(200) COMMENT '项目名称（冗余）',
@@ -204,7 +204,7 @@ ALTER TABLE dm_meeting
 -- 十二、dm_meeting_attachment 缺失列级注释补齐（表级已有）
 -- ============================================================
 ALTER TABLE dm_meeting_attachment
-    MODIFY COLUMN id BIGINT PRIMARY KEY COMMENT '主键ID',
+    MODIFY COLUMN id BIGINT NOT NULL COMMENT '主键ID',
     MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户ID',
     MODIFY COLUMN meeting_id BIGINT NOT NULL COMMENT '所属会议（dm_meeting.meeting_id）',
     MODIFY COLUMN deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除 0否 1是',

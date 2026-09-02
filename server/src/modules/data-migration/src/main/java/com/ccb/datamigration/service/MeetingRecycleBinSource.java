@@ -55,6 +55,11 @@ public class MeetingRecycleBinSource implements RecycleBinSource {
     }
 
     @Override
+    public Map<String, Object> detail(String type, long id, AuthUser user) {
+        return project(meetingService.findRecycleBinDetail(id, user));
+    }
+
+    @Override
     public void restore(String type, List<Long> ids, AuthUser user) {
         meetingService.restore(ids, user);
     }

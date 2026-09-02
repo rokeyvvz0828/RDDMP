@@ -306,6 +306,13 @@ public class ReportService {
         return jdbc.queryForList(sql.toString(), args.toArray());
     }
 
+    /** 查询汇报材料软删除详情，不执行附件下载或状态变更。 */
+    public Map<String, Object> findRecycleBinDetail(long id, AuthUser user) {
+        List<Map<String, Object>> rows = jdbc.queryForList(recycleBinSelect() + " AND a.id = ?", user.tenantId(), id);
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "汇报材料不存在于回收站");
+        return rows.get(0);
+    }
+
     private static String recycleBinSelect() {
         return "SELECT a.id, a.project_id, p.project_name, 'REPORT' AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, " +
             "f.content_type, f.file_size, m.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, " +

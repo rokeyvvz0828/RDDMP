@@ -24,6 +24,7 @@ class ContentRecycleBinRegistryTest {
         final List<String> listed = new ArrayList<>();
         final List<String> restored = new ArrayList<>();
         final List<String> purged = new ArrayList<>();
+        final List<String> detailed = new ArrayList<>();
 
         RecordingSource(Set<String> types) { this.types = types; }
 
@@ -36,6 +37,11 @@ class ContentRecycleBinRegistryTest {
         @Override public List<Map<String, Object>> listDeletedPage(String type, String keyword, int limit, AuthUser user) {
             listed.add(type);
             return List.of(Map.of("asset_type", type, "deleted_at", "2026-09-01 00:00:00"));
+        }
+
+        @Override public Map<String, Object> detail(String type, long id, AuthUser user) {
+            detailed.add(type);
+            return Map.of("asset_type", type, "id", id);
         }
 
         @Override public void restore(String type, List<Long> ids, AuthUser user) { restored.add(type); }
@@ -72,6 +78,17 @@ class ContentRecycleBinRegistryTest {
         assertEquals(List.of("REPORT"), report.restored);
         assertEquals(List.of("REPORT"), report.purged);
         assertTrue(assets.restored.isEmpty() && assets.purged.isEmpty());
+    }
+
+    @Test
+    void detailDispatchesToOwningSource() {
+        RecordingSource assets = new RecordingSource(Set.of("PLAN"));
+        RecordingSource report = new RecordingSource(Set.of("REPORT"));
+        ContentRecycleBinService service = new ContentRecycleBinService(List.of(assets, report));
+        Map<String, Object> detail = service.detail("REPORT", 7L, null);
+        assertEquals(7L, detail.get("id"));
+        assertEquals(List.of("REPORT"), report.detailed);
+        assertTrue(assets.detailed.isEmpty());
     }
 
     @Test

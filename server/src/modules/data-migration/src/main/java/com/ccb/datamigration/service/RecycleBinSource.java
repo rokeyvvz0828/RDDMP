@@ -36,6 +36,9 @@ public interface RecycleBinSource {
      */
     List<Map<String, Object>> listDeletedPage(String type, String keyword, int limit, AuthUser user);
 
+    /** 查询单条软删除详情；实现必须保持租户隔离并限定 deleted=1。 */
+    Map<String, Object> detail(String type, long id, AuthUser user);
+
     /** 恢复（管理员权限与实体校验由实现负责）。 */
     void restore(String type, List<Long> ids, AuthUser user);
 

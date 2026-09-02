@@ -1,0 +1,45 @@
+{
+  "task_id": "T28",
+  "status": "implemented",
+  "trigger": "修复动态导航中缺失的数迁资产看板菜单",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V135__data_migration_dashboard_menu_repair.sql",
+      "purpose": "追加幂等补偿迁移，使用 1350/1351/1352 注册看板目录、整体看板和组件看板，避免 V68/V84 的 700/701/702 菜单 ID 冲突，并补齐查看权限及 1/200/201 角色绑定"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml",
+      "purpose": "登记 V135 到当前需求 writable_paths 与 database.migration_files"
+    }
+  ],
+  "commands": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs && git diff --check",
+      "exit_code": 0,
+      "salient_output": "Flyway migration check passed for 127 migrations and 1 callback"
+    },
+    {
+      "command": "mvn -q -pl :ccb-data-migration -am test -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "BUILD SUCCESS; data-migration focused tests passed"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc and Vite build succeeded; existing chunk/PURE annotation warnings only"
+    },
+    {
+      "command": "docker exec -i ccb-platform-mysql mysql ... < V135__data_migration_dashboard_menu_repair.sql (twice)",
+      "exit_code": 0,
+      "salient_output": "Local MySQL applied the repair twice without duplicate rows; menu labels normalized with utf8mb4 client"
+    }
+  ],
+  "rollback": "应用回退保留迁移记录；如需隐藏入口，停用 1350/1351/1352 菜单及其角色绑定，不删除历史菜单或迁移脚本。",
+  "external_access": false,
+  "remote_updated": false
+}

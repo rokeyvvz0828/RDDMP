@@ -91,6 +91,8 @@ export interface DataMigrationContentRecycleRow {
   deleted_by_name?: string
 }
 
+export type DataMigrationContentRecycleDetail = DataMigrationContentRecycleRow & Record<string, unknown>
+
 export function listDataMigrationStructured(type: string, params?: Record<string, unknown>) {
   return http.get<ApiResponse<DataMigrationAsset[]>>(`${structuredBase(type)}`, { params })
 }
@@ -132,6 +134,11 @@ export function listDataMigrationRecycleBin(params: { contentTypes?: string[]; k
       size: params.size ?? 20,
     },
   })
+}
+
+/** 获取统一回收站单条软删除详情（只读，不触发恢复/清理/下载）。 */
+export function getDataMigrationRecycleBinDetail(type: string, id: number) {
+  return http.get<ApiResponse<DataMigrationContentRecycleDetail>>(`/data-migration/recycle-bin/${encodeURIComponent(type)}/${id}`)
 }
 
 export async function uploadDataMigrationAsset(type: string, projectId: number, assetCode: string, file: File, componentId?: number) {

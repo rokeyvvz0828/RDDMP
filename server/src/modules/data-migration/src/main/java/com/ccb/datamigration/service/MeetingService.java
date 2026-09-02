@@ -65,6 +65,11 @@ public class MeetingService {
         return findByIdInternal(meetingId, user.tenantId(), false);
     }
 
+    /** 查询会议纪要软删除详情，供统一回收站只读查看。 */
+    public Map<String, Object> findRecycleBinDetail(long meetingId, AuthUser user) {
+        return findByIdInternal(meetingId, user.tenantId(), true);
+    }
+
     /**
      * 创建会议纪要
      */

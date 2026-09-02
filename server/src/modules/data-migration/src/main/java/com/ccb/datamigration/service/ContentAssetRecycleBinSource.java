@@ -46,6 +46,11 @@ public class ContentAssetRecycleBinSource implements RecycleBinSource {
     }
 
     @Override
+    public Map<String, Object> detail(String type, long id, AuthUser user) {
+        return isFile(type) ? fileAssets.findDeletedDetail(type, id, user) : structured.findDeletedDetail(type, id, user);
+    }
+
+    @Override
     public void restore(String type, List<Long> ids, AuthUser user) {
         if (isFile(type)) fileAssets.restore(type, ids, user);
         else structured.restore(type, ids, user);

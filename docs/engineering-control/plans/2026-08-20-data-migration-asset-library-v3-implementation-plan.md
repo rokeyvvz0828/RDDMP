@@ -564,3 +564,137 @@ node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-da
 ## 风险与批准
 
 高风险动作是 V93 删除旧 ISSUE 数据以及 V94 唯一键切换。用户已确认当前为开发测试环境、无需备份并批准连续执行；任何生产迹象或非 ISSUE 数据变化都会触发停止，不以该授权推定生产权限。
+
+## 统一回收站查看明细增补计划（2026-09-02）
+
+### 状态与来源
+
+- 计划修订：1
+- 设计修订：1（已获用户批准）
+- 设计文档：`docs/engineering-control/designs/2026-08-31-data-migration-content-table-split-design.md` 第 10 节
+- 状态：待用户确认计划
+
+### 目标与全局约束
+
+在 `/data-migration/content/recycle-bin` 内查看仍为软删除状态的任意支持类型详情；只读、不下载、不改变状态；沿用统一回收站管理员权限、租户隔离和现有 API 响应封装。只修改当前 `codex-task-scope.yaml` 的 `writable_paths` 覆盖文件，不新增迁移，不修改平台公共模块。
+
+### 文件职责地图
+
+| 文件 | 职责 | 变更 |
+|---|---|---|
+| `RecycleBinSource.java` | 回收站来源 SPI | 增加软删除详情查询契约 |
+| `ContentRecycleBinService.java` / `ContentRecycleBinController.java` | 统一详情路由与权限边界 | 增加 type/id 校验和分发 |
+| `ContentFileAssetService.java` / `StructuredAssetService.java` | 六类文件型、三类结构化内容查询 | 增加租户 + deleted=1 的详情投影 |
+| `ReportRecycleBinSource.java` / `ReportService.java` | 汇报材料来源与详情查询 | 暴露软删除详情方法 |
+| `MeetingRecycleBinSource.java` / `MeetingService.java` | 会议纪要来源与详情查询 | 暴露软删除详情方法，保留附件/关联投影 |
+| `web/src/api/data-migration.ts` | 前端请求契约 | 增加详情类型与请求函数 |
+| `web/src/modules/data-migration/views/content/RecycleBinPage.vue` | 回收站列表与详情抽屉 | 增加查看操作及全状态抽屉 |
+| `server/src/modules/data-migration/src/test/**` | 服务、SPI、控制器静态契约测试 | 增加详情覆盖 |
+
+### 任务依赖图与并行策略
+
+```text
+T1 后端详情契约与来源实现 -> T2 前端 API/只读抽屉 -> T3 自动化与运行验收
+```
+
+任务串行执行：T2 依赖 T1 的 HTTP 契约，T3 依赖两端实现；不并行修改共享接口。
+
+### 需求覆盖表
+
+| 需求 | 任务 |
+|---|---|
+| R1 回收站内只读抽屉 | T2 |
+| R2 类型分发、软删除、租户隔离和专属字段 | T1、T3 |
+| R3 权限、无状态变更和错误语义 | T1、T3 |
+| R4 加载/失败/移动端滚动 | T2、T3 |
+
+### T1：统一详情后端契约与来源实现
+
+**需求映射：** R2, R3
+
+**前置任务：** 无
+
+**文件：** 修改上述 SPI、聚合服务、控制器和五个来源/业务服务文件；测试 `ContentRecycleBinRegistryTest.java`、`MeetingRecycleBinSourceTest.java`、新增或修改服务详情测试。
+
+**接口：**
+
+- 消费：`GET /api/data-migration/recycle-bin/{type}/{id}`，路径类型来自现有 `supportedTypes()`，ID 为正整数。
+- 产出：`RecycleBinSource.detail(String type, long id, AuthUser user)` 返回 `Map<String,Object>`；成功响应为现有 `ApiResponse` 包装的详情 map。
+
+- [ ] 步骤 1：建立基准检查，确认所有来源实现和普通详情查询对 `deleted=1` 的覆盖缺口，运行 `mvn -pl :ccb-data-migration -am -DskipTests compile` 记录当前基线。
+- [ ] 步骤 2：扩展 SPI 和聚合控制器/服务，校验 `type` 注册、正 ID、管理员权限由类级注解保留，找不到记录返回 `BAD_REQUEST`。
+- [ ] 步骤 3：为文件型、结构化型、REPORT、MEETING 增加软删除详情查询；查询必须带 `tenant_id` 与 `deleted=1`，会议保留附件和关联投影，文件型可补充附件元数据但不调用下载。
+- [ ] 步骤 4：增加服务/注册表测试，断言分发、未知类型、软删除状态和来源方法调用；运行 `mvn -pl :ccb-data-migration -am -Dtest=ContentRecycleBinRegistryTest,MeetingRecycleBinSourceTest test`，预期 0 失败。
+
+**验收与证据：** 详情接口编译通过；来源覆盖 PLAN、RULE、REPORT、MEETING；活动记录和其他租户 ID 不返回详情；无写 SQL/审计调用。
+
+**回滚：** 回退 T1 修改即可，列表/恢复/彻底清理接口保持原样。
+
+**停止条件：** 需要修改平台公共接口、增加数据库迁移、无法区分软删除与活动记录，或现有业务服务无法提供租户条件。
+
+**升级条件：** 详情字段要求超出当前数据表，或需要开放给非管理员角色。
+
+### T2：前端详情请求与只读抽屉
+
+**需求映射：** R1, R4
+
+**前置任务：** T1
+
+**文件：** 修改 `web/src/api/data-migration.ts`、`web/src/modules/data-migration/views/content/RecycleBinPage.vue`。
+
+**接口：**
+
+- 消费：T1 的 `GET /data-migration/recycle-bin/{type}/{id}` 返回 map。
+- 产出：`getDataMigrationRecycleBinDetail(type: string, id: number)` 与 `DataMigrationContentRecycleDetail`；抽屉状态 `closed/loading/success/error`。
+
+- [ ] 步骤 1：增加类型和 API 函数，保持 `http` 封装与错误响应惯例。
+- [ ] 步骤 2：在列表操作列加入“查看”，新增抽屉打开、加载、重试、关闭状态；详情字段分组显示，未知字段不直接渲染对象，`structured_data` 使用 JSON 字符串化。
+- [ ] 步骤 3：增加 `loading/empty/error/forbidden` 反馈、防重复点击和移动端滚动样式，抽屉宽度使用 `min(760px, calc(100vw - 24px))`。
+- [ ] 步骤 4：运行 `npm --prefix web run build` 和 `git diff --check`，预期构建成功且无空白/越界错误。
+
+**验收与证据：** 查看不改变分页/筛选/选择；详情失败可重试；1280x800 与 375x812 无横向溢出；抽屉仅提供关闭操作。
+
+**回滚：** 回退两个前端文件；后端新接口可保留但不再被调用。
+
+**停止条件：** 必须修改 `web/src/components/ui/**`、详情展示出现编辑/下载入口、移动端抽屉无法滚动或列表上下文丢失。
+
+**升级条件：** 类型专属字段需要新的公共组件或设计超出回收站页面范围。
+
+### T3：聚焦测试、运行时与浏览器验收
+
+**需求映射：** R1, R2, R3, R4
+
+**前置任务：** T2
+
+**文件：** 仅追加当前前缀 execution/observation/convergence 证据，不修改范围外实现。
+
+**接口：** 产出 Maven、前端构建、范围/治理、HTTP 和浏览器验收证据。
+
+- [ ] 步骤 1：运行 `mvn -pl :ccb-data-migration -am test` 与 `npm --prefix web run build`。
+- [ ] 步骤 2：在本地运行服务验证管理员访问详情、软删除记录、活动/不存在记录错误和不同类型返回字段；确认详情请求不触发写操作。
+- [ ] 步骤 3：使用浏览器在 1280x800、375x812 验证列表查看、加载、重试、关闭、滚动和控制台无异常。
+- [ ] 步骤 4：运行 `node scripts/check-all-governance.mjs`、当前 scope 检查和 `git diff --check`，记录既有无关改动归属。
+
+**验收与证据：** 自动测试、HTTP 和浏览器三类证据一致；当前需求范围无越界；R1-R4 均有可重复信号。
+
+**回滚：** 停止本地进程并回退 T1/T2 文件；不涉及数据库回滚。
+
+**停止条件：** 服务无法启动、详情越权、活动记录可见、前端白屏/横向溢出或聚焦测试失败。
+
+**升级条件：** 需要生产访问、远程推送、合并分支或修改范围外文件。
+
+### 集成检查
+
+- `mvn -pl :ccb-data-migration -am test`
+- `npm --prefix web run build`
+- `node scripts/check-all-governance.mjs`
+- `node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --working-tree`
+- `git diff --check`
+
+### 控制模型种子
+
+以下均为 `hypotheses-only`，待建模阶段复核：被控边界是统一回收站 Controller/Service/SPI、四类来源、前端 API/抽屉；状态变量包括详情请求状态、软删除状态、租户和权限判定；传感器包括单测、HTTP 响应、数据库读写日志、构建输出和浏览器 DOM/控制台；执行器包括详情 SPI、来源 SQL、前端抽屉状态；扰动包括并发恢复、记录已被清理、附件关系失效、移动端视口和本地服务状态。
+
+### 风险与用户批准
+
+主要风险是来源详情字段不一致、软删除记录被普通详情方法过滤、附件关系已失效和旧工作区改动干扰范围检查。用户已于 2026-09-02 批准只读抽屉设计；本计划仍需用户明确批准后进入执行，不涉及远程仓库或生产系统。

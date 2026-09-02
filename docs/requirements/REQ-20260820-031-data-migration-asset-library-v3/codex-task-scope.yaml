@@ -53,6 +53,7 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V132__data_migration_recycle_bin_menu.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V133__data_migration_meeting_code.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V134__data_migration_meeting_explicit_seed_codes.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V135__data_migration_dashboard_menu_repair.sql",
       "web/package.json",
       "web/package-lock.json",
       "web/src/api/data-migration.ts",
@@ -121,7 +122,8 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V130__data_migration_content_table_backfill.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V131__data_migration_drop_legacy_asset_tables.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V132__data_migration_recycle_bin_menu.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V133__data_migration_meeting_code.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V133__data_migration_meeting_code.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V135__data_migration_dashboard_menu_repair.sql"
     ],
     "compatibility_and_rollback": "Append-only MySQL 8.4 migrations. V84-V95 establish the data-migration model; V96 adds meeting attachment relations; V97 adds comments and the (now unused) topic type table; V98 removes dm_meeting.project_name/attachment_id/file_name, dm_issue.system_name, dm_target_table_field.table_code and dm_asset.object_key, drops dm_topic_type, deduplicates active meeting attachments, and adds tenant-prefixed indexes plus an active attachment uniqueness key. Before applying V98, environments must verify that dm_asset rows with object_key have been converted to att_file bindings; the application no longer supports object-key fallback after V98. V103 additionally backfills existing dm_meeting rows with `MEET-{meeting_id}` and enforces uniqueness only for active rows via a generated column. Rollback is application rollback only (retain migrated tables/objects); restoring dropped columns requires a separately approved forward compensation migration and database backup."
   },
