@@ -1,0 +1,22 @@
+{
+  "objective": "测试管理和机构负责人能够在四大测试大类内安全维护后续测试业务模块依赖的配置数据。",
+  "requirements": [
+    {"id": "R1", "statement": "系统必须提供四大测试大类内可路由的管理配置页面及受保护 API。", "acceptance": ["有配置权限的用户可从每个大类进入页面并读取数据", "无配置权限用户请求写接口时收到 403"], "priority": "must", "source": "用户确认与 V1.6 需求", "counterexample": ["前端隐藏入口但未授权 API 仍返回成功"]},
+    {"id": "R2", "statement": "系统必须按测试大类和项目持久化参测系统及系统级多角色分配，并禁止向未参测系统分配角色。", "acceptance": ["同一配置在刷新后仍可读取", "跨大类或跨项目数据不可见", "未参测系统的角色写入被拒绝"], "priority": "must", "source": "V1.6 与用户确认的临时全量候选规则", "counterexample": ["任意项目可读取另一大类的角色记录"]},
+    {"id": "R3", "statement": "系统必须维护轮次、周期与字典，并执行日期、排序、派生只读和引用保护规则。", "acceptance": ["非法日期被拒绝，周期越出轮次范围返回非阻断提醒", "结束轮次不生成报告或快照", "被引用字典项不可删除"], "priority": "must", "source": "V1.6", "counterexample": ["结束轮次自动生成后续模块数据"]},
+    {"id": "R4", "statement": "系统必须在参测系统和角色导入中先返回逐行预校验结果，并在确认导入时保证全量成功或零写入。", "acceptance": ["任意错误行时数据库无新增或更新", "成功批次返回总数、成功数、失败数和重复处理结果"], "priority": "must", "source": "V1.6", "counterexample": ["导入批次部分写入"]}
+  ],
+  "invariants": ["项目、用户和物理子系统主数据只读", "所有写入验证认证、租户、实体范围、RBAC 并记录审计", "不修改营业日管理和已发布 Flyway 迁移"],
+  "constraints": ["Java 17", "Spring Boot 与 Vue 3 既有模式", "MySQL 8.4", "只修改 REQ-20260831-057 任务范围授权路径", "当前每个项目的物理子系统候选为全部启用记录"],
+  "non_goals": ["其他测试业务模块", "全局项目选择器", "项目—子系统主数据关系", "营业日管理改造"],
+  "assumptions": [{"text": "架构模块关系字段发布前，每项目可选择所有启用物理子系统", "basis": "用户确认", "falsifier": "架构模块提供经授权的项目—子系统关联接口"}],
+  "unknowns": [{"question": "未来架构关系字段和可见范围", "impact": "候选系统查询需要替换", "owner": "架构模块", "blocking": false}],
+  "decisions": [{"question": "当前物理子系统候选策略", "options": ["每项目全量启用物理子系统", "等待架构模块关系"], "selected": "每项目全量启用物理子系统", "blocking": false, "source": "用户确认"}],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "路由和未授权 API 响应", "candidate_sensor": "Spring MVC 权限测试与浏览器路径"},
+    {"requirement_id": "R2", "observable": "隔离读取与未参测系统角色拒绝", "candidate_sensor": "服务单元测试"},
+    {"requirement_id": "R3", "observable": "日期、状态、排序和引用保护结果", "candidate_sensor": "服务单元测试与 API 探测"},
+    {"requirement_id": "R4", "observable": "错误批次零写入和成功汇总", "candidate_sensor": "工作簿服务测试"}
+  ],
+  "baseline_status": "ready"
+}

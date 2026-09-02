@@ -29,6 +29,8 @@ import com.ccb.release.application.persistence.ReleaseApplicationStore;
 import com.ccb.release.window.model.ReleaseWindow;
 import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -58,41 +60,46 @@ public class ReleaseApplicationService {
 
     private final ReleaseApplicationStore store;
     private final ReleaseWindowStore windowStore;
+    private final ProjectAccessService projectAccessService;
     private final ReleaseScenarioPolicy scenarioPolicy;
     private final ObjectMapper objectMapper;
 
     public ReleaseApplicationService(ReleaseApplicationStore store, ReleaseWindowStore windowStore,
-                                     ReleaseScenarioPolicy scenarioPolicy, ObjectMapper objectMapper) {
+                                     ProjectAccessService projectAccessService, ReleaseScenarioPolicy scenarioPolicy,
+                                     ObjectMapper objectMapper) {
         this.store = store;
         this.windowStore = windowStore;
+        this.projectAccessService = projectAccessService;
         this.scenarioPolicy = scenarioPolicy;
         this.objectMapper = objectMapper;
     }
 
     public PageResult<Response> list(long page, long size, String projectId, Long windowId, String keyword, String status,
                                      boolean mineOnly, AuthUser user) {
+        ProjectAccess project = projectAccessService.requireAccessible(projectId, user);
         if (windowId != null && windowId <= 0) throw badRequest("投产窗口标识无效");
+        if (windowId != null) requireWindowProject(windowId, project.projectRef(), user);
         String normalizedStatus = status == null || status.isBlank() ? null : parseStatus(status).name();
-        PageResult<Application> result = store.findPage(user.tenantId(), projectId, windowId, keyword, normalizedStatus,
+        PageResult<Application> result = store.findPage(user.tenantId(), project.projectRef(), windowId, keyword, normalizedStatus,
                 mineOnly, user.id(), new PageQuery(page, size));
         return new PageResult<>(result.records().stream().map(value -> response(value, ConflictReport.empty())).toList(),
                 result.total(), result.page(), result.size());
     }
 
     public Response detail(String code, AuthUser user) {
-        Application value = requireApplication(code, user.tenantId(), false);
+        Application value = requireApplication(code, user, false);
         return response(value, conflicts(value));
     }
 
     public List<RelatedHistoryView> relatedHistory(String code, AuthUser user) {
-        Application current = requireApplication(code, user.tenantId(), false);
+        Application current = requireApplication(code, user, false);
         if (current.characteristic() != Characteristic.ADDITIONAL) return List.of();
 
         List<RelatedHistoryView> history = new ArrayList<>();
         for (Long relatedId : new LinkedHashSet<>(store.findRelatedApplicationIds(user.tenantId(), current.id()))) {
             if (relatedId == null || relatedId == current.id()) continue;
             Application historical = store.findById(relatedId, user.tenantId()).orElse(null);
-            if (historical == null) continue;
+            if (historical == null || !Objects.equals(historical.projectId(), current.projectId())) continue;
             List<VersionChange> changes = versionChanges(historical, current.deliveries());
             if (changes.isEmpty()) continue;
             history.add(new RelatedHistoryView(historical.applicationCode(), historical.status().name(),
@@ -129,16 +136,12 @@ public class ReleaseApplicationService {
     @Transactional
     public Response update(String code, UpdateRequest request, AuthUser user, boolean elevated) {
         if (request == null) throw badRequest("版本申请信息不能为空");
-        Application current = requireApplication(code, user.tenantId(), true);
+        Application current = requireApplication(code, user, true);
         ensureOwner(current, user, elevated);
         ensureEditable(current);
         requireVersion(request.rowVersion(), current.rowVersion());
-        if (!Objects.equals(current.projectId(), normalized(request.projectId()))
-                || !Objects.equals(current.projectCode(), normalized(request.projectCode()))
-                || !Objects.equals(current.projectName(), normalized(request.projectName()))) {
-            throw conflict("版本申请所属项目不允许修改");
-        }
         Draft draft = prepare(request, current.id(), user);
+        if (!Objects.equals(current.projectId(), draft.projectId())) throw conflict("版本申请所属项目不允许修改");
         ConflictFacts facts = conflictFacts(draft, current.id(), user);
         ensureNoInReviewConflicts(facts);
         ReleaseScenarioPolicy.Scenario scenario = scenario(draft, facts.additional());
@@ -155,7 +158,7 @@ public class ReleaseApplicationService {
     }
 
     public ConflictReport conflicts(String code, AuthUser user) {
-        return conflicts(requireApplication(code, user.tenantId(), false));
+        return conflicts(requireApplication(code, user, false));
     }
 
     public ConflictReport preview(CreateRequest request, AuthUser user) {
@@ -168,16 +171,12 @@ public class ReleaseApplicationService {
 
     public ConflictReport preview(String code, UpdateRequest request, AuthUser user, boolean elevated) {
         if (request == null) throw badRequest("版本申请信息不能为空");
-        Application current = requireApplication(code, user.tenantId(), false);
+        Application current = requireApplication(code, user, false);
         ensureOwner(current, user, elevated);
         ensureEditable(current);
         requireVersion(request.rowVersion(), current.rowVersion());
-        if (!Objects.equals(current.projectId(), normalized(request.projectId()))
-                || !Objects.equals(current.projectCode(), normalized(request.projectCode()))
-                || !Objects.equals(current.projectName(), normalized(request.projectName()))) {
-            throw conflict("版本申请所属项目不允许修改");
-        }
         Draft draft = prepare(request, current.id(), user);
+        if (!Objects.equals(current.projectId(), draft.projectId())) throw conflict("版本申请所属项目不允许修改");
         ConflictFacts facts = conflictFacts(draft, current.id(), user);
         ReleaseScenarioPolicy.Scenario scenario = scenario(draft, facts.additional());
         validateScenarioFields(draft, scenario.versionType());
@@ -188,7 +187,7 @@ public class ReleaseApplicationService {
     @Transactional
     public ConflictActionResult resolveConflict(String code, ConflictActionRequest request, AuthUser user, boolean elevated) {
         if (request == null) throw badRequest("冲突处理信息不能为空");
-        Application current = requireApplication(code, user.tenantId(), true);
+        Application current = requireApplication(code, user, true);
         ensureOwner(current, user, elevated);
         ConflictReport report = conflicts(current);
         if (!Objects.equals(report.conflictToken(), request.conflictToken())) throw conflict("冲突信息已变化，请刷新后重新确认");
@@ -201,7 +200,7 @@ public class ReleaseApplicationService {
                 .filter(item -> item.application().applicationCode().equals(request.targetApplicationCode()))
                 .findFirst().orElseThrow(() -> conflict("目标申请单不在当前冲突列表中"));
         if (!targetFact.allowedActions().contains(action.name())) throw conflict("目标申请单当前状态不允许该操作");
-        Application target = requireApplication(request.targetApplicationCode(), user.tenantId(), true);
+        Application target = requireApplication(request.targetApplicationCode(), user, true);
         ensureOwner(target, user, elevated);
         if (action == ConflictAction.EDIT_OLD) {
             return new ConflictActionResult(action.name(), target.applicationCode(), report);
@@ -213,7 +212,7 @@ public class ReleaseApplicationService {
 
     @Transactional
     public Response withdraw(String code, StateActionRequest request, AuthUser user, boolean elevated) {
-        Application current = requireApplication(code, user.tenantId(), true);
+        Application current = requireApplication(code, user, true);
         ensureOwner(current, user, elevated);
         if (current.status() != Status.IN_REVIEW) throw conflict("只有审批中的申请可以撤回");
         transition(current, Status.WITHDRAWN, request, "WITHDRAWN", user);
@@ -222,7 +221,7 @@ public class ReleaseApplicationService {
 
     @Transactional
     public Response cancel(String code, StateActionRequest request, AuthUser user, boolean elevated) {
-        Application current = requireApplication(code, user.tenantId(), true);
+        Application current = requireApplication(code, user, true);
         ensureOwner(current, user, elevated);
         cancelInternal(current, request == null ? null : request.rowVersion(), request == null ? null : request.reason(), user);
         return response(store.findByCode(code, user.tenantId()).orElse(withStatus(current, Status.CANCELLED)), ConflictReport.empty());
@@ -268,9 +267,11 @@ public class ReleaseApplicationService {
                           String subsystemId, String subsystemCode, String subsystemName, List<DeliveryInput> deliveryInputs,
                           List<FileMediaInput> fileMediaInputs, List<String> requirements, String emergencyDescription,
                           String urgentReason, String description, AuthUser user) {
-        String normalizedProjectId = required(projectId, "项目标识", 64);
-        String normalizedProjectCode = required(projectCode, "项目编码", 64);
-        String normalizedProjectName = required(projectName, "项目名称", 128);
+        ProjectAccess project = projectAccessService.requireAccessible(projectId, user);
+        requireProjectSnapshot(project, projectCode, projectName);
+        String normalizedProjectId = project.projectRef();
+        String normalizedProjectCode = project.projectRef();
+        String normalizedProjectName = project.projectName();
         String normalizedSubsystemId = required(subsystemId, "物理子系统标识", 64);
         String normalizedSubsystemCode = required(subsystemCode, "物理子系统编码", 64);
         String normalizedSubsystemName = required(subsystemName, "物理子系统名称", 128);
@@ -337,7 +338,7 @@ public class ReleaseApplicationService {
         List<Long> ids = store.findConflictIds(user.tenantId(), draft.windowId(),
                 draft.deliveries().stream().map(DeliverySnapshot::itemKey).toList(), excludedId);
         List<Application> historical = ids.stream().map(id -> store.findById(id, user.tenantId()).orElse(null))
-                .filter(Objects::nonNull).toList();
+                .filter(Objects::nonNull).filter(item -> Objects.equals(item.projectId(), draft.projectId())).toList();
         boolean additional = historical.stream().filter(value -> value.status() == Status.RELEASED)
                 .anyMatch(value -> hasItemChange(value, draft.deliveries()));
         return new ConflictFacts(historical, additional);
@@ -490,13 +491,30 @@ public class ReleaseApplicationService {
         return null;
     }
 
-    private Application requireApplication(String code, long tenantId, boolean forUpdate) {
+    private Application requireApplication(String code, AuthUser user, boolean forUpdate) {
         String normalized = required(code, "申请单号", 64);
-        var result = forUpdate ? store.findByCodeForUpdate(normalized, tenantId) : store.findByCode(normalized, tenantId);
-        if (result.isPresent()) return result.get();
+        var result = forUpdate ? store.findByCodeForUpdate(normalized, user.tenantId())
+                : store.findByCode(normalized, user.tenantId());
+        if (result.isPresent()) {
+            projectAccessService.requireAccessible(result.get().projectId(), user);
+            return result.get();
+        }
         var owner = store.findTenantId(normalized);
-        if (owner.isPresent() && owner.getAsLong() != tenantId) throw new BusinessException(ErrorCode.FORBIDDEN, "无权访问该版本申请");
+        if (owner.isPresent() && owner.getAsLong() != user.tenantId()) throw new BusinessException(ErrorCode.FORBIDDEN, "无权访问该版本申请");
         throw badRequest("版本申请不存在");
+    }
+
+    private void requireWindowProject(long windowId, String projectRef, AuthUser user) {
+        ReleaseWindow window = windowStore.findById(windowId, user.tenantId())
+                .orElseThrow(() -> badRequest("投产窗口不存在"));
+        if (!Objects.equals(window.projectId(), projectRef)) throw badRequest("投产窗口与当前项目不一致");
+    }
+
+    private void requireProjectSnapshot(ProjectAccess project, String projectCode, String projectName) {
+        if (!Objects.equals(project.projectRef(), normalized(projectCode))
+                || !Objects.equals(project.projectName(), normalized(projectName))) {
+            throw badRequest("项目信息与当前项目不一致，请刷新后重试");
+        }
     }
 
     private void ensureOwner(Application current, AuthUser user, boolean elevated) {

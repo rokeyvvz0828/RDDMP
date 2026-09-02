@@ -1,0 +1,18 @@
+{
+  "sample_label": "配置迁移运行时采样",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "MySQL menu/permission seed queries and unauthenticated HTTP probe", "result": "pass", "raw_evidence": "4 management-configuration menus, 20 menu permissions, 4 role-menu and 20 role-permission grants were created; direct and Vite-proxied GET projects both returned 401", "limitation": ["Authorized user-path and 403 coverage still need an administrator and a no-permission account"]},
+    {"requirement_id": "R2", "sensor": "MySQL schema metadata", "result": "pass", "raw_evidence": "tm_test_participating_system and tm_test_system_role were created; participating-system project and physical-subsystem foreign keys are present", "limitation": ["Service data paths need a bootable application for HTTP verification"]},
+    {"requirement_id": "R3", "sensor": "MySQL schema metadata", "result": "pass", "raw_evidence": "round, cycle, dictionary and dictionary-option tables were created, including cycle-to-round and option-to-dictionary foreign keys", "limitation": ["CRUD behavior remains covered by module tests rather than HTTP"]},
+    {"requirement_id": "R4", "sensor": "module tests and local runtime", "result": "partial", "raw_evidence": "workbook tests pass and the local application is running after Flyway V123", "limitation": ["No transaction rollback HTTP evidence"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"source": "ccb-architecture main-baseline compilation error", "effect": "prevents the formal worktree from building directly", "evidence": "ArchitectureDecisionService.java:458 and ArchitectureStandardService.java:146 call AttachmentPort.list with five arguments after its signature changed to six; a disposable local overlay supplied the missing null category arguments only for runtime validation"}
+  ],
+  "coverage_gaps": ["HTTP 403", "authorized CRUD and real import rollback", "375/390/430px browser paths"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "partial"
+}

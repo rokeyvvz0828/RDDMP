@@ -1,0 +1,32 @@
+{
+  "task_id": "T4",
+  "status": "partial",
+  "changed_surfaces": [],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "docker run --rm MySQL 8.4 on host port 3308 with no volume, then mysqladmin ping", "exit_code": 0, "salient_output": "temporary rddmp-test-mysql-config container is ready"},
+    {"command": "mysql < temporary prerequisite schema; mysql < V123__test_management_configuration.sql", "exit_code": 0, "salient_output": "V123 applied successfully to MySQL 8.4"},
+    {"command": "MySQL metadata and seed queries", "exit_code": 0, "salient_output": "7 tm_test_* tables, 4 menus, 20 permissions, 4 admin menu grants and 20 admin permission grants; four expected foreign keys found"},
+    {"command": "mvn -pl :ccb-boot -am package -DskipTests", "exit_code": 1, "salient_output": "existing ccb-architecture compilation fails because AttachmentPort.list now needs six parameters but two architecture services pass five"}
+    ,{"command": "in a disposable /tmp source copy, add null category arguments to the two architecture AttachmentPort.list callers, build the 15-module reactor, and run the packaged boot JAR with local profile", "exit_code": 0, "salient_output": "15-module build succeeded; Flyway applied 116 migrations through V123; Tomcat listens on 8080 and actuator health is UP"},
+    {"command": "start Vite in the disposable source copy on 127.0.0.1:5173 with local cache and proxy; probe configuration projects endpoint without credentials", "exit_code": 0, "salient_output": "Vite is ready; proxied actuator health is UP; direct and proxied configuration requests both return 401"},
+    {"command": "vue-tsc --noEmit -p web/tsconfig.json --typeRoots web/node_modules --types vite/client; git diff --check", "exit_code": 0, "salient_output": "the global project-context integration and role-system chooser type-check cleanly with no whitespace errors"},
+    {"command": "in-app browser DOM inspection at /test-management/user-testing/configuration", "exit_code": 0, "salient_output": "the page displays the existing global project \u201c\u5e73\u53f0\u80fd\u529b\u5347\u7ea7\u9879\u76ee\u201d, has no page-level project combobox, and presents only the enabled-system selector in the role tab"},
+    {"command": "vue-tsc --noEmit -p web/tsconfig.json --typeRoots web/node_modules --types vite/client; mvn -Dnet.bytebuddy.experimental=true -pl :ccb-test-management -am test", "exit_code": 0, "salient_output": "demo-aligned configuration interactions type-check cleanly; 8 reactor modules and 13 test-management tests pass"}
+  ],
+  "local_checks": [
+    {"check": "MySQL 8.4 migration smoke", "result": "pass", "evidence": "V123 applied to a disposable database and its tables, foreign keys and authorization seed data were queried", "limitations": ["This is an isolated prerequisite schema rather than the complete Flyway chain"]},
+    {"check": "full boot and HTTP/RBAC/browser acceptance", "result": "blocked", "evidence": "ccb-architecture fails compilation before ccb-boot starts", "limitations": ["No test-management source failure was reported; architecture sources are read-only under this task scope"]}
+    ,{"check": "disposable local full-stack runtime", "result": "pass", "evidence": "Temporary overlay only corrected two read-only architecture callers; the branch test-management implementation booted against local MySQL, migrated to V123, and Vite proxied health successfully", "limitations": ["The formal worktree still needs the independently authorized architecture fix to compile directly"]},
+    {"check": "unauthenticated configuration API", "result": "pass", "evidence": "GET projects endpoint returns 401 directly and through Vite proxy", "limitations": ["No administrator token or user credential was provided for authorized CRUD and 403 verification"]}
+    ,{"check": "global project selector integration", "result": "pass", "evidence": "Vue type check passed; an authenticated in-app browser page showed the global project name and the four configuration tabs without a duplicated project selector", "limitations": ["No enabled participating system existed in the local sample, so only the role page empty state was sampled"]}
+  ],
+  "diff_summary": [],
+  "invariants_checked": [
+    {"invariant": "不伪造运行时证据", "result": "pass", "evidence": "migration smoke is recorded separately from the blocked application startup and browser paths"}
+  ],
+  "disturbances": ["The repository main baseline has an incompatible AttachmentPort.list signature in ccb-architecture, preventing the aggregate boot build"],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Authorized CRUD/403, import rollback and desktop/mobile browser interaction"],
+  "recommended_next": "Keep the local stack running for UI acceptance; independently fix the two architecture callers so the formal worktree can build directly"
+}

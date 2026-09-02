@@ -22,6 +22,7 @@ import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.release.workflow.model.ReleaseWorkflowBindingModels.ResolvedBinding;
 import com.ccb.release.workflow.service.ReleaseWorkflowBindingService;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
 import com.ccb.workflow.integration.WorkflowStartDefinitionCommand;
@@ -59,6 +60,7 @@ public class ReleaseSubmissionService {
     private final ReleaseApplicationService applicationService;
     private final ReleaseWorkflowStore workflowStore;
     private final ReleaseWorkflowBindingService workflowBindings;
+    private final ProjectAccessService projectAccessService;
     private final WorkflowBusinessGateway workflowGateway;
     private final AttachmentGateway attachmentGateway;
     private final ObjectMapper objectMapper;
@@ -66,6 +68,7 @@ public class ReleaseSubmissionService {
     public ReleaseSubmissionService(ReleaseApplicationStore applications, ReleaseWindowStore windows,
                                     ReleaseScenarioPolicy scenarios, ReleaseApplicationService applicationService,
                                     ReleaseWorkflowStore workflowStore, ReleaseWorkflowBindingService workflowBindings,
+                                    ProjectAccessService projectAccessService,
                                     WorkflowBusinessGateway workflowGateway,
                                     AttachmentGateway attachmentGateway, ObjectMapper objectMapper) {
         this.applications = applications;
@@ -74,6 +77,7 @@ public class ReleaseSubmissionService {
         this.applicationService = applicationService;
         this.workflowStore = workflowStore;
         this.workflowBindings = workflowBindings;
+        this.projectAccessService = projectAccessService;
         this.workflowGateway = workflowGateway;
         this.attachmentGateway = attachmentGateway;
         this.objectMapper = objectMapper;
@@ -82,7 +86,7 @@ public class ReleaseSubmissionService {
     @Transactional
     public SubmitResult submit(String code, SubmitRequest request, AuthUser user, boolean elevated) {
         if (request == null) throw badRequest("提交信息不能为空");
-        Application application = requireApplication(code, user.tenantId(), true);
+        Application application = requireApplication(code, user, true);
         ensureOwner(application, user, elevated);
         if (!Set.of(Status.DRAFT, Status.RETURNED, Status.WITHDRAWN).contains(application.status())) {
             throw conflict("当前状态不允许提交审批");
@@ -140,7 +144,7 @@ public class ReleaseSubmissionService {
     @Transactional
     public WorkflowActionResult withdraw(String code, StateActionRequest request, AuthUser user, boolean elevated) {
         if (request == null) throw badRequest("撤回信息不能为空");
-        Application application = requireApplication(code, user.tenantId(), true);
+        Application application = requireApplication(code, user, true);
         ensureOwner(application, user, elevated);
         if (application.status() != Status.IN_REVIEW) throw conflict("只有审批中的申请可以撤回");
         requireVersion(request.rowVersion(), application.rowVersion());
@@ -166,7 +170,7 @@ public class ReleaseSubmissionService {
     @Transactional
     public WorkflowActionResult conflictCancel(String code, StateActionRequest request, AuthUser user, boolean elevated) {
         if (request == null) throw badRequest("取消信息不能为空");
-        Application application = requireApplication(code, user.tenantId(), true);
+        Application application = requireApplication(code, user, true);
         ensureOwner(application, user, elevated);
         if (application.status() != Status.IN_REVIEW) throw conflict("只有审批中的申请可以取消");
         requireVersion(request.rowVersion(), application.rowVersion());
@@ -190,12 +194,12 @@ public class ReleaseSubmissionService {
     }
 
     public RoundView currentRound(String code, AuthUser user) {
-        Application application = requireApplication(code, user.tenantId(), false);
+        Application application = requireApplication(code, user, false);
         return workflowStore.findLatestRound(application.tenantId(), application.id()).map(RoundView::from).orElse(null);
     }
 
     public List<AttachmentView> attachments(String code, AuthUser user) {
-        Application application = requireApplication(code, user.tenantId(), false);
+        Application application = requireApplication(code, user, false);
         return workflowStore.findActiveAttachments(application.tenantId(), application.id()).stream()
                 .map(item -> new AttachmentView(item.attachmentId(), item.category(), item.fileName()))
                 .toList();
@@ -205,7 +209,7 @@ public class ReleaseSubmissionService {
     public AttachmentDeleteResult deleteAttachment(String code, long attachmentId, StateActionRequest request,
                                                    AuthUser user, boolean elevated) {
         if (request == null) throw badRequest("附件删除信息不能为空");
-        Application application = requireApplication(code, user.tenantId(), true);
+        Application application = requireApplication(code, user, true);
         ensureOwner(application, user, elevated);
         if (!Set.of(Status.DRAFT, Status.RETURNED, Status.WITHDRAWN).contains(application.status())) {
             throw conflict("当前状态不允许删除附件");
@@ -346,13 +350,16 @@ public class ReleaseSubmissionService {
         return value.length() <= 200 ? value : value.substring(0, 200);
     }
 
-    private Application requireApplication(String code, long tenantId, boolean forUpdate) {
+    private Application requireApplication(String code, AuthUser user, boolean forUpdate) {
         String normalized = required(code, "申请单号", 64);
-        var application = forUpdate ? applications.findByCodeForUpdate(normalized, tenantId)
-                : applications.findByCode(normalized, tenantId);
-        if (application.isPresent()) return application.get();
+        var application = forUpdate ? applications.findByCodeForUpdate(normalized, user.tenantId())
+                : applications.findByCode(normalized, user.tenantId());
+        if (application.isPresent()) {
+            projectAccessService.requireAccessible(application.get().projectId(), user);
+            return application.get();
+        }
         var owner = applications.findTenantId(normalized);
-        if (owner.isPresent() && owner.getAsLong() != tenantId) {
+        if (owner.isPresent() && owner.getAsLong() != user.tenantId()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "无权访问该版本申请");
         }
         throw badRequest("版本申请不存在");

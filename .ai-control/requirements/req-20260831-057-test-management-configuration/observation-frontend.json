@@ -1,0 +1,16 @@
+{
+  "sample_label": "配置前端构建采样",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "vue-tsc 和 Vite 生产构建", "result": "pass", "raw_evidence": "vue-tsc exit code 0；临时镜像工作树源码的 Vite build exit code 0，2518 modules transformed", "limitation": ["没有认证后端，无法验证菜单与接口 403"]},
+    {"requirement_id": "R2", "sensor": "前端 API 契约与生产构建", "result": "pass", "raw_evidence": "页面和 API 模块通过 TypeScript 检查与生产打包", "limitation": ["无法对真实候选系统和角色路径点击验收"]},
+    {"requirement_id": "R3", "sensor": "前端生产构建", "result": "pass", "raw_evidence": "轮次、周期、字典及选项表单页面被打入产物", "limitation": ["无浏览器和后端运行时"]},
+    {"requirement_id": "R4", "sensor": "前端生产构建", "result": "pass", "raw_evidence": "模板下载与导入请求均通过构建", "limitation": ["未上传真实模板执行端到端路径"]}
+  ],
+  "feedback": [],
+  "disturbances": [{"source": "本机无 Docker daemon、无已启动后端", "effect": "浏览器无法获得认证和真实 API 数据", "evidence": "docker unix socket 不存在；3306 无监听"}],
+  "coverage_gaps": ["375/390/430 手机视口浏览器交互", "桌面实际菜单路由", "加载、无权限和导入错误的真实接口反馈"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

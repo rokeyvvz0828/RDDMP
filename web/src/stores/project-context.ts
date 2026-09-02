@@ -48,9 +48,13 @@ export const useProjectContextStore = defineStore('project-context', () => {
     return initialize(true)
   }
   function select(projectRef: string) {
-    if (!projects.value.some(item => item.ref === projectRef)) return
+    if (!projects.value.some(item => item.ref === projectRef)) return false
     currentRef.value = projectRef
     provider.saveSelection(projectRef)
+    return true
   }
-  return { projects, currentRef, current, loading, error, initialize, retry, select }
+  function canAccess(projectRef: string) {
+    return projects.value.some(item => item.ref === projectRef)
+  }
+  return { projects, currentRef, current, loading, error, initialize, retry, select, canAccess }
 })

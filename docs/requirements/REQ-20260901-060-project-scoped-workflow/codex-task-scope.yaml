@@ -1,0 +1,117 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260901-060",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260901-060-project-scoped-workflow/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "rokeyvvz0828",
+    "module": "platform/workflow",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260901-060-project-scoped-workflow",
+    "worktree": "/Users/zhangwei/Documents/技术相关/RDDMP-project-scoped-workflow"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V134__project_scope_workflow.sql",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowProjectAccessGateway.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowProjectMember.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowProjectRole.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/integration/WorkflowPendingTaskQuery.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowAssigneeResolver.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+      "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowProjectScopeTest.java",
+      "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectWorkflowDirectoryService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectWorkflowMember.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectWorkflowRole.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectMemberRemovalGuard.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectWorkflowDirectoryService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java",
+      "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowProjectAccessBridge.java",
+      "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowProjectMemberRemovalBridge.java",
+      "server/src/platform/boot/src/test/java/com/ccb/boot/integration/WorkflowProjectBridgeTest.java",
+      "web/src/api/workflow.ts",
+      "web/src/components/workflow/WorkflowNode.vue",
+      "web/src/components/workflow/WorkflowNodeInspector.vue",
+      "web/src/views/WorkflowView.vue",
+      "docs/integration/workflow-module-contract.md",
+      "docs/engineering-control/designs/2026-09-01-project-scoped-workflow-design.md",
+      "docs/engineering-control/plans/2026-09-01-project-scoped-workflow-implementation-plan.md",
+      "docs/requirements/REQ-20260901-060-project-scoped-workflow/requirement.md",
+      "docs/requirements/REQ-20260901-060-project-scoped-workflow/codex-task-scope.yaml",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/modules/release/**",
+      "server/src/modules/architecture/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/stores/project-context.ts",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/node_modules/**", "**/target/**", "server/src/platform/infrastructure/src/main/resources/db/migration/V1__*.sql", "server/src/platform/infrastructure/src/main/resources/db/migration/V2__*.sql"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260901-060",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "compatibility": "存量定义迁移为 GLOBAL；原有业务启动契约、全局 USER/ROLE 节点和无项目历史实例保持兼容；新增项目契约由 boot 组合，模块间不形成循环依赖。",
+    "regression_tests": ["mvn -pl :ccb-workflow,:ccb-system,:ccb-boot -am test", "mvn test", "npm --prefix web run build"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V134__project_scope_workflow.sql"],
+    "compatibility_and_rollback": "新增范围与项目列、索引和项目业务绑定表；存量定义标记 GLOBAL，实例按稳定项目编号回填。应用回退保留新增结构，物理回退另行追加迁移。"
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "api", "command": "mvn -pl :ccb-workflow -am -Dtest=WorkflowProjectScopeTest,WorkflowBusinessIntegrationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "项目流程定义、业务启动和项目选项接口契约通过"},
+    {"name": "permission", "command": "mvn -pl :ccb-workflow,:ccb-system,:ccb-boot -am -Dtest=WorkflowProjectScopeTest,ProjectWorkflowMemberGuardTest,WorkflowProjectBridgeTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "项目访问、审批和成员移除权限边界通过"},
+    {"name": "workflow", "command": "mvn -pl :ccb-workflow -am test", "expected": "定义范围、人员解析、实例访问和审批权限测试通过"},
+    {"name": "system-boot", "command": "mvn -pl :ccb-system,:ccb-boot -am test", "expected": "项目目录桥接与成员移除守卫测试通过"},
+    {"name": "migration", "command": "Flyway migration test for V134", "expected": "结构、索引、GLOBAL 兼容和实例回填正确"},
+    {"name": "full-backend", "command": "mvn test", "expected": "全量后端测试零失败"},
+    {"name": "frontend", "command": "npm --prefix web run build", "expected": "TypeScript 与 Vite 生产构建通过"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "治理检查通过"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260901-060-project-scoped-workflow/codex-task-scope.yaml --base HEAD --head HEAD --working-tree", "expected": "差异全部位于授权路径"},
+    {"name": "browser", "command": "desktop and 375x812, 390x844, 430x932 workflow verification", "expected": "项目范围、标签、成员和角色配置可用且无横向溢出"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["平台公共工作流契约", "项目级实体授权", "Flyway 数据迁移", "两套审批人执行路径", "跨平台模块组合", "移动端工作流编辑"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260901-060-project-scoped-workflow",
+    "control_justification": "涉及公共 API、权限边界、数据库迁移、跨模块组合和运行中审批状态，采用高保证闭环。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/baseline.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/model.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/control-plan.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/execution-T1.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/execution-T2.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/execution-T3.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/observation-T1.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/observation-T2.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/observation-T3.json",
+      ".ai-control/requirements/req-20260901-060-project-scoped-workflow/convergence.json"
+    ],
+    "rollback": "回退本需求代码与前端；保留 V134 新增结构和已回填数据，不修改已执行迁移。"
+  }
+}

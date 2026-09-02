@@ -25,6 +25,8 @@ import com.ccb.release.workflow.model.ReleaseWorkflowBindingModels.ResolvedBindi
 import com.ccb.release.workflow.model.ReleaseWorkflowBindingModels.Scene;
 import com.ccb.release.workflow.service.ReleaseWorkflowBindingService;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
 import com.ccb.workflow.integration.WorkflowStartDefinitionCommand;
 import com.ccb.workflow.integration.WorkflowStartResult;
@@ -59,6 +61,7 @@ class ReleaseSubmissionServiceTest {
     private ReleaseApplicationService applicationService;
     private ReleaseWorkflowStore workflowStore;
     private ReleaseWorkflowBindingService workflowBindings;
+    private ProjectAccessService projectAccessService;
     private WorkflowBusinessGateway workflowGateway;
     private AttachmentGateway attachmentGateway;
     private ReleaseSubmissionService service;
@@ -71,10 +74,14 @@ class ReleaseSubmissionServiceTest {
         applicationService = mock(ReleaseApplicationService.class);
         workflowStore = mock(ReleaseWorkflowStore.class);
         workflowBindings = mock(ReleaseWorkflowBindingService.class);
+        projectAccessService = mock(ProjectAccessService.class);
         workflowGateway = mock(WorkflowBusinessGateway.class);
         attachmentGateway = mock(AttachmentGateway.class);
         service = new ReleaseSubmissionService(applications, windows, scenarios, applicationService, workflowStore,
-                workflowBindings, workflowGateway, attachmentGateway, new ObjectMapper().findAndRegisterModules());
+                workflowBindings, projectAccessService, workflowGateway, attachmentGateway,
+                new ObjectMapper().findAndRegisterModules());
+        when(projectAccessService.requireAccessible(any(), eq(USER)))
+                .thenAnswer(invocation -> new ProjectAccess(1L, invocation.getArgument(0), "项目"));
 
         when(applications.findByCodeForUpdate("SQ-001", 1L)).thenReturn(Optional.of(application(false, Status.DRAFT)));
         when(applicationService.conflicts("SQ-001", USER)).thenReturn(ConflictReport.empty());
@@ -99,6 +106,18 @@ class ReleaseSubmissionServiceTest {
         verify(workflowStore, never()).completeWorkflowStart(anyLong(), anyLong(), any());
         verify(workflowStore, never()).transitionApplicationToReview(any(), anyLong(), any(), any(), any(), anyLong());
         verify(workflowStore, never()).insertStartingRound(any(), anyInt(), any(), any());
+    }
+
+    @Test
+    void deniedProjectAccessStopsSubmissionBeforeWorkflowLookup() {
+        when(projectAccessService.requireAccessible("P-001", USER))
+                .thenThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该项目数据访问权限"));
+
+        assertCode(ErrorCode.FORBIDDEN,
+                () -> service.submit("SQ-001", new SubmitRequest(3, null, List.of()), USER, false));
+
+        verify(applicationService, never()).conflicts(any(), any());
+        verify(workflowBindings, never()).resolve(any(), any(), any());
     }
 
     @Test

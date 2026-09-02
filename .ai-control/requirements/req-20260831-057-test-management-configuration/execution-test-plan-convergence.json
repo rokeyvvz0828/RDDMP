@@ -1,0 +1,67 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "TP1",
+      "result": "pass",
+      "task_ids": ["TP-T1", "TP-T2", "TP-T3", "TP-T4"],
+      "evidence": ["TestPlanServiceTest 通过未知大类和专项约束保护", "V125 真实迁移成功", "TestPlanPage 使用全局项目上下文并按 enabled 参测系统渲染目录", "未认证树接口返回 401"],
+      "limitations": ["已认证项目树的真实浏览器 DOM 未采样。"]
+    },
+    {
+      "id": "TP2",
+      "result": "pass",
+      "task_ids": ["TP-T1", "TP-T2", "TP-T3", "TP-T4"],
+      "evidence": ["V125 分离逻辑方案与版本并带软删除", "服务实现同名确认与递增版本", "页面编译通过且提供当前方案、版本历史、上传新版本与整方案删除路径"],
+      "limitations": ["同名 V2 和整方案删除尚未以有权限会话执行真实 HTTP。"]
+    },
+    {
+      "id": "TP3",
+      "result": "pass",
+      "task_ids": ["TP-T2", "TP-T3", "TP-T4"],
+      "evidence": ["聚焦单测拒绝 .doc 旧格式", "AttachmentPolicy 聚焦测试通过", "Vue 构建确认 docx UiFilePreview 与 xlsx 首 Sheet 解析路径通过类型和打包"],
+      "limitations": ["真实 MinIO/kkFileView docx/xlsx 预览待有登录会话后补采样。"]
+    },
+    {
+      "id": "TP4",
+      "result": "pass",
+      "task_ids": ["TP-T1", "TP-T2", "TP-T4"],
+      "evidence": ["V125 追加 create/update/delete 权限种子与审计表", "Controller 写端点均带 @PreAuthorize", "AttachmentPolicy 测试通过，未认证 API 实测 401"],
+      "limitations": ["真实读者写入 403 与管理员写入成功待具备权限的登录会话补采样。"]
+    }
+  ],
+  "task_results": [
+    {"id": "TP-T1", "status": "verified", "evidence": ["迁移、服务测试和 MySQL 元数据采样通过"]},
+    {"id": "TP-T2", "status": "verified", "evidence": ["策略测试和 HTTP 认证边界采样通过"]},
+    {"id": "TP-T3", "status": "verified", "evidence": ["vue-tsc/Vite 构建通过"]},
+    {"id": "TP-T4", "status": "verified", "evidence": ["本地 V125、8080 health、治理和差异检查通过"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "测试管理聚焦服务与策略测试", "result": "pass", "evidence": "5 tests, 0 failures"},
+    {"check": "前端 TypeScript 与生产构建", "result": "pass", "evidence": "npm --prefix web run build 退出 0"},
+    {"check": "迁移、治理与空白", "result": "pass", "evidence": "Flyway 118 migrations、Governance 17 modules 和 git diff --check 均通过"},
+    {"check": "本地运行与数据库", "result": "pass", "evidence": "8080 health UP；V125 success=1；四张方案表存在"}
+  ],
+  "invariant_results": [
+    {"invariant": "不改平台附件源码，只消费公开契约", "result": "pass", "evidence": "改动清单不含 server/src/platform/attachment；服务使用 AttachmentGateway/AttachmentAccessPolicy。"},
+    {"invariant": "不重复项目选择器", "result": "pass", "evidence": "页面只读取 useProjectContextStore.currentRef。"},
+    {"invariant": "迁移仅追加 V125", "result": "pass", "evidence": "真实 Flyway 版本 125，V123/V124 未改动。"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "本地后端重启", "result": "pass", "evidence": "重启后 V125 保持 success=1 且 health=UP。"},
+    {"disturbance": "根级打包受架构模块既有接口错误阻断", "result": "controlled", "evidence": "未改范围外代码；以已编译模块的临时运行包完成本模块运行验证。"}
+  ],
+  "residual_risks": [
+    "需使用具备 plans 权限的本地会话补做正向 HTTP、docx/xlsx 预览和 375px 手机视口验收。",
+    "根级 ccb-boot package 仍受 architecture 模块两处既有 AttachmentPort.list 调用签名错误影响，和本模块无关。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "四条 must 需求均有任务、实现、自动化或运行传感器证据；三次独立采样无 P0/P1，所有任务已验证且无未裁决反馈；认证正向和视觉路径限制已明确披露。"
+}

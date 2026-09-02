@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 验证 V82--V84 的跨模块持久化契约；不启动或模拟 Flowable 流程实例。
+ * 验证 V93--V95 的跨模块持久化契约；不启动或模拟 Flowable 流程实例。
  */
 @Testcontainers
 class ArchitectureWorkflowIntegrationMySqlTest {
@@ -79,7 +79,7 @@ class ArchitectureWorkflowIntegrationMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("84"))
+                .target(MigrationVersion.fromVersion("95"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
@@ -155,8 +155,8 @@ class ArchitectureWorkflowIntegrationMySqlTest {
             JdbcTemplate conflictJdbc = new JdbcTemplate(conflictDataSource);
             conflictJdbc.execute("ALTER DATABASE `" + CONFLICT_DATABASE
                     + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            Flyway v82 = flyway(conflictDataSource, "82");
-            assertThat(v82.migrate().success).isTrue();
+            Flyway v93 = flyway(conflictDataSource, "93");
+            assertThat(v93.migrate().success).isTrue();
 
             conflictJdbc.update("INSERT INTO sys_menu "
                     + "(id, tenant_id, parent_id, menu_type, menu_name, route_name, route_path, component_path, "
@@ -164,8 +164,8 @@ class ArchitectureWorkflowIntegrationMySqlTest {
                     + "(803, 1, 800, 'menu', '冲突菜单', 'ConflictingArchitectureMenu', '/conflict', "
                     + "'architecture/conflict', 'architecture:view', 'warning', 99)");
 
-            Flyway v84 = flyway(conflictDataSource, "84");
-            assertThatThrownBy(v84::migrate)
+            Flyway v95 = flyway(conflictDataSource, "95");
+            assertThatThrownBy(v95::migrate)
                     .isInstanceOf(FlywayException.class);
         }
     }

@@ -97,7 +97,8 @@ public class WorkflowSystemNotificationBridge implements WorkflowLifecycleConsum
 
     private String pendingProjection() {
         return "SELECT t.id AS task_id, t.assignee_id, t.task_type, t.task_key,"
-                + " i.tenant_id, i.business_module_code, i.business_module_name, i.business_type, i.business_key, i.business_title, i.action_path"
+                + " i.tenant_id, i.business_module_code, i.business_module_name, i.business_type, i.business_key, i.business_title,"
+                + " i.project_ref, i.project_name, i.action_path"
                 + " FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id";
     }
 
@@ -118,7 +119,9 @@ public class WorkflowSystemNotificationBridge implements WorkflowLifecycleConsum
                 NotificationLevel.INFO,
                 SOURCE_NAME,
                 nullableText(task, "action_path"),
-                null));
+                null,
+                nullableText(task, "project_ref"),
+                nullableText(task, "project_name")));
     }
 
     private void publishResult(WorkflowLifecycleEvent event) {
@@ -140,7 +143,9 @@ public class WorkflowSystemNotificationBridge implements WorkflowLifecycleConsum
                 meta.level(),
                 SOURCE_NAME,
                 event.context().actionPath(),
-                null));
+                null,
+                event.context().projectRef(),
+                event.context().projectName()));
     }
 
     private ResultMeta resultMeta(WorkflowLifecycleEventType type) {

@@ -1,0 +1,20 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationWorkbookService.java", "purpose": "XLSX 模板和受限解析"},
+    {"path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java", "purpose": "全量校验后事务导入"},
+    {"path_or_resource": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationWorkbookServiceTest.java", "purpose": "模板和缺失表头校验"}
+  ],
+  "requirements_addressed": ["R4", "R6"],
+  "commands": [
+    {"command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home PATH=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin:$PATH mvn -pl :ccb-test-management -am test", "exit_code": 0, "salient_output": "ccb-test-management 13 tests passed"}
+  ],
+  "local_checks": [{"check": "XLSX 模板与表头约束", "result": "pass", "evidence": "2 workbook tests passed", "limitations": ["未连接数据库演练多行原子回滚"]}],
+  "diff_summary": ["系统和角色导入模板", "最大 5MB/2000 行限制", "错误批次零写入并返回行号信息"],
+  "invariants_checked": [{"invariant": "导入不写项目/用户/物理子系统主数据", "result": "pass", "evidence": "仅读取主数据并写入 tm_test_* 表"}],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实数据库的事务回滚场景留待 T4"],
+  "recommended_next": "observe"
+}

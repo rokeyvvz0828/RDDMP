@@ -51,7 +51,7 @@ public class ReleaseApplicationController {
     @PreAuthorize("hasAnyAuthority('release:application:view','system:admin')")
     public ApiResponse<PageResult<Response>> list(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String projectId, @RequestParam(required = false) Long windowId,
+            @RequestParam String projectId, @RequestParam(required = false) Long windowId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean mineOnly,
             @AuthenticationPrincipal AuthUser user) {

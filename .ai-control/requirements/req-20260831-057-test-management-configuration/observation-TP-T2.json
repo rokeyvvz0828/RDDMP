@@ -1,0 +1,26 @@
+{
+  "sample_label": "方案接口与附件策略独立采样",
+  "task_ids": ["TP-T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "TP3",
+      "sensor": "TestPlanAttachmentPolicyTest",
+      "result": "pass",
+      "raw_evidence": "非法版本键不查询数据库；匹配 test-management:application-assembly:plans 权限时允许预览，5 个聚焦测试均通过。",
+      "limitation": ["未通过真实附件文件发起预览/下载。"]
+    },
+    {
+      "requirement_id": "TP4",
+      "sensor": "本地 HTTP 未认证探针",
+      "result": "pass",
+      "raw_evidence": "GET /api/test-management/plans/application-assembly/tree?projectId=910000000003001 返回 HTTP 401。",
+      "limitation": ["管理员成功写入与读者写入 403 未取得可用本地会话。"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": ["已删除方案附件的真实平台下载拒绝", "管理员和只读角色的真实 HTTP 样本"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

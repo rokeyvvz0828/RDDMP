@@ -1,5 +1,5 @@
 -- REQ-20260823-049：部署单元、发布版本、编号分配与初始化导入批次。
--- 只追加，不修改 V1-V84。MySQL 8.4。
+-- 只追加，不修改 V1-V95。MySQL 8.4。
 
 CREATE TABLE arch_deployment_unit (
     id BIGINT NOT NULL,

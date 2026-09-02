@@ -144,7 +144,7 @@ public class ArchitectureStandardService {
         requireActor(actor);
         detail(actor, id);
         PageResult<AttachmentItem> result = attachmentPort.list(BUSINESS_TYPE, id, actor.tenantId(),
-                new PageQuery(1, 100), null);
+                new PageQuery(1, 100), null, null);
         return result.records();
     }
 

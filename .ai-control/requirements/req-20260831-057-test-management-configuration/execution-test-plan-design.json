@@ -1,0 +1,20 @@
+{
+  "topic": "req-20260831-057-test-management-configuration",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-01-test-management-plan-design.md",
+  "objective": "交付按项目、参测系统和专项节点归类的版本化测试方案管理。",
+  "requirements": [
+    {"id": "TP1", "statement": "测试方案按测试大类、全局项目和方案节点隔离，树只显示参测系统。", "acceptance": ["项目级/系统级/专项级树可读", "未选项目不请求数据"], "source": "V1.6 模块3"},
+    {"id": "TP2", "statement": "方案支持当前版本、版本历史、同名自动递增和整方案软删除。", "acceptance": ["V1 到 Vn 递增", "历史版本不能单删", "删除保留恢复数据"], "source": "V1.6 模块3"},
+    {"id": "TP3", "statement": "方案附件只支持 docx/xlsx，通过平台能力预览和下载。", "acceptance": ["docx 公共预览", "xlsx 首 Sheet 和多 Sheet 提示", "50MB 与格式校验"], "source": "V1.6 模块3"},
+    {"id": "TP4", "statement": "维护行为必须由服务端细粒度权限和审计保护。", "acceptance": ["无权限写请求 403", "写操作留审计"], "source": "V1.6 权限矩阵"}
+  ],
+  "selected_approach": "以逻辑方案与版本记录分离，复用参测系统、全局项目、平台附件和公共预览能力。",
+  "alternatives": [
+    {"name": "每次上传都保存独立方案记录", "rejected_because": "无法保证同名版本归并和整方案删除。"},
+    {"name": "在平台附件模块新增测试方案存储", "rejected_because": "会扩大公共能力影响面；现有 AttachmentGateway 已满足绑定与鉴权。"}
+  ],
+  "non_goals": ["独立回收站页面", "测试范围、案例、执行、缺陷、报告和统计模块", "修改平台附件或公共 UI"],
+  "approval": {"status": "approved", "evidence": "用户回复：确认。开始实施。", "confirmed_at": "2026-09-01T00:00:00+08:00"}
+}

@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-release-project-scope",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-31-release-project-scope-design.md",
+  "objective": "配置管理六个菜单严格依据顶部当前项目展示和操作，并由服务端阻止跨项目读取与写入。",
+  "users": [
+    "项目成员切换顶部项目后使用配置管理",
+    "审核人通过固定链接进入有权限的其他项目申请",
+    "超级管理员访问租户内有效项目"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "六个配置管理菜单的列表请求必须使用顶部当前项目，缺少项目范围时服务端拒绝租户全量查询。",
+      "acceptance": ["切换项目后仅展示新项目数据", "列表或统计缺少项目编码返回 400", "旧异步响应不能覆盖新项目"],
+      "priority": "must",
+      "source": "用户要求配置管理根据顶部项目展示和处理",
+      "counterexample": ["未传项目时返回租户所有数据", "切换后仍显示旧项目记录"]
+    },
+    {
+      "id": "R2",
+      "statement": "服务端必须统一校验当前用户对目标项目的访问权限。",
+      "acceptance": ["有效成员可访问", "超级管理员可访问租户内未删除项目", "非成员或停用成员返回 403", "删除或不存在项目被拒绝"],
+      "priority": "must",
+      "source": "用户确认后端统一项目访问服务方案",
+      "counterexample": ["仅依赖前端项目选择", "知道项目编码即可访问"]
+    },
+    {
+      "id": "R3",
+      "statement": "详情和写操作必须从服务端实体反查所属项目并拒绝跨项目参数伪造。",
+      "acceptance": ["业务编号或记录 ID 指向无权项目时返回 403", "请求项目与窗口或实体项目不一致时不写数据"],
+      "priority": "must",
+      "source": "工程安全边界与用户项目维度要求",
+      "counterexample": ["信任请求体 projectId", "仅按 tenant + id 更新记录"]
+    },
+    {
+      "id": "R4",
+      "statement": "版本申请直接链接对有权项目自动切换顶部项目，对无权项目拒绝访问。",
+      "acceptance": ["有权链接切换项目后加载完整详情", "无权链接显示无权访问且不继续加载审批和附件"],
+      "priority": "must",
+      "source": "用户明确确认的直接链接行为",
+      "counterexample": ["保留原顶部项目却展示其他项目详情", "无权时自动跳回默认项目"]
+    },
+    {
+      "id": "R5",
+      "statement": "现有菜单 RBAC、审批流程、业务状态机和数据库模型必须保持兼容。",
+      "acceptance": ["release 权限测试保持通过", "无 Flyway 迁移", "审批和状态回归通过"],
+      "priority": "must",
+      "source": "已确认范围和仓库约束",
+      "counterexample": ["通过项目隔离顺带修改审批规则或权限种子"]
+    }
+  ],
+  "invariants": [
+    "租户和用户身份只来自 AuthUser",
+    "实体所属项目来自服务端记录或统一项目解析",
+    "前端项目上下文不能替代后端授权",
+    "不覆盖现有未提交改动"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot 3.4.4、Vue 3 和现有 API 模式",
+    "platform/system 公共能力变更需有批准和回归",
+    "不新增数据库迁移",
+    "桌面和 390x844 移动视口验收"
+  ],
+  "non_goals": [
+    "全局 X-Project-Ref 请求头",
+    "项目化 URL 重构",
+    "其他业务模块项目隔离",
+    "菜单角色权限或审批规则调整"
+  ],
+  "selected_approach": {
+    "name": "显式项目参数与后端统一访问服务",
+    "reason": "兼容现有 API，能同时覆盖列表范围、实体授权和直接链接，改动可分步回退。",
+    "alternatives": [
+      {"name": "全局项目请求头", "rejected_because": "审批外链和内部事件边界复杂，仍不能替代实体反查。"},
+      {"name": "项目化 URL", "rejected_because": "路由和 API 兼容成本超出本次范围。"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["platform/system 项目访问公开能力", "business/release 六域服务", "配置管理前端和项目 Store"],
+      "outside": ["工作流内部实现", "其他业务模块", "数据库结构", "菜单权限种子"]
+    },
+    "components": [
+      {"name": "ProjectAccessService", "responsibility": "向业务模块公开项目访问契约和规范项目引用", "depends_on": ["AuthUser"]},
+      {"name": "JdbcProjectAccessService", "responsibility": "在 system internal 包解析未删除项目并执行租户和有效成员访问校验", "depends_on": ["JdbcTemplate", "ProjectAccessService"]},
+      {"name": "Release domain services", "responsibility": "在列表和实体操作入口执行项目访问与同项目一致性校验", "depends_on": ["ProjectAccessService", "existing stores"]},
+      {"name": "Project context store", "responsibility": "维护可访问项目及唯一顶部选择", "depends_on": ["project workbench API"]},
+      {"name": "Release views", "responsibility": "传递当前项目、清理旧状态并丢弃过期响应", "depends_on": ["Project context store", "release API"]}
+    ],
+    "interfaces": [
+      {"name": "ProjectAccessService.requireAccessible", "producer": "platform/system", "consumers": ["business/release"], "contract": "输入 projectRef 和 AuthUser，返回规范项目或抛出项目无效/403"},
+      {"name": "Release list projectRef", "producer": "release controllers", "consumers": ["release frontend API"], "contract": "列表和统计 projectRef 必填"}
+    ],
+    "data_flows": [
+      {"input": "顶部当前 projectRef", "transitions": ["后端项目访问校验", "tenant + projectRef 查询"], "output": "当前项目列表数据"},
+      {"input": "业务编号或记录 ID", "transitions": ["tenant 内读取实体", "反查 projectRef", "项目访问校验"], "output": "授权后的实体操作或拒绝"},
+      {"input": "版本申请固定链接", "transitions": ["初始化项目列表", "读取受保护详情", "选择目标项目", "加载其余详情"], "output": "同步项目的详情页或无权提示"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "缺少项目编码", "behavior": "返回 400 并清空当前菜单旧数据", "recovery": "选择项目后重试"},
+    {"condition": "用户不是目标项目有效成员", "behavior": "返回 403，直接链接显示无权访问", "recovery": "由项目管理员配置成员关系"},
+    {"condition": "项目不存在或已删除", "behavior": "返回稳定中文业务错误", "recovery": "切换未删除项目"},
+    {"condition": "旧项目异步响应晚到", "behavior": "前端丢弃响应", "recovery": "无需用户操作"}
+  ],
+  "quality_attributes": {
+    "security": ["后端租户、成员、实体归属三层校验", "参数伪造和 ID 枚举测试"],
+    "performance": ["每请求至多增加一次项目成员查询", "不增加全量轮询"],
+    "compatibility": ["保留现有 RBAC、审批状态机和数据模型", "仅收紧项目参数为必填"],
+    "operations": ["400 与 403 可区分", "无迁移和新配置"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R4"], "signal": "项目切换与直接链接无串数据", "method": "前端构建、静态检查和桌面/H5 浏览器旅程"},
+    {"requirement_ids": ["R2"], "signal": "成员和超级管理员通过，非成员被拒绝", "method": "ProjectAccessService 单元测试"},
+    {"requirement_ids": ["R3", "R5"], "signal": "六域正常与越权路径通过且回归无失败", "method": "ccb-release 聚焦与回归测试"}
+  ],
+  "assumptions": [
+    {"text": "rel_* 的 project_id 对应 pm_project.project_code", "basis": "现有前后端均传 ProjectContextItem.ref 并存入 project_id", "falsifier": "存量记录无法与 pm_project.project_code 关联"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "采用显式项目参数与统一访问服务", "reason": "安全边界清楚且兼容现有接口", "source": "用户确认"},
+    {"id": "D2", "decision": "直接链接有权自动切换、无权拒绝", "reason": "保持顶部上下文与详情一致", "source": "用户确认"}
+  ],
+  "risks": [
+    {"risk": "存量项目编码脏数据", "impact": "部分历史数据被拒绝", "mitigation": "实施前验证映射，异常时停止并另立数据修复"},
+    {"risk": "快速切换导致旧响应回写", "impact": "短时展示错误项目数据", "mitigation": "每个加载组件捕获 projectRef 或使用请求代次"},
+    {"risk": "公共服务依赖改动影响构建", "impact": "模块依赖或构造测试失败", "mitigation": "同步治理和 Maven 依赖，逐域运行聚焦测试"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户于 2026-08-31 回复可以按推荐方案处理，并已确认直接链接访问规则。",
+    "confirmed_at": "2026-08-31T18:23:52+08:00"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260902-061-workflow-template-instantiation",
+  "task_id": "T1",
+  "phase": "executing",
+  "recorded_at": "2026-09-02T12:20:00+08:00",
+  "status": "implemented",
+  "actual_changes": [
+    "新增 Flyway V135，将存量 GLOBAL 流程迁移为可执行 PLATFORM 流程",
+    "后端定义范围扩展为 PLATFORM、TEMPLATE、PROJECT，列表支持按范围查询",
+    "TEMPLATE 禁止发布、取消发布、归档、恢复和启动，业务目录与运行时解析排除模板",
+    "模板审批节点仅允许 TEMPLATE_PLACEHOLDER 或 STARTER，抄送节点仅允许 templatePlaceholder",
+    "业务启动优先解析当前项目流程，找不到时回退 PLATFORM 流程"
+  ],
+  "commands": [
+    {"command": "workflow module Maven tests", "result": "passed; 52 tests, 0 failures, 0 errors"},
+    {"command": "focused WorkflowTemplateScopeTest and WorkflowBusinessIntegrationServiceTest", "result": "passed"},
+    {"command": "full Maven reactor", "result": "workflow and preceding modules passed; architecture reported 3 failures and 14 errors identical to unmodified rokey b0b3038"},
+    {"command": "Flyway startup migration", "result": "V135 applied successfully"},
+    {"command": "database scope query", "result": "PLATFORM=11, GLOBAL=0, V135 success=1"}
+  ],
+  "constraints_checked": [
+    "未修改历史 Flyway 脚本",
+    "模板不可被编译或运行",
+    "项目人员和项目角色仍由后端项目成员能力校验",
+    "存量平台流程保持可执行"
+  ],
+  "disturbances": [
+    "全仓架构模块存在与 rokey 基线完全一致的 MySQL 迁移测试失败"
+  ],
+  "open_items": []
+}

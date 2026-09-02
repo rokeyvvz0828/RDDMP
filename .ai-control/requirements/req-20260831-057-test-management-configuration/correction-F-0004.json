@@ -1,0 +1,32 @@
+{
+  "feedback_id": "F-0004",
+  "status": "closed",
+  "source": "用户选择保留 wangEditor，并要求补齐颜色等富文本能力与 Word 粘贴后的格式保留。",
+  "severity": "P1",
+  "requirement_ids": ["A1", "A2", "A3"],
+  "observed": {
+    "actual": "编辑器工具栏仅包含基础文字、列表、链接、表格和图片；服务端正文净化仅允许少量标签，会删除标题、span 与安全的排版样式。",
+    "expected": "公告编辑器提供颜色、背景色、字号、字体、行高、对齐、缩进、标题、表格与全屏能力；保存后仅保留这些可验证的安全格式。"
+  },
+  "correction": {
+    "paths": [
+      "web/src/modules/test-management/announcement/TestAnnouncementPage.vue",
+      "web/src/modules/test-management/announcement/announcement.css",
+      "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/announcement/TestAnnouncementService.java",
+      "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/announcement/TestAnnouncementSanitizerTest.java"
+    ],
+    "change": [
+      "扩展 wangEditor 工具栏至标题、颜色/背景色、字号、字体、行高、对齐、缩进、表格、图片、分割线、代码块和全屏。",
+      "将公告弹窗扩展为 920px，继续复用全宽、360px 高的正文编辑区。",
+      "后端以属性白名单保留颜色、背景色、字号、字体、行高、对齐、缩进及基础文字样式，过滤脚本、事件和危险 CSS。",
+      "增加后端单测覆盖允许格式与危险 CSS/脚本的清除。"
+    ]
+  },
+  "verification": [
+    {"check": "npm --prefix web run build", "result": "pass", "evidence": "vue-tsc --noEmit 与 Vite production build 成功。"},
+    {"check": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-test-management -am test -Dtest=TestAnnouncementSanitizerTest -Dsurefire.failIfNoSpecifiedTests=false", "result": "pass", "evidence": "1 test run, 0 failures, 0 errors。"},
+    {"check": "本地后端重建与健康检查", "result": "pass", "evidence": "ccb-boot package 成功；GET /actuator/health 返回 UP。"},
+    {"check": "浏览器发布公告弹窗", "result": "pass", "evidence": "本地公告管理页可打开发布弹窗；可见正文、字号、字体、行高和扩展格式工具，未提交测试数据。"}
+  ],
+  "recorded_at": "2026-09-01T10:16:00+08:00"
+}

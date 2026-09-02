@@ -1,0 +1,42 @@
+{
+  "sample_label": "方案页面与本地集成独立采样",
+  "task_ids": ["TP-T3", "TP-T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "TP1",
+      "sensor": "Vue TypeScript/Vite 构建与 plans 路由导航",
+      "result": "pass",
+      "raw_evidence": "npm --prefix web run build 退出 0，TestPlanPage 产物已生成；plans 路由进入认证守卫并显示登录页。",
+      "limitation": ["登录态缺失，无法测量已认证树和双 TAB 的实际 DOM。"]
+    },
+    {
+      "requirement_id": "TP2",
+      "sensor": "页面代码契约与构建传感器",
+      "result": "pass",
+      "raw_evidence": "页面包含当前方案仅下载、方案管理、历史版本、上传新版本及整方案删除的已编译路径。",
+      "limitation": ["同名版本确认和删除弹窗未通过真实浏览器会话点击。"]
+    },
+    {
+      "requirement_id": "TP3",
+      "sensor": "前端构建与现有 xlsx 依赖解析",
+      "result": "pass",
+      "raw_evidence": "xlsx 导入通过 vue-tsc；docx 使用 UiFilePreview，xlsx 使用下载 URL 读取首 Sheet。",
+      "limitation": ["本地未认证会话无法验证 MinIO/kkFileView 实际预览。"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "根级 boot 打包被 architecture 模块两处既有 AttachmentPort 签名错误阻断",
+      "impact": "使用已通过编译的临时本地运行包验证 V125；8080 health=UP。"
+    },
+    {
+      "event": "后端重启后浏览器会话失效",
+      "impact": "浏览器只能观察登录守卫，不能采集正向页面视觉状态。"
+    }
+  ],
+  "coverage_gaps": ["桌面和 375px 已认证视觉检查", "docx/xlsx 真实预览下载"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

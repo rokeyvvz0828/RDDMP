@@ -3,7 +3,11 @@ package com.ccb.workflow.service;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.workflow.model.WorkflowNodeModel;
+import com.ccb.security.model.AuthUser;
+import com.ccb.workflow.integration.WorkflowProjectAccessGateway;
+import com.ccb.workflow.integration.WorkflowProjectMember;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +21,15 @@ import java.util.Set;
 @Service
 public class WorkflowAssigneeResolver {
     private final JdbcTemplate jdbc;
+    private WorkflowProjectAccessGateway projectAccess;
 
     public WorkflowAssigneeResolver(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+    }
+
+    @Autowired(required = false)
+    void setProjectAccess(WorkflowProjectAccessGateway projectAccess) {
+        this.projectAccess = projectAccess;
     }
 
     public ProcessVariables prepareProcessVariables(WorkflowDefinitionValidator.WorkflowGraph graph,
@@ -44,10 +54,17 @@ public class WorkflowAssigneeResolver {
 
     public List<ResolvedAssignee> resolveNode(WorkflowNodeModel node, long tenantId, long starterId,
                                               Map<String, Object> variables) {
+        return resolveNode(node, tenantId, starterId, null, null, variables);
+    }
+
+    public List<ResolvedAssignee> resolveNode(WorkflowNodeModel node, long tenantId, long starterId,
+                                              Long projectId, AuthUser actor, Map<String, Object> variables) {
         String type = node.config().path("assigneeType").asText("").toUpperCase(Locale.ROOT);
         List<Long> ids = switch (type) {
             case "USER" -> ids(node.config().path("assigneeIds"));
             case "ROLE" -> usersForRoles(ids(node.config().path("assigneeIds")), tenantId);
+            case "PROJECT_MEMBER" -> projectMembers(projectId, ids(node.config().path("assigneeIds")), actor);
+            case "PROJECT_ROLE" -> projectRoleMembers(projectId, ids(node.config().path("assigneeIds")), actor);
             case "STARTER" -> List.of(starterId);
             case "ORG_OWNER" -> List.of(resolveOrgOwner(starterId, tenantId).id());
             case "FORM_FIELD" -> List.of(resolveVariableUserId(node.config().path("fieldName").asText(""), variables, node.id(), "表单字段"));
@@ -60,10 +77,32 @@ public class WorkflowAssigneeResolver {
             if ("WAIT".equals(action)) return List.of();
             throw new BusinessException(ErrorCode.BAD_REQUEST, "审批节点“" + node.label() + "”没有可用审批人");
         }
-        if ("USER".equals(type) && result.size() != new LinkedHashSet<>(ids).size()) {
+        if (Set.of("USER", "PROJECT_MEMBER").contains(type) && result.size() != new LinkedHashSet<>(ids).size()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "审批节点“" + node.label() + "”包含不存在或已停用的用户");
         }
         return result;
+    }
+
+    private List<Long> projectMembers(Long projectId, List<Long> ids, AuthUser actor) {
+        WorkflowProjectAccessGateway gateway = requireProjectGateway(projectId, actor);
+        gateway.requireMembers(projectId, ids, actor);
+        return ids;
+    }
+
+    private List<Long> projectRoleMembers(Long projectId, List<Long> roleIds, AuthUser actor) {
+        return requireProjectGateway(projectId, actor).membersForRoles(projectId, roleIds, actor).stream()
+                .map(WorkflowProjectMember::userId).toList();
+    }
+
+    private WorkflowProjectAccessGateway requireProjectGateway(Long projectId, AuthUser actor) {
+        if (projectId == null || projectId <= 0) {
+            throw new BusinessException(ErrorCode.CONFLICT, "项目流程实例缺少项目上下文");
+        }
+        if (actor == null || projectAccess == null) {
+            throw new BusinessException(ErrorCode.CONFLICT, "项目工作流人员目录尚未就绪");
+        }
+        projectAccess.requireAccessible(projectId, actor);
+        return projectAccess;
     }
 
     private List<Long> usersForRoles(List<Long> roleIds, long tenantId) {

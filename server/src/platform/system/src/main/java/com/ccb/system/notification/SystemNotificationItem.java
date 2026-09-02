@@ -13,6 +13,8 @@ public record SystemNotificationItem(
         String businessType,
         String businessKey,
         String actionPath,
+        String projectRef,
+        String projectName,
         boolean read,
         LocalDateTime readAt,
         LocalDateTime archivedAt,

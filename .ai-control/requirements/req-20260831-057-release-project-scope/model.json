@@ -1,0 +1,35 @@
+{
+  "definition_revision": "definition-1",
+  "objective": "配置管理六个菜单严格依据顶部当前项目展示和操作，并由服务端阻止跨项目读取与写入。",
+  "requirements": [
+    {"id": "R1", "statement": "六个配置管理菜单必须使用顶部当前项目，缺少项目范围时服务端拒绝租户全量查询。", "acceptance": ["切换项目后仅展示新项目数据", "缺少项目编码返回 400", "旧响应不能覆盖新项目"], "priority": "must", "source": "用户要求", "counterexample": ["返回租户全量或显示旧项目数据"]},
+    {"id": "R2", "statement": "服务端必须统一校验当前用户对目标项目的访问权限。", "acceptance": ["有效成员和超级管理员可访问未删除项目", "非成员或停用成员返回 403", "不存在或删除项目被拒绝"], "priority": "must", "source": "用户确认方案", "counterexample": ["仅前端校验"]},
+    {"id": "R3", "statement": "详情和写操作必须从服务端实体反查所属项目并拒绝跨项目参数伪造。", "acceptance": ["无权实体返回 403", "跨项目关联不产生写入"], "priority": "must", "source": "安全边界", "counterexample": ["信任请求体 projectId"]},
+    {"id": "R4", "statement": "版本申请直接链接对有权项目自动切换顶部项目，对无权项目拒绝访问。", "acceptance": ["有权链接切换并加载", "无权链接停止敏感后续请求"], "priority": "must", "source": "用户明确确认", "counterexample": ["顶部项目与详情项目不一致"]},
+    {"id": "R5", "statement": "现有菜单 RBAC、审批流程、业务状态机和数据库模型必须保持兼容。", "acceptance": ["权限和状态回归通过", "无数据库迁移"], "priority": "must", "source": "批准范围和仓库规则", "counterexample": ["顺带修改权限、流程或迁移"]}
+  ],
+  "boundary": {
+    "inside": ["platform/system ProjectAccessService", "business/release 面向用户的 Service 和 Controller", "release 前端 API、项目 Store 和六菜单视图"],
+    "environment": ["pm_project 与 pm_project_member 只读事实", "现有工作流和附件公开契约", "顶部项目工作台列表", "本地多项目测试数据"]
+  },
+  "invariants": ["身份和租户来自 AuthUser", "实体项目来自服务端记录", "后端执行最终授权", "不覆盖未关联改动", "不修改审批状态机和数据库"],
+  "constraints": ["Java 17 和 Spring Boot 3.4.4", "Vue 3 和现有 Pinia/API 模式", "公共能力限于 com.ccb.system.capability", "桌面与 390x844 验收"],
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "release Service 测试、API 参数类型和快速项目切换浏览器旅程", "expected": "缺参 400，切换后仅当前项目数据且无旧响应回写", "blind_spots": ["浏览器测试数据必须包含两个有权项目"]},
+    {"requirement_id": "R2", "sensor": "ProjectAccessService 单元测试和 HTTP 403 探针", "expected": "有效成员/管理员通过，非成员或停用成员 403，不存在或删除项目拒绝", "blind_spots": ["测试不覆盖生产数据质量"]},
+    {"requirement_id": "R3", "sensor": "六域跨项目实体和参数伪造测试", "expected": "无权读取被拒绝且写方法未调用", "blind_spots": ["内部工作流回调不属于用户实体入口"]},
+    {"requirement_id": "R4", "sensor": "有权与无权固定链接浏览器旅程及网络请求观察", "expected": "有权自动 select，无权不加载轮次/附件/历史", "blind_spots": ["需可访问的真实审批申请数据"]},
+    {"requirement_id": "R5", "sensor": "ccb-system/ccb-release 回归、治理检查、前端构建和 diff 审计", "expected": "全部通过且无迁移/权限/流程范围外差异", "blind_spots": ["全仓既有失败需与当前基线区分"]}
+  ],
+  "action_bounds": [
+    {"requirement_ids": ["R2", "R5"], "target": "system 项目访问公开能力和 release 正式依赖", "authority": "新增只读 capability 服务、测试、Maven 和治理依赖", "impact_limit": "不修改 ProjectService、项目表结构或成员写逻辑", "rollback": "同时回退服务、测试和依赖声明"},
+    {"requirement_ids": ["R1", "R2", "R3", "R5"], "target": "release 六域面向用户的 Service/Controller", "authority": "收紧项目参数并增加项目/实体一致性校验", "impact_limit": "不修改 Store schema、内部工作流事件和业务状态机", "rollback": "按域回退 Service/Controller/测试"},
+    {"requirement_ids": ["R1", "R4", "R5"], "target": "release 前端项目上下文和请求生命周期", "authority": "收紧 API 类型、同步 Store、清理状态和丢弃旧响应", "impact_limit": "不修改全局路由守卫、HTTP 拦截器或公共 UI", "rollback": "回退 release API 和页面局部改动"}
+  ],
+  "assumptions": [
+    {"text": "rel_* 的 project_id 与 pm_project.project_code 一致", "evidence": "现有 Release 写请求使用 ProjectContextItem.ref 并保存到 project_id", "falsifier": "只读检查发现存量记录无法关联"},
+    {"text": "现有 Store 能从所有目标实体获得 projectId", "evidence": "Application、ReleaseWindow、Production Entry 和 Workflow Binding 模型包含项目字段或可由关联实体取得", "falsifier": "T2 测试发现某操作只能按裸 ID 更新且无法反查"}
+  ],
+  "unknowns": [],
+  "status": "ready"
+}
