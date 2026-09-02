@@ -18,7 +18,7 @@ public final class WorkflowDefinitionValidator {
     private static final int SCHEMA_VERSION = 1;
     private static final Set<String> NODE_TYPES = Set.of("START", "APPROVAL", "CC", "END");
     private static final Set<String> ASSIGNEE_TYPES = Set.of(
-            "USER", "ROLE", "PROJECT_MEMBER", "PROJECT_ROLE", "STARTER", "VARIABLE"
+            "USER", "ROLE", "PROJECT_MEMBER", "PROJECT_ROLE", "TEMPLATE_PLACEHOLDER", "STARTER", "VARIABLE"
     );
     private static final Set<String> MODES = Set.of("ANY", "ALL");
 
@@ -157,7 +157,8 @@ public final class WorkflowDefinitionValidator {
                 throw invalid("审批节点必须配置审批人：" + node.label());
             }
         }
-        if ("CC".equals(node.type()) && !hasPositiveId(node.config().path("userIds"))) {
+        if ("CC".equals(node.type()) && !node.config().path("templatePlaceholder").asBoolean(false)
+                && !hasPositiveId(node.config().path("userIds"))) {
             throw invalid("抄送节点必须配置抄送人：" + node.label());
         }
     }

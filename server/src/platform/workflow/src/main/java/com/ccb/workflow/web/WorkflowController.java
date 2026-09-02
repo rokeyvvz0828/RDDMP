@@ -29,8 +29,9 @@ public class WorkflowController {
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String projectRef,
+            @RequestParam(required = false) String scopeType,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.definitions(new PageQuery(page, size), projectRef, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.definitions(new PageQuery(page, size), projectRef, scopeType, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/definitions/{id}")
@@ -82,7 +83,7 @@ public class WorkflowController {
     @PostMapping("/definitions")
     public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, String> body, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.createDefinition(body.get("code"), body.get("name"),
-                body.getOrDefault("definitionJson", "{}"), body.getOrDefault("scopeType", "GLOBAL"),
+                body.getOrDefault("definitionJson", "{}"), body.getOrDefault("scopeType", "PLATFORM"),
                 body.get("projectRef"), user), TraceId.getOrCreate());
     }
 

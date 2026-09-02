@@ -2,14 +2,15 @@ import http from './http'
 import type { ApiResponse } from '../types/auth'
 
 export type WorkflowNodeType = 'START' | 'APPROVAL' | 'CC' | 'CONDITION' | 'PARALLEL_SPLIT' | 'PARALLEL_JOIN' | 'END'
-export type WorkflowAssigneeType = 'USER' | 'ROLE' | 'PROJECT_MEMBER' | 'PROJECT_ROLE' | 'STARTER' | 'ORG_OWNER' | 'FORM_FIELD' | 'EXPRESSION'
-export type WorkflowScopeType = 'GLOBAL' | 'PROJECT'
+export type WorkflowAssigneeType = 'USER' | 'ROLE' | 'PROJECT_MEMBER' | 'PROJECT_ROLE' | 'TEMPLATE_PLACEHOLDER' | 'STARTER' | 'ORG_OWNER' | 'FORM_FIELD' | 'EXPRESSION'
+export type WorkflowScopeType = 'PLATFORM' | 'TEMPLATE' | 'PROJECT'
 export type WorkflowApprovalMode = 'ANY' | 'ALL' | 'PERCENT'
 
 export interface WorkflowNodeConfig {
   assigneeType?: WorkflowAssigneeType
   assigneeIds?: number[]
   userIds?: number[]
+  templatePlaceholder?: boolean
   mode?: WorkflowApprovalMode
   percentage?: number
   emptyAssigneeAction?: 'ERROR' | 'WAIT'
@@ -33,7 +34,7 @@ export interface WorkflowFormBindingModel { nodeId: string; fieldName: string; v
 export interface WorkflowGraph { schemaVersion: 2; nodes: WorkflowNodeModel[]; edges: WorkflowEdgeModel[]; variables: WorkflowVariableModel[]; formBindings: WorkflowFormBindingModel[] }
 export interface WorkflowDefinition { id: number; code: string; name: string; scope_type: WorkflowScopeType; project_id?: number; status: string; current_version: number; model_schema_version?: number; created_at?: string }
 export interface WorkflowPage<T> { records: T[]; total: number; page: number; size: number }
-export interface WorkflowPageQuery { page: number; size: number; projectRef?: string }
+export interface WorkflowPageQuery { page: number; size: number; projectRef?: string; scopeType?: WorkflowScopeType }
 export interface WorkflowMonitorQuery extends WorkflowPageQuery { businessKey?: string; definitionKeyword?: string; status?: string; starterKeyword?: string; createdFrom?: string; createdTo?: string }
 export interface WorkflowDefinitionDetail extends WorkflowDefinition { version_no: number; definition_json: string | WorkflowGraph }
 export interface WorkflowDefinitionVersion { version_no: number; status: string; model_schema_version?: number; created_at?: string; definition_json?: string | WorkflowGraph }

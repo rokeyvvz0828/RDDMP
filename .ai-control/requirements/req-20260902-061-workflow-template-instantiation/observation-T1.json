@@ -1,0 +1,25 @@
+{
+  "iteration_id": "I-T1-1",
+  "task_id": "T1",
+  "status": "verified",
+  "changed_surfaces": [
+    {"path_or_resource": "wf_definition.scope_type", "purpose": "PLATFORM/TEMPLATE/PROJECT 持久化范围"},
+    {"path_or_resource": "WorkflowService", "purpose": "范围查询、生命周期和人员绑定校验"},
+    {"path_or_resource": "WorkflowBusinessIntegrationService", "purpose": "运行时项目优先与平台回退"},
+    {"path_or_resource": "BpmnModelCompiler and validators", "purpose": "允许存储模板占位但禁止编译执行"}
+  ],
+  "checks": [
+    {"requirement_id": "R1", "result": "pass", "evidence": "V135 成功执行；数据库 PLATFORM=11、GLOBAL=0；三范围查询单测通过。"},
+    {"requirement_id": "R2", "result": "pass", "evidence": "后端直接调用时对模板具体 USER/ROLE 拒绝，模板占位验证通过。"},
+    {"requirement_id": "R3", "result": "pass", "evidence": "发布、取消发布、归档、恢复、启动和业务目录均排除 TEMPLATE，编译器拒绝未解析占位。"},
+    {"requirement_id": "R4", "result": "pass", "evidence": "PROJECT 定义继续通过 requireMembers/membersForRoles 校验当前项目成员和角色。"},
+    {"requirement_id": "R6", "result": "pass", "evidence": "业务解析 SQL 仅包含 PROJECT/PLATFORM，有项目时 PROJECT 优先。"}
+  ],
+  "commands": [
+    {"command": "workflow tests", "exit_code": 0, "salient_output": "52 tests passed"},
+    {"command": "Flyway and SQL query", "exit_code": 0, "salient_output": "V135 success=1; no GLOBAL rows"}
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "executing"
+}

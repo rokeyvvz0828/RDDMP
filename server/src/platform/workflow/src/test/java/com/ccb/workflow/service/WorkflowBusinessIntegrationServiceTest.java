@@ -26,7 +26,7 @@ class WorkflowBusinessIntegrationServiceTest {
 
     @Test
     void startsPublishedDefinitionByCodeAndPersistsValidatedContext() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate(List.of(Map.of("id", 88L, "code", "release-approval", "name", "版本审批", "scope_type", "GLOBAL", "current_version", 3)));
+        StubJdbcTemplate jdbc = new StubJdbcTemplate(List.of(Map.of("id", 88L, "code", "release-approval", "name", "版本审批", "scope_type", "PLATFORM", "current_version", 3)));
         StubWorkflowService workflow = new StubWorkflowService();
         WorkflowBusinessIntegrationService service = service(jdbc, workflow);
 
@@ -46,7 +46,7 @@ class WorkflowBusinessIntegrationServiceTest {
     @Test
     void listsPublishedDefinitionsAndStartsByDefinitionId() {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(List.of(Map.of(
-                "id", 88L, "code", "release-approval", "name", "版本审批", "scope_type", "GLOBAL", "current_version", 3)));
+                "id", 88L, "code", "release-approval", "name", "版本审批", "scope_type", "PLATFORM", "current_version", 3)));
         WorkflowBusinessIntegrationService service = service(jdbc, new StubWorkflowService());
 
         var definitions = service.publishedDefinitions(USER);
@@ -60,6 +60,7 @@ class WorkflowBusinessIntegrationServiceTest {
         assertEquals(3, result.definitionVersion());
         assertTrue(jdbc.queries.stream().allMatch(sql -> sql.contains("d.deployment_id IS NOT NULL")));
         assertTrue(jdbc.queries.stream().allMatch(sql -> sql.contains("v.deployment_id IS NOT NULL")));
+        assertTrue(jdbc.queries.get(0).contains("d.scope_type IN ('PLATFORM', 'PROJECT')"));
     }
 
     @Test

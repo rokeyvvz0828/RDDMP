@@ -89,7 +89,7 @@ public class FlowableWorkflowService {
 
     @Transactional
     public Map<String, Object> createDefinition(String code, String name, String definitionJson, AuthUser user) {
-        return createDefinition(code, name, definitionJson, "GLOBAL", null, user);
+        return createDefinition(code, name, definitionJson, "PLATFORM", null, user);
     }
 
     @Transactional

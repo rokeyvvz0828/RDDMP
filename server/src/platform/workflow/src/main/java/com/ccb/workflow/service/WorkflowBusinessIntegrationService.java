@@ -54,8 +54,8 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
         ResolvedProjectContext resolved = resolveProject(validate(command.context()), operator);
         WorkflowBusinessContext context = resolved.context();
         String scopeFilter = resolved.projectId() == null
-                ? " AND d.scope_type = 'GLOBAL'"
-                : " AND (d.scope_type = 'GLOBAL' OR (d.scope_type = 'PROJECT' AND d.project_id = ?))";
+                ? " AND d.scope_type = 'PLATFORM'"
+                : " AND (d.scope_type = 'PLATFORM' OR (d.scope_type = 'PROJECT' AND d.project_id = ?))";
         List<Object> args = new java.util.ArrayList<>(List.of(operator.tenantId(), definitionCode));
         if (resolved.projectId() != null) args.add(resolved.projectId());
         List<Map<String, Object>> definitions = jdbc.queryForList(
@@ -85,9 +85,9 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
         java.util.Set<Long> projectIds = projectAccess == null ? java.util.Set.of()
                 : new java.util.HashSet<>(projectAccess.accessibleProjectIds(operator));
         return jdbc.queryForList(
-                "SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.tenant_id = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL ORDER BY d.name, d.id",
+                "SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.tenant_id = ? AND d.scope_type IN ('PLATFORM', 'PROJECT') AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL ORDER BY d.name, d.id",
                 operator.tenantId()).stream()
-                .filter(row -> "GLOBAL".equals(String.valueOf(row.get("scope_type")))
+                .filter(row -> "PLATFORM".equals(String.valueOf(row.get("scope_type")))
                         || row.get("project_id") instanceof Number number && projectIds.contains(number.longValue()))
                 .map(this::definitionSummary).toList();
     }
@@ -96,7 +96,7 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
     public WorkflowDefinitionSummary requirePublished(long definitionId, AuthUser operator) {
         if (definitionId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不能为空");
         List<Map<String, Object>> definitions = jdbc.queryForList(
-                "SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL",
+                "SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.scope_type IN ('PLATFORM', 'PROJECT') AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL",
                 definitionId, operator.tenantId());
         if (definitions.size() != 1) {
             throw new BusinessException(ErrorCode.CONFLICT, "流程定义未发布、未部署或不存在");
