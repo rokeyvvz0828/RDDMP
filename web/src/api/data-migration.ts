@@ -108,7 +108,13 @@ export function listDataMigrationMenus() {
 }
 
 export function listDataMigrationAssets(type: string, keyword?: string) {
-  return http.get<ApiResponse<DataMigrationAsset[]>>(`/data-migration/${fileSegment(type)}`, { params: { keyword: keyword || undefined } })
+  return http.get<ApiResponse<DataMigrationPage<DataMigrationAsset>>>(`/data-migration/${fileSegment(type)}`, { params: { keyword: keyword || undefined } })
+}
+
+export function listDataMigrationAssetsPage(type: string, params: { projectId?: number; componentId?: number; keyword?: string; page?: number; size?: number } = {}) {
+  return http.get<ApiResponse<DataMigrationPage<DataMigrationAsset>>>(`/data-migration/${fileSegment(type)}`, {
+    params: { ...params, keyword: params.keyword || undefined, page: params.page ?? 1, size: params.size ?? 20 },
+  })
 }
 
 export function checkDataMigrationAssetMd5(md5: string) {
@@ -159,16 +165,7 @@ export function purgeDataMigrationAssets(type: string, ids: number[]) {
 }
 
 export function downloadDataMigrationAsset(type: string, id: number) {
-  return http.get<ApiResponse<string>>(`/data-migration/${fileSegment(type)}/${id}/download`).then(async (response) => {
-    const attachmentPath = response.data.data
-    const match = typeof attachmentPath === 'string' && attachmentPath.match(/^\/api\/attachments\/(\d+)\/download$/)
-    if (!match) return response
-    const attachment = await getAttachmentDownload(Number(match[1]))
-    return {
-      ...response,
-      data: { ...response.data, data: attachment.data.data?.downloadUrl ?? '' }
-    }
-  })
+  return http.get<Blob>(`/data-migration/${fileSegment(type)}/${id}/download`, { responseType: 'blob' })
 }
 
 export function exportDataMigrationStructured(type: string, params?: Record<string, unknown>) {
@@ -692,7 +689,6 @@ export interface MeetingRecord {
   /** V103 后新增的业务编号，与统一回收站信封 asset_code 同构。 */
   meeting_code?: string
   asset_code?: string
-  tenant_id: number
   project_id: number
   project_name?: string
   granularity: string

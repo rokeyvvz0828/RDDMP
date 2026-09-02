@@ -4,6 +4,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.model.UserDirectoryPort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -28,11 +29,14 @@ public class MeetingService {
     private final JdbcTemplate jdbc;
     private final ContentAttachmentService contentAttachments;
     private final DataMigrationPermissionService permissions;
+    private final UserDirectoryPort userDirectory;
 
-    public MeetingService(JdbcTemplate jdbc, ContentAttachmentService contentAttachments, DataMigrationPermissionService permissions) {
+    public MeetingService(JdbcTemplate jdbc, ContentAttachmentService contentAttachments, DataMigrationPermissionService permissions,
+                          UserDirectoryPort userDirectory) {
         this.jdbc = jdbc;
         this.contentAttachments = contentAttachments;
         this.permissions = permissions;
+        this.userDirectory = userDirectory;
     }
 
     /**
@@ -51,7 +55,7 @@ public class MeetingService {
         args.add(safeSize);
         args.add((safePage - 1) * safeSize);
 
-        return new PageResult<>(jdbc.queryForList(sql.toString(), args.toArray()), total == null ? 0L : total, safePage, safeSize);
+        return new PageResult<>(decorateUsers(jdbc.queryForList(sql.toString(), args.toArray()), user.tenantId()), total == null ? 0L : total, safePage, safeSize);
     }
 
     /**
@@ -215,7 +219,7 @@ public class MeetingService {
         appendFilters(sql, args, projectId, null, null, null, keyword, true);
         sql.append(" ORDER BY m.meeting_code ASC, m.meeting_id ASC LIMIT ?");
         args.add(limit);
-        return jdbc.queryForList(sql.toString(), args.toArray());
+        return decorateUsers(jdbc.queryForList(sql.toString(), args.toArray()), user.tenantId());
     }
 
     /**
@@ -357,16 +361,13 @@ public class MeetingService {
     // ============ 私有方法 ============
 
     private String baseSelect(boolean deleted) {
-        return "SELECT m.meeting_id, m.meeting_code, m.meeting_code AS asset_code, m.tenant_id, m.project_id, p.project_name, " +
+        return "SELECT m.meeting_id, m.meeting_code, m.meeting_code AS asset_code, m.project_id, p.project_name, " +
                 "m.granularity, m.meeting_source, m.meeting_title, m.meeting_content, " +
                 "m.meeting_conclusion, m.business_scenario, m.keywords, " +
                 "(SELECT ma.attachment_id FROM dm_content_attachment ma WHERE ma.tenant_id = m.tenant_id AND ma.business_type = 'MEETING' AND ma.business_id = m.meeting_id AND ma.deleted = 0 ORDER BY ma.sort_order ASC, ma.created_at ASC LIMIT 1) AS attachment_id, " +
                 "(SELECT ma.file_name FROM dm_content_attachment ma WHERE ma.tenant_id = m.tenant_id AND ma.business_type = 'MEETING' AND ma.business_id = m.meeting_id AND ma.deleted = 0 ORDER BY ma.sort_order ASC, ma.created_at ASC LIMIT 1) AS file_name, " +
                 "m.created_by, m.created_at, m.updated_by, m.updated_at, " +
                 "m.deleted_by, m.deleted_at, " +
-                "u1.display_name AS created_by_name, " +
-                "u2.display_name AS updated_by_name, " +
-                "u3.display_name AS deleted_by_name, " +
                 "(SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ', ') " +
                 " FROM dm_meeting_system ms " +
                 " JOIN arch_physical_subsystem s ON s.id = ms.subsystem_id AND s.tenant_id = ms.tenant_id AND s.deleted = 0 " +
@@ -384,9 +385,6 @@ public class MeetingService {
                 "(SELECT COUNT(*) FROM dm_content_attachment ma WHERE ma.tenant_id = m.tenant_id AND ma.business_type = 'MEETING' AND ma.business_id = m.meeting_id AND ma.deleted = 0) AS attachment_count " +
                 "FROM dm_meeting m " +
                 "LEFT JOIN pm_project p ON p.id = m.project_id AND p.tenant_id = m.tenant_id AND p.deleted = 0 " +
-                "LEFT JOIN sys_user u1 ON u1.id = m.created_by AND u1.tenant_id = m.tenant_id " +
-                "LEFT JOIN sys_user u2 ON u2.id = m.updated_by AND u2.tenant_id = m.tenant_id " +
-                "LEFT JOIN sys_user u3 ON u3.id = m.deleted_by AND u3.tenant_id = m.tenant_id " +
                 "WHERE m.tenant_id = ? AND m.deleted = " + (deleted ? "1" : "0");
     }
 
@@ -424,9 +422,26 @@ public class MeetingService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "会议纪要不存在");
         }
         Map<String, Object> row = rows.get(0);
+        decorateUsers(List.of(row), tenantId);
         // 附加完整的附件列表（公共附件关系表）
         row.put("attachments", contentAttachments.list(CONTENT_TYPE, meetingId, tenantId));
         return row;
+    }
+
+    private List<Map<String, Object>> decorateUsers(List<Map<String, Object>> rows, long tenantId) {
+        if (userDirectory == null) return rows;
+        for (Map<String, Object> row : rows) {
+            Object created = row.get("created_by");
+            if (created instanceof Number number) userDirectory.findActive(tenantId, number.longValue())
+                    .ifPresent(item -> row.put("created_by_name", item.displayName()));
+            Object updated = row.get("updated_by");
+            if (updated instanceof Number number) userDirectory.findActive(tenantId, number.longValue())
+                    .ifPresent(item -> row.put("updated_by_name", item.displayName()));
+            Object deleted = row.get("deleted_by");
+            if (deleted instanceof Number number) userDirectory.findActive(tenantId, number.longValue())
+                    .ifPresent(item -> row.put("deleted_by_name", item.displayName()));
+        }
+        return rows;
     }
 
     private void saveSystemRelations(long meetingId, long projectId, Map<String, Object> body, AuthUser user) {
@@ -551,9 +566,7 @@ public class MeetingService {
      * 验证附件存在
      */
     private void ensureAttachmentExists(Long attachmentId, AuthUser user) {
-        if (!exists("SELECT COUNT(*) FROM att_file WHERE id = ? AND tenant_id = ?", attachmentId, user.tenantId())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在");
-        }
+        contentAttachments.ensureAttachmentExists(attachmentId, user);
     }
 
     /**
@@ -613,10 +626,9 @@ public class MeetingService {
 
         StringBuilder sql = new StringBuilder(
                 "SELECT a.id, a.attachment_id, a.file_name, a.sort_order, a.business_id AS meeting_id, " +
-                "a.deleted_by, a.deleted_at, u.display_name AS deleted_by_name, " +
+                "a.deleted_by, a.deleted_at, " +
                 "m.meeting_title AS meeting_title " +
                 "FROM dm_content_attachment a " +
-                "LEFT JOIN sys_user u ON u.id = a.deleted_by AND u.tenant_id = a.tenant_id " +
                 "LEFT JOIN dm_meeting m ON m.meeting_id = a.business_id AND m.tenant_id = a.tenant_id " +
                 "WHERE a.tenant_id = ? AND a.business_type = 'MEETING' AND a.deleted = 1"
         );
@@ -640,7 +652,7 @@ public class MeetingService {
         args.add(safeSize);
         args.add((safePage - 1) * safeSize);
 
-        return new PageResult<>(jdbc.queryForList(sql.toString(), args.toArray()), total == null ? 0L : total, safePage, safeSize);
+        return new PageResult<>(decorateUsers(jdbc.queryForList(sql.toString(), args.toArray()), user.tenantId()), total == null ? 0L : total, safePage, safeSize);
     }
 
     /**

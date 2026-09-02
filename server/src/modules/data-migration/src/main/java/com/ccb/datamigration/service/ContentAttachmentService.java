@@ -5,6 +5,8 @@ import com.ccb.attachment.integration.AttachmentGateway;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.model.UserDirectoryPort;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +27,18 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ContentAttachmentService {
     private final JdbcTemplate jdbc;
     private final AttachmentGateway attachmentGateway;
+    private final UserDirectoryPort userDirectory;
 
-    public ContentAttachmentService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway) {
+    @Autowired
+    public ContentAttachmentService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, UserDirectoryPort userDirectory) {
         this.jdbc = jdbc;
         this.attachmentGateway = attachmentGateway;
+        this.userDirectory = userDirectory;
+    }
+
+    /** 保留测试/嵌入式调用的最小构造方式；未提供目录时不返回删除人显示名。 */
+    public ContentAttachmentService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway) {
+        this(jdbc, attachmentGateway, null);
     }
 
     /** 活动附件列表（按排序）。 */
@@ -42,12 +52,14 @@ public class ContentAttachmentService {
 
     /** 附件级回收站列表。 */
     public List<Map<String, Object>> listDeleted(String businessType, long businessId, long tenantId) {
-        return jdbc.queryForList(
-                "SELECT a.id, a.attachment_id, a.file_name, a.sort_order, a.deleted_by, a.deleted_at, u.display_name AS deleted_by_name " +
-                "FROM dm_content_attachment a LEFT JOIN sys_user u ON u.id = a.deleted_by AND u.tenant_id = a.tenant_id " +
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT a.id, a.attachment_id, a.file_name, a.sort_order, a.deleted_by, a.deleted_at " +
+                "FROM dm_content_attachment a " +
                 "WHERE a.tenant_id = ? AND a.business_type = ? AND a.business_id = ? AND a.deleted = 1 " +
                 "ORDER BY a.deleted_at DESC",
                 tenantId, businessType, businessId);
+        addDeletedByNames(rows, tenantId);
+        return rows;
     }
 
     /**
@@ -138,10 +150,21 @@ public class ContentAttachmentService {
     /** 实体彻底删除前解绑并清空其全部附件行（含回收站行）。 */
     @Transactional
     public void unbindAndRemoveAll(String businessType, String attachmentBindingType, long businessId, AuthUser user) {
-        List<Long> boundAttachmentIds = jdbc.queryForList(
-                "SELECT DISTINCT a.attachment_id FROM dm_content_attachment a JOIN att_file f ON f.id = a.attachment_id AND f.tenant_id = a.tenant_id " +
-                "WHERE a.tenant_id = ? AND a.business_type = ? AND a.business_id = ? AND f.status = 'BOUND' AND f.business_type = ? AND f.business_key = ?",
-                Long.class, user.tenantId(), businessType, businessId, attachmentBindingType, String.valueOf(businessId));
+        List<Long> candidateIds = jdbc.queryForList(
+                "SELECT DISTINCT attachment_id FROM dm_content_attachment WHERE tenant_id = ? AND business_type = ? AND business_id = ?",
+                Long.class, user.tenantId(), businessType, businessId);
+        List<Long> boundAttachmentIds = new ArrayList<>();
+        for (Long attachmentId : candidateIds) {
+            try {
+                var item = attachmentGateway.get(attachmentId, user);
+                if ("BOUND".equals(item.status()) && attachmentBindingType.equals(item.businessType())
+                        && String.valueOf(businessId).equals(item.businessKey())) {
+                    boundAttachmentIds.add(attachmentId);
+                }
+            } catch (BusinessException ignored) {
+                // 关系行可能已经对应平台侧删除附件，继续清理本模块关系行。
+            }
+        }
         for (Long attachmentId : boundAttachmentIds) {
             attachmentGateway.deleteBound(attachmentId, attachmentBindingType, String.valueOf(businessId), user);
         }
@@ -167,6 +190,22 @@ public class ContentAttachmentService {
         List<Long> rows = jdbc.queryForList("SELECT business_id FROM dm_content_attachment WHERE id = ? AND tenant_id = ? AND deleted = 1", Long.class, id, user.tenantId());
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在或未删除");
         return rows.get(0);
+    }
+
+    /** 通过附件公开契约校验当前租户附件，不读取平台附件表。 */
+    public void ensureAttachmentExists(long attachmentId, AuthUser user) {
+        if (attachmentId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在");
+        attachmentGateway.get(attachmentId, user);
+    }
+
+    private void addDeletedByNames(List<Map<String, Object>> rows, long tenantId) {
+        if (userDirectory == null) return;
+        for (Map<String, Object> row : rows) {
+            Object raw = row.get("deleted_by");
+            if (raw == null) continue;
+            userDirectory.findActive(tenantId, ((Number) raw).longValue())
+                    .ifPresent(item -> row.put("deleted_by_name", item.displayName()));
+        }
     }
 
     private static String textOrNull(Object value) {

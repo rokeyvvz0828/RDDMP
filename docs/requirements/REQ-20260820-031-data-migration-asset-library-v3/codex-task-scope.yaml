@@ -98,7 +98,7 @@
     "owner_approved": true,
     "old_behavior_preserved": true,
     "regression_tests": ["module-boundary", "maven-reactor", "dynamic-menu", "frontend-build"],
-    "note": "除 V84-V98 外，因合并 REQ-20260831-050 而纳入追加式迁移 V99-V102（均落在 platform/infrastructure，仅追加不改历史脚本，com.ccb.infrastructure.storage 公共契约未变）；V102 为统一回收站菜单注册；V103 为 dm_meeting 增加 meeting_code（会议编号）与活动域唯一索引，用于向统一回收站信封 asset_code 提供来源；V104 提供 3 行显式 meeting_code 的演示 seed，展示新建会议时显式编号的推荐范式。业务 API 破坏性变更属 business/data-migration 模块，非平台公共能力；T26 下线 business/data-migration 旧前端入口 /meetings/recycle-bin* 与 /reports/recycle-bin*（含 /meetings/purge-all），不属平台契约。T27 修复 T26 剩余风险：(1) 各来源 restore 翻转 deleted=0 时的活动编号唯一冲突统一翻译为 CONFLICT(40900)，与 create 同构；(2) MeetingController/ReportController 数字型 PathVariable 加 \\d+ 正则约束，旧字面路径不再被 /{id} 吞掉；(4)(5) RecycleBinSource SPI 由全量 listDeleted 改为 countDeleted + listDeletedPage(limit)，各来源 SQL 层按业务编号升序 + LIMIT 原生分页，统一层做有界 k 路归并 + SQL COUNT 总量；仍属 business/data-migration 模块内部契约，非平台公共能力，无新增迁移。"
+    "note": "除 V84-V98 外，因合并 REQ-20260831-050 而纳入追加式迁移 V99-V102（均落在 platform/infrastructure，仅追加不改历史脚本，com.ccb.infrastructure.storage 公共契约未变）；V102 为统一回收站菜单注册；V103 为 dm_meeting 增加 meeting_code（会议编号）与活动域唯一索引，用于向统一回收站信封 asset_code 提供来源。演示数据不再通过 Flyway 注入，改由测试/本地 fixture 提供。业务 API 破坏性变更属 business/data-migration 模块，非平台公共能力；T26 下线 business/data-migration 旧前端入口 /meetings/recycle-bin* 与 /reports/recycle-bin*（含 /meetings/purge-all），不属平台契约。T27 修复 T26 剩余风险：(1) 各来源 restore 翻转 deleted=0 时的活动编号唯一冲突统一翻译为 CONFLICT(40900)，与 create 同构；(2) MeetingController/ReportController 数字型 PathVariable 加 \\d+ 正则约束，旧字面路径不再被 /{id} 吞掉；(4)(5) RecycleBinSource SPI 由全量 listDeleted 改为 countDeleted + listDeletedPage(limit)，各来源 SQL 层按业务编号升序 + LIMIT 原生分页，统一层做有界 k 路归并 + SQL COUNT 总量；仍属 business/data-migration 模块内部契约，非平台公共能力，无新增迁移。"
   },
   "database": {
     "changed": true,
@@ -121,8 +121,7 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V130__data_migration_content_table_backfill.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V131__data_migration_drop_legacy_asset_tables.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V132__data_migration_recycle_bin_menu.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V133__data_migration_meeting_code.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V134__data_migration_meeting_explicit_seed_codes.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V133__data_migration_meeting_code.sql"
     ],
     "compatibility_and_rollback": "Append-only MySQL 8.4 migrations. V84-V95 establish the data-migration model; V96 adds meeting attachment relations; V97 adds comments and the (now unused) topic type table; V98 removes dm_meeting.project_name/attachment_id/file_name, dm_issue.system_name, dm_target_table_field.table_code and dm_asset.object_key, drops dm_topic_type, deduplicates active meeting attachments, and adds tenant-prefixed indexes plus an active attachment uniqueness key. Before applying V98, environments must verify that dm_asset rows with object_key have been converted to att_file bindings; the application no longer supports object-key fallback after V98. V103 additionally backfills existing dm_meeting rows with `MEET-{meeting_id}` and enforces uniqueness only for active rows via a generated column. Rollback is application rollback only (retain migrated tables/objects); restoring dropped columns requires a separately approved forward compensation migration and database backup."
   },

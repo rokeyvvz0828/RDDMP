@@ -1,8 +1,10 @@
 package com.ccb.datamigration.web;
 
 import com.ccb.common.api.ApiResponse;
+import com.ccb.common.api.PageResult;
 import com.ccb.common.trace.TraceId;
 import com.ccb.datamigration.service.ContentFileAssetService;
+import com.ccb.datamigration.service.AttachmentStreamService;
 import com.ccb.security.model.AuthUser;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -10,6 +12,8 @@ import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * 文件型内容资源控制器（REQ-20260831-050）：为 6 个文件型二级菜单提供各自独立的资源端点，
@@ -30,13 +34,22 @@ public class ContentAssetController {
     private static final String PREFIX = "/api/data-migration/";
 
     private final ContentFileAssetService service;
+    private final AttachmentStreamService attachmentStream;
 
-    public ContentAssetController(ContentFileAssetService service) { this.service = service; }
+    public ContentAssetController(ContentFileAssetService service, AttachmentStreamService attachmentStream) {
+        this.service = service;
+        this.attachmentStream = attachmentStream;
+    }
 
     @GetMapping({"/plans", "/mappings", "/dependencies", "/programs", "/topics", "/release-drills"})
-    public ApiResponse<List<Map<String, Object>>> list(HttpServletRequest request,
-            @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.list(type(request), keyword, user), TraceId.getOrCreate());
+    public ApiResponse<PageResult<Map<String, Object>>> list(HttpServletRequest request,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) Long componentId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.list(type(request), projectId, componentId, keyword, page, size, user), TraceId.getOrCreate());
     }
 
     @PostMapping({"/plans/upload", "/mappings/upload", "/dependencies/upload", "/programs/upload", "/topics/upload", "/release-drills/upload"})
@@ -56,8 +69,9 @@ public class ContentAssetController {
     }
 
     @GetMapping({"/plans/{id}/download", "/mappings/{id}/download", "/dependencies/{id}/download", "/programs/{id}/download", "/topics/{id}/download", "/release-drills/{id}/download"})
-    public ApiResponse<String> download(HttpServletRequest request, @PathVariable long id, @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.download(type(request), id, user), TraceId.getOrCreate());
+    public ResponseEntity<StreamingResponseBody> download(HttpServletRequest request, @PathVariable long id,
+                                                          @AuthenticationPrincipal AuthUser user) {
+        return attachmentStream.stream(service.downloadAttachmentId(type(request), id, user), user, request);
     }
 
     /** 上传前置 MD5 查重：跨 6 张文件型内容表 + dm_report。 */

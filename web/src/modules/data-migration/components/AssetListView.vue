@@ -12,14 +12,20 @@ import { Delete, Download, Plus, Refresh, Search, UploadFilled } from '@element-
 import UiDataTable from '../../../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
 import UiToolbar from '../../../components/ui/UiToolbar.vue'
+import UiPagination from '../../../components/ui/UiPagination.vue'
 import { apiErrorMessage } from '../../../api/error'
-import { deleteDataMigrationAssets, downloadDataMigrationAsset, listDataMigrationAssets, uploadDataMigrationAsset, type DataMigrationAsset } from '../../../api/data-migration'
+import { deleteDataMigrationAssets, downloadDataMigrationAsset, listDataMigrationAssetsPage, uploadDataMigrationAsset, type DataMigrationAsset } from '../../../api/data-migration'
 
 const props = defineProps<{ assetType: string; pageTitle: string }>()
 
 const loading = ref(false)
 const assets = ref<DataMigrationAsset[]>([])
 const keyword = ref('')
+const projectId = ref<number | null>(null)
+const componentId = ref<number | null>(null)
+const page = ref(1)
+const size = ref(20)
+const total = ref(0)
 const selectedIds = ref<number[]>([])
 const actionBusy = ref(false)
 
@@ -37,7 +43,15 @@ async function load() {
   loading.value = true
   selectedIds.value = []
   try {
-    assets.value = (await listDataMigrationAssets(props.assetType, keyword.value || undefined)).data.data ?? []
+    const result = (await listDataMigrationAssetsPage(props.assetType, {
+      projectId: projectId.value ?? undefined,
+      componentId: componentId.value ?? undefined,
+      keyword: keyword.value || undefined,
+      page: page.value,
+      size: size.value,
+    })).data.data
+    assets.value = result?.records ?? []
+    total.value = result?.total ?? 0
   } catch (e) { ElMessage.error(messageOf(e)) }
   finally { loading.value = false }
 }
@@ -84,8 +98,13 @@ async function saveUpload() {
 async function downloadAsset(row: DataMigrationAsset) {
   actionBusy.value = true
   try {
-    const url = (await downloadDataMigrationAsset(props.assetType, row.id)).data.data
-    if (url) window.open(url, '_blank', 'noopener,noreferrer')
+    const response = await downloadDataMigrationAsset(props.assetType, row.id)
+    const url = URL.createObjectURL(response.data)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = row.asset_name || row.asset_code || 'asset'
+    anchor.click()
+    URL.revokeObjectURL(url)
   } catch (e) { ElMessage.error(messageOf(e)) }
   finally { actionBusy.value = false }
 }
@@ -112,6 +131,8 @@ onMounted(load)
       <el-input v-model="keyword" clearable placeholder="搜索编号或名称" style="width: 240px" @keyup.enter="load">
         <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
+      <el-input-number v-model="projectId" :min="1" :precision="0" :controls="false" clearable placeholder="项目 ID" style="width: 140px" />
+      <el-input-number v-model="componentId" :min="1" :precision="0" :controls="false" clearable placeholder="组件 ID" style="width: 140px" />
       <template #actions>
         <el-button :disabled="loading || actionBusy" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button>
         <el-button type="primary" :disabled="loading || actionBusy" @click="load"><el-icon><Search /></el-icon>查询</el-button>
@@ -131,6 +152,9 @@ onMounted(load)
         </template>
       </el-table-column>
     </UiDataTable>
+    <UiPagination v-if="total > 0" :page="page" :page-size="size" :total="total" :page-sizes="[20, 50, 100]"
+      @update:page-size="(value: number) => { size = value; page = 1; load() }"
+      @update:page="(value: number) => { page = value; load() }" />
 
     <UiFormDrawer v-model="drawerOpen" :title="`上传${pageTitle}`" :loading="saving" @submit="saveUpload">
       <el-form label-position="top">
