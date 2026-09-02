@@ -20,7 +20,7 @@ ALTER TABLE wf_instance
 UPDATE wf_instance i
 JOIN pm_project p
   ON p.tenant_id = i.tenant_id
- AND p.project_code = i.project_ref
+ AND p.project_code COLLATE utf8mb4_unicode_ci = i.project_ref COLLATE utf8mb4_unicode_ci
  AND p.deleted = 0
 SET i.project_id = p.id
 WHERE i.project_id IS NULL
