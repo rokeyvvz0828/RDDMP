@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260902-061",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260902-061-workflow-template-instantiation/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "rokeyvvz0828",
+    "module": "platform/workflow",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260902-061-workflow-template-instantiation",
+    "worktree": "/Users/zhangwei/Documents/技术相关/RDDMP-project-scoped-workflow"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V135__workflow_template_scope.sql",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowModelValidator.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionValidator.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/BpmnModelCompiler.java",
+      "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+      "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowProjectScopeTest.java",
+      "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+      "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTemplateScopeTest.java",
+      "web/src/api/workflow.ts",
+      "web/src/components/workflow/WorkflowNode.vue",
+      "web/src/components/workflow/WorkflowNodeInspector.vue",
+      "web/src/views/WorkflowView.vue",
+      "docs/integration/workflow-module-contract.md",
+      "docs/engineering-control/designs/2026-09-02-workflow-template-instantiation-design.md",
+      "docs/engineering-control/plans/2026-09-02-workflow-template-instantiation-implementation-plan.md",
+      "docs/requirements/REQ-20260902-061-workflow-template-instantiation/requirement.md",
+      "docs/requirements/REQ-20260902-061-workflow-template-instantiation/codex-task-scope.yaml",
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/modules/**",
+      "web/src/stores/project-context.ts",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/node_modules/**", "**/target/**", "server/src/platform/infrastructure/src/main/resources/db/migration/V134__project_scope_workflow.sql"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260902-061",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "compatibility": "存量 GLOBAL 迁移为 PLATFORM 并保留执行能力；TEMPLATE 为新增不可执行类型；PROJECT 延续现有项目授权。",
+    "regression_tests": ["mvn -pl :ccb-workflow -am test", "mvn test", "npm --prefix web run build"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V135__workflow_template_scope.sql"],
+    "compatibility_and_rollback": "追加迁移将 GLOBAL 更新为 PLATFORM 并修改默认值；回退代码必须继续识别 PLATFORM，物理回退使用新迁移。"
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "api", "command": "mvn -pl :ccb-workflow -am -Dtest=WorkflowTemplateScopeTest,WorkflowBusinessIntegrationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "三类范围、模板生命周期和启动目录契约通过"},
+    {"name": "permission", "command": "mvn -pl :ccb-workflow -am -Dtest=WorkflowProjectScopeTest,WorkflowTemplateScopeTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "模板人员边界和项目人员边界通过"},
+    {"name": "workflow", "command": "mvn -pl :ccb-workflow -am test", "expected": "工作流模块测试零失败"},
+    {"name": "migration", "command": "Flyway migration test for V135 on MySQL 8.4", "expected": "GLOBAL 迁移为 PLATFORM 且默认值正确"},
+    {"name": "full-backend", "command": "mvn test", "expected": "全量后端测试零失败"},
+    {"name": "frontend", "command": "npm --prefix web run build", "expected": "TypeScript 与 Vite 构建通过"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "治理检查通过"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260902-061-workflow-template-instantiation/codex-task-scope.yaml --base HEAD --head HEAD --working-tree", "expected": "差异位于授权路径"},
+    {"name": "browser", "command": "desktop and mobile workflow definition verification", "expected": "分类、模板实例化和项目人员配置可用"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["公共工作流契约", "定义生命周期", "Flyway 数据迁移", "业务启动匹配", "项目人员权限", "移动端编辑器"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260902-061-workflow-template-instantiation",
+    "control_justification": "涉及公共 API、运行时匹配、权限边界和追加迁移，采用高保证闭环。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/baseline.json",
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/model.json",
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/control-plan.json",
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/execution-T1.json",
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/execution-T2.json",
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/observation-T1.json",
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/observation-T2.json",
+      ".ai-control/requirements/req-20260902-061-workflow-template-instantiation/convergence.json"
+    ],
+    "rollback": "回退前后端实现时保留 V135 数据；回退版本必须识别 PLATFORM，数据库反向变更另追加迁移。"
+  }
+}

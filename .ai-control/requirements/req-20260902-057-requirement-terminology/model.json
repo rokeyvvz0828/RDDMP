@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260902-057-requirement-terminology",
+  "baseline_revision": 1,
+  "revision": 1,
+  "plant_boundary": {
+    "inside": [
+      "web/src/views/RequirementsView.vue 用户可见文案",
+      "RequirementEnums.java 枚举与标签",
+      "RequirementImportService.java 表头映射/模板/解析",
+      "RequirementImportServiceTest.java 导入断言",
+      "mock/mock-data.json 演示数据",
+      "req_difference/req_legacy_requirement/req_system/req_change_log 存量数据与列注释",
+      "Flyway 迁移目录（新增 V132）"
+    ],
+    "environment": [
+      "已发布迁移 V67/V71/V75/V84_1/V130（只读）",
+      "历史文档（只读）",
+      "本地 MySQL 运行环境（当前未启动）",
+      "前端构建与 Maven 测试环境"
+    ]
+  },
+  "state_variables": [
+    {"name": "用户可见文案集合", "source": "前端标签/占位、枚举标签、表头映射"},
+    {"name": "枚举值集合", "source": "DIFFERENCE_TYPES、CHANGE_CONCLUSION_STATUSES"},
+    {"name": "存量数据值", "source": "req_* 表行中的文本与枚举值"},
+    {"name": "数据库列注释", "source": "V67 定义、V132 更新"}
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "用户打开需求管理页面或下载模板",
+      "transitions": ["前端/枚举/表头字符串替换"],
+      "outputs": ["页面展示「同业/我方」术语"]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "差异类型/变更结论下拉加载",
+      "transitions": ["枚举常量替换"],
+      "outputs": ["下拉与数据为新枚举值"]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "全新数据库 Flyway 迁移或本地 mock 同步",
+      "transitions": ["V132 UPDATE/ALTER 执行、mock-data.json 更新"],
+      "outputs": ["存量数据与注释无旧词"]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "用户上传旧表头或新表头 Excel",
+      "transitions": ["表头解析先查新映射、未命中查旧表头 alias"],
+      "outputs": ["新旧表头均解析到字段"]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "Excel 表头到字段映射",
+      "producers": ["RequirementImportService.diffHeaders/legacyHeaders + legacyHeaderAlias"],
+      "consumers": ["模板下载", "导入解析", "RequirementImportServiceTest"],
+      "invariant": "新旧表头映射到同一字段；字段名不变"
+    },
+    {
+      "name": "req_* 数据与列注释",
+      "producers": ["V132 迁移"],
+      "consumers": ["需求管理查询/列表", "Flyway 校验"],
+      "invariant": "列名与 API 键不变；仅文本与注释变化"
+    }
+  ],
+  "sensors": [
+    {"id": "S1", "target": "运行面旧词", "method": "rg '蒙商|金科' 扫描运行面文件", "blind_spots": ["docs 与历史迁移不扫"], "independence": "high"},
+    {"id": "S2", "target": "导入兼容", "method": "RequirementImportServiceTest 新旧表头用例", "blind_spots": ["仅覆盖差异表头"], "independence": "medium"},
+    {"id": "S3", "target": "前端可构建", "method": "npm --prefix web run build", "blind_spots": ["不验证运行时展示"], "independence": "medium"},
+    {"id": "S4", "target": "模块回归", "method": "mvn -pl :ccb-requirement -am test", "blind_spots": ["仅需求模块"], "independence": "medium"},
+    {"id": "S5", "target": "治理与范围", "method": "check-all-governance + check-codex-scope", "blind_spots": ["不验证数据内容"], "independence": "high"},
+    {"id": "S6", "target": "迁移数据实际执行", "method": "Flyway 迁移 + SQL 查询（依赖本地 MySQL）", "blind_spots": ["MySQL 未启动时为不可用"], "independence": "high"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "运行面文案", "action": "apply_patch 替换字符串", "authority": "writable_paths 授权文件", "impact_radius": "需求模块前端/后端/测试/mock", "rollback": "git revert 本任务提交"},
+    {"id": "A2", "target": "存量数据与注释", "action": "新增 V132 追加式迁移", "authority": "迁移目录", "impact_radius": "req_* 数据与列注释", "rollback": "停用 V132"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S3"], "observable": "运行面旧词 0 命中且前端可构建"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S4"], "observable": "枚举无旧值且测试通过"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S6"], "observable": "mock 无旧词、V132 追加式、迁移后数据无旧词"},
+    {"requirement_id": "R4", "sensor_ids": ["S2"], "observable": "新旧表头用例通过"}
+  ],
+  "disturbances": [
+    {"source": "本地 MySQL 未启动", "effect": "S6 不可用，迁移执行证据缺失", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "迁移执行依赖运行环境", "consequence": "数据验证延迟", "sampling_rule": "运行环境可用后补验并记录"}
+  ],
+  "assumptions": [
+    {"text": "机械替换满足业务口径", "evidence": "术语一一对应", "falsifier": "替换后语义错误"},
+    {"text": "旧表头 alias 不与其他校验冲突", "evidence": "解析为 map 查找", "falsifier": "测试失败"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1 + S1/S3"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A1 + S1/S4"},
+    {"requirement_id": "R3", "observable": "partial", "controllable": "partial", "action": "A2 + S6 待运行环境"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A1 + S2"}
+  ],
+  "model_status": "ready"
+}

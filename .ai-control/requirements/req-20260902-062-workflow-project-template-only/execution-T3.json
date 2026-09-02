@@ -1,0 +1,28 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/api/workflow.ts", "purpose": "收敛前端可管理范围并声明待配置状态"},
+    {"path_or_resource": "web/src/components/workflow/WorkflowNodeInspector.vue", "purpose": "模板只允许占位，项目流程允许项目成员和项目角色配置"},
+    {"path_or_resource": "web/src/views/WorkflowView.vue", "purpose": "桌面和移动端双范围 UI、待配置标签、发布禁用与理由提示"},
+    {"path_or_resource": "docs/integration/workflow-module-contract.md", "purpose": "同步模板、项目流程和隐藏 PLATFORM 兼容契约"}
+  ],
+  "requirements_addressed": ["R1", "R4"],
+  "commands": [
+    {"command": "npm run build -- --configLoader runner", "exit_code": 0, "salient_output": "vue-tsc --noEmit 与 Vite production build 成功，2516 modules transformed"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260902-062-workflow-project-template-only/codex-task-scope.yaml --base HEAD --head HEAD --working-tree", "exit_code": 0, "salient_output": "Codex scope check passed; 23 changed files"}
+  ],
+  "local_checks": [
+    {"check": "前端类型与生产构建", "result": "pass", "evidence": "临时只读依赖副本中 vue-tsc 和 Vite 构建退出码 0", "limitations": ["Vite 报告既有大 chunk 警告，不影响构建；交互和视觉仍需浏览器采样"]},
+    {"check": "授权范围", "result": "pass", "evidence": "23 个变更文件全部位于 codex-task-scope.yaml 授权路径", "limitations": []}
+  ],
+  "diff_summary": ["定义页和设计器范围控制仅保留本项目流程、全局模板", "移除工具栏重复项目标签", "待配置项目草稿显示明确标签并禁用发布，同时保留编辑保存入口", "桌面表格和移动卡片使用同一范围与状态语义"],
+  "invariants_checked": [
+    {"invariant": "不修改公共 UI 组件和顶层项目上下文", "result": "pass", "evidence": "范围检查和实际差异清单"},
+    {"invariant": "前端显隐不替代后端发布保护", "result": "pass", "evidence": "前端禁用与 T2 后端发布校验同时存在"}
+  ],
+  "disturbances": [{"event": "工作树 web/node_modules 不可写且依赖来自共享目录", "impact": "使用 /private/tmp 临时前端副本执行构建，未修改 node_modules"}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["四个视口的运行态交互、横向溢出和控制台需要 observing 阶段验证"],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,56 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {"inside": ["测试管理配置路由与页面", "配置控制器和服务", "V106 配置表和菜单权限"], "environment": ["平台项目和用户数据", "架构物理子系统数据", "本地 MySQL、浏览器和认证会话"]},
+  "state_variables": [
+    {"name": "configuration_scope", "owner": "TestConfigurationService", "valid_values": ["tenant + domain + project"]},
+    {"name": "test_system_status", "owner": "测试管理配置表", "valid_values": ["enabled", "disabled"]},
+    {"name": "role_assignment", "owner": "测试管理配置表", "valid_values": ["manager", "tester", "developer"]},
+    {"name": "round_cycle_dictionary", "owner": "测试管理配置表", "valid_values": ["active", "ended", "disabled", "derived"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "认证用户打开大类管理配置或调用配置 API", "transitions": ["路由匹配", "Spring Security 权限判断", "控制器绑定 domain", "服务端租户范围检查"], "outputs": ["页面数据或 403 响应"]},
+    {"requirement_id": "R2", "input": "系统开关或角色分配请求", "transitions": ["服务验证项目、候选系统和 domain", "事务写入参测系统或角色", "审计写入"], "outputs": ["刷新后可读的隔离配置或中文拒绝"]},
+    {"requirement_id": "R3", "input": "轮次、周期或字典写请求", "transitions": ["日期/唯一性/引用规则验证", "事务写入或拒绝", "派生报告类型查询"], "outputs": ["持久化配置、提醒或阻断错误"]},
+    {"requirement_id": "R4", "input": "系统或角色 XLSX 文件", "transitions": ["工作簿解析", "逐行校验", "确认请求中的事务提交或回滚"], "outputs": ["预校验结果、成功汇总或零写入"]}
+  ],
+  "interfaces": [
+    {"name": "configuration REST API", "producers": ["TestConfigurationController"], "consumers": ["TestConfigurationPage.vue"], "invariant": "所有写请求只使用认证用户的 tenant 和服务端范围校验"},
+    {"name": "SystemReferenceQuery and SystemOperationAudit", "producers": ["platform/system"], "consumers": ["TestConfigurationService"], "invariant": "业务模块不直接写平台用户数据和审计表"},
+    {"name": "project and physical subsystem read APIs", "producers": ["platform/system", "business/architecture"], "consumers": ["configuration page/service validation"], "invariant": "主数据只读且当前候选规则为全部启用物理子系统"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1 路由与服务端权限", "method": "Spring 服务/控制器权限测试和浏览器无权限路径", "blind_spots": ["未启动运行时的菜单种子数据"], "independence": "测试直接调用后端，浏览器独立观察页面"},
+    {"id": "S2", "target": "R2 隔离和角色约束", "method": "TestConfigurationService 单元测试", "blind_spots": ["真实数据库索引执行计划"], "independence": "直接断言服务输入输出与 JdbcTemplate 交互"},
+    {"id": "S3", "target": "R3 规则状态", "method": "服务测试与 API 探测", "blind_spots": ["未来执行/报告模块引用"], "independence": "规则测试不同于 UI 观察"},
+    {"id": "S4", "target": "R4 原子导入", "method": "工作簿服务测试与事务错误批次断言", "blind_spots": ["第三方表格软件的格式差异"], "independence": "直接检查解析结果和写入调用次数"},
+    {"id": "S5", "target": "前端契约", "method": "Vite 构建和真实浏览器桌面/移动视口", "blind_spots": ["生产代理差异"], "independence": "独立于 Java 单元测试"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "配置数据与权限", "action": "追加 V106 和测试管理配置服务", "authority": "REQ-20260831-057 可写路径", "impact_radius": "测试管理模块与新增菜单", "rollback": "回退应用代码和菜单入口，保留迁移数据"},
+    {"id": "A2", "target": "导入原子性", "action": "实现配置工作簿服务和事务边界", "authority": "测试管理模块可写路径", "impact_radius": "配置导入 API", "rollback": "回退导入端点"},
+    {"id": "A3", "target": "用户可见配置路径", "action": "添加专属管理配置路由和页面", "authority": "测试管理前端与 router 可写路径", "impact_radius": "测试管理菜单", "rollback": "回退专属路由，动态占位页保持"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3", "S5"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S4", "S5"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "架构模块尚无项目—物理子系统关系", "effect": "候选系统集合比未来关系更宽", "detectable": true, "controllable": false},
+    {"source": "本机默认 JDK 26", "effect": "Mockito 基线测试失败", "detectable": true, "controllable": true},
+    {"source": "后续业务模块引用配置", "effect": "配置接口和状态变化具有兼容风险", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "Flyway 迁移仅在应用启动执行", "consequence": "数据库表与菜单不会在静态测试后立即出现", "sampling_rule": "运行迁移检查后再做本地运行验证"},
+    {"source": "前端路由与菜单权限刷新", "consequence": "菜单种子变更需重新登录或刷新会话", "sampling_rule": "浏览器验收前刷新认证路由"}
+  ],
+  "assumptions": [{"text": "每个项目暂时展示全部启用物理子系统", "evidence": "用户确认", "falsifier": "架构模块提供项目关联接口"}, {"text": "JDK 17 可用于所有 Maven 验证", "evidence": "JDK 17 下基线测试通过", "falsifier": "JDK 17 下目标模块无法编译或测试"}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "以 A1/A3 进入 planning"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "以 A1 进入 planning"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "以 A1 进入 planning"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "以 A2 进入 planning"}
+  ],
+  "model_status": "ready"
+}

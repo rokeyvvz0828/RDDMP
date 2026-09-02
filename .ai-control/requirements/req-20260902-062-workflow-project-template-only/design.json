@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260902-062-workflow-project-template-only",
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-02-workflow-project-template-only-design.md",
+  "objective": "用户可见的工作流只保留全局模板和项目流程，并为平台能力升级项目安全生成存量流程的项目草稿。",
+  "approval": {
+    "status": "approved",
+    "evidence": "用户于 2026-09-02 确认只为平台能力升级项目生成，并回复‘可以’批准书面设计。",
+    "confirmed_at": "2026-09-02T14:15:06+08:00"
+  },
+  "selected_approach": "复制 PLATFORM 为无人员 TEMPLATE，仅为 RDDMP-PLATFORM 生成待配置 PROJECT 草稿；旧 PLATFORM 仅作隐藏运行与短期回退兼容。",
+  "alternatives": [
+    {"name": "in_place_conversion", "decision": "rejected", "reason": "会破坏已发布版本和运行实例引用。"},
+    {"name": "automatic_assignee_mapping", "decision": "rejected", "reason": "系统角色与项目角色不等价，部分用户不是项目成员。"}
+  ],
+  "must_requirements": [
+    {"id": "R1", "statement": "流程定义页仅显示本项目流程和全局模板，不显示重复项目标签。"},
+    {"id": "R2", "statement": "11 条 PLATFORM 均复制为不含具体人员的 TEMPLATE。"},
+    {"id": "R3", "statement": "仅 RDDMP-PLATFORM 生成对应 PROJECT 草稿，其他项目不生成。"},
+    {"id": "R4", "statement": "项目草稿的人员占位必须解析为项目成员或项目角色后才能发布。"},
+    {"id": "R5", "statement": "新请求优先项目流程；项目流程发布后不再回退同编码 PLATFORM。"},
+    {"id": "R6", "statement": "已有运行中和历史实例保留原定义与版本，可继续查看和审批。"},
+    {"id": "R7", "statement": "仅追加新 Flyway 迁移，可重复执行且不修改历史迁移。"}
+  ],
+  "invariants": [
+    "模板不可发布或启动",
+    "项目人员权限由后端最终校验",
+    "不改写 Flowable ACT 表或历史实例外键",
+    "兼容 PLATFORM 不向用户暴露"
+  ],
+  "non_goals": [
+    "为其他项目批量生成流程",
+    "自动推断审批人或角色映射",
+    "迁移已运行实例到新定义",
+    "立即物理删除 PLATFORM 记录"
+  ],
+  "risks": [
+    "项目流程未配置或未发布时，新业务仍需短期兼容回退。",
+    "兼容数据与用户可见业务模型并存，需通过 API 和 UI 强制隐藏。"
+  ],
+  "verification": [
+    "MySQL 8.4 Flyway 迁移和数据基数校验",
+    "工作流范围、人员、发布、启动和历史实例回归",
+    "Vue TypeScript 检查与生产构建",
+    "桌面和手机页面两分区验收"
+  ]
+}

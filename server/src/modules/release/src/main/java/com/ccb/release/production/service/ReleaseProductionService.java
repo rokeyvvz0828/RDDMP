@@ -15,6 +15,8 @@ import com.ccb.release.production.persistence.ReleaseProductionStore;
 import com.ccb.release.window.model.ReleaseWindow;
 import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -34,24 +37,29 @@ public class ReleaseProductionService {
     private final ReleaseProductionStore store;
     private final ReleaseApplicationStore applications;
     private final ReleaseWindowStore windows;
+    private final ProjectAccessService projectAccessService;
     private final Clock clock;
 
     @Autowired
     public ReleaseProductionService(ReleaseProductionStore store, ReleaseApplicationStore applications,
-                                    ReleaseWindowStore windows) {
-        this(store, applications, windows, Clock.system(BUSINESS_ZONE));
+                                    ReleaseWindowStore windows, ProjectAccessService projectAccessService) {
+        this(store, applications, windows, projectAccessService, Clock.system(BUSINESS_ZONE));
     }
 
     ReleaseProductionService(ReleaseProductionStore store, ReleaseApplicationStore applications,
-                             ReleaseWindowStore windows, Clock clock) {
+                             ReleaseWindowStore windows, ProjectAccessService projectAccessService, Clock clock) {
         this.store = store;
         this.applications = applications;
         this.windows = windows;
+        this.projectAccessService = projectAccessService;
         this.clock = clock;
     }
 
     public List<Entry> baseline(long windowId, AuthUser user) {
-        return store.findBaseline(user.tenantId(), windowId);
+        ReleaseWindow window = windows.findById(windowId, user.tenantId())
+                .orElseThrow(() -> badRequest("投产窗口不存在"));
+        ProjectAccess project = projectAccessService.requireAccessible(window.projectId(), user);
+        return filterProject(store.findBaseline(user.tenantId(), windowId), project.projectRef(), user);
     }
 
     @Transactional
@@ -63,6 +71,11 @@ public class ReleaseProductionService {
         }
         Long windowId = application.assignedWindowId() != null ? application.assignedWindowId() : application.windowId();
         if (windowId == null) throw conflict("制品准出申请尚未分配承接窗口");
+        ReleaseWindow window = windows.findById(windowId, operator.tenantId())
+                .orElseThrow(() -> badRequest("投产窗口不存在"));
+        if (!Objects.equals(window.projectId(), application.projectId())) {
+            throw conflict("承接窗口与版本申请所属项目不一致");
+        }
         for (DeliverySnapshot delivery : application.deliveries()) {
             Entry source = store.findBySource(operator.tenantId(), windowId, application.id(), delivery.itemKey())
                     .orElse(null);
@@ -97,6 +110,9 @@ public class ReleaseProductionService {
         HashSet<Long> entryIds = new HashSet<>();
         for (BatchEntryRequest item : request.entries()) {
             if (item == null || item.id() <= 0 || !entryIds.add(item.id())) throw badRequest("批量明细存在无效或重复数据");
+            Entry entry = store.findById(item.id(), user.tenantId())
+                    .orElseThrow(() -> badRequest("投产基线明细不存在"));
+            requireEntryProject(entry, user);
         }
         return request.entries().stream().map(item -> updateResultInternal(item.id(),
                 new UpdateResultRequest(request.productionResult(), request.productionAt(), request.resultReason(),
@@ -106,6 +122,7 @@ public class ReleaseProductionService {
     private Entry updateResultInternal(long entryId, UpdateResultRequest request, AuthUser user) {
         if (request == null) throw badRequest("投产结果信息不能为空");
         Entry before = store.findByIdForUpdate(entryId, user.tenantId()).orElseThrow(() -> badRequest("投产基线明细不存在"));
+        requireEntryProject(before, user);
         ensureWindowEnded(before, user.tenantId());
         if (before.productionResult() != Result.RELEASED) throw conflict("投产结果已维护，不能重复维护");
         if (before.rowVersion() != request.rowVersion()) throw conflict("投产结果已被其他人修改，请刷新后重试");
@@ -145,18 +162,45 @@ public class ReleaseProductionService {
     }
 
     public List<Entry> currentVersions(String projectId, AuthUser user) {
-        return store.findCurrentVersions(user.tenantId(), projectId);
+        ProjectAccess project = projectAccessService.requireAccessible(projectId, user);
+        return store.findCurrentVersions(user.tenantId(), project.projectRef());
     }
 
-    public List<Entry> history(String subsystemCode, String deliveryCode, AuthUser user) {
-        return store.findHistory(user.tenantId(), required(subsystemCode, "物理子系统编码", 64),
-                required(deliveryCode, "交付单元编码", 64));
+    public List<Entry> history(String projectId, String subsystemCode, String deliveryCode, AuthUser user) {
+        ProjectAccess project = projectAccessService.requireAccessible(projectId, user);
+        return filterProject(store.findHistory(user.tenantId(), required(subsystemCode, "物理子系统编码", 64),
+                required(deliveryCode, "交付单元编码", 64)), project.projectRef(), user);
     }
 
     public List<Entry> historyByEntry(long entryId, AuthUser user) {
         Entry anchor = store.findById(entryId, user.tenantId())
                 .orElseThrow(() -> badRequest("生产版本记录不存在"));
-        return store.findHistoryByItemKey(user.tenantId(), anchor.subsystemCode(), anchor.itemKey());
+        String projectRef = requireEntryProject(anchor, user);
+        return filterProject(store.findHistoryByItemKey(user.tenantId(), anchor.subsystemCode(), anchor.itemKey()),
+                projectRef, user);
+    }
+
+    private List<Entry> filterProject(List<Entry> entries, String projectRef, AuthUser user) {
+        return entries.stream().filter(entry -> entryBelongsToProject(entry, projectRef, user)).toList();
+    }
+
+    private String requireEntryProject(Entry entry, AuthUser user) {
+        Application application = applications.findById(entry.applicationId(), user.tenantId())
+                .orElseThrow(() -> badRequest("生产版本关联的版本申请不存在"));
+        ReleaseWindow window = windows.findById(entry.windowId(), user.tenantId())
+                .orElseThrow(() -> badRequest("投产窗口不存在"));
+        if (!Objects.equals(application.projectId(), window.projectId())) {
+            throw conflict("生产版本关联的申请与投产窗口项目不一致");
+        }
+        projectAccessService.requireAccessible(application.projectId(), user);
+        return application.projectId();
+    }
+
+    private boolean entryBelongsToProject(Entry entry, String projectRef, AuthUser user) {
+        Application application = applications.findById(entry.applicationId(), user.tenantId()).orElse(null);
+        ReleaseWindow window = windows.findById(entry.windowId(), user.tenantId()).orElse(null);
+        return application != null && window != null && Objects.equals(application.projectId(), projectRef)
+                && Objects.equals(window.projectId(), projectRef);
     }
 
     private boolean laterThan(Application application, Entry active) {

@@ -1,0 +1,37 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system", "purpose": "通知发布、持久化和查询增加成对项目快照"},
+    {"path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java", "purpose": "工作流待办和结果通知传递项目上下文"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V133__add_notification_project_context.sql", "purpose": "新增项目快照列并可靠回填存量工作流通知"},
+    {"path_or_resource": "docs/integration/system-notification-contract.md", "purpose": "记录项目快照、兼容性和全局通知中心契约"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3"],
+  "commands": [
+    {"command": "mvn -pl :ccb-system,:ccb-boot -am -Dtest=SystemNotificationServiceTest,WorkflowSystemNotificationBridgeTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "SystemNotificationServiceTest 18/18、WorkflowSystemNotificationBridgeTest 3/3 通过，反应堆 BUILD SUCCESS"},
+    {"command": "启动 ccb-boot local profile", "exit_code": 0, "salient_output": "Flyway 从 123 升级到 124，Tomcat 8080 启动成功"},
+    {"command": "查询 Flyway、sys_notification 列和回填数量", "exit_code": 0, "salient_output": "V124 success=1；project_ref varchar(64)、project_name varchar(128) 均可空；34 条工作流通知全部具有项目快照"}
+  ],
+  "local_checks": [
+    {"check": "通知服务和工作流桥接聚焦测试", "result": "pass", "evidence": "21 个测试通过且退出码 0", "limitations": ["未以本次需求归因全仓既有架构数据库夹具失败"]},
+    {"check": "MySQL 迁移和历史回填", "result": "pass", "evidence": "实际开发库 Flyway=124，工作流通知项目上下文 34/34", "limitations": ["无法可靠关联的非工作流消息按规则保持平台全局"]}
+  ],
+  "diff_summary": [
+    "发布命令保留旧 13 参数构造器并增加可空项目字段",
+    "服务端校验项目字段成对和长度并映射查询响应",
+    "工作流桥接传递实例与生命周期事件项目快照",
+    "V124 通过稳定事件 ID 回填历史工作流通知"
+  ],
+  "invariants_checked": [
+    {"invariant": "旧发布调用源码兼容", "result": "pass", "evidence": "反应堆编译及聚焦测试通过"},
+    {"invariant": "幂等、接收人和租户隔离不变", "result": "pass", "evidence": "仅扩展首次通知快照列和结果映射，现有幂等测试通过"},
+    {"invariant": "历史回填不使用文本推断", "result": "pass", "evidence": "V124 仅使用 workflow-task/workflow-lifecycle 稳定事件标识关联"}
+  ],
+  "disturbances": [
+    {"event": "工作区存在其他需求的未提交改动", "impact": "全仓差异不能整体归因于 REQ-059，验收使用限定文件与聚焦测试"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

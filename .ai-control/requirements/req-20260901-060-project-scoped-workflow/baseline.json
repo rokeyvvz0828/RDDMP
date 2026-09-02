@@ -1,0 +1,37 @@
+{
+  "objective": "项目成员和审批人只能在其有权项目中配置、查看和处理工作流，同时保留租户全局流程的兼容使用",
+  "requirements": [
+    {"id":"R1","statement":"流程定义必须区分租户全局范围和单一项目范围","acceptance":["项目成员查询只返回有权项目流程和全局模板","跨项目定义直接访问被拒绝"],"priority":"must","source":"用户确认","counterexample":["项目 A 成员读取项目 B 定义"]},
+    {"id":"R2","statement":"项目流程的审批人必须来自该项目有效成员或项目角色","acceptance":["项目成员和角色候选仅来自当前项目","跨项目用户和角色保存或启动被拒绝"],"priority":"must","source":"用户确认","counterexample":["接口可保存外项目用户"]},
+    {"id":"R3","statement":"项目流程实例必须在首批审批任务创建前具有真实项目归属","acceptance":["实例 project_id 与项目快照在首批任务解析前可读取","启动失败不留下部分任务"],"priority":"must","source":"用户确认","counterexample":["任务创建后才补写项目"]},
+    {"id":"R4","statement":"项目实例的查询、详情、待办和审批必须校验当前用户项目访问权限","acceptance":["有任务分配但已失去项目权限的用户不能读取上下文或审批","超级管理员和有效项目成员按规则可访问"],"priority":"must","source":"用户确认","counterexample":["知道任务 ID 即可越权处理"]},
+    {"id":"R5","statement":"项目成员存在未完成审批任务时不得被停用或移除","acceptance":["存在待办时操作被阻断并给出恢复路径","任务转交、撤销或流程终止后允许操作"],"priority":"must","source":"用户确认","counterexample":["移除成员造成悬空待办"]},
+    {"id":"R6","statement":"存量工作流数据必须在不伪造项目归属的前提下兼容迁移","acceptance":["存量定义为 GLOBAL","实例只在 project_ref 唯一匹配项目编号时回填","无法匹配历史实例仍可查询"],"priority":"must","source":"用户确认","counterexample":["按名称猜测并错误回填"]},
+    {"id":"R7","statement":"工作流页面必须使用顶层当前项目加载定义、成员和角色","acceptance":["项目切换后重新加载且不残留旧项目候选","范围与项目名称可识别"],"priority":"must","source":"用户确认","counterexample":["切换项目后仍显示旧成员"]},
+    {"id":"R8","statement":"桌面和支持的手机视口必须能完成项目流程核心配置路径","acceptance":["375x812、390x844、430x932 和桌面视口可选择范围、成员和角色","页面无非预期横向溢出"],"priority":"must","source":"仓库移动端规范","counterexample":["手机端属性面板超宽或操作不可达"]}
+  ],
+  "invariants": ["项目数据归 system 模块所有", "workflow 与 system 不形成 Maven 循环", "历史 Flyway 不修改", "存量 GLOBAL 定义和 USER/ROLE 节点兼容", "前端显隐不替代后端授权"],
+  "constraints": ["Java 17 与 Spring Boot 3.4.4", "MySQL 8.4 和追加式 Flyway", "Vue 3 与现有顶层项目 store", "只修改 REQ-20260901-060 授权路径"],
+  "non_goals": ["改变业务模块场景判定", "以项目组织树授权", "修改 ACT 表", "自动重写历史定义 JSON", "跨租户项目共享"],
+  "assumptions": [
+    {"text":"项目编号在同租户有效项目中唯一","basis":"pm_project 唯一键约束","falsifier":"数据库存在同租户相同 project_code 的两条 deleted=0 记录"},
+    {"text":"PM 项目角色可代表项目工作流管理员","basis":"项目创建时自动初始化 PM 角色及项目负责人语义","falsifier":"产品规则要求独立工作流管理员角色"}
+  ],
+  "unknowns": [{"question":"历史实例 project_ref 是否全部使用项目编号","impact":"只影响可回填比例，不影响空值兼容","owner":"modeling","blocking":false}],
+  "decisions": [
+    {"question":"流程范围模型","options":["全局加项目混合","全部项目化"],"selected":"全局加项目混合","blocking":false,"source":"用户确认"},
+    {"question":"项目授权真实键","options":["project_id","项目名称快照"],"selected":"project_id","blocking":false,"source":"用户确认"},
+    {"question":"模块连接方式","options":["workflow 依赖 system","boot 契约桥接"],"selected":"boot 契约桥接","blocking":false,"source":"仓库模块边界和已批准设计"}
+  ],
+  "measurement_intents": [
+    {"requirement_id":"R1","observable":"定义列表和定义详情在不同项目用户下的返回集合与错误码","candidate_sensor":"WorkflowProjectScopeTest 加浏览器项目切换"},
+    {"requirement_id":"R2","observable":"候选人员集合及跨项目保存/启动结果","candidate_sensor":"审批人解析单元测试和 API 验证"},
+    {"requirement_id":"R3","observable":"实例插入、项目字段写入和首批任务插入的事务顺序","candidate_sensor":"WorkflowBusinessIntegrationServiceTest 与 SQL 调用序列"},
+    {"requirement_id":"R4","observable":"失权用户读取任务上下文和提交审批的结果","candidate_sensor":"WorkflowProjectScopeTest 权限用例"},
+    {"requirement_id":"R5","observable":"有待办和无待办时成员停用/移除结果","candidate_sensor":"ProjectWorkflowMemberGuardTest"},
+    {"requirement_id":"R6","observable":"V134 后定义 scope、实例 project_id 和无法匹配记录","candidate_sensor":"Flyway SQL 审查与迁移数据库查询"},
+    {"requirement_id":"R7","observable":"项目切换后的请求参数、列表和候选项","candidate_sensor":"前端构建与浏览器网络/页面检查"},
+    {"requirement_id":"R8","observable":"四个视口的页面 scrollWidth、控件可达性和控制台错误","candidate_sensor":"Playwright 浏览器验收"}
+  ],
+  "baseline_status": "ready"
+}

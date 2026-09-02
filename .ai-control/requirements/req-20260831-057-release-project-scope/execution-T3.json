@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-release-project-scope",
+  "task_id": "T3",
+  "phase": "controlling",
+  "recorded_at": "2026-08-31T19:39:39+08:00",
+  "status": "implemented",
+  "actual_changes": [
+    "版本申请、投产窗口、投产基线、生产版本、统计分析和审批流程配置请求显式携带顶部当前项目",
+    "项目切换时清空旧项目数据、关闭项目相关弹窗并使在途请求失效",
+    "前端 API 类型将项目范围参数改为必填并为生产版本历史补充项目参数",
+    "版本申请详情直链先加载受保护申请，确认项目可访问并自动切换顶部项目后再加载审批、附件和相关历史",
+    "无权详情直链显示项目访问拒绝信息且停止后续详情请求"
+  ],
+  "commands": [
+    {"command": "npm --prefix web run build", "result": "passed; vue-tsc and Vite build succeeded"},
+    {"command": "git diff --check -- web/src/api/release.ts web/src/stores/project-context.ts web/src/modules/release", "result": "passed"},
+    {"command": "rg release project-scoped API call sites and request guards", "result": "passed; all six menu surfaces bind current project and reject stale responses"}
+  ],
+  "constraints_checked": [
+    "未修改全局 HTTP 请求头、路由结构或公共 UI 契约",
+    "未修改数据库、审批状态机、工作流内部协议或权限种子",
+    "项目切换只作用于配置管理页面和共享项目上下文既有选择能力",
+    "未修改任务范围外的架构、安全、主题、迁移和 favicon 文件"
+  ],
+  "disturbances": [],
+  "open_items": [
+    "桌面和 H5 多项目浏览器旅程在 T4 集成验收"
+  ]
+}

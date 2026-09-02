@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260901-060-project-scoped-workflow",
+  "handoff_status": "approved",
+  "created_at": "2026-09-01T17:20:41+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260901-060-project-scoped-workflow",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-01-project-scoped-workflow-design.md",
+    "objective": "建立工作流定义、实例、人员解析与审批操作的一致项目边界",
+    "users": ["项目成员", "项目工作流管理员", "平台工作流管理员", "审批人"],
+    "requirements": [
+      {"id":"R1","statement":"流程定义支持 GLOBAL 和 PROJECT 范围","acceptance":["仅展示有权项目流程和全局模板"],"priority":"must","source":"用户确认","counterexample":["跨项目读取"]},
+      {"id":"R2","statement":"项目流程使用项目成员和项目角色配置审批人","acceptance":["跨项目配置被拒绝"],"priority":"must","source":"用户确认","counterexample":["保存外项目人员"]},
+      {"id":"R3","statement":"实例在首批任务前固化 project_id","acceptance":["人员解析读取已持久化项目"],"priority":"must","source":"用户确认","counterexample":["任务后补写项目"]},
+      {"id":"R4","statement":"实例和任务操作校验项目访问","acceptance":["无项目权限不能读取审批"],"priority":"must","source":"用户确认","counterexample":["持任务 ID 越权"]},
+      {"id":"R5","statement":"项目待办阻断成员停用或移除","acceptance":["清理待办后可操作"],"priority":"must","source":"用户确认","counterexample":["移除后任务悬空"]},
+      {"id":"R6","statement":"存量定义和实例兼容迁移","acceptance":["定义为 GLOBAL，实例只可靠匹配时回填"],"priority":"must","source":"用户确认","counterexample":["错误归属历史实例"]},
+      {"id":"R7","statement":"前端跟随顶层项目上下文","acceptance":["切换项目重载流程和候选项"],"priority":"must","source":"用户确认","counterexample":["残留上项目候选项"]},
+      {"id":"R8","statement":"桌面与手机可完成核心配置","acceptance":["三个手机视口无横向溢出"],"priority":"must","source":"仓库规范","counterexample":["手机不可操作"]}
+    ],
+    "invariants": ["项目数据由 system 拥有", "模块依赖无环", "历史迁移不修改", "GLOBAL 兼容"],
+    "constraints": ["Java 17", "MySQL 8.4", "Vue 3", "任务范围内修改"],
+    "non_goals": ["修改业务场景判定", "项目组织树授权", "重写历史 JSON"],
+    "selected_approach": {"name":"全局模板加项目流程并由 boot 桥接","reason":"复用与隔离兼得且无模块循环","alternatives":["全部项目化","保持租户全局"]},
+    "architecture": {"boundary":{"inside":["workflow","system capability","boot integration","frontend","V134"],"outside":["业务场景规则","ACT 表"]},"components":["WorkflowService","ProjectWorkflowDirectoryService","WorkflowProjectAccessBridge","WorkflowView"],"interfaces":["WorkflowProjectAccessGateway","WorkflowPendingTaskQuery","ProjectMemberRemovalGuard"],"data_flows":["项目上下文到定义、实例、人员和任务授权"]},
+    "error_handling": ["缺项目、越权、跨项目人员角色和待办成员移除均返回业务错误"],
+    "quality_attributes": {"security":["RBAC 加实体授权"],"performance":["项目索引"],"compatibility":["GLOBAL 兼容"],"operations":["追加迁移"]},
+    "verification_strategy": ["模块测试", "全量测试", "前端构建", "治理范围检查", "浏览器验收"],
+    "assumptions": ["项目编号租户内唯一", "PM 是项目工作流管理角色"],
+    "unknowns": [],
+    "decisions": ["真实项目主键授权", "快照仅展示", "成员待办守卫"],
+    "risks": ["启动时序", "成员并发变化", "双执行器差异"],
+    "approval": {"status":"approved","evidence":"用户于 2026-09-01 回复按此执行","confirmed_at":"2026-09-01T17:20:41+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-01-project-scoped-workflow-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["不修改历史 Flyway", "不形成模块循环", "全局流程兼容", "后端执行授权"],
+    "file_map": [
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V134__project_scope_workflow.sql","status":"candidate-new","responsibility":"范围与项目迁移","evidence":"当前最新 V133"},
+      {"path":"server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java","status":"existing","responsibility":"流程定义实例和任务授权","evidence":"当前工作流核心服务"},
+      {"path":"server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java","status":"existing","responsibility":"项目成员生命周期","evidence":"当前项目服务"},
+      {"path":"web/src/views/WorkflowView.vue","status":"existing","responsibility":"工作流定义与监控页面","evidence":"当前工作流入口"}
+    ],
+    "tasks": [
+      {"id":"T1","goal":"数据库与项目契约","requirement_ids":["R1","R2","R5","R6"],"prerequisites":[],"input_facts":["最新迁移 V133","项目数据属于 system"],"files":{"create":["V134 migration","workflow/system contracts","boot bridges"],"modify":["ProjectService.java"],"test":["system and boot bridge tests"]},"interfaces":{"consumes":["ProjectAccessService"],"produces":["WorkflowProjectAccessGateway","WorkflowPendingTaskQuery","ProjectMemberRemovalGuard"]},"steps":[{"id":"T1-S1","action":"建立迁移与桥接检查","command":"mvn -pl :ccb-system,:ccb-boot -am test","expected":"新增测试先失败后通过","evidence":"测试退出码"},{"id":"T1-S2","action":"追加 V134 与桥接实现","command":null,"expected":"无模块循环且结构兼容","evidence":"diff 与编译"}],"acceptance_checks":["GLOBAL 回填","可靠项目回填","成员守卫"],"risks":["模块循环"],"rollback":"回退 Java，保留 V134","stop_conditions":["需要修改历史迁移"],"escalation_conditions":["项目表所有权需变化"]},
+      {"id":"T2","goal":"工作流项目范围与运行授权","requirement_ids":["R1","R2","R3","R4","R5","R6"],"prerequisites":["T1"],"input_facts":["首批任务当前早于项目快照更新","存在传统与 Flowable 两套解析"],"files":{"create":["WorkflowProjectScopeTest.java"],"modify":["WorkflowService.java","WorkflowBusinessIntegrationService.java","WorkflowAssigneeResolver.java","FlowableWorkflowService.java","WorkflowController.java"],"test":["workflow module tests"]},"interfaces":{"consumes":["WorkflowProjectAccessGateway"],"produces":["project-scoped workflow API"]},"steps":[{"id":"T2-S1","action":"建立范围、解析和越权测试","command":"mvn -pl :ccb-workflow -am test","expected":"行为实现后零失败","evidence":"Surefire 结果"},{"id":"T2-S2","action":"实现定义、启动、实例和任务授权","command":null,"expected":"两个执行器使用实例 project_id","evidence":"代码与测试"}],"acceptance_checks":["跨项目拒绝","首任务前项目固化","审批二次校验"],"risks":["运行兼容"],"rollback":"回退 workflow 代码","stop_conditions":["必须破坏业务启动契约"],"escalation_conditions":["需要重写历史 JSON"]},
+      {"id":"T3","goal":"项目感知页面与收敛验证","requirement_ids":["R1","R2","R7","R8"],"prerequisites":["T2"],"input_facts":["顶层项目 store 已存在","工作流页当前加载全局用户角色"],"files":{"create":[],"modify":["web/src/api/workflow.ts","web/src/views/WorkflowView.vue","web/src/components/workflow/WorkflowNodeInspector.vue","web/src/components/workflow/WorkflowNode.vue"],"test":[]},"interfaces":{"consumes":["project-scoped workflow API"],"produces":["项目感知工作流页面"]},"steps":[{"id":"T3-S1","action":"实现项目范围和候选项交互","command":"npm --prefix web run build","expected":"生产构建通过","evidence":"构建退出码"},{"id":"T3-S2","action":"执行全量和浏览器验收","command":"mvn test && node scripts/check-all-governance.mjs","expected":"全部门禁通过","evidence":"命令与视口记录"}],"acceptance_checks":["项目切换重载","手机无横向溢出","全量回归"],"risks":["高密度编辑器移动布局"],"rollback":"回退前端文件","stop_conditions":["必须修改应用壳层"],"escalation_conditions":["需要公共 UI 变更"]}
+    ],
+    "dependency_edges": [{"from":"T1","to":"T2","reason":"数据库字段和项目访问契约必须先固定，工作流运行层才能安全消费"},{"from":"T2","to":"T3","reason":"后端范围、候选项和错误契约固定后前端才能实现一致交互"}],
+    "parallel_groups": [["T1"],["T2"],["T3"]],
+    "integration_checks": [{"after_tasks":["T1","T2"],"command":"mvn -pl :ccb-workflow,:ccb-system,:ccb-boot -am test","expected":"零失败"},{"after_tasks":["T3"],"command":"mvn test && npm --prefix web run build && node scripts/check-all-governance.mjs","expected":"全部通过"}],
+    "coverage": [{"requirement_id":"R1","task_ids":["T1","T2","T3"]},{"requirement_id":"R2","task_ids":["T1","T2","T3"]},{"requirement_id":"R3","task_ids":["T2"]},{"requirement_id":"R4","task_ids":["T2"]},{"requirement_id":"R5","task_ids":["T1","T2"]},{"requirement_id":"R6","task_ids":["T1","T2"]},{"requirement_id":"R7","task_ids":["T3"]},{"requirement_id":"R8","task_ids":["T3"]}],
+    "approval": {"status":"approved","evidence":"用户于 2026-09-01 回复按此执行","confirmed_at":"2026-09-01T17:20:41+08:00"}
+  },
+  "control_seed": {
+    "seed_status":"hypotheses-only",
+    "plant_boundary_candidates":["workflow","system project capability","boot bridge","workflow frontend"],
+    "state_variable_candidates":["definition scope","instance project_id","task assignee","member status"],
+    "interface_candidates":["project access gateway","pending task query"],
+    "sensor_candidates":["database constraints","module tests","full tests","browser checks"],
+    "actuator_candidates":["V134","entity authorization","project-aware resolver","frontend project params"],
+    "disturbance_candidates":["legacy null project","member status race","project switch","dual engines"],
+    "delay_candidates":["instance insert to first task","member update to task decision"],
+    "assumptions":[{"text":"项目编号租户内唯一","basis":"pm_project 唯一键","falsifier":"同租户重复有效编号"},{"text":"PM 角色代表项目工作流管理员","basis":"项目初始化逻辑","falsifier":"业务要求其他管理角色"}]
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": [
+        "后端测试确认 PLATFORM 管理列表、创建、详情和生命周期入口被隐藏或拒绝",
+        "桌面和 375x812、390x844、430x932 页面仅显示本项目流程与全局模板，且无重复项目标签"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["MySQL 8.4 迁移测试确认 11 条 TEMPLATE 草稿及审批、抄送节点人员字段脱敏"],
+      "limitations": ["生产数据库执行前仍需完成存量基数预检"]
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["MySQL 聚合断言确认项目 910000000003001 有 11 条迁移草稿，其他项目为 0"],
+      "limitations": []
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": [
+        "后端测试覆盖占位草稿创建/更新、占位或失效人员发布失败、有效项目成员/角色发布成功",
+        "浏览器确认 11 条待配置状态、发布禁用、占位草稿保存及项目成员/项目角色选择"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T2"],
+      "evidence": ["WorkflowBusinessIntegrationServiceTest 确认 startByCode 和 startByDefinitionId 项目优先、PLATFORM 回退及 TEMPLATE 排除"],
+      "limitations": []
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": [
+        "MySQL 迁移测试确认旧定义、版本、实例 definition_id/version_no/status 快照不变",
+        "ccb-workflow reactor 58 个测试全部通过，旧实例详情和审批相关回归未出现失败"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R7",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": ["只新增 V136，V134/V135 未修改；V135 到 V136 和重复 migrate 在 MySQL 8.4 中通过；git diff --check 通过"],
+      "limitations": ["仓库全局迁移命名检查仍被既有 V84_1 文件阻塞，该文件不属于当前差异"]
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["observation-T1.json 与 S-0001：MySQL 迁移、脱敏、快照、范围和幂等性通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["observation-T2.json 与 S-0002：工作流 reactor 58/58 通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["observation-T3.json 与 S-0003：生产构建和四视口运行态通过"]}
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0004", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "V136 MySQL 8.4 聚焦迁移测试", "result": "pass", "evidence": "Tests run: 1, Failures: 0, Errors: 0"},
+    {"check": "ccb-workflow 模块与依赖 reactor", "result": "pass", "evidence": "58 个测试，Failures 0、Errors 0，BUILD SUCCESS"},
+    {"check": "前端 TypeScript 与生产构建", "result": "pass", "evidence": "vue-tsc --noEmit 与 Vite production build 退出码 0"},
+    {"check": "桌面和三个 H5 视口", "result": "pass", "evidence": "仅双范围，无平台流程文案、横向溢出、遮挡或 console error"},
+    {"check": "全仓后端测试", "result": "disturbed", "evidence": "到 ccb-architecture 前所有模块成功；architecture 统计 348 tests、3 failures、14 errors，失败集中于未修改的架构迁移夹具和 default_network_zone_id 测试表结构"},
+    {"check": "仓库治理脚本", "result": "disturbed", "evidence": "Flyway 检查仅被既有 V84_1 命名阻塞；全治理检查被多个既有 .ai-control 历史产物阻塞"}
+  ],
+  "invariant_results": [
+    {"invariant": "TEMPLATE 不得发布、部署或启动", "result": "pass", "evidence": "范围生命周期与运行时选择测试通过"},
+    {"invariant": "PROJECT 人员和角色由后端基于项目上下文最终校验", "result": "pass", "evidence": "项目成员/角色有效、失效和占位发布测试通过"},
+    {"invariant": "不修改 Flowable ACT_* 表和旧实例外键", "result": "pass", "evidence": "差异审计与 MySQL 快照断言通过"},
+    {"invariant": "旧 PLATFORM 仅作为隐藏运行兼容数据", "result": "pass", "evidence": "管理 API 隐藏且无项目发布定义时运行时回退测试通过"},
+    {"invariant": "不覆盖工作树中与本需求无关的用户修改", "result": "pass", "evidence": "Codex scope 检查通过，architecture 与共享 UI 等禁止范围无差异"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "Docker socket 在沙箱中不可访问", "result": "pass", "evidence": "在批准的沙箱外环境用同一聚焦命令复跑通过"},
+    {"disturbance": "全仓架构测试夹具存在既有迁移和表结构错误", "result": "contained", "evidence": "失败只发生在未修改的 ccb-architecture；ccb-workflow 及此前 reactor 模块成功"},
+    {"disturbance": "Vue Flow 设计器初始化 warning", "result": "contained", "evidence": "四视口无 console error，设计器显示、保存和人员来源交互正常"}
+  ],
+  "residual_risks": [
+    "部署到目标数据库前必须执行 V136 停止条件预检：PLATFORM 基数为 11、目标项目唯一、预留主键未占用且 definition_json 可解析。",
+    "全仓 ccb-architecture 测试当前存在 3 failures/14 errors；虽与本次工作流差异无关，但仓库整体测试不是全绿状态。",
+    "仓库 Flyway 和全治理脚本受既有 V84_1 命名及历史 .ai-control 产物阻塞。",
+    "打开设计器时存在两条非阻塞 Vue Flow viewport 初始化 warning。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R7 均由 verified 任务覆盖并有自动化与运行态异质证据；三次高保证采样 P0-P3 全为 0，范围、不变量和反馈门禁满足，范围外既有失败已隔离并披露。"
+}

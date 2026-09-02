@@ -1,0 +1,17 @@
+{
+  "objective": "全局模板只复用流程结构，项目流程只绑定项目人员，同时保持存量平台流程可执行",
+  "requirements": [
+    {"id":"R1","statement":"定义范围区分 PLATFORM、TEMPLATE、PROJECT","acceptance":["存量 GLOBAL 迁移为 PLATFORM","三类列表可独立查询"],"priority":"must","source":"用户确认"},
+    {"id":"R2","statement":"TEMPLATE 不得绑定具体用户或角色","acceptance":["前端不展示具体候选","后端拒绝绕过提交"],"priority":"must","source":"用户确认"},
+    {"id":"R3","statement":"TEMPLATE 不参与执行生命周期","acceptance":["发布、恢复、启动、业务目录均排除模板"],"priority":"must","source":"用户确认"},
+    {"id":"R4","statement":"PROJECT 只使用当前项目成员和角色","acceptance":["沿用项目人员服务端校验"],"priority":"must","source":"用户确认"},
+    {"id":"R5","statement":"模板可以实例化为当前项目流程","acceptance":["结构保留","人员占位清空","新定义绑定当前项目"],"priority":"must","source":"用户确认"},
+    {"id":"R6","statement":"业务启动优先项目流程并回退平台流程","acceptance":["永不选择模板","项目流程优先 PLATFORM"],"priority":"must","source":"兼容性要求"},
+    {"id":"R7","statement":"页面按三类范围分区并默认项目流程","acceptance":["分页总数准确","项目切换重载"],"priority":"must","source":"确认设计"},
+    {"id":"R8","statement":"桌面和移动端核心路径可用","acceptance":["三个手机视口无页面横向溢出"],"priority":"must","source":"仓库规范"}
+  ],
+  "invariants": ["模板不可执行", "项目授权由后端执行", "存量平台流程可执行", "历史 Flyway 不修改", "前端显隐不替代后端校验"],
+  "constraints": ["Java 17", "MySQL 8.4", "Vue 3", "仅修改 REQ-061 授权路径"],
+  "non_goals": ["改动业务场景", "改写历史图人员", "修改 Flowable ACT 表"],
+  "baseline_status": "ready"
+}

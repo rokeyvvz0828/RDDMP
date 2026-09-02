@@ -18,11 +18,13 @@ import {
 } from '../../api/release'
 import { getWorkflowInstanceDetail, type WorkflowMonitorDetail } from '../../api/workflow'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
+import { useProjectContextStore } from '../../stores/project-context'
 import ReleaseApprovalPanel from './components/ReleaseApprovalPanel.vue'
 import './release-prototype.css'
 
 const route = useRoute()
 const router = useRouter()
+const projectStore = useProjectContextStore()
 const applicationCode = computed(() => String(route.params.applicationCode || ''))
 const taskId = computed(() => positiveInteger(route.query.taskId))
 const application = ref<ReleaseApplicationDto | null>(null)
@@ -32,10 +34,12 @@ const relatedHistory = ref<ReleaseRelatedHistoryDto[]>([])
 const workflowDetail = ref<WorkflowMonitorDetail | null>(null)
 const loading = ref(false)
 const loadError = ref('')
+const accessDenied = ref(false)
 const relatedHistoryLoading = ref(false)
 const relatedHistoryError = ref('')
 const workflowError = ref('')
 let relatedHistoryRequestId = 0
+let detailRequestId = 0
 
 const statusLabels: Record<ReleaseApplicationStatusCode, string> = {
   DRAFT: '草稿', IN_REVIEW: '审批中', RETURNED: '已退回', WITHDRAWN: '已撤回',
@@ -125,16 +129,17 @@ async function fetchRelatedHistory() {
     return
   }
   const code = application.value.applicationCode
+  const projectRef = application.value.projectId
   const requestId = ++relatedHistoryRequestId
   relatedHistory.value = []
   relatedHistoryError.value = ''
   relatedHistoryLoading.value = true
   try {
     const response = await getReleaseApplicationRelatedHistory(code)
-    if (requestId !== relatedHistoryRequestId || applicationCode.value !== code) return
+    if (requestId !== relatedHistoryRequestId || applicationCode.value !== code || projectStore.currentRef !== projectRef) return
     relatedHistory.value = response.data.data
   } catch (error) {
-    if (requestId !== relatedHistoryRequestId || applicationCode.value !== code) return
+    if (requestId !== relatedHistoryRequestId || applicationCode.value !== code || projectStore.currentRef !== projectRef) return
     relatedHistoryError.value = apiErrorMessage(error, '相关历史申请加载失败，当前申请和审批操作仍可使用。')
   } finally {
     if (requestId === relatedHistoryRequestId) relatedHistoryLoading.value = false
@@ -142,19 +147,40 @@ async function fetchRelatedHistory() {
 }
 
 async function fetchDetail(showLoading: boolean) {
+  const code = applicationCode.value
+  const requestId = ++detailRequestId
   if (showLoading) {
     loading.value = true
+    application.value = null
+    round.value = null
+    attachments.value = []
+    workflowDetail.value = null
     resetRelatedHistory()
   }
   loadError.value = ''
+  accessDenied.value = false
   workflowError.value = ''
   try {
-    const [applicationResponse, roundResponse, attachmentResponse] = await Promise.all([
-      getReleaseApplication(applicationCode.value),
-      getReleaseApplicationRound(applicationCode.value),
-      listReleaseApplicationAttachments(applicationCode.value)
-    ])
+    await projectStore.initialize()
+    if (requestId !== detailRequestId || applicationCode.value !== code) return
+    if (projectStore.error && !projectStore.projects.length) {
+      loadError.value = projectStore.error
+      return
+    }
+    const applicationResponse = await getReleaseApplication(code)
+    if (requestId !== detailRequestId || applicationCode.value !== code) return
     const nextApplication = applicationResponse.data.data
+    if (!projectStore.canAccess(nextApplication.projectId) || !projectStore.select(nextApplication.projectId)) {
+      accessDenied.value = true
+      loadError.value = '您不是该项目的有效成员，无法查看此版本申请。'
+      return
+    }
+    const projectRef = nextApplication.projectId
+    const [roundResponse, attachmentResponse] = await Promise.all([
+      getReleaseApplicationRound(code),
+      listReleaseApplicationAttachments(code)
+    ])
+    if (requestId !== detailRequestId || applicationCode.value !== code || projectStore.currentRef !== projectRef) return
     const shouldLoadRelatedHistory = showLoading || application.value?.applicationCode !== nextApplication.applicationCode
     application.value = nextApplication
     round.value = roundResponse.data.data
@@ -163,20 +189,27 @@ async function fetchDetail(showLoading: boolean) {
     workflowDetail.value = null
     if (round.value?.workflowInstanceId) {
       try {
-        workflowDetail.value = (await getWorkflowInstanceDetail(round.value.workflowInstanceId)).data.data
+        const response = await getWorkflowInstanceDetail(round.value.workflowInstanceId)
+        if (requestId !== detailRequestId || applicationCode.value !== code || projectStore.currentRef !== projectRef) return
+        workflowDetail.value = response.data.data
       } catch (error) {
+        if (requestId !== detailRequestId || applicationCode.value !== code || projectStore.currentRef !== projectRef) return
         workflowError.value = apiErrorMessage(error, '流程进展加载失败，申请业务信息仍可查看。')
       }
     }
   } catch (error) {
+    if (requestId !== detailRequestId || applicationCode.value !== code) return
     application.value = null
     round.value = null
     attachments.value = []
     resetRelatedHistory()
     workflowDetail.value = null
-    loadError.value = apiErrorMessage(error, '版本申请加载失败，请稍后重试。')
+    accessDenied.value = (error as { response?: { status?: number } }).response?.status === 403
+    loadError.value = accessDenied.value
+      ? '您没有该项目的数据访问权限，无法查看此版本申请。'
+      : apiErrorMessage(error, '版本申请加载失败，请稍后重试。')
   } finally {
-    if (showLoading) loading.value = false
+    if (showLoading && requestId === detailRequestId) loading.value = false
   }
 }
 
@@ -205,6 +238,12 @@ async function handleDecided() {
 
 onMounted(load)
 watch(applicationCode, load)
+watch(() => projectStore.currentRef, projectRef => {
+  if (application.value && projectRef && projectRef !== application.value.projectId) {
+    detailRequestId += 1
+    void router.push('/release/applications')
+  }
+})
 </script>
 
 <template>
@@ -216,7 +255,7 @@ watch(applicationCode, load)
     </header>
 
     <section v-if="loading" class="release-state-panel"><el-skeleton :rows="8" animated /></section>
-    <el-result v-else-if="loadError" icon="error" title="版本申请加载失败" :sub-title="loadError"><template #extra><el-button type="primary" :icon="Refresh" @click="load">重新加载</el-button></template></el-result>
+    <el-result v-else-if="loadError" icon="error" :title="accessDenied ? '无权访问该项目' : '版本申请加载失败'" :sub-title="loadError"><template #extra><el-button v-if="!accessDenied" type="primary" :icon="Refresh" @click="load">重新加载</el-button><el-button v-else type="primary" @click="router.push('/release')">返回配置管理</el-button></template></el-result>
     <el-result v-else-if="!application" icon="warning" title="版本申请不存在"><template #extra><el-button type="primary" @click="router.push('/release')">返回配置管理</el-button></template></el-result>
 
     <section v-else class="release-review-layout">

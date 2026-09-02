@@ -40,13 +40,13 @@ class ArchitectureSubsystemLifecycleMySqlTest {
     @BeforeEach
     void cleanDatabase() throws Exception {
         configureProjectCollation();
-        flyway("82").clean();
+        flyway("93").clean();
         configureProjectCollation();
     }
 
     @Test
-    void migratesFromV81ToV82WithStableGlobalNumbersAndLifecycleSchema() throws Exception {
-        assertTrue(flyway("81").migrate().success);
+    void migratesFromV92ToV93WithStableGlobalNumbersAndLifecycleSchema() throws Exception {
+        assertTrue(flyway("92").migrate().success);
         JdbcTemplate jdbc = jdbc();
         Timestamp first = Timestamp.valueOf("2026-01-01 08:00:00");
         Timestamp second = Timestamp.valueOf("2026-01-02 08:00:00");
@@ -59,7 +59,7 @@ class ArchitectureSubsystemLifecycleMySqlTest {
         ));
         insertPhysicals(jdbc, physicalRows(1L, 101L, 1_001L, 10, first, true));
 
-        var result = flyway("82").migrate();
+        var result = flyway("93").migrate();
         assertTrue(result.success);
         assertEquals(1, result.migrationsExecuted);
 
@@ -85,52 +85,52 @@ class ArchitectureSubsystemLifecycleMySqlTest {
 
     @Test
     void migratesThirtyFivePhysicalHistoryRowsAndFailsClosedBeforeDdlForThirtySix() {
-        assertTrue(flyway("81").migrate().success);
+        assertTrue(flyway("92").migrate().success);
         JdbcTemplate jdbc = jdbc();
         insertLogicals(jdbc, List.of(new LogicalRow(301L, 1L, "LEGACY-35", "逻辑三五", "三十五容量", false,
                 Timestamp.valueOf("2026-02-01 08:00:00"))));
         insertPhysicals(jdbc, physicalRows(1L, 301L, 3_001L, 35, Timestamp.valueOf("2026-02-01 08:00:00"), false));
 
-        assertTrue(flyway("82").migrate().success);
+        assertTrue(flyway("93").migrate().success);
         assertEquals(35, count(jdbc, "SELECT COUNT(*) FROM arch_physical_subsystem WHERE logical_subsystem_id = 301 AND number_slot IS NOT NULL"));
         assertEquals("Z", value(jdbc, "SELECT number_slot FROM arch_physical_subsystem WHERE id = 3035"));
 
-        flyway("82").clean();
+        flyway("93").clean();
         configureProjectCollationUnchecked();
-        assertTrue(flyway("81").migrate().success);
+        assertTrue(flyway("92").migrate().success);
         jdbc = jdbc();
         insertLogicals(jdbc, List.of(new LogicalRow(302L, 1L, "LEGACY-36", "逻辑三六", "三十六容量", false,
                 Timestamp.valueOf("2026-02-02 08:00:00"))));
         insertPhysicals(jdbc, physicalRows(1L, 302L, 3_101L, 36, Timestamp.valueOf("2026-02-02 08:00:00"), true));
 
         assertMigrationFailsAtCapacity();
-        assertNoPersistentV82Structure(jdbc);
+        assertNoPersistentV93Structure(jdbc);
     }
 
     @Test
     void migratesNineThousandNineHundredNinetyNineLogicalHistoryRowsAndFailsClosedForTenThousand() {
-        assertTrue(flyway("81").migrate().success);
+        assertTrue(flyway("92").migrate().success);
         JdbcTemplate jdbc = jdbc();
         insertLogicalRange(jdbc, 4_001L, 1L, 9_999, Timestamp.valueOf("2026-03-01 08:00:00"));
 
-        assertTrue(flyway("82").migrate().success);
+        assertTrue(flyway("93").migrate().success);
         assertEquals(9_999, count(jdbc, "SELECT COUNT(*) FROM arch_logical_subsystem"));
         assertEquals(1, integerValue(jdbc, "SELECT MIN(number_sequence) FROM arch_logical_subsystem"));
         assertEquals(9_999, integerValue(jdbc, "SELECT MAX(number_sequence) FROM arch_logical_subsystem"));
         assertEquals(10_000, integerValue(jdbc, "SELECT next_ordinal FROM arch_subsystem_number_namespace WHERE allocation_scope = 0 AND namespace_code = 'LOGICAL'"));
 
-        flyway("82").clean();
+        flyway("93").clean();
         configureProjectCollationUnchecked();
-        assertTrue(flyway("81").migrate().success);
+        assertTrue(flyway("92").migrate().success);
         jdbc = jdbc();
         insertLogicalRange(jdbc, 20_001L, 1L, 10_000, Timestamp.valueOf("2026-03-02 08:00:00"));
 
         assertMigrationFailsAtCapacity();
-        assertNoPersistentV82Structure(jdbc);
+        assertNoPersistentV93Structure(jdbc);
     }
 
     private void assertLifecycleChecksAndTenantForeignKeys(JdbcTemplate jdbc) {
-        insertLogicals(jdbc, List.of(new LogicalRow(901L, 1L, "POST-V82-L", "迁移后逻辑", "迁移后逻辑", false,
+        insertLogicals(jdbc, List.of(new LogicalRow(901L, 1L, "POST-V93-L", "迁移后逻辑", "迁移后逻辑", false,
                 Timestamp.valueOf("2026-04-01 08:00:00"))));
         insertPhysicals(jdbc, physicalRows(1L, 901L, 9_001L, 1, Timestamp.valueOf("2026-04-01 08:00:00"), false));
 
@@ -180,15 +180,15 @@ class ArchitectureSubsystemLifecycleMySqlTest {
     }
 
     private void assertMigrationFailsAtCapacity() {
-        assertThrows(FlywayException.class, () -> flyway("82").migrate());
+        assertThrows(FlywayException.class, () -> flyway("93").migrate());
     }
 
-    private void assertNoPersistentV82Structure(JdbcTemplate jdbc) {
+    private void assertNoPersistentV93Structure(JdbcTemplate jdbc) {
         assertEquals(0, count(jdbc, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() "
                 + "AND table_name = 'arch_logical_subsystem' AND column_name = 'number_sequence'"));
         assertEquals(0, count(jdbc, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() "
                 + "AND table_name = 'arch_subsystem_change_application'"));
-        assertEquals(0, count(jdbc, "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '82' AND success = 1"));
+        assertEquals(0, count(jdbc, "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '93' AND success = 1"));
     }
 
     private Flyway flyway(String target) {

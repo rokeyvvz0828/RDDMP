@@ -254,7 +254,7 @@ export interface ReleaseWorkflowBindingHistoryDto {
   occurredAt: string
 }
 
-export function listReleaseWindows(params: { page?: number; size?: number; projectId?: string; keyword?: string }) {
+export function listReleaseWindows(params: { projectId: string; page?: number; size?: number; keyword?: string }) {
   return http.get<ApiResponse<PageResult<ReleaseWindowDto>>>('/release/windows', { params })
 }
 export function getReleaseWindow(id: number) { return http.get<ApiResponse<ReleaseWindowDto>>(`/release/windows/${id}`) }
@@ -264,7 +264,7 @@ export function changeReleaseWindowRegularEnabled(id: number, regularEnabled: bo
   return http.put<ApiResponse<ReleaseWindowDto>>(`/release/windows/${id}/regular-enabled`, { regularEnabled, rowVersion, changeReason })
 }
 
-export function listReleaseApplications(params: { page?: number; size?: number; projectId?: string; windowId?: number; keyword?: string; status?: ReleaseApplicationStatusCode; mineOnly?: boolean }) {
+export function listReleaseApplications(params: { projectId: string; page?: number; size?: number; windowId?: number; keyword?: string; status?: ReleaseApplicationStatusCode; mineOnly?: boolean }) {
   return http.get<ApiResponse<PageResult<ReleaseApplicationDto>>>('/release/applications', { params })
 }
 export function getReleaseApplication(code: string) { return http.get<ApiResponse<ReleaseApplicationDto>>(`/release/applications/${encodeURIComponent(code)}`) }
@@ -294,11 +294,11 @@ export function deleteReleaseApplicationAttachment(code: string, attachmentId: n
 export function getProductionBaseline(windowId: number) { return http.get<ApiResponse<ProductionEntryDto[]>>('/release/production-baselines', { params: { windowId } }) }
 export function updateProductionResult(entryId: number, data: ProductionResultWrite & { rowVersion: number }) { return http.put<ApiResponse<ProductionEntryDto>>(`/release/production-baselines/entries/${entryId}/result`, data) }
 export function batchUpdateProductionResults(data: BatchProductionResultWrite) { return http.put<ApiResponse<ProductionEntryDto[]>>('/release/production-baselines/results/batch', data) }
-export function getCurrentProductionVersions(projectId?: string) { return http.get<ApiResponse<ProductionEntryDto[]>>('/release/production-versions', { params: { projectId } }) }
-export function getProductionVersionHistory(subsystemCode: string, deliveryUnitCode: string) { return http.get<ApiResponse<ProductionEntryDto[]>>(`/release/production-versions/${encodeURIComponent(subsystemCode)}/${encodeURIComponent(deliveryUnitCode)}/history`) }
+export function getCurrentProductionVersions(projectId: string) { return http.get<ApiResponse<ProductionEntryDto[]>>('/release/production-versions', { params: { projectId } }) }
+export function getProductionVersionHistory(projectId: string, subsystemCode: string, deliveryUnitCode: string) { return http.get<ApiResponse<ProductionEntryDto[]>>(`/release/production-versions/${encodeURIComponent(subsystemCode)}/${encodeURIComponent(deliveryUnitCode)}/history`, { params: { projectId } }) }
 export function getProductionVersionHistoryByEntry(entryId: number) { return http.get<ApiResponse<ProductionEntryDto[]>>(`/release/production-versions/entries/${entryId}/history`) }
-export function getReleaseAnalyticsSummary(projectId?: string, windowId?: number) { return http.get<ApiResponse<ReleaseAnalyticsSummaryDto>>('/release/analytics/summary', { params: { projectId, windowId } }) }
-export function getReleaseAnalyticsDrilldown(params: { page?: number; size?: number; projectId?: string; windowId?: number; dimension?: string; value?: string }) { return http.get<ApiResponse<PageResult<Record<string, unknown>>>>('/release/analytics/drilldown', { params }) }
+export function getReleaseAnalyticsSummary(projectId: string, windowId?: number) { return http.get<ApiResponse<ReleaseAnalyticsSummaryDto>>('/release/analytics/summary', { params: { projectId, windowId } }) }
+export function getReleaseAnalyticsDrilldown(params: { projectId: string; page?: number; size?: number; windowId?: number; dimension?: string; value?: string }) { return http.get<ApiResponse<PageResult<Record<string, unknown>>>>('/release/analytics/drilldown', { params }) }
 export function listReleaseWorkflowBindings(projectRef: string) {
   return http.get<ApiResponse<ReleaseWorkflowBindingDto[]>>('/release/workflow-bindings', { params: { projectRef } })
 }

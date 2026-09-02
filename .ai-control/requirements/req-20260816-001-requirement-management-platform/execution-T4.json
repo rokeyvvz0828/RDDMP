@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260816-001-requirement-management-platform",
+  "task_id": "T4",
+  "status": "implemented-checks-passed",
+  "coverage": [
+    "一并回收存量阶段审批流遗留（V82/V83 迁移文件）",
+    "预览弹窗每个阶段展示全部字段（空值显示 -）",
+    "软需阶段主责/协同系统改为架构管理物理子系统下拉选择",
+    "存量列表去掉来源列，新增主责系统/协同系统列，点击弹窗显示系统明细",
+    "用户需求拆分多系统需求：完成方案调研并输出设计建议，待用户确认后实施"
+  ],
+  "requirement_source": "用户 2026-08-25 指令：一并回收审批流遗留；修复预览字段不全；软需阶段用架构物理子系统下拉确认主责/协同系统；列表去来源换主责/协同系统列点击弹窗；用户需求可拆多系统需求（先思考）",
+  "actual_changes": [
+    "删除 server/src/platform/infrastructure/src/main/resources/db/migration/V82__requirement_workflow_backfill.sql 与 V83__requirement_workflow_project_ref_normalize.sql（存量阶段审批流遗留；差异评审运行时上下文由 WorkflowBizContextHelper 写入，不受影响）",
+    "web/src/views/RequirementsView.vue：legacyPreviewStageGroups 不再跳过空值，每个阶段页签完整展示全部字段，空值显示 -",
+    "web/src/views/RequirementsView.vue：引入架构管理物理子系统（web/src/modules/architecture/api.ts listPhysicalSubsystems，size=200）；owner_system/coord_system 在表单中改为可搜索下拉，存储『编号+名称』（如 PHY_PORTAL+员工门户物理子系统）；无 architecture:physical:list 权限时静默降级为文本输入",
+    "web/src/views/RequirementsView.vue：存量列表移除来源列，新增主责系统/协同系统列，点击单元格弹出系统明细（编号/名称/事业群/责任团队/逻辑子系统）",
+    "mock/mock-data.json：软需阶段演示行 owner_system/coord_system 对齐架构物理子系统真实编码（PHY_PORTAL/PHY_OPERATIONS）"
+  ],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "result": "exit 0：vue-tsc --noEmit 与 vite build 成功，仅有既有 chunk 体积警告"
+    },
+    {
+      "command": "JAVA_HOME=.../temurin-17 mvn -pl :ccb-requirement -am test -Dtest='Requirement*Test' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false",
+      "result": "exit 0：需求模块 16 个测试全部通过"
+    },
+    {
+      "command": "git diff --check",
+      "result": "exit 0"
+    }
+  ],
+  "not_executed": [
+    "用户需求拆分多系统需求（每添加一个协同系统生成一条子记录供其他组件消费）：已完成代码调研与方案设计，未实施，待用户确认数据模型与范围后另行执行",
+    "真实浏览器验收：未执行，待运行环境可用后补做"
+  ],
+  "unresolved_issues": [
+    "V70 workflow_instance_id 列为已发布迁移（V70），回收需新增迁移/范围授权，未在本轮删除",
+    "拆分设计待用户确认：建议新增 req_legacy_system_requirement 子表（parent_id + system_id/code/name 快照 + 系统角色），参考 release 模块 rel_release_application/rel_production_entry 的 per-subsystem 记录模式",
+    "软需阶段系统下拉仅支持单个主责 + 单个协同文本字段；多个协同系统依赖拆分模型落地"
+  ]
+}

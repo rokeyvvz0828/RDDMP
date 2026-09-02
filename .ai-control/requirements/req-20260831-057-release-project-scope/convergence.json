@@ -1,0 +1,70 @@
+{
+  "definition_revision": "definition-1",
+  "requirement_results": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": [
+        "T2: 列表和统计 Controller 项目参数必填且服务端查询前执行项目访问校验",
+        "T3: 六菜单 API 调用绑定 currentRef 并以请求代次拒绝旧响应",
+        "T4: 桌面与 390x844 下两个项目切换后六菜单均正常加载"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": [
+        "T1: JdbcProjectAccessServiceTest 覆盖有效成员、管理员、非成员和无效项目",
+        "T2: 六域服务统一接入 ProjectAccessService",
+        "T4: ccb-system 55 项测试通过"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": [
+        "T2: 实体操作反查项目，测试覆盖跨项目窗口、伪造字段和生产历史过滤",
+        "T4: ccb-release 86 项测试通过且无写入路径回归"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": [
+        "T3: 详情直链先初始化项目、加载受保护申请并自动 select，之后才加载审批、附件和历史",
+        "T3: 403 和不可访问项目进入明确拒绝界面并停止二级请求",
+        "T4: 桌面与 H5 项目选择和六菜单上下文保持一致"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": [
+        "T1-T2: 未新增迁移、权限种子或审批状态机改动",
+        "T4: JDK 17 后端 reactor、前端生产构建和差异格式检查通过",
+        "T4: 当前代码后端以 Flyway V123 启动且健康状态为 UP"
+      ]
+    }
+  ],
+  "task_results": [
+    {"task_id": "T1", "result": "verified", "evidence": ["统一项目访问能力和专门测试通过"]},
+    {"task_id": "T2", "result": "verified", "evidence": ["六域服务隔离和 86 项 release 测试通过"]},
+    {"task_id": "T3", "result": "verified", "evidence": ["前端项目上下文、过期响应和直链顺序审计通过"]},
+    {"task_id": "T4", "result": "verified", "evidence": ["后端、前端、桌面、H5 和运行服务验收通过"]}
+  ],
+  "open_feedback": [],
+  "invariant_results": [
+    {"invariant": "身份和租户来自 AuthUser", "result": "pass", "evidence": ["ProjectAccessService 接口接收 AuthUser，业务请求未引入可伪造身份参数"]},
+    {"invariant": "实体项目来自服务端记录", "result": "pass", "evidence": ["实体操作从 Store 记录反查项目，创建快照来自 ProjectAccess"]},
+    {"invariant": "后端执行最终授权", "result": "pass", "evidence": ["六域服务在读取和写入入口执行后端 requireAccessible"]},
+    {"invariant": "不覆盖未关联改动", "result": "pass", "evidence": ["架构、安全、主题、V123 和 favicon 等既有变更均保留且未纳入本次纠正"]},
+    {"invariant": "不修改审批状态机和数据库", "result": "pass", "evidence": ["本次产品差异没有 Flyway、审批状态转换、工作流内部协议或权限种子修改"]}
+  ],
+  "residual_risks": [
+    "本地无版本申请且管理员可访问全部项目，详情直链自动切换和 403 没有真实浏览器样本；由服务测试、前端请求顺序审计和生产构建覆盖。",
+    "全仓治理命令仍被既有历史 AI 控制文件格式和收敛证据问题阻塞；17 个模块治理、仓库 Skill、开发入口及本次主题 JSON 均通过。",
+    "Vite 仍有现存大 chunk 体积警告，与本次项目隔离无关。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "五条 must 需求均由已验证任务、自动化回归或桌面/H5 运行证据覆盖；最终采样无 P0-P3 误差、无未关闭反馈，不变量保持，范围外限制已披露。"
+}

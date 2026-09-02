@@ -65,7 +65,7 @@ class SubsystemChangeStoreMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("82"))
+                .target(MigrationVersion.fromVersion("107"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();

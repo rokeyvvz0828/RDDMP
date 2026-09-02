@@ -1,0 +1,1506 @@
+{
+  "schema_version": 5,
+  "revision": 24,
+  "created_at": "2026-09-01T02:27:31+00:00",
+  "updated_at": "2026-09-01T03:02:58+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化 full 工作流",
+      "recorded_at": "2026-09-01T02:27:31+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "R1-R4均具有可判别验收标准且无阻塞未知项",
+      "recorded_at": "2026-09-01T02:27:31+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "每项must需求均有因果链、传感器和授权执行器",
+      "recorded_at": "2026-09-01T02:27:31+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "计划覆盖R1-R4，任务写入范围与REQ-059授权一致",
+      "recorded_at": "2026-09-01T02:27:31+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 and T2 produced measurable outputs with execution reports",
+      "recorded_at": "2026-09-01T03:02:14+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1 and T2 verified, three zero-error samples recorded, no feedback",
+      "recorded_at": "2026-09-01T03:02:39+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "all must requirements passed, tasks verified, three zero-error samples, no open feedback",
+      "recorded_at": "2026-09-01T03:02:58+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "用户确认按直接展示项目归属方案实施，REQ-20260901-059已ready",
+        "recorded_at": "2026-09-01T02:27:31+00:00",
+        "data": {
+          "objective": "全局通知中心中的每条消息明确显示其项目归属或平台全局范围。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "系统必须在通知发布、持久化和查询链路中保留成对的项目标识与项目名称快照。",
+              "acceptance": [
+                "项目通知查询结果返回 projectRef 与 projectName",
+                "平台消息的两个字段均为空",
+                "仅提供一个字段时发布失败且不写库"
+              ],
+              "priority": "must",
+              "source": "用户确认与 REQ-20260901-059",
+              "counterexample": [
+                "只保存项目名称",
+                "根据标题或路由推断项目"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "工作流待办和审批结果通知必须携带工作流已有的项目上下文。",
+              "acceptance": [
+                "待办通知读取 wf_instance 项目快照",
+                "结果通知读取生命周期事件上下文",
+                "原 13 参数通知发布方保持可编译"
+              ],
+              "priority": "must",
+              "source": "用户确认与现有 WorkflowBusinessContext 契约",
+              "counterexample": [
+                "只有待办或只有结果通知携带项目",
+                "强制所有平台通知提供项目"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "存量工作流通知必须在能够通过稳定事件标识可靠关联时回填项目上下文。",
+              "acceptance": [
+                "V124 在 MySQL 成功执行",
+                "待办与生命周期通知按精确事件 ID 回填",
+                "无法可靠关联的记录保持空值"
+              ],
+              "priority": "must",
+              "source": "用户要求已有全局通知展示项目归属",
+              "counterexample": [
+                "按标题模糊匹配",
+                "给未知消息填充当前项目"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "通知抽屉必须在每条消息中清晰展示所属项目或平台全局范围，并适配桌面与移动端。",
+              "acceptance": [
+                "项目消息显示所属项目和项目名",
+                "平台消息显示所属范围和平台全局",
+                "390x844 与桌面无遮挡和页面级横向溢出"
+              ],
+              "priority": "must",
+              "source": "用户确认的直接优化位置",
+              "counterexample": [
+                "只在详情页展示",
+                "用当前顶部项目替代消息项目"
+              ]
+            }
+          ],
+          "invariants": [
+            "通知列表、未读数和归档继续按租户与接收用户全局统计",
+            "不改变接收人、权限、已读、归档和幂等规则",
+            "不覆盖工作区既有未提交改动",
+            "Flyway 迁移只追加"
+          ],
+          "constraints": [
+            "Java 17",
+            "MySQL 8.4",
+            "Vue 3 与 TypeScript",
+            "旧 13 参数 NotificationPublishCommand 调用源码兼容"
+          ],
+          "non_goals": [
+            "项目筛选",
+            "按当前项目改变角标",
+            "项目授权变更",
+            "推断无可靠关系的历史消息项目"
+          ],
+          "assumptions": [
+            {
+              "text": "工作流实例与生命周期事件中的项目字段是通知项目归属的可靠快照",
+              "basis": "WorkflowBusinessContext、wf_instance 和 wf_lifecycle_event 已包含成对字段",
+              "falsifier": "运行数据出现项目字段不成对或与业务项目不一致"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "非工作流业务未来是否需要显式项目上下文",
+              "impact": "未来发布方可使用新增字段，本轮不阻塞",
+              "owner": "对应业务模块 Owner",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "消息中心是否按当前项目过滤",
+              "options": [
+                "保持全局并展示归属",
+                "按当前项目过滤"
+              ],
+              "selected": "保持全局并展示归属",
+              "blocking": false,
+              "source": "用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "发布校验、SQL 参数和查询响应字段",
+              "candidate_sensor": "SystemNotificationService 单元测试与 API 运行检查"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "桥接发布命令的项目字段",
+              "candidate_sensor": "WorkflowSystemNotificationBridge 单元测试"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "Flyway 版本和回填结果",
+              "candidate_sensor": "本地 MySQL 迁移及 SQL 查询"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "通知项文字、布局宽度与控制台",
+              "candidate_sensor": "桌面和 390x844 真实浏览器验收"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "代码、数据库表与工作流上下文勘察确认链路可观测且可控",
+        "recorded_at": "2026-09-01T02:27:31+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "NotificationPublishCommand",
+              "SystemNotificationService",
+              "sys_notification",
+              "WorkflowSystemNotificationBridge",
+              "通知查询响应",
+              "UiNotificationCenter"
+            ],
+            "environment": [
+              "既有业务通知发布方",
+              "wf_instance",
+              "wf_lifecycle_event",
+              "MySQL 8.4",
+              "认证用户浏览器"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "notification_project_context",
+              "owner": "platform/system",
+              "valid_values": [
+                "projectRef/projectName both present",
+                "both null"
+              ]
+            },
+            {
+              "name": "workflow_project_context",
+              "owner": "platform/workflow",
+              "valid_values": [
+                "project snapshot pair",
+                "both null"
+              ]
+            },
+            {
+              "name": "notification_scope_label",
+              "owner": "frontend/application",
+              "valid_values": [
+                "所属项目",
+                "所属范围"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "通知发布命令",
+              "transitions": [
+                "成对校验与规范化",
+                "sys_notification 持久化",
+                "按接收用户查询映射"
+              ],
+              "outputs": [
+                "包含可空 projectRef/projectName 的通知响应"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "工作流任务分配或生命周期结果",
+              "transitions": [
+                "读取已有工作流项目上下文",
+                "构造通知发布命令",
+                "系统通知持久化"
+              ],
+              "outputs": [
+                "项目归属完整的工作流通知"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "V124 迁移",
+              "transitions": [
+                "新增可空列",
+                "按 workflow-task 事件关联 wf_task/wf_instance",
+                "按 workflow-lifecycle 事件关联 wf_lifecycle_event"
+              ],
+              "outputs": [
+                "可靠关联的存量通知获得项目快照"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "通知分页响应",
+              "transitions": [
+                "项目字段判定",
+                "渲染归属行",
+                "响应式换行"
+              ],
+              "outputs": [
+                "桌面与移动端可读的项目归属"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "NotificationPublishCommand",
+              "producers": [
+                "业务模块与工作流桥接"
+              ],
+              "consumers": [
+                "SystemNotificationPublisher"
+              ],
+              "invariant": "项目字段成对且旧 13 参数构造器保持兼容"
+            },
+            {
+              "name": "GET /api/notifications item",
+              "producers": [
+                "SystemNotificationService"
+              ],
+              "consumers": [
+                "UiNotificationCenter"
+              ],
+              "invariant": "projectRef/projectName 均存在或均为空"
+            },
+            {
+              "name": "workflow project snapshot",
+              "producers": [
+                "platform/workflow"
+              ],
+              "consumers": [
+                "WorkflowSystemNotificationBridge"
+              ],
+              "invariant": "不从通知文本推断项目"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R1 通知契约和持久化查询",
+              "method": "ccb-system 单元测试",
+              "blind_spots": [
+                "真实 MySQL 方言"
+              ],
+              "independence": "Mock JDBC 参数与响应映射断言"
+            },
+            {
+              "id": "S2",
+              "target": "R2 工作流桥接",
+              "method": "ccb-boot 单元测试",
+              "blind_spots": [
+                "定时调度时间"
+              ],
+              "independence": "记录实际发布命令"
+            },
+            {
+              "id": "S3",
+              "target": "R3 迁移",
+              "method": "本地 MySQL Flyway 执行与信息架构/数据查询",
+              "blind_spots": [
+                "外部生产数据分布"
+              ],
+              "independence": "真实数据库观测"
+            },
+            {
+              "id": "S4",
+              "target": "R4 用户可见布局",
+              "method": "桌面与 390x844 浏览器 DOM、截图、宽度和控制台检查",
+              "blind_spots": [
+                "未抽样的设备字体差异"
+              ],
+              "independence": "真实渲染输出"
+            },
+            {
+              "id": "S5",
+              "target": "共享契约回归",
+              "method": "Maven 聚焦测试与前端生产构建",
+              "blind_spots": [
+                "未执行的全仓测试"
+              ],
+              "independence": "编译器与测试运行器"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "系统通知契约与服务",
+              "action": "追加兼容字段、成对校验、SQL 持久化和响应映射",
+              "authority": "REQ-059 writable_paths",
+              "impact_radius": "platform/system 公共通知能力",
+              "rollback": "回退 Java 与测试，保留可空数据库列"
+            },
+            {
+              "id": "A2",
+              "target": "工作流通知组合根",
+              "action": "从既有上下文传递项目快照",
+              "authority": "REQ-059 writable_paths",
+              "impact_radius": "工作流站内通知",
+              "rollback": "回退桥接改动"
+            },
+            {
+              "id": "A3",
+              "target": "sys_notification 模式与存量数据",
+              "action": "追加 V124 可空列和精确回填",
+              "authority": "REQ-059 migration scope",
+              "impact_radius": "本地/部署数据库通知表",
+              "rollback": "应用兼容性回退，物理列保留"
+            },
+            {
+              "id": "A4",
+              "target": "通知抽屉展示",
+              "action": "增加紧凑归属行和响应式样式",
+              "authority": "REQ-059 writable_paths",
+              "impact_radius": "公共通知抽屉",
+              "rollback": "回退 Vue、类型和样式"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "工作区已有未提交修改",
+              "effect": "全仓 diff 与测试可能包含其他需求变化",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "本地 MySQL 或服务未运行",
+              "effect": "迁移与浏览器验收不可用",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "存量非工作流通知缺少可靠项目关系",
+              "effect": "保持平台全局展示",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Flyway 仅在后端重启时应用",
+              "consequence": "代码热更新前数据库缺列",
+              "sampling_rule": "完成代码测试后重启后端再执行 API/浏览器验收"
+            },
+            {
+              "source": "通知轮询",
+              "consequence": "抽屉可能短暂显示旧响应",
+              "sampling_rule": "迁移与服务健康后重新打开抽屉采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "当前工作流项目字段成对维护",
+              "evidence": "WorkflowBusinessContext 与现有实例/事件表字段结构",
+              "falsifier": "迁移前 SQL 发现单边非空记录"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入 planning"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入 planning"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入 planning"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入 planning"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1后端迁移链路与T2前端展示任务边界、依赖、检查和回退已定义",
+        "recorded_at": "2026-09-01T02:27:31+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "通知发布、存储、查询和工作流桥接完整传递项目上下文，并由 V124 迁移兼容存量数据。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "通知由 platform/system 统一持久化",
+                "工作流实例与生命周期事件已有项目上下文",
+                "现有架构通知发布方使用 13 参数构造器"
+              ],
+              "write_scope": [
+                "NotificationPublishCommand.java",
+                "SystemNotificationItem.java",
+                "SystemNotificationService.java",
+                "SystemNotificationServiceTest.java",
+                "WorkflowSystemNotificationBridge.java",
+                "WorkflowSystemNotificationBridgeTest.java",
+                "V133__add_notification_project_context.sql",
+                "system-notification-contract.md"
+              ],
+              "invariants": [
+                "旧发布调用源码兼容",
+                "幂等键、接收人和租户隔离不变",
+                "历史回填不使用文本推断"
+              ],
+              "interface_contracts": [
+                "projectRef/projectName both present or both null",
+                "重复事件保留首次项目快照"
+              ],
+              "non_goals": [
+                "修改工作流上下文生产逻辑",
+                "修改架构业务通知归属"
+              ],
+              "action_bounds": [
+                "仅追加项目快照字段和精确数据传递",
+                "迁移只新增可空列并更新可可靠关联记录"
+              ],
+              "acceptance_checks": [
+                "ccb-system 与 ccb-boot 聚焦测试通过",
+                "旧构造器调用编译通过",
+                "本地 Flyway V124 执行及回填检查通过"
+              ],
+              "evidence_required": [
+                "实际差异",
+                "测试退出码",
+                "Flyway 版本与 SQL 结果"
+              ],
+              "rollback": "回退 T1 Java、测试、契约；已应用的可空数据库列保留",
+              "stop_conditions": [
+                "发现工作流项目字段不是可靠归属",
+                "发现 V124 版本已被其他迁移占用"
+              ],
+              "escalation_conditions": [
+                "需要改变通知幂等规则",
+                "需要修改 workflow 公共上下文契约"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "通知抽屉在桌面和移动端清晰展示项目或平台全局归属。",
+              "requirement_ids": [
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "通知项已有板块/来源、标题和正文层级",
+                "前端公共类型由 SystemNotification 映射接口字段"
+              ],
+              "write_scope": [
+                "web/src/types/notification.ts",
+                "web/src/components/ui/UiNotificationCenter.vue",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "点击、已读、归档和路由行为不变",
+                "不新增项目筛选",
+                "使用语义主题变量"
+              ],
+              "interface_contracts": [
+                "有 projectName 显示所属项目，否则显示平台全局"
+              ],
+              "non_goals": [
+                "通知卡片重构",
+                "改变轮询和筛选逻辑"
+              ],
+              "action_bounds": [
+                "只增加一行紧凑归属信息和必要响应式样式"
+              ],
+              "acceptance_checks": [
+                "前端生产构建通过",
+                "桌面和 390x844 显示正确文案",
+                "无页面级横向溢出和控制台错误"
+              ],
+              "evidence_required": [
+                "实际差异",
+                "构建退出码",
+                "浏览器 DOM/截图/宽度检查"
+              ],
+              "rollback": "回退 T2 类型、模板与样式",
+              "stop_conditions": [
+                "接口无法保证项目字段成对",
+                "新增行导致通知操作不可达"
+              ],
+              "escalation_conditions": [
+                "需要改变通知筛选或当前项目行为"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "前端展示依赖稳定响应字段"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "通知契约、桥接和迁移一致性检查"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "运行服务并验证真实通知抽屉"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 后端采样",
+              "trigger": "T1 执行报告完成",
+              "observer": "独立测试与数据库检查",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "T2 前端采样",
+              "trigger": "T2 执行报告完成",
+              "observer": "生产构建与真实浏览器",
+              "sensors": [
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R4"
+              ]
+            },
+            {
+              "label": "最终回归",
+              "trigger": "全部任务已验证",
+              "observer": "主控制器",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "21 focused tests, Flyway 124, schema and 34/34 workflow backfill verified",
+        "recorded_at": "2026-09-01T03:02:14+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/system",
+              "purpose": "通知发布、持久化和查询增加成对项目快照"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/integration/WorkflowSystemNotificationBridge.java",
+              "purpose": "工作流待办和结果通知传递项目上下文"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V133__add_notification_project_context.sql",
+              "purpose": "新增项目快照列并可靠回填存量工作流通知"
+            },
+            {
+              "path_or_resource": "docs/integration/system-notification-contract.md",
+              "purpose": "记录项目快照、兼容性和全局通知中心契约"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-system,:ccb-boot -am -Dtest=SystemNotificationServiceTest,WorkflowSystemNotificationBridgeTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "SystemNotificationServiceTest 18/18、WorkflowSystemNotificationBridgeTest 3/3 通过，反应堆 BUILD SUCCESS"
+            },
+            {
+              "command": "启动 ccb-boot local profile",
+              "exit_code": 0,
+              "salient_output": "Flyway 从 123 升级到 124，Tomcat 8080 启动成功"
+            },
+            {
+              "command": "查询 Flyway、sys_notification 列和回填数量",
+              "exit_code": 0,
+              "salient_output": "V124 success=1；project_ref varchar(64)、project_name varchar(128) 均可空；34 条工作流通知全部具有项目快照"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "通知服务和工作流桥接聚焦测试",
+              "result": "pass",
+              "evidence": "21 个测试通过且退出码 0",
+              "limitations": [
+                "未以本次需求归因全仓既有架构数据库夹具失败"
+              ]
+            },
+            {
+              "check": "MySQL 迁移和历史回填",
+              "result": "pass",
+              "evidence": "实际开发库 Flyway=124，工作流通知项目上下文 34/34",
+              "limitations": [
+                "无法可靠关联的非工作流消息按规则保持平台全局"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "发布命令保留旧 13 参数构造器并增加可空项目字段",
+            "服务端校验项目字段成对和长度并映射查询响应",
+            "工作流桥接传递实例与生命周期事件项目快照",
+            "V124 通过稳定事件 ID 回填历史工作流通知"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "旧发布调用源码兼容",
+              "result": "pass",
+              "evidence": "反应堆编译及聚焦测试通过"
+            },
+            {
+              "invariant": "幂等、接收人和租户隔离不变",
+              "result": "pass",
+              "evidence": "仅扩展首次通知快照列和结果映射，现有幂等测试通过"
+            },
+            {
+              "invariant": "历史回填不使用文本推断",
+              "result": "pass",
+              "evidence": "V124 仅使用 workflow-task/workflow-lifecycle 稳定事件标识关联"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "工作区存在其他需求的未提交改动",
+              "impact": "全仓差异不能整体归因于 REQ-059，验收使用限定文件与聚焦测试"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "frontend build and desktop/mobile browser checks passed",
+        "recorded_at": "2026-09-01T03:02:14+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/types/notification.ts",
+              "purpose": "前端通知类型接收项目快照"
+            },
+            {
+              "path_or_resource": "web/src/components/ui/UiNotificationCenter.vue",
+              "purpose": "在来源和标题之间展示项目或平台全局归属"
+            },
+            {
+              "path_or_resource": "web/src/styles.css",
+              "purpose": "增加紧凑且可换行的归属行样式"
+            }
+          ],
+          "requirements_addressed": [
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 生产构建完成，2515 modules transformed"
+            },
+            {
+              "command": "桌面与 390x844 浏览器检查",
+              "exit_code": 0,
+              "salient_output": "项目归属 9 条、平台全局 2 条；页面、抽屉和子元素均无横向溢出，控制台无错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "生产构建",
+              "result": "pass",
+              "evidence": "构建退出码 0",
+              "limitations": [
+                "保留现有大包体积警告，本次未新增依赖"
+              ]
+            },
+            {
+              "check": "真实通知抽屉",
+              "result": "pass",
+              "evidence": "桌面截图可读；390x844 bodyOverflow=false、drawerOverflow=false、childOverflow=false",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "项目通知显示所属项目：项目名称",
+            "无项目上下文消息显示所属范围：平台全局",
+            "长项目名称允许在通知正文宽度内换行"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "通知中心仍为全局视图且不增加项目筛选",
+              "result": "pass",
+              "evidence": "现有全部/未读/归档和业务板块筛选逻辑未改变"
+            },
+            {
+              "invariant": "点击、已读、归档和路由行为不变",
+              "result": "pass",
+              "evidence": "模板只增加展示行，事件处理函数无改动"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "service tests, bridge tests and MySQL runtime checks found no deviation",
+        "recorded_at": "2026-09-01T03:02:38+00:00",
+        "data": {
+          "sample_label": "T1 后端与数据库独立采样",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 SystemNotificationServiceTest",
+              "result": "pass",
+              "raw_evidence": "18 个测试全部通过，覆盖成对校验、长度、持久化、响应映射和旧构造器兼容",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 WorkflowSystemNotificationBridgeTest",
+              "result": "pass",
+              "raw_evidence": "3 个测试全部通过，待办和结果通知均断言项目上下文",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 MySQL 运行查询",
+              "result": "pass",
+              "raw_evidence": "Flyway V124 success=1；字段类型与可空性正确；工作流通知项目回填 34/34",
+              "limitation": [
+                "非工作流且无可靠关系的 3 条消息保持平台全局"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "production build and desktop/mobile browser checks found no deviation",
+        "recorded_at": "2026-09-01T03:02:39+00:00",
+        "data": {
+          "sample_label": "T2 前端构建与浏览器独立采样",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R4",
+              "sensor": "S4 真实浏览器 DOM 与宽度探针",
+              "result": "pass",
+              "raw_evidence": "桌面通知抽屉显示项目与平台全局归属；390x844 下 body、drawer、child overflow 均为 false；控制台错误为空",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S5 TypeScript 与 Vite 生产构建",
+              "result": "pass",
+              "raw_evidence": "vue-tsc 和 Vite 构建退出码 0",
+              "limitation": [
+                "现有主包体积警告不影响本需求行为"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "R1-R4 final evidence, task verification, regression and invariant audit completed",
+        "recorded_at": "2026-09-01T03:02:58+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "SystemNotificationServiceTest 18/18",
+                "MySQL 项目字段成对持久化与查询映射已验证"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "WorkflowSystemNotificationBridgeTest 3/3",
+                "反应堆编译验证旧 13 参数调用兼容"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "Flyway V124 success=1",
+                "34/34 条工作流通知具有项目快照，3 条无可靠项目关系消息保持平台全局"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "生产构建通过",
+                "桌面与 390x844 精确文案、宽度和控制台检查通过"
+              ],
+              "limitations": []
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "21 个聚焦测试、Flyway 和数据回填检查通过"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "前端构建和真实浏览器响应式检查通过"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "backend-contract",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "database-runtime",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "frontend-runtime",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "通知服务与工作流桥接聚焦测试",
+              "result": "pass",
+              "evidence": "21 个测试，退出码 0"
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "退出码 0"
+            },
+            {
+              "check": "服务与数据库运行检查",
+              "result": "pass",
+              "evidence": "健康状态 UP、Flyway 124、历史回填完整"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "通知中心保持租户用户维度全局视图",
+              "result": "pass",
+              "evidence": "查询、角标和筛选逻辑未增加当前项目条件"
+            },
+            {
+              "invariant": "旧发布入口兼容且幂等行为不变",
+              "result": "pass",
+              "evidence": "反应堆编译和兼容测试通过"
+            },
+            {
+              "invariant": "Flyway 只追加且历史关联可靠",
+              "result": "pass",
+              "evidence": "V124 只增可空列并使用稳定事件 ID"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "本地服务重启及迁移执行",
+              "result": "pass",
+              "evidence": "重启后健康状态 UP，迁移后通知接口与页面正常"
+            },
+            {
+              "disturbance": "工作区存在其他需求改动",
+              "result": "pass",
+              "evidence": "本次修改和验证限定在 REQ-059 文件与接口链路"
+            }
+          ],
+          "residual_risks": [
+            "全仓 MySQL 回归仍有既存 default_network_zone_id 缺列导致的架构测试失败；与通知项目上下文无调用或数据依赖，本次未越界修改。",
+            "未来非工作流项目通知需要各业务发布方显式传入项目快照，否则按契约展示为平台全局。"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R4 均有任务、实际修改、异质传感器和最终证据，三次采样无 P0/P1，范围与不变量通过。"
+        }
+      }
+    ]
+  },
+  "objective": "全局通知中心中的每条消息明确显示其项目归属或平台全局范围。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "系统必须在通知发布、持久化和查询链路中保留成对的项目标识与项目名称快照。",
+      "acceptance": [
+        "项目通知查询结果返回 projectRef 与 projectName",
+        "平台消息的两个字段均为空",
+        "仅提供一个字段时发布失败且不写库"
+      ],
+      "priority": "must",
+      "source": "用户确认与 REQ-20260901-059",
+      "counterexample": [
+        "只保存项目名称",
+        "根据标题或路由推断项目"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "工作流待办和审批结果通知必须携带工作流已有的项目上下文。",
+      "acceptance": [
+        "待办通知读取 wf_instance 项目快照",
+        "结果通知读取生命周期事件上下文",
+        "原 13 参数通知发布方保持可编译"
+      ],
+      "priority": "must",
+      "source": "用户确认与现有 WorkflowBusinessContext 契约",
+      "counterexample": [
+        "只有待办或只有结果通知携带项目",
+        "强制所有平台通知提供项目"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "存量工作流通知必须在能够通过稳定事件标识可靠关联时回填项目上下文。",
+      "acceptance": [
+        "V124 在 MySQL 成功执行",
+        "待办与生命周期通知按精确事件 ID 回填",
+        "无法可靠关联的记录保持空值"
+      ],
+      "priority": "must",
+      "source": "用户要求已有全局通知展示项目归属",
+      "counterexample": [
+        "按标题模糊匹配",
+        "给未知消息填充当前项目"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "通知抽屉必须在每条消息中清晰展示所属项目或平台全局范围，并适配桌面与移动端。",
+      "acceptance": [
+        "项目消息显示所属项目和项目名",
+        "平台消息显示所属范围和平台全局",
+        "390x844 与桌面无遮挡和页面级横向溢出"
+      ],
+      "priority": "must",
+      "source": "用户确认的直接优化位置",
+      "counterexample": [
+        "只在详情页展示",
+        "用当前顶部项目替代消息项目"
+      ]
+    }
+  ],
+  "invariants": [
+    "通知列表、未读数和归档继续按租户与接收用户全局统计",
+    "不改变接收人、权限、已读、归档和幂等规则",
+    "不覆盖工作区既有未提交改动",
+    "Flyway 迁移只追加"
+  ],
+  "constraints": [
+    "Java 17",
+    "MySQL 8.4",
+    "Vue 3 与 TypeScript",
+    "旧 13 参数 NotificationPublishCommand 调用源码兼容"
+  ],
+  "non_goals": [
+    "项目筛选",
+    "按当前项目改变角标",
+    "项目授权变更",
+    "推断无可靠关系的历史消息项目"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"既有业务通知发布方\", \"wf_instance\", \"wf_lifecycle_event\", \"MySQL 8.4\", \"认证用户浏览器\"], \"inside\": [\"NotificationPublishCommand\", \"SystemNotificationService\", \"sys_notification\", \"WorkflowSystemNotificationBridge\", \"通知查询响应\", \"UiNotificationCenter\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"真实 MySQL 方言\"], \"id\": \"S1\", \"independence\": \"Mock JDBC 参数与响应映射断言\", \"method\": \"ccb-system 单元测试\", \"target\": \"R1 通知契约和持久化查询\"}",
+      "{\"blind_spots\": [\"定时调度时间\"], \"id\": \"S2\", \"independence\": \"记录实际发布命令\", \"method\": \"ccb-boot 单元测试\", \"target\": \"R2 工作流桥接\"}",
+      "{\"blind_spots\": [\"外部生产数据分布\"], \"id\": \"S3\", \"independence\": \"真实数据库观测\", \"method\": \"本地 MySQL Flyway 执行与信息架构/数据查询\", \"target\": \"R3 迁移\"}",
+      "{\"blind_spots\": [\"未抽样的设备字体差异\"], \"id\": \"S4\", \"independence\": \"真实渲染输出\", \"method\": \"桌面与 390x844 浏览器 DOM、截图、宽度和控制台检查\", \"target\": \"R4 用户可见布局\"}",
+      "{\"blind_spots\": [\"未执行的全仓测试\"], \"id\": \"S5\", \"independence\": \"编译器与测试运行器\", \"method\": \"Maven 聚焦测试与前端生产构建\", \"target\": \"共享契约回归\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"追加兼容字段、成对校验、SQL 持久化和响应映射\", \"authority\": \"REQ-059 writable_paths\", \"id\": \"A1\", \"impact_radius\": \"platform/system 公共通知能力\", \"rollback\": \"回退 Java 与测试，保留可空数据库列\", \"target\": \"系统通知契约与服务\"}",
+      "{\"action\": \"从既有上下文传递项目快照\", \"authority\": \"REQ-059 writable_paths\", \"id\": \"A2\", \"impact_radius\": \"工作流站内通知\", \"rollback\": \"回退桥接改动\", \"target\": \"工作流通知组合根\"}",
+      "{\"action\": \"追加 V124 可空列和精确回填\", \"authority\": \"REQ-059 migration scope\", \"id\": \"A3\", \"impact_radius\": \"本地/部署数据库通知表\", \"rollback\": \"应用兼容性回退，物理列保留\", \"target\": \"sys_notification 模式与存量数据\"}",
+      "{\"action\": \"增加紧凑归属行和响应式样式\", \"authority\": \"REQ-059 writable_paths\", \"id\": \"A4\", \"impact_radius\": \"公共通知抽屉\", \"rollback\": \"回退 Vue、类型和样式\", \"target\": \"通知抽屉展示\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"全仓 diff 与测试可能包含其他需求变化\", \"source\": \"工作区已有未提交修改\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"迁移与浏览器验收不可用\", \"source\": \"本地 MySQL 或服务未运行\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"保持平台全局展示\", \"source\": \"存量非工作流通知缺少可靠项目关系\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"WorkflowBusinessContext 与现有实例/事件表字段结构\", \"falsifier\": \"迁移前 SQL 发现单边非空记录\", \"text\": \"当前工作流项目字段成对维护\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S5\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "通知发布、存储、查询和工作流桥接完整传递项目上下文，并由 V124 迁移兼容存量数据。",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "通知由 platform/system 统一持久化",
+        "工作流实例与生命周期事件已有项目上下文",
+        "现有架构通知发布方使用 13 参数构造器"
+      ],
+      "write_scope": [
+        "NotificationPublishCommand.java",
+        "SystemNotificationItem.java",
+        "SystemNotificationService.java",
+        "SystemNotificationServiceTest.java",
+        "WorkflowSystemNotificationBridge.java",
+        "WorkflowSystemNotificationBridgeTest.java",
+        "V133__add_notification_project_context.sql",
+        "system-notification-contract.md"
+      ],
+      "invariants": [
+        "旧发布调用源码兼容",
+        "幂等键、接收人和租户隔离不变",
+        "历史回填不使用文本推断"
+      ],
+      "interface_contracts": [
+        "projectRef/projectName both present or both null",
+        "重复事件保留首次项目快照"
+      ],
+      "non_goals": [
+        "修改工作流上下文生产逻辑",
+        "修改架构业务通知归属"
+      ],
+      "action_bounds": [
+        "仅追加项目快照字段和精确数据传递",
+        "迁移只新增可空列并更新可可靠关联记录"
+      ],
+      "acceptance": [
+        "ccb-system 与 ccb-boot 聚焦测试通过",
+        "旧构造器调用编译通过",
+        "本地 Flyway V124 执行及回填检查通过"
+      ],
+      "evidence_required": [
+        "实际差异",
+        "测试退出码",
+        "Flyway 版本与 SQL 结果"
+      ],
+      "rollback": "回退 T1 Java、测试、契约；已应用的可空数据库列保留",
+      "stop_conditions": [
+        "发现工作流项目字段不是可靠归属",
+        "发现 V124 版本已被其他迁移占用"
+      ],
+      "escalation_conditions": [
+        "需要改变通知幂等规则",
+        "需要修改 workflow 公共上下文契约"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-01T03:02:14+00:00",
+          "text": "T1 implementation and local checks completed"
+        },
+        {
+          "recorded_at": "2026-09-01T03:02:38+00:00",
+          "text": "independent backend and database sensors ready"
+        },
+        {
+          "recorded_at": "2026-09-01T03:02:39+00:00",
+          "text": "R1-R3 independently observed with tests and database runtime evidence"
+        }
+      ],
+      "updated_at": "2026-09-01T03:02:39+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "通知抽屉在桌面和移动端清晰展示项目或平台全局归属。",
+      "requirements": [
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "通知项已有板块/来源、标题和正文层级",
+        "前端公共类型由 SystemNotification 映射接口字段"
+      ],
+      "write_scope": [
+        "web/src/types/notification.ts",
+        "web/src/components/ui/UiNotificationCenter.vue",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "点击、已读、归档和路由行为不变",
+        "不新增项目筛选",
+        "使用语义主题变量"
+      ],
+      "interface_contracts": [
+        "有 projectName 显示所属项目，否则显示平台全局"
+      ],
+      "non_goals": [
+        "通知卡片重构",
+        "改变轮询和筛选逻辑"
+      ],
+      "action_bounds": [
+        "只增加一行紧凑归属信息和必要响应式样式"
+      ],
+      "acceptance": [
+        "前端生产构建通过",
+        "桌面和 390x844 显示正确文案",
+        "无页面级横向溢出和控制台错误"
+      ],
+      "evidence_required": [
+        "实际差异",
+        "构建退出码",
+        "浏览器 DOM/截图/宽度检查"
+      ],
+      "rollback": "回退 T2 类型、模板与样式",
+      "stop_conditions": [
+        "接口无法保证项目字段成对",
+        "新增行导致通知操作不可达"
+      ],
+      "escalation_conditions": [
+        "需要改变通知筛选或当前项目行为"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-01T03:02:14+00:00",
+          "text": "T2 implementation and local checks completed"
+        },
+        {
+          "recorded_at": "2026-09-01T03:02:39+00:00",
+          "text": "independent build and browser sensors ready"
+        },
+        {
+          "recorded_at": "2026-09-01T03:02:39+00:00",
+          "text": "R4 independently observed with build and browser runtime evidence"
+        }
+      ],
+      "updated_at": "2026-09-01T03:02:39+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "backend-contract",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "SystemNotificationServiceTest 18/18 and WorkflowSystemNotificationBridgeTest 3/3 passed",
+      "recorded_at": "2026-09-01T03:02:38+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "database-runtime",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Flyway 124 success; project columns correct; workflow context backfill 34/34",
+      "recorded_at": "2026-09-01T03:02:39+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "frontend-runtime",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "production build passed; desktop and 390x844 exact text and overflow probes passed; console errors empty",
+      "recorded_at": "2026-09-01T03:02:39+00:00"
+    }
+  ]
+}

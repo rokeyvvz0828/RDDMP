@@ -1,0 +1,24 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "purpose": "限制管理范围、允许项目占位草稿保存并在发布时严格校验"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java", "purpose": "统一按当前项目同编码已发布定义优先选择，缺失时回退旧 PLATFORM"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java", "purpose": "定义列表默认项目范围并拒绝 PLATFORM 管理请求"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementTest.java", "purpose": "覆盖 PLATFORM 管理隐藏、项目占位和发布保护"},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java", "purpose": "覆盖编码和显式定义 ID 两类启动入口的项目优先规则"}
+  ],
+  "requirements_addressed": ["R1", "R4", "R5", "R6"],
+  "commands": [{"command": "mvn -pl :ccb-workflow -am test", "exit_code": 0, "salient_output": "ccb-workflow Tests run: 58, Failures: 0, Errors: 0, Skipped: 0; reactor BUILD SUCCESS"}],
+  "local_checks": [{"check": "工作流管理、权限与运行时回归", "result": "pass", "evidence": "WorkflowPlatformRetirementTest、WorkflowTemplateScopeTest、WorkflowProjectScopeTest、WorkflowBusinessIntegrationServiceTest 及完整工作流模块测试通过", "limitations": ["全仓后端测试存在 architecture 模块既有失败，由 observing 阶段区分记录"]}],
+  "diff_summary": ["PLATFORM 保留为运行兼容数据但从定义管理 API 隐藏", "项目占位草稿可创建和更新，发布前强制解析为当前项目成员或角色", "列表返回 requires_configuration 供前端表达待配置状态", "startByCode 和 startByDefinitionId 均执行项目优先并兼容回退"],
+  "invariants_checked": [
+    {"invariant": "TEMPLATE 不得发布或启动", "result": "pass", "evidence": "模板范围和运行时选择测试通过"},
+    {"invariant": "项目人员和角色由后端最终校验", "result": "pass", "evidence": "占位、无效成员/角色和有效配置发布测试通过"},
+    {"invariant": "运行中历史实例保持固定 definition/version 引用", "result": "pass", "evidence": "服务未改写实例选路；迁移快照和工作流回归通过"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["页面运行态行为由 T3 浏览器验收测量"],
+  "recommended_next": "observe"
+}

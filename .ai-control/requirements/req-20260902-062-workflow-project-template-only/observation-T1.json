@@ -1,0 +1,43 @@
+{
+  "sample_label": "T1 MySQL 8.4 迁移与数据不变量采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R2",
+      "sensor": "WorkflowPlatformRetirementMigrationMySqlTest 的模板基数与 JSON 脱敏断言",
+      "result": "pass",
+      "raw_evidence": "MySQL 8.4 Testcontainers 聚焦测试退出码 0；V136 后 11 个流程编码各有一条 TEMPLATE 草稿，审批节点只保留 TEMPLATE_PLACEHOLDER/STARTER，抄送节点不含具体 userIds。",
+      "limitation": ["隔离数据库验证，不代表已在生产数据库执行迁移"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "WorkflowPlatformRetirementMigrationMySqlTest 的 project_id 分布断言",
+      "result": "pass",
+      "raw_evidence": "项目 910000000003001 生成 11 条 PROJECT 草稿，测试中的其他项目生成数量为 0。",
+      "limitation": ["目标环境执行前仍需确认目标项目唯一且存量 PLATFORM 基数为批准的 11"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "迁移前后旧定义、版本和实例引用快照比较",
+      "result": "pass",
+      "raw_evidence": "V136 前后旧 PLATFORM 定义、版本及 wf_instance 的 definition_id/version_no/status 逐项一致；迁移没有写入 Flowable ACT_*。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "Flyway V135 到 V136 升级、重复 migrate 与 Git 差异检查",
+      "result": "pass",
+      "raw_evidence": "隔离 MySQL 从 V135 成功升级至 V136，第二次 migrate 无新增数据；git diff 显示只新增 V136，V134/V135 未修改，git diff --check 退出码 0。",
+      "limitation": ["仓库全局迁移命名脚本仍因既有 V84_1__seed_requirement_system_catalog.sql 命名返回失败，该文件不在本需求差异中"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "沙箱内 JVM 无权访问 Docker Unix socket；在已批准的沙箱外环境使用同一命令复跑后通过。",
+    "仓库级 Flyway 命名检查被既有 V84_1 文件阻塞，与新增 V136 无关。"
+  ],
+  "coverage_gaps": ["未连接生产数据库；部署前需执行迁移停止条件预检"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

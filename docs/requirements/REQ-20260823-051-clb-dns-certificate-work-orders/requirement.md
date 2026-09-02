@@ -63,8 +63,8 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
 ## 现状与规则
 
 - 当前入口：`business/architecture` 已实现逻辑/物理子系统主数据、变更工单（
-  `com.ccb.architecture.change`）、固定审批流程（V84 预置草稿，平台发布后启用）与
-  三级权限（V83 预置）。网络专项工单复用其工单+工作流模式，不重复建设流程状态机。
+  `com.ccb.architecture.change`）、固定审批流程（V95 预置草稿，平台发布后启用）与
+  三级权限（V94 预置）。网络专项工单复用其工单+工作流模式，不重复建设流程状态机。
 - 业务规则：
   - 状态机：`DRAFT → IN_REVIEW → COMPLETED/REJECTED`；`IN_REVIEW → RETURNED →
     IN_REVIEW`（新轮次）；`DRAFT/RETURNED → CANCELLED`（同步取消）；
@@ -84,7 +84,7 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
     （`architecture:network-work-order:view/apply/manage`）；新角色 113
     `NETWORK_MANAGER`（网络办理人员）拥有三者；本地管理员（用户 1）加入角色 113 并
     直接授权；存量角色兼容映射：持有 `architecture:view` 的存量角色获得 8081，
-    持有 `architecture:apply` 的存量角色获得 8082（与 V83 口径一致）。
+    持有 `architecture:apply` 的存量角色获得 8082（与 V94 口径一致）。
   - 查询列表/详情要求 `view/apply/manage` 任一且遵守数据范围；创建/编辑/提交/取消
     要求 `apply/manage` 且限本人；办理结果登记与审批动作要求 `manage`。
   - 服务端校验认证、RBAC、当前租户、实体存在性、状态机、行版本与附件授权；
@@ -151,19 +151,19 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
 - 必须执行的测试：
   - 领域测试：状态机（提交/退回/拒绝/完成/取消与轮次递增）、per-kind 校验与动作集、
     摘要计算、办理结果登记并发、附件扩展名黑名单。
-  - MySQL 集成测试（Testcontainers + 真实迁移）：V89 表结构与约束、V90 种子与身份
+  - MySQL 集成测试（Testcontainers + 真实迁移）：V100 表结构与约束、V101 种子与身份
     冲突失败关闭、租户隔离、行版本并发、回执幂等、工作流轮次持久化。
   - `mvn -pl :ccb-architecture -am test`、`mvn test`、`npm --prefix web run build`。
   - `node scripts/check-all-governance.mjs`、`check-module-boundaries.mjs`、
     `check-flyway-migrations.mjs`、`check-codex-scope.mjs`、`git diff --check`。
-- 上线验证：空库与既有库迁移至 V90；发布固定流程
+- 上线验证：空库与既有库迁移至 V101；发布固定流程
   （`POST /api/workflows/definitions/900000000000032/publish`）；以申请人创建三类工单
   并提交，以网络办理人员完成退回/批准/结果登记，核对状态、历史、附件与审计；普通
   查看角色验证 403；真实浏览器桌面/移动视口 UAT。
 - 回退或补偿：按前端、服务、迁移登记逆序回退应用代码；保留 V100-V101 与工单数据；
   通过后续补偿迁移隐藏入口和撤销授权，不执行生产逆向删除。
-- 风险与人工复核人：数据库迁移与权限变更需模块 Owner 复核；V100-V101 与在途
-  REQ-20260823-049 的 V96-V97 无编号冲突，但合并顺序需保证 049 先于本批次入库，
+- 风险与人工复核人：数据库迁移与权限变更需模块 Owner 复核；V100-V101 与
+  REQ-20260823-049 的 V96-V97 无编号冲突，且合并顺序需保证 049 先于本批次入库，
   否则 Flyway 会因 out-of-order 拒绝补位迁移；审批流程必须发布后才能提交工单。
 - 运行时验收发现平台存量缺陷（非本批次引入）：`V36__persistent_attachments.sql` 将
   `att_file.expires_at` 定义为 `TIMESTAMP`，而平台 `AttachmentService.bind` 写入
@@ -171,5 +171,5 @@ DNS 域名新增/变更/注销工单、SSL/外联证书申请/续期/吊销工�
   `STRICT_TRANS_TABLES`，任何环境执行附件绑定都会 Data truncation（500）。
   本批次只在隔离测试库将该列改为 `DATETIME` 完成验证；正式修复（改 V36 列类型或
   修正 bind SQL）需平台 Owner 另行立项。运行时验收证据：隔离 MySQL 8.4 空库迁移
-  V1-V90、真实 Flowable 审批、附件绑定/私钥拒绝、权限矩阵与审计，见
+  V1-V101、真实 Flowable 审批、附件绑定/私钥拒绝、权限矩阵与审计，见
   `.ai-control/requirements/req-20260823-051-clb-dns-certificate-work-orders/observation-T6.json`。

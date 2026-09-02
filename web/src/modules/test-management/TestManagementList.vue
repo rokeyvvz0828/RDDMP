@@ -11,7 +11,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { useRoute } from 'vue-router'
 import UiDataTable from '../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../components/ui/UiEmptyState.vue'
-import UiFormDrawer from '../../components/ui/UiFormDrawer.vue'
+import TestManagementFormDialog from './components/TestManagementFormDialog.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
 import { resolveTestManagementPage } from './catalog'
@@ -167,12 +167,12 @@ function clearSearch() {
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filtered.length" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" />
     </div>
 
-    <UiFormDrawer v-model="drawerOpen" :title="drawerTitle" width="min(520px, 92vw)" @submit="save">
+    <TestManagementFormDialog v-model="drawerOpen" :title="drawerTitle" width="min(520px, 92vw)" @submit="save">
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <el-form-item label="名称" prop="name"><el-input v-model="form.name" maxlength="100" show-word-limit placeholder="请输入名称" /></el-form-item>
         <el-form-item label="说明" prop="description"><el-input v-model="form.description" type="textarea" :rows="5" maxlength="500" show-word-limit placeholder="请输入说明（选填）" /></el-form-item>
       </el-form>
-    </UiFormDrawer>
+    </TestManagementFormDialog>
   </section>
 
   <el-result v-else icon="warning" title="页面配置不存在" sub-title="请从测试管理菜单重新进入。">

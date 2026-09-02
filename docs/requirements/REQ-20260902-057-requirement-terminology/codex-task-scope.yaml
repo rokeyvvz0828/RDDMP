@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260902-057",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260902-057-requirement-terminology/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "zbx",
+    "module": "business/requirement",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260816-001-requirement-management-platform",
+    "worktree": "/Users/zbx/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260902-057-requirement-terminology/**",
+      "docs/engineering-control/designs/2026-09-02-requirement-terminology-design.md",
+      "docs/engineering-control/plans/2026-09-02-requirement-terminology-implementation-plan.md",
+      "server/src/modules/requirement/src/main/java/com/ccb/requirement/support/RequirementEnums.java",
+      "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementImportService.java",
+      "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementImportServiceTest.java",
+      "web/src/views/RequirementsView.vue",
+      "mock/mock-data.json",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V145__requirement_terminology_rename.sql",
+      ".ai-control/requirements/req-20260902-057-requirement-terminology/*.json"
+    ],
+    "read_only_paths": [
+      "docs/original/**",
+      "docs/requirements/REQ-20260816-001-requirement-management-platform/**",
+      "docs/engineering-control/designs/2026-08-16-requirement-management-platform-design.md",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V67__requirement_management_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V71__requirement_demo_dataset.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V75__requirement_seed_dataset.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V84_1__seed_requirement_system_catalog.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V130__rebuild_requirement_demo_data.sql",
+      "server/src/modules/requirement/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/components/ui/**",
+      "docs/integration/**",
+      "design-h5.md"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "requirement module tests",
+      "npm --prefix web run build",
+      "governance module and dependency checks",
+      "codex scope check"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V145__requirement_terminology_rename.sql"
+    ],
+    "compatibility_and_rollback": "追加式迁移：UPDATE 存量 req_* 数据与列注释；不改历史脚本与列名。回退本需求提交即可，历史迁移不受影响。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only-with-desensitization"
+  },
+  "required_tests": [
+    {"name": "requirement-module-tests", "command": "mvn -pl :ccb-requirement -am test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260902-057-requirement-terminology/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"},
+    {"name": "terminology-scan", "command": "rg -n -S '蒙商|金科' 运行面文件（预期 0 命中）"}
+  ],
+  "risk": {
+    "level": "moderate",
+    "items": [
+      "追加式 Flyway 迁移更新存量数据与列注释",
+      "Excel 导入新旧表头兼容",
+      "前端/后端/演示数据文案一致性"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260902-057-requirement-terminology",
+    "control_justification": "涉及源码、数据库迁移与 mock 数据联动修改，按仓库规约使用 full 模式任务账本",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260902-057-requirement-terminology/execution-T1.json",
+      ".ai-control/requirements/req-20260902-057-requirement-terminology/observation-T1.json",
+      ".ai-control/requirements/req-20260902-057-requirement-terminology/convergence.json"
+    ],
+    "release_verification": [],
+    "rollback": "回退本需求提交；V145 为追加式迁移，可单独停用。"
+  }
+}

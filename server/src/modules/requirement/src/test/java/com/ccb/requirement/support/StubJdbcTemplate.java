@@ -3,6 +3,7 @@ package com.ccb.requirement.support;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -51,7 +52,7 @@ public final class StubJdbcTemplate extends JdbcTemplate {
 
     @Override
     public int update(String sql, Object... args) {
-        updates.add(sql);
+        updates.add(sql + " | args=" + Arrays.toString(args));
         return 1;
     }
 }

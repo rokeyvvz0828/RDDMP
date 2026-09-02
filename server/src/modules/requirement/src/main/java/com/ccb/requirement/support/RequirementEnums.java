@@ -12,20 +12,27 @@ public final class RequirementEnums {
     public static final List<String> DEV_STATUSES = List.of("未开始", "开发中", "已完成", "已上线");
     public static final List<String> TEST_STATUSES = List.of("未开始", "测试中", "已通过");
     public static final List<String> CATEGORIES = List.of("功能", "流程", "产品", "批处理", "报表", "岗位", "菜单", "核算", "其他");
-    public static final List<String> DIFFERENCE_TYPES = List.of("无差异", "金科有-蒙商无", "金科有-蒙商手工", "蒙商有-金科无", "双方作法有差异");
+    public static final List<String> DIFFERENCE_TYPES = List.of("无差异", "我方有-同业无", "我方有-同业手工", "同业有-我方无", "双方作法有差异");
     public static final List<String> ADAPT_MODES = List.of("按原型", "参数配置", "业务清理", "少量改造", "保留现状");
     public static final List<String> HANDLE_STATUSES = List.of("双方已确认", "待行方确认", "待架构确认", "跨组沟通", "待决策");
     public static final List<String> DECISION_LEVELS = List.of("版块内", "总体组", "领导小组");
     public static final List<String> YES_NO = List.of("是", "否");
     public static final List<String> SYSTEM_STATUSES = List.of("启用", "停用");
-    public static final List<String> STAGE_STATUSES = List.of("未开始", "审批中", "进行中", "已完成");
+    public static final List<String> STAGE_STATUSES = List.of("未开始", "进行中", "已完成");
     public static final List<String> REQUIREMENT_TYPES = List.of("监管", "业务", "技术");
     public static final List<String> REGULATION_CATEGORIES = List.of("国家级", "地方级", "处罚整改");
     public static final List<String> REQUIREMENT_STATUSES = List.of(
             "需求分析", "业需修订", "业需评审通过", "立项中", "软需编制", "软需评审通过", "已投产", "需求终止");
     public static final List<String> LAUNCH_MODES = List.of("常规版本", "紧急版本");
     public static final List<String> CHANGE_REVIEW_CONCLUSIONS = List.of("评审通过", "评审不通过");
-    public static final List<String> CHANGE_CONCLUSION_STATUSES = List.of("审核通过", "评估工作量", "蒙商立项完成");
+    public static final List<String> CHANGE_CONCLUSION_STATUSES = List.of("审核通过", "评估工作量", "同业立项完成");
+    public static final List<String> SYSTEM_ROLES = List.of("主责", "协同");
+    public static final List<String> FLOW_ACTIONS = List.of("SEND", "RETURN", "COMPLETE");
+    public static final List<String> REVIEW_CONCLUSIONS = List.of("通过", "退回");
+    public static final List<String> DELIVERABLE_TYPES = List.of("WORKLOAD", "SOFT");
+    public static final List<String> DELIVERABLE_REVIEW_STATUSES = List.of("待评审", "评审中", "已评审", "已退回");
+    public static final List<String> COORD_TYPES = List.of("改造", "测试");
+    public static final List<String> COORD_STATUSES = List.of("未开始", "进行中", "已完成");
     public static final List<String> LEGACY_STAGES = List.of("PROPOSE", "DOCKING", "WORKLOAD", "PROJECT", "SOFT", "LAUNCH");
     public static final Map<String, String> LEGACY_STAGE_LABELS = Map.of(
             "PROPOSE", "需求提出", "DOCKING", "需求对接", "WORKLOAD", "工作量评估",
@@ -71,25 +78,37 @@ public final class RequirementEnums {
     );
 
     /**
-     * 存量项目阶段 → 字段映射：每个阶段列出该阶段推进前必须校验的必填字段。
-     * key = 阶段编码，value = 字段名列表（校验时逐个检查非空）。
-     * 注：通用字段（需求状态/备注/变更信息）不纳入阶段校验，由表单自身维护。
+     * 存量需求核心标识字段：保存与阶段推进时的强校验字段。
+     * 需求编号、需求名称、业务组是列表检索、数据范围与跨阶段识别的标识，不允许为空。
      */
-    public static final Map<String, List<String>> LEGACY_STAGE_REQUIRED_FIELDS = Map.of(
+    public static final List<String> LEGACY_CORE_REQUIRED_FIELDS = List.of(
+            "requirement_no", "requirement_name");
+
+    /**
+     * 存量项目阶段 → 业务字段映射（与前端阶段表单一致）。
+     * 仅用于阶段推进时的缺失字段提醒：缺字段不拦截流转，由用户确认后继续。
+     * 核心标识字段由 LEGACY_CORE_REQUIRED_FIELDS 强校验，不在此提醒范围内。
+     */
+    public static final Map<String, List<String>> LEGACY_STAGE_FIELDS = Map.of(
             "PROPOSE", List.of(
                     "legacy_doc_name", "requirement_no", "requirement_name", "content_summary",
-                    "propose_dept", "proposer", "business_group"),
+                    "propose_dept", "proposer", "monshang_ba", "monshang_architect",
+                    "expected_launch_date", "regulator", "regulation_doc_no", "regulation_desc",
+                    "regulation_launch_date"),
             "DOCKING", List.of(
-                    "jinke_contact", "ba_review_date"),
+                    "requirement_received_date", "requirement_type", "regulation_category",
+                    "business_group", "sub_group", "jinke_contact", "need_jinke_arch_decision",
+                    "jinke_architect", "ba_review_date"),
             "WORKLOAD", List.of(
                     "workload_date"),
             "PROJECT", List.of(
-                    "finance_project_date", "soft_doc_name", "owner_conglomerate",
-                    "owner_system", "owner_contact"),
+                    "finance_project_date"),
             "SOFT", List.of(
+                    "soft_doc_name", "owner_conglomerate", "owner_system", "owner_contact",
+                    "involve_cooperation", "coord_conglomerate", "coord_system",
                     "soft_submit_date", "soft_review_date"),
             "LAUNCH", List.of(
-                    "planned_launch_date", "launch_mode")
+                    "planned_launch_date", "actual_launch_date", "launch_mode")
     );
 
     public static final Map<String, Object> OPTIONS = new LinkedHashMap<>();
@@ -117,6 +136,13 @@ public final class RequirementEnums {
         OPTIONS.put("launchModes", LAUNCH_MODES);
         OPTIONS.put("changeReviewConclusions", CHANGE_REVIEW_CONCLUSIONS);
         OPTIONS.put("changeConclusionStatuses", CHANGE_CONCLUSION_STATUSES);
+        OPTIONS.put("systemRoles", SYSTEM_ROLES);
+        OPTIONS.put("flowActions", FLOW_ACTIONS);
+        OPTIONS.put("reviewConclusions", REVIEW_CONCLUSIONS);
+        OPTIONS.put("deliverableTypes", DELIVERABLE_TYPES);
+        OPTIONS.put("deliverableReviewStatuses", DELIVERABLE_REVIEW_STATUSES);
+        OPTIONS.put("coordTypes", COORD_TYPES);
+        OPTIONS.put("coordStatuses", COORD_STATUSES);
     }
 
     public static final Map<String, String> FIELD_LABELS = fieldLabels();
@@ -136,17 +162,17 @@ public final class RequirementEnums {
         labels.put("business_conglomerate", "事业群");
         labels.put("business_section", "业务板块");
         labels.put("business_group", "业务组（原六小组）");
-        labels.put("requirement_no", "需求编号（来自蒙商维普系统）");
+        labels.put("requirement_no", "需求编号（来自同业维普系统）");
         labels.put("category", "分类");
         labels.put("name", "名称");
         labels.put("system_id", "涉及系统");
-        labels.put("jinke_practice", "金科做法");
+        labels.put("jinke_practice", "我方做法");
         labels.put("difference_type", "差异类型");
-        labels.put("monshang_practice", "蒙商作法");
+        labels.put("monshang_practice", "同业作法");
         labels.put("difference_desc", "差异描述");
-        labels.put("monshang_dept", "蒙商分析部门");
-        labels.put("monshang_analyst", "蒙商分析人");
-        labels.put("jinke_analyst", "金科分析人");
+        labels.put("monshang_dept", "同业分析部门");
+        labels.put("monshang_analyst", "同业分析人");
+        labels.put("jinke_analyst", "我方分析人");
         labels.put("adapt_mode", "适配方式");
         labels.put("handle_status", "处理状态");
         labels.put("coord_group", "协同组");
@@ -154,8 +180,8 @@ public final class RequirementEnums {
         labels.put("is_special", "是否专题");
         labels.put("decision_level", "上升决策层级");
         labels.put("decision_conclusion", "决策结论");
-        labels.put("monshang_confirm_dept", "蒙商确认部门");
-        labels.put("jinke_confirmer", "金科确认人");
+        labels.put("monshang_confirm_dept", "同业确认部门");
+        labels.put("jinke_confirmer", "我方确认人");
         labels.put("review_status", "差异状态");
         labels.put("review_comment", "评审意见");
         labels.put("dev_status", "开发状态");
@@ -166,8 +192,8 @@ public final class RequirementEnums {
         labels.put("content_summary", "需求内容简述");
         labels.put("propose_dept", "需求提出部门");
         labels.put("proposer", "需求提出人及电话");
-        labels.put("monshang_ba", "蒙商BA");
-        labels.put("monshang_architect", "蒙商架构");
+        labels.put("monshang_ba", "同业BA");
+        labels.put("monshang_architect", "同业架构");
         labels.put("expected_launch_date", "业务期望上线时间");
         labels.put("regulator", "外部监管单位（监管需求必填）");
         labels.put("regulation_doc_no", "监管文件名称+文号（监管需求必填）");
@@ -177,18 +203,18 @@ public final class RequirementEnums {
         labels.put("requirement_type", "需求类型（监管需求/业务需求/技术需求）");
         labels.put("regulation_category", "监管分类（监管需求必填：国家级监管/地方级监管/处罚整改）");
         labels.put("sub_group", "分组");
-        labels.put("jinke_contact", "金科对接人及电话（业务统筹组）");
-        labels.put("need_jinke_arch_decision", "是否需要金科架构决策");
-        labels.put("jinke_architect", "金科架构人员");
-        labels.put("unified_managed", "是否纳入蒙商统一管理");
+        labels.put("jinke_contact", "我方对接人及电话（业务统筹组）");
+        labels.put("need_jinke_arch_decision", "是否需要我方架构决策");
+        labels.put("jinke_architect", "我方架构人员");
+        labels.put("unified_managed", "是否纳入同业统一管理");
         labels.put("ba_review_date", "业需评审完成日");
         labels.put("workload_date", "工作量评估完成日");
         labels.put("finance_project_date", "财务立项完成日（任务书）");
         labels.put("soft_doc_name", "软需文档名称");
-        labels.put("owner_conglomerate", "主责事业群（金科事业群/蒙商保留）");
+        labels.put("owner_conglomerate", "主责事业群（我方事业群/同业保留）");
         labels.put("owner_system", "主责物理子系统编号+名称 示例：W05810+现金管理");
         labels.put("owner_contact", "主责项目组联系人及电话");
-        labels.put("involve_cooperation", "是否涉及金科引入组件协同（是/否）");
+        labels.put("involve_cooperation", "是否涉及我方引入组件协同（是/否）");
         labels.put("coord_conglomerate", "协同事业群 示例：1.XX事业群 2.XX事业群 3.保留项目组");
         labels.put("coord_system", "协同系统名称 示例：1.W0101Z+对公资金证明 2.XX编号+XX系统名称");
         labels.put("soft_submit_date", "软需提交日");
@@ -201,9 +227,13 @@ public final class RequirementEnums {
         labels.put("change_involved", "是否涉及需求变更(是/否)");
         labels.put("change_info", "需求变更信息（需求变更：至少包括1.谁发起变更;2.变更内容3.发起变更阶段）");
         labels.put("change_review_conclusion", "变更评审结论（评审通过/评审不通过）");
-        labels.put("change_conclusion_status", "变更结论及状态（审核通过/评估工作量/蒙商立项完成）");
+        labels.put("change_conclusion_status", "变更结论及状态（审核通过/评估工作量/同业立项完成）");
         labels.put("change_remark", "需求变更备注");
         labels.put("not_project_developed", "未立项已开发");
+        labels.put("version_no", "需求版本号");
+        labels.put("workload_change", "工作量需求变更记录");
+        labels.put("current_flow_user_name", "当前流转处理人");
+        labels.put("review_report_name", "评审报告信息文档");
         labels.put("current_stage", "当前阶段");
         labels.put("propose_stage_status", "需求提出阶段状态");
         labels.put("docking_stage_status", "需求对接阶段状态");

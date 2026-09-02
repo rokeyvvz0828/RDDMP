@@ -1,0 +1,85 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "test-management Spring controller/service/SQL boundary",
+      "V126 test-management-owned tables",
+      "test-management Vue routes, API module and scope/case pages",
+      "existing AttachmentGateway integration and its module-local access policies"
+    ],
+    "environment": [
+      "authenticated AuthUser and Spring authority evaluation",
+      "existing global project context store",
+      "MySQL/Flyway runtime",
+      "tm_test_participating_system and arch_physical_subsystem read models",
+      "platform attachment/file-preview service",
+      "future execution and defect modules"
+    ]
+  },
+  "state_variables": [
+    {"name":"scope_directory","owner":"tm_test_scope_directory","valid_values":["active","soft_deleted"]},
+    {"name":"scope","owner":"tm_test_scope","valid_values":["active","invalid","soft_deleted"]},
+    {"name":"case_directory","owner":"tm_test_case_directory","valid_values":["active","soft_deleted"]},
+    {"name":"test_case","owner":"tm_test_case","valid_values":["active","invalid","soft_deleted"]},
+    {"name":"case_attachment_binding","owner":"tm_test_case_attachment plus AttachmentGateway","valid_values":["bound","unbound","soft_deleted"]},
+    {"name":"case_serial","owner":"tm_test_case scope sequence","valid_values":["allocated","never_reused"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"SC1","input":"global project changes or a scope/case request","transitions":["frontend reads the existing project context","controller receives domain and projectId","service scopes every query by tenant/domain/project","service joins enabled tm_test_participating_system"],"outputs":["only current project/domain enabled-system tree and records are returned","cross-scope entity request is rejected"]},
+    {"requirement_id":"SC2","input":"directory/range/case CRUD, filter, import or export request","transitions":["controller validates protected route","service validates tree depth and parent scope","transaction writes owned table rows or validates full workbook before writes","page renders compact tree/list from paginated API data"],"outputs":["independent scope/case trees with bounded depth","validated CRUD, filtered export, and atomic import"]},
+    {"requirement_id":"SC3","input":"scope code or case scope changes, or a case is created/imported","transitions":["transaction locks/validates scope","service allocates non-reused serial or rewrites affected case code prefix","database unique index commits all related records together"],"outputs":["scope code is unique and each case code keeps its scope prefix plus stable serial"]},
+    {"requirement_id":"SC4","input":"case form, batch operation, rich-text content or attachment binding request","transitions":["service validates visible existing scope and normalizes rich text","service binds attachments through AttachmentGateway","attachment policy resolves only active tenant/domain case","batch preview computes impact before confirmed transactional update"],"outputs":["case details and attachment preview/download use platform contract","invalid/reference-safe behavior is reported by service"]},
+    {"requirement_id":"SC5","input":"any protected API request","transitions":["Spring PreAuthorize evaluates route action","service validates authenticated enabled user and scoped entity","write transaction emits test-management audit row"],"outputs":["unauthenticated/unauthorized access is refused and successful writes have audit evidence"]}
+  ],
+  "interfaces": [
+    {"name":"scope REST API","producers":["TestScopeController"],"consumers":["test-management scope Vue page"],"invariant":"domain and global projectId are required and every entity is tenant/domain/project scoped"},
+    {"name":"case REST API","producers":["TestCaseController"],"consumers":["test-management case Vue page"],"invariant":"case scope must be visible, active, and in the current domain/project"},
+    {"name":"participating-system lookup","producers":["tm_test_participating_system joined to arch_physical_subsystem"],"consumers":["scope/case services and pages"],"invariant":"only enabled non-deleted entries can own a scope or case"},
+    {"name":"attachment binding/access","producers":["AttachmentGateway and TestCaseAttachmentPolicy"],"consumers":["case service and common preview/download UI"],"invariant":"only an active case in the requester tenant/domain with cases authority can expose a file"},
+    {"name":"rich-text editor","producers":["@wangeditor/editor-for-vue"],"consumers":["case form drawer"],"invariant":"stored HTML is normalized before persistence and detail/edit use the same representation"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"SC1-SC5 compile-time contracts","method":"focused Maven test/compile for test-management module and TypeScript/Vite build","blind_spots":["does not prove runtime authorization or rendered mobile behavior"],"independence":"compiler/type checker evaluates code separately from browser/API probes"},
+    {"id":"S2","target":"SC1-SC5 persistence and API behavior","method":"local MySQL Flyway startup plus authenticated HTTP probes and direct read-only SQL assertions","blind_spots":["cannot fully prove visual density or all browser editor interactions"],"independence":"runtime server/database observes deployed route and migration behavior"},
+    {"id":"S3","target":"SC1, SC2 and SC4 visible interaction","method":"in-app browser desktop and required mobile viewport paths, including global-project switch, tree/list, drawer, editor and attachment controls","blind_spots":["depends on local runtime and user session"],"independence":"rendered DOM and user-visible state are independent of unit/compile checks"},
+    {"id":"S4","target":"SC3 atomicity and SC2 atomic import","method":"service-level transaction tests using an isolated database or mocks where available","blind_spots":["does not exercise production Flyway environment"],"independence":"asserts transition invariants directly rather than only presentation"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"schema and route permissions","action":"append V126 migration for scope/case tables, indexes, audit and scoped menu actions","authority":"authorized writable V126 migration","impact_radius":"new test-management tables and existing menu permissions only","rollback":"revert un-applied migration from this branch; applied local DB can be recreated as user authorized"},
+    {"id":"A2","target":"scope/case state transitions","action":"add module-local Java services/controllers/workbook services and focused tests","authority":"authorized test-management module writable paths","impact_radius":"new scope/case APIs only","rollback":"revert new module files and routes"},
+    {"id":"A3","target":"case attachment access","action":"add module-local AttachmentAccessPolicy and use existing AttachmentGateway","authority":"authorized test-management module writable paths","impact_radius":"new TEST_CASE attachment business type only","rollback":"remove policy/service use and unbind test attachment records"},
+    {"id":"A4","target":"scope/case user experience","action":"add Vue pages, API types and route components using existing global project context, UiDataTable and WangEditor","authority":"authorized test-management web paths and router/api files","impact_radius":"four test-domain scope/case routes","rollback":"revert only new module components/routes/API entries"}
+  ],
+  "measurements": [
+    {"requirement_id":"SC1","sensor_ids":["S2","S3"],"observable":"yes"},
+    {"requirement_id":"SC2","sensor_ids":["S1","S2","S3","S4"],"observable":"yes"},
+    {"requirement_id":"SC3","sensor_ids":["S2","S4"],"observable":"yes"},
+    {"requirement_id":"SC4","sensor_ids":["S2","S3","S4"],"observable":"yes"},
+    {"requirement_id":"SC5","sensor_ids":["S1","S2"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"existing uncommitted worktree changes","effect":"broad build/test output may include unrelated regressions","detectable":true,"controllable":false},
+    {"source":"local MinIO/kkFileView and browser login state","effect":"attachment visual test can fail although scope/case logic is correct","detectable":true,"controllable":"partial"},
+    {"source":"future execution/defect schema is absent","effect":"current status/reference behavior cannot derive actual execution results","detectable":true,"controllable":false},
+    {"source":"parallel local editing","effect":"route/API files may change while implementation is in progress","detectable":true,"controllable":"partial"}
+  ],
+  "delays": [
+    {"source":"Flyway and backend restart","consequence":"new API routes are unavailable until migration completes and the local server has reloaded","sampling_rule":"probe only after health endpoint and schema version confirm the new migration"},
+    {"source":"Vue hot reload/editor initialization","consequence":"drawer/editor DOM can temporarily show stale content","sampling_rule":"wait for route render and editor ready event before browser assertion"},
+    {"source":"attachment object storage/preview conversion","consequence":"preview may lag behind upload","sampling_rule":"verify bind/download first, then wait for common preview result"}
+  ],
+  "assumptions": [
+    {"text":"Existing scope/cases menu routes and authority parents from V80 remain active.","evidence":"V80 declares all four domain scope/cases routes and authorities; plan controller follows the same authority pattern.","falsifier":"local runtime menu/API authorization lacks the declared permissions"},
+    {"text":"Existing global project context is available to new pages without a second selector.","evidence":"user explicitly required reuse and existing plan/config pages already consume project context.","falsifier":"the page cannot obtain a selected project from the current store"},
+    {"text":"AttachmentGateway can bind a new TEST_CASE business type when a module-local access policy is registered.","evidence":"TestPlanService and TestPlanAttachmentPolicy demonstrate the same extension mechanism.","falsifier":"attachment registry rejects the policy or binding at local runtime"},
+    {"text":"No execution persistence is currently owned by this scope, so non-invalid scope/case state defaults to 未执行.","evidence":"approved design and V1.6 phase boundary exclude execution module.","falsifier":"current module inspection discovers a stable execution-reference table that this task is authorized to read"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"SC1","observable":"yes","controllable":"yes","action":"implement scoped backend query and consume only global project context"},
+    {"requirement_id":"SC2","observable":"yes","controllable":"yes","action":"implement separate trees, transactional services/workbooks and compact pages"},
+    {"requirement_id":"SC3","observable":"yes","controllable":"yes","action":"implement transactional numbering with unique constraints and direct invariant tests"},
+    {"requirement_id":"SC4","observable":"yes","controllable":"yes","action":"reuse WangEditor and AttachmentGateway with policy plus browser/runtime probes"},
+    {"requirement_id":"SC5","observable":"yes","controllable":"yes","action":"apply route actions, service entity checks and audit assertions"}
+  ],
+  "model_status": "ready"
+}

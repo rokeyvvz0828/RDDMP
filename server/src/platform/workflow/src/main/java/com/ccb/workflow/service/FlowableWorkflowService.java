@@ -6,6 +6,8 @@ import com.ccb.security.model.AuthUser;
 import com.ccb.workflow.model.WorkflowDefinitionModel;
 import com.ccb.workflow.model.WorkflowNodeModel;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
+import com.ccb.workflow.integration.WorkflowBusinessContext;
+import com.ccb.workflow.integration.WorkflowProjectAccessGateway;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.flowable.engine.RepositoryService;
@@ -43,6 +45,7 @@ public class FlowableWorkflowService {
     private WorkflowLifecycleEventService lifecycleEvents;
     private WorkflowSignatureService signatureService;
     private WorkflowTaskAssignmentPublisher taskAssignments;
+    private WorkflowProjectAccessGateway projectAccess;
 
     public FlowableWorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper,
                                    RepositoryService repositoryService, RuntimeService runtimeService,
@@ -75,20 +78,31 @@ public class FlowableWorkflowService {
         this.taskAssignments = taskAssignments;
     }
 
+    @Autowired(required = false)
+    void setProjectAccess(WorkflowProjectAccessGateway projectAccess) {
+        this.projectAccess = projectAccess;
+    }
+
     public boolean isEnterpriseDefinition(String definitionJson) {
         return modelAdapter.adapt(definitionJson).schemaVersion() == 2;
     }
 
     @Transactional
     public Map<String, Object> createDefinition(String code, String name, String definitionJson, AuthUser user) {
+        return createDefinition(code, name, definitionJson, "PLATFORM", null, user);
+    }
+
+    @Transactional
+    public Map<String, Object> createDefinition(String code, String name, String definitionJson, String scopeType,
+                                                Long projectId, AuthUser user) {
         WorkflowDefinitionModel model = modelValidator.requireValid(definitionJson);
         long id = nextId();
-        jdbc.update("INSERT INTO wf_definition (id, tenant_id, code, name, status, current_version, model_schema_version, deleted) VALUES (?, ?, ?, ?, 'DRAFT', 0, ?, 0)",
-                id, user.tenantId(), requireText(code, "流程编码"), requireText(name, "流程名称"), model.schemaVersion());
+        jdbc.update("INSERT INTO wf_definition (id, tenant_id, code, name, scope_type, project_id, status, current_version, model_schema_version, deleted) VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', 0, ?, 0)",
+                id, user.tenantId(), requireText(code, "流程编码"), requireText(name, "流程名称"), scopeType, projectId, model.schemaVersion());
         jdbc.update("INSERT INTO wf_version (id, tenant_id, definition_id, version_no, definition_json, model_schema_version, status) VALUES (?, ?, ?, 1, ?, ?, 'DRAFT')",
                 nextId(), user.tenantId(), id, definitionJson, model.schemaVersion());
         auditService.record(user, "DEFINITION_CREATED", id, 1, null, null, null, Map.of("code", code));
-        return jdbc.queryForMap("SELECT id, code, name, status, current_version, model_schema_version FROM wf_definition WHERE id = ? AND tenant_id = ?", id, user.tenantId());
+        return jdbc.queryForMap("SELECT id, code, name, scope_type, project_id, status, current_version, model_schema_version FROM wf_definition WHERE id = ? AND tenant_id = ?", id, user.tenantId());
     }
 
     @Transactional
@@ -146,6 +160,12 @@ public class FlowableWorkflowService {
     }
     @Transactional
     public Map<String, Object> start(long definitionId, String businessKey, Map<String, Object> inputVariables, AuthUser user) {
+        return start(definitionId, businessKey, inputVariables, null, null, user);
+    }
+
+    @Transactional
+    public Map<String, Object> start(long definitionId, String businessKey, Map<String, Object> inputVariables,
+                                     WorkflowBusinessContext context, Long projectId, AuthUser user) {
         Map<String, Object> definition = findPublishedDefinition(definitionId, user.tenantId());
         String json = String.valueOf(definition.get("definition_json"));
         WorkflowDefinitionValidator.WorkflowGraph graph = graph(json);
@@ -154,8 +174,14 @@ public class FlowableWorkflowService {
         org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefinition.getId(), requireText(businessKey, "业务单号"), prepared.values());
         long instanceId = nextId();
         String variablesJson = writeJson(prepared.values());
-        jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, flowable_process_instance_id, flowable_process_definition_id, variables_json) VALUES (?, ?, ?, ?, ?, 'RUNNING', ?, ?, ?, ?)",
-                instanceId, user.tenantId(), definitionId, definition.get("current_version"), businessKey, user.id(), processInstance.getProcessInstanceId(), processInstance.getProcessDefinitionId(), variablesJson);
+        jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, business_module_code, business_module_name, business_type, business_title, business_round, project_id, project_ref, project_name, action_path, data_digest, status, starter_id, flowable_process_instance_id, flowable_process_definition_id, variables_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RUNNING', ?, ?, ?, ?)",
+                instanceId, user.tenantId(), definitionId, definition.get("current_version"), requireText(businessKey, "业务单号"),
+                contextValue(context, WorkflowBusinessContext::moduleCode), contextValue(context, WorkflowBusinessContext::moduleName),
+                contextValue(context, WorkflowBusinessContext::businessType), contextValue(context, WorkflowBusinessContext::businessTitle),
+                context == null ? null : context.businessRound(), projectId, contextValue(context, WorkflowBusinessContext::projectRef),
+                contextValue(context, WorkflowBusinessContext::projectName), contextValue(context, WorkflowBusinessContext::actionPath),
+                contextValue(context, WorkflowBusinessContext::dataDigest), user.id(), processInstance.getProcessInstanceId(),
+                processInstance.getProcessDefinitionId(), variablesJson);
         syncTasks(instanceId, definitionId, ((Number) definition.get("current_version")).intValue(), processInstance.getProcessInstanceId(), user.tenantId(), user);
         auditService.record(user, "INSTANCE_STARTED", definitionId, ((Number) definition.get("current_version")).intValue(), instanceId, null, null,
                 Map.of("businessKey", businessKey, "flowableProcessInstanceId", processInstance.getProcessInstanceId()));
@@ -186,6 +212,7 @@ public class FlowableWorkflowService {
         if (flowableTask == null && !Set.of("ADD_SIGN", "CC").contains(normalized)) throw new BusinessException(ErrorCode.CONFLICT, "流程任务已结束或不存在");
 
         if ("CC".equals(normalized)) {
+            requireProjectTargets(instanceId, ccUserIds, user);
             createCcTasks(instanceId, user.tenantId(), ccUserIds, user.id(), comment);
             recordAction(appTask, normalized, user, null, comment, Map.of("userIds", ccUserIds == null ? List.of() : ccUserIds));
             auditService.record(user, "TASK_CC", definitionId(appTask), versionNo(appTask), instanceId, taskId, comment, Map.of());
@@ -193,6 +220,7 @@ public class FlowableWorkflowService {
         }
         if ("ADD_SIGN".equals(normalized)) {
             long target = requireTarget(targetUserId);
+            requireProjectTargets(instanceId, List.of(target), user);
             ensureActiveUser(target, user.tenantId());
             insertAddSignTask(appTask, target, user);
             recordAction(appTask, normalized, user, target, comment, Map.of("targetUserId", target));
@@ -201,6 +229,7 @@ public class FlowableWorkflowService {
         }
         if ("TRANSFER".equals(normalized) || "DELEGATE".equals(normalized)) {
             long target = requireTarget(targetUserId);
+            requireProjectTargets(instanceId, List.of(target), user);
             ensureActiveUser(target, user.tenantId());
             if ("TRANSFER".equals(normalized)) taskService.setAssignee(flowableTaskId, String.valueOf(target));
             else taskService.delegateTask(flowableTaskId, String.valueOf(target));
@@ -258,14 +287,16 @@ public class FlowableWorkflowService {
                 if (node == null) continue;
                 if ("CCB_CC".equals(task.getCategory()) || "CC".equals(node.type())) {
                     if (jdbc.queryForObject("SELECT COUNT(*) FROM wf_task WHERE tenant_id = ? AND flowable_task_id = ?", Integer.class, tenantId, task.getId()) == 0) {
-                        createCcTasks(instanceId, tenantId, ids(node.config().path("userIds")), operator == null ? 0 : operator.id(), "流程节点抄送");
+                        List<Long> recipients = ids(node.config().path("userIds"));
+                        if (operator != null) requireProjectTargets(instanceId, recipients, operator);
+                        createCcTasks(instanceId, tenantId, recipients, operator == null ? 0 : operator.id(), "流程节点抄送");
                         taskService.complete(task.getId());
                         progressed = true;
                     }
                     continue;
                 }
                 WorkflowNodeModel nodeModel = new WorkflowNodeModel(node.id(), node.type(), node.label(), null, node.config());
-                List<WorkflowAssigneeResolver.ResolvedAssignee> assignees = assigneesForTask(task, nodeModel, tenantId, graph, variables);
+                List<WorkflowAssigneeResolver.ResolvedAssignee> assignees = assigneesForTask(task, nodeModel, instanceId, tenantId, graph, variables, operator);
                 if (assignees.isEmpty()) continue;
                 for (WorkflowAssigneeResolver.ResolvedAssignee assignee : assignees) {
                     Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM wf_task WHERE tenant_id = ? AND flowable_task_id = ? AND assignee_id = ?", Integer.class, tenantId, task.getId(), assignee.id());
@@ -280,15 +311,19 @@ public class FlowableWorkflowService {
     }
 
     private List<WorkflowAssigneeResolver.ResolvedAssignee> assigneesForTask(Task task, WorkflowNodeModel node,
-                                                                              long tenantId, WorkflowDefinitionValidator.WorkflowGraph graph,
-                                                                              Map<String, Object> variables) {
+                                                                              long instanceId, long tenantId,
+                                                                              WorkflowDefinitionValidator.WorkflowGraph graph,
+                                                                              Map<String, Object> variables, AuthUser operator) {
         if (task.getAssignee() != null && !task.getAssignee().isBlank()) {
             try {
                 long id = Long.parseLong(task.getAssignee());
                 return jdbc.query("SELECT id, display_name FROM sys_user WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 1", (rs, row) -> List.of(new WorkflowAssigneeResolver.ResolvedAssignee(rs.getLong("id"), rs.getString("display_name"))), id, tenantId).stream().flatMap(List::stream).toList();
             } catch (NumberFormatException ignored) { return List.of(); }
         }
-        return assigneeResolver.resolveNode(node, tenantId, starterId(task.getProcessInstanceId(), tenantId), variables);
+        Long projectId = jdbc.query("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ?",
+                rs -> rs.next() && rs.getObject(1) != null ? ((Number) rs.getObject(1)).longValue() : null,
+                instanceId, tenantId);
+        return assigneeResolver.resolveNode(node, tenantId, starterId(task.getProcessInstanceId(), tenantId), projectId, operator, variables);
     }
 
     private long starterId(String processInstanceId, long tenantId) {
@@ -317,19 +352,21 @@ public class FlowableWorkflowService {
     }
 
     private Map<String, Object> findPendingTask(long taskId, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT t.id, t.instance_id, i.definition_id, i.version_no, t.flowable_task_id, t.task_key, t.assignee_id FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.id = ? AND t.tenant_id = ? AND t.assignee_id = ? AND t.flowable_task_id IS NOT NULL AND t.status = 'PENDING'", taskId, user.tenantId(), user.id());
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT t.id, t.instance_id, i.definition_id, i.version_no, i.project_id, t.flowable_task_id, t.task_key, t.assignee_id FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.id = ? AND t.tenant_id = ? AND t.assignee_id = ? AND t.flowable_task_id IS NOT NULL AND t.status = 'PENDING'", taskId, user.tenantId(), user.id());
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.FORBIDDEN, "当前用户没有该流程任务的审批权限");
+        Object projectId = rows.get(0).get("project_id");
+        if (projectId instanceof Number number) requireProjectAccess(number.longValue(), user);
         return rows.get(0);
     }
 
     private Map<String, Object> findDefinition(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, code, name, status, current_version, deployment_id FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId);
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, code, name, scope_type, project_id, status, current_version, deployment_id FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
         return rows.get(0);
     }
 
     private Map<String, Object> findPublishedDefinition(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.code, d.name, d.current_version, d.deployment_id, v.definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0 AND d.status = 'PUBLISHED' AND v.status = 'PUBLISHED'", id, tenantId);
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version, d.deployment_id, v.definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0 AND d.status = 'PUBLISHED' AND v.status = 'PUBLISHED'", id, tenantId);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程尚未发布或不存在");
         return rows.get(0);
     }
@@ -398,6 +435,21 @@ public class FlowableWorkflowService {
         return rows.get(0);
     }
     private void ensureInstance(long id, long tenantId) { if (jdbc.queryForObject("SELECT COUNT(*) FROM wf_instance WHERE id = ? AND tenant_id = ?", Integer.class, id, tenantId) == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在"); }
+    private void requireProjectTargets(long instanceId, List<Long> userIds, AuthUser actor) {
+        Long projectId = jdbc.query("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ?",
+                rs -> rs.next() && rs.getObject(1) != null ? ((Number) rs.getObject(1)).longValue() : null,
+                instanceId, actor.tenantId());
+        if (projectId == null) return;
+        requireProjectGateway().requireMembers(projectId, userIds == null ? List.of() : userIds, actor);
+    }
+    private void requireProjectAccess(long projectId, AuthUser actor) { requireProjectGateway().requireAccessible(projectId, actor); }
+    private WorkflowProjectAccessGateway requireProjectGateway() {
+        if (projectAccess == null) throw new BusinessException(ErrorCode.CONFLICT, "项目工作流能力尚未就绪");
+        return projectAccess;
+    }
+    private String contextValue(WorkflowBusinessContext context, java.util.function.Function<WorkflowBusinessContext, String> getter) {
+        return context == null ? null : getter.apply(context);
+    }
     private String writeJson(Object value) { try { return objectMapper.writeValueAsString(value); } catch (JsonProcessingException exception) { throw new BusinessException(ErrorCode.INTERNAL_ERROR, "流程数据序列化失败"); } }
     private String requireText(String value, String field) { if (value == null || value.isBlank()) throw new BusinessException(ErrorCode.BAD_REQUEST, field + "不能为空"); return value.trim(); }
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }

@@ -6,6 +6,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
+import com.ccb.workflow.integration.WorkflowProjectAccessGateway;
 import org.flowable.engine.RuntimeService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ public class WorkflowMonitorService {
     private final WorkflowNodeLabelResolver nodeLabelResolver;
     private WorkflowLifecycleEventService lifecycleEvents;
     private WorkflowSignatureService signatureService;
+    private WorkflowProjectAccessGateway projectAccess;
 
     public WorkflowMonitorService(JdbcTemplate jdbc, RuntimeService runtimeService, WorkflowAuditService auditService,
                                   WorkflowNodeLabelResolver nodeLabelResolver) {
@@ -43,12 +45,24 @@ public class WorkflowMonitorService {
         this.signatureService = signatureService;
     }
 
+    @Autowired(required = false)
+    void setProjectAccess(WorkflowProjectAccessGateway projectAccess) {
+        this.projectAccess = projectAccess;
+    }
+
     public PageResult<Map<String, Object>> instances(PageQuery pageQuery, String businessKey, String definitionKeyword,
                                                      String status, String starterKeyword, String createdFrom,
                                                      String createdTo, AuthUser user) {
+        return instances(pageQuery, businessKey, definitionKeyword, status, starterKeyword, createdFrom, createdTo, null, user);
+    }
+
+    public PageResult<Map<String, Object>> instances(PageQuery pageQuery, String businessKey, String definitionKeyword,
+                                                     String status, String starterKeyword, String createdFrom,
+                                                     String createdTo, String projectRef, AuthUser user) {
         StringBuilder where = new StringBuilder(" WHERE i.tenant_id = ? AND i.deleted = 0");
         List<Object> args = new java.util.ArrayList<>();
         args.add(user.tenantId());
+        appendProjectScope(where, args, projectRef, user);
         appendLike(where, args, "i.business_key", businessKey);
         if (hasText(definitionKeyword)) {
             where.append(" AND (d.name LIKE ? OR d.code LIKE ?)");
@@ -108,7 +122,7 @@ public class WorkflowMonitorService {
     }
 
     public Map<String, Object> detail(long instanceId, AuthUser user) {
-        ensureInstance(instanceId, user.tenantId());
+        requireInstance(instanceId, user, false);
         Map<String, Object> instance = jdbc.queryForMap("SELECT i.id, i.definition_id, d.name AS definition_name, d.code AS definition_code, i.version_no, i.business_key, i.business_type, i.business_title, i.business_round, i.project_ref, i.project_name, i.action_path, i.status, i.starter_id, u.display_name AS starter_name, i.created_at FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id WHERE i.id = ? AND i.tenant_id = ? AND i.deleted = 0", instanceId, user.tenantId());
         Map<String, Object> version = jdbc.queryForMap("SELECT CAST(v.definition_json AS CHAR) AS definition_json FROM wf_version v WHERE v.definition_id = ? AND v.version_no = ? AND v.tenant_id = ?", instance.get("definition_id"), instance.get("version_no"), user.tenantId());
         Map<String, Object> result = new LinkedHashMap<>();
@@ -121,17 +135,18 @@ public class WorkflowMonitorService {
     }
 
     public List<Map<String, Object>> timeline(long instanceId, AuthUser user) {
-        ensureInstance(instanceId, user.tenantId());
+        requireInstance(instanceId, user, false);
         return timelineInternal(instanceId, user.tenantId());
     }
 
     public List<Map<String, Object>> nodeStates(long instanceId, AuthUser user) {
-        ensureInstance(instanceId, user.tenantId());
+        requireInstance(instanceId, user, false);
         return nodeStatesInternal(instanceId, user.tenantId());
     }
 
     @Transactional
     public void delete(long instanceId, AuthUser operator) {
+        requireInstance(instanceId, operator, true);
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT status FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0", instanceId, operator.tenantId());
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
         String status = String.valueOf(rows.get(0).get("status"));
@@ -142,6 +157,7 @@ public class WorkflowMonitorService {
 
     @Transactional
     public void terminate(long instanceId, String reason, AuthUser operator) {
+        requireInstance(instanceId, operator, true);
         Map<String, Object> instance = jdbc.queryForMap("SELECT flowable_process_instance_id FROM wf_instance WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", instanceId, operator.tenantId());
         String processInstanceId = String.valueOf(instance.get("flowable_process_instance_id"));
         if (processInstanceId != null && !"null".equals(processInstanceId) && runtimeService.createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult() != null) {
@@ -153,9 +169,36 @@ public class WorkflowMonitorService {
         auditService.record(operator, "INSTANCE_TERMINATED", null, null, instanceId, null, reason, Map.of("administrator", operator.username()));
     }
 
-    private void ensureInstance(long instanceId, long tenantId) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0", Integer.class, instanceId, tenantId);
-        if (count == null || count == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
+    private void requireInstance(long instanceId, AuthUser user, boolean manage) {
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0", instanceId, user.tenantId());
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
+        Object value = rows.get(0).get("project_id");
+        if (value instanceof Number number) {
+            if (projectAccess == null) throw new BusinessException(ErrorCode.CONFLICT, "项目工作流能力尚未就绪");
+            if (manage) projectAccess.requireManageable(number.longValue(), user);
+            else projectAccess.requireAccessible(number.longValue(), user);
+        }
+    }
+
+    private void appendProjectScope(StringBuilder where, List<Object> args, String projectRef, AuthUser user) {
+        if (projectAccess == null) {
+            where.append(" AND i.project_id IS NULL");
+            return;
+        }
+        if (projectRef != null && !projectRef.isBlank()) {
+            WorkflowProjectAccessGateway.ProjectScope project = projectAccess.requireAccessible(projectRef, user);
+            where.append(" AND i.project_id = ?");
+            args.add(project.id());
+            return;
+        }
+        List<Long> projectIds = projectAccess.accessibleProjectIds(user);
+        if (projectIds.isEmpty()) {
+            where.append(" AND i.project_id IS NULL");
+            return;
+        }
+        where.append(" AND (i.project_id IS NULL OR i.project_id IN (")
+                .append(String.join(",", java.util.Collections.nCopies(projectIds.size(), "?"))).append("))");
+        args.addAll(projectIds);
     }
 
     private List<Map<String, Object>> nodeStatesInternal(long instanceId, long tenantId) {

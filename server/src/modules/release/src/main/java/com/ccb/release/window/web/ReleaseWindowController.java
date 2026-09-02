@@ -31,7 +31,7 @@ public class ReleaseWindowController {
     @PreAuthorize("hasAnyAuthority('release:window:view','release:application:view','release:application:create','release:baseline:view','release:analytics:view','system:admin')")
     public ApiResponse<PageResult<ReleaseWindowResponse>> list(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String projectId, @RequestParam(required = false) String keyword,
+            @RequestParam String projectId, @RequestParam(required = false) String keyword,
             @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.list(page, size, projectId, keyword, user), TraceId.getOrCreate());
     }

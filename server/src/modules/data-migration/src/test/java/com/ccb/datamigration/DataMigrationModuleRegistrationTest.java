@@ -83,7 +83,7 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void issueStorageIsIndependentAndGenericAssetTypesRejectIssue() throws Exception {
-        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V123__data_migration_issue_independent_storage.sql");
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V147__data_migration_issue_independent_storage.sql");
         String sql = Files.readString(migration);
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS dm_issue"));
         assertTrue(sql.contains("DELETE FROM dm_asset_relation"));
@@ -105,7 +105,7 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void issueGovernanceUsesAdditiveActiveCodeMigrationAndServerRbac() throws Exception {
-        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V124__data_migration_issue_active_code_uniqueness.sql"));
+        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V148__data_migration_issue_active_code_uniqueness.sql"));
         String service = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java"));
         String controller = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/IssueController.java"));
         assertTrue(migration.contains("active_issue_code"));
@@ -144,7 +144,7 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void v98RemovesCompatibilityColumnsAndClosesV96V97Gaps() throws Exception {
-        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V128__data_migration_remove_compatibility_columns.sql"));
+        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V152__data_migration_remove_compatibility_columns.sql"));
         assertTrue(migration.contains("DROP TABLE IF EXISTS dm_topic_type"));
         assertTrue(migration.contains("DROP COLUMN project_name"));
         assertTrue(migration.contains("DROP COLUMN attachment_id"));

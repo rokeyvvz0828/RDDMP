@@ -108,7 +108,7 @@
     "required": true,
     "issue": "REQ-20260823-051",
     "owner_approved": true,
-    "approval_evidence": "用户于 2026-08-23 直接下达“实施 11「CLB、DNS 与证书工单」”任务并确认模块落点 business/architecture；批准在 business/architecture 内新增网络专项工单能力、登记 platform/attachment 依赖（governance/modules.yaml 与 pom.xml）、追加 V100-V101 迁移与 808/8081-8083/113 菜单权限角色。platform/attachment 只通过既有公开 integration 契约消费，无平台行为变更。",
+    "approval_evidence": "用户于 2026-08-23 直接下达“实施 11「CLB、DNS 与证书工单」”任务并确认模块落点 business/architecture；批准在 business/architecture 内新增网络专项工单能力、登记 platform/attachment 依赖（governance/modules.yaml 与 pom.xml）、集成后追加 V100-V101 迁移与 808/8081-8083/113 菜单权限角色。platform/attachment 只通过既有公开 integration 契约消费，无平台行为变更。",
     "old_behavior_preserved": true,
     "regression_tests": [
       "既有逻辑/物理子系统与变更工单 API 契约不变，全部原测试继续通过",
@@ -124,7 +124,7 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V100__create_architecture_network_work_orders.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V101__seed_architecture_network_work_orders.sql"
     ],
-    "compatibility_and_rollback": "只追加 V100-V101。V100 建立 arch_network_work_order（kind 专属 JSON 载荷、附件 id 列表、办理结果、工作流上下文、行版本）、arch_network_work_order_history、arch_network_workflow_round 与 arch_network_workflow_receipt，全部 arch_ 前缀归属 architecture 模块。V90 追加菜单 808、权限 8081-8083、角色 113 NETWORK_MANAGER 及兼容映射，并预置草稿流程 architecture.network.work-order（定义 900000000000032、版本 900000000000033，审批节点 ROLE 113 ANY，动作 APPROVE/RETURN/REJECT），必须经平台既有发布入口生成 Flowable deployment 后才能提交。V101 对稳定 ID 身份冲突失败关闭。应用回退保留迁移、工单、历史、轮次与审计，使用后续补偿迁移关闭入口和撤销授权，不手工删除生产数据。注意：本批次 V100-V101 相对 dev-ivanh 既有 V93-V99 纯追加，无编号冲突。"
+    "compatibility_and_rollback": "只追加 V100-V101。V100 建立 arch_network_work_order（kind 专属 JSON 载荷、附件 id 列表、办理结果、工作流上下文、行版本）、arch_network_work_order_history、arch_network_workflow_round 与 arch_network_workflow_receipt，全部 arch_ 前缀归属 architecture 模块。V101 追加菜单 808、权限 8081-8083、角色 113 NETWORK_MANAGER 及兼容映射，并预置草稿流程 architecture.network.work-order（定义 900000000000032、版本 900000000000033，审批节点 ROLE 113 ANY，动作 APPROVE/RETURN/REJECT），必须经平台既有发布入口生成 Flowable deployment 后才能提交。V101 对稳定 ID 身份冲突失败关闭。应用回退保留迁移、工单、历史、轮次与审计，使用后续补偿迁移关闭入口和撤销授权，不手工删除生产数据。"
   },
   "external_access": {
     "changed": false,
@@ -198,7 +198,7 @@
   "risk": {
     "level": "high",
     "items": [
-      "V100-V101 相对 dev-ivanh 既有 V93-V99 纯追加，无重号；Flyway 追加性由 check-flyway 守护",
+      "V100-V101 相对集成后的 V93-V99 纯追加，无重号；Flyway 追加性由 check-flyway 守护",
       "固定流程必须经平台发布入口发布后才能提交工单，未发布时提交必须返回明确错误",
       "办理结果与附件授权必须服务端校验，前端显隐不能替代实体授权",
       "证书工单私钥文件黑名单必须服务端生效，避免私钥进入平台存储",
@@ -220,7 +220,7 @@
       ".ai-control/requirements/req-20260823-051-clb-dns-certificate-work-orders/convergence.json"
     ],
     "release_verification": [
-      "空库与 V88 增量库迁移到 V90",
+      "空库与 V99 增量库迁移到 V101",
       "三类工单创建/编辑/提交/退回重提/批准/拒绝/取消状态机与轮次递增",
       "办理结果登记、凭证附件与操作历史完整",
       "附件实体授权与证书私钥文件拒绝",

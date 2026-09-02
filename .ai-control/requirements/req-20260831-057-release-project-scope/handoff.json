@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-release-project-scope",
+  "handoff_status": "approved",
+  "created_at": "2026-08-31T18:23:52+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260831-057-release-project-scope",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-08-31-release-project-scope-design.md",
+    "objective": "配置管理六个菜单严格依据顶部当前项目展示和操作，并由服务端阻止跨项目读取与写入。",
+    "users": ["项目成员", "版本申请审核人", "超级管理员"],
+    "requirements": [
+      {"id": "R1", "statement": "六个配置管理菜单的列表请求必须使用顶部当前项目，缺少项目范围时服务端拒绝租户全量查询。", "acceptance": ["切换项目后仅展示新项目数据", "缺少项目编码返回 400", "旧响应不能覆盖新项目"], "priority": "must", "source": "用户项目维度要求", "counterexample": ["返回租户全量", "显示旧项目数据"]},
+      {"id": "R2", "statement": "服务端必须统一校验当前用户对目标项目的访问权限。", "acceptance": ["有效成员和超级管理员可访问未删除项目", "非成员或停用成员返回 403", "不存在或删除项目被拒绝"], "priority": "must", "source": "用户确认统一服务方案", "counterexample": ["仅前端校验"]},
+      {"id": "R3", "statement": "详情和写操作必须从服务端实体反查所属项目并拒绝跨项目参数伪造。", "acceptance": ["无权实体返回 403", "跨项目关联不产生写入"], "priority": "must", "source": "工程安全边界", "counterexample": ["信任请求体 projectId"]},
+      {"id": "R4", "statement": "版本申请直接链接对有权项目自动切换顶部项目，对无权项目拒绝访问。", "acceptance": ["有权时切换并加载", "无权时停止后续请求"], "priority": "must", "source": "用户明确确认", "counterexample": ["顶部项目与详情不一致"]},
+      {"id": "R5", "statement": "现有菜单 RBAC、审批流程、业务状态机和数据库模型必须保持兼容。", "acceptance": ["权限和状态回归通过", "无迁移"], "priority": "must", "source": "确认范围", "counterexample": ["顺带修改权限或流程"]}
+    ],
+    "invariants": ["身份来自 AuthUser", "实体项目来自服务端", "后端最终授权", "不覆盖未关联改动"],
+    "constraints": ["Java 17 与 Vue 3 现有模式", "公共能力回归", "无迁移", "桌面与 H5 验收"],
+    "non_goals": ["全局项目请求头", "项目化 URL", "其他业务模块", "权限种子调整"],
+    "selected_approach": {
+      "name": "显式项目参数与后端统一访问服务",
+      "reason": "兼容现有 API 并覆盖列表、实体和直接链接。",
+      "alternatives": [
+        {"name": "全局项目请求头", "rejected_because": "内部事件边界复杂且不能替代实体反查。"},
+        {"name": "项目化 URL", "rejected_because": "兼容成本超出范围。"}
+      ]
+    },
+    "architecture": {
+      "boundary": {"inside": ["platform/system 项目访问", "business/release", "release 前端"], "outside": ["工作流内部", "数据库", "其他业务模块"]},
+      "components": [
+      {"name": "ProjectAccessService", "responsibility": "公开项目访问契约", "depends_on": ["AuthUser"]},
+      {"name": "JdbcProjectAccessService", "responsibility": "internal 项目解析和成员访问校验实现", "depends_on": ["JdbcTemplate", "ProjectAccessService"]},
+        {"name": "Release services", "responsibility": "列表和实体项目门禁", "depends_on": ["ProjectAccessService", "stores"]},
+        {"name": "Release frontend", "responsibility": "当前项目传递、直接链接同步和竞态保护", "depends_on": ["project store", "release API"]}
+      ],
+      "interfaces": [
+        {"name": "requireAccessible", "producer": "platform/system", "consumers": ["business/release"], "contract": "输入 projectRef/AuthUser，返回规范项目或拒绝"},
+        {"name": "release projectRef", "producer": "release controllers", "consumers": ["release API"], "contract": "列表和统计项目编码必填"}
+      ],
+      "data_flows": [
+        {"input": "顶部 projectRef", "transitions": ["访问校验", "项目过滤查询"], "output": "当前项目数据"},
+        {"input": "实体 ID", "transitions": ["实体读取", "项目反查", "访问校验"], "output": "授权操作或拒绝"}
+      ]
+    },
+    "error_handling": [
+      {"condition": "缺少项目", "behavior": "400 并清空旧数据", "recovery": "选择项目重试"},
+      {"condition": "非成员", "behavior": "403 和无权提示", "recovery": "配置成员关系"},
+      {"condition": "旧响应晚到", "behavior": "丢弃响应", "recovery": "无需操作"}
+    ],
+    "quality_attributes": {
+      "security": ["租户、成员、实体归属校验"],
+      "performance": ["每请求至多一次项目访问查询"],
+      "compatibility": ["保留 RBAC、流程和数据模型"],
+      "operations": ["区分 400 与 403"]
+    },
+    "verification_strategy": [
+      {"requirement_ids": ["R1", "R4"], "signal": "切换和链接不串项目", "method": "构建与浏览器旅程"},
+      {"requirement_ids": ["R2", "R3", "R5"], "signal": "授权与回归测试通过", "method": "system/release 测试"}
+    ],
+    "assumptions": [{"text": "rel project_id 对应 pm_project.project_code", "basis": "现有写入和顶部 ref", "falsifier": "存量记录无法关联"}],
+    "unknowns": [],
+    "decisions": [
+      {"id": "D1", "decision": "显式项目参数和统一服务", "reason": "边界清楚", "source": "用户确认"},
+      {"id": "D2", "decision": "直接链接有权切换、无权拒绝", "reason": "上下文一致", "source": "用户确认"}
+    ],
+    "risks": [
+      {"risk": "存量项目编码异常", "impact": "历史数据被拒绝", "mitigation": "实施前验证并设置停止条件"},
+      {"risk": "异步串项目", "impact": "显示错误数据", "mitigation": "请求代次和项目比较"}
+    ],
+    "approval": {"status": "approved", "evidence": "用户于 2026-08-31 同意按推荐方案处理。", "confirmed_at": "2026-08-31T18:23:52+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-08-31-release-project-scope-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["无数据库迁移", "后端最终授权", "保留 RBAC 和审批状态机", "不覆盖未关联改动"],
+    "file_map": [
+      {"path": "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectAccessService.java", "status": "candidate-new", "responsibility": "统一项目访问公开契约" , "evidence": "已公开 capability 包"},
+      {"path": "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectAccessService.java", "status": "candidate-new", "responsibility": "统一项目访问 JDBC 实现" , "evidence": "capability package-info 要求实现位于 internal"},
+      {"path": "server/src/modules/release", "status": "existing", "responsibility": "配置管理后端", "evidence": "governance/modules.yaml business/release"},
+      {"path": "web/src/modules/release", "status": "existing", "responsibility": "配置管理前端", "evidence": "governance/modules.yaml business/release"}
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "建立统一项目访问公共能力",
+        "requirement_ids": ["R2", "R5"],
+        "prerequisites": [],
+        "input_facts": ["system capability 已是公开包", "release 尚未依赖 system"],
+        "files": {"create": ["server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectAccess.java", "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectAccessService.java", "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectAccessService.java", "server/src/platform/system/src/test/java/com/ccb/system/internal/capability/JdbcProjectAccessServiceTest.java"], "modify": ["governance/modules.yaml", "server/src/modules/release/pom.xml"], "test": ["server/src/platform/system/src/test/java/com/ccb/system/internal/capability/JdbcProjectAccessServiceTest.java"]},
+        "interfaces": {"consumes": ["AuthUser", "pm_project", "pm_project_member"], "produces": ["ProjectAccessService.requireAccessible"]},
+        "steps": [
+          {"id": "T1-S1", "action": "建立访问授权测试", "command": "mvn -pl :ccb-system -am -Dtest=JdbcProjectAccessServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "实现前失败，实现后通过", "evidence": "测试退出码和断言"},
+          {"id": "T1-S2", "action": "实现服务并声明依赖", "command": null, "expected": "成员/管理员通过且非成员拒绝", "evidence": "差异与测试"}
+        ],
+        "acceptance_checks": ["项目访问测试通过", "治理检查通过"],
+        "risks": ["公共依赖变化"],
+        "rollback": "同时回退服务、测试、治理和 POM。",
+        "stop_conditions": ["项目编码不唯一或状态语义不明确"],
+        "escalation_conditions": ["需要迁移或修改既有 ProjectService"]
+      },
+      {
+        "id": "T2",
+        "goal": "六域后端执行项目范围和实体授权",
+        "requirement_ids": ["R1", "R2", "R3", "R5"],
+        "prerequisites": ["T1"],
+        "input_facts": ["实体包含 projectId", "列表参数当前多为可选"],
+        "files": {"create": [], "modify": ["server/src/modules/release/src/main/java/com/ccb/release"], "test": ["server/src/modules/release/src/test/java/com/ccb/release"]},
+        "interfaces": {"consumes": ["requireAccessible", "release stores"], "produces": ["必填项目列表契约", "实体项目门禁"]},
+        "steps": [
+          {"id": "T2-S1", "action": "增加缺参和越权测试", "command": "mvn -pl :ccb-release -am test", "expected": "实现前失败，实现后退出码 0", "evidence": "失败和通过测试名"},
+          {"id": "T2-S2", "action": "逐域接入访问校验", "command": null, "expected": "所有用户入口校验项目", "evidence": "Service/Controller 差异"}
+        ],
+        "acceptance_checks": ["缺参 400", "非成员 403", "跨项目不写入", "release 回归通过"],
+        "risks": ["构造函数和内部事件回归"],
+        "rollback": "按域回退并保持公共依赖一致。",
+        "stop_conditions": ["实体无法反查项目", "批量操作跨项目且无法原子拒绝"],
+        "escalation_conditions": ["需要修改表结构、工作流或附件平台"]
+      },
+      {
+        "id": "T3",
+        "goal": "前端同步顶部项目并保护直接链接和异步响应",
+        "requirement_ids": ["R1", "R4", "R5"],
+        "prerequisites": ["T2"],
+        "input_facts": ["项目 Store 已维护可访问列表和 select", "详情 DTO 包含 projectId"],
+        "files": {"create": [], "modify": ["web/src/api/release.ts", "web/src/stores/project-context.ts", "web/src/modules/release"], "test": []},
+        "interfaces": {"consumes": ["后端项目契约", "projectStore.select"], "produces": ["必填 API 类型", "直接链接项目同步", "过期响应保护"]},
+        "steps": [
+          {"id": "T3-S1", "action": "收紧 API 并修复调用", "command": "npm --prefix web run build", "expected": "退出码 0", "evidence": "Vite 构建"},
+          {"id": "T3-S2", "action": "清理旧状态并同步直接链接", "command": null, "expected": "项目切换无旧数据且链接上下文一致", "evidence": "页面差异和浏览器结果"}
+        ],
+        "acceptance_checks": ["构建通过", "弹层关闭", "旧响应丢弃", "有权切换且无权拒绝"],
+        "risks": ["快速切换竞态"],
+        "rollback": "回退 API 类型和页面同步逻辑。",
+        "stop_conditions": ["必须新增未批准的预解析接口"],
+        "escalation_conditions": ["需要改全局路由或 HTTP 拦截器"]
+      },
+      {
+        "id": "T4",
+        "goal": "完成集成、越权和 H5 验收",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+        "prerequisites": ["T3"],
+        "input_facts": ["T1-T3 完成"],
+        "files": {"create": [".ai-control/requirements/req-20260831-057-release-project-scope/execution-T1.json", ".ai-control/requirements/req-20260831-057-release-project-scope/observation-T1.json"], "modify": [], "test": []},
+        "interfaces": {"consumes": ["完整前后端行为"], "produces": ["回归与浏览器证据"]},
+        "steps": [
+          {"id": "T4-S1", "action": "运行集成回归", "command": "mvn -pl :ccb-system,:ccb-release -am test && npm --prefix web run build && node scripts/check-all-governance.mjs && git diff --check", "expected": "全部退出码 0 或记录既有阻断", "evidence": "命令结果"},
+          {"id": "T4-S2", "action": "桌面和 390x844 浏览器验收", "command": null, "expected": "六菜单、直接链接和越权场景符合 R1-R5", "evidence": "浏览器观察"}
+        ],
+        "acceptance_checks": ["后端回归", "前端构建", "治理检查", "桌面/H5 旅程"],
+        "risks": ["测试数据不足"],
+        "rollback": "验收失败不发布，按所属任务回退。",
+        "stop_conditions": ["无可验证多项目数据或服务不可用"],
+        "escalation_conditions": ["发现存量跨项目脏数据或公共权限回归"]
+      }
+    ],
+    "dependency_edges": [
+      {"from": "T1", "to": "T2", "reason": "release 后端必须先获得可编译、已验证的项目访问公共接口。"},
+      {"from": "T2", "to": "T3", "reason": "前端必填参数和错误体验必须以收紧后的后端契约为准。"},
+      {"from": "T3", "to": "T4", "reason": "集成和 H5 验收必须在完整前后端行为稳定后执行。"}
+    ],
+    "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"]],
+    "integration_checks": [
+      {"after_tasks": ["T1", "T2"], "command": "mvn -pl :ccb-system,:ccb-release -am test", "expected": "退出码 0"},
+      {"after_tasks": ["T3", "T4"], "command": "npm --prefix web run build && node scripts/check-all-governance.mjs && git diff --check", "expected": "退出码 0"}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T2", "T3", "T4"]},
+      {"requirement_id": "R2", "task_ids": ["T1", "T2", "T4"]},
+      {"requirement_id": "R3", "task_ids": ["T2", "T4"]},
+      {"requirement_id": "R4", "task_ids": ["T3", "T4"]},
+      {"requirement_id": "R5", "task_ids": ["T1", "T2", "T3", "T4"]}
+    ],
+    "approval": {"status": "approved", "evidence": "用户于 2026-08-31 明确同意按推荐方案处理。", "confirmed_at": "2026-08-31T18:23:52+08:00"}
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["项目访问服务", "release 六域后端", "release API 与页面"],
+    "state_variable_candidates": ["current projectRef", "entity projectId", "request generation", "dialog state"],
+    "interface_candidates": ["requireAccessible", "release list projectRef", "projectStore.select"],
+    "sensor_candidates": ["JUnit", "Maven/Vite", "HTTP 400/403", "浏览器可见结果"],
+    "actuator_candidates": ["项目参数必填", "实体反查", "访问拒绝", "状态清理", "过期响应丢弃"],
+    "disturbance_candidates": ["脏项目编码", "慢响应", "快速切换", "已有未提交改动"],
+    "delay_candidates": ["并行接口返回", "项目列表初始化", "工作流刷新"],
+    "assumptions": [{"text": "rel project_id 对应 pm_project.project_code", "basis": "现有写入与顶部 ref", "falsifier": "存量记录无法关联"}]
+  }
+}

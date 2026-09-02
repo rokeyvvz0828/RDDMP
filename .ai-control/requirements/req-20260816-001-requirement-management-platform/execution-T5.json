@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260816-001-requirement-management-platform",
+  "task_id": "T5",
+  "status": "implemented-checks-passed",
+  "coverage": [
+    "需求管理系统清单（req_system）按用户提供的《系统清单》参考信息初始化（416 个系统）",
+    "软需阶段主责/协同系统改为系统清单数据源：先选事业群，再选系统",
+    "一个用户需求支持多个协同系统（多行录入，合并存入 coord_conglomerate/coord_system）",
+    "存量列表主责/协同系统列点击弹窗展示系统清单明细"
+  ],
+  "requirement_source": "用户 2026-08-25 指令：参考系统清单信息放入需求管理；协同/主责系统先选事业群再选系统并填充；一个用户需求可有多个协同系统",
+  "actual_changes": [
+    "新增 server/src/platform/infrastructure/src/main/resources/db/migration/V82__seed_requirement_system_catalog.sql：按附件《系统清单》416 行初始化 req_system（事业群/系统编号/英文简称/名称/状态/逻辑子系统/业务组件/业务领域/产品视图/投产点/介绍/灾备等级/类别/引入保留），状态“正常”映射“启用”，W01812/W0332C 沿用演示数据 id 避免 mock 冲突，ON DUPLICATE KEY UPDATE 幂等",
+    "docs/requirements/REQ-20260816-001-requirement-management-platform/codex-task-scope.yaml：writable_paths 与 database.migration_files 增加 V82 种子迁移",
+    "mock/mock-data.json：W01812/W0332C 两条系统清单演示行对齐目录数据；软需演示行主责/协同系统改为目录编码（W01812 主责 + W0332C 协同）",
+    "web/src/views/RequirementsView.vue：主责/协同系统数据源由架构物理子系统切换为需求管理系统清单（req_system）；软需阶段新增“软需系统确认”区：主责事业群→主责系统联动下拉，协同系统支持多行（添加/移除），保存时合并写入 coord_conglomerate/coord_system；列表系统明细弹窗改为展示系统清单字段",
+    "web/src/views/RequirementsView.vue：移除架构物理子系统加载逻辑与下拉分支"
+  ],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "result": "exit 0：vue-tsc --noEmit 与 vite build 成功，仅有既有 chunk 体积警告"
+    },
+    {
+      "command": "JAVA_HOME=.../temurin-17 mvn -pl :ccb-requirement -am test -Dtest='Requirement*Test' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false",
+      "result": "exit 0：需求模块 16 个测试全部通过"
+    },
+    {
+      "command": "node 校验 mock/mock-data.json、codex-task-scope.yaml 为合法 JSON；V82 迁移单引号成对、416 个 system_code 无重复；git diff --check",
+      "result": "全部通过"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope ... --base origin/main --head HEAD --working-tree",
+      "result": "本次新增 V82 迁移已纳入 writable_paths，不再报错；剩余失败为任务开始前已存在的 workflow 集成文件越界与 public_capability_change.owner_approved=false"
+    }
+  ],
+  "not_executed": [
+    "V82 迁移未在真实 MySQL 上执行（本地 MySQL 未启动），SQL 结构校验通过但未做运行级验证",
+    "真实浏览器验收：未执行，待运行环境可用后补做"
+  ],
+  "unresolved_issues": [
+    "用户需求拆分多系统需求（每添加一个协同系统生成一条子记录供其他组件消费）仍为待确认设计，当前多协同以分隔字符串存储在父记录字段中",
+    "系统清单 416 行中包含真实业务系统名称，已按用户提供数据入库；如涉敏感口径需业务侧复核"
+  ]
+}

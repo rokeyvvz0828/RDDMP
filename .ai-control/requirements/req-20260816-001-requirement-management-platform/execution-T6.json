@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260816-001-requirement-management-platform",
+  "task_id": "T6",
+  "status": "implemented-checks-passed",
+  "coverage": [
+    "需求管理平台新增『八大参数管理』二级菜单（directory）",
+    "八大参数管理下新增 8 个三级菜单：产品目录/定价管理/财务会计/机构员工/员工渠道/参数管理/授权复核/凭证回单",
+    "页面内容暂不实施，三级菜单跳转展示『页面建设中』占位",
+    "管理员（role 1）与演示角色（101/102）可见新菜单"
+  ],
+  "requirement_source": "用户 2026-08-25 指令：八大参数管理（二级），三级菜单：产品目录、定价管理、财务会计、机构员工、员工渠道、参数管理、授权复核、凭证回单，页面内容先不做",
+  "actual_changes": [
+    "新增 server/src/platform/infrastructure/src/main/resources/db/migration/V83__seed_requirement_param_menus.sql：sys_menu 704（八大参数管理，parent 700，directory，/requirements/params）+ 705-712（8 个三级菜单，/requirements/params/*，requirements/index 组件），sys_menu_permission 7201-7209（read 权限），role 1 菜单与权限授权，幂等",
+    "web/src/router/index.ts：新增 requirements/params/:section 路由，复用 RequirementsView",
+    "web/src/views/RequirementsView.vue：新增 PARAM_SECTION_TITLES 映射与『页面建设中』占位（UiEmptyState）",
+    "mock/mock-data.json：演示角色 101/102 增加需求管理平台菜单（700-703）与八大参数管理菜单（704-712）授权、read 权限（7001/7011/7021/7031/7201-7209）",
+    "docs/requirements/REQ-20260816-001-requirement-management-platform/codex-task-scope.yaml：writable_paths 与 database.migration_files 增加 V83 迁移"
+  ],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "result": "exit 0：vue-tsc --noEmit 与 vite build 成功，仅有既有 chunk 体积警告"
+    },
+    {
+      "command": "JAVA_HOME=.../temurin-17 mvn -pl :ccb-requirement -am test -Dtest='Requirement*Test' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false",
+      "result": "exit 0：需求模块 16 个测试全部通过"
+    },
+    {
+      "command": "node 校验 mock-data.json / codex-task-scope.yaml JSON 合法；git diff --check",
+      "result": "全部通过"
+    }
+  ],
+  "not_executed": [
+    "V83 菜单迁移未在真实 MySQL 上执行（本地 MySQL 未启动），依赖 Flyway 运行验证",
+    "真实浏览器验收：未执行，待运行环境可用后补做"
+  ],
+  "unresolved_issues": [
+    "八大参数管理 8 个三级菜单页面内容未实施（按用户要求暂缓）",
+    "mock 中演示角色原 600-603 菜单授权为历史遗留失效引用，本次仅追加 700-712 正确授权，未清理旧行"
+  ]
+}

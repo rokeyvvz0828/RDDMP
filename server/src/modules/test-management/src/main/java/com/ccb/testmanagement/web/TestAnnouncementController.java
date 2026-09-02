@@ -1,0 +1,19 @@
+/*
+ * 文件：server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestAnnouncementController.java
+ * 说明：测试管理的服务、策略或接口实现。
+ * 用途：承载模块边界内的查询、校验、事务、权限或文件处理职责。
+ * 作者：hengguan
+ */
+package com.ccb.testmanagement.web;
+
+// 关键逻辑：控制器仅适配 HTTP 参数与细粒度权限；租户、测试大类、项目和实体边界统一由领域服务校验。
+import com.ccb.common.api.*; import com.ccb.common.trace.TraceId; import com.ccb.security.model.AuthUser; import com.ccb.testmanagement.announcement.TestAnnouncementService; import org.springframework.security.access.prepost.PreAuthorize; import org.springframework.security.core.annotation.AuthenticationPrincipal; import org.springframework.web.bind.annotation.*; import java.util.*;
+@RestController @RequestMapping("/api/test-management/announcements/{domain}") public class TestAnnouncementController {private final TestAnnouncementService service;public TestAnnouncementController(TestAnnouncementService service){this.service=service;}private <T> ApiResponse<T> ok(T x){return ApiResponse.success(x,TraceId.getOrCreate());}
+ @GetMapping("/projects") @PreAuthorize("hasAuthority('test-management:' + #domain + ':dashboard')") public ApiResponse<List<Map<String,Object>>> projects(@PathVariable String domain,@AuthenticationPrincipal AuthUser u){return ok(service.projects(u));}
+ @GetMapping("/current") @PreAuthorize("hasAuthority('test-management:' + #domain + ':dashboard')") public ApiResponse<List<Map<String,Object>>> current(@PathVariable String domain,@RequestParam long projectId,@AuthenticationPrincipal AuthUser u){return ok(service.current(domain,projectId,u));}
+ @GetMapping @PreAuthorize("hasAuthority('test-management:' + #domain + ':dashboard:update')") public ApiResponse<PageResult<Map<String,Object>>> list(@PathVariable String domain,@RequestParam long projectId,@RequestParam(defaultValue="1")long page,@RequestParam(defaultValue="20")long size,@RequestParam(required=false)String keyword,@RequestParam(required=false)String publisher,@RequestParam(required=false)String from,@RequestParam(required=false)String to,@AuthenticationPrincipal AuthUser u){return ok(service.list(domain,projectId,new PageQuery(page,Math.min(size,20)),keyword,publisher,from,to,u));}
+ @GetMapping("/{id}") @PreAuthorize("hasAuthority('test-management:' + #domain + ':dashboard')") public ApiResponse<Map<String,Object>> detail(@PathVariable String domain,@PathVariable long id,@RequestParam long projectId,@AuthenticationPrincipal AuthUser u){return ok(service.detail(domain,projectId,id,u));}
+ @PostMapping @PreAuthorize("hasAuthority('test-management:' + #domain + ':dashboard:create')") public ApiResponse<Map<String,Object>> create(@PathVariable String domain,@RequestParam long projectId,@RequestBody Map<String,Object>b,@AuthenticationPrincipal AuthUser u){return ok(service.save(domain,projectId,null,b,u));}
+ @PutMapping("/{id}") @PreAuthorize("hasAuthority('test-management:' + #domain + ':dashboard:update')") public ApiResponse<Map<String,Object>> update(@PathVariable String domain,@PathVariable long id,@RequestParam long projectId,@RequestBody Map<String,Object>b,@AuthenticationPrincipal AuthUser u){return ok(service.save(domain,projectId,id,b,u));}
+ @PutMapping("/{id}/pin") @PreAuthorize("hasAuthority('test-management:' + #domain + ':dashboard:update')") public ApiResponse<Map<String,Object>> pin(@PathVariable String domain,@PathVariable long id,@RequestParam long projectId,@RequestBody Map<String,Object>b,@AuthenticationPrincipal AuthUser u){return ok(service.pin(domain,projectId,id,Boolean.TRUE.equals(b.get("pinned")),u));}
+ @DeleteMapping("/{id}") @PreAuthorize("hasAuthority('test-management:' + #domain + ':dashboard:delete')") public ApiResponse<Void> delete(@PathVariable String domain,@PathVariable long id,@RequestParam long projectId,@AuthenticationPrincipal AuthUser u){service.delete(domain,projectId,id,u);return ok(null);}}

@@ -36,7 +36,7 @@ public class RequirementBaselineService {
     }
 
     public List<Map<String, Object>> list(long projectId, AuthUser user) {
-        security.requireProjectAccess(user, projectId);
+        security.requireProjectVisible(user, projectId);
         return jdbc.queryForList("""
                 SELECT b.id, b.project_id, b.baseline_no, b.baseline_name, b.status, b.difference_count,
                        b.remark, b.created_by, b.created_at,
@@ -51,7 +51,7 @@ public class RequirementBaselineService {
         Map<String, Object> baseline = jdbc.queryForMap(
                 "SELECT id, project_id, tenant_id FROM req_baseline WHERE tenant_id = ? AND id = ? AND deleted = 0",
                 user.tenantId(), baselineId);
-        security.requireProjectAccess(user, ((Number) baseline.get("project_id")).longValue());
+        security.requireProjectVisible(user, ((Number) baseline.get("project_id")).longValue());
         return jdbc.queryForList("""
                 SELECT id, baseline_id, difference_id, snapshot_json, created_at
                 FROM req_baseline_item WHERE tenant_id = ? AND baseline_id = ? AND deleted = 0

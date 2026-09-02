@@ -1,0 +1,29 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V123__test_management_configuration.sql", "purpose": "配置表、审计表、四大类菜单和细粒度权限"},
+    {"path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java", "purpose": "租户/大类/项目范围校验及配置 CRUD"},
+    {"path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java", "purpose": "受 RBAC 保护的配置 API"},
+    {"path_or_resource": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationServiceTest.java", "purpose": "非法测试大类输入保护"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R5"],
+  "commands": [
+    {"command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home PATH=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin:$PATH mvn -pl :ccb-test-management -am test", "exit_code": 0, "salient_output": "ccb-test-management 11 tests passed"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "no whitespace errors"}
+  ],
+  "local_checks": [
+    {"check": "后端模块回归", "result": "pass", "evidence": "JDK 17 Maven reactor success", "limitations": ["尚未启动集成环境执行真实 HTTP/RBAC 请求"]},
+    {"check": "迁移命名", "result": "pass", "evidence": "Flyway 脚本检查成功", "limitations": ["未连接数据库实际执行迁移"]}
+  ],
+  "diff_summary": ["新增管理配置持久化、角色、轮次、周期、字典和审计", "新增按路径大类绑定的菜单权限与服务端授权", "临时候选规则读取同租户未删除项目和物理子系统"],
+  "invariants_checked": [
+    {"invariant": "既有营业日模块不被修改", "result": "pass", "evidence": "变更仅新增配置文件和服务"},
+    {"invariant": "配置写入受 tenant/domain/project 范围限制", "result": "pass", "evidence": "服务层查询与写入均显式绑定 actor tenant 和 domain"}
+  ],
+  "disturbances": ["主分支最新迁移已到 V122，已将原计划 V106 顺延为 V123"],
+  "assumptions_falsified": ["物理子系统没有独立 enabled 字段；临时候选按未删除状态实现"],
+  "unresolved_items": ["真实数据库迁移、HTTP 权限与浏览器验证留待 T4"],
+  "recommended_next": "observe"
+}

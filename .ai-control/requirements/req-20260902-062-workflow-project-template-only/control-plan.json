@@ -1,0 +1,180 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "V136 在真实 MySQL 8.4 中只新增无具体办理人的模板和目标项目草稿，并保持全部旧引用不变。",
+      "requirement_ids": ["R2", "R3", "R6", "R7"],
+      "prerequisites": [],
+      "input_facts": [
+        "纯 V135 迁移种子有 10 条 PLATFORM，当前部署库另有一条运行期定义共 11 条",
+        "wf_definition/wf_version 使用应用生成或迁移固定 BIGINT 主键且没有自增",
+        "目标项目主键为 910000000003001，代码为 RDDMP-PLATFORM",
+        "仓库已有 mysql:8.4 Testcontainers 迁移测试模式"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V136__retire_platform_workflow_management.sql",
+        "server/src/platform/workflow/pom.xml",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementMigrationMySqlTest.java",
+        ".ai-control/requirements/req-20260902-062-workflow-project-template-only/execution-T1.json",
+        ".ai-control/requirements/req-20260902-062-workflow-project-template-only/observation-T1.json"
+      ],
+      "invariants": [
+        "V134/V135 和 Flowable ACT_* 无修改",
+        "旧 PLATFORM 定义、版本、实例和任务不被 UPDATE/DELETE",
+        "模板与项目草稿不携带部署产物",
+        "只为目标项目生成 PROJECT"
+      ],
+      "interface_contracts": [
+        "迁移输出使用现有 wf_definition 范围唯一键",
+        "TEMPLATE 和 PROJECT 草稿保留原流程编码与结构",
+        "审批节点仅保留 TEMPLATE_PLACEHOLDER/STARTER，抄送节点仅保留 templatePlaceholder"
+      ],
+      "non_goals": ["不自动映射人员", "不发布迁移草稿", "不迁移实例", "不修改业务绑定"],
+      "action_bounds": [
+        "只追加一个 V136 版本迁移",
+        "只增加测试范围依赖，不改变运行时依赖版本",
+        "使用隔离 MySQL 容器验证，不连接生产数据库"
+      ],
+      "acceptance_checks": [
+        "隔离测试在 V135 后补入一条运行期平台定义形成 11 条输入，目标项目保持唯一",
+        "V136 后同编码 TEMPLATE 为 11、目标项目 PROJECT 为 11、其他项目为 0",
+        "迁移 JSON 不含具体办理人类型、ID 或动态选择字段",
+        "旧定义/版本/实例引用快照逐项相同",
+        "第二次 migrate 不增加数据，Flyway/差异检查通过"
+      ],
+      "evidence_required": ["实际 SQL/POM/测试 diff", "失败测试信号", "迁移测试命令、退出码和基数摘要", "git diff --check 与 Flyway 检查结果", "发现的环境扰动"],
+      "rollback": "代码回退时保留已执行 V136 草稿；需要数据补偿时另追加迁移并只清理无绑定、无实例且仍为草稿的预留 ID 行。",
+      "stop_conditions": ["部署前预检的当前目标库平台基数不是已批准的 11", "目标项目不存在或不唯一", "预留主键区间已占用", "任一平台 JSON 没有可解析 nodes 数组", "迁移需要更新旧定义或实例"],
+      "escalation_conditions": ["需要修改历史 Flyway 或 Flowable 表", "需要自动人员映射", "测试数据库与目标 MySQL 版本不一致"]
+    },
+    {
+      "id": "T2",
+      "goal": "定义管理仅允许模板与项目流程，并保证占位草稿可保存、严格发布及所有新启动入口项目优先。",
+      "requirement_ids": ["R1", "R4", "R5", "R6"],
+      "prerequisites": ["T1"],
+      "input_facts": [
+        "WorkflowService 是定义 CRUD、发布和项目办理人校验的唯一服务",
+        "WorkflowController 当前无 scopeType 时默认 PLATFORM",
+        "startByCode 已按 PROJECT 优先排序，但 startByDefinitionId 直接使用传入定义",
+        "旧实例详情和审批不经过定义管理列表"
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementTest.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTemplateScopeTest.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java",
+        ".ai-control/requirements/req-20260902-062-workflow-project-template-only/execution-T2.json",
+        ".ai-control/requirements/req-20260902-062-workflow-project-template-only/observation-T2.json"
+      ],
+      "invariants": [
+        "TEMPLATE 永不发布或启动",
+        "项目实体授权和成员/角色有效性由后端校验",
+        "旧 PLATFORM 仍可供无项目发布版本时兼容启动",
+        "运行中实例不重新选择定义"
+      ],
+      "interface_contracts": [
+        "definitions 管理范围只接受 PROJECT/TEMPLATE",
+        "definition list 返回 requires_configuration 布尔值",
+        "项目草稿保存允许占位，publish 读取最新版本做严格校验",
+        "startByCode/startByDefinitionId 统一执行同编码 PROJECT 优先选择"
+      ],
+      "non_goals": ["不修改业务模块调用签名", "不移除 PLATFORM 枚举的运行兼容", "不修改项目网关契约", "不重写旧实例"],
+      "action_bounds": [
+        "只调整三个 workflow 管理/集成类及直接测试",
+        "不修改 Flowable 服务、项目服务或业务模块",
+        "错误信息只增加定位所需的项目名称和流程编码"
+      ],
+      "acceptance_checks": [
+        "列表、创建、详情和生命周期管理不可暴露 PLATFORM",
+        "项目占位创建/更新成功，发布失败且文案明确",
+        "项目成员/角色有效时可发布，失效时发布失败",
+        "两个启动入口在项目流程发布时返回项目 definitionId",
+        "项目流程未发布时回退平台，TEMPLATE 永不匹配",
+        "ccb-workflow 模块测试零失败"
+      ],
+      "evidence_required": ["实际 Java/测试 diff", "新增测试修改前失败信号", "聚焦与模块测试命令及退出码", "SQL 查询参数断言", "发现的调用兼容扰动"],
+      "rollback": "回退三个 Java 文件和测试；V136 数据及旧 PLATFORM 运行数据保留。",
+      "stop_conditions": ["发现无项目上下文但必须项目优先的新启动入口", "显式 ID 重选需要改变业务模块公共 API", "隐藏管理入口导致旧实例详情或审批失败"],
+      "escalation_conditions": ["需要修改 release/architecture/requirement 业务实现", "需要扩大项目权限契约", "必须删除旧平台定义才能实现"]
+    },
+    {
+      "id": "T3",
+      "goal": "工作流定义页在桌面和移动端仅呈现双范围，并清楚支持待配置项目草稿的保存与发布反馈。",
+      "requirement_ids": ["R1", "R4"],
+      "prerequisites": ["T2"],
+      "input_facts": [
+        "WorkflowView 当前三范围分段控件旁重复显示项目标签",
+        "WorkflowNodeInspector 当前项目模式不展示 TEMPLATE_PLACEHOLDER 说明",
+        "T2 提供 requires_configuration 并由服务端拒绝未配置发布",
+        "顶层 projectContext 是当前项目唯一页面事实源"
+      ],
+      "write_scope": [
+        "web/src/api/workflow.ts",
+        "web/src/components/workflow/WorkflowNodeInspector.vue",
+        "web/src/views/WorkflowView.vue",
+        "docs/integration/workflow-module-contract.md",
+        ".ai-control/requirements/req-20260902-062-workflow-project-template-only/execution-T3.json",
+        ".ai-control/requirements/req-20260902-062-workflow-project-template-only/observation-T3.json"
+      ],
+      "invariants": [
+        "前端显隐不替代后端权限和发布校验",
+        "顶层项目切换仍驱动项目流程列表刷新",
+        "桌面和移动端现有监控功能不改变",
+        "不修改公共 UI 组件"
+      ],
+      "interface_contracts": [
+        "WorkflowDefinition.requires_configuration 可选布尔字段",
+        "范围筛选和新建范围只使用 PROJECT/TEMPLATE",
+        "占位节点可在项目草稿中改选项目成员或项目角色"
+      ],
+      "non_goals": ["不改工作流监控", "不改顶层项目选择器", "不增加平台用户/角色选择", "不设计新公共组件"],
+      "action_bounds": [
+        "只调整 workflow API 类型、页面和节点检查器",
+        "复用 UiToolbar、UiStatusTag、UiDataTable 和现有移动卡片",
+        "只更新 workflow 模块契约文档"
+      ],
+      "acceptance_checks": [
+        "源码和页面没有用户可见平台流程入口",
+        "工具栏不重复显示当前项目标签",
+        "迁移项目草稿显示待配置人员状态",
+        "占位草稿可保存，发布失败信息可见，配置后可发布",
+        "前端生产构建、全量后端、治理和范围检查通过",
+        "桌面和三个手机视口无溢出、遮挡和控制台错误"
+      ],
+      "evidence_required": ["实际 Vue/TypeScript/文档 diff", "前端基准与最终构建结果", "全量测试和治理结果", "四个视口截图/控制台/横向溢出数据", "未验收状态说明"],
+      "rollback": "回退三个前端文件和契约文档；后端管理及发布保护继续有效。",
+      "stop_conditions": ["后端没有稳定返回待配置状态", "目标项目没有成员或角色可用于发布验收", "现有移动设计器无法操作且需要公共组件改造"],
+      "escalation_conditions": ["需要修改公共 UI 组件", "需要改变顶层项目切换逻辑", "需要增加业务模块页面变更"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "服务约束与测试必须基于稳定的迁移数据形态。"},
+    {"from": "T2", "to": "T3", "reason": "页面待配置状态和错误交互依赖后端投影及发布契约。"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["S1 MySQL 迁移与快照比较", "S5 Flyway 命名和 git diff 检查"]},
+    {"after_tasks": ["T2"], "checks": ["S2 管理、发布、启动选路聚焦测试", "ccb-workflow 模块回归"]},
+    {"after_tasks": ["T3"], "checks": ["S3 前端构建与文案搜索", "S4 四视口浏览器验收", "S5 全量治理与范围检查"]}
+  ],
+  "sampling_plan": [
+    {"label": "迁移完成采样", "trigger": "T1 返回执行报告", "observer": "独立数据库测试传感器", "sensors": ["S1", "S5"], "requirement_ids": ["R2", "R3", "R6", "R7"]},
+    {"label": "后端契约采样", "trigger": "T2 返回执行报告", "observer": "独立测试命令与结果审查", "sensors": ["S2", "S5"], "requirement_ids": ["R1", "R4", "R5", "R6"]},
+    {"label": "前端与集成采样", "trigger": "T3 返回执行报告", "observer": "构建、浏览器和治理异质传感器", "sensors": ["S3", "S4", "S5"], "requirement_ids": ["R1", "R4", "R7"]},
+    {"label": "最终收敛采样", "trigger": "全部任务 verified 且无未关闭反馈", "observer": "收敛审计", "sensors": ["S1", "S2", "S3", "S4", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T2", "T3"], "sensor_ids": ["S2", "S3", "S4"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S1", "S5"]},
+    {"requirement_id": "R3", "task_ids": ["T1"], "sensor_ids": ["S1"]},
+    {"requirement_id": "R4", "task_ids": ["T2", "T3"], "sensor_ids": ["S2", "S4"]},
+    {"requirement_id": "R5", "task_ids": ["T2"], "sensor_ids": ["S2"]},
+    {"requirement_id": "R6", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S2", "S4"]},
+    {"requirement_id": "R7", "task_ids": ["T1"], "sensor_ids": ["S1", "S5"]}
+  ],
+  "plan_status": "ready"
+}

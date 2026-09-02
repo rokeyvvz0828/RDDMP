@@ -22,7 +22,7 @@ public class ReleaseAnalyticsController {
     private final ReleaseAnalyticsService service;
     public ReleaseAnalyticsController(ReleaseAnalyticsService service) { this.service = service; }
     @GetMapping("/summary")
-    public ApiResponse<Summary> summary(@RequestParam(required = false) String projectId,
+    public ApiResponse<Summary> summary(@RequestParam String projectId,
                                         @RequestParam(required = false) Long windowId,
                                         @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.summary(projectId, windowId, user), TraceId.getOrCreate());
@@ -30,7 +30,7 @@ public class ReleaseAnalyticsController {
     @GetMapping("/drilldown")
     public ApiResponse<PageResult<Map<String, Object>>> drilldown(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String projectId, @RequestParam(required = false) Long windowId,
+            @RequestParam String projectId, @RequestParam(required = false) Long windowId,
             @RequestParam(required = false) String dimension, @RequestParam(required = false) String value,
             @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.drilldown(page, size, projectId, windowId, dimension, value, user), TraceId.getOrCreate());

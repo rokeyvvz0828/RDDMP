@@ -1,0 +1,63 @@
+{
+  "definition_revision": "definition-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "提供可复用且有测试证据的统一项目访问公共能力。",
+      "requirement_ids": ["R2", "R5"],
+      "prerequisites": [],
+      "write_scope": ["governance/modules.yaml", "server/src/modules/release/pom.xml", "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectAccess.java", "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectAccessService.java", "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectAccessService.java", "server/src/platform/system/src/test/java/com/ccb/system/internal/capability/JdbcProjectAccessServiceTest.java"],
+      "checks": ["JdbcProjectAccessServiceTest 覆盖成员、管理员、非成员和无效项目", "公开包只含契约且 JDBC 实现位于 internal", "治理检查确认 release 仅依赖 system 公开包", "T1 差异无空白错误"],
+      "evidence_required": ["测试命令与退出码", "治理检查输出", "实际文件清单"],
+      "rollback": "同时回退公共服务、测试、governance 依赖和 release POM。",
+      "stop_conditions": ["项目编码不唯一", "项目有效状态无法由现有数据确定"],
+      "escalation_conditions": ["需要修改数据库或既有 ProjectService 行为"]
+    },
+    {
+      "id": "T2",
+      "goal": "配置管理六域后端对列表范围和目标实体执行项目授权。",
+      "requirement_ids": ["R1", "R2", "R3", "R5"],
+      "prerequisites": ["T1"],
+      "write_scope": ["server/src/modules/release/src/main/java/com/ccb/release/application", "server/src/modules/release/src/main/java/com/ccb/release/window", "server/src/modules/release/src/main/java/com/ccb/release/production", "server/src/modules/release/src/main/java/com/ccb/release/reporting", "server/src/modules/release/src/main/java/com/ccb/release/workflow", "server/src/modules/release/src/test/java/com/ccb/release"],
+      "checks": ["列表缺少项目返回 400", "无项目成员关系返回 403", "跨项目实体和关联请求不产生写入", "mvn -pl :ccb-release -am test 通过"],
+      "evidence_required": ["新增失败路径测试", "release 全量模块测试结果", "Service/Controller 实际差异"],
+      "rollback": "按域回退 Service、Controller 和测试；全部回退时同时撤销 T1 的无消费者依赖。",
+      "stop_conditions": ["目标实体无法反查项目", "批量写包含多个项目且无法在写入前原子拒绝"],
+      "escalation_conditions": ["需要表迁移、工作流内部协议或附件平台改动"]
+    },
+    {
+      "id": "T3",
+      "goal": "前端六菜单与直接链接保持唯一项目上下文并拒绝过期响应。",
+      "requirement_ids": ["R1", "R4", "R5"],
+      "prerequisites": ["T2"],
+      "write_scope": ["web/src/api/release.ts", "web/src/stores/project-context.ts", "web/src/modules/release/ReleaseManagementPrototype.vue", "web/src/modules/release/ReleaseApplicationDetailPage.vue", "web/src/modules/release/components/ReleaseBaselineView.vue", "web/src/modules/release/components/ReleaseCurrentProductionView.vue", "web/src/modules/release/components/ReleaseAnalyticsView.vue", "web/src/modules/release/components/ReleaseWorkflowBindingView.vue"],
+      "checks": ["API 类型要求列表项目必填", "项目切换清空旧数据并关闭弹层", "旧项目响应不赋值", "有权链接自动 select 且无权链接停止后续请求", "前端生产构建通过"],
+      "evidence_required": ["Vite 构建退出码", "项目切换和链接浏览器观察", "实际文件差异"],
+      "rollback": "回退 release API、项目 Store 和页面局部项目同步逻辑。",
+      "stop_conditions": ["详情授权必须依赖一个未批准的新预解析接口"],
+      "escalation_conditions": ["需要修改全局路由守卫、HTTP 拦截器或公共 UI"]
+    },
+    {
+      "id": "T4",
+      "goal": "获得后端、前端、治理、桌面和 H5 的完整独立验收证据。",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": ["T3"],
+      "write_scope": [".ai-control/requirements/req-20260831-057-release-project-scope"],
+      "checks": ["system/release 回归通过", "前端构建通过", "治理与 diff 检查通过", "桌面和 390x844 多项目旅程通过"],
+      "evidence_required": ["全部命令退出码与关键输出", "浏览器请求/页面观察", "残余风险和测量限制"],
+      "rollback": "验收失败不发布，回到偏差所属任务做限幅纠正或回退。",
+      "stop_conditions": ["缺少可区分的多项目测试数据", "服务不可运行或无法区分 400/403"],
+      "escalation_conditions": ["发现存量跨项目脏数据、公共权限回归或需要迁移"]
+    }
+  ],
+  "dependencies": [
+    {"from": "T1", "to": "T2", "reason": "业务授权依赖公共接口。"},
+    {"from": "T2", "to": "T3", "reason": "前端契约依赖后端错误和参数边界。"},
+    {"from": "T3", "to": "T4", "reason": "集成验收依赖完整前后端行为。"}
+  ],
+  "integration_checks": [
+    {"after_tasks": ["T1", "T2"], "check": "mvn -pl :ccb-system,:ccb-release -am test"},
+    {"after_tasks": ["T3", "T4"], "check": "npm --prefix web run build；node scripts/check-all-governance.mjs；git diff --check；桌面/H5 浏览器验收"}
+  ],
+  "status": "ready"
+}

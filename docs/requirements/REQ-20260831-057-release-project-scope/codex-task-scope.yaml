@@ -1,0 +1,109 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260831-057",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260831-057-release-project-scope/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "rokeyvvz0828",
+    "module": "platform/system + business/release + frontend/application",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "governance/modules.yaml",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectAccess.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectAccessService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectAccessService.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/internal/capability/JdbcProjectAccessServiceTest.java",
+      "server/src/modules/release/pom.xml",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseSubmissionService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseApplicationController.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/window/service/ReleaseWindowService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/window/web/ReleaseWindowController.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/production/service/ReleaseProductionService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/production/web/ReleaseProductionController.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/reporting/service/ReleaseAnalyticsService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/reporting/web/ReleaseAnalyticsController.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/workflow/service/ReleaseWorkflowBindingService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/workflow/web/ReleaseWorkflowBindingController.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseSubmissionServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/window/service/ReleaseWindowServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/production/service/ReleaseProductionServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/reporting/service/ReleaseAnalyticsServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/workflow/service/ReleaseWorkflowBindingServiceTest.java",
+      "web/src/api/release.ts",
+      "web/src/stores/project-context.ts",
+      "web/src/modules/release/ReleaseManagementPrototype.vue",
+      "web/src/modules/release/ReleaseApplicationDetailPage.vue",
+      "web/src/modules/release/components/ReleaseBaselineView.vue",
+      "web/src/modules/release/components/ReleaseCurrentProductionView.vue",
+      "web/src/modules/release/components/ReleaseAnalyticsView.vue",
+      "web/src/modules/release/components/ReleaseWorkflowBindingView.vue",
+      "docs/requirements/REQ-20260831-057-release-project-scope/**",
+      "docs/engineering-control/designs/2026-08-31-release-project-scope-design.md",
+      "docs/engineering-control/plans/2026-08-31-release-project-scope-implementation-plan.md",
+      ".ai-control/requirements/req-20260831-057-release-project-scope/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "server/src/platform/security/**",
+      "server/src/platform/workflow/**",
+      "server/src/platform/infrastructure/**",
+      "server/src/shared/**",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/router/index.ts",
+      "web/src/views/AppLayout.vue",
+      "web/node_modules/**",
+      "**/target/**",
+      ".env",
+      ".env.*"
+    ],
+    "forbidden_paths": ["**/*.pem", "**/*.key", "**/node_modules/**", "**/target/**"]
+  },
+  "public_capability_change": {
+    "changed": true,
+    "approval": "REQ-20260831-057 用户确认采用后端统一项目访问服务",
+    "compatibility": "新增 com.ccb.system.capability 项目访问契约和 internal JDBC 实现，不修改既有 ProjectService 公开行为",
+    "regression_tests": ["mvn -pl :ccb-system,:ccb-release -am test"]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "不变更表结构和数据；代码回退即可。"
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "project-access-tests", "command": "mvn -pl :ccb-system -am -Dtest=JdbcProjectAccessServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "expected": "有效成员、超级管理员、停用成员、已删除或不存在项目场景通过"},
+    {"name": "release-backend-tests", "command": "mvn -pl :ccb-release -am test", "expected": "六类配置管理服务的数据范围与实体授权测试通过"},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "TypeScript 和 Vite 构建通过"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "模块依赖和公共包治理检查通过"},
+    {"name": "diff-check", "command": "git diff --check", "expected": "无空白错误"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["公共项目访问契约", "配置管理六菜单数据隔离", "直接审批链接项目切换", "异步响应串项目"]
+  },
+  "completion": {
+    "control_mode": "standard",
+    "control_prefix": "req-20260831-057-release-project-scope",
+    "control_justification": "跨平台公共能力、业务模块、前端用户流程和服务端安全边界的项目数据隔离改造。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260831-057-release-project-scope/execution-T1.json",
+      ".ai-control/requirements/req-20260831-057-release-project-scope/observation-T1.json"
+    ],
+    "rollback": "按任务提交回退 Java、Vue、API 和治理契约；不涉及数据库回退。"
+  }
+}

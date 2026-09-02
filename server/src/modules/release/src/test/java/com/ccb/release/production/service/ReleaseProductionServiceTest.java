@@ -19,6 +19,8 @@ import com.ccb.release.production.persistence.ReleaseProductionStore;
 import com.ccb.release.window.model.ReleaseWindow;
 import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -47,6 +49,7 @@ class ReleaseProductionServiceTest {
     private ReleaseProductionStore store;
     private ReleaseApplicationStore applications;
     private ReleaseWindowStore windows;
+    private ProjectAccessService projectAccessService;
     private ReleaseProductionService service;
 
     @BeforeEach
@@ -54,8 +57,15 @@ class ReleaseProductionServiceTest {
         store = mock(ReleaseProductionStore.class);
         applications = mock(ReleaseApplicationStore.class);
         windows = mock(ReleaseWindowStore.class);
+        projectAccessService = mock(ProjectAccessService.class);
         when(windows.findById(100L, 1L)).thenReturn(Optional.of(window(time(17))));
-        service = new ReleaseProductionService(store, applications, windows, CLOCK);
+        when(projectAccessService.requireAccessible(any(), eq(USER)))
+                .thenAnswer(invocation -> new ProjectAccess(1L, invocation.getArgument(0), "项目"));
+        when(applications.findById(anyLong(), eq(1L))).thenAnswer(invocation ->
+                Optional.of(application(invocation.getArgument(0), "v1", time(14))));
+        when(store.findById(anyLong(), eq(1L))).thenAnswer(invocation ->
+                Optional.of(entry(invocation.getArgument(0), invocation.getArgument(0), "v1", time(14), Result.RELEASED, 1)));
+        service = new ReleaseProductionService(store, applications, windows, projectAccessService, CLOCK);
     }
 
     @Test
@@ -230,6 +240,34 @@ class ReleaseProductionServiceTest {
         List<Entry> history = service.historyByEntry(50L, USER);
 
         assertEquals(List.of(anchor), history);
+    }
+
+    @Test
+    void filtersProductionHistoryToRequestedProject() {
+        Entry own = entry(30L, 10L, "v1", time(14), Result.SUCCEEDED, 1);
+        Entry other = entry(31L, 11L, "v2", time(15), Result.SUCCEEDED, 1);
+        Application otherApplication = mock(Application.class);
+        when(otherApplication.projectId()).thenReturn("P2");
+        when(store.findHistory(1L, "SYS1", "UNIT1")).thenReturn(List.of(other, own));
+        when(applications.findById(10L, 1L)).thenReturn(Optional.of(application(10L, "v1", time(14))));
+        when(applications.findById(11L, 1L)).thenReturn(Optional.of(otherApplication));
+
+        List<Entry> history = service.history("P1", "SYS1", "UNIT1", USER);
+
+        assertEquals(List.of(own), history);
+    }
+
+    @Test
+    void deniedProjectAccessStopsResultUpdateBeforeWriting() {
+        Entry before = entry(30L, 10L, "v1", time(14), Result.RELEASED, 2);
+        when(store.findByIdForUpdate(30L, 1L)).thenReturn(Optional.of(before));
+        when(projectAccessService.requireAccessible("P1", USER))
+                .thenThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该项目数据访问权限"));
+
+        assertCode(ErrorCode.FORBIDDEN, () -> service.updateResult(30L,
+                new UpdateResultRequest("NOT_DEPLOYED", null, "取消", "确认", 2), USER));
+
+        verify(store, never()).updateResult(anyLong(), anyLong(), anyLong(), any(), any(), any(), anyLong());
     }
 
     private Application application(long id, String version, LocalDateTime approvedAt) {

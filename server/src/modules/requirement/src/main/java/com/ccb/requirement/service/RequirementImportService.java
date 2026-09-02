@@ -108,6 +108,9 @@ public class RequirementImportService {
             for (int column = 0; column < headerRow.getLastCellNum(); column++) {
                 String title = formatter.formatCellValue(headerRow.getCell(column)).trim();
                 String field = headers.get(title);
+                if (field == null) {
+                    field = legacyHeaderAlias(title);
+                }
                 if (field != null) {
                     columnField.put(column, field);
                 }
@@ -414,7 +417,7 @@ public class RequirementImportService {
                 case "category" -> "功能";
                 case "name" -> "示例差异点（脱敏）";
                 case "system_code" -> "W01812";
-                case "difference_type" -> "金科有-蒙商无";
+                case "difference_type" -> "我方有-同业无";
                 case "adapt_mode" -> "按原型";
                 case "handle_status" -> "双方已确认";
                 case "is_special" -> "否";
@@ -450,13 +453,13 @@ public class RequirementImportService {
         headers.put("分类", "category");
         headers.put("名称", "name");
         headers.put("涉及系统编号", "system_code");
-        headers.put("金科做法", "jinke_practice");
+        headers.put("我方做法", "jinke_practice");
         headers.put("差异类型", "difference_type");
-        headers.put("蒙商作法", "monshang_practice");
+        headers.put("同业作法", "monshang_practice");
         headers.put("差异描述", "difference_desc");
-        headers.put("蒙商分析部门", "monshang_dept");
-        headers.put("蒙商分析人", "monshang_analyst");
-        headers.put("金科分析人", "jinke_analyst");
+        headers.put("同业分析部门", "monshang_dept");
+        headers.put("同业分析人", "monshang_analyst");
+        headers.put("我方分析人", "jinke_analyst");
         headers.put("适配方式", "adapt_mode");
         headers.put("处理状态", "handle_status");
         headers.put("协同组", "coord_group");
@@ -464,8 +467,8 @@ public class RequirementImportService {
         headers.put("是否专题", "is_special");
         headers.put("上升决策层级", "decision_level");
         headers.put("决策结论", "decision_conclusion");
-        headers.put("蒙商确认部门", "monshang_confirm_dept");
-        headers.put("金科确认人", "jinke_confirmer");
+        headers.put("同业确认部门", "monshang_confirm_dept");
+        headers.put("我方确认人", "jinke_confirmer");
         return Map.copyOf(headers);
     }
 
@@ -477,8 +480,8 @@ public class RequirementImportService {
         headers.put("需求内容简述", "content_summary");
         headers.put("需求提出部门", "propose_dept");
         headers.put("需求提出人及电话", "proposer");
-        headers.put("蒙商BA", "monshang_ba");
-        headers.put("蒙商架构", "monshang_architect");
+        headers.put("同业BA", "monshang_ba");
+        headers.put("同业架构", "monshang_architect");
         headers.put("业务期望上线时间", "expected_launch_date");
         headers.put("外部监管单位", "regulator");
         headers.put("监管文件名称+文号", "regulation_doc_no");
@@ -489,10 +492,10 @@ public class RequirementImportService {
         headers.put("监管分类", "regulation_category");
         headers.put("业务组", "business_group");
         headers.put("分组", "sub_group");
-        headers.put("金科对接人及电话", "jinke_contact");
-        headers.put("是否需要金科架构决策", "need_jinke_arch_decision");
-        headers.put("金科架构人员", "jinke_architect");
-        headers.put("是否纳入蒙商统一管理", "unified_managed");
+        headers.put("我方对接人及电话", "jinke_contact");
+        headers.put("是否需要我方架构决策", "need_jinke_arch_decision");
+        headers.put("我方架构人员", "jinke_architect");
+        headers.put("是否纳入同业统一管理", "unified_managed");
         headers.put("业需评审完成日", "ba_review_date");
         headers.put("工作量评估完成日", "workload_date");
         headers.put("财务立项完成日（任务书）", "finance_project_date");
@@ -500,7 +503,7 @@ public class RequirementImportService {
         headers.put("主责事业群", "owner_conglomerate");
         headers.put("主责物理子系统编号+名称", "owner_system");
         headers.put("主责项目组联系人及电话", "owner_contact");
-        headers.put("是否涉及金科引入组件协同", "involve_cooperation");
+        headers.put("是否涉及我方引入组件协同", "involve_cooperation");
         headers.put("协同事业群", "coord_conglomerate");
         headers.put("协同系统名称", "coord_system");
         headers.put("软需提交日", "soft_submit_date");
@@ -517,5 +520,29 @@ public class RequirementImportService {
         headers.put("需求变更备注", "change_remark");
         headers.put("未立项已开发", "not_project_developed");
         return Map.copyOf(headers);
+    }
+
+    /**
+     * 旧模板表头兼容：需求管理术语脱敏后模板使用「同业/我方」表头，
+     * 历史 Excel 仍可能使用「蒙商/金科」表头，映射到同一字段以保持可导入。
+     */
+    private static String legacyHeaderAlias(String title) {
+        return switch (title) {
+            case "金科做法" -> "jinke_practice";
+            case "蒙商作法" -> "monshang_practice";
+            case "蒙商分析部门" -> "monshang_dept";
+            case "蒙商分析人" -> "monshang_analyst";
+            case "金科分析人" -> "jinke_analyst";
+            case "蒙商确认部门" -> "monshang_confirm_dept";
+            case "金科确认人" -> "jinke_confirmer";
+            case "蒙商BA" -> "monshang_ba";
+            case "蒙商架构" -> "monshang_architect";
+            case "金科对接人及电话" -> "jinke_contact";
+            case "是否需要金科架构决策" -> "need_jinke_arch_decision";
+            case "金科架构人员" -> "jinke_architect";
+            case "是否纳入蒙商统一管理" -> "unified_managed";
+            case "是否涉及金科引入组件协同" -> "involve_cooperation";
+            default -> null;
+        };
     }
 }

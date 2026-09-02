@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260902-058",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260902-058-review-approver-remark/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "zbx",
+    "module": "business/requirement",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260816-001-requirement-management-platform",
+    "worktree": "/Users/zbx/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260902-058-review-approver-remark/**",
+      "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementDifferenceService.java",
+      "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceService.java",
+      "server/src/modules/requirement/src/main/java/com/ccb/requirement/web/RequirementLegacyController.java",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V146__requirement_review_approver_and_remark.sql",
+      "web/src/api/requirements.ts",
+      "web/src/types/requirements.ts",
+      "web/src/views/RequirementsView.vue",
+      ".ai-control/requirements/req-20260902-058-review-approver-remark/*.json"
+    ],
+    "read_only_paths": [
+      "docs/original/**",
+      "docs/requirements/REQ-20260902-057-requirement-terminology/**",
+      "docs/requirements/REQ-20260816-001-requirement-management-platform/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V67__requirement_management_schema.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V123__requirement_management_enhancement.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V130__rebuild_requirement_demo_data.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V145__requirement_terminology_rename.sql",
+      "server/src/modules/requirement/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/components/ui/**",
+      "docs/integration/**",
+      "design-h5.md"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": true,
+    "old_behavior_preserved": false,
+    "regression_tests": []
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V146__requirement_review_approver_and_remark.sql"
+    ],
+    "compatibility_and_rollback": "追加式迁移：新增 req_workload/req_soft_doc 评审审批人/报告名称列与 req_review_record.remark 列；不改历史脚本。回退本需求提交即可。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only-with-desensitization"
+  },
+  "required_tests": [],
+  "risk": {
+    "level": "moderate",
+    "items": [
+      "评审审批人列表放开为全部用户（产品确认）",
+      "存量交付件评审权限调整：被选审批人或 PMO/管理员",
+      "追加式迁移新增列"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260902-058-review-approver-remark",
+    "control_justification": "涉及源码、数据库迁移与权限调整，按仓库规约使用 full 模式任务账本",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260902-058-review-approver-remark/execution-T1.json"
+    ],
+    "release_verification": [],
+    "rollback": "回退本需求提交；V146 为追加式迁移，可单独停用。"
+  }
+}

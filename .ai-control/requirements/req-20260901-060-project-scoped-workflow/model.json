@@ -1,0 +1,83 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": ["WorkflowController","WorkflowService","WorkflowBusinessIntegrationService","WorkflowAssigneeResolver","FlowableWorkflowService","system 项目目录能力","boot 双向桥接","WorkflowView 与节点属性面板","wf_definition/wf_instance/wf_task"],
+    "environment": ["业务模块 WorkflowBusinessGateway 调用方","MySQL 8.4 与 Flyway","顶层项目上下文 store","认证用户与项目成员状态"]
+  },
+  "state_variables": [
+    {"name":"definition_scope","owner":"wf_definition","valid_values":["GLOBAL","PROJECT"]},
+    {"name":"definition_project_id","owner":"wf_definition","valid_values":["null for GLOBAL","positive project id for PROJECT"]},
+    {"name":"instance_project_id","owner":"wf_instance","valid_values":["null tenant-level history","positive project id"]},
+    {"name":"project_membership","owner":"pm_project_member","valid_values":["active","inactive","deleted"]},
+    {"name":"task_status","owner":"wf_task","valid_values":["PENDING","APPROVED","REJECTED","RETURNED","CANCELLED","SENT"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"当前项目与认证用户查询定义或访问定义 ID","transitions":["RBAC","项目可访问集合解析","定义 scope/project 过滤","实体访问校验"],"outputs":["有权定义列表或禁止访问错误"]},
+    {"requirement_id":"R2","input":"项目流程定义 JSON 中的审批人来源和 ID","transitions":["模型校验","项目成员/角色目录校验","启动时项目角色解析"],"outputs":["本项目有效办理人任务或明确拒绝"]},
+    {"requirement_id":"R3","input":"业务启动命令及 project_ref","transitions":["项目解析","定义范围校验","实例及完整业务上下文插入","首节点推进和任务创建"],"outputs":["带 project_id 的实例与首批任务，或整事务回滚"]},
+    {"requirement_id":"R4","input":"实例、任务或审批请求","transitions":["RBAC","实例 project_id 读取","项目访问校验","任务办理人校验","状态转换"],"outputs":["有权数据/审批结果或禁止访问"]},
+    {"requirement_id":"R5","input":"项目成员停用或删除请求","transitions":["项目管理授权","读取成员 user_id","workflow pending task guard","成员状态更新"],"outputs":["阻断提示或成功更新"]},
+    {"requirement_id":"R6","input":"V134 对存量 wf_definition/wf_instance 执行","transitions":["定义 GLOBAL 默认","project_ref 与有效项目编号匹配","唯一匹配回填"],"outputs":["兼容范围字段与可空真实项目主键"]},
+    {"requirement_id":"R7","input":"顶层 currentRef 变化或打开工作流页","transitions":["请求携带 projectRef","定义列表加载","项目成员角色候选加载","过期请求结果丢弃"],"outputs":["当前项目数据和标签"]},
+    {"requirement_id":"R8","input":"桌面或手机视口操作流程编辑页","transitions":["响应式重排","弹层局部滚动","选择范围和人员","保存"],"outputs":["可达操作、无页面横向溢出"]}
+  ],
+  "interfaces": [
+    {"name":"WorkflowProjectAccessGateway","producers":["boot WorkflowProjectAccessBridge"],"consumers":["WorkflowService","WorkflowBusinessIntegrationService","WorkflowAssigneeResolver"],"invariant":"项目解析和目录结果按 actor tenant 隔离"},
+    {"name":"ProjectWorkflowDirectoryService","producers":["system JdbcProjectWorkflowDirectoryService"],"consumers":["boot WorkflowProjectAccessBridge"],"invariant":"只返回有效项目、成员和角色"},
+    {"name":"WorkflowPendingTaskQuery","producers":["WorkflowService"],"consumers":["boot WorkflowProjectMemberRemovalBridge"],"invariant":"只统计给定租户项目用户的 PENDING 任务"},
+    {"name":"ProjectMemberRemovalGuard","producers":["boot bridge"],"consumers":["ProjectService"],"invariant":"存在待办时抛出冲突且不更新成员"},
+    {"name":"workflow HTTP API","producers":["WorkflowController"],"consumers":["web api/workflow.ts"],"invariant":"projectRef 来自当前项目并由后端重新授权"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"定义范围、人员解析、启动顺序和任务授权","method":"ccb-workflow JUnit/JdbcTemplate 调用序列测试","blind_spots":["真实 MySQL 方言和浏览器体验"],"independence":"直接执行服务逻辑和 SQL 断言"},
+    {"id":"S2","target":"项目目录桥接和成员移除守卫","method":"ccb-system 与 ccb-boot 聚焦测试","blind_spots":["完整业务模块调用"],"independence":"跨模块组合边界独立于 workflow 单测"},
+    {"id":"S3","target":"迁移兼容与 SQL 方言","method":"后端启动 Flyway 加数据库结构/数据查询","blind_spots":["生产规模执行时间"],"independence":"真实 MySQL 状态而非 mock SQL"},
+    {"id":"S4","target":"前端类型和打包","method":"npm production build","blind_spots":["交互与视觉"],"independence":"TypeScript/Vite 编译器"},
+    {"id":"S5","target":"项目切换、权限错误和移动布局","method":"真实浏览器桌面及三手机视口操作、网络与 scrollWidth 检查","blind_spots":["未使用角色组合"],"independence":"浏览器运行输出"},
+    {"id":"S6","target":"仓库范围与回归","method":"mvn test、治理和 scope 检查","blind_spots":["未覆盖的外部环境"],"independence":"全仓自动门禁"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"持久化范围和项目状态","action":"追加 V134 字段、索引、约束和兼容回填","authority":"任务范围写权限","impact_radius":"workflow schema","rollback":"应用回退保留新增结构"},
+    {"id":"A2","target":"项目数据跨模块读取","action":"system 公开目录契约加 boot 桥接","authority":"平台 Owner 已批准","impact_radius":"system/workflow/boot 公共接口","rollback":"回退新增接口和桥接"},
+    {"id":"A3","target":"定义实例任务授权","action":"修改 WorkflowService 与业务启动顺序","authority":"workflow Owner 已批准","impact_radius":"全部工作流调用方","rollback":"回退服务代码并保持 V134 可空兼容"},
+    {"id":"A4","target":"双执行器人员解析","action":"增加 PROJECT_MEMBER/PROJECT_ROLE 校验与解析","authority":"workflow Owner 已批准","impact_radius":"新项目节点和项目抄送","rollback":"回退新类型，存量类型不受影响"},
+    {"id":"A5","target":"成员悬空待办","action":"ProjectService 更新/删除前调用 pending task guard","authority":"system Owner 已批准","impact_radius":"项目成员生命周期","rollback":"回退守卫调用"},
+    {"id":"A6","target":"项目感知用户体验","action":"工作流 API 和页面接入 currentRef、范围和项目候选项","authority":"前端任务范围","impact_radius":"工作流定义和监控页","rollback":"回退四个前端文件"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S5","S6"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S1","S2","S5"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S1","S5"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S2","S6"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S3","S6"],"observable":"yes"},
+    {"requirement_id":"R7","sensor_ids":["S4","S5"],"observable":"yes"},
+    {"requirement_id":"R8","sensor_ids":["S4","S5"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"存量 project_ref 为空或不匹配","effect":"历史实例不能回填 project_id","detectable":true,"controllable":false},
+    {"source":"成员状态与审批请求并发","effect":"任务已分配但权限瞬时变化","detectable":true,"controllable":true},
+    {"source":"传统与 Flowable 两套执行器","effect":"相同定义可能解析出不同办理人","detectable":true,"controllable":true},
+    {"source":"用户或其他分支并行修改公共平台代码","effect":"接口和测试基线变化","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"业务启动事务内实例插入到首任务创建","consequence":"顺序错误会让解析缺少项目","sampling_rule":"测试记录 SQL 调用顺序并在事务结束后查询"},
+    {"source":"顶层项目切换后的并发网络请求","consequence":"旧项目响应覆盖新项目页面","sampling_rule":"请求捕获 projectRef 并丢弃上下文不匹配响应"},
+    {"source":"成员状态更新与审批提交","consequence":"只在任务分配时校验会产生越权","sampling_rule":"每次任务上下文和 decide 都重新校验实例项目"}
+  ],
+  "assumptions": [
+    {"text":"pm_project.project_code 是业务 project_ref 的稳定来源","evidence":"ProjectAccessService 按 project_code 解析且业务模块使用 currentRef","falsifier":"调用方传入其他类型标识"},
+    {"text":"boot 组合根同时装配 system 和 workflow","evidence":"boot pom 依赖平台模块且已有 WorkflowSystemNotificationBridge","falsifier":"目标运行时不加载 boot 模块"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"A1+A2+A3"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"A2+A4"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"A1+A3"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"A2+A3"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"A2+A5"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"A1"},
+    {"requirement_id":"R7","observable":"yes","controllable":"yes","action":"A6"},
+    {"requirement_id":"R8","observable":"yes","controllable":"yes","action":"A6"}
+  ],
+  "model_status": "ready"
+}

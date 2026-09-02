@@ -1,0 +1,121 @@
+{
+  "objective": "工作流管理员只看到并维护全局模板与当前项目流程，同时新申请优先使用已发布的项目流程且历史实例不受影响。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "流程定义管理页面和管理 API 必须只暴露本项目流程与全局模板，并移除重复的当前项目标签。",
+      "acceptance": ["桌面和手机页面只有本项目流程与全局模板两个分区", "PLATFORM 不出现在定义列表且不能通过管理接口新建或维护", "工具栏不重复展示当前项目标签"],
+      "priority": "must",
+      "source": "用户批准的 REQ-20260902-062 设计",
+      "counterexample": ["页面仍有平台流程页签", "直接传 scopeType=PLATFORM 可管理旧定义"]
+    },
+    {
+      "id": "R2",
+      "statement": "11 条存量 PLATFORM 定义必须各自生成一条不含具体办理人配置的 TEMPLATE 草稿。",
+      "acceptance": ["迁移后同编码模板数量为 11", "模板审批节点仅保留 TEMPLATE_PLACEHOLDER 或 STARTER", "模板抄送节点无具体 userIds 且标记 templatePlaceholder"],
+      "priority": "must",
+      "source": "用户批准的迁移决策",
+      "counterexample": ["模板仍含 USER、ROLE、VARIABLE 或具体人员主键", "缺少任一平台流程对应模板"]
+    },
+    {
+      "id": "R3",
+      "statement": "迁移必须只为平台能力升级项目生成对应的 PROJECT 草稿。",
+      "acceptance": ["项目 910000000003001 生成 11 条同编码草稿", "其他项目没有迁移生成的项目流程"],
+      "priority": "must",
+      "source": "用户明确指定只为平台能力升级项目生成",
+      "counterexample": ["为其他项目生成流程", "目标项目缺少任一草稿"]
+    },
+    {
+      "id": "R4",
+      "statement": "项目流程人员占位必须可作为草稿保存，但全部解析为有效项目成员或项目角色前不得发布。",
+      "acceptance": ["含占位的项目草稿创建和更新成功", "含占位发布返回明确业务错误", "配置有效项目成员或角色后发布成功", "成员或角色失效时发布失败"],
+      "priority": "must",
+      "source": "用户批准设计和项目权限约束",
+      "counterexample": ["占位草稿无法保存", "占位或失效人员流程可以发布"]
+    },
+    {
+      "id": "R5",
+      "statement": "所有新业务启动入口必须优先使用当前项目同编码的已发布 PROJECT 定义，只有不存在时才回退旧 PLATFORM。",
+      "acceptance": ["startByCode 选择项目定义", "显式传旧平台定义 ID 时仍重选同编码项目定义", "项目定义未发布时兼容回退平台定义", "无匹配时错误包含项目名称和流程编码"],
+      "priority": "must",
+      "source": "用户批准的过渡规则",
+      "counterexample": ["项目流程发布后新实例仍引用平台定义", "TEMPLATE 被选为运行定义"]
+    },
+    {
+      "id": "R6",
+      "statement": "V136 和新代码不得改变旧平台定义、版本、历史实例及运行实例的固定引用和审批能力。",
+      "acceptance": ["迁移前后旧定义和版本主键不变", "迁移前后 wf_instance 的 definition_id/version_no/status 快照一致", "旧运行实例详情和审批回归通过"],
+      "priority": "must",
+      "source": "用户批准的兼容要求",
+      "counterexample": ["原地改写 PLATFORM", "迁移实例定义或版本", "旧任务无法办理"]
+    },
+    {
+      "id": "R7",
+      "statement": "数据库变更必须只追加 V136，并且正常重复启动不会产生重复模板或项目草稿。",
+      "acceptance": ["V134 与 V135 无修改", "Flyway 从 V135 升至 V136 成功", "再次执行 migrate 后数据基数不变", "迁移命名与顺序检查通过"],
+      "priority": "must",
+      "source": "仓库 Flyway 规则和用户批准设计",
+      "counterexample": ["修改已发布迁移", "重复启动生成重复数据", "手工改库才能完成"]
+    }
+  ],
+  "invariants": [
+    "TEMPLATE 不得发布、部署或启动",
+    "PROJECT 人员和角色由后端基于项目上下文最终校验",
+    "不修改 Flowable ACT_* 表和旧实例外键",
+    "旧 PLATFORM 仅作为隐藏运行兼容数据",
+    "不覆盖工作树中与本需求无关的用户修改"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3 和 TypeScript",
+    "只修改 codex-task-scope.yaml 授权路径",
+    "Flyway 只追加，不直接连接或修改生产系统",
+    "后端权限校验不能由前端显隐替代",
+    "桌面和 375x812、390x844、430x932 视口必须验收"
+  ],
+  "non_goals": [
+    "为其他项目批量生成流程",
+    "自动推断系统用户或角色到项目成员或角色的映射",
+    "迁移运行中实例到新定义",
+    "立即物理删除 PLATFORM 记录",
+    "修改具体业务模块的流程编码和页面"
+  ],
+  "assumptions": [
+    {
+      "text": "V135 基准存在 11 条有效 PLATFORM 定义且平台能力升级项目唯一",
+      "basis": "开发前数据库勘察结果",
+      "falsifier": "MySQL 迁移测试在 V135 查询到不同基数或目标项目不唯一"
+    },
+    {
+      "text": "旧实例详情和审批读取固定 definition_id/version_no，不依赖定义管理列表可见性",
+      "basis": "WorkflowService 实例详情与任务查询代码勘察",
+      "falsifier": "建模或测试发现旧实例处理必须调用被隐藏的定义管理端点"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "question": "如何处理存量平台定义",
+      "options": ["复制并隐藏", "原地改写", "物理删除"],
+      "selected": "复制并隐藏",
+      "blocking": false,
+      "source": "用户批准设计"
+    },
+    {
+      "question": "为哪些项目生成迁移草稿",
+      "options": ["只生成平台能力升级项目", "全部项目"],
+      "selected": "只生成平台能力升级项目",
+      "blocking": false,
+      "source": "用户明确确认"
+    }
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "管理 API 范围、页面分区和工具栏元素", "candidate_sensor": "服务单元测试与桌面/移动浏览器检查"},
+    {"requirement_id": "R2", "observable": "模板数量及 definition_json 办理人字段", "candidate_sensor": "MySQL 8.4 Flyway 迁移断言"},
+    {"requirement_id": "R3", "observable": "迁移生成 PROJECT 的 project_id 分布", "candidate_sensor": "MySQL 8.4 聚合查询"},
+    {"requirement_id": "R4", "observable": "草稿保存、发布错误和有效配置发布结果", "candidate_sensor": "WorkflowService 聚焦测试与浏览器操作"},
+    {"requirement_id": "R5", "observable": "两个启动入口返回的 definitionId 和错误文案", "candidate_sensor": "WorkflowBusinessIntegrationService 单元测试"},
+    {"requirement_id": "R6", "observable": "迁移前后旧定义、版本、实例快照与旧任务操作", "candidate_sensor": "MySQL 快照比较和工作流回归测试"},
+    {"requirement_id": "R7", "observable": "迁移历史 diff、Flyway 结果和再次 migrate 后基数", "candidate_sensor": "git diff、迁移脚本检查和 Testcontainers"}
+  ],
+  "baseline_status": "ready"
+}

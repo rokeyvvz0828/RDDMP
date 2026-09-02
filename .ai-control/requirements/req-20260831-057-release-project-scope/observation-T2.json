@@ -1,0 +1,24 @@
+{
+  "iteration_id": "I-T2-1",
+  "task_id": "T2",
+  "status": "verified",
+  "changed_surfaces": [
+    {"path_or_resource": "release application/window services", "purpose": "列表范围、实体反查和创建快照校验"},
+    {"path_or_resource": "release production/reporting services", "purpose": "窗口、生产明细和统计项目隔离"},
+    {"path_or_resource": "release workflow binding service", "purpose": "流程配置项目访问和规范项目名称"},
+    {"path_or_resource": "release controllers", "purpose": "项目列表参数必填"}
+  ],
+  "commands": [
+    {"command": "JAVA_HOME=OpenJDK17 mvn -pl :ccb-release -am test", "exit_code": 0, "salient_output": "ccb-release 86 tests, 0 failures, 0 errors; reactor build success"},
+    {"command": "git diff --check -- release/system/governance task files", "exit_code": 0, "salient_output": "no whitespace errors"}
+  ],
+  "checks": [
+    {"requirement_id": "R1", "result": "pass", "evidence": "窗口、申请、生产版本和统计 Controller 项目参数必填，服务在查询前调用 requireAccessible。", "limitations": ["HTTP 400 由 Spring 参数绑定提供，浏览器行为在 T4 复验"]},
+    {"requirement_id": "R2", "result": "pass", "evidence": "六域服务均接入统一项目访问能力；专门测试覆盖无权限申请、提交和窗口访问。", "limitations": []},
+    {"requirement_id": "R3", "result": "pass", "evidence": "实体操作反查项目；测试覆盖写入前 403、跨项目窗口、伪造项目名称和生产历史过滤。", "limitations": ["生产历史过滤会按记录关联查询申请和窗口，数据量性能在 T4 观察"]},
+    {"requirement_id": "R5", "result": "pass", "evidence": "release 86 个测试全部通过，无数据库和业务状态机改动。", "limitations": []}
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "controlling"
+}
