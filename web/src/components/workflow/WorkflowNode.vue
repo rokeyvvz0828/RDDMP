@@ -23,7 +23,7 @@ const assigneeText = computed(() => {
   if (node.value.type === 'PARALLEL_SPLIT') return '同时进入多个审批分支'
   if (node.value.type === 'PARALLEL_JOIN') return '等待并行分支汇聚'
   const config = node.value.config
-  const source = config.assigneeType === 'ORG_OWNER' ? '组织负责人' : config.assigneeType === 'STARTER' ? '发起人' : config.assigneeType === 'FORM_FIELD' ? `表单字段 ${config.fieldName || ''}` : config.assigneeType === 'EXPRESSION' ? '表达式' : `${config.assigneeIds?.length || 0} 人`
+  const source = config.assigneeType === 'PROJECT_MEMBER' ? `项目成员 ${config.assigneeIds?.length || 0} 人` : config.assigneeType === 'PROJECT_ROLE' ? `项目角色 ${config.assigneeIds?.length || 0} 个` : config.assigneeType === 'ORG_OWNER' ? '组织负责人' : config.assigneeType === 'STARTER' ? '发起人' : config.assigneeType === 'FORM_FIELD' ? `表单字段 ${config.fieldName || ''}` : config.assigneeType === 'EXPRESSION' ? '表达式' : `${config.assigneeIds?.length || 0} 人`
   const mode = config.mode === 'ALL' ? '全部同意' : config.mode === 'PERCENT' ? `${config.percentage || 0}%同意` : '任一同意'
   return `${source} · ${mode}`
 })

@@ -108,6 +108,9 @@ public final class BpmnModelCompiler {
         List<String> ids = ids(config.path("assigneeIds"));
         if ("USER".equals(assigneeType)) task.setCandidateUsers(ids);
         else if ("ROLE".equals(assigneeType)) task.setCandidateGroups(ids);
+        else if (Set.of("PROJECT_MEMBER", "PROJECT_ROLE").contains(assigneeType)) {
+            // Application tasks are assigned from the persisted project context in syncTasks.
+        }
         else if ("STARTER".equals(assigneeType)) task.setAssignee("${starterId}");
         else if ("ORG_OWNER".equals(assigneeType)) task.setAssignee("${orgOwnerUserId_" + node.id() + "}");
         else if ("FORM_FIELD".equals(assigneeType)) task.setAssignee("${" + config.path("fieldName").asText() + "}");

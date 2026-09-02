@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import type { RoleOption } from '../../types/system'
-import type { WorkflowEdgeModel, WorkflowNodeModel } from '../../api/workflow'
+import type { WorkflowEdgeModel, WorkflowNodeModel, WorkflowScopeType } from '../../api/workflow'
 
 interface UserOption { id: number; username: string; display_name: string; org_name?: string }
-const props = defineProps<{ node: WorkflowNodeModel | null; edge: WorkflowEdgeModel | null; nodes: WorkflowNodeModel[]; users: UserOption[]; roles: RoleOption[]; readonly?: boolean }>()
+const props = defineProps<{ node: WorkflowNodeModel | null; edge: WorkflowEdgeModel | null; nodes: WorkflowNodeModel[]; users: UserOption[]; roles: RoleOption[]; scopeType: WorkflowScopeType; readonly?: boolean }>()
+const projectScoped = computed(() => props.scopeType === 'PROJECT')
 const emit = defineEmits<{ update: [node: WorkflowNodeModel]; updateEdge: [edge: WorkflowEdgeModel] }>()
 const draft = reactive<WorkflowNodeModel>({ id: '', type: 'APPROVAL', label: '', position: { x: 0, y: 0 }, config: {} })
 const edgeDraft = reactive<WorkflowEdgeModel>({ id: '', source: '', target: '', label: '', condition: '', default: false })
@@ -61,9 +62,9 @@ watch(() => props.edge, syncEdge, { deep: true, immediate: true })
       <el-form label-position="top" size="default">
         <el-form-item label="节点名称" required><el-input v-model="draft.label" maxlength="64" show-word-limit :disabled="readonly || node.type === 'START' || node.type === 'END'" @change="update" /></el-form-item>
         <template v-if="node.type === 'APPROVAL'">
-          <el-form-item label="审批人来源" required><el-radio-group v-model="draft.config.assigneeType" :disabled="readonly" @change="update"><el-radio-button value="USER">指定用户</el-radio-button><el-radio-button value="ROLE">指定角色</el-radio-button><el-radio-button value="STARTER">发起人</el-radio-button></el-radio-group></el-form-item>
-          <el-form-item v-if="draft.config.assigneeType === 'USER'" label="审批用户" required><el-select v-model="draft.config.assigneeIds" multiple filterable collapse-tags :disabled="readonly" placeholder="请选择审批用户" @change="update"><el-option v-for="user in users" :key="user.id" :label="`${user.display_name}（${user.username}）`" :value="user.id" /></el-select></el-form-item>
-          <el-form-item v-if="draft.config.assigneeType === 'ROLE'" label="审批角色" required><el-select v-model="draft.config.assigneeIds" multiple filterable collapse-tags :disabled="readonly" placeholder="请选择审批角色" @change="update"><el-option v-for="role in roles" :key="role.id" :label="role.role_name" :value="role.id" /></el-select></el-form-item>
+          <el-form-item label="审批人来源" required><el-radio-group v-model="draft.config.assigneeType" :disabled="readonly" @change="update"><template v-if="projectScoped"><el-radio-button value="PROJECT_MEMBER">项目成员</el-radio-button><el-radio-button value="PROJECT_ROLE">项目角色</el-radio-button></template><template v-else><el-radio-button value="USER">指定用户</el-radio-button><el-radio-button value="ROLE">指定角色</el-radio-button></template><el-radio-button value="STARTER">发起人</el-radio-button></el-radio-group></el-form-item>
+          <el-form-item v-if="['USER', 'PROJECT_MEMBER'].includes(String(draft.config.assigneeType))" :label="projectScoped ? '项目审批成员' : '审批用户'" required><el-select v-model="draft.config.assigneeIds" multiple filterable collapse-tags :disabled="readonly" placeholder="请选择审批人员" @change="update"><el-option v-for="user in users" :key="user.id" :label="`${user.display_name}（${user.username}）`" :value="user.id" /></el-select></el-form-item>
+          <el-form-item v-if="['ROLE', 'PROJECT_ROLE'].includes(String(draft.config.assigneeType))" :label="projectScoped ? '项目审批角色' : '审批角色'" required><el-select v-model="draft.config.assigneeIds" multiple filterable collapse-tags :disabled="readonly" placeholder="请选择审批角色" @change="update"><el-option v-for="role in roles" :key="role.id" :label="role.role_name" :value="role.id" /></el-select></el-form-item>
           <el-form-item label="审批规则" required><el-radio-group v-model="draft.config.mode" :disabled="readonly" @change="update"><el-radio value="ANY">任一人同意</el-radio><el-radio value="ALL">全部同意</el-radio></el-radio-group></el-form-item>
           <el-form-item label="无审批人时"><el-radio-group v-model="draft.config.emptyAssigneeAction" :disabled="readonly" @change="update"><el-radio value="ERROR">启动时报错</el-radio><el-radio value="WAIT">等待补充人员</el-radio></el-radio-group></el-form-item>
         </template>

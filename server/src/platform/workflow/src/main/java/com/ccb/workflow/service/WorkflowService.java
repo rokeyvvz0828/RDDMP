@@ -6,6 +6,11 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
+import com.ccb.workflow.integration.WorkflowPendingTaskQuery;
+import com.ccb.workflow.integration.WorkflowProjectAccessGateway;
+import com.ccb.workflow.integration.WorkflowProjectMember;
+import com.ccb.workflow.integration.WorkflowProjectRole;
+import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowDefinitionReference;
 import com.ccb.workflow.integration.WorkflowDefinitionReferenceProvider;
 import com.ccb.workflow.model.WorkflowActionPolicy;
@@ -32,7 +37,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
-public class WorkflowService {
+public class WorkflowService implements WorkflowPendingTaskQuery {
     private static final String APPROVE = "APPROVE";
     private static final String REJECT = "REJECT";
     private static final String RETURN = "RETURN";
@@ -51,6 +56,7 @@ public class WorkflowService {
     private WorkflowAuditService definitionAuditService;
     private WorkflowTaskAssignmentPublisher taskAssignments;
     private List<WorkflowDefinitionReferenceProvider> definitionReferenceProviders = List.of();
+    private WorkflowProjectAccessGateway projectAccess;
     private final ApplicationEventPublisher eventPublisher;
 
     public WorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper, FlowableWorkflowService flowableWorkflowService,
@@ -96,24 +102,45 @@ public class WorkflowService {
         this.definitionReferenceProviders = definitionReferenceProviders == null ? List.of() : List.copyOf(definitionReferenceProviders);
     }
 
+    @Autowired(required = false)
+    void setProjectAccess(WorkflowProjectAccessGateway projectAccess) {
+        this.projectAccess = projectAccess;
+    }
+
     public PageResult<Map<String, Object>> definitions(PageQuery pageQuery, AuthUser user) {
-        String where = " FROM wf_definition WHERE tenant_id = ? AND deleted = 0";
+        return definitions(pageQuery, null, user);
+    }
+
+    public PageResult<Map<String, Object>> definitions(PageQuery pageQuery, String projectRef, AuthUser user) {
+        Long projectId = projectRef == null || projectRef.isBlank() ? null : gateway().requireAccessible(projectRef, user).id();
+        String where = projectId == null
+                ? " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND scope_type = 'GLOBAL'"
+                : " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND (scope_type = 'GLOBAL' OR (scope_type = 'PROJECT' AND project_id = ?))";
+        List<Object> args = new ArrayList<>();
+        args.add(user.tenantId());
+        if (projectId != null) args.add(projectId);
+        args.add(offset(pageQuery));
+        args.add(pageQuery.size());
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, code, name, status, current_version, model_schema_version, created_at" + where
+                "SELECT id, code, name, scope_type, project_id, status, current_version, model_schema_version, created_at" + where
                         + " ORDER BY id DESC LIMIT ?, ?",
-                user.tenantId(), offset(pageQuery), pageQuery.size());
-        long total = count(where, user.tenantId());
+                args.toArray());
+        long total = count(where, args.subList(0, args.size() - 2).toArray());
         return new PageResult<>(rows, total, pageQuery.page(), pageQuery.size());
     }
 
     public Map<String, Object> definition(long definitionId, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.code, d.name, d.status, d.current_version, d.model_schema_version, d.created_at, v.version_no, CAST(v.definition_json AS CHAR) AS definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = COALESCE(NULLIF(d.current_version, 0), (SELECT MAX(v2.version_no) FROM wf_version v2 WHERE v2.definition_id = d.id AND v2.tenant_id = d.tenant_id)) WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0", definitionId, user.tenantId());
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.status, d.current_version, d.model_schema_version, d.created_at, v.version_no, CAST(v.definition_json AS CHAR) AS definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = COALESCE(NULLIF(d.current_version, 0), (SELECT MAX(v2.version_no) FROM wf_version v2 WHERE v2.definition_id = d.id AND v2.tenant_id = d.tenant_id)) WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0", definitionId, user.tenantId());
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
+        requireDefinitionAccessible(rows.get(0), user, false);
         return rows.get(0);
     }
 
     @Transactional
     public void updateDefinition(long definitionId, String code, String name, String definitionJson, AuthUser user) {
+        Map<String, Object> scopedDefinition = requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(scopedDefinition, user, true);
+        validateScopeAssignments(String.valueOf(scopedDefinition.get("scope_type")), number(scopedDefinition.get("project_id")), definitionJson, user);
         if (enterpriseDefinition(definitionId, user.tenantId())) {
             flowableWorkflowService.updateDefinition(definitionId, code, name, definitionJson, user);
             return;
@@ -129,6 +156,7 @@ public class WorkflowService {
     @Transactional
     public void deleteDefinition(long definitionId, AuthUser user) {
         Map<String, Object> definition = requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(definition, user, true);
         if (!"DRAFT".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有草稿流程可以删除");
         }
@@ -155,6 +183,7 @@ public class WorkflowService {
     public void archiveDefinition(long definitionId, String reason, AuthUser user) {
         String normalizedReason = requireText(reason, "归档原因");
         Map<String, Object> definition = requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(definition, user, true);
         if (!"PUBLISHED".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有已发布流程可以归档");
         }
@@ -169,6 +198,7 @@ public class WorkflowService {
     public void restoreDefinition(long definitionId, String reason, AuthUser user) {
         String normalizedReason = requireText(reason, "恢复原因");
         Map<String, Object> definition = requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(definition, user, true);
         if (!"ARCHIVED".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有已归档流程可以恢复发布");
         }
@@ -192,36 +222,53 @@ public class WorkflowService {
     }
 
     public List<Map<String, Object>> definitionVersions(long definitionId, AuthUser user) {
-        requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(requireDefinition(definitionId, user.tenantId()), user, false);
         return jdbc.queryForList("SELECT version_no, status, model_schema_version, created_at FROM wf_version WHERE definition_id = ? AND tenant_id = ? ORDER BY version_no DESC", definitionId, user.tenantId());
     }
 
     public Map<String, Object> definitionVersion(long definitionId, int versionNo, AuthUser user) {
-        requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(requireDefinition(definitionId, user.tenantId()), user, false);
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT version_no, status, model_schema_version, created_at, CAST(definition_json AS CHAR) AS definition_json FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND version_no = ?", definitionId, user.tenantId(), versionNo);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程版本不存在");
         return rows.get(0);
     }
 
     public List<Map<String, Object>> definitionEvents(long definitionId, AuthUser user) {
-        requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(requireDefinition(definitionId, user.tenantId()), user, false);
         return jdbc.queryForList("SELECT a.id, a.event_type, a.version_no, a.operator_id, u.display_name AS operator_name, a.reason, CAST(a.payload_json AS CHAR) AS payload_json, a.created_at FROM wf_audit_event a LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id WHERE a.definition_id = ? AND a.tenant_id = ? AND a.instance_id IS NULL ORDER BY a.created_at DESC, a.id DESC", definitionId, user.tenantId());
     }
 
     @Transactional
     public Map<String, Object> createDefinition(String code, String name, String definitionJson, AuthUser user) {
-        if (flowableWorkflowService.isEnterpriseDefinition(definitionJson)) return flowableWorkflowService.createDefinition(code, name, definitionJson, user);
+        return createDefinition(code, name, definitionJson, "GLOBAL", null, user);
+    }
+
+    @Transactional
+    public Map<String, Object> createDefinition(String code, String name, String definitionJson, String scopeType,
+                                                String projectRef, AuthUser user) {
+        String scope = normalizeScope(scopeType);
+        WorkflowProjectAccessGateway.ProjectScope project = null;
+        if ("PROJECT".equals(scope)) {
+            project = gateway().requireAccessible(projectRef, user);
+            gateway().requireManageable(project.id(), user);
+        }
+        Long projectId = project == null ? null : project.id();
+        validateScopeAssignments(scope, projectId, definitionJson, user);
+        if (flowableWorkflowService.isEnterpriseDefinition(definitionJson)) {
+            return flowableWorkflowService.createDefinition(code, name, definitionJson, scope, projectId, user);
+        }
         validator.parse(definitionJson);
         long id = nextId();
-        jdbc.update("INSERT INTO wf_definition (id, tenant_id, code, name, status, current_version, deleted) VALUES (?, ?, ?, ?, 'DRAFT', 0, 0)", id, user.tenantId(), requireText(code, "流程编码"), requireText(name, "流程名称"));
+        jdbc.update("INSERT INTO wf_definition (id, tenant_id, code, name, scope_type, project_id, status, current_version, deleted) VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', 0, 0)", id, user.tenantId(), requireText(code, "流程编码"), requireText(name, "流程名称"), scope, projectId);
         jdbc.update("INSERT INTO wf_version (id, tenant_id, definition_id, version_no, definition_json, status) VALUES (?, ?, ?, 1, ?, 'DRAFT')", nextId(), user.tenantId(), id, definitionJson);
         audit(user, "workflow.definition.create");
-        return jdbc.queryForMap("SELECT id, code, name, status, current_version FROM wf_definition WHERE id = ? AND tenant_id = ?", id, user.tenantId());
+        return jdbc.queryForMap("SELECT id, code, name, scope_type, project_id, status, current_version FROM wf_definition WHERE id = ? AND tenant_id = ?", id, user.tenantId());
     }
 
     @Transactional
     public void publish(long definitionId, AuthUser user) {
         Map<String, Object> definition = requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(definition, user, true);
         if (!"DRAFT".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有草稿流程可以发布");
         }
@@ -236,6 +283,8 @@ public class WorkflowService {
 
     @Transactional
     public void unpublish(long definitionId, AuthUser user) {
+        Map<String, Object> scopedDefinition = requireDefinition(definitionId, user.tenantId());
+        requireDefinitionAccessible(scopedDefinition, user, true);
         if (enterpriseDefinition(definitionId, user.tenantId())) {
             flowableWorkflowService.unpublish(definitionId, user);
             return;
@@ -256,13 +305,30 @@ public class WorkflowService {
     }
     @Transactional
     public Map<String, Object> start(long definitionId, String businessKey, Map<String, Object> variables, AuthUser user) {
-        if (enterpriseDefinition(definitionId, user.tenantId())) return flowableWorkflowService.start(definitionId, businessKey, variables, user);
+        return start(definitionId, businessKey, variables, null, user);
+    }
+
+    @Transactional
+    public Map<String, Object> start(long definitionId, String businessKey, Map<String, Object> variables,
+                                     WorkflowBusinessContext businessContext, AuthUser user) {
+        Map<String, Object> scopedDefinition = requirePublishedDefinition(definitionId, user.tenantId());
+        StartScope startScope = resolveStartScope(scopedDefinition, businessContext, user);
+        if (enterpriseDefinition(definitionId, user.tenantId())) {
+            return flowableWorkflowService.start(definitionId, businessKey, variables, startScope.context(), startScope.projectId(), user);
+        }
         Map<String, Object> definition = jdbc.queryForMap("SELECT d.current_version, v.definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND v.status = 'PUBLISHED'", definitionId, user.tenantId());
         WorkflowDefinitionValidator.WorkflowGraph graph = validator.parse(String.valueOf(definition.get("definition_json")));
         long instanceId = nextId();
         String variablesJson = serializeVariables(variables);
-        jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, status, starter_id, variables_json) VALUES (?, ?, ?, ?, ?, 'RUNNING', ?, ?)", instanceId, user.tenantId(), definitionId, definition.get("current_version"), requireText(businessKey, "业务单号"), user.id(), variablesJson);
-        advanceFromNode(instanceId, user.tenantId(), user.id(), graph, "start", user.id());
+        WorkflowBusinessContext context = startScope.context();
+        jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, business_module_code, business_module_name, business_type, business_title, business_round, project_id, project_ref, project_name, action_path, data_digest, status, starter_id, variables_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RUNNING', ?, ?)",
+                instanceId, user.tenantId(), definitionId, definition.get("current_version"), requireText(businessKey, "业务单号"),
+                contextValue(context, WorkflowBusinessContext::moduleCode), contextValue(context, WorkflowBusinessContext::moduleName),
+                contextValue(context, WorkflowBusinessContext::businessType), contextValue(context, WorkflowBusinessContext::businessTitle),
+                context == null ? null : context.businessRound(), startScope.projectId(), contextValue(context, WorkflowBusinessContext::projectRef),
+                contextValue(context, WorkflowBusinessContext::projectName), contextValue(context, WorkflowBusinessContext::actionPath),
+                contextValue(context, WorkflowBusinessContext::dataDigest), user.id(), variablesJson);
+        advanceFromNode(instanceId, user.tenantId(), user.id(), graph, "start", user);
         audit(user, "workflow.instance.start");
         return jdbc.queryForMap("SELECT id, definition_id, version_no, business_key, status FROM wf_instance WHERE id = ? AND tenant_id = ?", instanceId, user.tenantId());
     }
@@ -296,8 +362,14 @@ public class WorkflowService {
     public PageResult<Map<String, Object>> instances(PageQuery pageQuery, String businessKey, String definitionKeyword,
                                                      String status, String starterKeyword, String createdFrom,
                                                      String createdTo, AuthUser user) {
+        return instances(pageQuery, businessKey, definitionKeyword, status, starterKeyword, createdFrom, createdTo, null, user);
+    }
+
+    public PageResult<Map<String, Object>> instances(PageQuery pageQuery, String businessKey, String definitionKeyword,
+                                                     String status, String starterKeyword, String createdFrom,
+                                                     String createdTo, String projectRef, AuthUser user) {
         return workflowMonitorService.instances(pageQuery, businessKey, definitionKeyword, status, starterKeyword,
-                createdFrom, createdTo, user);
+                createdFrom, createdTo, projectRef, user);
     }
 
     public List<Map<String, Object>> timeline(long instanceId, AuthUser user) {
@@ -313,32 +385,38 @@ public class WorkflowService {
     }
 
     public PageResult<Map<String, Object>> done(PageQuery pageQuery, AuthUser user) {
+        InstanceVisibility visibility = instanceVisibility(user);
         String where = " FROM wf_task_action a JOIN wf_instance i ON i.id = a.instance_id AND i.tenant_id = a.tenant_id"
                 + " JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = a.tenant_id"
                 + " LEFT JOIN wf_task t ON t.id = a.task_id AND t.tenant_id = a.tenant_id"
-                + " WHERE a.tenant_id = ? AND a.operator_id = ? AND i.deleted = 0";
+                + " WHERE a.tenant_id = ? AND a.operator_id = ? AND i.deleted = 0" + visibility.sql();
+        List<Object> args = new ArrayList<>(List.of(user.tenantId(), user.id()));
+        args.addAll(visibility.args());
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT a.id, a.instance_id, a.task_id, a.action_code, a.comment, a.created_at, t.node_id, t.task_key,"
                         + " t.task_type, i.business_key, i.business_type, i.business_title, i.business_round, i.project_ref, i.project_name, i.action_path,"
                         + " i.status AS instance_status, d.name AS definition_name" + where
                         + " ORDER BY a.created_at DESC, a.id DESC LIMIT ?, ?",
-                user.tenantId(), user.id(), offset(pageQuery), pageQuery.size());
-        long total = count(where, user.tenantId(), user.id());
+                withPage(args, pageQuery));
+        long total = count(where, args.toArray());
         return new PageResult<>(nodeLabelResolver.decorateTasks(rows, user.tenantId()), total, pageQuery.page(), pageQuery.size());
     }
 
     public PageResult<Map<String, Object>> inbox(PageQuery pageQuery, AuthUser user) {
+        InstanceVisibility visibility = instanceVisibility(user);
         String where = " FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id"
                 + " LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id"
                 + " LEFT JOIN sys_user starter ON starter.id = i.starter_id AND starter.tenant_id = i.tenant_id"
-                + " WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0 AND t.status IN ('PENDING', 'SENT')";
+                + " WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0 AND t.status IN ('PENDING', 'SENT')" + visibility.sql();
+        List<Object> args = new ArrayList<>(List.of(user.tenantId(), user.id()));
+        args.addAll(visibility.args());
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.status,"
                         + " COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key,"
                         + " i.business_type, i.business_title, i.business_round, i.project_ref, i.project_name, i.action_path,"
                         + " starter.display_name AS starter_name, i.status AS instance_status" + where + " ORDER BY t.id DESC LIMIT ?, ?",
-                user.tenantId(), user.id(), offset(pageQuery), pageQuery.size());
-        long total = count(where, user.tenantId(), user.id());
+                withPage(args, pageQuery));
+        long total = count(where, args.toArray());
         List<Map<String, Object>> decorated = nodeLabelResolver.decorateTasks(rows, user.tenantId());
         if (signatureService != null) decorated.forEach(row -> row.put("signature_required", signatureService.required(((Number) row.get("id")).longValue(), user.tenantId())));
         return new PageResult<>(decorated, total, pageQuery.page(), pageQuery.size());
@@ -350,17 +428,20 @@ public class WorkflowService {
      * 返回字段尽量对齐 inbox，避免前端额外适配。
      */
     public PageResult<Map<String, Object>> submitted(PageQuery pageQuery, AuthUser user) {
+        InstanceVisibility visibility = instanceVisibility(user);
         String where = " FROM wf_instance i"
                 + " LEFT JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id"
                 + " LEFT JOIN sys_user starter ON starter.id = i.starter_id AND starter.tenant_id = i.tenant_id"
-                + " WHERE i.tenant_id = ? AND i.starter_id = ? AND i.deleted = 0";
+                + " WHERE i.tenant_id = ? AND i.starter_id = ? AND i.deleted = 0" + visibility.sql();
+        List<Object> args = new ArrayList<>(List.of(user.tenantId(), user.id()));
+        args.addAll(visibility.args());
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT i.id AS instance_id, i.business_key, i.business_type, i.business_title, i.business_round,"
                         + " i.project_ref, i.project_name, i.action_path, i.status AS instance_status, i.created_at,"
                         + " starter.display_name AS starter_name, d.name AS definition_name"
                         + where + " ORDER BY i.id DESC LIMIT ?, ?",
-                user.tenantId(), user.id(), offset(pageQuery), pageQuery.size());
-        long total = count(where, user.tenantId(), user.id());
+                withPage(args, pageQuery));
+        long total = count(where, args.toArray());
         if (rows.isEmpty()) return new PageResult<>(List.of(), total, pageQuery.page(), pageQuery.size());
         List<Long> instanceIds = rows.stream().map(r -> ((Number) r.get("instance_id")).longValue()).toList();
         // 批量查：每个实例当前活跃审批人（PENDING/SENT）+ 当前节点名
@@ -414,7 +495,7 @@ public class WorkflowService {
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.status AS task_status, t.assignee_id,"
                         + " i.definition_id, i.version_no, i.business_key, i.business_type, i.business_title, i.business_round,"
-                        + " i.project_ref, i.project_name, i.action_path, i.status AS instance_status,"
+                        + " i.project_id, i.project_ref, i.project_name, i.action_path, i.status AS instance_status,"
                         + " CAST(v.definition_json AS CHAR) AS definition_json"
                         + " FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id"
                         + " JOIN wf_version v ON v.definition_id = i.definition_id AND v.version_no = i.version_no AND v.tenant_id = i.tenant_id"
@@ -423,6 +504,7 @@ public class WorkflowService {
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.CONFLICT, "审批任务不存在或业务上下文不可用");
 
         Map<String, Object> row = new LinkedHashMap<>(rows.get(0));
+        requireProjectAccessible(row.get("project_id"), user);
         if (((Number) row.get("assignee_id")).longValue() != user.id()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "当前用户没有该流程任务的审批权限");
         }
@@ -468,6 +550,24 @@ public class WorkflowService {
         return total == null ? 0 : total;
     }
 
+    private Object[] withPage(List<Object> args, PageQuery pageQuery) {
+        List<Object> result = new ArrayList<>(args);
+        result.add(offset(pageQuery));
+        result.add(pageQuery.size());
+        return result.toArray();
+    }
+
+    private InstanceVisibility instanceVisibility(AuthUser user) {
+        if (projectAccess == null) return new InstanceVisibility(" AND i.project_id IS NULL", List.of());
+        List<Long> projectIds = gateway().accessibleProjectIds(user);
+        if (projectIds.isEmpty()) return new InstanceVisibility(" AND i.project_id IS NULL", List.of());
+        String placeholders = String.join(",", java.util.Collections.nCopies(projectIds.size(), "?"));
+        return new InstanceVisibility(" AND (i.project_id IS NULL OR i.project_id IN (" + placeholders + "))", new ArrayList<>(projectIds));
+    }
+
+    private record InstanceVisibility(String sql, List<Object> args) {
+    }
+
     @Transactional
     public void decide(long taskId, String action, String comment, Long targetUserId, List<Long> ccUserIds, AuthUser user) {
         decide(taskId, action, comment, targetUserId, ccUserIds, false, user);
@@ -493,6 +593,7 @@ public class WorkflowService {
         if (CC.equals(normalizedAction)) {
             List<Long> recipients = ccUserIds == null ? List.of() : ccUserIds;
             if (recipients.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择抄送人员");
+            requireProjectTargets(((Number) task.get("instance_id")).longValue(), recipients, user);
             createCcTasks(((Number) task.get("instance_id")).longValue(), user.tenantId(), String.valueOf(task.get("task_key")), recipients, user.id(), comment);
             recordAction(task, normalizedAction, user, null, comment, Map.of("userIds", recipients));
             audit(user, "workflow.task.cc");
@@ -501,6 +602,7 @@ public class WorkflowService {
 
         if (ADD_SIGN.equals(normalizedAction)) {
             if (targetUserId == null || targetUserId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择加签人员");
+            requireProjectTargets(((Number) task.get("instance_id")).longValue(), List.of(targetUserId), user);
             Assignee target = findActiveUser(targetUserId, user.tenantId());
             if (target.id() == user.id()) throw new BusinessException(ErrorCode.BAD_REQUEST, "加签人员不能是当前审批人");
             long addSignTaskId = nextId();
@@ -543,7 +645,7 @@ public class WorkflowService {
             audit(user, "workflow.task.approve");
             return;
         }
-        advanceFromNode(instanceId, user.tenantId(), ((Number) task.get("starter_id")).longValue(), graph, String.valueOf(task.get("node_id")), user.id());
+        advanceFromNode(instanceId, user.tenantId(), ((Number) task.get("starter_id")).longValue(), graph, String.valueOf(task.get("node_id")), user);
         emitTerminalIfNeeded(instanceId, user);
         audit(user, "workflow.task.approve");
     }
@@ -591,7 +693,7 @@ public class WorkflowService {
     }
 
     private void advanceFromNode(long instanceId, long tenantId, long starterId, WorkflowDefinitionValidator.WorkflowGraph graph,
-                                 String currentNodeId, long operatorId) {
+                                 String currentNodeId, AuthUser operator) {
         String nodeId = currentNodeId;
         while (true) {
             WorkflowDefinitionValidator.WorkflowEdge edge = graph.outgoing(nodeId);
@@ -605,12 +707,13 @@ public class WorkflowService {
             }
             if ("CC".equals(next.type())) {
                 List<Long> userIds = ids(next.config().path("userIds"));
-                createCcTasks(instanceId, tenantId, next.id(), userIds, starterId, "流程节点抄送");
+                requireProjectTargets(instanceId, userIds, operator);
+                createCcTasks(instanceId, tenantId, next.id(), userIds, operator.id(), "流程节点抄送");
                 nodeId = next.id();
                 continue;
             }
             if ("APPROVAL".equals(next.type())) {
-                createApprovalTasks(instanceId, tenantId, starterId, next, operatorId);
+                createApprovalTasks(instanceId, tenantId, starterId, next, operator);
                 jdbc.update("UPDATE wf_instance SET status = 'RUNNING' WHERE id = ? AND tenant_id = ?", instanceId, tenantId);
                 return;
             }
@@ -619,15 +722,16 @@ public class WorkflowService {
     }
 
     private void createApprovalTasks(long instanceId, long tenantId, long starterId,
-                                     WorkflowDefinitionValidator.WorkflowNode node, long operatorId) {
+                                     WorkflowDefinitionValidator.WorkflowNode node, AuthUser operator) {
         JsonNode variables = loadInstanceVariables(instanceId, tenantId);
-        List<Assignee> assignees = resolveAssignees(node.config(), variables, tenantId, starterId);
+        Long projectId = projectId(instanceId, tenantId);
+        List<Assignee> assignees = resolveAssignees(node.config(), variables, tenantId, starterId, projectId, operator);
         String groupKey = UUID.randomUUID().toString();
         String assigneeType = node.config().path("assigneeType").asText("USER").toUpperCase();
         for (Assignee assignee : assignees) {
             long taskId = nextId();
             jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, assignee_type, assignee_name, assignee_id, status) VALUES (?, ?, ?, ?, ?, 'APPROVAL', ?, ?, ?, ?, 'PENDING')", taskId, tenantId, instanceId, node.id(), node.id(), groupKey, assigneeType, assignee.name(), assignee.id());
-            assigned(tenantId, instanceId, taskId, assignee.id(), operatorId);
+            assigned(tenantId, instanceId, taskId, assignee.id(), operator.id());
         }
     }
 
@@ -657,9 +761,21 @@ public class WorkflowService {
         }
     }
 
-    private List<Assignee> resolveAssignees(JsonNode config, JsonNode variables, long tenantId, long starterId) {
+    private List<Assignee> resolveAssignees(JsonNode config, JsonNode variables, long tenantId, long starterId,
+                                            Long projectId, AuthUser operator) {
         String type = config.path("assigneeType").asText("").toUpperCase();
         if ("STARTER".equals(type)) return List.of(findActiveUser(starterId, tenantId));
+        if ("PROJECT_MEMBER".equals(type)) {
+            List<Long> memberIds = ids(config.path("assigneeIds"));
+            requireProjectGateway(projectId).requireMembers(projectId, memberIds, operator);
+            return memberIds.stream().map(id -> findActiveUser(id, tenantId)).toList();
+        }
+        if ("PROJECT_ROLE".equals(type)) {
+            List<WorkflowProjectMember> members = requireProjectGateway(projectId)
+                    .membersForRoles(projectId, ids(config.path("assigneeIds")), operator);
+            if (members.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "项目审批角色没有有效成员");
+            return members.stream().map(member -> new Assignee(member.userId(), member.displayName())).toList();
+        }
         if ("VARIABLE".equals(type)) {
             // 动态审批人：从启动变量 variables 里读取审批人 ID 列表
             // 变量名由 config.assigneeVariable 指定，默认 approverIds
@@ -769,9 +885,136 @@ public class WorkflowService {
     }
 
     private Map<String, Object> requireDefinition(long definitionId, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, code, name, status, current_version, model_schema_version, deployment_id FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", definitionId, tenantId);
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, code, name, status, current_version, model_schema_version, deployment_id, scope_type, project_id FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", definitionId, tenantId);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
         return rows.get(0);
+    }
+
+    public Map<String, Object> projectOptions(String projectRef, AuthUser user) {
+        WorkflowProjectAccessGateway.ProjectScope project = gateway().requireAccessible(projectRef, user);
+        List<Map<String, Object>> members = gateway().members(project.id(), user).stream()
+                .map(item -> Map.<String, Object>of("id", item.userId(), "username", item.username(), "display_name", item.displayName()))
+                .toList();
+        List<Map<String, Object>> roles = gateway().roles(project.id(), user).stream()
+                .map(item -> Map.<String, Object>of("id", item.id(), "role_code", item.code(), "role_name", item.name()))
+                .toList();
+        return Map.of("project_id", project.id(), "project_ref", project.ref(), "project_name", project.name(), "members", members, "roles", roles);
+    }
+
+    @Override
+    public long pendingTasks(long tenantId, long projectId, long userId) {
+        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND i.project_id = ? AND t.assignee_id = ? AND t.status = 'PENDING' AND i.deleted = 0", Long.class, tenantId, projectId, userId);
+        return count == null ? 0 : count;
+    }
+
+    private void requireDefinitionAccessible(Map<String, Object> definition, AuthUser user, boolean manage) {
+        if (!"PROJECT".equals(String.valueOf(definition.get("scope_type")))) return;
+        Long projectId = number(definition.get("project_id"));
+        if (projectId == null) throw new BusinessException(ErrorCode.CONFLICT, "项目流程缺少项目归属");
+        if (manage) gateway().requireManageable(projectId, user);
+        else gateway().requireAccessible(projectId, user);
+    }
+
+    void requireInstanceAccessible(long instanceId, AuthUser user) {
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0", instanceId, user.tenantId());
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
+        requireProjectAccessible(rows.get(0).get("project_id"), user);
+    }
+
+    private void requireProjectAccessible(Object projectIdValue, AuthUser user) {
+        Long projectId = number(projectIdValue);
+        if (projectId != null) gateway().requireAccessible(projectId, user);
+    }
+
+    private Map<String, Object> requirePublishedDefinition(long definitionId, long tenantId) {
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, code, name, scope_type, project_id, status, current_version FROM wf_definition WHERE id = ? AND tenant_id = ? AND status = 'PUBLISHED' AND deleted = 0", definitionId, tenantId);
+        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程尚未发布或不存在");
+        return rows.get(0);
+    }
+
+    private StartScope resolveStartScope(Map<String, Object> definition, WorkflowBusinessContext context, AuthUser user) {
+        String scope = normalizeScope(String.valueOf(definition.get("scope_type")));
+        Long definitionProjectId = number(definition.get("project_id"));
+        WorkflowProjectAccessGateway.ProjectScope project = null;
+        if (context != null && context.projectRef() != null && !context.projectRef().isBlank()) {
+            project = gateway().requireAccessible(context.projectRef(), user);
+        }
+        if ("PROJECT".equals(scope)) {
+            if (definitionProjectId == null) throw new BusinessException(ErrorCode.CONFLICT, "项目流程缺少项目归属");
+            if (project == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "项目流程启动时必须提供项目上下文");
+            if (project.id() != definitionProjectId) throw new BusinessException(ErrorCode.CONFLICT, "流程定义与业务项目不匹配");
+        }
+        WorkflowBusinessContext normalized = context;
+        if (context != null && project != null) {
+            normalized = new WorkflowBusinessContext(context.moduleCode(), context.moduleName(), context.businessType(),
+                    context.businessKey(), context.businessTitle(), context.businessRound(), project.ref(), project.name(),
+                    context.actionPath(), context.dataDigest());
+        }
+        return new StartScope(project == null ? null : project.id(), normalized);
+    }
+
+    private Long projectId(long instanceId, long tenantId) {
+        return jdbc.query("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ?",
+                rs -> rs.next() && rs.getObject(1) != null ? ((Number) rs.getObject(1)).longValue() : null,
+                instanceId, tenantId);
+    }
+
+    private void requireProjectTargets(long instanceId, List<Long> userIds, AuthUser actor) {
+        Long projectId = projectId(instanceId, actor.tenantId());
+        if (projectId != null) gateway().requireMembers(projectId, userIds, actor);
+    }
+
+    private WorkflowProjectAccessGateway requireProjectGateway(Long projectId) {
+        if (projectId == null || projectId <= 0) throw new BusinessException(ErrorCode.CONFLICT, "项目流程实例缺少项目上下文");
+        return gateway();
+    }
+
+    private String contextValue(WorkflowBusinessContext context, java.util.function.Function<WorkflowBusinessContext, String> getter) {
+        return context == null ? null : getter.apply(context);
+    }
+
+    private record StartScope(Long projectId, WorkflowBusinessContext context) {
+    }
+
+    private void validateScopeAssignments(String scope, Long projectId, String definitionJson, AuthUser user) {
+        try {
+            JsonNode nodes = objectMapper.readTree(definitionJson).path("nodes");
+            if (!nodes.isArray()) return;
+            for (JsonNode node : nodes) {
+                JsonNode config = node.path("config");
+                if ("CC".equals(node.path("type").asText("")) && projectId != null) {
+                    gateway().requireMembers(projectId, ids(config.path("userIds")), user);
+                }
+                if (!"APPROVAL".equals(node.path("type").asText(""))) continue;
+                String type = config.path("assigneeType").asText("").toUpperCase(Locale.ROOT);
+                if ("PROJECT".equals(scope)) {
+                    if (!Set.of("PROJECT_MEMBER", "PROJECT_ROLE", "STARTER").contains(type)) {
+                        throw new BusinessException(ErrorCode.BAD_REQUEST, "项目流程只能选择项目成员、项目角色或发起人");
+                    }
+                    if ("PROJECT_MEMBER".equals(type)) gateway().requireMembers(projectId, ids(config.path("assigneeIds")), user);
+                    if ("PROJECT_ROLE".equals(type)) gateway().membersForRoles(projectId, ids(config.path("assigneeIds")), user);
+                } else if (Set.of("PROJECT_MEMBER", "PROJECT_ROLE").contains(type)) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "全局流程不能固定项目成员或项目角色");
+                }
+            }
+        } catch (JsonProcessingException exception) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义格式无效");
+        }
+    }
+
+    private String normalizeScope(String value) {
+        String scope = value == null || value.isBlank() ? "GLOBAL" : value.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("GLOBAL", "PROJECT").contains(scope)) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程范围无效");
+        return scope;
+    }
+
+    private Long number(Object value) {
+        return value instanceof Number number ? number.longValue() : null;
+    }
+
+    private WorkflowProjectAccessGateway gateway() {
+        if (projectAccess == null) throw new BusinessException(ErrorCode.CONFLICT, "项目工作流能力尚未就绪");
+        return projectAccess;
     }
 
     private int versionNo(Map<String, Object> definition) {

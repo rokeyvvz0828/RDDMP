@@ -17,7 +17,9 @@ import java.util.Set;
 public final class WorkflowDefinitionValidator {
     private static final int SCHEMA_VERSION = 1;
     private static final Set<String> NODE_TYPES = Set.of("START", "APPROVAL", "CC", "END");
-    private static final Set<String> ASSIGNEE_TYPES = Set.of("USER", "ROLE", "STARTER", "VARIABLE");
+    private static final Set<String> ASSIGNEE_TYPES = Set.of(
+            "USER", "ROLE", "PROJECT_MEMBER", "PROJECT_ROLE", "STARTER", "VARIABLE"
+    );
     private static final Set<String> MODES = Set.of("ANY", "ALL");
 
     private final ObjectMapper objectMapper;
@@ -150,7 +152,8 @@ public final class WorkflowDefinitionValidator {
             String mode = node.config().path("mode").asText("ANY").toUpperCase();
             if (!ASSIGNEE_TYPES.contains(assigneeType)) throw invalid("审批节点审批人类型无效：" + node.label());
             if (!MODES.contains(mode)) throw invalid("审批节点审批模式无效：" + node.label());
-            if (("USER".equals(assigneeType) || "ROLE".equals(assigneeType)) && !hasPositiveId(node.config().path("assigneeIds"))) {
+            if (Set.of("USER", "ROLE", "PROJECT_MEMBER", "PROJECT_ROLE").contains(assigneeType)
+                    && !hasPositiveId(node.config().path("assigneeIds"))) {
                 throw invalid("审批节点必须配置审批人：" + node.label());
             }
         }

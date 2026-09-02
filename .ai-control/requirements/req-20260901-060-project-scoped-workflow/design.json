@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260901-060-project-scoped-workflow",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-01-project-scoped-workflow-design.md",
+  "objective": "建立工作流定义、实例、人员解析与审批操作的一致项目边界",
+  "users": ["项目成员", "项目工作流管理员", "平台工作流管理员", "审批人"],
+  "requirements": [
+    {"id":"R1","statement":"流程定义必须支持 GLOBAL 和 PROJECT 范围","acceptance":["项目成员只能看到有权项目流程和全局模板"],"priority":"must","source":"用户确认","counterexample":["项目 A 用户读取项目 B 流程"]},
+    {"id":"R2","statement":"项目流程必须使用项目成员和项目角色配置审批人","acceptance":["跨项目用户和角色被服务端拒绝"],"priority":"must","source":"用户确认","counterexample":["前端隐藏但接口仍可保存跨项目人员"]},
+    {"id":"R3","statement":"实例必须在首批任务前固化真实 project_id","acceptance":["首批任务解析读取已持久化项目主键"],"priority":"must","source":"用户确认","counterexample":["任务创建后才更新项目快照"]},
+    {"id":"R4","statement":"实例、待办、详情和审批必须校验项目访问","acceptance":["无项目权限用户不能读取或审批"],"priority":"must","source":"用户确认","counterexample":["持有任务 ID 即可审批"]},
+    {"id":"R5","statement":"存在项目待办时阻断成员停用或移除","acceptance":["待办清理后允许操作"],"priority":"must","source":"用户确认","counterexample":["移除办理人后留下无人处理任务"]},
+    {"id":"R6","statement":"存量定义和实例必须兼容迁移","acceptance":["定义迁移 GLOBAL，实例仅可靠匹配时回填"],"priority":"must","source":"用户确认","counterexample":["按名称猜测并错误归属历史实例"]},
+    {"id":"R7","statement":"前端必须跟随顶层项目上下文加载流程和人员选项","acceptance":["项目切换后重新加载且标签明确"],"priority":"must","source":"用户确认","counterexample":["继续显示上一个项目人员"]},
+    {"id":"R8","statement":"桌面和移动端必须完成同一核心配置路径","acceptance":["三个手机视口无横向溢出"],"priority":"must","source":"仓库规范","counterexample":["节点配置在手机端不可操作"]}
+  ],
+  "invariants": ["项目数据由 system 拥有", "workflow 与 system 不形成 Maven 循环", "历史 Flyway 不修改", "全局流程兼容"],
+  "constraints": ["Java 17", "Spring Boot 3.4.4", "MySQL 8.4", "Vue 3", "只修改任务范围"],
+  "non_goals": ["修改业务场景判定", "使用项目组织树授权", "重写历史定义 JSON"],
+  "selected_approach": {"name":"全局模板加项目流程，boot 契约桥接","reason":"兼顾复用、项目隔离与模块无环依赖","alternatives":["全部流程强制项目化","继续租户全局流程"]},
+  "architecture": {"boundary":{"inside":["workflow","system project capability","boot integration","workflow frontend","V134"],"outside":["具体业务场景规则","Flowable ACT 表"]},"components":["WorkflowService","WorkflowBusinessIntegrationService","ProjectWorkflowDirectoryService","WorkflowProjectAccessBridge","WorkflowView"],"interfaces":["WorkflowProjectAccessGateway","WorkflowPendingTaskQuery","ProjectMemberRemovalGuard"],"data_flows":["项目上下文->定义范围->实例 project_id->人员解析->任务授权"]},
+  "error_handling": ["缺项目、越权、跨项目人员、跨项目角色和待办成员移除返回明确业务错误"],
+  "quality_attributes": {"security":["RBAC 加实体授权"],"performance":["项目和实例索引"],"compatibility":["GLOBAL 存量兼容"],"operations":["V134 追加迁移和可保留回退"]},
+  "verification_strategy": ["聚焦模块测试", "全量 Maven", "前端构建", "治理范围检查", "桌面和移动浏览器验收"],
+  "assumptions": ["项目编号在同租户内唯一", "PM 项目角色代表项目工作流管理者"],
+  "unknowns": [],
+  "decisions": ["使用真实 project_id 授权", "项目编号和名称只作快照", "成员待办用守卫阻断"],
+  "risks": ["启动时序", "成员状态并发", "双执行器差异", "跨模块契约"],
+  "approval": {"status":"approved","evidence":"用户于 2026-09-01 回复按此执行","confirmed_at":"2026-09-01T17:20:41+08:00"}
+}

@@ -10,13 +10,15 @@ import UiStatusTag from '../components/ui/UiStatusTag.vue'
 import UiToolbar from '../components/ui/UiToolbar.vue'
 import WorkflowDesigner from '../components/workflow/WorkflowDesigner.vue'
 import WorkflowNodeInspector from '../components/workflow/WorkflowNodeInspector.vue'
-import { archiveWorkflowDefinition, createWorkflowDefinition, defaultWorkflowGraph, deleteWorkflowDefinition, deleteWorkflowInstance, getWorkflowDefinition, getWorkflowDefinitionVersion, getWorkflowInstanceDetail, listWorkflowDefinitionEvents, listWorkflowDefinitions, listWorkflowDefinitionVersions, listWorkflowInstances, publishWorkflowDefinition, restoreWorkflowDefinition, unpublishWorkflowDefinition, updateWorkflowDefinition, type WorkflowDefinition, type WorkflowDefinitionEvent, type WorkflowDefinitionVersion, type WorkflowEdgeModel, type WorkflowGraph, type WorkflowInstance, type WorkflowNodeModel, type WorkflowNodeState, type WorkflowPage } from '../api/workflow'
+import { archiveWorkflowDefinition, createWorkflowDefinition, defaultWorkflowGraph, deleteWorkflowDefinition, deleteWorkflowInstance, getWorkflowDefinition, getWorkflowDefinitionVersion, getWorkflowInstanceDetail, getWorkflowProjectOptions, listWorkflowDefinitionEvents, listWorkflowDefinitions, listWorkflowDefinitionVersions, listWorkflowInstances, publishWorkflowDefinition, restoreWorkflowDefinition, unpublishWorkflowDefinition, updateWorkflowDefinition, type WorkflowAssigneeType, type WorkflowDefinition, type WorkflowDefinitionEvent, type WorkflowDefinitionVersion, type WorkflowEdgeModel, type WorkflowGraph, type WorkflowInstance, type WorkflowNodeModel, type WorkflowNodeState, type WorkflowPage, type WorkflowScopeType } from '../api/workflow'
 import { getRoleOptions, listSystem } from '../api/system'
 import type { RoleOption, SystemRow } from '../types/system'
 import { formatDateOnly } from '../utils/date'
 import { apiErrorMessage } from '../api/error'
+import { useProjectContextStore } from '../stores/project-context'
 
 const route = useRoute()
+const projectContext = useProjectContextStore()
 const section = computed(() => String(route.params.section || 'definitions') === 'monitor' ? 'monitor' : 'definitions')
 const isMonitor = computed(() => section.value === 'monitor')
 const definitions = ref<WorkflowDefinition[]>([])
@@ -33,6 +35,8 @@ const monitorNodeStates = ref<WorkflowNodeState[]>([])
 const monitorNodeStatuses = ref<Record<string, string>>({})
 const users = ref<{ id: number; username: string; display_name: string; org_name?: string }[]>([])
 const roles = ref<RoleOption[]>([])
+const scopeType = ref<WorkflowScopeType>('PROJECT')
+const optionsScopeKey = ref('')
 const loading = ref(false)
 const optionsLoading = ref(false)
 const designerOpen = ref(false)
@@ -98,7 +102,7 @@ function handleMobileInstanceCommand(row: WorkflowInstance, command: string) {
 async function load() {
   loading.value = true
   try {
-    const pageQuery = { page: page.value, size: pageSize.value }
+    const pageQuery = { page: page.value, size: pageSize.value, projectRef: projectContext.currentRef || undefined }
     if (isMonitor.value) {
       const response = await listWorkflowInstances({
         ...pageQuery,
@@ -142,13 +146,22 @@ function resetMonitorFilters() {
   page.value = 1
   void load()
 }
-async function loadOptions() {
-  if (users.value.length || optionsLoading.value) return
+async function loadOptions(force = false) {
+  const scopeKey = `${scopeType.value}:${projectContext.currentRef}`
+  if ((!force && optionsScopeKey.value === scopeKey) || optionsLoading.value) return
   optionsLoading.value = true
   try {
-    const [userResponse, roleResponse] = await Promise.all([listSystem('users', { page: 1, size: 500 }), getRoleOptions()])
-    users.value = userResponse.data.data.records.map((row: SystemRow) => ({ id: Number(row.id), username: String(row.username || ''), display_name: String(row.display_name || row.username || ''), org_name: row.org_name ? String(row.org_name) : undefined }))
-    roles.value = roleResponse.data.data
+    if (scopeType.value === 'PROJECT') {
+      if (!projectContext.currentRef) throw new Error('当前没有可用项目')
+      const response = await getWorkflowProjectOptions(projectContext.currentRef)
+      users.value = response.data.data.members
+      roles.value = response.data.data.roles
+    } else {
+      const [userResponse, roleResponse] = await Promise.all([listSystem('users', { page: 1, size: 500 }), getRoleOptions()])
+      users.value = userResponse.data.data.records.map((row: SystemRow) => ({ id: Number(row.id), username: String(row.username || ''), display_name: String(row.display_name || row.username || ''), org_name: row.org_name ? String(row.org_name) : undefined }))
+      roles.value = roleResponse.data.data
+    }
+    optionsScopeKey.value = scopeKey
   } catch (error) { ElMessage.error(apiErrorMessage(error, '审批人选项加载失败')) } finally { optionsLoading.value = false }
 }
 function parseWorkflowGraph(value: string | WorkflowGraph): WorkflowGraph {
@@ -175,13 +188,31 @@ function openCreate() {
   selectedHistoryVersion.value = null
   form.code = ''
   form.name = ''
-  graph.value = defaultWorkflowGraph()
+  scopeType.value = projectContext.currentRef ? 'PROJECT' : 'GLOBAL'
+  graph.value = graphForScope(defaultWorkflowGraph(), scopeType.value)
   selectedNodeId.value = null
   selectedEdgeId.value = null
   designerReadonly.value = false
   designerFullscreen.value = false
   designerOpen.value = true
   void loadOptions()
+}
+function graphForScope(value: WorkflowGraph, scope: WorkflowScopeType): WorkflowGraph {
+  const assigneeType: WorkflowAssigneeType = scope === 'PROJECT' ? 'PROJECT_MEMBER' : 'USER'
+  return {
+    ...value,
+    nodes: value.nodes.map(node => node.type === 'APPROVAL'
+      ? { ...node, config: { ...node.config, assigneeType, assigneeIds: [] } }
+      : node)
+  }
+}
+function changeScope(value: string | number | boolean) {
+  scopeType.value = String(value) as WorkflowScopeType
+  graph.value = graphForScope(graph.value, scopeType.value)
+  selectedNodeId.value = null
+  selectedEdgeId.value = null
+  optionsScopeKey.value = ''
+  void loadOptions(true)
 }
 async function loadDefinitionHistory(definitionId: number) {
   historyLoading.value = true
@@ -214,6 +245,7 @@ async function openView(row: { id: number; name: string; status: string }) {
     graph.value = parseWorkflowGraph(detail.definition_json)
     form.code = detail.code
     form.name = detail.name
+    scopeType.value = detail.scope_type || 'GLOBAL'
     selectedNodeId.value = null
     selectedEdgeId.value = null
     viewingDefinitionId.value = row.id
@@ -274,10 +306,10 @@ function validateGraphBeforeSave() {
     if (node.type === 'APPROVAL') {
       const config = node.config || {}
       const assigneeType = String(config.assigneeType || '').toUpperCase()
-      if (['USER', 'ROLE'].includes(assigneeType) && !hasPositiveIds(config.assigneeIds)) return true
+      if (['USER', 'ROLE', 'PROJECT_MEMBER', 'PROJECT_ROLE'].includes(assigneeType) && !hasPositiveIds(config.assigneeIds)) return true
       if (assigneeType === 'FORM_FIELD' && !String(config.fieldName || '').trim()) return true
       if (assigneeType === 'EXPRESSION' && !String(config.expression || '').trim()) return true
-      if (!['USER', 'ROLE', 'ORG_OWNER', 'STARTER', 'FORM_FIELD', 'EXPRESSION'].includes(assigneeType)) return true
+      if (!['USER', 'ROLE', 'PROJECT_MEMBER', 'PROJECT_ROLE', 'ORG_OWNER', 'STARTER', 'FORM_FIELD', 'EXPRESSION'].includes(assigneeType)) return true
     }
     if (node.type === 'CC' && !hasPositiveIds(node.config?.userIds)) return true
     return false
@@ -295,7 +327,7 @@ async function save() {
   if (!validateGraphBeforeSave()) return
   saving.value = true
   try {
-    const payload = { code: form.code.trim(), name: form.name.trim(), definitionJson: JSON.stringify(graphForSave()) }
+    const payload = { code: form.code.trim(), name: form.name.trim(), definitionJson: JSON.stringify(graphForSave()), scopeType: scopeType.value, projectRef: scopeType.value === 'PROJECT' ? projectContext.currentRef : undefined }
     if (editingDefinitionId.value) await updateWorkflowDefinition(editingDefinitionId.value, payload)
     else await createWorkflowDefinition(payload)
     designerOpen.value = false
@@ -419,7 +451,8 @@ async function removeInstance(row: WorkflowInstance) {
   }
 }
 watch(section, () => { page.value = 1; void load() })
-onMounted(load)
+watch(() => projectContext.currentRef, () => { page.value = 1; optionsScopeKey.value = ''; void load() })
+onMounted(async () => { await projectContext.initialize(); await load() })
 </script>
 
 <template>
@@ -439,17 +472,17 @@ onMounted(load)
       <el-button type="primary" @click="searchMonitor"><el-icon><View /></el-icon>查询</el-button>
       <el-button @click="resetMonitorFilters">重置</el-button>
     </div>
-    <UiToolbar><div class="ui-toolbar__filters"><span class="muted">{{ isMonitor ? '实例状态和审计记录按租户隔离。' : '发布前校验流程拓扑、审批人和分支配置。' }}</span></div><template #actions><el-button @click="load"><el-icon><Refresh /></el-icon>刷新</el-button><el-button v-if="!isMonitor" type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建流程</el-button></template></UiToolbar>
+    <UiToolbar><div class="ui-toolbar__filters"><el-tag v-if="projectContext.current" effect="plain">{{ projectContext.current.name }}</el-tag></div><template #actions><el-button @click="load"><el-icon><Refresh /></el-icon>刷新</el-button><el-button v-if="!isMonitor" type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建流程</el-button></template></UiToolbar>
 
     <UiDataTable v-if="!isMonitor" class="workflow-table workflow-table--desktop" :data="definitions" :loading="loading" row-key="id" border>
-      <el-table-column prop="code" label="流程编码" min-width="160" class-name="workflow-primary-key" label-class-name="workflow-primary-key"><template #default="scope"><span class="workflow-primary-key__value">{{ scope.row.code }}</span></template></el-table-column><el-table-column prop="name" label="流程名称" min-width="180" /><el-table-column prop="current_version" label="当前版本" width="110" /><el-table-column prop="model_schema_version" label="模型版本" width="110" /><el-table-column label="状态" width="120"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ DRAFT: '草稿', PUBLISHED: '已发布', ARCHIVED: '已归档' }" :tone="workflowStatusTone(scope.row.status)" /></template></el-table-column><el-table-column label="操作" width="460"><template #default="scope"><div class="workflow-table-actions workflow-table-actions--definitions"><el-button link type="primary" @click="openView(scope.row)"><el-icon><EditPen v-if="scope.row.status === 'DRAFT'" /><View v-else /></el-icon>{{ scope.row.status === 'DRAFT' ? '编辑流程图' : '查看详情' }}</el-button><el-button v-if="scope.row.status === 'DRAFT'" link type="primary" @click="publish(scope.row)"><el-icon><CircleCheck /></el-icon>发布</el-button><el-button v-if="scope.row.status === 'PUBLISHED'" link type="warning" @click="unpublish(scope.row)"><el-icon><Refresh /></el-icon>取消发布</el-button><el-button v-if="scope.row.status === 'PUBLISHED'" link type="danger" @click="archiveDefinition(scope.row)"><el-icon><Delete /></el-icon>归档</el-button><el-button v-if="scope.row.status === 'ARCHIVED'" link type="primary" @click="restoreDefinition(scope.row)"><el-icon><Refresh /></el-icon>恢复发布</el-button><el-button v-if="scope.row.status === 'DRAFT'" link type="danger" @click="removeDefinition(scope.row)"><el-icon><Delete /></el-icon>删除草稿</el-button></div></template></el-table-column>
+      <el-table-column prop="code" label="流程编码" min-width="160" class-name="workflow-primary-key" label-class-name="workflow-primary-key"><template #default="scope"><span class="workflow-primary-key__value">{{ scope.row.code }}</span></template></el-table-column><el-table-column prop="name" label="流程名称" min-width="180" /><el-table-column label="范围" width="120"><template #default="scope"><UiStatusTag :value="scope.row.scope_type" :labels="{ PROJECT: '当前项目', GLOBAL: '全局模板' }" :tone="scope.row.scope_type === 'PROJECT' ? 'primary' : 'info'" /></template></el-table-column><el-table-column prop="current_version" label="当前版本" width="110" /><el-table-column prop="model_schema_version" label="模型版本" width="110" /><el-table-column label="状态" width="120"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ DRAFT: '草稿', PUBLISHED: '已发布', ARCHIVED: '已归档' }" :tone="workflowStatusTone(scope.row.status)" /></template></el-table-column><el-table-column label="操作" width="460"><template #default="scope"><div class="workflow-table-actions workflow-table-actions--definitions"><el-button link type="primary" @click="openView(scope.row)"><el-icon><EditPen v-if="scope.row.status === 'DRAFT'" /><View v-else /></el-icon>{{ scope.row.status === 'DRAFT' ? '编辑流程图' : '查看详情' }}</el-button><el-button v-if="scope.row.status === 'DRAFT'" link type="primary" @click="publish(scope.row)"><el-icon><CircleCheck /></el-icon>发布</el-button><el-button v-if="scope.row.status === 'PUBLISHED'" link type="warning" @click="unpublish(scope.row)"><el-icon><Refresh /></el-icon>取消发布</el-button><el-button v-if="scope.row.status === 'PUBLISHED'" link type="danger" @click="archiveDefinition(scope.row)"><el-icon><Delete /></el-icon>归档</el-button><el-button v-if="scope.row.status === 'ARCHIVED'" link type="primary" @click="restoreDefinition(scope.row)"><el-icon><Refresh /></el-icon>恢复发布</el-button><el-button v-if="scope.row.status === 'DRAFT'" link type="danger" @click="removeDefinition(scope.row)"><el-icon><Delete /></el-icon>删除草稿</el-button></div></template></el-table-column>
       <template #footer><div class="workflow-table-footer"><span class="muted">共 {{ total }} 个流程定义</span><UiPagination :page="page" :page-size="pageSize" :total="total" @update:page="onPageChange" @update:page-size="onPageSizeChange" /></div></template>
     </UiDataTable>
 
     <section v-if="!isMonitor" class="workflow-mobile-list" v-loading="loading">
       <article v-for="row in definitions" :key="row.id" class="workflow-mobile-card">
         <header class="workflow-mobile-card__header"><div><span class="workflow-mobile-card__eyebrow">流程定义</span><strong>{{ row.name }}</strong></div><UiStatusTag :value="row.status" :labels="{ DRAFT: '草稿', PUBLISHED: '已发布', ARCHIVED: '已归档' }" :tone="workflowStatusTone(row.status)" /></header>
-        <div class="workflow-mobile-card__facts"><div><span>流程编码</span><strong class="workflow-primary-key__value">{{ row.code }}</strong></div><div><span>版本</span><strong>V{{ row.current_version || 0 }} · 模型 {{ row.model_schema_version || '-' }}</strong></div></div>
+        <div class="workflow-mobile-card__facts"><div><span>流程编码</span><strong class="workflow-primary-key__value">{{ row.code }}</strong></div><div><span>范围</span><strong>{{ row.scope_type === 'PROJECT' ? '当前项目' : '全局模板' }}</strong></div><div><span>版本</span><strong>V{{ row.current_version || 0 }} · 模型 {{ row.model_schema_version || '-' }}</strong></div></div>
         <div class="workflow-mobile-card__actions"><el-button class="workflow-mobile-card__primary-action" type="primary" plain @click="openView(row)"><el-icon><EditPen v-if="row.status === 'DRAFT'" /><View v-else /></el-icon>{{ row.status === 'DRAFT' ? '编辑流程图' : '查看详情' }}</el-button><el-dropdown trigger="click" @command="handleMobileDefinitionCommand(row, $event)"><el-button text type="primary">更多操作<el-icon><MoreFilled /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-if="row.status === 'DRAFT'" command="PUBLISH"><el-icon><CircleCheck /></el-icon>发布</el-dropdown-item><el-dropdown-item v-if="row.status === 'PUBLISHED'" command="UNPUBLISH"><el-icon><Refresh /></el-icon>取消发布</el-dropdown-item><el-dropdown-item v-if="row.status === 'PUBLISHED'" command="ARCHIVE" divided><el-icon><Delete /></el-icon>归档</el-dropdown-item><el-dropdown-item v-if="row.status === 'ARCHIVED'" command="RESTORE"><el-icon><Refresh /></el-icon>恢复发布</el-dropdown-item><el-dropdown-item v-if="row.status === 'DRAFT'" command="DELETE" divided><el-icon><Delete /></el-icon>删除草稿</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
       </article>
       <UiEmptyState v-if="!loading && !definitions.length" title="暂无流程定义" />
@@ -486,8 +519,8 @@ onMounted(load)
     <el-dialog v-model="designerOpen" :title="designerTitle" width="min(1400px, 96vw)" top="12px" destroy-on-close class="workflow-designer-dialog">
       <el-tabs v-model="designerTab" class="workflow-definition-tabs" :class="{ 'is-create': !viewingDefinitionId }">
         <el-tab-pane label="当前设计" name="current">
-          <div class="workflow-definition-meta"><el-form inline><el-form-item label="流程编码" required><el-input v-model="form.code" :disabled="designerReadonly" placeholder="例如 expense_approval" /></el-form-item><el-form-item label="流程名称" required><el-input v-model="form.name" :disabled="designerReadonly" placeholder="例如费用审批" /></el-form-item></el-form></div>
-          <div v-loading="optionsLoading" class="workflow-builder" :class="{ 'is-fullscreen': designerFullscreen }"><WorkflowDesigner v-model="graph" :readonly="designerReadonly" @select="selectedNodeId = $event?.id || null; if ($event) selectedEdgeId = null" @edge-select="selectedEdgeId = $event?.id || null; if ($event) selectedNodeId = null" @fullscreen="designerFullscreen = $event" /><WorkflowNodeInspector :node="selectedNode" :edge="selectedEdge" :nodes="graph.nodes" :users="users" :roles="roles" :readonly="designerReadonly" @update="updateSelectedNode" @update-edge="updateSelectedEdge" /></div>
+          <div class="workflow-definition-meta"><el-form inline><el-form-item label="流程范围" required><el-segmented :model-value="scopeType" :options="[{ label: '当前项目', value: 'PROJECT', disabled: !projectContext.currentRef }, { label: '全局模板', value: 'GLOBAL' }]" :disabled="designerReadonly || Boolean(viewingDefinitionId)" @change="changeScope" /></el-form-item><el-form-item v-if="scopeType === 'PROJECT'" label="所属项目"><el-tag effect="plain">{{ projectContext.current?.name || '-' }}</el-tag></el-form-item><el-form-item label="流程编码" required><el-input v-model="form.code" :disabled="designerReadonly" placeholder="例如 expense_approval" /></el-form-item><el-form-item label="流程名称" required><el-input v-model="form.name" :disabled="designerReadonly" placeholder="例如费用审批" /></el-form-item></el-form></div>
+          <div v-loading="optionsLoading" class="workflow-builder" :class="{ 'is-fullscreen': designerFullscreen }"><WorkflowDesigner v-model="graph" :readonly="designerReadonly" @select="selectedNodeId = $event?.id || null; if ($event) selectedEdgeId = null" @edge-select="selectedEdgeId = $event?.id || null; if ($event) selectedNodeId = null" @fullscreen="designerFullscreen = $event" /><WorkflowNodeInspector :node="selectedNode" :edge="selectedEdge" :nodes="graph.nodes" :users="users" :roles="roles" :scope-type="scopeType" :readonly="designerReadonly" @update="updateSelectedNode" @update-edge="updateSelectedEdge" /></div>
         </el-tab-pane>
         <el-tab-pane v-if="viewingDefinitionId" label="历史版本" name="versions">
           <div v-loading="historyLoading" class="workflow-history-pane">
