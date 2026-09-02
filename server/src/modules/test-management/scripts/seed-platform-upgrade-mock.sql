@@ -2,6 +2,8 @@
 -- 用法见同目录 ../../../../../docs/requirements/REQ-20260831-057-test-management-configuration/mock-data-import-guide.md。
 -- 幂等：使用固定 ID；重复执行会更新本脚本创建的数据。不会删除任何既有数据，也不模拟附件。
 
+SET NAMES utf8mb4;
+
 SET @tenant_id := 1;
 SET @project_code := 'RDDMP-PLATFORM';
 SET @project_id := (SELECT id FROM pm_project WHERE tenant_id = @tenant_id AND project_code = @project_code AND deleted = 0 LIMIT 1);

@@ -13,7 +13,7 @@
 使用测试环境的数据库账号，在仓库根目录执行。命令不会输出或保存口令：
 
 ```bash
-mysql -h <数据库主机> -P <端口> -u <用户名> -p <数据库名> \
+mysql --default-character-set=utf8mb4 -h <数据库主机> -P <端口> -u <用户名> -p <数据库名> \
   < server/src/modules/test-management/scripts/seed-platform-upgrade-mock.sql
 ```
 
