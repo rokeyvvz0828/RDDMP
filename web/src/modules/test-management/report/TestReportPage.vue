@@ -423,6 +423,9 @@ function chapterName(key: string) {
 function fact(name: string) {
   return detail.value.snapshot?.[name] ?? 0;
 }
+function reportValue(value: unknown) {
+  return ({ UNEXECUTED: "未执行", IN_PROGRESS: "执行中", RUNNING: "执行中", SUCCESS: "成功", FAILED: "失败", BLOCKED: "阻塞", RAISED: "已提出", ANALYZING: "分析中", RESOLVED: "已解决", CLOSED: "已关闭", FATAL: "致命", SERIOUS: "严重", NORMAL: "一般", MINOR: "轻微" } as Record<string, string>)[String(value)] || value || "-";
+}
 function chapterSummary(chapter: string) {
   const report = detail.value.report;
   switch (chapter) {
@@ -783,6 +786,26 @@ onBeforeUnmount(() => editor.value?.destroy());
               >
             </header>
             <p>{{ chapterSummary(chapter) }}</p>
+            <el-descriptions v-if="chapter === 'EXECUTION_PROGRESS'" :column="4" border size="small" class="chapter-facts">
+              <el-descriptions-item label="执行率">{{ fact('execution_rate') }}%</el-descriptions-item>
+              <el-descriptions-item label="案例成功率">{{ fact('case_success_rate') }}%</el-descriptions-item>
+              <el-descriptions-item label="已执行案例成功率">{{ fact('executed_case_success_rate') }}%</el-descriptions-item>
+              <el-descriptions-item label="未执行">{{ fact('execution_unexecuted') }}</el-descriptions-item>
+              <el-descriptions-item label="执行中">{{ fact('execution_in_progress') }}</el-descriptions-item>
+              <el-descriptions-item label="成功">{{ fact('execution_success') }}</el-descriptions-item>
+              <el-descriptions-item label="失败">{{ fact('execution_failed') }}</el-descriptions-item>
+              <el-descriptions-item label="阻塞">{{ fact('execution_blocked') }}</el-descriptions-item>
+            </el-descriptions>
+            <el-table v-if="chapter === 'DEFECT_ANALYSIS' && Array.isArray(detail.snapshot?.defect_details)" :data="detail.snapshot.defect_details" size="small" border max-height="260" class="chapter-table">
+              <el-table-column prop="defect_code" label="缺陷编号" min-width="130" />
+              <el-table-column prop="summary" label="缺陷摘要" min-width="220" show-overflow-tooltip />
+              <el-table-column label="状态" min-width="100"><template #default="{ row }">{{ reportValue(row.status) }}</template></el-table-column>
+              <el-table-column label="严重程度" min-width="100"><template #default="{ row }">{{ reportValue(row.severity) }}</template></el-table-column>
+            </el-table>
+            <el-table v-if="chapter === 'SCOPE_STRATEGY' && Array.isArray(detail.snapshot?.scope_details)" :data="detail.snapshot.scope_details" size="small" border max-height="220" class="chapter-table">
+              <el-table-column prop="scope_code" label="范围编号" min-width="140" />
+              <el-table-column prop="scope_name" label="范围名称" min-width="240" />
+            </el-table>
             <el-table v-if="chapter === 'QUALITY_ASSESSMENT' && qualityItems().length" :data="qualityItems()" size="small" border>
               <el-table-column prop="metric_name" label="质量指标" min-width="130" />
               <el-table-column prop="actual" label="实际值" min-width="80" />
