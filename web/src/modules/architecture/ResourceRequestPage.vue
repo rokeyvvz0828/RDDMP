@@ -71,6 +71,7 @@ type UnitShape = {
 }
 
 type ResourceFormItem = ResourceRequestItemPayload & UnitShape & {
+  clientId: string
   deploymentUnitCode: string | null
   deploymentUnitName: string | null
   deploymentUnitDescription: string | null
@@ -121,6 +122,10 @@ const formMode = ref<'create' | 'edit'>('create')
 const formSubmitting = ref(false)
 const formError = ref('')
 const editingId = ref<number | null>(null)
+const selectedItemId = ref('')
+const acceptedPhysicalSubsystemId = ref<number | null>(null)
+const deploymentUnitLoading = ref(false)
+const deploymentUnitLoadError = ref('')
 const expandedItemExtras = ref<string[]>([])
 const deciding = ref<WorkflowTaskAction | ''>('')
 const form = reactive<ResourceForm>({
@@ -136,6 +141,9 @@ const form = reactive<ResourceForm>({
 let listSequence = 0
 let detailSequence = 0
 let optionSequence = 0
+let resourceItemSequence = 0
+let initialFormSnapshot = ''
+let allowFormClose = false
 const statusOptions: ResourceRequestStatus[] = ['DRAFT', 'IN_REVIEW', 'RETURNED', 'APPROVED', 'FULFILLED', 'DIFF_FULFILLED', 'REJECTED', 'CANCELLED']
 const typeOptions: ResourceRequestType[] = ['INITIAL', 'EXPANSION', 'SHRINK', 'ADJUSTMENT']
 const canView = computed(() => ['architecture:resource-request:view', 'architecture:resource-request:apply', 'architecture:resource-request:manage', 'architecture:view', 'architecture:apply', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
@@ -145,6 +153,7 @@ const hasNext = computed(() => rows.value.length === pageSize.value)
 const scopeLabel = computed(() => canManage.value ? '当前租户全部资源申请' : '仅显示本人发起的资源申请')
 const activeEnvironments = computed(() => environments.value.filter(item => item.status === 'ACTIVE'))
 const selectedPhysical = computed(() => physicalOptions.value.find(item => item.id === form.physicalSubsystemId) ?? null)
+const currentItem = computed(() => form.items.find(item => item.clientId === selectedItemId.value) ?? form.items[0] ?? null)
 const allowedDecisions = computed(() => {
   if (!canManage.value || !workflowTask.value?.actionable) return [] as WorkflowTaskAction[]
   return workflowTask.value.allowed_actions.filter(action => ['APPROVE', 'RETURN', 'REJECT'].includes(action))
@@ -152,6 +161,11 @@ const allowedDecisions = computed(() => {
 
 function selectedDeploymentUnit(item: ResourceFormItem) {
   return deploymentUnitOptions.value.find(unit => unit.id === item.deploymentUnitId) ?? null
+}
+
+function nextResourceItemId() {
+  resourceItemSequence += 1
+  return `resource-item-${resourceItemSequence}`
 }
 
 function routeRequestId() {
@@ -451,15 +465,29 @@ async function load() {
 }
 
 async function loadDeploymentUnits(physicalSubsystemId: number | null) {
-  deploymentUnitOptions.value = []
-  if (!physicalSubsystemId) return
   const request = ++optionSequence
+  deploymentUnitOptions.value = []
+  deploymentUnitLoadError.value = ''
+  if (!physicalSubsystemId) {
+    deploymentUnitLoading.value = false
+    return
+  }
+  deploymentUnitLoading.value = true
   try {
     const result = await loadResourceDeploymentUnitOptions(physicalSubsystemId, 100)
     if (request === optionSequence) deploymentUnitOptions.value = result
   } catch (error) {
-    if (request === optionSequence) ElMessage.warning(apiErrorMessage(error, '部署单元选项加载失败'))
+    if (request === optionSequence) {
+      deploymentUnitLoadError.value = apiErrorMessage(error, '部署单元选项加载失败')
+      ElMessage.warning(deploymentUnitLoadError.value)
+    }
+  } finally {
+    if (request === optionSequence) deploymentUnitLoading.value = false
   }
+}
+
+function retryDeploymentUnits() {
+  void loadDeploymentUnits(acceptedPhysicalSubsystemId.value)
 }
 
 async function refresh() {
@@ -539,9 +567,14 @@ function openCreate() {
     rowVersion: null
   })
   form.items = [blankItem()]
+  selectedItemId.value = form.items[0].clientId
+  acceptedPhysicalSubsystemId.value = form.physicalSubsystemId
   expandedItemExtras.value = []
   formMode.value = 'create'
   formError.value = ''
+  deploymentUnitLoadError.value = ''
+  allowFormClose = false
+  initialFormSnapshot = formSnapshot()
   formOpen.value = true
   void loadDeploymentUnits(form.physicalSubsystemId)
 }
@@ -560,6 +593,7 @@ async function openEdit(row: ResourceRequestSummary) {
       rowVersion: result.request.rowVersion
     })
     form.items = result.items.map(item => ({
+      clientId: nextResourceItemId(),
       deploymentUnitId: item.deploymentUnitId,
       deploymentUnitCode: item.deploymentUnitCode,
       deploymentUnitName: item.deploymentUnitName,
@@ -590,10 +624,16 @@ async function openEdit(row: ResourceRequestSummary) {
       needsJobexecutor: item.needsJobexecutor,
       remark: item.remark
     }))
+    if (!form.items.length) form.items = [blankItem()]
     form.items.forEach(syncSidecarFields)
+    selectedItemId.value = form.items[0].clientId
+    acceptedPhysicalSubsystemId.value = form.physicalSubsystemId
     expandedItemExtras.value = []
     formMode.value = 'edit'
     formError.value = ''
+    deploymentUnitLoadError.value = ''
+    allowFormClose = false
+    initialFormSnapshot = formSnapshot()
     formOpen.value = true
     void loadDeploymentUnits(form.physicalSubsystemId)
   } catch (error) {
@@ -603,6 +643,7 @@ async function openEdit(row: ResourceRequestSummary) {
 
 function blankItem(): ResourceFormItem {
   return {
+    clientId: nextResourceItemId(),
     deploymentUnitId: null,
     deploymentUnitCode: null,
     deploymentUnitName: null,
@@ -636,53 +677,135 @@ function blankItem(): ResourceFormItem {
 }
 
 function addItem() {
-  form.items.push(blankItem())
+  if (formSubmitting.value) return
+  const item = blankItem()
+  form.items.push(item)
+  selectedItemId.value = item.clientId
+  formError.value = ''
 }
 
-function removeItem(index: number) {
-  if (form.items.length <= 1) return
+function selectItem(clientId: string) {
+  if (formSubmitting.value || !form.items.some(item => item.clientId === clientId)) return
+  selectedItemId.value = clientId
+}
+
+function removeItem(clientId: string) {
+  if (formSubmitting.value || form.items.length <= 1) return
+  const index = form.items.findIndex(item => item.clientId === clientId)
+  if (index < 0) return
+  const removingSelected = selectedItemId.value === clientId
   form.items.splice(index, 1)
-  expandedItemExtras.value = expandedItemExtras.value.filter(name => name !== `extra-${index}`)
+  expandedItemExtras.value = expandedItemExtras.value.filter(name => name !== `extra-${clientId}`)
+  if (removingSelected) selectedItemId.value = (form.items[index] ?? form.items[index - 1]).clientId
+  formError.value = ''
+}
+
+function itemHasContent(item: ResourceFormItem) {
+  return Boolean(item.deploymentUnitId)
+    || itemHasDemand(item)
+    || Boolean(item.networkZoneId)
+    || Boolean(text(item.databaseName))
+    || Boolean(text(item.databaseVersion))
+    || Boolean(text(item.jdkVersion))
+    || Boolean(text(item.middleware))
+    || Boolean(text(item.operatingSystem))
+    || Boolean(text(item.remark))
+    || item.hasSidecar
+}
+
+function canResetPhysicalSubsystemDirectly() {
+  return form.items.length === 1 && !itemHasContent(form.items[0])
+}
+
+function resetItemsForPhysicalSubsystem(physicalSubsystemId: number | null) {
+  acceptedPhysicalSubsystemId.value = physicalSubsystemId
+  const item = blankItem()
+  form.items = [item]
+  selectedItemId.value = item.clientId
+  expandedItemExtras.value = []
+  formError.value = ''
+  void loadDeploymentUnits(physicalSubsystemId)
+}
+
+async function handlePhysicalSubsystemChange(physicalSubsystemId: number | null) {
+  if (formSubmitting.value) {
+    form.physicalSubsystemId = acceptedPhysicalSubsystemId.value
+    return
+  }
+  if (physicalSubsystemId === acceptedPhysicalSubsystemId.value) return
+  if (canResetPhysicalSubsystemDirectly()) {
+    resetItemsForPhysicalSubsystem(physicalSubsystemId)
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      '切换物理子系统将清空当前全部申请项，并重新加载部署单元候选。是否继续？',
+      '切换物理子系统',
+      { confirmButtonText: '清空并切换', cancelButtonText: '保留当前内容', type: 'warning' }
+    )
+    resetItemsForPhysicalSubsystem(physicalSubsystemId)
+  } catch {
+    form.physicalSubsystemId = acceptedPhysicalSubsystemId.value
+  }
+}
+
+function itemValidationError(item: ResourceFormItem) {
+  if (!item.deploymentUnitId) return '请选择部署单元'
+  if ([
+    item.databaseStorageGb,
+    item.fileStorageGb,
+    item.cpuCores,
+    item.memoryGb,
+    item.sidecarCpuCores,
+    item.sidecarMemoryGb,
+    item.extraCbsGb,
+    item.localDiskGb
+  ].some(value => amount(value) < 0) || integerValue(item.appWebGroupCount) < 0 || integerValue(item.plannedNodeCount) < 0) {
+    return '资源容量、组数和节点数不能为负数'
+  }
+  if ([
+    item.databaseStorageGb,
+    item.fileStorageGb,
+    item.cpuCores,
+    item.memoryGb,
+    item.sidecarCpuCores,
+    item.sidecarMemoryGb,
+    item.extraCbsGb,
+    item.localDiskGb
+  ].some(hasFraction)) {
+    return '资源容量、CPU、内存和存储需求必须为整数'
+  }
+  if (!itemHasDemand(item)) {
+    return isDatabaseRecord(item) ? 'DB 明细至少填写数据库存储需求、数据库或数据库版本' : '非 DB 明细至少填写一项资源容量或附加需求'
+  }
+  if (!isDatabaseRecord(item) && !item.networkZoneId) return '非 DB 明细必须选择网络分区'
+  return null
+}
+
+type ItemCompletionState = 'UNSELECTED' | 'INCOMPLETE' | 'COMPLETE'
+
+function itemCompletionState(item: ResourceFormItem): ItemCompletionState {
+  if (!item.deploymentUnitId) return 'UNSELECTED'
+  return itemValidationError(item) ? 'INCOMPLETE' : 'COMPLETE'
+}
+
+function itemCompletionLabel(item: ResourceFormItem) {
+  const state = itemCompletionState(item)
+  if (state === 'COMPLETE') return '已填写'
+  if (state === 'INCOMPLETE') return '待完善'
+  return '未选择'
 }
 
 function validateForm() {
   if (!form.physicalSubsystemId || !form.environmentId || !form.contactUserId || !form.requestType) {
     return '请选择物理子系统、具体环境、资源申请联系人和申请类型'
   }
-  if (!form.items.length || form.items.some(item => !item.deploymentUnitId)) {
-    return '请补全部署单元'
-  }
-  for (const item of form.items) {
-    if ([
-      item.databaseStorageGb,
-      item.fileStorageGb,
-      item.cpuCores,
-      item.memoryGb,
-      item.sidecarCpuCores,
-      item.sidecarMemoryGb,
-      item.extraCbsGb,
-      item.localDiskGb
-    ].some(value => amount(value) < 0) || integerValue(item.appWebGroupCount) < 0 || integerValue(item.plannedNodeCount) < 0) {
-      return '资源容量、组数和节点数不能为负数'
-    }
-    if ([
-      item.databaseStorageGb,
-      item.fileStorageGb,
-      item.cpuCores,
-      item.memoryGb,
-      item.sidecarCpuCores,
-      item.sidecarMemoryGb,
-      item.extraCbsGb,
-      item.localDiskGb
-    ].some(hasFraction)) {
-      return '资源容量、CPU、内存和存储需求必须为整数'
-    }
-    if (!itemHasDemand(item)) {
-      return isDatabaseRecord(item) ? 'DB 明细至少填写数据库存储需求、数据库或数据库版本' : '非 DB 明细至少填写一项资源容量或附加需求'
-    }
-    if (!isDatabaseRecord(item) && !item.networkZoneId) {
-      return '非 DB 明细必须选择网络分区'
-    }
+  if (!form.items.length) return '请至少添加一个申请项'
+  for (const [index, item] of form.items.entries()) {
+    const error = itemValidationError(item)
+    if (!error) continue
+    selectedItemId.value = item.clientId
+    return `申请项 ${index + 1}：${error}`
   }
   return null
 }
@@ -718,6 +841,55 @@ function requestItemPayload(item: ResourceFormItem): ResourceRequestItemPayload 
   }
 }
 
+function formSnapshot() {
+  return JSON.stringify({
+    physicalSubsystemId: form.physicalSubsystemId,
+    environmentId: form.environmentId,
+    contactUserId: form.contactUserId,
+    requestType: form.requestType,
+    reason: text(form.reason),
+    rowVersion: form.rowVersion,
+    items: form.items.map(requestItemPayload)
+  })
+}
+
+function formIsDirty() {
+  return Boolean(initialFormSnapshot) && formSnapshot() !== initialFormSnapshot
+}
+
+async function confirmDiscardForm() {
+  try {
+    await ElMessageBox.confirm(
+      '当前资源申请有未保存修改，关闭后这些内容将丢失。',
+      '放弃未保存修改？',
+      { confirmButtonText: '放弃并关闭', cancelButtonText: '继续编辑', type: 'warning' }
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function handleFormBeforeClose(done: () => void) {
+  if (formSubmitting.value) {
+    ElMessage.warning('资源申请正在保存，请稍候')
+    return
+  }
+  if (allowFormClose) {
+    allowFormClose = false
+    done()
+    return
+  }
+  if (!formIsDirty() || await confirmDiscardForm()) done()
+}
+
+async function closeForm() {
+  if (formSubmitting.value) return
+  if (formIsDirty() && !await confirmDiscardForm()) return
+  allowFormClose = true
+  formOpen.value = false
+}
+
 async function submitForm() {
   if (formSubmitting.value) return
   const validation = validateForm()
@@ -742,6 +914,7 @@ async function submitForm() {
       : await updateResourceRequest(editingId.value!, payload)
     detail.value = saved
     ElMessage.success(formMode.value === 'create' ? '资源申请草稿已创建' : '资源申请草稿已更新')
+    allowFormClose = true
     formOpen.value = false
     void load()
   } catch (error) {
@@ -1047,19 +1220,10 @@ watch(canView, allowed => {
 
 watch(() => [route.params.id, route.query.taskId, canView.value], () => { openRouteDetail() }, { immediate: true })
 
-watch(() => form.physicalSubsystemId, value => {
-  if (!formOpen.value) return
+watch(deploymentUnitOptions, options => {
+  if (!formOpen.value || !options.length) return
   form.items.forEach(item => {
-    Object.assign(item, blankItem())
-  })
-  expandedItemExtras.value = []
-  void loadDeploymentUnits(value)
-})
-
-watch(deploymentUnitOptions, () => {
-  if (!formOpen.value) return
-  form.items.forEach(item => {
-    if (item.deploymentUnitId) syncDeploymentUnit(item, false)
+    if (item.deploymentUnitId && options.some(option => option.id === item.deploymentUnitId)) syncDeploymentUnit(item, false)
   })
 })
 </script>
@@ -1239,10 +1403,10 @@ watch(deploymentUnitOptions, () => {
       </div>
     </el-drawer>
 
-    <el-dialog v-model="formOpen" :title="formMode === 'create' ? '新建资源申请' : '编辑资源申请'" width="min(1320px, 96vw)" destroy-on-close>
-      <el-form v-loading="optionLoading" label-position="top">
+    <el-dialog v-model="formOpen" :title="formMode === 'create' ? '新建资源申请' : '编辑资源申请'" width="min(1320px, 96vw)" :before-close="handleFormBeforeClose" destroy-on-close>
+      <el-form v-loading="optionLoading" :disabled="formSubmitting" label-position="top">
         <div class="architecture-form-grid">
-          <el-form-item label="物理子系统"><el-select v-model="form.physicalSubsystemId" filterable style="width:100%"><el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name}（${item.shortName || item.code}）`" :value="item.id" /></el-select></el-form-item>
+          <el-form-item label="物理子系统"><el-select v-model="form.physicalSubsystemId" filterable style="width:100%" @change="handlePhysicalSubsystemChange"><el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name}（${item.shortName || item.code}）`" :value="item.id" /></el-select></el-form-item>
           <el-form-item label="具体环境"><el-select v-model="form.environmentId" filterable style="width:100%"><el-option v-for="item in activeEnvironments" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" /></el-select></el-form-item>
           <el-form-item label="申请类型"><el-select v-model="form.requestType" style="width:100%"><el-option v-for="item in typeOptions" :key="item" :label="resourceRequestTypeLabels[item]" :value="item" /></el-select></el-form-item>
           <el-form-item label="资源申请联系人"><el-select v-model="form.contactUserId" filterable style="width:100%"><el-option v-for="item in users" :key="item.id" :label="`${item.displayName}（${item.username}）`" :value="item.id" /></el-select></el-form-item>
@@ -1260,15 +1424,15 @@ watch(deploymentUnitOptions, () => {
         </dl>
 
         <section class="architecture-drawer-section">
-          <header><strong>部署单元登记表</strong><el-button @click="addItem"><el-icon><Plus /></el-icon>添加明细</el-button></header>
+          <header><strong>部署单元登记表</strong><el-button :disabled="formSubmitting" @click="addItem"><el-icon><Plus /></el-icon>添加明细</el-button></header>
           <div class="architecture-resource-form-items">
-            <article v-for="(item, index) in form.items" :key="index" class="architecture-registration-item">
+            <article v-for="(item, index) in form.items" :key="item.clientId" class="architecture-registration-item">
               <header class="architecture-registration-item__header">
                 <div>
                   <strong>登记行 {{ index + 1 }}</strong>
                   <span>{{ item.deploymentUnitCode || '未选择部署单元' }}</span>
                 </div>
-                <el-button :disabled="form.items.length <= 1" circle aria-label="删除明细" @click="removeItem(index)"><el-icon><Delete /></el-icon></el-button>
+                <el-button :disabled="formSubmitting || form.items.length <= 1" circle aria-label="删除明细" @click="removeItem(item.clientId)"><el-icon><Delete /></el-icon></el-button>
               </header>
 
               <div class="architecture-registration-subtitle">部署单元</div>
@@ -1340,7 +1504,7 @@ watch(deploymentUnitOptions, () => {
                 </div>
 
                 <el-collapse v-model="expandedItemExtras" class="architecture-registration-collapse">
-                  <el-collapse-item :name="`extra-${index}`" title="附加需求">
+                  <el-collapse-item :name="`extra-${item.clientId}`" title="附加需求">
                     <div class="architecture-registration-grid">
                       <el-form-item label="额外的CBS容量C"><el-input-number v-model="item.extraCbsGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
                       <el-form-item label="本地盘需求（G）"><el-input-number v-model="item.localDiskGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
@@ -1357,7 +1521,7 @@ watch(deploymentUnitOptions, () => {
         </section>
         <el-alert v-if="formError" type="error" :closable="false" show-icon :title="formError" />
       </el-form>
-      <template #footer><el-button @click="formOpen = false">取消</el-button><el-button type="primary" :loading="formSubmitting" @click="submitForm">保存草稿</el-button></template>
+      <template #footer><el-button :disabled="formSubmitting" @click="closeForm">取消</el-button><el-button type="primary" :loading="formSubmitting" @click="submitForm">保存草稿</el-button></template>
     </el-dialog>
 
     <!-- Fulfillment Dialog (REQ-20260825-053) -->
