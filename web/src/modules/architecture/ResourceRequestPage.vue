@@ -154,7 +154,6 @@ const scopeLabel = computed(() => canManage.value ? '当前租户全部资源申
 const activeEnvironments = computed(() => environments.value.filter(item => item.status === 'ACTIVE'))
 const selectedPhysical = computed(() => physicalOptions.value.find(item => item.id === form.physicalSubsystemId) ?? null)
 const currentItem = computed(() => form.items.find(item => item.clientId === selectedItemId.value) ?? form.items[0] ?? null)
-const currentItemIndex = computed(() => currentItem.value ? form.items.findIndex(item => item.clientId === currentItem.value?.clientId) : -1)
 const allowedDecisions = computed(() => {
   if (!canManage.value || !workflowTask.value?.actionable) return [] as WorkflowTaskAction[]
   return workflowTask.value.allowed_actions.filter(action => ['APPROVE', 'RETURN', 'REJECT'].includes(action))
@@ -1445,7 +1444,7 @@ watch(deploymentUnitOptions, options => {
                 </el-select>
               </el-form-item>
               <el-form-item label="申请原因">
-                <el-input v-model="form.reason" type="textarea" :rows="4" maxlength="1000" show-word-limit />
+                <el-input v-model="form.reason" type="textarea" :rows="2" maxlength="1000" show-word-limit />
               </el-form-item>
             </div>
 
@@ -1493,10 +1492,9 @@ watch(deploymentUnitOptions, options => {
                       @click="selectItem(item.clientId)"
                     >
                       <span class="architecture-resource-request-item-title">
-                        <strong>申请项 {{ index + 1 }}</strong>
+                        <strong>{{ item.deploymentUnitName || '未选择部署单元' }}</strong>
                         <small :class="`is-${itemCompletionState(item).toLowerCase()}`">{{ itemCompletionLabel(item) }}</small>
                       </span>
-                      <span class="architecture-resource-request-item-name">{{ item.deploymentUnitName || '请选择部署单元' }}</span>
                       <span class="architecture-resource-request-item-meta">
                         {{ item.deploymentUnitCode || '尚未关联' }}
                         <template v-if="item.deploymentUnitKind"> · {{ deploymentUnitKindLabels[item.deploymentUnitKind as DeploymentUnitKind] }}</template>
@@ -1518,8 +1516,8 @@ watch(deploymentUnitOptions, options => {
               <article v-if="currentItem" class="architecture-resource-request-editor">
                 <header class="architecture-resource-request-editor__header">
                   <div>
-                    <strong>申请项 {{ currentItemIndex + 1 }}</strong>
-                    <span>{{ currentItem.deploymentUnitName || '先选择部署单元，再填写资源规格' }}</span>
+                    <strong>{{ currentItem.deploymentUnitName || '未选择部署单元' }}</strong>
+                    <span>{{ currentItem.deploymentUnitCode || '先选择部署单元，再填写资源规格' }}</span>
                   </div>
                   <span class="architecture-resource-request-editor__state" :class="`is-${itemCompletionState(currentItem).toLowerCase()}`">
                     {{ itemCompletionLabel(currentItem) }}

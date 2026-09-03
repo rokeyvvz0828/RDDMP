@@ -403,31 +403,32 @@
 .architecture-registration-collapse { border-top: 1px solid var(--line); border-bottom: 0; }
 .architecture-registration-collapse .el-collapse-item__header { background: transparent; font-size: 12px; font-weight: 700; }
 .architecture-resource-request-form-dialog {
-  display: flex; max-height: 94vh; flex-direction: column; overflow: hidden;
+  display: flex; height: 94vh; max-height: 94vh; flex-direction: column; overflow: hidden;
 }
 .architecture-resource-request-form-dialog .el-dialog__body {
-  min-width: 0; max-height: calc(94vh - 132px); padding-top: 12px; overflow-x: hidden; overflow-y: auto;
+  display: flex; min-width: 0; min-height: 0; max-height: none; flex: 1 1 auto; padding-top: 12px; overflow: hidden;
 }
 .architecture-resource-request-form-dialog .el-dialog__footer {
   flex: 0 0 auto; border-top: 1px solid var(--line);
 }
-.architecture-resource-request-form { min-width: 0; }
-.architecture-resource-request-form__error { margin-bottom: 14px; }
+.architecture-resource-request-form { display: flex; width: 100%; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; }
+.architecture-resource-request-form__error { flex: 0 0 auto; margin-bottom: 10px; }
 .architecture-resource-request-layout {
-  display: grid; min-width: 0; grid-template-columns: minmax(300px, .34fr) minmax(0, 1fr); gap: 20px;
+  display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(300px, .34fr) minmax(0, 1fr); gap: 20px;
 }
 .architecture-resource-request-basics,
 .architecture-resource-request-registration,
-.architecture-resource-request-editor { min-width: 0; }
-.architecture-resource-request-basics { padding-right: 20px; border-right: 1px solid var(--line); }
+.architecture-resource-request-editor { min-width: 0; min-height: 0; }
+.architecture-resource-request-basics { padding-right: 20px; overflow-y: auto; border-right: 1px solid var(--line); }
+.architecture-resource-request-registration { display: flex; min-height: 0; flex-direction: column; }
 .architecture-resource-request-section-heading {
-  display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px;
+  display: flex; min-width: 0; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px;
 }
 .architecture-resource-request-section-heading > div { display: grid; min-width: 0; gap: 4px; }
 .architecture-resource-request-section-heading strong { overflow-wrap: anywhere; color: var(--text); font-size: 15px; }
 .architecture-resource-request-section-heading span { overflow-wrap: anywhere; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .architecture-resource-request-basic-fields { display: grid; grid-template-columns: 1fr; }
-.architecture-resource-request-basic-fields .el-form-item { min-width: 0; }
+.architecture-resource-request-basic-fields .el-form-item { min-width: 0; margin-bottom: 12px; }
 .architecture-resource-request-basic-fields .el-select,
 .architecture-resource-request-basic-fields .el-input { width: 100%; }
 .architecture-resource-request-summary-heading {
@@ -447,11 +448,11 @@
 }
 .architecture-resource-request-option-error span { min-width: 0; overflow-wrap: anywhere; }
 .architecture-resource-request-master-detail {
-  display: grid; min-width: 0; grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
+  display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
   overflow: hidden; border: 1px solid var(--line); border-radius: 6px;
 }
 .architecture-resource-request-item-panel {
-  min-width: 0; max-height: 680px; padding: 10px; overflow-y: auto; background: var(--panel-muted, var(--surface)); border-right: 1px solid var(--line);
+  min-width: 0; min-height: 0; padding: 10px; overflow-y: auto; background: var(--panel-muted, var(--surface)); border-right: 1px solid var(--line);
 }
 .architecture-resource-request-item-list { display: grid; min-width: 0; gap: 8px; }
 .architecture-resource-request-item-row {
@@ -489,7 +490,7 @@
 .architecture-resource-request-item-name { font-size: 12px; }
 .architecture-resource-request-item-meta { color: var(--muted); font-size: 10px; }
 .architecture-resource-request-item-delete { margin-right: 6px; }
-.architecture-resource-request-editor { padding: 15px 16px 18px; background: var(--panel-bg); }
+.architecture-resource-request-editor { padding: 15px 16px 18px; overflow-y: auto; background: var(--panel-bg); }
 .architecture-resource-request-editor__header {
   display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
 }
@@ -503,24 +504,31 @@
 .architecture-resource-request-editor .architecture-registration-grid .is-wide,
 .architecture-resource-request-editor .architecture-registration-computed { grid-column: span 2; }
 .architecture-resource-request-editor .architecture-registration-computed { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.architecture-resource-request-editor .el-input-number { width: 160px; max-width: 100%; }
 
 @media (max-width: 1180px) {
   .architecture-resource-request-layout { grid-template-columns: minmax(280px, .36fr) minmax(0, 1fr); gap: 16px; }
   .architecture-resource-request-basics { padding-right: 16px; }
-  .architecture-resource-request-master-detail { grid-template-columns: 1fr; }
-  .architecture-resource-request-item-panel { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+  .architecture-resource-request-master-detail { grid-template-columns: 1fr; grid-template-rows: minmax(120px, .32fr) minmax(0, 1fr); }
+  .architecture-resource-request-item-panel { border-right: 0; border-bottom: 1px solid var(--line); }
   .architecture-resource-request-item-list { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
 }
 
 @media (max-width: 900px) {
+  .architecture-resource-request-form-dialog { height: auto; }
+  .architecture-resource-request-form-dialog .el-dialog__body { display: block; max-height: calc(94vh - 132px); overflow-x: hidden; overflow-y: auto; }
+  .architecture-resource-request-form { display: block; min-height: auto; }
   .architecture-resource-request-layout { grid-template-columns: 1fr; }
-  .architecture-resource-request-basics { padding: 0 0 18px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .architecture-resource-request-basics { padding: 0 0 18px; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+  .architecture-resource-request-registration { display: block; min-height: auto; }
+  .architecture-resource-request-master-detail { min-height: auto; grid-template-rows: auto auto; }
+  .architecture-resource-request-editor { overflow: visible; }
   .architecture-resource-request-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .architecture-resource-request-summary > div.is-wide { grid-column: span 2; }
 }
 
 @media (max-width: 760px) {
-  .architecture-resource-request-form-dialog { width: calc(100vw - 24px) !important; max-height: calc(100vh - 24px); margin-top: 12px; }
+  .architecture-resource-request-form-dialog { width: calc(100vw - 24px) !important; height: auto; max-height: calc(100vh - 24px); margin-top: 12px; }
   .architecture-resource-request-form-dialog .el-dialog__body { max-height: calc(100vh - 154px); padding: 10px 12px 14px; }
   .architecture-resource-request-form-dialog .el-dialog__header,
   .architecture-resource-request-form-dialog .el-dialog__footer { padding-right: 14px; padding-left: 14px; }
@@ -536,6 +544,7 @@
   .architecture-resource-request-editor .architecture-registration-grid .is-wide,
   .architecture-resource-request-editor .architecture-registration-computed { grid-column: span 1; }
   .architecture-resource-request-editor .architecture-registration-computed { grid-template-columns: 1fr; }
+  .architecture-resource-request-editor .el-input-number { width: 100%; }
   .architecture-resource-request-option-error { align-items: stretch; flex-direction: column; }
   .architecture-resource-request-option-error .el-button { align-self: flex-start; margin-left: 0; }
 }
