@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260903-059-resource-request-form-layout-one-screen",
+  "design_revision": 4,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+  "objective": "通过重排容量字段和压缩摘要占行，使资源申请当前项表单在宽桌面尽量一屏完整展示。",
+  "users": ["资源申请人"],
+  "requirements": [
+    {
+      "id": "R14",
+      "statement": "非数据库容量字段必须按部署条件、核心容量和边车配置顺序紧凑排列，计算摘要与容量标题同行，技术栈在宽桌面三项同行。",
+      "acceptance": [
+        "1920x1080 下容量字段按 3、4、3 分组排列",
+        "有边车开关位于两个边车数值字段之前",
+        "计算摘要与容量标题同行且技术栈三项同行",
+        "1280x800 自然换行，375x812、390x844、430x932 单列且无页面级横向溢出"
+      ],
+      "priority": "must",
+      "source": "用户于 2026-09-03 确认字段重排方案并要求直接实施",
+      "counterexample": ["字段继续按类型散落导致空白和额外换行", "移动端继承三列产生横向溢出"]
+    }
+  ],
+  "invariants": [
+    "字段绑定、联动、计算、校验、状态和提交载荷不变",
+    "数据库申请项布局不变",
+    "短数值输入、内部滚动和 footer 可见性不变"
+  ],
+  "constraints": [
+    "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+    "不修改公共组件、后端、API、数据库、权限、审计或工作流",
+    "不缩小正文字号或引入页面级横向滚动"
+  ],
+  "non_goals": ["改变字段含义", "修改请求契约", "新增公共布局组件"],
+  "selected_approach": {
+    "name": "语义顺序重排与局部紧凑布局",
+    "reason": "利用现有 Flex 宽度形成稳定 3/4/3 排列，并减少摘要和技术栈的独立占行。",
+    "alternatives": [{"name": "全表单行内标签", "rejected_because": "长标签会压缩控件并降低扫描性"}]
+  },
+  "architecture": {
+    "boundary": {"inside": ["资源申请当前项模板", "架构模块局部样式"], "outside": ["API", "后端", "公共 UI"]},
+    "components": [
+      {"name": "容量标题行", "responsibility": "同行展示标题和计算摘要", "depends_on": ["现有计算函数"]},
+      {"name": "容量字段容器", "responsibility": "按新 DOM 顺序自然形成 3/4/3", "depends_on": ["现有 Flex basis"]},
+      {"name": "技术栈网格", "responsibility": "宽桌面三列、手机单列", "depends_on": ["现有响应式断点"]}
+    ],
+    "interfaces": [{"name": "资源申请提交载荷", "producer": "ResourceRequestPage.vue", "consumers": ["现有 create/update API"], "contract": "字段重排不改变 items[] 或字段值"}],
+    "data_flows": [{"input": "当前申请项", "transitions": ["现有 v-model 更新", "现有计算函数计算摘要"], "output": "布局变化但请求数据不变"}]
+  },
+  "error_handling": [{"condition": "可用宽度不足", "behavior": "字段自然换行", "recovery": "通过当前项编辑器内部滚动访问"}],
+  "quality_attributes": {
+    "security": ["权限边界不变"],
+    "performance": ["不增加请求或监听器"],
+    "compatibility": ["业务和请求不变"],
+    "operations": ["回退局部前端提交"]
+  },
+  "verification_strategy": [{"requirement_ids": ["R14"], "signal": "字段位置、摘要位置、技术栈列数和根宽", "method": "构建、DOM 几何、五视口浏览器验收"}],
+  "assumptions": [{"text": "当前宽桌面编辑器可容纳 3/4/3 分组", "basis": "上一轮 1920 实测已形成 3/4/3 行数", "falsifier": "重排后浏览器字段位置不满足分组"}],
+  "unknowns": [],
+  "decisions": [{"id": "D11", "decision": "按业务填写顺序重排字段并把摘要移入标题", "reason": "提高一屏信息密度", "source": "用户确认"}],
+  "risks": [{"risk": "标题摘要在中等宽度拥挤", "impact": "换行或遮挡", "mitigation": "允许摘要换行并在手机端纵向排列"}],
+  "approval": {"status": "approved", "evidence": "用户于 2026-09-03 回复‘可以，速度做出来给我看看’", "confirmed_at": "2026-09-03T16:05:25+08:00"}
+}

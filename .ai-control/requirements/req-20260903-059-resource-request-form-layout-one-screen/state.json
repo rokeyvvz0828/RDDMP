@@ -1,0 +1,1223 @@
+{
+  "schema_version": 4,
+  "revision": 17,
+  "created_at": "2026-09-03T08:06:57+00:00",
+  "updated_at": "2026-09-03T08:21:58+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=4, plan_revision=4；设计确认=用户要求直接实施查看效果；计划确认=用户确认方案并要求直接实施",
+      "recorded_at": "2026-09-03T08:06:57+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "R14 基准门禁通过",
+      "recorded_at": "2026-09-03T08:08:17+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "R14 因果链、传感器和执行器门禁通过",
+      "recorded_at": "2026-09-03T08:08:35+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "T9 控制计划门禁通过并已获用户执行授权",
+      "recorded_at": "2026-09-03T08:08:58+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T9 输出已可由构建、DOM 几何和浏览器交互独立测量",
+      "recorded_at": "2026-09-03T08:18:38+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T9 已验证、无开放反馈，进入最终收敛验收",
+      "recorded_at": "2026-09-03T08:19:42+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁 PASS：R14、T9、两次采样、范围和运行证据完整",
+      "recorded_at": "2026-09-03T08:21:58+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=4, plan_revision=4；设计确认=用户要求直接实施查看效果；计划确认=用户确认方案并要求直接实施",
+        "recorded_at": "2026-09-03T08:06:57+00:00",
+        "data": {
+          "objective": "通过重排容量字段和压缩摘要占行，使资源申请当前项表单在宽桌面尽量一屏完整展示。",
+          "requirements": [
+            {
+              "id": "R14",
+              "statement": "非数据库容量字段必须按部署条件、核心容量和边车配置顺序紧凑排列，计算摘要与容量标题同行，技术栈在宽桌面三项同行。",
+              "acceptance": [
+                "1920x1080 下容量字段按 3、4、3 分组排列",
+                "有边车开关位于两个边车数值字段之前",
+                "计算摘要与容量标题同行且技术栈三项同行",
+                "手机单列且无页面级横向溢出"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "字段散落产生额外换行"
+              ]
+            }
+          ],
+          "invariants": [
+            "字段绑定、联动、计算、校验、状态和提交载荷不变",
+            "数据库申请项布局不变",
+            "短数值输入、内部滚动和 footer 可见性不变"
+          ],
+          "constraints": [
+            "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+            "不修改公共组件、后端、API、数据库、权限、审计或工作流"
+          ],
+          "non_goals": [
+            "改变字段含义",
+            "修改请求契约"
+          ],
+          "assumptions": [
+            {
+              "text": "宽桌面可容纳目标分组",
+              "basis": "上一轮运行数据",
+              "falsifier": "DOM 几何不满足"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D11",
+              "decision": "字段重排并移动摘要",
+              "reason": "提高一屏密度",
+              "source": "用户"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R14"
+              ],
+              "signal": "字段位置和根宽",
+              "method": "构建与五视口浏览器验收"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户批准字段重排与一屏密度修订，R14 可判别且无阻塞未知项",
+        "recorded_at": "2026-09-03T08:08:09+00:00",
+        "data": {
+          "objective": "资源申请人在宽桌面能够以更少纵向滚动查看和填写完整的当前申请项表单。",
+          "requirements": [
+            {
+              "id": "R14",
+              "statement": "非数据库容量字段必须按部署条件、核心容量和边车配置顺序紧凑排列，计算摘要与容量标题同行，技术栈在宽桌面三项同行。",
+              "acceptance": [
+                "1920x1080 下容量字段按 3、4、3 分组",
+                "有边车开关位于边车数值字段之前",
+                "摘要与标题同行且技术栈三列",
+                "三个手机视口单列无页面级横向溢出"
+              ],
+              "priority": "must",
+              "source": "用户于 2026-09-03 确认",
+              "counterexample": [
+                "字段散落产生额外换行",
+                "手机端横向溢出"
+              ]
+            }
+          ],
+          "invariants": [
+            "字段绑定、联动、计算、校验、状态和提交载荷不变",
+            "数据库申请项布局不变",
+            "内部滚动和 footer 可用"
+          ],
+          "constraints": [
+            "产品修改仅限两个授权前端文件",
+            "不修改公共组件、API、后端或数据库"
+          ],
+          "non_goals": [
+            "改变字段含义",
+            "修改请求契约"
+          ],
+          "assumptions": [
+            {
+              "text": "现有宽度可形成目标分组",
+              "basis": "上一轮 1920 实测为 3/4/3",
+              "falsifier": "重排后 DOM 几何不满足"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "是否按业务顺序重排字段",
+              "options": [
+                "重排",
+                "保持"
+              ],
+              "selected": "重排",
+              "blocking": false,
+              "source": "用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R14",
+              "observable": "字段 offsetTop、摘要位置、技术栈列数和根 scrollWidth",
+              "candidate_sensor": "构建和五视口浏览器 DOM 探针"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "现有模板、Flex 样式和浏览器传感器支持 R14 可观测可控",
+        "recorded_at": "2026-09-03T08:08:27+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "ResourceRequestPage.vue 当前项模板",
+              "architecture.css 资源申请局部规则"
+            ],
+            "environment": [
+              "Element Plus",
+              "Vite 浏览器运行时",
+              "视口和字体"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "field_geometry",
+              "owner": "浏览器布局引擎",
+              "valid_values": [
+                "desktop-3-4-3",
+                "wrapped",
+                "mobile-single",
+                "overflow"
+              ]
+            },
+            {
+              "name": "request_contract",
+              "owner": "现有提交逻辑",
+              "valid_values": [
+                "unchanged",
+                "regressed"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R14",
+              "input": "当前申请项和编辑器宽度",
+              "transitions": [
+                "Vue DOM 顺序决定 Flex 排列",
+                "局部 CSS 决定标题摘要和技术栈列数",
+                "响应式断点恢复单列"
+              ],
+              "outputs": [
+                "宽桌面紧凑排列",
+                "移动端无溢出"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "resource_request_payload",
+              "producers": [
+                "ResourceRequestPage.vue 提交逻辑"
+              ],
+              "consumers": [
+                "现有 API"
+              ],
+              "invariant": "仅布局变化，items[] 和字段值不变"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "布局和一屏密度",
+              "method": "五视口读取 offsetTop、clientHeight、scrollHeight 和根 scrollWidth",
+              "blind_spots": [
+                "未覆盖系统字体"
+              ],
+              "independence": "直接观察浏览器布局输出"
+            },
+            {
+              "id": "S2",
+              "target": "构建和业务不变量",
+              "method": "Vite build、diff、scope、边车联动与计算检查",
+              "blind_spots": [
+                "Mock 与真实后端差异"
+              ],
+              "independence": "编译与运行交互组合"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "容量和技术栈 DOM",
+              "action": "重排字段并增加局部语义类",
+              "authority": "codex-task-scope writable_paths",
+              "impact_radius": "ResourceRequestPage.vue 当前项",
+              "rollback": "回退 T9 提交"
+            },
+            {
+              "id": "A2",
+              "target": "局部布局",
+              "action": "调整标题摘要、技术栈列数和间距",
+              "authority": "codex-task-scope writable_paths",
+              "impact_radius": "architecture.css 资源申请规则",
+              "rollback": "回退 T9 提交"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R14",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "字体与长标签",
+              "effect": "字段换行变化",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite HMR 和 Dialog 布局",
+              "consequence": "过早读取旧几何",
+              "sampling_rule": "页面稳定后采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "现有 Flex basis 支持目标顺序",
+              "evidence": "上一轮运行几何",
+              "falsifier": "S1 显示目标行不成立"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R14",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进入 planning"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T9 覆盖 R14，写入边界、验证、回滚和停止条件完整",
+        "recorded_at": "2026-09-03T08:08:50+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T9",
+              "goal": "实现并验证资源申请一屏字段布局",
+              "requirement_ids": [
+                "R14"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "现有容量容器为 Flex",
+                "编辑器技术栈当前两列",
+                "产品文件位于授权范围"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/architecture.css",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/*.json"
+              ],
+              "invariants": [
+                "字段绑定、业务逻辑和请求不变",
+                "数据库布局不变",
+                "手机单列"
+              ],
+              "interface_contracts": [
+                "resource_request_payload 不变"
+              ],
+              "non_goals": [
+                "不修改公共 UI 或后端"
+              ],
+              "action_bounds": [
+                "仅重排 DOM、增加局部类和 CSS"
+              ],
+              "acceptance_checks": [
+                "1920 容量 3/4/3",
+                "摘要与标题同行",
+                "技术栈三列",
+                "手机无根溢出",
+                "构建和 scope 通过"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "命令退出码",
+                "DOM 几何和截图",
+                "边车联动与计算结果"
+              ],
+              "rollback": "回退 T9 提交",
+              "stop_conditions": [
+                "需要范围外修改",
+                "请求变化",
+                "页面根溢出或 footer 不可达"
+              ],
+              "escalation_conditions": [
+                "需要公共断点或后端契约"
+              ]
+            }
+          ],
+          "dependency_edges": [],
+          "parallel_groups": [
+            [
+              "T9"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T9"
+              ],
+              "checks": [
+                "build、diff、scope、五视口浏览器 UAT"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T9 完成采样",
+              "trigger": "T9 返回执行报告",
+              "observer": "主 Agent 的独立浏览器传感器",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R14"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R14",
+              "task_ids": [
+                "T9"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T9 产品实现、构建、范围和五视口运行证据已记录",
+        "recorded_at": "2026-09-03T08:18:28+00:00",
+        "data": {
+          "task_id": "T9",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue",
+              "purpose": "重排容量字段、移动计算摘要并标记技术栈三列"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "压缩局部间距、等分边车字段、定义标题摘要和技术栈响应式布局"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260903-059-resource-request-form-layout",
+              "purpose": "记录 R14 与新控制前缀"
+            },
+            {
+              "path_or_resource": "docs/engineering-control",
+              "purpose": "记录设计和计划修订 4"
+            }
+          ],
+          "requirements_addressed": [
+            "R14"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 构建完成，2513 modules transformed"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "仅换行格式提示，无 whitespace error"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "Codex scope check passed; 12 changed files"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "模块、Skill、开发入口通过；AI control layout 仍报告历史需求账本基线噪声，本前缀未出现在错误列表"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "1920x1080 桌面 DOM 几何",
+              "result": "pass",
+              "evidence": "容量字段 y 分组三行 407/491/575，数量 3/4/3；边车三项宽 257；技术栈三项同 y=690；editor clientHeight=scrollHeight=831；footer 可见",
+              "limitations": [
+                "本地 Mock 环境"
+              ]
+            },
+            {
+              "check": "1280x800 与手机响应式",
+              "result": "pass",
+              "evidence": "1280 编辑器 overflow=auto 且 footer 可见；375/390/430 根 scrollWidth 等于 innerWidth，字段和数字输入满宽，技术栈三行",
+              "limitations": [
+                "未覆盖真实移动浏览器地址栏动态高度"
+              ]
+            },
+            {
+              "check": "边车联动和计算",
+              "result": "pass",
+              "evidence": "开启边车后两个输入解除禁用；测试值显示总CPU 5、总内存 9G、边车内存占比 11.11%",
+              "limitations": [
+                "未提交请求"
+              ]
+            },
+            {
+              "check": "浏览器控制台",
+              "result": "pass",
+              "evidence": "error 日志数量 0",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "容量字段按服务器类型/网络分区/文件存储、四个核心容量、边车开关/CPU/内存重排",
+            "计算摘要移动到容量标题右侧",
+            "技术栈宽桌面三列，手机单列",
+            "编辑器和分区间距局部缩减"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "字段绑定和计算逻辑不变",
+              "result": "pass",
+              "evidence": "仅移动原有节点，v-model、事件和计算函数调用保持；运行计算联动通过"
+            },
+            {
+              "invariant": "数据库申请项布局不变",
+              "result": "pass",
+              "evidence": "数据库模板和 architecture-registration-grid--numbers 未修改"
+            },
+            {
+              "invariant": "页面根无横向溢出且 footer 可用",
+              "result": "pass",
+              "evidence": "五视口根宽检查和 footer 几何通过"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "全仓治理检查存在多个历史账本结构错误",
+              "impact": "治理命令退出 1，但本前缀未新增错误且模块、Skill、准入检查通过"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实后端请求契约未在本轮提交保存，依赖前几轮既有回归证据和本轮未改提交逻辑"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "构建与浏览器异质传感器均未观察到 R14 偏差",
+        "recorded_at": "2026-09-03T08:19:12+00:00",
+        "data": {
+          "sample_label": "T9 一屏布局独立采样",
+          "task_ids": [
+            "T9"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R14",
+              "sensor": "S1 五视口 DOM 几何",
+              "result": "pass",
+              "raw_evidence": "1920 容量字段 3/4/3，边车和技术栈各三等分；editor 831/831 无滚动；1280 内部滚动；375/390/430 根宽等于视口且单列",
+              "limitation": [
+                "本地 Chromium 与系统字体"
+              ]
+            },
+            {
+              "requirement_id": "R14",
+              "sensor": "S2 构建、范围与交互",
+              "result": "pass",
+              "raw_evidence": "Vite build、diff、scope 退出0；边车开关联动和计算摘要 5/9G/11.11% 正确；Console error=0",
+              "limitation": [
+                "全仓治理存在历史账本噪声",
+                "未向后端提交保存"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "source": "历史 AI control layout 错误",
+              "effect": "全仓治理退出1，但不涉及当前前缀或产品文件"
+            }
+          ],
+          "coverage_gaps": [
+            "真实后端保存请求未在本轮重复提交"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "R14 最终审计通过，两个样本无偏差，范围和不变量保持",
+        "recorded_at": "2026-09-03T08:21:39+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R14",
+              "result": "pass",
+              "task_ids": [
+                "T9"
+              ],
+              "evidence": [
+                "1920 容量字段 3/4/3 且边车三项等分",
+                "计算摘要与容量标题同行",
+                "技术栈三项同行",
+                "1280 内部滚动和三个手机视口无根溢出",
+                "构建、diff、scope 和 Console 检查通过"
+              ],
+              "limitations": [
+                "真实后端保存请求未在本轮重复提交"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T9",
+              "status": "verified",
+              "evidence": [
+                "S-0001 和 S-0002 均为 P0-P3=0",
+                "执行与观察产物完整"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "vue-tsc 和 Vite 构建退出0"
+            },
+            {
+              "check": "边车联动与计算",
+              "result": "pass",
+              "evidence": "开关解除禁用，计算结果 5 CPU、9G、11.11%"
+            },
+            {
+              "check": "五视口布局",
+              "result": "pass",
+              "evidence": "1920、1280、375、390、430 DOM 几何和根宽通过"
+            },
+            {
+              "check": "治理",
+              "result": "partial",
+              "evidence": "模块、Skill、准入通过；全仓 AI control layout 仅存在历史账本基线错误"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "字段绑定、联动、计算和提交逻辑不变",
+              "result": "pass",
+              "evidence": "产品 diff 仅调整 DOM 顺序和局部类，运行计算通过"
+            },
+            {
+              "invariant": "数据库布局不变",
+              "result": "pass",
+              "evidence": "数据库模板和样式未修改"
+            },
+            {
+              "invariant": "内部滚动、footer 和移动端无溢出",
+              "result": "pass",
+              "evidence": "五视口几何检查通过"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "视口宽度变化",
+              "result": "pass",
+              "evidence": "1280 自然换行，三个手机视口单列"
+            },
+            {
+              "disturbance": "历史治理噪声",
+              "result": "pass",
+              "evidence": "本前缀未出现在治理错误列表，scope 独立通过"
+            }
+          ],
+          "residual_risks": [
+            "真实后端保存请求未在本轮重复提交，但提交代码和字段绑定均未修改"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R14 由已验证 T9 覆盖，两个连续样本无误差，构建、范围、运行布局和业务联动证据通过"
+        }
+      }
+    ]
+  },
+  "objective": "资源申请人在宽桌面能够以更少纵向滚动查看和填写完整的当前申请项表单。",
+  "requirements": [
+    {
+      "id": "R14",
+      "statement": "非数据库容量字段必须按部署条件、核心容量和边车配置顺序紧凑排列，计算摘要与容量标题同行，技术栈在宽桌面三项同行。",
+      "acceptance": [
+        "1920x1080 下容量字段按 3、4、3 分组",
+        "有边车开关位于边车数值字段之前",
+        "摘要与标题同行且技术栈三列",
+        "三个手机视口单列无页面级横向溢出"
+      ],
+      "priority": "must",
+      "source": "用户于 2026-09-03 确认",
+      "counterexample": [
+        "字段散落产生额外换行",
+        "手机端横向溢出"
+      ]
+    }
+  ],
+  "invariants": [
+    "字段绑定、联动、计算、校验、状态和提交载荷不变",
+    "数据库申请项布局不变",
+    "内部滚动和 footer 可用"
+  ],
+  "constraints": [
+    "产品修改仅限两个授权前端文件",
+    "不修改公共组件、API、后端或数据库"
+  ],
+  "non_goals": [
+    "改变字段含义",
+    "修改请求契约"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260903-059-resource-request-form-layout-one-screen\\handoff.json",
+    "imported_at": "2026-09-03T08:06:57+00:00",
+    "topic": "req-20260903-059-resource-request-form-layout-one-screen",
+    "design_revision": 4,
+    "plan_revision": 4,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260903-059-resource-request-form-layout-one-screen",
+      "handoff_status": "approved",
+      "created_at": "2026-09-03T16:05:25+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260903-059-resource-request-form-layout-one-screen",
+        "design_revision": 4,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+        "objective": "通过重排容量字段和压缩摘要占行，使资源申请当前项表单在宽桌面尽量一屏完整展示。",
+        "users": [
+          "资源申请人"
+        ],
+        "requirements": [
+          {
+            "id": "R14",
+            "statement": "非数据库容量字段必须按部署条件、核心容量和边车配置顺序紧凑排列，计算摘要与容量标题同行，技术栈在宽桌面三项同行。",
+            "acceptance": [
+              "1920x1080 下容量字段按 3、4、3 分组排列",
+              "有边车开关位于两个边车数值字段之前",
+              "计算摘要与容量标题同行且技术栈三项同行",
+              "手机单列且无页面级横向溢出"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "字段散落产生额外换行"
+            ]
+          }
+        ],
+        "invariants": [
+          "字段绑定、联动、计算、校验、状态和提交载荷不变",
+          "数据库申请项布局不变",
+          "短数值输入、内部滚动和 footer 可见性不变"
+        ],
+        "constraints": [
+          "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+          "不修改公共组件、后端、API、数据库、权限、审计或工作流"
+        ],
+        "non_goals": [
+          "改变字段含义",
+          "修改请求契约"
+        ],
+        "selected_approach": {
+          "name": "语义顺序重排与局部紧凑布局",
+          "reason": "利用现有 Flex 宽度并减少独立占行",
+          "alternatives": []
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "资源申请模板和局部 CSS"
+            ],
+            "outside": [
+              "API、后端和公共 UI"
+            ]
+          },
+          "components": [
+            {
+              "name": "容量布局",
+              "responsibility": "按新顺序排列字段并同行展示摘要",
+              "depends_on": [
+                "现有 Flex 和计算函数"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "资源申请载荷",
+              "producer": "ResourceRequestPage.vue",
+              "consumers": [
+                "现有 API"
+              ],
+              "contract": "布局不改变数据"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "当前项",
+              "transitions": [
+                "现有绑定和计算"
+              ],
+              "output": "紧凑布局"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "宽度不足",
+            "behavior": "自然换行",
+            "recovery": "内部滚动"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "不变"
+          ],
+          "performance": [
+            "不增加请求"
+          ],
+          "compatibility": [
+            "载荷不变"
+          ],
+          "operations": [
+            "回退前端提交"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R14"
+            ],
+            "signal": "字段位置和根宽",
+            "method": "构建与五视口浏览器验收"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "宽桌面可容纳目标分组",
+            "basis": "上一轮运行数据",
+            "falsifier": "DOM 几何不满足"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D11",
+            "decision": "字段重排并移动摘要",
+            "reason": "提高一屏密度",
+            "source": "用户"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "中等宽度标题拥挤",
+            "impact": "换行",
+            "mitigation": "响应式换行"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户要求直接实施查看效果",
+          "confirmed_at": "2026-09-03T16:05:25+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 4,
+        "human_document": "docs/engineering-control/plans/2026-09-03-resource-request-form-layout-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只修改授权文件",
+          "业务和请求不变",
+          "手机单列"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/architecture/ResourceRequestPage.vue",
+            "status": "existing",
+            "responsibility": "字段顺序与布局语义",
+            "evidence": "当前容量和技术栈模板"
+          },
+          {
+            "path": "web/src/modules/architecture/architecture.css",
+            "status": "existing",
+            "responsibility": "标题摘要、技术栈和响应式样式",
+            "evidence": "资源申请局部规则"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T9",
+            "goal": "完成并验证资源申请一屏字段布局",
+            "requirement_ids": [
+              "R14"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "现有容量 Flex 在 1920 下为 3/4/3",
+              "现有技术栈被编辑器覆盖为两列"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/execution-T9.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/observation-T9.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/convergence.json"
+              ],
+              "modify": [
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/architecture.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "现有字段绑定和计算函数"
+              ],
+              "produces": [
+                "3/4/3 容量顺序",
+                "标题摘要",
+                "技术栈三列"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T9-S1",
+                "action": "重排模板并增加局部类",
+                "command": null,
+                "expected": "绑定不变且顺序符合设计",
+                "evidence": "模板 diff"
+              },
+              {
+                "id": "T9-S2",
+                "action": "增加紧凑和响应式样式",
+                "command": null,
+                "expected": "宽桌面紧凑、手机单列",
+                "evidence": "CSS diff"
+              },
+              {
+                "id": "T9-S3",
+                "action": "运行构建和多视口验收",
+                "command": "npm --prefix web run build; git diff --check; scope check; browser UAT",
+                "expected": "检查通过且无溢出",
+                "evidence": "退出码和 DOM 指标"
+              }
+            ],
+            "acceptance_checks": [
+              "1920 容量 3/4/3",
+              "摘要与标题同行",
+              "技术栈三列",
+              "手机单列无溢出",
+              "边车联动与计算不变"
+            ],
+            "risks": [
+              "响应式换行受字体影响"
+            ],
+            "rollback": "回退 T9 产品提交",
+            "stop_conditions": [
+              "需要修改公共组件或业务逻辑",
+              "页面根溢出",
+              "请求变化"
+            ],
+            "escalation_conditions": [
+              "需要新公共断点或后端契约"
+            ]
+          }
+        ],
+        "dependency_edges": [],
+        "parallel_groups": [
+          [
+            "T9"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T9"
+            ],
+            "command": "build、scope、五视口浏览器检查",
+            "expected": "R14 通过"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R14",
+            "task_ids": [
+              "T9"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认方案并要求直接实施",
+          "confirmed_at": "2026-09-03T16:05:25+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "容量 DOM",
+          "技术栈 DOM",
+          "局部 CSS"
+        ],
+        "state_variable_candidates": [
+          "字段 offsetTop",
+          "容器宽度",
+          "根 scrollWidth"
+        ],
+        "interface_candidates": [
+          "容量标题类",
+          "技术栈三列类"
+        ],
+        "sensor_candidates": [
+          "Vite build",
+          "DOM 几何",
+          "五视口截图",
+          "Console"
+        ],
+        "actuator_candidates": [
+          "DOM 顺序",
+          "局部 CSS"
+        ],
+        "disturbance_candidates": [
+          "字体",
+          "视口宽度",
+          "Element Plus 默认样式"
+        ],
+        "delay_candidates": [
+          "Vite HMR",
+          "Dialog 布局"
+        ],
+        "assumptions": [
+          {
+            "text": "目标排列可由现有宽度实现",
+            "basis": "上一轮运行结果",
+            "falsifier": "浏览器几何不满足"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Element Plus\", \"Vite 浏览器运行时\", \"视口和字体\"], \"inside\": [\"ResourceRequestPage.vue 当前项模板\", \"architecture.css 资源申请局部规则\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"未覆盖系统字体\"], \"id\": \"S1\", \"independence\": \"直接观察浏览器布局输出\", \"method\": \"五视口读取 offsetTop、clientHeight、scrollHeight 和根 scrollWidth\", \"target\": \"布局和一屏密度\"}",
+      "{\"blind_spots\": [\"Mock 与真实后端差异\"], \"id\": \"S2\", \"independence\": \"编译与运行交互组合\", \"method\": \"Vite build、diff、scope、边车联动与计算检查\", \"target\": \"构建和业务不变量\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"重排字段并增加局部语义类\", \"authority\": \"codex-task-scope writable_paths\", \"id\": \"A1\", \"impact_radius\": \"ResourceRequestPage.vue 当前项\", \"rollback\": \"回退 T9 提交\", \"target\": \"容量和技术栈 DOM\"}",
+      "{\"action\": \"调整标题摘要、技术栈列数和间距\", \"authority\": \"codex-task-scope writable_paths\", \"id\": \"A2\", \"impact_radius\": \"architecture.css 资源申请规则\", \"rollback\": \"回退 T9 提交\", \"target\": \"局部布局\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"字段换行变化\", \"source\": \"字体与长标签\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"上一轮运行几何\", \"falsifier\": \"S1 显示目标行不成立\", \"text\": \"现有 Flex basis 支持目标顺序\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R14",
+        "sensor": "[\"S1\", \"S2\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T9",
+      "goal": "实现并验证资源申请一屏字段布局",
+      "requirements": [
+        "R14"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "现有容量容器为 Flex",
+        "编辑器技术栈当前两列",
+        "产品文件位于授权范围"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/architecture.css",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/*.json"
+      ],
+      "invariants": [
+        "字段绑定、业务逻辑和请求不变",
+        "数据库布局不变",
+        "手机单列"
+      ],
+      "interface_contracts": [
+        "resource_request_payload 不变"
+      ],
+      "non_goals": [
+        "不修改公共 UI 或后端"
+      ],
+      "action_bounds": [
+        "仅重排 DOM、增加局部类和 CSS"
+      ],
+      "acceptance": [
+        "1920 容量 3/4/3",
+        "摘要与标题同行",
+        "技术栈三列",
+        "手机无根溢出",
+        "构建和 scope 通过"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "命令退出码",
+        "DOM 几何和截图",
+        "边车联动与计算结果"
+      ],
+      "rollback": "回退 T9 提交",
+      "stop_conditions": [
+        "需要范围外修改",
+        "请求变化",
+        "页面根溢出或 footer 不可达"
+      ],
+      "escalation_conditions": [
+        "需要公共断点或后端契约"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T08:17:49+00:00",
+          "text": "开始记录已完成的授权范围内实现和运行证据"
+        },
+        {
+          "recorded_at": "2026-09-03T08:19:30+00:00",
+          "text": "S-0001 显示 R14 在构建、五视口、联动和计算检查中无偏差"
+        }
+      ],
+      "updated_at": "2026-09-03T08:19:30+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T9 完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "build/diff/scope通过；1920容量3/4/3、技术栈三列、editor无滚动；五视口无根溢出；Console error=0",
+      "recorded_at": "2026-09-03T08:19:22+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "最终干净页面采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "新标签页重新加载：1920 根宽1920、容量3行、技术栈1行、editor 831/831、摘要为初始0值、Console error=0",
+      "recorded_at": "2026-09-03T08:21:05+00:00"
+    }
+  ]
+}
