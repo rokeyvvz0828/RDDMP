@@ -10,19 +10,19 @@ public final class TestAnalyticsMetricCatalog {
 
     public static final List<String> EXECUTED_STATUSES = List.of("SUCCESS", "FAILED", "BLOCKED");
     public static final List<Map<String, String>> FIXED_REPORTS = List.of(
-            item("RPT-001", "项目测试概览"), item("RPT-002", "机构测试概览"), item("RPT-003", "系统测试概览"), item("RPT-004", "测试范围覆盖情况"),
-            item("RPT-005", "案例执行进度"), item("RPT-006", "案例执行结果"), item("RPT-007", "案例阻塞情况"), item("RPT-008", "缺陷总体情况"),
-            item("RPT-009", "缺陷严重程度分布"), item("RPT-010", "缺陷状态分布"), item("RPT-011", "缺陷修复情况"), item("RPT-012", "缺陷逾期情况"),
-            item("RPT-013", "轮次测试对比"), item("RPT-014", "周期测试对比"), item("RPT-015", "责任团队质量情况"), item("RPT-016", "测试人员工作量"),
-            item("RPT-017", "执行人员工作量"), item("RPT-018", "缺陷处理人员工作量"), item("RPT-019", "系统质量排名"), item("RPT-020", "机构质量排名"),
-            item("RPT-021", "质量阈值达标情况"), item("RPT-022", "风险指标预警"), item("RPT-023", "无效案例情况"), item("RPT-024", "执行中案例情况"),
-            item("RPT-025", "测试趋势分析"), item("RPT-026", "测试数据明细")
+            item("RPT-001", "测试执行进度汇总表"), item("RPT-002", "按周期各系统执行统计表"), item("RPT-003", "按轮次各系统执行统计表"), item("RPT-004", "按机构各周期执行统计表"),
+            item("RPT-005", "按机构各轮次执行统计表"), item("RPT-006", "测试案例执行明细表"), item("RPT-007", "测试缺陷明细表"), item("RPT-008", "缺陷状态分布统计表"),
+            item("RPT-009", "缺陷严重程度分布统计表"), item("RPT-010", "按系统缺陷密度统计表"), item("RPT-011", "范围覆盖分析表"), item("RPT-012", "测试人员工作量统计表"),
+            item("RPT-013", "缺陷生命周期统计表"), item("RPT-014", "按案例类型执行统计表"), item("RPT-015", "按优先级执行统计表"), item("RPT-016", "核算相关功能测试统计表"),
+            item("RPT-017", "缺陷处理效率统计表"), item("RPT-018", "测试轮次对比分析表"), item("RPT-019", "系统间测试质量对比表"), item("RPT-020", "测试日报表（按子系统）"),
+            item("RPT-021", "测试周报表（按子系统）"), item("RPT-022", "测试月报表（按子系统）"), item("RPT-023", "项目测试日报汇总表"), item("RPT-024", "机构测试质量汇总表"),
+            item("RPT-025", "轮次内按日进度跟踪表"), item("RPT-026", "缺陷闭环统计表")
     );
     public static final List<Map<String, String>> FIXED_CHARTS = List.of(
-            item("CHT-001", "案例执行状态分布"), item("CHT-002", "案例执行趋势"), item("CHT-003", "案例成功率趋势"), item("CHT-004", "缺陷状态分布"),
-            item("CHT-005", "缺陷严重程度分布"), item("CHT-006", "缺陷修复趋势"), item("CHT-007", "缺陷密度对比"), item("CHT-008", "阻塞案例趋势"),
-            item("CHT-009", "系统执行率对比"), item("CHT-010", "系统成功率对比"), item("CHT-011", "机构执行率对比"), item("CHT-012", "机构成功率对比"),
-            item("CHT-013", "责任团队缺陷分布"), item("CHT-014", "测试人员工作量"), item("CHT-015", "质量阈值达标情况"), item("CHT-016", "测试质量综合趋势")
+            item("CHT-001", "案例执行状态分布"), item("CHT-002", "缺陷状态分布"), item("CHT-003", "缺陷严重程度分布"), item("CHT-004", "执行率、案例成功率、已执行案例成功率趋势"),
+            item("CHT-005", "系统测试质量对比"), item("CHT-006", "范围执行覆盖率"), item("CHT-007", "系统×周期执行状态分布"), item("CHT-008", "缺陷严重程度与状态分布"),
+            item("CHT-009", "测试人员工作量对比"), item("CHT-010", "缺陷提出与关闭趋势"), item("CHT-011", "案例类型分布"), item("CHT-012", "系统质量雷达图"),
+            item("CHT-013", "日执行量与累计执行率"), item("CHT-014", "缺陷状态随时间变化"), item("CHT-015", "系统日执行强度热力图"), item("CHT-016", "轮次执行状态对比")
     );
     public static final List<Map<String, String>> QUALITY_METRICS = List.of(
             metric("execution_rate", "执行率", "AT_LEAST"), metric("case_success_rate", "案例成功率", "AT_LEAST"),

@@ -168,7 +168,7 @@ const treeData = computed<TreeNode[]>(() => [
       },
       {
         key: "specials",
-        label: "专项报告",
+        label: "历史专项报告（只读）",
         type: "GROUP",
         children: (tree.value?.specials || []).map((x) => ({
           key: "special:" + x.id,
@@ -247,6 +247,10 @@ async function select(node: TreeNode) {
 }
 async function openGenerate(item?: TestReport) {
   if (!projectId.value) return;
+  if (selectedNode.value.type === "SPECIAL") {
+    ElMessage.warning("专项报告仅保留历史阅读和导出，V2 请在项目、责任团队组织或系统范围生成报告");
+    return;
+  }
   editing.value = item;
   generatorStep.value = 0;
   const prefillRound = Number(route.query.roundId) || undefined;

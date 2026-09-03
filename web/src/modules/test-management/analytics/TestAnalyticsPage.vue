@@ -33,6 +33,7 @@ import {
   getTestAnalyticsDrilldown,
   getTestAnalyticsFilters,
   getTestAnalyticsPreset,
+  getTestAnalytics,
   getTestAnalyticsTree,
   listTestProjects,
   publishTestAnalyticsReport,
@@ -127,6 +128,12 @@ const fieldLabels: Record<string, string> = {
   completed_count: "已完成数",
   raised_count: "新增缺陷数",
   resolved_count: "已解决缺陷数",
+  closed_total: "已关闭缺陷数",
+  average_days: "平均生命周期（天）",
+  average_close_days: "平均关闭耗时（天）",
+  cycle_name: "测试周期",
+  defect_category: "缺陷分类",
+  execution_record_total: "执行记录数",
   defect_code: "缺陷编号",
   summary: "缺陷摘要",
   status: "状态",
@@ -162,7 +169,9 @@ const columnLabel = (key: string) => fieldLabels[key] || key;
 const displayValue = (value: unknown) =>
   value === null || value === undefined || value === "" ? "-" : valueLabels[String(value)] || String(value);
 const columns = computed(() => Object.keys(model.value.rows?.[0] || {}));
-const viewOptions = computed(() => ["TABLE", "BAR", "LINE", "PIE"]);
+const viewOptions = computed(() =>
+  active.key.startsWith("CHT-") ? ["TABLE", "BAR", "LINE", "PIE"] : ["TABLE", "BAR", "LINE"],
+);
 const chartOption = computed<EChartsOption>(() => {
   const rows = model.value.rows || [],
     dimension = (row: any) =>
@@ -246,15 +255,22 @@ async function load() {
   if (!projectId.value) return;
   loading.value = true;
   try {
-    model.value = (
-      await getTestAnalyticsPreset(domain.value, projectId.value, active.key, {
-        physicalSubsystemId: filters.systemId,
-        roundId: filters.roundId,
-        cycleId: filters.cycleId,
-        view: active.view,
-        perspective: active.perspective,
-      })
-    ).data.data;
+    const response = (
+      await (active.key === "CUSTOM"
+        ? getTestAnalytics(domain.value, projectId.value, "CUSTOM", {
+            physicalSubsystemId: filters.systemId,
+            roundId: filters.roundId,
+            cycleId: filters.cycleId,
+          })
+        : getTestAnalyticsPreset(domain.value, projectId.value, active.key, {
+            physicalSubsystemId: filters.systemId,
+            roundId: filters.roundId,
+            cycleId: filters.cycleId,
+            view: active.view,
+            perspective: active.perspective,
+          }))
+    ).data.data as any;
+    model.value = { ...response, rows: response.rows || response.table || [] };
   } catch (e) {
     err(e, "统计数据加载失败");
   } finally {
