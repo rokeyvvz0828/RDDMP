@@ -10,7 +10,8 @@
       "docs/requirements/REQ-20260903-059-resource-request-form-layout/**",
       "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
       "docs/engineering-control/plans/2026-09-03-resource-request-form-layout-implementation-plan.md",
-      ".ai-control/requirements/req-20260903-059-resource-request-form-layout/*.json"
+      ".ai-control/requirements/req-20260903-059-resource-request-form-layout/*.json",
+      ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/*.json"
     ],
     "read_only_paths": [
       "web/src/AGENTS.md","web/src/modules/architecture/AGENTS.md","web/src/modules/architecture/api.ts","web/src/modules/architecture/types.ts","web/src/modules/architecture/utils.ts",
@@ -33,13 +34,13 @@
     {"name":"governance","command":"node scripts/check-all-governance.mjs"},
     {"name":"scope","command":"node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"},
     {"name":"diff","command":"git diff --check"},
-    {"name":"browser","command":"真实浏览器验收资源申请新建/编辑、多申请项、重复部署单元、物理子系统切换、错误恢复、明暗主题和 1280/375/390/430 视口"}
+    {"name":"browser","command":"真实浏览器验收资源申请新建/编辑、多申请项、重复部署单元、物理子系统切换、错误恢复、明暗主题和 1920x1080、1280x800、375x812、390x844、430x932 视口"}
   ],
   "risk": {"level":"important","items":["双层分栏在窄桌面和手机端可能产生不可达操作或横向溢出","申请项索引切换可能导致内容错位或删除错误项","物理子系统切换必须清理旧部署单元申请项且支持取消恢复","前端状态判定不能改变服务端最终校验语义"]},
   "completion": {
-    "control_mode":"full","control_prefix":"req-20260903-059-resource-request-form-layout","control_justification":"涉及资源申请高频用户流程、复杂主从表单状态、未保存内容保护和四视口浏览器验收，需要完整工程控制证据。",
-    "acceptance_evidence":[".ai-control/requirements/req-20260903-059-resource-request-form-layout/design.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/handoff.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/state.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/model.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/control-plan.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T*.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T*.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/convergence.json"],
-    "release_verification":["多申请项及重复部署单元保存请求与回显一致","物理子系统切换确认、清空和取消恢复准确","桌面及三个手机视口明暗主题无页面级横向溢出"],
+    "control_mode":"full","control_prefix":"req-20260903-059-resource-request-form-layout-uat-compact","control_justification":"修订 1 已收敛；本轮 UAT 紧凑布局涉及 Dialog 滚动所有权、五视口明暗主题和请求回归，需要独立完整工程控制证据。",
+    "acceptance_evidence":[".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/design.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/handoff.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/state.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/model.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/control-plan.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/execution-T*.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T*.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/convergence.json"],
+    "release_verification":["多申请项及重复部署单元保存请求与回显一致","物理子系统切换确认、清空和取消恢复准确","1920x1080 和 1280x800 桌面及三个手机视口明暗主题无页面级横向溢出，登记区内部滚动且 footer 可见"],
     "rollback":"回退本需求前端提交；无迁移、数据或外部系统补偿。"
   }
 }

@@ -403,3 +403,209 @@ git commit -m "docs(architecture): close resource request form layout"
 - 高关注动作：重写资源申请弹窗的核心状态与模板；物理子系统切换会主动清空申请项；新增脏表单关闭拦截。
 - 兼容边界：API、数据库和权限不变；任何需要修改 `api.ts`、`types.ts` 或后端的情况都必须停止并重新批准范围。
 - 用户于 2026-09-03 回复“批准”，确认按计划修订 1 创建隔离工作树、导入 control-engineering 交接并按 T1 → T2 → T3 串行实施。
+
+---
+
+# 修订 2：UAT 紧凑布局实施计划
+
+> 执行要求：使用 `$control-engineering` 逐任务实施。修订 1 的 `state.json` 已处于 `converged`，必须建立独立的 UAT 修订控制前缀，不得回退或覆盖历史账本。
+
+## 状态与来源
+
+- 计划修订：2
+- 设计修订：2
+- 机器设计：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/design.json`
+- 状态：可移交（用户于 2026-09-03 批准修订 2）
+
+**目标：** 保持修订 1 主从状态和请求契约不变，压缩基础信息高度，让登记表占满弹窗可用空间并内部滚动，以部署单元名称标识当前申请项，并缩短桌面数值输入框。
+
+**架构：** `ResourceRequestPage.vue` 只调整申请原因行数和两处标题绑定；`architecture.css` 建立 Dialog 到主从容器的可收缩高度链、独立滚动区域和桌面短数值输入。手机断点恢复自然高度和数值输入满宽。
+
+**技术栈：** Vue 3、TypeScript、Element Plus、Vite、现有语义主题变量和真实浏览器尺寸传感器。
+
+## 全局约束
+
+- 产品修改仅限 `ResourceRequestPage.vue` 和 `architecture.css`。
+- 保留 R1-R7、稳定临时 ID、状态、首错定位、切换保护和脏表单保护。
+- 保持 `ResourceRequestPayload`、`items[]` 顺序、重复 `deploymentUnitId`、DB/非 DB 分流和校验。
+- 不修改 API、DTO、后端、数据库、权限、审计、工作流、公共 UI 或应用壳。
+- 桌面数值输入为 140-180px；手机端恢复满宽。
+- 页面根不得横向滚动；Dialog 标题和 footer 保持可见；超高内容在登记区局部滚动。
+- 修订 1 账本只读；实施前建立 `req-20260903-059-resource-request-form-layout-uat-compact` 独立控制前缀。
+
+## 文件职责地图
+
+| 路径 | 状态 | 职责 |
+| --- | --- | --- |
+| `web/src/modules/architecture/ResourceRequestPage.vue` | existing | 申请原因行数和申请项标题。 |
+| `web/src/modules/architecture/architecture.css` | existing | Dialog 高度链、滚动边界、数值输入和移动断点。 |
+| `docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml` | existing | 声明 UAT 控制前缀和 1920x1080 验收，不扩大产品边界。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/handoff.json` | existing | 修订 2 开发前交接包。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/*.json` | candidate-new | 修订 2 独立控制账本和阶段证据。 |
+
+## 依赖与覆盖
+
+```text
+T4 建立修订控制入口 -> T5 紧凑模板与滚动布局 -> T6 浏览器验收与收敛
+```
+
+三个任务串行。T4 是 scope 和控制门禁；T5 是单一可运行布局切片；T6 依赖完整实现。R8-R12 均由 T5 实现、T6 验收。
+
+### T4：建立 UAT 修订控制入口
+
+**需求映射：** R8、R9、R10、R11、R12
+
+**前置任务：** 无
+
+**文件：**
+- 修改：`docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml`
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/state.json`
+
+**接口：** 消费已批准设计修订 2 和旧账本 `phase=converged`；产出独立 UAT 账本，阶段 `baseline`、下一阶段 `modeling`。
+
+- [ ] **步骤 1：确认旧账本和开发入口**
+
+```powershell
+git status --short
+(Get-Content -Raw .ai-control/requirements/req-20260903-059-resource-request-form-layout/state.json | ConvertFrom-Json).phase
+node scripts/check-development-entry.mjs --require-plugin
+```
+
+预期：旧账本为 `converged`，开发入口退出 0，产品文件无未识别改动。
+
+- [ ] **步骤 2：扩展控制证据范围**
+
+在 scope 中增加 UAT 前缀 `.json` 写入路径和证据清单，并将 `1920x1080` 加入浏览器验收；两个产品写入路径不变。
+
+- [ ] **步骤 3：导入交接包**
+
+```powershell
+python .agents/skills/control-engineering/scripts/control_loop.py import-handoff `
+  --state .ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/state.json `
+  --input .ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/handoff.json `
+  --mode standard
+```
+
+预期：退出 0，输出 `账本阶段=baseline；下一阶段=modeling`，旧账本 revision 不变。
+
+- [ ] **步骤 4：验证 JSON、scope 和 diff**
+
+运行新旧账本 JSON 解析、`node scripts/check-codex-scope.mjs ... --working-tree` 和 `git diff --check`。预期全部退出 0。
+
+**验收检查：** 新前缀可独立推进；旧账本终态不变；产品写入范围未扩大。
+
+**回滚：** 在尚未执行产品修改时回退 scope 并删除新前缀文件；保留旧前缀全部证据。
+
+**停止条件：** 导入要求 `--force`；治理要求覆盖旧账本；新前缀无法满足布局规则。
+
+**升级条件：** Owner 要求使用新需求编号；需要扩大产品写入范围。
+
+### T5：实现紧凑模板、标题和局部滚动
+
+**需求映射：** R8、R9、R10、R11、R12
+
+**前置任务：** T4 完成，control-engineering 经过 baseline、modeling、planning 门禁进入 executing
+
+**文件：**
+- 修改：`web/src/modules/architecture/ResourceRequestPage.vue:1447`
+- 修改：`web/src/modules/architecture/ResourceRequestPage.vue:1495`
+- 修改：`web/src/modules/architecture/ResourceRequestPage.vue:1519`
+- 修改：`web/src/modules/architecture/architecture.css:405`
+- 证据：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/execution-T5.json`
+
+**接口：** 消费 `deploymentUnitName`、现有状态函数和主从 DOM；产出两处一致的业务标题、2 行原因、桌面高度链、独立滚动和短数值输入。
+
+- [ ] **步骤 1：建立源码和构建基线**
+
+```powershell
+rg -n ':rows="4"|申请项 \{\{ index \+ 1 \}\}|申请项 \{\{ currentItemIndex \+ 1 \}\}|max-height: 680px|el-input-number' web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/architecture.css
+npm --prefix web run build
+```
+
+预期：定位旧行数、序号标题、固定列表高度和数值框规则；构建退出 0。
+
+- [ ] **步骤 2：调整原因和标题**
+
+将申请原因设为 `:rows="2"`；列表和编辑器主标题分别使用 `item.deploymentUnitName || '未选择部署单元'` 与 `currentItem.deploymentUnitName || '未选择部署单元'`。编码、类型和状态保留为次要信息，错误与删除提示继续使用申请项序号。
+
+- [ ] **步骤 3：建立桌面高度链**
+
+让 Dialog body、表单、外层布局、登记区和主从容器形成带 `min-height: 0` 的 flex/grid 高度链。列表面板和编辑器分别 `overflow-y: auto`，移除 `max-height: 680px`；标题区和 footer 不进入滚动节点。
+
+- [ ] **步骤 4：增加短数值输入和移动覆盖**
+
+当前项编辑器内 `el-input-number` 桌面宽度设为 160px；`760px` 以下恢复 `width: 100%`。选择器、文本输入和备注继续使用可用列宽。
+
+- [ ] **步骤 5：构建、静态检查和提交**
+
+```powershell
+npm --prefix web run build
+git diff --check -- web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/architecture.css
+rg -n "#[0-9a-fA-F]{3,8}|rgb\(|hsl\(|letter-spacing:\s*-" web/src/modules/architecture/architecture.css
+git add web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/architecture.css
+git commit -m "style(architecture-web): compact resource request form"
+```
+
+预期：构建和 diff 退出 0，无新增硬编码颜色或负字距，提交仅含两个产品文件。
+
+**验收检查：** 2 行原因、部署单元标题、独立滚动、footer 可见、桌面短数值框、手机满宽、状态和请求不变。
+
+**回滚：** revert T5 提交，恢复修订 1 界面；无数据补偿。
+
+**停止条件：** 必须修改公共 Dialog/应用壳；字段不可达；手机页面根溢出；请求或状态逻辑需改变。
+
+**升级条件：** 要求折叠字段、数值框小于 140px，或取消错误提示序号。
+
+### T6：浏览器验收与收敛
+
+**需求映射：** R8、R9、R10、R11、R12
+
+**前置任务：** T5
+
+**文件：**
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/execution-T6.json`
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T5.json`
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T6.json`
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/convergence.json`
+
+**接口：** 消费 T5 提交和本地 Mock API；产出 R8-R12 的尺寸、交互、主题、请求兼容、范围和收敛证据。
+
+- [ ] **步骤 1：运行工程传感器**
+
+执行 `git diff --check`、`npm --prefix web run build`、治理检查和以 `fad0585` 为基线的 scope 检查。预期 diff/build/scope 退出 0；历史治理噪声与本需求结果分开记录。
+
+- [ ] **步骤 2：验收桌面高度和滚动**
+
+在 `1920x1080`、`1280x800` 明暗主题打开新建/编辑弹窗，覆盖空项、三项、DB、非 DB、附加需求和错误状态。采集 Dialog、body、layout、registration、master-detail、item-panel、editor、footer 的 `clientHeight`、`scrollHeight` 和 `overflow`。
+
+预期：1920 下标题、主要基础信息、登记区和 footer 同屏；1280 下 footer 可见，超高内容在列表或编辑器内部可达；页面根无横向滚动。
+
+- [ ] **步骤 3：验收标题、数值框和手机**
+
+验证空项、选择、重复部署单元和切换时两处标题同步；错误和删除提示保留序号。桌面数字输入计算宽度在 140-180px；`375x812`、`390x844`、`430x932` 明暗主题恢复满宽，无遮挡或页面级溢出。
+
+- [ ] **步骤 4：回归修订 1 行为与请求**
+
+复验新增、删除、切换、物理子系统确认/取消、候选失败、保存失败、脏关闭和权限显隐；检查 POST/PUT 中 `items[]` 数量、顺序、重复部署单元和字段值，确认无 `clientId`。
+
+- [ ] **步骤 5：记录观察和收敛**
+
+按 control-engineering 写 execution、observation、convergence；偏差进入 correcting/executing。最终预期 R8-R12 全部 pass、新账本 `converged`、旧账本 revision 和终态不变。
+
+**验收检查：** R8-R12、修订 1 回归、请求兼容、权限不变、两桌面与三手机视口明暗主题、滚动尺寸和 scope。
+
+**回滚：** revert 证据提交；产品只需 revert T5。
+
+**停止条件：** footer/字段不可达；页面根溢出；请求或权限变化；需要 scope 外修改；UAT 服务无法恢复。
+
+**升级条件：** 必须修改公共 Dialog/应用壳；真实后端与 Mock 结论冲突；历史治理错误成为硬门禁。
+
+## 控制模型种子
+
+以下仅为 `hypotheses-only`：被控边界为 Dialog 高度链、基础列、登记标题、申请项列表、当前项编辑器和数字输入；状态变量为视口、可用高度、列表数量、当前项类型、展开状态和滚动尺寸；传感器为 build、源码扫描、计算样式、DOM 尺寸、页面根宽度、Network、Console 和截图；执行器为 textarea 行数、`min-height: 0`、局部 overflow、数字宽度和移动覆盖；扰动为长名称、多申请项、DB/非 DB 高度差、错误提示、附加需求和字体渲染。
+
+## 风险与用户批准
+
+- 高关注动作：改变 Dialog 内部滚动所有权，错误高度链可能造成 footer 或字段不可达。
+- 兼容边界：数据、权限和请求不变；公共组件、后端或应用壳修改必须重新批准。
+- 用户于 2026-09-03 回复“可以”，批准实施计划修订 2，并同意建立独立 UAT 控制前缀后按 T4 → T5 → T6 串行实施。
