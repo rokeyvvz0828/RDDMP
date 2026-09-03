@@ -1,0 +1,32 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V147__test_management_report_analytics_refactor.sql", "purpose": "追加质量阈值表和 V2 报告版本快照字段"},
+    {"path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java", "purpose": "固定七项质量指标的读取、启停、方向阈值校验和审计"},
+    {"path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java", "purpose": "暴露按 route domain 和项目边界读取/保存阈值的受保护 API"},
+    {"path_or_resource": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationServiceTest.java", "purpose": "覆盖非法质量指标在项目边界校验后的拒绝路径"}
+  ],
+  "requirements_addressed": ["R6", "R7"],
+  "commands": [
+    {"command": "mvn -pl :ccb-test-management -am test -Dtest=TestConfigurationServiceTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 1, "salient_output": "全部模块编译完成；JDK 26 不受当前 Byte Buddy 1.15.11 支持，JdbcTemplate mock 创建失败。"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-test-management -am test -Dtest=TestConfigurationServiceTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "TestConfigurationServiceTest：3 tests, 0 failures, 0 errors。"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 1, "salient_output": "检查在既有 V84_1__seed_requirement_system_catalog.sql 命名处失败，未指向 V147。"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误。"}
+  ],
+  "local_checks": [
+    {"check": "阈值服务局部测试", "result": "pass", "evidence": "实验兼容开关下 3/3 通过", "limitations": ["未连接本地 MySQL 验证 V147 实际执行"]},
+    {"check": "Flyway 脚本检查", "result": "blocked", "evidence": "既有 V84_1 文件名不符合脚本规则", "limitations": ["该历史迁移不在本任务 writable_paths，不能修复"]},
+    {"check": "迁移不可变性", "result": "pass", "evidence": "V142-V146 diff 为空，新增文件仅为 V147", "limitations": ["尚未完成全量范围审计"]}
+  ],
+  "diff_summary": ["新增项目加测试大类唯一阈值结构", "仅服务端白名单决定指标方向", "保存时记录 QUALITY_THRESHOLD 审计", "停用项以 enabled=false 返回给后续报告消费方"],
+  "invariants_checked": [
+    {"invariant": "迁移只追加", "result": "pass", "evidence": "仅新增 V147；V142-V146 无 diff"},
+    {"invariant": "阈值键为项目加 route domain", "result": "pass", "evidence": "服务查询和唯一键都包含 tenant_id,test_domain,project_id,metric_code"},
+    {"invariant": "写操作保留服务端权限和审计", "result": "pass", "evidence": "控制器需要 configuration:update；服务写入 tm_test_configuration_audit"}
+  ],
+  "disturbances": [{"event": "本机 Java 26 与 Byte Buddy 1.15.11 的默认 Mockito inline mock 不兼容", "impact": "常规 Maven 测试命令失败；使用 -Dnet.bytebuddy.experimental=true 后局部测试通过。"}, {"event": "既有 V84_1 Flyway 文件名不符合检查脚本", "impact": "迁移门禁无法在当前仓库基线通过。"}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["需要后续本地 MySQL 采样验证 V147 与阈值持久化。", "V84_1 历史迁移命名问题需由其 Owner 在独立范围处理。"],
+  "recommended_next": "observe"
+}

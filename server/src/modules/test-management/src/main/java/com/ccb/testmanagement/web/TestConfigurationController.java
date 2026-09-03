@@ -94,6 +94,14 @@ public class TestConfigurationController {
     @PreAuthorize("hasAuthority('test-management:' + #domain + ':configuration')")
     public ApiResponse<List<UserDirectoryItem>> users(@PathVariable String domain,@RequestParam(required=false) String keyword,@AuthenticationPrincipal AuthUser user){return ok(service.users(keyword,user));}
 
+    @GetMapping("/quality-thresholds")
+    @PreAuthorize("hasAuthority('test-management:' + #domain + ':configuration')")
+    public ApiResponse<List<Map<String,Object>>> qualityThresholds(@PathVariable String domain,@RequestParam long projectId,@AuthenticationPrincipal AuthUser user){return ok(service.qualityThresholds(domain,projectId,user));}
+
+    @PutMapping("/quality-thresholds")
+    @PreAuthorize("hasAuthority('test-management:' + #domain + ':configuration:update')")
+    public ApiResponse<List<Map<String,Object>>> saveQualityThresholds(@PathVariable String domain,@RequestParam long projectId,@RequestBody Map<String,Object> body,@AuthenticationPrincipal AuthUser user){return ok(service.saveQualityThresholds(domain,projectId,body,user));}
+
     @GetMapping("/rounds")
     @PreAuthorize("hasAuthority('test-management:' + #domain + ':configuration')")
     public ApiResponse<PageResult<Map<String,Object>>> rounds(@PathVariable String domain,@RequestParam long projectId,@RequestParam(defaultValue="1") long page,@RequestParam(defaultValue="20") long size,@AuthenticationPrincipal AuthUser user){return ok(service.rounds(domain,projectId,new PageQuery(page,size),user));}

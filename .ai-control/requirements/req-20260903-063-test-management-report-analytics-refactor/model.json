@@ -1,0 +1,102 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": [
+      "测试管理模块的报告、分析统计、测试配置服务与控制器",
+      "测试管理模块 V147 迁移和本地模拟数据脚本",
+      "测试管理模块报告与分析统计前端页面及其 API 客户端",
+      "测试管理模块的服务端和前端自动化测试"
+    ],
+    "environment": [
+      "既有 V142 至 V146 的历史报告和统计数据",
+      "项目、租户、RBAC 与数据范围上下文",
+      "架构模块提供的物理子系统及 responsible_team_org_id 主数据",
+      "本地 MySQL、浏览器、Apache POI、ECharts 和既有 PDF 渲染运行时"
+    ]
+  },
+  "state_variables": [
+    {"name": "route_test_domain", "owner": "TestReportController/TestAnalyticsController", "valid_values": ["用户测试", "集成测试", "应用组装测试", "性能测试"]},
+    {"name": "report_snapshot", "owner": "tm_test_report 及 V147 快照扩展", "valid_values": ["草稿", "已生成", "已归档"]},
+    {"name": "execution_metric", "owner": "报告与统计聚合服务", "valid_values": ["有效案例", "未执行", "执行中", "成功", "失败", "阻塞", "无效", "已执行"]},
+    {"name": "quality_threshold", "owner": "TestConfigurationService", "valid_values": ["启用", "停用"]},
+    {"name": "analysis_definition", "owner": "TestAnalyticsAdvancedService", "valid_values": ["固定目录", "自定义草稿", "已共享", "已快照"]},
+    {"name": "local_seed_marker", "owner": "独立本地模拟数据脚本", "valid_values": ["未写入", "已写入"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "带路由固定 domain 的报告或分析请求", "transitions": ["控制器解析并校验 domain", "服务层将 domain 加入项目、租户和实体范围过滤", "仓储聚合限定 tm_* 数据"], "outputs": ["只包含同一测试大类的数据或中文拒绝响应"]},
+    {"requirement_id": "R2", "input": "项目、机构或系统的全周期/轮次报告生成请求", "transitions": ["报告服务校验六种 V2 组合", "按八个章节计算并序列化指标、责任团队和阈值判断", "保存不可变版本快照", "文档服务导出快照"], "outputs": ["可查看、可导出的中文八章节版本化报告"]},
+    {"requirement_id": "R3", "input": "案例执行状态与无效标记", "transitions": ["聚合服务划分有效/无效案例", "单列执行中", "仅成功、失败和阻塞求和为已执行", "以有效案例作为比率分母"], "outputs": ["正确的计数、执行率、成功率和缺陷密度"]},
+    {"requirement_id": "R4", "input": "固定报表或图表编号请求", "transitions": ["固定目录注册 26 个 RPT 与 16 个 CHT", "按编号选择受约束的聚合查询", "适用时返回数据，不适用时返回中文空态"], "outputs": ["完整且可呈现的固定分析目录"]},
+    {"requirement_id": "R5", "input": "自定义分析定义、共享、下钻、快照或导出请求", "transitions": ["白名单校验维度、指标、图表和过滤条件", "绑定当前 domain/项目/数据范围", "保存用户定义或快照", "生成 XLSX/PDF/PNG"], "outputs": ["受限、可共享、可下钻和可导出的中文分析结果"]},
+    {"requirement_id": "R6", "input": "项目加测试大类的阈值配置和启停操作", "transitions": ["配置服务校验指标与方向", "写入配置和审计", "报告生成时仅读取启用项并将判断写入快照"], "outputs": ["停用项不出现且不参与总体质量结论的冻结判定"]},
+    {"requirement_id": "R7", "input": "V1 历史报告、快照或配置的读取/导出请求", "transitions": ["V147 仅追加新结构和兼容适配", "旧类型请求走兼容读取与文档输出", "新建接口拒绝新增周期/专项 V2 报告"], "outputs": ["V1 可读可导出而新 V2 不扩大旧类型"]},
+    {"requirement_id": "R8", "input": "桌面或手机视口中的报告、分析、阈值页面操作", "transitions": ["Vue 页面使用现有交付示范中心的图表、状态和弹层模式", "中文映射替换用户可见英文", "响应式布局在窄屏折叠或横向滚动局部表格"], "outputs": ["中文、完整状态、无页面横向溢出的页面"]},
+    {"requirement_id": "R9", "input": "本地执行独立模拟数据 SQL", "transitions": ["只读预检物理子系统与责任团队数量", "前提满足后以稳定标识幂等插入测试管理自有表", "第二次运行匹配标识并跳过重复写入"], "outputs": ["足量、虚构、可重复运行的统计验证样本或零写入失败"]}
+  ],
+  "interfaces": [
+    {"name": "按 domain 的报告 API", "producers": ["TestReportController", "TestReportService"], "consumers": ["TestReportPage", "api.ts"], "invariant": "domain 来自路由且服务端再次校验，响应不跨测试大类"},
+    {"name": "按 domain 的分析 API", "producers": ["TestAnalyticsController", "TestAnalyticsService", "TestAnalyticsAdvancedService"], "consumers": ["TestAnalyticsPage", "api.ts"], "invariant": "固定目录和自定义分析均在白名单与当前数据范围内执行"},
+    {"name": "质量阈值配置 API", "producers": ["TestConfigurationController", "TestConfigurationService"], "consumers": ["测试配置页面", "报告聚合服务"], "invariant": "键为项目加测试大类，所有变更可审计，停用项不进入报告"},
+    {"name": "物理子系统责任团队组织", "producers": ["arch_physical_subsystem.responsible_team_org_id"], "consumers": ["报告和分析统计聚合"], "invariant": "机构统计只按该字段归集，不回退为项目组织映射"},
+    {"name": "历史 V1 报告与文档", "producers": ["既有 tm_test_report 与文档服务"], "consumers": ["历史报告读取/导出用户"], "invariant": "V142 至 V146 不修改，历史对象保持可读或可导出"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1 的跨大类隔离与授权", "method": "新增控制器/服务模块测试，使用不同 domain 和范围上下文断言过滤或拒绝", "blind_spots": ["真实网关配置未在模块测试中启动"], "independence": "通过服务端实际授权和查询路径观察响应，不依赖前端隐藏"},
+    {"id": "S2", "target": "R2 的六种组合、八章节、版本冻结和中文导出", "method": "报告服务和文档服务测试校验组合、章节、快照重读与导出字节/文本", "blind_spots": ["不同操作系统 PDF 字体渲染差异"], "independence": "直接读取持久化快照并独立生成文件"},
+    {"id": "S3", "target": "R3 的计数和公式", "method": "构造成功、失败、阻塞、执行中和无效案例的确定性聚合测试", "blind_spots": ["生产历史脏数据的未知枚举值"], "independence": "直接对聚合输出做精确数值断言"},
+    {"id": "S4", "target": "R4 的目录完整性和结果", "method": "固定目录覆盖测试断言 RPT-001..026、CHT-001..016 唯一且逐项可执行或有中文空态", "blind_spots": ["真实海量数据下的性能"], "independence": "目录枚举与逐项执行双重检查"},
+    {"id": "S5", "target": "R5 的受约束自定义分析", "method": "服务/API 测试验证白名单拒绝、共享权限、下钻范围、快照及三种导出", "blind_spots": ["第三方浏览器下载器行为"], "independence": "直接调用服务约束与实际导出器"},
+    {"id": "S6", "target": "R6 的阈值启停、审计和快照", "method": "配置/报告服务测试切换启停并比较报告章节和总体结论，断言审计记录", "blind_spots": ["外部审计检索界面的展示"], "independence": "从配置读写与快照输出两端交叉验证"},
+    {"id": "S7", "target": "R7 的迁移追加和 V1 兼容", "method": "检查 V142..V146 文件哈希/无 diff，运行 Flyway 校验及历史对象读取/导出测试", "blind_spots": ["用户未提供的已损坏历史数据"], "independence": "迁移差异检查与兼容路径测试相互独立"},
+    {"id": "S8", "target": "R8 的中文和响应式状态", "method": "前端构建、中文文本静态检查及 1280×800、375×812、390×844、430×932 浏览器视口截图/scrollWidth 检查", "blind_spots": ["未覆盖的浏览器内核"], "independence": "真实浏览器布局测量不依赖组件单测"},
+    {"id": "S9", "target": "R9 的本地模拟数据安全、数量和幂等", "method": "隔离本地 MySQL 预检、两次执行、测试管理表计数/分布查询和非目标表变更检查", "blind_spots": ["没有满足主数据前提的本地库时不能完成正向采样"], "independence": "脚本事务结果与 SQL 聚合计数独立验证"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "报告与指标聚合因果链", "action": "在 report/analytics 服务内增加 V2 模型、按 domain 过滤和公式实现，并配套模块测试", "authority": "当前任务 writable_paths", "impact_radius": "测试管理报告和分析统计模块", "rollback": "回退本任务提交；不触碰 V142 至 V146"},
+    {"id": "A2", "target": "V2 持久化与历史兼容", "action": "只追加 V147 迁移及兼容读取适配", "authority": "当前任务 writable_paths", "impact_radius": "测试管理自有表和报告 API", "rollback": "对未发布 V147 追加反向迁移或回退任务提交"},
+    {"id": "A3", "target": "质量阈值状态", "action": "扩展 TestConfigurationService、控制器和测试配置前端页面", "authority": "当前任务 writable_paths", "impact_radius": "测试配置与报告质量章节", "rollback": "回退本任务变更并保留既有配置数据"},
+    {"id": "A4", "target": "固定/自定义分析和导出", "action": "扩展 analytics 服务、控制器、工作簿/PDF 文档服务和前端页面", "authority": "当前任务 writable_paths", "impact_radius": "测试管理分析统计模块", "rollback": "回退本任务提交；历史快照不改写"},
+    {"id": "A5", "target": "本地统计验证样本", "action": "新增独立事务化幂等 SQL 脚本及预检", "authority": "当前任务 writable_paths", "impact_radius": "仅本地测试管理自有数据", "rollback": "按稳定模拟标识删除本脚本插入的 tm_* 行"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S4"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S5"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S6"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S7"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S8"], "observable": "yes"},
+    {"requirement_id": "R9", "sensor_ids": ["S9"], "observable": "partial"}
+  ],
+  "disturbances": [
+    {"source": "既有 V1 数据的类型和枚举差异", "effect": "新聚合或兼容输出错误", "detectable": true, "controllable": "partial"},
+    {"source": "架构主数据不足", "effect": "模拟数据正向验证无法执行", "detectable": true, "controllable": false},
+    {"source": "PDF 中文字体或运行时字体差异", "effect": "导出内容乱码或缺字", "detectable": true, "controllable": "partial"},
+    {"source": "其他开发者并行修改测试管理模块", "effect": "合并冲突或接口漂移", "detectable": true, "controllable": "partial"},
+    {"source": "本地 MySQL/浏览器服务未启动", "effect": "集成或响应式采样延迟", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "Flyway 与本地数据库初始化", "consequence": "迁移/模拟数据只能在环境就绪后采样", "sampling_rule": "先执行迁移校验与只读预检，再执行事务化种子"},
+    {"source": "异步前端加载和 ECharts 渲染", "consequence": "首帧截图可能误判为空态", "sampling_rule": "等待加载状态结束和图表容器稳定后测量 scrollWidth"},
+    {"source": "报告快照版本化", "consequence": "后续源数据变动不应改变历史版本", "sampling_rule": "生成后修改可控样本，再重读同一版本比较"}
+  ],
+  "assumptions": [
+    {"text": "现有模块测试基础设施可新增确定性服务与控制器测试", "evidence": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement 已存在测试范围", "falsifier": "Maven 测试编译或上下文启动持续失败"},
+    {"text": "现有物理子系统表含责任团队组织字段可用于机构归集", "evidence": "V77 定义 arch_physical_subsystem.responsible_team_org_id", "falsifier": "本地模式校验显示字段或关联不可用"},
+    {"text": "现有 POI/ECharts 能支持不新增依赖的工作簿与图表输出", "evidence": "TestAnalyticsWorkbookService 和交付示范中心现有图表使用", "falsifier": "模块编译或导出内容测试失败"},
+    {"text": "本地库可由用户或既有开发环境提供至少 3 个系统及 2 个责任团队", "evidence": "用户确认的模拟数据前提", "falsifier": "脚本预检不足并回滚零写入"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1 以 S1 验证后进入规划"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A1/A2/A4 以 S2 验证后进入规划"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A1 以 S3 验证后进入规划"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A1/A4 以 S4 验证后进入规划"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "A4 以 S5 验证后进入规划"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "A3/A1 以 S6 验证后进入规划"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "A2/A4 以 S7 验证后进入规划"},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "A3/A4 以 S8 验证后进入规划"},
+    {"requirement_id": "R9", "observable": "partial", "controllable": "yes", "action": "A5 先实现预检与幂等语义；无合格本地主数据时记录正向采样缺口"}
+  ],
+  "model_status": "ready"
+}

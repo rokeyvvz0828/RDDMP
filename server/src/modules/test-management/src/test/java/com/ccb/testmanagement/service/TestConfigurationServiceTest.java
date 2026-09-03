@@ -18,9 +18,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.List;
 
 /** 配置入口先校验大类，避免任意路径参数触发跨租户主数据查询。 */
 @ExtendWith(MockitoExtension.class)
@@ -51,5 +53,40 @@ class TestConfigurationServiceTest {
 
         assertEquals("TESTER", result.get("role_code"));
         assertEquals("测试人员", result.get("role_name"));
+    }
+
+    @Test
+    void rejectsUnknownQualityMetricAfterProjectBoundaryCheck() {
+        TestConfigurationService service = new TestConfigurationService(jdbc, new ObjectMapper(), users);
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
+
+        assertThrows(BusinessException.class, () -> service.saveQualityThresholds("user-testing", 1,
+                Map.of("items", java.util.List.of(Map.of("metric_code", "unknown_metric", "enabled", true,
+                        "qualified_threshold", 1, "risk_threshold", 0))), operator));
+
+        verify(jdbc).queryForObject(anyString(), eq(Long.class), any(Object[].class));
+    }
+
+    @Test
+    void listsEveryFixedQualityMetricAsDisabledUntilConfigured() {
+        TestConfigurationService service = new TestConfigurationService(jdbc, new ObjectMapper(), users);
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
+        when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of());
+
+        List<Map<String, Object>> thresholds = service.qualityThresholds("user-testing", 1, operator);
+
+        assertEquals(7, thresholds.size());
+        assertEquals(false, thresholds.stream().anyMatch(item -> Boolean.TRUE.equals(item.get("enabled"))));
+        assertEquals("AT_MOST", thresholds.stream().filter(item -> "defect_density".equals(item.get("metric_code"))).findFirst().orElseThrow().get("comparison_direction"));
+    }
+
+    @Test
+    void rejectsReversedThresholdsForLowerIsBetterMetric() {
+        TestConfigurationService service = new TestConfigurationService(jdbc, new ObjectMapper(), users);
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
+
+        assertThrows(BusinessException.class, () -> service.saveQualityThresholds("user-testing", 1,
+                Map.of("items", List.of(Map.of("metric_code", "defect_density", "enabled", true,
+                        "qualified_threshold", 2, "risk_threshold", 1))), operator));
     }
 }

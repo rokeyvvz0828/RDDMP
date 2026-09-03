@@ -1,0 +1,96 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1", "goal": "追加 V147 并建立质量阈值的项目加测试大类受控配置与审计基础。", "requirement_ids": ["R6", "R7"], "prerequisites": [],
+      "input_facts": ["V142 至 V146 已发布且不得修改", "TestConfigurationService 与 TestConfigurationController 位于任务写入范围", "机构归集使用物理子系统责任团队而不是本任务写入主数据"],
+      "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V147__test_management_report_analytics_refactor.sql", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java", "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/**"],
+      "invariants": ["迁移只追加", "阈值键为项目加 route domain", "写操作保留权限和审计", "停用指标不会影响报告"],
+      "interface_contracts": ["质量阈值 API 不接受跨 domain 数据", "固定指标代码与方向由服务端白名单决定"], "non_goals": ["不修改 V142 至 V146", "不修改项目、组织或物理子系统主数据"],
+      "action_bounds": ["仅增加 V147 所需表/兼容字段", "仅扩展现有配置服务、控制器和直接测试", "不新增依赖或全局权限基础设施"],
+      "acceptance_checks": ["Flyway 迁移检查通过", "阈值创建、更新、停用、越范围拒绝和审计测试通过", "停用指标不进入质量判断的测试通过"],
+      "evidence_required": ["V147 diff", "局部 Maven 测试命令和退出码", "测试断言所覆盖的指标/审计说明"], "rollback": "回退 T1 的 Java 和测试改动；若 V147 尚未发布则由后续追加反向迁移处理，不修改历史迁移。", "stop_conditions": ["需要修改已发布迁移", "需要直接写架构或项目主数据表"], "escalation_conditions": ["现有配置权限无法实现服务端维护校验", "阈值结构需要新增未授权公共平台能力"]
+    },
+    {
+      "id": "T2", "goal": "建立统一中文指标目录、正确执行状态口径和 V2 报告快照/兼容读取服务。", "requirement_ids": ["R1", "R2", "R3", "R6", "R7"], "prerequisites": ["T1"],
+      "input_facts": ["执行中独立展示且不计入已执行", "有效案例排除无效案例", "TestReportService、文档服务和控制器位于任务范围", "V1 周期/专项对象仅保留读取/导出"],
+      "write_scope": ["server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/**", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/report/**", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestReportDocumentService.java", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestReportController.java", "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/**"],
+      "invariants": ["domain 由路由固定且后端校验", "机构只用 responsible_team_org_id", "新 V2 只允许项目/机构/系统乘全周期/轮次", "报告快照不可被源数据重算覆盖"],
+      "interface_contracts": ["报告 API 返回八章节中文快照及版本", "历史 V1 详情和导出保持可用", "质量章节只消费启用阈值"], "non_goals": ["不更改案例、执行、缺陷主数据写入语义", "不新增旧类型 V2 报告"],
+      "action_bounds": ["目录、聚合、报告服务、控制器、文档服务和直接测试协同修改", "中文 PDF 如现有运行时不可验证则停止并升级，不引入未授权字体/依赖"],
+      "acceptance_checks": ["状态分布与三项比率精确测试通过", "六种组合、八章节、版本冻结和跨 domain 拒绝测试通过", "历史对象读取/导出兼容测试通过", "中文 DOCX/PDF 最小导出检查通过或产生可复验升级证据"],
+      "evidence_required": ["指标公式测试结果", "报告服务/文档服务测试命令和退出码", "实际生成文件检查或明确的阻断证据"], "rollback": "回退 T2 代码和测试；保留追加迁移及历史报告行。", "stop_conditions": ["实现需要改变案例、执行或缺陷表所有权", "中文 PDF 必须新增未授权外部资源"], "escalation_conditions": ["历史 V1 契约存在无法兼容的未登记消费者", "物理子系统责任团队字段在运行模式不可用"]
+    },
+    {
+      "id": "T3", "goal": "交付 26 报表、16 图表和受约束自定义分析的服务端目录、查询、钻取、共享、快照与导出契约。", "requirement_ids": ["R1", "R3", "R4", "R5", "R7"], "prerequisites": ["T2"],
+      "input_facts": ["现有 TestAnalyticsService 只有四项 PRESETS", "现有 TestAnalyticsAdvancedService、WorkbookService 和 Controller 在写入范围", "自定义分析不得执行任意字段或 SQL"],
+      "write_scope": ["server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/**", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestAnalyticsWorkbookService.java", "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestAnalyticsController.java", "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/**"],
+      "invariants": ["RPT-001..026 与 CHT-001..016 唯一、中文且完整", "所有查询继承当前 domain/项目/数据范围", "共享与下钻不扩大筛选范围", "历史统计快照可读取"],
+      "interface_contracts": ["固定目录、配置、下钻、共享、快照和三种导出均由服务端白名单校验", "中文空态与错误响应不泄露跨范围数据"], "non_goals": ["不实现任意 SQL", "不修改其他业务模块表或接口"],
+      "action_bounds": ["只修改 analytics 目录、服务、控制器、工作簿和直接测试", "不改变公共 HTTP 基础设施"],
+      "acceptance_checks": ["目录覆盖测试精确包含 26/16 编号", "无效组合/跨范围/越权请求被拒绝", "共享、下钻、快照和 XLSX/PDF/PNG 导出测试通过"],
+      "evidence_required": ["目录枚举和逐项执行结果", "分析服务测试命令和退出码", "导出内容或元数据证据"], "rollback": "回退 T3 代码和测试；保留历史统计配置和快照。", "stop_conditions": ["任一固定项依赖未授权的跨模块字段", "需要放开任意字段或 SQL"], "escalation_conditions": ["固定编号需求与已确认目录定义冲突", "导出必须改动共享平台能力"]
+    },
+    {
+      "id": "T4", "goal": "在测试配置页面提供中文、可启停、响应式的阈值配置体验。", "requirement_ids": ["R6", "R8"], "prerequisites": ["T1"],
+      "input_facts": ["前端只允许修改 test-management 模块", "设计需复用交付示范中心已验证的 UI 模式", "质量阈值 API 由 T1 提供"],
+      "write_scope": ["web/src/modules/test-management/api.ts", "web/src/modules/test-management/configuration/**"],
+      "invariants": ["用户可见文本为中文", "加载、空、失败、无权限、提交中状态完整", "760px 以下没有页面级横向溢出"],
+      "interface_contracts": ["请求仅携带当前 route domain 与项目上下文", "开关状态直接对应服务端 enabled 字段"], "non_goals": ["不修改公共 UI 组件或全局主题", "不在前端代替服务端权限校验"],
+      "action_bounds": ["限于模块 API、配置页面及样式", "复用现有 UiDataTable/TestManagementFormDialog 及语义主题变量"],
+      "acceptance_checks": ["前端构建通过", "阈值启停和方向校验状态可操作", "四种目标视口不存在页面级横向溢出"],
+      "evidence_required": ["前端构建输出", "浏览器截图/scrollWidth 读数", "中文状态覆盖说明"], "rollback": "回退 T4 模块前端改动，不删除阈值数据。", "stop_conditions": ["需要修改 web/src/components/ui 或全局主题"], "escalation_conditions": ["后端权限不能表示配置维护权限"]
+    },
+    {
+      "id": "T5", "goal": "在报告页面交付六种 V2 组合、八章节、历史只读兼容与中文响应式导出体验。", "requirement_ids": ["R1", "R2", "R3", "R6", "R8"], "prerequisites": ["T2", "T4"],
+      "input_facts": ["当前报告页与模块 api.ts 在可写范围", "新报告没有测试大类筛选器", "V1 周期/专项只能读取和导出"],
+      "write_scope": ["web/src/modules/test-management/api.ts", "web/src/modules/test-management/report/**"],
+      "invariants": ["只显示启用阈值", "执行中独立展示", "生成入口不提供 V1 周期/专项", "所有用户可见文本中文"],
+      "interface_contracts": ["报告前端以路由 domain 调用 T2 API", "导出文件名和状态文案中文", "历史类型只调用详情/导出兼容接口"], "non_goals": ["不新增路由或修改平台权限", "不改变历史快照"],
+      "action_bounds": ["仅重构模块 API 和报告页面", "仅使用现有图表/表格/弹层基础能力"],
+      "acceptance_checks": ["前端构建通过", "八章节和状态分布在样本响应中可呈现", "桌面和三种手机视口状态完整且无页面级横向溢出"],
+      "evidence_required": ["前端构建输出", "浏览器路径、截图/scrollWidth", "V1 只读路径和 V2 创建范围检查"], "rollback": "回退 T5 模块前端改动，服务端兼容和历史数据不变。", "stop_conditions": ["需要改动路由、公共组件或全局主题"], "escalation_conditions": ["后端响应不能区分历史只读与 V2 可生成对象"]
+    },
+    {
+      "id": "T6", "goal": "在分析统计页面呈现完整固定目录、中文自定义分析、下钻、共享和导出状态。", "requirement_ids": ["R1", "R3", "R4", "R5", "R8"], "prerequisites": ["T3", "T4"],
+      "input_facts": ["当前 TestAnalyticsPage 存在且只有既有预置呈现", "route domain 是统一筛选上下文", "T3 已提供受约束 API 契约"],
+      "write_scope": ["web/src/modules/test-management/api.ts", "web/src/modules/test-management/analytics/**"],
+      "invariants": ["目录为 26 报表加 16 图表", "不展示测试大类筛选器", "用户可见文本中文", "页面/局部滚动边界明确"],
+      "interface_contracts": ["固定和自定义分析均传递 route domain", "下钻、共享、快照和导出调用 T3 的受限接口"], "non_goals": ["不支持任意字段/SQL", "不修改 ECharts 或公共 UI 组件"],
+      "action_bounds": ["仅修改模块 API 与分析页面/局部样式", "复用交付示范中心图表和空态模式"],
+      "acceptance_checks": ["前端构建通过", "42 个目录项完整并能显示中文空态", "自定义、下钻、共享、快照、导出和无权限状态可达", "四种视口无页面级横向溢出"],
+      "evidence_required": ["前端构建输出", "目录可视化/浏览器证据", "状态覆盖与 scrollWidth 读数"], "rollback": "回退 T6 模块前端改动，服务端快照/配置数据保留。", "stop_conditions": ["需要更改公共图表或 UI 基础设施"], "escalation_conditions": ["后端目录无法稳定提供固定编号及中文名称"]
+    },
+    {
+      "id": "T7", "goal": "提供安全幂等的本地虚构数据脚本，并进行跨服务、迁移、前端和范围集成采样。", "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9"], "prerequisites": ["T3", "T5", "T6"],
+      "input_facts": ["用户要求独立非 Flyway 脚本", "脚本只能写 tm_* 自有表", "主数据不足时必须零写入失败", "所有前序共享契约已稳定"],
+      "write_scope": ["server/src/modules/test-management/scripts/seed-report-analytics-mock.sql", "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/**", ".ai-control/requirements/req-20260903-063-test-management-report-analytics-refactor/*.json"],
+      "invariants": ["仅虚构本地数据", "不写 project/arch 主数据", "幂等且预检失败零写入", "不修改既有 Flyway 脚本"],
+      "interface_contracts": ["种子数据满足统一指标、报告、目录与阈值的最小事实字段", "脚本注释包含运行和回滚方式"], "non_goals": ["不自动连接生产或远程环境", "不为满足种子前提创建物理子系统/组织主数据"],
+      "action_bounds": ["新增一个独立 SQL 脚本和直接集成测试/证据", "仅对当前本地开发库在人工执行前提下采样"],
+      "acceptance_checks": ["预检不足时事务回滚且零写入", "满足前提时三轮次、六周期、至少六十案例、多状态、多缺陷、报告版本、统计快照及阈值启停分布满足", "连续两次执行无重复", "Maven、前端、Flyway、治理和 scope 检查通过"],
+      "evidence_required": ["脚本 SQL 和计数查询", "两次执行输出或环境缺口说明", "全量验证命令及退出码", "范围 diff 审计"], "rollback": "按稳定 MOCK 标识从 tm_* 表删除种子行；不触碰任何主数据或迁移。", "stop_conditions": ["脚本需要写非 tm_* 表", "本地预检不足却无法保证零写入"], "escalation_conditions": ["本地环境缺少可验证的数据库连接信息", "前序接口无法支撑所需样本字段"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "报告快照消费阈值契约"}, {"from": "T2", "to": "T3", "reason": "分析消费统一指标目录"}, {"from": "T1", "to": "T4", "reason": "配置页面消费阈值 API"}, {"from": "T2", "to": "T5", "reason": "报告页面消费 V2 快照 API"}, {"from": "T4", "to": "T5", "reason": "统一模块 API 避免冲突"}, {"from": "T3", "to": "T6", "reason": "分析页面消费固定/自定义契约"}, {"from": "T4", "to": "T6", "reason": "统一模块 API 避免冲突"}, {"from": "T3", "to": "T7", "reason": "种子需匹配分析事实结构"}, {"from": "T5", "to": "T7", "reason": "报告集成采样前稳定"}, {"from": "T6", "to": "T7", "reason": "前端集成采样前稳定"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"], ["T5"], ["T6"], ["T7"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["Flyway 追加检查", "阈值服务局部测试"]},
+    {"after_tasks": ["T2", "T3"], "checks": ["报告/分析共享目录和 domain 隔离集成测试", "中文导出检查"]},
+    {"after_tasks": ["T4", "T5", "T6"], "checks": ["前端构建", "四种视口中文、状态和溢出检查"]},
+    {"after_tasks": ["T7"], "checks": ["本地脚本预检/幂等采样", "全量 Maven、Flyway、治理和 scope 检查"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 完成采样", "trigger": "T1 执行报告", "observer": "主 Agent", "sensors": ["S6", "S7"], "requirement_ids": ["R6", "R7"]},
+    {"label": "T2-T3 后端集成采样", "trigger": "共享指标与目录稳定", "observer": "主 Agent", "sensors": ["S1", "S2", "S3", "S4", "S5", "S7"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R7"]},
+    {"label": "前端集成采样", "trigger": "T4-T6 完成", "observer": "主 Agent", "sensors": ["S8"], "requirement_ids": ["R6", "R8"]},
+    {"label": "最终种子与回归采样", "trigger": "T7 完成", "observer": "主 Agent", "sensors": ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T2", "T3", "T5", "T6", "T7"], "sensor_ids": ["S1"]}, {"requirement_id": "R2", "task_ids": ["T2", "T5", "T7"], "sensor_ids": ["S2"]}, {"requirement_id": "R3", "task_ids": ["T2", "T3", "T5", "T6", "T7"], "sensor_ids": ["S3"]}, {"requirement_id": "R4", "task_ids": ["T3", "T6", "T7"], "sensor_ids": ["S4"]}, {"requirement_id": "R5", "task_ids": ["T3", "T6", "T7"], "sensor_ids": ["S5"]}, {"requirement_id": "R6", "task_ids": ["T1", "T2", "T4", "T5", "T7"], "sensor_ids": ["S6"]}, {"requirement_id": "R7", "task_ids": ["T1", "T2", "T3", "T7"], "sensor_ids": ["S7"]}, {"requirement_id": "R8", "task_ids": ["T4", "T5", "T6", "T7"], "sensor_ids": ["S8"]}, {"requirement_id": "R9", "task_ids": ["T7"], "sensor_ids": ["S9"]}
+  ],
+  "plan_status": "ready"
+}
