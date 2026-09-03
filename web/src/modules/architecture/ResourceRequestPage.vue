@@ -1547,25 +1547,25 @@ watch(deploymentUnitOptions, options => {
 
                 <template v-else>
                   <div class="architecture-registration-subtitle">容量与部署</div>
-                  <div class="architecture-registration-grid architecture-registration-grid--numbers">
-                    <el-form-item label="服务器类型">
+                  <div class="architecture-registration-grid architecture-resource-request-capacity-fields">
+                    <el-form-item class="architecture-resource-request-capacity-field--select" label="服务器类型">
                       <el-select v-model="currentItem.serverType">
                         <el-option v-for="serverType in serverTypes" :key="serverType.code" :label="serverType.label" :value="serverType.code" />
                       </el-select>
                     </el-form-item>
-                    <el-form-item label="文件存储需求（G）"><el-input-number v-model="currentItem.fileStorageGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                    <el-form-item label="网络分区" required>
+                    <el-form-item class="architecture-resource-request-capacity-field--number" label="文件存储需求（G）"><el-input-number v-model="currentItem.fileStorageGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item class="architecture-resource-request-capacity-field--select" label="网络分区" required>
                       <el-select v-model="currentItem.networkZoneId" filterable placeholder="选择启用叶子网络分区" @change="syncNetworkZoneText(currentItem)">
                         <el-option v-for="zone in networkZoneOptions" :key="zone.id" :label="`${zone.name}（${zone.code}）`" :value="zone.id" />
                       </el-select>
                     </el-form-item>
-                    <el-form-item label="CPU"><el-input-number v-model="currentItem.cpuCores" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                    <el-form-item label="内存"><el-input-number v-model="currentItem.memoryGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                    <el-form-item label="AP、WEB组数"><el-input-number v-model="currentItem.appWebGroupCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                    <el-form-item label="生产环境节点数"><el-input-number v-model="currentItem.plannedNodeCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                    <el-form-item label="总边车CPU"><el-input-number v-model="currentItem.sidecarCpuCores" :disabled="!currentItem.hasSidecar" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                    <el-form-item label="总边车内存"><el-input-number v-model="currentItem.sidecarMemoryGb" :disabled="!currentItem.hasSidecar" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                    <el-form-item label="有边车？"><el-switch v-model="currentItem.hasSidecar" active-text="是" inactive-text="否" @change="syncSidecarFields(currentItem)" /></el-form-item>
+                    <el-form-item class="architecture-resource-request-capacity-field--number" label="CPU"><el-input-number v-model="currentItem.cpuCores" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item class="architecture-resource-request-capacity-field--number" label="内存"><el-input-number v-model="currentItem.memoryGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item class="architecture-resource-request-capacity-field--number" label="AP、WEB组数"><el-input-number v-model="currentItem.appWebGroupCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item class="architecture-resource-request-capacity-field--number" label="生产环境节点数"><el-input-number v-model="currentItem.plannedNodeCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item class="architecture-resource-request-capacity-field--number" label="总边车CPU"><el-input-number v-model="currentItem.sidecarCpuCores" :disabled="!currentItem.hasSidecar" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item class="architecture-resource-request-capacity-field--number" label="总边车内存"><el-input-number v-model="currentItem.sidecarMemoryGb" :disabled="!currentItem.hasSidecar" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item class="architecture-resource-request-capacity-field--boolean" label="有边车？"><el-switch v-model="currentItem.hasSidecar" active-text="是" inactive-text="否" @change="syncSidecarFields(currentItem)" /></el-form-item>
                     <div class="architecture-registration-computed">
                       <span>总CPU {{ displayAmount(itemTotalCpu(currentItem)) }}</span>
                       <span>总内存 {{ displayAmount(itemTotalMemory(currentItem), 'G') }}</span>
