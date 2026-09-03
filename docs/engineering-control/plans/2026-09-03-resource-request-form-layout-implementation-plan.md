@@ -609,3 +609,245 @@ git commit -m "style(architecture-web): compact resource request form"
 - 高关注动作：改变 Dialog 内部滚动所有权，错误高度链可能造成 footer 或字段不可达。
 - 兼容边界：数据、权限和请求不变；公共组件、后端或应用壳修改必须重新批准。
 - 用户于 2026-09-03 回复“可以”，批准实施计划修订 2，并同意建立独立 UAT 控制前缀后按 T4 → T5 → T6 串行实施。
+
+---
+
+# 修订 3：容量与部署 Flex 布局实施计划
+
+> 执行要求：使用 `$control-engineering` 逐任务实施。修订 1、修订 2 的账本均已 `converged`，必须建立 `req-20260903-059-resource-request-form-layout-capacity-flex` 独立控制前缀，不得覆盖历史证据。
+
+## 状态与来源
+
+- 计划修订：3
+- 设计修订：3
+- 机器设计：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/design.json`
+- 状态：可移交（用户于 2026-09-03 批准修订 3）
+
+**目标：** 保持资源申请字段、状态、计算、校验、请求和紧凑滚动布局不变，将非数据库申请项的“容量与部署”字段区改为 Flex 自适应换行，桌面端每行尽量展示 3–4 项，手机端保持单列满宽。
+
+**架构：** `ResourceRequestPage.vue` 仅为非数据库容量区增加专用容器类，并按选择、数值、布尔和摘要四类标注字段。`architecture.css` 仅在资源申请编辑器范围内定义 Flex basis、换行和手机覆盖；数据库资源区及其他通用网格继续使用现有 Grid。
+
+**技术栈：** Vue 3、TypeScript、Element Plus、Vite、架构模块局部 CSS、真实浏览器计算样式与尺寸传感器。
+
+## 全局约束
+
+- 产品修改仅限 `web/src/modules/architecture/ResourceRequestPage.vue` 和 `web/src/modules/architecture/architecture.css`。
+- 保留 R1-R12、主从状态、部署单元标题、短数值输入、内部滚动、首错定位和脏表单保护。
+- 保持字段顺序、条件显示、`ResourceRequestPayload`、`items[]`、重复 `deploymentUnitId`、DB/非 DB 分流、计算和校验。
+- 不修改 API、DTO、后端、数据库、权限、审计、工作流、公共 UI、应用壳或通用布局断点。
+- 容量区使用 Flex 自适应换行；不按固定行拆模板，不缩小字体，不引入页面级横向滚动。
+- 已收敛的两个旧账本只读；本轮只维护新控制前缀。
+
+## 文件职责地图
+
+| 路径 | 状态 | 职责与证据 |
+| --- | --- | --- |
+| `web/src/modules/architecture/ResourceRequestPage.vue` | existing | 非数据库容量区位于约 1549–1576 行，当前使用通用 `architecture-registration-grid--numbers`。 |
+| `web/src/modules/architecture/architecture.css` | existing | 约 503 行把资源申请编辑器数字网格覆盖为两列，约 507 行保持数字输入 160px，760px 断点恢复满宽。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/design.json` | existing | 已批准设计修订 3 和 R13。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/handoff.json` | candidate-new | 待用户批准的开发前交接包。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T7.json` | candidate-new | Flex 实现的实际执行证据。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T8.json` | candidate-new | 集成与浏览器回归的执行证据。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T7.json` | candidate-new | T7 独立观察证据。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T8.json` | candidate-new | T8 独立观察证据。 |
+| `.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/convergence.json` | candidate-new | R13 最终收敛结论。 |
+
+## 任务依赖图与并行策略
+
+```text
+T7 容量区 Flex 实现 -> T8 五视口回归与收敛
+```
+
+两个任务串行。T8 必须消费 T7 的实际 DOM、计算样式和提交，不能与实现并行；本轮不拆分 Vue/CSS 并行任务，避免共享布局契约在中间状态下不可验证。
+
+## 需求覆盖表
+
+| 需求 | 任务 |
+| --- | --- |
+| R13 容量与部署 Flex 自适应换行 | T7、T8 |
+
+### T7：实现容量与部署专用 Flex 布局
+
+**需求映射：** R13
+
+**前置任务：** control-engineering 完成 baseline、modeling、planning 门禁并进入 executing
+
+**文件：**
+
+- 修改：`web/src/modules/architecture/ResourceRequestPage.vue:1550`
+- 修改：`web/src/modules/architecture/architecture.css:503`
+- 证据：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T7.json`
+- 测试：无新增测试文件；使用构建、源码扫描和 T8 真实浏览器传感器。
+
+**接口：**
+
+- 消费：现有非数据库容量字段 DOM、`.architecture-resource-request-editor` 局部作用域、修订 2 的 `el-input-number { width: 160px; }` 和 760px 手机覆盖。
+- 产出：`.architecture-resource-request-capacity-fields` 容器，以及选择、数值、布尔、摘要字段的局部 Flex 分类契约。
+
+- [ ] **步骤 1：建立源码、构建和运行布局基线**
+
+运行：
+
+```powershell
+rg -n "architecture-registration-grid--numbers|architecture-registration-computed|el-input-number" web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/architecture.css
+npm --prefix web run build
+```
+
+在 `1920x1080` 页面读取容量容器 `display`、字段 `offsetTop/offsetWidth` 和页面根 `scrollWidth`。预期：源码证明资源申请编辑器当前覆盖为两列；构建退出 0；运行基线显示红框区域每行两项。
+
+证据：扫描行号、构建退出码和容量字段位置数组。
+
+- [ ] **步骤 2：为容量字段增加最小语义分类**
+
+将非数据库容量容器改为：
+
+```vue
+<div class="architecture-registration-grid architecture-resource-request-capacity-fields">
+```
+
+服务器类型、网络分区增加选择类名；八个资源数字项增加数值类名；有边车增加布尔类名；计算摘要保留现有类并由容量容器作用域识别。不得调整字段顺序、`v-model`、`required`、`disabled`、`@change` 或计算调用。
+
+预期：数据库资源区仍使用 `architecture-registration-grid--numbers`；只有非数据库容量区获得 Flex 分类。
+
+证据：模板 diff 和字段绑定前后扫描对照。
+
+- [ ] **步骤 3：增加局部 Flex 与移动覆盖**
+
+在资源申请编辑器作用域内增加：
+
+```css
+.architecture-resource-request-capacity-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+}
+.architecture-resource-request-capacity-fields > .is-select { flex: 1 1 280px; min-width: 240px; }
+.architecture-resource-request-capacity-fields > .is-number { flex: 0 1 200px; min-width: 180px; }
+.architecture-resource-request-capacity-fields > .is-boolean { flex: 0 1 180px; min-width: 160px; }
+.architecture-resource-request-capacity-fields > .architecture-registration-computed { flex: 1 0 100%; }
+```
+
+实际类名需保持 `architecture-resource-request-capacity-*` 前缀，避免通用 `is-*` 污染。`760px` 以下所有直接字段项和摘要设为 `flex-basis: 100%; min-width: 0`，数字输入继续使用现有满宽覆盖。不得删除数据库区的两列规则。
+
+预期：Flex 规则只作用于容量区；桌面短数字框仍为 160px；手机字段项满宽。
+
+证据：CSS diff、选择器命中元素数量和计算样式。
+
+- [ ] **步骤 4：运行局部检查并建立提交检查点**
+
+```powershell
+npm --prefix web run build
+git diff --check -- web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/architecture.css
+rg -n "#[0-9a-fA-F]{3,8}|rgb\(|hsl\(|letter-spacing:\s*-" web/src/modules/architecture/architecture.css
+git add web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/architecture.css
+git commit -m "style(architecture-web): flex resource capacity fields"
+```
+
+预期：构建和 diff 退出 0，无新增硬编码颜色或负字距；提交只包含两个产品文件。
+
+**验收检查：** 容量容器计算样式为 Flex 且可换行；选择字段宽于数值字段；摘要独占整行；数据库区和字段绑定无变化；桌面数字输入仍为 160px。
+
+**回滚：** revert T7 产品提交，恢复修订 2 的固定两列容量区；无数据补偿。
+
+**停止条件：** 必须修改公共组件、通用 Grid、API 或状态逻辑；字段顺序或绑定必须改变；Flex 导致字段不可达或 footer 被遮挡；手机页面根溢出。
+
+**升级条件：** 用户要求固定每行数量而非自适应；选择字段必须小于 240px；需要新增公共布局 token 或应用级断点。
+
+### T8：五视口回归与工程控制收敛
+
+**需求映射：** R13
+
+**前置任务：** T7
+
+**文件：**
+
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T8.json`
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T7.json`
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T8.json`
+- 新建：`.ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/convergence.json`
+- 产品纠偏：仅在观察确认 R13 偏差且控制计划批准后修改 T7 的两个产品文件。
+
+**接口：**
+
+- 消费：T7 提交、运行中的 Vite/Mock API、现有新建与编辑资源申请流程。
+- 产出：R13 的字段位置、计算样式、响应式、业务回归、范围和收敛证据。
+
+- [ ] **步骤 1：执行工程传感器**
+
+```powershell
+node scripts/check-development-entry.mjs --require-plugin
+git diff --check
+npm --prefix web run build
+node scripts/check-all-governance.mjs
+node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml --base 813ad56 --head HEAD --working-tree
+```
+
+预期：开发入口、diff、build 和 scope 退出 0；治理结果与历史噪声分开记录，本前缀不得新增错误。
+
+- [ ] **步骤 2：验收桌面 Flex 排列和滚动边界**
+
+在 `1920x1080`、`1280x800` 的浅色和深色主题打开非数据库申请项，采集容量容器的 `display/flexWrap/gap`、每个字段的 `offsetTop/offsetWidth`、摘要宽度、数字输入宽度、编辑器滚动尺寸和 footer 可见性。
+
+预期：容器为 `flex` 且 `wrap`；1920 下每行尽量 3–4 项，1280 下按空间自然换行；选择字段宽于数值字段；摘要独占整行；数字输入在 140–180px；footer 可见且超高内容在编辑器内部可达。
+
+- [ ] **步骤 3：验收手机、条件状态和长内容**
+
+在 `375x812`、`390x844`、`430x932` 的浅色和深色主题检查空项、长部署单元名称、有边车开关、禁用边车数字项和错误提示。运行：
+
+```js
+document.documentElement.scrollWidth <= window.innerWidth
+```
+
+预期：容量字段单列满宽，数字输入可操作，页面根无横向溢出，申请项列表局部滚动和 footer 仍可达，Console 无新增错误。
+
+- [ ] **步骤 4：回归业务和请求不变量**
+
+验证 DB 申请项仍使用原网格；非 DB 字段顺序、网络分区必填、有边车联动、总 CPU/总内存/占比计算、首错定位和申请项切换保持。检查新建 POST 与编辑 PUT 的 `items[]` 数量、顺序、字段值和无 `clientId`。
+
+预期：只存在视觉排列变化，无状态、计算、校验、权限或请求契约变化。
+
+- [ ] **步骤 5：记录独立观察、收敛与证据提交**
+
+按 control-engineering 写入 T7/T8 execution、observation 和 convergence。存在偏差时进入 correcting/executing，不直接标记 `converged`。全部通过后提交新前缀证据、设计、计划和 scope：
+
+```powershell
+git add docs/requirements/REQ-20260903-059-resource-request-form-layout docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md docs/engineering-control/plans/2026-09-03-resource-request-form-layout-implementation-plan.md .ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex
+git commit -m "docs(architecture): close resource capacity flex UAT"
+```
+
+预期：R13 pass，新账本为 `converged`，两个旧账本的 revision、哈希和终态不变。
+
+**验收检查：** 两桌面和三手机视口明暗主题、Flex 计算样式、字段位置、摘要整行、短数字框、滚动边界、DB/非 DB、计算、校验、请求、权限、Console、scope 和旧账本不变。
+
+**回滚：** revert T8 证据提交；产品仅需 revert T7 提交，无迁移或数据补偿。
+
+**停止条件：** 页面白屏、footer 或字段不可达、页面根溢出、请求/权限/计算变化、需要 scope 外修改、UAT 服务无法恢复。
+
+**升级条件：** 真实后端与 Mock 结论冲突；历史治理成为硬门禁；Element Plus 默认样式无法在局部作用域内覆盖。
+
+## 集成检查
+
+| 完成任务 | 命令或传感器 | 通过信号 |
+| --- | --- | --- |
+| T7 | build、diff、源码与计算样式 | 容量区局部 Flex 生效，数据库区和短数字输入不变 |
+| T7、T8 | 五视口明暗主题、Network、Console、scope | R13 有运行证据，前两轮行为无回归，无开放 P0/P1 |
+
+## 控制模型种子
+
+以下仅为 `hypotheses-only` 候选，必须由 `$model-engineering-system` 复核：
+
+- 被控边界候选：非数据库容量字段 DOM、资源申请编辑器局部 CSS、移动端断点和内部滚动容器。
+- 状态变量候选：视口宽高、编辑器可用宽度、字段类型、字段 `offsetTop/offsetWidth`、容器 `display/flexWrap`、数字输入宽度、根页面宽度和滚动尺寸。
+- 接口候选：容量区专用类、字段分类类、`.architecture-registration-computed`、修订 2 数字输入规则和现有 760px 断点。
+- 传感器候选：Vite build、源码扫描、计算样式、字段位置数组、DOM `scrollWidth`、Network、Console、五视口截图、scope 和 diff。
+- 执行器候选：容量容器类、字段分类类、Flex basis/min-width、摘要 100% basis 和手机覆盖。
+- 扰动候选：Element Plus 表单项默认宽度、长标签/选项、条件禁用状态、不同视口、字体渲染和历史治理噪声。
+- 时延候选：Vite HMR、Dialog 初次布局、候选接口响应和主题切换重排。
+- 假设：1920 宽桌面可稳定容纳 3–4 项；局部选择器可覆盖 Grid；现有 Mock 足以回归请求结构。
+
+## 风险与用户批准
+
+- 高关注动作：改变容量区字段的布局模型，错误 basis 可能造成异常换行、字段过窄或手机溢出。
+- 兼容边界：数据、权限、状态、计算和请求不变；公共组件、通用 Grid、后端或应用壳修改必须重新批准。
+- 用户于 2026-09-03 回复“批准”，确认按计划修订 3 导入独立控制账本，并按 T7 → T8 串行实施和验收。
