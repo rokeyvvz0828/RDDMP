@@ -154,6 +154,7 @@ const scopeLabel = computed(() => canManage.value ? '当前租户全部资源申
 const activeEnvironments = computed(() => environments.value.filter(item => item.status === 'ACTIVE'))
 const selectedPhysical = computed(() => physicalOptions.value.find(item => item.id === form.physicalSubsystemId) ?? null)
 const currentItem = computed(() => form.items.find(item => item.clientId === selectedItemId.value) ?? form.items[0] ?? null)
+const currentItemIndex = computed(() => currentItem.value ? form.items.findIndex(item => item.clientId === currentItem.value?.clientId) : -1)
 const allowedDecisions = computed(() => {
   if (!canManage.value || !workflowTask.value?.actionable) return [] as WorkflowTaskAction[]
   return workflowTask.value.allowed_actions.filter(action => ['APPROVE', 'RETURN', 'REJECT'].includes(action))
@@ -1403,123 +1404,213 @@ watch(deploymentUnitOptions, options => {
       </div>
     </el-drawer>
 
-    <el-dialog v-model="formOpen" :title="formMode === 'create' ? '新建资源申请' : '编辑资源申请'" width="min(1320px, 96vw)" :before-close="handleFormBeforeClose" destroy-on-close>
-      <el-form v-loading="optionLoading" :disabled="formSubmitting" label-position="top">
-        <div class="architecture-form-grid">
-          <el-form-item label="物理子系统"><el-select v-model="form.physicalSubsystemId" filterable style="width:100%" @change="handlePhysicalSubsystemChange"><el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name}（${item.shortName || item.code}）`" :value="item.id" /></el-select></el-form-item>
-          <el-form-item label="具体环境"><el-select v-model="form.environmentId" filterable style="width:100%"><el-option v-for="item in activeEnvironments" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" /></el-select></el-form-item>
-          <el-form-item label="申请类型"><el-select v-model="form.requestType" style="width:100%"><el-option v-for="item in typeOptions" :key="item" :label="resourceRequestTypeLabels[item]" :value="item" /></el-select></el-form-item>
-          <el-form-item label="资源申请联系人"><el-select v-model="form.contactUserId" filterable style="width:100%"><el-option v-for="item in users" :key="item.id" :label="`${item.displayName}（${item.username}）`" :value="item.id" /></el-select></el-form-item>
-          <el-form-item class="is-wide" label="申请原因"><el-input v-model="form.reason" type="textarea" :rows="2" maxlength="1000" show-word-limit /></el-form-item>
-        </div>
-
-        <dl v-if="selectedPhysical" class="architecture-detail-grid architecture-registration-readonly">
-          <div><dt>部署物理子系统编号</dt><dd>{{ selectedPhysical.code }}</dd></div>
-          <div><dt>物理子系统简称</dt><dd>{{ displayText(selectedPhysical.shortName) }}</dd></div>
-          <div><dt>物理子系统名称</dt><dd>{{ selectedPhysical.name }}</dd></div>
-          <div><dt>系统等级</dt><dd>{{ systemLevelLabel(selectedPhysical.systemLevelCode) }}</dd></div>
-          <div><dt>所属事业群</dt><dd>{{ displayText(selectedPhysical.businessGroupName) }}</dd></div>
-          <div><dt>部署平台</dt><dd>{{ deploymentPlatformLabel(selectedPhysical.deploymentPlatform) }}</dd></div>
-          <div><dt>灾备模式</dt><dd>{{ disasterRecoveryLabel(selectedPhysical.disasterRecoveryMode) }}</dd></div>
-        </dl>
-
-        <section class="architecture-drawer-section">
-          <header><strong>部署单元登记表</strong><el-button :disabled="formSubmitting" @click="addItem"><el-icon><Plus /></el-icon>添加明细</el-button></header>
-          <div class="architecture-resource-form-items">
-            <article v-for="(item, index) in form.items" :key="item.clientId" class="architecture-registration-item">
-              <header class="architecture-registration-item__header">
-                <div>
-                  <strong>登记行 {{ index + 1 }}</strong>
-                  <span>{{ item.deploymentUnitCode || '未选择部署单元' }}</span>
-                </div>
-                <el-button :disabled="formSubmitting || form.items.length <= 1" circle aria-label="删除明细" @click="removeItem(item.clientId)"><el-icon><Delete /></el-icon></el-button>
-              </header>
-
-              <div class="architecture-registration-subtitle">部署单元</div>
-              <div class="architecture-registration-grid">
-                <el-form-item label="部署单元名称">
-                  <el-select v-model="item.deploymentUnitId" filterable placeholder="部署单元" @change="syncDeploymentUnit(item)">
-                    <el-option v-for="unit in deploymentUnitOptions" :key="unit.id" :label="`${unit.name}（${unit.code}）`" :value="unit.id" />
-                  </el-select>
-                </el-form-item>
-                <div><dt>部署单元类型</dt><dd>{{ item.deploymentUnitKind ? deploymentUnitKindLabels[item.deploymentUnitKind as DeploymentUnitKind] : '—' }}</dd></div>
-                <div class="is-wide"><dt>部署单元简述</dt><dd>{{ displayText(item.deploymentUnitDescription) }}</dd></div>
+    <el-dialog
+      v-model="formOpen"
+      :title="formMode === 'create' ? '新建资源申请' : '编辑资源申请'"
+      width="min(1480px, calc(100vw - 32px))"
+      top="3vh"
+      class="architecture-resource-request-form-dialog"
+      :before-close="handleFormBeforeClose"
+      destroy-on-close
+    >
+      <el-form v-loading="optionLoading" :disabled="formSubmitting" label-position="top" class="architecture-resource-request-form">
+        <el-alert v-if="formError" class="architecture-resource-request-form__error" type="error" :closable="false" show-icon :title="formError" />
+        <div class="architecture-resource-request-layout">
+          <section class="architecture-resource-request-basics" aria-labelledby="resource-request-basics-title">
+            <header class="architecture-resource-request-section-heading">
+              <div>
+                <strong id="resource-request-basics-title">基础信息</strong>
+                <span>确定申请范围与联系人</span>
               </div>
+            </header>
+            <div class="architecture-resource-request-basic-fields">
+              <el-form-item label="物理子系统" required>
+                <el-select v-model="form.physicalSubsystemId" filterable @change="handlePhysicalSubsystemChange">
+                  <el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name}（${item.shortName || item.code}）`" :value="item.id" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="资源申请联系人" required>
+                <el-select v-model="form.contactUserId" filterable>
+                  <el-option v-for="item in users" :key="item.id" :label="`${item.displayName}（${item.username}）`" :value="item.id" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="具体环境" required>
+                <el-select v-model="form.environmentId" filterable>
+                  <el-option v-for="item in activeEnvironments" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="申请类型" required>
+                <el-select v-model="form.requestType">
+                  <el-option v-for="item in typeOptions" :key="item" :label="resourceRequestTypeLabels[item]" :value="item" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="申请原因">
+                <el-input v-model="form.reason" type="textarea" :rows="4" maxlength="1000" show-word-limit />
+              </el-form-item>
+            </div>
 
-              <template v-if="isDatabaseRecord(item)">
-                <div class="architecture-registration-subtitle">数据库资源</div>
-                <div class="architecture-registration-grid architecture-registration-grid--numbers">
-                  <el-form-item label="数据库存储需求（G）"><el-input-number v-model="item.databaseStorageGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="数据库"><el-input v-model="item.databaseName" maxlength="100" /></el-form-item>
-                  <el-form-item label="数据库版本"><el-input v-model="item.databaseVersion" maxlength="100" /></el-form-item>
-                  <el-form-item class="is-wide" label="备注"><el-input v-model="item.remark" type="textarea" :rows="2" maxlength="1000" show-word-limit /></el-form-item>
-                </div>
-              </template>
+            <div class="architecture-resource-request-summary-heading">物理子系统摘要</div>
+            <dl v-if="selectedPhysical" class="architecture-resource-request-summary">
+              <div><dt>编号</dt><dd>{{ selectedPhysical.code }}</dd></div>
+              <div><dt>简称</dt><dd>{{ displayText(selectedPhysical.shortName) }}</dd></div>
+              <div class="is-wide"><dt>名称</dt><dd>{{ selectedPhysical.name }}</dd></div>
+              <div><dt>系统等级</dt><dd>{{ systemLevelLabel(selectedPhysical.systemLevelCode) }}</dd></div>
+              <div><dt>所属事业群</dt><dd>{{ displayText(selectedPhysical.businessGroupName) }}</dd></div>
+              <div><dt>部署平台</dt><dd>{{ deploymentPlatformLabel(selectedPhysical.deploymentPlatform) }}</dd></div>
+              <div><dt>灾备模式</dt><dd>{{ disasterRecoveryLabel(selectedPhysical.disasterRecoveryMode) }}</dd></div>
+            </dl>
+          </section>
 
-              <template v-else>
-                <div class="architecture-registration-subtitle">容量与部署</div>
-                <div class="architecture-registration-grid architecture-registration-grid--numbers">
-                  <el-form-item label="服务器类型">
-                    <el-select v-model="item.serverType">
-                      <el-option v-for="serverType in serverTypes" :key="serverType.code" :label="serverType.label" :value="serverType.code" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="文件存储需求（G）"><el-input-number v-model="item.fileStorageGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="网络分区">
-                    <el-select v-model="item.networkZoneId" filterable placeholder="选择启用叶子网络分区" @change="syncNetworkZoneText(item)">
-                      <el-option v-for="zone in networkZoneOptions" :key="zone.id" :label="`${zone.name}（${zone.code}）`" :value="zone.id" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="CPU"><el-input-number v-model="item.cpuCores" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="内存"><el-input-number v-model="item.memoryGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="AP、WEB组数"><el-input-number v-model="item.appWebGroupCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="生产环境节点数"><el-input-number v-model="item.plannedNodeCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="总边车CPU"><el-input-number v-model="item.sidecarCpuCores" :disabled="!item.hasSidecar" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="总边车内存"><el-input-number v-model="item.sidecarMemoryGb" :disabled="!item.hasSidecar" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                  <el-form-item label="有边车？"><el-switch v-model="item.hasSidecar" active-text="是" inactive-text="否" @change="syncSidecarFields(item)" /></el-form-item>
-                  <div class="architecture-registration-computed">
-                    <span>总CPU {{ displayAmount(itemTotalCpu(item)) }}</span>
-                    <span>总内存 {{ displayAmount(itemTotalMemory(item), 'G') }}</span>
-                    <span>边车内存占比 {{ itemSidecarMemoryRatio(item) }}</span>
+          <section class="architecture-resource-request-registration" aria-labelledby="resource-request-registration-title">
+            <header class="architecture-resource-request-section-heading">
+              <div>
+                <strong id="resource-request-registration-title">部署单元登记表</strong>
+                <span>共 {{ form.items.length }} 个申请项，允许同一部署单元登记多套规格</span>
+              </div>
+              <el-button type="primary" plain :disabled="formSubmitting" @click="addItem"><el-icon><Plus /></el-icon>添加申请项</el-button>
+            </header>
+
+            <div v-if="deploymentUnitLoadError" class="architecture-resource-request-option-error" role="alert">
+              <span>{{ deploymentUnitLoadError }}</span>
+              <el-button link type="primary" :loading="deploymentUnitLoading" @click="retryDeploymentUnits">重新加载</el-button>
+            </div>
+
+            <div class="architecture-resource-request-master-detail">
+              <aside class="architecture-resource-request-item-panel" aria-label="申请项列表">
+                <div class="architecture-resource-request-item-list" role="list">
+                  <div
+                    v-for="(item, index) in form.items"
+                    :key="item.clientId"
+                    class="architecture-resource-request-item-row"
+                    :class="{ 'is-active': selectedItemId === item.clientId }"
+                    role="listitem"
+                  >
+                    <button
+                      type="button"
+                      class="architecture-resource-request-item-select"
+                      :aria-current="selectedItemId === item.clientId ? 'true' : undefined"
+                      :disabled="formSubmitting"
+                      @click="selectItem(item.clientId)"
+                    >
+                      <span class="architecture-resource-request-item-title">
+                        <strong>申请项 {{ index + 1 }}</strong>
+                        <small :class="`is-${itemCompletionState(item).toLowerCase()}`">{{ itemCompletionLabel(item) }}</small>
+                      </span>
+                      <span class="architecture-resource-request-item-name">{{ item.deploymentUnitName || '请选择部署单元' }}</span>
+                      <span class="architecture-resource-request-item-meta">
+                        {{ item.deploymentUnitCode || '尚未关联' }}
+                        <template v-if="item.deploymentUnitKind"> · {{ deploymentUnitKindLabels[item.deploymentUnitKind as DeploymentUnitKind] }}</template>
+                      </span>
+                    </button>
+                    <el-tooltip :content="form.items.length <= 1 ? '至少保留一个申请项' : `删除申请项 ${index + 1}`">
+                      <el-button
+                        class="architecture-resource-request-item-delete"
+                        :disabled="formSubmitting || form.items.length <= 1"
+                        circle
+                        :aria-label="`删除申请项 ${index + 1}`"
+                        @click="removeItem(item.clientId)"
+                      ><el-icon><Delete /></el-icon></el-button>
+                    </el-tooltip>
                   </div>
                 </div>
+              </aside>
 
-                <div class="architecture-registration-subtitle">技术栈</div>
+              <article v-if="currentItem" class="architecture-resource-request-editor">
+                <header class="architecture-resource-request-editor__header">
+                  <div>
+                    <strong>申请项 {{ currentItemIndex + 1 }}</strong>
+                    <span>{{ currentItem.deploymentUnitName || '先选择部署单元，再填写资源规格' }}</span>
+                  </div>
+                  <span class="architecture-resource-request-editor__state" :class="`is-${itemCompletionState(currentItem).toLowerCase()}`">
+                    {{ itemCompletionLabel(currentItem) }}
+                  </span>
+                </header>
+
+                <div class="architecture-registration-subtitle">部署单元</div>
                 <div class="architecture-registration-grid">
-                  <el-form-item label="JDK">
-                    <el-select v-model="item.jdkVersion" clearable filterable>
-                      <el-option v-for="option in jdkVersions" :key="option.code" :label="option.label" :value="option.code" />
+                  <el-form-item label="部署单元名称" required>
+                    <el-select v-model="currentItem.deploymentUnitId" :loading="deploymentUnitLoading" filterable placeholder="选择部署单元" @change="syncDeploymentUnit(currentItem)">
+                      <el-option v-for="unit in deploymentUnitOptions" :key="unit.id" :label="`${unit.name}（${unit.code}）`" :value="unit.id" />
                     </el-select>
                   </el-form-item>
-                  <el-form-item label="中间件">
-                    <el-select v-model="item.middleware" clearable filterable>
-                      <el-option v-for="option in middlewares" :key="option.code" :label="option.label" :value="option.code" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="产品化操作系统">
-                    <el-select v-model="item.operatingSystem" clearable filterable>
-                      <el-option v-for="option in operatingSystems" :key="option.code" :label="option.label" :value="option.code" />
-                    </el-select>
-                  </el-form-item>
+                  <div><dt>部署单元类型</dt><dd>{{ currentItem.deploymentUnitKind ? deploymentUnitKindLabels[currentItem.deploymentUnitKind as DeploymentUnitKind] : '—' }}</dd></div>
+                  <div class="is-wide"><dt>部署单元简述</dt><dd>{{ displayText(currentItem.deploymentUnitDescription) }}</dd></div>
                 </div>
 
-                <el-collapse v-model="expandedItemExtras" class="architecture-registration-collapse">
-                  <el-collapse-item :name="`extra-${item.clientId}`" title="附加需求">
-                    <div class="architecture-registration-grid">
-                      <el-form-item label="额外的CBS容量C"><el-input-number v-model="item.extraCbsGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                      <el-form-item label="本地盘需求（G）"><el-input-number v-model="item.localDiskGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
-                      <el-form-item label="是否需要NFT"><el-switch v-model="item.needsNft" active-text="是" inactive-text="否" /></el-form-item>
-                      <el-form-item label="是否需要FSever"><el-switch v-model="item.needsFserver" active-text="是" inactive-text="否" /></el-form-item>
-                      <el-form-item label="是否需要jobexecutor"><el-switch v-model="item.needsJobexecutor" active-text="是" inactive-text="否" /></el-form-item>
-                      <el-form-item class="is-wide" label="备注"><el-input v-model="item.remark" type="textarea" :rows="2" maxlength="1000" show-word-limit /></el-form-item>
+                <template v-if="isDatabaseRecord(currentItem)">
+                  <div class="architecture-registration-subtitle">数据库资源</div>
+                  <div class="architecture-registration-grid architecture-registration-grid--numbers">
+                    <el-form-item label="数据库存储需求（G）"><el-input-number v-model="currentItem.databaseStorageGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item label="数据库"><el-input v-model="currentItem.databaseName" maxlength="100" /></el-form-item>
+                    <el-form-item label="数据库版本"><el-input v-model="currentItem.databaseVersion" maxlength="100" /></el-form-item>
+                    <el-form-item class="is-wide" label="备注"><el-input v-model="currentItem.remark" type="textarea" :rows="2" maxlength="1000" show-word-limit /></el-form-item>
+                  </div>
+                </template>
+
+                <template v-else>
+                  <div class="architecture-registration-subtitle">容量与部署</div>
+                  <div class="architecture-registration-grid architecture-registration-grid--numbers">
+                    <el-form-item label="服务器类型">
+                      <el-select v-model="currentItem.serverType">
+                        <el-option v-for="serverType in serverTypes" :key="serverType.code" :label="serverType.label" :value="serverType.code" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="文件存储需求（G）"><el-input-number v-model="currentItem.fileStorageGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item label="网络分区" required>
+                      <el-select v-model="currentItem.networkZoneId" filterable placeholder="选择启用叶子网络分区" @change="syncNetworkZoneText(currentItem)">
+                        <el-option v-for="zone in networkZoneOptions" :key="zone.id" :label="`${zone.name}（${zone.code}）`" :value="zone.id" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="CPU"><el-input-number v-model="currentItem.cpuCores" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item label="内存"><el-input-number v-model="currentItem.memoryGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item label="AP、WEB组数"><el-input-number v-model="currentItem.appWebGroupCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item label="生产环境节点数"><el-input-number v-model="currentItem.plannedNodeCount" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item label="总边车CPU"><el-input-number v-model="currentItem.sidecarCpuCores" :disabled="!currentItem.hasSidecar" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item label="总边车内存"><el-input-number v-model="currentItem.sidecarMemoryGb" :disabled="!currentItem.hasSidecar" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                    <el-form-item label="有边车？"><el-switch v-model="currentItem.hasSidecar" active-text="是" inactive-text="否" @change="syncSidecarFields(currentItem)" /></el-form-item>
+                    <div class="architecture-registration-computed">
+                      <span>总CPU {{ displayAmount(itemTotalCpu(currentItem)) }}</span>
+                      <span>总内存 {{ displayAmount(itemTotalMemory(currentItem), 'G') }}</span>
+                      <span>边车内存占比 {{ itemSidecarMemoryRatio(currentItem) }}</span>
                     </div>
-                  </el-collapse-item>
-                </el-collapse>
-              </template>
-            </article>
-          </div>
-        </section>
-        <el-alert v-if="formError" type="error" :closable="false" show-icon :title="formError" />
+                  </div>
+
+                  <div class="architecture-registration-subtitle">技术栈</div>
+                  <div class="architecture-registration-grid">
+                    <el-form-item label="JDK">
+                      <el-select v-model="currentItem.jdkVersion" clearable filterable>
+                        <el-option v-for="option in jdkVersions" :key="option.code" :label="option.label" :value="option.code" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="中间件">
+                      <el-select v-model="currentItem.middleware" clearable filterable>
+                        <el-option v-for="option in middlewares" :key="option.code" :label="option.label" :value="option.code" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="产品化操作系统">
+                      <el-select v-model="currentItem.operatingSystem" clearable filterable>
+                        <el-option v-for="option in operatingSystems" :key="option.code" :label="option.label" :value="option.code" />
+                      </el-select>
+                    </el-form-item>
+                  </div>
+
+                  <el-collapse v-model="expandedItemExtras" class="architecture-registration-collapse">
+                    <el-collapse-item :name="`extra-${currentItem.clientId}`" title="附加需求">
+                      <div class="architecture-registration-grid">
+                        <el-form-item label="额外的CBS容量C"><el-input-number v-model="currentItem.extraCbsGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                        <el-form-item label="本地盘需求（G）"><el-input-number v-model="currentItem.localDiskGb" :min="0" :precision="0" :step="1" controls-position="right" /></el-form-item>
+                        <el-form-item label="是否需要NFT"><el-switch v-model="currentItem.needsNft" active-text="是" inactive-text="否" /></el-form-item>
+                        <el-form-item label="是否需要FSever"><el-switch v-model="currentItem.needsFserver" active-text="是" inactive-text="否" /></el-form-item>
+                        <el-form-item label="是否需要jobexecutor"><el-switch v-model="currentItem.needsJobexecutor" active-text="是" inactive-text="否" /></el-form-item>
+                        <el-form-item class="is-wide" label="备注"><el-input v-model="currentItem.remark" type="textarea" :rows="2" maxlength="1000" show-word-limit /></el-form-item>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
+                </template>
+              </article>
+            </div>
+          </section>
+        </div>
       </el-form>
       <template #footer><el-button :disabled="formSubmitting" @click="closeForm">取消</el-button><el-button type="primary" :loading="formSubmitting" @click="submitForm">保存草稿</el-button></template>
     </el-dialog>
