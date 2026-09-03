@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * REQ-20260823-050：架构规范与架构决策的真实 MySQL 8.4 / Flyway 集成测试。
  *
- * <p>覆盖空库迁移到 V88、规范发布版本快照不可变、事项编号并发分配、
+ * <p>覆盖空库迁移到 V99、规范发布版本快照不可变、事项编号并发分配、
  * 首次处理/评审/发布准备/结论与替代关系落库、结论有效状态推导和唯一约束。</p>
  */
 @Testcontainers
@@ -49,13 +49,13 @@ class ArchitectureStandardsDecisionsMySqlTest {
     @BeforeEach
     void cleanDatabase() throws Exception {
         configureProjectCollation();
-        flyway("88").clean();
+        flyway("99").clean();
         configureProjectCollation();
     }
 
     @Test
-    void migratesEmptyDatabaseThroughV88AndAppliesStandardsAndDecisionsSchema() throws Exception {
-        assertTrue(flyway("88").migrate().success);
+    void migratesEmptyDatabaseThroughV99AndAppliesStandardsAndDecisionsSchema() throws Exception {
+        assertTrue(flyway("99").migrate().success);
         JdbcTemplate jdbc = jdbc();
 
         // 字典与授权种子
@@ -86,7 +86,7 @@ class ArchitectureStandardsDecisionsMySqlTest {
 
     @Test
     void standardPublishAppendsImmutableVersionSnapshotAndOfflinePreservesHistory() {
-        assertTrue(flyway("88").migrate().success);
+        assertTrue(flyway("99").migrate().success);
         JdbcTemplate jdbc = jdbc();
 
         jdbc.update("""
@@ -144,7 +144,7 @@ class ArchitectureStandardsDecisionsMySqlTest {
 
     @Test
     void matterNumbersAreUniqueAndConcurrentAllocationNeverReuses() throws Exception {
-        assertTrue(flyway("88").migrate().success);
+        assertTrue(flyway("99").migrate().success);
         JdbcTemplate jdbc = jdbc();
 
         ExecutorService executor = Executors.newFixedThreadPool(8);
@@ -177,7 +177,7 @@ class ArchitectureStandardsDecisionsMySqlTest {
 
     @Test
     void decisionLifecyclePersistsFirstHandlingReviewIntentConclusionAndSupersession() {
-        assertTrue(flyway("88").migrate().success);
+        assertTrue(flyway("99").migrate().success);
         JdbcTemplate jdbc = jdbc();
 
         insertMatter(jdbc, 6001, 1, "AD-2026-0001", "中间件选型", "SUBMITTED",
