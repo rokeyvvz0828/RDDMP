@@ -55,8 +55,9 @@ import {
 type TreeNode = {
   key: string;
   label: string;
-  type: "PROJECT" | "SYSTEM" | "SPECIAL" | "GROUP";
+  type: "PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL" | "GROUP";
   systemId?: number;
+  responsibleTeamOrgId?: number;
   specialNodeId?: number;
   children?: TreeNode[];
 };
@@ -102,17 +103,19 @@ const editor = ref<IDomEditor>();
 const supplement = reactive({ chapter_code: "OVERVIEW", content_html: "" });
 const form = reactive({
   report_name: "",
-  report_type: "PROJECT" as "PROJECT" | "ROUND" | "CYCLE",
+  report_type: "LIFECYCLE" as "LIFECYCLE" | "ROUND",
   round_id: undefined as number | undefined,
   cycle_id: undefined as number | undefined,
   source_type: "LIVE",
   sections: [
     "OVERVIEW",
-    "SCOPE_STAT",
-    "EXECUTION_STAT",
-    "DEFECT_STAT",
-    "SCOPE_DETAIL",
-    "DEFECT_DETAIL",
+    "ENVIRONMENT_CONFIG",
+    "SCOPE_STRATEGY",
+    "EXECUTION_PROGRESS",
+    "DEFECT_ANALYSIS",
+    "QUALITY_ASSESSMENT",
+    "RISKS_ISSUES",
+    "CONCLUSION_RECOMMENDATION",
   ] as string[],
 });
 const domainLabel = computed(
@@ -142,8 +145,19 @@ const treeData = computed<TreeNode[]>(() => [
         type: "PROJECT",
       },
       {
+        key: "institutions",
+        label: "责任团队组织报告",
+        type: "GROUP",
+        children: (tree.value?.institutions || []).map((x) => ({
+          key: "institution:" + x.id,
+          label: x.name,
+          type: "INSTITUTION",
+          responsibleTeamOrgId: x.id,
+        })),
+      },
+      {
         key: "systems",
-        label: "系统级报告",
+        label: "系统报告",
         type: "GROUP",
         children: (tree.value?.systems || []).map((x) => ({
           key: "system:" + x.id,
@@ -170,12 +184,17 @@ const selectedKey = computed(() => selectedNode.value.key);
 const selectedSystem = computed(() =>
   selectedNode.value.type === "SYSTEM" ? selectedNode.value.systemId : undefined,
 );
+const selectedTeam = computed(() =>
+  selectedNode.value.type === "INSTITUTION"
+    ? selectedNode.value.responsibleTeamOrgId
+    : undefined,
+);
 const selectedSpecial = computed(() =>
   selectedNode.value.type === "SPECIAL"
     ? selectedNode.value.specialNodeId
     : undefined,
 );
-const selectedScope = computed<"PROJECT" | "SYSTEM" | "SPECIAL">(
+const selectedScope = computed<"PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL">(
   () => (selectedNode.value.type === "GROUP" ? "PROJECT" : selectedNode.value.type),
 );
 const selectedScopeLabel = computed(() => selectedNode.value.label);
@@ -201,6 +220,7 @@ async function load() {
     const l = await listTestReports(domain.value, {
       projectId: projectId.value,
       physicalSubsystemId: selectedSystem.value,
+      responsibleTeamOrgId: selectedTeam.value,
       specialNodeId: selectedSpecial.value,
       scopeType: selectedScope.value,
       keyword: keyword.value || undefined,
@@ -233,17 +253,19 @@ async function openGenerate(item?: TestReport) {
   const prefillCycle = Number(route.query.cycleId) || undefined;
   Object.assign(form, {
     report_name: item?.report_name || "",
-    report_type: item?.report_type || "PROJECT",
+    report_type: item?.report_type === "ROUND" ? "ROUND" : "LIFECYCLE",
     round_id: item?.round_id || prefillRound,
     cycle_id: item?.cycle_id || prefillCycle,
     source_type: route.query.source === "analytics" ? "SNAPSHOT" : "LIVE",
     sections: [
       "OVERVIEW",
-      "SCOPE_STAT",
-      "EXECUTION_STAT",
-      "DEFECT_STAT",
-      "SCOPE_DETAIL",
-      "DEFECT_DETAIL",
+      "ENVIRONMENT_CONFIG",
+      "SCOPE_STRATEGY",
+      "EXECUTION_PROGRESS",
+      "DEFECT_ANALYSIS",
+      "QUALITY_ASSESSMENT",
+      "RISKS_ISSUES",
+      "CONCLUSION_RECOMMENDATION",
     ],
   });
   try {
@@ -263,10 +285,9 @@ async function generate() {
   if (
     !projectId.value ||
     !form.report_name ||
-    (form.report_type !== "PROJECT" && !form.round_id) ||
-    (form.report_type === "CYCLE" && !form.cycle_id)
+    (form.report_type === "ROUND" && !form.round_id)
   ) {
-    ElMessage.warning("请填写报告名称并选择关联轮次/周期");
+    ElMessage.warning("请填写报告名称，并为轮次报告选择关联轮次");
     return;
   }
   try {
@@ -282,6 +303,7 @@ async function generate() {
       {
         scopeType: selectedScope.value,
         physicalSubsystemId: selectedSystem.value,
+        responsibleTeamOrgId: selectedTeam.value,
         specialNodeId: selectedSpecial.value,
       },
       { ...form },
@@ -298,10 +320,9 @@ async function advanceGenerate() {
   if (generatorStep.value === 0) {
     if (
       !form.report_name ||
-      (form.report_type !== "PROJECT" && !form.round_id) ||
-      (form.report_type === "CYCLE" && !form.cycle_id)
+      (form.report_type === "ROUND" && !form.round_id)
     ) {
-      ElMessage.warning("请填写报告名称，并为轮次/周期报告选择关联时间范围");
+      ElMessage.warning("请填写报告名称，并为轮次报告选择关联轮次");
       return;
     }
     generatorStep.value = 1;
@@ -383,12 +404,14 @@ function chapterName(key: string) {
   return (
     (
       {
-        OVERVIEW: "测试概况",
-        SCOPE_STAT: "范围统计",
-        EXECUTION_STAT: "执行统计",
-        DEFECT_STAT: "缺陷统计",
-        SCOPE_DETAIL: "范围明细",
-        DEFECT_DETAIL: "缺陷明细",
+        OVERVIEW: "报告概述",
+        ENVIRONMENT_CONFIG: "测试环境与配置",
+        SCOPE_STRATEGY: "测试范围与策略",
+        EXECUTION_PROGRESS: "测试执行与进度",
+        DEFECT_ANALYSIS: "缺陷分析",
+        QUALITY_ASSESSMENT: "质量评估",
+        RISKS_ISSUES: "风险与问题",
+        CONCLUSION_RECOMMENDATION: "结论与建议",
       } as Record<string, string>
     )[key] || key
   );
@@ -402,6 +425,8 @@ onMounted(async () => {
     ? { key: "system:" + prefilled, label: "当前系统", type: "SYSTEM", systemId: prefilled }
     : stored?.startsWith("system:")
       ? { key: stored, label: "当前系统", type: "SYSTEM", systemId: Number(stored.slice(7)) }
+      : stored?.startsWith("institution:")
+        ? { key: stored, label: "当前责任团队组织", type: "INSTITUTION", responsibleTeamOrgId: Number(stored.slice(12)) }
       : stored?.startsWith("special:")
         ? { key: stored, label: "当前专项", type: "SPECIAL", specialNodeId: Number(stored.slice(8)) }
         : { key: "project", label: "项目级报告", type: "PROJECT" };
@@ -416,7 +441,7 @@ watch([() => context.currentRef, domain], async () => {
 watch(
   () => form.report_type,
   (type) => {
-    if (type === "PROJECT") {
+    if (type === "LIFECYCLE") {
       form.round_id = undefined;
       form.cycle_id = undefined;
       form.source_type = "LIVE";
@@ -503,24 +528,24 @@ onBeforeUnmount(() => editor.value?.destroy());
             width="92"
             align="center"
             ><template #default="{ row }">{{
-              row.report_type === "PROJECT"
-                ? "项目报告"
-                : row.report_type === "CYCLE"
-                  ? "周期报告"
-                  : "轮次报告"
+              row.report_type === "LIFECYCLE" || row.report_type === "PROJECT"
+                ? "全周期报告"
+                : row.report_type === "CYCLE" ? "历史周期报告" : "轮次报告"
             }}</template></el-table-column
           ><el-table-column
             label="关联轮次/周期"
             min-width="150"
             show-overflow-tooltip
             ><template #default="{ row }"
-              >{{ row.report_type === "PROJECT" ? "-" : row.round_name || "-"
+              >{{ row.report_type === "LIFECYCLE" || row.report_type === "PROJECT" ? "-" : row.round_name || "-"
               }}{{ row.cycle_name ? " / " + row.cycle_name : "" }}</template
             ></el-table-column
           ><el-table-column label="统计范围" width="100" align="center"
             ><template #default="{ row }">{{
               row.scope_type === "SPECIAL"
                 ? "专项级"
+                : row.scope_type === "INSTITUTION"
+                  ? "机构级"
                 : row.scope_type === "SYSTEM"
                   ? "系统级"
                   : "项目级"
@@ -617,36 +642,24 @@ onBeforeUnmount(() => editor.value?.destroy());
           ><el-input v-model="form.report_name" maxlength="100" /></el-form-item
         ><el-form-item label="报告类型" required
           ><el-radio-group v-model="form.report_type"
-            ><el-radio value="PROJECT">项目报告</el-radio
+            ><el-radio value="LIFECYCLE">全周期报告</el-radio
             ><el-radio value="ROUND">轮次报告</el-radio
-            ><el-radio value="CYCLE">周期报告</el-radio></el-radio-group
+            ></el-radio-group
           ></el-form-item
-        ><el-form-item v-if="form.report_type !== 'PROJECT'" label="关联轮次" required
+        ><el-form-item v-if="form.report_type === 'ROUND'" label="关联轮次" required
           ><el-select v-model="form.round_id" style="width: 100%"
             ><el-option
               v-for="item in options.rounds"
               :key="item.id"
               :label="item.round_name"
               :value="item.id" /></el-select></el-form-item
-        ><el-form-item
-          v-if="form.report_type === 'CYCLE'"
-          label="关联周期"
-          required
-          ><el-select v-model="form.cycle_id" style="width: 100%"
-            ><el-option
-              v-for="item in options.cycles.filter(
-                (x) => x.round_id === form.round_id,
-              )"
-              :key="item.id"
-              :label="item.cycle_name"
-              :value="item.id" /></el-select></el-form-item
         ><el-form-item label="数据来源"
           ><el-radio-group v-model="form.source_type"
             ><el-radio value="LIVE">当前实时数据</el-radio
-            ><el-radio v-if="form.report_type !== 'PROJECT'" value="SNAPSHOT">轮次统计快照</el-radio></el-radio-group
+            ><el-radio v-if="form.report_type === 'ROUND' && selectedScope === 'PROJECT'" value="SNAPSHOT">轮次统计快照</el-radio></el-radio-group
           >
           <p class="form-hint">
-            {{ form.report_type === 'PROJECT' ? '项目报告汇总当前项目的实时数据。' : '选择统计快照时，系统会固定使用该轮次已经归档的数据。' }}
+            {{ form.report_type === 'LIFECYCLE' ? '全周期报告汇总当前范围的实时数据。' : '选择统计快照时，系统会固定使用该轮次已经归档的数据。' }}
           </p></el-form-item
         ><el-form-item label="报告章节"
           ><el-checkbox-group v-model="form.sections"
@@ -705,11 +718,13 @@ onBeforeUnmount(() => editor.value?.destroy());
           <section
             v-for="chapter in [
               'OVERVIEW',
-              'SCOPE_STAT',
-              'EXECUTION_STAT',
-              'DEFECT_STAT',
-              'SCOPE_DETAIL',
-              'DEFECT_DETAIL',
+              'ENVIRONMENT_CONFIG',
+              'SCOPE_STRATEGY',
+              'EXECUTION_PROGRESS',
+              'DEFECT_ANALYSIS',
+              'QUALITY_ASSESSMENT',
+              'RISKS_ISSUES',
+              'CONCLUSION_RECOMMENDATION',
             ]"
             :key="chapter"
             class="chapter"
@@ -734,13 +749,13 @@ onBeforeUnmount(() => editor.value?.destroy());
               {{ detail.snapshot.scope_total || 0 }}，案例
               {{ detail.snapshot.case_total || 0 }}。
             </p>
-            <p v-else-if="chapter === 'EXECUTION_STAT'">
+            <p v-else-if="chapter === 'EXECUTION_PROGRESS'">
               执行 {{ detail.snapshot.execution_total || 0 }}，成功
               {{ detail.snapshot.execution_success || 0 }}，失败
               {{ detail.snapshot.execution_failed || 0 }}，阻塞
               {{ detail.snapshot.execution_blocked || 0 }}。
             </p>
-            <p v-else-if="chapter === 'DEFECT_STAT'">
+            <p v-else-if="chapter === 'DEFECT_ANALYSIS'">
               缺陷 {{ detail.snapshot.defect_total || 0 }}，未关闭
               {{ detail.snapshot.defect_open || 0 }}。
             </p>

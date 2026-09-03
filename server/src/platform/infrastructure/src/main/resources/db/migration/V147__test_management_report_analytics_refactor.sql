@@ -24,3 +24,7 @@ CREATE TABLE tm_test_quality_threshold (
 ALTER TABLE tm_test_report_version
     ADD COLUMN report_semantic_version VARCHAR(16) NOT NULL DEFAULT 'V1' COMMENT '报告语义版本：V1/V2' AFTER version_no,
     ADD COLUMN quality_snapshot_json JSON NULL COMMENT '报告生成时冻结的质量阈值与判定' AFTER snapshot_json;
+
+ALTER TABLE tm_test_report
+    ADD COLUMN responsible_team_org_id BIGINT NULL COMMENT 'V2 机构报告按物理子系统责任团队组织归集' AFTER physical_subsystem_id,
+    ADD KEY idx_tm_report_team_scope (tenant_id,test_domain,project_id,scope_type,responsible_team_org_id,generated_at);

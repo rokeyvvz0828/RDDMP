@@ -1,0 +1,25 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "scope": "V2 八章节报告、责任团队组织范围、固定统计目录与本地模拟数据",
+  "files": [
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/report/TestReportService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsAdvancedService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestReportDocumentService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestReportController.java",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V147__test_management_report_analytics_refactor.sql",
+    "web/src/modules/test-management/report/TestReportPage.vue",
+    "web/src/modules/test-management/api.ts",
+    "server/src/modules/test-management/scripts/seed-report-analytics-mock.sql"
+  ],
+  "evidence": [
+    "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-test-management -am test -Dtest=TestAnalyticsMetricCatalogTest,TestConfigurationServiceTest -Dsurefire.failIfNoSpecifiedTests=false：7 tests passed",
+    "git diff --check：passed"
+  ],
+  "limitations": [
+    "本地工作树缺少 .env，Docker 服务和 Spring Boot 本地启动未执行",
+    "web/node_modules 不存在且任务范围禁止写入该目录，前端构建和开发服务器未执行",
+    "完整 Flyway 检查仍受历史 V84_1 迁移命名问题阻断，非当前任务可写范围"
+  ]
+}

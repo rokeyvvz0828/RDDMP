@@ -1087,16 +1087,19 @@ export const deleteTestPlan = (
 export interface TestReportTree {
   project: { id: number; project_name: string };
   systems: TestPlanSystem[];
+  institutions: Array<{ id: number; name: string; system_total: number }>;
   specials: Array<{ id: number; node_name: string }>;
 }
 export interface TestReport {
   id: number;
   report_name: string;
-  report_type: "PROJECT" | "ROUND" | "CYCLE";
-  scope_type: "PROJECT" | "SYSTEM" | "SPECIAL";
+  report_type: "LIFECYCLE" | "ROUND" | "PROJECT" | "CYCLE";
+  scope_type: "PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL";
   round_id?: number;
   cycle_id?: number;
   physical_subsystem_id?: number;
+  responsible_team_org_id?: number;
+  responsible_team_name?: string;
   special_node_id?: number;
   special_name?: string;
   physical_system_name?: string;
@@ -1149,8 +1152,9 @@ export const listTestReports = (
   params: PageParams & {
     projectId: number;
     physicalSubsystemId?: number;
+    responsibleTeamOrgId?: number;
     specialNodeId?: number;
-    scopeType?: "PROJECT" | "SYSTEM" | "SPECIAL";
+    scopeType?: "PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL";
     keyword?: string;
   },
 ) =>
@@ -1162,8 +1166,9 @@ export const generateTestReport = (
   projectId: number,
   scope: {
     physicalSubsystemId?: number;
+    responsibleTeamOrgId?: number;
     specialNodeId?: number;
-    scopeType: "PROJECT" | "SYSTEM" | "SPECIAL";
+    scopeType: "PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL";
   },
   body: Record<string, unknown>,
   id?: number,
