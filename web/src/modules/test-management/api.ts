@@ -1328,6 +1328,15 @@ export const getTestAnalytics = (
     `${analyticsBase(domain)}/view/${key}`,
     { params: { projectId, ...params } },
   );
+export const runSavedTestAnalytics = (
+  domain: TestDomain,
+  projectId: number,
+  id: number,
+  params: { physicalSubsystemId?: number; roundId?: number; cycleId?: number } = {},
+) => http.get<ApiResponse<Record<string, unknown>>>(
+  `${analyticsBase(domain)}/reports/${id}/run`,
+  { params: { projectId, ...params } },
+);
 export const getTestAnalyticsDrilldown = (
   domain: TestDomain,
   projectId: number,

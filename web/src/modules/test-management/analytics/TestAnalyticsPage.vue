@@ -37,6 +37,7 @@ import {
   getTestAnalyticsTree,
   listTestProjects,
   publishTestAnalyticsReport,
+  runSavedTestAnalytics,
   saveTestAnalyticsReport,
   type TestAnalyticsTree,
   type TestDomain,
@@ -83,7 +84,8 @@ const tree = ref<TestAnalyticsTree>(),
   compareOpen = ref(false),
   compareRows = ref<any[]>([]),
   compareRounds = ref<number[]>([]),
-  activeCustomId = ref<number>();
+  activeCustomId = ref<number>(),
+  activeSavedId = ref<number>();
 const config = reactive({
   report_name: "",
   report_key: "CUSTOM",
@@ -256,12 +258,18 @@ async function load() {
   loading.value = true;
   try {
     const response = (
-      await (active.key === "CUSTOM"
-        ? getTestAnalytics(domain.value, projectId.value, "CUSTOM", {
+      await (activeSavedId.value
+        ? runSavedTestAnalytics(domain.value, projectId.value, activeSavedId.value, {
             physicalSubsystemId: filters.systemId,
             roundId: filters.roundId,
             cycleId: filters.cycleId,
           })
+        : active.key === "CUSTOM"
+          ? getTestAnalytics(domain.value, projectId.value, "CUSTOM", {
+              physicalSubsystemId: filters.systemId,
+              roundId: filters.roundId,
+              cycleId: filters.cycleId,
+            })
         : getTestAnalyticsPreset(domain.value, projectId.value, active.key, {
             physicalSubsystemId: filters.systemId,
             roundId: filters.roundId,
@@ -289,6 +297,7 @@ async function setup() {
 }
 function select(key: string, name?: string) {
   activeCustomId.value = undefined;
+  activeSavedId.value = undefined;
   active.key = key;
   active.name = name || "固定分析";
   active.view = "TABLE";
@@ -304,6 +313,7 @@ function selectCustom(
   editable = false,
 ) {
   activeCustomId.value = editable ? report.id : undefined;
+  activeSavedId.value = report.id;
   active.key = report.report_key;
   active.name = report.report_name;
   try {
