@@ -15,11 +15,12 @@
   ],
   "evidence": [
     "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-test-management -am test -Dtest=TestAnalyticsMetricCatalogTest,TestConfigurationServiceTest -Dsurefire.failIfNoSpecifiedTests=false：7 tests passed",
-    "git diff --check：passed"
+    "git diff --check：passed",
+    "使用主工作区 .env 的只读运行时注入启动 ccb-boot：应用已连接本地 MySQL，随后 Flyway 在既有 V93 重复版本处停止"
   ],
   "limitations": [
-    "本地工作树缺少 .env，Docker 服务和 Spring Boot 本地启动未执行",
-    "web/node_modules 不存在且任务范围禁止写入该目录，前端构建和开发服务器未执行",
-    "完整 Flyway 检查仍受历史 V84_1 迁移命名问题阻断，非当前任务可写范围"
+    "web/node_modules 不存在且任务范围禁止写入该目录；借用主工作区依赖执行构建时仍无法解析 vite/client，前端构建和开发服务器未启动",
+    "本地依赖的 kkFileView 容器名已被既有容器占用，未删除或替换该容器",
+    "后端启动与完整 Flyway 检查均受既有 V93 重复版本迁移阻断；另有既有 V84_1 命名问题，均不在当前任务 writable_paths"
   ]
 }
