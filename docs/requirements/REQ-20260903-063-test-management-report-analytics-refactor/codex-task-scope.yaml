@@ -57,6 +57,7 @@
     "issue": "REQ-20260903-063",
     "owner_approved": true,
     "approval_evidence": "用户于 2026-09-03 明确指示“开始实施”。",
+    "old_behavior_preserved": true,
     "compatibility": "Existing report, analytics and configuration routes retain historical read/export behavior; V2 adds compatible fields and endpoints.",
     "regression_tests": ["mvn -pl :ccb-test-management -am test", "npm --prefix web run build"]
   },
@@ -68,6 +69,8 @@
   "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
   "required_tests": [
     {"name": "backend", "command": "mvn -pl :ccb-test-management -am test", "expected": "测试管理模块测试通过"},
+    {"name": "api", "command": "本地认证 API 契约检查", "expected": "报告与统计接口按当前项目和测试大类返回中文数据或明确错误"},
+    {"name": "permission", "command": "模块权限回归测试", "expected": "无菜单动作权限、越项目或越测试大类请求被服务端拒绝"},
     {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "TypeScript 与 Vite 构建通过"},
     {"name": "migration", "command": "node scripts/check-flyway-migrations.mjs", "expected": "追加迁移检查通过"},
     {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "治理检查通过"},
@@ -81,6 +84,12 @@
   "completion": {
     "control_mode": "full",
     "control_prefix": "req-20260903-063-test-management-report-analytics-refactor",
-    "expected_evidence": ["design.json", "handoff.json", "state.json", "model.json", "control-plan.json", "execution-T*.json", "observation-T*.json", "convergence.json"]
+    "expected_evidence": ["design.json", "handoff.json", "state.json", "model.json", "control-plan.json", "execution-T*.json", "observation-T*.json", "convergence.json"],
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260903-063-test-management-report-analytics-refactor/design.json",
+      ".ai-control/requirements/req-20260903-063-test-management-report-analytics-refactor/model.json",
+      ".ai-control/requirements/req-20260903-063-test-management-report-analytics-refactor/control-plan.json",
+      ".ai-control/requirements/req-20260903-063-test-management-report-analytics-refactor/convergence.json"
+    ]
   }
 }

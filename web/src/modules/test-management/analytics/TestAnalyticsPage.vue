@@ -90,6 +90,77 @@ const config = reactive({
   metrics: ["execution_rate", "case_success_rate"],
   charts: ["TABLE", "BAR"],
 });
+const fieldLabels: Record<string, string> = {
+  dimension: "统计维度",
+  row_dimension: "行维度",
+  column_dimension: "列维度",
+  value: "统计值",
+  scope_total: "测试范围数",
+  covered_total: "已覆盖范围数",
+  uncovered_total: "未覆盖范围数",
+  coverage_rate: "范围覆盖率",
+  case_total: "案例总数",
+  effective_case_total: "有效案例数",
+  invalid_case_total: "无效案例数",
+  execution_total: "已执行案例数",
+  execution_unexecuted: "未执行案例数",
+  unexecuted_count: "未执行案例数",
+  execution_in_progress: "执行中案例数",
+  in_progress_count: "执行中案例数",
+  execution_success: "成功案例数",
+  success_count: "成功案例数",
+  execution_failed: "失败案例数",
+  failed_count: "失败案例数",
+  execution_blocked: "阻塞案例数",
+  blocked_count: "阻塞案例数",
+  execution_rate: "执行率",
+  success_rate: "案例成功率",
+  case_success_rate: "案例成功率",
+  executed_case_success_rate: "已执行案例成功率",
+  defect_total: "缺陷总数",
+  defect_open: "未关闭缺陷数",
+  severe_defect_count: "严重缺陷数",
+  defect_density: "缺陷密度",
+  defect_repair_rate: "缺陷修复率",
+  handled_defects: "已处理缺陷数",
+  pending_defects: "待处理缺陷数",
+  completed_count: "已完成数",
+  raised_count: "新增缺陷数",
+  resolved_count: "已解决缺陷数",
+  defect_code: "缺陷编号",
+  summary: "缺陷摘要",
+  status: "状态",
+  severity: "严重程度",
+  urgency: "紧急程度",
+  handler_name: "处理人",
+  overdue_days: "逾期天数",
+  case_code: "案例编号",
+  case_name: "案例名称",
+  case_type: "案例类型",
+  priority: "优先级",
+  invalidated: "是否无效",
+  execution_status: "执行状态",
+  executed_at: "执行时间",
+  proposed_at: "提出时间",
+  round_name: "测试轮次",
+  archived_at: "归档时间",
+  snapshot_at: "统计时间",
+};
+const valueLabels: Record<string, string> = {
+  UNEXECUTED: "未执行", IN_PROGRESS: "执行中", RUNNING: "执行中",
+  SUCCESS: "成功", FAILED: "失败", BLOCKED: "阻塞",
+  RAISED: "已提出", ANALYZING: "分析中", CAUSE_IDENTIFIED: "已定位原因",
+  FIX_PLAN_CONFIRMED: "修复方案已确认", PENDING_VERIFICATION: "待验证",
+  RESOLVED: "已解决", CLOSED: "已关闭",
+  FATAL: "致命", SERIOUS: "严重", NORMAL: "一般", MINOR: "轻微",
+  HIGH: "高", MEDIUM: "中", LOW: "低", true: "是", false: "否", 1: "是", 0: "否",
+};
+const chartLabels: Record<string, string> = {
+  TABLE: "表格", BAR: "柱状图", LINE: "折线图", PIE: "饼图",
+};
+const columnLabel = (key: string) => fieldLabels[key] || key;
+const displayValue = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "-" : valueLabels[String(value)] || String(value);
 const columns = computed(() => Object.keys(model.value.rows?.[0] || {}));
 const viewOptions = computed(() => ["TABLE", "BAR", "LINE", "PIE"]);
 const chartOption = computed<EChartsOption>(() => {
@@ -498,15 +569,7 @@ watch([() => context.currentRef, domain], setup);
         </div>
         <div class="toolbar">
           <el-radio-group v-model="active.view" size="small" @change="load"
-            ><el-radio-button v-for="v in viewOptions" :key="v" :value="v">{{
-              v === "TABLE"
-                ? "表格"
-                : v === "BAR"
-                  ? "柱状图"
-                  : v === "LINE"
-                    ? "折线图"
-                : v === "PIE" ? "饼图" : "折线图"
-            }}</el-radio-button></el-radio-group
+          ><el-radio-button v-for="v in viewOptions" :key="v" :value="v">{{ chartLabels[v] }}</el-radio-button></el-radio-group
           ><span /><el-button size="small" :icon="Edit" @click="openDesigner()"
             >编辑/另存为</el-button
           ><el-button size="small" :icon="Download" @click="exportXlsx"
@@ -525,8 +588,8 @@ watch([() => context.currentRef, domain], setup);
             v-show="typeof v === 'number'"
             :key="String(k)"
           >
-            <small>{{ k }}</small
-            ><b>{{ v }}</b>
+            <small>{{ columnLabel(String(k)) }}</small
+            ><b>{{ displayValue(v) }}</b>
           </article>
         </div>
         <DeliveryChart
@@ -543,7 +606,7 @@ watch([() => context.currentRef, domain], setup);
             v-for="key in columns"
             :key="key"
             :prop="key"
-            :label="key"
+            :label="columnLabel(key)"
             min-width="120"
             show-overflow-tooltip
             resizable
@@ -554,7 +617,7 @@ watch([() => context.currentRef, domain], setup);
                 size="small"
                 @click="drilldown"
                 >{{ row[key] }}</el-button
-              ><span v-else>{{ row[key] }}</span></template
+              ><span v-else>{{ displayValue(row[key]) }}</span></template
             ></el-table-column
           ></UiDataTable
         >
@@ -613,7 +676,7 @@ watch([() => context.currentRef, domain], setup);
               v-for="x in ['TABLE', 'BAR', 'PIE', 'LINE']"
               :key="x"
               :value="x"
-              >{{ x }}</el-checkbox
+              >{{ chartLabels[x] }}</el-checkbox
             ></el-checkbox-group
           ></el-form-item
         ><el-alert type="info" :closable="false" show-icon title="运行时仅按当前入口固定的测试大类、项目、系统、轮次和周期过滤；不提供测试大类筛选。" />
@@ -628,7 +691,7 @@ watch([() => context.currentRef, domain], setup);
           v-for="k in Object.keys(drillRows[0] || {})"
           :key="k"
           :prop="k"
-          :label="k"
+          :label="columnLabel(k)"
           min-width="120"
           show-overflow-tooltip /></el-table
       ><template #footer
@@ -659,7 +722,7 @@ watch([() => context.currentRef, domain], setup);
           v-for="k in Object.keys(compareRows[0] || {})"
           :key="k"
           :prop="k"
-          :label="k"
+          :label="columnLabel(k)"
           min-width="120" /></el-table
     ></el-dialog>
   </section>

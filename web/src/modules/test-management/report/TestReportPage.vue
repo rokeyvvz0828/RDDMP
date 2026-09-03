@@ -416,6 +416,40 @@ function chapterName(key: string) {
     )[key] || key
   );
 }
+function fact(name: string) {
+  return detail.value.snapshot?.[name] ?? 0;
+}
+function chapterSummary(chapter: string) {
+  const report = detail.value.report;
+  switch (chapter) {
+    case "OVERVIEW":
+      return `本报告统计范围为${selectedScopeLabel.value}，生成时间：${fact("snapshot_at") || "-"}。共纳入测试范围 ${fact("scope_total")} 项、案例 ${fact("case_total")} 条。`;
+    case "ENVIRONMENT_CONFIG":
+      return `测试大类为${domainLabel.value}；报告类型为${report.report_type === "ROUND" ? "轮次报告" : "全周期报告"}${report.round_name ? `，关联轮次：${report.round_name}` : ""}。`;
+    case "SCOPE_STRATEGY":
+      return `有效案例 ${fact("effective_case_total")} 条，无效案例 ${fact("invalid_case_total")} 条；范围覆盖统计以当前报告范围内的有效测试范围和案例为准。`;
+    case "EXECUTION_PROGRESS":
+      return `已执行 ${fact("execution_total")} 条，其中成功 ${fact("execution_success")} 条、失败 ${fact("execution_failed")} 条、阻塞 ${fact("execution_blocked")} 条；执行中 ${fact("execution_in_progress")} 条独立展示，不计入已执行。`;
+    case "DEFECT_ANALYSIS":
+      return `共发现缺陷 ${fact("defect_total")} 个，未关闭 ${fact("defect_open")} 个，严重缺陷 ${fact("severe_defect_count")} 个，缺陷密度 ${fact("defect_density")}%。`;
+    case "QUALITY_ASSESSMENT": {
+      const quality = detail.value.snapshot?.quality_assessment as Record<string, unknown> | undefined;
+      return quality?.overall === "未配置" ? "当前项目尚未启用质量阈值指标，报告不作总体质量判定。" : `已按当前版本冻结的启用阈值完成评估，总体结论：${quality?.overall || "未配置"}。`;
+    }
+    case "RISKS_ISSUES":
+      return `需重点关注失败案例 ${fact("execution_failed")} 条、阻塞案例 ${fact("execution_blocked")} 条、未关闭缺陷 ${fact("defect_open")} 个及严重缺陷 ${fact("severe_defect_count")} 个。`;
+    case "CONCLUSION_RECOMMENDATION": {
+      const quality = detail.value.snapshot?.quality_assessment as Record<string, unknown> | undefined;
+      return quality?.overall === "达标" ? "当前启用质量指标均已达标，建议继续跟踪执行中事项并按计划收尾。" : "建议优先处理阻塞和未关闭缺陷，完成复测后重新生成报告版本确认质量结论。";
+    }
+    default:
+      return "";
+  }
+}
+function qualityItems() {
+  const assessment = detail.value.snapshot?.quality_assessment as Record<string, unknown> | undefined;
+  return Array.isArray(assessment?.items) ? assessment.items as Array<Record<string, unknown>> : [];
+}
 onMounted(async () => {
   await context.initialize();
   projects.value = (await listTestProjects(domain.value)).data.data || [];
@@ -744,21 +778,14 @@ onBeforeUnmount(() => editor.value?.destroy());
                 >编辑补充</el-button
               >
             </header>
-            <p v-if="chapter === 'OVERVIEW'">
-              快照时间：{{ detail.snapshot.snapshot_at || "-" }}；范围
-              {{ detail.snapshot.scope_total || 0 }}，案例
-              {{ detail.snapshot.case_total || 0 }}。
-            </p>
-            <p v-else-if="chapter === 'EXECUTION_PROGRESS'">
-              执行 {{ detail.snapshot.execution_total || 0 }}，成功
-              {{ detail.snapshot.execution_success || 0 }}，失败
-              {{ detail.snapshot.execution_failed || 0 }}，阻塞
-              {{ detail.snapshot.execution_blocked || 0 }}。
-            </p>
-            <p v-else-if="chapter === 'DEFECT_ANALYSIS'">
-              缺陷 {{ detail.snapshot.defect_total || 0 }}，未关闭
-              {{ detail.snapshot.defect_open || 0 }}。
-            </p>
+            <p>{{ chapterSummary(chapter) }}</p>
+            <el-table v-if="chapter === 'QUALITY_ASSESSMENT' && qualityItems().length" :data="qualityItems()" size="small" border>
+              <el-table-column prop="metric_name" label="质量指标" min-width="130" />
+              <el-table-column prop="actual" label="实际值" min-width="80" />
+              <el-table-column prop="qualified_threshold" label="达标阈值" min-width="90" />
+              <el-table-column prop="risk_threshold" label="风险阈值" min-width="90" />
+              <el-table-column prop="result" label="判定结果" min-width="90" />
+            </el-table>
             <div
               v-if="
                 detail.supplements.find((x) => x.chapter_code === chapter)
