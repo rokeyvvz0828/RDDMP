@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id":"REQ-20260903-059","status":"ready","document":"docs/requirements/REQ-20260903-059-resource-request-form-layout/requirement.md","codex_allowed":true},
+  "assignment": {"developer":"Codex","module":"business/architecture","module_owner":"rokeyvvz0828","branch":"feat/REQ-20260903-059-resource-request-form-layout","worktree":"C:/Users/missa/source/RDDMP/.worktrees/REQ-20260903-059-resource-request-form-layout"},
+  "codex": {"production_access":false,"contains_confidential_information":false,"allowed_tools":["local-shell","codex","browser"]},
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/architecture/ResourceRequestPage.vue",
+      "web/src/modules/architecture/architecture.css",
+      "docs/requirements/REQ-20260903-059-resource-request-form-layout/**",
+      "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+      "docs/engineering-control/plans/2026-09-03-resource-request-form-layout-implementation-plan.md",
+      ".ai-control/requirements/req-20260903-059-resource-request-form-layout/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/AGENTS.md","web/src/modules/architecture/AGENTS.md","web/src/modules/architecture/api.ts","web/src/modules/architecture/types.ts","web/src/modules/architecture/utils.ts",
+      "web/src/components/ui/**","web/src/modules/delivery-showcase/**","docs/integration/frontend-ui-contract.md","docs/integration/architecture-module-contract.md","design-h5.md",
+      "docs/requirements/REQ-20260824-052-environment-resource-request/**",".ai-control/requirements/req-20260824-052-environment-resource-request/**"
+    ],
+    "forbidden_paths": [".env",".env.*","**/*.pem","**/*.key","**/target/**","**/node_modules/**","server/**","web/src/router/**",".ai-control/original/**",".ai-control/requirements/req-20260812-021-architecture-subsystems/**"]
+  },
+  "public_capability_change": {
+    "required": false,"issue":null,"owner_approved":false,"approval_evidence":null,"old_behavior_preserved":true,
+    "regression_tests": ["资源申请 API、DTO、items[] 顺序和字段保持兼容","DB 与应用/Web 字段分流和校验保持兼容","资源申请列表、详情、提交、取消、审批和下发入口不变"]
+  },
+  "database": {"changed":false,"migration_files":[],"compatibility_and_rollback":"无数据库变更；回退前端提交即可恢复原纵向表单。"},
+  "external_access": {"changed":false,"systems":[],"data_classification":"internal-test-only"},
+  "required_tests": [
+    {"name":"development-entry","command":"node scripts/check-development-entry.mjs --require-plugin"},
+    {"name":"api","command":"真实浏览器检查新建与编辑保存请求仍使用现有 ResourceRequestPayload，items[] 数量、顺序和字段值与界面一致"},
+    {"name":"permission","command":"验证资源申请无权限状态、apply/manage 前端显隐及保存失败处理保持现有行为，不新增或放松权限"},
+    {"name":"frontend-build","command":"npm --prefix web run build"},
+    {"name":"governance","command":"node scripts/check-all-governance.mjs"},
+    {"name":"scope","command":"node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"},
+    {"name":"diff","command":"git diff --check"},
+    {"name":"browser","command":"真实浏览器验收资源申请新建/编辑、多申请项、重复部署单元、物理子系统切换、错误恢复、明暗主题和 1280/375/390/430 视口"}
+  ],
+  "risk": {"level":"important","items":["双层分栏在窄桌面和手机端可能产生不可达操作或横向溢出","申请项索引切换可能导致内容错位或删除错误项","物理子系统切换必须清理旧部署单元申请项且支持取消恢复","前端状态判定不能改变服务端最终校验语义"]},
+  "completion": {
+    "control_mode":"full","control_prefix":"req-20260903-059-resource-request-form-layout","control_justification":"涉及资源申请高频用户流程、复杂主从表单状态、未保存内容保护和四视口浏览器验收，需要完整工程控制证据。",
+    "acceptance_evidence":[".ai-control/requirements/req-20260903-059-resource-request-form-layout/design.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/handoff.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/state.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/model.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/control-plan.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T*.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T*.json",".ai-control/requirements/req-20260903-059-resource-request-form-layout/convergence.json"],
+    "release_verification":["多申请项及重复部署单元保存请求与回显一致","物理子系统切换确认、清空和取消恢复准确","桌面及三个手机视口明暗主题无页面级横向溢出"],
+    "rollback":"回退本需求前端提交；无迁移、数据或外部系统补偿。"
+  }
+}
