@@ -1,16 +1,76 @@
 {
   "schema_version": 4,
-  "revision": 1,
+  "revision": 31,
   "created_at": "2026-09-03T02:14:32+00:00",
-  "updated_at": "2026-09-03T02:14:32+00:00",
+  "updated_at": "2026-09-03T03:27:10+00:00",
   "mode": "standard",
-  "phase": "baseline",
+  "phase": "converged",
   "phase_history": [
     {
       "from": null,
       "to": "baseline",
       "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户于 2026-09-03 回复“可以”，确认落盘设计修订 1。；计划确认=用户于 2026-09-03 回复“批准”，确认实施计划修订 1。",
       "recorded_at": "2026-09-03T02:14:32+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "已复核交接包设计修订1、用户批准、R1-R7验收与反例；无阻塞未知项，隔离工作树构建基线通过",
+      "recorded_at": "2026-09-03T02:21:10+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "模型门禁通过：R1-R7 均有可判别传感器和 scope 内执行器，接口与滚动边界已建模",
+      "recorded_at": "2026-09-03T02:28:27+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "计划门禁通过：R1-R7 全覆盖，任务串行无写入冲突，传感器和回滚点明确",
+      "recorded_at": "2026-09-03T02:30:37+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 实现产物已记录，范围和最低局部检查满足 observing 入口",
+      "recorded_at": "2026-09-03T02:37:19+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 无有效负反馈且已验证，继续执行依赖其接口的 T2",
+      "recorded_at": "2026-09-03T02:39:32+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 execution-T2 已记录，提交 694fc19 可由构建、浏览器和范围传感器独立复测",
+      "recorded_at": "2026-09-03T03:09:54+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 无有效负反馈且已验证；进入 T3 执行最终兼容、失败状态、治理和收敛检查",
+      "recorded_at": "2026-09-03T03:12:10+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 最终执行产物已记录，具备构建、HTTP、权限、失败恢复、浏览器尺寸与仓库门禁证据",
+      "recorded_at": "2026-09-03T03:23:04+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1-T3 均 verified，三次采样误差为 0，无待裁决反馈；进入最终收敛验收",
+      "recorded_at": "2026-09-03T03:25:06+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁 PASS：R1-R7 有效覆盖，T1-T3 verified，三次采样误差为 0，范围和不变量通过",
+      "recorded_at": "2026-09-03T03:27:10+00:00"
     }
   ],
   "stage_artifacts": {
@@ -229,12 +289,1867 @@
         }
       }
     ],
-    "modeling": [],
-    "planning": [],
-    "executing": [],
-    "observing": [],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已基于 ResourceRequestPage.vue、architecture.css、现有资源申请契约和交付示范中心验证 R1-R7 因果链、传感器与执行器",
+        "recorded_at": "2026-09-03T02:28:27+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ResourceRequestPage.vue 中资源申请新建/编辑弹窗及其响应式 DOM",
+              "ResourceForm 与 form.items 的前端临时状态、当前申请项选择和校验",
+              "物理子系统到部署单元候选的级联加载与失败保留行为",
+              "requestItemPayload 与 ResourceRequestPayload 的现有提交映射",
+              "architecture.css 中资源申请登记表的局部布局和移动端断点"
+            ],
+            "environment": [
+              "business/architecture 既有资源申请和选项 API",
+              "Element Plus Dialog、Select、Form、Collapse 与 MessageBox 运行行为",
+              "公共语义主题变量和应用壳滚动边界",
+              "本地测试账号、虚构资源申请数据和浏览器视口",
+              "既有全仓治理历史噪声"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "formOpen/formSubmitting/formError",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "关闭",
+                "可编辑",
+                "提交中",
+                "失败可恢复"
+              ]
+            },
+            {
+              "name": "form.physicalSubsystemId/acceptedPhysicalSubsystemId",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "未选择",
+                "已接受选择",
+                "待确认的新选择"
+              ]
+            },
+            {
+              "name": "form.items[]",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "至少一个带稳定 clientId 的申请项",
+                "多个可重复 deploymentUnitId 的有序申请项"
+              ]
+            },
+            {
+              "name": "selectedItemId/currentItem",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "指向现有申请项 clientId",
+                "重建或删除后指向相邻申请项"
+              ]
+            },
+            {
+              "name": "itemCompletionState",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "UNSELECTED",
+                "INCOMPLETE",
+                "COMPLETE"
+              ]
+            },
+            {
+              "name": "deploymentUnitOptions/optionSequence",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "空候选",
+                "当前物理子系统候选",
+                "过期响应被忽略"
+              ]
+            },
+            {
+              "name": "initialFormSnapshot/allowFormClose",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "未修改",
+                "有未保存修改",
+                "保存成功允许关闭"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "用户打开新建或编辑资源申请弹窗",
+              "transitions": [
+                "加载申请级字段和物理子系统摘要",
+                "模板把基础信息与登记表放入外层 grid",
+                "响应式断点按视口重排"
+              ],
+              "outputs": [
+                "桌面外层左右两栏",
+                "移动端单列且基础信息上下文保留"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "用户新增、删除或点击申请项",
+              "transitions": [
+                "为申请项分配稳定 clientId",
+                "selectedItemId 定位 currentItem",
+                "右侧仅绑定当前项",
+                "删除后选择下一项或上一项"
+              ],
+              "outputs": [
+                "左侧申请项列表",
+                "右侧当前项表单",
+                "切换后各项输入保持"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "多个申请项选择相同 deploymentUnitId 并填写不同规格",
+              "transitions": [
+                "每个 clientId 持有独立字段",
+                "不执行部署单元去重",
+                "form.items 按列表顺序映射 requestItemPayload"
+              ],
+              "outputs": [
+                "请求 items[] 保留重复 deploymentUnitId",
+                "保存和编辑回显保持独立规格"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "申请项处于未选择、不完整或完整状态并触发保存",
+              "transitions": [
+                "itemValidationError 执行单项规则",
+                "itemCompletionState 复用同一规则",
+                "validateForm 找到首个错误 clientId"
+              ],
+              "outputs": [
+                "列表显示文字状态",
+                "首个错误申请项被选中",
+                "持续错误信息可见"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "用户切换物理子系统",
+              "transitions": [
+                "比较已接受值和申请项内容",
+                "有内容时 MessageBox 二次确认",
+                "确认后重建空项并加载新候选或取消后恢复旧值",
+                "optionSequence 忽略过期候选响应"
+              ],
+              "outputs": [
+                "新物理子系统只配套新的空申请项和候选",
+                "取消后旧申请项完整保留"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "用户保存通过前端校验的申请",
+              "transitions": [
+                "requestItemPayload 保持 DB/非 DB 字段分流与计算",
+                "clientId 不进入 ResourceRequestItemPayload",
+                "form.items.map 保持数组顺序",
+                "调用现有 create/update API"
+              ],
+              "outputs": [
+                "现有 ResourceRequestPayload",
+                "服务端继续执行最终权限和业务校验"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "加载、失败、无权限、提交中、关闭和不同视口/主题下的用户操作",
+              "transitions": [
+                "沿用现有 loading/error/permission 状态",
+                "提交中禁用集合和基础选择操作",
+                "before-close 比较初始快照",
+                "CSS 在桌面、中等宽度和手机断点重排"
+              ],
+              "outputs": [
+                "失败保留输入且不重复提交",
+                "脏表单关闭确认",
+                "四视口明暗主题无页面级横向溢出且底部操作可达"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "ResourceRequestPayload/ResourceRequestItemPayload",
+              "producers": [
+                "ResourceRequestPage.vue requestItemPayload 和 submitForm"
+              ],
+              "consumers": [
+                "business/architecture 现有 createResourceRequest/updateResourceRequest API"
+              ],
+              "invariant": "字段、DB 与 APPLICATION/WEB 分流、items[] 顺序和重复 deploymentUnitId 行为不变，clientId 不得进入请求"
+            },
+            {
+              "name": "loadResourceDeploymentUnitOptions",
+              "producers": [
+                "business/architecture 选项 API"
+              ],
+              "consumers": [
+                "ResourceRequestPage.vue loadDeploymentUnits"
+              ],
+              "invariant": "候选只对应当前已接受物理子系统；失败或过期响应不得清空用户已有申请项输入"
+            },
+            {
+              "name": "Element Plus Dialog before-close",
+              "producers": [
+                "Element Plus Dialog"
+              ],
+              "consumers": [
+                "ResourceRequestPage.vue 脏表单保护"
+              ],
+              "invariant": "保存成功可关闭；用户取消关闭后表单上下文保持"
+            },
+            {
+              "name": "申请项临时身份",
+              "producers": [
+                "blankItem 和编辑回显映射"
+              ],
+              "consumers": [
+                "列表 key、selectedItemId、删除和错误定位"
+              ],
+              "invariant": "clientId 在弹窗生命周期内稳定且仅存在于前端"
+            },
+            {
+              "name": "语义主题与滚动边界",
+              "producers": [
+                "公共 CSS 变量和应用壳"
+              ],
+              "consumers": [
+                "architecture.css 资源申请局部样式"
+              ],
+              "invariant": "局部样式使用语义变量，页面根不产生横向滚动，移动端仅申请项列表允许有边界的局部横向滚动"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Vue/TypeScript 模板、状态和请求映射的静态可构建性",
+              "method": "npm --prefix web run build 与 git diff --check",
+              "blind_spots": [
+                "真实点击顺序",
+                "API 运行响应",
+                "视觉溢出"
+              ],
+              "independence": "编译器和构建工具直接检查类型、模板与产物生成"
+            },
+            {
+              "id": "S2",
+              "target": "申请项增删切换、状态、错误定位、物理切换和脏关闭行为",
+              "method": "真实浏览器按新建/编辑旅程操作并观察 DOM、当前项和持续错误信息",
+              "blind_spots": [
+                "未覆盖的极端 API 延迟",
+                "服务端内部校验实现"
+              ],
+              "independence": "从用户可见运行行为采样，不依赖实现函数的自述"
+            },
+            {
+              "id": "S3",
+              "target": "重复部署单元、多规格、items[] 顺序和字段兼容",
+              "method": "浏览器 Network 检查 create/update 请求并重新编辑回显",
+              "blind_spots": [
+                "未启动服务时不可采样",
+                "生产环境配置差异"
+              ],
+              "independence": "直接观察 HTTP 边界和服务端回显"
+            },
+            {
+              "id": "S4",
+              "target": "桌面与移动布局、主题、页面级横向溢出和底部操作可达性",
+              "method": "1280x800、375x812、390x844、430x932 明暗主题截图及 documentElement.scrollWidth 检查",
+              "blind_spots": [
+                "未列出的设备字体差异",
+                "辅助技术完整审计"
+              ],
+              "independence": "浏览器布局引擎的计算尺寸与可见像素证据"
+            },
+            {
+              "id": "S5",
+              "target": "请求失败、候选失败、无权限和提交中状态",
+              "method": "真实浏览器模拟失败/慢响应并检查 Console、请求次数和输入保留",
+              "blind_spots": [
+                "不可控的后端故障类型",
+                "生产网络抖动"
+              ],
+              "independence": "从异常运行路径观察可恢复性和重复请求"
+            },
+            {
+              "id": "S6",
+              "target": "修改范围、禁止路径和治理一致性",
+              "method": "check-codex-scope、check-all-governance、git status 和 git diff 文件清单",
+              "blind_spots": [
+                "仓库既有历史治理错误会产生噪声"
+              ],
+              "independence": "仓库脚本按任务范围和治理结构独立检查"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "申请项身份、当前项选择、增删和编辑回显",
+              "action": "在 ResourceRequestPage.vue 内增加 clientId、selectedItemId/currentItem 和有界集合操作",
+              "authority": "任务 scope 对 ResourceRequestPage.vue 的写权限",
+              "impact_radius": "仅资源申请新建/编辑弹窗前端状态",
+              "rollback": "回退 T1 小步提交"
+            },
+            {
+              "id": "A2",
+              "target": "申请项完成状态和首错定位",
+              "action": "抽取无副作用单项校验并由状态与保存共同复用",
+              "authority": "任务 scope 对 ResourceRequestPage.vue 的写权限",
+              "impact_radius": "资源申请弹窗前端校验和错误呈现，不替代服务端校验",
+              "rollback": "回退 T1 小步提交"
+            },
+            {
+              "id": "A3",
+              "target": "物理子系统切换和未保存内容保护",
+              "action": "增加已接受值、确认恢复、候选响应隔离和 before-close 快照比较",
+              "authority": "任务 scope 对 ResourceRequestPage.vue 的写权限",
+              "impact_radius": "资源申请弹窗切换与关闭路径",
+              "rollback": "回退 T1 小步提交"
+            },
+            {
+              "id": "A4",
+              "target": "两级主从 DOM 和可访问操作",
+              "action": "重组现有弹窗模板，只渲染 currentItem，复用 Element Plus 和语义化按钮",
+              "authority": "任务 scope 对 ResourceRequestPage.vue 的写权限",
+              "impact_radius": "资源申请新建/编辑弹窗呈现",
+              "rollback": "回退 T2 小步提交"
+            },
+            {
+              "id": "A5",
+              "target": "桌面、中等宽度和手机布局",
+              "action": "在 architecture.css 增加资源申请专用 grid、滚动边界和断点规则",
+              "authority": "任务 scope 对 architecture.css 的写权限",
+              "impact_radius": "architecture-resource-request-form-dialog 专用类",
+              "rollback": "回退 T2 小步提交"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5",
+                "S6"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "部署单元候选 API 失败或响应乱序",
+              "effect": "候选为空或旧物理子系统响应覆盖新候选",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "长物理子系统或部署单元名称、三个以上申请项和长错误文案",
+              "effect": "按钮、列表或字段撑宽弹窗与页面",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "保存慢响应和快速重复点击、切换或关闭",
+              "effect": "重复请求、集合在保存中变化或未保存输入丢失",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "本地服务、账号或虚构测试数据不可用",
+              "effect": "Network、权限和保存回显传感器无法采样",
+              "detectable": true,
+              "controllable": "partial"
+            },
+            {
+              "source": "全仓历史账本治理错误",
+              "effect": "governance 检查可能失败并掩盖当前前缀结果",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "loadResourceDeploymentUnitOptions 异步响应",
+              "consequence": "快速切换物理子系统时可能收到过期候选",
+              "sampling_rule": "使用递增序列隔离响应，并在最后一次选择稳定后检查候选"
+            },
+            {
+              "source": "create/update 保存响应",
+              "consequence": "保存期间的重复点击或关闭可能污染状态判断",
+              "sampling_rule": "以 formSubmitting 全周期禁用操作，并在响应完成后检查请求次数与关闭结果"
+            },
+            {
+              "source": "Vite 构建和真实浏览器全旅程",
+              "consequence": "仅静态编辑后立即结论会漏掉模板和运行偏差",
+              "sampling_rule": "T1、T2 各完成一次构建采样，集成后执行浏览器与四视口最终采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "申请项数组顺序就是提交顺序且不需要拖拽排序",
+              "evidence": "用户批准的设计和现有 form.items.map(requestItemPayload)",
+              "falsifier": "用户要求手工重排或接口返回独立排序字段"
+            },
+            {
+              "text": "服务端继续允许重复 deploymentUnitId",
+              "evidence": "REQ-20260903-059 明确要求保留且现有前端没有去重规则",
+              "falsifier": "真实 create/update API 对重复 deploymentUnitId 返回校验错误"
+            },
+            {
+              "text": "现有 API 和类型足以承载本次布局与临时状态",
+              "evidence": "clientId 可在 ResourceFormItem 局部扩展并由 requestItemPayload 显式剥离",
+              "falsifier": "TypeScript 构建或真实请求证明必须修改 api.ts/types.ts"
+            },
+            {
+              "text": "交付示范中心主从模式可作为本页面局部布局参考",
+              "evidence": "ProjectStageDetailDialog 已实现 250px 列表、详情区域和 760px 下局部横向滚动",
+              "falsifier": "四视口实测出现不可消除的页面级溢出或操作不可达"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用 A4/A5，S1/S4 验证"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用 A1/A4，S1/S2 验证"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用 A1 并保持请求映射，S2/S3 验证"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用 A2/A4，S2 验证"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用 A3，S2/S5 验证"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "限制 A1-A4 不改变接口，S1/S3/S6 验证"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用 A3/A4/A5，S2/S4/S5/S6 验证"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "已将批准计划与工程模型对账，T1/T2/T3 写入边界、依赖、采样、回滚和升级条件完整",
+        "recorded_at": "2026-09-03T02:30:37+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "modeling-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "建立稳定申请项身份、当前项选择、统一校验定位、物理子系统切换和脏表单保护",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "ResourceRequestPage.vue 当前以数组索引渲染和删除全部申请项",
+                "form.items.map(requestItemPayload) 是 items[] 顺序和字段分流的唯一前端生产路径",
+                "loadDeploymentUnits 已用 optionSequence 隔离候选响应但物理子系统 watch 会静默清空全部项",
+                "现有弹窗没有 before-close 未保存保护"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T1.json"
+              ],
+              "invariants": [
+                "ResourceRequestPayload 和 ResourceRequestItemPayload 字段不变",
+                "允许重复 deploymentUnitId 且 form.items 顺序即提交顺序",
+                "DB 与 APPLICATION/WEB 字段分流、计算和服务端最终校验不变",
+                "至少保留一个申请项，保存失败保留全部输入"
+              ],
+              "interface_contracts": [
+                "clientId 仅作为前端身份且不得进入 requestItemPayload",
+                "selectedItemId 始终指向现有申请项或在重建后指向唯一空项",
+                "itemCompletionState 与 validateForm 复用同一 itemValidationError",
+                "物理子系统确认后才清空并加载新候选，取消后恢复旧值和全部申请项"
+              ],
+              "non_goals": [
+                "不重组弹窗布局",
+                "不修改 CSS",
+                "不修改 api.ts、types.ts、后端或公共 UI"
+              ],
+              "action_bounds": [
+                "仅在 ResourceRequestPage.vue script 中增加局部类型、ref/computed 和函数，并为后续模板连接保留接口",
+                "不添加部署单元去重、排序、复制或自动保存",
+                "发现需要范围外契约时停止"
+              ],
+              "acceptance_checks": [
+                "npm --prefix web run build 通过",
+                "新建和编辑均生成稳定 clientId 并默认选中第一项",
+                "新增后选中新项，删除当前项后选中下一项或上一项且最后一项不可删",
+                "首个单项错误返回申请项序号并更新 selectedItemId",
+                "保存载荷仍由 form.items.map(requestItemPayload) 生成且 clientId 被剥离",
+                "确认/取消物理子系统切换与脏关闭路径可由浏览器验证"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "构建命令和退出码",
+                "源码扫描行号",
+                "范围内文件清单",
+                "发现的扰动和未决项"
+              ],
+              "rollback": "回退 T1 产品提交；无数据、接口或迁移补偿",
+              "stop_conditions": [
+                "需要修改 api.ts/types.ts 或后端",
+                "无法在前端临时类型中剥离 clientId",
+                "现有 API 明确禁止重复 deploymentUnitId"
+              ],
+              "escalation_conditions": [
+                "用户要求自动保存、排序、复制或删除最后一项",
+                "必须改公共表单组件",
+                "取消切换无法恢复原状态"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "实现基础信息与登记表外层两栏、申请项列表与当前项表单内层主从以及三档响应式布局",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "T1 提供 clientId、currentItem、申请项状态和有界操作",
+                "现有登记表模板完整包含部署单元、DB、非 DB、技术栈和附加需求字段",
+                "交付示范中心 ProjectStageDetailDialog 已验证列表/详情主从及 760px 下局部横向滚动模式"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/architecture.css",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T2.json"
+              ],
+              "invariants": [
+                "所有现有申请级和申请项字段仍可编辑",
+                "右侧只渲染 currentItem 但其它申请项状态不丢失",
+                "使用语义主题变量且圆角不超过现有 8px 规则",
+                "手机页面根无横向滚动，底部取消和保存可达"
+              ],
+              "interface_contracts": [
+                "申请项列表以 clientId 为 key 并用文字表达未选择、待完善、已填写",
+                "新增、删除、切换和基础选择在 formSubmitting 时禁用",
+                "附加需求 collapse 使用 clientId 作为稳定名称",
+                "移动端只有申请项列表容器允许有边界的局部横向滚动"
+              ],
+              "non_goals": [
+                "不改列表、详情、审批和下发弹窗",
+                "不新增公共组件",
+                "不改变 API 和业务规则"
+              ],
+              "action_bounds": [
+                "只重组资源申请 form dialog DOM 并添加 architecture-resource-request-* 专用类",
+                "只在 architecture.css 的资源申请区增加局部样式和断点",
+                "不通过固定大最小宽度、负字距或硬编码颜色解决布局"
+              ],
+              "acceptance_checks": [
+                "npm --prefix web run build 和 git diff --check 通过",
+                "桌面外层两栏且内层申请项列表/当前项两列清晰",
+                "中等宽度登记区上下排列，760px 以下外层单列和申请项列表局部横向滚动",
+                "当前项字段无遗漏，删除图标有 Tooltip 和 aria-label，状态不只依赖颜色",
+                "颜色、负字距和阻塞手机固定最小宽度扫描无本需求新增问题"
+              ],
+              "evidence_required": [
+                "Vue DOM diff",
+                "CSS diff",
+                "构建和静态扫描退出码",
+                "四视口待验收清单",
+                "范围内文件清单"
+              ],
+              "rollback": "回退 T2 产品提交；完全回退时再逆序回退 T1",
+              "stop_conditions": [
+                "必须修改公共 Dialog 或应用壳",
+                "字段遗漏或布局改变提交顺序",
+                "手机页面级横向溢出无法在局部样式解决"
+              ],
+              "escalation_conditions": [
+                "用户要求移动端保留双栏",
+                "要求把申请项列表升级为公共组件",
+                "需要新增视觉规范例外"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "完成请求兼容、权限、失败恢复、四视口明暗主题和范围收敛验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "产品修改严格限制在两个前端文件",
+                "真实行为需要现有本地 architecture API、虚构账号和数据",
+                "全仓治理可能包含与本需求无关的历史账本噪声"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T3.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T1.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T2.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T3.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout/convergence.json"
+              ],
+              "invariants": [
+                "不连接生产环境",
+                "只使用虚构或本地测试数据",
+                "观察发现偏差时不得直接修改范围外文件",
+                "未执行验证不得描述为通过"
+              ],
+              "interface_contracts": [
+                "Network 中 create/update 请求继续使用现有 ResourceRequestPayload",
+                "apply/manage 和无权限状态不新增或放松前端权限",
+                "浏览器 Console 无本需求新增错误，documentElement.scrollWidth 不超过视口宽度"
+              ],
+              "non_goals": [
+                "不自行合并、推送或发布",
+                "不修复全仓历史治理问题",
+                "不修改本需求之外页面"
+              ],
+              "action_bounds": [
+                "执行 build、governance、scope、diff 和真实浏览器传感器",
+                "仅在独立观察确认偏差后回到 correcting/executing 修改两个授权产品文件",
+                "证据中不记录真实个人信息、口令、Token 或完整敏感日志"
+              ],
+              "acceptance_checks": [
+                "新建、编辑、多申请项、重复部署单元、删除切换、错误定位和物理切换旅程通过",
+                "候选失败、保存失败、重复点击、脏关闭和无权限状态可恢复",
+                "1280x800、375x812、390x844、430x932 浅色和深色主题无页面级横向溢出",
+                "build、scope、diff 通过且治理结果区分本需求与历史噪声",
+                "R1-R7 均有可重复证据且无开放 P0/P1"
+              ],
+              "evidence_required": [
+                "命令和退出码",
+                "脱敏 Network 摘要",
+                "Console 摘要",
+                "视口主题和 scrollWidth",
+                "截图或像素检查",
+                "scope 文件清单",
+                "残余风险"
+              ],
+              "rollback": "回退证据提交；产品按 T2、T1 逆序回退，无数据库补偿",
+              "stop_conditions": [
+                "重复 deploymentUnitId 被服务端拒绝",
+                "权限边界放松",
+                "页面白屏或提交不可达",
+                "需要 scope 外修改",
+                "没有可用本地测试环境导致关键传感器不可采样"
+              ],
+              "escalation_conditions": [
+                "需要后端新状态或接口",
+                "需要公共 UI 改造",
+                "历史治理错误成为不可绕过门禁",
+                "无法获得虚构测试账号或数据"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "模板依赖 T1 的 currentItem、clientId、状态和操作函数"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "请求兼容和切换保护需要状态逻辑完成后验证"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "四视口和可访问性验收依赖完整布局"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "npm --prefix web run build",
+                "扫描 clientId 不进入 requestItemPayload"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "npm --prefix web run build",
+                "git diff --check",
+                "静态颜色和固定宽度扫描"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "scope 和 governance",
+                "Network 请求兼容",
+                "四视口明暗主题浏览器验收"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 完成采样",
+              "trigger": "T1 构建通过并提交执行报告",
+              "observer": "独立观察上下文",
+              "sensors": [
+                "S1",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "T2 集成采样",
+              "trigger": "T2 模板与样式构建通过",
+              "observer": "独立观察上下文",
+              "sensors": [
+                "S1",
+                "S2",
+                "S4",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R7"
+              ]
+            },
+            {
+              "label": "最终运行采样",
+              "trigger": "本地栈可达并完成全部用户旅程",
+              "observer": "独立观察上下文",
+              "sensors": [
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5",
+                "S6"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 已在 f620bb1 实现，构建与 diff 检查通过，输出可由静态和浏览器传感器测量",
+        "recorded_at": "2026-09-03T02:37:19+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue",
+              "purpose": "增加申请项稳定临时身份、当前项选择、统一单项校验、物理子系统切换保护、候选失败状态和未保存关闭保护"
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build（执行前基线）",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 构建通过；仅既有 Rollup PURE 注释和大 chunk 警告"
+            },
+            {
+              "command": "npm --prefix web run build（T1 实现后）",
+              "exit_code": 0,
+              "salient_output": "2513 modules transformed，built in 20.42s；ResourceRequestPage 产物生成成功"
+            },
+            {
+              "command": "git diff --check -- web/src/modules/architecture/ResourceRequestPage.vue",
+              "exit_code": 0,
+              "salient_output": "无空白错误；仅 Git 提示工作副本后续可能转换为 CRLF"
+            },
+            {
+              "command": "rg -n clientId|selectedItemId|itemValidationError|handlePhysicalSubsystemChange|handleFormBeforeClose|form.items.map(requestItemPayload) ResourceRequestPage.vue",
+              "exit_code": 0,
+              "salient_output": "临时 ID、首错定位、物理切换、关闭保护和既有 payload 映射均可定位；旧 physicalSubsystem watcher 无匹配"
+            },
+            {
+              "command": "git commit -m feat(architecture-web): add resource request item state",
+              "exit_code": 0,
+              "salient_output": "提交 f620bb1，仅 1 个产品文件，225 insertions、61 deletions"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "申请项身份和选择状态静态检查",
+              "result": "pass",
+              "evidence": "blankItem 和编辑映射均生成 clientId；新增后选中新项；删除按 clientId 选择下一项或上一项",
+              "limitations": [
+                "尚未在真实浏览器点击验证"
+              ]
+            },
+            {
+              "check": "单项校验与错误定位静态检查",
+              "result": "pass",
+              "evidence": "itemCompletionState 与 validateForm 共同调用 itemValidationError，validateForm 设置首错 selectedItemId",
+              "limitations": [
+                "状态文字将在 T2 列表模板接入后运行验证"
+              ]
+            },
+            {
+              "check": "物理子系统与候选保护静态检查",
+              "result": "pass",
+              "evidence": "移除静默清空 watcher；确认后重建单空项，取消恢复 acceptedPhysicalSubsystemId；空候选不再触发 syncDeploymentUnit 清空编辑值",
+              "limitations": [
+                "确认框、候选失败和乱序响应待浏览器采样"
+              ]
+            },
+            {
+              "check": "未保存与重复提交保护",
+              "result": "pass",
+              "evidence": "formSnapshot 剥离 clientId；Dialog before-close 和底部取消共用放弃确认；formSubmitting 防重复并禁用表单",
+              "limitations": [
+                "遮罩、ESC、底部取消和保存成功关闭待浏览器采样"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "ResourceFormItem 增加仅前端 clientId，currentItem 通过 selectedItemId 查找",
+            "新增、删除、编辑回显和附加需求展开均改用稳定身份",
+            "抽取 itemValidationError 并让列表完成状态和保存首错定位复用",
+            "物理子系统切换由显式确认处理，候选加载增加 loading/error/retry 状态并保护已有输入",
+            "增加初始快照、保存中保护和未保存关闭确认",
+            "保持 form.items.map(requestItemPayload) 及 DB/非 DB 映射不变"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "API、DTO 和请求字段不变",
+              "result": "pass",
+              "evidence": "未修改 api.ts/types.ts；payload 仍显式构造 ResourceRequestPayload，clientId 未被展开或返回"
+            },
+            {
+              "invariant": "重复 deploymentUnitId 合法且顺序保持",
+              "result": "pass",
+              "evidence": "未增加去重；提交仍按 form.items.map 顺序生成"
+            },
+            {
+              "invariant": "至少一个申请项且保存失败保留输入",
+              "result": "pass",
+              "evidence": "删除在 length<=1 时返回；保存 catch 只更新 formError"
+            },
+            {
+              "invariant": "修改范围仅限 T1 授权面",
+              "result": "pass",
+              "evidence": "产品提交 f620bb1 仅包含 ResourceRequestPage.vue"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "隔离工作树 Git 元数据位于主检出 .git/worktrees，沙箱内首次提交无法创建 index.lock",
+              "impact": "经用户批准的受控提权后完成提交，产品内容未改变"
+            },
+            {
+              "event": "初次基线 rg 正则引号转义错误",
+              "impact": "不影响代码或构建，后续使用分隔扫描确认事实"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "T1 的 currentItem、状态标签和候选重试入口需由 T2 模板接入",
+            "真实 API 重复 deploymentUnitId、确认/取消和失败恢复由 T3 浏览器验收"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 产品提交 694fc19；构建、diff、静态扫描和四视口运行采样通过",
+        "recorded_at": "2026-09-03T03:09:36+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue",
+              "purpose": "将资源申请弹窗重组为基础信息/部署单元登记表外层两栏，以及申请项列表/当前项表单内层主从布局"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "增加资源申请专用桌面、中等宽度和手机响应式布局、滚动边界与明暗主题语义样式"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 构建通过，2513 modules transformed，built in 21.81s；仅既有 Rollup PURE 注释和大 chunk 警告"
+            },
+            {
+              "command": "git diff --check -- web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/architecture.css",
+              "exit_code": 0,
+              "salient_output": "无空白错误；仅 Git 提示工作副本后续可能转换为 CRLF"
+            },
+            {
+              "command": "rg -n #[0-9a-fA-F]{3,8}|letter-spacing:-|min-width:500px+|architecture-resource-request",
+              "exit_code": 0,
+              "salient_output": "本需求新增区域使用语义主题变量；未发现新增负字距、硬编码颜色或阻塞手机的大固定最小宽度"
+            },
+            {
+              "command": "真实浏览器 1280x800、375x812、390x844、430x932 浅色和深色验收",
+              "exit_code": 0,
+              "salient_output": "四种视口 documentElement.scrollWidth 均等于 innerWidth；手机仅申请项列表 overflow-x:auto，三项时局部 scrollWidth=696"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "桌面两级主从布局",
+              "result": "pass",
+              "evidence": "1280x800 下弹窗宽 1248，无弹窗或页面级横向溢出；外层基础信息/登记表和内层申请项/当前项均为两列",
+              "limitations": []
+            },
+            {
+              "check": "申请项列表与当前项表单",
+              "result": "pass",
+              "evidence": "连续新增三项后右侧仅渲染当前项；切换后 CPU/内存 2/4、3/6 和 DB 存储 20 均保持；状态文字显示未选择、待完善、已填写",
+              "limitations": []
+            },
+            {
+              "check": "删除与错误定位",
+              "result": "pass",
+              "evidence": "删除中间、末尾和首项后选中项按相邻规则迁移；仅余一项时删除禁用；保存错误自动选中首个未选择项",
+              "limitations": []
+            },
+            {
+              "check": "移动端和主题",
+              "result": "pass",
+              "evidence": "375、390、430 三个手机视口在浅色和深色均单列展示，底部操作可达，申请项列表在多项时局部横向滚动",
+              "limitations": [
+                "未执行完整辅助技术审计"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "弹窗外层拆分为基础信息与部署单元登记表，基础信息保留四个必选字段、申请原因和物理子系统摘要",
+            "登记表左侧显示可新增、删除、切换的申请项列表，右侧仅绑定 currentItem 并保留全部原字段",
+            "申请项以文字和语义颜色展示三种完成状态，删除按钮增加 Tooltip 与 aria-label",
+            "增加 1180、900、760、480 断点，手机端申请项列表限定局部横向滚动"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "所有现有申请级和申请项字段仍可编辑",
+              "result": "pass",
+              "evidence": "模板保留部署单元、DB、容量部署、技术栈、附加需求和备注字段；构建及浏览器输入通过"
+            },
+            {
+              "invariant": "右侧只渲染 currentItem 且其它申请项状态不丢失",
+              "result": "pass",
+              "evidence": "三项切换后独立输入值保持，列表状态同步更新"
+            },
+            {
+              "invariant": "主题与圆角符合现有设计约束",
+              "result": "pass",
+              "evidence": "新增样式使用 var()/color-mix，圆角为 4px 或 6px，明暗主题截图可读"
+            },
+            {
+              "invariant": "手机无页面级横向滚动且操作可达",
+              "result": "pass",
+              "evidence": "375/390/430 的 documentElement.scrollWidth 分别等于视口宽度，弹窗 footer 固定可见"
+            },
+            {
+              "invariant": "修改范围符合 T2 写入边界",
+              "result": "pass",
+              "evidence": "产品 diff 仅 ResourceRequestPage.vue 与 architecture.css"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "浏览器数值输入 fill 对 Element Plus 数据库 InputNumber 未稳定触发最终值",
+              "impact": "改用步进按钮完成真实用户路径，最终请求中 databaseStorageGb=20；产品实现无需修改"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "候选加载失败、保存失败、无权限和慢响应的补充运行采样由 T3 完成",
+            "最终 governance、scope 和收敛门禁由 T3 完成"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 最终构建、请求、编辑回显、失败恢复、权限、四视口主题、scope 和治理结果已记录",
+        "recorded_at": "2026-09-03T03:22:45+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "本地 Vite 与虚构 architecture Mock 运行环境",
+              "purpose": "执行新建、编辑、重复部署单元、失败恢复、权限和响应式验收，不改变产品代码或生产数据"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-development-entry.mjs --require-plugin",
+              "exit_code": 0,
+              "salient_output": "Development entry check passed."
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 构建通过，2513 modules transformed，built in 22.90s；仅既有 PURE 和大 chunk 警告"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "模块治理、仓库 Skill 和开发入口通过；AI control layout 因 REQ-20260813/17/18/19/27 等既有其他需求账本 topic/JSON/缺证据问题失败，本需求前缀未出现在错误清单"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "将本需求 requirement.md 从 CRLF 机械规范为 LF 以规避脚本将 ready\\r 误判后，scope 检查通过，8 个变更文件均在授权路径"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误，仅 CRLF 转换提示"
+            },
+            {
+              "command": "真实浏览器新建/编辑/失败/权限/四视口明暗主题旅程",
+              "exit_code": 0,
+              "salient_output": "新建 POST、编辑 PUT、重复 deploymentUnitId、切换保护、候选/保存失败恢复、只读/无权限显隐和滚动边界均通过；Console 无 error"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "新建与编辑请求兼容",
+              "result": "pass",
+              "evidence": "POST items 顺序为 7001/7001/7002，规格 2/4、3/6、DB 20；PUT 回显三项并默认选中第一项，修改后顺序不变且 clientId 不在请求中",
+              "limitations": [
+                "使用本地虚构 Mock，未连接生产或真实后端"
+              ]
+            },
+            {
+              "check": "切换、错误与关闭保护",
+              "result": "pass",
+              "evidence": "物理子系统切换取消保留旧项，确认后重建一个空项；保存首错定位；脏关闭选择继续编辑后内容保持",
+              "limitations": []
+            },
+            {
+              "check": "失败恢复与重复提交",
+              "result": "pass",
+              "evidence": "候选 500 显示重新加载且保留原因，恢复后候选重新出现；保存 500 后表单和输入保留、按钮恢复可用、请求未计入成功数组，服务恢复后一次重试成功",
+              "limitations": [
+                "未量化极端网络延迟，仅验证失败后状态恢复和保存中禁用契约"
+              ]
+            },
+            {
+              "check": "权限显隐",
+              "result": "pass",
+              "evidence": "view-only 权限隐藏新建按钮并显示仅本人范围；无 view/apply/manage 权限显示明确权限提示且无新建入口",
+              "limitations": [
+                "后端 RBAC 由既有服务负责，本任务未修改后端"
+              ]
+            },
+            {
+              "check": "四视口与主题",
+              "result": "pass",
+              "evidence": "1280x800、375x812、390x844、430x932 的浅色和深色 documentElement.scrollWidth 均不超过 innerWidth；手机三申请项仅列表局部横向滚动，footer 可达",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "T3 未修改产品代码，仅补充运行、权限、请求和仓库门禁证据",
+            "最终请求证明确保重复部署单元、items[] 顺序和 DB/非 DB 字段分流兼容",
+            "最终浏览器覆盖新建、编辑、失败恢复、权限和四视口明暗主题"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "不连接生产且只使用虚构测试数据",
+              "result": "pass",
+              "evidence": "浏览器仅访问 127.0.0.1:5174，API 由 127.0.0.1:8080 本地 Mock 提供"
+            },
+            {
+              "invariant": "API、DTO、后端、权限和工作流不变",
+              "result": "pass",
+              "evidence": "两个产品提交仅修改 ResourceRequestPage.vue 与 architecture.css；请求仍为既有 POST/PUT ResourceRequestPayload"
+            },
+            {
+              "invariant": "重复 deploymentUnitId 与 items[] 顺序保持",
+              "result": "pass",
+              "evidence": "POST 和 PUT 均捕获 7001、7001、7002，且两条 7001 规格独立"
+            },
+            {
+              "invariant": "修改范围受 codex-task-scope 限制",
+              "result": "pass",
+              "evidence": "scope 检查通过；产品文件仅两个授权路径，其余均为本需求文档和前缀账本"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "全仓治理被其他历史需求账本的 topic mismatch、无效 JSON 和缺少收敛证据阻塞",
+              "impact": "本需求前缀未被报告；按任务边界不修复其他需求，仅如实保留仓库级历史风险"
+            },
+            {
+              "event": "scope 脚本在 Windows CRLF 下把 frontmatter status 读取为 ready\\r",
+              "impact": "本需求 requirement.md 仅机械改为 LF，无语义 diff，重跑 scope 通过"
+            },
+            {
+              "event": "运行构建期间 Vite 开发连接曾短暂重连",
+              "impact": "最终页面重新连接成功，Console 无 error，用户旅程复测通过"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "全仓 check-all-governance 仍被范围外历史账本问题阻塞",
+            "真实后端和生产权限未连接，接口兼容证据来自现有类型、构建与本地虚构 Mock"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1 提交态构建、diff 和请求生产路径复测未发现阻塞偏差，运行覆盖缺口已留待集成采样",
+        "recorded_at": "2026-09-03T02:39:31+00:00",
+        "data": {
+          "sample_label": "T1 完成采样",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 提交态 Vue/TypeScript 构建与 f620bb1 diff",
+              "result": "pass",
+              "raw_evidence": "npm build 退出 0；提交仅修改 ResourceRequestPage.vue；clientId 用于 key、新增、删除和当前项定位",
+              "limitation": [
+                "主从列表尚未由 T2 模板呈现，切换旅程待集成采样"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1/S6 请求生产路径和范围扫描",
+              "result": "pass",
+              "raw_evidence": "未出现部署单元去重逻辑；form.items.map(requestItemPayload) 仍存在两处；requestItemPayload 函数体不读取 clientId",
+              "limitation": [
+                "重复 deploymentUnitId 的真实 API 接受和编辑回显待 T3 Network 传感器"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 编译器与提交 diff",
+              "result": "pass",
+              "raw_evidence": "itemCompletionState 和 validateForm 共同调用 itemValidationError；首错时 selectedItemId 指向 item.clientId；构建退出 0",
+              "limitation": [
+                "状态文字和自动切换的可见行为待 T2/T3 浏览器采样"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1/S6 物理子系统状态转换扫描",
+              "result": "pass",
+              "raw_evidence": "旧 watch(() => form.physicalSubsystemId) 已不存在；handlePhysicalSubsystemChange 仅在确认后调用 resetItemsForPhysicalSubsystem，取消恢复 acceptedPhysicalSubsystemId",
+              "limitation": [
+                "MessageBox 确认/取消和候选失败需真实浏览器采样"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1 构建和 S6 提交范围",
+              "result": "pass",
+              "raw_evidence": "vue-tsc/Vite 构建退出 0；f620bb1 只有 ResourceRequestPage.vue；api.ts/types.ts/后端未修改；DB/非 DB requestItemPayload 分支保持",
+              "limitation": [
+                "真实 HTTP 请求字段和值待 T3 Network 检查"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1 提交态构建和关闭/提交状态 diff",
+              "result": "pass",
+              "raw_evidence": "formSubmitting 防重复并禁用 el-form；before-close 和底部取消均比较初始快照；候选空数组 watch 不再清空申请项；构建退出 0",
+              "limitation": [
+                "失败恢复、ESC/遮罩关闭和响应式布局待 T2/T3 运行采样"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "观察阶段两个辅助源码扫描命令因 PowerShell/Node 引号转义失败；改用 rg 固定模式后获得有效结果，分类为传感器命令故障而非产品偏差",
+            "本次观察由同一主任务上下文执行，使用提交态构建与 diff 复测实现结果，不具备人员或独立 Agent 隔离；最终浏览器验收仍需明确保留此限制"
+          ],
+          "coverage_gaps": [
+            "申请项列表和 currentItem 尚未完成 T2 模板接入，不能在本采样点击切换",
+            "重复部署单元真实保存、物理切换确认/取消、候选失败和脏关闭待集成浏览器采样",
+            "四视口明暗主题不属于 T1 完成采样范围"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 提交态 diff、真实浏览器主从旅程及四视口明暗主题采样完成，无有效负反馈",
+        "recorded_at": "2026-09-03T03:11:41+00:00",
+        "data": {
+          "sample_label": "T2 集成采样",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 提交态构建/diff 与 S4 1280x800 浏览器布局引擎",
+              "result": "pass",
+              "raw_evidence": "694fc19 仅修改两个授权产品文件；npm build 退出 0；1280x800 下弹窗宽 1248、documentElement.scrollWidth=1280，基础信息与登记表左右分栏",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 真实浏览器申请项增删切换旅程",
+              "result": "pass",
+              "raw_evidence": "连续新增三项后左侧列出申请项，右侧只渲染 currentItem；切换后两条应用规格 2/4、3/6 和 DB 存储 20 保持；删除首/中/末项后选中相邻项，最后一项禁删",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S2 DOM 状态文字和保存校验旅程",
+              "result": "pass",
+              "raw_evidence": "列表与编辑区均显示未选择、待完善、已填写文字；存在完整项和空项时保存提示“申请项 2：请选择部署单元”并自动选中申请项 2",
+              "limitation": [
+                "未执行完整屏幕阅读器审计"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S4 四视口明暗主题截图、计算尺寸与滚动边界",
+              "result": "pass",
+              "raw_evidence": "1280x800、375x812、390x844、430x932 在 light/dark 下 documentElement.scrollWidth 均等于 innerWidth；手机弹窗宽分别约 351/366/406，三申请项时仅列表局部 overflow-x:auto 且 scrollWidth=696",
+              "limitation": [
+                "未覆盖未列出的设备字体和浏览器内核差异"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "首次源码 rg 组合模式在 PowerShell 双引号中被解析为语法错误；改用单引号后获得有效行号，分类为传感器命令故障而非产品偏差",
+            "本次观察由同一主任务上下文执行，使用提交态 diff、构建结果和真实浏览器复测，不具备人员或独立 Agent 隔离"
+          ],
+          "coverage_gaps": [
+            "候选失败、保存失败、无权限和慢响应不属于 T2 布局采样的完整覆盖，由 T3 最终运行采样继续检查",
+            "编辑既有申请的服务端回显依赖 Mock/后端返回能力，由 T3 汇总残余风险"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "最终运行采样覆盖 R1-R7；构建、POST/PUT、失败恢复、权限、四视口主题和 scope 无本需求有效负反馈",
+        "recorded_at": "2026-09-03T03:24:34+00:00",
+        "data": {
+          "sample_label": "最终运行采样",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 最终构建与 S4 1280x800 明暗主题布局尺寸",
+              "result": "pass",
+              "raw_evidence": "最终 npm build 退出 0；浅色和深色弹窗宽 1248、页面 scrollWidth=1280，基础信息与部署单元登记表保持左右两栏",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 新建与编辑真实浏览器主从旅程",
+              "result": "pass",
+              "raw_evidence": "新建和编辑均显示申请项列表/当前项表单；编辑回显 3 项并默认选中第一项，切换后各项值独立保持，删除首/中/末项选择相邻项",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 本地 HTTP POST/PUT 请求捕获",
+              "result": "pass",
+              "raw_evidence": "POST items 为 7001(2/4)、7001(3/6)、7002(DB 20)；PUT 修改第一项后为 7001(5/4)、7001(3/6)、7002(DB 20)，重复 ID、独立规格和顺序均保持",
+              "limitation": [
+                "HTTP 端点为本地虚构 Mock，不代表生产环境运行验证"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S2 状态文字、删除迁移和首错定位",
+              "result": "pass",
+              "raw_evidence": "未选择、待完善、已填写三状态均可见；保存空项显示申请项序号并自动切换首错；删除后相邻选择和最后一项禁删通过",
+              "limitation": [
+                "未执行完整屏幕阅读器审计"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2 物理子系统切换确认/取消和候选失败恢复",
+              "result": "pass",
+              "raw_evidence": "取消切换恢复统一渠道及原申请项，确认切换到支付核心后只保留一个空项；候选 500 显示重试并保留原因，服务恢复后重新加载成功",
+              "limitation": [
+                "未模拟多个并发候选响应的精确乱序时序，静态 optionSequence 保护由构建和源码检查覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1 类型构建、S3 POST/PUT 载荷和 S6 scope/diff",
+              "result": "pass",
+              "raw_evidence": "clientId 未出现在请求；DB/非 DB 字段按原规则分流；build、scope、diff 通过；产品修改仅两个授权前端文件",
+              "limitation": [
+                "服务端最终校验未在真实后端执行，本任务未修改后端"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S2/S4/S5 四视口主题、失败、权限和 Console",
+              "result": "pass",
+              "raw_evidence": "1280x800、375x812、390x844、430x932 在 light/dark 下无页面级横向溢出；手机多项仅列表局部滚动；保存失败保留输入并可重试；view-only 隐藏新建，无权限显示提示；Console 无 error",
+              "limitation": [
+                "开发构建期间出现一次 Vite 连接重连日志，最终重连和复测通过"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "check-all-governance 退出 1 的错误全部来自其他历史需求账本，本需求前缀未被报告，分类为范围外基线故障",
+            "check-codex-scope 初次因 Windows CRLF 将 status 误读为 ready\\r；机械规范本需求 requirement.md 为 LF 后通过，分类为传感器兼容故障",
+            "本次观察由同一主任务上下文执行，虽然使用提交态构建、HTTP 捕获、权限角色和浏览器布局等异质传感器，但不具备人员或独立 Agent 隔离"
+          ],
+          "coverage_gaps": [
+            "未连接真实后端或生产环境，服务端重复 deploymentUnitId 接受性依据现有契约和本地 Mock；上线仍需按需求 release_verification 复核",
+            "未执行完整辅助技术和多浏览器内核审计",
+            "全仓治理仍存在范围外历史账本问题"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
     "correcting": [],
-    "verifying": []
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "最终审计追踪 R1-R7、T1-T3、S-0001 至 S-0003、范围、不变量、扰动和残余风险，结论 pass",
+        "recorded_at": "2026-09-03T03:26:45+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "694fc19 重组弹窗 DOM 与专用 CSS",
+                "最终 build 退出 0",
+                "1280x800 明暗主题外层两栏且页面 scrollWidth=innerWidth"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "f620bb1 建立稳定 clientId/currentItem",
+                "新建与编辑均为申请项列表/当前项表单",
+                "增删切换和输入保持浏览器旅程通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "POST 与 PUT 均捕获 deploymentUnitId 7001、7001、7002",
+                "两条 7001 规格分别保持 2/4 与 3/6，编辑后第一条独立变为 5/4"
+              ],
+              "limitations": [
+                "接口运行证据来自本地虚构 Mock，真实后端需在上线验证复核"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "三状态复用 itemValidationError",
+                "状态文字、首错自动选择、删除相邻迁移和最后一项禁删均由浏览器验证"
+              ],
+              "limitations": [
+                "未执行完整屏幕阅读器审计"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "物理子系统切换取消恢复旧选择和全部申请项",
+                "确认后重建一个空项并刷新候选",
+                "候选失败保留输入且可重试"
+              ],
+              "limitations": [
+                "精确乱序响应以 optionSequence 静态保护和构建证据覆盖"
+              ]
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "最终 vue-tsc/Vite 构建通过",
+                "POST/PUT 中无 clientId，items[] 顺序和 DB/非 DB 分流不变",
+                "api.ts、types.ts、后端和数据库无修改"
+              ],
+              "limitations": [
+                "服务端最终校验未在真实后端运行"
+              ]
+            },
+            {
+              "id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "375x812、390x844、430x932 和 1280x800 明暗主题无页面级横向溢出",
+                "候选/保存失败、脏关闭、只读和无权限状态可恢复",
+                "最终 Console 无 error"
+              ],
+              "limitations": [
+                "未覆盖所有浏览器内核和设备字体"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "提交 f620bb1",
+                "观察 S-0001 无误差",
+                "最终运行采样再次覆盖状态、切换和请求映射"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "提交 694fc19",
+                "观察 S-0002 无误差",
+                "最终四视口明暗主题和主从旅程通过"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "最终 build、HTTP、失败、权限、scope、diff 与浏览器采样 S-0003 无误差"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "开发入口",
+              "result": "pass",
+              "evidence": "node scripts/check-development-entry.mjs --require-plugin 退出 0"
+            },
+            {
+              "check": "前端类型与生产构建",
+              "result": "pass",
+              "evidence": "npm --prefix web run build 退出 0，2513 modules transformed"
+            },
+            {
+              "check": "任务完整范围",
+              "result": "pass",
+              "evidence": "scope 以 HEAD~2..HEAD 加 working-tree 检查 12 个变更文件通过"
+            },
+            {
+              "check": "差异空白",
+              "result": "pass",
+              "evidence": "git diff --check HEAD~2 退出 0"
+            },
+            {
+              "check": "全仓治理",
+              "result": "baseline-failure",
+              "evidence": "模块治理、Skill、开发入口通过；AI control layout 仅报告其他历史需求账本问题，本需求前缀无错误"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "产品修改仅两个授权前端文件",
+              "result": "pass",
+              "evidence": "f620bb1 仅 ResourceRequestPage.vue；694fc19 仅 ResourceRequestPage.vue 和 architecture.css"
+            },
+            {
+              "invariant": "API、DTO、数据库、后端、权限、审计和工作流不变",
+              "result": "pass",
+              "evidence": "范围审计无相关文件，现有 POST/PUT 契约保持"
+            },
+            {
+              "invariant": "重复 deploymentUnitId 合法且 items[] 顺序保持",
+              "result": "pass",
+              "evidence": "新建与编辑捕获顺序均为 7001、7001、7002"
+            },
+            {
+              "invariant": "用户已有和其他需求改动未覆盖",
+              "result": "pass",
+              "evidence": "隔离工作树开发，未修改主工作区 T11 或其他需求账本"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "部署单元候选 500",
+              "result": "pass",
+              "evidence": "错误入口可见，原因和申请项保留，恢复服务后重试加载成功"
+            },
+            {
+              "disturbance": "保存 POST 500",
+              "result": "pass",
+              "evidence": "表单和输入保留，保存按钮恢复可用，服务恢复后单次重试成功"
+            },
+            {
+              "disturbance": "权限降低",
+              "result": "pass",
+              "evidence": "view-only 隐藏新建；无 view/apply/manage 显示权限提示"
+            },
+            {
+              "disturbance": "Windows CRLF scope 传感器",
+              "result": "pass",
+              "evidence": "仅机械规范本需求 requirement.md 为 LF 后，完整范围检查通过"
+            }
+          ],
+          "residual_risks": [
+            "全仓 check-all-governance 仍被范围外历史需求账本问题阻塞，需由对应 Owner 单独治理",
+            "真实后端、生产 RBAC 和服务端重复 deploymentUnitId 校验未连接；上线前需按本需求 release_verification 使用脱敏测试环境复核",
+            "本次观察与收敛由同一主任务上下文执行，不具备人员或独立 Agent 隔离"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R7 均由 verified 任务和有效构建、HTTP、浏览器及范围传感器覆盖；三次采样 P0-P3 全为 0，无反馈，范围和不变量通过，剩余风险均为已披露的非本需求阻塞项"
+        }
+      }
+    ]
   },
   "objective": "在不改变资源申请接口和业务规则的前提下，将多明细纵向表单改为可扫描、可切换、可定位错误的两级主从布局。",
   "requirements": [
@@ -1337,14 +3252,373 @@
     }
   },
   "control_model": {
-    "plant": "",
-    "sensors": [],
-    "actuators": [],
-    "disturbances": [],
-    "assumptions": [],
-    "measurements": []
+    "plant": "{\"environment\": [\"business/architecture 既有资源申请和选项 API\", \"Element Plus Dialog、Select、Form、Collapse 与 MessageBox 运行行为\", \"公共语义主题变量和应用壳滚动边界\", \"本地测试账号、虚构资源申请数据和浏览器视口\", \"既有全仓治理历史噪声\"], \"inside\": [\"ResourceRequestPage.vue 中资源申请新建/编辑弹窗及其响应式 DOM\", \"ResourceForm 与 form.items 的前端临时状态、当前申请项选择和校验\", \"物理子系统到部署单元候选的级联加载与失败保留行为\", \"requestItemPayload 与 ResourceRequestPayload 的现有提交映射\", \"architecture.css 中资源申请登记表的局部布局和移动端断点\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"真实点击顺序\", \"API 运行响应\", \"视觉溢出\"], \"id\": \"S1\", \"independence\": \"编译器和构建工具直接检查类型、模板与产物生成\", \"method\": \"npm --prefix web run build 与 git diff --check\", \"target\": \"Vue/TypeScript 模板、状态和请求映射的静态可构建性\"}",
+      "{\"blind_spots\": [\"未覆盖的极端 API 延迟\", \"服务端内部校验实现\"], \"id\": \"S2\", \"independence\": \"从用户可见运行行为采样，不依赖实现函数的自述\", \"method\": \"真实浏览器按新建/编辑旅程操作并观察 DOM、当前项和持续错误信息\", \"target\": \"申请项增删切换、状态、错误定位、物理切换和脏关闭行为\"}",
+      "{\"blind_spots\": [\"未启动服务时不可采样\", \"生产环境配置差异\"], \"id\": \"S3\", \"independence\": \"直接观察 HTTP 边界和服务端回显\", \"method\": \"浏览器 Network 检查 create/update 请求并重新编辑回显\", \"target\": \"重复部署单元、多规格、items[] 顺序和字段兼容\"}",
+      "{\"blind_spots\": [\"未列出的设备字体差异\", \"辅助技术完整审计\"], \"id\": \"S4\", \"independence\": \"浏览器布局引擎的计算尺寸与可见像素证据\", \"method\": \"1280x800、375x812、390x844、430x932 明暗主题截图及 documentElement.scrollWidth 检查\", \"target\": \"桌面与移动布局、主题、页面级横向溢出和底部操作可达性\"}",
+      "{\"blind_spots\": [\"不可控的后端故障类型\", \"生产网络抖动\"], \"id\": \"S5\", \"independence\": \"从异常运行路径观察可恢复性和重复请求\", \"method\": \"真实浏览器模拟失败/慢响应并检查 Console、请求次数和输入保留\", \"target\": \"请求失败、候选失败、无权限和提交中状态\"}",
+      "{\"blind_spots\": [\"仓库既有历史治理错误会产生噪声\"], \"id\": \"S6\", \"independence\": \"仓库脚本按任务范围和治理结构独立检查\", \"method\": \"check-codex-scope、check-all-governance、git status 和 git diff 文件清单\", \"target\": \"修改范围、禁止路径和治理一致性\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"在 ResourceRequestPage.vue 内增加 clientId、selectedItemId/currentItem 和有界集合操作\", \"authority\": \"任务 scope 对 ResourceRequestPage.vue 的写权限\", \"id\": \"A1\", \"impact_radius\": \"仅资源申请新建/编辑弹窗前端状态\", \"rollback\": \"回退 T1 小步提交\", \"target\": \"申请项身份、当前项选择、增删和编辑回显\"}",
+      "{\"action\": \"抽取无副作用单项校验并由状态与保存共同复用\", \"authority\": \"任务 scope 对 ResourceRequestPage.vue 的写权限\", \"id\": \"A2\", \"impact_radius\": \"资源申请弹窗前端校验和错误呈现，不替代服务端校验\", \"rollback\": \"回退 T1 小步提交\", \"target\": \"申请项完成状态和首错定位\"}",
+      "{\"action\": \"增加已接受值、确认恢复、候选响应隔离和 before-close 快照比较\", \"authority\": \"任务 scope 对 ResourceRequestPage.vue 的写权限\", \"id\": \"A3\", \"impact_radius\": \"资源申请弹窗切换与关闭路径\", \"rollback\": \"回退 T1 小步提交\", \"target\": \"物理子系统切换和未保存内容保护\"}",
+      "{\"action\": \"重组现有弹窗模板，只渲染 currentItem，复用 Element Plus 和语义化按钮\", \"authority\": \"任务 scope 对 ResourceRequestPage.vue 的写权限\", \"id\": \"A4\", \"impact_radius\": \"资源申请新建/编辑弹窗呈现\", \"rollback\": \"回退 T2 小步提交\", \"target\": \"两级主从 DOM 和可访问操作\"}",
+      "{\"action\": \"在 architecture.css 增加资源申请专用 grid、滚动边界和断点规则\", \"authority\": \"任务 scope 对 architecture.css 的写权限\", \"id\": \"A5\", \"impact_radius\": \"architecture-resource-request-form-dialog 专用类\", \"rollback\": \"回退 T2 小步提交\", \"target\": \"桌面、中等宽度和手机布局\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"候选为空或旧物理子系统响应覆盖新候选\", \"source\": \"部署单元候选 API 失败或响应乱序\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"按钮、列表或字段撑宽弹窗与页面\", \"source\": \"长物理子系统或部署单元名称、三个以上申请项和长错误文案\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"重复请求、集合在保存中变化或未保存输入丢失\", \"source\": \"保存慢响应和快速重复点击、切换或关闭\"}",
+      "{\"controllable\": \"partial\", \"detectable\": true, \"effect\": \"Network、权限和保存回显传感器无法采样\", \"source\": \"本地服务、账号或虚构测试数据不可用\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"governance 检查可能失败并掩盖当前前缀结果\", \"source\": \"全仓历史账本治理错误\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"用户批准的设计和现有 form.items.map(requestItemPayload)\", \"falsifier\": \"用户要求手工重排或接口返回独立排序字段\", \"text\": \"申请项数组顺序就是提交顺序且不需要拖拽排序\"}",
+      "{\"evidence\": \"REQ-20260903-059 明确要求保留且现有前端没有去重规则\", \"falsifier\": \"真实 create/update API 对重复 deploymentUnitId 返回校验错误\", \"text\": \"服务端继续允许重复 deploymentUnitId\"}",
+      "{\"evidence\": \"clientId 可在 ResourceFormItem 局部扩展并由 requestItemPayload 显式剥离\", \"falsifier\": \"TypeScript 构建或真实请求证明必须修改 api.ts/types.ts\", \"text\": \"现有 API 和类型足以承载本次布局与临时状态\"}",
+      "{\"evidence\": \"ProjectStageDetailDialog 已实现 250px 列表、详情区域和 760px 下局部横向滚动\", \"falsifier\": \"四视口实测出现不可消除的页面级溢出或操作不可达\", \"text\": \"交付示范中心主从模式可作为本页面局部布局参考\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S1\", \"S3\", \"S6\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S2\", \"S4\", \"S5\", \"S6\"]"
+      }
+    ]
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立稳定申请项身份、当前项选择、统一校验定位、物理子系统切换和脏表单保护",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ResourceRequestPage.vue 当前以数组索引渲染和删除全部申请项",
+        "form.items.map(requestItemPayload) 是 items[] 顺序和字段分流的唯一前端生产路径",
+        "loadDeploymentUnits 已用 optionSequence 隔离候选响应但物理子系统 watch 会静默清空全部项",
+        "现有弹窗没有 before-close 未保存保护"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T1.json"
+      ],
+      "invariants": [
+        "ResourceRequestPayload 和 ResourceRequestItemPayload 字段不变",
+        "允许重复 deploymentUnitId 且 form.items 顺序即提交顺序",
+        "DB 与 APPLICATION/WEB 字段分流、计算和服务端最终校验不变",
+        "至少保留一个申请项，保存失败保留全部输入"
+      ],
+      "interface_contracts": [
+        "clientId 仅作为前端身份且不得进入 requestItemPayload",
+        "selectedItemId 始终指向现有申请项或在重建后指向唯一空项",
+        "itemCompletionState 与 validateForm 复用同一 itemValidationError",
+        "物理子系统确认后才清空并加载新候选，取消后恢复旧值和全部申请项"
+      ],
+      "non_goals": [
+        "不重组弹窗布局",
+        "不修改 CSS",
+        "不修改 api.ts、types.ts、后端或公共 UI"
+      ],
+      "action_bounds": [
+        "仅在 ResourceRequestPage.vue script 中增加局部类型、ref/computed 和函数，并为后续模板连接保留接口",
+        "不添加部署单元去重、排序、复制或自动保存",
+        "发现需要范围外契约时停止"
+      ],
+      "acceptance": [
+        "npm --prefix web run build 通过",
+        "新建和编辑均生成稳定 clientId 并默认选中第一项",
+        "新增后选中新项，删除当前项后选中下一项或上一项且最后一项不可删",
+        "首个单项错误返回申请项序号并更新 selectedItemId",
+        "保存载荷仍由 form.items.map(requestItemPayload) 生成且 clientId 被剥离",
+        "确认/取消物理子系统切换与脏关闭路径可由浏览器验证"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "构建命令和退出码",
+        "源码扫描行号",
+        "范围内文件清单",
+        "发现的扰动和未决项"
+      ],
+      "rollback": "回退 T1 产品提交；无数据、接口或迁移补偿",
+      "stop_conditions": [
+        "需要修改 api.ts/types.ts 或后端",
+        "无法在前端临时类型中剥离 clientId",
+        "现有 API 明确禁止重复 deploymentUnitId"
+      ],
+      "escalation_conditions": [
+        "用户要求自动保存、排序、复制或删除最后一项",
+        "必须改公共表单组件",
+        "取消切换无法恢复原状态"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T02:31:38+00:00",
+          "text": "开始执行前已核对页面、API 映射、工作树和构建基线"
+        },
+        {
+          "recorded_at": "2026-09-03T02:37:19+00:00",
+          "text": "T1 execution-T1 已记录，等待独立观测"
+        },
+        {
+          "recorded_at": "2026-09-03T02:39:31+00:00",
+          "text": "T1 静态与构建传感器通过；浏览器覆盖缺口由 T2/T3 集成采样承担"
+        }
+      ],
+      "updated_at": "2026-09-03T02:39:31+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "实现基础信息与登记表外层两栏、申请项列表与当前项表单内层主从以及三档响应式布局",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "T1 提供 clientId、currentItem、申请项状态和有界操作",
+        "现有登记表模板完整包含部署单元、DB、非 DB、技术栈和附加需求字段",
+        "交付示范中心 ProjectStageDetailDialog 已验证列表/详情主从及 760px 下局部横向滚动模式"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/architecture.css",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T2.json"
+      ],
+      "invariants": [
+        "所有现有申请级和申请项字段仍可编辑",
+        "右侧只渲染 currentItem 但其它申请项状态不丢失",
+        "使用语义主题变量且圆角不超过现有 8px 规则",
+        "手机页面根无横向滚动，底部取消和保存可达"
+      ],
+      "interface_contracts": [
+        "申请项列表以 clientId 为 key 并用文字表达未选择、待完善、已填写",
+        "新增、删除、切换和基础选择在 formSubmitting 时禁用",
+        "附加需求 collapse 使用 clientId 作为稳定名称",
+        "移动端只有申请项列表容器允许有边界的局部横向滚动"
+      ],
+      "non_goals": [
+        "不改列表、详情、审批和下发弹窗",
+        "不新增公共组件",
+        "不改变 API 和业务规则"
+      ],
+      "action_bounds": [
+        "只重组资源申请 form dialog DOM 并添加 architecture-resource-request-* 专用类",
+        "只在 architecture.css 的资源申请区增加局部样式和断点",
+        "不通过固定大最小宽度、负字距或硬编码颜色解决布局"
+      ],
+      "acceptance": [
+        "npm --prefix web run build 和 git diff --check 通过",
+        "桌面外层两栏且内层申请项列表/当前项两列清晰",
+        "中等宽度登记区上下排列，760px 以下外层单列和申请项列表局部横向滚动",
+        "当前项字段无遗漏，删除图标有 Tooltip 和 aria-label，状态不只依赖颜色",
+        "颜色、负字距和阻塞手机固定最小宽度扫描无本需求新增问题"
+      ],
+      "evidence_required": [
+        "Vue DOM diff",
+        "CSS diff",
+        "构建和静态扫描退出码",
+        "四视口待验收清单",
+        "范围内文件清单"
+      ],
+      "rollback": "回退 T2 产品提交；完全回退时再逆序回退 T1",
+      "stop_conditions": [
+        "必须修改公共 Dialog 或应用壳",
+        "字段遗漏或布局改变提交顺序",
+        "手机页面级横向溢出无法在局部样式解决"
+      ],
+      "escalation_conditions": [
+        "用户要求移动端保留双栏",
+        "要求把申请项列表升级为公共组件",
+        "需要新增视觉规范例外"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T02:40:14+00:00",
+          "text": "T1 已验证；开始连接 currentItem、状态和响应式主从布局"
+        },
+        {
+          "recorded_at": "2026-09-03T03:09:45+00:00",
+          "text": "T2 提交 694fc19 已实现并具备可重复构建、浏览器和布局尺寸证据"
+        },
+        {
+          "recorded_at": "2026-09-03T03:12:01+00:00",
+          "text": "T2 集成采样 S-0002 无 P0-P3；提交态、真实浏览器和布局尺寸均满足 R1/R2/R4/R7"
+        }
+      ],
+      "updated_at": "2026-09-03T03:12:01+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "完成请求兼容、权限、失败恢复、四视口明暗主题和范围收敛验收",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "产品修改严格限制在两个前端文件",
+        "真实行为需要现有本地 architecture API、虚构账号和数据",
+        "全仓治理可能包含与本需求无关的历史账本噪声"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T3.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T1.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T2.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T3.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/convergence.json"
+      ],
+      "invariants": [
+        "不连接生产环境",
+        "只使用虚构或本地测试数据",
+        "观察发现偏差时不得直接修改范围外文件",
+        "未执行验证不得描述为通过"
+      ],
+      "interface_contracts": [
+        "Network 中 create/update 请求继续使用现有 ResourceRequestPayload",
+        "apply/manage 和无权限状态不新增或放松前端权限",
+        "浏览器 Console 无本需求新增错误，documentElement.scrollWidth 不超过视口宽度"
+      ],
+      "non_goals": [
+        "不自行合并、推送或发布",
+        "不修复全仓历史治理问题",
+        "不修改本需求之外页面"
+      ],
+      "action_bounds": [
+        "执行 build、governance、scope、diff 和真实浏览器传感器",
+        "仅在独立观察确认偏差后回到 correcting/executing 修改两个授权产品文件",
+        "证据中不记录真实个人信息、口令、Token 或完整敏感日志"
+      ],
+      "acceptance": [
+        "新建、编辑、多申请项、重复部署单元、删除切换、错误定位和物理切换旅程通过",
+        "候选失败、保存失败、重复点击、脏关闭和无权限状态可恢复",
+        "1280x800、375x812、390x844、430x932 浅色和深色主题无页面级横向溢出",
+        "build、scope、diff 通过且治理结果区分本需求与历史噪声",
+        "R1-R7 均有可重复证据且无开放 P0/P1"
+      ],
+      "evidence_required": [
+        "命令和退出码",
+        "脱敏 Network 摘要",
+        "Console 摘要",
+        "视口主题和 scrollWidth",
+        "截图或像素检查",
+        "scope 文件清单",
+        "残余风险"
+      ],
+      "rollback": "回退证据提交；产品按 T2、T1 逆序回退，无数据库补偿",
+      "stop_conditions": [
+        "重复 deploymentUnitId 被服务端拒绝",
+        "权限边界放松",
+        "页面白屏或提交不可达",
+        "需要 scope 外修改",
+        "没有可用本地测试环境导致关键传感器不可采样"
+      ],
+      "escalation_conditions": [
+        "需要后端新状态或接口",
+        "需要公共 UI 改造",
+        "历史治理错误成为不可绕过门禁",
+        "无法获得虚构测试账号或数据"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T03:22:54+00:00",
+          "text": "T3 execution-T3 已记录，最终运行输出可由观测阶段按 R1-R7 复核"
+        },
+        {
+          "recorded_at": "2026-09-03T03:24:56+00:00",
+          "text": "最终运行采样 S-0003 无 P0-P3；R1-R7 均有构建、HTTP、浏览器或范围证据"
+        }
+      ],
+      "updated_at": "2026-09-03T03:24:56+00:00"
+    }
+  ],
   "feedback": [],
-  "samples": []
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "f620bb1 提交态 npm build 退出0；仅目标页面；clientId 未进入 payload；旧物理子系统 watcher 已移除",
+      "recorded_at": "2026-09-03T02:39:31+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 集成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "694fc19 产品文件提交态无差异；主从增删切换、状态文字、首错定位及 1280/375/390/430 明暗主题无页面级横向溢出",
+      "recorded_at": "2026-09-03T03:11:50+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "最终运行采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "R1-R7：最终 build；新建 POST 与编辑 PUT 保持 7001/7001/7002；切换、首错、失败恢复、权限和四视口明暗主题通过；本需求 scope/diff 通过",
+      "recorded_at": "2026-09-03T03:24:45+00:00"
+    }
+  ]
 }

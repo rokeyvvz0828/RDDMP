@@ -1,0 +1,96 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "ResourceRequestPage.vue 中资源申请新建/编辑弹窗及其响应式 DOM",
+      "ResourceForm 与 form.items 的前端临时状态、当前申请项选择和校验",
+      "物理子系统到部署单元候选的级联加载与失败保留行为",
+      "requestItemPayload 与 ResourceRequestPayload 的现有提交映射",
+      "architecture.css 中资源申请登记表的局部布局和移动端断点"
+    ],
+    "environment": [
+      "business/architecture 既有资源申请和选项 API",
+      "Element Plus Dialog、Select、Form、Collapse 与 MessageBox 运行行为",
+      "公共语义主题变量和应用壳滚动边界",
+      "本地测试账号、虚构资源申请数据和浏览器视口",
+      "既有全仓治理历史噪声"
+    ]
+  },
+  "state_variables": [
+    {"name": "formOpen/formSubmitting/formError", "owner": "ResourceRequestPage.vue", "valid_values": ["关闭", "可编辑", "提交中", "失败可恢复"]},
+    {"name": "form.physicalSubsystemId/acceptedPhysicalSubsystemId", "owner": "ResourceRequestPage.vue", "valid_values": ["未选择", "已接受选择", "待确认的新选择"]},
+    {"name": "form.items[]", "owner": "ResourceRequestPage.vue", "valid_values": ["至少一个带稳定 clientId 的申请项", "多个可重复 deploymentUnitId 的有序申请项"]},
+    {"name": "selectedItemId/currentItem", "owner": "ResourceRequestPage.vue", "valid_values": ["指向现有申请项 clientId", "重建或删除后指向相邻申请项"]},
+    {"name": "itemCompletionState", "owner": "ResourceRequestPage.vue", "valid_values": ["UNSELECTED", "INCOMPLETE", "COMPLETE"]},
+    {"name": "deploymentUnitOptions/optionSequence", "owner": "ResourceRequestPage.vue", "valid_values": ["空候选", "当前物理子系统候选", "过期响应被忽略"]},
+    {"name": "initialFormSnapshot/allowFormClose", "owner": "ResourceRequestPage.vue", "valid_values": ["未修改", "有未保存修改", "保存成功允许关闭"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "用户打开新建或编辑资源申请弹窗", "transitions": ["加载申请级字段和物理子系统摘要", "模板把基础信息与登记表放入外层 grid", "响应式断点按视口重排"], "outputs": ["桌面外层左右两栏", "移动端单列且基础信息上下文保留"]},
+    {"requirement_id": "R2", "input": "用户新增、删除或点击申请项", "transitions": ["为申请项分配稳定 clientId", "selectedItemId 定位 currentItem", "右侧仅绑定当前项", "删除后选择下一项或上一项"], "outputs": ["左侧申请项列表", "右侧当前项表单", "切换后各项输入保持"]},
+    {"requirement_id": "R3", "input": "多个申请项选择相同 deploymentUnitId 并填写不同规格", "transitions": ["每个 clientId 持有独立字段", "不执行部署单元去重", "form.items 按列表顺序映射 requestItemPayload"], "outputs": ["请求 items[] 保留重复 deploymentUnitId", "保存和编辑回显保持独立规格"]},
+    {"requirement_id": "R4", "input": "申请项处于未选择、不完整或完整状态并触发保存", "transitions": ["itemValidationError 执行单项规则", "itemCompletionState 复用同一规则", "validateForm 找到首个错误 clientId"], "outputs": ["列表显示文字状态", "首个错误申请项被选中", "持续错误信息可见"]},
+    {"requirement_id": "R5", "input": "用户切换物理子系统", "transitions": ["比较已接受值和申请项内容", "有内容时 MessageBox 二次确认", "确认后重建空项并加载新候选或取消后恢复旧值", "optionSequence 忽略过期候选响应"], "outputs": ["新物理子系统只配套新的空申请项和候选", "取消后旧申请项完整保留"]},
+    {"requirement_id": "R6", "input": "用户保存通过前端校验的申请", "transitions": ["requestItemPayload 保持 DB/非 DB 字段分流与计算", "clientId 不进入 ResourceRequestItemPayload", "form.items.map 保持数组顺序", "调用现有 create/update API"], "outputs": ["现有 ResourceRequestPayload", "服务端继续执行最终权限和业务校验"]},
+    {"requirement_id": "R7", "input": "加载、失败、无权限、提交中、关闭和不同视口/主题下的用户操作", "transitions": ["沿用现有 loading/error/permission 状态", "提交中禁用集合和基础选择操作", "before-close 比较初始快照", "CSS 在桌面、中等宽度和手机断点重排"], "outputs": ["失败保留输入且不重复提交", "脏表单关闭确认", "四视口明暗主题无页面级横向溢出且底部操作可达"]}
+  ],
+  "interfaces": [
+    {"name": "ResourceRequestPayload/ResourceRequestItemPayload", "producers": ["ResourceRequestPage.vue requestItemPayload 和 submitForm"], "consumers": ["business/architecture 现有 createResourceRequest/updateResourceRequest API"], "invariant": "字段、DB 与 APPLICATION/WEB 分流、items[] 顺序和重复 deploymentUnitId 行为不变，clientId 不得进入请求"},
+    {"name": "loadResourceDeploymentUnitOptions", "producers": ["business/architecture 选项 API"], "consumers": ["ResourceRequestPage.vue loadDeploymentUnits"], "invariant": "候选只对应当前已接受物理子系统；失败或过期响应不得清空用户已有申请项输入"},
+    {"name": "Element Plus Dialog before-close", "producers": ["Element Plus Dialog"], "consumers": ["ResourceRequestPage.vue 脏表单保护"], "invariant": "保存成功可关闭；用户取消关闭后表单上下文保持"},
+    {"name": "申请项临时身份", "producers": ["blankItem 和编辑回显映射"], "consumers": ["列表 key、selectedItemId、删除和错误定位"], "invariant": "clientId 在弹窗生命周期内稳定且仅存在于前端"},
+    {"name": "语义主题与滚动边界", "producers": ["公共 CSS 变量和应用壳"], "consumers": ["architecture.css 资源申请局部样式"], "invariant": "局部样式使用语义变量，页面根不产生横向滚动，移动端仅申请项列表允许有边界的局部横向滚动"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Vue/TypeScript 模板、状态和请求映射的静态可构建性", "method": "npm --prefix web run build 与 git diff --check", "blind_spots": ["真实点击顺序", "API 运行响应", "视觉溢出"], "independence": "编译器和构建工具直接检查类型、模板与产物生成"},
+    {"id": "S2", "target": "申请项增删切换、状态、错误定位、物理切换和脏关闭行为", "method": "真实浏览器按新建/编辑旅程操作并观察 DOM、当前项和持续错误信息", "blind_spots": ["未覆盖的极端 API 延迟", "服务端内部校验实现"], "independence": "从用户可见运行行为采样，不依赖实现函数的自述"},
+    {"id": "S3", "target": "重复部署单元、多规格、items[] 顺序和字段兼容", "method": "浏览器 Network 检查 create/update 请求并重新编辑回显", "blind_spots": ["未启动服务时不可采样", "生产环境配置差异"], "independence": "直接观察 HTTP 边界和服务端回显"},
+    {"id": "S4", "target": "桌面与移动布局、主题、页面级横向溢出和底部操作可达性", "method": "1280x800、375x812、390x844、430x932 明暗主题截图及 documentElement.scrollWidth 检查", "blind_spots": ["未列出的设备字体差异", "辅助技术完整审计"], "independence": "浏览器布局引擎的计算尺寸与可见像素证据"},
+    {"id": "S5", "target": "请求失败、候选失败、无权限和提交中状态", "method": "真实浏览器模拟失败/慢响应并检查 Console、请求次数和输入保留", "blind_spots": ["不可控的后端故障类型", "生产网络抖动"], "independence": "从异常运行路径观察可恢复性和重复请求"},
+    {"id": "S6", "target": "修改范围、禁止路径和治理一致性", "method": "check-codex-scope、check-all-governance、git status 和 git diff 文件清单", "blind_spots": ["仓库既有历史治理错误会产生噪声"], "independence": "仓库脚本按任务范围和治理结构独立检查"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "申请项身份、当前项选择、增删和编辑回显", "action": "在 ResourceRequestPage.vue 内增加 clientId、selectedItemId/currentItem 和有界集合操作", "authority": "任务 scope 对 ResourceRequestPage.vue 的写权限", "impact_radius": "仅资源申请新建/编辑弹窗前端状态", "rollback": "回退 T1 小步提交"},
+    {"id": "A2", "target": "申请项完成状态和首错定位", "action": "抽取无副作用单项校验并由状态与保存共同复用", "authority": "任务 scope 对 ResourceRequestPage.vue 的写权限", "impact_radius": "资源申请弹窗前端校验和错误呈现，不替代服务端校验", "rollback": "回退 T1 小步提交"},
+    {"id": "A3", "target": "物理子系统切换和未保存内容保护", "action": "增加已接受值、确认恢复、候选响应隔离和 before-close 快照比较", "authority": "任务 scope 对 ResourceRequestPage.vue 的写权限", "impact_radius": "资源申请弹窗切换与关闭路径", "rollback": "回退 T1 小步提交"},
+    {"id": "A4", "target": "两级主从 DOM 和可访问操作", "action": "重组现有弹窗模板，只渲染 currentItem，复用 Element Plus 和语义化按钮", "authority": "任务 scope 对 ResourceRequestPage.vue 的写权限", "impact_radius": "资源申请新建/编辑弹窗呈现", "rollback": "回退 T2 小步提交"},
+    {"id": "A5", "target": "桌面、中等宽度和手机布局", "action": "在 architecture.css 增加资源申请专用 grid、滚动边界和断点规则", "authority": "任务 scope 对 architecture.css 的写权限", "impact_radius": "architecture-resource-request-form-dialog 专用类", "rollback": "回退 T2 小步提交"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S4"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S2"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S1", "S3", "S6"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S2", "S4", "S5", "S6"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "部署单元候选 API 失败或响应乱序", "effect": "候选为空或旧物理子系统响应覆盖新候选", "detectable": true, "controllable": true},
+    {"source": "长物理子系统或部署单元名称、三个以上申请项和长错误文案", "effect": "按钮、列表或字段撑宽弹窗与页面", "detectable": true, "controllable": true},
+    {"source": "保存慢响应和快速重复点击、切换或关闭", "effect": "重复请求、集合在保存中变化或未保存输入丢失", "detectable": true, "controllable": true},
+    {"source": "本地服务、账号或虚构测试数据不可用", "effect": "Network、权限和保存回显传感器无法采样", "detectable": true, "controllable": "partial"},
+    {"source": "全仓历史账本治理错误", "effect": "governance 检查可能失败并掩盖当前前缀结果", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "loadResourceDeploymentUnitOptions 异步响应", "consequence": "快速切换物理子系统时可能收到过期候选", "sampling_rule": "使用递增序列隔离响应，并在最后一次选择稳定后检查候选"},
+    {"source": "create/update 保存响应", "consequence": "保存期间的重复点击或关闭可能污染状态判断", "sampling_rule": "以 formSubmitting 全周期禁用操作，并在响应完成后检查请求次数与关闭结果"},
+    {"source": "Vite 构建和真实浏览器全旅程", "consequence": "仅静态编辑后立即结论会漏掉模板和运行偏差", "sampling_rule": "T1、T2 各完成一次构建采样，集成后执行浏览器与四视口最终采样"}
+  ],
+  "assumptions": [
+    {"text": "申请项数组顺序就是提交顺序且不需要拖拽排序", "evidence": "用户批准的设计和现有 form.items.map(requestItemPayload)", "falsifier": "用户要求手工重排或接口返回独立排序字段"},
+    {"text": "服务端继续允许重复 deploymentUnitId", "evidence": "REQ-20260903-059 明确要求保留且现有前端没有去重规则", "falsifier": "真实 create/update API 对重复 deploymentUnitId 返回校验错误"},
+    {"text": "现有 API 和类型足以承载本次布局与临时状态", "evidence": "clientId 可在 ResourceFormItem 局部扩展并由 requestItemPayload 显式剥离", "falsifier": "TypeScript 构建或真实请求证明必须修改 api.ts/types.ts"},
+    {"text": "交付示范中心主从模式可作为本页面局部布局参考", "evidence": "ProjectStageDetailDialog 已实现 250px 列表、详情区域和 760px 下局部横向滚动", "falsifier": "四视口实测出现不可消除的页面级溢出或操作不可达"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "使用 A4/A5，S1/S4 验证"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "使用 A1/A4，S1/S2 验证"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "使用 A1 并保持请求映射，S2/S3 验证"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "使用 A2/A4，S2 验证"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "使用 A3，S2/S5 验证"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "限制 A1-A4 不改变接口，S1/S3/S6 验证"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "使用 A3/A4/A5，S2/S4/S5/S6 验证"}
+  ],
+  "model_status": "ready"
+}
