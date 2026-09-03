@@ -236,12 +236,37 @@ export interface ImportResult {
   success: boolean;
   errors: Array<{ row_number: number; message: string }>;
 }
+export interface QualityThreshold {
+  id?: number | null;
+  metric_code: string;
+  metric_name: string;
+  comparison_direction: "AT_LEAST" | "AT_MOST";
+  qualified_threshold?: number | null;
+  risk_threshold?: number | null;
+  enabled: boolean | number;
+  updated_at?: string | null;
+}
 
 const configurationBase = (domain: TestDomain) =>
   `/test-management/configuration/${domain}`;
 export const listTestProjects = (domain: TestDomain) =>
   http.get<ApiResponse<TestProjectOption[]>>(
     `${configurationBase(domain)}/projects`,
+  );
+export const listQualityThresholds = (domain: TestDomain, projectId: number) =>
+  http.get<ApiResponse<QualityThreshold[]>>(
+    `${configurationBase(domain)}/quality-thresholds`,
+    { params: { projectId } },
+  );
+export const saveQualityThresholds = (
+  domain: TestDomain,
+  projectId: number,
+  items: QualityThreshold[],
+) =>
+  http.put<ApiResponse<QualityThreshold[]>>(
+    `${configurationBase(domain)}/quality-thresholds`,
+    { items },
+    { params: { projectId } },
   );
 export const listParticipatingSystems = (
   domain: TestDomain,

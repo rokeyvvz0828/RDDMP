@@ -64,8 +64,8 @@ const label = computed(
 const tree = ref<TestAnalyticsTree>(),
   meta = ref<any>({ systems: [], rounds: [], cycles: [] }),
   active = reactive({
-    key: "SCOPE_COVERAGE",
-    name: "范围覆盖度",
+    key: "RPT-001",
+    name: "项目测试概览",
     view: "TABLE",
     perspective: "EXECUTOR",
   }),
@@ -85,29 +85,13 @@ const tree = ref<TestAnalyticsTree>(),
   activeCustomId = ref<number>();
 const config = reactive({
   report_name: "",
-  report_key: "SCOPE_COVERAGE",
-  row_dimensions: ["系统"],
-  column_dimensions: [] as string[],
-  metrics: ["范围总数", "覆盖率"],
+  report_key: "CUSTOM",
+  dimensions: ["physical_subsystem_id"],
+  metrics: ["execution_rate", "case_success_rate"],
   charts: ["TABLE", "BAR"],
-  filters: ["系统", "轮次", "周期"],
 });
-const presetNames: Record<string, string> = {
-  SCOPE_COVERAGE: "范围覆盖度",
-  EXECUTION_PROGRESS: "执行进度与成功率",
-  DEFECT_DISTRIBUTION: "缺陷多维统计",
-  PERSONNEL_WORKLOAD: "人员工作量",
-};
 const columns = computed(() => Object.keys(model.value.rows?.[0] || {}));
-const viewOptions = computed(() =>
-  active.key === "SCOPE_COVERAGE"
-    ? ["TABLE", "BAR"]
-    : active.key === "EXECUTION_PROGRESS"
-      ? ["TABLE", "BAR", "LINE"]
-      : active.key === "DEFECT_DISTRIBUTION"
-        ? ["STATUS", "CATEGORY", "SYSTEM", "MATRIX", "OVERDUE"]
-        : ["EXECUTOR", "HANDLER"],
-);
+const viewOptions = computed(() => ["TABLE", "BAR", "LINE", "PIE"]);
 const chartOption = computed<EChartsOption>(() => {
   const rows = model.value.rows || [],
     dimension = (row: any) =>
@@ -150,7 +134,7 @@ const chartOption = computed<EChartsOption>(() => {
       ],
     };
   }
-  if (active.key === "DEFECT_DISTRIBUTION" && active.view === "STATUS")
+  if (active.view === "PIE")
     return {
       tooltip: { trigger: "item" },
       legend: { bottom: 0 },
@@ -219,13 +203,8 @@ async function setup() {
 function select(key: string, name?: string) {
   activeCustomId.value = undefined;
   active.key = key;
-  active.name = name || presetNames[key] || "自定义报表";
-  active.view =
-    key === "DEFECT_DISTRIBUTION"
-      ? "STATUS"
-      : key === "PERSONNEL_WORKLOAD"
-        ? "EXECUTOR"
-        : "TABLE";
+  active.name = name || "固定分析";
+  active.view = "TABLE";
   void load();
 }
 function selectCustom(
@@ -260,12 +239,10 @@ function openDesigner(create = false) {
     activeCustomId.value = undefined;
     Object.assign(config, {
       report_name: "",
-      report_key: active.key,
-      row_dimensions: ["系统"],
-      column_dimensions: [],
-      metrics: ["范围总数", "覆盖率"],
+      report_key: "CUSTOM",
+      dimensions: ["physical_subsystem_id"],
+      metrics: ["execution_rate", "case_success_rate"],
       charts: ["TABLE", "BAR"],
-      filters: ["系统", "轮次", "周期"],
     });
   }
   designer.value = true;
@@ -273,9 +250,9 @@ function openDesigner(create = false) {
 async function drilldown() {
   if (!projectId.value) return;
   const entity =
-    active.key === "SCOPE_COVERAGE"
+    active.key === "RPT-004"
       ? "SCOPE"
-      : active.key === "EXECUTION_PROGRESS"
+      : ["RPT-005", "RPT-006", "RPT-007", "CHT-001"].includes(active.key)
         ? "EXECUTION"
         : "DEFECT";
   try {
@@ -366,13 +343,11 @@ async function save() {
       projectId.value,
       {
         report_name: config.report_name,
-        report_key: config.report_key,
+        report_key: "CUSTOM",
         config: {
-          row_dimensions: config.row_dimensions,
-          column_dimensions: config.column_dimensions,
+          dimensions: config.dimensions,
           metrics: config.metrics,
           charts: config.charts,
-          filters: config.filters,
         },
       },
       activeCustomId.value,
@@ -530,19 +505,7 @@ watch([() => context.currentRef, domain], setup);
                   ? "柱状图"
                   : v === "LINE"
                     ? "折线图"
-                    : v === "STATUS"
-                      ? "状态分布"
-                      : v === "CATEGORY"
-                        ? "分类分布"
-                        : v === "SYSTEM"
-                          ? "系统分布"
-                          : v === "MATRIX"
-                            ? "严重×紧急"
-                            : v === "OVERDUE"
-                              ? "超期清单"
-                              : v === "HANDLER"
-                                ? "处理人视角"
-                                : "执行人视角"
+                : v === "PIE" ? "饼图" : "折线图"
             }}</el-radio-button></el-radio-group
           ><span /><el-button size="small" :icon="Edit" @click="openDesigner()"
             >编辑/另存为</el-button
@@ -607,55 +570,41 @@ watch([() => context.currentRef, domain], setup);
           ><el-input
             v-model="config.report_name"
             maxlength="50" /></el-form-item
-        ><el-form-item label="预置模型"
-          ><el-select v-model="config.report_key"
-            ><el-option
-              v-for="(name, key) in presetNames"
-              :key="key"
-              :label="name"
-              :value="key" /></el-select></el-form-item
-        ><el-form-item label="行维度"
-          ><el-checkbox-group v-model="config.row_dimensions"
+        ><el-form-item label="分析维度"
+          ><el-checkbox-group v-model="config.dimensions"
             ><el-checkbox
               v-for="x in [
-                '系统',
-                '目录',
-                '范围',
-                '案例类型',
-                '轮次',
-                '周期',
-                '状态',
-                '处理人',
+                ['physical_subsystem_id', '物理子系统'],
+                ['responsible_team_org_id', '责任团队组织'],
+                ['round_id', '测试轮次'],
+                ['cycle_id', '测试周期'],
+                ['severity', '缺陷严重程度'],
+                ['status', '状态'],
+                ['executor_id', '执行人员'],
+                ['handler_id', '处理人员'],
               ]"
-              :key="x"
-              :value="x"
-              >{{ x }}</el-checkbox
-            ></el-checkbox-group
-          ></el-form-item
-        ><el-form-item label="列维度"
-          ><el-checkbox-group v-model="config.column_dimensions"
-            ><el-checkbox
-              v-for="x in ['状态', '严重程度', '紧急程度']"
-              :key="x"
-              :value="x"
-              >{{ x }}</el-checkbox
+              :key="x[0]"
+              :value="x[0]"
+              >{{ x[1] }}</el-checkbox
             ></el-checkbox-group
           ></el-form-item
         ><el-form-item label="统计指标"
           ><el-checkbox-group v-model="config.metrics"
             ><el-checkbox
               v-for="x in [
-                '范围总数',
-                '案例总数',
-                '覆盖率',
-                '执行率',
-                '成功率',
-                '缺陷数',
-                '超期未解决数',
+                ['execution_rate', '执行率'],
+                ['case_success_rate', '案例成功率'],
+                ['executed_case_success_rate', '已执行案例成功率'],
+                ['defect_density', '缺陷密度'],
+                ['defect_repair_rate', '缺陷修复率'],
+                ['severe_defect_count', '严重缺陷数'],
+                ['blocked_case_count', '阻塞案例数'],
+                ['defect_total', '缺陷总数'],
+                ['effective_case_total', '有效案例数'],
               ]"
-              :key="x"
-              :value="x"
-              >{{ x }}</el-checkbox
+              :key="x[0]"
+              :value="x[0]"
+              >{{ x[1] }}</el-checkbox
             ></el-checkbox-group
           ></el-form-item
         ><el-form-item label="图表形式"
@@ -667,23 +616,7 @@ watch([() => context.currentRef, domain], setup);
               >{{ x }}</el-checkbox
             ></el-checkbox-group
           ></el-form-item
-        ><el-form-item label="运行时筛选"
-          ><el-checkbox-group v-model="config.filters"
-            ><el-checkbox
-              v-for="x in [
-                '系统',
-                '轮次',
-                '周期',
-                '目录',
-                '时间范围',
-                '案例类型',
-                '缺陷分类',
-              ]"
-              :key="x"
-              :value="x"
-              >{{ x }}</el-checkbox
-            ></el-checkbox-group
-          ></el-form-item
+        ><el-alert type="info" :closable="false" show-icon title="运行时仅按当前入口固定的测试大类、项目、系统、轮次和周期过滤；不提供测试大类筛选。" />
         ></el-form
       ></TestManagementFormDialog
     ><el-dialog
