@@ -23,6 +23,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,18 +64,19 @@ class DeploymentUnitServiceTest {
     void createPublishesVersionOneWithAssignedNumber() {
         when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
-        when(store.unitNameExists(TENANT_ID, PHYSICAL_ID, "电子渠道接入应用", null)).thenReturn(false);
+        when(store.unitNameExists(TENANT_ID, "ECIP_AP", null)).thenReturn(false);
         when(store.allocateNumber(TENANT_ID, PHYSICAL_ID, "W0001A")).thenReturn("DW0001A001");
         when(store.findUnit(TENANT_ID, 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
 
-        DeploymentUnitService.DeploymentUnitView view = service.create(operator, command("电子渠道接入应用", "APPLICATION"), "trace");
+        DeploymentUnitService.DeploymentUnitView view = service.create(operator, command("ECIP_AP", "APPLICATION"), "trace");
 
         assertThat(view.code()).isEqualTo("DW0001A001");
         assertThat(view.currentVersion()).isEqualTo(1);
-        verify(store).insertUnit(1_001L, TENANT_ID, "DW0001A001", PHYSICAL_ID, "ECIP-AP", "电子渠道接入应用",
-                null, "AP", "APPLICATION", null, null, operator.id());
-        verify(store).insertVersion(1_002L, TENANT_ID, 1_001L, 1, "ECIP-AP", "电子渠道接入应用", null, "AP",
+        verify(store).insertUnit(1_001L, TENANT_ID, "DW0001A001", PHYSICAL_ID, "ECIP_AP",
                 "APPLICATION", null, null, operator.id());
+        verify(store).insertVersion(1_002L, TENANT_ID, 1_001L, 1, "ECIP_AP",
+                "APPLICATION", null, null, operator.id());
+        verify(store).replaceRelations(TENANT_ID, 1_001L, Set.of(), operator.id(), 1);
         verify(operationAudit).recordSuccess(any());
     }
 
@@ -83,20 +85,20 @@ class DeploymentUnitServiceTest {
         when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "OFFLINE", false)));
 
-        assertThatThrownBy(() -> service.create(operator, command("电子渠道接入应用", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST));
         verify(store, never()).insertUnit(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyString(),
-                any(), anyString(), anyString(), any(), any(), anyLong());
+                any(), any(), anyLong());
     }
 
     @Test
     void createRejectsDuplicateNameAndRecordsAuditFailure() {
         when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
-        when(store.unitNameExists(TENANT_ID, PHYSICAL_ID, "电子渠道接入应用", null)).thenReturn(true);
+        when(store.unitNameExists(TENANT_ID, "ECIP_AP", null)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(operator, command("电子渠道接入应用", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         verify(store, never()).allocateNumber(anyLong(), anyLong(), anyString());
@@ -105,19 +107,62 @@ class DeploymentUnitServiceTest {
 
     @Test
     void createRejectsInvalidKind() {
-        assertThatThrownBy(() -> service.create(operator, command("电子渠道接入应用", "KUBERNETES"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, command("ECIP_AP", "KUBERNETES"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST));
+    }
+
+    @Test
+    void createRejectsStandardSuffixKindMismatch() {
+        assertThatThrownBy(() -> service.create(operator, command("ECIP_DB", "APPLICATION"), "trace"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST))
+                .hasMessageContaining("后缀_DB");
+    }
+
+    @Test
+    void createAllowsCustomSuffixWithExplicitKind() {
+        when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
+                .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
+        when(store.unitNameExists(TENANT_ID, "BATCH_JOB1", null)).thenReturn(false);
+        when(store.allocateNumber(TENANT_ID, PHYSICAL_ID, "W0001A")).thenReturn("DW0001A001");
+        when(store.findUnit(TENANT_ID, 1_001L))
+                .thenReturn(Optional.of(unitWithVersion(1_001L, "DW0001A001", "ACTIVE", 1, "BATCH_JOB1")));
+
+        DeploymentUnitService.DeploymentUnitView view = service.create(
+                operator, command("batch_job1", "APPLICATION"), "trace");
+
+        assertThat(view.name()).isEqualTo("BATCH_JOB1");
+        verify(store).insertUnit(1_001L, TENANT_ID, "DW0001A001", PHYSICAL_ID, "BATCH_JOB1",
+                "APPLICATION", null, null, operator.id());
+    }
+
+    @Test
+    void createRejectsUnknownCrossTenantOrInactiveRelationTarget() {
+        when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
+                .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
+        when(store.unitNameExists(TENANT_ID, "ECIP_AP", null)).thenReturn(false);
+        when(store.lockActiveUnits(TENANT_ID, List.of(2_002L))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.create(operator,
+                new DeploymentUnitCommand(PHYSICAL_ID, "ECIP_AP", "APPLICATION", List.of(2_002L),
+                        null, null, null, null), "trace"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST))
+                .hasMessageContaining("不属于当前租户或已非 ACTIVE");
+        verify(store, never()).allocateNumber(anyLong(), anyLong(), anyString());
+        verify(store, never()).insertUnit(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyString(),
+                any(), any(), anyLong());
     }
 
     @Test
     void createMapsDuplicateKeyRaceToConflictAndRecordsAuditFailure() {
         when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
-        when(store.unitNameExists(TENANT_ID, PHYSICAL_ID, "电子渠道接入应用", null)).thenReturn(false);
+        when(store.unitNameExists(TENANT_ID, "ECIP_AP", null)).thenReturn(false);
         when(store.allocateNumber(TENANT_ID, PHYSICAL_ID, "W0001A")).thenThrow(new DuplicateKeyException("race"));
 
-        assertThatThrownBy(() -> service.create(operator, command("电子渠道接入应用", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         verify(operationAudit).recordFailure(any());
@@ -129,19 +174,19 @@ class DeploymentUnitServiceTest {
     void updatePublishesNewVersionAndKeepsOldVersionImmutable() {
         when(store.lockUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
-        when(store.unitNameExists(TENANT_ID, PHYSICAL_ID, "电子渠道接入应用 V2", 1_001L)).thenReturn(false);
-        when(store.updateUnitContent(TENANT_ID, 1_001L, 7L, "ECIP-AP", "电子渠道接入应用 V2",
-                null, "DB", "DATABASE", "迁移到数据库服务", null, operator.id())).thenReturn(1);
+        when(store.unitNameExists(TENANT_ID, "ECIP_DB", 1_001L)).thenReturn(false);
+        when(store.updateUnitContent(TENANT_ID, 1_001L, 7L, "ECIP_DB",
+                "DATABASE", "迁移到数据库服务", null, operator.id())).thenReturn(1);
         when(store.findUnit(TENANT_ID, 1_001L))
-                .thenReturn(Optional.of(unitWithVersion(1_001L, "DW0001A001", "ACTIVE", 2, "电子渠道接入应用 V2")));
+                .thenReturn(Optional.of(unitWithVersion(1_001L, "DW0001A001", "ACTIVE", 2, "ECIP_DB")));
 
         DeploymentUnitService.DeploymentUnitView view = service.update(operator, 1_001L,
-                new DeploymentUnitCommand(null, "ECIP-AP", "电子渠道接入应用 V2", "DATABASE",
+                new DeploymentUnitCommand(null, "ECIP_DB", "DATABASE", List.of(), null,
                         "迁移到数据库服务", null, 7L), "trace");
 
         assertThat(view.currentVersion()).isEqualTo(2);
-        verify(store).insertVersion(1_001L, TENANT_ID, 1_001L, 2, "ECIP-AP", "电子渠道接入应用 V2", null,
-                "DB", "DATABASE", "迁移到数据库服务", null, operator.id());
+        verify(store).insertVersion(1_001L, TENANT_ID, 1_001L, 2, "ECIP_DB", "DATABASE",
+                "迁移到数据库服务", null, operator.id());
         verify(store).updateUnitCurrentVersion(TENANT_ID, 1_001L, 2, operator.id());
         verify(operationAudit).recordSuccess(any());
     }
@@ -151,27 +196,27 @@ class DeploymentUnitServiceTest {
         when(store.lockUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 2)));
         assertThatThrownBy(() -> service.update(operator, 1_001L,
-                new DeploymentUnitCommand(null, "ECIP-AP", "新名称", "APPLICATION", null, null, 7L), "trace"))
+                new DeploymentUnitCommand(null, "NEW_AP", "APPLICATION", List.of(), null, null, null, 7L), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         verify(store, never()).insertVersion(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), anyString(),
-                any(), anyString(), anyString(), any(), any(), anyLong());
+                any(), any(), anyLong());
     }
 
     @Test
     void updateRejectsStaleRowVersion() {
         when(store.lockUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
-        when(store.unitNameExists(TENANT_ID, PHYSICAL_ID, "新名称", 1_001L)).thenReturn(false);
+        when(store.unitNameExists(TENANT_ID, "NEW_AP", 1_001L)).thenReturn(false);
         when(store.updateUnitContent(anyLong(), anyLong(), anyLong(), anyString(), anyString(), any(),
-                anyString(), anyString(), any(), any(), anyLong())).thenReturn(0);
+                any(), anyLong())).thenReturn(0);
 
         assertThatThrownBy(() -> service.update(operator, 1_001L,
-                new DeploymentUnitCommand(null, "ECIP-AP", "新名称", "APPLICATION", null, null, 7L), "trace"))
+                new DeploymentUnitCommand(null, "NEW_AP", "APPLICATION", List.of(), null, null, null, 7L), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         verify(store, never()).insertVersion(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), anyString(),
-                any(), anyString(), anyString(), any(), any(), anyLong());
+                any(), any(), anyLong());
     }
 
     // ---------- 生命周期 ----------
@@ -180,6 +225,7 @@ class DeploymentUnitServiceTest {
     void deactivateTransitionsActiveToInactiveWithoutReferenceCheck() {
         when(store.lockUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
+        when(store.hasRelations(TENANT_ID, 1_001L)).thenReturn(false);
         when(store.updateUnitStatus(TENANT_ID, 1_001L, "ACTIVE", "INACTIVE", operator.id())).thenReturn(1);
         when(store.findUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 1)));
@@ -218,6 +264,19 @@ class DeploymentUnitServiceTest {
     }
 
     @Test
+    void voidRejectsUnitWithDeploymentUnitRelations() {
+        when(store.lockUnit(TENANT_ID, 1_001L))
+                .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
+        when(store.hasRelations(TENANT_ID, 1_001L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.voidUnit(operator, 1_001L, "trace"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT))
+                .hasMessageContaining("先解除关联");
+        verify(referenceGuard, never()).requireClear(any());
+    }
+
+    @Test
     void voidFailsClosedWhenReferenceCheckIsIndeterminate() {
         when(store.lockUnit(TENANT_ID, 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
@@ -252,10 +311,10 @@ class DeploymentUnitServiceTest {
     void versionsListsImmutableSnapshotsInOrder() {
         when(store.findUnit(TENANT_ID, 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 2)));
         when(store.findVersions(TENANT_ID, 1_001L)).thenReturn(List.of(
-                new DeploymentUnitVersion(1L, 1_001L, 1, "ECIP-AP", "电子渠道接入应用", "APPLICATION",
-                        null, null, 88L, LocalDateTime.of(2026, 8, 23, 10, 0)),
-                new DeploymentUnitVersion(2L, 1_001L, 2, "ECIP-AP", "电子渠道接入应用 V2", "DATABASE",
-                        "迁移说明", null, 88L, LocalDateTime.of(2026, 8, 23, 11, 0))));
+                new DeploymentUnitVersion(1L, 1_001L, 1, "ECIP_AP", "APPLICATION",
+                        null, null, null, null, 88L, LocalDateTime.of(2026, 8, 23, 10, 0)),
+                new DeploymentUnitVersion(2L, 1_001L, 2, "ECIP_DB", "DATABASE",
+                        null, null, "迁移说明", null, 88L, LocalDateTime.of(2026, 8, 23, 11, 0))));
         when(referenceQuery.findUser(eq(operator), eq(88L), eq(false)))
                 .thenReturn(Optional.of(new com.ccb.system.capability.SystemUserReference(
                         88L, "技术架构师", "tech", null, true)));
@@ -271,15 +330,15 @@ class DeploymentUnitServiceTest {
     // ---------- 工具 ----------
 
     private DeploymentUnitCommand command(String name, String kind) {
-        return new DeploymentUnitCommand(PHYSICAL_ID, "ECIP-AP", name, kind, null, null, null);
+        return new DeploymentUnitCommand(PHYSICAL_ID, name, kind, List.of(), null, null, null, null);
     }
 
     private DeploymentUnit unit(long id, String code, String status, int currentVersion) {
-        return unitWithVersion(id, code, status, currentVersion, "电子渠道接入应用");
+        return unitWithVersion(id, code, status, currentVersion, "ECIP_AP");
     }
 
     private DeploymentUnit unitWithVersion(long id, String code, String status, int currentVersion, String name) {
-        return new DeploymentUnit(id, code, PHYSICAL_ID, "ECIP-AP", name, "APPLICATION", status, currentVersion,
+        return new DeploymentUnit(id, code, PHYSICAL_ID, name, "APPLICATION", null, null, status, currentVersion,
                 null, null, 88L, 88L, LocalDateTime.of(2026, 8, 23, 10, 0),
                 LocalDateTime.of(2026, 8, 23, 10, 0), 7L);
     }

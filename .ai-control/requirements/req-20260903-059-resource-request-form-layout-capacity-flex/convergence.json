@@ -1,0 +1,73 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {
+      "id": "R13",
+      "result": "pass",
+      "task_ids": ["T7", "T8"],
+      "evidence": [
+        "d29ff40 仅为非数据库容量区增加局部 Flex 类和 CSS",
+        "最终浅色1920x1080为3/4/3字段行，选择270px、数值180px、摘要整行777px",
+        "1280x800自然换行且内部滚动、footer可见",
+        "375x812、390x844、430x932 浅深主题均单列满宽且根宽等于视口",
+        "数据库资源区保持原Grid，容量计算、边车启用和创建成功提示通过"
+      ],
+      "limitations": [
+        "Mock 创建结果不持久化到列表，真实后端持久化和POST body需上线前集成验证"
+      ]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T7",
+      "status": "verified",
+      "evidence": ["产品提交d29ff40", "最终构建退出0", "S-0001误差0"]
+    },
+    {
+      "id": "T8",
+      "status": "verified",
+      "evidence": ["五视口明暗主题和业务回归完成", "build/scope/diff通过", "S-0002误差0"]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2":0,"P3":0}
+  },
+  "sample_trend": [
+    {"sample_id":"S-0001","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0002","P0":0,"P1":0,"P2":0,"P3":0,"score":0}
+  ],
+  "regression_checks": [
+    {"check":"前端构建","result":"pass","evidence":"vue-tsc和Vite退出0，2513 modules transformed"},
+    {"check":"任务范围与diff","result":"pass","evidence":"scope检查和git diff --check退出0"},
+    {"check":"五视口明暗主题","result":"pass","evidence":"两桌面三手机的布局、根宽、数字输入和footer均通过"},
+    {"check":"DB/非DB、计算、边车和创建入口","result":"pass","evidence":"DB保留Grid；计算总CPU4/总内存8G；边车输入启用；创建提示成功"},
+    {"check":"全仓治理","result":"known-baseline-failure","evidence":"模块、Skill和开发入口通过；AI control layout仅报告其他历史需求账本问题，本前缀无错误"}
+  ],
+  "invariant_results": [
+    {"invariant":"R1-R12和前两轮主从行为保持","result":"pass","evidence":"产品diff不含状态、滚动、标题或业务函数修改；旧账本哈希不变"},
+    {"invariant":"字段绑定、顺序、计算、校验和请求映射不变","result":"pass","evidence":"Vue diff仅增加class，submitForm和requestItemPayload无diff"},
+    {"invariant":"数据库资源区保持Grid","result":"pass","evidence":"运行时DB区capacityCount=0且numberGridCount=1"},
+    {"invariant":"桌面数字输入短宽、手机满宽","result":"pass","evidence":"桌面160px；手机255/269/309px"},
+    {"invariant":"内部滚动、footer和页面根边界保持","result":"pass","evidence":"桌面editor overflowY=auto、footer visible；五视口根宽等于视口"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance":"Element Plus默认表单宽度","result":"pass","evidence":"运行时Flex basis计算为选择270px、数值180px"},
+    {"disturbance":"视口与主题变化","result":"pass","evidence":"两主题五视口均无根溢出且自然换行"},
+    {"disturbance":"全仓历史治理噪声","result":"isolated","evidence":"错误列表不含本控制前缀，scope和本前缀JSON可解析"},
+    {"disturbance":"Mock不持久化创建结果","result":"disclosed","evidence":"创建提示成功但GET列表为空；未把持久化标记为通过"}
+  ],
+  "residual_risks": [
+    "真实后端环境需复核POST/PUT请求body与持久化，因为本地Mock不保存创建结果",
+    "不同系统字体可能改变自然换行边界，但Flex、min-width和移动覆盖可保持内容可达",
+    "全仓其他历史AI control layout问题仍需由对应需求单独治理"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R13由T7/T8和S1-S4完整覆盖；两次standard采样P0-P3均为0；任务verified、反馈为0、范围和不变量通过，已披露非阻塞环境限制。"
+}

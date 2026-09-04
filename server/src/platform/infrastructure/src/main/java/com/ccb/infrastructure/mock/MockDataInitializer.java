@@ -103,28 +103,18 @@ public class MockDataInitializer implements ApplicationRunner {
     }
 
     private void validateArchitectureRows(String table, JsonNode rows, Set<Long> validatedTenants) {
-        if (!"arch_logical_subsystem".equals(table) && !"arch_physical_subsystem".equals(table)) return;
+        if (!"arch_physical_subsystem".equals(table)) return;
         for (JsonNode row : rows) {
             if (!row.isObject()) throw new IllegalStateException("mock row must be an object for table: " + table);
             long tenantId = requiredPositiveLong(row, "tenant_id", table);
             if (validatedTenants.add(tenantId)) requireTenantRoot(tenantId);
-            if ("arch_logical_subsystem".equals(table)) validateLogicalRow(row, tenantId);
-            else validatePhysicalRow(row, tenantId);
+            validatePhysicalRow(row, tenantId);
         }
     }
 
-    private void validateLogicalRow(JsonNode row, long tenantId) {
-        requireActiveOrganization(tenantId, requiredPositiveLong(row, "business_org_id", "arch_logical_subsystem"), "事业群组织");
-        requireActiveUser(tenantId, requiredPositiveLong(row, "contact_user_id", "arch_logical_subsystem"), "联系人");
-        requireOptionalParameter(row, tenantId, "deployment_platform_code", "ARCH_DEPLOYMENT_PLATFORM");
-        requireOptionalParameter(row, tenantId, "system_type_code", "ARCH_SYSTEM_TYPE");
-        requireOptionalParameter(row, tenantId, "system_ownership_code", "ARCH_SYSTEM_OWNERSHIP");
-    }
-
     private void validatePhysicalRow(JsonNode row, long tenantId) {
-        long logicalId = requiredPositiveLong(row, "logical_subsystem_id", "arch_physical_subsystem");
-        requireReference("SELECT COUNT(*) FROM arch_logical_subsystem WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                tenantId, logicalId, "所属逻辑子系统");
+        requireOptionalText(row, "logical_subsystem_name");
+        requireOptionalParameter(row, tenantId, "business_component_code", "ARCH_BUSINESS_COMPONENT");
         long teamId = requiredPositiveLong(row, "responsible_team_org_id", "arch_physical_subsystem");
         String teamName = requireActiveOrganization(tenantId, teamId, "负责团队");
         String snapshot = requiredText(row, "responsible_team_name_snapshot");
@@ -136,6 +126,8 @@ public class MockDataInitializer implements ApplicationRunner {
         requireOptionalParameter(row, tenantId, "runtime_code", "ARCH_RUNTIME");
         requireOptionalParameter(row, tenantId, "system_level_code", "ARCH_SYSTEM_LEVEL");
         requireOptionalParameter(row, tenantId, "development_framework_code", "ARCH_DEVELOPMENT_FRAMEWORK");
+        requireOptionalParameter(row, tenantId, "deployment_platform", "ARCH_DEPLOYMENT_PLATFORM");
+        requireOptionalParameter(row, tenantId, "disaster_recovery_mode", "ARCH_DISASTER_RECOVERY_MODE");
     }
 
     private void requireTenantRoot(long tenantId) {
@@ -181,6 +173,14 @@ public class MockDataInitializer implements ApplicationRunner {
                 """, Long.class, tenantId, categoryCode, value.textValue());
         if (count == null || count != 1) {
             throw new IllegalStateException("mock parameter 不是当前租户分类选项: " + categoryCode + "/" + value.textValue());
+        }
+    }
+
+    private void requireOptionalText(JsonNode row, String field) {
+        JsonNode value = row.get(field);
+        if (value == null || value.isNull()) return;
+        if (!value.isTextual()) {
+            throw new IllegalStateException("mock optional text field must be text: " + field);
         }
     }
 
@@ -326,8 +326,7 @@ public class MockDataInitializer implements ApplicationRunner {
         result.put("req_import_batch", set("id", "tenant_id", "biz_type", "project_id", "file_name", "template_type", "total_rows", "success_rows", "error_rows", "errors_json", "status", "operator_id", "operator_name", "deleted"));
         result.put("req_attachment", set("id", "tenant_id", "biz_type", "biz_id", "file_name", "file_size", "content_type", "preview_id", "preview_url", "operator_id", "deleted"));
         result.put("req_business_group_member", set("id", "tenant_id", "business_group", "user_id", "created_by", "deleted"));
-        result.put("arch_logical_subsystem", set("id", "tenant_id", "code", "short_name", "name", "business_org_id", "deployment_platform_code", "system_type_code", "system_ownership_code", "contact_user_id", "description", "remark", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
-        result.put("arch_physical_subsystem", set("id", "tenant_id", "code", "short_name", "name", "logical_subsystem_id", "business_group_name", "responsible_team_org_id", "responsible_team_name_snapshot", "runtime_code", "system_level_code", "development_framework_code", "owner_user_id", "description", "remark", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
+        result.put("arch_physical_subsystem", set("id", "tenant_id", "code", "short_name", "name", "logical_subsystem_name", "business_component_code", "business_group_name", "deployment_platform", "disaster_recovery_mode", "responsible_team_org_id", "responsible_team_name_snapshot", "runtime_code", "system_level_code", "development_framework_code", "owner_user_id", "description", "remark", "status", "row_version", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
         return Collections.unmodifiableMap(result);
     }
 

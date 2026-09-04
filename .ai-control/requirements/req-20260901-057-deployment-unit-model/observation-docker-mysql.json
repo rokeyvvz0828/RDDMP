@@ -1,0 +1,73 @@
+{
+  "sample_label": "Docker/MySQL 恢复后独立复验（2026-09-02）",
+  "task_ids": ["T1", "T2", "T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "MySQL 8.4 Flyway 空库与 V123→V124 增量迁移",
+      "result": "pass",
+      "raw_evidence": "ArchitectureMigrationMySqlTest 3/3、EmptyDatabaseMigrationBaselineMySqlTest 2/2 通过；V124 删除旧字段并完成遗留 MQ→WEB 与完整名称转换。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "服务测试、MySQL 生命周期测试与数据库约束",
+      "result": "pass",
+      "raw_evidence": "名称格式、唯一占用、版本发布及生命周期 MySQL 测试通过。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "非容器服务测试、MySQL 迁移与前端浏览器旅程",
+      "result": "pass",
+      "raw_evidence": "APPLICATION/DATABASE/WEB、AP/DB/WB 标准后缀及自定义后缀证据通过。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "服务测试、前端远程多选旅程与代码复核",
+      "result": "partial",
+      "raw_evidence": "搜索、多选、排除自身、ACTIVE 和租户过滤已有自动化及浏览器证据。",
+      "limitation": ["真实 HTTP/SQL 租户边界旅程尚未运行"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "迁移结构、服务测试与 MySQL 生命周期测试",
+      "result": "partial",
+      "raw_evidence": "规范化关系表、双向查询、差量 LINK/UNLINK 历史及事务实现存在。",
+      "limitation": ["关系唯一键、外键、事务回滚和并发提交尚无专项 MySQL 运行断言"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "DeploymentUnitImportMySqlTest 与 ArchitectureMigrationMySqlTest",
+      "result": "pass",
+      "raw_evidence": "导入 8/8、迁移 3/3 通过；模板五列回传为 VALID，含 MQ 的 V123→V124 增量迁移成功。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "Controller/Service 自动化与 MySQL 测试",
+      "result": "partial",
+      "raw_evidence": "权限注解、HTTP DTO、失败审计与租户过滤已有自动化证据。",
+      "limitation": ["真实运行态 403、跨租户和审计记录旅程尚未联调"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "正式前端构建与四视口浏览器验收",
+      "result": "pass",
+      "raw_evidence": "1280×800、375×812、390×844、430×932 明暗主题、控制台及横向溢出检查通过。",
+      "limitation": ["浏览器后端为临时 Mock API"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "首次受限环境复跑 Maven 时无法访问依赖源；按批准在可访问 Docker 的环境重跑后通过。"
+  ],
+  "coverage_gaps": [
+    "双向关系唯一键、外键、事务回滚和并发提交需专项 MySQL 集成测试。",
+    "真实 API 的权限、租户隔离和审计旅程仍需运行证据。"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "incomplete"
+}

@@ -1,0 +1,46 @@
+{
+  "sample_label": "T2 集成采样",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 提交态构建/diff 与 S4 1280x800 浏览器布局引擎",
+      "result": "pass",
+      "raw_evidence": "694fc19 仅修改两个授权产品文件；npm build 退出 0；1280x800 下弹窗宽 1248、documentElement.scrollWidth=1280，基础信息与登记表左右分栏",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 真实浏览器申请项增删切换旅程",
+      "result": "pass",
+      "raw_evidence": "连续新增三项后左侧列出申请项，右侧只渲染 currentItem；切换后两条应用规格 2/4、3/6 和 DB 存储 20 保持；删除首/中/末项后选中相邻项，最后一项禁删",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S2 DOM 状态文字和保存校验旅程",
+      "result": "pass",
+      "raw_evidence": "列表与编辑区均显示未选择、待完善、已填写文字；存在完整项和空项时保存提示“申请项 2：请选择部署单元”并自动选中申请项 2",
+      "limitation": ["未执行完整屏幕阅读器审计"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S4 四视口明暗主题截图、计算尺寸与滚动边界",
+      "result": "pass",
+      "raw_evidence": "1280x800、375x812、390x844、430x932 在 light/dark 下 documentElement.scrollWidth 均等于 innerWidth；手机弹窗宽分别约 351/366/406，三申请项时仅列表局部 overflow-x:auto 且 scrollWidth=696",
+      "limitation": ["未覆盖未列出的设备字体和浏览器内核差异"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "首次源码 rg 组合模式在 PowerShell 双引号中被解析为语法错误；改用单引号后获得有效行号，分类为传感器命令故障而非产品偏差",
+    "本次观察由同一主任务上下文执行，使用提交态 diff、构建结果和真实浏览器复测，不具备人员或独立 Agent 隔离"
+  ],
+  "coverage_gaps": [
+    "候选失败、保存失败、无权限和慢响应不属于 T2 布局采样的完整覆盖，由 T3 最终运行采样继续检查",
+    "编辑既有申请的服务端回显依赖 Mock/后端返回能力，由 T3 汇总残余风险"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

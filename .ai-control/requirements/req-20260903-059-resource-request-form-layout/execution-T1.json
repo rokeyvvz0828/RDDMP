@@ -1,0 +1,110 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue",
+      "purpose": "增加申请项稳定临时身份、当前项选择、统一单项校验、物理子系统切换保护、候选失败状态和未保存关闭保护"
+    }
+  ],
+  "requirements_addressed": ["R2", "R3", "R4", "R5", "R6", "R7"],
+  "commands": [
+    {
+      "command": "npm --prefix web run build（执行前基线）",
+      "exit_code": 0,
+      "salient_output": "vue-tsc 与 Vite 构建通过；仅既有 Rollup PURE 注释和大 chunk 警告"
+    },
+    {
+      "command": "npm --prefix web run build（T1 实现后）",
+      "exit_code": 0,
+      "salient_output": "2513 modules transformed，built in 20.42s；ResourceRequestPage 产物生成成功"
+    },
+    {
+      "command": "git diff --check -- web/src/modules/architecture/ResourceRequestPage.vue",
+      "exit_code": 0,
+      "salient_output": "无空白错误；仅 Git 提示工作副本后续可能转换为 CRLF"
+    },
+    {
+      "command": "rg -n clientId|selectedItemId|itemValidationError|handlePhysicalSubsystemChange|handleFormBeforeClose|form.items.map(requestItemPayload) ResourceRequestPage.vue",
+      "exit_code": 0,
+      "salient_output": "临时 ID、首错定位、物理切换、关闭保护和既有 payload 映射均可定位；旧 physicalSubsystem watcher 无匹配"
+    },
+    {
+      "command": "git commit -m feat(architecture-web): add resource request item state",
+      "exit_code": 0,
+      "salient_output": "提交 f620bb1，仅 1 个产品文件，225 insertions、61 deletions"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "申请项身份和选择状态静态检查",
+      "result": "pass",
+      "evidence": "blankItem 和编辑映射均生成 clientId；新增后选中新项；删除按 clientId 选择下一项或上一项",
+      "limitations": ["尚未在真实浏览器点击验证"]
+    },
+    {
+      "check": "单项校验与错误定位静态检查",
+      "result": "pass",
+      "evidence": "itemCompletionState 与 validateForm 共同调用 itemValidationError，validateForm 设置首错 selectedItemId",
+      "limitations": ["状态文字将在 T2 列表模板接入后运行验证"]
+    },
+    {
+      "check": "物理子系统与候选保护静态检查",
+      "result": "pass",
+      "evidence": "移除静默清空 watcher；确认后重建单空项，取消恢复 acceptedPhysicalSubsystemId；空候选不再触发 syncDeploymentUnit 清空编辑值",
+      "limitations": ["确认框、候选失败和乱序响应待浏览器采样"]
+    },
+    {
+      "check": "未保存与重复提交保护",
+      "result": "pass",
+      "evidence": "formSnapshot 剥离 clientId；Dialog before-close 和底部取消共用放弃确认；formSubmitting 防重复并禁用表单",
+      "limitations": ["遮罩、ESC、底部取消和保存成功关闭待浏览器采样"]
+    }
+  ],
+  "diff_summary": [
+    "ResourceFormItem 增加仅前端 clientId，currentItem 通过 selectedItemId 查找",
+    "新增、删除、编辑回显和附加需求展开均改用稳定身份",
+    "抽取 itemValidationError 并让列表完成状态和保存首错定位复用",
+    "物理子系统切换由显式确认处理，候选加载增加 loading/error/retry 状态并保护已有输入",
+    "增加初始快照、保存中保护和未保存关闭确认",
+    "保持 form.items.map(requestItemPayload) 及 DB/非 DB 映射不变"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "API、DTO 和请求字段不变",
+      "result": "pass",
+      "evidence": "未修改 api.ts/types.ts；payload 仍显式构造 ResourceRequestPayload，clientId 未被展开或返回"
+    },
+    {
+      "invariant": "重复 deploymentUnitId 合法且顺序保持",
+      "result": "pass",
+      "evidence": "未增加去重；提交仍按 form.items.map 顺序生成"
+    },
+    {
+      "invariant": "至少一个申请项且保存失败保留输入",
+      "result": "pass",
+      "evidence": "删除在 length<=1 时返回；保存 catch 只更新 formError"
+    },
+    {
+      "invariant": "修改范围仅限 T1 授权面",
+      "result": "pass",
+      "evidence": "产品提交 f620bb1 仅包含 ResourceRequestPage.vue"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "隔离工作树 Git 元数据位于主检出 .git/worktrees，沙箱内首次提交无法创建 index.lock",
+      "impact": "经用户批准的受控提权后完成提交，产品内容未改变"
+    },
+    {
+      "event": "初次基线 rg 正则引号转义错误",
+      "impact": "不影响代码或构建，后续使用分隔扫描确认事实"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "T1 的 currentItem、状态标签和候选重试入口需由 T2 模板接入",
+    "真实 API 重复 deploymentUnitId、确认/取消和失败恢复由 T3 浏览器验收"
+  ],
+  "recommended_next": "observe"
+}

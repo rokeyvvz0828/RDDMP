@@ -5,6 +5,7 @@ import com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitQuery;
 import com.ccb.architecture.service.DeploymentUnitService;
 import com.ccb.architecture.service.DeploymentUnitService.DeploymentUnitView;
 import com.ccb.architecture.service.DeploymentUnitService.DeploymentUnitVersionView;
+import com.ccb.architecture.service.DeploymentUnitService.RelatedDeploymentUnitView;
 import com.ccb.common.api.ApiResponse;
 import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
@@ -31,7 +32,8 @@ import java.util.List;
 @RequestMapping("/api/architecture/deployment-units")
 public class DeploymentUnitController {
     private static final String VIEW_PERMISSION =
-            "hasAnyAuthority('architecture:deployment-unit:view', 'architecture:view', 'architecture:apply', 'architecture:manage')";
+            "hasAnyAuthority('architecture:deployment-unit:view', 'architecture:deployment-unit:manage', "
+                    + "'architecture:view', 'architecture:apply', 'architecture:manage')";
     private static final String MANAGE_PERMISSION = "hasAuthority('architecture:deployment-unit:manage')";
 
     private final DeploymentUnitService service;
@@ -46,14 +48,25 @@ public class DeploymentUnitController {
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String code,
-            @RequestParam(required = false) String shortName,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long physicalSubsystemId,
             @RequestParam(required = false) String kind,
             @RequestParam(required = false) String status,
             @AuthenticationPrincipal AuthUser actor) {
-        DeploymentUnitQuery query = new DeploymentUnitQuery(code, shortName, name, physicalSubsystemId, kind, status);
+        DeploymentUnitQuery query = new DeploymentUnitQuery(code, name, physicalSubsystemId, kind, status);
         return ApiResponse.success(service.list(actor, new PageQuery(page, size), query), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/options")
+    @PreAuthorize(VIEW_PERMISSION)
+    public ApiResponse<PageResult<RelatedDeploymentUnitView>> options(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) Long excludeId,
+            @AuthenticationPrincipal AuthUser actor) {
+        return ApiResponse.success(service.options(actor, keyword, excludeId, new PageQuery(page, size)),
+                TraceId.getOrCreate());
     }
 
     @GetMapping("/{id}")

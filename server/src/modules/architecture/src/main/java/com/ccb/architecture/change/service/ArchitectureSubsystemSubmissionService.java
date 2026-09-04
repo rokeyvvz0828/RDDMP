@@ -33,7 +33,7 @@ import java.util.function.LongSupplier;
  * 架构子系统工单与平台工作流公开契约之间的事务协调器。
  *
  * <p>提交准备和流程启动、轮次绑定必须共享 {@link SubsystemChangeService} 开启的事务；
- * 任一平台结果校验或持久化失败都会让编号、锁、快照和 IN_REVIEW 状态一起回滚。</p>
+ * 任一平台结果校验或持久化失败都会让目标锁、快照和 IN_REVIEW 状态一起回滚。</p>
  */
 @Service
 public class ArchitectureSubsystemSubmissionService {
@@ -153,8 +153,7 @@ public class ArchitectureSubsystemSubmissionService {
         variables.put("targetKind", application.targetKind().name());
         variables.put("actionType", application.actionType().name());
         variables.put("applicantId", application.applicantId());
-        variables.put("reservedNumbers", preparation.reservedNumbers().stream()
-                .map(SubsystemChangeService.ReservedNumber::code).toList());
+        variables.put("physicalSubsystemCodes", preparation.physicalSubsystemCodes());
         return Map.copyOf(variables);
     }
 

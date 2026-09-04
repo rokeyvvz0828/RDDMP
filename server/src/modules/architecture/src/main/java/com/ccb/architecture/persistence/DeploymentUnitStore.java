@@ -14,9 +14,11 @@ import org.springframework.stereotype.Repository;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 部署单元数据访问：主记录、版本、编号分配与导入批次/明细。
@@ -28,14 +30,13 @@ public class DeploymentUnitStore {
     public static final int MAX_IMPORT_ROWS = 5000;
 
     private static final String UNIT_COLUMNS = """
-            id, code, physical_subsystem_id, short_name, name, related_deployment_unit_name,
-            deployment_unit_type, kind, status, current_version,
+            id, code, physical_subsystem_id, name, kind, status, current_version,
             default_network_zone_id, default_network_zone_name,
             description, remark, created_by, updated_by, created_at, updated_at, row_version
             """;
     private static final String VERSION_COLUMNS = """
-            id, unit_id, version_no, short_name, name, related_deployment_unit_name, deployment_unit_type,
-            kind, default_network_zone_id, default_network_zone_name, description, remark, published_by, published_at
+            id, unit_id, version_no, name, kind, default_network_zone_id, default_network_zone_name,
+            description, remark, published_by, published_at
             """;
     private static final String BATCH_COLUMNS = """
             id, file_name, file_size, total_rows, valid_rows, success_rows, failed_rows, skipped_rows,
@@ -47,8 +48,7 @@ public class DeploymentUnitStore {
 
     private static final RowMapper<DeploymentUnit> UNIT_MAPPER = (rs, rowNum) -> new DeploymentUnit(
             rs.getLong("id"), rs.getString("code"), rs.getLong("physical_subsystem_id"),
-            rs.getString("short_name"), rs.getString("name"), rs.getString("related_deployment_unit_name"),
-            rs.getString("deployment_unit_type"), rs.getString("kind"),
+            rs.getString("name"), rs.getString("kind"),
             nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
             rs.getString("status"), rs.getInt("current_version"), rs.getString("description"), rs.getString("remark"),
             rs.getLong("created_by"), rs.getLong("updated_by"),
@@ -57,8 +57,7 @@ public class DeploymentUnitStore {
 
     private static final RowMapper<DeploymentUnitVersion> VERSION_MAPPER = (rs, rowNum) -> new DeploymentUnitVersion(
             rs.getLong("id"), rs.getLong("unit_id"), rs.getInt("version_no"),
-            rs.getString("short_name"), rs.getString("name"), rs.getString("related_deployment_unit_name"),
-            rs.getString("deployment_unit_type"), rs.getString("kind"),
+            rs.getString("name"), rs.getString("kind"),
             nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
             rs.getString("description"), rs.getString("remark"), rs.getLong("published_by"),
             localDateTime(rs.getTimestamp("published_at")));
@@ -81,6 +80,12 @@ public class DeploymentUnitStore {
     public record PhysicalSubsystemRef(long id, String code, String name, String status, boolean deleted) {
     }
 
+    /** 关联部署单元投影；关系为无向边，查询时统一投影为“另一端”。 */
+    public record RelatedDeploymentUnitRow(long id, String code, String name, String kind,
+                                           long physicalSubsystemId, String physicalSubsystemName,
+                                           String status) {
+    }
+
     private final JdbcTemplate jdbc;
 
     public DeploymentUnitStore(JdbcTemplate jdbc) {
@@ -96,7 +101,6 @@ public class DeploymentUnitStore {
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
         addLike(filter, args, "code", normalized.code());
-        addLike(filter, args, "short_name", normalized.shortName());
         addLike(filter, args, "name", normalized.name());
         if (normalized.physicalSubsystemId() != null) {
             filter.append(" AND physical_subsystem_id = ?");
@@ -134,82 +138,62 @@ public class DeploymentUnitStore {
                 UNIT_MAPPER, tenantId, id).stream().findFirst();
     }
 
-    public Optional<DeploymentUnit> findUnitByPhysicalAndName(long tenantId, long physicalSubsystemId, String name) {
+    public Optional<DeploymentUnit> findUnitByName(long tenantId, String name) {
         return jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit "
-                        + "WHERE tenant_id = ? AND physical_subsystem_id = ? AND name = ?",
-                UNIT_MAPPER, tenantId, physicalSubsystemId, name).stream().findFirst();
+                        + "WHERE tenant_id = ? AND name = ?",
+                UNIT_MAPPER, tenantId, name).stream().findFirst();
     }
 
-    public boolean unitNameExists(long tenantId, long physicalSubsystemId, String name, Long excludeUnitId) {
+    public boolean unitNameExists(long tenantId, String name, Long excludeUnitId) {
         String exclude = excludeUnitId == null ? "" : " AND id <> ?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, physicalSubsystemId, name));
+        List<Object> args = new ArrayList<>(List.of(tenantId, name));
         if (excludeUnitId != null) {
             args.add(excludeUnitId);
         }
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_deployment_unit WHERE tenant_id = ? AND physical_subsystem_id = ?"
-                        + " AND name = ?" + exclude,
+                "SELECT COUNT(*) FROM arch_deployment_unit WHERE tenant_id = ? AND name = ?" + exclude,
                 Long.class, args.toArray());
         return count != null && count > 0;
     }
 
-    public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId, String shortName,
-                           String name, String relatedDeploymentUnitName, String deploymentUnitType,
-                           String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
+    public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId,
+                           String name, String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
                            String description, String remark, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit
-                    (id, tenant_id, code, physical_subsystem_id, short_name, name,
-                     related_deployment_unit_name, deployment_unit_type, kind, status,
+                    (id, tenant_id, code, physical_subsystem_id, name, kind, status,
                      current_version, default_network_zone_id, default_network_zone_name,
                      description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 1, ?, ?, ?, ?, ?, ?)
-                """, id, tenantId, code, physicalSubsystemId, shortName, name,
-                relatedDeploymentUnitName, deploymentUnitType, kind,
+                VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', 1, ?, ?, ?, ?, ?, ?)
+                """, id, tenantId, code, physicalSubsystemId, name, kind,
                 defaultNetworkZoneId, defaultNetworkZoneName, description, remark, actorId, actorId);
     }
 
-    public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId, String shortName,
+    public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId,
                            String name, String kind, String description, String remark, long actorId) {
-        insertUnit(id, tenantId, code, physicalSubsystemId, shortName, name, null,
-                defaultDeploymentUnitType(kind), kind, null, null, description, remark, actorId);
-    }
-
-    public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId, String shortName,
-                           String name, String relatedDeploymentUnitName, String deploymentUnitType,
-                           String kind, String description, String remark, long actorId) {
-        insertUnit(id, tenantId, code, physicalSubsystemId, shortName, name, relatedDeploymentUnitName,
-                deploymentUnitType, kind, null, null, description, remark, actorId);
+        insertUnit(id, tenantId, code, physicalSubsystemId, name, kind,
+                null, null, description, remark, actorId);
     }
 
     /** 乐观锁更新展示内容；返回 0 表示版本冲突或状态不允许。 */
-    public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String shortName, String name,
-                                 String relatedDeploymentUnitName, String deploymentUnitType,
+    public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String name,
                                  String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
                                  String description, String remark, long actorId) {
         return jdbc.update("""
                 UPDATE arch_deployment_unit
-                SET short_name = ?, name = ?, related_deployment_unit_name = ?, deployment_unit_type = ?,
-                    kind = ?, default_network_zone_id = ?, default_network_zone_name = ?,
+                SET name = ?, kind = ?, default_network_zone_id = ?, default_network_zone_name = ?,
                     description = ?, remark = ?, updated_by = ?,
                     row_version = row_version + 1
                 WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
-                """, shortName, name, relatedDeploymentUnitName, deploymentUnitType, kind,
+                """, name, kind,
                 defaultNetworkZoneId, defaultNetworkZoneName, description, remark, actorId,
                 tenantId, id, expectedRowVersion);
     }
 
-    public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String shortName, String name,
+    public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String name,
                                  String kind, String description, String remark, long actorId) {
-        return updateUnitContent(tenantId, id, expectedRowVersion, shortName, name, null,
-                defaultDeploymentUnitType(kind), kind, null, null, description, remark, actorId);
-    }
-
-    public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String shortName, String name,
-                                 String relatedDeploymentUnitName, String deploymentUnitType,
-                                 String kind, String description, String remark, long actorId) {
-        return updateUnitContent(tenantId, id, expectedRowVersion, shortName, name,
-                relatedDeploymentUnitName, deploymentUnitType, kind, null, null, description, remark, actorId);
+        return updateUnitContent(tenantId, id, expectedRowVersion, name, kind,
+                null, null, description, remark, actorId);
     }
 
     /** 状态迁移；返回 0 表示状态不允许或已变更。 */
@@ -291,32 +275,24 @@ public class DeploymentUnitStore {
 
     // ---------- 版本 ----------
 
-    public void insertVersion(long id, long tenantId, long unitId, int versionNo, String shortName, String name,
-                              String relatedDeploymentUnitName, String deploymentUnitType,
+    public void insertVersion(long id, long tenantId, long unitId, int versionNo, String name,
                               String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
                               String description, String remark, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit_version
-                    (id, tenant_id, unit_id, version_no, short_name, name, related_deployment_unit_name,
-                     deployment_unit_type, kind, default_network_zone_id, default_network_zone_name,
+                    (id, tenant_id, unit_id, version_no, name, kind,
+                     default_network_zone_id, default_network_zone_name,
                      description, remark, published_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, id, tenantId, unitId, versionNo, shortName, name, relatedDeploymentUnitName,
-                deploymentUnitType, kind, defaultNetworkZoneId, defaultNetworkZoneName,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, id, tenantId, unitId, versionNo, name, kind,
+                defaultNetworkZoneId, defaultNetworkZoneName,
                 description, remark, actorId);
     }
 
-    public void insertVersion(long id, long tenantId, long unitId, int versionNo, String shortName, String name,
+    public void insertVersion(long id, long tenantId, long unitId, int versionNo, String name,
                               String kind, String description, String remark, long actorId) {
-        insertVersion(id, tenantId, unitId, versionNo, shortName, name, null,
-                defaultDeploymentUnitType(kind), kind, null, null, description, remark, actorId);
-    }
-
-    public void insertVersion(long id, long tenantId, long unitId, int versionNo, String shortName, String name,
-                              String relatedDeploymentUnitName, String deploymentUnitType,
-                              String kind, String description, String remark, long actorId) {
-        insertVersion(id, tenantId, unitId, versionNo, shortName, name, relatedDeploymentUnitName,
-                deploymentUnitType, kind, null, null, description, remark, actorId);
+        insertVersion(id, tenantId, unitId, versionNo, name, kind,
+                null, null, description, remark, actorId);
     }
 
     public List<DeploymentUnitVersion> findVersions(long tenantId, long unitId) {
@@ -329,6 +305,126 @@ public class DeploymentUnitStore {
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit_version "
                 + "WHERE tenant_id = ? AND unit_id = ?", Long.class, tenantId, unitId);
         return count == null ? 0 : count.intValue();
+    }
+
+    // ---------- 双向部署单元关系 ----------
+
+    public List<RelatedDeploymentUnitRow> findRelatedUnits(long tenantId, long unitId) {
+        return jdbc.query("""
+                SELECT other.id, other.code, other.name, other.kind, other.physical_subsystem_id,
+                       physical.name AS physical_subsystem_name, other.status
+                FROM arch_deployment_unit_relation relation
+                JOIN arch_deployment_unit other
+                  ON other.tenant_id = relation.tenant_id
+                 AND other.id = CASE WHEN relation.unit_low_id = ? THEN relation.unit_high_id ELSE relation.unit_low_id END
+                JOIN arch_physical_subsystem physical
+                  ON physical.tenant_id = other.tenant_id AND physical.id = other.physical_subsystem_id
+                WHERE relation.tenant_id = ? AND (relation.unit_low_id = ? OR relation.unit_high_id = ?)
+                ORDER BY other.name, other.id
+                """, (rs, rowNum) -> new RelatedDeploymentUnitRow(
+                        rs.getLong("id"), rs.getString("code"), rs.getString("name"), rs.getString("kind"),
+                        rs.getLong("physical_subsystem_id"), rs.getString("physical_subsystem_name"),
+                        rs.getString("status")), unitId, tenantId, unitId, unitId);
+    }
+
+    public List<DeploymentUnit> lockActiveUnits(long tenantId, List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Long> sorted = ids.stream().distinct().sorted().toList();
+        String placeholders = String.join(",", java.util.Collections.nCopies(sorted.size(), "?"));
+        List<Object> args = new ArrayList<>();
+        args.add(tenantId);
+        args.addAll(sorted);
+        return jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit "
+                        + "WHERE tenant_id = ? AND status = 'ACTIVE' AND id IN (" + placeholders + ") "
+                        + "ORDER BY id FOR UPDATE",
+                UNIT_MAPPER, args.toArray());
+    }
+
+    public void replaceRelations(long tenantId, long sourceUnitId, Set<Long> targetIds,
+                                 long actorId, int sourceVersionNo) {
+        Set<Long> desired = targetIds == null ? Set.of() : new HashSet<>(targetIds);
+        Set<Long> current = new HashSet<>();
+        jdbc.query("""
+                SELECT unit_low_id, unit_high_id
+                FROM arch_deployment_unit_relation
+                WHERE tenant_id = ? AND (unit_low_id = ? OR unit_high_id = ?)
+                FOR UPDATE
+                """, rs -> {
+                    long low = rs.getLong("unit_low_id");
+                    long high = rs.getLong("unit_high_id");
+                    current.add(low == sourceUnitId ? high : low);
+                }, tenantId, sourceUnitId, sourceUnitId);
+
+        Set<Long> additions = new HashSet<>(desired);
+        additions.removeAll(current);
+        Set<Long> removals = new HashSet<>(current);
+        removals.removeAll(desired);
+
+        for (Long targetId : additions.stream().sorted().toList()) {
+            long low = Math.min(sourceUnitId, targetId);
+            long high = Math.max(sourceUnitId, targetId);
+            jdbc.update("""
+                    INSERT INTO arch_deployment_unit_relation
+                        (tenant_id, unit_low_id, unit_high_id, created_by)
+                    VALUES (?, ?, ?, ?)
+                    """, tenantId, low, high, actorId);
+            insertRelationHistory(tenantId, sourceUnitId, low, high, "LINK", actorId, sourceVersionNo);
+        }
+        for (Long targetId : removals.stream().sorted().toList()) {
+            long low = Math.min(sourceUnitId, targetId);
+            long high = Math.max(sourceUnitId, targetId);
+            jdbc.update("DELETE FROM arch_deployment_unit_relation "
+                            + "WHERE tenant_id = ? AND unit_low_id = ? AND unit_high_id = ?",
+                    tenantId, low, high);
+            insertRelationHistory(tenantId, sourceUnitId, low, high, "UNLINK", actorId, sourceVersionNo);
+        }
+    }
+
+    public boolean hasRelations(long tenantId, long unitId) {
+        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit_relation "
+                        + "WHERE tenant_id = ? AND (unit_low_id = ? OR unit_high_id = ?)",
+                Long.class, tenantId, unitId, unitId);
+        return count != null && count > 0;
+    }
+
+    public PageResult<DeploymentUnit> searchActiveOptions(long tenantId, String keyword,
+                                                           Long excludeId, PageQuery page) {
+        PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        String escaped = "%" + escapeLike(normalizedKeyword) + "%";
+        String exclude = excludeId == null ? "" : " AND unit.id <> ?";
+        String filter = " AND (unit.name LIKE ? ESCAPE '\\\\' OR unit.code LIKE ? ESCAPE '\\\\'"
+                + " OR physical.name LIKE ? ESCAPE '\\\\' OR physical.code LIKE ? ESCAPE '\\\\')";
+        List<Object> args = new ArrayList<>(List.of(tenantId, escaped, escaped, escaped, escaped));
+        if (excludeId != null) {
+            args.add(excludeId);
+        }
+        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit unit "
+                        + "JOIN arch_physical_subsystem physical ON physical.tenant_id = unit.tenant_id "
+                        + "AND physical.id = unit.physical_subsystem_id "
+                        + "WHERE unit.tenant_id = ? AND unit.status = 'ACTIVE'" + filter + exclude,
+                Long.class, args.toArray());
+        List<Object> listArgs = new ArrayList<>(args);
+        listArgs.add(normalizedPage.size());
+        listArgs.add((normalizedPage.page() - 1) * normalizedPage.size());
+        List<DeploymentUnit> records = jdbc.query("SELECT " + prefixColumns("unit", UNIT_COLUMNS)
+                        + " FROM arch_deployment_unit unit JOIN arch_physical_subsystem physical "
+                        + "ON physical.tenant_id = unit.tenant_id AND physical.id = unit.physical_subsystem_id "
+                        + "WHERE unit.tenant_id = ? AND unit.status = 'ACTIVE'" + filter + exclude
+                        + " ORDER BY unit.name, unit.id LIMIT ? OFFSET ?",
+                UNIT_MAPPER, listArgs.toArray());
+        return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
+    }
+
+    private void insertRelationHistory(long tenantId, long sourceUnitId, long low, long high,
+                                       String action, long actorId, int sourceVersionNo) {
+        jdbc.update("""
+                INSERT INTO arch_deployment_unit_relation_history
+                    (tenant_id, source_unit_id, unit_low_id, unit_high_id, action, changed_by, source_version_no)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, tenantId, sourceUnitId, low, high, action, actorId, sourceVersionNo);
     }
 
     // ---------- 导入批次与明细 ----------
@@ -409,8 +505,13 @@ public class DeploymentUnitStore {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
-    private String defaultDeploymentUnitType(String kind) {
-        return "DATABASE".equalsIgnoreCase(kind) ? "DB" : "AP";
+    private static String prefixColumns(String alias, String columns) {
+        return columns.lines()
+                .flatMap(line -> java.util.Arrays.stream(line.split(",")))
+                .map(String::trim)
+                .filter(column -> !column.isEmpty())
+                .map(column -> alias + "." + column)
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private static Long nullableLong(java.sql.ResultSet rs, String column) throws java.sql.SQLException {

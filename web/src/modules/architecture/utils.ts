@@ -28,7 +28,7 @@ export const actionTypeLabels: Record<SubsystemActionType, string> = {
   OFFLINE: '下线',
   REACTIVATE: '重新启用',
   VOID: '作废',
-  REPLACE: '更换归属'
+  REPLACE: '替换'
 }
 
 export const targetKindLabels: Record<SubsystemTargetKind, string> = {
@@ -71,14 +71,6 @@ export function allowedPublishedActions(kind: SubsystemTargetKind, status: Publi
   if (status === 'VOIDED') return []
   if (status === 'OFFLINE') return ['REACTIVATE', 'VOID']
   return kind === 'PHYSICAL' ? ['UPDATE', 'OFFLINE', 'VOID', 'REPLACE'] : ['UPDATE', 'OFFLINE', 'VOID']
-}
-
-export function formatLogicalNumber(sequence?: number | null) {
-  return sequence && sequence > 0 ? `A${String(sequence).padStart(4, '0')}` : '待生成'
-}
-
-export function formatPhysicalNumber(logicalSequence?: number | null, slot?: string | null) {
-  return logicalSequence && slot ? `W${String(logicalSequence).padStart(4, '0')}${slot}` : '待生成'
 }
 
 export function formatDateTime(value?: string | null) {
@@ -129,7 +121,7 @@ export function httpErrorCode(error: unknown) {
 export const deploymentUnitKindLabels: Record<DeploymentUnitKind, string> = {
   APPLICATION: '应用',
   DATABASE: '数据库',
-  MQ: '消息队列'
+  WEB: 'Web'
 }
 
 export const deploymentUnitStatusLabels: Record<DeploymentUnitStatus, string> = {
