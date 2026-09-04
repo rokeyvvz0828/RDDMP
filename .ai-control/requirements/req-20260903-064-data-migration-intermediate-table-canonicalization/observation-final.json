@@ -1,0 +1,64 @@
+{
+  "sample_label": "S-0001~S-0004 最终集成采样（high-assurance 三次以上）",
+  "task_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+  ],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "id": "M-R1-01",
+      "requirement": "R1",
+      "expectation": "中间表 CRUD/查询均通过目标表服务（category=INTERMEDIATE）",
+      "measurement": "DataMigrationModuleRegistrationTest 14/14 断言生产源不含旧表引用；全仓库生产 rg 扫描 0 命中；TargetTablesPage/接口固定 tableCategory=INTERMEDIATE",
+      "result": "pass"
+    },
+    {
+      "id": "M-R2-01",
+      "requirement": "R2",
+      "expectation": "空表 fixture 删除成功；非空 fixture 在 DROP 前失败",
+      "measurement": "ContentAssetMigrationMySqlTest 7/7：空表 DROP 后 information_schema 无 dm_intermediate_table；非空 fixture INSERT 后 V160 断言 SIGNAL 阻断且表保留",
+      "result": "pass"
+    },
+    {
+      "id": "M-R3-01",
+      "requirement": "R3",
+      "expectation": "旧结构化入口拒绝；菜单仍可用且调用 category=INTERMEDIATE",
+      "measurement": "StructuredAssetService/ExcelService/ContentAssetTables 无 INTERMEDIATE_TABLE 分支；router 无 IntermediateTablesPage 残留；构建通过且权限码保留",
+      "result": "pass"
+    },
+    {
+      "id": "M-R4-01",
+      "requirement": "R4",
+      "expectation": "最终数据库不保留旧表，删除受空表断言保护",
+      "measurement": "V160 SQL 实读：存储过程断言 COUNT(*)=0 非空 SIGNAL 45000，断言后 DROP；空表 fixture 复验旧表不存在",
+      "result": "pass"
+    },
+    {
+      "id": "M-R5-01",
+      "requirement": "R5",
+      "expectation": "租户、项目、权限和审计语义不变",
+      "measurement": "DataMigrationPermissionServiceTest 8/8、ContentRecycleBinRegistryTest 7/7、system 项目/审计测试 62/62；模块边界检查 14 模块通过；数据范围校验代码保持",
+      "result": "pass"
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "特征分支工作树存在 REQ-031（T31/T32 执行与观测记录）、REQ-063（治理整改）、控制脚本和开发工具等既有未提交改动，不属于 REQ-064 范围且未被触碰",
+    "前端构建存量 chunk size 警告（>500kB），与本次改动无关",
+    "验证环境为本地 Testcontainers MySQL 8.4 与本地构建，未连接生产"
+  ],
+  "coverage_gaps": [
+    "生产拓扑与真实 IAM/发布顺序未在本机复验（约定：应用收敛版本先发布，V160 后执行）",
+    "移动视口与浏览器点击路径依赖既有 UI 验收流程，本门禁以构建、路由静态检查与共享组件复用证据覆盖"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

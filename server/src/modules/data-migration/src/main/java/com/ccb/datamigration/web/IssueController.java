@@ -146,12 +146,13 @@ public class IssueController {
     }
 
     /**
-     * 清空回收站
+     * 清空回收站（T32：仅清空指定项目的软删记录）
      */
     @DeleteMapping("/purge-all")
     @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
-    public ApiResponse<Void> purgeAll(@AuthenticationPrincipal AuthUser user) {
-        service.purgeAll(user);
+    public ApiResponse<Void> purgeAll(@RequestParam(required = false) Long projectId,
+                                      @AuthenticationPrincipal AuthUser user) {
+        service.purgeAll(projectId, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
@@ -198,7 +199,7 @@ public class IssueController {
      */
     @GetMapping("/options/target-fields")
     public ApiResponse<List<Map<String, Object>>> targetFieldOptions(
-            @RequestParam Long tableId, @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.getTargetFieldOptions(tableId, user), TraceId.getOrCreate());
+            @RequestParam Long tableCode, @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.getTargetFieldOptions(tableCode, user), TraceId.getOrCreate());
     }
 }

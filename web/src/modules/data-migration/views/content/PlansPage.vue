@@ -1,14 +1,16 @@
 <!--
   用途：数迁资产内容 - 迁移方案页（REQ-20260820-031 增量，对标会议纪要/汇报材料）
-  说明：统一管理「业务迁移方案 / 数据迁移方案」两类资料，支持项目 / 资产颗粒度 / 方案类型 /
+  说明：统一管理「业务迁移方案 / 数据迁移方案」两类资料，支持资产颗粒度 / 方案类型 /
         关联系统 / 方案名称关键字的多维筛选、分页展示、单条录入与批量上传（多文件归入同一方案）、
         编辑（重传/追加源文件）、下载、在线预览、逻辑删除。
+        所属项目唯一取自全局项目上下文：页内不再有项目筛选、项目下拉与「所属项目」字段，列表/新增/编辑均固定使用当前项目，
+        项目切换后重置分页与其他筛选条件重查。
         唯一约束：同一「项目 + 资产颗粒度 + 迁移方案类型 + 关联系统」仅允许一条活动记录（服务端强制）。
         文档级回收站收敛到统一页（数迁内容 › 回收站，PLAN 作为内容类型，经 PlanRecycleBinSource 分发）。
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Delete, Document, Download, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
@@ -21,17 +23,21 @@ import UiFilePreview from '../../../../components/ui/UiFilePreview.vue'
 import { useAuthStore } from '../../../../stores/auth'
 import {
   listPlans, getPlan, createPlan, updatePlan, deletePlans,
-  getPlanSystemOptions, getPlanAttachments, computeFileMd5,
-  type PlanRecord, type PlanFormData, type PlanAttachment, type SelectOption
+  getPlanSystemOptions, getPlanAttachments,
+  type PlanRecord, type PlanQuery, type PlanFormData, type PlanAttachment, type SelectOption
 } from '../../../../api/data-migration'
-import { getProjectWorkbench } from '../../../../api/project'
+import ProjectScopeState from '../../components/ProjectScopeState.vue'
+import { useProjectScope } from '../../composables/useProjectScope'
 import { uploadAttachment, getAttachmentDownload } from '../../../../api/attachments'
 import { getFilePreviewCapabilities, uploadFilePreview, type FilePreviewCapabilities, type FilePreviewResult } from '../../../../api/file-preview'
 
 const auth = useAuthStore()
+const scope = useProjectScope()
+const scopeState = scope.state
+const scopeProjectId = scope.projectId
+
 const loading = ref(false), records = ref<PlanRecord[]>([]), total = ref(0), page = ref(1), size = ref(20), selectedIds = ref<number[]>([]), busy = ref(false)
-const fProject = ref<number | null>(null), fGranularity = ref(''), fPlanType = ref(''), fSystem = ref<number | null>(null), fKeyword = ref('')
-const projectOpts = ref<SelectOption[]>([])
+const fGranularity = ref(''), fPlanType = ref(''), fSystem = ref(''), fKeyword = ref('')
 const filterSysOpts = ref<SelectOption[]>([])
 const GRAV: SelectOption[] = [{ value: 'PROJECT', label: '项目级' }, { value: 'SYSTEM', label: '系统级' }]
 const PLAN_TYPES: SelectOption[] = [{ value: 'BUSINESS', label: '业务迁移方案' }, { value: 'DATA', label: '数据迁移方案' }]
@@ -41,11 +47,11 @@ interface PlanFormState {
   projectId: number | null
   granularity: string
   planType: string
-  systemId: number | null
+  systemCode: string
   planName: string
   summary: string
 }
-const fv = ref<PlanFormState>({ projectId: null, granularity: '', planType: '', systemId: null, planName: '', summary: '' })
+const fv = ref<PlanFormState>({ projectId: null, granularity: '', planType: '', systemCode: '', planName: '', summary: '' })
 const formSysOpts = ref<SelectOption[]>([])
 // 附件：编辑时保留的已绑定文件 + 待上传的新文件
 const existingAttachments = ref<{ attachmentId: number; fileName: string }[]>([])
@@ -81,17 +87,18 @@ const fmtDate = (v?: string | null) => { if (!v) return '—'; const d = new Dat
 const lbl = (o: SelectOption[], v?: string) => o.find(x => x.value === v)?.label ?? v ?? '—'
 const stripExt = (name: string) => { const dot = name.lastIndexOf('.'); return dot > 0 ? name.substring(0, dot) : name }
 
-async function loadOpts() {
-  try { projectOpts.value = ((await getProjectWorkbench()).data.data ?? []).map(p => ({ value: p.id, label: p.project_name })) } catch { projectOpts.value = [] }
+async function loadFilterSystems() {
+  const pid = scopeProjectId.value
+  filterSysOpts.value = pid ? ((await getPlanSystemOptions(pid).catch(() => null))?.data.data ?? []) : []
 }
 async function loadList() {
+  if (scopeProjectId.value == null) { records.value = []; total.value = 0; selectedIds.value = []; return }
   loading.value = true; selectedIds.value = []
   try {
-    const p: Record<string, any> = { page: page.value, size: size.value }
-    if (fProject.value) p.projectId = fProject.value
+    const p: PlanQuery = { page: page.value, size: size.value, projectId: scopeProjectId.value }
     if (fGranularity.value) p.granularity = fGranularity.value
     if (fPlanType.value) p.planType = fPlanType.value
-    if (fSystem.value) p.systemId = fSystem.value
+    if (fSystem.value) p.systemCode = fSystem.value
     if (fKeyword.value.trim()) p.keyword = fKeyword.value.trim()
     const d = (await listPlans(p)).data.data
     records.value = d?.records ?? []; total.value = d?.total ?? 0
@@ -99,24 +106,15 @@ async function loadList() {
   finally { loading.value = false }
 }
 function doSearch() { page.value = 1; loadList() }
-function doReset() { fProject.value = null; fGranularity.value = ''; fPlanType.value = ''; fSystem.value = null; fKeyword.value = ''; page.value = 1; loadList() }
-async function onFilterProjectChange(pid: number | null) {
-  fSystem.value = null
-  filterSysOpts.value = pid ? ((await getPlanSystemOptions(pid).catch(() => null))?.data.data ?? []) : []
-  doSearch()
-}
+function doReset() { fGranularity.value = ''; fPlanType.value = ''; fSystem.value = ''; fKeyword.value = ''; page.value = 1; loadList() }
 async function loadFormSysOpts(pid: number | null) {
   formSysOpts.value = pid ? ((await getPlanSystemOptions(pid).catch(() => null))?.data.data ?? []) : []
 }
 function resetForm() {
-  fv.value = { projectId: null, granularity: '', planType: '', systemId: null, planName: '', summary: '' }
+  fv.value = { projectId: scopeProjectId.value, granularity: '', planType: '', systemCode: '', planName: '', summary: '' }
   existingAttachments.value = []; pendingFiles.value = []; formSysOpts.value = []
 }
-function openAdd() { editing.value = false; editId.value = null; resetForm(); drawer.value = true }
-async function onFormProjectChange() {
-  fv.value.systemId = null
-  await loadFormSysOpts(fv.value.projectId || null)
-}
+function openAdd() { editing.value = false; editId.value = null; resetForm(); void loadFormSysOpts(scopeProjectId.value); drawer.value = true }
 async function openEdit(item: PlanRecord) {
   if (busy.value) return
   busy.value = true; drawer.value = false
@@ -129,7 +127,7 @@ async function openEdit(item: PlanRecord) {
       projectId: detail.project_id,
       granularity: sd(detail).granularity ?? '',
       planType: sd(detail).plan_type ?? '',
-      systemId: sd(detail).system_id ? Number(sd(detail).system_id) : null,
+      systemCode: sd(detail).system_code ?? '',
       planName: sd(detail).asset_name ?? '',
       summary: sd(detail).plan_summary ?? ''
     }
@@ -157,10 +155,10 @@ function removeExistingAttachment(index: number) { existingAttachments.value.spl
 function removePendingFile(index: number) { pendingFiles.value.splice(index, 1) }
 
 function validate(): string | null {
-  if (!fv.value.projectId) return '请选择所属项目'
+  if (!fv.value.projectId) return '当前项目不可用，请在顶部项目切换器中重新选择项目'
   if (!fv.value.granularity) return '请选择资产颗粒度'
   if (!fv.value.planType) return '请选择迁移方案类型'
-  if (fv.value.granularity === 'SYSTEM' && !fv.value.systemId) return '系统级方案必须选择关联系统'
+  if (fv.value.granularity === 'SYSTEM' && !fv.value.systemCode) return '系统级方案必须选择关联系统'
   if (!fv.value.planName.trim()) return '请输入方案名称'
   const totalFiles = existingAttachments.value.length + pendingFiles.value.length;
   if (!editing.value && totalFiles === 0) return '请至少上传一个源文件'
@@ -171,31 +169,29 @@ async function doSave() {
   saving.value = true
   try {
     const files: PlanFormData['files'] = []
-    // 已绑定文件原样保留（不带 MD5，服务端识别为已绑定）
-    for (const att of existingAttachments.value) files.push({ attachmentId: att.attachmentId, checksumMd5: '', fileName: att.fileName })
-    // 待上传文件：先算 MD5 再上传
+    // 已绑定文件原样保留
+    for (const att of existingAttachments.value) files.push({ attachmentId: att.attachmentId, fileName: att.fileName })
+    // 待上传文件直接上传
     for (const file of pendingFiles.value) {
-      const checksumMd5 = await computeFileMd5(file)
       const res = await uploadAttachment(file)
       const attachmentId = res.data.data?.id
       if (!attachmentId) throw new Error(`文件 ${file.name} 上传失败`)
-      files.push({ attachmentId, checksumMd5, fileName: file.name })
+      files.push({ attachmentId, fileName: file.name })
     }
-    const body: PlanFormData = {
-      projectId: fv.value.projectId as number,
+    // T32 决策 D1/D2：新增时归属取当前项目；维护不传 projectId，归属恒取库中记录。
+    const meta = {
       granularity: fv.value.granularity,
       planType: fv.value.planType,
-      systemId: fv.value.granularity === 'SYSTEM' ? (fv.value.systemId ?? undefined) : undefined,
+      systemCode: fv.value.granularity === 'SYSTEM' ? (fv.value.systemCode || undefined) : undefined,
       planName: fv.value.planName.trim(),
-      summary: fv.value.summary?.trim() || undefined,
-      files
+      summary: fv.value.summary?.trim() || undefined
     }
     if (editing.value && editId.value) {
       // 编辑：无文件变动时不发送 files，服务端维持原附件
-      if (!files.length) delete (body as any).files
-      await updatePlan(editId.value, body); ElMessage.success('更新成功')
+      if (files.length) await updatePlan(editId.value, { ...meta, files }); else await updatePlan(editId.value, meta)
+      ElMessage.success('更新成功')
     } else {
-      await createPlan(body); ElMessage.success('新增成功')
+      await createPlan({ projectId: fv.value.projectId as number, ...meta, files }); ElMessage.success('新增成功')
     }
     drawer.value = false; loadList()
   } catch (e) { ElMessage.error(msg(e)) }
@@ -282,24 +278,41 @@ async function doPreviewById(attachmentId: number, fileName: string, fallback?: 
 }
 
 onMounted(async () => {
-  await loadOpts()
-  loadList()
-  getPlanSystemOptions().then(r => { filterSysOpts.value = r.data.data ?? [] }).catch(() => {})
+  await scope.ensureLoaded()
+  await loadFilterSystems()
 })
+
+// 全局项目变化：丢弃上一个项目的列表、筛选与表单状态，按新项目重新加载。
+watch(scopeProjectId, () => {
+  records.value = []
+  total.value = 0
+  selectedIds.value = []
+  page.value = 1
+  fGranularity.value = ''
+  fPlanType.value = ''
+  fSystem.value = ''
+  fKeyword.value = ''
+  filterSysOpts.value = []
+  drawer.value = false
+  detailDialogOpen.value = false
+  attSelectDialogOpen.value = false
+  resetForm()
+  void loadList()
+  void loadFilterSystems()
+}, { immediate: true })
 </script>
 
 <template>
   <section class="dm-page-root">
-    <UiPageHeader title="迁移方案">
+    <UiPageHeader title="迁移方案" description="列表与录入均固定属于顶部项目切换器选择的当前项目。">
       <template #actions>
-        <el-button v-if="canCreate" type="primary" :disabled="loading || busy" @click="openAdd"><el-icon><Plus /></el-icon>新增迁移方案</el-button>
+        <el-button v-if="canCreate && scopeState === 'ready'" type="primary" :disabled="loading || busy" @click="openAdd"><el-icon><Plus /></el-icon>新增迁移方案</el-button>
       </template>
     </UiPageHeader>
 
+    <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <template v-else>
     <UiToolbar>
-      <el-select v-model="fProject" placeholder="所属项目" clearable filterable style="width:180px" @change="onFilterProjectChange">
-        <el-option v-for="o in projectOpts" :key="o.value" :label="o.label" :value="o.value" />
-      </el-select>
       <el-select v-model="fGranularity" placeholder="资产颗粒度" clearable style="width:120px" @change="doSearch">
         <el-option v-for="o in GRAV" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
@@ -322,8 +335,7 @@ onMounted(async () => {
 
     <UiDataTable :data="records" :loading="loading" row-key="id" @selection-change="(r: PlanRecord[]) => selectedIds = r.map(x => x.id)">
       <el-table-column type="selection" width="48" />
-      <el-table-column label="项目编号" width="140" show-overflow-tooltip><template #default="{ row }">{{ sd(row).asset_code ?? '—' }}</template></el-table-column>
-      <el-table-column label="项目名称" min-width="120" show-overflow-tooltip><template #default="{ row }">{{ row.project_name ?? '—' }}</template></el-table-column>
+      <el-table-column label="方案编号" width="180" show-overflow-tooltip><template #default="{ row }">{{ sd(row).asset_code ?? '—' }}</template></el-table-column>
       <el-table-column label="资产颗粒度" width="100"><template #default="{ row }">{{ lbl(GRAV, sd(row).granularity) }}</template></el-table-column>
       <el-table-column label="迁移方案类型" width="130"><template #default="{ row }">{{ lbl(PLAN_TYPES, sd(row).plan_type) }}</template></el-table-column>
       <el-table-column label="方案名称" min-width="180" show-overflow-tooltip><template #default="{ row }">
@@ -358,21 +370,18 @@ onMounted(async () => {
         </template>
       </el-table-column>
     </UiDataTable>
-    <UiEmptyState v-if="!loading && records.length === 0" description="暂无迁移方案数据" icon="search" />
-    <UiPagination v-if="total > 0" :page="page" :page-size="size" :total="total" :page-sizes="[10,20,50,100]" @update:page-size="(v: number) => { size = v; page = 1; loadList() }" @update:page="(v: number) => { page = v; loadList() }" />
+    <UiEmptyState v-if="!loading && records.length === 0" description="当前项目下暂无迁移方案数据" icon="search" />
+    <div v-if="total > 0" class="dm-table-footer">
+      <span>共 {{ total }} 条</span>
+      <UiPagination :page="page" :page-size="size" :total="total" :page-sizes="[10,20,50,100]" @update:page-size="(v: number) => { size = v; page = 1; loadList() }" @update:page="(v: number) => { page = v; loadList() }" />
+    </div>
+    </template>
 
     <!-- 新增/编辑抽屉 -->
     <UiFormDrawer v-model="drawer" :title="editing ? '编辑迁移方案' : '新增迁移方案'" :loading="saving" width="min(820px, calc(100vw - 24px))" @submit="doSave">
       <el-form label-position="top">
         <el-divider content-position="left">归属维度</el-divider>
         <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="所属项目" required>
-              <el-select v-model="fv.projectId" placeholder="选择项目" filterable style="width:100%" @change="onFormProjectChange">
-                <el-option v-for="o in projectOpts" :key="o.value" :label="o.label" :value="o.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
           <el-col :span="12">
             <el-form-item label="资产颗粒度" required>
               <el-select v-model="fv.granularity" placeholder="选择颗粒度" style="width:100%">
@@ -391,7 +400,7 @@ onMounted(async () => {
           </el-col>
           <el-col :span="12">
             <el-form-item v-if="fv.granularity === 'SYSTEM'" label="关联系统" required>
-              <el-select v-model="fv.systemId" placeholder="选择关联系统" filterable style="width:100%">
+              <el-select v-model="fv.systemCode" placeholder="选择关联系统" filterable style="width:100%">
                 <el-option v-for="o in formSysOpts" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
             </el-form-item>
@@ -459,8 +468,7 @@ onMounted(async () => {
       <div v-loading="detailLoading" style="min-height:180px">
         <template v-if="detailData">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="项目编号" :span="2">{{ sd(detailData).asset_code ?? '—' }}</el-descriptions-item>
-            <el-descriptions-item label="项目名称">{{ detailData.project_name ?? '—' }}</el-descriptions-item>
+            <el-descriptions-item label="方案编号" :span="2">{{ sd(detailData).asset_code ?? '—' }}</el-descriptions-item>
             <el-descriptions-item label="资产颗粒度">{{ lbl(GRAV, sd(detailData).granularity) }}</el-descriptions-item>
             <el-descriptions-item label="迁移方案类型">{{ lbl(PLAN_TYPES, sd(detailData).plan_type) }}</el-descriptions-item>
             <el-descriptions-item label="关联系统">{{ sd(detailData).system_name ?? '—' }}</el-descriptions-item>

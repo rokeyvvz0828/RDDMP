@@ -29,38 +29,35 @@ class ReportServiceTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "developer", "", "研发人员", 11L, true);
 
     @Test
-    void batchUploadPersistsValidatedDigestForEachTemporaryAttachment() {
+    void batchUploadPersistsEachTemporaryAttachmentWithoutDigestValidation() {
         List<String> events = new ArrayList<>();
         StubJdbcTemplate jdbc = new StubJdbcTemplate(events);
         StubAttachmentGateway attachments = new StubAttachmentGateway(events);
         ReportService service = service(jdbc, attachments);
         List<AttachmentItem> items = List.of(attachment(201L, "one.pdf"), attachment(202L, "two.pdf"));
 
-        service.batchUpload(10L, "MONTHLY", items,
-            List.of("900150983cd24fb0d6963f7d28e17f72", "f96b697d7cb7938d525a2f31aaf161d0"), USER);
+        service.batchUpload(10L, "MONTHLY", items, USER);
 
-        assertEquals(List.of("900150983cd24fb0d6963f7d28e17f72", "f96b697d7cb7938d525a2f31aaf161d0"),
-            jdbc.insertedDigests);
+        assertTrue(jdbc.insertedCodes.stream().allMatch(code -> code.matches("REPORT-[0-9a-f]{32}")));
         assertEquals(2, attachments.boundIds.size());
     }
 
     @Test
-    void batchUploadRejectsMismatchedDigestListBeforeWriting() {
+    void batchUploadRejectsEmptyAttachmentListBeforeWriting() {
         List<String> events = new ArrayList<>();
         StubJdbcTemplate jdbc = new StubJdbcTemplate(events);
         StubAttachmentGateway attachments = new StubAttachmentGateway(events);
         ReportService service = service(jdbc, attachments);
 
         BusinessException error = assertThrows(BusinessException.class,
-            () -> service.batchUpload(10L, "MONTHLY", List.of(attachment(201L, "one.pdf")), List.of(), USER));
+            () -> service.batchUpload(10L, "MONTHLY", List.of(), USER));
 
         assertEquals(ErrorCode.BAD_REQUEST, error.code());
-        assertTrue(jdbc.insertedDigests.isEmpty());
         assertTrue(attachments.boundIds.isEmpty());
     }
 
     @Test
-    void replacementUpdatesDigestBindsNewMainFileThenRetiresOldBinding() {
+    void replacementBindsNewMainFileThenRetiresOldBinding() {
         List<String> events = new ArrayList<>();
         StubJdbcTemplate jdbc = new StubJdbcTemplate(events);
         jdbc.putReport(50L, 10L, 101L, false);
@@ -68,10 +65,10 @@ class ReportServiceTest {
         attachments.item = attachment(202L, "replacement.pdf");
         ReportService service = service(jdbc, attachments);
 
-        service.update(50L, null, null, null, null, null, 202L,
-            "900150983cd24fb0d6963f7d28e17f72", USER);
+        // T32 决策 D2：update 不再接受 projectId 入参，归属恒取库中记录。
+        service.update(50L, null, null, null, null, 202L, USER);
 
-        assertOrdered(events, "db:file-update", "bind:202", "delete:101");
+        assertOrdered(events, "bind:202", "delete:101");
         assertEquals(List.of(202L), jdbc.contentMain.get(50L));
     }
 
@@ -103,7 +100,7 @@ class ReportServiceTest {
     }
 
     private ReportService service(StubJdbcTemplate jdbc, AttachmentGateway attachments) {
-        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc);
+        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
         ContentAttachmentService contentAttachments = new ContentAttachmentService(jdbc, attachments);
         ContentFileAssetService fileAssets = new ContentFileAssetService(jdbc, attachments, contentAttachments, permissions);
         return new ReportService(jdbc, attachments, contentAttachments, fileAssets, permissions);
@@ -154,7 +151,7 @@ class ReportServiceTest {
         private final List<String> events;
         private final Map<Long, Map<String, Object>> reports = new LinkedHashMap<>();
         private final Map<Long, List<Long>> contentMain = new LinkedHashMap<>();
-        private final List<String> insertedDigests = new ArrayList<>();
+        private final List<String> insertedCodes = new ArrayList<>();
         private int restoreUpdateCount = 1;
 
         private StubJdbcTemplate(List<String> events) {
@@ -171,7 +168,6 @@ class ReportServiceTest {
             row.put("content_type", "application/pdf");
             row.put("file_size", 8L);
             row.put("attachment_id", attachmentId);
-            row.put("checksum_md5", "old");
             row.put("report_period", "MONTHLY");
             row.put("report_date", null);
             row.put("keywords", "migration");
@@ -216,15 +212,9 @@ class ReportServiceTest {
         public int update(String sql, Object... args) {
             if (sql.startsWith("INSERT INTO dm_report")) {
                 long id = ((Number) args[0]).longValue();
-                reports.put(id, reportRow(id, ((Number) args[2]).longValue(), String.valueOf(args[5])));
+                reports.put(id, reportRow(id, ((Number) args[2]).longValue()));
                 contentMain.putIfAbsent(id, new ArrayList<>());
-                insertedDigests.add(String.valueOf(args[5]));
-                return 1;
-            }
-            if (sql.startsWith("UPDATE dm_report SET checksum_md5")) {
-                long id = ((Number) args[2]).longValue();
-                reports.get(id).put("checksum_md5", args[0]);
-                events.add("db:file-update");
+                insertedCodes.add(String.valueOf(args[3]));
                 return 1;
             }
             if (sql.startsWith("UPDATE dm_report SET updated_by")) return 1;
@@ -252,13 +242,13 @@ class ReportServiceTest {
             }
             if (sql.startsWith("UPDATE dm_content_attachment")) return 1;
             if (sql.startsWith("INSERT INTO dm_operation_log")) {
-                events.add("audit:" + args[2]);
+                events.add("audit:" + args[3]);
                 return 1;
             }
             throw new AssertionError("Unexpected update: " + sql);
         }
 
-        private Map<String, Object> reportRow(long id, long projectId, String md5) {
+        private Map<String, Object> reportRow(long id, long projectId) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", id);
             row.put("project_id", projectId);
@@ -268,7 +258,6 @@ class ReportServiceTest {
             row.put("content_type", "application/pdf");
             row.put("file_size", 8L);
             row.put("attachment_id", null);
-            row.put("checksum_md5", md5);
             row.put("report_period", "MONTHLY");
             row.put("report_date", null);
             row.put("keywords", "migration");

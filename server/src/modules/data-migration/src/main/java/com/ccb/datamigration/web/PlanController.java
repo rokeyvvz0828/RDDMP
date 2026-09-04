@@ -31,12 +31,12 @@ public class PlanController {
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) String granularity,
             @RequestParam(required = false) String planType,
-            @RequestParam(required = false) Long systemId,
+            @RequestParam(required = false) String systemCode,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.list(projectId, granularity, planType, systemId, keyword, page, size, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.list(projectId, granularity, planType, systemCode, keyword, page, size, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/options/systems")

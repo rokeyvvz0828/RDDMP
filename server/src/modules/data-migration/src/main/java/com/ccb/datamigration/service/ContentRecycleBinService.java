@@ -58,8 +58,13 @@ public class ContentRecycleBinService {
      * 取数时对各已排序来源仅拉取前 {@code page*size} 行（{@link RecycleBinSource#listDeletedPage} 在 SQL 层 {@code ORDER BY asset_code + LIMIT}），
      * 因为全局第 {@code page*size} 小行必然落在每个单源的前 {@code page*size} 行内，取并集后排序切页严格无损。单次拉取上界为
      * {@code 来源数 × page × size}，内存有界，不再全量加载。{@code size} 上限 100。
+     *
+     * <p>T32 项目隔离：{@code projectId} 必填，缺失直接 {@code BAD_REQUEST}，不回退为全项目回收站；
+     * 可访问性（管理员或项目活动成员）由各来源下游服务统一按 {@link DataMigrationPermissionService#requireAccessible} 判定。
      */
-    public PageResult<Map<String, Object>> list(Set<String> contentTypes, String keyword, int page, int size, AuthUser user) {
+    public PageResult<Map<String, Object>> list(Set<String> contentTypes, Long projectId, String keyword, int page, int size, AuthUser user) {
+        if (projectId == null || projectId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "projectId is required");
+        long scope = projectId;
         Set<String> requested = (contentTypes == null || contentTypes.isEmpty())
                 ? new LinkedHashSet<>(supportedTypes()) : new LinkedHashSet<>(contentTypes);
         for (String type : requested) {
@@ -69,7 +74,7 @@ public class ContentRecycleBinService {
         int safeSize = Math.min(Math.max(1, size), 100);
         long total = 0L;
         for (String type : requested) {
-            total += registry.get(type).countDeleted(type, keyword, user);
+            total += registry.get(type).countDeleted(type, scope, keyword, user);
         }
         long offset = (long) (safePage - 1) * safeSize;
         if (offset >= total) {
@@ -79,7 +84,7 @@ public class ContentRecycleBinService {
         int window = (int) Math.min((long) safePage * safeSize, (long) Integer.MAX_VALUE);
         List<Map<String, Object>> merged = new ArrayList<>();
         for (String type : requested) {
-            merged.addAll(registry.get(type).listDeletedPage(type, keyword, window, user));
+            merged.addAll(registry.get(type).listDeletedPage(type, scope, keyword, window, user));
         }
         merged.sort(Comparator
                 .comparing((Map<String, Object> row) -> {
@@ -94,19 +99,19 @@ public class ContentRecycleBinService {
         return new PageResult<>(records, total, safePage, safeSize);
     }
 
-    /** 按内容类型分发单条软删除详情，不改变记录状态。 */
+    /** 按内容类型分发单条软删除详情，不改变记录状态；项目归属由来源校验（T32）。 */
     public Map<String, Object> detail(String type, long id, AuthUser user) {
         if (id <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "无效的内容 ID");
         return resolve(type).detail(type, id, user);
     }
 
-    /** 按内容类型分发恢复（管理员权限与校验由来源下游负责）。 */
+    /** 按内容类型分发恢复（管理员权限、实体与项目归属校验由来源下游负责，T32）。 */
     @Transactional
     public void restore(String type, List<Long> ids, AuthUser user) {
         resolve(type).restore(type, ids, user);
     }
 
-    /** 按内容类型分发彻底删除（管理员权限与级联由来源下游负责）。 */
+    /** 按内容类型分发彻底删除（管理员权限、级联与项目归属校验由来源下游负责，T32）。 */
     @Transactional
     public void purge(String type, List<Long> ids, AuthUser user) {
         resolve(type).purge(type, ids, user);

@@ -29,13 +29,13 @@ public class PlanRecycleBinSource implements RecycleBinSource {
     }
 
     @Override
-    public long countDeleted(String type, String keyword, AuthUser user) {
-        return planService.countRecycleBin(null, keyword, user);
+    public long countDeleted(String type, long projectId, String keyword, AuthUser user) {
+        return planService.countRecycleBin(projectId, keyword, user);
     }
 
     @Override
-    public List<Map<String, Object>> listDeletedPage(String type, String keyword, int limit, AuthUser user) {
-        return planService.fetchRecycleBinPage(null, keyword, limit, user);
+    public List<Map<String, Object>> listDeletedPage(String type, long projectId, String keyword, int limit, AuthUser user) {
+        return planService.fetchRecycleBinPage(projectId, keyword, limit, user);
     }
 
     @Override

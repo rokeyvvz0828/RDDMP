@@ -34,12 +34,12 @@ public class MeetingController {
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) String meetingSource,
             @RequestParam(required = false) String granularity,
-            @RequestParam(required = false) Long systemId,
+            @RequestParam(required = false) String systemCode,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.list(projectId, meetingSource, granularity, systemId, keyword, page, size, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.list(projectId, meetingSource, granularity, systemCode, keyword, page, size, user), TraceId.getOrCreate());
     }
 
     /**
@@ -129,7 +129,7 @@ public class MeetingController {
     }
 
     /**
-     * 全局附件回收站列表（跨会议）
+     * 全局附件回收站列表（跨会议，按项目隔离；projectId 缺失时由服务层返回 400）
      */
     @GetMapping("/attachments/recycle-bin")
     @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
@@ -163,12 +163,12 @@ public class MeetingController {
     }
 
     /**
-     * 清空附件回收站
+     * 清空附件回收站（T32：必须指定项目，仅清空该项目下会议的关系行）。
      */
     @DeleteMapping("/attachments/purge-all")
     @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
-    public ApiResponse<Void> purgeAllAttachments(@AuthenticationPrincipal AuthUser user) {
-        service.purgeAllAttachments(user);
+    public ApiResponse<Void> purgeAllAttachments(@RequestParam(required = false) Long projectId, @AuthenticationPrincipal AuthUser user) {
+        service.purgeAllAttachments(projectId, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 

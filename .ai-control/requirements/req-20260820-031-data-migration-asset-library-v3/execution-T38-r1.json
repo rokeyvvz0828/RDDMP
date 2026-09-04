@@ -1,0 +1,31 @@
+{
+  "task_id": "T38-r1",
+  "parent_task": "T38",
+  "trigger": "用户指令「更新为最新态」，附 database-schema-and-relations.md：将已落地的 V166 实现细节同步回数据库关系文档，使文档口径与 T39 实施后状态一致。",
+  "status": "implemented_doc_only",
+  "scope_kind": "database_schema_doc_refresh",
+  "decision_recorded": "文档主体在 T38 已切换为 (project_id, system_code) 口径；本次仅补齐 V166 落地后的差异：dm_meeting_system.project_id/system_code 的默认值与回填来源说明、V166 迁移说明行（subsystem_id 下线、按 dm_meeting/arch code 回填、重建 uk 与项目维度索引）、9.1 系统关联要点补充五表 id 引用列下线落点、数据口径与第 11 节登记 V166 结构变更经 MySQL 8.4 迁移测试断言复核。不编造未执行证据：本地开发库行数维持既有观测值，不在本任务中新增查询。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "3.13 dm_meeting_system 补 project_id（默认 0）与 system_code（默认 ''）及 V166 回填说明；新增 V166 迁移说明行；9.1 补五表 id 引用列下线；数据口径与第 11 节登记 MySQL 8.4 迁移测试断言复核来源。"
+    }
+  ],
+  "commands": [
+    "rg 一致性扫描：database-schema-and-relations.md 中 system_id/physical_subsystem_id/subsystem_id 仅剩「已下线/回填」历史对照语义"
+  ],
+  "invariants_checked": [
+    "五表列数不变（dm_plan 20、dm_issue 27、dm_component 12、dm_target_table 19、dm_meeting_system 7）",
+    "索引定义与 V166 一致：idx_dm_plan_system=(tenant_id,project_id,system_code,deleted)、dm_meeting_system uk=(tenant_id,meeting_id,system_code)/idx=(tenant_id,project_id,system_code)",
+    "文档不出现活动表结构中的 system_id 列定义"
+  ],
+  "disturbances": [
+    "他人任务 REQ-20260903-064 的越界文件非本任务范围"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "本地开发库行数（表清单列）为既有观测值，未在本任务复核；如需最新行数需单独连接开发库执行 COUNT(*)"
+  ],
+  "rollback": "文档改动可整体还原；不涉及代码、迁移或数据",
+  "evidence_level": "static-doc-scan"
+}

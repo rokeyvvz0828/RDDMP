@@ -8,6 +8,7 @@ import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
 import com.ccb.security.model.AuthUser;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +26,6 @@ public class ReportService {
     public static final String BUSINESS_TYPE = ContentFileAssetService.BUSINESS_TYPE;
     private static final String CONTENT_TYPE = "REPORT";
     private static final long MAX_FILE_SIZE = 50L * 1024 * 1024;
-    private static final String MD5_PATTERN = "[0-9a-fA-F]{32}";
     private static final Set<String> REPORT_PERIODS = Set.of("DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY", "IRREGULAR");
 
     private static final String MAIN_FILE_JOIN =
@@ -37,23 +37,33 @@ public class ReportService {
     private final ContentAttachmentService attachments;
     private final ContentFileAssetService fileAssets;
     private final DataMigrationPermissionService permissions;
+    private final ContentDocCodeGenerator docCodes;
 
+    @Autowired
     public ReportService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, ContentAttachmentService attachments,
-                         ContentFileAssetService fileAssets, DataMigrationPermissionService permissions) {
+                         ContentFileAssetService fileAssets, DataMigrationPermissionService permissions,
+                         ContentDocCodeGenerator docCodes) {
         this.jdbc = jdbc;
         this.attachmentGateway = attachmentGateway;
         this.attachments = attachments;
         this.fileAssets = fileAssets;
         this.permissions = permissions;
+        this.docCodes = docCodes;
+    }
+
+    public ReportService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, ContentAttachmentService attachments,
+                         ContentFileAssetService fileAssets, DataMigrationPermissionService permissions) {
+        this(jdbc, attachmentGateway, attachments, fileAssets, permissions, new ContentDocCodeGenerator());
     }
 
     /**
-     * 1. 分页查询汇报材料列表
+     * 1. 分页查询汇报材料列表（T32：{@code projectId} 必填，SQL 恒定项目过滤）
      */
     public PageResult<Map<String, Object>> list(Long projectId, String reportPeriod, String keyword, int page, int size, AuthUser user) {
+        long scope = permissions.requireProject(projectId, user);
         StringBuilder sql = new StringBuilder(
             "SELECT a.id, a.project_id, p.project_name, 'REPORT' AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, " +
-            "f.content_type, f.file_size, m.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, " +
+            "f.content_type, f.file_size, m.attachment_id, a.report_period, a.report_date, a.keywords, " +
             "a.owner_id, a.created_at, a.updated_at, a.created_by, a.updated_by " +
             "FROM dm_report a " + MAIN_FILE_JOIN +
             "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
@@ -61,10 +71,8 @@ public class ReportService {
         );
         List<Object> args = new ArrayList<>(List.of(user.tenantId()));
 
-        if (projectId != null) {
-            sql.append(" AND a.project_id = ?");
-            args.add(projectId);
-        }
+        sql.append(" AND a.project_id = ?");
+        args.add(scope);
         if (reportPeriod != null && !reportPeriod.isBlank() && REPORT_PERIODS.contains(reportPeriod)) {
             sql.append(" AND a.report_period = ?");
             args.add(reportPeriod);
@@ -96,8 +104,8 @@ public class ReportService {
      */
     @Transactional
     public Map<String, Object> upload(long projectId, String reportPeriod, String reportName, 
-                                     String reportDate, String keywords, Long attachmentId, 
-                                     String checksumMd5, AuthUser user) {
+                                     String reportDate, String keywords, Long attachmentId,
+                                     AuthUser user) {
         validateReportPeriod(reportPeriod);
         if (reportName == null || reportName.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "资料名称不能为空");
@@ -112,21 +120,18 @@ public class ReportService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "文件为空或超过 50 MB");
         }
 
-        String md5 = normalizeMd5(checksumMd5);
-        fileAssets.assertMd5Available(md5, user.tenantId(), null);
-
         long id = nextId();
         jdbc.update(
             "INSERT INTO dm_report (id, tenant_id, project_id, doc_code, doc_name, " +
-            "checksum_md5, report_period, report_date, keywords, " +
-            "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            id, user.tenantId(), projectId, "REPORT-" + id, reportName,
-            md5, reportPeriod, reportDate, keywords,
+            "report_period, report_date, keywords, " +
+            "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            id, user.tenantId(), projectId, docCodes.generate(CONTENT_TYPE), reportName,
+            reportPeriod, reportDate, keywords,
             user.id(), user.id(), user.id()
         );
 
         fileAssets.replaceMainFile(CONTENT_TYPE, id, projectId, attachment, user);
-        audit(user, "REPORT_UPLOAD", id);
+        audit(user, "REPORT_UPLOAD", projectId, id);
 
         return findById(id, user.tenantId());
     }
@@ -136,13 +141,12 @@ public class ReportService {
      */
     @Transactional
     public List<Map<String, Object>> batchUpload(long projectId, String reportPeriod,
-                                                 List<AttachmentItem> attachments, List<String> checksumMd5s,
+                                                 List<AttachmentItem> attachments,
                                                  AuthUser user) {
         validateReportPeriod(reportPeriod);
         ensureProject(projectId, user);
-        if (attachments == null || checksumMd5s == null || attachments.isEmpty()
-                || attachments.size() != checksumMd5s.size()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "附件与 MD5 列表不能为空且数量必须一致");
+        if (attachments == null || attachments.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "附件列表不能为空");
         }
 
         List<Map<String, Object>> results = new ArrayList<>();
@@ -153,9 +157,6 @@ public class ReportService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "文件 " + attachment.fileName() + " 为空或超过 50 MB");
             }
 
-            String md5 = normalizeMd5(checksumMd5s.get(index));
-            fileAssets.assertMd5Available(md5, user.tenantId(), null);
-
             long id = nextId();
             String reportName = attachment.fileName();
             // 移除文件扩展名作为资料名称
@@ -165,14 +166,14 @@ public class ReportService {
 
             jdbc.update(
                 "INSERT INTO dm_report (id, tenant_id, project_id, doc_code, doc_name, " +
-                "checksum_md5, report_period, " +
-                "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                id, user.tenantId(), projectId, "REPORT-" + id, reportName,
-                md5, reportPeriod, user.id(), user.id(), user.id()
+                "report_period, " +
+                "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id, user.tenantId(), projectId, docCodes.generate(CONTENT_TYPE), reportName,
+                reportPeriod, user.id(), user.id(), user.id()
             );
 
             fileAssets.replaceMainFile(CONTENT_TYPE, id, projectId, attachment, user);
-            audit(user, "REPORT_BATCH_UPLOAD", id);
+            audit(user, "REPORT_BATCH_UPLOAD", projectId, id);
 
             results.add(findById(id, user.tenantId()));
         }
@@ -181,12 +182,16 @@ public class ReportService {
 
     /**
      * 4. 编辑汇报材料
+     *
+     * <p>T32 决策 D2：维护操作的归属恒取库中记录，不再接受 {@code projectId} 入参，
+     * {@code UPDATE} 也不包含 {@code project_id}，归属不可变更。
      */
     @Transactional
-    public Map<String, Object> update(long id, Long projectId, String reportPeriod, String reportName,
+    public Map<String, Object> update(long id, String reportPeriod, String reportName,
                                      String reportDate, String keywords, Long attachmentId,
-                                     String checksumMd5, AuthUser user) {
+                                     AuthUser user) {
         Map<String, Object> existing = findById(id, user.tenantId());
+        long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
         permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
 
         if (reportPeriod != null) validateReportPeriod(reportPeriod);
@@ -196,9 +201,6 @@ public class ReportService {
         if (keywords != null && keywords.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "关键字索引不能为空");
         }
-        if (projectId != null) {
-            ensureProject(projectId, user);
-        }
 
         // 处理文件更新：替换 sort_order=0 主文件行，旧主文件解绑
         if (attachmentId != null) {
@@ -207,21 +209,13 @@ public class ReportService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "文件为空或超过 50 MB");
             }
 
-            String md5 = normalizeMd5(checksumMd5);
-            fileAssets.assertMd5Available(md5, user.tenantId(), id);
-            jdbc.update("UPDATE dm_report SET checksum_md5 = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?",
-                    md5, user.id(), id, user.tenantId());
-            fileAssets.replaceMainFile(CONTENT_TYPE, id, ((Number) existing.get("project_id")).longValue(), attachment, user);
+            fileAssets.replaceMainFile(CONTENT_TYPE, id, projectId, attachment, user);
         }
 
         // 更新元数据
         StringBuilder updateSql = new StringBuilder("UPDATE dm_report SET updated_by = ?, updated_at = CURRENT_TIMESTAMP");
         List<Object> args = new ArrayList<>(List.of(user.id()));
 
-        if (projectId != null) {
-            updateSql.append(", project_id = ?");
-            args.add(projectId);
-        }
         if (reportPeriod != null) {
             updateSql.append(", report_period = ?");
             args.add(reportPeriod);
@@ -244,18 +238,19 @@ public class ReportService {
         args.add(user.tenantId());
 
         jdbc.update(updateSql.toString(), args.toArray());
-        audit(user, "REPORT_UPDATE", id);
+        audit(user, "REPORT_UPDATE", projectId, id);
 
         return findById(id, user.tenantId());
     }
 
     /**
-     * 5. 逻辑删除汇报材料
+     * 5. 逻辑删除汇报材料（T32：先按记录库中归属做项目隔离）
      */
     @Transactional
     public void delete(List<Long> ids, AuthUser user) {
         for (Long id : ids) {
             Map<String, Object> existing = findById(id, user.tenantId());
+            long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
             permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
 
             jdbc.update(
@@ -263,15 +258,16 @@ public class ReportService {
                 "WHERE id = ? AND tenant_id = ? AND deleted = 0",
                 user.id(), id, user.tenantId()
             );
-            audit(user, "REPORT_DELETE", id);
+            audit(user, "REPORT_DELETE", projectId, id);
         }
     }
 
     /**
-     * 6. 下载汇报材料
+     * 6. 下载汇报材料（T32：先校验记录项目归属）
      */
     public String download(long id, AuthUser user) {
         Map<String, Object> existing = findById(id, user.tenantId());
+        permissions.requireStoredProject(existing.get("project_id"), user);
         if (existing.get("attachment_id") != null) {
             return "/api/attachments/" + ((Number) existing.get("attachment_id")).longValue() + "/download";
         }
@@ -279,10 +275,11 @@ public class ReportService {
     }
 
     /**
-     * 7. 统一回收站原生分页：汇报软删总数（SQL COUNT，不拉明细）。
+     * 7. 统一回收站原生分页：汇报软删总数（T32：{@code projectId} 必填，SQL COUNT，不拉明细）。
      */
-    public long countRecycleBin(Long projectId, String reportPeriod, String keyword, AuthUser user) {
+    public long countRecycleBin(long projectId, String reportPeriod, String keyword, AuthUser user) {
         permissions.requireAdmin(user);
+        permissions.requireAccessible(projectId, user);
         StringBuilder sql = new StringBuilder(recycleBinSelect());
         List<Object> args = new ArrayList<>(List.of(user.tenantId()));
         appendRecycleBinFilters(sql, args, projectId, reportPeriod, keyword);
@@ -291,10 +288,11 @@ public class ReportService {
     }
 
     /**
-     * 7b. 统一回收站原生分页：按 {@code doc_code ASC, id ASC} 取软删汇报前 {@code limit} 行（原生 LIMIT，不走页大小白名单）。
+     * 7b. 统一回收站原生分页：按 {@code doc_code ASC, id ASC} 取指定项目软删汇报前 {@code limit} 行（原生 LIMIT，不走页大小白名单）。
      */
-    public List<Map<String, Object>> fetchRecycleBinPage(Long projectId, String reportPeriod, String keyword, int limit, AuthUser user) {
+    public List<Map<String, Object>> fetchRecycleBinPage(long projectId, String reportPeriod, String keyword, int limit, AuthUser user) {
         permissions.requireAdmin(user);
+        permissions.requireAccessible(projectId, user);
         if (limit <= 0) {
             return List.of();
         }
@@ -306,27 +304,27 @@ public class ReportService {
         return jdbc.queryForList(sql.toString(), args.toArray());
     }
 
-    /** 查询汇报材料软删除详情，不执行附件下载或状态变更。 */
+    /** 查询汇报材料软删除详情（T32：含项目归属校验），不执行附件下载或状态变更。 */
     public Map<String, Object> findRecycleBinDetail(long id, AuthUser user) {
         List<Map<String, Object>> rows = jdbc.queryForList(recycleBinSelect() + " AND a.id = ?", user.tenantId(), id);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "汇报材料不存在于回收站");
-        return rows.get(0);
+        Map<String, Object> row = rows.get(0);
+        permissions.requireStoredProject(row.get("project_id"), user);
+        return row;
     }
 
     private static String recycleBinSelect() {
         return "SELECT a.id, a.project_id, p.project_name, 'REPORT' AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, " +
-            "f.content_type, f.file_size, m.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, " +
+            "f.content_type, f.file_size, m.attachment_id, a.report_period, a.report_date, a.keywords, " +
             "a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at " +
             "FROM dm_report a " + MAIN_FILE_JOIN +
             "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
             "WHERE a.tenant_id = ? AND a.deleted = 1";
     }
 
-    private void appendRecycleBinFilters(StringBuilder sql, List<Object> args, Long projectId, String reportPeriod, String keyword) {
-        if (projectId != null) {
-            sql.append(" AND a.project_id = ?");
-            args.add(projectId);
-        }
+    private void appendRecycleBinFilters(StringBuilder sql, List<Object> args, long projectId, String reportPeriod, String keyword) {
+        sql.append(" AND a.project_id = ?");
+        args.add(projectId);
         if (reportPeriod != null && !reportPeriod.isBlank() && REPORT_PERIODS.contains(reportPeriod)) {
             sql.append(" AND a.report_period = ?");
             args.add(reportPeriod);
@@ -340,13 +338,14 @@ public class ReportService {
     }
 
     /**
-     * 8. 恢复汇报材料
+     * 8. 恢复汇报材料（T32：仅能恢复调用者可访问项目内的记录）
      */
     @Transactional
     public void restore(List<Long> ids, AuthUser user) {
         permissions.requireAdmin(user);
         for (Long id : ids) {
-            findById(id, user.tenantId(), true);
+            Map<String, Object> stored = findById(id, user.tenantId(), true);
+            long projectId = permissions.requireStoredProject(stored.get("project_id"), user);
             try {
                 int changed = jdbc.update(
                     "UPDATE dm_report SET deleted = 0, deleted_by = NULL, deleted_at = NULL " +
@@ -360,18 +359,19 @@ public class ReportService {
                 // 恢复后活动行 doc_code 与既有活动行冲突（uk_dm_report_active_code）：与统一方案同构，翻译为 CONFLICT(40900)。
                 throw new BusinessException(ErrorCode.CONFLICT, "汇报材料编号在该项目下已存在，无法恢复");
             }
-            audit(user, "REPORT_RESTORE", id);
+            audit(user, "REPORT_RESTORE", projectId, id);
         }
     }
 
     /**
-     * 9. 确认清理汇报材料
+     * 9. 确认清理汇报材料（T32：仅能清理调用者可访问项目内的记录）
      */
     @Transactional
     public void purge(List<Long> ids, AuthUser user) {
         permissions.requireAdmin(user);
         for (Long id : ids) {
             Map<String, Object> existing = findById(id, user.tenantId(), true);
+            long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
 
             // 解绑并删除附件关系行
             attachments.unbindAndRemoveAll(CONTENT_TYPE, BUSINESS_TYPE, id, user);
@@ -379,25 +379,24 @@ public class ReportService {
             // 物理删除记录
             jdbc.update("DELETE FROM dm_report WHERE id = ? AND tenant_id = ? AND deleted = 1",
                        id, user.tenantId());
-            audit(user, "REPORT_PURGE", id);
+            audit(user, "REPORT_PURGE", projectId, id);
         }
     }
 
     /**
-     * 检查MD5是否可用
-     */
-    public boolean isMd5Available(String checksumMd5, AuthUser user) {
-        return fileAssets.isMd5Available(checksumMd5, user);
-    }
-
-    /**
-     * 获取项目选项列表
+     * 获取项目选项列表（T32-r1：只返回调用者可访问的项目）。
+     *
+     * <p>可访问项目集直接取 platform/system 的项目成员口径，本模块不再复制 {@code pm_project_member} SQL；
+     * 项目表仅用于读取展示所需的名称。该端点当前已无前端调用方（页面使用 {@code /api/project/workbench}），
+     * 保留仅为契约兼容，不得借此列举他人项目。
      */
     public List<Map<String, Object>> getProjectOptions(AuthUser user) {
+        Set<Long> accessible = new HashSet<>(permissions.accessibleProjectIds(user));
+        if (accessible.isEmpty()) return List.of();
         return jdbc.queryForList(
             "SELECT id, project_name FROM pm_project WHERE tenant_id = ? AND deleted = 0 ORDER BY project_name",
             user.tenantId()
-        );
+        ).stream().filter(row -> accessible.contains(((Number) row.get("id")).longValue())).toList();
     }
 
     // ========== 私有方法 ==========
@@ -409,11 +408,8 @@ public class ReportService {
     }
 
     private void ensureProject(long id, AuthUser user) {
-        if (jdbc.queryForObject(
-            "SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0",
-            Integer.class, id, user.tenantId()) == 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "项目不存在");
-        }
+        // T32：统一委托模块内项目隔离守卫（租户内存在未删 + 管理员或活动成员）
+        permissions.requireAccessible(id, user);
     }
 
     private AttachmentItem resolveAttachment(Long attachmentId, AuthUser user) {
@@ -431,17 +427,6 @@ public class ReportService {
         }
     }
 
-    private String normalizeMd5(String md5) {
-        if (md5 == null || md5.isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "文件 MD5 不能为空");
-        }
-        String value = md5.trim().toLowerCase(Locale.ROOT);
-        if (!value.matches(MD5_PATTERN)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "文件 MD5 格式无效");
-        }
-        return value;
-    }
-
     private Map<String, Object> findById(long id, long tenantId) {
         return findById(id, tenantId, false);
     }
@@ -449,7 +434,7 @@ public class ReportService {
     private Map<String, Object> findById(long id, long tenantId, boolean deleted) {
         List<Map<String, Object>> rows = jdbc.queryForList(
             "SELECT a.id, a.project_id, 'REPORT' AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, " +
-            "f.content_type, f.file_size, m.attachment_id, a.checksum_md5, a.report_period, a.report_date, a.keywords, a.owner_id, " +
+            "f.content_type, f.file_size, m.attachment_id, a.report_period, a.report_date, a.keywords, a.owner_id, " +
             "a.created_at, a.updated_at, a.created_by, a.updated_by, a.deleted_by, a.deleted_at " +
             "FROM dm_report a " + MAIN_FILE_JOIN +
             "WHERE a.id = ? AND a.tenant_id = ? AND a.deleted = ?",
@@ -461,11 +446,11 @@ public class ReportService {
         return rows.get(0);
     }
 
-    private void audit(AuthUser user, String operation, long id) {
+    private void audit(AuthUser user, String operation, long projectId, long id) {
         jdbc.update(
-            "INSERT INTO dm_operation_log (tenant_id, actor_id, operation_code, entity_type, entity_id) " +
-            "VALUES (?, ?, ?, 'REPORT', ?)",
-            user.tenantId(), user.id(), operation, id
+            "INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) " +
+            "VALUES (?, ?, ?, ?, 'REPORT', ?)",
+            user.tenantId(), user.id(), projectId, operation, id
         );
     }
 

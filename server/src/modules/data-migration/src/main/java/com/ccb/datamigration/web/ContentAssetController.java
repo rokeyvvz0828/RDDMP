@@ -18,7 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 /**
  * 文件型内容资源控制器（REQ-20260831-050）：为 6 个文件型二级菜单提供各自独立的资源端点，
  * 替代原通用 {@code /assets/{type}}；类型由路径段解析，读写经 {@link ContentFileAssetService} 落各内容表，
- * 附件与 MD5 查重跨全部文件表。{@code /content/check-md5} 提供上传前置查重。
+ * 附件关系沿用平台公共附件能力；文件内容不执行摘要查重。
  */
 @RestController
 @RequestMapping("/api/data-migration")
@@ -55,9 +55,18 @@ public class ContentAssetController {
     @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Map<String, Object>> upload(HttpServletRequest request,
             @RequestParam long projectId, @RequestParam(required = false) Long componentId,
-            @RequestParam String assetCode, @RequestParam Long attachmentId, @RequestParam String md5,
+            @RequestParam Long attachmentId,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.upload(type(request), projectId, componentId, assetCode, attachmentId, md5, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.create(type(request), projectId, componentId, attachmentId, user), TraceId.getOrCreate());
+    }
+
+    @PutMapping({"/mappings/{id}/upload", "/dependencies/{id}/upload", "/programs/{id}/upload", "/topics/{id}/upload", "/release-drills/{id}/upload"})
+    @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')")
+    public ApiResponse<Map<String, Object>> replace(HttpServletRequest request, @PathVariable long id,
+            @RequestParam(required = false) Long componentId,
+            @RequestParam Long attachmentId,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.replace(type(request), id, componentId, attachmentId, user), TraceId.getOrCreate());
     }
 
     @PostMapping({"/mappings/delete", "/dependencies/delete", "/programs/delete", "/topics/delete", "/release-drills/delete"})
@@ -71,12 +80,6 @@ public class ContentAssetController {
     public ResponseEntity<StreamingResponseBody> download(HttpServletRequest request, @PathVariable long id,
                                                           @AuthenticationPrincipal AuthUser user) {
         return attachmentStream.stream(service.downloadAttachmentId(type(request), id, user), user, request);
-    }
-
-    /** 上传前置 MD5 查重：跨 6 张文件型内容表 + dm_report。 */
-    @GetMapping("/content/check-md5")
-    public ApiResponse<Map<String, Boolean>> checkMd5(@RequestParam String md5, @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(Map.of("available", service.isMd5Available(md5, user)), TraceId.getOrCreate());
     }
 
     private String type(HttpServletRequest request) {

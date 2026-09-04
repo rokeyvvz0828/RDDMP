@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "topic": "data-migration-checksum-md5-removal",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-04-data-migration-checksum-md5-removal-design.md",
+  "objective": "移除 data-migration 文件型内容的 checksum_md5 持久化和 MD5 查重契约，同时保持附件绑定、存储、权限和审计能力。",
+  "users": [
+    "数据迁移管理员上传和替换文件型内容",
+    "数据迁移普通用户上传汇报材料并查看回收站"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "7 张文件型内容表不再包含 checksum_md5 列或 md5 索引。",
+      "acceptance": [
+        "隔离 MySQL 8.4 完整执行迁移后 information_schema 查不到 7 张表的 checksum_md5 列和 idx_*_md5 索引",
+        "数据库关系文档不再描述该字段"
+      ],
+      "priority": "must",
+      "source": "用户确认完整移除；现有数据库关系和迁移脚本",
+      "counterexample": ["任一文件型内容表仍可查询 checksum_md5 或 md5 索引"]
+    },
+    {
+      "id": "R2",
+      "statement": "服务端移除 MD5 参数、查重逻辑和两个 check-md5 接口。",
+      "acceptance": [
+        "创建、替换、报告上传/更新 SQL 不读取或写入 MD5",
+        "ContentAssetController 和 ReportController 不再注册 check-md5 路由",
+        "历史 md5 参数不会改变写入结果"
+      ],
+      "priority": "must",
+      "source": "用户确认完整移除",
+      "counterexample": ["上传仍因 MD5 冲突返回业务错误", "服务端仍执行跨表 MD5 UNION 查询"]
+    },
+    {
+      "id": "R3",
+      "statement": "前端移除 MD5 计算、查重调用、上传参数和展示。",
+      "acceptance": [
+        "静态搜索无 computeFileMd5、check-md5 和 checksumMd5 上传契约",
+        "Vue 构建通过，上传/替换页面无 MD5 控件"
+      ],
+      "priority": "must",
+      "source": "用户确认完整移除",
+      "counterexample": ["浏览器仍读取文件计算 MD5 或调用 check-md5"]
+    },
+    {
+      "id": "R4",
+      "statement": "附件绑定、对象存储、权限、审计和文件替换能力保持不变；重复内容允许入库。",
+      "acceptance": [
+        "运行时新增和按 id 替换均保留附件关系并可访问对象",
+        "相同内容重复上传不返回 MD5 冲突"
+      ],
+      "priority": "must",
+      "source": "现有附件契约和用户确认",
+      "counterexample": ["移除字段导致附件绑定丢失", "重复内容仍被隐式 MD5 拒绝"]
+    }
+  ],
+  "invariants": [
+    "id、doc_code、active_doc_code、attachment_id 和租户/项目授权语义不变",
+    "att_file 平台能力不被修改",
+    "历史 Flyway 脚本不被修改，新增清理迁移幂等"
+  ],
+  "constraints": [
+    "只修改当前需求 writable_paths 覆盖的文件",
+    "模块尚未投产，不提供历史客户端兼容层",
+    "不连接生产环境，不修改 platform/shared Java 能力"
+  ],
+  "non_goals": [
+    "不引入 SHA-256、ETag 或其他摘要查重",
+    "不删除附件绑定、对象存储、文件元数据和审计",
+    "不治理其他模块或 att_file 的 checksum 字段"
+  ],
+  "selected_approach": {
+    "name": "完整移除持久化字段并关闭 MD5 查重",
+    "reason": "让数据库、接口和用户行为一致，消除无业务价值的计算、索引和跨表查询。",
+    "alternatives": [
+      {
+        "name": "仅删除列，保留临时查重",
+        "rejected_because": "保留隐藏的前后端契约，无法稳定跨请求查重且复杂度不降"
+      },
+      {
+        "name": "改用其他摘要字段",
+        "rejected_because": "用户目标是关闭该能力，不应未经单独需求引入替代机制"
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "data-migration 文件型内容表、服务、Controller、API、页面、测试和需求文档",
+        "新增 Flyway 清理迁移"
+      ],
+      "outside": [
+        "att_file 及 platform/shared Java 能力",
+        "生产历史数据和其他业务模块摘要字段"
+      ]
+    },
+    "components": [
+      {
+        "name": "ContentFileAssetService",
+        "responsibility": "创建/替换文件内容和附件关系，不执行 MD5 查重",
+        "depends_on": ["附件绑定公开能力", "内容表数据库"]
+      },
+      {
+        "name": "PlanService/ReportService",
+        "responsibility": "计划和汇报材料写入/查询，不接收或投影 MD5",
+        "depends_on": ["ContentFileAssetService", "内容表数据库"]
+      },
+      {
+        "name": "Frontend data-migration",
+        "responsibility": "上传、替换和列表交互，不计算或提交 MD5",
+        "depends_on": ["data-migration HTTP API"]
+      },
+      {
+        "name": "Flyway cleanup migration",
+        "responsibility": "幂等删除 7 张文件型内容表的 MD5 列和索引",
+        "depends_on": ["V153/V154/V161 历史迁移"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "文件内容创建/替换",
+        "producer": "data-migration Controller",
+        "consumers": ["data-migration 前端"],
+        "contract": "接收项目、业务元数据和附件 ID；无 md5/checksumMd5；重复内容允许入库"
+      },
+      {
+        "name": "check-md5 路由",
+        "producer": "无（删除）",
+        "consumers": [],
+        "contract": "不再注册 /content/check-md5 和 /reports/check-md5"
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "项目、元数据、附件 ID 和文件",
+        "transitions": [
+          "认证/项目/实体授权",
+          "内容行写入或按 id 替换",
+          "附件关系绑定和审计"
+        ],
+        "output": "内容行、doc_code、attachment_id 和非摘要文件元数据"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "客户端附带历史 md5/checksumMd5 参数",
+      "behavior": "服务端不读取、不持久化、不执行查重",
+      "recovery": "客户端升级后停止发送；写入结果不受影响"
+    },
+    {
+      "condition": "调用已删除 check-md5 接口",
+      "behavior": "返回标准未找到/不支持接口响应",
+      "recovery": "前端改用直接上传流程"
+    },
+    {
+      "condition": "附件缺失、越权或跨项目访问",
+      "behavior": "沿用现有错误码、权限和审计语义",
+      "recovery": "修正附件或项目权限后重试"
+    }
+  ],
+  "quality_attributes": {
+    "security": ["不再接收或存储文件摘要派生信息", "保留后端认证、RBAC、项目/实体授权和审计"],
+    "performance": ["减少客户端文件读取、跨表查重查询和 MD5 索引维护"],
+    "compatibility": ["前后端同版本发布；不提供已删除接口的兼容代理"],
+    "operations": ["新增迁移条件删除列和索引；隔离 MySQL 8.4 验证完整链路"]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": ["R1"],
+      "signal": "数据库无 checksum_md5 列和 md5 索引",
+      "method": "隔离 MySQL 8.4 完整迁移 + information_schema 查询"
+    },
+    {
+      "requirement_ids": ["R2"],
+      "signal": "服务端不注册查重路由且写入 SQL 无摘要字段",
+      "method": "JUnit/Controller 测试和静态契约搜索"
+    },
+    {
+      "requirement_ids": ["R3"],
+      "signal": "前端无 MD5 计算/参数且构建通过",
+      "method": "静态搜索、Vue 构建和 Playwright"
+    },
+    {
+      "requirement_ids": ["R4"],
+      "signal": "新增/替换附件正常且重复内容不冲突",
+      "method": "认证 API + MySQL/MinIO 运行探测"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "模块尚未投产，允许删除 check-md5 和 MD5 参数契约",
+      "basis": "用户确认",
+      "falsifier": "发现已投产客户端或外部模块依赖且无同步发布窗口"
+    },
+    {
+      "text": "历史迁移按版本顺序执行，新清理迁移可排在 V164 之后",
+      "basis": "现有 Flyway 版本链",
+      "falsifier": "隔离数据库执行链路时存在后续脚本仍依赖该列"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "新清理迁移的具体版本号是否使用当前最大版本后的下一个版本",
+      "impact": "影响迁移文件名和范围授权，不影响业务设计",
+      "owner": "data-migration 模块 Owner",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "完整移除 checksum_md5 持久化字段并关闭 MD5 查重",
+      "reason": "字段业务价值低，用户明确要求完整移除",
+      "source": "用户消息：完整移除并关闭 MD5 查重"
+    },
+    {
+      "id": "D2",
+      "decision": "保留 att_file 附件绑定和对象存储能力",
+      "reason": "MD5 不是附件生命周期的必要条件",
+      "source": "现有模块边界和本次非目标"
+    },
+    {
+      "id": "D3",
+      "decision": "通过新增幂等 Flyway 清理迁移删除已建列和索引",
+      "reason": "遵守 Flyway 只追加规则并让新环境最终模式一致",
+      "source": "项目治理约束"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "旧客户端调用已删除查重接口",
+      "impact": "上传前置检查失败",
+      "mitigation": "前后端同版本发布、删除前端调用并做静态契约搜索"
+    },
+    {
+      "risk": "重复文件导致对象存储增长",
+      "impact": "存储成本上升",
+      "mitigation": "本次明确不引入替代查重，后续容量治理另立需求"
+    },
+    {
+      "risk": "迁移链仍有历史脚本引用字段",
+      "impact": "新环境迁移失败",
+      "mitigation": "清理迁移放在所有引用脚本之后，并执行完整隔离迁移验证"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户确认完整移除并关闭 MD5 查重，并回复“执行”批准按本设计实施",
+    "confirmed_at": "2026-09-04T13:14:05+08:00"
+  }
+}

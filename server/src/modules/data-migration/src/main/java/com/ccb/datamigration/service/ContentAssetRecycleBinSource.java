@@ -8,10 +8,10 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * 现有九类内容资产（六种文件型 + 三种结构化型）的统一回收站来源。
+ * 现有八类内容资产（六种文件型 + 两种结构化型）的统一回收站来源。
  *
  * <p>把 {@link ContentRecycleBinService} 原先内联的 file/structured 分发原样封装为一个来源，
- * 行为完全等价：文件型走 {@link ContentFileAssetService}，结构化型走 {@link StructuredAssetService}。
+ * 行为完全等价：文件型走 {@link ContentFileAssetService}，规则/参数走 {@link StructuredAssetService}。
  */
 @Component
 public class ContentAssetRecycleBinSource implements RecycleBinSource {
@@ -36,13 +36,13 @@ public class ContentAssetRecycleBinSource implements RecycleBinSource {
     }
 
     @Override
-    public long countDeleted(String type, String keyword, AuthUser user) {
-        return isFile(type) ? fileAssets.countDeleted(type, keyword, user) : structured.countDeleted(type, keyword, user);
+    public long countDeleted(String type, long projectId, String keyword, AuthUser user) {
+        return isFile(type) ? fileAssets.countDeleted(type, projectId, keyword, user) : structured.countDeleted(type, projectId, keyword, user);
     }
 
     @Override
-    public List<Map<String, Object>> listDeletedPage(String type, String keyword, int limit, AuthUser user) {
-        return isFile(type) ? fileAssets.listDeletedPage(type, keyword, limit, user) : structured.listDeletedPage(type, keyword, limit, user);
+    public List<Map<String, Object>> listDeletedPage(String type, long projectId, String keyword, int limit, AuthUser user) {
+        return isFile(type) ? fileAssets.listDeletedPage(type, projectId, keyword, limit, user) : structured.listDeletedPage(type, projectId, keyword, limit, user);
     }
 
     @Override

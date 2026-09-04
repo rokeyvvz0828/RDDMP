@@ -38,7 +38,7 @@ class ContentAssetMigrationMySqlTest {
         prepareV98Baseline();
         seedSourceData();
 
-        assertTrue(flyway("153").migrate().success);
+        assertTrue(flyway("162").migrate().success);
         try (Connection connection = connection()) {
             assertEquals("STORED GENERATED", value(connection, """
                     SELECT EXTRA FROM information_schema.columns
@@ -51,7 +51,7 @@ class ContentAssetMigrationMySqlTest {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_plan"));
         }
 
-        assertTrue(flyway("154").migrate().success);
+        assertTrue(flyway("163").migrate().success);
         try (Connection connection = connection()) {
             // 十张内容表行数与 id 保留
             assertEquals(2, count(connection, "SELECT COUNT(*) FROM dm_plan"));
@@ -136,8 +136,8 @@ class ContentAssetMigrationMySqlTest {
                     """);
         }
 
-        assertTrue(flyway("153").migrate().success);
-        assertThrows(Exception.class, () -> flyway("154").migrate());
+        assertTrue(flyway("162").migrate().success);
+        assertThrows(Exception.class, () -> flyway("163").migrate());
 
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_plan"));
@@ -160,8 +160,8 @@ class ContentAssetMigrationMySqlTest {
                     """);
         }
 
-        assertTrue(flyway("153").migrate().success);
-        assertThrows(Exception.class, () -> flyway("154").migrate());
+        assertTrue(flyway("162").migrate().success);
+        assertThrows(Exception.class, () -> flyway("163").migrate());
 
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_plan"));
@@ -173,10 +173,10 @@ class ContentAssetMigrationMySqlTest {
     void v101DropsLegacyTablesAfterCompletenessAssertions() throws Exception {
         prepareV98Baseline();
         seedSourceData();
-        assertTrue(flyway("153").migrate().success);
-        assertTrue(flyway("154").migrate().success);
+        assertTrue(flyway("162").migrate().success);
+        assertTrue(flyway("163").migrate().success);
 
-        assertTrue(flyway("155").migrate().success);
+        assertTrue(flyway("164").migrate().success);
         try (Connection connection = connection()) {
             // 三张旧表物理删除
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('dm_asset','dm_asset_relation','dm_meeting_attachment')"));
@@ -195,8 +195,8 @@ class ContentAssetMigrationMySqlTest {
     void v101BlocksDropWhenAssetRowUnmigrated() throws Exception {
         prepareV98Baseline();
         seedSourceData();
-        assertTrue(flyway("153").migrate().success);
-        assertTrue(flyway("154").migrate().success);
+        assertTrue(flyway("162").migrate().success);
+        assertTrue(flyway("163").migrate().success);
         // V100 之后向旧表补写一行未搬迁记录，模拟残留
         try (Connection connection = connection()) {
             execute(connection, """
@@ -205,7 +205,7 @@ class ContentAssetMigrationMySqlTest {
                     """);
         }
 
-        assertThrows(Exception.class, () -> flyway("155").migrate());
+        assertThrows(Exception.class, () -> flyway("164").migrate());
 
         try (Connection connection = connection()) {
             // 断言失败 => 旧表未被删除、新表未受影响
@@ -215,13 +215,123 @@ class ContentAssetMigrationMySqlTest {
         }
     }
 
+    @Test
+    void v169DropsEmptyLegacyIntermediateTable() throws Exception {
+        prepareV98Baseline();
+        assertTrue(flyway("165").migrate().success);
+        prepareV169Baseline();
+
+        assertTrue(flyway("169").migrate().success);
+        try (Connection connection = connection()) {
+            assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'dm_intermediate_table'"));
+            assertEquals(1, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'dm_target_table'"));
+        }
+    }
+
+    @Test
+    void v169BlocksDropWhenLegacyIntermediateTableIsNotEmpty() throws Exception {
+        prepareV98Baseline();
+        assertTrue(flyway("165").migrate().success);
+        prepareV169Baseline();
+        try (Connection connection = connection()) {
+            execute(connection, "INSERT INTO dm_intermediate_table (tenant_id, project_id, doc_code, doc_name, structured_data, owner_id) VALUES (1, 100, 'IMT-001', '中间表', '{}', 1)");
+        }
+
+        assertThrows(Exception.class, () -> flyway("169").migrate());
+        try (Connection connection = connection()) {
+            assertEquals(1, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'dm_intermediate_table'"));
+            assertEquals(1, count(connection, "SELECT COUNT(*) FROM dm_intermediate_table WHERE doc_code = 'IMT-001'"));
+        }
+    }
+
+    @Test
+    void v170ReplacesMd5IndexesWithProjectDimension() throws Exception {
+        prepareV98Baseline();
+        assertTrue(flyway("162").migrate().success);
+        // V166 依赖 V158 的 dm_meeting、V169 依赖 V88 的 dm_target_table（均被测试基线覆盖），
+        // 复用现有桩表补齐后再迁移到 V170，避免依赖被基线跳过的历史版本。
+        prepareV169Baseline();
+        assertTrue(flyway("170").migrate().success);
+        try (Connection connection = connection()) {
+            String[] fileTables = {"dm_plan", "dm_mapping_doc", "dm_dependency",
+                                   "dm_script", "dm_topic", "dm_release_drill", "dm_report"};
+            for (String table : fileTables) {
+                String md5Index = "idx_" + table + "_md5";
+                // 唯一 MD5 索引列序精确为 (tenant_id, project_id, checksum_md5, deleted)
+                assertEquals("tenant_id,project_id,checksum_md5,deleted", value(connection, """
+                        SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index)
+                        FROM information_schema.statistics
+                        WHERE table_schema = DATABASE() AND table_name = '%s'
+                          AND index_name = '%s'
+                        GROUP BY index_name
+                        """.formatted(table, md5Index)));
+                // 缺 project_id 的旧形态 MD5 索引必须已不存在：含 checksum_md5 的索引全表唯一（仅新键）
+                assertEquals(1, count(connection, """
+                        SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics
+                        WHERE table_schema = DATABASE() AND table_name = '%s'
+                          AND column_name = 'checksum_md5'
+                        """.formatted(table)));
+            }
+        }
+    }
+
+    @Test
+    void v174RemovesChecksumColumnsAndIndexesWhileKeepingAssetIdentity() throws Exception {
+        flyway("128").clean();
+        try (Connection connection = connection()) {
+            for (String table : new String[]{"dm_plan", "dm_mapping_doc", "dm_dependency", "dm_script",
+                    "dm_topic", "dm_release_drill", "dm_report"}) {
+                execute(connection, ("""
+                        CREATE TABLE %s (
+                            id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                            tenant_id BIGINT NOT NULL DEFAULT 1,
+                            project_id BIGINT NOT NULL,
+                            doc_code VARCHAR(96) NOT NULL,
+                            doc_name VARCHAR(255) NOT NULL,
+                            attachment_id BIGINT NULL,
+                            checksum_md5 CHAR(32) NULL,
+                            owner_id BIGINT NOT NULL,
+                            deleted TINYINT NOT NULL DEFAULT 0,
+                            active_doc_code VARCHAR(96)
+                                GENERATED ALWAYS AS (CASE WHEN deleted = 0 THEN doc_code ELSE NULL END) STORED,
+                            KEY idx_%s_md5 (tenant_id, project_id, checksum_md5, deleted)
+                        )
+                        """).formatted(table, table));
+            }
+        }
+
+        assertTrue(flywayFromBaseline("173", "174").migrate().success);
+        try (Connection connection = connection()) {
+            for (String table : new String[]{"dm_plan", "dm_mapping_doc", "dm_dependency", "dm_script",
+                    "dm_topic", "dm_release_drill", "dm_report"}) {
+                assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '%s' AND column_name = 'checksum_md5'".formatted(table)));
+                assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = '%s' AND index_name = 'idx_%s_md5'".formatted(table, table)));
+                assertEquals(1, count(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '%s' AND column_name = 'doc_code'".formatted(table)));
+                assertEquals(1, count(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '%s' AND column_name = 'active_doc_code'".formatted(table)));
+                assertEquals(1, count(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '%s' AND column_name = 'attachment_id'".formatted(table)));
+            }
+        }
+    }
+
     private Flyway flyway(String target) {
         return Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
                 .baselineOnMigrate(true)
-                .baselineVersion(MigrationVersion.fromVersion("152"))
+                .baselineVersion(MigrationVersion.fromVersion("161"))
+                .target(MigrationVersion.fromVersion(target))
+                .cleanDisabled(false)
+                .load();
+    }
+
+    private Flyway flywayFromBaseline(String baseline, String target) {
+        return Flyway.configure()
+                .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
+                .locations("filesystem:" + migrationDirectory())
+                .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
+                .baselineOnMigrate(true)
+                .baselineVersion(MigrationVersion.fromVersion(baseline))
                 .target(MigrationVersion.fromVersion(target))
                 .cleanDisabled(false)
                 .load();
@@ -311,6 +421,80 @@ class ContentAssetMigrationMySqlTest {
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """);
+            // V165-V167 are platform-owned menu/RBAC seed migrations.  The test
+            // fixture starts at V161, so provide only the columns those
+            // migrations consume instead of depending on the full platform schema.
+            execute(connection, """
+                    CREATE TABLE sys_role (
+                        id BIGINT PRIMARY KEY,
+                        tenant_id BIGINT NOT NULL DEFAULT 1,
+                        role_code VARCHAR(64) NOT NULL,
+                        role_name VARCHAR(128) NOT NULL,
+                        status TINYINT NOT NULL DEFAULT 1,
+                        deleted TINYINT NOT NULL DEFAULT 0
+                    )
+                    """);
+            execute(connection, """
+                    CREATE TABLE sys_menu (
+                        id BIGINT PRIMARY KEY,
+                        tenant_id BIGINT NOT NULL DEFAULT 1,
+                        parent_id BIGINT NOT NULL DEFAULT 0,
+                        menu_type VARCHAR(16) NOT NULL,
+                        menu_name VARCHAR(128) NOT NULL,
+                        route_name VARCHAR(128),
+                        route_path VARCHAR(255),
+                        component_path VARCHAR(255),
+                        permission_code VARCHAR(128),
+                        icon VARCHAR(128),
+                        sort_no INT NOT NULL DEFAULT 0,
+                        visible TINYINT NOT NULL DEFAULT 1,
+                        status TINYINT NOT NULL DEFAULT 1,
+                        deleted TINYINT NOT NULL DEFAULT 0,
+                        UNIQUE KEY uk_sys_menu_route (tenant_id, route_name, deleted)
+                    )
+                    """);
+            execute(connection, """
+                    CREATE TABLE sys_menu_permission (
+                        id BIGINT PRIMARY KEY,
+                        tenant_id BIGINT NOT NULL DEFAULT 1,
+                        menu_id BIGINT NOT NULL,
+                        action_code VARCHAR(32) NOT NULL,
+                        permission_code VARCHAR(160) NOT NULL,
+                        permission_name VARCHAR(64) NOT NULL,
+                        status TINYINT NOT NULL DEFAULT 1,
+                        UNIQUE KEY uk_sys_menu_permission_action (tenant_id, menu_id, action_code),
+                        UNIQUE KEY uk_sys_menu_permission_code (tenant_id, permission_code)
+                    )
+                    """);
+            execute(connection, """
+                    CREATE TABLE sys_role_menu (
+                        role_id BIGINT NOT NULL,
+                        menu_id BIGINT NOT NULL,
+                        tenant_id BIGINT NOT NULL DEFAULT 1,
+                        PRIMARY KEY (role_id, menu_id)
+                    )
+                    """);
+            execute(connection, """
+                    CREATE TABLE sys_role_permission (
+                        role_id BIGINT NOT NULL,
+                        permission_id BIGINT NOT NULL,
+                        tenant_id BIGINT NOT NULL DEFAULT 1,
+                        PRIMARY KEY (role_id, permission_id)
+                    )
+                    """);
+            execute(connection, """
+                    INSERT INTO sys_role (id, tenant_id, role_code, role_name)
+                    VALUES (1, 1, 'SUPER_ADMIN', 'System Administrator')
+                    """);
+            execute(connection, """
+                    INSERT INTO sys_menu
+                        (id, tenant_id, parent_id, menu_type, menu_name, route_name,
+                         route_path, component_path, permission_code)
+                    VALUES (699, 1, 0, 'directory', '数据迁移', 'DataMigration',
+                            '/data-migration', 'LAYOUT', 'data-migration:access'),
+                           (720, 1, 699, 'directory', '数迁资产内容管理', 'DataMigrationContent',
+                            '/data-migration/content', 'data-migration', 'data-migration:content')
+                    """);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to prepare V98 baseline", ex);
         }
@@ -383,6 +567,29 @@ class ContentAssetMigrationMySqlTest {
                         (80005, 1, 7002, 'MEETING', 6002, 'ISSUE', 2),
                         (80006, 1, 7001, 'MEETING', 3001, 'SYSTEM', 2),
                         (80007, 1, 7001, 'MEETING', 3002, 'SYSTEM', 2)
+                    """);
+        }
+    }
+
+    private void prepareV169Baseline() throws Exception {
+        try (Connection connection = connection()) {
+            execute(connection, """
+                    CREATE TABLE dm_meeting (
+                        meeting_id BIGINT PRIMARY KEY,
+                        tenant_id BIGINT NOT NULL DEFAULT 1,
+                        project_id BIGINT NOT NULL DEFAULT 0,
+                        deleted TINYINT NOT NULL DEFAULT 0
+                    )
+                    """);
+            execute(connection, """
+                    CREATE TABLE dm_target_table (
+                        id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                        tenant_id BIGINT NOT NULL DEFAULT 1,
+                        project_id BIGINT NOT NULL,
+                        table_category VARCHAR(32) NOT NULL,
+                        table_code VARCHAR(96) NOT NULL,
+                        table_name VARCHAR(255) NOT NULL
+                    )
                     """);
         }
     }

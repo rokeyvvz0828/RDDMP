@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0010",
+  "decision": "accept",
+  "decision_reason": "The original review proved that purge could remove non-deleted rows or leave relation state inconsistent; this must be reverified against the final IssueService implementation.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "The purge path previously lacked a deleted-row precondition and complete relation cleanup.",
+    "supporting_evidence": ["F-0010 evidence in the preserved state", "IssueServiceTest now contains active-row rejection and relation-first purge assertions"],
+    "falsifier": "A focused test can purge an active issue or retain its relations after a deleted issue purge."
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "IssueService purge contract",
+    "write_scope": ["server/src/modules/data-migration/**", ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"],
+    "invariants": ["only confirmed deleted issues can be purged", "relations are deleted consistently", "tenant and project scope remain enforced"],
+    "impact_limit": "data-migration issue purge and its tests",
+    "rollback": "No product edit is planned; revert only new control evidence if the sensor is invalid.",
+    "correction_check": ["IssueServiceTest active-row rejection", "IssueServiceTest relation-first deleted-row purge", "focused module regression"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": []
+}

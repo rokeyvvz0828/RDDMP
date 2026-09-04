@@ -1,0 +1,74 @@
+{
+ "task_id": "T33",
+ "observer": "independent verification pass（与 execution-T33 分离复算：重跑模块测试核对该类 8/8、核对 information_schema 断言结果与源码 grep 归因）",
+ "observed_at": "2026-09-03T22:50:00+08:00",
+ "environment": "Testcontainer MySQL 8.4（Docker，schema data_migration_content）；本地无生产数据；生产库未触碰",
+ "closes": [
+  "9.2 P2「MD5 索引缺项目列」（database-schema-and-relations.md）",
+  "6.2 查询索引「现有 MD5 索引未包含 project_id，属于待优化项」"
+ ],
+ "supersedes_baseline": "本观测针对 T33 的 V161 迁移与新增测试，取代 execution-T33 的自述结论；不涉及 T31/T32 结论",
+ "findings": [
+  {
+   "id": "F-T33-01",
+   "statement": "V161 在 MySQL 8.4 全链路可执行：153 基线后 154-161 顺序迁移成功，存储过程遍历 7 表无报错",
+   "requirement": "9.2 P2 / Flyway 只追加约束",
+   "method": "Testcontainer 实跑 flyway(153)→flyway(161)，断言 migrate().success",
+   "observed": "flyway 日志 154…161 逐版本 applied，无 SQL 错误，旧索引完成替换",
+   "verdict": "pass"
+  },
+  {
+   "id": "F-T33-02",
+   "statement": "7 张文件型表的 idx_*_md5 列序精确为 (tenant_id, project_id, checksum_md5, deleted)",
+   "requirement": "9.2 P2 处置要求（覆盖 project_id 的索引）",
+   "method": "information_schema.statistics 按 seq_in_index 拼接列序逐表断言",
+   "observed": "7/7 表均等于 tenant_id,project_id,checksum_md5,deleted",
+   "verdict": "pass"
+  },
+  {
+   "id": "F-T33-03",
+   "statement": "旧形态 (tenant_id, checksum_md5, deleted) 索引已不存在",
+   "requirement": "9.2 P2",
+   "method": "每表含 checksum_md5 的索引 COUNT(DISTINCT index_name) 必须为 1，即仅新键",
+   "observed": "7/7 表 = 1",
+   "verdict": "pass"
+  },
+  {
+   "id": "F-T33-04",
+   "statement": "索引替换不改变查询语义：MD5 查重仍由应用层维护，新键非唯一",
+   "requirement": "模块唯一性约束不变量（ContentAssetTables / ContentFileAssetService）",
+   "method": "grep 核对 V161 使用普通 KEY；md5UnionSql 过滤列未变",
+   "observed": "V161 无 UNIQUE；查重 SQL 未改动，索引只影响执行计划",
+   "verdict": "pass"
+  },
+  {
+   "id": "F-T33-05",
+   "statement": "无回归：数据迁移模块测试全绿",
+   "requirement": "模块回归",
+   "method": "mvn -q -pl :ccb-data-migration -am test",
+   "observed": "65 tests / 0 failures / 0 errors / 0 skipped",
+   "verdict": "pass"
+  }
+ ],
+ "regression_checks": [
+  {
+   "check": "mvn -q -pl :ccb-data-migration -am test",
+   "result": "65/0/0/0（含新增 v161ReplacesMd5IndexesWithProjectDimension）"
+  },
+  {
+   "check": "node scripts/check-flyway-migrations.mjs",
+   "result": "仅存量违规 V84_1 命名（基线，非本任务），V161 合规"
+  }
+ ],
+ "blind_spots": [
+  "仅在 Testcontainer MySQL 8.4 验证；生产库版本/数据规模下的执行计划未观测（索引替换不改变数据）",
+  "未在完整应用启动场景执行 flyway（测试为直接 Flyway API 迁移）；生产以应用启动时 Flyway 执行 V161",
+  "超大表 DDL 耗时未评估（MySQL 8 INPLACE 重建索引）"
+ ],
+ "verdict": "converged",
+ "phase_recommendation": "保持 converged；9.2 其余条目另立任务",
+ "required_before_release": [
+  "随应用发布在目标环境执行 flyway（V161 自动生效）",
+  "如需 DB 级回退，按文档 9.2 登记语句重建旧索引"
+ ]
+}

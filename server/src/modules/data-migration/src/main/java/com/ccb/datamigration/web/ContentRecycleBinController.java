@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.*;
  * <p>T26 扩展：列表接口新增 {@code page}/{@code size} 参数，返回 {@link PageResult}，与会议/汇报/问题
  * 单模块列表保持一致的分页契约；合并后按业务编号 {@code asset_code} 字典序全局排序，跨类型同序。
  * 恢复/删除请求体携带内容类型以分发到对应服务，管理员权限校验。
+ *
+ * <p>T32：列表新增必填 {@code projectId}，回收站仅在单项目范围内聚合；省略项目参数返回 400，
+ * 不再提供跨项目全集视图。detail/restore/purge 的项目归属由记录自身决定（入参项目不参与判定）。
  */
 @RestController
 @RequestMapping("/api/data-migration/recycle-bin")
@@ -29,13 +32,14 @@ public class ContentRecycleBinController {
     public ContentRecycleBinController(ContentRecycleBinService service) { this.service = service; }
 
     @GetMapping
-    public ApiResponse<PageResult<Map<String, Object>>> list(@RequestParam(required = false) List<String> contentTypes,
+    public ApiResponse<PageResult<Map<String, Object>>> list(@RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) List<String> contentTypes,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal AuthUser user) {
         Set<String> filter = contentTypes == null ? Set.of() : new LinkedHashSet<>(contentTypes);
-        return ApiResponse.success(service.list(filter, keyword, page, size, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.list(filter, projectId, keyword, page, size, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/{type}/{id:\\d+}")

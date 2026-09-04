@@ -1,13 +1,15 @@
 <!--
   用途：数迁基础资料 - 系统/组件清单页
-  说明：维护各项目中涉及数据迁移的系统与组件。支持按项目/事业群/系统编号/负责团队/简称名称/总分核对/关键字筛选，
+  说明：维护当前全局项目下涉及数据迁移的系统与组件。支持按事业群/系统编号/负责团队/简称名称/总分核对/关键字筛选，
         12 列分页列表、筛选后 Excel 导出；新增时通过系统编号联动物理子系统带出只读元数据（不落库），
         修改仅允许变更"是否涉及总分核对"；覆盖加载/空/失败/无权限/提交中状态与移动端卡片化。
+        所属项目唯一取自全局项目上下文：页内不再有项目筛选、项目下拉与「所属项目」字段，列表/导出/新增均自动使用当前项目，
+        项目切换后重置分页与其他筛选条件重查。
         基础资料子页面不展示标题横幅，定位依赖顶部 Tabs（见 T5-r8）。
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Download, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
@@ -25,11 +27,15 @@ import {
   updateDataMigrationComponent,
   type DataMigrationComponent
 } from '../../../../api/data-migration'
-import { getProjectWorkbench } from '../../../../api/project'
-import type { Project } from '../../../../types/project'
+import ProjectScopeState from '../../components/ProjectScopeState.vue'
+import { useProjectScope } from '../../composables/useProjectScope'
 
 const auth = useAuthStore()
 const canManage = computed(() => auth.hasPermission('data-migration:manage'))
+
+const scope = useProjectScope()
+const scopeState = scope.state
+const scopeProjectId = scope.projectId
 
 const loading = ref(false)
 const error = ref('')
@@ -40,9 +46,7 @@ const page = ref(1)
 const pageSize = ref(20)
 const actionBusy = ref(false)
 
-const projects = ref<Project[]>([])
 const filters = reactive<Record<string, unknown>>({
-  projectId: undefined,
   businessGroupName: '',
   systemCode: '',
   responsibleTeam: '',
@@ -66,12 +70,18 @@ function parseList(response: { data: { data: { records: DataMigrationComponent[]
 }
 
 async function load() {
+  if (scopeProjectId.value == null) {
+    rows.value = []
+    total.value = 0
+    return
+  }
   loading.value = true
   error.value = ''
   forbidden.value = false
   try {
     const response = await listDataMigrationComponents({
       ...filters,
+      projectId: scopeProjectId.value,
       page: page.value,
       size: pageSize.value
     })
@@ -86,14 +96,6 @@ async function load() {
   }
 }
 
-async function loadProjects() {
-  try {
-    projects.value = (await getProjectWorkbench()).data.data ?? []
-  } catch {
-    projects.value = []
-  }
-}
-
 function search() {
   page.value = 1
   load()
@@ -101,7 +103,6 @@ function search() {
 
 function resetFilters() {
   Object.assign(filters, {
-    projectId: undefined,
     businessGroupName: '',
     systemCode: '',
     responsibleTeam: '',
@@ -125,9 +126,13 @@ function onSizeChange(nextSize: number) {
 }
 
 async function exportExcel() {
+  if (scopeProjectId.value == null) {
+    ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
+    return
+  }
   actionBusy.value = true
   try {
-    const response = await exportDataMigrationComponents(filters)
+    const response = await exportDataMigrationComponents({ ...filters, projectId: scopeProjectId.value })
     const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
@@ -154,10 +159,9 @@ const subsystemSearching = ref(false)
 const subsystemForbidden = ref(false)
 const subsystemCandidates = ref<SubsystemCandidate[]>([])
 const createForm = reactive<{
-  projectId?: number
   physicalSubsystemCode: string
   totalCheck: number
-}>({ projectId: undefined, physicalSubsystemCode: '', totalCheck: 0 })
+}>({ physicalSubsystemCode: '', totalCheck: 0 })
 
 const selectedSubsystem = computed(() => subsystemCandidates.value.find(c => c.code === createForm.physicalSubsystemCode))
 
@@ -189,19 +193,19 @@ async function searchSubsystem() {
 }
 
 function openCreate() {
-  Object.assign(createForm, { projectId: undefined, physicalSubsystemCode: '', totalCheck: 0 })
+  Object.assign(createForm, { physicalSubsystemCode: '', totalCheck: 0 })
   subsystemCandidates.value = []
   subsystemForbidden.value = false
   createOpen.value = true
 }
 
 async function submitCreate() {
-  if (!createForm.projectId) return ElMessage.warning('请选择所属项目')
+  if (scopeProjectId.value == null) return ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
   if (!createForm.physicalSubsystemCode.trim()) return ElMessage.warning('请输入系统编号')
   createSaving.value = true
   try {
     await createDataMigrationComponent({
-      projectId: createForm.projectId,
+      projectId: scopeProjectId.value,
       physicalSubsystemCode: createForm.physicalSubsystemCode.trim(),
       totalCheck: createForm.totalCheck
     })
@@ -265,21 +269,37 @@ function openView(row: DataMigrationComponent) {
   viewOpen.value = true
 }
 
-onMounted(() => {
-  loadProjects()
-  load()
-})
+onMounted(() => { void scope.ensureLoaded() })
+
+// 全局项目变化：丢弃上一个项目的列表、筛选与分页状态，按新项目重新查询。
+watch(scopeProjectId, () => {
+  rows.value = []
+  total.value = 0
+  page.value = 1
+  Object.assign(filters, {
+    businessGroupName: '',
+    systemCode: '',
+    responsibleTeam: '',
+    systemKeyword: '',
+    totalCheck: undefined,
+    keyword: ''
+  })
+  createOpen.value = false
+  editOpen.value = false
+  viewOpen.value = false
+  error.value = ''
+  forbidden.value = false
+  void load()
+}, { immediate: true })
 </script>
 
 <template>
   <main class="dm-page-root components-page">
-    <section v-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无组件清单查看权限" sub-title="请向数据迁移管理员申请组件清单管理权限。" /></section>
+    <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <section v-else-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无组件清单查看权限" sub-title="请向数据迁移管理员申请组件清单管理权限。" /></section>
     <section v-else-if="error" class="dm-state-panel"><el-result icon="error" title="组件清单加载失败" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
     <template v-else>
       <UiToolbar>
-        <el-select v-model="filters.projectId" clearable filterable placeholder="所属项目" class="components-filter-select" style="width: 190px">
-          <el-option v-for="p in projects" :key="p.id" :label="`${p.project_name}（${p.project_code}）`" :value="p.id" />
-        </el-select>
         <el-input v-model="filters.systemCode" clearable placeholder="系统编号" style="width: 160px" @keyup.enter="search">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
@@ -313,7 +333,6 @@ onMounted(() => {
 
       <div v-if="rows.length || loading" class="components-desktop-table">
         <UiDataTable :data="rows" :loading="loading" row-key="id" border empty-text="暂无组件数据">
-          <el-table-column prop="project_name" label="所属项目" min-width="150" show-overflow-tooltip />
           <el-table-column prop="business_group_name" label="所属事业群" min-width="120" show-overflow-tooltip />
           <el-table-column prop="physical_subsystem_code" label="系统编号" min-width="140" show-overflow-tooltip />
           <el-table-column prop="system_short_name" label="系统简称" min-width="120" show-overflow-tooltip />
@@ -349,8 +368,8 @@ onMounted(() => {
         <article v-for="row in rows" :key="row.id">
           <header>
             <div>
-              <strong>{{ row.project_name }}</strong>
-              <small>{{ row.physical_subsystem_code }} · {{ row.system_name }}</small>
+              <strong>{{ row.physical_subsystem_code }}</strong>
+              <small>{{ row.system_short_name || row.system_name }}</small>
             </div>
             <el-tag :type="row.total_check === 1 ? 'success' : 'info'" effect="plain" size="small">总分核对：{{ row.total_check === 1 ? '是' : '否' }}</el-tag>
           </header>
@@ -376,16 +395,11 @@ onMounted(() => {
         </div>
       </div>
 
-      <UiEmptyState v-if="!loading && !rows.length" title="暂无组件数据" description="当前筛选条件下没有组件记录，可通过「新增组件」录入，或调整筛选条件。" />
+      <UiEmptyState v-if="!loading && !rows.length" title="暂无组件数据" description="当前项目下没有组件记录，可通过「新增组件」录入，或调整筛选条件。" />
     </template>
 
     <UiFormDrawer v-model="createOpen" title="新增组件" width="560px" :loading="createSaving" confirm-text="保存" @submit="submitCreate">
       <el-form label-width="96px" label-position="left">
-        <el-form-item label="所属项目" required>
-          <el-select v-model="createForm.projectId" filterable placeholder="请选择所属项目" style="width: 100%">
-            <el-option v-for="p in projects" :key="p.id" :label="`${p.project_name}（${p.project_code}）`" :value="p.id" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="系统编号" required>
           <div class="components-subsystem-search">
             <el-input v-model="createForm.physicalSubsystemCode" placeholder="输入物理子系统编号" @keyup.enter="searchSubsystem" />
@@ -412,7 +426,6 @@ onMounted(() => {
 
     <UiFormDrawer v-model="editOpen" title="修改组件" width="560px" :loading="editSaving" confirm-text="保存" @submit="submitEdit">
       <el-form label-width="96px" label-position="left">
-        <el-form-item label="所属项目"><el-input :model-value="editing?.project_name" disabled /></el-form-item>
         <el-form-item label="系统编号"><el-input :model-value="editing?.physical_subsystem_code" disabled /></el-form-item>
         <el-form-item label="所属事业群"><el-input :model-value="editing?.business_group_name || '-'" disabled /></el-form-item>
         <el-form-item label="系统简称"><el-input :model-value="editing?.system_short_name" disabled /></el-form-item>
@@ -432,7 +445,6 @@ onMounted(() => {
     <!-- 查看详情弹窗 -->
     <el-dialog v-model="viewOpen" title="组件详情" width="560px" :close-on-click-modal="true" align-center destroy-on-close>
       <el-form label-width="96px" label-position="left">
-        <el-form-item label="所属项目"><el-input :model-value="viewing?.project_name" disabled /></el-form-item>
         <el-form-item label="系统编号"><el-input :model-value="viewing?.physical_subsystem_code" disabled /></el-form-item>
         <el-form-item label="所属事业群"><el-input :model-value="viewing?.business_group_name || '-'" disabled /></el-form-item>
         <el-form-item label="系统简称"><el-input :model-value="viewing?.system_short_name" disabled /></el-form-item>
@@ -466,7 +478,7 @@ onMounted(() => {
 
 @media (max-width: 760px) {
   .components-page .ui-toolbar__filters, .components-page .ui-toolbar__actions { width: 100%; }
-  .components-filter-select, .components-page .ui-toolbar .el-input, .components-page .ui-toolbar .el-select { width: 100% !important; }
+  .components-page .ui-toolbar .el-input, .components-page .ui-toolbar .el-select { width: 100% !important; }
   .components-advanced-filter .el-form-item,
   .components-advanced-filter .el-input,
   .components-advanced-filter .el-select { width: 100% !important; }

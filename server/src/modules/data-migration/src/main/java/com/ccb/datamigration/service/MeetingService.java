@@ -43,10 +43,11 @@ public class MeetingService {
      * 分页查询会议纪要列表
      */
     public PageResult<Map<String, Object>> list(Long projectId, String meetingSource, String granularity,
-                                                 Long systemId, String keyword, int page, int size, AuthUser user) {
+                                                 String systemCode, String keyword, int page, int size, AuthUser user) {
+        long scope = permissions.requireProject(projectId, user);
         StringBuilder sql = new StringBuilder(baseSelect(false));
         List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendFilters(sql, args, projectId, meetingSource, granularity, systemId, keyword, false);
+        appendFilters(sql, args, scope, meetingSource, granularity, systemCode, keyword, false);
 
         Long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + sql + ") t", Long.class, args.toArray());
         int safePage = Math.max(1, page);
@@ -62,12 +63,16 @@ public class MeetingService {
      * 获取单条会议纪要详情
      */
     public Map<String, Object> findById(long meetingId, AuthUser user) {
-        return findByIdInternal(meetingId, user.tenantId(), false);
+        Map<String, Object> row = findByIdInternal(meetingId, user.tenantId(), false);
+        permissions.requireStoredProject(row.get("project_id"), user);
+        return row;
     }
 
-    /** 查询会议纪要软删除详情，供统一回收站只读查看。 */
+    /** 查询会议纪要软删除详情，供统一回收站只读查看；归属同样以库中 project_id 判定。 */
     public Map<String, Object> findRecycleBinDetail(long meetingId, AuthUser user) {
-        return findByIdInternal(meetingId, user.tenantId(), true);
+        Map<String, Object> row = findByIdInternal(meetingId, user.tenantId(), true);
+        permissions.requireStoredProject(row.get("project_id"), user);
+        return row;
     }
 
     /**
@@ -75,8 +80,8 @@ public class MeetingService {
      */
     @Transactional
     public Map<String, Object> create(Map<String, Object> body, AuthUser user) {
-        long projectId = number(body.get("projectId"), "projectId");
-        ensureProject(projectId, user);
+        // T32 决策 D1/D3：新增归属由前端传入 projectId，服务端校验租户内存在性与项目成员范围。
+        long projectId = permissions.requireProject(number(body.get("projectId"), "projectId"), user);
 
         String meetingTitle = text(body.get("meetingTitle"), "meetingTitle");
         String granularity = text(body.get("granularity"), "granularity");
@@ -85,7 +90,7 @@ public class MeetingService {
         validateEnums(body);
 
         long meetingId = nextId();
-        // 会议编号：用户显式提供则校验活动域唯一；留空时后端自动生成 MEET-{meetingId}，与 REPORT-{id} 同构。
+        // 会议编号沿用独立契约：用户显式提供则校验活动域唯一，留空时生成 MEET-{meetingId}。
         String meetingCode = textOrNull(body.get("meetingCode"));
         if (meetingCode == null) {
             meetingCode = "MEET-" + meetingId;
@@ -119,7 +124,7 @@ public class MeetingService {
         // 保存关联问题
         saveIssueRelations(meetingId, projectId, body, user);
 
-        audit(user, "MEETING_CREATE", meetingId);
+        audit(user, "MEETING_CREATE", projectId, meetingId);
         return findByIdInternal(meetingId, user.tenantId(), false);
     }
 
@@ -131,8 +136,8 @@ public class MeetingService {
         Map<String, Object> current = findByIdInternal(meetingId, user.tenantId(), false);
         permissions.requireWrite(user, ((Number) current.get("created_by")).longValue());
 
-        long projectId = number(body.getOrDefault("projectId", current.get("project_id")), "projectId");
-        ensureProject(projectId, user);
+        // T32 决策 D2：维护操作的归属恒取库中记录，入参 projectId 一律忽略，UPDATE 不再包含 project_id
+        long projectId = permissions.requireStoredProject(current.get("project_id"), user);
 
         String meetingTitle = text(body.getOrDefault("meetingTitle", current.get("meeting_title")), "meetingTitle");
         String granularity = text(body.getOrDefault("granularity", current.get("granularity")), "granularity");
@@ -145,11 +150,11 @@ public class MeetingService {
 
         try {
             int changed = jdbc.update(
-                    "UPDATE dm_meeting SET project_id = ?, meeting_code = ?, granularity = ?, meeting_source = ?, " +
+                    "UPDATE dm_meeting SET meeting_code = ?, granularity = ?, meeting_source = ?, " +
                     "meeting_title = ?, meeting_content = ?, meeting_conclusion = ?, business_scenario = ?, " +
                     "keywords = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP " +
                     "WHERE meeting_id = ? AND tenant_id = ? AND deleted = 0",
-                    projectId, meetingCode, granularity, meetingSource,
+                    meetingCode, granularity, meetingSource,
                     meetingTitle,
                     textOrNull(body.get("meetingContent")),
                     textOrNull(body.get("meetingConclusion")),
@@ -173,7 +178,7 @@ public class MeetingService {
         // 更新关联问题
         saveIssueRelations(meetingId, projectId, body, user);
 
-        audit(user, "MEETING_UPDATE", meetingId);
+        audit(user, "MEETING_UPDATE", projectId, meetingId);
         return findByIdInternal(meetingId, user.tenantId(), false);
     }
 
@@ -184,6 +189,7 @@ public class MeetingService {
     public void delete(List<Long> meetingIds, AuthUser user) {
         for (Long meetingId : normalizeIds(meetingIds)) {
             Map<String, Object> row = findByIdInternal(meetingId, user.tenantId(), false);
+            long projectId = permissions.requireStoredProject(row.get("project_id"), user);
             permissions.requireWrite(user, ((Number) row.get("created_by")).longValue());
 
             int changed = jdbc.update(
@@ -194,15 +200,16 @@ public class MeetingService {
             if (changed != 1) {
                 throw new BusinessException(ErrorCode.CONFLICT, "会议纪要状态已变化，请刷新后重试");
             }
-            audit(user, "MEETING_DELETE", meetingId);
+            audit(user, "MEETING_DELETE", projectId, meetingId);
         }
     }
 
     /**
      * 统一回收站原生分页：软删会议总数（SQL COUNT，不拉明细）。
      */
-    public long countRecycleBin(Long projectId, String keyword, AuthUser user) {
+    public long countRecycleBin(long projectId, String keyword, AuthUser user) {
         permissions.requireAdmin(user);
+        permissions.requireAccessible(projectId, user);
         StringBuilder sql = new StringBuilder(baseSelect(true));
         List<Object> args = new ArrayList<>(List.of(user.tenantId()));
         appendFilters(sql, args, projectId, null, null, null, keyword, true);
@@ -214,8 +221,9 @@ public class MeetingService {
      * 统一回收站原生分页：按 {@code meeting_code ASC, meeting_id ASC} 取软删会议前 {@code limit} 行。
      * {@code limit} 为原生下推值（不经 {@link #normalizePageSize} 白名单），由统一层按窗口上界传入。
      */
-    public List<Map<String, Object>> fetchRecycleBinPage(Long projectId, String keyword, int limit, AuthUser user) {
+    public List<Map<String, Object>> fetchRecycleBinPage(long projectId, String keyword, int limit, AuthUser user) {
         permissions.requireAdmin(user);
+        permissions.requireAccessible(projectId, user);
         if (limit <= 0) {
             return List.of();
         }
@@ -235,7 +243,8 @@ public class MeetingService {
         permissions.requireAdmin(user);
 
         for (Long meetingId : normalizeIds(meetingIds)) {
-            findByIdInternal(meetingId, user.tenantId(), true);
+            Map<String, Object> row = findByIdInternal(meetingId, user.tenantId(), true);
+            long projectId = permissions.requireStoredProject(row.get("project_id"), user);
 
             try {
                 int changed = jdbc.update(
@@ -251,7 +260,7 @@ public class MeetingService {
                 // 恢复后活动行 meeting_code 与既有活动行冲突（uk_dm_meeting_active_code）：与 create/update 同构，翻译为 40900。
                 throw meetingCodeConflict(ex);
             }
-            audit(user, "MEETING_RESTORE", meetingId);
+            audit(user, "MEETING_RESTORE", projectId, meetingId);
         }
     }
 
@@ -263,7 +272,8 @@ public class MeetingService {
         permissions.requireAdmin(user);
 
         for (Long meetingId : normalizeIds(meetingIds)) {
-            findByIdInternal(meetingId, user.tenantId(), true);
+            Map<String, Object> row = findByIdInternal(meetingId, user.tenantId(), true);
+            long projectId = permissions.requireStoredProject(row.get("project_id"), user);
 
             purgeMeetingAttachments(meetingId, user);
 
@@ -296,56 +306,54 @@ public class MeetingService {
             if (changed != 1) {
                 throw new BusinessException(ErrorCode.CONFLICT, "会议纪要状态已变化，请刷新后重试");
             }
-            audit(user, "MEETING_PURGE", meetingId);
+            audit(user, "MEETING_PURGE", projectId, meetingId);
         }
     }
 
     /**
-     * 清空回收站
+     * 清空回收站（T32：仅清空指定项目内的软删会议，不再按租户全量清除）。
      */
     @Transactional
-    public void purgeAll(AuthUser user) {
+    public void purgeAll(Long projectId, AuthUser user) {
         permissions.requireAdmin(user);
+        long scope = permissions.requireProject(projectId, user);
 
         List<Long> meetingIds = jdbc.queryForList(
-                "SELECT meeting_id FROM dm_meeting WHERE tenant_id = ? AND deleted = 1",
-                Long.class, user.tenantId()
+                "SELECT meeting_id FROM dm_meeting WHERE tenant_id = ? AND project_id = ? AND deleted = 1",
+                Long.class, user.tenantId(), scope
         );
         for (Long meetingId : meetingIds) {
             purgeMeetingAttachments(meetingId, user);
         }
 
-        // 删除所有已删除会议参与的问题关联与系统关联
+        // 删除本项目下已删除会议参与的问题关联与系统关联
         jdbc.update(
-                "DELETE r FROM dm_issue_relation r JOIN dm_meeting m ON m.tenant_id = r.tenant_id AND m.deleted = 1 AND r.related_type = 'MEETING' AND r.related_id = m.meeting_id " +
+                "DELETE r FROM dm_issue_relation r JOIN dm_meeting m ON m.tenant_id = r.tenant_id AND m.deleted = 1 AND m.project_id = ? AND r.related_type = 'MEETING' AND r.related_id = m.meeting_id " +
                 "WHERE r.tenant_id = ?",
-                user.tenantId()
+                scope, user.tenantId()
         );
         jdbc.update(
-                "DELETE s FROM dm_meeting_system s JOIN dm_meeting m ON m.tenant_id = s.tenant_id AND m.deleted = 1 AND m.meeting_id = s.meeting_id WHERE s.tenant_id = ?",
-                user.tenantId()
+                "DELETE s FROM dm_meeting_system s JOIN dm_meeting m ON m.tenant_id = s.tenant_id AND m.deleted = 1 AND m.project_id = ? AND m.meeting_id = s.meeting_id WHERE s.tenant_id = ?",
+                scope, user.tenantId()
         );
 
-        // 删除所有已删除的会议纪要
-        jdbc.update("DELETE FROM dm_meeting WHERE tenant_id = ? AND deleted = 1", user.tenantId());
+        // 删除本项目下所有已删除的会议纪要
+        jdbc.update("DELETE FROM dm_meeting WHERE tenant_id = ? AND project_id = ? AND deleted = 1", user.tenantId(), scope);
 
-        audit(user, "MEETING_PURGE_ALL", 0L);
+        audit(user, "MEETING_PURGE_ALL", scope, 0L);
     }
 
-    /**
-     * 获取系统选项（根据项目）
-     */
+    /** 获取系统选项（根据项目）：返回该项目 {@code dm_component} 活动清单的系统编号。 */
     public List<Map<String, Object>> getSystemOptions(Long projectId, AuthUser user) {
-        if (projectId == null) return List.of();
+        long scope = permissions.requireProject(projectId, user);
         return jdbc.queryForList(
-                "SELECT s.id AS value, " +
-                "CONCAT(s.code, ' - ', COALESCE(s.short_name, s.name, '')) AS label " +
+                "SELECT c.physical_subsystem_code AS value, " +
+                "CONCAT(c.physical_subsystem_code, ' - ', COALESCE(s.short_name, s.name, '')) AS label " +
                 "FROM dm_component c " +
-                "JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 " +
+                "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 " +
                 "WHERE c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0 " +
-                "GROUP BY s.id, s.code, s.short_name, s.name " +
-                "ORDER BY s.code",
-                user.tenantId(), projectId
+                "ORDER BY c.physical_subsystem_code",
+                user.tenantId(), scope
         );
     }
 
@@ -353,13 +361,13 @@ public class MeetingService {
      * 获取问题选项（根据项目）
      */
     public List<Map<String, Object>> getIssueOptions(Long projectId, AuthUser user) {
-        if (projectId == null) return List.of();
+        long scope = permissions.requireProject(projectId, user);
         return jdbc.queryForList(
                 "SELECT id AS value, CONCAT(issue_code, ' - ', issue_name) AS label " +
                 "FROM dm_issue " +
                 "WHERE tenant_id = ? AND project_id = ? AND deleted = 0 " +
                 "ORDER BY issue_code",
-                user.tenantId(), projectId
+                user.tenantId(), scope
         );
     }
 
@@ -375,11 +383,12 @@ public class MeetingService {
                 "m.deleted_by, m.deleted_at, " +
                 "(SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ', ') " +
                 " FROM dm_meeting_system ms " +
-                " JOIN arch_physical_subsystem s ON s.id = ms.subsystem_id AND s.tenant_id = ms.tenant_id AND s.deleted = 0 " +
+                " JOIN dm_component c ON c.tenant_id = ms.tenant_id AND c.project_id = ms.project_id AND c.physical_subsystem_code = ms.system_code AND c.deleted = 0 " +
+                " JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 " +
                 " WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id) AS system_names, " +
-                "(SELECT GROUP_CONCAT(ms.subsystem_id) " +
+                "(SELECT GROUP_CONCAT(ms.system_code) " +
                 " FROM dm_meeting_system ms " +
-                " WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id) AS system_ids, " +
+                " WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id) AS system_codes, " +
                 "(SELECT GROUP_CONCAT(i.issue_name ORDER BY i.issue_name SEPARATOR ', ') " +
                 " FROM dm_issue_relation r " +
                 " JOIN dm_issue i ON i.id = r.issue_id AND i.tenant_id = r.tenant_id AND i.deleted = 0 " +
@@ -393,12 +402,11 @@ public class MeetingService {
                 "WHERE m.tenant_id = ? AND m.deleted = " + (deleted ? "1" : "0");
     }
 
-    private void appendFilters(StringBuilder sql, List<Object> args, Long projectId, String meetingSource,
-                               String granularity, Long systemId, String keyword, boolean deleted) {
-        if (projectId != null) {
-            sql.append(" AND m.project_id = ?");
-            args.add(projectId);
-        }
+    private void appendFilters(StringBuilder sql, List<Object> args, long projectId, String meetingSource,
+                               String granularity, String systemCode, String keyword, boolean deleted) {
+        // T32：项目隔离谓词恒定拼接，不存在“未选项目则返回全租户数据”的分支。
+        sql.append(" AND m.project_id = ?");
+        args.add(projectId);
         if (!deleted && meetingSource != null && MEETING_SOURCES.contains(meetingSource)) {
             sql.append(" AND m.meeting_source = ?");
             args.add(meetingSource);
@@ -407,13 +415,13 @@ public class MeetingService {
             sql.append(" AND m.granularity = ?");
             args.add(granularity);
         }
-        if (!deleted && systemId != null) {
-            sql.append(" AND EXISTS (SELECT 1 FROM dm_meeting_system ms WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id AND ms.subsystem_id = ?)");
-            args.add(systemId);
+        if (!deleted && systemCode != null && !systemCode.isBlank()) {
+            sql.append(" AND EXISTS (SELECT 1 FROM dm_meeting_system ms WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id AND ms.system_code = ?)");
+            args.add(systemCode.trim());
         }
         if (keyword != null && !keyword.isBlank()) {
             String value = "%" + keyword.trim() + "%";
-            sql.append(" AND (m.meeting_code LIKE ? OR m.meeting_title LIKE ? OR m.keywords LIKE ? OR EXISTS (SELECT 1 FROM dm_meeting_system ms JOIN arch_physical_subsystem s ON s.id = ms.subsystem_id AND s.tenant_id = ms.tenant_id WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id AND s.name LIKE ?))");
+            sql.append(" AND (m.meeting_code LIKE ? OR m.meeting_title LIKE ? OR m.keywords LIKE ? OR EXISTS (SELECT 1 FROM dm_meeting_system ms JOIN dm_component c ON c.tenant_id = ms.tenant_id AND c.project_id = ms.project_id AND c.physical_subsystem_code = ms.system_code AND c.deleted = 0 JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id AND s.name LIKE ?))");
             args.add(value);
             args.add(value);
             args.add(value);
@@ -450,22 +458,18 @@ public class MeetingService {
     }
 
     private void saveSystemRelations(long meetingId, long projectId, Map<String, Object> body, AuthUser user) {
-        if (!body.containsKey("systemIds")) return;
+        if (!body.containsKey("systemCodes")) return;
 
-        List<Long> systemIds = new ArrayList<>();
-        for (Object value : asList(body.get("systemIds"))) {
-            long systemId;
-            try {
-                systemId = Long.parseLong(String.valueOf(value));
-            } catch (NumberFormatException ex) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "系统ID无效");
-            }
-            if (!systemIds.contains(systemId)) systemIds.add(systemId);
+        List<String> systemCodes = new ArrayList<>();
+        for (Object value : asList(body.get("systemCodes"))) {
+            String systemCode = String.valueOf(value).trim();
+            if (systemCode.isEmpty()) continue;
+            if (!systemCodes.contains(systemCode)) systemCodes.add(systemCode);
         }
 
         // 验证系统属于当前项目
-        for (Long systemId : systemIds) {
-            ensureSystemBelongsToProject(systemId, projectId, user);
+        for (String systemCode : systemCodes) {
+            ensureSystemBelongsToProject(systemCode, projectId, user);
         }
 
         // 删除旧的系统关联（dm_meeting_system）
@@ -474,12 +478,12 @@ public class MeetingService {
                 user.tenantId(), meetingId
         );
 
-        // 插入新的系统关联
-        for (Long systemId : systemIds) {
+        // 插入新的系统关联（project_id + system_code，不保存 arch_physical_subsystem.id）
+        for (String systemCode : systemCodes) {
             jdbc.update(
-                    "INSERT INTO dm_meeting_system (id, tenant_id, meeting_id, subsystem_id, created_by) " +
-                    "VALUES (?, ?, ?, ?, ?)",
-                    nextId(), user.tenantId(), meetingId, systemId, user.id()
+                    "INSERT INTO dm_meeting_system (id, tenant_id, meeting_id, project_id, system_code, created_by) " +
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    nextId(), user.tenantId(), meetingId, projectId, systemCode, user.id()
             );
         }
     }
@@ -578,6 +582,7 @@ public class MeetingService {
      * 获取会议纪要的附件列表
      */
     public List<Map<String, Object>> getMeetingAttachments(long meetingId, AuthUser user) {
+        requireMeetingScope(meetingId, user);
         return contentAttachments.list(CONTENT_TYPE, meetingId, user.tenantId());
     }
 
@@ -587,6 +592,7 @@ public class MeetingService {
     @Transactional
     public void deleteAttachment(long meetingId, long attachmentId, AuthUser user) {
         Map<String, Object> current = findByIdInternal(meetingId, user.tenantId(), false);
+        long projectId = permissions.requireStoredProject(current.get("project_id"), user);
         permissions.requireWrite(user, ((Number) current.get("created_by")).longValue());
 
         int changed = contentAttachments.softDelete(CONTENT_TYPE, meetingId, attachmentId, user);
@@ -594,13 +600,14 @@ public class MeetingService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在或已删除");
         }
 
-        audit(user, "MEETING_ATTACHMENT_DELETE", meetingId);
+        audit(user, "MEETING_ATTACHMENT_DELETE", projectId, meetingId);
     }
 
     /**
      * 获取附件回收站列表
      */
     public List<Map<String, Object>> getAttachmentRecycleBin(long meetingId, AuthUser user) {
+        requireMeetingScope(meetingId, user);
         return contentAttachments.listDeleted(CONTENT_TYPE, meetingId, user.tenantId());
     }
 
@@ -610,6 +617,7 @@ public class MeetingService {
     @Transactional
     public void restoreAttachment(long meetingId, long attachmentId, AuthUser user) {
         permissions.requireAdmin(user);
+        long projectId = requireMeetingScope(meetingId, user);
 
         int changed = jdbc.update(
                 "UPDATE dm_content_attachment SET deleted = 0, deleted_by = NULL, deleted_at = NULL " +
@@ -620,7 +628,7 @@ public class MeetingService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在或未删除");
         }
 
-        audit(user, "MEETING_ATTACHMENT_RESTORE", meetingId);
+        audit(user, "MEETING_ATTACHMENT_RESTORE", projectId, meetingId);
     }
 
     /**
@@ -628,6 +636,7 @@ public class MeetingService {
      */
     public PageResult<Map<String, Object>> attachmentRecycleBinList(Long projectId, String keyword, int page, int size, AuthUser user) {
         permissions.requireAdmin(user);
+        long scope = permissions.requireProject(projectId, user);
 
         StringBuilder sql = new StringBuilder(
                 "SELECT a.id, a.attachment_id, a.file_name, a.sort_order, a.business_id AS meeting_id, " +
@@ -639,10 +648,9 @@ public class MeetingService {
         );
         List<Object> args = new ArrayList<>(List.of(user.tenantId()));
 
-        if (projectId != null) {
-            sql.append(" AND m.project_id = ?");
-            args.add(projectId);
-        }
+        // T32：附件级回收站同样按项目隔离，缺失或不可访问的 projectId 不得返回其他项目的附件行。
+        sql.append(" AND m.project_id = ?");
+        args.add(scope);
         if (keyword != null && !keyword.isBlank()) {
             String value = "%" + keyword.trim() + "%";
             sql.append(" AND (a.file_name LIKE ? OR m.meeting_title LIKE ?)");
@@ -669,8 +677,9 @@ public class MeetingService {
 
         for (Long id : normalizeIds(ids)) {
             long meetingId = contentAttachments.requireSoftDeletedRow(id, user);
+            long projectId = requireMeetingScope(meetingId, user);
             contentAttachments.restoreByIds(List.of(id), user);
-            audit(user, "MEETING_ATTACHMENT_RESTORE", meetingId);
+            audit(user, "MEETING_ATTACHMENT_RESTORE", projectId, meetingId);
         }
     }
 
@@ -683,21 +692,40 @@ public class MeetingService {
 
         for (Long id : normalizeIds(ids)) {
             long meetingId = contentAttachments.requireSoftDeletedRow(id, user);
+            long projectId = requireMeetingScope(meetingId, user);
             contentAttachments.purgeByIds(List.of(id), user);
-            audit(user, "MEETING_ATTACHMENT_PURGE", meetingId);
+            audit(user, "MEETING_ATTACHMENT_PURGE", projectId, meetingId);
         }
     }
 
     /**
-     * 清空附件回收站
+     * 清空附件回收站（T32：仅清空指定项目下会议的关系行，不再按租户全量清除）。
      */
     @Transactional
-    public void purgeAllAttachments(AuthUser user) {
+    public void purgeAllAttachments(Long projectId, AuthUser user) {
         permissions.requireAdmin(user);
+        long scope = permissions.requireProject(projectId, user);
 
-        contentAttachments.purgeAllSoftDeleted(user);
+        List<Long> rowIds = jdbc.queryForList(
+                "SELECT a.id FROM dm_content_attachment a " +
+                "JOIN dm_meeting m ON m.tenant_id = a.tenant_id AND m.meeting_id = a.business_id " +
+                "WHERE a.tenant_id = ? AND a.business_type = 'MEETING' AND a.deleted = 1 AND m.project_id = ?",
+                Long.class, user.tenantId(), scope
+        );
+        contentAttachments.purgeByIds(rowIds, user);
 
-        audit(user, "MEETING_ATTACHMENT_PURGE_ALL", 0L);
+        audit(user, "MEETING_ATTACHMENT_PURGE_ALL", scope, 0L);
+    }
+
+    /** T32：按库中会议归属校验项目范围；会议已软删时同样可判定，供附件级运维操作复用。 */
+    private long requireMeetingScope(long meetingId, AuthUser user) {
+        List<Long> projects = jdbc.queryForList(
+                "SELECT project_id FROM dm_meeting WHERE meeting_id = ? AND tenant_id = ?",
+                Long.class, meetingId, user.tenantId());
+        if (projects.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "会议纪要不存在");
+        long projectId = projects.get(0);
+        permissions.requireStoredProject(projectId, user);
+        return projectId;
     }
 
     /** 清理会议所有附件对象和关联行，仅解绑已按会议业务绑定的附件。 */
@@ -705,13 +733,12 @@ public class MeetingService {
         contentAttachments.unbindAndRemoveAll(CONTENT_TYPE, BUSINESS_TYPE, meetingId, user);
     }
 
-    private void ensureSystemBelongsToProject(long systemId, long projectId, AuthUser user) {
-        // 验证系统存在且属于当前项目
+    private void ensureSystemBelongsToProject(String systemCode, long projectId, AuthUser user) {
+        // 验证系统编号存在于当前项目 dm_component 活动清单
         String sql = "SELECT COUNT(*) FROM dm_component c " +
-                "JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 " +
-                "WHERE s.id = ? AND c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0";
-        if (!exists(sql, systemId, user.tenantId(), projectId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "系统不属于所选项目");
+                "WHERE c.physical_subsystem_code = ? AND c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0";
+        if (!exists(sql, systemCode, user.tenantId(), projectId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "系统编号不属于所选项目");
         }
     }
 
@@ -723,12 +750,6 @@ public class MeetingService {
     private void validateEnum(Object value, Set<String> allowed, String label) {
         if (value != null && !String.valueOf(value).isBlank() && !allowed.contains(String.valueOf(value))) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, label + "值无效");
-        }
-    }
-
-    private void ensureProject(long id, AuthUser user) {
-        if (!exists("SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "项目不存在");
         }
     }
 
@@ -822,11 +843,11 @@ public class MeetingService {
         return ids == null ? List.of() : ids.stream().filter(Objects::nonNull).distinct().toList();
     }
 
-    private void audit(AuthUser user, String operation, long meetingId) {
+    private void audit(AuthUser user, String operation, long projectId, long meetingId) {
         jdbc.update(
-                "INSERT INTO dm_operation_log (tenant_id, actor_id, operation_code, entity_type, entity_id) " +
-                "VALUES (?, ?, ?, 'MEETING', ?)",
-                user.tenantId(), user.id(), operation, meetingId
+                "INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) " +
+                "VALUES (?, ?, ?, ?, 'MEETING', ?)",
+                user.tenantId(), user.id(), projectId, operation, meetingId
         );
     }
 

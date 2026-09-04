@@ -1,0 +1,123 @@
+{
+  "task_id": "T31-r1",
+  "observer": "independent verification pass (Playwright + HTTP probes + code inspection)",
+  "observed_at": "2026-09-03T00:20:00+08:00",
+  "environment": "本地：MySQL(:3306)/MinIO(:9000) 容器运行中，后端 ./backend-dev.sh start(:8080, 启动 4.5s)，前端 Vite(:5173)；角色 admin（数据迁移管理员，全量权限）",
+  "closes": [
+    "F-T31-08（浏览器验收 blocked：缺可用登录凭据）→ 已用用户本次提供的本地测试账号（凭据仅本会话使用，不写入账本）完成登录与真实浏览器取证",
+    "F-T31-10（T31 仅达 检查通过）→ 证据升级到 运行可达 + 浏览器已验收"
+  ],
+  "supersedes_baseline": "本观测同时覆盖 T31 之后按用户新口径（页面不展示「所属项目」字段）删除 ProjectScopeHint 与各表单项/列的改动",
+  "findings": [
+    {
+      "id": "F-T31r1-01",
+      "statement": "数据迁移模块所有页面（含弹层、抽屉、卡片、详情）不再展示「所属项目」字段，且不提供项目筛选控件",
+      "requirement": "T31 增量口径 + R4",
+      "method": "Playwright 遍历 15 个路由 × 4 视口，对 document.querySelector('main') 的 innerText 与 innerHTML 双检 '所属项目'，并枚举 main 内 .el-select 文本是否含项目/所属",
+      "observed": "66/66 检查 hasProjectField=false、projectSelects=[]；静态复核 grep 'scopeProjectName|ProjectScopeHint' web/src = 0 命中",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T31r1-02",
+      "statement": "project_code → 数值 projectId 的解析在真实数据上成立，且所有列表请求都带当前项目",
+      "requirement": "R2 / R3",
+      "method": "GET /api/project/workbench（admin token）与页面请求抓包比对",
+      "observed": "workbench 返回 3001/P2026-001、3002/P2026-002、3003/P2026-003；页面请求实测 issues?projectId=3001、components?projectId=3001、target-tables?category=TARGET&projectId=3001、meetings/plans/reports?projectId=3001、options/systems?projectId=3001 全部 200",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T31r1-03",
+      "statement": "切换全局项目后列表立即同步为新项目，且不残留上一项目的记录、筛选与分页状态",
+      "requirement": "R3 / R5（验收标准 2、5）",
+      "method": "真实点击顶部全局切换器（P2026-001 → 确认切换）而非直接改 localStorage；比对切换前后 main 文本与切换后的请求 URL",
+      "observed": "切换前 issues 共 1 条=CHK-A-001；切换后共 1 条=CHK-B-001，residueOfA=false；切换后新增请求为 issues?projectId=3002 与 options/systems?projectId=3002；控制台 0 error",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T31r1-04",
+      "statement": "新增/上传/导入自动归属当前全局项目，用户无法归属到当前项目之外",
+      "requirement": "R5（验收标准 4）",
+      "method": "拦截 XHR 请求体：在两个项目下分别通过 UI 新增问题；检查请求体 projectId 与响应 project_id",
+      "observed": "P2026-001 下 POST /api/data-migration/issues body.projectId=3001 → 响应 data.project_id=3001/project_name=零售贷款 2.0 升级项目；P2026-002 下 body.projectId=3002；两抽屉内均无「所属项目」字段可改（issues 抽屉 19 个字段中不含项目字段）",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T31r1-05",
+      "statement": "刷新与重进仍以当前全局项目为准，不丢上下文",
+      "requirement": "R6",
+      "method": "UI 新增后 F5 刷新；独立 context 以 localStorage 预设 ref 后直接深链接进入",
+      "observed": "刷新后 ccb.current_project_ref=P2026-001，列表仍仅 CHK-A-001，请求 projectId=3001；空态文案「当前项目下暂无问题数据」（不含项目名回显）",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T31r1-06",
+      "statement": "当前项目解析失败时保留错误态、不展示旧数据、不发起列表查询",
+      "requirement": "R6",
+      "method": "page.route 拦截 GET /api/project/workbench 返回 HTTP 500 后进入 issues 页，统计 /api/data-migration/* 请求",
+      "observed": "页面仅显示闸门「当前项目信息加载失败 / 当前项目信息加载失败，请稍后重试 / 重新加载」；data-migration 列表请求数=0；「新增问题」「Excel导入」入口不在 DOM 中出现；截图 /tmp/dmv/gate-workbench-500.png",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T31r1-07",
+      "statement": "项目标识为空/非法时的行为符合框架既有回落，不由模块自行猜测历史项目",
+      "requirement": "R6",
+      "method": "localStorage ccb.current_project_ref 分别设为 '' 与 'P9999-999' 后进入 issues 页",
+      "observed": "两种情况全局上下文均回落到首个可见项目（P2026-003），模块跟随解析结果查询 projectId=3003 并显示空态；未出现「按上一项目缓存展示数据」的情况",
+      "verdict": "pass_with_note",
+      "note": "回落发生在 web/src/stores/project-context.ts（本任务只读、不得改动），模块只是忠实地跟随上下文解析结果；若产品要求「无有效项目时展示未选择闸门」，需在全局上下文侧另立需求"
+    },
+    {
+      "id": "F-T31r1-08",
+      "statement": "桌面与移动视口布局正常：无页面级横向溢出、无遮挡、抽屉不超高、无空字段占位",
+      "requirement": "R8（验收标准 6）/ design-h5.md",
+      "method": "1280x800、375x812、390x844、430x932 四视口 × 15 路由；检查 documentElement.scrollWidth vs clientWidth；移动端打开 issues 新增抽屉与 reports 上传抽屉并比较抽屉高度与视口高度",
+      "observed": "66/66 pageScrollX='none'；移动抽屉高度 ≤ 视口高度、内部无横向溢出、无「所属项目」；控制台 0 error、无 ≥400 响应；截图 /tmp/dmv/mobile-375-P2026-001.png、/tmp/dmv/mobile-390-P2026-001.png、/tmp/dmv/mobile-430-P2026-001.png",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T31r1-09",
+      "statement": "统一回收站与数迁看板不参与项目隔离（后端契约无 projectId）",
+      "requirement": "R1（覆盖范围）边界",
+      "method": "抓包 + 读 ContentRecycleBinController/看板接口",
+      "observed": "GET /api/data-migration/recycle-bin?page=1&size=20 无 projectId 参数（后端签名亦无该参数），页面仍为跨项目集合；本次不改后端，维持 T31 登记的 out_of_bounds 结论",
+      "verdict": "out_of_bounds"
+    },
+    {
+      "id": "F-T31r1-10",
+      "statement": "结构化列表端点无 projectId，依赖前端按 project_id 过滤",
+      "requirement": "R2",
+      "method": "抓包 GET /api/data-migration/parameters（无 query 参数）+ 读 StructuredListView.load()",
+      "observed": "确认代码存在 rows.filter(asset => asset.project_id === projectId) 且 projectId 为 null 时清空不发请求；因本地各类型均 0 条，无法构造跨项目污染反例（记录为待复核，不作为失败）",
+      "verdict": "pass_with_blind_spot"
+    },
+    {
+      "id": "F-T31r1-11",
+      "statement": "验收写入的测试数据已清理，环境回到验收前状态",
+      "requirement": "证据卫生",
+      "method": "DELETE /api/data-migration/issues + DELETE /api/data-migration/issues/purge 后复查各列表与回收站 total",
+      "observed": "3001/3002/3003 issues total=0；问题回收站 total=0；统一回收站 total=0",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T31r1-12",
+      "statement": "改动面与授权边界一致，未越界",
+      "requirement": "codex-task-scope.yaml",
+      "method": "git status --porcelain 与 git diff --stat 复核",
+      "observed": "改动仅 web/src/modules/data-migration/**（8 个文件 M；composables/useProjectScope.ts 与 components/ProjectScopeState.vue 新增；components/ProjectScopeHint.vue 删除）+ 本需求文档与本前缀账本；web/src/stores/**、web/src/components/ui/**、AppLayout.vue、后端与 Flyway 零改动",
+      "verdict": "pass"
+    }
+  ],
+  "regression_checks": [
+    "npm --prefix web run build（vue-tsc + Vite）EXIT=0：删除 ProjectScopeHint 后无残留引用/类型错误",
+    "既有能力回归：列表查询、筛选（非项目类）、分页、新增、编辑、删除→回收站→彻底清理链路在浏览器/API 中均返回 code=0",
+    "全局项目切换器本身行为未改：确认弹窗文案「切换到…后，当前页面将重新加载」与原实现一致，仍整页刷新"
+  ],
+  "blind_spots": [
+    "数据迁移看板（dashboard/overall、dashboard/components）与统一回收站未做项目隔离，本次视口扫描未覆盖这两个路由",
+    "文件型/结构化资产的上传、Excel 导入与导出仅做静态与请求参数核查，未做真实文件上传端到端（需 MinIO 对象与文件样本）",
+    "非管理员角色（无数据迁移权限）下的闸门与 403 表现未取证：本地仅有 admin 账号",
+    "移动端仅验证视口布局与抽屉，未验证触摸手势（侧滑返回、下拉刷新）"
+  ],
+  "verdict": "T31 及其 r1 口径变更的实现与验收标准 1-6 均通过真实浏览器与真实接口取证，证据等级达 浏览器已验收；剩余为已明确登记的契约边界（统一回收站/看板无 projectId、结构化端点前端过滤、Excel 模板项目编码列），不阻塞本任务收敛。",
+  "phase_recommendation": "converged"
+}

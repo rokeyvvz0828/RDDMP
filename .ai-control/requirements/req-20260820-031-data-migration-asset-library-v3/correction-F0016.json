@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0016",
+  "decision": "accept",
+  "decision_reason": "Delayed phase history weakens auditability. This corrective run must write every phase transition immediately through control_loop.py.",
+  "dynamic_pattern": "systemic",
+  "causal_assessment": {
+    "hypothesis": "The former schema 5 workflow treated state updates as a deferred close-out action and allowed direct converged/correcting jumps.",
+    "supporting_evidence": ["F-0016 preserved evidence", "schema 5 state included unsupported derived workflow fields", "the current schema 4 command contract makes phase transitions explicit"],
+    "falsifier": "This run again batches or fabricates phase transitions after execution and observation are complete."
+  },
+  "control_action": {
+    "gain": "high",
+    "target": "REQ-031 control-ledger write timing",
+    "write_scope": [".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"],
+    "invariants": ["phase changes use control_loop.py after the one audited schema repair", "execution precedes observation", "observation precedes feedback resolution and verification"],
+    "impact_limit": "REQ-031 control ledger only",
+    "rollback": "Restore the schema 5 snapshot and discard this corrective run's evidence.",
+    "correction_check": ["phase_history timestamps follow executing -> observing -> verifying -> converged", "each transition has its required artifact recorded first", "final gate exits 0"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["The historical timing defect remains visible and is not rewritten; closure proves the corrected process for this run."]
+}

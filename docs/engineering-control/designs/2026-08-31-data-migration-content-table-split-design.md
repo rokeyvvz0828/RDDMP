@@ -31,21 +31,23 @@ Owner 已确认决策：**全部独立成表**、**公共附件表统一收编**
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `id` | BIGINT PK | 主键，迁移保留原 `dm_asset.id` |
+| `id` | BIGINT PK | 技术主键；迁移保留原 `dm_asset.id`，新建时仅用于内部定位 |
 | `tenant_id` | BIGINT NOT NULL | 租户 |
 | `project_id` | BIGINT NOT NULL | 所属项目 |
 | `component_id` | BIGINT NULL | 所属组件 |
-| `doc_code` | VARCHAR(96) NOT NULL | 编号（原 `asset_code`），项目内唯一 |
+| `doc_code` | VARCHAR(96) NOT NULL | 不可变业务编号；迁移时取原 `asset_code`，新建时由服务端统一生成 |
 | `doc_name` | VARCHAR(255) NOT NULL | 名称（原 `asset_name`） |
 | `checksum_md5` | CHAR(32) NULL | MD5 查重 |
 | `owner_id` | BIGINT NOT NULL | 负责人 |
 | `deleted` / `deleted_by` / `deleted_at` | 软删三件套 | 回收站 |
 | `created_by` / `created_at` / `updated_by` / `updated_at` | 审计 | |
-| `active_code` | 生成列 | `IF(deleted=0, doc_code, NULL)`，对齐 V94 先例 |
+| `active_doc_code` | 生成列 | `IF(deleted=0, doc_code, NULL)`，对齐 V94 先例 |
 
-- 唯一键：`uk(tenant_id, project_id, active_code)`。
+- 唯一键：`uk(tenant_id, project_id, active_doc_code)`。
 - 索引：`(tenant_id, project_id, deleted, updated_at)`、`(tenant_id, checksum_md5, deleted)`。
 - **不再保留 `attachment_id`/`content_type`/`file_size`**：主文件与附加文件一律落 `dm_content_attachment`（主文件 `sort_order=0`），展示元数据经 `att_file` JOIN 投影（`att_file` 已含 `file_name`/`content_type`/`file_size`，V36）。
+
+新建编号规则以后续 T36 治理为准：`ContentDocCodeGenerator` 按内容类型生成 `<前缀>-<32 位小写无连字符 UUID>`，不得由 `id` 派生，也不得接受客户端编号输入。更新、文件替换和恢复均保留原 `doc_code`。类型前缀为 `PLAN/MAP/DEP/SCRIPT/TOPIC/DRILL/REPORT/RULE/PARAM`。
 
 ### 3.2 `dm_report`（汇报材料）
 

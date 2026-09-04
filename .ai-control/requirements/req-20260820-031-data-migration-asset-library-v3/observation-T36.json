@@ -1,0 +1,91 @@
+{
+  "sample_label": "T36 doc_code governance final observation",
+  "task_ids": ["T36-BE", "T36-FE", "T36-DOC", "T36-VERIFY"],
+  "baseline_revision": "T36 approved design 2026-09-04",
+  "observed_at": "2026-09-04T12:28:00+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 source and test inspection",
+      "result": "pass",
+      "raw_evidence": "No production PLAN-{id}/REPORT-{id} derivation remains; UI plan/report tables omit technical ID; database documentation assigns id only technical responsibilities.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 JUnit generator and service tests",
+      "result": "pass",
+      "raw_evidence": "ContentDocCodeGeneratorTest covers PLAN/MAPPING_DOC/DEPENDENCY/SCRIPT/TOPIC/RELEASE_DRILL/REPORT/RULE/PARAMETER and requires each value to match its prefix plus [0-9a-f]{32}; unknown type is rejected.",
+      "limitation": ["UUID collision behavior relies on the existing active unique key and normal conflict handling; collision was not forced at runtime."]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 authenticated MySQL runtime lifecycle",
+      "result": "pass",
+      "raw_evidence": "RULE code remained identical across client override update, soft delete, recycle-bin detail, and restore; MAPPING_DOC code remained identical across id-targeted file replacement.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S3 authenticated MySQL/MinIO runtime plus service test",
+      "result": "pass",
+      "raw_evidence": "POST /mappings/upload generated a new MAP code despite client assetCode; PUT /mappings/{id}/upload changed the main file and retained the same code; probe asset was purged.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S4 Vue build, source contract search, and Playwright",
+      "result": "pass",
+      "raw_evidence": "Build passed; upload/replace/structured-edit drawers contain no code input; Excel import unit workbook omits asset_code and receives a generated PARAM code; business-code display remains present.",
+      "limitation": ["Excel browser upload/download was not repeated; workbook behavior is covered at service-test level."]
+    }
+  ],
+  "samples": [
+    {
+      "id": "T36-S1",
+      "kind": "automated backend",
+      "result": "pass",
+      "evidence": "Focused suite 10/10 passed; final complete module suite 76/76 passed."
+    },
+    {
+      "id": "T36-S2",
+      "kind": "static and build",
+      "result": "pass_with_external_baseline_failures",
+      "evidence": "Vue build and diff/contract checks passed. Governance/scope non-zero output contains only other requirement prefixes and unrelated REQ-20260903-064 worktree files."
+    },
+    {
+      "id": "T36-S3",
+      "kind": "runtime API and browser",
+      "result": "pass",
+      "evidence": "Current-source backend on 8081 and frontend on 5174 passed file and structured lifecycle probes plus 1280x800/390x844 Playwright checks; all temporary rows/files were removed."
+    }
+  ],
+  "feedback": [],
+  "resolved_feedback": [
+    {
+      "id": "F-T36-01",
+      "classification": "deviation",
+      "severity": "P1",
+      "observed": "Structured delete returned 500 because two-table UNION SQL received a third table's argument group.",
+      "resolution": "Removed the six extra arguments, added a 12-argument regression assertion, and reran the full structured lifecycle successfully."
+    },
+    {
+      "id": "F-T36-SENSOR-01",
+      "classification": "sensor-fault",
+      "severity": "P3",
+      "observed": "Initial file upload probe could not resolve host.docker.internal.",
+      "resolution": "Restarted only the isolated backend with the documented host-local MinIO endpoint; the same file create/replace probe passed."
+    }
+  ],
+  "disturbances": [
+    "The shared branch contains unrelated uncommitted requirements, migrations, and historical ledger violations; these prevent repository-wide scope/governance exit code 0 but do not overlap the final T36 surfaces reported by those checks."
+  ],
+  "coverage_gaps": [
+    "Repository-wide governance and working-tree scope cannot be declared green until unrelated owners clean the reported baseline files.",
+    "Only the requested representative mobile viewport 390x844 was visually inspected for T36; other legacy release-verification viewports were not repeated."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "verdict": "converged_for_T36",
+  "phase_recommendation": "Keep canonical requirement state converged; retain T36 as incremental evidence and do not rewrite historical convergence.json."
+}

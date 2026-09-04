@@ -30,13 +30,13 @@ public class ReportRecycleBinSource implements RecycleBinSource {
     }
 
     @Override
-    public long countDeleted(String type, String keyword, AuthUser user) {
-        return reportService.countRecycleBin(null, null, keyword, user);
+    public long countDeleted(String type, long projectId, String keyword, AuthUser user) {
+        return reportService.countRecycleBin(projectId, null, keyword, user);
     }
 
     @Override
-    public List<Map<String, Object>> listDeletedPage(String type, String keyword, int limit, AuthUser user) {
-        return reportService.fetchRecycleBinPage(null, null, keyword, limit, user);
+    public List<Map<String, Object>> listDeletedPage(String type, long projectId, String keyword, int limit, AuthUser user) {
+        return reportService.fetchRecycleBinPage(projectId, null, keyword, limit, user);
     }
 
     @Override

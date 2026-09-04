@@ -38,7 +38,9 @@ public class ProjectComponentService {
                                                       String systemCode, String responsibleTeam, String systemKeyword,
                                                       Integer totalCheck, String keyword, PageQuery page) {
         PageQuery normalized = page == null ? new PageQuery(1, 20) : page;
-        ComponentFilter filter = buildFilter(projectId, businessGroupName, systemCode, responsibleTeam,
+        // T32 决策 D1/D3：组件清单必须落在具体项目内，projectId 缺失或不可访问不得返回数据。
+        long scope = permissions.requireProject(projectId, user);
+        ComponentFilter filter = buildFilter(scope, businessGroupName, systemCode, responsibleTeam,
                 systemKeyword, totalCheck, keyword);
         StringBuilder select = new StringBuilder(
                 "SELECT c.id, c.project_id, p.project_code, p.project_name, c.physical_subsystem_code, "
@@ -77,7 +79,8 @@ public class ProjectComponentService {
     /** 按筛选条件导出全量元数据字段。 */
     public byte[] exportComponents(AuthUser user, Long projectId, String businessGroupName, String systemCode,
                                    String responsibleTeam, String systemKeyword, Integer totalCheck, String keyword) {
-        ComponentFilter filter = buildFilter(projectId, businessGroupName, systemCode, responsibleTeam,
+        long scope = permissions.requireProject(projectId, user);
+        ComponentFilter filter = buildFilter(scope, businessGroupName, systemCode, responsibleTeam,
                 systemKeyword, totalCheck, keyword);
         StringBuilder sql = new StringBuilder(
                 "SELECT p.project_code, p.project_name, "
@@ -122,11 +125,11 @@ public class ProjectComponentService {
         }
     }
 
-    private record ComponentFilter(Long projectId, String businessGroupName, String systemCode,
+    private record ComponentFilter(long projectId, String businessGroupName, String systemCode,
                                    String responsibleTeam, String systemKeyword, Integer totalCheck, String keyword) {
     }
 
-    private static ComponentFilter buildFilter(Long projectId, String businessGroupName, String systemCode,
+    private static ComponentFilter buildFilter(long projectId, String businessGroupName, String systemCode,
                                                String responsibleTeam, String systemKeyword, Integer totalCheck,
                                                String keyword) {
         return new ComponentFilter(projectId, blankToNull(businessGroupName), blankToNull(systemCode),
@@ -138,7 +141,9 @@ public class ProjectComponentService {
     }
 
     private static void applyFilter(StringBuilder sql, List<Object> args, ComponentFilter filter) {
-        if (filter.projectId() != null && filter.projectId() > 0) { sql.append(" AND c.project_id = ?"); args.add(filter.projectId()); }
+        // T32：项目隔离谓词恒定拼接。
+        sql.append(" AND c.project_id = ?");
+        args.add(filter.projectId());
         if (filter.businessGroupName() != null) { sql.append(" AND s.business_group_name LIKE ?"); args.add("%" + filter.businessGroupName() + "%"); }
         if (filter.systemCode() != null) { sql.append(" AND c.physical_subsystem_code LIKE ?"); args.add("%" + filter.systemCode() + "%"); }
         if (filter.responsibleTeam() != null) { sql.append(" AND s.responsible_team_name_snapshot LIKE ?"); args.add("%" + filter.responsibleTeam() + "%"); }
@@ -153,31 +158,33 @@ public class ProjectComponentService {
         ensureProject(projectId, user);
         // 组件身份由系统编号（物理子系统编号）承担，项目内全局唯一。
         String physicalCode = String.valueOf(body.get("physicalSubsystemCode")).trim();
-        if (exists("SELECT COUNT(*) FROM dm_component WHERE tenant_id = ? AND project_id = ? AND physical_subsystem_code = ? AND deleted = 0", user.tenantId(), projectId, physicalCode)) throw new BusinessException(ErrorCode.CONFLICT, "Physical subsystem already registered in project");
+        if (exists("SELECT COUNT(*) FROM dm_component WHERE tenant_id = ? AND project_id = ? AND physical_subsystem_code = ?", user.tenantId(), projectId, physicalCode)) throw new BusinessException(ErrorCode.CONFLICT, "Physical subsystem already registered in project");
         int totalCheck = integer(body, "totalCheck", 0);
         long id = nextId();
         jdbc.update("INSERT INTO dm_component (id, tenant_id, project_id, physical_subsystem_code, total_check, owner_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, physicalCode, totalCheck, user.id(), user.id());
-        audit(user, "COMPONENT_CREATE", "COMPONENT", id);
+        audit(user, "COMPONENT_CREATE", "COMPONENT", projectId, id);
         return componentView(id, user.tenantId());
     }
 
     @Transactional
     public Map<String, Object> updateComponent(long id, Map<String, Object> body, AuthUser user) {
         permissions.requireAdmin(user);
-        find("SELECT id, project_id, owner_id FROM dm_component WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId());
+        Map<String, Object> stored = find("SELECT id, project_id, owner_id FROM dm_component WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId());
+        long projectId = permissions.requireStoredProject(stored.get("project_id"), user);
         int totalCheck = integer(body, "totalCheck", 0);
         // 规格约束：仅允许修改"是否涉及总分核对"，其余字段保持不可变。
         jdbc.update("UPDATE dm_component SET total_check = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0", totalCheck, user.id(), id, user.tenantId());
-        audit(user, "COMPONENT_UPDATE", "COMPONENT", id);
+        audit(user, "COMPONENT_UPDATE", "COMPONENT", projectId, id);
         return componentView(id, user.tenantId());
     }
 
     @Transactional
     public void deleteComponent(long id, AuthUser user) {
-        Map<String, Object> row = find("SELECT id, owner_id FROM dm_component WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId());
+        Map<String, Object> row = find("SELECT id, project_id, owner_id FROM dm_component WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId());
+        long projectId = permissions.requireStoredProject(row.get("project_id"), user);
         permissions.requireWrite(user, ((Number) row.get("owner_id")).longValue());
         if (hasContentAssets(id, user)) throw new BusinessException(ErrorCode.CONFLICT, "Component has related assets");
-        jdbc.update("UPDATE dm_component SET deleted = 1 WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId()); audit(user, "COMPONENT_DELETE", "COMPONENT", id);
+        jdbc.update("UPDATE dm_component SET deleted = 1 WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId()); audit(user, "COMPONENT_DELETE", "COMPONENT", projectId, id);
     }
 
     private Map<String, Object> componentView(long id, long tenantId) {
@@ -196,7 +203,7 @@ public class ProjectComponentService {
     }
 
     private Map<String, Object> find(String sql, Object... args) { try { return jdbc.queryForMap(sql, args); } catch (Exception ex) { throw new BusinessException(ErrorCode.BAD_REQUEST, "Record not found"); } }
-    private void ensureProject(long id, AuthUser user) { if (!exists("SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, user.tenantId())) throw new BusinessException(ErrorCode.BAD_REQUEST, "Project not found"); }
+    private void ensureProject(long id, AuthUser user) { permissions.requireAccessible(id, user); }
     private boolean exists(String sql, Object... args) { Integer count = jdbc.queryForObject(sql, Integer.class, args); return count != null && count > 0; }
 
     /** 跨全部内容与结构化表统计组件占用，任一表有活动行即视为占用。 */
@@ -207,7 +214,7 @@ public class ProjectComponentService {
         Integer total = jdbc.queryForObject("SELECT COALESCE(SUM(cnt), 0) FROM (" + ContentAssetTables.activeCountUnionSql(where, ContentAssetTables.ALL_TABLES) + ") x", Integer.class, args.toArray());
         return total != null && total > 0;
     }
-    private void audit(AuthUser user, String op, String type, long id) { jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, operation_code, entity_type, entity_id) VALUES (?, ?, ?, ?, ?)", user.tenantId(), user.id(), op, type, id); }
+    private void audit(AuthUser user, String op, String type, long projectId, long id) { jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) VALUES (?, ?, ?, ?, ?, ?)", user.tenantId(), user.id(), projectId, op, type, id); }
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }
     private static void requireText(Map<String, Object> body, String key) { if (body.get(key) == null || String.valueOf(body.get(key)).trim().isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, key + " is required"); }
     private static long number(Map<String, Object> body, String key) { requireText(body, key); try { return Long.parseLong(String.valueOf(body.get(key))); } catch (NumberFormatException ex) { throw new BusinessException(ErrorCode.BAD_REQUEST, key + " must be numeric"); } }

@@ -58,14 +58,14 @@ class IssueMigrationMySqlTest {
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'REPORT' AND asset_name = 'Keep report'"));
         }
 
-        assertTrue(flyway("147").migrate().success);
+        assertTrue(flyway("156").migrate().success);
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'ISSUE'"));
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_asset_relation WHERE source_asset_type = 'ISSUE'"));
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'REPORT' AND asset_name = 'Keep report'"));
         }
 
-        assertTrue(flyway("148").migrate().success);
+        assertTrue(flyway("157").migrate().success);
         try (Connection connection = connection()) {
             assertEquals("STORED GENERATED", value(connection, """
                     SELECT EXTRA FROM information_schema.columns
@@ -91,7 +91,7 @@ class IssueMigrationMySqlTest {
         }
 
         RaceInjectingJdbcTemplate jdbc = new RaceInjectingJdbcTemplate(dataSource());
-        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc));
+        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()));
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()));
 
         BusinessException error = assertThrows(BusinessException.class,
@@ -113,7 +113,7 @@ class IssueMigrationMySqlTest {
         }
 
         RaceInjectingJdbcTemplate jdbc = new RaceInjectingJdbcTemplate(dataSource());
-        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc));
+        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()));
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("projectId", 100L);
@@ -137,7 +137,7 @@ class IssueMigrationMySqlTest {
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
                 .baselineOnMigrate(true)
-                .baselineVersion(MigrationVersion.fromVersion("146"))
+                .baselineVersion(MigrationVersion.fromVersion("155"))
                 .target(MigrationVersion.fromVersion(target))
                 .cleanDisabled(false)
                 .load();
@@ -153,7 +153,7 @@ class IssueMigrationMySqlTest {
 
     private void migrateFreshTo94() {
         prepareIsolatedSchema();
-        assertTrue(flyway("148").migrate().success);
+        assertTrue(flyway("157").migrate().success);
     }
 
     private void prepareIsolatedSchema() {
@@ -193,6 +193,7 @@ class IssueMigrationMySqlTest {
                     CREATE TABLE dm_operation_log (
                         id BIGINT PRIMARY KEY AUTO_INCREMENT,
                         tenant_id BIGINT NOT NULL,
+                        project_id BIGINT NOT NULL DEFAULT 0,
                         actor_id BIGINT NOT NULL,
                         operation_code VARCHAR(64) NOT NULL,
                         entity_type VARCHAR(64) NOT NULL,
@@ -239,6 +240,7 @@ class IssueMigrationMySqlTest {
                         id BIGINT PRIMARY KEY,
                         tenant_id BIGINT NOT NULL,
                         project_id BIGINT,
+                        table_code BIGINT,
                         table_name_en VARCHAR(128),
                         deleted TINYINT NOT NULL DEFAULT 0
                     )
@@ -247,6 +249,7 @@ class IssueMigrationMySqlTest {
                     CREATE TABLE dm_target_table_field (
                         id BIGINT PRIMARY KEY,
                         tenant_id BIGINT NOT NULL,
+                        field_code BIGINT,
                         field_name_en VARCHAR(128),
                         table_id BIGINT,
                         deleted TINYINT NOT NULL DEFAULT 0

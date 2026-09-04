@@ -5,8 +5,11 @@
     "status": "ready",
     "document": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
     "codex_allowed": true,
-    "merged_requirements": ["REQ-20260831-050"],
-    "merge_note": "REQ-20260831-050（数迁资产内容表拆分）经 Owner 确认为本需求演进，已于 2026-09-01 仅做文档+账本逻辑合并入本前缀（V99-V102、Content* 后端、前端、账本证据）；未动 git 分支/提交，仅本地，不 push。证据见 correction-050-consolidation.json 与 execution-050-*/observation-050-*。"
+    "merged_requirements": [
+      "REQ-20260831-050",
+      "REQ-20260903-064"
+    ],
+    "merge_note": "REQ-20260831-050（数迁资产内容表拆分）与 REQ-20260903-064（中间表模型唯一化）均由 Owner 确认为 REQ-20260820-031 的数据迁移模块演进。050 的历史证据保留在本前缀；064 的原需求、scope 与独立 schema 4 账本保留为历史，活动交付统一由本前缀收敛。未执行 git commit、push、合并或发布。"
   },
   "assignment": {
     "developer": "codex",
@@ -17,56 +20,27 @@
   "codex": {
     "production_access": false,
     "contains_confidential_information": false,
-    "allowed_tools": ["local-shell", "codex", "browser"]
+    "allowed_tools": [
+      "local-shell",
+      "codex",
+      "browser"
+    ]
   },
   "scope": {
     "writable_paths": [
-      "pom.xml",
-      "package-lock.json",
+      ".gitignore",
       "backend-dev.sh",
-      "frontend-dev.sh",
-      "governance/modules.yaml",
-      "docs/architecture/MODULES.md",
-      ".github/CODEOWNERS",
-      ".codebuddy/agents/AGENTS.md",
-      ".codebuddy/settings.json",
       "server/src/modules/data-migration/**",
-      "server/src/modules/architecture/pom.xml",
-      "server/src/platform/boot/pom.xml",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V86__remove_data_migration_projects_menu.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V87__data_migration_roles_seed.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V88__data_migration_target_table_structure.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V89__data_migration_report_material_enrichment.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V90__data_migration_common_asset_attachment_dedup.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V91__attachment_expires_at_datetime.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V92__data_migration_asset_relation.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V147__data_migration_issue_independent_storage.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V148__data_migration_issue_active_code_uniqueness.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V149__data_migration_meeting_minutes.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V150__data_migration_meeting_attachment.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V151__data_migration_table_comments_and_topic_type.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V152__data_migration_remove_compatibility_columns.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V153__data_migration_content_tables.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V154__data_migration_content_table_backfill.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V155__data_migration_drop_legacy_asset_tables.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V156__data_migration_recycle_bin_menu.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V157__data_migration_meeting_code.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V134__data_migration_meeting_explicit_seed_codes.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V158__data_migration_dashboard_menu_repair.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V159__data_migration_plan_domain.sql",
-      "web/package.json",
-      "web/package-lock.json",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V*__data_migration_*.sql",
       "web/src/api/data-migration.ts",
       "web/src/modules/data-migration/**",
       "web/src/router/index.ts",
-      "web/src/vue-shim.d.ts",
-      "web/verify_ui.mjs",
       "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/**",
-      "docs/engineering-control/designs/2026-08-20-data-migration-asset-library-v3-design.md",
-      "docs/engineering-control/designs/2026-08-31-data-migration-content-table-split-design.md",
-      "docs/engineering-control/plans/2026-08-20-data-migration-asset-library-v3-implementation-plan.md",
-      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+      "docs/requirements/REQ-20260903-064-data-migration-intermediate-table-canonicalization/**",
+      "docs/engineering-control/designs/*data-migration*.md",
+      "docs/engineering-control/plans/*data-migration*.md",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json",
+      ".ai-control/requirements/req-20260903-064-data-migration-intermediate-table-canonicalization/*.json"
     ],
     "read_only_paths": [
       "server/src/shared/common/**",
@@ -79,7 +53,11 @@
       "web/src/modules/delivery-showcase/**",
       "web/src/api/http.ts",
       "web/src/stores/**",
-      "design-h5.md"
+      "design-h5.md",
+      "server/src/modules/requirement/**",
+      "server/src/modules/architecture/**",
+      ".agents/skills/**",
+      "governance/**"
     ],
     "forbidden_paths": [
       ".env",
@@ -99,8 +77,13 @@
     "issue": "REQ-20260820-031",
     "owner_approved": true,
     "old_behavior_preserved": true,
-    "regression_tests": ["module-boundary", "maven-reactor", "dynamic-menu", "frontend-build"],
-    "note": "除 V84-V98 外，因合并 REQ-20260831-050 而纳入追加式迁移 V99-V102（均落在 platform/infrastructure，仅追加不改历史脚本，com.ccb.infrastructure.storage 公共契约未变）；V102 为统一回收站菜单注册；V103 为 dm_meeting 增加 meeting_code（会议编号）与活动域唯一索引，用于向统一回收站信封 asset_code 提供来源。演示数据不再通过 Flyway 注入，改由测试/本地 fixture 提供。业务 API 破坏性变更属 business/data-migration 模块，非平台公共能力；T26 下线 business/data-migration 旧前端入口 /meetings/recycle-bin* 与 /reports/recycle-bin*（含 /meetings/purge-all），不属平台契约。T27 修复 T26 剩余风险：(1) 各来源 restore 翻转 deleted=0 时的活动编号唯一冲突统一翻译为 CONFLICT(40900)，与 create 同构；(2) MeetingController/ReportController 数字型 PathVariable 加 \\d+ 正则约束，旧字面路径不再被 /{id} 吞掉；(4)(5) RecycleBinSource SPI 由全量 listDeleted 改为 countDeleted + listDeletedPage(limit)，各来源 SQL 层按业务编号升序 + LIMIT 原生分页，统一层做有界 k 路归并 + SQL COUNT 总量；仍属 business/data-migration 模块内部契约，非平台公共能力，无新增迁移。"
+    "regression_tests": [
+      "module-boundary",
+      "maven-reactor",
+      "dynamic-menu",
+      "frontend-build"
+    ],
+    "note": "除 V84-V98 外，因合并 REQ-20260831-050 而纳入追加式迁移 V99-V102（均落在 platform/infrastructure，仅追加不改历史脚本，com.ccb.infrastructure.storage 公共契约未变）；V102 为统一回收站菜单注册；V103 为 dm_meeting 增加 meeting_code（会议编号）与活动域唯一索引，用于向统一回收站信封 asset_code 提供来源。演示数据不再通过 Flyway 注入，改由测试/本地 fixture 提供。业务 API 破坏性变更属 business/data-migration 模块，非平台公共能力；T26 下线 business/data-migration 旧前端入口 /meetings/recycle-bin* 与 /reports/recycle-bin*（含 /meetings/purge-all），不属平台契约。T27 修复 T26 剩余风险：(1) 各来源 restore 翻转 deleted=0 时的活动编号唯一冲突统一翻译为 CONFLICT(40900)，与 create 同构；(2) MeetingController/ReportController 数字型 PathVariable 加 \\d+ 正则约束，旧字面路径不再被 /{id} 吞掉；(4)(5) RecycleBinSource SPI 由全量 listDeleted 改为 countDeleted + listDeletedPage(limit)，各来源 SQL 层按业务编号升序 + LIMIT 原生分页，统一层做有界 k 路归并 + SQL COUNT 总量；仍属 business/data-migration 模块内部契约，非平台公共能力，无新增迁移。T32（2026-09-03）追加：数据迁移模块服务端项目隔离（requirement.md「增量：数据迁移模块服务端项目隔离（T32）」，决策 D1-D4）。改动仍限 server/src/modules/data-migration/**、web/src/api/data-migration.ts、web/src/modules/data-migration/**，不新增 Flyway（实测各 dm_* 表查询索引已含 project_id），不修改 platform/shared。D1 最终决策：成员和项目可达性统一调用 platform/system 公开契约 `com.ccb.system.capability.ProjectWorkflowDirectoryService`，data-migration 不读取或写入 pm_project_member/pm_project SQL；pm_project_member 继续由 platform/system 持有并服务成员、角色、项目范围和工作流人员解析。影响：business/data-migration 模块内部项目查询 projectId 必填、统一回收站/看板/check-md5/导入增加项目维度、UPDATE 去掉 project_id，非平台公共能力；服务端项目隔离不得回退到跨项目查询。T32 范围补登：本分支既有提交已改 `.gitignore`（仅追加忽略本地 `.qoder/`）与 T30 设计文档 `docs/engineering-control/designs/2026-09-02-data-migration-plan-domain-design.md`，此前未登记在 writable_paths 中，现补入以满足范围检查可复验；两项均不涉及平台能力与运行行为。T34（2026-09-04）追加：9.2 四项 P2 治理收敛——追加迁移 V171-V173（子系统 id 引用列按 (tenant_id, code) 回填、组件/目标表/字段唯一键收敛为活动生成列、生成列注释补齐），服务端写入时解析 arch_physical_subsystem.id 双写（IssueService/ProjectComponentService/TargetTableService，前端 systemCode 契约不变、查询仍按 code 过滤），组件看板改跨 9 张内容表一次 UNION ALL 分组统计；仍限 data-migration 模块与追加迁移文件，platform/shared 未改。T39（2026-09-04，用户确认开发阶段免备份）追加：系统关联统一为 (project_id, system_code) 并追加 V175 下线 V168/V171 的 id 引用列（dm_plan.system_id→system_code、dm_issue/dm_target_table 删 system_id、dm_component 删 physical_subsystem_id、dm_meeting_system 改 project_id+system_code），服务端不再解析/双写 arch_physical_subsystem.id，按项目内 dm_component 活动清单校验关联系统，系统名称经 dm_component 按编号投影；后端 PlanService/IssueService/TargetTableService/ProjectComponentService/MeetingService 与 Plan/Meeting 前端契约由 systemId/systemIds 改为 systemCode/systemCodes；仍限 data-migration 模块与追加迁移文件，platform/shared 未改。T40（2026-09-04）追加：9.2 P1「审计缺项目维度」治理——追加 V176 为 dm_operation_log 增加 project_id（BIGINT NOT NULL DEFAULT 0）与项目级审计索引 (tenant_id, project_id, entity_type, created_at)，服务端各审计写入口（PlanService/MeetingService/IssueService/TargetTableService/ContentFileAssetService/StructuredAssetService/ReportService/ProjectComponentService/ExcelService）从实体项目上下文填充审计项目，清空回收站类操作记录操作范围；仍限 data-migration 模块与追加迁移文件，platform/shared 未改。T41（2026-09-04，用户确认开发阶段免备份）追加：dm_target_table 取消自增 id 主键，改为 table_code 直接作主键（编号沿用原 id 生成方式 nextId() 纯数字 BIGINT、全局唯一、单列主键、不建号源表、不考虑租户），dm_target_table_field 主键同步改 field_code、关联键 table_id 改名 table_code，dm_issue_relation.related_id 与审计 entity_id 存的正是原 id 数值即新 code 数值（数据零改写），V172 遗留引用 table_id 的 uk_target_field_active_en/cn 与 idx_target_field_table/key 随改名重建，组合外键 fk_target_field_table_code 按 (tenant_id, table_code) 关联，保留 uk_target_table_tenant_code (tenant_id, table_code) 作组合外键引用目标；服务端 TargetTableService/TargetTableController/TargetTableFieldController/IssueService/IssueController 与前端 data-migration.ts/TargetTablesPage/IssuesPage 契约由 id/tableId/fieldId/ids 改为 tableCode/fieldCode/tableCodes/fieldCodes；仍限 data-migration 模块与追加迁移文件，platform/shared 未改。T42（2026-09-04，用户确认开发阶段免备份）追加：全模块下线 active_* 活动生成列并改朴素唯一键（V178）——dm_issue/dm_meeting/dm_plan/dm_component/dm_target_table/dm_target_table_field/8 张内容表/dm_content_attachment 删除 active_* 生成列，唯一键直接建在原始业务列上（租户+项目+业务编号或租户+业务键），软删行同样占用唯一名额，删除后需 purge 才能重建同名/同编号记录，恢复只与存量活动行冲突；服务端创建/更新预校验改为含软删行的全量检查，数据库唯一键并发兜底；仍限 data-migration 模块与追加迁移文件，platform/shared 未改。T43（2026-09-05，用户确认）追加：dm_project 已完全废弃，追加 V179（DROP TABLE IF EXISTS dm_project，幂等）将其从最终模型中删除；项目主数据统一由平台 pm_project 承载；仍限 data-migration 模块与追加迁移文件，platform/shared 未改。"
   },
   "database": {
     "changed": true,
@@ -113,44 +96,105 @@
       "server/src/platform/infrastructure/src/main/resources/db/migration/V90__data_migration_common_asset_attachment_dedup.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V91__attachment_expires_at_datetime.sql",
       "server/src/platform/infrastructure/src/main/resources/db/migration/V92__data_migration_asset_relation.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V147__data_migration_issue_independent_storage.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V148__data_migration_issue_active_code_uniqueness.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V149__data_migration_meeting_minutes.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V150__data_migration_meeting_attachment.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V151__data_migration_table_comments_and_topic_type.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V152__data_migration_remove_compatibility_columns.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V153__data_migration_content_tables.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V154__data_migration_content_table_backfill.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V155__data_migration_drop_legacy_asset_tables.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V156__data_migration_recycle_bin_menu.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V157__data_migration_meeting_code.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V158__data_migration_dashboard_menu_repair.sql",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V159__data_migration_plan_domain.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V156__data_migration_issue_independent_storage.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V157__data_migration_issue_active_code_uniqueness.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V158__data_migration_meeting_minutes.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V159__data_migration_meeting_attachment.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V160__data_migration_table_comments_and_topic_type.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V161__data_migration_remove_compatibility_columns.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V162__data_migration_content_tables.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V163__data_migration_content_table_backfill.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V164__data_migration_drop_legacy_asset_tables.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V165__data_migration_recycle_bin_menu.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V166__data_migration_meeting_code.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V167__data_migration_dashboard_menu_repair.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V168__data_migration_plan_domain.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V169__data_migration_intermediate_table_canonicalization.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V170__data_migration_md5_index_project_id.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V171__data_migration_subsystem_id_columns.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V172__data_migration_active_code_unique_keys.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V173__data_migration_active_code_column_comments.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V174__data_migration_remove_checksum_md5.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V175__data_migration_system_code_association.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V176__data_migration_operation_log_project.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V177__data_migration_target_table_code_pk.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V178__data_migration_active_uniqueness_columns_removal.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V179__data_migration_drop_dm_project.sql"
     ],
-    "compatibility_and_rollback": "Append-only MySQL 8.4 migrations. V84-V95 establish the data-migration model; V96 adds meeting attachment relations; V97 adds comments and the (now unused) topic type table; V98 removes dm_meeting.project_name/attachment_id/file_name, dm_issue.system_name, dm_target_table_field.table_code and dm_asset.object_key, drops dm_topic_type, deduplicates active meeting attachments, and adds tenant-prefixed indexes plus an active attachment uniqueness key. Before applying V98, environments must verify that dm_asset rows with object_key have been converted to att_file bindings; the application no longer supports object-key fallback after V98. V103 additionally backfills existing dm_meeting rows with `MEET-{meeting_id}` and enforces uniqueness only for active rows via a generated column. Rollback is application rollback only (retain migrated tables/objects); restoring dropped columns requires a separately approved forward compensation migration and database backup."
+    "compatibility_and_rollback": "Append-only MySQL 8.4 migrations. V84-V95 establish the data-migration model; V96 adds meeting attachment relations; V97 adds comments and the (now unused) topic type table; V98 removes dm_meeting.project_name/attachment_id/file_name, dm_issue.system_name, dm_target_table_field.table_code and dm_asset.object_key, drops dm_topic_type, deduplicates active meeting attachments, and adds tenant-prefixed indexes plus an active attachment uniqueness key. Before applying V98, environments must verify that dm_asset rows with object_key have been converted to att_file bindings; the application no longer supports object-key fallback after V98. V103 additionally backfills existing dm_meeting rows with `MEET-{meeting_id}` and enforces uniqueness only for active rows via a generated column. T34 (REQ-20260820-031 9.2 P2 治理) additionally appends V171 (dm_issue/dm_target_table/dm_component subsystem id reference columns with (tenant_id, code) backfill and id-based indexes), V172 (component/target-table/field unique keys converged to active generated columns) and V173 (active-code generated-column comments); each is additive and conditionally executed, no published script edited. T39 (user-approved 口径) additionally appends V175 which decommissions the arch_physical_subsystem.id references: dm_plan.system_id -> system_code (project-level empty-string sentinel) with active_dimension_key/uk/index rebuilt, dm_issue/dm_target_table/drop system_id and id indexes, dm_component drops physical_subsystem_id and index, dm_meeting_system switches subsystem_id to project_id + system_code (backfilled from dm_meeting/arch code); all statements are information_schema-guarded and idempotent. T40 (user-approved 口径) additionally appends V176 which adds dm_operation_log.project_id (BIGINT NOT NULL DEFAULT 0, placed after tenant_id) and the project-level audit index idx_dm_operation_log_project (tenant_id, project_id, entity_type, created_at); write side fills project_id from the entity's stored project (create/import use the operation scope, storage-purge-all operations record the project scope); existing rows keep 0 and are excluded from project-level queries until a compensation backfill; all statements are information_schema-guarded and idempotent. T41 (user-approved 口径) additionally appends V177 which converts dm_target_table/dm_target_table_field primary keys to business codes: backfills table_code/field_code with the old id values, drops the id columns, promotes table_code/field_code to single-column PKs, renames field-table table_id to table_code, rebuilds the generated active-code columns as BIGINT, rebuilds uk_target_field_active_en/cn and idx_target_field_table/key on table_code, and swaps the old fk_target_field_table(id) foreign key for the composite fk_target_field_table_code (tenant_id, table_code) against uk_target_table_tenant_code; dm_issue_relation.related_id and dm_operation_log.entity_id keep the numeric code values unchanged (zero-data rewrite); all statements are information_schema-guarded and idempotent. Rollback is application rollback only (retain migrated tables/objects); restoring dropped columns requires a separately approved forward compensation migration and database backup (dev stage: no backup required per user). T42 (user-approved 口径) additionally appends V178 which removes all active_* generated uniqueness columns across the module (dm_issue, dm_meeting, dm_plan, dm_component, dm_target_table, dm_target_table_field, the 8 content tables and dm_content_attachment) and puts unique keys directly on the original business columns: dm_issue (tenant_id, project_id, issue_code), dm_meeting (tenant_id, project_id, meeting_code), dm_plan (tenant_id, project_id, doc_code) plus plan dimension (tenant_id, project_id, granularity, plan_type, system_code), dm_component (tenant_id, project_id, physical_subsystem_code), dm_target_table (tenant_id, project_id, system_code, table_name_en/cn), dm_target_table_field (tenant_id, table_code, field_name_en/cn), content tables (tenant_id, project_id, doc_code) and dm_content_attachment (tenant_id, business_type, business_id, attachment_id); soft-deleted rows keep occupying their unique slots so a same-name/same-code record can only be recreated after purge, restore conflicts are rejected by the database unique keys, and the service-layer pre-checks now validate against the full row set including deleted rows; all statements are information_schema-guarded and idempotent. Rollback is application rollback only (retain migrated tables/objects); restoring dropped columns requires a separately approved forward compensation migration and database backup (dev stage: no backup required per user). T43 (user-approved 口径) additionally appends V179 which drops the deprecated dm_project table (DROP TABLE IF EXISTS dm_project, idempotent); project master data stays with platform pm_project; no published script edited and no platform/shared surface changed. Rollback is application rollback only (retain migrated tables/objects); restoring dm_project requires a separately approved forward compensation migration and database backup (dev stage: no backup required per user)."
   },
   "external_access": {
     "changed": false,
-    "systems": ["local MinIO through existing platform storage contract"],
+    "systems": [
+      "local MinIO through existing platform storage contract"
+    ],
     "data_classification": "internal-test-only"
   },
   "required_tests": [
-    {"name": "api", "command": "verify /api/data-migration contract and response envelope"},
-    {"name": "permission", "command": "verify administrator and normal-user authorization paths"},
-    {"name": "issue-governance", "command": "verify issue relation preserve/clear/replace, active-code conflict, atomic restore, audit and tenant/entity authorization"},
-    {"name": "flyway-issue", "command": "verify isolated MySQL 8.4 migration V92 -> V93 -> V94 and confirm non-ISSUE data remains unchanged"},
-    {"name": "flyway-v98", "command": "verify disposable MySQL 8.4 applies V98, removes authorized compatibility columns and dm_topic_type, deduplicates active meeting attachments, and creates tenant-prefixed indexes"},
-    {"name": "focused-backend", "command": "mvn -pl :ccb-data-migration -am test"},
-    {"name": "full-backend", "command": "mvn test"},
-    {"name": "frontend", "command": "npm --prefix web run build"},
-    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
-    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"},
-    {"name": "runtime", "command": "start local MySQL, MinIO, backend and frontend with MOCK_DATA_ENABLED=false and verify health"},
-    {"name": "browser", "command": "verify administrator flows at 1280x800, 375x812, 390x844 and 430x932"}
+    {
+      "name": "api",
+      "command": "verify /api/data-migration contract and response envelope"
+    },
+    {
+      "name": "permission",
+      "command": "verify administrator and normal-user authorization paths"
+    },
+    {
+      "name": "issue-governance",
+      "command": "verify issue relation preserve/clear/replace, active-code conflict, atomic restore, audit and tenant/entity authorization"
+    },
+    {
+      "name": "flyway-issue",
+      "command": "verify isolated MySQL 8.4 migration V92 -> V93 -> V94 and confirm non-ISSUE data remains unchanged"
+    },
+    {
+      "name": "flyway-v98",
+      "command": "verify disposable MySQL 8.4 applies V98, removes authorized compatibility columns and dm_topic_type, deduplicates active meeting attachments, and creates tenant-prefixed indexes"
+    },
+    {
+      "name": "focused-backend",
+      "command": "mvn -pl :ccb-data-migration -am test"
+    },
+    {
+      "name": "full-backend",
+      "command": "mvn test"
+    },
+    {
+      "name": "frontend",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "governance",
+      "command": "node scripts/check-all-governance.mjs"
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree"
+    },
+    {
+      "name": "runtime",
+      "command": "start local MySQL, MinIO, backend and frontend with MOCK_DATA_ENABLED=false and verify health"
+    },
+    {
+      "name": "browser",
+      "command": "verify administrator flows at 1280x800, 375x812, 390x844 and 430x932"
+    },
+    {
+      "name": "project-isolation",
+      "command": "verify data-migration endpoints reject missing/foreign projectId (400/403), updates cannot move project ownership, recycle bin/dashboard/import are project-scoped"
+    }
   ],
-    "risk": {
+  "risk": {
     "level": "high",
-    "items": ["new business module registration", "database migration", "server-side RBAC and entity authorization", "MinIO object consistency", "Excel parsing resource limits", "16 effective menu entries", "desktop and mobile workflow"]
+    "items": [
+      "new business module registration",
+      "database migration",
+      "server-side RBAC and entity authorization",
+      "MinIO object consistency",
+      "Excel parsing resource limits",
+      "16 effective menu entries",
+      "desktop and mobile workflow"
+    ]
   },
   "completion": {
     "control_mode": "full",
@@ -162,9 +206,19 @@
       ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/convergence.json",
       ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/correction-050-consolidation.json",
       ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/observation-050-T6.json",
-      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/observation-050-T7.json"
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/observation-050-T7.json",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/schema4-conversion.json",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/observation-T46.json"
     ],
-    "release_verification": ["focused-backend", "full-backend", "frontend", "governance", "scope", "runtime", "browser"],
+    "release_verification": [
+      "focused-backend",
+      "full-backend",
+      "frontend",
+      "governance",
+      "scope",
+      "runtime",
+      "browser"
+    ],
     "rollback": "Disable the three data-migration menu roots and scheduled snapshot job, revert application commits, retain surviving migrated tables and attachment objects, and treat V98-dropped columns/table as backup-or-separately-approved-forward-compensation territory."
   }
 }

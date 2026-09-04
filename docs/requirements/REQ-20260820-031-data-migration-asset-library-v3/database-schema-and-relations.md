@@ -1,511 +1,718 @@
-# 数据迁移模型数据库结构与关系视图
+# 数据迁移模块数据库表结构与关系说明
 
 > 需求：`REQ-20260820-031`
-> 数据源：本地 MySQL `ccb_platform` 只读查询（2026-08-31 复核）
-> 表范围：V98 后的 `dm_%` 表
-> 说明：`information_schema.TABLE_ROWS` 为估算行数，不代表精确业务计数。
+> 当前 DDL 基线：仓库 Flyway 迁移至 `V179`（系统关联统一为 `(project_id, system_code)` 指向 `dm_component`；审计表 `dm_operation_log` 带 `project_id` 项目维度；`dm_target_table`/`dm_target_table_field` 主键为业务编号 `table_code`/`field_code`；唯一键直接建在业务列上，软删行同样占用唯一名额；`dm_project` 已废弃删除）
+> 系统关联口径（以本文档为准）：业务表一律以 `(project_id, system_code)` 关联当前项目 `dm_component` 活动清单，不保存、不依赖 `arch_physical_subsystem.id`
+> 目标表/字段编号口径（以本文档为准）：`dm_target_table.table_code` 与 `dm_target_table_field.field_code` 即主键，编号由服务端生成（纯数字 `BIGINT`、全局唯一、单列主键，不按租户分区、不建号源表）；`dm_issue_relation.related_id` 与 `dm_operation_log.entity_id` 对目标表/字段直接存编号数值
+> 适用范围：数据迁移模块当前运行模型、菜单功能、数据库关系和治理约束
+> 数据口径：本地 MySQL 8.4 的 `information_schema` 与 `COUNT(*)` 复核；结构约束另经 data-migration 模块 MySQL 8.4 迁移测试断言复核；未连接生产环境
 
-## 1. 表清单（V98 后现存 10 张）
+## 1. 当前模型概览
 
-| 表名 | 行数 | 中文说明 | 当前状态 |
-| --- | ---: | --- | --- |
-| `dm_asset` | 1 | 文件及结构化资产主表（16 种资产类型） | 使用中 |
-| `dm_asset_relation` | 0 | 资产间多态关联 | 使用中 |
-| `dm_component` | 4 | 项目组件/系统清单 | 使用中 |
-| `dm_dashboard_snapshot` | 2 | 看板指标快照 | 使用中 |
-| `dm_issue` | 0 | 独立问题清单 | V93 新增 |
-| `dm_meeting` | 0 | 会议纪要独立表 | V95 新增 |
-| `dm_meeting_attachment` | 0 | 会议纪要多附件关联 | V96 新增 |
-| `dm_operation_log` | 78 | 写操作审计 | 使用中 |
-| `dm_target_table` | 19 | 目标表/中间表定义 | 使用中 |
-| `dm_target_table_field` | 64 | 目标表字段定义 | 使用中 |
+数据迁移模块采用“内容一菜单一表”的模型：7 张文件型内容表、2 张结构化内容表共享统一的租户、项目、组件、编号、负责人、软删除和审计字段；文件型内容通过公共附件关系表绑定平台附件。中间表结构与目标表共用 `dm_target_table` 主表和 `dm_target_table_field` 字段表，通过 `table_category='INTERMEDIATE'` 区分。会议和问题是独立实体，分别通过会议-系统关系表、问题关联表表达多对多或多态关系。
 
-## 2. 清理分析
+当前最终模型包含 19 张 `dm_` 表，不含 `dm_intermediate_table` 与已废弃删除的 `dm_project`。全部表为 InnoDB、`utf8mb4_unicode_ci`。项目主数据统一使用平台 `pm_project`。
 
-### 2.1 已完成清理
+项目成员与项目可达性由 `platform/system` 的公开契约 `com.ccb.system.capability.ProjectWorkflowDirectoryService` 提供。`pm_project_member` 是平台成员事实源，必须保留；数据迁移模块不直接查询或写入该表，也不复制成员判定 SQL。模块可以通过 `pm_project` 做项目名称投影和未删除状态过滤，但项目成员范围始终由平台契约决定。数据迁移服务只接收契约校验后的 `projectId`，所有业务查询和写入均绑定租户与项目。
 
-| 清理项 | 版本 | 说明 |
-| --- | --- | --- |
-| `dm_asset` ISSUE 数据 | V93 | `DELETE FROM dm_asset WHERE asset_type='ISSUE'`，当前 0 行 |
-| 兼容冗余列和专题类型表 | V98 | 删除 `dm_meeting.project_name/attachment_id/file_name`、`dm_issue.system_name`、`dm_target_table_field.table_code`、`dm_asset.object_key`，并删除未接入的 `dm_topic_type` |
+## 2. 表清单
 
-### 2.2 V98 前置校验
+### 2.1 数据迁移模块自有表
 
-| 表 | 字段 | 建议 | 原因 |
+| 分组 | 表名 | 列数 | 说明 | 本地总行数 | 活动行数 |
+| --- | --- | ---: | --- | ---: | ---: |
+| 内容·文件型 | `dm_report` | 17 | 汇报材料 | 0 | 0 |
+| 内容·文件型 | `dm_plan` | 18 | 迁移方案 | 0 | 0 |
+| 内容·文件型 | `dm_mapping_doc` | 14 | 迁移映射 | 0 | 0 |
+| 内容·文件型 | `dm_dependency` | 14 | 迁移过程依赖文件 | 0 | 0 |
+| 内容·文件型 | `dm_script` | 14 | 迁移程序 | 0 | 0 |
+| 内容·文件型 | `dm_topic` | 14 | 专题材料 | 0 | 0 |
+| 内容·文件型 | `dm_release_drill` | 14 | 投产及演练 | 0 | 0 |
+| 内容·结构化 | `dm_rule` | 15 | 迁移检核规则，主体为 JSON | 0 | 0 |
+| 内容·结构化 | `dm_parameter` | 15 | 迁移参数，主体为 JSON | 0 | 0 |
+| 附件关系 | `dm_content_attachment` | 12 | 内容与平台附件的关系 | 0 | 0 |
+| 独立实体 | `dm_meeting` | 18 | 会议纪要 | 0 | 0 |
+| 独立实体 | `dm_meeting_system` | 7 | 会议与项目内系统/组件关系 | 0 | 不适用 |
+| 独立实体 | `dm_issue` | 26 | 问题清单 | 0 | 0 |
+| 独立实体 | `dm_issue_relation` | 7 | 问题与会议/表/字段关系 | 0 | 不适用 |
+| 基础资料 | `dm_component` | 11 | 系统/组件清单 | 0 | 0 |
+| 基础资料 | `dm_target_table` | 14 | 目标表及中间表主数据 | 0 | 0 |
+| 基础资料 | `dm_target_table_field` | 19 | 目标表字段明细 | 0 | 0 |
+| 运营支撑 | `dm_dashboard_snapshot` | 8 | 每日看板快照 | 0 | 不适用 |
+| 运营支撑 | `dm_operation_log` | 11 | 模块写操作审计 | 0 | 不适用 |
+
+活动行指 `deleted = 0`。快照、关系表和操作日志没有 `deleted` 列，不使用活动行统计。
+
+### 2.2 关联使用的其他模块表
+
+下表按“当前运行 SQL”“菜单/RBAC SQL”“平台契约内部事实源”区分，避免把平台表误认为数据迁移模块自有表。
+
+| 所属模块 | 表 | 使用方式 | 数据迁移模块使用字段 |
 | --- | --- | --- | --- |
-| `dm_asset` | `object_key` 存量 | **发布前必须为 0 条未绑定记录** | V98 删除列后不再支持 MinIO 对象键回退；需先将可用对象转为 `att_file` 绑定，无法映射的记录需经业务确认后处理 |
+| `platform/system` | `pm_project` | 列表展示项目名称、校验项目未删除；快照调度器统计项目数 | `id`, `tenant_id`, `project_name`, `deleted` |
+| `platform/system` | `pm_project_member` | 仅由 `ProjectWorkflowDirectoryService` 间接使用，提供成员范围；模块无直接 SQL | `project_id`, `user_id`, `status`, `deleted`（契约内部） |
+| `platform/system` | `pm_project_member_role`, `pm_project_role` | 平台契约解析项目角色；模块无直接 SQL | `member_id`, `role_id`, `project_id`, `role_code`（契约内部） |
+| `business/architecture` | `arch_physical_subsystem` | 系统名称展示投影：业务关联统一以 `(project_id, system_code)` 指向 `dm_component`，需要名称时经 `dm_component` 按编号关联本表投影；不保存本表 `id` 引用 | `tenant_id`, `code`, `short_name`, `name`, `deleted` |
+| `platform/attachment` | `att_file` | 附件关系的目标文件元数据 | `id`, `tenant_id`, `file_name`, `status`, `deleted_at` |
+| `platform/system` | `sys_user` | 展示创建人、更新人、删除人 | `id`, `tenant_id`, `display_name`, `deleted` |
+| `platform/system` | `sys_user_role` | 判断管理员角色 | `user_id`, `role_id`, `tenant_id` |
+| `platform/system` | `sys_role` | 判断 `ADMIN`、`SUPER_ADMIN`、`DATA_MIGRATION_ADMIN` | `id`, `tenant_id`, `role_code`, `status`, `deleted` |
+| `platform/system` | `sys_menu_permission` | 判断菜单动作权限 | `id`, `tenant_id`, `permission_code`, `action_code`, `status` |
+| `platform/system` | `sys_role_permission` | 将动作权限授予角色 | `role_id`, `permission_id`, `tenant_id` |
+| `platform/system` | `sys_menu` | 菜单种子与路由注册 SQL 使用 | `id`, `parent_id`, `route_path`, `permission_code`, `deleted` |
+| `platform/system` | `sys_role_menu` | 菜单种子授权 SQL 使用 | `role_id`, `menu_id`, `tenant_id` |
 
-### 2.3 不建议清理的字段
+`pm_project_member` 不得删除、重命名或由数据迁移模块替代。项目权限、项目角色、工作流人员解析统一由平台公开契约负责；业务模块不能复制成员判定 SQL。
 
-| 表 | 字段 | 说明 |
-| --- | --- | --- |
-| `dm_asset` | `structured_data` | RULE/PARAMETER/TABLE_STRUCTURE/INTERMEDIATE_TABLE 的核心数据列 |
-| `dm_asset` | `report_period`/`report_date`/`keywords` | REPORT 专属字段，`ReportService` 活跃读写 |
-| `dm_component` | `total_check` | 前端编辑/列表/筛选/导出均活跃使用 |
-| `dm_component` | `physical_subsystem_code` | 组件核心身份字段，多处 JOIN 查询 |
+## 3. 模块表字段信息
 
-## 3. 字段结构详表
+> 本节给出模块全部 19 张 `dm_` 表的完整列结构（字段、类型、默认/约束、说明），每张表一节，可直接单表核对；唯一键与索引见每节末尾“约束/索引”行，设计口径详见第 6 章。
 
-> 标记：PK = 主键，? = 允许为空
+### 3.1 内容表公共列（9 张内容表共性对照）
 
-### 3.1 `dm_asset` — 文件及结构化资产主表
-
-资产类型枚举（16 种）：REPORT、MEETING、PLAN、MAPPING_DOC、VALIDATION_DOC、PARAMETER、DEPENDENCY、SCRIPT、TOPIC、RELEASE_DRILL、TRANSFORM_DOC、CONFIG、OTHER、RULE、TABLE_STRUCTURE、INTERMEDIATE_TABLE
-
-| 字段 | 类型 | 可空 | 中文说明 | 状态 |
-| --- | --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID | 活跃 |
-| `tenant_id` | bigint | NOT NULL | 租户 ID | 活跃 |
-| `project_id` | bigint | NOT NULL | 所属项目 | 活跃 |
-| `component_id` | bigint | ? | 所属组件 | 活跃 |
-| `asset_type` | varchar(32) | NOT NULL | 资产类型枚举 | 活跃 |
-| `report_period` | varchar(16) | ? | 汇报周期（仅 REPORT） | 活跃 |
-| `asset_code` | varchar(96) | NOT NULL | 资产编号，项目内同类型唯一 | 活跃 |
-| `asset_name` | varchar(255) | NOT NULL | 资产名称 | 活跃 |
-| `report_date` | date | ? | 汇报日期（仅 REPORT） | 活跃 |
-| `keywords` | varchar(500) | ? | 关键字，逗号分隔（仅 REPORT） | 活跃 |
-| `content_type` | varchar(160) | ? | MIME 类型 | 活跃 |
-| `file_size` | bigint | ? | 文件大小（字节） | 活跃 |
-| `attachment_id` | bigint | ? | 公共附件 ID | 活跃 |
-| `checksum_md5` | char(32) | ? | 文件 MD5 校验值 | 活跃 |
-| `structured_data` | json | ? | 结构化数据 JSON | 活跃 |
-| `owner_id` | bigint | NOT NULL | 负责人 | 活跃 |
-| `deleted` | tinyint | NOT NULL | 逻辑删除 0/1 | 活跃 |
-| `deleted_by` | bigint | ? | 删除人 | ⚠️ 部分 |
-| `deleted_at` | timestamp | ? | 删除时间 | ⚠️ 部分 |
-| `created_at` | timestamp | NOT NULL | 创建时间 | 活跃 |
-| `created_by` | bigint | ? | 创建人 | 活跃 |
-| `updated_by` | bigint | ? | 最后编辑人 | 活跃 |
-| `updated_at` | timestamp | NOT NULL | 最后更新时间 | 活跃 |
-
-### 3.2 `dm_issue` — 独立问题清单
-
-| 字段 | 类型 | 可空 | 中文说明 |
+| 字段 | 类型 | 默认/约束 | 说明 |
 | --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID |
+| `id` | bigint | PK，自增 | 技术主键；仅用于记录定位、表间关联、附件绑定和审计，不作为业务编号展示或生成来源 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `doc_code` | varchar(96) | NOT NULL | 不可变业务编号；新建时由服务端生成，格式见下方规则；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 内容名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+
+> 约束/索引：内容表编号唯一键统一为 `(tenant_id, project_id, doc_code)`（全行唯一，含软删记录）；下表仅作共性对照，3.2-3.10 各节已包含每张表的完整列清单。
+
+`doc_code` 的唯一写入来源为 data-migration 模块内 `ContentDocCodeGenerator`。9 类前缀分别为：`PLAN`、`MAP`、`DEP`、`SCRIPT`、`TOPIC`、`DRILL`、`REPORT`、`RULE`、`PARAM`；完整格式为 `<前缀>-<32 位小写十六进制 UUID>`，UUID 段不含连字符，例如 `PLAN-550e8400e29b41d4a716446655440000`。
+
+- 客户端表单、multipart 请求和结构化 Excel 导入不得提供或覆盖 `doc_code`/`assetCode`。
+- 更新、按 `id` 替换文件、软删除、恢复和回收站操作均保留原 `doc_code`；`doc_code` 项目内唯一（含软删记录），删除后需彻底删除（purge）才能在同项目重建。
+- `id` 与 `doc_code` 不重复承担同一职责：前者是内部技术定位值，后者是用户可见、可搜索和可导出的业务标识。
+
+### 3.2 `dm_plan`（迁移方案，18 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `granularity` | varchar(16) | NOT NULL，默认 `PROJECT` | `PROJECT` 项目级或 `SYSTEM` 系统级 |
+| `plan_type` | varchar(16) | NOT NULL，默认 `DATA` | `BUSINESS` 业务迁移方案或 `DATA` 数据迁移方案 |
+| `system_code` | varchar(64) | NOT NULL，默认 '' | 关联系统（当前项目 `dm_component` 活动记录的编号），项目级使用空串哨兵 |
+| `plan_summary` | varchar(1000) | NULL | 方案简介 |
+| `doc_code` | varchar(96) | NOT NULL | 内容编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 内容名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+
+> 约束/索引：`uk_dm_plan_code (tenant_id, project_id, doc_code)`；`uk_dm_plan_dimension (tenant_id, project_id, granularity, plan_type, system_code)`；`idx_dm_plan_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_plan_owner (tenant_id, owner_id, deleted)`；`idx_dm_plan_dimension (tenant_id, project_id, granularity, plan_type, deleted)`；`idx_dm_plan_system (tenant_id, project_id, system_code, deleted)`
+
+### 3.3 `dm_mapping_doc`（迁移映射，15 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `doc_code` | varchar(96) | NOT NULL | 映射编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 映射名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+
+> 约束/索引：`uk_dm_mapping_doc_code (tenant_id, project_id, doc_code)`；`idx_dm_mapping_doc_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_mapping_doc_owner (tenant_id, owner_id, deleted)`
+
+### 3.4 `dm_dependency`（迁移过程依赖文件，15 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `doc_code` | varchar(96) | NOT NULL | 文件编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 文件名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+
+> 约束/索引：`uk_dm_dependency_code (tenant_id, project_id, doc_code)`；`idx_dm_dependency_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_dependency_owner (tenant_id, owner_id, deleted)`
+
+### 3.5 `dm_script`（迁移程序，15 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `doc_code` | varchar(96) | NOT NULL | 程序编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 程序名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+
+> 约束/索引：`uk_dm_script_code (tenant_id, project_id, doc_code)`；`idx_dm_script_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_script_owner (tenant_id, owner_id, deleted)`
+
+### 3.6 `dm_topic`（专题材料，15 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `doc_code` | varchar(96) | NOT NULL | 材料编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 材料名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+
+> 约束/索引：`uk_dm_topic_code (tenant_id, project_id, doc_code)`；`idx_dm_topic_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_topic_owner (tenant_id, owner_id, deleted)`
+
+### 3.7 `dm_release_drill`（投产及演练，15 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `doc_code` | varchar(96) | NOT NULL | 材料编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 材料名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+
+> 约束/索引：`uk_dm_release_drill_code (tenant_id, project_id, doc_code)`；`idx_dm_release_drill_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_release_drill_owner (tenant_id, owner_id, deleted)`
+
+### 3.8 `dm_report`（汇报材料，18 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `report_period` | varchar(16) | NULL | 汇报周期 |
+| `report_date` | date | NULL | 汇报日期 |
+| `keywords` | varchar(500) | NULL | 关键字，逗号分隔 |
+| `doc_code` | varchar(96) | NOT NULL | 内容编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 内容名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+
+> 约束/索引：`uk_dm_report_code (tenant_id, project_id, doc_code)`；`idx_dm_report_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_report_period (tenant_id, project_id, report_period, deleted)`；`idx_dm_report_owner (tenant_id, owner_id, deleted)`
+
+### 3.9 `dm_rule`（迁移检核规则，15 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `doc_code` | varchar(96) | NOT NULL | 规则编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 规则名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+| `structured_data` | json | NOT NULL | 结构化主体数据 |
+
+> 约束/索引：`uk_dm_rule_code (tenant_id, project_id, doc_code)`；`idx_dm_rule_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_rule_owner (tenant_id, owner_id, deleted)`
+
+### 3.10 `dm_parameter`（迁移参数，15 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 内容主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属平台项目；所有列表和写操作的隔离键 |
+| `component_id` | bigint | NULL | 所属组件，可空 |
+| `doc_code` | varchar(96) | NOT NULL | 参数编号；项目内唯一（含软删记录） |
+| `doc_name` | varchar(255) | NOT NULL | 参数名称 |
+| `owner_id` | bigint | NOT NULL | 负责人用户 ID |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除标记 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+| `structured_data` | json | NOT NULL | 结构化主体数据 |
+
+> 约束/索引：`uk_dm_parameter_code (tenant_id, project_id, doc_code)`；`idx_dm_parameter_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_parameter_owner (tenant_id, owner_id, deleted)`
+
+### 3.11 `dm_content_attachment`（内容公共附件关系，12 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 关系主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `business_type` | varchar(32) | NOT NULL | `PLAN`/`MAPPING_DOC`/`DEPENDENCY`/`SCRIPT`/`TOPIC`/`RELEASE_DRILL`/`REPORT`/`MEETING` |
+| `business_id` | bigint | NOT NULL | 业务实体 ID，由 `business_type` 解释 |
+| `attachment_id` | bigint | NOT NULL | `att_file.id` |
+| `file_name` | varchar(500) | NOT NULL | 附件原始文件名 |
+| `sort_order` | int | NOT NULL，默认 0 | 附件顺序，主文件为 0 |
+| `deleted` | tinyint(1) | NOT NULL，默认 0 | 附件关系软删除 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | datetime(6) | NULL | 删除时间 |
+| `created_by` | bigint | NOT NULL | 创建人 |
+| `created_at` | datetime(6) | NOT NULL，默认 CURRENT_TIMESTAMP(6) | 创建时间 |
+
+> 约束/索引：`uk_dm_content_att (tenant_id, business_type, business_id, attachment_id)`；`idx_dm_content_att_business (tenant_id, business_type, business_id, deleted, sort_order)`；`idx_dm_content_att_attachment (tenant_id, attachment_id, deleted)`；`idx_dm_content_att_tenant (tenant_id, deleted)`
+
+### 3.12 `dm_meeting`（会议纪要，18 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `meeting_id` | bigint | PK，自增 | 会议主键 |
 | `tenant_id` | bigint | NOT NULL | 租户 ID |
 | `project_id` | bigint | NOT NULL | 所属项目 |
-| `issue_code` | varchar(96) | NOT NULL | 问题编号，项目内唯一 |
+| `meeting_code` | varchar(96) | NOT NULL | 会议编号，项目内唯一（含软删记录） |
+| `granularity` | varchar(50) | NOT NULL | `PROJECT`/`COMPONENT`/`TABLE`/`FIELD` |
+| `meeting_source` | varchar(50) | NOT NULL | `MEETING_MINUTES`/`ISSUE_EXTRACT` |
+| `meeting_title` | varchar(500) | NOT NULL | 会议主题 |
+| `meeting_content` | text | NULL | 会议内容 |
+| `meeting_conclusion` | text | NULL | 会议结论 |
+| `business_scenario` | varchar(500) | NULL | 业务场景 |
+| `keywords` | json | NULL | JSON 关键字数组 |
+| `deleted` | tinyint(1) | NOT NULL，默认 0 | 逻辑删除 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | datetime(6) | NULL | 删除时间 |
+| `created_by` | bigint | NOT NULL | 创建人 |
+| `created_at` | datetime(6) | NOT NULL，默认 CURRENT_TIMESTAMP(6) | 创建时间 |
+| `updated_by` | bigint | NULL | 更新人 |
+| `updated_at` | datetime(6) | NULL，ON UPDATE CURRENT_TIMESTAMP(6) | 更新时间 |
+
+> 约束/索引：`uk_dm_meeting_code (tenant_id, project_id, meeting_code)`；`idx_dm_meeting_code (tenant_id, meeting_code)`；`idx_dm_meeting_project (tenant_id, project_id, deleted, updated_at)`；`idx_dm_meeting_source (tenant_id, meeting_source, deleted)`；`idx_dm_meeting_granularity (tenant_id, granularity, deleted)`；`idx_dm_meeting_created (tenant_id, created_at)`；`idx_dm_meeting_deleted (tenant_id, deleted, deleted_at)`
+
+### 3.13 `dm_meeting_system`（会议与项目内系统/组件关系，7 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 关系主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `meeting_id` | bigint | NOT NULL | `dm_meeting.meeting_id` |
+| `project_id` | bigint | NOT NULL，默认 0 | 所属项目，与 `dm_meeting.project_id` 一致 |
+| `system_code` | varchar(64) | NOT NULL，默认 '' | 项目内系统编号（`dm_component` 活动记录），须在当前租户、项目内存在 |
+| `created_by` | bigint | NOT NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+
+> 约束/索引：`uk_dm_meeting_system (tenant_id, meeting_id, system_code)`；`idx_dm_meeting_system_project (tenant_id, project_id, system_code)`；关系表无软删除
+
+### 3.14 `dm_issue`（问题清单，26 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK | 问题主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL | 所属项目 |
+| `issue_code` | varchar(96) | NOT NULL | 问题编号，项目内唯一（含软删记录） |
 | `issue_name` | varchar(255) | NOT NULL | 问题名称 |
-| `granularity` | varchar(16) | ? | 粒度：PROJECT/COMPONENT/TABLE/FIELD |
-| `system_code` | varchar(96) | ? | 系统编号 |
-| `issue_source` | varchar(32) | ? | 问题来源 |
-| `defect_type` | varchar(32) | ? | 缺陷类型 |
-| `issue_description` | text | ? | 问题描述 |
-| `solution` | text | ? | 解决方案 |
-| `meeting_conclusion` | text | ? | 会议结论 |
-| `processing_steps` | text | ? | 处理步骤 |
-| `business_scenario` | varchar(500) | ? | 所属业务场景 |
-| `handler` | varchar(160) | ? | 处理人 |
-| `responsible_party` | varchar(160) | ? | 责任方 |
-| `keywords` | varchar(500) | ? | 关键字，逗号分隔 |
-| `frequency` | varchar(16) | ? | 发生频率 |
+| `granularity` | varchar(16) | NULL | `PROJECT`/`COMPONENT`/`TABLE`/`FIELD` |
+| `system_code` | varchar(96) | NULL | 项目内系统编号（当前项目 `dm_component` 活动记录的编号），录入/显示键；不保存 `arch_physical_subsystem.id` |
+| `issue_source` | varchar(32) | NULL | 问题来源 |
+| `defect_type` | varchar(32) | NULL | 缺陷类型 |
+| `issue_description` | text | NULL | 问题描述 |
+| `solution` | text | NULL | 解决方案 |
+| `meeting_conclusion` | text | NULL | 会议结论 |
+| `processing_steps` | text | NULL | 处理步骤 |
+| `business_scenario` | varchar(500) | NULL | 业务场景 |
+| `handler` | varchar(160) | NULL | 处理人文本 |
+| `responsible_party` | varchar(160) | NULL | 责任方文本 |
+| `keywords` | varchar(500) | NULL | 逗号分隔关键字 |
+| `frequency` | varchar(16) | NULL | 发生频率 |
 | `owner_id` | bigint | NOT NULL | 负责人 |
-| `deleted` | tinyint | NOT NULL | 逻辑删除 0/1 |
-| `created_at` | timestamp | NOT NULL | 创建时间 |
-| `updated_at` | timestamp | NOT NULL | 最后更新时间 |
-| `created_by` | bigint | ? | 创建人 |
-| `updated_by` | bigint | ? | 最后编辑人 |
-| `deleted_by` | bigint | ? | 删除人 |
-| `deleted_at` | timestamp | ? | 删除时间 |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除 |
+| `deleted_by` | bigint | NULL | 删除人 |
+| `deleted_at` | timestamp | NULL | 删除时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
 
-### 3.3 `dm_meeting` — 会议纪要独立表
+> 约束/索引：`uk_dm_issue_code (tenant_id, project_id, issue_code)`；`idx_dm_issue_query (tenant_id, project_id, deleted, updated_at)`；`idx_dm_issue_owner (tenant_id, owner_id, deleted)`；`idx_dm_issue_filters (tenant_id, project_id, granularity, issue_source, defect_type, frequency, deleted)`；`idx_dm_issue_system (tenant_id, project_id, system_code, deleted)`
 
-| 字段 | 类型 | 可空 | 中文说明 |
+### 3.15 `dm_issue_relation`（问题关联关系，7 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
 | --- | --- | --- | --- |
-| `meeting_id` | bigint PK | - | 主键 ID |
-| `tenant_id` | bigint | NOT NULL | 租户 ID |
-| `project_id` | bigint | NOT NULL | 所属项目 |
-| `granularity` | varchar(50) | NOT NULL | 粒度 |
-| `meeting_source` | varchar(50) | NOT NULL | 来源 |
-| `meeting_title` | varchar(500) | NOT NULL | 会议标题 |
-| `meeting_content` | text | ? | 会议内容 |
-| `meeting_conclusion` | text | ? | 会议结论 |
-| `business_scenario` | varchar(500) | ? | 所属业务场景 |
-| `keywords` | json | ? | 关键字（JSON 数组） |
-| `deleted` | tinyint(1) | NOT NULL | 逻辑删除 0/1 |
-| `deleted_by` | bigint | ? | 删除人 |
-| `deleted_at` | datetime(6) | ? | 删除时间 |
+| `id` | bigint | PK，自增 | 关系主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `issue_id` | bigint | NOT NULL | `dm_issue.id` |
+| `related_type` | varchar(32) | NOT NULL | `MEETING`/`TABLE`/`FIELD` |
+| `related_id` | bigint | NOT NULL | 由类型解释为会议编号（`dm_meeting.meeting_id`）、目标表编号（`dm_target_table.table_code`）或目标字段编号（`dm_target_table_field.field_code`） |
 | `created_by` | bigint | NOT NULL | 创建人 |
-| `created_at` | datetime(6) | NOT NULL | 创建时间 |
-| `updated_by` | bigint | ? | 最后编辑人 |
-| `updated_at` | datetime(6) | ? | 最后更新时间 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
 
-### 3.4 `dm_meeting_attachment` — 会议纪要多附件关联表
+> 约束/索引：`uk_dm_issue_relation (tenant_id, issue_id, related_type, related_id)`；`idx_dm_issue_relation_target (tenant_id, related_type, related_id)`；关系表无软删除，硬删全量重插
 
-| 字段 | 类型 | 可空 | 中文说明 |
+### 3.16 `dm_component`（系统/组件清单，11 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
 | --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID |
-| `tenant_id` | bigint | NOT NULL | 租户 ID |
-| `meeting_id` | bigint | NOT NULL | 所属会议 |
-| `attachment_id` | bigint | NOT NULL | 公共附件 ID |
-| `file_name` | varchar(500) | NOT NULL | 附件文件名 |
-| `sort_order` | int | NOT NULL | 排序序号 |
-| `deleted` | tinyint(1) | NOT NULL | 逻辑删除 0/1 |
-| `deleted_by` | bigint | ? | 删除人 |
-| `deleted_at` | datetime(6) | ? | 删除时间 |
-| `created_by` | bigint | NOT NULL | 创建人 |
-| `created_at` | datetime(6) | NOT NULL | 创建时间 |
-| `active_attachment_key` | varchar(256) | ? | 活动附件唯一键（生成列，已删除行为空） |
-
-### 3.5 `dm_asset_relation` — 资产间多态关联表
-
-| 字段 | 类型 | 可空 | 中文说明 |
-| --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID |
-| `tenant_id` | bigint | NOT NULL | 租户 ID |
-| `source_asset_id` | bigint | NOT NULL | 源实体 ID |
-| `source_asset_type` | varchar(32) | NOT NULL | 源实体类型 |
-| `target_asset_id` | bigint | NOT NULL | 目标实体 ID |
-| `target_asset_type` | varchar(32) | NOT NULL | 目标实体类型 |
-| `created_at` | datetime | NOT NULL | 创建时间 |
-| `created_by` | bigint | NOT NULL | 创建人 |
-
-### 3.6 `dm_component` — 项目组件/系统清单表
-
-| 字段 | 类型 | 可空 | 中文说明 |
-| --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID |
-| `tenant_id` | bigint | NOT NULL | 租户 ID |
+| `id` | bigint | PK，自增 | 组件主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
 | `project_id` | bigint | NOT NULL | 所属项目 |
 | `owner_id` | bigint | NOT NULL | 负责人 |
-| `deleted` | tinyint | NOT NULL | 逻辑删除 0/1 |
-| `created_at` | timestamp | NOT NULL | 创建时间 |
-| `updated_at` | timestamp | NOT NULL | 最后更新时间 |
-| `physical_subsystem_code` | varchar(64) | ? | 系统编号，项目内唯一 |
-| `total_check` | tinyint | NOT NULL | 是否涉及总分核对 0/1 |
-| `created_by` | bigint | ? | 创建人 |
-| `updated_by` | bigint | ? | 最后编辑人 |
+| `physical_subsystem_code` | varchar(64) | NULL | 系统编号，项目内唯一（含软删记录），跨表关联系统的统一业务键；系统名称展示经本表按编号投影 `arch_physical_subsystem` |
+| `total_check` | tinyint | NOT NULL，默认 0 | 是否涉及总分核对，0 否、1 是 |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 最后更新时间 |
+| `updated_by` | bigint | NULL | 最后编辑人 |
 
-### 3.7 `dm_dashboard_snapshot` — 看板指标快照表
+> 约束/索引：`uk_dm_component_subsystem (tenant_id, project_id, physical_subsystem_code)`；`idx_dm_component_project (tenant_id, project_id, deleted)`；`idx_dm_component_list (tenant_id, project_id, deleted, updated_at)`
 
-| 字段 | 类型 | 可空 | 中文说明 |
+### 3.17 `dm_target_table`（目标表及中间表主数据，14 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
 | --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID |
-| `tenant_id` | bigint | NOT NULL | 租户 ID |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `table_code` | bigint | PK | 表主键业务编号，服务端生成（纯数字 `BIGINT`、全局唯一、单列主键，不按租户分区），删除重建编号不复用 |
+| `project_id` | bigint | NOT NULL | 所属项目 |
+| `system_code` | varchar(64) | NOT NULL | 项目内系统编号（当前项目 `dm_component` 活动记录的编号），录入/显示键 |
+| `table_name_en` | varchar(128) | NOT NULL | 表英文名，无空格 |
+| `table_name_cn` | varchar(128) | NOT NULL | 表中文名，无空格 |
+| `table_meaning` | varchar(500) | NULL | 表含义 |
+| `table_category` | varchar(16) | NOT NULL，默认 `TARGET` | `TARGET` 或 `INTERMEDIATE` |
+| `owner_id` | bigint | NOT NULL | 负责人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 更新时间 |
+| `updated_by` | bigint | NULL | 更新人 |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除 |
+
+> 约束/索引：主键 `table_code`；`uk_target_table_tenant_code (tenant_id, table_code)`（租户组合唯一，兼作组合外键引用目标）；`uk_target_table_en (tenant_id, project_id, system_code, table_name_en)`；`uk_target_table_cn (tenant_id, project_id, system_code, table_name_cn)`；`idx_target_table_list (tenant_id, project_id, system_code, deleted, updated_at)`；`idx_target_table_category (tenant_id, table_category, deleted)`
+
+### 3.18 `dm_target_table_field`（目标表字段明细，19 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `field_code` | bigint | PK | 字段主键业务编号，服务端生成（纯数字 `BIGINT`、全局唯一、单列主键，不按租户分区），删除重建编号不复用 |
+| `table_code` | bigint | NOT NULL，组合外键 | 所属目标表编号 `dm_target_table.table_code` |
+| `field_name_en` | varchar(128) | NOT NULL | 英文名，无空格 |
+| `field_name_cn` | varchar(128) | NOT NULL | 中文名，无空格 |
+| `field_meaning` | varchar(500) | NULL | 字段含义 |
+| `code_description` | varchar(500) | NULL | 码值说明 |
+| `is_key_field` | tinyint | NOT NULL，默认 0 | 是否关键栏位，0 否、1 是 |
+| `oracle_type` | varchar(64) | NULL | ORACLE 字段类型 |
+| `mysql_type` | varchar(64) | NULL | MySQL 字段类型 |
+| `is_nullable` | tinyint | NOT NULL，默认 1 | 是否可空，0 否、1 是 |
+| `is_primary_key` | tinyint | NOT NULL，默认 0 | 是否主键，0 否、1 是 |
+| `dict_code` | varchar(64) | NULL | 数据字典编号，无空格 |
+| `owner_id` | bigint | NOT NULL | 负责人 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
+| `created_by` | bigint | NULL | 创建人 |
+| `updated_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP ON UPDATE | 更新时间 |
+| `updated_by` | bigint | NULL | 更新人 |
+| `deleted` | tinyint | NOT NULL，默认 0 | 逻辑删除 |
+
+> 约束/索引：主键 `field_code`；`uk_target_field_en (tenant_id, table_code, field_name_en)`；`uk_target_field_cn (tenant_id, table_code, field_name_cn)`；`idx_target_field_table (tenant_id, table_code, deleted)`；`idx_target_field_key (tenant_id, table_code, is_key_field, deleted)`；`idx_target_field_dict (tenant_id, dict_code, deleted)`；组合物理外键 `fk_target_field_table_code ((tenant_id, table_code) → dm_target_table (tenant_id, table_code))`
+
+### 3.19 `dm_dashboard_snapshot`（看板快照，8 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK，自增 | 快照主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
 | `snapshot_date` | date | NOT NULL | 快照日期 |
-| `project_id` | bigint | ? | 所属项目 |
-| `component_id` | bigint | ? | 所属组件 |
+| `project_id` | bigint | NULL | 项目维度，可空 |
+| `component_id` | bigint | NULL | 组件维度，可空 |
 | `metric_code` | varchar(64) | NOT NULL | 指标编码 |
-| `metric_value` | decimal(20,4) | NOT NULL | 指标值 |
-| `created_at` | timestamp | NOT NULL | 创建时间 |
+| `metric_value` | decimal(20,4) | NOT NULL，默认 0 | 指标值 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
 
-### 3.8 `dm_operation_log` — 写操作审计表
+> 约束/索引：`uk_dm_snapshot (tenant_id, snapshot_date, project_id, component_id, metric_code)`
 
-| 字段 | 类型 | 可空 | 中文说明 |
+### 3.20 `dm_operation_log`（模块写操作审计，11 列）
+
+| 字段 | 类型 | 默认/约束 | 说明 |
 | --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID |
-| `tenant_id` | bigint | NOT NULL | 租户 ID |
-| `actor_id` | bigint | NOT NULL | 操作人 ID |
+| `id` | bigint | PK，自增 | 审计主键 |
+| `tenant_id` | bigint | NOT NULL，默认 1 | 租户 ID |
+| `project_id` | bigint | NOT NULL，默认 0 | 操作实体归属项目；清空回收站类操作记录操作范围项目 |
+| `actor_id` | bigint | NOT NULL | 操作人 |
 | `operation_code` | varchar(64) | NOT NULL | 操作码 |
-| `entity_type` | varchar(64) | NOT NULL | 实体类型（多态） |
-| `entity_id` | bigint | ? | 实体 ID（多态） |
-| `result_code` | varchar(16) | NOT NULL | 结果码：SUCCESS/FAIL |
-| `trace_id` | varchar(64) | ? | 链路追踪 ID |
-| `detail_json` | json | ? | 操作详情 JSON |
-| `created_at` | timestamp | NOT NULL | 创建时间 |
+| `entity_type` | varchar(64) | NOT NULL | 实体类型 |
+| `entity_id` | bigint | NULL | 实体业务编号（目标表/字段即 `table_code`/`field_code` 数值） |
+| `result_code` | varchar(16) | NOT NULL，默认 `SUCCESS` | `SUCCESS`/`FAIL` |
+| `trace_id` | varchar(64) | NULL | 链路追踪 ID |
+| `detail_json` | json | NULL | 操作详情 |
+| `created_at` | timestamp | NOT NULL，默认 CURRENT_TIMESTAMP | 创建时间 |
 
-### 3.9 `dm_target_table` — 目标表结构主表
+> 约束/索引：`idx_dm_operation_log (tenant_id, created_at, actor_id)`；项目级审计查询索引 `idx_dm_operation_log_project (tenant_id, project_id, entity_type, created_at)`
 
-`table_category` 取值：TARGET（目标表）/ INTERMEDIATE（中间表）
-
-| 字段 | 类型 | 可空 | 中文说明 |
-| --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID |
-| `tenant_id` | bigint | NOT NULL | 租户 ID |
-| `table_code` | varchar(64) | NOT NULL | 表编号，项目内唯一 |
-| `project_id` | bigint | NOT NULL | 所属项目 |
-| `system_code` | varchar(64) | NOT NULL | 系统编号 |
-| `table_name_en` | varchar(128) | NOT NULL | 英文表名 |
-| `table_name_cn` | varchar(128) | NOT NULL | 中文表名 |
-| `table_meaning` | varchar(500) | ? | 表含义说明 |
-| `table_category` | varchar(16) | NOT NULL | 表类别：TARGET/INTERMEDIATE |
-| `owner_id` | bigint | NOT NULL | 负责人 |
-| `created_at` | timestamp | NOT NULL | 创建时间 |
-| `created_by` | bigint | ? | 创建人 |
-| `updated_at` | timestamp | NOT NULL | 最后更新时间 |
-| `updated_by` | bigint | ? | 最后编辑人 |
-| `deleted` | tinyint | NOT NULL | 逻辑删除 0/1 |
-
-### 3.10 `dm_target_table_field` — 目标表字段明细表
-
-| 字段 | 类型 | 可空 | 中文说明 |
-| --- | --- | --- | --- |
-| `id` | bigint PK | - | 主键 ID |
-| `tenant_id` | bigint | NOT NULL | 租户 ID |
-| `field_code` | varchar(64) | NOT NULL | 字段编号 |
-| `table_id` | bigint | NOT NULL | 所属目标表（物理外键） |
-| `field_name_en` | varchar(128) | NOT NULL | 英文字段名 |
-| `field_name_cn` | varchar(128) | NOT NULL | 中文字段名 |
-| `field_meaning` | varchar(500) | ? | 字段含义说明 |
-| `code_description` | varchar(500) | ? | 编码说明 |
-| `is_key_field` | tinyint | NOT NULL | 是否关键字段 0/1 |
-| `oracle_type` | varchar(64) | ? | Oracle 类型 |
-| `mysql_type` | varchar(64) | ? | MySQL 类型 |
-| `is_nullable` | tinyint | NOT NULL | 是否可空 0/1 |
-| `is_primary_key` | tinyint | NOT NULL | 是否主键 0/1 |
-| `dict_code` | varchar(64) | ? | 数据字典编码 |
-| `owner_id` | bigint | NOT NULL | 负责人 |
-| `created_at` | timestamp | NOT NULL | 创建时间 |
-| `created_by` | bigint | ? | 创建人 |
-| `updated_at` | timestamp | NOT NULL | 最后更新时间 |
-| `updated_by` | bigint | ? | 最后编辑人 |
-| `deleted` | tinyint | NOT NULL | 逻辑删除 0/1 |
-
-## 4. 关系分类
-
-### 4.1 数据库物理外键
-
-`dm_%` 表之间仅一条物理外键：
-
-```
-dm_target_table_field.table_id -> dm_target_table.id
-约束名：fk_target_field_table
-```
-
-### 4.2 服务层逻辑关系
-
-| 来源表 | 来源字段 | 目标表 | 目标字段 | 中文说明 |
-| --- | --- | --- | --- | --- |
-| `dm_asset` | `project_id` | `pm_project` | `id` | 资产所属项目 |
-| `dm_asset` | `component_id` | `dm_component` | `id` | 资产所属组件 |
-| `dm_asset` | `attachment_id` | `att_file` | `id` | 资产文件附件 |
-| `dm_issue` | `project_id` | `pm_project` | `id` | 问题所属项目 |
-| `dm_meeting` | `project_id` | `pm_project` | `id` | 会议所属项目 |
-| `dm_meeting_attachment` | `meeting_id` | `dm_meeting` | `meeting_id` | 附件所属会议 |
-| `dm_meeting_attachment` | `attachment_id` | `att_file` | `id` | 会议附件文件 |
-| `dm_component` | `project_id` | `pm_project` | `id` | 组件所属项目 |
-| `dm_component` | `physical_subsystem_code` | `arch_physical_subsystem` | `code` | 组件对应的物理子系统 |
-| `dm_dashboard_snapshot` | `project_id` | `pm_project` | `id` | 快照所属项目 |
-| `dm_dashboard_snapshot` | `component_id` | `dm_component` | `id` | 快照所属组件 |
-| `dm_target_table` | `project_id` | `pm_project` | `id` | 目标表所属项目 |
-| `dm_target_table` | `system_code` | `arch_physical_subsystem` | `code` | 目标表所属系统 |
-
-审计字段 `owner_id`/`created_by`/`updated_by`/`deleted_by` 均关联 `sys_user.id`，无物理外键。
-
-### 4.3 多态关系
-
-| 表 | 多态字段组 | 可指向 | 使用者 |
-| --- | --- | --- | --- |
-| `dm_asset_relation` | `source_asset_id` + `source_asset_type` | `dm_asset`、`dm_issue`、`dm_meeting` | IssueService、MeetingService |
-| `dm_asset_relation` | `target_asset_id` + `target_asset_type` | `dm_asset`、`dm_issue`、`dm_meeting`、`arch_physical_subsystem`、`dm_target_table`、`dm_target_table_field` | IssueService、MeetingService |
-| `dm_operation_log` | `entity_type` + `entity_id` | 所有业务实体 | 操作审计 |
-
-## 5. Mermaid 关系视图
-
-### 5.1 全局 ER 图
-
-```mermaid
-erDiagram
-    PM_PROJECT ||--o{ DM_ASSET : "project_id 所属项目"
-    PM_PROJECT ||--o{ DM_ISSUE : "project_id 所属项目"
-    PM_PROJECT ||--o{ DM_COMPONENT : "project_id 所属项目"
-    PM_PROJECT ||--o{ DM_TARGET_TABLE : "project_id 所属项目"
-    PM_PROJECT ||--o{ DM_DASHBOARD_SNAPSHOT : "project_id 所属项目"
-    PM_PROJECT ||--o{ DM_MEETING : "project_id 所属项目"
-    ARCH_PHYSICAL_SUBSYSTEM ||--o{ DM_COMPONENT : "physical_subsystem_code 系统编号"
-    ARCH_PHYSICAL_SUBSYSTEM ||--o{ DM_TARGET_TABLE : "system_code 系统编号"
-    DM_COMPONENT ||--o{ DM_ASSET : "component_id 所属组件"
-    DM_COMPONENT ||--o{ DM_DASHBOARD_SNAPSHOT : "component_id 所属组件"
-    DM_TARGET_TABLE ||--o{ DM_TARGET_TABLE_FIELD : "table_id 物理外键"
-    DM_ASSET }o--|| ATT_FILE : "attachment_id 文件附件"
-    DM_MEETING ||--o{ DM_MEETING_ATTACHMENT : "meeting_id 所属会议"
-    DM_MEETING_ATTACHMENT }o--|| ATT_FILE : "attachment_id 附件文件"
-    SYS_USER ||--o{ DM_OPERATION_LOG : "actor_id 操作人"
-    DM_ASSET_RELATION }o--o{ DM_ASSET : "源或目标资产"
-    DM_ASSET_RELATION }o--o{ DM_ISSUE : "问题关联"
-    DM_ASSET_RELATION }o--o{ DM_MEETING : "会议关联"
-    DM_ASSET_RELATION }o--o{ ARCH_PHYSICAL_SUBSYSTEM : "系统关联"
-    DM_ASSET_RELATION }o--o{ DM_TARGET_TABLE : "目标表关联"
-    DM_ASSET_RELATION }o--o{ DM_TARGET_TABLE_FIELD : "目标字段关联"
-    PM_PROJECT {
-        bigint id PK
-        string name "平台项目表"
-    }
-    DM_ASSET {
-        bigint id PK
-        bigint project_id FK
-        bigint component_id FK
-        bigint attachment_id FK "资产主表"
-    }
-    DM_ISSUE {
-        bigint id PK
-        bigint project_id FK "问题清单"
-    }
-    DM_COMPONENT {
-        bigint id PK
-        bigint project_id FK
-        string physical_subsystem_code FK "组件清单"
-    }
-    DM_TARGET_TABLE {
-        bigint id PK
-        bigint project_id FK
-        string system_code FK "目标表结构"
-    }
-    DM_TARGET_TABLE_FIELD {
-        bigint id PK
-        bigint table_id FK "目标表字段"
-    }
-    DM_DASHBOARD_SNAPSHOT {
-        bigint id PK
-        bigint project_id FK
-        bigint component_id FK "看板快照"
-    }
-    DM_MEETING {
-        bigint meeting_id PK "会议纪要"
-        bigint project_id FK
-    }
-    DM_MEETING_ATTACHMENT {
-        bigint id PK
-        bigint meeting_id FK
-        bigint attachment_id FK "会议附件"
-    }
-    DM_OPERATION_LOG {
-        bigint id PK
-        bigint actor_id FK "操作审计"
-    }
-    DM_ASSET_RELATION {
-        bigint id PK
-        string source_asset_type "多态关联"
-        string target_asset_type
-    }
-    ATT_FILE {
-        bigint id PK "公共附件"
-    }
-    SYS_USER {
-        bigint id PK "系统用户"
-    }
-    ARCH_PHYSICAL_SUBSYSTEM {
-        bigint id PK
-        string code UK "物理子系统"
-    }
-```
-
-标注 `物理外键` 的关系是数据库物理约束；其余均为服务层逻辑关系。
-
-### 5.2 问题清单关联流程
+## 4. 表关系整体视图
 
 ```mermaid
 flowchart LR
-    ISSUE["dm_issue\n问题清单"] -->|写入关联| REL["dm_asset_relation\n多态关联表"]
-    ISSUE -.->|project_id| PROJECT["pm_project\n平台项目"]
-    REL -.->|target=MEETING| MEETING["dm_meeting\n会议纪要"]
-    REL -.->|target=TABLE| TABLE["dm_target_table\n目标表"]
-    REL -.->|target=FIELD| FIELD["dm_target_table_field\n目标字段"]
+    P["pm_project<br/>平台项目"]
+    M["pm_project_member<br/>平台成员事实源"]
+    C["ProjectWorkflowDirectoryService<br/>项目可达性契约"]
+    P --> C
+    M --> C
+    C --> DM["data-migration<br/>projectId + tenantId"]
+
+    subgraph CONTENT["内容表（9）"]
+      F["7 张文件型内容表"]
+      S["2 张结构化内容表"]
+    end
+    A["dm_content_attachment"]
+    AF["att_file"]
+    CMP["dm_component"]
+    SYS["arch_physical_subsystem"]
+    MT["dm_meeting"]
+    MS["dm_meeting_system"]
+    I["dm_issue"]
+    IR["dm_issue_relation"]
+    T["dm_target_table"]
+    TF["dm_target_table_field"]
+    O["dm_operation_log"]
+    SNAP["dm_dashboard_snapshot"]
+
+    DM --> CONTENT
+    F --> A
+    MT --> A
+    A --> AF
+    CONTENT --> CMP
+    CONTENT --> P
+    MT --> P
+    I --> P
+    CMP --> P
+    T --> P
+    T --> TF
+    MT --> MS
+    MS --> CMP
+    I --> IR
+    IR -. "MEETING/TABLE/FIELD" .-> MT
+    IR -. "MEETING/TABLE/FIELD" .-> T
+    IR -. "MEETING/TABLE/FIELD" .-> TF
+    CMP --> SYS
+    SNAP --> P
+    SNAP --> CMP
+    DM --> O
 ```
 
-### 5.3 会议纪要关联流程
+除 `dm_target_table_field` 按 `(tenant_id, table_code)` 引用 `dm_target_table` 的组合物理外键外，图中关系均由服务层通过租户、项目、删除状态和业务类型校验实现，不建立跨模块物理外键。
+
+### 4.1 关系规则
+
+| 关系 | 基数/约束 | 实现方式 |
+| --- | --- | --- |
+| 项目 → 内容、会议、问题、组件、目标表 | 一对多 | `project_id` + 平台项目可达性契约 |
+| 组件 → 内容 | 一对多，可空 | `component_id`，看板统计时限定活动行 |
+| 目标表 → 字段 | 一对多 | `dm_target_table_field (tenant_id, table_code)` 组合物理外键，引用 `dm_target_table (tenant_id, table_code)` |
+| 内容/会议 → 附件 | 一对多 | `business_type + business_id` 多态关系 |
+| 会议 ↔ 项目内系统/组件 | 多对多 | `dm_meeting_system`，按 `(project_id, system_code)` 关联 `dm_component` 活动行 |
+| 问题 → 会议/目标表/字段 | 一对多多态 | `related_type + related_id` |
+| 组件/目标表/问题 → 项目内系统/组件 | 多对一，可空 | 按 `(project_id, system_code)` 关联 `dm_component` 活动行，只维护编号不保存 `arch_physical_subsystem.id` |
+| 内容 → 系统/组件 | 可选投影 | 方案、问题、目标表按 `(project_id, system_code)` 关联；会议经 `dm_meeting_system`；名称经 `dm_component` 投影 |
+| 任意业务实体 → 操作日志 | 一对多多态 | `entity_type + entity_id` |
+
+## 5. 按菜单功能的表关系视图
+
+### 5.1 菜单树
 
 ```mermaid
-flowchart LR
-    MEETING["dm_meeting\n会议纪要"] -->|一对多| ATT["dm_meeting_attachment\n会议附件"]
-    MEETING -.->|project_id| PROJECT["pm_project\n平台项目"]
-    ATT -.->|attachment_id| FILE["att_file\n公共附件"]
+flowchart TD
+  ROOT["数据迁移"]
+  DASH["数迁资产看板"]
+  CONTENT["数迁资产内容管理"]
+  BASE["基础资料管理"]
+  ROOT --> DASH
+  ROOT --> CONTENT
+  ROOT --> BASE
+  DASH --> D1["整体看板"]
+  DASH --> D2["组件看板"]
+  CONTENT --> C1["汇报材料"]
+  CONTENT --> C2["会议纪要"]
+  CONTENT --> C3["迁移方案"]
+  CONTENT --> C4["迁移映射"]
+  CONTENT --> C5["迁移检核规则"]
+  CONTENT --> C6["迁移参数"]
+  CONTENT --> C7["迁移过程依赖文件"]
+  CONTENT --> C8["迁移程序"]
+  CONTENT --> C9["专题材料"]
+  CONTENT --> C10["投产及演练"]
+  CONTENT --> C11["问题清单"]
+  CONTENT --> C12["统一回收站"]
+  BASE --> B1["系统/组件清单"]
+  BASE --> B2["目标表结构"]
+  BASE --> B3["中间表结构"]
 ```
 
-### 5.4 结构化资产关联流程
+### 5.2 菜单与表映射
 
-```mermaid
-flowchart LR
-    ASSET["dm_asset\n结构化资产"] -->|structured_data JSON| DATA["结构化数据\nRULE/PARAMETER\nTABLE/INTERMEDIATE"]
-    ASSET -.->|project_id| PROJECT["pm_project\n平台项目"]
-    ASSET -.->|component_id| COMPONENT["dm_component\n组件清单"]
-```
+| 菜单/路由 | 服务入口 | 直接使用的模块表 | 关联表与用途 |
+| --- | --- | --- | --- |
+| 整体看板 `/data-migration/dashboard/overall` | `DashboardService.overall` | 9 张内容表、`dm_component` | 平台契约提供可访问项目数；实时统计活动内容，不读取快照 |
+| 组件看板 `/data-migration/dashboard/components` | `DashboardService.component` | `dm_component`、9 张内容表 | 跨 9 张内容表一次 `UNION ALL` 按组件分组统计，系统名称经 `dm_component` 按编号投影 `arch_physical_subsystem` 显示 |
+| 汇报材料 `/data-migration/content/reports` | `ReportService` | `dm_report`、`dm_content_attachment`、`dm_operation_log` | 文件元数据、附件绑定和审计，重复内容按普通文件处理 |
+| 会议纪要 `/data-migration/content/meetings` | `MeetingService` | `dm_meeting`、`dm_meeting_system`、`dm_content_attachment`、`dm_issue_relation` | 关联项目内系统/组件、问题和会议附件；附件回收站在会议页内 |
+| 迁移方案 `/data-migration/content/plans` | `PlanService` | `dm_plan`、`dm_content_attachment`、`dm_operation_log` | 项目/系统颗粒度和方案类型维度唯一 |
+| 迁移映射 `/data-migration/content/mappings` | `ContentFileAssetService(MAPPING_DOC)` | `dm_mapping_doc`、`dm_content_attachment`、`dm_operation_log` | 文件型内容 |
+| 迁移检核规则 `/data-migration/content/validation-rules` | `StructuredAssetService(RULE)` | `dm_rule`、`dm_operation_log` | JSON 结构化主体 |
+| 迁移参数 `/data-migration/content/parameters` | `StructuredAssetService(PARAMETER)` | `dm_parameter`、`dm_operation_log` | JSON 主体，支持 Excel 导入导出 |
+| 迁移过程依赖文件 `/data-migration/content/dependencies` | `ContentFileAssetService(DEPENDENCY)` | `dm_dependency`、`dm_content_attachment`、`dm_operation_log` | 文件型内容 |
+| 迁移程序 `/data-migration/content/programs` | `ContentFileAssetService(SCRIPT)` | `dm_script`、`dm_content_attachment`、`dm_operation_log` | 文件型内容 |
+| 专题材料 `/data-migration/content/topics` | `ContentFileAssetService(TOPIC)` | `dm_topic`、`dm_content_attachment`、`dm_operation_log` | 文件型内容 |
+| 投产及演练 `/data-migration/content/release-drills` | `ContentFileAssetService(RELEASE_DRILL)` | `dm_release_drill`、`dm_content_attachment`、`dm_operation_log` | 文件型内容 |
+| 问题清单 `/data-migration/content/issues` | `IssueService`、`IssueExcelService` | `dm_issue`、`dm_issue_relation`、`dm_operation_log` | 关联目标为 `dm_meeting`、`dm_target_table`、`dm_target_table_field` |
+| 统一回收站 `/data-migration/content/recycle-bin` | `ContentRecycleBinService` | 9 张内容表、`dm_content_attachment`、`dm_meeting` | 按项目分页；恢复和彻底删除委派来源服务 |
+| 系统/组件清单 `/data-migration/base/components` | `ProjectComponentService` | `dm_component`、9 张内容表、`dm_operation_log` | 系统名称经 `arch_physical_subsystem` 按编号投影，关联以项目内 `physical_subsystem_code` 为唯一键 |
+| 目标表结构 `/data-migration/base/target-tables` | `TargetTableService(category=TARGET)` | `dm_target_table`、`dm_target_table_field`、`dm_operation_log` | 主表与字段一对多 |
+| 中间表结构 `/data-migration/base/intermediate-tables` | `TargetTableService(category=INTERMEDIATE)` | `dm_target_table`、`dm_target_table_field`、`dm_operation_log` | 通过 `table_category='INTERMEDIATE'` 复用目标表结构主从模型 |
 
-## 6. 完整性检查
+统一回收站的文档级来源包括文件型内容、结构化内容、方案、汇报材料和会议；问题清单保留独立问题回收站端点。所有来源均要求单个 `projectId`，不得回退为全租户查询。
+
+## 6. 唯一性、索引与删除策略
+
+### 6.1 唯一性约束（全行唯一）
+
+模块唯一键直接建在业务列上：软删行同样占用唯一名额；删除后需先从回收站彻底删除（purge）才能重建同名/同编号记录；恢复仍只与存量活动行冲突，冲突由数据库唯一键拒绝，服务层统一翻译为业务冲突。
+
+| 表范围 | 唯一键 |
+| --- | --- |
+| 9 张内容表 | `(tenant_id, project_id, doc_code)` |
+| `dm_plan` 维度 | `(tenant_id, project_id, granularity, plan_type, system_code)` |
+| `dm_issue` | `(tenant_id, project_id, issue_code)` |
+| `dm_meeting` | `(tenant_id, project_id, meeting_code)` |
+| `dm_content_attachment` | `(tenant_id, business_type, business_id, attachment_id)` |
+| `dm_component` | `(tenant_id, project_id, physical_subsystem_code)` |
+| `dm_target_table` | 主键 `table_code` 与 `(tenant_id, project_id, system_code, table_name_en/cn)` |
+| `dm_target_table_field` | 主键 `field_code` 与 `(tenant_id, table_code, field_name_en/cn)` |
+
+恢复必须在当前租户、当前项目和编号/名称不冲突的前提下执行；创建/更新前服务层按含软删行的全量预校验返回业务冲突，数据库唯一键并发兜底。
+
+### 6.2 查询索引
+
+内容表统一提供项目查询、负责人查询索引；`dm_plan` 提供维度和系统索引，`dm_report` 提供周期索引；问题、会议、目标表和字段按项目、状态、名称及关联目标提供组合索引。系统关联统一按 `(project_id, system_code)` 检索，不依赖 `arch_physical_subsystem.id`。文件内容不保存摘要，也不执行跨表重复查重。
+
+### 6.3 软删除与彻底删除
+
+- 内容、问题、会议和附件关系使用 `deleted` 软删除并记录删除人和时间；组件、目标表和字段仅使用 `deleted` 标记，不记录删除人和时间；关系表 `dm_meeting_system`、`dm_issue_relation` 无软删除。
+- 恢复必须在当前租户、当前项目和编号/名称不冲突的前提下执行（只与存量活动行冲突）。
+- 会议彻底删除前清理 `dm_meeting_system`、会议相关 `dm_issue_relation` 和会议附件关系。
+- 内容彻底删除前清理 `dm_content_attachment`；平台附件物理对象由附件模块按绑定状态清理。
+- `dm_target_table_field` 的物理外键阻止删除仍有字段的目标表，服务层按业务顺序处理。
+
+## 7. 权限、租户与审计
+
+1. 每次请求先通过认证和 RBAC，再由 `ProjectWorkflowDirectoryService` 校验项目存在、未删除、租户一致和成员可达性。管理员角色只豁免功能权限，不豁免项目数据范围。
+2. 查询、创建、导入、恢复和彻底删除均要求 `projectId`；维护类操作从库中读取记录所属项目，不能通过请求修改项目归属。
+3. 关联目标（会议、目标表、字段、系统/组件）必须同时满足租户、项目和未删除条件；关联系统按当前项目 `dm_component` 活动行校验。
+4. 写操作写入 `dm_operation_log`，记录租户、项目、操作者、操作码、实体、结果和 trace；附件绑定另受平台附件审计约束。
+5. `dm_operation_log` 带 `project_id`（实体归属项目；清空回收站类无实体操作记录操作范围项目），项目级审计可直接按项目过滤，无需回查实体。
+
+## 8. 完整性与运行观察
+
+以下是本地演示库的结构性观察，不代表生产数据规模：
 
 | 检查项 | 结果 |
 | --- | ---: |
 | `dm_target_table_field` 孤立字段 | 0 |
-| 有效目标表找不到 `pm_project` | 0 |
-| 有效资产找不到对应组件 | 0 |
-| 有效资产找不到对应附件 | 0 |
-| `dm_asset_relation` 当前记录数 | 0 |
-| `dm_issue` 当前行数 | 0（V93 后无历史 ISSUE） |
-| `dm_asset` 中 `asset_type='ISSUE'` 行数 | 0 |
-| `dm_meeting` 当前行数 | 0 |
-| `dm_meeting_attachment` 当前行数 | 0 |
+| 活动目标表找不到有效 `pm_project` | 0 |
+| 活动组件找不到有效 `pm_project` | 0 |
+| `dm_content_attachment` 找不到 `att_file` | 0（当前关系表为空） |
+| 活动目标表但无活动字段 | 2 |
+| `dm_dashboard_snapshot` | 1 行 |
+| `dm_issue` / 活动问题 | 4 / 0 |
+| 9 张内容表 | 0 行 |
+| `dm_meeting` / `dm_meeting_system` | 0 / 0 |
 
-本文件只记录结构和脱敏统计，不包含数据库密码、对象存储密钥或业务明细。
+## 9. 设计合理性与待治理项
 
-## 7. 菜单功能与库表映射
+### 9.1 当前设计的合理性
 
-### 7.1 菜单基线
+- 内容按菜单拆表，避免单表多态枚举和无关字段聚集；统一登记表保证跨表统计的表名来自固定常量。
+- 文件元数据与业务内容分离，附件关系只保存 `att_file` 绑定，不保存对象键和二进制。
+- 唯一键直接建在业务列上：软删行同样占用唯一名额，删除后需先从回收站彻底删除（purge）才能重建同名/同编号记录；方案维度键项目级使用空串哨兵避免 NULL 唯一语义差异。
+- 系统关联统一为 `(project_id, system_code)` 指向 `dm_component`：不保存 `arch_physical_subsystem.id`，系统删除重建后编号不变、既有业务关联不失效；系统名称展示经 `dm_component` 按编号投影。
+- 目标表/字段主键即业务编号：`dm_target_table.table_code`、`dm_target_table_field.field_code` 直接作单列主键（服务端生成，纯数字 `BIGINT`、全局唯一、不按租户分区、不建号源表）；问题关联与审计 `entity_id` 存的即编号数值。
+- 组件、目标表和字段的唯一键同样直接建在业务列上：软删行占满唯一名额后不能直接重建，purge 释放名额后方可恢复同名/同编号记录，恢复冲突由数据库唯一键拒绝。
+- 看板跨 9 张内容表一次 `UNION ALL` 分组统计。
+- 会议和问题的关系按方向拆分为专用关系表，关联目标类型和清理责任更明确。
+- 项目数据范围集中到平台公开契约，`pm_project_member` 保持单一事实源，避免业务模块复制成员 SQL。
+- 审计表带项目维度：`dm_operation_log` 含 `project_id` 与项目级审计索引 `(tenant_id, project_id, entity_type, created_at)`，项目级审计可直接按项目过滤；清空回收站类操作记录操作范围项目。
 
-V84 建立的菜单树为 `数据迁移(699)` 下的三个目录：`数迁资产看板(700)`、`数迁资产内容管理(720)`、`基础资料管理(740)`。V86 又删除了 `DataMigrationProjects`（项目清单）及其菜单、权限和角色绑定；因此按当前 V86/V98 数据库和路由，实际可用功能入口为 **16 个**（原始需求曾写 17 个）。回收站存在前端路由，但不是 V84 正式菜单种子中的独立入口。
+### 9.2 治理项
 
-### 7.2 16 个有效菜单逐项映射
-
-| 目录 | 菜单（路由） | 实际实现 | 直接使用的业务表 | 主要关系/用途 |
+| 优先级 | 风险 | 当前表现 | 处置要求 | 治理状态 |
 | --- | --- | --- | --- | --- |
-| 数迁资产看板 | 整体看板 `/data-migration/dashboard/overall` | `DashboardService.overall` | `dm_dashboard_snapshot`、`dm_asset`、`dm_component`、`pm_project` | 优先读租户最新快照的项目/组件/资产总量；按资产类型实时聚合 `dm_asset`。 |
-| 数迁资产看板 | 组件看板 `/data-migration/dashboard/components` | `DashboardService.component` | `dm_component`、`dm_asset`、`arch_physical_subsystem` | `dm_component` 左连接 `dm_asset` 计数，并按 `physical_subsystem_code` 关联物理子系统显示名称；当前实现是实时聚合，不读快照。 |
-| 数迁资产内容管理 | 汇报材料 `/data-migration/content/reports` | `ReportService` | `dm_asset(asset_type='REPORT')`、`pm_project`、`att_file`（通过 AttachmentGateway）、`dm_operation_log` | `dm_asset.project_id -> pm_project.id`；`attachment_id -> att_file.id`；上传、替换、删除、恢复、清理均写审计。 |
-| 数迁资产内容管理 | 会议纪要 `/data-migration/content/meetings` | `MeetingService` | `dm_meeting`、`dm_meeting_attachment`、`dm_asset_relation`、`dm_issue`、`dm_component`、`arch_physical_subsystem`、`pm_project`、`sys_user`、`att_file`、`dm_operation_log` | 会议主表关联项目；附件表是一对多；关系表保存会议-系统、会议-问题；系统通过组件投影到物理子系统。 |
-| 数迁资产内容管理 | 迁移方案 `/data-migration/content/plans` | `AssetService`（文件型） | `dm_asset(asset_type='PLAN')`、`pm_project`、`att_file`、`dm_operation_log` | 通用文件资产，文件元数据落 `dm_asset`，文件实体由公共附件表/对象存储维护。 |
-| 数迁资产内容管理 | 迁移映射 `/data-migration/content/mappings` | `AssetService`（文件型） | `dm_asset(asset_type='MAPPING_DOC')`、`pm_project`、`att_file`、`dm_operation_log` | 与迁移方案共用同一资产表，通过 `asset_type` 分区。 |
-| 数迁资产内容管理 | 迁移检核规则 `/data-migration/content/validation-rules` | `StructuredAssetService` | `dm_asset(asset_type='RULE')`、`pm_project`、`dm_component`、`dm_operation_log` | 规则主体保存在 `structured_data` JSON；项目/组件只做租户和实体校验。 |
-| 数迁资产内容管理 | 迁移参数 `/data-migration/content/parameters` | `StructuredAssetService` | `dm_asset(asset_type='PARAMETER')`、`pm_project`、`dm_component`、`dm_operation_log` | 参数主体保存在 `structured_data` JSON；与规则共用结构化资产接口。 |
-| 数迁资产内容管理 | 迁移过程依赖文件 `/data-migration/content/dependencies` | `AssetService`（文件型） | `dm_asset(asset_type='DEPENDENCY')`、`pm_project`、`att_file`、`dm_operation_log` | 文件型资产共用上传、下载、逻辑删除和附件绑定生命周期。 |
-| 数迁资产内容管理 | 迁移程序 `/data-migration/content/programs` | `AssetService`（文件型） | `dm_asset(asset_type='SCRIPT')`、`pm_project`、`att_file`、`dm_operation_log` | 通过 `asset_type='SCRIPT'` 区分程序文件。 |
-| 数迁资产内容管理 | 专题材料 `/data-migration/content/topics` | `AssetService`（文件型） | `dm_asset(asset_type='TOPIC')`、`pm_project`、`att_file`、`dm_operation_log` | 当前页面上传的是专题文件；专题类型字典未纳入当前功能，相关孤立表已由 V98 删除。 |
-| 数迁资产内容管理 | 投产及演练 `/data-migration/content/release-drills` | `AssetService`（文件型） | `dm_asset(asset_type='RELEASE_DRILL')`、`pm_project`、`att_file`、`dm_operation_log` | 通过通用文件资产表保存。 |
-| 数迁资产内容管理 | 问题清单 `/data-migration/content/issues` | `IssueService` + `IssueExcelService` | `dm_issue`、`dm_asset_relation`、`dm_target_table`、`dm_target_table_field`、`dm_meeting`、`pm_project`、`dm_component`、`arch_physical_subsystem`、`sys_user`、`dm_operation_log` | 问题主体独立存储；关系表保存问题-会议/表/字段；表、字段和会议均按租户、项目、未删除状态校验。 |
-| 基础资料管理 | 系统/组件清单 `/data-migration/base/components` | `ProjectComponentService` | `dm_component`、`pm_project`、`arch_physical_subsystem`、`sys_user`、`dm_asset`、`dm_operation_log` | 组件只保存系统编号和 `total_check`；系统名称、事业群、负责人等由物理子系统只读投影；资产计数按 `dm_asset.component_id` 聚合。 |
-| 基础资料管理 | 目标表结构 `/data-migration/base/target-tables` | `TargetTableService`，`category=TARGET` | `dm_target_table`、`dm_target_table_field`、`pm_project`、`arch_physical_subsystem`、`sys_user`、`dm_operation_log` | 主表一对多字段表；唯一性按项目+系统+表名、表内字段名校验。 |
-| 基础资料管理 | 中间表结构 `/data-migration/base/intermediate-tables` | 同一 `TargetTableService`，`category=INTERMEDIATE` | `dm_target_table`、`dm_target_table_field`、`pm_project`、`arch_physical_subsystem`、`sys_user`、`dm_operation_log` | 与目标表共用物理表，通过 `table_category` 区分；删除表时服务层级联软删字段。 |
+| P1 | 看板快照只写不读 | 调度器写入 `dm_dashboard_snapshot`，看板实时查询内容表 | 明确历史趋势用途并补读取、保留和项目过滤，或停写并通过独立迁移下线 | 待处置 |
+| P1 | 枚举缺少数据库约束 | `business_type`、`related_type`、`table_category`、`granularity` 等仅由代码维护 | 追加 CHECK 或受控码表，并先完成存量值校验 | 待处置 |
 
-### 7.3 非正式菜单但可达的回收站路由
+已收敛治理项（最终态）：
 
-`/data-migration/content/recycle-bin` 当前前端调用的是 `ReportService` 的汇报材料回收站接口，只展示 `dm_asset(asset_type='REPORT')`；而通用 `AssetController` 另有 `/api/data-migration/recycle-bin` 可查询多种通用资产，问题和会议又分别有独立回收站接口。由此形成“前端回收站只覆盖汇报材料、后端能力分散”的现状，与“全部内容类型统一进入回收站”的目标不完全一致。
+- 审计项目维度：`dm_operation_log` 含 `project_id`（实体归属项目，清空回收站类操作记录操作范围项目）与项目级审计索引 `idx_dm_operation_log_project (tenant_id, project_id, entity_type, created_at)`，写入侧从实体项目上下文填充，项目级审计可直接按项目过滤。
+- 目标表/字段主键：`table_code`/`field_code` 即单列主键，编号服务端生成（纯数字 `BIGINT`、全局唯一、不按租户分区、不建号源表）；字段表以 `(tenant_id, table_code)` 组合物理外键关联主表；问题关联 `related_id` 与审计 `entity_id` 对目标表/字段存编号数值。
+- 唯一键收敛：全模块唯一键直接建在业务列上；软删行同样占用唯一名额，删除后需先从回收站彻底删除（purge）才能重建同名/同编号记录，恢复只与存量活动行冲突；服务层创建/更新预校验为含软删行的全量检查，数据库唯一键并发兜底。
 
-## 8. 设计合理性与冗余评估
+## 10. 约束与回退
 
-### 8.1 合理设计
+- Flyway 迁移只追加，不修改或重排已发布脚本。
+- `pm_project_member` 及平台项目成员、角色和范围语义由 `platform/system` 持有；数据迁移模块不建立或维护平行项目表。
+- 跨模块表只通过登记的公开契约和服务层逻辑关系使用，不新增业务模块间私有 SQL 依赖。
+- 应用回退时保留现有数据迁移表和附件对象；涉及表结构收敛的回退只能通过备份恢复或另行批准的补偿迁移完成。
 
-- **按业务复杂度拆分存储**：文件型/规则参数共用 `dm_asset`，问题独立为 `dm_issue`，会议独立为 `dm_meeting`，表结构拆为 `dm_target_table` + `dm_target_table_field`，避免把高频筛选字段全部塞入 JSON。
-- **租户和逻辑删除维度完整**：业务表普遍带 `tenant_id`、`deleted`、创建/更新审计列，列表索引大多包含租户和删除状态。
-- **附件边界清晰**：文件内容通过公共附件能力绑定，业务表只保存 `attachment_id`；回收站/清理由业务服务编排附件生命周期。
-- **关系表独立**：`dm_asset_relation` 支持问题、会议、表、字段等跨对象关联，唯一键防止同一方向重复关系。
-- **字段级表结构已正规化**：`dm_target_table_field.table_id` 有物理外键，表删除时服务层同步处理字段，支持字段粒度筛选和导出。
+## 11. 数据来源与复核口径
 
-### 8.2 已处理的冗余或过渡字段
-
-| 字段/设计 | 判断 | 影响与建议 |
-| --- | --- | --- |
-| `dm_meeting.project_name` | 已物理删除（V98） | 统一通过 `project_id -> pm_project.project_name` 投影。 |
-| `dm_meeting.attachment_id`、`file_name` | 已物理删除（V98） | 统一通过 `dm_meeting_attachment` 一对多关系和首附件子查询投影。 |
-| `dm_issue.system_name` | 已物理删除（V98） | 统一通过 `system_code -> arch_physical_subsystem` 投影。 |
-| `dm_target_table_field.table_code` | 已物理删除（V98） | 统一通过 `table_id -> dm_target_table.table_code` JOIN 投影。 |
-| `dm_asset.object_key` | 已物理删除（V98） | 文件资产统一使用公共 `att_file` 绑定；迁移前必须完成历史对象键补偿。 |
-| `dm_asset.owner_id` 与报告 `created_by` | 语义重叠 | 报告上传时二者被写成同一用户；如果负责人未来可变则不算严格重复，否则可只保留创建人并把负责人建成明确的可变业务字段。 |
-| `dm_project` | 历史遗留表 | 项目数据已收敛到平台 `pm_project`，当前模块不再使用；应保持只读/归档状态，禁止重新接入。 |
-
-### 8.3 需要优先修正的结构或实现缺口
-
-| 优先级 | 问题 | 证据 | 建议 |
-| --- | --- | --- | --- |
-| P0 | 问题清单关联会议曾查询旧表 | 已修正：会议选项、名称聚合和关系目标校验统一使用 `dm_meeting.meeting_id`。 | 保持 `dm_asset_relation` 的多态类型为 `MEETING`，但目标主键只解释为 `dm_meeting.meeting_id`。 |
-| P0 | 会议彻底清理曾遗漏附件关联和附件对象 | 已修正：`MeetingService.purge/purgeAll` 先解绑会议业务附件、删除 `dm_meeting_attachment`，再清理双向关系和会议主表。 | 对历史未绑定附件仅删除业务关联行，不调用其他业务的解绑接口；上线前应做孤儿附件盘点。 |
-| P1 | 通用资产逻辑删除曾不写删除审计字段 | 已修正：`AssetService.delete/restore` 写入或清空 `deleted_by/deleted_at`，并同步更新操作人和时间。 | 后续可抽取共享软删除组件，避免不同业务服务重复实现。 |
-| P1 | 看板快照语义不一致 | `DashboardService.component` 直接实时 COUNT，不读取 `dm_dashboard_snapshot`；整体看板才优先读快照。 | 明确“组件看板实时”还是“组件看板快照”；若要求每日快照，应按快照表查询并保留钻取条件。 |
-| P1 | `dm_topic_type` 成为孤立表 | V97 建表但无任何业务引用；专题材料仍只是 `dm_asset(TOPIC)` 文件。 | 已由 V98 删除，后续如需专题分类应以独立需求重新设计，不在当前模型中保留孤立表。 |
-| P1 | 物理约束不足 | 除 `dm_target_table_field.table_id` 外，项目、组件、附件、用户及多态关系均无 FK；`dm_asset_relation` 可留下指向已删除/不存在对象的行。 | 保留跨模块不建 FK 的架构也可以，但必须在服务层统一做存在性、租户、删除状态校验，并为 purge 双向清理关系。 |
-| P1 | 快照唯一键的 NULL 语义 | `uk_dm_snapshot(tenant_id,snapshot_date,project_id,component_id,metric_code)` 中项目/组件允许 NULL；MySQL 唯一索引对 NULL 不视为相等，多个全局指标可能重复。 | 使用生成列/哨兵值或拆分全局与项目/组件快照表，确保同一天同指标真正唯一。 |
-| P2 | `asset_type`、`table_category`、枚举字段仅靠 Java 校验 | 数据库没有 CHECK/参考码表；V97 对 `dm_asset` 的注释列出的类型与 `AssetService.TYPES` 实际值也不完全一致。 | 统一代码值来源，至少增加迁移级 CHECK（或参考码表）和数据修复脚本，避免旁路写入脏值。 |
-| P2 | 软删除唯一键策略不统一 | 多数唯一键把 `deleted` 直接放入键中，重复删除记录仍可能互相冲突；只有 `dm_issue` 在 V94 用生成列实现“活动记录唯一”。 | 将活动唯一约束统一为生成列/函数索引策略，并为恢复时的冲突行为定义一致契约。 |
-| P2 | 会议及附件索引缺少租户前缀 | V95/V96 原索引以 `project_id`、`meeting_id` 开头。 | 已由 V98 重建为租户前缀复合索引，并为活动会议附件增加唯一约束。 |
-
-## 9. 结论
-
-整体模型方向是合理的：核心领域已从早期“所有内容塞入 `dm_asset.structured_data`”逐步拆为问题、会议、表结构和附件关系，租户隔离、审计和权限也有明确落点。当前主要风险不在基础表数量，而在**过渡模型尚未完全收敛**：主表兼容字段、未使用的专题类型表、通用回收站审计不一致，以及多态关系缺少数据库级完整性。
-
-V98 已完成兼容列和孤立表的物理收敛，并修正 V96/V97 的附件唯一性、租户索引和模型注释问题。后续仍需处理看板快照语义、快照 NULL 唯一键、枚举约束和多态关系数据库完整性。上述结论基于当前仓库 V84–V98 SQL、后端 Controller/Service、前端路由及本地脱敏统计；未连接生产库，也未使用真实业务数据。
-
-## 10. 本轮已实施的修正
-
-- 问题清单的会议选项和关联会议名称统一查询 `dm_meeting`，关系目标使用 `meeting_id`，不再依赖已下线的 `dm_asset(asset_type='MEETING')`。
-- 会议彻底删除会先解绑按 `DATA_MIGRATION_MEETING` 绑定的附件，再删除 `dm_meeting_attachment` 行，并清理会议作为源或目标的全部 `dm_asset_relation`；新增会议附件在保存时完成公共附件绑定，并增加租户/生命周期访问策略。
-- 通用资产逻辑删除和恢复补齐 `deleted_by/deleted_at`、`updated_by/updated_at`，与报告资产的审计语义一致。
-- V98 已物理删除 `dm_meeting.project_name`、`attachment_id/file_name`、`dm_issue.system_name`、`dm_target_table_field.table_code`、`dm_asset.object_key`，并删除未使用的 `dm_topic_type`；服务层保留必要的 JOIN/子查询投影，不再写入重复事实。
-- V98 同步修复 V96/V97 遗留问题：活动会议附件唯一约束、租户前缀索引和 `dm_asset` 表注释收敛。
+- 表、列、索引、外键和 CHECK 约束：本地库 `information_schema`；结构约束另经 data-migration 模块 MySQL 8.4 迁移测试断言复核。
+- 行数：逐表 `COUNT(*)`；不使用 `information_schema.TABLES.TABLE_ROWS` 估算值。
+- 运行关系：`server/src/modules/data-migration` 的 Controller/Service SQL、`ContentAssetTables` 登记常量、前端路由和菜单权限种子。
+- 平台关系：`pm_project`、`pm_project_member`、`arch_physical_subsystem`、`att_file`、`sys_user` 与 RBAC 表的公开字段和服务契约。
+- 本文件只描述当前模型和仍有效的风险。

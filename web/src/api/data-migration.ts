@@ -37,7 +37,10 @@ export function listPhysicalSubsystemsByCode(code: string) {
   return http.get<ApiResponse<DataMigrationPage<PhysicalSubsystemLite>>>('/architecture/physical-subsystems', { params: { code, page: 1, size: 20 } })
 }
 
-export function listDataMigrationComponents(params?: Record<string, unknown>) {
+/** T32：数据迁移的所有清单/看板/回收站接口都必须携带 projectId，后端缺失时返回 400。 */
+export type ProjectScopedParams = Record<string, unknown> & { projectId: number }
+
+export function listDataMigrationComponents(params: ProjectScopedParams) {
   return http.get<ApiResponse<DataMigrationPage<DataMigrationComponent>>>('/data-migration/components', { params })
 }
 
@@ -45,7 +48,7 @@ export function createDataMigrationComponent(body: Record<string, unknown>) {
   return http.post<ApiResponse<DataMigrationComponent>>('/data-migration/components', body)
 }
 
-export function exportDataMigrationComponents(params?: Record<string, unknown>) {
+export function exportDataMigrationComponents(params: ProjectScopedParams) {
   return http.get('/data-migration/components/export', { params, responseType: 'blob' })
 }
 
@@ -62,7 +65,7 @@ const FILE_RESOURCE_SEGMENTS: Record<string, string> = {
   PLAN: 'plans', MAPPING_DOC: 'mappings', DEPENDENCY: 'dependencies',
   SCRIPT: 'programs', TOPIC: 'topics', RELEASE_DRILL: 'release-drills',
 }
-/** 结构化内容类型 -> 新资源段；INTERMEDIATE_TABLE 属基础资料页，沿用 /structured/{type}。 */
+/** 结构化内容类型 -> 新资源段；中间表统一使用目标表/字段接口。 */
 const STRUCTURED_RESOURCE_SEGMENTS: Record<string, string> = {
   RULE: 'rules', PARAMETER: 'parameters',
 }
@@ -71,10 +74,11 @@ function fileSegment(type: string): string {
   if (!segment) throw new Error(`不支持的文件内容类型：${type}`)
   return segment
 }
-/** 结构化端点基路径：新资源段优先，未登记类型回退 /structured/{type}。 */
+/** 结构化端点基路径：仅允许规则和参数，避免回退到旧中间表端点。 */
 function structuredBase(type: string): string {
   const segment = STRUCTURED_RESOURCE_SEGMENTS[type]
-  return segment ? `/data-migration/${segment}` : `/data-migration/structured/${encodeURIComponent(type)}`
+  if (!segment) throw new Error(`不支持的结构化内容类型：${type}`)
+  return `/data-migration/${segment}`
 }
 
 export interface DataMigrationContentRecycleRow {
@@ -85,7 +89,6 @@ export interface DataMigrationContentRecycleRow {
   project_id: number
   component_id?: number
   owner_id: number
-  checksum_md5?: string
   deleted_by?: number
   deleted_at?: string
   deleted_by_name?: string
@@ -93,7 +96,7 @@ export interface DataMigrationContentRecycleRow {
 
 export type DataMigrationContentRecycleDetail = DataMigrationContentRecycleRow & Record<string, unknown>
 
-export function listDataMigrationStructured(type: string, params?: Record<string, unknown>) {
+export function listDataMigrationStructured(type: string, params: ProjectScopedParams) {
   return http.get<ApiResponse<DataMigrationAsset[]>>(`${structuredBase(type)}`, { params })
 }
 
@@ -109,25 +112,23 @@ export function listDataMigrationMenus() {
   return http.get<ApiResponse<DataMigrationMenu[]>>('/data-migration/menus')
 }
 
-export function listDataMigrationAssets(type: string, keyword?: string) {
-  return http.get<ApiResponse<DataMigrationPage<DataMigrationAsset>>>(`/data-migration/${fileSegment(type)}`, { params: { keyword: keyword || undefined } })
+export function listDataMigrationAssets(type: string, projectId: number, keyword?: string) {
+  return http.get<ApiResponse<DataMigrationPage<DataMigrationAsset>>>(`/data-migration/${fileSegment(type)}`, { params: { projectId, keyword: keyword || undefined } })
 }
 
-export function listDataMigrationAssetsPage(type: string, params: { projectId?: number; componentId?: number; keyword?: string; page?: number; size?: number } = {}) {
+export function listDataMigrationAssetsPage(type: string, params: { projectId: number; componentId?: number; keyword?: string; page?: number; size?: number }) {
   return http.get<ApiResponse<DataMigrationPage<DataMigrationAsset>>>(`/data-migration/${fileSegment(type)}`, {
     params: { ...params, keyword: params.keyword || undefined, page: params.page ?? 1, size: params.size ?? 20 },
   })
 }
 
-export function checkDataMigrationAssetMd5(md5: string) {
-  return http.get<ApiResponse<{ available: boolean }>>('/data-migration/content/check-md5', { params: { md5 } })
-}
-
 /** 统一回收站列表：contentTypes 为内容类型数组，逗号拼接传参（Spring 侧按 List 解析）；
- * T26 新增分页与统一排序（后端以业务编号 asset_code 字典序升序，同编号时按 deleted_at DESC 回退）。 */
-export function listDataMigrationRecycleBin(params: { contentTypes?: string[]; keyword?: string; page?: number; size?: number }) {
+ * T26 新增分页与统一排序（后端以业务编号 asset_code 字典序升序，同编号时按 deleted_at DESC 回退）；
+ * T32 追加 projectId 必填，回收站不再跨项目聚合。 */
+export function listDataMigrationRecycleBin(params: { projectId: number; contentTypes?: string[]; keyword?: string; page?: number; size?: number }) {
   return http.get<ApiResponse<DataMigrationPage<DataMigrationContentRecycleRow>>>('/data-migration/recycle-bin', {
     params: {
+      projectId: params.projectId,
       contentTypes: params.contentTypes?.length ? params.contentTypes.join(',') : undefined,
       keyword: params.keyword || undefined,
       page: params.page ?? 1,
@@ -141,20 +142,25 @@ export function getDataMigrationRecycleBinDetail(type: string, id: number) {
   return http.get<ApiResponse<DataMigrationContentRecycleDetail>>(`/data-migration/recycle-bin/${encodeURIComponent(type)}/${id}`)
 }
 
-export async function uploadDataMigrationAsset(type: string, projectId: number, assetCode: string, file: File, componentId?: number) {
-  const md5 = await computeFileMd5(file)
-  const availability = await checkDataMigrationAssetMd5(md5)
-  if (!availability.data.data?.available) throw new Error('文件 MD5 已存在，不允许重复提交')
+async function buildDataMigrationAssetUpload(projectId: number, file: File, componentId?: number, includeProjectId = true) {
   const attachment = await uploadAttachment(file)
   const attachmentId = attachment.data.data?.id
   if (!attachmentId) throw new Error('公共附件上传失败')
   const form = new FormData()
-  form.append('projectId', String(projectId))
-  form.append('assetCode', assetCode)
+  if (includeProjectId) form.append('projectId', String(projectId))
   if (componentId != null) form.append('componentId', String(componentId))
   form.append('attachmentId', String(attachmentId))
-  form.append('md5', md5)
+  return form
+}
+
+export async function uploadDataMigrationAsset(type: string, projectId: number, file: File, componentId?: number) {
+  const form = await buildDataMigrationAssetUpload(projectId, file, componentId)
   return http.post<ApiResponse<DataMigrationAsset>>(`/data-migration/${fileSegment(type)}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
+
+export async function replaceDataMigrationAsset(type: string, id: number, projectId: number, file: File, componentId?: number) {
+  const form = await buildDataMigrationAssetUpload(projectId, file, componentId, false)
+  return http.put<ApiResponse<DataMigrationAsset>>(`/data-migration/${fileSegment(type)}/${id}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
 export function deleteDataMigrationAssets(type: string, ids: number[]) {
@@ -175,27 +181,26 @@ export function downloadDataMigrationAsset(type: string, id: number) {
   return http.get<Blob>(`/data-migration/${fileSegment(type)}/${id}/download`, { responseType: 'blob' })
 }
 
-export function exportDataMigrationStructured(type: string, params?: Record<string, unknown>) {
+export function exportDataMigrationStructured(type: string, params: ProjectScopedParams) {
   return http.get(`${structuredBase(type)}/export`, { params, responseType: 'blob' })
 }
 
-export function inspectDataMigrationStructuredImport(type: string, file: File) {
+export function inspectDataMigrationStructuredImport(type: string, projectId: number, file: File) {
   const form = new FormData()
   form.append('file', file)
-  return http.post<ApiResponse<Record<string, unknown>>>(`${structuredBase(type)}/import`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return http.post<ApiResponse<Record<string, unknown>>>(`${structuredBase(type)}/import`, form, { params: { projectId }, headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
-export function getDataMigrationDashboard(view: 'overall' | 'component' = 'overall') {
-  return http.get<ApiResponse<Record<string, unknown> | Array<Record<string, unknown>>>>(`/data-migration/dashboard/${view}`)
+export function getDataMigrationDashboard(view: 'overall' | 'component', projectId: number) {
+  return http.get<ApiResponse<Record<string, unknown> | Array<Record<string, unknown>>>>(`/data-migration/dashboard/${view}`, { params: { projectId } })
 }
 
 /* ============ 目标表结构 / 中间表结构（基础资料管理） ============ */
 export type TableCategory = 'TARGET' | 'INTERMEDIATE'
 
 export interface TargetTableField {
-  id: number
-  field_code: string
-  table_id: number
+  field_code: number
+  table_code: number
   field_name_en: string
   field_name_cn: string
   field_meaning?: string | null
@@ -209,10 +214,8 @@ export interface TargetTableField {
 }
 
 export interface TargetTableRecord {
-  id: number
-  field_id?: number
-  field_code?: string
-  table_code: string
+  table_code: number
+  field_code?: number
   project_id: number
   system_code: string
   table_name_en: string
@@ -240,7 +243,8 @@ export interface TargetTableRecord {
 
 export interface TargetTableQuery {
   category?: TableCategory
-  projectId?: number
+  /** T32：表结构查询/导出必须限定项目。 */
+  projectId: number
   systemCode?: string
   isKeyField?: number
   dictCode?: string
@@ -254,118 +258,54 @@ export function listTargetTables(params: TargetTableQuery) {
   return http.get<ApiResponse<DataMigrationPage<TargetTableRecord>>>(`/data-migration/target-tables`, { params })
 }
 
-export function getTargetTable(id: number, category?: TableCategory) {
-  return http.get<ApiResponse<TargetTableRecord>>(`/data-migration/target-tables/${id}`, { params: { category } })
+export function getTargetTable(tableCode: number, category?: TableCategory) {
+  return http.get<ApiResponse<TargetTableRecord>>(`/data-migration/target-tables/${tableCode}`, { params: { category } })
 }
 
 export function createTargetTable(category: TableCategory, body: Record<string, unknown>) {
   return http.post<ApiResponse<TargetTableRecord>>(`/data-migration/target-tables`, body, { params: { category } })
 }
 
-export function updateTargetTable(id: number, category: TableCategory, body: Record<string, unknown>) {
-  return http.put<ApiResponse<TargetTableRecord>>(`/data-migration/target-tables/${id}`, body, { params: { category } })
+export function updateTargetTable(tableCode: number, category: TableCategory, body: Record<string, unknown>) {
+  return http.put<ApiResponse<TargetTableRecord>>(`/data-migration/target-tables/${tableCode}`, body, { params: { category } })
 }
 
-export function deleteTargetTables(category: TableCategory, ids: number[]) {
-  return http.post<ApiResponse<null>>(`/data-migration/target-tables/batch-delete`, ids, { params: { category } })
+export function deleteTargetTables(category: TableCategory, tableCodes: number[]) {
+  return http.post<ApiResponse<null>>(`/data-migration/target-tables/batch-delete`, tableCodes, { params: { category } })
 }
 
-export function listTargetTableFields(id: number, category?: TableCategory) {
-  return http.get<ApiResponse<TargetTableField[]>>(`/data-migration/target-tables/${id}/fields`, { params: { category } })
+export function listTargetTableFields(tableCode: number, category?: TableCategory) {
+  return http.get<ApiResponse<TargetTableField[]>>(`/data-migration/target-tables/${tableCode}/fields`, { params: { category } })
 }
 
-export function addTargetTableField(id: number, category: TableCategory, body: Record<string, unknown>) {
-  return http.post<ApiResponse<TargetTableField>>(`/data-migration/target-tables/${id}/fields`, body, { params: { category } })
+export function addTargetTableField(tableCode: number, category: TableCategory, body: Record<string, unknown>) {
+  return http.post<ApiResponse<TargetTableField>>(`/data-migration/target-tables/${tableCode}/fields`, body, { params: { category } })
 }
 
-export function updateTargetTableField(fieldId: number, category: TableCategory, body: Record<string, unknown>) {
-  return http.put<ApiResponse<TargetTableField>>(`/data-migration/target-table-fields/${fieldId}`, body, { params: { category } })
+export function updateTargetTableField(fieldCode: number, category: TableCategory, body: Record<string, unknown>) {
+  return http.put<ApiResponse<TargetTableField>>(`/data-migration/target-table-fields/${fieldCode}`, body, { params: { category } })
 }
 
-export function deleteTargetTableField(fieldId: number, category: TableCategory) {
-  return http.delete<ApiResponse<null>>(`/data-migration/target-table-fields/${fieldId}`, { params: { category } })
+export function deleteTargetTableField(fieldCode: number, category: TableCategory) {
+  return http.delete<ApiResponse<null>>(`/data-migration/target-table-fields/${fieldCode}`, { params: { category } })
 }
 
-export function deleteTargetTableFields(category: TableCategory, ids: number[]) {
-  return http.post<ApiResponse<null>>(`/data-migration/target-table-fields/batch-delete`, ids, { params: { category } })
+export function deleteTargetTableFields(category: TableCategory, fieldCodes: number[]) {
+  return http.post<ApiResponse<null>>(`/data-migration/target-table-fields/batch-delete`, fieldCodes, { params: { category } })
 }
 
-export function importTargetTables(category: TableCategory, file: File) {
+export function importTargetTables(category: TableCategory, projectId: number, file: File) {
   const form = new FormData()
   form.append('file', file)
-  return http.post<ApiResponse<{ accepted: number; failed: number; errors: string[] }>>(`/data-migration/target-tables/import`, form, { params: { category }, headers: { 'Content-Type': 'multipart/form-data' } })
+  return http.post<ApiResponse<{ accepted: number; failed: number; errors: string[] }>>(`/data-migration/target-tables/import`, form, { params: { category, projectId }, headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
-export function exportTargetTables(params: { category?: TableCategory; ids?: number[] } & Omit<TargetTableQuery, 'category' | 'page' | 'size'>) {
+export function exportTargetTables(params: { category?: TableCategory; fieldCodes?: number[] } & Omit<TargetTableQuery, 'category' | 'page' | 'size'>) {
   return http.get(`/data-migration/target-tables/export`, { params: { ...params }, responseType: 'blob' })
 }
 
 export function downloadTargetTableTemplate() {
   return http.get(`/data-migration/target-tables/template`, { responseType: 'blob' })
-}
-
-/** 前端计算文件 MD5（32 位小写 hex）。Web Crypto 不提供 MD5，因此使用 RFC 1321 的本地实现。 */
-export async function computeFileMd5(file: File): Promise<string> {
-  return md5(new Uint8Array(await file.arrayBuffer()))
-}
-
-function md5(input: Uint8Array): string {
-  const bitLength = input.length * 8
-  const paddedLength = (((input.length + 8) >>> 6) + 1) * 64
-  const data = new Uint8Array(paddedLength)
-  data.set(input)
-  data[input.length] = 0x80
-  const view = new DataView(data.buffer)
-  view.setUint32(paddedLength - 8, bitLength >>> 0, true)
-  view.setUint32(paddedLength - 4, Math.floor(bitLength / 0x100000000), true)
-
-  let a0 = 0x67452301
-  let b0 = 0xefcdab89
-  let c0 = 0x98badcfe
-  let d0 = 0x10325476
-  const shifts = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21]
-  const constants = Array.from({ length: 64 }, (_, index) => Math.floor(Math.abs(Math.sin(index + 1)) * 0x100000000) >>> 0)
-
-  for (let offset = 0; offset < data.length; offset += 64) {
-    const words = new Uint32Array(16)
-    for (let index = 0; index < 16; index += 1) words[index] = view.getUint32(offset + index * 4, true)
-    let a = a0
-    let b = b0
-    let c = c0
-    let d = d0
-    for (let index = 0; index < 64; index += 1) {
-      let f: number
-      let wordIndex: number
-      if (index < 16) {
-        f = (b & c) | (~b & d)
-        wordIndex = index
-      } else if (index < 32) {
-        f = (d & b) | (~d & c)
-        wordIndex = (5 * index + 1) % 16
-      } else if (index < 48) {
-        f = b ^ c ^ d
-        wordIndex = (3 * index + 5) % 16
-      } else {
-        f = c ^ (b | ~d)
-        wordIndex = (7 * index) % 16
-      }
-      const shift = shifts[(index < 16 ? 0 : index < 32 ? 4 : index < 48 ? 8 : 12) + (index % 4)]
-      const next = d
-      d = c
-      c = b
-      const sum = (a + f + constants[index] + words[wordIndex]) >>> 0
-      b = (b + ((sum << shift) | (sum >>> (32 - shift)))) >>> 0
-      a = next
-    }
-    a0 = (a0 + a) >>> 0
-    b0 = (b0 + b) >>> 0
-    c0 = (c0 + c) >>> 0
-    d0 = (d0 + d) >>> 0
-  }
-
-  return [a0, b0, c0, d0]
-    .map((word) => Array.from({ length: 4 }, (_, index) => ((word >>> (index * 8)) & 0xff).toString(16).padStart(2, '0')).join(''))
-    .join('')
 }
 
 // ========== 汇报材料专属接口 ==========
@@ -380,7 +320,6 @@ export interface ReportMaterial {
   content_type?: string
   file_size?: number
   attachment_id?: number
-  checksum_md5?: string
   report_period: string
   report_date?: string
   keywords?: string
@@ -394,7 +333,8 @@ export interface ReportMaterial {
 }
 
 export interface ReportPageQuery {
-  projectId?: number
+  /** T32：列表与回收站必须限定项目。 */
+  projectId: number
   reportPeriod?: string
   keyword?: string
   page?: number
@@ -410,24 +350,21 @@ export interface ReportUploadParams {
   reportDate?: string
   keywords: string
   attachmentId: number
-  checksumMd5?: string
 }
 
 export interface ReportBatchUploadParams {
   projectId: number
   reportPeriod: string
   attachmentIds: number[]
-  checksumMd5s: string[]
 }
 
 export interface ReportUpdateParams {
-  projectId?: number
+  /** T32 决策 D2：维护接口不再接受 projectId，归属恒取库中记录。 */
   reportPeriod?: string
   reportName?: string
   reportDate?: string
   keywords?: string
   attachmentId?: number
-  checksumMd5?: string
 }
 
 /** 分页查询汇报材料列表 */
@@ -444,7 +381,6 @@ export function uploadReportMaterial(params: ReportUploadParams) {
   if (params.reportDate) form.append('reportDate', params.reportDate)
   form.append('keywords', params.keywords)
   form.append('attachmentId', String(params.attachmentId))
-  if (params.checksumMd5) form.append('checksumMd5', params.checksumMd5)
   return http.post<ApiResponse<ReportMaterial>>('/data-migration/reports/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
@@ -454,20 +390,17 @@ export function batchUploadReportMaterials(params: ReportBatchUploadParams) {
   form.append('projectId', String(params.projectId))
   form.append('reportPeriod', params.reportPeriod)
   params.attachmentIds.forEach(id => form.append('attachmentIds', String(id)))
-  params.checksumMd5s.forEach(md5 => form.append('checksumMd5s', md5))
   return http.post<ApiResponse<ReportMaterial[]>>('/data-migration/reports/batch', form, { headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
-/** 编辑汇报材料 */
+/** 编辑汇报材料（不得传 projectId，归属由服务端取库中记录） */
 export function updateReportMaterial(id: number, params: ReportUpdateParams) {
   const form = new FormData()
-  if (params.projectId) form.append('projectId', String(params.projectId))
   if (params.reportPeriod) form.append('reportPeriod', params.reportPeriod)
   if (params.reportName) form.append('reportName', params.reportName)
   if (params.reportDate) form.append('reportDate', params.reportDate)
   if (params.keywords) form.append('keywords', params.keywords)
   if (params.attachmentId) form.append('attachmentId', String(params.attachmentId))
-  if (params.checksumMd5) form.append('checksumMd5', params.checksumMd5)
   return http.put<ApiResponse<ReportMaterial>>(`/data-migration/reports/${id}`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
@@ -491,11 +424,6 @@ export function downloadReportMaterial(id: number) {
 }
 
 /** 汇报材料回收站相关旧前端入口已于 T26 下线（无 web 端调用方，旧后端 @RequestMapping 同步已删）；统一回收站入口使用 listDataMigrationRecycleBin/restoreDataMigrationAssets/purgeDataMigrationAssets 与 asset_type=REPORT 分发。 */
-
-/** 检查MD5是否可用 */
-export function checkReportMd5(md5: string) {
-  return http.get<ApiResponse<{ available: boolean }>>('/data-migration/reports/check-md5', { params: { md5 } })
-}
 
 /** 获取项目选项列表 */
 export function getReportProjectOptions() {
@@ -543,7 +471,8 @@ export interface IssueRecord {
 }
 
 export interface IssueQuery {
-  projectId?: number
+  /** T32：问题清单查询/导出必须限定项目。 */
+  projectId: number
   granularity?: string
   systemCode?: string
   issueSource?: string
@@ -580,7 +509,8 @@ export interface IssueFormData {
   relatedFieldNames?: string
 }
 
-export type IssueUpdateData = IssueFormData & Required<Pick<IssueFormData,
+/** T32 决策 D2：维护接口不再接受 projectId，归属恒取库中记录且不可变更。 */
+export type IssueUpdateData = Omit<IssueFormData, 'projectId'> & Required<Pick<IssueFormData,
   'relatedMeetingMinutes' | 'relatedTables' | 'relatedFields'>>
 
 export interface SelectOption {
@@ -632,8 +562,8 @@ export function deleteIssues(ids: number[]) {
   return http.delete<ApiResponse<null>>('/data-migration/issues', { data: ids })
 }
 
-/** 回收站列表 */
-export function listIssueRecycleBin(params: { projectId?: number; keyword?: string; page?: number; size?: number }) {
+/** 回收站列表（T32：按项目隔离） */
+export function listIssueRecycleBin(params: { projectId: number; keyword?: string; page?: number; size?: number }) {
   return http.get<ApiResponse<DataMigrationPage<IssueRecord>>>('/data-migration/issues/recycle-bin', { params })
 }
 
@@ -647,13 +577,13 @@ export function purgeIssues(ids: number[]) {
   return http.delete<ApiResponse<null>>('/data-migration/issues/purge', { data: ids })
 }
 
-/** 清空回收站 */
-export function purgeAllIssues() {
-  return http.delete<ApiResponse<null>>('/data-migration/issues/purge-all')
+/** 清空回收站（T32：仅清空所选项目内的软删问题） */
+export function purgeAllIssues(projectId: number) {
+  return http.delete<ApiResponse<null>>('/data-migration/issues/purge-all', { params: { projectId } })
 }
 
 /** 获取系统选项（根据项目） */
-export function getIssueSystemOptions(projectId?: number) {
+export function getIssueSystemOptions(projectId: number) {
   return http.get<ApiResponse<SelectOption[]>>('/data-migration/issues/options/systems', { params: { projectId } })
 }
 
@@ -663,18 +593,18 @@ export function getIssueSystemName(systemCode: string) {
 }
 
 /** 获取会议纪要选项（根据项目） */
-export function getIssueMeetingOptions(projectId?: number) {
+export function getIssueMeetingOptions(projectId: number) {
   return http.get<ApiResponse<SelectOption[]>>('/data-migration/issues/options/meetings', { params: { projectId } })
 }
 
 /** 获取目标表选项（根据项目） */
-export function getIssueTargetTableOptions(projectId?: number) {
+export function getIssueTargetTableOptions(projectId: number) {
   return http.get<ApiResponse<SelectOption[]>>('/data-migration/issues/options/target-tables', { params: { projectId } })
 }
 
 /** 获取目标表字段选项（根据表ID） */
-export function getIssueTargetFieldOptions(tableId: number) {
-  return http.get<ApiResponse<SelectOption[]>>('/data-migration/issues/options/target-fields', { params: { tableId } })
+export function getIssueTargetFieldOptions(tableCode: number) {
+  return http.get<ApiResponse<SelectOption[]>>('/data-migration/issues/options/target-fields', { params: { tableCode } })
 }
 
 // ========== 会议纪要专属接口 ==========
@@ -719,16 +649,17 @@ export interface MeetingRecord {
   updated_by_name?: string
   deleted_by_name?: string
   system_names?: string
-  system_ids?: string
+  system_codes?: string
   related_issue_names?: string
   related_issue_ids?: string
 }
 
 export interface MeetingQuery {
-  projectId?: number
+  /** T32：会议纪要查询必须限定项目。 */
+  projectId: number
   meetingSource?: string
   granularity?: string
-  systemId?: number
+  systemCode?: string
   keyword?: string
   page?: number
   size?: number
@@ -745,12 +676,15 @@ export interface MeetingFormData {
   meetingConclusion?: string
   businessScenario?: string
   keywords?: string[]
-  systemIds?: number[]
+  systemCodes?: string[]
   issueIds?: number[]
   attachmentId?: number
   fileName?: string
   attachments?: { attachmentId: number; fileName: string }[]
 }
+
+/** T32 决策 D2：维护接口不再接受 projectId，归属恒取库中记录且不可变更。 */
+export type MeetingUpdateData = Omit<MeetingFormData, 'projectId'>
 
 /** 分页查询会议纪要列表 */
 export function listMeetings(params: MeetingQuery) {
@@ -767,8 +701,8 @@ export function createMeeting(body: MeetingFormData) {
   return http.post<ApiResponse<MeetingRecord>>('/data-migration/meetings', body)
 }
 
-/** 更新会议纪要 */
-export function updateMeeting(meetingId: number, body: MeetingFormData) {
+/** 更新会议纪要（不得传 projectId，归属由服务端取库中记录） */
+export function updateMeeting(meetingId: number, body: MeetingUpdateData) {
   return http.put<ApiResponse<MeetingRecord>>(`/data-migration/meetings/${meetingId}`, body)
 }
 
@@ -780,12 +714,12 @@ export function deleteMeetings(meetingIds: number[]) {
 /** 会议回收站相关旧前端入口已于 T26 下线（无 web 端调用方，旧后端 @RequestMapping 同步已删）；统一回收站入口使用 listDataMigrationRecycleBin/restoreDataMigrationAssets/purgeDataMigrationAssets 与 asset_type=MEETING 分发。附件级回收站 (listMeetingAttachmentsRecycleBin 等) 仍保留在会议页。 */
 
 /** 获取系统选项（根据项目） */
-export function getMeetingSystemOptions(projectId?: number) {
+export function getMeetingSystemOptions(projectId: number) {
   return http.get<ApiResponse<SelectOption[]>>('/data-migration/meetings/options/systems', { params: { projectId } })
 }
 
 /** 获取问题选项（根据项目） */
-export function getMeetingIssueOptions(projectId?: number) {
+export function getMeetingIssueOptions(projectId: number) {
   return http.get<ApiResponse<SelectOption[]>>('/data-migration/meetings/options/issues', { params: { projectId } })
 }
 
@@ -809,8 +743,8 @@ export function restoreMeetingAttachment(meetingId: number, attachmentId: number
   return http.post<ApiResponse<null>>(`/data-migration/meetings/${meetingId}/attachments/${attachmentId}/restore`)
 }
 
-/** 全局附件回收站列表（跨会议） */
-export function listAttachmentRecycleBin(params: { projectId?: number; keyword?: string; page?: number; size?: number }) {
+/** 全局附件回收站列表（跨会议，T32：按项目隔离） */
+export function listAttachmentRecycleBin(params: { projectId: number; keyword?: string; page?: number; size?: number }) {
   return http.get<ApiResponse<DataMigrationPage<MeetingAttachment & { meeting_id: number; meeting_title: string }>>>(
     '/data-migration/meetings/attachments/recycle-bin', { params }
   )
@@ -826,9 +760,9 @@ export function purgeAttachments(ids: number[]) {
   return http.delete<ApiResponse<null>>('/data-migration/meetings/attachments/purge', { data: ids })
 }
 
-/** 清空附件回收站 */
-export function purgeAllAttachments() {
-  return http.delete<ApiResponse<null>>('/data-migration/meetings/attachments/purge-all')
+/** 清空附件回收站（T32：仅清空所选项目下会议的关系行） */
+export function purgeAllAttachments(projectId: number) {
+  return http.delete<ApiResponse<null>>('/data-migration/meetings/attachments/purge-all', { params: { projectId } })
 }
 
 // ========== 迁移方案专属接口（REQ-20260820-031 增量，对标会议纪要/汇报材料） ==========
@@ -850,7 +784,7 @@ export interface PlanRecord {
   granularity: string
   /** BUSINESS=业务迁移方案 / DATA=数据迁移方案 */
   plan_type: string
-  system_id: number
+  system_code: string
   system_name?: string
   asset_type?: string
   asset_code?: string
@@ -859,7 +793,6 @@ export interface PlanRecord {
   content_type?: string
   file_size?: number
   attachment_id?: number
-  checksum_md5?: string
   attachment_count?: number
   owner_id: number
   created_by: number
@@ -872,10 +805,11 @@ export interface PlanRecord {
 }
 
 export interface PlanQuery {
-  projectId?: number
+  /** T32：迁移方案查询必须限定项目。 */
+  projectId: number
   granularity?: string
   planType?: string
-  systemId?: number
+  systemCode?: string
   keyword?: string
   page?: number
   size?: number
@@ -886,11 +820,14 @@ export interface PlanFormData {
   projectId: number
   granularity: string
   planType: string
-  systemId?: number
+  systemCode?: string
   planName?: string
   summary?: string
-  files: { attachmentId: number; checksumMd5: string; fileName?: string }[]
+  files: { attachmentId: number; fileName?: string }[]
 }
+
+/** T32 决策 D2：维护接口不再接受 projectId，归属恒取库中记录；无文件变动时可不发送 files。 */
+export type PlanUpdateData = Omit<PlanFormData, 'projectId' | 'files'> & { files?: PlanFormData['files'] }
 
 /** 分页查询迁移方案列表 */
 export function listPlans(params: PlanQuery) {
@@ -907,8 +844,8 @@ export function createPlan(body: PlanFormData) {
   return http.post<ApiResponse<PlanRecord>>('/data-migration/plans', body)
 }
 
-/** 编辑迁移方案（元数据 + 全量重设附件集合） */
-export function updatePlan(id: number, body: Partial<PlanFormData>) {
+/** 编辑迁移方案（元数据 + 全量重设附件集合；不得传 projectId） */
+export function updatePlan(id: number, body: PlanUpdateData) {
   return http.put<ApiResponse<PlanRecord>>(`/data-migration/plans/${id}`, body)
 }
 
@@ -928,6 +865,6 @@ export function getPlanAttachments(id: number) {
 }
 
 /** 获取关联系统选项（根据项目） */
-export function getPlanSystemOptions(projectId?: number) {
+export function getPlanSystemOptions(projectId: number) {
   return http.get<ApiResponse<SelectOption[]>>('/data-migration/plans/options/systems', { params: { projectId } })
 }

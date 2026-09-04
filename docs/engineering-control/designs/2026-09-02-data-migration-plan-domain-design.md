@@ -13,8 +13,8 @@
 ## 方案范式
 完全对标 `ReportService`/`ReportController`/`ReportRecycleBinSource`（文件型内容从通用链路提升为专属域的先例）与 `MeetingController` 的多附件范式。
 
-## 数据库设计（V159__data_migration_plan_domain.sql，追加式）
-`dm_plan` 表（V153 建表，本次域化；核实为空表，不回填）新增列：
+## 数据库设计（V168__data_migration_plan_domain.sql，追加式）
+`dm_plan` 表（V162 建表，本次域化；核实为空表，不回填）新增列：
 
 | 列 | 类型 | 说明 |
 | --- | --- | --- |
@@ -27,7 +27,7 @@
 约束与索引：
 - `UNIQUE KEY uk_dm_plan_active_dimension (active_dimension_key)`：实现「(项目+颗粒度+方案类型+关联系统) 活动域仅一条」；软删行 `active_dimension_key` 为 NULL，MySQL 唯一索引对 NULL 判不同，故回收站中可并存、恢复时若冲突由服务端翻译为 CONFLICT。
 - `idx_dm_plan_dimension (tenant_id, project_id, granularity, plan_type, deleted)`、`idx_dm_plan_system (tenant_id, system_id, deleted)`：组合筛选。
-- 逻辑删除字段（`deleted/deleted_by/deleted_at`）沿用 V153 既有列。
+- 逻辑删除字段（`deleted/deleted_by/deleted_at`）沿用 V162 既有列。
 - 多文件绑定沿用公共附件表 `dm_content_attachment`（`business_type='PLAN'`，`sort_order=0` 为主文件），首文件 MD5 记入 `dm_plan.checksum_md5`；平台侧附件绑定域沿用 `DATA_MIGRATION_ASSET`，令 `DataMigrationAssetAttachmentAccessPolicy` 跨表定位 owner 生效。
 - 操作审计沿用 `dm_operation_log`（V84）：`entity_type='PLAN'`，operation_code ∈ PLAN_UPLOAD/PLAN_UPDATE/PLAN_DELETE/PLAN_RESTORE/PLAN_PURGE，记录 actor_id。
 - `dm_plan` 保留在 `ContentAssetTables.FILE_TABLES`，故 `check-md5` 全域去重与看板计数不受本次 `MANAGED_TYPES` 移除影响。
@@ -56,12 +56,12 @@
 - 前端 `PlansPage.vue` 由 12 行 `AssetListView` 薄壳重写为专属页（对标 `MeetingsPage.vue`）：5 维筛选、分页列表（方案名称点击查看）、新增/编辑抽屉（归属维度→方案信息→源文件，系统级联动必填关联系统）、下载/预览、删除入统一回收站；桌面 1280×800 + 移动 375×812 视口。
 
 ## 验证策略
-1. `mvn -pl :ccb-data-migration test -Dtest=PlanDomainMigrationMySqlTest,DataMigrationModuleRegistrationTest`：V159 迁移 + 活动维度唯一 + 注册路由断言。
+1. `mvn -pl :ccb-data-migration test -Dtest=PlanDomainMigrationMySqlTest,DataMigrationModuleRegistrationTest`：V168 迁移 + 活动维度唯一 + 注册路由断言。
 2. `npm --prefix web run build`：vue-tsc + Vite 构建。
 3. `node scripts/check-all-governance.mjs`：治理与范围。
-4. 运行取证：重启后端使 Flyway 应用 V159；`/api/data-migration/plans` 未认证 401、认证后 200、`/plans/999` 400、`recycle-bin?contentTypes=PLAN` 200。
-5. 真实浏览器（admin/admin123）：列表/筛选/新增抽屉/系统级联动/多文件/移动视口。
+4. 运行取证：重启后端使 Flyway 应用 V168；`/api/data-migration/plans` 未认证 401、认证后 200、`/plans/999` 400、`recycle-bin?contentTypes=PLAN` 200。
+5. 真实浏览器（通过 `E2E_ADMIN_PASSWORD` 注入测试凭据）：列表/筛选/新增抽屉/系统级联动/多文件/移动视口。
 
 ## 风险与回退
 - 风险：Bean 名与 architecture 模块 `PlanController` 冲突（已以显式 Bean 名解决）；环境缺少系统主数据与迁移方案演示数据，「有数据行」的下载/预览/编辑回填/回收站恢复本轮为盲区，需灌演示数据后复验；本轮浏览器截图受内置视图隐藏限制未产出。
-- 回退：回退本次代码提交；V159 为追加式迁移，历史脚本不受影响；`MANAGED_TYPES` 与 `RESOURCE_TYPES` 的 PLAN 移除需与 `PlanRecycleBinSource` 认领同批回退以避免重复认领。
+- 回退：回退本次代码提交；V168 为追加式迁移，历史脚本不受影响；`MANAGED_TYPES` 与 `RESOURCE_TYPES` 的 PLAN 移除需与 `PlanRecycleBinSource` 认领同批回退以避免重复认领。

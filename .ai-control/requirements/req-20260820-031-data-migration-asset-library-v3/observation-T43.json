@@ -1,0 +1,66 @@
+{
+  "sample_label": "T43 dm_project 废弃删除最终观测",
+  "task_ids": [
+    "T43"
+  ],
+  "baseline_revision": "T42 验收后的当前态：测试库含 20 张 dm_* 表（含 V84 创建的遗留表 dm_project，V151 注释为历史保留），文档最终模型声明 19 张表且 dm_project 不属于最终模型；用户确认 dm_project 已完全废弃必须删除，并要求调整为当前最终态（下次提交代码将做一次初始化）。",
+  "observed_at": "2026-09-05T00:35:00+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 测试库 V170 应用",
+      "result": "pass",
+      "raw_evidence": "Flyway 10.20.1 target=170 应用 V170（DROP TABLE IF EXISTS dm_project，执行 40ms）成功；information_schema 断言 dm_project 已不存在、dm_* 表共 19 张、无 active_* 生成列；fk_target_field_table_code、idx_dm_operation_log_project 等约束不受影响；迁移历史 31 条 dm 相关记录 success=1，数据库版本 v170。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 未来初始化可复现性",
+      "result": "pass",
+      "raw_evidence": "迁移链为追加式：V84 仍会 CREATE TABLE IF NOT EXISTS dm_project，V170 在其后 DROP，完整初始化（V1→V170）的最终态不含 dm_project；V170 幂等（DROP TABLE IF EXISTS），对已有库重放安全。",
+      "limitation": [
+        "未在全新库上实际回放完整 V1→V170 链（当前测试库为链上逐步应用，等价性由追加式幂等迁移保证）。"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 模块与范围回归",
+      "result": "pass",
+      "raw_evidence": "DataMigrationModuleRegistrationTest 通过（新增 dmProjectIsDroppedFromFinalModelByV170：V170 含 DROP TABLE IF EXISTS dm_project、ContentAssetTables 不含 dm_project）；codex-task-scope.yaml 已登记 V170 与 T43 说明；check-codex-scope 仅剩他人任务 REQ-20260903-064 越界项。",
+      "limitation": [
+        "未重跑全量 82 项后端测试（仅注册测试 + 针对性 DB 校验；新增迁移为单条幂等 DROP）。"
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "id": "T43-S1",
+      "kind": "database migration",
+      "result": "pass",
+      "evidence": "测试库 dm_project 已删除，19 张 dm_* 表，版本 v170。"
+    },
+    {
+      "id": "T43-S2",
+      "kind": "automated backend",
+      "result": "pass",
+      "evidence": "DataMigrationModuleRegistrationTest 通过（含 V170 断言）。"
+    }
+  ],
+  "feedback": [],
+  "resolved_feedback": [],
+  "disturbances": [
+    "工作区存在他人任务 REQ-20260903-064 中间表收敛的越界改动与未跟踪文件（本次未触碰）；checksum-md5-removal 两个账本命名不符合 check-ai-control-layout 布局（既有遗留，不属于 T43）。"
+  ],
+  "coverage_gaps": [
+    "未重跑全量后端测试套件与浏览器验收（本任务仅追加一条幂等 DROP TABLE 迁移，注册测试 + 针对性 MySQL 校验已覆盖本任务面）。"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete",
+  "verdict": "converged_for_T43",
+  "phase_recommendation": "保留 T43 增量证据，不重写历史 convergence.json；下次提交代码做初始化时，完整迁移链 V1→V170 最终态即不含 dm_project（开发阶段免备份，用户已确认）。"
+}

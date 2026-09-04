@@ -141,12 +141,6 @@ public class ContentAttachmentService {
         return purged;
     }
 
-    /** 清空回收站：删除该租户全部软删附件行。 */
-    @Transactional
-    public void purgeAllSoftDeleted(AuthUser user) {
-        jdbc.update("DELETE FROM dm_content_attachment WHERE tenant_id = ? AND deleted = 1", user.tenantId());
-    }
-
     /** 实体彻底删除前解绑并清空其全部附件行（含回收站行）。 */
     @Transactional
     public void unbindAndRemoveAll(String businessType, String attachmentBindingType, long businessId, AuthUser user) {

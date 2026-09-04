@@ -1,0 +1,82 @@
+{
+  "baseline_revision": "baseline-1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V160__data_migration_intermediate_table_canonicalization.sql",
+      "purpose": "新增：追加迁移，CALL 存储过程断言 dm_intermediate_table 行数为 0，非空 SIGNAL 阻断；断言通过后 DROP 旧表，不复制存量"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/**",
+      "purpose": "移除旧表名常量与 INTERMEDIATE_TABLE 业务分支；StructuredAssetService/ContentAssetTables/ExcelService 仅保留 RULE/PARAMETER；回收站/统计/关联校验收敛到 TargetTableService category=INTERMEDIATE，保留权限与项目可达性校验；新增 DataMigrationExceptionAdvice 废弃语义"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/**",
+      "purpose": "新增/更新 ContentAssetMigrationMySqlTest（空表删除与非空阻断 fixture）、DataMigrationModuleRegistrationTest（生产代码无旧表引用且 V160 含受控 DROP）、DataMigrationPermissionServiceTest、StubProjectAccess、web 包异常建议测试"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/**",
+      "purpose": "删除 IntermediateTablesPage.vue；TargetTablesPage 支持 category=INTERMEDIATE；StructuredListView/API 类型/回收站展示移除 INTERMEDIATE_TABLE 分支；新增 ProjectScopeState 等既有上下文组件"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "类型与请求下沉到目标表/字段接口，移除旧结构化中间表契约"
+    },
+    {
+      "path_or_resource": "web/src/router/index.ts",
+      "purpose": "中间表菜单仍保留路径/标题，组件指向 TargetTablesPage 并传 category=INTERMEDIATE"
+    },
+    {
+      "path_or_resource": "docs/engineering-control/designs/2026-09-03-data-migration-intermediate-table-canonicalization-design.md",
+      "purpose": "修正旧'观察期保留/复制存量'表述，明确 V160 不复制存量、仅在空表时清理、fail-closed"
+    },
+    {
+      "path_or_resource": "docs/requirements/** REQ-064 与 REQ-031 database-schema-and-relations.md",
+      "purpose": "同步中间表唯一化后的库表关系描述"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5"
+  ],
+  "commands": [
+    "mvn -pl :ccb-data-migration -am test：8/8 模块 BUILD SUCCESS；data-migration 64/64 通过，0 失败 0 错误（含 ContentAssetMigrationMySqlTest 7/7、IssueMigrationMySqlTest 3/3、DataMigrationModuleRegistrationTest 14/14、DataMigrationPermissionServiceTest 8/8、ContentRecycleBinRegistryTest 7/7）",
+    "npm --prefix web run build：✓ built in 18.56s，退出码 0（仅存量 chunk size 警告）",
+    "node scripts/check-all-governance.mjs：17 模块/仓库 skill/development entry/99 需求目录 1123 JSON/14 Maven 模块/Flyway 全部通过，退出码 0",
+    "rg -n -i 'dm_intermediate_table|INTERMEDIATE_TABLE' production 范围：0 命中；命中仅限测试文件与受控迁移",
+    "git diff --check：退出码 0",
+    "V160 空表 fixture 删除成功、非空 fixture 在 DROP 前被 SIGNAL 阻断（ContentAssetMigrationMySqlTest 7/7 复验）"
+  ],
+  "local_checks": [
+    "V160 在 DROP 前经存储过程断言行数=0，非空时 SIGNAL 45000，fail-closed",
+    "DataMigrationModuleRegistrationTest 断言生产源文件不含 dm_intermediate_table/INTERMEDIATE_TABLE，且 V160 包含受控 DROP",
+    "全仓库生产代码扫描（排除 test/migration/.ai-control/docs）无旧表引用；router 无 IntermediateTablesPage 残留导入",
+    "设计/计划文档扫描无'观察期保留/复制存量'残留表述",
+    "Flyway 检查通过（154 迁移 + 2 回调），V160 仅追加"
+  ],
+  "diff_summary": [
+    "62 个文件变更，+11303/-10283；REQ-064 可归属改动均在 writable_paths 内；工作树同时包含其他需求（REQ-031 T31/T32、REQ-063 治理整改、控制脚本与开发工具、LoginView/verify_ui 等）的既有未提交改动"
+  ],
+  "invariants_checked": [
+    "Flyway 只追加：V88/V153/V154/V151/V155 未修改，V160 为追加",
+    "DROP 前旧表行数必须为 0（SIGNAL 保护）",
+    "未修改 platform/system 与 pm_project_member（模块边界检查通过）",
+    "中间表菜单权限码与路由路径保持",
+    "租户/项目/RBAC/审计语义经权限测试与治理检查保持"
+  ],
+  "disturbances": [
+    "特征分支工作树带有 REQ-031/REQ-063 等既有未提交改动，属于其他需求范围，REQ-064 未触碰",
+    "前端构建存在存量 chunk size 警告，与本次改动无关",
+    "本地验证环境为 Testcontainers MySQL 8.4 与本地前端构建，不替代生产拓扑"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "生产 MySQL 8.4 Flyway 版本兼容警告为存量现象，不阻断；V160 在测试节点空表前提下执行"
+  ],
+  "recorded_at": "2026-09-03T18:30:00+08:00",
+  "task_id": "T1-T4",
+  "recommended_next": "进入独立观测：按 S1-S4 传感器记录采样并核对 R1-R5 证据，随后执行收敛验收"
+}

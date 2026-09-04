@@ -1,0 +1,126 @@
+{
+  "task_id": "T31-r1",
+  "parent_task": "T31",
+  "trigger": "用户在 T31 交付后追加两点：(1) 提供本地测试账号口令（凭据仅本会话使用，不在账本记录；与既有记忆「测试用户登录凭证」一致，前次 401 系口令猜测错误）；(2) 「页面无需展示所属项目这个字段」——即在已移除项目筛选控件的基础上，连只读展示也不保留。",
+  "status": "implemented_and_verified",
+  "scope_kind": "frontend_only",
+  "decision_recorded": "验收口径变更：数据迁移模块内不再以任何形式展示「所属项目」字段值，当前项目仅由顶部全局切换器呈现；页面文案改为静态说明「固定属于顶部项目切换器选择的当前项目」，不再回显项目名称。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/data-migration/components/ProjectScopeHint.vue",
+      "purpose": "删除：T31 引入的只读「所属项目」标识条与需求口径冲突，且删除后无任何引用方（其样式随文件一并移除，未遗留 dead CSS）。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/components/AssetListView.vue",
+      "purpose": "移除工具栏 ProjectScopeHint、上传抽屉「所属项目」只读表单项与 scopeProjectName 派生量；空态/头部文案改为不回显项目名；文件头注释同步。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/components/StructuredListView.vue",
+      "purpose": "同上：移除标识条与编辑抽屉「所属项目」表单项；保留按 project_id 的前端过滤（该端点契约无 projectId 参数）。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+      "purpose": "移除标识条、新增/修改/查看三处「所属项目」表单项、桌面表格「所属项目」列与移动端卡片标题位（卡片标题改为系统编号 + 系统简称），空态文案去项目名。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+      "purpose": "移除标识条、新增/修改表单项、桌面表格列、移动端卡片字段、查看详情 descriptions 项，空态文案去项目名。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/PlansPage.vue",
+      "purpose": "移除标识条、抽屉「所属项目」表单项（含 formProjectName 派生状态与 openEdit/resetForm 赋值）、列表「项目名称」列与详情「项目名称」项；页头描述改为静态说明。fv.projectId 仍取 scopeProjectId 用于提交。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/IssuesPage.vue",
+      "purpose": "移除标识条、新增/编辑抽屉与 Excel 导入弹窗的「所属项目」表单项（含 formProjectName 状态）、问题清单与回收站两处「项目」列、两处空态项目名；保留列表/回收站/导入按 scopeProjectId 查询与提交。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/MeetingsPage.vue",
+      "purpose": "移除标识条、抽屉「所属项目」表单项（含 formProjectName 状态）、列表「项目」列与详情弹窗「项目」项，空态与页头去项目名。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue",
+      "purpose": "移除标识条、单条/批量上传抽屉与编辑抽屉「所属项目」表单项（含 editProjectName 状态）、桌面「所属项目」列与移动卡片字段、空态项目名；editProjectId 仍保留并回传，避免后端 SET project_id 改归属。"
+    }
+  ],
+  "requirements_addressed": [
+    "R4",
+    "R5",
+    "R6",
+    "T31 增量口径：页面不展示所属项目字段"
+  ],
+  "commands": [
+    {
+      "command": "grep -rn 'scopeProjectName|ProjectScopeHint' web/src",
+      "exit_code": 1,
+      "result": "0 命中（NONE）：标识条组件与其派生状态全部移除。"
+    },
+    {
+      "command": "grep -rn '所属项目|project_name' web/src/modules/data-migration",
+      "exit_code": 0,
+      "result": "剩余命中仅为文件头注释、useProjectScope 内部注释/字段与 TargetTablesPage Excel 模板列名说明（模板首列确为「所属项目编码」，属后端导入契约，保留）。"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "result": "vue-tsc + Vite 生产构建成功（✓ built in 16.84s）。"
+    },
+    {
+      "command": "curl POST /api/auth/login（本地测试账号，凭据不落盘）→ GET /api/project/workbench",
+      "exit_code": 0,
+      "result": "HTTP 200 code=0，返回 3 个项目：3001/P2026-001 零售贷款 2.0 升级项目、3002/P2026-002 信用卡分期优化项目、3003/P2026-003 对公跨境支付项目 → 证明 useProjectScope 以 project_code 反查数值 id 的映射在真实数据上成立。"
+    },
+    {
+      "command": "node /tmp/dmv/dm_viewport.mjs P2026-001（Playwright，15 路由 × 1280x800/375x812/390x844/430x932 + 移动端 2 个抽屉）",
+      "exit_code": 0,
+      "result": "total=66 failed=0：main 区域内无「所属项目」文字（innerText 与 innerHTML 双重检查）、无项目下拉、documentElement 无横向溢出、控制台 0 error、无 ≥400 响应、移动抽屉高度 ≤ 视口高度。"
+    },
+    {
+      "command": "node /tmp/dmv/dm_real_switch.mjs（真实点击顶部全局切换器 P2026-001 → P2026-002）",
+      "exit_code": 0,
+      "result": "切换前列表=CHK-A-001（共 1 条）；点击切换器 + 确认弹窗后列表=CHK-B-001（共 1 条），residueOfA=false，后续请求为 /api/data-migration/issues?page=1&size=20&projectId=3002 与 options/systems?projectId=3002，控制台 0 error。"
+    },
+    {
+      "command": "node /tmp/dmv/dm_gate_cleanup.mjs（空项目标识 + 拦截 /api/project/workbench 返回 500）",
+      "exit_code": 0,
+      "result": "① ccb.current_project_ref='' 时全局上下文回落到首个可见项目（3003），模块跟随解析结果查询 projectId=3003，无残留展示；② workbench 500 时页面只显示闸门「当前项目信息加载失败…重新加载」，且 /api/data-migration/* 列表请求数为 0（仅 vite 源码请求），新增/导入入口不出现在闸门内。"
+    },
+    {
+      "command": "测试数据清理：DELETE /api/data-migration/issues + DELETE /api/data-migration/issues/purge（CHK-A-001 id=1788363804461767, CHK-B-001 id=1788363966745039）",
+      "exit_code": 0,
+      "result": "两接口均 HTTP 200；清理后 3001/3002/3003 issues total=0，问题回收站 total=0，统一回收站 total=0（本地库恢复验收前状态）。"
+    }
+  ],
+  "local_checks": [
+    "Playwright 4 视口 × 15 路由自动化断言",
+    "真实全局切换器点击路径（非直接改 localStorage）",
+    "闸门态请求计数",
+    "vue-tsc + Vite 构建",
+    "模块内文本/DOM 残留 grep"
+  ],
+  "invariants_checked": [
+    "未改动 web/src/stores/**、web/src/components/ui/**、views/AppLayout.vue、后端 java 与 Flyway：git status 显示改动仅落在 web/src/modules/data-migration/**（8 改 + composables/useProjectScope.ts 与 components/ProjectScopeState.vue 新增 + components/ProjectScopeHint.vue 删除）",
+    "后端契约不变：列表/上传/新增仍按既有 projectId 字段传参，统一响应结构、/api 前缀、租户上下文与权限模型未触碰",
+    "数据归属不变：编辑提交仍回传记录自身 project_id（ReportsPage editProjectId、IssuesPage/MeetingsPage/PlansPage openEdit 用 detail.project_id），用户无法把记录改到当前项目之外"
+  ],
+  "disturbances": [
+    "SearchReplace 批量替换是顺序执行且在首个失配处中止，前面的替换已落盘：IssuesPage 一次失配批次留下了把 fieldTableMap 声明行覆盖成重复 fSystemOpts 声明的损坏，已按 diff 精确复原；后续删除 import 改用「相邻两行合一」的锚点方式",
+    "用 localStorage 直接改项目标识做「热切换」测试无效：Playwright addInitScript 在每次导航/重载都会重新写入原值，属测试脚手架缺陷；已改为真实点击顶部切换器复测（通过）",
+    "上一会话记录的本地 fixture 口令已失效，导致 T31 观测把运行取证标为 blocked；实际可用口令与既有记忆「测试用户登录凭证」一致（应先查记忆再猜）",
+    "后端与 Vite dev server 在会话中途停止（8080 ECONNREFUSED），已用 ./backend-dev.sh start 与 ./frontend-dev.sh start 重启后继续取证"
+  ],
+  "assumptions_falsified": [
+    "假设「ProjectScopeHint 只读标识条是必要的定位信息」被用户新口径否定 → 组件删除，改为顶部切换器唯一展示；页面文案不再回显项目名"
+  ],
+  "unresolved_items": [
+    "统一回收站（GET /api/data-migration/recycle-bin）与数迁看板按后端契约不带 projectId，展示跨项目集合；若要求项目内回收站需后端新增参数（超出本次「不改后端」约束）",
+    "结构化列表端点（/api/data-migration/parameters、/rules、/structured/{type}）无 projectId 参数，仍由前端按 project_id 过滤（当前数据集为空，无法构造跨项目污染反例；上线后需在真实数据下复核）",
+    "TargetTablesPage/IssuesPage 的 Excel 模板首列仍是「所属项目编码」，导入归属由后端解析，未改",
+    "1280x800 下 issues 表格列很多（内容宽 > 视口），固定「操作」列会裁切相邻列文字（演示数据下有数据时才明显）；属既有表格密度问题，本次删除「所属项目/项目」列后宽度已减少，未继续调整列宽策略"
+  ],
+  "recommended_next": "如需覆盖数据迁移看板与统一回收站的项目隔离，须先立后端契约变更需求；否则本任务可视为收敛交付。",
+  "rollback": "单次提交内回退 web/src/modules/data-migration/**（恢复被删的 ProjectScopeHint.vue 与各页标识条/表单项）即可回到 T31 状态；无数据库、无后端、无契约变更。",
+  "external_access": "local services only (127.0.0.1:8080 / :5173)",
+  "remote_updated": false,
+  "evidence_level": "已实现 + 检查通过（build EXIT=0）+ 运行可达（登录 200、workbench 200、数据迁移列表/新增/删除接口 200）+ 浏览器已验收（admin 角色，15 路由 × 4 视口自动化断言 + 真实切换器 A↔B + 闸门态，0 控制台错误、0 ≥400 请求、无页面级横向溢出）"
+}

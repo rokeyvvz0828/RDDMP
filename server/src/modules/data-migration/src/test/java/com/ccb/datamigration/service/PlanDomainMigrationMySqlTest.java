@@ -21,9 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * V159 迁移方案域化迁移测试：在 V153 形状的 dm_plan 上应用真实 V159 脚本，断言
+ * V168 迁移方案域化迁移测试：在 V162 形状的 dm_plan 上应用真实 V168 脚本，断言
  * 新增维度列、活动维度唯一键（{@code uk_dm_plan_active_dimension}）语义与项目级 system_id=0 哨兵。
- * 自包含构造最小基线，直接执行迁移目录中的 V159 文件内容（不依赖完整 Flyway 链）。
+ * 自包含构造最小基线，直接执行迁移目录中的 V168 文件内容（不依赖完整 Flyway 链）。
  */
 @Testcontainers
 class PlanDomainMigrationMySqlTest {
@@ -35,7 +35,7 @@ class PlanDomainMigrationMySqlTest {
             .withPassword("test");
 
     @Test
-    void v159AddsDimensionColumnsAndActiveDimensionUniqueness() throws Exception {
+    void v168AddsDimensionColumnsAndActiveDimensionUniqueness() throws Exception {
         try (Connection connection = connection()) {
             execute(connection, """
                     CREATE TABLE dm_plan (
@@ -60,7 +60,7 @@ class PlanDomainMigrationMySqlTest {
                     )
                     """);
 
-            for (String statement : readMigrationStatements("V159__data_migration_plan_domain.sql")) {
+            for (String statement : readMigrationStatements("V168__data_migration_plan_domain.sql")) {
                 execute(connection, statement);
             }
 
@@ -125,7 +125,7 @@ class PlanDomainMigrationMySqlTest {
                 current.setLength(0);
             }
         }
-        assertTrue(!statements.isEmpty(), "V159 未解析到可执行语句");
+        assertTrue(!statements.isEmpty(), "V168 未解析到可执行语句");
         return statements;
     }
 

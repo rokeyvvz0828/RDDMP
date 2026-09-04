@@ -1,0 +1,66 @@
+{
+  "task_id": "T31",
+  "trigger": "用户请求：统一优化数据迁移模块所有页面与交互，使其全面跟随全局项目上下文（顶部导航栏右侧、通知中心左侧的项目切换器为唯一项目来源）；明确要求不调整全局项目切换本身的行为，仅优化模块内页面对「当前项目」的消费方式；8 项要求（覆盖范围/上下文来源/切换行为/取消所属项目筛选/新增编辑表单/异常边界/实现约束/验收标准）",
+  "status": "implemented",
+  "scope_kind": "frontend_only",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/data-migration/composables/useProjectScope.ts", "purpose": "新增：把全局上下文 currentRef(project_code) 解析为后端契约所需数值 projectId 与 projectName；模块级共享项目工作台快照；暴露 state(loading|ready|unselected|unavailable|error)/ensureLoaded()/retry()；解析不到时 projectId=null 用于阻断查询"},
+    {"path_or_resource": "web/src/modules/data-migration/components/ProjectScopeHint.vue", "purpose": "新增：替代原「所属项目」筛选控件的只读标识，无选择/覆盖入口，<=760px 整行展示，空值显示「未选择」不回退历史项目"},
+    {"path_or_resource": "web/src/modules/data-migration/components/ProjectScopeState.vue", "purpose": "新增：非 ready 统一闸门（加载/加载失败可重试/项目不可访问可重载/尚未选择项目），错误文案取上下文真实 errorText"},
+    {"path_or_resource": "web/src/modules/data-migration/components/AssetListView.vue", "purpose": "移除工具栏项目 ID 输入与上传抽屉项目 ID 输入；load() 恒带 projectId；saveUpload() 固定当前项目；watch(scopeProjectId) 重置 keyword/componentId/page/drawer"},
+    {"path_or_resource": "web/src/modules/data-migration/components/StructuredListView.vue", "purpose": "结构化列表端点无 projectId，改为按 project_id 前端过滤；export 沿用既有 projectId 契约；update 回传记录自身 project_id 防改归属；工具栏筛选下拉→只读标识；编辑抽屉只读所属项目"},
+    {"path_or_resource": "web/src/modules/data-migration/views/base/ComponentsPage.vue", "purpose": "删除 projects/loadProjects/getProjectWorkbench 依赖与 filters.projectId；列表/导出/新增固定当前项目；筛选区项目下拉→只读标识；新增抽屉项目下拉→disabled 输入；watch 重置筛选/分页/弹层"},
+    {"path_or_resource": "web/src/modules/data-migration/views/base/TargetTablesPage.vue", "purpose": "同上模式；watch 额外重置 createOpen/editOpen/viewOpen/fieldOpen/importVisible"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/PlansPage.vue", "purpose": "删除 fProject/projectOpts/loadOpts/onFilterProjectChange/onFormProjectChange；loadFilterSystems() 按当前项目加载关联系统；抽屉项目下拉→disabled 输入 + formProjectName；watch 重置并 resetForm()"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/IssuesPage.vue", "purpose": "删除 fProject/projectOpts/onProjectChange/importProject；列表与回收站恒定 projectId 且带 null 守卫；Excel 导入固定当前项目；抽屉与导入对话框项目下拉→disabled 输入；watch 重置列表/回收站/筛选/抽屉并 resetForm()"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/MeetingsPage.vue", "purpose": "删除 fProject/projectOpts/loadOpts/onProjectChange 与 getProjectWorkbench 导入；列表与附件回收站恒定 projectId+null 守卫；筛选关联系统改按当前项目；抽屉项目下拉→disabled 输入 + formProjectName；watch 重置列表/附件回收站/筛选/详情弹窗/抽屉"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue", "purpose": "删除 filterProjectId/projectOptions/loadProjectOptions/getReportProjectOptions 与 uploadProjectId；列表恒定 projectId+null 守卫；单条/批量上传固定当前项目；编辑保留记录自身 project_id 提交但改为 disabled 只读展示；watch 重置列表/筛选/分页/上传与编辑抽屉全部字段"},
+    {"path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md", "purpose": "追加「增量：数据迁移模块全面跟随全局项目上下文（T31）」小节，含目标/不变量/解析方式/逐页改造/边界剩余项/验收标准"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "result": "vue-tsc + Vite 生产构建成功（✓ built in 16.72s；后续复跑 EXIT=0）"},
+    {"command": "grep -rn '选择项目|projectOpts|projectOptions|fProject|filterProjectId|uploadProjectId|getProjectWorkbench' web/src/modules/data-migration/", "exit_code": 0, "result": "命中仅剩 useProjectScope.ts 内部解析、ProjectScopeState 的「重新选择项目」提示文案与只读「所属项目」标签，无任何可选项目筛选控件或项目下拉"},
+    {"command": "curl -s http://localhost:8080/api/actuator/health", "exit_code": 0, "result": "HTTP 401 {code:40100,message:Authentication required}（服务在跑且强制认证）；curl http://127.0.0.1:5173/ → HTTP 200"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 1, "result": "仅报 .gitignore 与 docs/engineering-control/designs/2026-09-02-data-migration-plan-domain-design.md 两项 outside writable_paths；二者由本分支既有提交 8b685b7 / 96b6bca 引入（T30 与 chore 提交），非本任务改动。本会话 11 个文件全部落在 web/src/modules/data-migration/**（git status 证实）+ requirement.md，均在 writable_paths 内"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "result": "退出码 1 全部来自其他需求前缀的既有账本问题（req-20260819-03x/035 topic mismatch、req-20260827-049 invalid ledger file、req-20260901-059 缺证据等），失败清单不含 req-20260820-031；本次新增 execution-T31.json/observation-T31.json 符合 requirementFilePattern"}
+  ],
+  "local_checks": ["vue-tsc typecheck", "vite production build", "module-wide grep for residual project selectors/refs", "scope review via git status"],
+  "diff_summary": [
+    "模块内新增项目上下文解析 composable + 只读标识组件 + 状态闸门组件（未触碰 web/src/stores/**、web/src/components/ui/**、AppLayout.vue）",
+    "8 个页面/组件移除「所属项目」筛选控件与项目下拉，改为固定读取全局当前项目",
+    "所有列表/回收站/附件回收站/导出/上传/新增/导入请求恒定携带当前 projectId，且 null 时守卫不发请求",
+    "项目切换 watch 统一清空列表、筛选、分页、弹层与表单默认值后重查（immediate: true）",
+    "非 ready 状态由闸门组件覆盖渲染并隐藏新增/上传入口，不回退历史项目、不展示旧数据",
+    "后端、数据库、权限模型、/api 前缀与统一响应结构零改动"
+  ],
+  "invariants_checked": [
+    "web/src/stores/**、web/src/components/ui/**、delivery-showcase/** 只读未改（git status 仅 data-migration 模块）",
+    "全局项目切换器行为未改：仅通过 useProjectContextStore().currentRef 读取 + initialize()/retry() 幂等调用",
+    "服务端 /api 前缀、统一响应结构、租户上下文、RBAC 与实体授权未变；沿用既有 projectId 契约字段",
+    "无新增/修改 Flyway 迁移，无后端代码变更，无权限模型变更",
+    "编辑链路仍回传记录自身 project_id（StructuredListView/ReportsPage），前端不提供改归属入口",
+    "未连接生产、未写入真实凭据（本地登录口令尝试未成功，未落盘）"
+  ],
+  "disturbances": [
+    "SearchReplace 以裸换行结尾的 original_text 会吞掉换行，造成 StructuredListView 两处语法合并错误，已各用一次精确替换修复",
+    "MeetingsPage watch 中 attRecTotal 误写为 [] 触发类型错误，已改为 0",
+    "ProjectScopeState 初版在非 ready 判定前未考虑「首次解析尚未完成」，会在挂载瞬间闪 unavailable；已将 fetched 改为 ref 并在 state 中前置 loading 判定",
+    "运行环境 POST /api/auth/login 使用 ledger 记录的本地 fixture 口令（admin/password、admin/admin）均返回 401，本会话无法取得授权态"
+  ],
+  "assumptions_falsified": [
+    "假设本地后端仍可用既有 fixture 口令登录以做浏览器验收：实测 401，未成立 → 运行可达仅到未认证层，浏览器验收延后"
+  ],
+  "unresolved_items": [
+    "浏览器已验收未执行（缺可用的本地登录凭据）：验收标准 1/2/5/6 的项目 A↔B 切换、请求携带 projectId、桌面 1280x800 与移动 375x812/390x844/430x932 视口取证待补",
+    "统一回收站（ContentRecycleBinController 仅 contentTypes/keyword/page/size）与两个看板（getDataMigrationDashboard 无项目参数）无法在前端按项目收窄，保持跨项目口径；已写入 requirement.md 边界与剩余项",
+    "purgeAllIssues()/purgeAllAttachments() 后端无项目参数，「清空回收站」仍为全量语义",
+    "目标表/组件 Excel 导入模板含「所属项目编码」列，归属由后端解析文件决定，前端无法覆盖",
+    "本分支既有提交 8b685b7/96b6bca 造成 check-codex-scope 越界告警，属前一任务范围问题，未在本任务内改动他人提交"
+  ],
+  "recommended_next": "取得本地测试账号后以管理员身份按 1280x800 与 375x812/390x844/430x932 完成项目 A↔B 切换、列表/新增/编辑/回收站/导入与刷新复进验收，并将证据升级至 运行可达/浏览器已验收",
+  "rollback": "单次提交内回退 web/src/modules/data-migration/** 的 11 个前端文件（含 3 个新增文件）即可，无数据库、无后端、无契约变更，回退后各页恢复原「所属项目」筛选与下拉；requirement.md 追加段可同批回退",
+  "external_access": "local services only",
+  "remote_updated": false,
+  "evidence_level": "已实现 + 检查通过（npm --prefix web run build EXIT=0 含 vue-tsc）；未达 运行可达（授权探针 401）与 浏览器已验收"
+}

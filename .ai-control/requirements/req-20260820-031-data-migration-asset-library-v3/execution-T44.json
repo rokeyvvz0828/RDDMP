@@ -1,0 +1,32 @@
+{
+  "task_id": "T44",
+  "parent_task": "T43",
+  "trigger": "main 合并后，main 已占用 Flyway V147-V155；用户确认采用方案 1，将数据迁移迁移序列整体顺延以避免版本冲突。",
+  "status": "implemented_and_verified",
+  "scope_kind": "data_migration_flyway_version_renumbering",
+  "decision_recorded": "仅对数据迁移拥有的 V147-V170 做等距顺延，映射为 V156-V179；迁移顺序和 SQL 行为保持不变，main 的 V147-V155 不修改。同步数据迁移测试、需求范围、需求说明、数据库关系说明及相关设计/计划中的当前版本引用。历史 execution/observation 证据不批量改写。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V156__data_migration_issue_independent_storage.sql 至 V179__data_migration_drop_dm_project.sql",
+      "purpose": "24 个数据迁移脚本由 V147-V170 等距顺延到 V156-V179；同步脚本版本注释及临时存储过程内部版本标识，未改变 DDL/DML 业务逻辑。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java、service/ContentAssetMigrationMySqlTest.java、service/DataMigrationGovernanceRemediationMySqlTest.java、service/IssueMigrationMySqlTest.java、service/PlanDomainMigrationMySqlTest.java",
+      "purpose": "同步迁移文件路径、Flyway baseline/target 和测试方法版本标识。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/**、docs/requirements/REQ-20260903-064-data-migration-intermediate-table-canonicalization/** 及数据迁移相关设计/计划",
+      "purpose": "同步最终迁移版本；REQ-031 writable_paths 同时保留旧路径以授权 Git 删除侧，REQ-064 required_tests 补齐仓库要求的 api/permission 声明。"
+    }
+  ],
+  "verification": [
+    "自定义版本唯一性检查：173 个 Flyway 迁移，重复版本 0。",
+    "mvn -pl :ccb-data-migration -am test：BUILD SUCCESS；ccb-data-migration 83 tests，0 failures，0 errors，0 skipped；MySQL 8.4 实际执行顺延后的迁移目标。",
+    "同步临时存储过程内部版本标识后，聚焦复验 ContentAssetMigrationMySqlTest 与 DataMigrationGovernanceRemediationMySqlTest：18 tests，0 failures，0 errors，0 skipped。",
+    "git diff --check：通过。",
+    "node scripts/check-development-entry.mjs --require-plugin：通过。",
+    "node scripts/check-flyway-migrations.mjs：仅报告用户明确忽略的 V84_1__seed_requirement_system_catalog.sql 命名问题；本次 V156-V179 无冲突。"
+  ],
+  "not_done": "未修改 main、其他业务模块、全局治理脚本或 control-engineering 插件；未提交、未推送、未合并。未重复运行前端构建，因为本次未修改前端代码且合并后审计中该构建已经通过。",
+  "noted_risk": "官方 scope 检查以 origin/main...HEAD 加整个工作区为输入，REQ-031 与 REQ-064 同时存在时会互相报告对方账本/文档/迁移为越界；两份范围不能在同一脏工作区独立通过。REQ-031 state.json 为 schema 5，而当前 control_loop.py 仅支持 schema 4，未执行状态转换或手工篡改账本阶段。"
+}

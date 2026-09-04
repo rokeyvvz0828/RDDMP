@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260903-064-data-migration-intermediate-table-canonicalization",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-03-data-migration-intermediate-table-canonicalization-design.md",
+  "objective": "将中间表唯一收敛到 dm_target_table(table_category='INTERMEDIATE') + dm_target_table_field，并在测试节点清理空旧表。",
+  "users": ["数据迁移管理员维护基础资料中间表", "迁移模块服务读取中间表结构", "数据库运维执行追加迁移"],
+  "requirements": [
+    {"id":"R1","statement":"中间表唯一主模型为 dm_target_table(table_category='INTERMEDIATE') 与 dm_target_table_field。","acceptance":["所有中间表 CRUD/查询均通过目标表服务"],"priority":"must","source":"用户批准方案","counterexample":["生产服务读取 dm_intermediate_table"]},
+    {"id":"R2","statement":"追加迁移在删除前断言旧表为空，存在数据时阻断。","acceptance":["空表 fixture 成功；非空 fixture 在 DROP 前失败"],"priority":"must","source":"用户最新决策","counterexample":["未检查存量直接 DROP"]},
+    {"id":"R3","statement":"中间表菜单、接口、回收站、统计和关联查询统一使用目标表/字段接口。","acceptance":["旧结构化入口拒绝；菜单仍可用且调用 category=INTERMEDIATE"],"priority":"must","source":"P1 治理问题","counterexample":["StructuredAssetService 继续拼接旧表名"]},
+    {"id":"R4","statement":"最终数据库不保留 dm_intermediate_table，且删除受空表断言保护。","acceptance":["V160 成功后旧表不存在；非空时迁移失败"],"priority":"must","source":"用户最新决策","counterexample":["无断言 DROP 旧表"]},
+    {"id":"R5","statement":"租户、项目、权限和审计语义保持不变。","acceptance":["模块测试、治理检查和权限回归通过"],"priority":"must","source":"项目规约","counterexample":["目标表接口绕过项目可达性"]}
+  ],
+  "invariants":["Flyway 只追加","DROP 前 dm_intermediate_table 行数必须为 0","应用收敛后不得读写旧表","不修改平台 system 或 pm_project_member"],
+  "constraints":["仅修改 REQ-064 writable_paths","不连接生产","保持 com.ccb 包名和现有权限码"],
+  "non_goals":["本需求物理删除旧表","重做目标表字段模型","修改项目成员模型","引入动态表单元数据"],
+  "selected_approach":{"name":"规范化主模型、空表断言后清理","reason":"测试节点无需搬迁数据，断言避免静默丢失","alternatives":[{"name":"长期双写/双读","rejected_because":"持续漂移且无法消除双模型"},{"name":"未断言直接删除旧表","rejected_because":"可能造成数据丢失"}]},
+  "architecture":{"boundary":{"inside":["V160 migration","data-migration backend/frontend"],"outside":["platform/system","pm_project_member"]},"components":[{"name":"V160","responsibility":"断言空表并清理旧中间表","depends_on":["dm_intermediate_table"]},{"name":"TargetTableService","responsibility":"INTERMEDIATE 主模型 CRUD/回收站","depends_on":["platform permission contract"]},{"name":"TargetTablesPage","responsibility":"中间表菜单页面","depends_on":["target table API"]}],"interfaces":[{"name":"target_table_intermediate","producer":"TargetTableService","consumers":["TargetTablesPage","IssueService","recycle bin"],"contract":"tableCategory=INTERMEDIATE and field rows"}],"data_flows":[{"input":"intermediate table maintenance request","transitions":["TargetTableService category INTERMEDIATE"],"output":"target table row + field rows"}]},
+  "error_handling":[{"condition":"缺少 systemCode/table name/field names","behavior":"迁移前 SIGNAL 失败","recovery":"人工补齐后重试"},{"condition":"主键或业务编号冲突","behavior":"迁移前 SIGNAL 失败","recovery":"人工核对映射"}],
+  "quality_attributes":{"security":["租户和项目授权不变"],"performance":["迁移仅执行空表断言"],"compatibility":["应用版本可回滚，数据库通过测试库重建回退"],"operations":["追加迁移、空表断言后物理清理"]},
+  "verification_strategy":[{"requirement_ids":["R1","R3"],"signal":"旧表 SQL 扫描为空且菜单使用目标表类别","method":"rg + Maven + frontend build"},{"requirement_ids":["R2","R4"],"signal":"空表 fixture 成功删除、非空 fixture 在 DROP 前失败","method":"Testcontainers MySQL"},{"requirement_ids":["R5"],"signal":"Flyway/治理/权限回归通过","method":"repository checkers and tests"}],
+  "assumptions":[{"text":"V160 是当前最高版本后的下一个可用迁移号","basis":"当前仓库最高版本 V159","falsifier":"迁移检查发现更高版本"}],
+  "unknowns":[],
+  "decisions":[{"id":"D1","decision":"不可转换存量采用迁移前阻断并人工补齐","reason":"避免静默丢失或伪造字段","source":"用户确认按建议执行"}],
+  "risks":[{"risk":"旧 JSON 字段缺失","impact":"迁移无法生成规范化字段","mitigation":"前置断言 fail-closed"},{"risk":"编号/主键冲突","impact":"重复或错误关联","mitigation":"按 tenant+table_code 对齐并冲突阻断"}],
+  "approval":{"status":"approved","evidence":"用户确认按推荐方案执行","confirmed_at":"2026-09-03"}
+}

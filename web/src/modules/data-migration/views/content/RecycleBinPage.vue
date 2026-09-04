@@ -3,13 +3,15 @@
   说明：聚合 6 个文件型、3 个结构化内容菜单、汇报材料（REPORT）与会议纪要（MEETING，文档级）的软删记录，
         支持按内容类型筛选、关键词查询、批量/单条恢复与彻底清理（不可恢复）；
         恢复/彻底删除按类型分发到各自来源服务，保留其业务规则。
+        T32：统一回收站不再跨项目聚合，列表仅包含顶部项目切换器当前项目内的软删记录；
+        列表/详情/恢复/清理的项目归属均由服务端按库中记录再校验，前端传不回其他项目的记录。
         会议附件级回收站仍在会议页内管理（信封不兼容、受 uk_dm_meeting_att_active 约束、需父会议未删前置校验）。
         使用 UiPageHeader + UiToolbar + UiDataTable，覆盖加载/空/失败/无权限/提交中状态，
         彻底清理为危险操作，需确认后执行。
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Refresh, Search, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
@@ -25,6 +27,12 @@ import {
   type DataMigrationContentRecycleRow,
   type DataMigrationContentRecycleDetail,
 } from '../../../../api/data-migration'
+import ProjectScopeState from '../../components/ProjectScopeState.vue'
+import { useProjectScope } from '../../composables/useProjectScope'
+
+const scope = useProjectScope()
+const scopeState = scope.state
+const scopeProjectId = scope.projectId
 
 /** 统一回收站覆盖的内容类型（与后端 ContentRecycleBinService.supportedTypes() 对齐，由 RecycleBinSource 注册表自动探知）。 */
 const CONTENT_TYPE_LABELS: Record<string, string> = {
@@ -38,7 +46,6 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   MEETING: '会议纪要',
   RULE: '迁移检核规则',
   PARAMETER: '迁移参数',
-  INTERMEDIATE_TABLE: '中间表结构',
 }
 const typeOptions = Object.entries(CONTENT_TYPE_LABELS).map(([value, label]) => ({ value, label }))
 
@@ -80,7 +87,7 @@ function cancelled(err: unknown) {
 }
 
 const DETAIL_LABELS: Record<string, string> = {
-  project_id: '项目 ID', component_id: '组件 ID', owner_id: '属主 ID', checksum_md5: '文件 MD5',
+  project_id: '项目 ID', component_id: '组件 ID', owner_id: '属主 ID',
   attachment_id: '附件 ID', file_name: '文件名', content_type: '文件类型', file_size: '文件大小',
   report_period: '汇报周期', report_date: '汇报日期', granularity: '颗粒度', meeting_source: '会议来源',
   meeting_content: '会议内容', meeting_conclusion: '会议结论', business_scenario: '业务场景', keywords: '关键字',
@@ -92,7 +99,7 @@ const standardDetail = computed(() => {
   const item = detail.value
   if (!item) return []
   return [
-    ['编号', item.asset_code], ['名称', item.asset_name], ['项目 ID', item.project_id], ['组件 ID', item.component_id],
+    ['编号', item.asset_code], ['名称', item.asset_name], ['组件 ID', item.component_id],
     ['属主 ID', item.owner_id], ['删除人', item.deleted_by_name ?? item.deleted_by], ['删除时间', item.deleted_at],
     ['创建时间', item.created_at], ['更新时间', item.updated_at],
   ].filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -132,12 +139,20 @@ function retryDetail() {
 }
 
 async function load() {
+  const projectId = scopeProjectId.value
+  if (projectId == null) {
+    rows.value = []
+    total.value = 0
+    selected.value = []
+    return
+  }
   loading.value = true
   error.value = ''
   forbidden.value = false
   selected.value = []
   try {
     const response = await listDataMigrationRecycleBin({
+      projectId,
       contentTypes: selectedType.value ? [selectedType.value] : undefined,
       keyword: keyword.value || undefined,
       page: page.value,
@@ -234,16 +249,33 @@ async function purgeOne(row: DataMigrationContentRecycleRow) {
   try { await runBatch([row], 'purge') } finally { actionBusy.value = false }
 }
 
-onMounted(load)
+onMounted(() => { void scope.ensureLoaded() })
+
+// 全局项目变化：丢弃上一个项目的回收站列表、筛选与详情状态，按新项目重查。
+watch(scopeProjectId, () => {
+  rows.value = []
+  total.value = 0
+  selected.value = []
+  page.value = 1
+  keyword.value = ''
+  selectedType.value = ''
+  error.value = ''
+  forbidden.value = false
+  detailVisible.value = false
+  detail.value = null
+  detailTarget.value = null
+  void load()
+}, { immediate: true })
 </script>
 
 <template>
   <main class="dm-page-root">
-    <UiPageHeader title="回收站" description="管理各内容菜单（含汇报材料与会议纪要文档级）移入回收站的记录，可按内容类型筛选、恢复或彻底清理；会议附件级回收站仍在会议页内管理。">
-      <template #actions><el-button :disabled="loading || actionBusy" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template>
+    <UiPageHeader title="回收站" description="管理当前项目各内容菜单（含汇报材料与会议纪要文档级）移入回收站的记录，可按内容类型筛选、恢复或彻底清理；其他项目的记录不在此列表。会议附件级回收站仍在会议页内管理。">
+      <template #actions><el-button :disabled="loading || actionBusy || scopeState !== 'ready'" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template>
     </UiPageHeader>
 
-    <section v-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无回收站查看权限" sub-title="请向数据迁移管理员申请回收站管理权限。" /></section>
+    <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <section v-else-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无回收站查看权限" sub-title="请向数据迁移管理员申请回收站管理权限。" /></section>
     <section v-else-if="error" class="dm-state-panel"><el-result icon="error" title="回收站加载失败" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
     <template v-else>
       <UiToolbar>
@@ -260,7 +292,7 @@ onMounted(load)
         </template>
       </UiToolbar>
 
-      <UiDataTable v-if="rows.length || loading" :data="rows" :loading="loading" row-key="id" border empty-text="回收站暂无记录" @selection-change="onSelectionChange">
+      <UiDataTable v-if="rows.length || loading" :data="rows" :loading="loading" row-key="id" border empty-text="当前项目回收站暂无记录" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="46" />
         <el-table-column label="内容类型" width="150">
           <template #default="{ row }">{{ typeLabel(row.asset_type) }}</template>
@@ -294,7 +326,7 @@ onMounted(load)
           @size-change="onSizeChange"
         />
       </div>
-      <UiEmptyState v-if="!loading && !rows.length" title="回收站暂无记录" description="各内容菜单删除的记录会移入回收站，可在此恢复或彻底清理。" />
+      <UiEmptyState v-if="!loading && !rows.length" title="当前项目回收站暂无记录" description="当前项目各内容菜单删除的记录会移入回收站，可在此恢复或彻底清理。" />
     </template>
 
     <el-drawer v-model="detailVisible" :title="detailTarget ? `查看${typeLabel(detailTarget.asset_type)}明细` : '查看明细'" size="min(760px, calc(100vw - 24px))" append-to-body>

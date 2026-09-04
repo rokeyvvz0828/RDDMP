@@ -1,6 +1,8 @@
 # 汇报材料（数迁资产内容）功能设计方案 v2
 
-> **实现变更说明（2026-08-23，V98 收敛于 2026-08-31）**：本方案中的专属 `ReportController`、`ReportService` 和 `ReportsPage.vue` 已废止。汇报材料现在统一作为 `asset_type=REPORT` 接入通用文件资产接口和 `AssetListView`，上传使用公共附件 ID；MD5 在公共附件上传前预检、服务端再次校验，并由数据库唯一约束兜底。V98 进一步物理删除 `dm_asset.object_key`，因此下文涉及对象键写入或 MinIO 直连的内容仅为历史迁移背景，不再作为当前接口实现依据。
+> **T37 当前口径（2026-09-04）**：本文件早期 v2 设计中的 `dm_asset`、MD5 字段、摘要计算、查重接口和旧通用路由均已被后续内容表拆分与 T37 设计 supersede。当前汇报材料使用独立 `dm_report` 表和 `dm_content_attachment` 关系表；不保存、计算或上传 MD5，不提供 `check-md5` 接口。以下历史段落仅保留为设计演进记录，不作为当前实现契约。
+
+> **实现变更说明（2026-08-23，V98 收敛于 2026-08-31）**：本方案中的早期 `dm_asset` 通用资产实现已废止，相关内容仅为历史迁移背景，不再作为当前接口实现依据。
 
 > 需求前缀：`req-20260820-031-data-migration-asset-library-v3`
 > 菜单路径：`数据迁移 / 数迁资产内容管理 / 汇报材料`（菜单 721，route `/data-migration/content/reports`）
@@ -9,7 +11,7 @@
 > 1. 存储模型：**不复用不新建，继续复用通用资产表 `dm_asset`**，通过追加迁移补充表中不存在的字段（周期、日期、关键字、删除人/时间、创建/更新人）。
 > 2. 汇报周期枚举：`DAILY` 日报 / `WEEKLY` 周报 / `BIWEEKLY` 双周报 / `MONTHLY` 月报 / `IRREGULAR` 不定期汇报。
 > 3. 所属项目数据源：`pm_project` 项目清单（`GET /api/project/workbench`），与系统/组件清单页一致。
-> 4. md5：**前端计算**（`crypto.subtle.digest('MD5')` 读文件计算 32 位 hex 后提交，符合"系统自动读取文件md5填充"），单条上传可手动录入或前端计算。
+> 4. 文件摘要：**不保存、不计算、不上传**，相同内容文件按普通文件处理。
 > 5. 回收站形态：**汇报材料页内 "回收站" Tab，仅数据迁移管理员可见**。
 > 6. 旧 `asset_type='REPORT'` 通用资产路由：**继续使用**，通用 AssetController/AssetService 保持不变，新增专属 ReportController 与之共享 `dm_asset` 表、数据互通。
 
@@ -24,7 +26,7 @@
 | 汇报周期（日报/周报/双周报/月报/不定期汇报） | 无该字段，资产表仅 asset_type 区分大类 | 缺周期字段与周期筛选 |
 | 汇报日期 / 关键字索引 | 无 | 缺两列及关键字模糊检索 |
 | 所属项目下拉筛选 | 仅关键词（编号/名称） | 缺项目维度下拉筛选 |
-| 单条/批量上传、批量自动读文件名+md5 | 仅单文件上传（projectId+assetCode+file） | 缺批量上传与自动填充 |
+| 单条/批量上传、批量自动读文件名 | 旧通用接口曾要求 projectId+assetCode+file；T36 后编号统一由服务端生成 | 缺批量上传与自动填充 |
 | 列表分页（20/50/100） | 无分页，全量返回 | 需服务端分页 |
 | 编辑（重新上传+改全量元数据） | 无编辑入口 | 缺编辑接口与抽屉 |
 | 逻辑删除记录删除人/删除时间 | 仅 `deleted=1` 标志 | 缺 `deleted_by/deleted_at` |
@@ -32,7 +34,7 @@
 | 普通用户仅能编辑/删除本人上传 | 通用 asset 已有 owner 校验 | 需在 REPORT 维度复刻 |
 | 操作日志（上传/编辑/删除/恢复/清理） | 通用 asset 有审计 | 需 REPORT 专属操作码 |
 
-**结论（v2）**：`dm_asset` 已具备上传人（owner_id）、上传时间（created_at）、md5（checksum_md5 CHAR(32)，与前端计算 32 位 hex 兼容）、逻辑删除（deleted）、文件存储（object_key/MinIO）等基础能力；仅缺需求新增字段。因此**复用 `dm_asset`、不新建表**，通过 V89 迁移幂等补列 + 补索引 + 存量数据初始化；新增专属 `ReportController/ReportService` 仅操作 `asset_type='REPORT'` 行，通用资产路由继续可用。
+**结论（v2，历史）**：早期方案曾计划复用 `dm_asset`，该方案已由内容表拆分和 T37 移除摘要字段的当前设计取代。
 
 ---
 
@@ -67,7 +69,7 @@ PREPARE stmt FROM @col_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 说明：
 - 字段均置 `NULL`（存量行不受 NOT NULL 约束影响），新录入由服务层强校验，满足"资料名称、关键字索引不允许为空"（存量空值行列表展示 `—`，编辑时强制补充）。
-- `checksum_md5 CHAR(32)` 直接复用为 md5 字段（前端 `crypto.subtle.digest('MD5')` 输出 32 位 hex，长度兼容）。
+- 文件摘要字段不属于当前模型；历史 `checksum_md5` 设计已由 T37 删除。
 - `owner_id`/`created_at` 复用为"上传人/上传时间"，`updated_at` 复用为更新时间。
 
 ### 2.2 补索引（幂等）
@@ -123,7 +125,7 @@ WHERE asset_type = 'REPORT' AND (report_period IS NULL OR report_period = '');
 ### 3.1 存储与标识（复用 dm_asset 的关键约束处理）
 
 - `dm_asset.asset_code` NOT NULL 且唯一键 `uk_dm_asset_code (tenant_id, project_id, asset_type, asset_code, deleted)`；汇报材料需求**无 asset_code 字段**。
-- 处理方案：**服务端自动生成** `REPORT-{yyyyMMddHHmmss}-{4位随机}`（如 `REPORT-20260823103015-8f3a`），上传时写入，编辑不改变；不返前端展示。
+- 处理方案（T36 修订）：由统一 `ContentDocCodeGenerator` 生成 `REPORT-<32 位小写无连字符 UUID>`，上传时写入，编辑/文件替换不改变；列表、详情和导出作为只读业务编号展示。本文早期时间戳+随机后缀方案不再有效。
 - 汇报材料行特征：`asset_type='REPORT'`，`component_id=NULL`（汇报材料不关联组件/系统）。
 - 通用 AssetController 继续使用且不改动：通用页上传的 REPORT 行（无周期回填）在汇报材料列表中周期显示 `IRREGULAR` 兜底，数据互通。
 
@@ -140,8 +142,8 @@ WHERE asset_type = 'REPORT' AND (report_period IS NULL OR report_period = '');
 | # | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- | --- |
 | 1 | GET | `/reports` | 分页列表：`projectId?`、`period?`、`keyword?`（模糊匹配 asset_name/keywords）、`page`、`size`(20/50/100)；返回 `{items,total}` | read |
-| 2 | POST | `/reports/single` | 单条上传（multipart：projectId、period、reportName、reportDate?、keywords、md5?、file）；服务端生成 asset_code，写 object_key，回填 owner_id/created_by | write |
-| 3 | POST | `/reports/batch` | 批量上传（multipart：projectId、period、files[]）；前端逐文件读文件名填 reportName、读 md5 填充，服务端逐文件建行 | write |
+| 2 | POST | `/reports/single` | 单条上传（multipart：projectId、period、reportName、reportDate?、keywords、file）；服务端生成 `doc_code`，绑定附件，回填 owner_id/created_by | write |
+| 3 | POST | `/reports/batch` | 批量上传（multipart：projectId、period、files[]）；前端逐文件读文件名，服务端逐文件建行 | write |
 | 4 | PUT | `/reports/{id}` | 编辑：重传文件（可选）+ 修改全量元数据（projectId、period、reportName、reportDate、keywords）；旧对象删除 | write + owner |
 | 5 | DELETE | `/reports` | 逻辑删除（body ids[]），`SET deleted=1, deleted_by=?, deleted_at=NOW()` | write + owner |
 | 6 | GET | `/reports/{id}/download` | 下载：返回 MinIO 预签名 URL（不暴露 object_key） | read |
@@ -181,10 +183,10 @@ WHERE asset_type = 'REPORT' AND (report_period IS NULL OR report_period = '');
 
 ### 4.2 上传交互
 
-- **单条上传**抽屉：全量字段（所属项目、汇报周期、资料名称、汇报日期、关键字索引、md5 可选、文件绑定），资料名称/关键字索引非空校验，提交后留存上传人/上传时间（owner_id/created_at 自动回填）。
+- **单条上传**抽屉：全量字段（所属项目、汇报周期、资料名称、汇报日期、关键字索引、文件绑定），资料名称/关键字索引非空校验，提交后留存上传人/上传时间（owner_id/created_at 自动回填）。
 - **批量上传**抽屉：
   1. 前置必选：所属项目 + 汇报周期（未选禁止选择文件）；
-  2. 多文件选择后，前端读取每个文件名填充"资料名称"、`crypto.subtle.digest('MD5')` 读文件计算 md5 填充"md5"（逐文件异步计算，进度提示）；
+  2. 多文件选择后，前端读取每个文件名填充"资料名称"，不计算文件摘要；
   3. 提交创建多条记录；汇报日期、关键字索引为空，提示用户在列表中逐条"编辑"补充（服务端允许空，列表显示 `—`）。
 
 ### 4.3 权限展示
@@ -214,7 +216,7 @@ WHERE asset_type = 'REPORT' AND (report_period IS NULL OR report_period = '');
 
 ## 7. 决策确认记录（v2，已全部确认）
 
-1. **asset_code 生成**：已确认 → 服务端自动生成 `REPORT-{yyyyMMddHHmmss}-{4位随机}`，上传时写入、不返前端、编辑不变更。
+1. **asset_code 生成（T36 修订）**：服务端统一生成 `REPORT-<32 位小写无连字符 UUID>`，上传时写入，列表/详情/导出只读展示，编辑与文件替换不变更；不再采用时间戳+随机后缀。
 2. **存量数据初始化**：已确认 → 存量 `REPORT` 行周期回填 `IRREGULAR`，日期/关键字留空（存量允许空、列表显示 `—`，录入/编辑时强校验必填）。
 3. **数据互通范围**：已确认 → 汇报材料列表展示 `asset_type='REPORT'` 全部行（含通用接口上传的历史数据，空周期兜底 `IRREGULAR`）。
 4. **通用上传联动**：已确认 → 通用 AssetController 对 REPORT 类型上传保持原样（不自动回填周期），最小改动。

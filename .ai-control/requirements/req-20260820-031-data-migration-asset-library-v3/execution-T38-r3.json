@@ -1,0 +1,26 @@
+{
+  "task_id": "T38-r3",
+  "parent_task": "T38",
+  "trigger": "用户指令「不要包含旧的历史说明」：在 T38-r2 对齐列注释口径后，进一步清除文档中残留的旧字段说明写法与迁移历史叙述，只保留当前态描述。",
+  "status": "implemented_doc_only",
+  "scope_kind": "database_schema_doc_remove_historical_descriptions",
+  "decision_recorded": "1) 生成列“说明”列去掉旧表达式写法（如「`deleted = 0` 时取 `doc_code`，活动唯一键列」），仅保留最新列注释（如「活动编号（仅未删除记录取值）」）；2) dm_meeting_system 的 project_id/system_code 说明去掉「V166 新增并按…回填」历史叙述，并删除 3.13 整段 V166 迁移说明；3) 头部基线去掉 V163/V164/V166 历史迁移叙述与已下线列枚举，只保留当前基线文件与系统关联口径；4) 约束/索引行、6.1、9.1 去掉「V163 替换旧键」「V166 已下线五表 id 列」等历史括注；5) 第 11 节数据来源只保留核验方法，不叙述旧结构变更。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "清除字段说明与正文中的旧写法/迁移历史叙述；当前态口径（(project_id, system_code)、活动生成列注释）保持不变。"
+    }
+  ],
+  "commands": [
+    "rg 复查：全文剩余 V16x 引用仅 3 处（当前基线文件名、数据口径与第 11 节核验方法），无「时取…活动唯一键列」「V166 已下线」「V163 替换」「V166 迁移/回填」等历史叙述"
+  ],
+  "invariants_checked": [
+    "活动表结构口径不变：列数、类型、默认/约束、当前约束/索引、系统关联 (project_id, system_code)",
+    "删除历史叙述后文档仍以 V166 为当前 DDL 基线，未回退到旧口径"
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "rollback": "文档改动可整体还原；不涉及代码、迁移或数据",
+  "evidence_level": "static-doc-scan"
+}

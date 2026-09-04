@@ -23,8 +23,11 @@ public interface RecycleBinSource {
     /**
      * 该来源软删记录的总数（原生分页 {@code total} 组成部分）；实现应在 SQL 层用 {@code COUNT(*)} 统计，
      * 不拉取明细行。{@code keyword} 为空表示不限关键字。
+     *
+     * <p>T32：{@code projectId} 为必填的项目隔离范围，实现必须在 SQL 层恒定附加 {@code project_id = ?}，
+     * 不得回退为全项目统计。
      */
-    long countDeleted(String type, String keyword, AuthUser user);
+    long countDeleted(String type, long projectId, String keyword, AuthUser user);
 
     /**
      * 该来源软删列表的“原生分页取数”：在 SQL 层按统一信封业务编号 {@code asset_code}（即各自的
@@ -33,15 +36,17 @@ public interface RecycleBinSource {
      *
      * <p>统一入口 {@link ContentRecycleBinService} 依据各来源已排序的前 N 行做有界 k 路归并后再切页，
      * 因此每个来源必须保证返回其编号升序序偶的前 {@code limit} 行（排序口径与统一层 comparator 一致）。
+     *
+     * <p>T32：取数同样限定在 {@code projectId} 单项目范围内。
      */
-    List<Map<String, Object>> listDeletedPage(String type, String keyword, int limit, AuthUser user);
+    List<Map<String, Object>> listDeletedPage(String type, long projectId, String keyword, int limit, AuthUser user);
 
-    /** 查询单条软删除详情；实现必须保持租户隔离并限定 deleted=1。 */
+    /** 查询单条软删除详情；实现必须保持租户隔离并限定 deleted=1，并按库中 {@code project_id} 做项目可访问校验（T32）。 */
     Map<String, Object> detail(String type, long id, AuthUser user);
 
-    /** 恢复（管理员权限与实体校验由实现负责）。 */
+    /** 恢复（管理员权限、实体校验与项目归属校验由实现负责，T32）。 */
     void restore(String type, List<Long> ids, AuthUser user);
 
-    /** 彻底删除（关系级联与附件解绑由实现负责）。 */
+    /** 彻底删除（关系级联与附件解绑由实现负责；跨项目 id 必须拒绝，T32）。 */
     void purge(String type, List<Long> ids, AuthUser user);
 }

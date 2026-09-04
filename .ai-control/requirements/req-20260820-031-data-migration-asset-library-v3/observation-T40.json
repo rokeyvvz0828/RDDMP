@@ -1,0 +1,96 @@
+{
+  "sample_label": "T40 dm_operation_log 项目维度治理最终观测",
+  "task_ids": [
+    "T40"
+  ],
+  "baseline_revision": "T39 验收后的当前态：dm_operation_log 由 V84 建表（无 project_id），9.2 P1 治理需求为追加字段与索引、写入侧从实体项目上下文填充、补项目级审计查询测试；开发阶段免备份（用户确认）。",
+  "observed_at": "2026-09-04T19:52:00+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 MySQL 8.4 Flyway V167 迁移专项",
+      "result": "pass",
+      "raw_evidence": "v167AddsOperationLogProjectDimension 基线 V166->V167：dm_operation_log 由 V84 原始结构（无 project_id）迁移后追加 project_id BIGINT NOT NULL DEFAULT 0 且默认 '0'、列序 AFTER tenant_id、is_nullable NO；idx_dm_operation_log_project 列序 tenant_id,project_id,entity_type,created_at；既有 idx_dm_operation_log (tenant_id,created_at,actor_id) 保留。（information_schema 断言）",
+      "limitation": [
+        "夹具基线为 V166，low-baseline 场景（无 dm_operation_log 表）依赖 V84 建表再由 V167 追加，与真实迁移链一致。"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 服务端写入侧端到端与模块回归",
+      "result": "pass",
+      "raw_evidence": "真实服务在 MySQL 8.4 上：IssueService.create/update/delete/restore/purge、purgeAll(20)、TargetTableService.createTable、ProjectComponentService.createComponent 后的 dm_operation_log 行 project_id 均正确（ISSUE_* 落库中实体项目、PURGE_ALL 落操作范围 scope=20 且 entity_id=0）；全模块 mvn -pl :ccb-data-migration -am test = 80 tests / 0 errors / 0 failures。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 项目级审计查询",
+      "result": "pass",
+      "raw_evidence": "按 project_id 分组统计断言通过：tenant 1 下 project_id 去重数=2（10/20），项目 10 审计 8 条（CREATE/UPDATE/DELETE x2/RESTORE/PURGE/TARGET_TABLE_CREATE/COMPONENT_CREATE），项目 20 审计 3 条（CREATE/DELETE/PURGE_ALL），证明项目级审计查询直接按列过滤无需回查实体。",
+      "limitation": [
+        "未逐操作覆盖 Excel import 与附件服务路径（同构路径已覆盖）。"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S4 范围与账本一致性",
+      "result": "pass",
+      "raw_evidence": "V167 已登记 writable_paths/migration_files/compatibility_and_rollback/public_capability_change.note；文档 baseline 更新至 V167；check-codex-scope 待最终复验（本任务未触碰 platform/shared 与 forbidden_paths）。",
+      "limitation": [
+        "最终 check-codex-scope.mjs 复验将在收尾步骤执行。"
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "id": "T40-S1",
+      "kind": "database migration",
+      "result": "pass",
+      "evidence": "MySQL 8.4 上 V166->V167 迁移断言通过：project_id 列、idx_dm_operation_log_project、既有索引保留。"
+    },
+    {
+      "id": "T40-S2",
+      "kind": "automated backend",
+      "result": "pass",
+      "evidence": "ccb-data-migration 全量 80/80 通过，含服务层写侧端到端 E2E；之前 restore 两阶段语义回归已修正（IssueServiceTest 8/8）。"
+    },
+    {
+      "id": "T40-S3",
+      "kind": "project-scope audit query",
+      "result": "pass",
+      "evidence": "dm_operation_log 按 project_id 分组统计 2 个项目、计数正确，无需回查实体。"
+    }
+  ],
+  "feedback": [],
+  "resolved_feedback": [
+    {
+      "id": "F-T40-IMP-01",
+      "classification": "deviation",
+      "severity": "P1",
+      "observed": "将 IssueService.restore 双循环合并为单循环后，IssueServiceTest.restorePrevalidatesWholeBatchBeforeWriting 失败（expected 0 restoreWrites but was 1）：restore 的先全量预校验后写入契约被破坏。",
+      "resolution": "恢复两阶段结构：第一循环完成 findByIdInternal+requireStoredProject+ensureCodeAvailable 预校验并把 projectId 存入 Map，第二循环执行 UPDATE 与审计；purge 同构。全量 80 tests 复验通过。"
+    },
+    {
+      "id": "F-T40-TEST-01",
+      "classification": "test_fixture",
+      "severity": "P3",
+      "observed": "V167 专项测试 fixture 迭代中暴露两处测试自身问题：dm_component 插入缺 owner_id（NOT NULL 无默认值）；issueB 的 create 返回值未接住导致后续 delete 取 id 为 null。",
+      "resolution": "fixture INSERT 补 owner_id；create(issueB) 返回值存入 createdB 后再取 id。专项测试通过。"
+    }
+  ],
+  "disturbances": [
+    "工作区存在他人任务 REQ-20260903-064 中间表收敛的越界改动与未跟踪文件（本次未触碰，范围检查仅验证本任务新增文件）。"
+  ],
+  "coverage_gaps": [
+    "ExcelService STRUCTURED_IMPORT 审计 project_id 仅经代码审查与 mock 断言覆盖，未跑真实 Excel 导入端到端；ContentFileAssetService/MeetingService 附件恢复/删除审计经同构路径覆盖，未单列 MySQL 端到端。"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete",
+  "verdict": "converged_for_T40",
+  "phase_recommendation": "保留 T40 增量证据，不重写历史 convergence.json；应用 V167 仅需执行迁移链（开发阶段免备份，用户已确认）；存量 project_id=0 行的历史追溯补偿迁移需另行批准。"
+}

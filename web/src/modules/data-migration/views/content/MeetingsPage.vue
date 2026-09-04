@@ -4,10 +4,12 @@
         分页展示、详情页精细化编辑、单条新增与逻辑删除。
         会议纪要文档级回收站已收敛到统一页（数迁内容 › 回收站，MEETING 作为内容类型）。
         本页保留“附件回收站”：附件行受 uk_dm_meeting_att_active 与父会议未删前置校验约束，不兼容统一信封，因此不并入。
+        所属项目唯一取自全局项目上下文：页内不再有项目筛选、项目下拉与「所属项目」字段，列表/附件回收站/新增/编辑
+        均固定使用当前项目（编辑不传 projectId，归属由服务端取库中记录），项目切换后重置分页与其他筛选条件重查。
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Delete, Document, Download, Edit, Plus, Refresh, Search, FolderOpened, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
@@ -23,21 +25,26 @@ import {
   getMeetingSystemOptions, getMeetingIssueOptions,
   getMeetingAttachments, deleteMeetingAttachment, getMeetingAttachmentRecycleBin, restoreMeetingAttachment,
   listAttachmentRecycleBin, restoreAttachments, purgeAttachments, purgeAllAttachments,
-  type MeetingRecord, type MeetingFormData, type MeetingAttachment, type SelectOption
+  type MeetingRecord, type MeetingQuery, type MeetingFormData, type MeetingUpdateData, type MeetingAttachment, type SelectOption
 } from '../../../../api/data-migration'
-import { getProjectWorkbench } from '../../../../api/project'
+import ProjectScopeState from '../../components/ProjectScopeState.vue'
+import { useProjectScope } from '../../composables/useProjectScope'
 import { uploadAttachment, getAttachmentDownload } from '../../../../api/attachments'
 import { getFilePreviewCapabilities, uploadFilePreview, type FilePreviewCapabilities, type FilePreviewResult } from '../../../../api/file-preview'
 
 const auth = useAuthStore()
+const scope = useProjectScope()
+const scopeState = scope.state
+const scopeProjectId = scope.projectId
+const scopeProjectName = scope.projectName
+
 const loading = ref(false), records = ref<MeetingRecord[]>([]), total = ref(0), page = ref(1), size = ref(20), selectedIds = ref<number[]>([]), busy = ref(false)
-const fProject = ref<number | null>(null), fSource = ref(''), fGranularity = ref(''), fSystem = ref<number | null>(null), fKeyword = ref('')
-const projectOpts = ref<SelectOption[]>([])
+const fSource = ref(''), fGranularity = ref(''), fSystem = ref(''), fKeyword = ref('')
 const filterSysOpts = ref<SelectOption[]>([])
 const GRAV = [{ value: 'PROJECT', label: '项目级' }, { value: 'COMPONENT', label: '组件级' }, { value: 'TABLE', label: '表级' }, { value: 'FIELD', label: '字段级' }]
 const SRC = [{ value: 'MEETING_MINUTES', label: '会议纪要' }, { value: 'ISSUE_EXTRACT', label: '问题提取' }]
 const drawer = ref(false), saving = ref(false), editing = ref(false), editId = ref<number | null>(null)
-const fv = ref<MeetingFormData & { keywords: string[]; systemIds: number[]; issueIds: number[]; attachments: { attachmentId: number; fileName: string }[] }>({
+const fv = ref<MeetingFormData & { keywords: string[]; systemCodes: string[]; issueIds: number[]; attachments: { attachmentId: number; fileName: string }[] }>({
   projectId: 0,
   granularity: '',
   meetingSource: '',
@@ -47,7 +54,7 @@ const fv = ref<MeetingFormData & { keywords: string[]; systemIds: number[]; issu
   meetingConclusion: '',
   businessScenario: '',
   keywords: [],
-  systemIds: [],
+  systemCodes: [],
   issueIds: [],
   attachmentId: undefined,
   fileName: '',
@@ -73,15 +80,19 @@ const sd = (i: MeetingRecord): Record<string, any> => i as Record<string, any>
 const fmtDate = (v?: string | null) => { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? String(v) : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
 const lbl = (o: SelectOption[], v?: string) => o.find(x => x.value === v)?.label ?? v ?? '—'
 
-async function loadOpts() { try { projectOpts.value = ((await getProjectWorkbench()).data.data ?? []).map(p => ({ value: p.id, label: p.project_name })) } catch { projectOpts.value = [] } }
+async function loadFilterSystems() {
+  const pid = scopeProjectId.value
+  if (!pid) { filterSysOpts.value = []; return }
+  filterSysOpts.value = ((await getMeetingSystemOptions(pid).catch(() => null))?.data.data ?? [])
+}
 async function loadList() {
+  if (scopeProjectId.value == null) { records.value = []; total.value = 0; selectedIds.value = []; return }
   loading.value = true; selectedIds.value = []
   try {
-    const p: any = { page: page.value, size: size.value }
-    if (fProject.value) p.projectId = fProject.value
+    const p: MeetingQuery = { page: page.value, size: size.value, projectId: scopeProjectId.value }
     if (fSource.value) p.meetingSource = fSource.value
     if (fGranularity.value) p.granularity = fGranularity.value
-    if (fSystem.value) p.systemId = fSystem.value
+    if (fSystem.value) p.systemCode = fSystem.value
     if (fKeyword.value.trim()) p.keyword = fKeyword.value.trim()
     const d = (await listMeetings(p)).data.data
     records.value = d?.records ?? []; total.value = d?.total ?? 0
@@ -89,17 +100,17 @@ async function loadList() {
   finally { loading.value = false }
 }
 function doSearch() { page.value = 1; loadList() }
-function doReset() { fProject.value = null; fSource.value = ''; fGranularity.value = ''; fSystem.value = null; fKeyword.value = ''; page.value = 1; loadList() }
+function doReset() { fSource.value = ''; fGranularity.value = ''; fSystem.value = ''; fKeyword.value = ''; page.value = 1; loadList() }
 function switchTab(t: string) {
   // 会议纪要文档级回收站已收敛到统一页；此处 recycle tab 仅管理附件级回收站。
   if (t === 'recycle') loadAttRecycle()
   else loadList()
 }
 function resetForm() {
-  fv.value = { projectId: 0, granularity: '', meetingSource: '', meetingCode: '', meetingTitle: '', meetingContent: '', meetingConclusion: '', businessScenario: '', keywords: [], systemIds: [], issueIds: [], attachmentId: undefined, fileName: '', attachments: [] }
+  fv.value = { projectId: scopeProjectId.value ?? 0, granularity: '', meetingSource: '', meetingCode: '', meetingTitle: '', meetingContent: '', meetingConclusion: '', businessScenario: '', keywords: [], systemCodes: [], issueIds: [], attachmentId: undefined, fileName: '', attachments: [] }
   kwInput.value = ''; fSystemOpts.value = []; fIssueOpts.value = []; editingAttachments.value = []; pendingFiles.value = []
 }
-function openAdd() { editing.value = false; editId.value = null; resetForm(); drawer.value = true }
+function openAdd() { editing.value = false; editId.value = null; resetForm(); if (scopeProjectId.value) void loadFormOpts(scopeProjectId.value); drawer.value = true }
 async function loadFormOpts(pid: number) {
   const [sysRes, issRes] = await Promise.all([getMeetingSystemOptions(pid), getMeetingIssueOptions(pid)])
   fSystemOpts.value = sysRes.data.data ?? []
@@ -112,7 +123,7 @@ async function openEdit(item: MeetingRecord) {
     const detail = (await getMeeting(item.meeting_id)).data.data
     if (!detail) throw new Error('未获取到会议纪要详情')
     const d = sd(detail)
-    const systemIds = d.system_ids ? String(d.system_ids).split(',').map((v: string) => Number(v.trim())).filter(Boolean) : []
+    const systemCodes = d.system_codes ? String(d.system_codes).split(',').map((v: string) => v.trim()).filter(Boolean) : []
     const issueIds = d.related_issue_ids ? String(d.related_issue_ids).split(',').map((v: string) => Number(v.trim())).filter(Boolean) : []
     // 解析 keywords：支持 JSON 数组格式 '["kw1","kw2"]' 和旧的逗号分隔格式
     let kw: string[] = []
@@ -141,7 +152,7 @@ async function openEdit(item: MeetingRecord) {
       meetingConclusion: d.meeting_conclusion ?? '',
       businessScenario: d.business_scenario ?? '',
       keywords: kw,
-      systemIds,
+      systemCodes,
       issueIds,
       attachmentId: d.attachment_id ?? undefined,
       fileName: d.file_name ?? '',
@@ -161,14 +172,10 @@ async function openDetail(item: MeetingRecord) {
     detailLoading.value = false
   }
 }
-async function onProjectChange(pid: number | null) {
-  fv.value.systemIds = []; fv.value.issueIds = []; fSystemOpts.value = []; fIssueOpts.value = []
-  if (pid) await loadFormOpts(pid)
-}
 function addKw() { const v = kwInput.value.trim(); if (v && !fv.value.keywords.includes(v)) fv.value.keywords.push(v); kwInput.value = '' }
 function rmKw(i: number) { fv.value.keywords.splice(i, 1) }
 function validate(): string | null {
-  if (!fv.value.projectId) return '请选择项目'
+  if (!fv.value.projectId) return '当前项目不可用，请在顶部项目切换器中重新选择项目'
   if (!fv.value.granularity) return '请选择颗粒度'
   if (!fv.value.meetingSource) return '请选择会议纪要来源'
   if (!fv.value.meetingTitle.trim()) return '请输入会议主题'
@@ -187,8 +194,8 @@ async function doSave() {
       if (!attachmentId) throw new Error(`文件 ${file.name} 上传失败`)
       allAttachments.push({ attachmentId, fileName: file.name })
     }
-    const body: MeetingFormData = {
-      projectId: fv.value.projectId,
+    // T32 决策 D1/D2：新增时归属取当前项目；维护不传 projectId，归属恒取库中记录。
+    const body: MeetingUpdateData = {
       granularity: fv.value.granularity,
       meetingSource: fv.value.meetingSource,
       meetingCode: fv.value.meetingCode?.trim() || undefined,
@@ -197,7 +204,7 @@ async function doSave() {
       meetingConclusion: fv.value.meetingConclusion?.trim() || undefined,
       businessScenario: fv.value.businessScenario?.trim() || undefined,
       keywords: fv.value.keywords.length ? fv.value.keywords : undefined,
-      systemIds: fv.value.systemIds.length ? [...fv.value.systemIds] : undefined,
+      systemCodes: fv.value.systemCodes.length ? [...fv.value.systemCodes] : undefined,
       issueIds: [...fv.value.issueIds],
       attachmentId: allAttachments.length ? allAttachments[0].attachmentId : undefined,
       fileName: allAttachments.length ? allAttachments[0].fileName : undefined,
@@ -206,7 +213,7 @@ async function doSave() {
     if (editing.value && editId.value) {
       await updateMeeting(editId.value, body); ElMessage.success('更新成功')
     } else {
-      await createMeeting(body); ElMessage.success('新增成功')
+      await createMeeting({ ...body, projectId: fv.value.projectId }); ElMessage.success('新增成功')
     }
     drawer.value = false; loadList()
   } catch (e) { ElMessage.error(msg(e)) }
@@ -218,10 +225,10 @@ async function doDeleteOne(item: MeetingRecord) { try { await ElMessageBox.confi
 
 // 附件回收站
 async function loadAttRecycle() {
+  if (scopeProjectId.value == null) { attRecRecords.value = []; attRecTotal.value = 0; attRecSelected.value = []; return }
   attRecLoading.value = true; attRecSelected.value = []
   try {
-    const p: any = { page: attRecPage.value, size: attRecSize.value }
-    if (fProject.value) p.projectId = fProject.value
+    const p: { projectId: number; keyword?: string; page?: number; size?: number } = { page: attRecPage.value, size: attRecSize.value, projectId: scopeProjectId.value }
     if (attRecKeyword.value.trim()) p.keyword = attRecKeyword.value.trim()
     const d = (await listAttachmentRecycleBin(p)).data.data
     attRecRecords.value = d?.records ?? []; attRecTotal.value = d?.total ?? 0
@@ -232,7 +239,7 @@ async function doRestoreAttBatch() { if (!attRecSelected.value.length) return; t
 async function doRestoreAttOne(item: MeetingAttachment & { meeting_id: number; meeting_title: string }) { try { await ElMessageBox.confirm(`确认恢复"${item.file_name}"？`, '恢复附件'); busy.value = true; await restoreAttachments([item.id]); ElMessage.success('恢复成功'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 async function doPurgeAttBatch() { if (!attRecSelected.value.length) return; try { await ElMessageBox.confirm(`确认彻底销毁选中的 ${attRecSelected.value.length} 个附件？此操作不可恢复。`, '彻底销毁', { type: 'error', confirmButtonText: '彻底销毁' }); busy.value = true; await purgeAttachments(attRecSelected.value); ElMessage.success('清理完成'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 async function doPurgeAttOne(item: MeetingAttachment & { meeting_id: number; meeting_title: string }) { try { await ElMessageBox.confirm(`确认彻底销毁"${item.file_name}"？此操作不可恢复。`, '彻底销毁', { type: 'error', confirmButtonText: '彻底销毁' }); busy.value = true; await purgeAttachments([item.id]); ElMessage.success('清理完成'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
-async function doPurgeAllAtt() { try { await ElMessageBox.confirm('确认清空附件回收站？此操作不可恢复。', '清空附件回收站', { type: 'error', confirmButtonText: '清空' }); busy.value = true; await purgeAllAttachments(); ElMessage.success('附件回收站已清空'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
+async function doPurgeAllAtt() { const pid = scopeProjectId.value; if (!pid) { ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目'); return }; try { await ElMessageBox.confirm(`确认彻底销毁当前项目（${scopeProjectName.value || pid}）附件回收站内的全部附件？其他项目不受影响，此操作不可恢复。`, '清空当前项目附件回收站', { type: 'error', confirmButtonText: '清空' }); busy.value = true; await purgeAllAttachments(pid); ElMessage.success('当前项目附件回收站已清空'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 
 // 文件上传相关：暂存待上传文件，保存时才真正上传
 const uploadFile = ref<File | null>(null)
@@ -411,22 +418,33 @@ async function doPreviewById(attachmentId: number, fileName: string) {
   }
 }
 
-onMounted(async () => { await loadOpts(); loadList(); getMeetingSystemOptions().then(r => { filterSysOpts.value = r.data.data ?? [] }).catch(() => {}) })
+watch(scopeProjectId, () => {
+  // 项目切换：清空上一项目的列表、附件回收站、筛选条件与弹层，避免残留
+  records.value = []; total.value = 0; selectedIds.value = []
+  attRecRecords.value = []; attRecTotal.value = 0; attRecSelected.value = []
+  fSource.value = ''; fGranularity.value = ''; fSystem.value = ''; fKeyword.value = ''; attRecKeyword.value = ''
+  page.value = 1; attRecPage.value = 1
+  detailDialogOpen.value = false; detailData.value = null
+  drawer.value = false; editing.value = false; editId.value = null; resetForm()
+  void loadFilterSystems()
+  switchTab(tab.value)
+}, { immediate: true })
+
+onMounted(() => { void scope.ensureLoaded() })
 </script>
 
 <template>
   <section class="dm-page-root">
-    <UiPageHeader title="会议纪要">
+    <UiPageHeader title="会议纪要" description="列表、附件回收站与录入均固定属于顶部项目切换器选择的当前项目。">
       <template #actions>
-        <el-button v-if="canCreate" type="primary" :disabled="loading || busy" @click="openAdd"><el-icon><Plus /></el-icon>新增会议纪要</el-button>
+        <el-button v-if="canCreate && scopeState === 'ready'" type="primary" :disabled="loading || busy" @click="openAdd"><el-icon><Plus /></el-icon>新增会议纪要</el-button>
       </template>
     </UiPageHeader>
+    <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <template v-else>
     <el-tabs v-model="tab" @tab-click="(t: any) => switchTab(t.paneName)">
       <el-tab-pane label="会议纪要" name="list">
         <UiToolbar>
-          <el-select v-model="fProject" placeholder="选择项目" clearable filterable style="width:180px" @change="doSearch">
-            <el-option v-for="o in projectOpts" :key="o.value" :label="o.label" :value="o.value" />
-          </el-select>
           <el-select v-model="fSource" placeholder="会议纪要来源" clearable style="width:140px" @change="doSearch">
             <el-option v-for="o in SRC" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
@@ -449,7 +467,6 @@ onMounted(async () => { await loadOpts(); loadList(); getMeetingSystemOptions().
         <UiDataTable :data="records" :loading="loading" row-key="meeting_id" @selection-change="(r: MeetingRecord[]) => selectedIds = r.map(x => x.meeting_id)">
           <el-table-column type="selection" width="48" />
           <el-table-column label="编号" width="150" show-overflow-tooltip><template #default="{ row }">{{ sd(row).meeting_code ?? '—' }}</template></el-table-column>
-          <el-table-column label="项目" min-width="120" show-overflow-tooltip><template #default="{ row }">{{ row.project_name ?? '—' }}</template></el-table-column>
           <el-table-column label="颗粒度" width="90"><template #default="{ row }">{{ lbl(GRAV, sd(row).granularity) }}</template></el-table-column>
           <el-table-column label="会议纪要来源" width="120"><template #default="{ row }">{{ lbl(SRC, sd(row).meeting_source) }}</template></el-table-column>
           <el-table-column label="会议主题" min-width="180" show-overflow-tooltip><template #default="{ row }">
@@ -488,7 +505,7 @@ onMounted(async () => { await loadOpts(); loadList(); getMeetingSystemOptions().
             </template>
           </el-table-column>
         </UiDataTable>
-        <UiEmptyState v-if="!loading && records.length === 0" description="暂无会议纪要数据" icon="search" />
+        <UiEmptyState v-if="!loading && records.length === 0" description="当前项目下暂无会议纪要数据" icon="search" />
         <UiPagination v-if="total > 0" :page="page" :page-size="size" :total="total" :page-sizes="[10,20,50,100]" @update:page-size="(v: number) => { size = v; page = 1; loadList() }" @update:page="(v: number) => { page = v; loadList() }" />
       </el-tab-pane>
       <!-- 附件级回收站：受 uk_dm_meeting_att_active 与父会议未删前置校验约束，不并入统一回收站。 -->
@@ -499,7 +516,7 @@ onMounted(async () => { await loadOpts(); loadList(); getMeetingSystemOptions().
             <el-button :disabled="attRecLoading" @click="loadAttRecycle"><el-icon><Refresh /></el-icon>刷新</el-button>
             <el-button v-if="attRecSelected.length" type="warning" plain :disabled="busy" @click="doRestoreAttBatch"><el-icon><FolderOpened /></el-icon>恢复({{ attRecSelected.length }})</el-button>
             <el-button v-if="attRecSelected.length" type="danger" plain :disabled="busy" @click="doPurgeAttBatch"><el-icon><Delete /></el-icon>彻底销毁({{ attRecSelected.length }})</el-button>
-            <el-button v-if="attRecTotal > 0" type="danger" :disabled="busy" @click="doPurgeAllAtt">清空附件回收站</el-button>
+            <el-button v-if="attRecTotal > 0" type="danger" :disabled="busy" @click="doPurgeAllAtt">清空本项目附件回收站</el-button>
           </template>
         </UiToolbar>
         <UiDataTable :data="attRecRecords" :loading="attRecLoading" row-key="id" @selection-change="(r: any[]) => attRecSelected = r.map(x => x.id)">
@@ -515,10 +532,11 @@ onMounted(async () => { await loadOpts(); loadList(); getMeetingSystemOptions().
             </template>
           </el-table-column>
         </UiDataTable>
-        <UiEmptyState v-if="!attRecLoading && attRecRecords.length === 0" description="附件回收站为空" icon="delete" />
+        <UiEmptyState v-if="!attRecLoading && attRecRecords.length === 0" description="当前项目附件回收站为空" icon="delete" />
         <UiPagination v-if="attRecTotal > 0" :page="attRecPage" :page-size="attRecSize" :total="attRecTotal" :page-sizes="[10,20,50,100]" @update:page-size="(v: number) => { attRecSize = v; attRecPage = 1; loadAttRecycle() }" @update:page="(v: number) => { attRecPage = v; loadAttRecycle() }" />
       </el-tab-pane>
     </el-tabs>
+    </template>
 
     <!-- 新增/编辑抽屉 -->
     <UiFormDrawer v-model="drawer" :title="editing ? '编辑会议纪要' : '新增会议纪要'" :loading="saving" width="min(900px, calc(100vw - 24px))" @submit="doSave">
@@ -526,13 +544,6 @@ onMounted(async () => { await loadOpts(); loadList(); getMeetingSystemOptions().
         <!-- 基本信息 -->
         <el-divider content-position="left">基本信息</el-divider>
         <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="项目" required>
-              <el-select v-model="fv.projectId" placeholder="选择项目" filterable style="width:100%" @change="onProjectChange">
-                <el-option v-for="o in projectOpts" :key="o.value" :label="o.label" :value="o.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
           <el-col :span="12">
             <el-form-item label="颗粒度" required>
               <el-select v-model="fv.granularity" placeholder="选择颗粒度" style="width:100%">
@@ -582,7 +593,7 @@ onMounted(async () => { await loadOpts(); loadList(); getMeetingSystemOptions().
         <el-row :gutter="16">
           <el-col :span="8">
             <el-form-item label="关联系统">
-              <el-select v-model="fv.systemIds" placeholder="选择关联系统" multiple filterable style="width:100%">
+              <el-select v-model="fv.systemCodes" placeholder="选择关联系统" multiple filterable style="width:100%">
                 <el-option v-for="o in fSystemOpts" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
             </el-form-item>
@@ -716,7 +727,6 @@ onMounted(async () => { await loadOpts(); loadList(); getMeetingSystemOptions().
         <template v-if="detailData">
           <el-descriptions :column="2" border>
             <el-descriptions-item label="会议编号" :span="2">{{ sd(detailData).meeting_code ?? detailData.meeting_code ?? '—' }}</el-descriptions-item>
-            <el-descriptions-item label="项目" :span="2">{{ detailData.project_name ?? '—' }}</el-descriptions-item>
             <el-descriptions-item label="颗粒度">{{ lbl(GRAV, sd(detailData).granularity) }}</el-descriptions-item>
             <el-descriptions-item label="会议纪要来源">{{ lbl(SRC, sd(detailData).meeting_source) }}</el-descriptions-item>
             <el-descriptions-item label="会议主题" :span="2">{{ sd(detailData).meeting_title ?? '—' }}</el-descriptions-item>

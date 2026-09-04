@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "topic": "REQ-031 schema 5 to schema 4 audited conversion",
+  "approved_by": "user",
+  "approved_at": "2026-09-05T01:46:28+08:00",
+  "source_state": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/schema5-state-snapshot.json",
+  "target_state": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/state.json",
+  "source_schema": 5,
+  "target_schema": 4,
+  "reason": "The repository control_loop.py supports schema 4 only. The schema 5 state was not executable and incorrectly declared convergence while four tasks were observing and five accepted feedback items were unresolved.",
+  "transformations": [
+    "preserved the complete schema 5 state as an immutable-in-practice snapshot",
+    "changed the active state schema_version to 4",
+    "restored phase from converged to correcting with an explicit repair history entry",
+    "removed schema 5 derived top-level fields current_phase, push_allowed, decision, converged_at and workflow",
+    "retained all requirements, model, tasks, feedback, samples and stage artifacts",
+    "updated R2 and R7 current views to include the user-approved REQ-064 increment"
+  ],
+  "initial_gate_blockers": [
+    "T2, T4, T19 and T20 were observing",
+    "F-0010, F-0011, F-0012, F-0013 and F-0016 were accepted but unresolved"
+  ],
+  "invariants": [
+    "no business code or database state is changed by the conversion",
+    "feedback is closed only after rerunning its correction checks",
+    "REQ-064 historical requirement, scope and ledger remain present"
+  ],
+  "rollback": "Restore state.json from schema5-state-snapshot.json; no application or database rollback is required."
+}

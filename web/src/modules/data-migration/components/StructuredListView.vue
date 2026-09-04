@@ -3,12 +3,14 @@
   说明：按结构化类型展示字段型资产（如目标表结构、中间表结构等），支持关键词查询、
         批量删除（逻辑删除，进入回收站）、Excel 导入/导出、以及抽屉表单编辑字段内容；
         接收 structuredType（结构化类型）与 pageTitle（页面标题）两个 props，由各内容页复用。
+        所属项目唯一取自全局项目上下文且不在页面展示：T32 起列表/导入/导出端点均强制携带 projectId，
+        项目隔离由服务端 SQL 保证，前端不再做任何项目过滤；项目切换后重置查询状态重查。
         视觉与交互对齐 AssetListView：UiToolbar + UiDataTable + UiFormDrawer，
         覆盖加载/空/失败/无权限/提交中状态；基础资料子页面不展示标题横幅，定位依赖顶部 Tabs。
 -->
 <script setup lang="ts">
 import '../data-migration.css'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Download, Edit, Search, UploadFilled } from '@element-plus/icons-vue'
 import UiDataTable from '../../../components/ui/UiDataTable.vue'
@@ -24,8 +26,14 @@ import {
   updateDataMigrationStructured,
   type DataMigrationAsset
 } from '../../../api/data-migration'
+import { useProjectScope } from '../composables/useProjectScope'
+import ProjectScopeState from './ProjectScopeState.vue'
 
 const props = defineProps<{ structuredType: string; pageTitle: string }>()
+
+const scope = useProjectScope()
+const scopeState = scope.state
+const scopeProjectId = scope.projectId
 
 const loading = ref(false)
 const error = ref('')
@@ -57,12 +65,19 @@ function cancelled(error: unknown) {
 }
 
 async function load() {
+  const projectId = scopeProjectId.value
+  if (projectId == null) {
+    assets.value = []
+    selectedIds.value = []
+    return
+  }
   loading.value = true
   error.value = ''
   forbidden.value = false
   selectedIds.value = []
   try {
-    assets.value = (await listDataMigrationStructured(props.structuredType, { keyword: keyword.value || undefined })).data.data ?? []
+    const rows = (await listDataMigrationStructured(props.structuredType, { projectId, keyword: keyword.value || undefined })).data.data ?? []
+    assets.value = rows
   } catch (e) {
     if (httpStatus(e) === 403) forbidden.value = true
     else error.value = apiErrorMessage(e, '列表加载失败')
@@ -89,9 +104,13 @@ async function removeSelected() {
 function chooseStructuredImport() { structuredInput.value?.click() }
 
 async function exportStructured() {
+  if (scopeProjectId.value == null) {
+    ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
+    return
+  }
   actionBusy.value = true
   try {
-    const response = await exportDataMigrationStructured(props.structuredType, { keyword: keyword.value || undefined })
+    const response = await exportDataMigrationStructured(props.structuredType, { projectId: scopeProjectId.value, keyword: keyword.value || undefined })
     const url = URL.createObjectURL(response.data)
     const anchor = document.createElement('a')
     anchor.href = url
@@ -121,7 +140,7 @@ async function saveEdit() {
   try { structuredData = JSON.parse(editJson.value) } catch { ElMessage.warning('字段 JSON 格式无效'); return }
   saving.value = true
   try {
-    await updateDataMigrationStructured(props.structuredType, asset.id, { projectId: asset.project_id, componentId: asset.component_id, assetCode: asset.asset_code, assetName: editName.value.trim(), structuredData })
+    await updateDataMigrationStructured(props.structuredType, asset.id, { componentId: asset.component_id, assetName: editName.value.trim(), structuredData })
     ElMessage.success('已保存')
     drawerOpen.value = false
     await load()
@@ -132,10 +151,16 @@ async function saveEdit() {
 async function inspectStructuredImport(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
+  const projectId = scopeProjectId.value
+  if (projectId == null) {
+    ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
+    if (structuredInput.value) structuredInput.value.value = ''
+    return
+  }
   actionBusy.value = true
   importResult.value = ''
   try {
-    const response = await inspectDataMigrationStructuredImport(props.structuredType, file)
+    const response = await inspectDataMigrationStructuredImport(props.structuredType, projectId, file)
     const data = response.data.data ?? {}
     importResult.value = `导入完成：成功 ${String(data.accepted ?? 0)} 行，失败 ${String(data.failed ?? 0)} 行`
     ElMessage.success(importResult.value)
@@ -147,12 +172,25 @@ async function inspectStructuredImport(event: Event) {
   }
 }
 
-onMounted(load)
+onMounted(() => { void scope.ensureLoaded() })
+
+// 全局项目变化时丢弃上一个项目的列表与筛选条件，按新项目重新查询。
+watch(scopeProjectId, () => {
+  assets.value = []
+  selectedIds.value = []
+  keyword.value = ''
+  importResult.value = ''
+  error.value = ''
+  forbidden.value = false
+  drawerOpen.value = false
+  void load()
+}, { immediate: true })
 </script>
 
 <template>
   <main class="dm-page-root">
-    <section v-if="forbidden" class="dm-state-panel"><el-result icon="warning" :title="`暂无${pageTitle}查看权限`" sub-title="请向数据迁移管理员申请 data-migration:access 权限。" /></section>
+    <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <section v-else-if="forbidden" class="dm-state-panel"><el-result icon="warning" :title="`暂无${pageTitle}查看权限`" sub-title="请向数据迁移管理员申请 data-migration:access 权限。" /></section>
     <section v-else-if="error" class="dm-state-panel"><el-result icon="error" :title="`${pageTitle}加载失败`" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
     <template v-else>
       <UiToolbar>

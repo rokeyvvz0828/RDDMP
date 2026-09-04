@@ -128,7 +128,7 @@ class IssueServiceTest {
     }
 
     private IssueService service(StubJdbcTemplate jdbc) {
-        return new IssueService(jdbc, new DataMigrationPermissionService(jdbc));
+        return new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()));
     }
 
     private Map<String, Object> minimalBody() {
@@ -201,7 +201,9 @@ class IssueServiceTest {
 
         @Override
         public int update(String sql, Object... args) {
-            if (sql.startsWith("UPDATE dm_issue SET project_id")) {
+            if (sql.startsWith("UPDATE dm_issue SET issue_code")) {
+                // T32 决策 D2：维护语句不得再携带 project_id，归属恒取库中记录。
+                if (sql.contains("project_id")) throw new AssertionError("Issue update must not mutate project_id: " + sql);
                 if (failIssueUpdateWithDuplicate) throw new DuplicateKeyException("duplicate active issue code");
                 return 1;
             }

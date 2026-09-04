@@ -3,10 +3,12 @@
   说明：上下结构维护表信息 + 字段明细；字段粒度分页列表；支持批量上传/单笔新增/查看/修改表信息/字段行编辑/删除/导出。
         系统编号联动物理子系统带出只读事业群/系统名称（不落库）；字段英文名/中文名/字典编号不允许空格；
         表英文名/中文名在 项目+系统编号 下唯一，字段英文名/中文名在表内唯一。覆盖加载/空/失败/无权限/提交中状态与移动端卡片化。
+        所属项目唯一取自全局项目上下文：页内不再有项目筛选、项目下拉与「所属项目」字段，列表/导出/新增/批量导入均自动使用当前项目，
+        导入时服务端逐行校验模板「所属项目编码」与当前项目一致，不一致的行按行失败；项目切换后重置分页与其他筛选条件重查。
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue'
@@ -34,12 +36,17 @@ import {
   type TargetTableField,
   type TargetTableRecord
 } from '../../../../api/data-migration'
-import { getProjectWorkbench } from '../../../../api/project'
-import type { Project } from '../../../../types/project'
+import ProjectScopeState from '../../components/ProjectScopeState.vue'
+import { useProjectScope } from '../../composables/useProjectScope'
 
 const route = useRoute()
 const props = defineProps<{ category?: TableCategory }>()
 const resolvedCategory = computed<TableCategory>(() => (props.category ?? (route.meta.category as TableCategory) ?? 'TARGET'))
+
+const scope = useProjectScope()
+const scopeState = scope.state
+const scopeProjectId = scope.projectId
+const scopeProjectName = scope.projectName
 
 const auth = useAuthStore()
 const readCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target' : 'data-migration:base:table-fields-intermediate')
@@ -62,15 +69,13 @@ const pageSize = ref(20)
 const actionBusy = ref(false)
 const selectedIds = ref<number[]>([])
 
-// 记录每行被裁剪进 "..." 的操作（key: row.id），用于控制下拉菜单只显示被裁剪的操作
+// 记录每行被裁剪进 "..." 的操作（key: row.table_code），用于控制下拉菜单只显示被裁剪的操作
 const clippedMap = reactive(new Map<number, Set<string>>())
 function getClipped(row: TargetTableRecord) {
-  return clippedMap.get(row.id) ?? new Set<string>()
+  return clippedMap.get(row.table_code) ?? new Set<string>()
 }
 
-const projects = ref<Project[]>([])
 const filters = reactive({
-  projectId: undefined as number | undefined,
   systemCode: '',
   isKeyField: undefined as number | undefined,
   dictCode: '',
@@ -89,13 +94,18 @@ function parseList(r: { data: { data: { records: TargetTableRecord[]; total: num
 }
 
 async function load() {
+  if (scopeProjectId.value == null) {
+    rows.value = []
+    total.value = 0
+    return
+  }
   loading.value = true
   error.value = ''
   forbidden.value = false
   try {
     const r = await listTargetTables({
       category: resolvedCategory.value,
-      projectId: filters.projectId,
+      projectId: scopeProjectId.value,
       systemCode: filters.systemCode || undefined,
       isKeyField: filters.isKeyField,
       dictCode: filters.dictCode || undefined,
@@ -115,27 +125,27 @@ async function load() {
   }
 }
 
-async function loadProjects() {
-  try { projects.value = (await getProjectWorkbench()).data.data ?? [] } catch { projects.value = [] }
-}
-
 function search() { page.value = 1; load() }
 function resetFilters() {
-  Object.assign(filters, { projectId: undefined, systemCode: '', isKeyField: undefined, dictCode: '', tableKeyword: '', fieldKeyword: '' })
+  Object.assign(filters, { systemCode: '', isKeyField: undefined, dictCode: '', tableKeyword: '', fieldKeyword: '' })
   page.value = 1; load()
 }
 function onPageChange(p: number) { page.value = p; load() }
 function onSizeChange(s: number) { pageSize.value = s; page.value = 1; load() }
-function onSelectionChange(val: TargetTableRecord[]) { selectedIds.value = val.map(v => v.id) }
+function onSelectionChange(val: TargetTableRecord[]) { selectedIds.value = val.map(v => v.table_code) }
 
 /* ---------- 导出 ---------- */
-async function exportExcel(ids?: number[]) {
+async function exportExcel(fieldCodes?: number[]) {
+  if (scopeProjectId.value == null) {
+    ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
+    return
+  }
   actionBusy.value = true
   try {
     const r = await exportTargetTables({
       category: resolvedCategory.value,
-      ids,
-      projectId: filters.projectId,
+      fieldCodes,
+      projectId: scopeProjectId.value,
       systemCode: filters.systemCode || undefined,
       isKeyField: filters.isKeyField,
       dictCode: filters.dictCode || undefined,
@@ -173,9 +183,12 @@ const importResult = ref<{ accepted: number; failed: number; errors: string[] } 
 function openImport() { importVisible.value = true; importFile.value = null; importResult.value = null }
 async function submitImport() {
   if (!importFile.value) return ElMessage.warning('请选择 Excel 文件')
+  // T32 决策 D4：导入必须绑定当前项目，服务端按行校验模板项目编码与请求项目一致。
+  const projectId = scopeProjectId.value
+  if (projectId == null) return ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
   importLoading.value = true
   try {
-    const r = await importTargetTables(resolvedCategory.value, importFile.value)
+    const r = await importTargetTables(resolvedCategory.value, projectId, importFile.value)
     importResult.value = r.data.data
     ElMessage.success(`导入完成：成功 ${r.data.data.accepted} 条，失败 ${r.data.data.failed} 条`)
     importVisible.value = false
@@ -192,7 +205,7 @@ async function openView(row: TargetTableRecord) {
   viewFields.value = []
   viewOpen.value = true
   try {
-    const r = await listTargetTableFields(row.id, resolvedCategory.value)
+    const r = await listTargetTableFields(row.table_code, resolvedCategory.value)
     viewFields.value = r.data.data ?? []
   } catch (e) { ElMessage.error(apiErrorMessage(e, '字段加载失败')) }
 }
@@ -215,7 +228,7 @@ async function submitEdit() {
   if (!editForm.table_name_cn.trim() || /\s/.test(editForm.table_name_cn)) return ElMessage.warning('表中文名不允许空格')
   editSaving.value = true
   try {
-    await updateTargetTable(editing.value.id, resolvedCategory.value, { tableNameEn: editForm.table_name_en.trim(), tableNameCn: editForm.table_name_cn.trim(), tableMeaning: editForm.table_meaning.trim() })
+    await updateTargetTable(editing.value.table_code, resolvedCategory.value, { tableNameEn: editForm.table_name_en.trim(), tableNameCn: editForm.table_name_cn.trim(), tableMeaning: editForm.table_meaning.trim() })
     ElMessage.success('修改成功')
     editOpen.value = false
     await load()
@@ -229,13 +242,12 @@ const subsystemSearching = ref(false)
 const subsystemForbidden = ref(false)
 const subsystemCandidates = ref<{ code: string; name: string; businessGroupName?: string | null }[]>([])
 const createForm = reactive<{
-  projectId?: number
   systemCode: string
   table_name_en: string
   table_name_cn: string
   table_meaning: string
   fields: Record<string, unknown>[]
-}>({ projectId: undefined, systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
+}>({ systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
 const selectedSubsystem = computed(() => subsystemCandidates.value.find(c => c.code === createForm.systemCode))
 
 async function searchSubsystem() {
@@ -252,7 +264,7 @@ async function searchSubsystem() {
   } finally { subsystemSearching.value = false }
 }
 function openCreate() {
-  Object.assign(createForm, { projectId: undefined, systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
+  Object.assign(createForm, { systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
   subsystemCandidates.value = []
   subsystemForbidden.value = false
   createOpen.value = true
@@ -260,7 +272,7 @@ function openCreate() {
 function addCreateField() { createForm.fields.push({ fieldNameEn: '', fieldNameCn: '', fieldMeaning: '', codeDescription: '', isKeyField: 0, oracleType: '', mysqlType: '', isNullable: 1, isPrimaryKey: 0, dictCode: '' }) }
 function removeCreateField(idx: number) { createForm.fields.splice(idx, 1) }
 async function submitCreate() {
-  if (!createForm.projectId) return ElMessage.warning('请选择所属项目')
+  if (scopeProjectId.value == null) return ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
   if (!createForm.systemCode.trim()) return ElMessage.warning('请输入系统编号')
   if (!createForm.table_name_en.trim() || /\s/.test(createForm.table_name_en)) return ElMessage.warning('表英文名不允许空格')
   if (!createForm.table_name_cn.trim() || /\s/.test(createForm.table_name_cn)) return ElMessage.warning('表中文名不允许空格')
@@ -272,7 +284,7 @@ async function submitCreate() {
   createSaving.value = true
   try {
     await createTargetTable(resolvedCategory.value, {
-      projectId: createForm.projectId,
+      projectId: scopeProjectId.value,
       systemCode: createForm.systemCode.trim(),
       tableNameEn: createForm.table_name_en.trim(),
       tableNameCn: createForm.table_name_cn.trim(),
@@ -300,7 +312,7 @@ async function openFields(row: TargetTableRecord) {
   fieldRows.value = []
   fieldOpen.value = true
   try {
-    const r = await listTargetTableFields(row.id, resolvedCategory.value)
+    const r = await listTargetTableFields(row.table_code, resolvedCategory.value)
     fieldRows.value = r.data.data ?? []
   } catch (e) { ElMessage.error(apiErrorMessage(e, '字段加载失败')) }
 }
@@ -308,7 +320,7 @@ async function addField() {
   if (!fieldTable.value) return
   fieldBusy.value = true
   try {
-    const r = await addTargetTableField(fieldTable.value.id, resolvedCategory.value, newFieldTemplate())
+    const r = await addTargetTableField(fieldTable.value.table_code, resolvedCategory.value, newFieldTemplate())
     fieldRows.value.push(r.data.data)
     ElMessage.success('新增字段成功')
   } catch (e) { ElMessage.error(apiErrorMessage(e, '新增字段失败')) } finally { fieldBusy.value = false }
@@ -327,7 +339,7 @@ async function saveEditField(f: TargetTableField) {
   if (fieldForm.dictCode && /\s/.test(String(fieldForm.dictCode))) return ElMessage.warning('数据字典编号不允许空格')
   fieldSaving.value = true
   try {
-    const r = await updateTargetTableField(f.id, resolvedCategory.value, { ...fieldForm })
+    const r = await updateTargetTableField(f.field_code, resolvedCategory.value, { ...fieldForm })
     Object.assign(f, r.data.data)
     editingField.value = null
     ElMessage.success('字段保存成功')
@@ -337,9 +349,9 @@ async function removeField(f: TargetTableField) {
   try {
     await ElMessageBox.confirm(`确认删除字段「${f.field_name_cn}（${f.field_name_en}）」吗？`, '删除字段', { type: 'warning' })
     fieldBusy.value = true
-    await deleteTargetTableField(f.id, resolvedCategory.value)
-    fieldRows.value = fieldRows.value.filter(x => x.id !== f.id)
-    selectedFieldIds.value = selectedFieldIds.value.filter(x => x !== f.id)
+    await deleteTargetTableField(f.field_code, resolvedCategory.value)
+    fieldRows.value = fieldRows.value.filter(x => x.field_code !== f.field_code)
+    selectedFieldIds.value = selectedFieldIds.value.filter(x => x !== f.field_code)
     ElMessage.success('已删除')
     // 若该表字段已全部删除，后端会同步删除表：关闭抽屉并刷新列表
     if (fieldRows.value.length === 0) {
@@ -354,7 +366,7 @@ async function batchDeleteFields() {
     await ElMessageBox.confirm(`确认批量删除 ${selectedFieldIds.value.length} 个字段吗？若某表字段被全部删除将同步删除该表`, '批量删除字段', { type: 'warning' })
     fieldBusy.value = true
     await deleteTargetTableFields(resolvedCategory.value, selectedFieldIds.value)
-    fieldRows.value = fieldRows.value.filter(x => !selectedFieldIds.value.includes(x.id))
+    fieldRows.value = fieldRows.value.filter(x => !selectedFieldIds.value.includes(x.field_code))
     selectedFieldIds.value = []
     ElMessage.success('已批量删除')
     if (fieldRows.value.length === 0) {
@@ -369,7 +381,7 @@ async function removeRow(row: TargetTableRecord) {
   try {
     await ElMessageBox.confirm(`确认删除表「${row.table_name_cn}（${row.table_name_en}）」及其全部字段吗？`, '删除表结构', { type: 'warning' })
     actionBusy.value = true
-    await deleteTargetTables(resolvedCategory.value, [row.id])
+    await deleteTargetTables(resolvedCategory.value, [row.table_code])
     ElMessage.success('已删除')
     await load()
   } catch (e) { if (!cancelled(e)) ElMessage.error(apiErrorMessage(e, '删除失败')) } finally { actionBusy.value = false }
@@ -458,12 +470,30 @@ function checkOverflow(el: HTMLElement) {
   })
 }
 
-onMounted(() => { loadProjects(); load() })
+onMounted(() => { void scope.ensureLoaded() })
+
+// 全局项目变化：丢弃上一个项目的列表、筛选与分页状态，按新项目重新查询。
+watch(scopeProjectId, () => {
+  rows.value = []
+  total.value = 0
+  selectedIds.value = []
+  page.value = 1
+  Object.assign(filters, { systemCode: '', isKeyField: undefined, dictCode: '', tableKeyword: '', fieldKeyword: '' })
+  createOpen.value = false
+  editOpen.value = false
+  viewOpen.value = false
+  fieldOpen.value = false
+  importVisible.value = false
+  error.value = ''
+  forbidden.value = false
+  void load()
+}, { immediate: true })
 </script>
 
 <template>
   <main class="dm-page-root tt-page">
-    <section v-if="forbidden" class="dm-state-panel">
+    <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <section v-else-if="forbidden" class="dm-state-panel">
       <el-result icon="warning" :title="`暂无${title}查看权限`" sub-title="请向数据迁移管理员申请相应权限。" />
     </section>
     <section v-else-if="error" class="dm-state-panel">
@@ -473,9 +503,6 @@ onMounted(() => { loadProjects(); load() })
     </section>
     <template v-else>
       <UiToolbar>
-        <el-select v-model="filters.projectId" clearable filterable placeholder="所属项目" style="width: 190px">
-          <el-option v-for="p in projects" :key="p.id" :label="`${p.project_name}（${p.project_code}）`" :value="p.id" />
-        </el-select>
         <el-input v-model="filters.systemCode" clearable placeholder="系统编号" style="width: 150px" @keyup.enter="search">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
@@ -503,9 +530,8 @@ onMounted(() => { loadProjects(); load() })
       </UiToolbar>
 
       <div v-if="rows.length || loading" class="tt-desktop">
-        <UiDataTable :data="rows" :loading="loading" row-key="id" border empty-text="暂无数据" @selection-change="onSelectionChange">
+        <UiDataTable :data="rows" :loading="loading" row-key="table_code" border empty-text="暂无数据" @selection-change="onSelectionChange">
           <el-table-column type="selection" width="46" />
-          <el-table-column prop="project_name" label="所属项目" min-width="150" show-overflow-tooltip />
           <el-table-column prop="business_group" label="事业群" min-width="110" show-overflow-tooltip />
           <el-table-column prop="system_code" label="系统编号" min-width="130" show-overflow-tooltip />
           <el-table-column prop="system_name" label="系统名称" min-width="160" show-overflow-tooltip />
@@ -530,7 +556,7 @@ onMounted(() => { loadProjects(); load() })
           <el-table-column prop="dict_code" label="数据字典编号" min-width="130" show-overflow-tooltip />
           <el-table-column label="操作" width="210" fixed="right" align="center">
             <template #default="{ row }">
-              <div v-overflow class="dm-table-actions" :data-row-id="row.id">
+              <div v-overflow class="dm-table-actions" :data-row-id="row.table_code">
                 <el-button data-action="view" link type="primary" :disabled="actionBusy" @click="openView(row)"><el-icon><View /></el-icon>查看</el-button>
                 <el-button v-if="canUpdate" data-action="edit" link type="primary" :disabled="actionBusy" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-button>
                 <el-button v-if="canUpdate" data-action="fields" link type="primary" :disabled="actionBusy" @click="openFields(row)">字段</el-button>
@@ -559,13 +585,12 @@ onMounted(() => { loadProjects(); load() })
       </div>
 
       <div v-if="rows.length || loading" class="dm-mobile-list">
-        <article v-for="row in rows" :key="row.id">
+        <article v-for="row in rows" :key="row.table_code">
           <header>
             <div><strong>{{ row.table_name_cn }}</strong><small>{{ row.table_name_en }} · {{ row.system_code }}</small></div>
             <el-tag :type="row.is_key_field === 1 ? 'danger' : 'info'" effect="plain" size="small">关键：{{ row.is_key_field === 1 ? '是' : '否' }}</el-tag>
           </header>
           <dl>
-            <div><dt>所属项目</dt><dd>{{ row.project_name }}</dd></div>
             <div><dt>事业群</dt><dd>{{ row.business_group }}</dd></div>
             <div><dt>系统名称</dt><dd>{{ row.system_name }}</dd></div>
             <div><dt>表含义</dt><dd>{{ row.table_meaning }}</dd></div>
@@ -585,7 +610,7 @@ onMounted(() => { loadProjects(); load() })
         </div>
       </div>
 
-      <UiEmptyState v-if="!loading && !rows.length" :title="`暂无${title}数据`" :description="`当前筛选条件下没有记录，可通过「新增」或「批量上传」录入。`" />
+      <UiEmptyState v-if="!loading && !rows.length" :title="`暂无${title}数据`" description="当前项目下没有记录，可通过「新增」或「批量上传」录入。" />
     </template>
 
     <!-- 查看 -->
@@ -594,7 +619,6 @@ onMounted(() => { loadProjects(); load() })
         <h4 class="tt-section-title">表信息</h4>
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item label="表编号">{{ viewing.table_code }}</el-descriptions-item>
-          <el-descriptions-item label="所属项目">{{ viewing.project_name }}</el-descriptions-item>
           <el-descriptions-item label="所属事业群">{{ viewing.business_group }}</el-descriptions-item>
           <el-descriptions-item label="系统编号">{{ viewing.system_code }}</el-descriptions-item>
           <el-descriptions-item label="系统名称">{{ viewing.system_name }}</el-descriptions-item>
@@ -623,7 +647,6 @@ onMounted(() => { loadProjects(); load() })
     <UiFormDrawer v-model="editOpen" title="修改表信息" width="560px" :loading="editSaving" confirm-text="保存" @submit="submitEdit">
       <el-form label-width="96px" label-position="left">
         <el-form-item label="表编号"><el-input :model-value="editing?.table_code" disabled /></el-form-item>
-        <el-form-item label="所属项目"><el-input :model-value="editing?.project_name" disabled /></el-form-item>
         <el-form-item label="系统编号"><el-input :model-value="editing?.system_code" disabled /></el-form-item>
         <el-form-item label="表英文名" required><el-input v-model="editForm.table_name_en" placeholder="不允许空格" /></el-form-item>
         <el-form-item label="表中文名" required><el-input v-model="editForm.table_name_cn" placeholder="不允许空格" /></el-form-item>
@@ -634,11 +657,6 @@ onMounted(() => { loadProjects(); load() })
     <!-- 新增表 + 字段 -->
     <UiFormDrawer v-model="createOpen" :title="`新增${title}`" width="720px" :loading="createSaving" confirm-text="保存" @submit="submitCreate">
       <el-form label-width="110px" label-position="left">
-        <el-form-item label="所属项目" required>
-          <el-select v-model="createForm.projectId" filterable placeholder="请选择所属项目" style="width: 100%">
-            <el-option v-for="p in projects" :key="p.id" :label="`${p.project_name}（${p.project_code}）`" :value="p.id" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="系统编号" required>
           <div class="tt-subsystem-search">
             <el-input v-model="createForm.systemCode" placeholder="输入物理子系统编号" @keyup.enter="searchSubsystem" />
@@ -684,24 +702,24 @@ onMounted(() => { loadProjects(); load() })
           <el-button v-if="canUpdate" type="primary" :loading="fieldBusy" @click="addField"><el-icon><Plus /></el-icon>新增字段</el-button>
           <el-button v-if="canDelete" type="danger" :loading="fieldBusy" :disabled="!selectedFieldIds.length" @click="batchDeleteFields"><el-icon><Delete /></el-icon>批量删除字段（{{ selectedFieldIds.length }}）</el-button>
         </div>
-        <el-table :data="fieldRows" border size="small" row-key="id" @selection-change="(rows: TargetTableField[]) => selectedFieldIds = rows.map(r => r.id)">
+        <el-table :data="fieldRows" border size="small" row-key="field_code" @selection-change="(rows: TargetTableField[]) => selectedFieldIds = rows.map(r => r.field_code)">
           <el-table-column type="selection" width="46" />
           <el-table-column type="expand">
             <template #default="{ row }">
               <el-form label-width="110px" label-position="left" class="tt-field-edit">
-                <el-form-item label="字段英文名"><el-input v-model="row.field_name_en" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="字段中文名"><el-input v-model="row.field_name_cn" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="字段含义"><el-input v-model="row.field_meaning" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="码值说明"><el-input v-model="row.code_description" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="ORACLE类型"><el-input v-model="row.oracle_type" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="mysql类型"><el-input v-model="row.mysql_type" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="数据字典编号"><el-input v-model="row.dict_code" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="关键/可空/主键" v-if="editingField?.id === row.id">
+                <el-form-item label="字段英文名"><el-input v-model="row.field_name_en" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="字段中文名"><el-input v-model="row.field_name_cn" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="字段含义"><el-input v-model="row.field_meaning" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="码值说明"><el-input v-model="row.code_description" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="ORACLE类型"><el-input v-model="row.oracle_type" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="mysql类型"><el-input v-model="row.mysql_type" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="数据字典编号"><el-input v-model="row.dict_code" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="关键/可空/主键" v-if="editingField?.field_code === row.field_code">
                   <el-checkbox v-model="fieldForm.isKeyField" :true-value="1" :false-value="0">关键栏位</el-checkbox>
                   <el-checkbox v-model="fieldForm.isNullable" :true-value="1" :false-value="0">可空</el-checkbox>
                   <el-checkbox v-model="fieldForm.isPrimaryKey" :true-value="1" :false-value="0">主键</el-checkbox>
                 </el-form-item>
-                <el-form-item v-if="editingField?.id === row.id">
+                <el-form-item v-if="editingField?.field_code === row.field_code">
                   <el-button type="primary" :loading="fieldSaving" @click="saveEditField(row)">保存</el-button>
                   <el-button @click="cancelEditField">取消</el-button>
                 </el-form-item>
@@ -715,7 +733,7 @@ onMounted(() => { loadProjects(); load() })
           <el-table-column label="主键" width="60" align="center"><template #default="{ row }">{{ row.is_primary_key === 1 ? '是' : '否' }}</template></el-table-column>
           <el-table-column label="操作" width="150" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button v-if="canUpdate" link type="primary" :disabled="fieldBusy" @click="editingField?.id === row.id ? cancelEditField() : openEditField(row)">{{ editingField?.id === row.id ? '取消' : '编辑' }}</el-button>
+              <el-button v-if="canUpdate" link type="primary" :disabled="fieldBusy" @click="editingField?.field_code === row.field_code ? cancelEditField() : openEditField(row)">{{ editingField?.field_code === row.field_code ? '取消' : '编辑' }}</el-button>
               <el-button v-if="canDelete" link type="danger" :disabled="fieldBusy" @click="removeField(row)"><el-icon><Delete /></el-icon>删除</el-button>
             </template>
           </el-table-column>
@@ -725,6 +743,9 @@ onMounted(() => { loadProjects(); load() })
 
     <!-- 导入 -->
     <el-dialog v-model="importVisible" title="批量上传表结构" width="520px" align-center>
+      <el-alert class="tt-subsystem-alert" type="info" :closable="false" show-icon
+        :title="`仅导入到当前项目：${scopeProjectName || '未选择项目'}`"
+        sub-title="模板中「所属项目编码」与当前项目不一致的行将按行失败，不会写入其他项目。" />
       <el-upload drag :auto-upload="false" :limit="1" :on-change="(f: any) => importFile = f.raw" accept=".xlsx,.xls">
         <el-icon class="el-icon--upload"><Upload /></el-icon>
         <div>将 Excel 拖到此处，或点击选择（模板列：所属项目编码/系统编号/表英文名称/表中文名称/表含义/字段…）</div>

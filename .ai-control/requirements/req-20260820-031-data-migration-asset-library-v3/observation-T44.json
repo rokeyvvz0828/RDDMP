@@ -1,0 +1,76 @@
+{
+  "sample_label": "T44 数据迁移 Flyway 版本顺延观测",
+  "task_ids": [
+    "T44"
+  ],
+  "baseline_revision": "main b1c64da 已占用 V147-V155；当前分支的数据迁移 V147-V170 因 V147-V155 重复而导致 Flyway 校验和数据迁移模块测试失败。",
+  "observed_at": "2026-09-05T01:29:40+08:00",
+  "independence": "same-context non-independent verification",
+  "measurements": [
+    {
+      "requirement_id": "T44-R1",
+      "sensor": "Flyway 文件树版本唯一性",
+      "result": "pass",
+      "raw_evidence": "迁移目录共 173 个 V<number> 脚本，重复版本数为 0；数据迁移序列连续为 V156-V179；main 的 V147-V155 保持原文件不变。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "T44-R2",
+      "sensor": "数据迁移 Maven 回归与 MySQL 8.4 迁移执行",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-data-migration -am test 返回 0，ccb-data-migration 83/83 通过；后续受影响的两个 MySQL 测试类 18/18 通过。",
+      "limitation": [
+        "Flyway 10.20.1 对 MySQL 8.4 输出版本支持提示，但迁移均执行成功。"
+      ]
+    },
+    {
+      "requirement_id": "T44-R3",
+      "sensor": "提交治理门禁",
+      "result": "blocked_external",
+      "raw_evidence": "Flyway 项目检查仅剩非数据迁移的 V84_1 命名问题；REQ-031 与 REQ-064 scope 检查因同一工作区包含两套需求文件而互相报告越界；控制账本 schema 5 与本地脚本 schema 4 不兼容。",
+      "limitation": [
+        "按用户约束不得修改需求管理迁移、全局治理脚本或 control-engineering 插件，因此这些门禁未在 T44 内处理。"
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "id": "T44-S1",
+      "kind": "migration uniqueness",
+      "result": "pass",
+      "evidence": "duplicate_versions=0"
+    },
+    {
+      "id": "T44-S2",
+      "kind": "automated backend",
+      "result": "pass",
+      "evidence": "83 tests + 18 focused migration tests, 0 failures/errors"
+    },
+    {
+      "id": "T44-S3",
+      "kind": "scope and governance",
+      "result": "blocked_external",
+      "evidence": "V84_1 非本模块问题；REQ-031/REQ-064 工作区范围互斥；schema 5 控制账本无法由 schema 4 脚本迁移。"
+    }
+  ],
+  "feedback": [],
+  "resolved_feedback": [
+    "main 与数据迁移 V147-V155 的 Flyway 重复版本已通过整体顺延消除。"
+  ],
+  "disturbances": [
+    "工作区在 T44 开始前已有大量 REQ-031/REQ-064 修改和未跟踪文件，均予以保留。"
+  ],
+  "coverage_gaps": [
+    "未取得独立 Agent 或人工复核证据。",
+    "官方 scope 与 control ledger 门禁仍需人工决定如何拆分/整合两套需求及升级控制脚本。"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 2,
+    "P3": 0
+  },
+  "observation_status": "complete_with_external_blocks",
+  "verdict": "migration_conflict_resolved_not_submission_ready",
+  "phase_recommendation": "保留 T44 实施结果；提交前由人工决定 REQ-031/REQ-064 的范围整合方式，并提供兼容 schema 5 的控制脚本或人工账本复核。"
+}

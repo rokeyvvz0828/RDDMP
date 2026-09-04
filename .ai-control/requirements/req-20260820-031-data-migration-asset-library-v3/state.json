@@ -1,8 +1,8 @@
 {
-  "schema_version": 5,
-  "revision": 201,
+  "schema_version": 4,
+  "revision": 234,
   "created_at": "2026-08-20T02:59:18+00:00",
-  "updated_at": "2026-09-01T17:20:00+08:00",
+  "updated_at": "2026-09-04T18:09:56+00:00",
   "mode": "high-assurance",
   "phase": "converged",
   "phase_history": [
@@ -455,6 +455,126 @@
       "to": "converged",
       "evidence": "T27 Owner 针对 T26 报告剩余风险的逐条修复指令闭环（1/2/4/5/7）：(指令1 restore 冲突统一) 四处 restore（MeetingService/ReportService/ContentFileAssetService/StructuredAssetService）UPDATE 包 try/catch DataIntegrityViolationException → CONFLICT/40900，与各自 create 的 meetingCodeConflict/docCodeConflict 同构；运行时探针 create MID1=1788253679363763 code=MEET-T27-CONF-170759 → soft-delete → recreate MID2 同 code → unified restore MID1 实测 HTTP 409 {code:40900,message:会议编号在该项目下已存在}（T26 同场景为 500），消除 T26 关键剩余风险；(指令4 原生分页) RecycleBinSource SPI 从 listDeleted 拆为 countDeleted(type,keyword,user):long + listDeletedPage(type,keyword,limit,user)；Meeting/Report/ContentFile/Structured 各服务新增 countRecycleBin/fetchRecycleBinPage 或 countDeleted/listDeletedPage，SQL 层 ORDER BY 业务编号 ASC + 原生 LIMIT ? 下推（不经 normalizePageSize 白名单），删除 MeetingRecycleBinSource/ReportRecycleBinSource 的 FETCH_SIZE=1000（修复其被 normalizePageSize 静默截断为 20 的隐性 bug）；ContentRecycleBinService.list 改为有界 k 路归并原生分页：total 由各源 countDeleted（SQL COUNT）相加，offset>=total 早返回空页，window=safePage*safeSize 作为各源 LIMIT 上界（全局第 page*size 小行必落在每源前 page*size 行内，取并集重排切页严格无损）；探针 page=1&size=2→[MEET-20002,MEET-20003]，page=2&size=2→[MEET-20005,MEET-20010]，page=1&size=10→5 行 total=5，page=99→0 记录 total=5，跨页不重叠、深页空、total 稳定；(指令5 排序级联) ContentAssetRecycleBinSource 委托底层，ContentFile/Structured listDeletedPage 内层 ORDER BY 从 updated_at/deleted_at DESC → doc_code ASC 空值末尾，与统一层 asset_code ASC 一致；(指令2 不吞端点) MeetingController 6 个 + ReportController 2 个数字型 PathVariable 加 \\\\d+ 正则约束，有效数字路由不破坏（/meetings/20001、/meetings/20001/attachments、/meetings/options/systems、/reports/check-md5 全 200），字面段不再被 /{id} 类型转换吞掉；旧字面路径虽不再触发类型转换异常，但未匹配路由仍被平台只读层 server/src/platform/boot/GlobalExceptionHandler 的 @ExceptionHandler(Exception.class) 兜底为 500（500→404 需改平台层，超业务 writable_paths，登记剩余风险）；(指令7 V104 seed 生产禁用) Owner 决定不做处理，Flyway 无新增（95 迁移持平）；未提及项 3 明暗主题、6 ISSUE 文档级、8 外部集成方保留为剩余风险；测试桩 ContentRecycleBinRegistryTest.RecordingSource 改为实现 countDeleted(返回 1L)+listDeletedPage；静态门全通过：mvn -pl :ccb-data-migration -am test 47 tests 0 fail 0 err 0 skip（含 ContentRecycleBinRegistryTest 5/5、MeetingRecycleBinSourceTest 5/5、ReportServiceTest 5/5）+ vue-tsc + vite build EXIT=0（约 10.78s）+ check-flyway-migrations 95 + check-all-governance 17 模块（EXIT=1 全属其他历史目录违规）+ check-codex-scope 104 文件均在 writable_paths 内；运行时 backend 运行 T27 最新构建 health UP + Vite :5173 就绪；Playwright chromium-1140 headless desktop 1280x800 + 3 视口 375x812/390x844/430x932 共 10/10 PASS（无 PAGEERROR、无相关 CONSOLE.ERR、el-pagination 渲染、分页 total='共 5 条'来自 SQL COUNT、切换每页大小触发后端重查、asset_code 严格 ASC、无横向溢出）；探针后 cleanup：先软删 MID2 → purge [MID1,MID2] → 回收站回到 total=5 基线；账本纯追加 execution-T27 + observation-T27；未 commit / push。仅本地。",
       "recorded_at": "2026-09-01T09:20:00+00:00"
+    },
+    {
+      "from": "converged",
+      "to": "observing",
+      "evidence": "T31 数据迁移模块全面跟随全局项目上下文（纯前端增量，无后端/迁移/权限变更）：新增 web/src/modules/data-migration/composables/useProjectScope.ts 把全局上下文 currentRef(project_code) 解析为后端契约所需数值 projectId/projectName（模块级共享项目工作台快照，解析不到返回 null 以阻断查询），新增 components/ProjectScopeHint.vue 只读当前项目标识与 components/ProjectScopeState.vue 非 ready 闸门（loading/error/unavailable/unselected 四态 + 重试，错误文案取上下文真实 errorText；fetched 由 let 改 ref 以消除挂载瞬间 unavailable 闪烁）。改造 8 个页面/共用组件（AssetListView 及其 7 个薄壳、StructuredListView、ComponentsPage、TargetTablesPage、PlansPage、IssuesPage、MeetingsPage、ReportsPage）：移除全部「所属项目」筛选下拉/输入与重置项及 onProjectChange/loadOpts/projectOpts/filterProjectId/uploadProjectId 等独立项目状态；列表、回收站、附件回收站、导出、上传、新增、导入恒定携带当前 projectId 且 load* 首行 null 守卫；关联系统下拉改按当前项目加载；新增抽屉项目下拉改为 disabled 只读输入（新增=当前项目，编辑=记录归属项目），StructuredListView/ReportsPage 编辑回传记录自身 project_id 防后端 SET project_id 改归属；统一 watch(scopeProjectId, 清空列表/筛选/分页/弹层/表单默认值 -> 重查, {immediate:true}) + onMounted 仅 ensureLoaded()，避免残留与挂载期重复请求。静态传感器全通过：npm --prefix web run build EXIT=0（vue-tsc，两次复跑）；grep 'v-model=\"[^\"]*[Pp]roject' 模块内 0 命中；8/8 文件 gate=1/watch=1、19 处 projectId: scopeProjectId；git status 仅 web/src/modules/data-migration/** 8 改 3 新增（stores/ui/AppLayout/后端零改动）。治理与范围：check-all-governance EXIT=1 全为其他前缀既有账本问题（不含 req-20260820-031）；check-codex-scope EXIT=1 仅 .gitignore 与 2026-09-02 设计文档越界，源自本分支既有提交 8b685b7/96b6bca，非本任务。未闭合反馈 F-T31-08：运行环境 POST /api/auth/login 用既有账本记录的本地 fixture 口令（admin/password、admin/admin）实测均 401 code=40100，无法取得授权态，故验收标准 1/2/5（项目 A↔B 切换、请求 projectId、刷新复进）与 1280x800/375x812/390x844/430x932 视口取证未执行，证据等级停在 已实现+检查通过，不提升为 运行可达/浏览器已验收。边界项 F-T31-09：ContentRecycleBinController.list 无 projectId、getDataMigrationDashboard 无项目参数、purgeAllIssues/purgeAllAttachments 无项目参数、Excel 导入模板含所属项目编码列 —— 受「不重构后端」约束保持现状，已登记 requirement.md。证据：execution-T31.json / observation-T31.json / requirement.md 增量段。",
+      "recorded_at": "2026-09-02T15:11:50+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "converged",
+      "evidence": "T31-r1 数据迁移模块「不展示所属项目字段」口径变更 + 真实运行/浏览器取证闭环（纯前端，无后端/迁移/权限变更）。口径变更：删除 components/ProjectScopeHint.vue 与 9 个页面/共用组件中的只读项目标识条、抽屉「所属项目」表单项（含 formProjectName/editProjectName 派生状态）、桌面表格「所属项目/项目」列、移动端卡片字段、详情 descriptions 项与空态/页头的项目名回显，改为静态说明「固定属于顶部项目切换器选择的当前项目」；查询与提交仍静默使用 scopeProjectId（StructuredListView/ReportsPage 编辑继续回传记录自身 project_id 防后端 SET project_id 改归属）。静态传感器：grep 'scopeProjectName|ProjectScopeHint' web/src = 0 命中；npm --prefix web run build（vue-tsc + Vite）EXIT=0；check-ai-control-layout 本前缀 0 违规。运行取证（用户本次提供的本地测试账号，凭据仅本会话使用且不落盘）：POST /api/auth/login 200 → GET /api/project/workbench 200 返回 3001/P2026-001、3002/P2026-002、3003/P2026-003，证明 project_code → 数值 projectId 反查映射在真实数据成立；Playwright 15 路由 × 1280x800/375x812/390x844/430x932 共 66 项断言 failed=0（main 区 innerText+innerHTML 双检无「所属项目」、无项目下拉、documentElement 无横向溢出、移动抽屉高度 ≤ 视口、控制台 0 error、无 ≥400 响应）；真实点击顶部切换器 P2026-001→P2026-002 后列表由 CHK-A-001 变 CHK-B-001、residueOfA=false、新请求 issues?projectId=3002 与 options/systems?projectId=3002；UI 新增请求体 projectId=3001/3002 与响应 project_id 一致，抽屉 19 字段无项目字段；刷新与深链接重进仍以当前项目查询；page.route 令 /api/project/workbench 返回 500 时仅显示闸门「当前项目信息加载失败…重新加载」且 /api/data-migration/* 列表请求数=0、新增/导入入口不出现在闸门内。扰动与纠正：SearchReplace 顺序失配曾损坏 IssuesPage 的 fieldTableMap 声明行，已按 diff 精确复原；addInitScript 改 localStorage 的「热切换」脚手架无效（每次导航重写），改为真实点击切换器复测通过；上一轮把运行取证标为 blocked 的原因是未查既有「测试用户登录凭证」记忆而猜测口令致 401。闭合 F-T31-08（浏览器验收 blocked）与 F-T31-10（证据等级停在检查通过）；证据等级：已实现 + 检查通过 + 运行可达 + 浏览器已验收。剩余边界（登记为 unresolved，不阻塞收敛）：统一回收站与两个看板按后端契约无 projectId（跨项目集合）、结构化列表端点依赖前端按 project_id 过滤（本地数据集为空未构造跨项目污染反例）、Excel 导入模板首列仍为「所属项目编码」由后端解析、非管理员角色的闸门/403 表现未取证（本地仅 admin）。环境副作用：验收新增的 CHK-A-001/CHK-B-001 已 DELETE + purge 清理，三项目 issues total=0、回收站 total=0。证据：execution-T31-r1.json / observation-T31-r1.json / requirement.md 增量段与验收取证段。",
+      "recorded_at": "2026-09-02T16:11:16+00:00"
+    },
+    {
+      "from": "converged",
+      "to": "baseline",
+      "evidence": "T32 用户主指令「数据迁移模块均要作项目隔离，新增时项目id从前端传给后端，修改等维护从后端获取项目id且不能变更」推翻 T31「不改后端」边界，重新定标：requirement.md 追加 T32 增量段与验收标准 AC1~AC7、不变量（不新增 Flyway、不改 platform/shared、租户与 RBAC 不弱化）；codex-task-scope.yaml 扩到 server/src/modules/data-migration/** 并声明只读 pm_project_member。四项用户决策：D1 隔离原语收在 DataMigrationPermissionService、D2 UPDATE 不含 project_id 归属恒取库中值、D3 全量纳入（含统一回收站/两看板/check-md5/导入/purge-all）、D4 导入必须带项目且行内编码一致。（注：T32 各阶段跨多次会话执行，账本未在阶段跳转时即时写入，本批 phase_history 的 recorded_at 为收敛时补登时刻，非阶段实际发生时刻；阶段内容与产物时间以 execution-T32.json / observation-T32.json 与需求文档为准。该写入延迟本身记为流程偏差。）",
+      "recorded_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "executing",
+      "evidence": "建模与规划在实施中一并完成（注入关系盘点：8 个 service 共用守卫；SPI RecycleBinSource 及其 4 个实现需同步改签名；ContentAssetTables 为表注册事实源；ensureProject 调用点收敛），实现按「原语→查询→按 id 归属→更新去列→导入→回收站→看板→前端契约→测试」顺序落地：29 个已跟踪后端文件 +525/−324，新增 web/DataMigrationExceptionAdvice.java 与 DataMigrationPermissionServiceTest(6)、DataMigrationExceptionAdviceTest(3)。",
+      "recorded_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "首轮双轨取证：直连 HTTP v4 110 项 0 失败（A 30 缺参 400、B 9 非法值 400、C/C2 33 双向可见性与标记互斥、D/E/F/G/H/I 归属与purge范围）；真实浏览器首轮 113 PASS / 24 FAIL，另 U4 崩溃：FAIL 集中在 base/intermediate-tables 与 content/recycle-bin 可见性、U2 有 1 个缺 projectId 的 GET、以及 375/390/430 页面级横向溢出。",
+      "recorded_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "三项偏差定性并纠正：(1) 真实产品缺陷——web/src/api/data-migration.ts 的 listDataMigrationRecycleBin 声明 projectId 必填却重拼 params 时丢弃，统一回收站页 100% 进入 400 失败态，已显式转发并加请求级传感器复验（36 请求 missingGet=0）；(2) 移动端溢出归因到本分支早于 T32 的 9fec831 给 AssetListView/PlansPage 裸挂 UiPagination，只在可写范围套用既有 .dm-table-footer 约定，不改 read_only 共享组件；(3) 传感器自身缺陷修正——中间表夹具类型错（路由实际组件为 TargetTablesPage category=INTERMEDIATE）、抽屉定位（3 个 .el-drawer 共存 + el-select 内层 input 只读遮挡，改按标题过滤 + 键盘选择）、脚本崩溃吞掉清理与落盘（加 X1.no_fatal_script_error 护栏）、按 design-h5.md §5.4 收紧溢出判定（排除 el-tabs 内允许的局部横向滚动 6 项误报）。期间取证环境被整体回收（/tmp 与前后端进程消失、容器重启），已重启并复跑全部运行级证据。",
+      "recorded_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "converged",
+      "evidence": "复跑收敛：浏览器 137 项 0 失败（17 路由 × 4 视口，U1 51、U2 36/0、U3 400 双反例、U4 payload/resp project_id=3001、「新增成功」、U5 可见、U6 68 项无溢出 0 控制台错误 0 个 ≥400、U7 无「所属项目」字段、P0/Z1~Z4 残留全 0、X1 无致命脚本错误）；直连 API 110 项 0 失败；focused mvn 59/0 BUILD SUCCESS；npm build EXIT=0；范围检查 passed（138 文件）；治理与布局检查 EXIT=1 但本需求 0 命中。全仓 mvn test EXIT=1：ccb-data-migration SUCCESS，ccb-architecture 4 项失败（NetworkAccessMigrationMySqlTest 2 ERROR 于平台既有 V80 排序规则混合；LegacyWorkflowInboxMenuMigrationMySqlTest 2 FAILURE 于 sys_menu id=202），归因证据：architecture 相对 origin/main 零改动 + 两用例 Flyway target 为 103/105 与 122/123 而本分支仅追加 V147~V159，属基线/环境问题，未在 main 干净树复跑，登记为基线复验项；ccb-test-management 与 ccb-boot 被 SKIPPED。AC2 的 403 分支按需求自身授权以单元测试 + API 反例替代（本地无成员数据且取证账号豁免），未达浏览器级；pm_project_member 只读为需 Owner 复核的有边界让步。据此判定 converged 但带已登记剩余风险，push_allowed 保持 false。",
+      "recorded_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "from": "converged",
+      "to": "correcting",
+      "evidence": "F-0017 用户负反馈进入纠偏：用户第二次提出同一指令「pm_project_member 冗余设计了，调用平台侧成员口径」。上一轮 T32 的有边界让步（业务模块内只读复制平台成员判定 SQL）与随后一度采取的「先删 SQL、平台接入留作后续」处理，均被该重复指令否证：指令要求的是接平台口径，不是放弃项目级成员授权。",
+      "recorded_at": "2026-09-03T11:20:00+08:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0017 裁决 accept，纠正动作限幅且可复验：只把判定改接既有公开契约 com.ccb.system.capability.ProjectWorkflowDirectoryService（requireAccessible(long,AuthUser)/accessibleProjectIds(AuthUser)），不改 server/src/platform/**、不扩 codex-task-scope、不动前端与数据库；传感器为「守卫 SQL 不得出现 pm_project/pm_project_member」+ 平台契约注入点枚举 + 未知项目文案判别探针。",
+      "recorded_at": "2026-09-03T11:32:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "实施完成并落盘 execution-T32-r1.json：DataMigrationPermissionService 构造器加入平台契约并删除自身项目/成员判定，DashboardService.accessibleProjectCount 与 ReportService.getProjectOptions 改走 accessibleProjectIds；新增测试替身 StubProjectAccess（未授权方法抛 UnsupportedOperationException 作越界传感器），DataMigrationPermissionServiceTest 6 到 8 用例并反转断言方向；聚焦 mvn -pl :ccb-data-migration -am test EXIT=0（61/0，同批上游 ccb-system 62/0）。",
+      "recorded_at": "2026-09-03T11:58:00+08:00"
+    },
+    {
+      "from": "observing",
+      "to": "converged",
+      "evidence": "observation-T32-r1.json 八项发现：模块内成员/项目可达性判定 SQL 为 0（4 处命中全为注释）、判定点唯一落在平台（运行时未知项目返回平台原文「项目不存在或已删除」）、范围检查通过、口径收紧影响如实登记（豁免角色由 ADMIN/SUPER_ADMIN/DATA_MIGRATION_ADMIN 收敛为平台超级管理员，本地 pm_project_member 两条均 deleted=1 故非超管将 403）；AC2 的 403 分支仍无运行时/浏览器取证（本地无可登录非超管账号），维持 partial_pass；RBAC 直读 sys_* 表与展示型 pm_project 读取登记为范围外相邻重复。requirement.md D1 与执行期细化 7 同步撤销「需 Owner 复核的让步」。据此 converged_with_registered_residuals，push_allowed 保持 false。",
+      "recorded_at": "2026-09-03T12:12:00+08:00"
+    },
+    {
+      "from": "converged",
+      "to": "correcting",
+      "evidence": "F-0018 文档基准漂移：docs/requirements/REQ-20260820-031-.../database-schema-and-relations.md 仍按 V98 口径描述「现存 10 张 + dm_asset 16 种 asset_type + dm_asset_relation」，而库结构已推进到 V159（旧三表已 DROP、新增 13 张内容/关系表、统一回收站成正式菜单）。判定为观测产物过期，属纯文档纠正，不动代码与迁移。",
+      "recorded_at": "2026-09-03T12:15:00+08:00"
+    },
+    {
+      "from": "correcting",
+      "to": "converged",
+      "evidence": "以本地 MySQL 8.4.11 ccb_platform 的 information_schema 实测重写该文档：21 张 dm_% 表 / 314 列 / 101 索引 / 唯一物理外键 fk_target_field_table / 零 CHECK 约束 / 14 个活动唯一生成列；行数改用 COUNT(*) 实测（TABLE_ROWS 在本库失真：dm_component 估算 0 实际 20）；菜单映射按 sys_menu 现值改为 17 个叶子菜单；并如实登记新发现的结构性缺口（中间表双轨且 IntermediateTablesPage.vue 未接线、dm_dashboard_snapshot 只写不读、审计缺 project_id、子系统引用 id/code 两种键型、MD5 索引未含 project_id、V100/V103 注释与索引名漂移）。范围检查复跑通过（143 changed file(s)），取证暂存文件已全部清除。",
+      "recorded_at": "2026-09-03T12:25:00+08:00"
+    },
+    {
+      "from": "converged",
+      "to": "correcting",
+      "evidence": "对已重写的 database-schema-and-relations.md 做独立复算（observation-T32-r1-doc.json）。结构事实成立（21 表 / 314 列 / 101 索引含 21 主键 / 1 外键 / 0 CHECK / checksum_md5 与 structured_data 归属与 ContentAssetTables 逐项一致），但发现两处 P2 质量问题：F-DOC-02 §11 未附生成列取证口径，按 EXTRA LIKE '%GENERATED%' 复算会得 50（DEFAULT_GENERATED 21 + on update CURRENT_TIMESTAMP 15 混入）而误判文档失实；F-DOC-03 §4.3/§9.3 的「4 条/6 条二级索引」未定义唯一键是否计入（实测非主键索引 dm_issue 5、dm_meeting 7）。",
+      "recorded_at": "2026-09-03T14:00:00+08:00"
+    },
+    {
+      "from": "correcting",
+      "to": "converged",
+      "evidence": "仅改文档，不动代码与迁移：§11 补 GENERATION_EXPRESSION 严格口径查询与「取证陷阱」段落、补 CHECK 约束查询（并记 MySQL 8.4 的 CHECK_CONSTRAINTS 无 TABLE_NAME 列）、补索引分组口径；头部新增「结构总量（实测）」行；§4.3 明确「二级索引 = 非主键且非唯一」并给出含唯一键全集数；§9.3 相应两行改述。复算复验通过：21 表 / 314 列 / 非主键索引 80（含主键 101）/ 14 STORED 生成列分布 13 表 / 生成列注释缺失恰为 dm_issue.active_issue_code 与 dm_meeting.active_meeting_code / 无 InnoDB+utf8mb4_unicode_ci 例外。范围检查复跑通过；本需求在 layout 与 all-governance 检查中 0 命中（all-governance EXIT=1 属其他需求既有基线）。未闭合：§6 四张 Mermaid 未经渲染工具验证（本机无 mermaid 依赖）。",
+      "recorded_at": "2026-09-03T14:10:00+08:00"
+    },
+    {
+      "from": "converged",
+      "to": "correcting",
+      "evidence": "schema 4 转换审计：当前 control_loop.py 仅支持 schema 4，而 schema 5 活动状态同时存在 4 个 observing 任务和 5 个已接受未关闭反馈，原 converged 结论不可成立。转换前全量状态保存在 schema5-state-snapshot.json；本次只恢复到 correcting，后续任务、反馈和最终阶段均由控制命令推进。",
+      "recorded_at": "2026-09-05T01:46:28+08:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "五项 accepted feedback 均已有有界纠偏契约；写入范围限数据迁移模块与 REQ-031 账本，进入复验执行",
+      "recorded_at": "2026-09-04T17:52:23+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "ExecutionReport recorded; final state is independently measurable by Maven, Vue build, scope, Flyway inventory and diff sensors",
+      "recorded_at": "2026-09-04T18:03:36+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "ObservationReport revision 23 and S-0026 show P0-P3 zero; F-0010/F-0011/F-0012/F-0013/F-0016 resolved with fresh evidence; T2/T4/T19/T20 verified",
+      "recorded_at": "2026-09-04T18:06:18+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Fresh convergence artifact revision 2 recorded; gate passed with 10/10 verified tasks, 18/18 feedback closed, final S-0027 P0-P3 zero, and scoped regression evidence complete",
+      "recorded_at": "2026-09-04T18:09:56+00:00"
     }
   ],
   "stage_artifacts": {
@@ -4487,6 +4607,163 @@
           ],
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 15,
+        "evidence": "T46 final implementation, focused/full module tests, frontend build, scope and migration audit recorded immediately",
+        "recorded_at": "2026-09-04T18:03:36+00:00",
+        "data": {
+          "task_id": "T46",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content/IssuesPage.vue",
+              "purpose": "Replace browser-side 500-row sequential issue import with the existing bounded server import, consume row permission guards, restrict recycle-bin visibility, and preserve the pre-change table selection needed to prune related fields correctly."
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+              "purpose": "Add a source-contract regression sensor for server import, permission guard consumption and dependent table/field selection behavior; align the V169 procedure assertion and repository-relative Vue path."
+            },
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json",
+              "purpose": "Preserve the former schema 5 state snapshot, convert the active REQ-031 ledger to supported schema 4, record REQ-064 consolidation and five accepted correction contracts, and continue phase changes through control_loop.py."
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/** and docs/requirements/REQ-20260903-064-data-migration-intermediate-table-canonicalization/**",
+              "purpose": "Make REQ-031 the active schema 4 delivery scope and retain REQ-064 as a historical requirement merged into REQ-031."
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3",
+            "R5",
+            "R6",
+            "R7",
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite production build succeeded; 2567 modules transformed and the bundle was built in 19.38s."
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,ContentAssetMigrationMySqlTest,IssueExcelServiceTest,IssueServiceTest,DataMigrationPermissionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "45 tests passed with zero failures/errors/skips; MySQL 8.4 executed the focused content migration path through V170 including V169."
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am test",
+              "exit_code": 0,
+              "salient_output": "Reactor BUILD SUCCESS; ccb-data-migration ran 84 tests with zero failures/errors/skips, including MySQL 8.4 migration suites."
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "REQ-031 scope check passed for 229 changed files."
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs --base origin/main --head HEAD",
+              "exit_code": 1,
+              "salient_output": "Only the user-approved ignored baseline file V84_1__seed_requirement_system_catalog.sql violates the filename rule; V147-V179 are unique and V156-V179 are the data-migration sequence."
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "Module governance, repository skill and development entry passed; the run then stopped on main-owned REQ-20260904-061 codex-task-scope.yaml because it is not JSON-compatible YAML."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Issue import and permission UI contract",
+              "result": "pass",
+              "evidence": "Production Vue/TypeScript build and DataMigrationModuleRegistrationTest both pass against the final IssuesPage source.",
+              "limitations": [
+                "This correction pass did not recreate the historical multi-role browser fixture; backend authorization remains covered by service tests."
+              ]
+            },
+            {
+              "check": "Issue lifecycle, bounded Excel and project authorization",
+              "result": "pass",
+              "evidence": "Focused tests and the complete module suite pass, including IssueExcelServiceTest, IssueServiceTest and DataMigrationPermissionServiceTest.",
+              "limitations": [
+                "Production IAM identities and production data were not accessed."
+              ]
+            },
+            {
+              "check": "Flyway ordering after main merge",
+              "result": "pass-with-approved-baseline-exception",
+              "evidence": "V147-V155 are main migrations, V156-V179 are present as the data-migration sequence, duplicate version scan returned no duplicates, and MySQL 8.4 migration tests passed.",
+              "limitations": [
+                "The repository Flyway checker remains non-zero solely for the explicitly ignored V84_1 filename."
+              ]
+            },
+            {
+              "check": "Repository governance",
+              "result": "external-failure",
+              "evidence": "REQ-20260904-061 scope parse failure is unchanged from origin/main and is outside REQ-031 writable paths.",
+              "limitations": [
+                "Global governance cannot return zero without a separately authorized owner correction for REQ-061."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "REQ-064 is consolidated into REQ-031 while its historical schema 4 evidence remains intact.",
+            "The active REQ-031 ledger is schema 4 and phase transitions now use control_loop.py.",
+            "Issue import uses the existing 50 MB and 5000-row server contract and reports per-row results.",
+            "Issue edit/delete/recycle controls consume permissions, and table removal uses preserved prior selection state.",
+            "The data-migration Flyway series starts at V156, avoiding main's V147-V155."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Only data-migration-owned content is modified",
+              "result": "pass",
+              "evidence": "REQ-031 scope check passed for all 229 committed and working-tree changes."
+            },
+            {
+              "invariant": "main's V147-V155 migrations remain authoritative",
+              "result": "pass",
+              "evidence": "Filesystem scan shows main's release migrations at V147-V155 and data-migration files at V156-V179 with no duplicate versions."
+            },
+            {
+              "invariant": "Server remains the authorization authority",
+              "result": "pass",
+              "evidence": "DataMigrationPermissionServiceTest and IssueServiceTest pass; frontend guards only control affordances."
+            },
+            {
+              "invariant": "No production access or production data",
+              "result": "pass",
+              "evidence": "All database execution used disposable Testcontainers MySQL 8.4 instances."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "main contains a non-JSON-compatible REQ-20260904-061 scope file",
+              "impact": "Global governance stops before completing all child checks; the file is outside data-migration scope and was not modified."
+            },
+            {
+              "event": "V84_1__seed_requirement_system_catalog.sql violates the Flyway filename rule",
+              "impact": "The user explicitly instructed this existing failure to be ignored; no modification was made."
+            },
+            {
+              "event": "Flyway reports MySQL 8.4 newer than its declared tested support through MySQL 8.1",
+              "impact": "All disposable MySQL 8.4 migration suites passed; retain as a release residual risk."
+            }
+          ],
+          "assumptions_falsified": [
+            "The prior assumption that later IssuesPage changes had already resolved F-0011 and F-0012 was false; direct source inspection found browser-side import and unconsumed permission helpers, so bounded product corrections were required."
+          ],
+          "unresolved_items": [
+            "Global governance remains blocked by main-owned REQ-20260904-061 and the explicitly ignored V84_1 filename; both are outside the authorized data-migration write scope.",
+            "No new browser role/viewport run was performed in this correction pass; earlier browser evidence remains historical rather than fresh."
+          ],
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -5983,6 +6260,110 @@
           "observer_independence": "Separate observing phase in the same Codex context; fresh focused Maven, HTTP, database, scope and diff sensors were rerun after execution and combined with independently captured T20 browser evidence, but this is not an independent human review.",
           "conclusion": "No data-migration P0-P3 deviation was observed; external repository failures are reproducible but outside the approved REQ-031 controlled plant."
         }
+      },
+      {
+        "revision": 23,
+        "evidence": "Fresh 36-test Maven observation, repeated frontend build, calibrated source scan, scope and ledger timing audit report zero current deviations",
+        "recorded_at": "2026-09-04T18:05:40+00:00",
+        "data": {
+          "sample_label": "T46 schema4 convergence repair independent observation",
+          "task_ids": [
+            "T2",
+            "T4",
+            "T19",
+            "T20"
+          ],
+          "baseline_revision": "baseline artifact revision 1; active schema 4 ledger revision 219",
+          "measurements": [
+            {
+              "requirement_id": "R3",
+              "sensor": "IssueServiceTest and DataMigrationPermissionServiceTest",
+              "result": "pass",
+              "raw_evidence": "Focused Maven observation ran 16 authorization/lifecycle tests in these two classes with zero failures or errors; the complete 36-test observation set passed.",
+              "limitation": [
+                "Production IAM identities and production data are outside local verification authority."
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "IssueExcelServiceTest plus DataMigrationModuleRegistrationTest",
+              "result": "pass",
+              "raw_evidence": "20 import/export and module contract tests passed; the final page calls importIssues(pid, importFile.value) and contains no browser XLSX parser or 500-row import path.",
+              "limitation": [
+                "The observation uses generated test workbooks rather than production files."
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "IssueExcelServiceTest and final source contract scan",
+              "result": "pass",
+              "raw_evidence": "Backend bounded import/export tests passed and the Vue page displays complete success/failure counts plus rowErrors from the server response.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "vue-tsc plus Vite production build and final source contract scan",
+              "result": "pass",
+              "raw_evidence": "npm --prefix web run build exited 0 with 2567 modules transformed in 18.34s; edit/delete selection guards, manage-only recycle tab and preserved previousTableIds are present.",
+              "limitation": [
+                "No fresh browser role/viewport run was performed in this correction observation; earlier browser samples remain historical evidence."
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "Full data-migration Reactor suite with disposable MySQL 8.4",
+              "result": "pass",
+              "raw_evidence": "mvn -pl :ccb-data-migration -am test exited 0; ccb-data-migration ran 84 tests with zero failures/errors/skips, including migration suites through V178 and focused V169 execution.",
+              "limitation": [
+                "Flyway emits a support warning because MySQL 8.4 is newer than its declared tested support through 8.1."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Flyway version inventory and REQ-031 scope checker",
+              "result": "pass",
+              "raw_evidence": "V147-V155 are main release migrations, V156-V179 are the data-migration sequence, no duplicate versions were found, and the scope checker passed for 230 changed files.",
+              "limitation": [
+                "The official Flyway checker remains non-zero only for the user-approved ignored V84_1 filename."
+              ]
+            },
+            {
+              "requirement_id": "engineering-control-ledger",
+              "sensor": "schema 4 ledger phase and artifact timestamp audit",
+              "result": "pass",
+              "raw_evidence": "execution-T46 was recorded as executing artifact revision 15 before control_loop.py immediately transitioned executing to observing at ledger revision 219; both records share the same audited timestamp and preserve causal order in the ledger.",
+              "limitation": [
+                "Historical delayed phase entries remain visible and are not rewritten."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "An initial source scan matched pm_project_member in explanatory comments and exited 1.",
+              "impact": "Classified as sensor-fault; the scan was calibrated to SQL string literals containing FROM/JOIN and then exited 0."
+            },
+            {
+              "event": "Global governance stops on main-owned REQ-20260904-061 malformed scope before reaching later child checks.",
+              "impact": "External baseline failure outside data-migration writable scope; current REQ-031 scope, module tests and build remain independently observable."
+            },
+            {
+              "event": "V84_1 violates the repository Flyway filename grammar.",
+              "impact": "Existing user-approved ignored exception; no data-migration migration version collision was observed."
+            }
+          ],
+          "coverage_gaps": [
+            "Fresh browser role and mobile viewport probes were not rerun during T46.",
+            "Global governance cannot complete until REQ-061 is corrected by its owner under separate authorization."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
       }
     ],
     "correcting": [
@@ -6342,6 +6723,228 @@
           "resolution": "open",
           "residual_risk": [
             "the compatibility flow transfers the attachment through the browser once before preview upload"
+          ]
+        }
+      },
+      {
+        "revision": 9,
+        "evidence": "F-0010 纠偏契约已登记，等待原失败检查复验",
+        "recorded_at": "2026-09-04T17:52:22+00:00",
+        "data": {
+          "feedback_id": "F-0010",
+          "decision": "accept",
+          "decision_reason": "The original review proved that purge could remove non-deleted rows or leave relation state inconsistent; this must be reverified against the final IssueService implementation.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "The purge path previously lacked a deleted-row precondition and complete relation cleanup.",
+            "supporting_evidence": [
+              "F-0010 evidence in the preserved state",
+              "IssueServiceTest now contains active-row rejection and relation-first purge assertions"
+            ],
+            "falsifier": "A focused test can purge an active issue or retain its relations after a deleted issue purge."
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "IssueService purge contract",
+            "write_scope": [
+              "server/src/modules/data-migration/**",
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+            ],
+            "invariants": [
+              "only confirmed deleted issues can be purged",
+              "relations are deleted consistently",
+              "tenant and project scope remain enforced"
+            ],
+            "impact_limit": "data-migration issue purge and its tests",
+            "rollback": "No product edit is planned; revert only new control evidence if the sensor is invalid.",
+            "correction_check": [
+              "IssueServiceTest active-row rejection",
+              "IssueServiceTest relation-first deleted-row purge",
+              "focused module regression"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": []
+        }
+      },
+      {
+        "revision": 10,
+        "evidence": "F-0011 纠偏契约已登记，等待 Issue XLSX 复验",
+        "recorded_at": "2026-09-04T17:52:22+00:00",
+        "data": {
+          "feedback_id": "F-0011",
+          "decision": "accept",
+          "decision_reason": "The original review found no dedicated issue XLSX backend. The final IssueExcelService and controller contract must be tested for size, row bounds, partial failures and valid export output.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "A dedicated IssueExcelService was added after the feedback and now owns the bounded import/export contract.",
+            "supporting_evidence": [
+              "IssueExcelService exists in the data-migration module",
+              "IssueExcelServiceTest covers workbook import and export"
+            ],
+            "falsifier": "Focused tests show missing 50 MB/5000-row enforcement, first-error abort, or invalid XLSX output."
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "Issue XLSX import/export contract",
+            "write_scope": [
+              "server/src/modules/data-migration/**",
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+            ],
+            "invariants": [
+              "50 MB and 5000-row bounds",
+              "per-row result preservation",
+              "dm_issue remains the issue source",
+              "export is a valid XLSX"
+            ],
+            "impact_limit": "data-migration issue Excel service and tests",
+            "rollback": "No product edit is planned; revert only new control evidence if the sensor is invalid.",
+            "correction_check": [
+              "IssueExcelServiceTest",
+              "Issue controller registration assertions",
+              "focused module regression"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": []
+        }
+      },
+      {
+        "revision": 11,
+        "evidence": "F-0012 纠偏契约已登记，等待 Issue 页面契约和构建复验",
+        "recorded_at": "2026-09-04T17:52:22+00:00",
+        "data": {
+          "feedback_id": "F-0012",
+          "decision": "accept",
+          "decision_reason": "The original review found deterministic permission and dependent-selection defects in IssuesPage. The final page and production build must be rechecked.",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "Later T31/T32 page changes centralized project scope and corrected permission-aware actions and dependent option reloads.",
+            "supporting_evidence": [
+              "IssuesPage consumes the global project scope",
+              "system/table/field option endpoints are project or table scoped",
+              "prior browser observations cover the revised page"
+            ],
+            "falsifier": "Static contract checks or the production build show missing permission guards, unloaded system options, or stale table/field selections."
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "IssuesPage permission and dependent-selection behavior",
+            "write_scope": [
+              "web/src/modules/data-migration/**",
+              "web/src/api/data-migration.ts",
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+            ],
+            "invariants": [
+              "backend remains the authorization authority",
+              "project scope comes from the global context",
+              "field choices belong to selected tables"
+            ],
+            "impact_limit": "data-migration issue page and API typing",
+            "rollback": "No product edit is planned; revert only new control evidence if the sensor is invalid.",
+            "correction_check": [
+              "IssuesPage source contract scan",
+              "frontend production build",
+              "existing issue service and permission tests"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "This pass does not recreate the former browser role fixture; service-side authorization remains covered by focused tests."
+          ]
+        }
+      },
+      {
+        "revision": 12,
+        "evidence": "F-0013 纠偏契约已登记，等待平台项目范围委托复验",
+        "recorded_at": "2026-09-04T17:52:23+00:00",
+        "data": {
+          "feedback_id": "F-0013",
+          "decision": "accept",
+          "decision_reason": "Project choices must follow the platform project workbench/member scope instead of a tenant-wide module query.",
+          "dynamic_pattern": "systemic",
+          "causal_assessment": {
+            "hypothesis": "T31/T32 removed the issue-local project selector and delegated project accessibility to ProjectWorkflowDirectoryService.",
+            "supporting_evidence": [
+              "DataMigrationPermissionService injects the platform project capability",
+              "IssuesPage consumes useProjectScope",
+              "module tests assert no duplicated project-member SQL"
+            ],
+            "falsifier": "The final module exposes tenant-wide issue project options or queries pm_project_member directly."
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "data-migration project-scope delegation",
+            "write_scope": [
+              "server/src/modules/data-migration/**",
+              "web/src/modules/data-migration/**",
+              "web/src/api/data-migration.ts",
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+            ],
+            "invariants": [
+              "platform/system remains read-only",
+              "no module-owned pm_project_member SQL",
+              "unknown or inaccessible projects fail closed"
+            ],
+            "impact_limit": "data-migration project context consumers",
+            "rollback": "No product edit is planned; revert only new control evidence if the sensor is invalid.",
+            "correction_check": [
+              "DataMigrationPermissionServiceTest",
+              "module registration residual scan",
+              "IssuesPage project selector scan"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "Production IAM identities are outside local verification authority."
+          ]
+        }
+      },
+      {
+        "revision": 13,
+        "evidence": "F-0016 纠偏契约已登记，本轮后续阶段将即时写入",
+        "recorded_at": "2026-09-04T17:52:23+00:00",
+        "data": {
+          "feedback_id": "F-0016",
+          "decision": "accept",
+          "decision_reason": "Delayed phase history weakens auditability. This corrective run must write every phase transition immediately through control_loop.py.",
+          "dynamic_pattern": "systemic",
+          "causal_assessment": {
+            "hypothesis": "The former schema 5 workflow treated state updates as a deferred close-out action and allowed direct converged/correcting jumps.",
+            "supporting_evidence": [
+              "F-0016 preserved evidence",
+              "schema 5 state included unsupported derived workflow fields",
+              "the current schema 4 command contract makes phase transitions explicit"
+            ],
+            "falsifier": "This run again batches or fabricates phase transitions after execution and observation are complete."
+          },
+          "control_action": {
+            "gain": "high",
+            "target": "REQ-031 control-ledger write timing",
+            "write_scope": [
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"
+            ],
+            "invariants": [
+              "phase changes use control_loop.py after the one audited schema repair",
+              "execution precedes observation",
+              "observation precedes feedback resolution and verification"
+            ],
+            "impact_limit": "REQ-031 control ledger only",
+            "rollback": "Restore the schema 5 snapshot and discard this corrective run's evidence.",
+            "correction_check": [
+              "phase_history timestamps follow executing -> observing -> verifying -> converged",
+              "each transition has its required artifact recorded first",
+              "final gate exits 0"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "The historical timing defect remains visible and is not rewritten; closure proves the corrected process for this run."
           ]
         }
       }
@@ -6838,10 +7441,399 @@
           "gate_result": "pass",
           "route_reason": "All eight must requirements have verified task-to-sensor evidence, all ten current tasks are verified, all nine feedback items are closed, seventeen samples satisfy high-assurance depth, the final five samples are P0-P3 zero, current scope and invariants pass, and remaining failures are explicitly external under approved acceptance criterion 9."
         }
+      },
+      {
+        "revision": 2,
+        "evidence": "T46 final schema4 convergence audit uses S-0027, 10 verified tasks, 18 closed feedback items, 84/84 module tests, repeated frontend builds and final scope/migration inventory",
+        "recorded_at": "2026-09-04T18:09:45+00:00",
+        "data": {
+          "schema_version": 4,
+          "requirement_id": "REQ-20260820-031",
+          "control_prefix": "req-20260820-031-data-migration-asset-library-v3",
+          "baseline_revision": "baseline artifact revision 1 with approved REQ-20260903-064 consolidation and schema 4 conversion audit",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T4",
+                "T5",
+                "T6",
+                "T21"
+              ],
+              "evidence": [
+                "Final data-migration Reactor suite passed 84/84 tests.",
+                "Historical authenticated route, dashboard and menu observations remain recorded in the schema 4 ledger."
+              ],
+              "limitations": [
+                "Production scheduling topology remains a release-stage check."
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T5",
+                "T6"
+              ],
+              "evidence": [
+                "REQ-031 scope check passed for 231 final changed files.",
+                "V147-V155 are main release migrations and V156-V179 are the 24 data-migration migrations with no duplicate versions.",
+                "Full module and disposable MySQL 8.4 migration suites passed."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T5",
+                "T6",
+                "T19",
+                "T21"
+              ],
+              "evidence": [
+                "Fresh IssueServiceTest and DataMigrationPermissionServiceTest observation passed 16/16 tests.",
+                "Data-migration main code contains no SQL string reading pm_project_member; platform project capability delegation remains intact.",
+                "F-0010 and F-0013 were resolved with fresh lifecycle and authorization evidence."
+              ],
+              "limitations": [
+                "Production IAM identities were not accessed."
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5",
+                "T6",
+                "T19",
+                "T20",
+                "T21"
+              ],
+              "evidence": [
+                "Final data-migration suite passed 84/84 tests, including content recycle and file-asset lifecycle suites.",
+                "Historical authenticated object lifecycle and four-viewport browser observations remain in the ledger."
+              ],
+              "limitations": [
+                "No fresh end-to-end browser lifecycle was run in T46."
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5",
+                "T6",
+                "T18",
+                "T19",
+                "T20",
+                "T21"
+              ],
+              "evidence": [
+                "Fresh 36-test issue-focused observation passed with zero failures/errors/skips.",
+                "Issue relations, active-row purge rejection, deleted-row purge cleanup and permission boundaries are covered by tests.",
+                "F-0010 and F-0012 are closed with final source and test evidence."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5",
+                "T6",
+                "T21"
+              ],
+              "evidence": [
+                "IssueExcelServiceTest passed 3/3 and the issue page uses the existing server import response with per-row errors.",
+                "The final page contains no browser XLSX parser, sequential create loop or 500-row import cap.",
+                "F-0011 is closed with fresh backend, frontend and source-contract evidence."
+              ],
+              "limitations": [
+                "Observation workbooks are generated test fixtures, not production files."
+              ]
+            },
+            {
+              "id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T5",
+                "T6",
+                "T18",
+                "T19",
+                "T21"
+              ],
+              "evidence": [
+                "Disposable MySQL 8.4 suites passed in the complete 84-test module run.",
+                "Focused MySQL execution applied V169 successfully and continued through V170.",
+                "Final migration inventory has zero duplicate versions and preserves main V147-V155."
+              ],
+              "limitations": [
+                "Flyway warns that MySQL 8.4 is newer than its declared tested support through MySQL 8.1.",
+                "The repository Flyway checker is non-zero only for the user-approved ignored V84_1 filename."
+              ]
+            },
+            {
+              "id": "R8",
+              "result": "pass",
+              "task_ids": [
+                "T5",
+                "T6",
+                "T20",
+                "T21"
+              ],
+              "evidence": [
+                "Two T46 vue-tsc/Vite production builds passed; the final build transformed 2567 modules in 18.34s.",
+                "Final source scan confirms permission-aware row selection/actions, manage-only recycle tab and stable previousTableIds handling.",
+                "Historical Playwright samples cover desktop and three mobile viewports."
+              ],
+              "limitations": [
+                "T46 did not recreate the historical browser role fixture; service authorization and build checks are fresh."
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Schema, menu and module registration evidence retained."
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "F-0013 closed; project delegation and permission tests passed."
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "Object lifecycle and compensation evidence retained."
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "F-0011 closed; bounded issue Excel backend and final page contract passed."
+              ]
+            },
+            {
+              "id": "T5",
+              "status": "verified",
+              "evidence": [
+                "Frontend/runtime/browser evidence retained and final frontend build passed."
+              ]
+            },
+            {
+              "id": "T6",
+              "status": "verified",
+              "evidence": [
+                "Integrated requirement acceptance evidence retained; final scope and regression checks pass."
+              ]
+            },
+            {
+              "id": "T18",
+              "status": "verified",
+              "evidence": [
+                "Migration and issue governance evidence retained."
+              ]
+            },
+            {
+              "id": "T19",
+              "status": "verified",
+              "evidence": [
+                "F-0010 closed; issue lifecycle and relation tests passed."
+              ]
+            },
+            {
+              "id": "T20",
+              "status": "verified",
+              "evidence": [
+                "F-0012 closed; repeated frontend build and source-contract observation passed."
+              ]
+            },
+            {
+              "id": "T21",
+              "status": "verified",
+              "evidence": [
+                "Final integrated module evidence retained; full current module suite passed 84/84."
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 18,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0022",
+              "P0": 0,
+              "P1": 0,
+              "P2": 2,
+              "P3": 0,
+              "score": 10
+            },
+            {
+              "sample_id": "S-0023",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0024",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0025",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0026",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0027",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Complete data-migration Reactor",
+              "result": "pass",
+              "evidence": "mvn -pl :ccb-data-migration -am test: BUILD SUCCESS; data-migration 84/84."
+            },
+            {
+              "check": "Fresh issue-focused observation",
+              "result": "pass",
+              "evidence": "36/36 tests passed after entering observing."
+            },
+            {
+              "check": "Frontend production build",
+              "result": "pass",
+              "evidence": "Two T46 vue-tsc/Vite builds exited 0."
+            },
+            {
+              "check": "Task scope and whitespace",
+              "result": "pass",
+              "evidence": "Final REQ-031 scope 231/0 and git diff --check passed."
+            },
+            {
+              "check": "Migration inventory",
+              "result": "pass-with-approved-baseline-exception",
+              "evidence": "V147-V179 complete and unique; data-migration V156-V179; official checker only flags ignored V84_1."
+            },
+            {
+              "check": "Global governance",
+              "result": "external-failure",
+              "evidence": "Stops on main-owned REQ-20260904-061 malformed scope, unchanged from origin/main and outside data-migration authorization."
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "Only data-migration-owned content is modified",
+              "result": "pass",
+              "evidence": "Final task scope check reports 231 files and zero violations."
+            },
+            {
+              "invariant": "main V147-V155 remain authoritative",
+              "result": "pass",
+              "evidence": "Final inventory preserves main release migrations and places data-migration at V156-V179."
+            },
+            {
+              "invariant": "Backend RBAC and project/entity authorization remain authoritative",
+              "result": "pass",
+              "evidence": "Fresh service and permission tests pass; frontend guards only restrict affordances."
+            },
+            {
+              "invariant": "No production access",
+              "result": "pass",
+              "evidence": "Database verification used disposable Testcontainers MySQL 8.4 only."
+            },
+            {
+              "invariant": "Schema 4 phase ordering is auditable",
+              "result": "pass",
+              "evidence": "Execution artifact preceded immediate observing transition; observation artifact and samples preceded feedback resolution and verifying transition."
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "main occupied V147-V155",
+              "result": "pass",
+              "evidence": "Data-migration scripts were renumbered to V156-V179 without duplicate versions."
+            },
+            {
+              "disturbance": "Source sensor matched project-table names in comments",
+              "result": "pass",
+              "evidence": "Calibrated SQL-string scan passed; classified as sensor fault rather than product deviation."
+            },
+            {
+              "disturbance": "Unrelated repository governance failures",
+              "result": "contained",
+              "evidence": "REQ-061 and V84_1 are identified precisely, unchanged and outside the authorized write scope; independent module/scope/build sensors pass."
+            }
+          ],
+          "residual_risks": [
+            "Global governance remains non-zero because main-owned REQ-20260904-061 is not JSON-compatible YAML; correcting it requires separate owner authorization.",
+            "The Flyway checker remains non-zero for the user-approved ignored V84_1 filename.",
+            "Flyway declares tested MySQL support through 8.1 and warns on the project's MySQL 8.4 target, although all disposable MySQL 8.4 suites passed.",
+            "T46 did not rerun browser role and mobile viewport acceptance; prior browser evidence is retained but not fresh.",
+            "Production topology, data, identities and deployment were not accessed and require release-stage owner verification."
+          ],
+          "gate_result": "pass",
+          "route_reason": "All eight must requirements have task and sensor evidence, all ten active tasks are verified, all 18 feedback items are closed, the final two samples have P0-P3 zero, module/build/scope/migration invariants pass, and unrelated repository failures are disclosed without unauthorized edits."
+        }
       }
     ]
   },
-  "objective": "Build a new V3 data migration asset library from latest main without carrying the previous asset design.",
+  "objective": "Build and govern the V3 data migration asset library, including the merged REQ-20260903-064 intermediate-table canonicalization increment, without carrying the previous asset design.",
   "requirements": [
     {
       "id": "R1",
@@ -6864,10 +7856,11 @@
       "acceptance": [
         "project and component uniqueness",
         "Excel import/export",
-        "relation-safe deletion"
+        "relation-safe deletion",
+        "intermediate tables use dm_target_table(table_category='INTERMEDIATE') and dm_target_table_field only"
       ],
       "priority": "must",
-      "source": "V3",
+      "source": "V3 and merged REQ-20260903-064",
       "counterexample": [
         "free-text project references",
         "cross-project component collision"
@@ -6939,7 +7932,7 @@
       "id": "R7",
       "statement": "Additive MySQL and MinIO lifecycle are consistent and recoverable",
       "acceptance": [
-        "V35 only",
+        "append-only data-migration Flyway history including V169 fail-closed intermediate-table cleanup",
         "object key hidden",
         "replace compensation",
         "rollback retains data"
@@ -8117,7 +9110,7 @@
       "escalation_conditions": [
         "V3 requires unmodeled member scope"
       ],
-      "status": "observing",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-20T04:03:39+00:00",
@@ -8126,9 +9119,13 @@
         {
           "recorded_at": "2026-08-20T04:03:58+00:00",
           "text": "T2 observation complete，P0/P1=0"
+        },
+        {
+          "recorded_at": "2026-09-04T18:06:06+00:00",
+          "text": "F-0013 closed by fresh project delegation and permission observation; 36/36 focused tests and calibrated source scan passed."
         }
       ],
-      "updated_at": "2026-08-30T09:44:12+00:00"
+      "updated_at": "2026-09-04T18:06:06+00:00"
     },
     {
       "id": "T3",
@@ -8271,7 +9268,7 @@
       "escalation_conditions": [
         "requires asynchronous batch platform"
       ],
-      "status": "observing",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-20T04:09:04+00:00",
@@ -8280,9 +9277,13 @@
         {
           "recorded_at": "2026-08-20T04:09:05+00:00",
           "text": "T4 observation complete，P0/P1=0"
+        },
+        {
+          "recorded_at": "2026-09-04T18:06:06+00:00",
+          "text": "F-0011 closed by fresh bounded issue Excel observation; IssueExcelServiceTest, module contract test, full module suite and frontend build passed."
         }
       ],
-      "updated_at": "2026-08-30T09:44:12+00:00"
+      "updated_at": "2026-09-04T18:06:06+00:00"
     },
     {
       "id": "T5",
@@ -8612,7 +9613,7 @@
         "Legacy ISSUE preservation becomes required",
         "Cross-module writes are required"
       ],
-      "status": "observing",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-30T08:31:40+00:00",
@@ -8621,9 +9622,13 @@
         {
           "recorded_at": "2026-08-30T08:41:51+00:00",
           "text": "observation-T19 complete with zero P0-P3; focused Maven 18/18 and scope checks passed"
+        },
+        {
+          "recorded_at": "2026-09-04T18:06:06+00:00",
+          "text": "F-0010 closed by fresh IssueService lifecycle observation; active/deleted purge and relation invariants covered, full module suite passed."
         }
       ],
-      "updated_at": "2026-08-30T09:44:12+00:00"
+      "updated_at": "2026-09-04T18:06:06+00:00"
     },
     {
       "id": "T20",
@@ -8682,7 +9687,7 @@
       "escalation_conditions": [
         "A public route or shared component contract must change"
       ],
-      "status": "observing",
+      "status": "verified",
       "evidence": [
         {
           "recorded_at": "2026-08-30T08:41:51+00:00",
@@ -8691,9 +9696,13 @@
         {
           "recorded_at": "2026-08-30T08:56:33+00:00",
           "text": "observation-T20 complete; build and browser network geometry failure probes passed"
+        },
+        {
+          "recorded_at": "2026-09-04T18:06:07+00:00",
+          "text": "F-0012 closed by repeated frontend build and source-contract observation of detail/permission/dependent-selection behavior."
         }
       ],
-      "updated_at": "2026-08-30T09:44:12+00:00"
+      "updated_at": "2026-09-04T18:06:07+00:00"
     },
     {
       "id": "T21",
@@ -8975,8 +9984,8 @@
       "decision": "accept",
       "decision_reason": "Static control-flow evidence proves destructive mutation precedes state validation and relation invariants are unenforced; correction stays within IssueService and direct tests.",
       "created_at": "2026-08-30T09:44:12+00:00",
-      "resolved_at": null,
-      "resolution_evidence": null,
+      "resolved_at": "2026-09-04T18:05:55+00:00",
+      "resolution_evidence": "IssueServiceTest passed 8/8 in fresh observation; active purge rejection, deleted purge relation cleanup, tenant/project scope and mutation invariants are covered; full module suite 84/84 passed.",
       "decided_at": "2026-08-30T09:44:32+00:00"
     },
     {
@@ -8995,8 +10004,8 @@
       "decision": "accept",
       "decision_reason": "Approved R-I3 and batch bounds are explicit, while no dedicated ISSUE Excel backend exists; correction is bounded to the data-migration module and issue API/page.",
       "created_at": "2026-08-30T09:44:12+00:00",
-      "resolved_at": null,
-      "resolution_evidence": null,
+      "resolved_at": "2026-09-04T18:05:55+00:00",
+      "resolution_evidence": "IssueExcelServiceTest passed 3/3 and module source-contract tests passed; IssuesPage now invokes bounded server import, exposes per-row results, and contains no browser XLSX parser or 500-row loop.",
       "decided_at": "2026-08-30T09:44:32+00:00"
     },
     {
@@ -9015,8 +10024,8 @@
       "decision": "accept",
       "decision_reason": "Vue model update order and permission expressions make the observed UI deviations deterministic; correction remains within the issue page and API typing.",
       "created_at": "2026-08-30T09:44:12+00:00",
-      "resolved_at": null,
-      "resolution_evidence": null,
+      "resolved_at": "2026-09-04T18:05:55+00:00",
+      "resolution_evidence": "Repeated vue-tsc/Vite build passed; calibrated source contract confirms edit/delete selection guards, manage-only recycle tab, project option reload and previousTableIds rollback/pruning behavior.",
       "decided_at": "2026-08-30T09:44:32+00:00"
     },
     {
@@ -9035,9 +10044,109 @@
       "decision": "accept",
       "decision_reason": "Decision D11 explicitly requires the project workbench for interactive choices; replacing the issue-local selector is a scoped frontend correction.",
       "created_at": "2026-08-30T09:44:12+00:00",
-      "resolved_at": null,
-      "resolution_evidence": null,
+      "resolved_at": "2026-09-04T18:05:55+00:00",
+      "resolution_evidence": "DataMigrationPermissionServiceTest passed 8/8; calibrated scan found no SQL string reading pm_project_member in data-migration main code, and IssuesPage consumes the global project scope without a tenant-wide local selector.",
       "decided_at": "2026-08-30T09:44:32+00:00"
+    },
+    {
+      "id": "F-0014",
+      "task": "T32",
+      "source": "browser-request-sensor-2026-09-03",
+      "requirement": "T32 AC4",
+      "expected": "统一回收站页在当前项目上下文下正常加载且只含本项目行",
+      "observed": "页面发出 GET /api/data-migration/recycle-bin?page=1&size=20（无 projectId）→ 400 projectId is required → 页面进入「回收站加载失败」态",
+      "evidence": "Playwright 请求 dump + curl 带 projectId=3001 返回 1 条（后端正常）；根因 web/src/api/data-migration.ts listDataMigrationRecycleBin 重拼 params 丢弃已声明必填的 projectId",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "类型检查与生产构建均无法发现「声明必填但未发出」；仅真实浏览器请求级传感器可见",
+      "causal_hypothesis": "T32 契约收紧只改了函数入参类型，未同批改参数拼装，且缺少「声明必填⇒实际发出」的机械校验",
+      "correction_check": "每个 /api/data-migration/** GET 均携带上下文 projectId 且无他项目值",
+      "decision": "accept",
+      "decision_reason": "真实产品缺陷，必须在可写范围内修复并加传感器防回归。",
+      "created_at": "2026-09-03T01:50:00+00:00",
+      "resolved_at": "2026-09-03T01:50:00+00:00",
+      "resolution_evidence": "显式转发 projectId；U2 复验 {total:36, missingGet:0, wrongPid:0, wrongBodyPid:0}，U1 recycle-bin 双向断言通过（observation-T32 F-T32-08）",
+      "decided_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "id": "F-0015",
+      "task": "T32",
+      "source": "viewport-sensor-2026-09-03",
+      "requirement": "T32 AC7",
+      "expected": "375/390/430 视口下数据迁移各页不出现页面级横向滚动（design-h5.md §2.1.2/§5.4）",
+      "observed": "有数据时 documentElement.scrollWidth 462 > 视口 375，24 项 FAIL；同时 6 项由 el-tabs 触发",
+      "evidence": "空态/有数据对照 + 越界且无 overflow-x 祖先收容元素枚举（.el-pagination__jump 等）+ UiPagination.vue 相对 origin/main 零 diff + git log -S 定位 9fec831（早于 T32）",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "首轮传感器把「局部横向滚动容器」也计为缺陷，需按手册 §5.4 收紧后才可据此裁决",
+      "causal_hypothesis": "分页组件裸挂在滚动容器之外，未套模块既有 .dm-table-footer 移动规避约定",
+      "correction_check": "AssetListView/PlansPage 分页位于 .dm-table-footer 内且四视口无页面级溢出",
+      "decision": "accept",
+      "decision_reason": "布局回退真实存在但引入点早于 T32；纠正限定在可写业务模块内，不改 read_only 共享组件。",
+      "created_at": "2026-09-03T01:50:00+00:00",
+      "resolved_at": "2026-09-03T01:50:00+00:00",
+      "resolution_evidence": "两处套用 .dm-table-footer + 共 N 条；U6 68 项全绿（observation-T32 F-T32-10）",
+      "decided_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "id": "F-0016",
+      "task": "T32",
+      "source": "ledger-write-timing-self-review-2026-09-03",
+      "requirement": "工程控制账本规范",
+      "expected": "阶段产物与证据先于 state.json phase 推进即时登记",
+      "observed": "T32 的定标/建模/实施/观测/纠偏跨多次会话进行，phase_history 直到收敛时才补登，时间戳不反映阶段实际发生时刻",
+      "evidence": "state.json revision 停留在 T31-r1（203），而 requirement.md 与代码在更早时间已推进；本批条目已在 evidence 中显式声明补登",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "无自动传感器检查账本写入及时性；只能靠会话内自律与事后审计",
+      "causal_hypothesis": "长会话中优先推进实现与取证，账本被视为收尾动作",
+      "correction_check": "后续任务在每个阶段跳转时立即追加 phase_history，不集中在收敛时补写",
+      "decision": "accept",
+      "decision_reason": "账本是执行证据的一部分，延迟写入削弱可审计性，必须如实登记为流程偏差而非隐瞒。",
+      "created_at": "2026-09-03T01:50:00+00:00",
+      "resolved_at": "2026-09-04T18:05:55+00:00",
+      "resolution_evidence": "Schema 4 ledger recorded execution-T46 artifact revision 15 before immediate control_loop.py executing-to-observing transition at state revision 219, then recorded observation artifact revision 23 and S-0026 without deferred phase backfill.",
+      "decided_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "id": "F-0017",
+      "task": "T32-r1",
+      "source": "user-repeat-instruction-2026-09-03",
+      "requirement": "用户指令「pm_project_member 冗余设计了，调用平台侧成员口径」；PROJECT-RULES「模块只能依赖公开包，不得绕过服务契约」",
+      "expected": "项目可达性/成员判定由 platform/system 公开契约单点提供，业务模块不复制任何 pm_project/pm_project_member SQL，同时保留项目级成员授权语义",
+      "observed": "T32 初版在模块内重写成员判定 SQL（自我合理化为平台无可用契约）；被指出后一度只删 SQL、把接平台推给后续设计，等于放弃项目级授权；用户重复同一指令",
+      "evidence": "grep -rn pm_project_member server/src/modules/data-migration/src 得 4 处命中全为注释/Javadoc/断言文本、0 处 SQL；ProjectWorkflowDirectoryService 仅出现在守卫（main）与 StubProjectAccess（test）；GET /api/data-migration/reports?projectId=999999 返回 400/40000「项目不存在或已删除」（平台 JdbcProjectWorkflowDirectoryService 原文，旧实现为 Project not found）；modules.yaml 中 ccb-system public_packages 含 com.ccb.system.capability、data-migration allowed_dependencies 含 platform/system；聚焦 mvn 61/0 与 ccb-system 62/0",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "本地 pm_project_member 无活动成员行且无可登录非超管账号，403 放行/拒绝的端到端行为无法在本地取证；平台契约语义变更会静默传导（文案、豁免、错误码），本模块无跨模块契约测试监控漂移",
+      "causal_hypothesis": "把「平台没有 id 版可达性契约」当成既成事实而未穷举 capability 公开包；被指出重复后选择最小删除动作而不是满足指令完整语义，形成需求超调后再回摆的振荡",
+      "correction_check": "复验委托确实发生（checkedProjectIds 断言 + 运行时判别性探针 + 注入点枚举），并要求任何后续口径改动同时更新 requirement.md 决策条目与本账本",
+      "decision": "accept",
+      "decision_reason": "指令完整语义可经既有公开契约零平台改动满足，先前让步不成立；纠正后成员授权语义恢复且判定点唯一。",
+      "created_at": "2026-09-03T11:20:00+08:00",
+      "resolved_at": "2026-09-03T12:12:00+08:00",
+      "resolution_evidence": "execution-T32-r1.json 与 observation-T32-r1.json（F-T32r1-01/02/03/04 pass；05 风险登记；06 未取证；07 观测纠偏；08 范围外残留），requirement.md D1/契约矩阵/执行期细化 7/AC2 已同步撤销让步表述",
+      "decided_at": "2026-09-03T11:32:00+08:00"
+    },
+    {
+      "id": "F-0018",
+      "task": "T32-r1-doc",
+      "source": "doc-vs-database-drift-scan-2026-09-03",
+      "requirement": "REQ-20260820-031 的结构说明文档必须与仓库迁移脚本和实际库结构一致（文档是评审与交接事实源）",
+      "expected": "database-schema-and-relations.md 描述当前 V159 后的表、列、索引、外键、唯一性策略、菜单映射与冗余评估",
+      "observed": "文档停留在 V98 口径：宣称「现存 10 张」并以已 DROP 的 dm_asset/dm_asset_relation/dm_meeting_attachment 为核心（含其字段详表、ER 图、完整性检查项与 16 菜单映射），回收站被记为非正式菜单",
+      "evidence": "information_schema.TABLES 实测 21 张 dm_% 表；flyway_schema_history 显示 V147 至 V159 安装成功（最后一条 2026-09-02 12:22:17）；data-migration/src/main 内 dm_asset 引用 0 命中（仅测试自建夹具）；sys_menu 实测 17 个可见叶子菜单含 732 统一回收站",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "没有自动化传感器比对「文档描述的表集合」与「库实际表集合」；漂移只能靠人工复核或与迁移目录对照发现",
+      "causal_hypothesis": "连续多轮迁移（V153 至 V159）在实现任务内完成，结构说明文档未被列为任何任务的必交付产物，因此无更新触发点",
+      "correction_check": "后续每次追加涉及 dm_% 表结构的 Flyway 迁移，任务验收清单必须包含本文件同步项；文档内不写不可复现的结论，一律附取证方法",
+      "decision": "accept",
+      "decision_reason": "文档失实会直接误导后续结构评审与迁移决策，属可即时纠正的低成本偏差。",
+      "created_at": "2026-09-03T12:15:00+08:00",
+      "resolved_at": "2026-09-03T12:25:00+08:00",
+      "resolution_evidence": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md 全文重写（21 表清单、V147 至 V159 动作表、内容表公共列骨架、索引与活动唯一键策略、1 条物理外键 + 3 处多态、四张 Mermaid 视图、实测完整性检查、17 菜单映射、冗余与缺口分级、可复现取证 SQL）",
+      "decided_at": "2026-09-03T12:15:00+08:00"
     }
   ],
   "samples": [
@@ -9261,11 +10370,144 @@
       "score": 0,
       "evidence": "23/23 focused data-migration tests; HTTP health/auth boundaries; Flyway 94 and cleaned DB invariants; scope/diff; 22/22 browser checks",
       "recorded_at": "2026-08-30T09:10:11+00:00"
+    },
+    {
+      "id": "S-0018",
+      "label": "T31-r1 project-field removal and browser acceptance",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "frontend build EXIT=0; login/workbench 200; Playwright 66/66 across 15 routes x 4 viewports; real switcher P2026-001<->P2026-002 with no residue; gate blocks all data-migration queries on workbench 500; test data purged",
+      "recorded_at": "2026-09-02T16:11:16+00:00"
+    },
+    {
+      "id": "S-0019",
+      "label": "T32 server-side project isolation convergence sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "direct HTTP 110/0 with double-project fixtures (30 missing-param 400, 9 illegal-value 400, 33 bidirectional visibility/marker-disjoint, ownership/purge/import/dashboard scope checks); Playwright 137/0 across 17 routes x 4 viewports (0 console errors, 0 responses >=400, no page-level horizontal overflow, request sensor 36/0 missing projectId, T32 fixtures purged before and after); focused mvn 59/0 BUILD SUCCESS; web build EXIT=0; scope check passed 138 files. External full-repo failure attributed to ccb-architecture (module zero-diff vs origin/main, failing Flyway targets 103/105 and 122/123 vs branch-added V147-V159) and not counted as task error; AC2 403 path and pm_project_member concession remain registered residuals.",
+      "recorded_at": "2026-09-03T01:50:00+00:00"
+    },
+    {
+      "id": "S-0020",
+      "label": "T32-r1 platform member-contract delegation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "聚焦 Reactor mvn -pl :ccb-data-migration -am test EXIT=0（61/0/0/0，含 DataMigrationPermissionServiceTest 8 用例与三个 MySQL 容器类用例），同批上游 ccb-system 62/0；应用重启成功证明平台契约 Bean 在本模块可注入；直连 API 判别性探针 5 项（3001 列表 200、999999 返回 400 平台文案、abc 返回 400 模块 advice、dashboard/overall projects=3、reports/project-options 返回 3 项目）；范围检查 EXIT=0（141 文件）；治理检查失败集合与本需求 0 交集。AC2 的 403 运行时/浏览器取证、前端构建与全仓 mvn 本轮未执行，不计为通过。",
+      "recorded_at": "2026-09-03T12:12:00+08:00"
+    },
+    {
+      "id": "S-0021",
+      "label": "T32-r1 doc schema-baseline resync against V159 database",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "文档事实全部取自只读查询：21 张 dm_% 表（TABLE_COMMENT/ENGINE/COLLATION）、314 列（类型/可空/默认/EXTRA/注释）、101 条索引、1 条物理外键、零 CHECK 约束、14 个 STORED GENERATED 活动唯一列；行数改用 COUNT(*) 实测（dm_operation_log 1069、dm_target_table 30/活动 2、dm_component 20/活动 0、dm_issue 4/活动 0、dm_target_table_field 28/活动 0、10 张内容表与 3 张关系表 0、dm_dashboard_snapshot 1、dm_project 0）；迁移版本动作逐文件核对 V147 至 V159；菜单映射核对 sys_menu 17 个叶子与 web/src/router/index.ts 组件绑定。新发现缺口分级登记 9 项（P1 中间表双轨、P1 快照只写不读、P1 枚举无约束、P1 审计缺 project_id 等）。范围检查复跑 EXIT=0（143 文件）。",
+      "recorded_at": "2026-09-03T12:25:00+08:00"
+    },
+    {
+      "id": "S-0022",
+      "label": "T32-r1-doc independent re-verification of schema doc",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 2,
+        "P3": 0
+      },
+      "score": 10,
+      "evidence": "observation-T32-r1-doc.json：7 项发现（5 pass、2 correction_applied、1 not_verified）。P2 误差因果：写作时以「结论正确」替代「结论可复现」，未把取数口径本身当作交付物；纠正动作是把口径写进 §11 并显式定义计数术语。残留：Mermaid 渲染未验证、无文档与库结构的自动化一致性传感器（F-0018 sensor_limit 仍未闭合）。",
+      "recorded_at": "2026-09-03T14:10:00+08:00"
+    },
+    {
+      "id": "S-0023",
+      "label": "T33 md5 index project-dimension remediation sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "execution-T33.json/observation-T33.json：V161 在 Testcontainer MySQL 8.4 实际执行（flyway 153→161 全链路），7 张文件型表 idx_*_md5 列序精确为 (tenant_id, project_id, checksum_md5, deleted)，含 checksum_md5 的索引全表唯一；模块测试 65/0（新增 v161ReplacesMd5IndexesWithProjectDimension）；flyway 治理检查仍红仅为基线 V84_1 命名问题（非本任务）。",
+      "recorded_at": "2026-09-03T22:55:00+08:00"
+    },
+    {
+      "id": "S-0024",
+      "label": "T34 9.2 四项 P2 治理收敛 sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "execution-T34.json/observation-T34.json：V162 子系统 id 引用列回填与三服务双写、V163 活动生成列唯一键（软删行可重建、恢复冲突被拒）、V164 生成列注释、看板一次 UNION ALL 分组统计在 Testcontainer MySQL 8.4 全部验证（governance 测试类 5/5）；模块全量 70/0；flyway 检查仅存量 V84_1 基线、031 scope 检查仅并存 064 前缀、账本布局 031/064 零违规；database-schema-and-relations.md 收敛为最终态（基线 V164，9.2 四项 P2 移除）。",
+      "recorded_at": "2026-09-04T00:21:00+08:00"
+    },
+    {
+      "id": "S-0025",
+      "label": "T35 schema 文档 §3 全表完整列结构 sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "execution-T35.json/observation-T35.json：§3 重写为 19 张表逐表完整列清单，3.2-3.20 列数与 §2.1 完全一致，列集合与迁移 DDL 核对无虚构/缺失；§6.3 软删描述已修正；仅文档改动，无代码/迁移影响。",
+      "recorded_at": "2026-09-04T01:05:00+08:00"
+    },
+    {
+      "id": "S-0026",
+      "label": "T46 convergence repair final observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "36/36 focused tests, 84/84 full data-migration tests, two successful frontend builds, scope 230/0, calibrated source scan pass; external REQ-061 and ignored V84_1 disclosed",
+      "recorded_at": "2026-09-04T18:05:40+00:00"
+    },
+    {
+      "id": "S-0027",
+      "label": "T46 final verifying sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Final scope 231/0, git diff check pass, V147-V179 inventory 33/33 with 24 data-migration scripts at V156-V179 and zero duplicate versions, schema4 ledger has 10/10 verified tasks and 0 open accepted feedback",
+      "recorded_at": "2026-09-04T18:07:07+00:00"
     }
   ],
-  "current_phase": "observing",
-  "push_allowed": false,
-  "decision": "observing",
-  "converged_at": null,
-  "workflow": "legacy-seven-stage"
+  "schema_conversion": {
+    "from": 5,
+    "to": 4,
+    "snapshot": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/schema5-state-snapshot.json",
+    "reason": "Current control_loop.py supports schema 4; schema 5 was not executable and carried an invalid converged state with open blockers.",
+    "approved_by": "user",
+    "approved_at": "2026-09-05T01:46:28+08:00"
+  }
 }

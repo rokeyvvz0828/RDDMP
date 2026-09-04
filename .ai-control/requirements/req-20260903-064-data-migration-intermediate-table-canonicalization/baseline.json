@@ -1,0 +1,18 @@
+{
+  "objective": "消除数据迁移模块中两套中间表模型，统一到 dm_target_table(table_category='INTERMEDIATE') + dm_target_table_field，并在测试节点安全清理空旧表。",
+  "requirements": [
+    {"id":"R1","statement":"中间表唯一主模型为 dm_target_table(table_category='INTERMEDIATE') 与 dm_target_table_field。","acceptance":["所有中间表 CRUD/查询均通过目标表服务"],"priority":"must","source":"用户批准方案","counterexample":["生产服务读取 dm_intermediate_table"]},
+    {"id":"R2","statement":"追加迁移在删除前断言旧表为空，存在数据时阻断。","acceptance":["空表 fixture 成功；非空 fixture 在 DROP 前失败"],"priority":"must","source":"用户最新决策","counterexample":["未检查存量直接 DROP"]},
+    {"id":"R3","statement":"中间表菜单、接口、回收站、统计和关联查询统一使用目标表/字段接口。","acceptance":["旧结构化入口拒绝；菜单仍可用且调用 category=INTERMEDIATE"],"priority":"must","source":"P1 治理问题","counterexample":["StructuredAssetService 继续拼接旧表名"]},
+    {"id":"R4","statement":"最终数据库不保留 dm_intermediate_table，且删除必须受空表断言保护。","acceptance":["V160 成功后旧表不存在；非空时迁移失败"],"priority":"must","source":"用户最新决策","counterexample":["无断言 DROP 旧表"]},
+    {"id":"R5","statement":"租户、项目、权限和审计语义保持不变。","acceptance":["模块测试、治理检查和权限回归通过"],"priority":"must","source":"项目规约","counterexample":["目标表接口绕过项目可达性"]}
+  ],
+  "invariants":["Flyway 只追加","DROP 前旧表行数必须为 0","不修改平台 system 或 pm_project_member"],
+  "constraints":["仅修改 REQ-064 writable_paths","不连接生产","保持 com.ccb 包名和现有权限码"],
+  "non_goals":["迁移旧表存量数据","重做目标表字段模型","修改项目成员模型","引入动态表单元数据"],
+  "assumptions":[{"text":"当前测试节点 dm_intermediate_table 无需保留且可清空","falsifier":"迁移 fixture 或环境检查发现非空存量"}],
+  "unknowns":[],
+  "decisions":[{"question":"旧表存量处理","options":["空表断言后删除","复制存量后保留旧表"],"selected":"空表断言后删除","blocking":false,"source":"用户最新决策"}],
+  "measurement_intents":[{"requirement_id":"R1","observable":"业务 SQL 与接口来源","candidate_sensor":"rg + Maven"},{"requirement_id":"R2","observable":"迁移行数、断言和回滚状态","candidate_sensor":"Testcontainers MySQL"},{"requirement_id":"R3","observable":"菜单路由和 API 请求","candidate_sensor":"前端构建/浏览器路径"},{"requirement_id":"R4","observable":"迁移文件无 DROP 旧表","candidate_sensor":"Flyway 检查"},{"requirement_id":"R5","observable":"权限、租户和审计测试","candidate_sensor":"模块测试与治理"}],
+  "baseline_status":"ready"
+}
