@@ -38,10 +38,7 @@ const items = computed(() => props.unit ? [
   item('发布状态', deploymentUnitStatusLabels[props.unit.status], false, props.unit.status === 'VOIDED' ? 'danger' : props.unit.status === 'INACTIVE' ? 'warning' : undefined),
   item('当前版本', props.unit.currentVersion ? `v${props.unit.currentVersion}` : '—'),
   item('部署单元类型', kindLabel.value),
-  item('登记表部署单元类型', props.unit.deploymentUnitType),
-  item('关联部署单元名称', props.unit.relatedDeploymentUnitName),
   item('默认网络分区', props.unit.defaultNetworkZoneName),
-  item('部署单元简称', props.unit.shortName),
   item('部署单元名称', props.unit.name),
   item('所属物理子系统', props.unit.physicalSubsystemCode ? `${props.unit.physicalSubsystemName}（${props.unit.physicalSubsystemCode}）` : '—'),
   item('物理子系统状态', props.unit.physicalSubsystemStatus ? deploymentUnitStatusLabels[props.unit.physicalSubsystemStatus as keyof typeof deploymentUnitStatusLabels] || props.unit.physicalSubsystemStatus : '—'),
@@ -79,6 +76,17 @@ function canEdit() {
         </dl>
 
         <section class="architecture-drawer-section">
+          <header><strong>关联部署单元</strong><span class="architecture-muted">{{ unit.relatedDeploymentUnits.length }} 个</span></header>
+          <el-empty v-if="!unit.relatedDeploymentUnits.length" description="暂无关联部署单元" :image-size="56" />
+          <div v-else class="architecture-related-unit-list">
+            <article v-for="related in unit.relatedDeploymentUnits" :key="related.id">
+              <div><strong>{{ related.name }}</strong><small>{{ related.code }} · {{ related.physicalSubsystemName || '未知物理子系统' }}</small></div>
+              <UiStatusTag :value="related.status" :labels="deploymentUnitStatusLabels" :tone="deploymentUnitStatusTone(related.status)" />
+            </article>
+          </div>
+        </section>
+
+        <section class="architecture-drawer-section">
           <header>
             <strong>发布版本历史</strong>
             <UiStatusTag v-if="unit" :value="unit.status" :labels="deploymentUnitStatusLabels" :tone="deploymentUnitStatusTone(unit.status)" />
@@ -96,8 +104,7 @@ function canEdit() {
               >
                 <div class="architecture-version-item">
                   <strong>v{{ version.versionNo }} · {{ version.name }}</strong>
-                  <small>{{ deploymentUnitKindLabels[version.kind] }} · {{ version.deploymentUnitType }} · {{ version.shortName }} · {{ version.defaultNetworkZoneName || '未设默认网络分区' }} · 发布人 {{ version.publishedByDisplayName }}</small>
-                  <p v-if="version.relatedDeploymentUnitName">关联部署单元：{{ version.relatedDeploymentUnitName }}</p>
+                  <small>{{ deploymentUnitKindLabels[version.kind] }} · {{ version.defaultNetworkZoneName || '未设默认网络分区' }} · 发布人 {{ version.publishedByDisplayName }}</small>
                   <p v-if="version.description">{{ version.description }}</p>
                   <p v-if="version.remark" class="architecture-muted">备注：{{ version.remark }}</p>
                 </div>

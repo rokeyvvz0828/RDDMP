@@ -31,6 +31,7 @@ import DataMigrationTargetTables from '../modules/data-migration/views/base/Targ
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
+import ReleaseOperationsManagement from '../modules/release/ReleaseOperationsManagement.vue'
 import TestManagementList from '../modules/test-management/TestManagementList.vue'
 import BusinessDayManagement from '../modules/test-management/business-day/BusinessDayManagement.vue'
 import TestConfigurationPage from '../modules/test-management/configuration/TestConfigurationPage.vue'
@@ -223,6 +224,42 @@ const router = createRouter({
           }
         },
         {
+          path: 'release-operations',
+          name: 'release-operations-root',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产管理' }
+        },
+        {
+          path: 'release-operations/drill-plans',
+          name: 'release-operations-drill-plans',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产演练计划', permission: 'release-operations:plan:view', menuPath: '/release-operations/drill-plans' }
+        },
+        {
+          path: 'release-operations/environments',
+          name: 'release-operations-environments',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产演练环境', permission: 'release-operations:environment:view', menuPath: '/release-operations/environments' }
+        },
+        {
+          path: 'release-operations/drills',
+          name: 'release-operations-drills',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产演练', permission: 'release-operations:drill:view', menuPath: '/release-operations/drills' }
+        },
+        {
+          path: 'release-operations/issues',
+          name: 'release-operations-issues',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产问题分析及跟踪', permission: 'release-operations:issue:view', menuPath: '/release-operations/issues' }
+        },
+        {
+          path: 'release-operations/organization',
+          name: 'release-operations-organization',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产组织', permission: 'release-operations:organization:view', menuPath: '/release-operations/organization' }
+        },
+        {
           path: 'data-migration',
           redirect: '/data-migration/dashboard/overall'
         },
@@ -346,7 +383,6 @@ const router = createRouter({
         { path: 'requirements/systems', redirect: '/requirements/new-project' },
         { path: 'requirements/:section', name: 'requirements', component: RequirementsView, props: true, meta: { title: '需求管理平台' } },
         { path: 'requirements/params/:section', name: 'requirement-params-section', component: RequirementsView, props: true, meta: { title: '八大参数管理' } },
-        { path: 'architecture/logical-subsystems', name: 'architecture-logical-subsystems', component: () => import('../modules/architecture/LogicalSubsystemPage.vue'), meta: { title: '逻辑子系统' } },
         { path: 'architecture/physical-subsystems', name: 'architecture-physical-subsystems', component: () => import('../modules/architecture/PhysicalSubsystemPage.vue'), meta: { title: '物理子系统' } },
         { path: 'architecture/subsystem-change-applications', name: 'architecture-subsystem-change-applications', component: () => import('../modules/architecture/SubsystemChangeApplicationListPage.vue'), meta: { title: '架构子系统变更工单' } },
         { path: 'architecture/subsystem-change-applications/new', name: 'architecture-subsystem-change-application-new', component: () => import('../modules/architecture/SubsystemChangeApplicationFormPage.vue'), meta: { title: '新建架构子系统变更工单' } },

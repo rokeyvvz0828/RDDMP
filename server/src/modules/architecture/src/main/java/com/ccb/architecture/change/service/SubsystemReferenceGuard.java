@@ -3,7 +3,6 @@ package com.ccb.architecture.change.service;
 import com.ccb.architecture.integration.ReferenceCheckRequest;
 import com.ccb.architecture.integration.ReferenceCheckResult;
 import com.ccb.architecture.integration.SubsystemReferenceChecker;
-import com.ccb.architecture.repository.ArchitectureSubsystemRepository;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -14,12 +13,11 @@ import java.util.Objects;
 
 import static com.ccb.architecture.integration.ReferenceCheckRequest.Operation.OFFLINE;
 import static com.ccb.architecture.integration.ReferenceCheckRequest.Operation.VOID;
-import static com.ccb.architecture.integration.ReferenceCheckRequest.SubsystemKind.LOGICAL;
 import static com.ccb.architecture.integration.ReferenceCheckResult.Status.INDETERMINATE;
 import static com.ccb.architecture.integration.ReferenceCheckResult.Status.REFERENCED;
 
 /**
- * 汇总模块内父子约束和外部引用检查器；无法判定时一律拒绝下线或作废。
+ * 汇总外部引用检查器；无法判定时一律拒绝下线或作废。
  */
 @Service
 public class SubsystemReferenceGuard {
@@ -27,15 +25,11 @@ public class SubsystemReferenceGuard {
     public static final int SERVICE_UNAVAILABLE = 50300;
 
     private static final String CLEAR_SUMMARY = "未发现有效引用";
-    private static final String INTERNAL_CHECK_UNAVAILABLE = "模块内引用检查暂不可用";
     private static final String EXTERNAL_CHECK_UNAVAILABLE = "外部引用检查暂不可用";
 
-    private final ArchitectureSubsystemRepository repository;
     private final List<SubsystemReferenceChecker> checkers;
 
-    public SubsystemReferenceGuard(ArchitectureSubsystemRepository repository,
-                                   List<SubsystemReferenceChecker> checkers) {
-        this.repository = Objects.requireNonNull(repository, "repository 不能为空");
+    public SubsystemReferenceGuard(List<SubsystemReferenceChecker> checkers) {
         this.checkers = List.copyOf(Objects.requireNonNull(checkers, "checkers 不能为空"));
     }
 
@@ -46,14 +40,6 @@ public class SubsystemReferenceGuard {
         requireSupportedRequest(request);
 
         List<String> indeterminateSummaries = new ArrayList<>();
-        ReferenceCheckResult internal = checkInternalReferences(request);
-        if (internal.status() == REFERENCED) {
-            return internal;
-        }
-        if (internal.status() == INDETERMINATE) {
-            indeterminateSummaries.add(internal.safeSummary());
-        }
-
         for (SubsystemReferenceChecker checker : checkers) {
             ReferenceCheckResult result;
             try {
@@ -88,25 +74,6 @@ public class SubsystemReferenceGuard {
         }
         if (result.status() == INDETERMINATE) {
             throw new BusinessException(SERVICE_UNAVAILABLE, result.safeSummary());
-        }
-    }
-
-    private ReferenceCheckResult checkInternalReferences(ReferenceCheckRequest request) {
-        if (request.subsystemKind() != LOGICAL) {
-            return ReferenceCheckResult.clear(CLEAR_SUMMARY);
-        }
-        try {
-            if (request.operation() == OFFLINE
-                    && repository.countActivePhysicalByLogical(request.tenantId(), request.subsystemId()) > 0) {
-                return ReferenceCheckResult.referenced("逻辑子系统下仍有 ACTIVE 物理子系统");
-            }
-            if (request.operation() == VOID
-                    && repository.countPhysicalHistoryByLogical(request.tenantId(), request.subsystemId()) > 0) {
-                return ReferenceCheckResult.referenced("逻辑子系统存在物理子系统发布历史");
-            }
-            return ReferenceCheckResult.clear(CLEAR_SUMMARY);
-        } catch (RuntimeException exception) {
-            return ReferenceCheckResult.indeterminate(INTERNAL_CHECK_UNAVAILABLE);
         }
     }
 

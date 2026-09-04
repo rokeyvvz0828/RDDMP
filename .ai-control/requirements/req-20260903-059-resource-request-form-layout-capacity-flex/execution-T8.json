@@ -1,0 +1,113 @@
+{
+  "task_id": "T8",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex",
+      "purpose": "记录最终构建、治理、范围、浏览器、请求和收敛前证据"
+    }
+  ],
+  "requirements_addressed": ["R13"],
+  "commands": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc 与 Vite 完成，2513 modules transformed，built in 21.01s"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope ... --base 813ad56 --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "Codex scope check passed for REQ-20260903-059"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误，仅有仓库既有 LF/CRLF 提示"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "模块、仓库 Skill 和开发入口通过；AI control layout 仍报告其他历史需求的 topic/旧账本问题，本前缀未出现在错误列表"
+    },
+    {
+      "command": "Invoke-RestMethod GET /api/architecture/resource-requests?page=1&size=20",
+      "exit_code": 0,
+      "salient_output": "Mock 返回 code=0、data=[]，表明创建响应未持久化到列表"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "浅色五视口布局",
+      "result": "pass",
+      "evidence": "1920容器777px且3/4/3；1280容器604px自然2/2/3/3；375/390/430字段单列255/269/309px；全部根宽等于视口且footer可见",
+      "limitations": []
+    },
+    {
+      "check": "深色五视口布局",
+      "result": "pass",
+      "evidence": "data-theme=dark；五视口布局几何与浅色一致；桌面数字输入160px、手机满宽；Console error=0",
+      "limitations": []
+    },
+    {
+      "check": "数据库与非数据库字段分流",
+      "result": "pass",
+      "evidence": "DB选择后capacityCount=0、databaseLabel=true、numberGridCount=1；应用选择后容量Flex存在",
+      "limitations": []
+    },
+    {
+      "check": "容量计算与边车联动",
+      "result": "pass",
+      "evidence": "CPU2、内存4、组数3、节点2显示总CPU4、总内存8G；点击边车开关核心后input checked=true、is-checked且两个边车输入原生disabled=false",
+      "limitations": ["未填写边车数值，因 Element Plus input-number 的 fill 自动化动作不稳定"]
+    },
+    {
+      "check": "创建草稿与请求映射不变量",
+      "result": "pass",
+      "evidence": "选择应用部署单元、开放区并填写容量后点击保存，页面提示资源申请草稿已创建；d29ff40 未修改 submitForm、requestItemPayload、v-model、事件或校验表达式",
+      "limitations": ["Mock 创建结果不写入列表，无法通过列表回显复核持久化；浏览器工具未暴露 POST body"]
+    },
+    {
+      "check": "旧账本完整性",
+      "result": "pass",
+      "evidence": "修订1 state SHA256=3A36B04732B9964E051B1110B080F2DC4656F8B65BBA48ACE351B25686C24D5F；修订2 state SHA256=A7ECF2DEAC7E97D7CE55B64EF5797FC3CBC9BB87C5BC3B56AD616A6906E4AF6A",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "T8 未修改产品代码",
+    "最终运行证据覆盖浅色/深色五视口、DB/非 DB、计算、边车启用、创建成功提示、Console、scope 和旧账本",
+    "全仓治理失败被识别为既有其他需求账本噪声，本前缀无新增错误"
+  ],
+  "invariants_checked": [
+    {"invariant":"页面根无横向溢出且footer可见","result":"pass","evidence":"五视口两主题根宽等于视口且footer visible=true"},
+    {"invariant":"数据库资源区保持Grid","result":"pass","evidence":"运行时DB区不存在容量Flex并保留数字Grid"},
+    {"invariant":"计算、边车启用和创建入口保持","result":"pass","evidence":"计算值、边车原生disabled和创建成功提示"},
+    {"invariant":"请求映射和权限代码不变","result":"pass","evidence":"产品提交仅含class和CSS；submitForm/requestItemPayload无diff"},
+    {"invariant":"旧账本只读","result":"pass","evidence":"两个历史state哈希已记录且未修改"}
+  ],
+  "disturbances": [
+    {
+      "event": "全仓治理包含其他历史需求账本错误",
+      "impact": "治理命令退出1，但错误列表不包含本控制前缀，作为基线噪声隔离"
+    },
+    {
+      "event": "Mock创建响应不持久化到列表",
+      "impact": "只能确认创建成功提示和请求映射代码不变，不能用列表回显证明持久化"
+    },
+    {
+      "event": "Element Plus input-number 对语义fill/isEnabled自动化判定不稳定",
+      "impact": "改用原生disabled属性和计算输出判别控件状态"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实后端环境的持久化与请求 body 仍需上线前集成环境复核",
+    "全仓历史 AI control layout 问题不在本需求范围内"
+  ],
+  "recommended_next": "observe"
+}

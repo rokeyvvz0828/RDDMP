@@ -1,0 +1,21 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+    "web/src/modules/release/release-operations.css"
+  ],
+  "requirements_addressed": ["R1", "R2"],
+  "commands": ["rg static reference check", "npm --prefix web run build", "browser plan route"],
+  "local_checks": [
+    "方案正向投产时序和回退时序按 seqNo 横向展示",
+    "新增和编辑方案步骤使用 el-drawer",
+    "保存与删除 API payload 和 rowVersion 保持不变"
+  ],
+  "diff_summary": ["步骤卡片替换为横向轨道节点", "方案步骤维护容器替换为抽屉"],
+  "invariants_checked": ["ReleasePlanItemDto 字段不变", "删除确认保留", "权限判断保留"],
+  "disturbances": ["长时序内容可能扩大轨道宽度"],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "进入独立观测，复核方案时序轨道和步骤抽屉。"
+}

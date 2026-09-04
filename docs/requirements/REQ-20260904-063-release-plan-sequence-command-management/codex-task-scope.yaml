@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id":"REQ-20260904-063","status":"ready","document":"docs/requirements/REQ-20260904-063-release-plan-sequence-command-management/requirement.md","codex_allowed":true},
+  "assignment": {"developer":"Codex","module":"business/release + frontend/application","module_owner":"rokeyvvz0828","branch":"licon","worktree":"D:/ai_project/ccb_rd"},
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/release/src/main/java/com/ccb/release/operations/model/ReleaseOperationsModels.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/operations/persistence/ReleaseOperationsStore.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/operations/service/ReleaseOperationsService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/operations/web/ReleaseOperationsController.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/operations/service/ReleaseOperationsServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/operations/web/ReleaseOperationsControllerSecurityTest.java",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V149__release_operations_management.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V150__release_operations_demo_data.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V151__release_operations_demo_admin_members.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V152__release_operations_demo_issue_status.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V153__release_drill_management_restructure.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V154__release_plan_timeline_names.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V155__release_plan_timelines.sql",
+      "web/src/api/release.ts",
+      "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+      "web/src/modules/release/release-operations.css",
+      "docs/requirements/REQ-20260904-063-release-plan-sequence-command-management/**",
+      "docs/engineering-control/designs/2026-09-04-release-plan-sequence-command-management-design.md",
+      "docs/engineering-control/plans/2026-09-04-release-plan-sequence-command-management-implementation-plan.md",
+      ".ai-control/requirements/req-20260904-063-release-plan-sequence-command-management/*.json"
+    ],
+    "read_only_paths": ["web/src/components/ui/**","web/src/modules/delivery-showcase/**","web/src/stores/**","design-h5.md",".env",".env.*","**/target/**","**/node_modules/**"],
+    "forbidden_paths": [".env",".env.*","**/*.pem","**/*.key","**/target/**","**/node_modules/**","server/src/modules/architecture/**"]
+  },
+  "database": {"changed":true,"migration_files":["server/src/platform/infrastructure/src/main/resources/db/migration/V149__release_operations_management.sql","server/src/platform/infrastructure/src/main/resources/db/migration/V150__release_operations_demo_data.sql","server/src/platform/infrastructure/src/main/resources/db/migration/V151__release_operations_demo_admin_members.sql","server/src/platform/infrastructure/src/main/resources/db/migration/V152__release_operations_demo_issue_status.sql","server/src/platform/infrastructure/src/main/resources/db/migration/V153__release_drill_management_restructure.sql","server/src/platform/infrastructure/src/main/resources/db/migration/V154__release_plan_timeline_names.sql","server/src/platform/infrastructure/src/main/resources/db/migration/V155__release_plan_timelines.sql"],"compatibility_and_rollback":"合并 main 后将 licon 未发布的投产迁移从 V123-V129 顺延为 V149-V155，脚本内容和执行顺序保持不变；新增方案时序表、追加指令时序归属并迁移历史指令；回退使用反向变更方案和代码回退"},
+  "public_capability_change": {"required":false,"issue":"REQ-20260904-063","owner_approved":true},
+  "external_access": {"changed":false,"systems":[],"data_classification":"internal-test-only"},
+  "required_tests": [
+    {"name":"release-tests","command":"mvn -pl :ccb-release -am test \"-Dnet.bytebuddy.experimental=true\"","expected":"投产模块测试通过"},
+    {"name":"frontend-build","command":"npm --prefix web run build","expected":"TypeScript/Vite 构建通过"},
+    {"name":"diff-check","command":"git diff --check","expected":"无空白错误"},
+    {"name":"browser","command":"真实浏览器验证时序和指令维护、空/只读状态及四种视口","expected":"两层维护可用、时间线移除且无新增控制台错误和页面溢出"}
+  ],
+  "risk": {"level":"high","items":["追加迁移需要为历史指令生成时序节点","时序删除需保证其指令同时软删除","前后端新契约需要同步发布"]},
+  "completion": {"control_mode":"full","control_prefix":"req-20260904-063-release-plan-sequence-command-management","rollback":"回退本任务代码和 V129 追加迁移"}
+}

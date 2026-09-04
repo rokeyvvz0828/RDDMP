@@ -1,0 +1,92 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "web/src/modules/release/ReleaseOperationsManagement.vue 的投产页面壳",
+      "五条 release-operations 前端路由和 V123 动态菜单子项",
+      "V124 投产管理测试数据迁移",
+      "现有五个投产业务组件的当前项目数据展示"
+    ],
+    "environment": [
+      "Vue Router 和顶部 project-context store",
+      "现有投产管理 API 和后端权限校验",
+      "MySQL 8.4/Flyway 数据库",
+      "V51 项目表、项目成员表和 V71 演示用户",
+      "本地浏览器、Maven、Vite 和治理检查命令"
+    ]
+  },
+  "state_variables": [
+    {"name":"current_project_id","owner":"ReleaseOperationsManagement.vue","valid_values":["当前项目数字 ID","undefined"]},
+    {"name":"current_route","owner":"Vue Router","valid_values":["父级入口","五个投产子路由"]},
+    {"name":"page_data_state","owner":"五个投产业务组件","valid_values":["loading","ready","empty","error","forbidden","saving"]},
+    {"name":"flyway_version","owner":"Flyway","valid_values":["V123 已执行","V124 待执行","V124 已执行"]},
+    {"name":"demo_record_presence","owner":"V124 数据库记录","valid_values":["缺失","每项目完整","部分存在","固定 ID 冲突"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"用户打开投产管理菜单或子路由","transitions":["动态菜单读取 V123 父子关系","router meta 校验权限","页面壳依据 route.path 选择组件"],"outputs":["左侧五个独立子菜单且页面只显示一个业务组件"]},
+    {"requirement_id":"R2","input":"当前项目 ID 和 V124 演练记录","transitions":["业务组件传 projectId 调用演练 API","后端按 tenant/project 查询","页面渲染方案、环境和轮次"],"outputs":["每个演示项目可看到方案、环境和多轮演练"]},
+    {"requirement_id":"R3","input":"当前项目 ID 和 NORMAL/ROLLBACK 时序记录","transitions":["页面按路由选择 timelineType","API 按项目和类型查询","组件按 seqNo 渲染明细"],"outputs":["普通和回退时序各自显示对应明细"]},
+    {"requirement_id":"R4","input":"当前项目 ID 和问题记录筛选条件","transitions":["问题页面发起项目范围分页查询","后端应用 keyword/priority/status","页面显示分析、处理和跟踪字段"],"outputs":["两个演示项目都有可筛选问题记录"]},
+    {"requirement_id":"R5","input":"当前项目 ID 和项目成员关系","transitions":["组织页面读取组和成员选项","后端限定项目成员","页面显示两个投产组及组内成员"],"outputs":["组成员只来自当前项目"]},
+    {"requirement_id":"R6","input":"顶部项目 ref 变化","transitions":["store.currentRef 变化","页面壳清空 projectId并递增请求代次","业务组件 key 变化重新加载"],"outputs":["当前页面和刷新后的数据只对应新项目"]},
+    {"requirement_id":"R7","input":"既有投产 API 和固定 V124 种子","transitions":["不修改后端权限/API","迁移按固定 ID 条件插入","自动化回归检查旧契约"],"outputs":["权限、API 和回退兼容"]},
+    {"requirement_id":"R8","input":"桌面/手机视口和页面状态","transitions":["既有 CSS 响应式规则","业务组件保留全状态","浏览器测量 DOM/scrollWidth/console"],"outputs":["四视口可达且无页面级横向溢出"]}
+  ],
+  "interfaces": [
+    {"name":"dynamic_release_menu","producers":["V123 sys_menu/sys_menu_permission seed"],"consumers":["AppLayout/auth menu tree"],"invariant":"父级 1000 下五个子菜单路径和权限编码唯一"},
+    {"name":"release_route_shell","producers":["Vue Router","ReleaseOperationsManagement.vue"],"consumers":["五个既有业务组件"],"invariant":"每次只渲染当前路由对应的一个组件并传当前项目 ID"},
+    {"name":"release_project_api","producers":["ccb-release operations controller/service"],"consumers":["五个 Vue 业务组件"],"invariant":"请求使用当前项目范围并保留现有权限/错误契约"},
+    {"name":"release_demo_seed","producers":["V124 Flyway migration"],"consumers":["V123 七张投产表和投产 API"],"invariant":"固定测试记录条件写入，不删除非固定记录"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"R1 独立菜单和路由","method":"路由源码、V123 菜单结构和浏览器 DOM","blind_spots":["动态菜单缓存尚未刷新时的短暂状态"],"independence":"源码结构与运行 DOM 两类观测"},
+    {"id":"S2","target":"R2-R5 五项测试数据","method":"本地数据库按 project_id 分组计数和页面 API/DOM","blind_spots":["数据库连接不可用时只能检查 SQL 静态结构"],"independence":"数据库查询与浏览器显示互不依赖"},
+    {"id":"S3","target":"R6 项目切换和刷新隔离","method":"浏览器切换 A/B 项目，比较固定业务 ID、网络参数和刷新后 DOM","blind_spots":["未覆盖高并发网络延迟组合"],"independence":"交互、网络请求和持久化结果组合传感器"},
+    {"id":"S4","target":"R7 既有契约和权限回归","method":"Maven release tests、Flyway check、未授权 API smoke check","blind_spots":["非 admin 角色的完整权限矩阵"],"independence":"自动化后端与迁移检查"},
+    {"id":"S5","target":"R8 响应式与全状态","method":"真实浏览器四视口 DOM、console error 和 document.documentElement.scrollWidth","blind_spots":["真实移动设备字体渲染差异"],"independence":"运行时视觉/布局测量"},
+    {"id":"S6","target":"任务范围和治理约束","method":"scope checker、governance checker、git diff --check","blind_spots":["历史任务账本可能造成非本任务噪声"],"independence":"仓库差异和治理静态传感器"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"页面内重复 Tabs","action":"删除页面壳内部 nav 状态和导航 DOM，按 route.path 映射单一业务组件","authority":"本任务 web/src/modules/release/ReleaseOperationsManagement.vue 写权限","impact_radius":"投产管理页面壳和五条路由展示","rollback":"恢复本任务页面壳修改","maximum_action":"不修改 AppLayout、store、公共组件或业务组件契约"},
+    {"id":"A2","target":"投产测试数据缺失","action":"追加 V124 固定项目、成员和五项业务记录的条件插入","authority":"本任务 V124 Flyway 写权限","impact_radius":"tenant 1 本地测试项目和固定记录","rollback":"应用层关闭菜单；不删除迁移和用户数据","maximum_action":"不修改 V123，不按项目批量删除，不写生产数据"},
+    {"id":"A3","target":"集成验证缺口","action":"运行构建、测试、迁移、治理、范围和浏览器检查并记录证据","authority":"本地测试工具","impact_radius":"验证产物和本地测试数据库","rollback":"停止本地进程并保留证据"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S6"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S2","S3"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S2","S3"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S2","S3"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S2","S3"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S2","S3"],"observable":"yes"},
+    {"requirement_id":"R7","sensor_ids":["S4","S6"],"observable":"yes"},
+    {"requirement_id":"R8","sensor_ids":["S5","S6"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"dynamic menu cache","effect":"菜单变更暂时不显示","detectable":true,"controllable":true},
+    {"source":"fixed demo ID already occupied","effect":"V124 skips a record and coverage is incomplete","detectable":true,"controllable":true},
+    {"source":"V71 demo user missing","effect":"project member and group member data cannot be validly seeded","detectable":true,"controllable":false},
+    {"source":"delayed project-switch request","effect":"old project data can overwrite new project UI","detectable":true,"controllable":true},
+    {"source":"pre-existing dirty worktree","effect":"scope/governance output contains unrelated changes","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"project context async lookup","consequence":"old lookup may finish after current project changes","sampling_rule":"compare request generation and final current project ID after each switch"},
+    {"source":"dynamic menu cache","consequence":"new child menu may lag database seed","sampling_rule":"restart/refresh before browser menu acceptance"}
+  ],
+  "assumptions": [
+    {"text":"V124 is the next available migration version","evidence":"V123 release operations migration is the latest task-scoped migration file and Flyway check passes","falsifier":"Flyway reports version collision or a newer migration is discovered"},
+    {"text":"V71 demo users 1001-1006 exist in a normal full migration database","evidence":"V71 creates these users with synthetic names","falsifier":"read-only database lookup returns no corresponding users"},
+    {"text":"V123 tables match the existing operations API DTOs","evidence":"current backend tests and V123 schema are present","falsifier":"migration or backend test reports column mismatch"},
+    {"text":"AppLayout obtains child menu items from the dynamic menu store","evidence":"router meta and existing menu-tree searches show permission/menu path integration","falsifier":"browser shows no V123 child menus after refresh"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"T1 page shell change and S1 DOM check"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"T2 V124 seed and S2 database/page count"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"T2 fixed NORMAL/ROLLBACK rows and S2/S3 checks"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"T2 issue rows and T3 filter/page check"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"T2 project members/groups and T3 organization check"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"T1 preserve generation/key logic and T3 A/B switch test"},
+    {"requirement_id":"R7","observable":"yes","controllable":"yes","action":"T3 Maven/Flyway/permission regression"},
+    {"requirement_id":"R8","observable":"yes","controllable":"yes","action":"T1 preserve existing responsive components and T3 four viewport check"}
+  ],
+  "model_status":"ready"
+}

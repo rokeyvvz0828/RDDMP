@@ -91,8 +91,8 @@ async function refresh() {
   if (!loadError.value && !forbidden.value) ElMessage.success('工单列表已刷新')
 }
 
-function create(kind: SubsystemTargetKind) {
-  void router.push({ name: 'architecture-subsystem-change-application-new', query: { targetKind: kind } })
+function create() {
+  void router.push({ name: 'architecture-subsystem-change-application-new', query: { targetKind: 'PHYSICAL' } })
 }
 
 function detail(row: SubsystemChangeApplicationSummary) {
@@ -122,11 +122,10 @@ watch(canView, allowed => {
 
 <template>
   <main class="architecture-page architecture-change-page">
-    <UiPageHeader title="架构子系统变更工单" description="所有新增、变更、下线、重新启用、作废和归属替换都在审批流程中完成。">
+    <UiPageHeader title="架构子系统变更工单" description="物理子系统的新增、变更、下线、重新启用、作废和替换都在审批流程中完成。">
       <template #actions>
         <div v-if="canApply" class="architecture-page__actions">
-          <el-button @click="create('PHYSICAL')"><el-icon><Plus /></el-icon>申请物理子系统</el-button>
-          <el-button type="primary" @click="create('LOGICAL')"><el-icon><Plus /></el-icon>申请逻辑子系统</el-button>
+          <el-button type="primary" @click="create"><el-icon><Plus /></el-icon>申请物理子系统</el-button>
         </div>
       </template>
     </UiPageHeader>
@@ -203,8 +202,8 @@ watch(canView, allowed => {
         </article>
       </div>
 
-      <UiEmptyState v-if="!loading && !rows.length" title="暂无变更工单" description="当前筛选下没有记录，可发起逻辑或物理子系统申请。">
-        <template #action><el-button v-if="canApply" type="primary" @click="create('LOGICAL')">发起申请</el-button><el-button v-else @click="reset">清空筛选</el-button></template>
+      <UiEmptyState v-if="!loading && !rows.length" title="暂无变更工单" description="当前筛选下没有记录，可发起物理子系统申请。">
+        <template #action><el-button v-if="canApply" type="primary" @click="create">发起申请</el-button><el-button v-else @click="reset">清空筛选</el-button></template>
       </UiEmptyState>
 
       <nav v-if="rows.length || page > 1" class="architecture-change-pagination" aria-label="工单分页">

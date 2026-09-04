@@ -1,0 +1,53 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T2", "T3", "T5"], "evidence": ["V123 菜单检查通过；五个路由可达；未授权五个核心 API 均 401"], "limitations": ["有权限项目成员会话的页面内容未进入"]},
+    {"id": "R2", "result": "pass", "task_ids": ["T1", "T2", "T4", "T5"], "evidence": ["后端 release reactor 84 项通过；演练视图和 typed API 构建通过"], "limitations": ["浏览器 CRUD 刷新回读因当前账号无项目成员资格未采样"]},
+    {"id": "R3", "result": "pass", "task_ids": ["T1", "T2", "T4", "T5"], "evidence": ["NORMAL/ROLLBACK 路由和服务类型隔离通过；时序局部滚动布局和页面构建通过"], "limitations": ["未在浏览器创建实际节点"]},
+    {"id": "R4", "result": "pass", "task_ids": ["T1", "T2", "T4", "T5"], "evidence": ["问题筛选、分析、处理、跟踪字段已接入后端和前端；后端全量测试通过"], "limitations": ["未在浏览器提交实际问题"]},
+    {"id": "R5", "result": "pass", "task_ids": ["T1", "T2", "T4", "T5"], "evidence": ["项目成员引用校验测试通过；组织页面选项来自当前项目成员 API"], "limitations": ["未在浏览器新增投产组或成员"]},
+    {"id": "R6", "result": "pass", "task_ids": ["T1", "T2", "T3", "T4", "T5"], "evidence": ["服务端范围测试通过；浏览器项目切换后头部项目引用更新；接口未授权返回 401"], "limitations": ["无项目成员资格时业务接口按实体授权返回 403"]},
+    {"id": "R7", "result": "pass", "task_ids": ["T2", "T4", "T5"], "evidence": ["rowVersion/软删除/权限测试通过；删除确认和保存防重复分支已构建"], "limitations": ["真实数据库审计写入与并发冲突未抽查"]},
+    {"id": "R8", "result": "pass", "task_ids": ["T3", "T4", "T5"], "evidence": ["375x812、390x844、430x932、1280x800 无页面级横向溢出，console error=0；health/frontend 均 200"], "limitations": ["深浅主题组合未逐页采样"]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["observation-T1、Flyway 检查通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["observation-T2、release/system 测试通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["observation-T3、五路由和项目切换页面壳可达"]},
+    {"id": "T4", "status": "verified", "evidence": ["observation-T4、前端构建和四视口测量通过"]},
+    {"id": "T5", "status": "verified", "evidence": ["observation-T5、健康、授权边界、路由和最终浏览器测量完成"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0004", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "ccb-release reactor", "result": "pass", "evidence": "84 tests passed"},
+    {"check": "frontend production build", "result": "pass", "evidence": "vue-tsc and Vite build passed"},
+    {"check": "Flyway migration check", "result": "pass", "evidence": "116 migrations and 1 approved callback passed"},
+    {"check": "governance", "result": "deferred", "evidence": "module/skill/development-entry passed; unrelated historical ledger format issues remain"},
+    {"check": "runtime health and authorization", "result": "pass", "evidence": "health/frontend 200; five unauthenticated APIs 401"}
+  ],
+  "invariant_results": [
+    {"invariant": "V123 append-only and menu permissions additive", "result": "pass", "evidence": "Flyway static check and menu structure observation"},
+    {"invariant": "tenant/project/entity scope and server authorization", "result": "pass", "evidence": "service tests and runtime 401/403 boundary"},
+    {"invariant": "normal/rollback timeline isolation", "result": "pass", "evidence": "typed API, controller type routing and component keys"},
+    {"invariant": "mobile page remains within viewport", "result": "pass", "evidence": "four viewport DOM measurements"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "sandbox esbuild spawn EPERM", "result": "pass", "evidence": "approved local build rerun exited 0"},
+    {"disturbance": "unauthorized/no-project-member browser session", "result": "controlled", "evidence": "server rejected access; no unauthorized data was written"},
+    {"disturbance": "unrelated historical workflow table/log error", "result": "contained", "evidence": "投产 API、health 和前端页面未受直接阻断；另立修复任务"}
+  ],
+  "residual_risks": [
+    {"risk": "尚未使用有效项目成员角色完成五页面 CRUD 浏览器回读", "severity": "P2", "mitigation": "保留后端服务测试、typed build、路由和安全边界证据；上线前用专用测试成员补做操作验收"},
+    {"risk": "本地历史数据库缺少 wf_lifecycle_delivery", "severity": "P2", "mitigation": "不在本任务修改 architecture 或历史迁移，另立数据库迁移修复任务"},
+    {"risk": "治理检查存在其他任务历史账本问题", "severity": "P2", "mitigation": "本任务范围审计通过，待治理负责人统一修复历史账本"}
+  ],
+  "gate_result": "pass",
+  "route_reason": "所有任务均已验证，最终采样 P0/P1 为零，必须需求均有后端/前端/运行态证据，范围和关键不变量通过；非关键环境缺口已明确记录为残余风险"
+}

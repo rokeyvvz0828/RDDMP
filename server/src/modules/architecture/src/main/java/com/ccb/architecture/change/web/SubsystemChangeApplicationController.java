@@ -4,7 +4,6 @@ import com.ccb.architecture.change.model.SubsystemChangeModels.ActionType;
 import com.ccb.architecture.change.model.SubsystemChangeModels.ApplicationStatus;
 import com.ccb.architecture.change.model.SubsystemChangeModels.ChangeApplication;
 import com.ccb.architecture.change.model.SubsystemChangeModels.ChangeHistoryEvent;
-import com.ccb.architecture.change.model.SubsystemChangeModels.LogicalDraft;
 import com.ccb.architecture.change.model.SubsystemChangeModels.PhysicalDraft;
 import com.ccb.architecture.change.model.SubsystemChangeModels.TargetKind;
 import com.ccb.architecture.change.service.ArchitectureSubsystemSubmissionService;
@@ -12,8 +11,6 @@ import com.ccb.architecture.change.service.SubsystemChangeService;
 import com.ccb.architecture.change.service.SubsystemChangeService.AccessScope;
 import com.ccb.architecture.change.service.SubsystemChangeService.ApplicationDetail;
 import com.ccb.architecture.change.service.SubsystemChangeService.DraftUpdateCommand;
-import com.ccb.architecture.change.service.SubsystemChangeService.LogicalApplicationCommand;
-import com.ccb.architecture.change.service.SubsystemChangeService.LogicalDraftInput;
 import com.ccb.architecture.change.service.SubsystemChangeService.PhysicalApplicationCommand;
 import com.ccb.architecture.change.service.SubsystemChangeService.PhysicalDraftInput;
 import com.ccb.architecture.change.suggestion.SubsystemSuggestionProvider;
@@ -27,6 +24,8 @@ import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -39,9 +38,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,10 +47,9 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * 架构子系统变更工单的草稿 HTTP 边界。
+ * 架构物理子系统变更工单的草稿 HTTP 边界。
  *
- * <p>提交和审批中取消通过真实工作流协调器执行；批准、退回、拒绝只由平台工作流任务与
- * 生命周期事件驱动，不能通过这里绕过工作流直接改写已发布主记录。</p>
+ * <p>逻辑子系统模型已退役；历史 LOGICAL 工单只可在列表/详情中作为历史状态读取。</p>
  */
 @RestController
 @RequestMapping("/api/architecture/subsystem-change-applications")
@@ -133,27 +128,23 @@ public class SubsystemChangeApplicationController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:view','architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> detail(@PathVariable long id,
-                                                          @AuthenticationPrincipal AuthUser actor,
-                                                          Authentication authentication) {
+                                                         @AuthenticationPrincipal AuthUser actor,
+                                                         Authentication authentication) {
         return success(toDetail(service.detail(actor, accessScope(authentication), id)));
     }
 
     /**
-     * 创建请求必须显式指定目标类型。租户、申请人和数据范围只从认证主体和权限派生，不能从正文覆盖。
+     * 创建请求必须显式指定 PHYSICAL。租户、申请人和数据范围只从认证主体和权限派生。
      */
     @PostMapping
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> create(@RequestBody CreateApplicationRequest request,
-                                                          @AuthenticationPrincipal AuthUser actor) {
-        TargetKind targetKind = requiredTargetKind(request == null ? null : request.targetKind());
+                                                         @AuthenticationPrincipal AuthUser actor) {
+        requiredPhysicalTargetKind(request == null ? null : request.targetKind());
         ApplicationDetail detail = audited(actor, "architecture.subsystem-change.create", "POST",
-                "/api/architecture/subsystem-change-applications", () -> switch (targetKind) {
-                    case LOGICAL -> service.createLogical(actor, new LogicalApplicationCommand(
-                            request.actionType(), request.targetId(), request.reason(), request.logicalDraft(),
-                            request.physicalDrafts()));
-                    case PHYSICAL -> service.createPhysical(actor, new PhysicalApplicationCommand(
-                            request.actionType(), request.targetId(), request.reason(), request.physicalDraft()));
-                });
+                "/api/architecture/subsystem-change-applications", () ->
+                        service.createPhysical(actor, new PhysicalApplicationCommand(
+                                request.actionType(), request.targetId(), request.reason(), request.physicalDraft())));
         return success(toDetail(detail));
     }
 
@@ -161,25 +152,25 @@ public class SubsystemChangeApplicationController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> update(@PathVariable long id,
-                                                          @RequestBody UpdateApplicationRequest request,
-                                                          @AuthenticationPrincipal AuthUser actor) {
+                                                         @RequestBody UpdateApplicationRequest request,
+                                                         @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         ApplicationDetail detail = audited(actor, "architecture.subsystem-change.update", "PUT",
                 "/api/architecture/subsystem-change-applications/" + id, () ->
-                service.update(actor, AccessScope.OWN, id, rowVersion,
-                        new DraftUpdateCommand(request.reason(), request.logicalDraft(), request.physicalDrafts())));
+                        service.update(actor, AccessScope.OWN, id, rowVersion,
+                                new DraftUpdateCommand(request.reason(), request.physicalDrafts())));
         return success(toDetail(detail));
     }
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> cancel(@PathVariable long id,
-                                                          @RequestBody CancelApplicationRequest request,
-                                                          @AuthenticationPrincipal AuthUser actor) {
+                                                         @RequestBody CancelApplicationRequest request,
+                                                         @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         ApplicationDetail detail = audited(actor, "architecture.subsystem-change.cancel", "POST",
                 "/api/architecture/subsystem-change-applications/" + id + "/cancel", () ->
-                workflowService.cancel(actor, id, rowVersion));
+                        workflowService.cancel(actor, id, rowVersion));
         return success(toDetail(detail));
     }
 
@@ -187,12 +178,12 @@ public class SubsystemChangeApplicationController {
     @PostMapping("/{id}/submit")
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> submit(@PathVariable long id,
-                                                          @RequestBody SubmitApplicationRequest request,
-                                                          @AuthenticationPrincipal AuthUser actor) {
+                                                         @RequestBody SubmitApplicationRequest request,
+                                                         @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         ApplicationDetail detail = audited(actor, "architecture.subsystem-change.submit", "POST",
                 "/api/architecture/subsystem-change-applications/" + id + "/submit", () ->
-                workflowService.submit(actor, id, rowVersion));
+                        workflowService.submit(actor, id, rowVersion));
         return success(toDetail(detail));
     }
 
@@ -218,14 +209,17 @@ public class SubsystemChangeApplicationController {
         return AccessScope.OWN;
     }
 
-    private TargetKind requiredTargetKind(String targetKind) {
+    private void requiredPhysicalTargetKind(String targetKind) {
         if (targetKind == null || targetKind.isBlank()) {
-            throw badRequest("targetKind 不能为空，必须为 LOGICAL 或 PHYSICAL");
+            throw badRequest("targetKind 不能为空，必须为 PHYSICAL");
         }
         try {
-            return TargetKind.valueOf(targetKind.trim().toUpperCase(Locale.ROOT));
+            TargetKind kind = TargetKind.valueOf(targetKind.trim().toUpperCase(Locale.ROOT));
+            if (kind != TargetKind.PHYSICAL) {
+                throw badRequest("逻辑子系统工单已退役，targetKind 必须为 PHYSICAL");
+            }
         } catch (IllegalArgumentException exception) {
-            throw badRequest("targetKind 非法，必须为 LOGICAL 或 PHYSICAL");
+            throw badRequest("targetKind 非法，必须为 PHYSICAL");
         }
     }
 
@@ -277,31 +271,19 @@ public class SubsystemChangeApplicationController {
     }
 
     private ApplicationDetailResponse toDetail(ApplicationDetail detail) {
-        return new ApplicationDetailResponse(toSummary(detail.application()), toLogicalDraft(detail.logicalDraft()),
+        return new ApplicationDetailResponse(toSummary(detail.application()),
                 detail.physicalDrafts().stream().map(this::toPhysicalDraft).toList(),
                 detail.history().stream().map(this::toHistory).toList());
     }
 
-    private LogicalDraftResponse toLogicalDraft(LogicalDraft draft) {
-        if (draft == null) {
-            return null;
-        }
-        return new LogicalDraftResponse(draft.sourceLogicalSubsystemId(), draft.shortName(), draft.name(),
-                draft.businessOrgId(), draft.deploymentPlatformCode(), draft.systemTypeCode(),
-                draft.systemOwnershipCode(), draft.contactUserId(), draft.description(), draft.remark(),
-                draft.sortNo(), draft.reservedNumberSequence(), draft.sourceRowVersion(), draft.draftRevision(),
-                draft.submittedSnapshotJson(), draft.createdAt(), draft.updatedAt());
-    }
-
     private PhysicalDraftResponse toPhysicalDraft(PhysicalDraft draft) {
-        return new PhysicalDraftResponse(draft.lineNo(), draft.sourcePhysicalSubsystemId(),
-                draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(), draft.englishName(),
-                draft.businessGroupName(), draft.businessContinuityLevel(), draft.collectedSystemLevel(),
-                draft.deploymentPlatform(), draft.disasterRecoveryMode(),
-                draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(),
-                draft.runtimeCode(), draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
-                draft.description(), draft.remark(), draft.reservedNumberSlot(), draft.sourceRowVersion(),
-                draft.draftRevision(), draft.submittedSnapshotJson(), draft.createdAt(), draft.updatedAt());
+        return new PhysicalDraftResponse(draft.lineNo(), draft.sourcePhysicalSubsystemId(), draft.code(),
+                draft.shortName(), draft.name(), draft.logicalSubsystemName(), draft.businessComponentCode(),
+                draft.englishName(), draft.businessGroupName(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(), draft.runtimeCode(),
+                draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
+                draft.description(), draft.remark(), draft.sourceRowVersion(), draft.draftRevision(),
+                draft.submittedSnapshotJson(), draft.createdAt(), draft.updatedAt());
     }
 
     private ChangeHistoryResponse toHistory(ChangeHistoryEvent event) {
@@ -310,16 +292,15 @@ public class SubsystemChangeApplicationController {
                 event.occurredAt());
     }
 
-    /** 输入 DTO 不含 tenantId、applicantId 或 accessScope；这些字段即使出现在 JSON 中也会被忽略。 */
-    @JsonIgnoreProperties({"tenantId", "applicantId", "accessScope"})
+    /** 输入 DTO 不含 tenantId、applicantId 或 accessScope；逻辑草稿字段即使出现在 JSON 中也会被忽略。 */
+    @JsonIgnoreProperties(value = {"tenantId", "applicantId", "accessScope", "logicalDraft", "physicalDrafts"},
+            ignoreUnknown = true)
     public record CreateApplicationRequest(String targetKind, ActionType actionType, Long targetId, String reason,
-                                           LogicalDraftInput logicalDraft,
-                                           List<PhysicalDraftInput> physicalDrafts,
                                            PhysicalDraftInput physicalDraft) {
     }
 
-    @JsonIgnoreProperties({"tenantId", "applicantId", "accessScope"})
-    public record UpdateApplicationRequest(Long rowVersion, String reason, LogicalDraftInput logicalDraft,
+    @JsonIgnoreProperties(value = {"tenantId", "applicantId", "accessScope", "logicalDraft"}, ignoreUnknown = true)
+    public record UpdateApplicationRequest(Long rowVersion, String reason,
                                            List<PhysicalDraftInput> physicalDrafts) {
     }
 
@@ -347,7 +328,6 @@ public class SubsystemChangeApplicationController {
 
     /** 详情聚合草稿和不可变历史，同样不暴露 tenantId。 */
     public record ApplicationDetailResponse(ApplicationSummaryResponse application,
-                                            LogicalDraftResponse logicalDraft,
                                             List<PhysicalDraftResponse> physicalDrafts,
                                             List<ChangeHistoryResponse> history) {
         public ApplicationDetailResponse {
@@ -356,24 +336,15 @@ public class SubsystemChangeApplicationController {
         }
     }
 
-    public record LogicalDraftResponse(Long sourceLogicalSubsystemId, String shortName, String name,
-                                       long businessOrgId, String deploymentPlatformCode, String systemTypeCode,
-                                       String systemOwnershipCode, long contactUserId, String description,
-                                       String remark, int sortNo, Integer reservedNumberSequence,
-                                       Long sourceRowVersion, int draftRevision, String submittedSnapshotJson,
-                                       LocalDateTime createdAt, LocalDateTime updatedAt) {
-    }
-
-    public record PhysicalDraftResponse(int lineNo, Long sourcePhysicalSubsystemId,
-                                        Long targetLogicalSubsystemId, String shortName, String name,
-                                        String englishName, String businessGroupName,
-                                        String businessContinuityLevel, String collectedSystemLevel,
+    public record PhysicalDraftResponse(int lineNo, Long sourcePhysicalSubsystemId, String code,
+                                        String shortName, String name, String logicalSubsystemName,
+                                        String businessComponentCode, String englishName, String businessGroupName,
                                         String deploymentPlatform, String disasterRecoveryMode,
-                                        long responsibleTeamOrgId,
-                                        String responsibleTeamNameSnapshot, String runtimeCode,
-                                        String systemLevelCode, String developmentFrameworkCode, Long ownerUserId,
-                                        String description, String remark, String reservedNumberSlot,
-                                        Long sourceRowVersion, int draftRevision, String submittedSnapshotJson,
+                                        long responsibleTeamOrgId, String responsibleTeamNameSnapshot,
+                                        String runtimeCode, String systemLevelCode,
+                                        String developmentFrameworkCode, Long ownerUserId,
+                                        String description, String remark, Long sourceRowVersion,
+                                        int draftRevision, String submittedSnapshotJson,
                                         LocalDateTime createdAt, LocalDateTime updatedAt) {
     }
 

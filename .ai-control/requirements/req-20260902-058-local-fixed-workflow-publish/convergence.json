@@ -1,0 +1,19 @@
+{
+  "baseline_revision":"baseline-2",
+  "requirement_results":[
+    {"id":"R1","result":"implemented-and-tested","task_ids":["T1"],"evidence":["boot 聚焦测试 3/3","完整反应堆 ccb-boot 6/6"],"limitations":["真实 deployment 留作上线验证"]},
+    {"id":"R2","result":"pass","task_ids":["T1"],"evidence":["幂等与缺失失败单测"],"limitations":[]},
+    {"id":"R3","result":"pass","task_ids":["T1"],"evidence":["local profile 与 local 配置"],"limitations":[]}
+    ,{"id":"R4","result":"pass","task_ids":["T2"],"evidence":["MySQL 8.4 迁移聚焦测试 11/11","完整反应堆 ccb-architecture 267/267","15 个反应堆模块全部 SUCCESS"],"limitations":[]}
+  ],
+  "task_results":[{"id":"T1","status":"verified","evidence":["boot 3/3","architecture 24/24","完整反应堆通过","git diff --check"]},{"id":"T2","status":"verified","evidence":["迁移测试 11/11","ccb-architecture 267/267","完整反应堆通过"]}],
+  "feedback_summary":{"total":0,"accepted_open":0,"escalated":0,"deferred_by_severity":{}},
+  "sample_trend":[{"sample_id":"implementation","P0":0,"P1":0,"P2":0,"P3":0,"score":0},{"sample_id":"docker-mysql-observation","P0":0,"P1":0,"P2":0,"P3":0,"score":0}],
+  "regression_checks":["LocalSeededWorkflowPublisherTest 3/3","ArchitectureSubsystemSubmissionServiceTest 与 EnvironmentResourceServiceTest 24/24","三个 MySQL 迁移测试 11/11","mvn -pl :ccb-boot -am test：15 个模块全部 SUCCESS，ccb-architecture 267/267，ccb-boot 6/6"],
+  "invariant_results":["历史 Flyway 未修改","非 local 不自动发布","业务工作流网关未修改","用户既有文件未触碰"],
+  "scope_audit":{"within_scope":true,"unexpected_changes":[]},
+  "disturbance_resilience":["已发布定义重复启动时跳过","固定定义缺失时启动失败关闭"],
+  "residual_risks":["首次带 local 安全环境变量启动时仍需按上线验证确认两个真实 Flowable deployment 和双工单 HTTP 提交"],
+  "gate_result":"converged",
+  "route_reason":"需求实现、聚焦回归、MySQL 8.4 迁移测试和完整 ccb-boot 反应堆均通过；剩余真实 local HTTP 验证属于上线验证，不阻塞代码合并。"
+}

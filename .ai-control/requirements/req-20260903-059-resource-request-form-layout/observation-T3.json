@@ -1,0 +1,69 @@
+{
+  "sample_label": "最终运行采样",
+  "task_ids": ["T1", "T2", "T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 最终构建与 S4 1280x800 明暗主题布局尺寸",
+      "result": "pass",
+      "raw_evidence": "最终 npm build 退出 0；浅色和深色弹窗宽 1248、页面 scrollWidth=1280，基础信息与部署单元登记表保持左右两栏",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 新建与编辑真实浏览器主从旅程",
+      "result": "pass",
+      "raw_evidence": "新建和编辑均显示申请项列表/当前项表单；编辑回显 3 项并默认选中第一项，切换后各项值独立保持，删除首/中/末项选择相邻项",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 本地 HTTP POST/PUT 请求捕获",
+      "result": "pass",
+      "raw_evidence": "POST items 为 7001(2/4)、7001(3/6)、7002(DB 20)；PUT 修改第一项后为 7001(5/4)、7001(3/6)、7002(DB 20)，重复 ID、独立规格和顺序均保持",
+      "limitation": ["HTTP 端点为本地虚构 Mock，不代表生产环境运行验证"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S2 状态文字、删除迁移和首错定位",
+      "result": "pass",
+      "raw_evidence": "未选择、待完善、已填写三状态均可见；保存空项显示申请项序号并自动切换首错；删除后相邻选择和最后一项禁删通过",
+      "limitation": ["未执行完整屏幕阅读器审计"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S2 物理子系统切换确认/取消和候选失败恢复",
+      "result": "pass",
+      "raw_evidence": "取消切换恢复统一渠道及原申请项，确认切换到支付核心后只保留一个空项；候选 500 显示重试并保留原因，服务恢复后重新加载成功",
+      "limitation": ["未模拟多个并发候选响应的精确乱序时序，静态 optionSequence 保护由构建和源码检查覆盖"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S1 类型构建、S3 POST/PUT 载荷和 S6 scope/diff",
+      "result": "pass",
+      "raw_evidence": "clientId 未出现在请求；DB/非 DB 字段按原规则分流；build、scope、diff 通过；产品修改仅两个授权前端文件",
+      "limitation": ["服务端最终校验未在真实后端执行，本任务未修改后端"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S2/S4/S5 四视口主题、失败、权限和 Console",
+      "result": "pass",
+      "raw_evidence": "1280x800、375x812、390x844、430x932 在 light/dark 下无页面级横向溢出；手机多项仅列表局部滚动；保存失败保留输入并可重试；view-only 隐藏新建，无权限显示提示；Console 无 error",
+      "limitation": ["开发构建期间出现一次 Vite 连接重连日志，最终重连和复测通过"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "check-all-governance 退出 1 的错误全部来自其他历史需求账本，本需求前缀未被报告，分类为范围外基线故障",
+    "check-codex-scope 初次因 Windows CRLF 将 status 误读为 ready\\r；机械规范本需求 requirement.md 为 LF 后通过，分类为传感器兼容故障",
+    "本次观察由同一主任务上下文执行，虽然使用提交态构建、HTTP 捕获、权限角色和浏览器布局等异质传感器，但不具备人员或独立 Agent 隔离"
+  ],
+  "coverage_gaps": [
+    "未连接真实后端或生产环境，服务端重复 deploymentUnitId 接受性依据现有契约和本地 Mock；上线仍需按需求 release_verification 复核",
+    "未执行完整辅助技术和多浏览器内核审计",
+    "全仓治理仍存在范围外历史账本问题"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

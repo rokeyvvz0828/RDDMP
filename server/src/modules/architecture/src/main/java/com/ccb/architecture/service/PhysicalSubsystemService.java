@@ -1,7 +1,5 @@
 package com.ccb.architecture.service;
 
-import com.ccb.architecture.model.LogicalSubsystem;
-import com.ccb.architecture.model.LogicalSubsystemLock;
 import com.ccb.architecture.model.PhysicalSubsystem;
 import com.ccb.architecture.model.PhysicalSubsystemCommand;
 import com.ccb.architecture.model.PhysicalSubsystemQuery;
@@ -44,8 +42,9 @@ public class PhysicalSubsystemService {
     static final String RUNTIME_CATEGORY = "ARCH_RUNTIME";
     static final String SYSTEM_LEVEL_CATEGORY = "ARCH_SYSTEM_LEVEL";
     static final String DEVELOPMENT_FRAMEWORK_CATEGORY = "ARCH_DEVELOPMENT_FRAMEWORK";
-    static final String DEPLOYMENT_PLATFORM_CATEGORY = LogicalSubsystemService.DEPLOYMENT_PLATFORM_CATEGORY;
+    static final String DEPLOYMENT_PLATFORM_CATEGORY = "ARCH_DEPLOYMENT_PLATFORM";
     static final String DISASTER_RECOVERY_MODE_CATEGORY = "ARCH_DISASTER_RECOVERY_MODE";
+    static final String BUSINESS_COMPONENT_CATEGORY = ArchitectureOptionsService.BUSINESS_COMPONENT_CATEGORY;
 
     private static final Logger log = LoggerFactory.getLogger(PhysicalSubsystemService.class);
     private static final Pattern CODE_PATTERN = Pattern.compile("[A-Z0-9_-]{2,32}");
@@ -77,7 +76,7 @@ public class PhysicalSubsystemService {
 
     public PageResult<PhysicalSubsystemView> list(AuthUser actor, PageQuery page, PhysicalSubsystemQuery query) {
         requireActor(actor);
-        PhysicalSubsystemQuery normalized = normalizeQuery(query);
+        PhysicalSubsystemQuery normalized = normalizeQuery(actor, query);
         validateQueryIds(normalized);
         PageResult<PhysicalSubsystem> result = repository.pagePhysical(actor.tenantId(), page, normalized);
         ProjectionContext context = projectionContext(actor);
@@ -120,10 +119,9 @@ public class PhysicalSubsystemService {
         }
         String shortName = required(command.shortName(), "系统简称", 2, 100);
         String name = required(command.name(), "系统名称", 2, 200);
-        long logicalSubsystemId = requiredId(command.logicalSubsystemId(), "所属逻辑子系统");
-        if (repository.findLogical(actor.tenantId(), logicalSubsystemId).isEmpty()) {
-            throw badRequest("所属逻辑子系统不存在、已删除或不属于当前租户");
-        }
+        String logicalSubsystemName = optional(command.logicalSubsystemName(), "逻辑子系统", 200);
+        String businessComponentCode = validateParameter(actor, BUSINESS_COMPONENT_CATEGORY,
+                command.businessComponentCode(), "业务组件编号");
         long responsibleTeamOrgId = requiredId(command.responsibleTeamOrgId(), "负责团队");
         OrgTreeNode responsibleTeam = requireActiveOrganization(actor, responsibleTeamOrgId, "负责团队");
         Long ownerUserId = validateOptionalUser(actor, command.ownerUserId(), "系统负责人");
@@ -136,9 +134,8 @@ public class PhysicalSubsystemService {
         String disasterRecoveryMode = validateParameter(actor, DISASTER_RECOVERY_MODE_CATEGORY,
                 command.disasterRecoveryMode(), "灾备模式");
         PhysicalSubsystemCommand normalized = new PhysicalSubsystemCommand(code, shortName, name,
-                logicalSubsystemId, optional(command.businessGroupName(), "所属事业群", 100),
-                optional(command.businessContinuityLevel(), "农信业务连续性等级", 32),
-                optional(command.collectedSystemLevel(), "项目组收集系统等级", 32),
+                logicalSubsystemName, businessComponentCode,
+                optional(command.businessGroupName(), "所属事业群", 100),
                 deploymentPlatform, disasterRecoveryMode,
                 responsibleTeamOrgId, runtimeCode, systemLevelCode, developmentFrameworkCode,
                 ownerUserId, optional(command.description(), "系统描述", 2000),
@@ -146,33 +143,22 @@ public class PhysicalSubsystemService {
         return new PreparedCommand(normalized, responsibleTeam.orgName());
     }
 
-    private void lockInitiallyValidParent(long tenantId, long logicalSubsystemId) {
-        LogicalSubsystemLock locked = repository.lockLogical(tenantId, logicalSubsystemId)
-                .orElseThrow(() -> conflict("所属逻辑子系统在保存过程中已失效，请刷新后重试"));
-        if (locked.deleted()) {
-            throw conflict("所属逻辑子系统在保存过程中已删除，请刷新后重试");
-        }
-    }
-
     private PhysicalSubsystemView toView(AuthUser actor, PhysicalSubsystem item, ProjectionContext context) {
         OrgTreeNode currentTeam = context.organizations().get(item.responsibleTeamOrgId());
         boolean responsibleTeamValid = currentTeam != null && currentTeam.status() == 1;
         String responsibleTeamDisplayName = responsibleTeamValid
                 ? currentTeam.orgName() : item.responsibleTeamNameSnapshot();
-        LogicalSubsystem logical = context.logicalSubsystems().computeIfAbsent(item.logicalSubsystemId(),
-                key -> repository.findLogical(actor.tenantId(), key).orElse(null));
         SystemUserReference owner = userReference(actor, item.ownerUserId(), context.users());
         SystemUserReference creator = userReference(actor, item.createdBy(), context.users());
         return new PhysicalSubsystemView(item.id(), item.code(), item.shortName(), item.name(),
-                item.logicalSubsystemId(), logical == null ? null : logical.code(), logical == null ? null : logical.name(),
-                item.businessGroupName(), item.businessContinuityLevel(), item.collectedSystemLevel(),
-                item.deploymentPlatform(), item.disasterRecoveryMode(), item.responsibleTeamOrgId(), responsibleTeamDisplayName,
+                item.logicalSubsystemName(), item.businessComponentCode(),
+                item.businessGroupName(), item.deploymentPlatform(), item.disasterRecoveryMode(),
+                item.responsibleTeamOrgId(), responsibleTeamDisplayName,
                 responsibleTeamValid, item.runtimeCode(), item.systemLevelCode(), item.developmentFrameworkCode(),
                 item.ownerUserId(), owner == null ? null : owner.displayName(),
                 item.description(), item.remark(), item.createdBy(), creator == null ? null : creator.displayName(),
-                item.updatedBy(), item.createdAt(), item.updatedAt(), item.numberSlot(), item.englishName(),
-                item.status(), item.rowVersion(), logical == null ? null : logical.numberSequence(),
-                logical == null ? null : logical.status());
+                item.updatedBy(), item.createdAt(), item.updatedAt(), item.englishName(),
+                item.status(), item.rowVersion());
     }
 
     private SystemUserReference userReference(AuthUser actor, Long userId, Map<Long, Optional<SystemUserReference>> cache) {
@@ -186,7 +172,7 @@ public class PhysicalSubsystemService {
     }
 
     private ProjectionContext projectionContext(AuthUser actor) {
-        return new ProjectionContext(organizationMap(actor), new HashMap<>(), new HashMap<>());
+        return new ProjectionContext(organizationMap(actor), new HashMap<>());
     }
 
     private Map<Long, OrgTreeNode> organizationMap(AuthUser actor) {
@@ -283,13 +269,15 @@ public class PhysicalSubsystemService {
         return "物理子系统操作失败";
     }
 
-    private PhysicalSubsystemQuery normalizeQuery(PhysicalSubsystemQuery query) {
+    private PhysicalSubsystemQuery normalizeQuery(AuthUser actor, PhysicalSubsystemQuery query) {
         if (query == null) {
             return PhysicalSubsystemQuery.empty();
         }
         return new PhysicalSubsystemQuery(normalizeOptional(query.code()), normalizeOptional(query.shortName()),
-                normalizeOptional(query.name()), normalizeOptional(query.businessGroupName()),
-                query.responsibleTeamOrgId(), query.logicalSubsystemId(), normalizeStatus(query.status()));
+                normalizeOptional(query.name()), normalizeOptional(query.logicalSubsystemName()),
+                validateParameter(actor, BUSINESS_COMPONENT_CATEGORY, query.businessComponentCode(), "业务组件编号"),
+                normalizeOptional(query.businessGroupName()), query.responsibleTeamOrgId(),
+                normalizeStatus(query.status()));
     }
 
     private String normalizeStatus(String value) {
@@ -307,9 +295,6 @@ public class PhysicalSubsystemService {
     private void validateQueryIds(PhysicalSubsystemQuery query) {
         if (query.responsibleTeamOrgId() != null && query.responsibleTeamOrgId() <= 0) {
             throw badRequest("负责团队编号无效");
-        }
-        if (query.logicalSubsystemId() != null && query.logicalSubsystemId() <= 0) {
-            throw badRequest("逻辑子系统编号无效");
         }
     }
 
@@ -380,8 +365,7 @@ public class PhysicalSubsystemService {
     }
 
     private record ProjectionContext(Map<Long, OrgTreeNode> organizations,
-                                     Map<Long, Optional<SystemUserReference>> users,
-                                     Map<Long, LogicalSubsystem> logicalSubsystems) {
+                                     Map<Long, Optional<SystemUserReference>> users) {
     }
 
     public record PhysicalSubsystemView(
@@ -389,12 +373,9 @@ public class PhysicalSubsystemService {
             String code,
             String shortName,
             String name,
-            long logicalSubsystemId,
-            String logicalSubsystemCode,
             String logicalSubsystemName,
+            String businessComponentCode,
             String businessGroupName,
-            String businessContinuityLevel,
-            String collectedSystemLevel,
             String deploymentPlatform,
             String disasterRecoveryMode,
             long responsibleTeamOrgId,
@@ -412,47 +393,8 @@ public class PhysicalSubsystemService {
             long updatedBy,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            String numberSlot,
             String englishName,
             String status,
-            long rowVersion,
-            Integer logicalSubsystemNumberSequence,
-            String logicalSubsystemStatus) {
-
-        /** 兼容既有主数据投影调用，新增生命周期字段使用发布默认值。 */
-        public PhysicalSubsystemView(long id, String code, String shortName, String name, long logicalSubsystemId,
-                                     String logicalSubsystemCode, String logicalSubsystemName,
-                                     String businessGroupName, long responsibleTeamOrgId,
-                                     String responsibleTeamDisplayName, boolean responsibleTeamValid,
-                                     String runtimeCode, String systemLevelCode, String developmentFrameworkCode,
-                                     Long ownerUserId, String ownerDisplayName, String description, String remark,
-                                     long createdBy, String createdByDisplayName, long updatedBy,
-                                     LocalDateTime createdAt, LocalDateTime updatedAt) {
-            this(id, code, shortName, name, logicalSubsystemId, logicalSubsystemCode, logicalSubsystemName,
-                    businessGroupName, null, null, null, null,
-                    responsibleTeamOrgId, responsibleTeamDisplayName, responsibleTeamValid,
-                    runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId, ownerDisplayName,
-                    description, remark, createdBy, createdByDisplayName, updatedBy, createdAt, updatedAt,
-                    null, null, "ACTIVE", 0, null, null);
-        }
-
-        public PhysicalSubsystemView(long id, String code, String shortName, String name, long logicalSubsystemId,
-                                     String logicalSubsystemCode, String logicalSubsystemName,
-                                     String businessGroupName, long responsibleTeamOrgId,
-                                     String responsibleTeamDisplayName, boolean responsibleTeamValid,
-                                     String runtimeCode, String systemLevelCode, String developmentFrameworkCode,
-                                     Long ownerUserId, String ownerDisplayName, String description, String remark,
-                                     long createdBy, String createdByDisplayName, long updatedBy,
-                                     LocalDateTime createdAt, LocalDateTime updatedAt, String numberSlot,
-                                     String englishName, String status, long rowVersion,
-                                     Integer logicalSubsystemNumberSequence, String logicalSubsystemStatus) {
-            this(id, code, shortName, name, logicalSubsystemId, logicalSubsystemCode, logicalSubsystemName,
-                    businessGroupName, null, null, null, null,
-                    responsibleTeamOrgId, responsibleTeamDisplayName, responsibleTeamValid,
-                    runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId, ownerDisplayName,
-                    description, remark, createdBy, createdByDisplayName, updatedBy, createdAt, updatedAt,
-                    numberSlot, englishName, status, rowVersion, logicalSubsystemNumberSequence,
-                    logicalSubsystemStatus);
-        }
+            long rowVersion) {
     }
 }

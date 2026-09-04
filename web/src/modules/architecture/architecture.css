@@ -75,6 +75,8 @@
 .architecture-change-card__header h3 { margin: 4px 0; overflow-wrap: anywhere; color: var(--text); font-size: 16px; }
 .architecture-change-card__header small { color: var(--muted); }
 .architecture-change-card__eyebrow { color: var(--el-color-primary); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.architecture-change-physical-form .el-form-item__label { align-items: center; justify-content: flex-end; padding-right: 16px; color: var(--text); line-height: 32px; }
+.architecture-change-physical-form .el-form-item__content { min-width: 0; }
 .architecture-change-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 18px 24px; border-top: 3px solid var(--el-color-primary); }
 .architecture-change-hero > div { min-width: 0; }
 .architecture-change-hero > div > span { color: var(--el-color-primary); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
@@ -157,6 +159,9 @@
   .architecture-mobile-list footer .el-dropdown { display: inline-flex; align-items: center; }
   .architecture-form-grid { grid-template-columns: 1fr; }
   .architecture-form-grid .is-wide { grid-column: auto; }
+  .architecture-change-physical-form .el-form-item { display: block; }
+  .architecture-change-physical-form .el-form-item__label { justify-content: flex-start; width: auto !important; height: auto; padding: 0 0 6px; line-height: 1.4; }
+  .architecture-change-physical-form .el-form-item__content { margin-left: 0 !important; }
   .architecture-detail-grid { grid-template-columns: 1fr; }
   .architecture-detail-grid > div.is-wide { grid-column: auto; }
   .architecture-change-scope-note { align-items: flex-start; flex-direction: column; }
@@ -264,6 +269,19 @@
 .architecture-drawer-actions .el-button { margin-left: 0; }
 .architecture-form-hint { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .architecture-form-error { margin-top: 4px; }
+.architecture-deployment-name-field { padding: 14px; background: color-mix(in srgb, var(--brand) 8%, var(--panel-bg)); border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--line)); border-radius: 8px; }
+.architecture-deployment-name-field .el-input__wrapper { min-height: 46px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 48%, transparent) inset; }
+.architecture-deployment-name-field .el-input__inner { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 17px; font-weight: 700; letter-spacing: .04em; }
+.architecture-related-unit-select { width: 100%; }
+.architecture-related-unit-select .el-select__wrapper { max-width: 100%; }
+.architecture-related-unit-select .el-tag { max-width: min(100%, 280px); }
+.architecture-related-unit-select .el-tag__content { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.architecture-field-error { margin: 6px 0 0; color: var(--danger); font-size: 12px; line-height: 1.5; }
+.architecture-related-unit-list { display: grid; gap: 8px; }
+.architecture-related-unit-list article { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
+.architecture-related-unit-list article > div { min-width: 0; }
+.architecture-related-unit-list strong, .architecture-related-unit-list small { display: block; overflow-wrap: anywhere; }
+.architecture-related-unit-list small { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .architecture-offline-risk-list { display: grid; gap: 8px; margin: 0 0 16px; padding: 12px 14px; background: color-mix(in srgb, var(--warning) 8%, var(--panel-bg)); border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--line)); border-radius: 6px; }
 .architecture-offline-risk-list strong { color: var(--warning); font-size: 13px; }
 .architecture-offline-risk-list p { margin: 0; overflow-wrap: anywhere; color: var(--text); font-size: 12px; line-height: 1.55; }
@@ -282,6 +300,8 @@
   .architecture-detail-list > div.is-wide { grid-column: auto; }
   .architecture-import-summary { gap: 10px 16px; }
   .architecture-drawer-actions .el-button { flex: 1; }
+  .architecture-deployment-name-field { padding: 12px; }
+  .architecture-related-unit-select .el-tag { max-width: 210px; }
 }
 
 /* ---------- 网络专项工单（REQ-20260823-050） ---------- */
@@ -382,6 +402,193 @@
 .architecture-registration-computed span { min-width: 0; overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
 .architecture-registration-collapse { border-top: 1px solid var(--line); border-bottom: 0; }
 .architecture-registration-collapse .el-collapse-item__header { background: transparent; font-size: 12px; font-weight: 700; }
+.architecture-resource-request-form-dialog {
+  display: flex; height: 94vh; max-height: 94vh; flex-direction: column; overflow: hidden;
+}
+.architecture-resource-request-form-dialog .el-dialog__body {
+  display: flex; min-width: 0; min-height: 0; max-height: none; flex: 1 1 auto; padding-top: 12px; overflow: hidden;
+}
+.architecture-resource-request-form-dialog .el-dialog__footer {
+  flex: 0 0 auto; border-top: 1px solid var(--line);
+}
+.architecture-resource-request-form { display: flex; width: 100%; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; }
+.architecture-resource-request-form__error { flex: 0 0 auto; margin-bottom: 10px; }
+.architecture-resource-request-layout {
+  display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(300px, .34fr) minmax(0, 1fr); gap: 20px;
+}
+.architecture-resource-request-basics,
+.architecture-resource-request-registration,
+.architecture-resource-request-editor { min-width: 0; min-height: 0; }
+.architecture-resource-request-basics { padding-right: 20px; overflow-y: auto; border-right: 1px solid var(--line); }
+.architecture-resource-request-registration { display: flex; min-height: 0; flex-direction: column; }
+.architecture-resource-request-section-heading {
+  display: flex; min-width: 0; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px;
+}
+.architecture-resource-request-section-heading > div { display: grid; min-width: 0; gap: 4px; }
+.architecture-resource-request-section-heading strong { overflow-wrap: anywhere; color: var(--text); font-size: 15px; }
+.architecture-resource-request-section-heading span { overflow-wrap: anywhere; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.architecture-resource-request-basic-fields { display: grid; grid-template-columns: 1fr; }
+.architecture-resource-request-basic-fields .el-form-item { min-width: 0; margin-bottom: 12px; }
+.architecture-resource-request-basic-fields .el-select,
+.architecture-resource-request-basic-fields .el-input { width: 100%; }
+.architecture-resource-request-summary-heading {
+  margin: 4px 0 10px; padding-top: 14px; color: var(--text); border-top: 1px solid var(--line); font-size: 12px; font-weight: 700;
+}
+.architecture-resource-request-summary {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; overflow: hidden;
+  background: var(--line); border: 1px solid var(--line); border-radius: 6px;
+}
+.architecture-resource-request-summary > div { min-width: 0; padding: 10px 11px; background: var(--panel-bg); }
+.architecture-resource-request-summary > div.is-wide { grid-column: span 2; }
+.architecture-resource-request-summary dt { color: var(--muted); font-size: 10px; }
+.architecture-resource-request-summary dd { margin: 4px 0 0; overflow-wrap: anywhere; color: var(--text); font-size: 12px; line-height: 1.45; }
+.architecture-resource-request-option-error {
+  display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding: 9px 11px;
+  color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--panel-bg)); border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--line)); border-radius: 6px; font-size: 12px;
+}
+.architecture-resource-request-option-error span { min-width: 0; overflow-wrap: anywhere; }
+.architecture-resource-request-master-detail {
+  display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
+  overflow: hidden; border: 1px solid var(--line); border-radius: 6px;
+}
+.architecture-resource-request-item-panel {
+  min-width: 0; min-height: 0; padding: 10px; overflow-y: auto; background: var(--panel-muted, var(--surface)); border-right: 1px solid var(--line);
+}
+.architecture-resource-request-item-list { display: grid; min-width: 0; gap: 8px; }
+.architecture-resource-request-item-row {
+  display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+  background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px;
+}
+.architecture-resource-request-item-row:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); }
+.architecture-resource-request-item-row.is-active {
+  background: color-mix(in srgb, var(--brand) 7%, var(--panel-bg)); border-color: var(--brand);
+}
+.architecture-resource-request-item-select {
+  display: grid; min-width: 0; gap: 5px; padding: 10px 4px 10px 11px; color: var(--text); text-align: left;
+  background: transparent; border: 0; cursor: pointer;
+}
+.architecture-resource-request-item-select:disabled { cursor: not-allowed; opacity: .65; }
+.architecture-resource-request-item-select:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.architecture-resource-request-item-title { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
+.architecture-resource-request-item-title strong { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.architecture-resource-request-item-title small,
+.architecture-resource-request-editor__state {
+  flex: 0 0 auto; padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px; font-size: 10px; line-height: 1.3;
+}
+.architecture-resource-request-item-title small.is-unselected,
+.architecture-resource-request-editor__state.is-unselected { color: var(--muted); }
+.architecture-resource-request-item-title small.is-incomplete,
+.architecture-resource-request-editor__state.is-incomplete {
+  color: var(--warning); background: color-mix(in srgb, var(--warning) 8%, transparent); border-color: color-mix(in srgb, var(--warning) 35%, var(--line));
+}
+.architecture-resource-request-item-title small.is-complete,
+.architecture-resource-request-editor__state.is-complete {
+  color: var(--success); background: color-mix(in srgb, var(--success) 8%, transparent); border-color: color-mix(in srgb, var(--success) 35%, var(--line));
+}
+.architecture-resource-request-item-name,
+.architecture-resource-request-item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.architecture-resource-request-item-name { font-size: 12px; }
+.architecture-resource-request-item-meta { color: var(--muted); font-size: 10px; }
+.architecture-resource-request-item-delete { margin-right: 6px; }
+.architecture-resource-request-editor { padding: 12px 14px 15px; overflow-y: auto; background: var(--panel-bg); }
+.architecture-resource-request-editor__header {
+  display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+}
+.architecture-resource-request-editor__header > div { display: grid; min-width: 0; gap: 4px; }
+.architecture-resource-request-editor__header strong { overflow-wrap: anywhere; color: var(--text); font-size: 14px; }
+.architecture-resource-request-editor__header span:not(.architecture-resource-request-editor__state) { overflow-wrap: anywhere; color: var(--muted); font-size: 11px; }
+.architecture-resource-request-editor .architecture-registration-subtitle { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.architecture-resource-request-editor .architecture-registration-subtitle:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.architecture-resource-request-editor .architecture-registration-grid,
+.architecture-resource-request-editor .architecture-registration-grid--numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.architecture-resource-request-editor .architecture-registration-grid .is-wide,
+.architecture-resource-request-editor .architecture-registration-computed { grid-column: span 2; }
+.architecture-resource-request-editor .architecture-registration-computed { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.architecture-resource-request-editor .el-input-number { width: 160px; max-width: 100%; }
+.architecture-resource-request-capacity-heading {
+  display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px;
+}
+.architecture-resource-request-capacity-heading > span { flex: 0 0 auto; }
+.architecture-resource-request-editor .architecture-resource-request-capacity-summary {
+  display: flex; min-width: 0; flex: 1 1 auto; grid-column: auto; grid-template-columns: none; align-items: center; justify-content: flex-end;
+  gap: 6px 18px; padding: 0; border: 0; background: transparent;
+}
+.architecture-resource-request-capacity-summary span { white-space: nowrap; }
+.architecture-resource-request-editor .architecture-resource-request-capacity-fields {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px;
+}
+.architecture-resource-request-capacity-fields > .architecture-resource-request-capacity-field--select {
+  min-width: 240px; flex: 0 1 270px;
+}
+.architecture-resource-request-capacity-fields > .architecture-resource-request-capacity-field--number {
+  min-width: 180px; flex: 0 1 180px;
+}
+.architecture-resource-request-capacity-fields > .architecture-resource-request-capacity-field--boolean {
+  min-width: 160px; flex: 0 1 180px;
+}
+.architecture-resource-request-capacity-fields > .architecture-resource-request-capacity-field--sidecar {
+  flex: 1 1 0;
+}
+.architecture-resource-request-editor .architecture-resource-request-technology-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+@media (max-width: 1180px) {
+  .architecture-resource-request-layout { grid-template-columns: minmax(280px, .36fr) minmax(0, 1fr); gap: 16px; }
+  .architecture-resource-request-basics { padding-right: 16px; }
+  .architecture-resource-request-master-detail { grid-template-columns: 1fr; grid-template-rows: minmax(120px, .32fr) minmax(0, 1fr); }
+  .architecture-resource-request-item-panel { border-right: 0; border-bottom: 1px solid var(--line); }
+  .architecture-resource-request-item-list { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .architecture-resource-request-form-dialog { height: auto; }
+  .architecture-resource-request-form-dialog .el-dialog__body { display: block; max-height: calc(94vh - 132px); overflow-x: hidden; overflow-y: auto; }
+  .architecture-resource-request-form { display: block; min-height: auto; }
+  .architecture-resource-request-layout { grid-template-columns: 1fr; }
+  .architecture-resource-request-basics { padding: 0 0 18px; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+  .architecture-resource-request-registration { display: block; min-height: auto; }
+  .architecture-resource-request-master-detail { min-height: auto; grid-template-rows: auto auto; }
+  .architecture-resource-request-editor { overflow: visible; }
+  .architecture-resource-request-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .architecture-resource-request-summary > div.is-wide { grid-column: span 2; }
+}
+
+@media (max-width: 760px) {
+  .architecture-resource-request-form-dialog { width: calc(100vw - 24px) !important; height: auto; max-height: calc(100vh - 24px); margin-top: 12px; }
+  .architecture-resource-request-form-dialog .el-dialog__body { max-height: calc(100vh - 154px); padding: 10px 12px 14px; }
+  .architecture-resource-request-form-dialog .el-dialog__header,
+  .architecture-resource-request-form-dialog .el-dialog__footer { padding-right: 14px; padding-left: 14px; }
+  .architecture-resource-request-section-heading { align-items: stretch; flex-direction: column; }
+  .architecture-resource-request-section-heading > .el-button { width: 100%; margin-left: 0; }
+  .architecture-resource-request-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .architecture-resource-request-item-panel { overflow-x: auto; overflow-y: hidden; }
+  .architecture-resource-request-item-list { display: flex; width: max-content; min-width: 100%; }
+  .architecture-resource-request-item-row { width: 220px; flex: 0 0 220px; }
+  .architecture-resource-request-editor { padding: 13px 12px 16px; }
+  .architecture-resource-request-editor .architecture-registration-grid,
+  .architecture-resource-request-editor .architecture-registration-grid--numbers { grid-template-columns: 1fr; }
+  .architecture-resource-request-editor .architecture-registration-grid .is-wide,
+  .architecture-resource-request-editor .architecture-registration-computed { grid-column: span 1; }
+  .architecture-resource-request-editor .architecture-registration-computed { grid-template-columns: 1fr; }
+  .architecture-resource-request-editor .el-input-number { width: 100%; }
+  .architecture-resource-request-capacity-fields > .el-form-item {
+    min-width: 0; flex-basis: 100%;
+  }
+  .architecture-resource-request-capacity-heading { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .architecture-resource-request-editor .architecture-resource-request-capacity-summary {
+    width: 100%; justify-content: flex-start; gap: 4px 12px;
+  }
+  .architecture-resource-request-capacity-summary span { white-space: normal; }
+  .architecture-resource-request-editor .architecture-resource-request-technology-fields { grid-template-columns: 1fr; }
+  .architecture-resource-request-option-error { align-items: stretch; flex-direction: column; }
+  .architecture-resource-request-option-error .el-button { align-self: flex-start; margin-left: 0; }
+}
+
+@media (max-width: 480px) {
+  .architecture-resource-request-summary { grid-template-columns: 1fr; }
+  .architecture-resource-request-summary > div.is-wide { grid-column: span 1; }
+  .architecture-resource-request-editor__header { align-items: stretch; flex-direction: column; }
+  .architecture-resource-request-editor__state { align-self: flex-start; }
+}
 
 @media (max-width: 920px) {
   .architecture-resource-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
