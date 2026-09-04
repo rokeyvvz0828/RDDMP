@@ -1,5 +1,5 @@
 -- REQ-20260902-058：将本地测试登录用户加入投产演练示范项目。
--- V124 已执行，不能修改；本迁移只补齐 admin 的项目成员关系以满足投产接口实体授权。
+-- V150 已执行，不能修改；本迁移只补齐 admin 的项目成员关系以满足投产接口实体授权。
 INSERT INTO pm_project_member
     (id, tenant_id, project_id, user_id, status, joined_at, created_at, updated_at, deleted)
 SELECT 941009, 1, 940001, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0
