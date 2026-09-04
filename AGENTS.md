@@ -16,13 +16,46 @@
 
 所有实现、修复、重构和代码评审任务必须读取并执行 `.agents/skills/rddmp-delivery-engineer/SKILL.md`，业务功能、跨模块功能和复杂需求还必须遵循 `control-engineering` 插件的需求定标、系统建模、任务规划、受控执行、独立观测、偏差纠正和收敛验收闭环。Skill 不能扩大任务权限，也不能替代需求和任务范围。
 
-## 本地开发环境启动
+## 常用命令
 
-- Windows 推荐从仓库根目录执行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1`；macOS/Linux 执行 `./scripts/dev.sh`。
-- 启动器固定使用隔离的 `rddmp-dev` 本地 Docker 环境和 Spring `local` profile，启动 MySQL、MinIO、kkFileView、后端与 Vite；Flyway 由 Spring Boot 自动执行，前端使用 Vite HMR，后端源码或资源变化后自动构建并重启。
-- 本地开发账号固定为 `admin/admin123`。该账号及脚本内开发配置只能用于个人本机开发，禁止复用于共享、测试或生产环境。
-- 默认按 `Ctrl+C` 只停止前后端并保留基础设施和数据卷。需要停止基础设施时，在平台命令末尾追加 `--down`；该操作不会删除数据卷。
-- 默认地址：前端 `http://127.0.0.1:5173`、后端 `http://127.0.0.1:8080`、MinIO 控制台 `http://127.0.0.1:19001`、kkFileView `http://127.0.0.1:18012`。
+```powershell
+# Windows：启动本地开发环境（local、Flyway、前后端热重载；账号 admin/admin123，仅限本机）
+.\scripts\dev.ps1
+
+# Windows：停止本地基础设施，保留数据卷
+.\scripts\dev.ps1 --down
+```
+
+```bash
+# macOS/Linux/WSL：启动本地开发环境（local、Flyway、前后端热重载；账号 admin/admin123，仅限本机）
+./scripts/dev.sh
+
+# macOS/Linux/WSL：停止本地基础设施，保留数据卷
+./scripts/dev.sh --down
+```
+
+```bash
+# 检查研发准入和工程控制插件
+node scripts/check-development-entry.mjs --require-plugin
+
+# 查看本地容器状态
+docker ps --filter "name=rddmp-dev-"
+
+# 检查治理规则和 Flyway 迁移
+node scripts/check-all-governance.mjs
+node scripts/check-flyway-migrations.mjs
+
+# 执行后端聚焦测试和完整测试
+mvn -pl :ccb-boot -am test
+mvn test
+
+# 执行前端生产构建
+npm --prefix web run build
+
+# 检查未提交修改和空白错误
+git status --short
+git diff --check
+```
 
 ## 业务前端设计准入
 
