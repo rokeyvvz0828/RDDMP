@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260904-063",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260904-063-dev-environment-runner/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "governance",
+    "module_owner": "rokeyvvz0828",
+    "branch": "chore/REQ-20260904-063-dev-environment-runner",
+    "worktree": "C:/Users/missa/source/RDDMP/.worktrees/REQ-20260904-063-dev-environment-runner"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "AGENTS.md",
+      "scripts/dev.ps1",
+      "scripts/dev.sh",
+      "scripts/dev.mjs",
+      "docker-compose.yml",
+      "server/src/platform/boot/pom.xml",
+      "docs/requirements/REQ-20260904-063-dev-environment-runner/**",
+      "docs/engineering-control/designs/2026-09-04-dev-environment-runner-design.md",
+      "docs/engineering-control/plans/2026-09-04-dev-environment-runner-implementation-plan.md",
+      ".ai-control/requirements/req-20260904-063-dev-environment-runner/*.json"
+    ],
+    "read_only_paths": [
+      ".env.example",
+      "pom.xml",
+      "web/package.json",
+      "server/src/platform/boot/src/main/resources/application.yml",
+      "server/src/platform/boot/src/main/resources/application-local.yml",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/**",
+      ".ai-control/original/**",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      ".ai-control/requirements/req-20260812-021-architecture-subsystems/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260904-063",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "node scripts/check-development-entry.mjs --require-plugin",
+      "node scripts/check-all-governance.mjs",
+      "mvn -pl :ccb-boot -am test"
+    ]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "不修改数据库结构；启动器仅在本地 Docker 数据库已存在 sys_user 时幂等恢复 admin 的 BCrypt 哈希。"
+  },
+  "external_access": {
+    "changed": true,
+    "systems": ["Docker Engine", "依赖缓存缺失时使用既有 Maven、npm 和容器镜像仓库"],
+    "data_classification": "public-development-fixtures-only"
+  },
+  "required_tests": [
+    {"name": "script-node", "command": "node --check scripts/dev.mjs"},
+    {"name": "script-powershell", "command": "PowerShell AST parse scripts/dev.ps1"},
+    {"name": "script-shell", "command": "bash -n scripts/dev.sh"},
+    {"name": "unit", "command": "mvn -pl :ccb-boot -am test"},
+    {"name": "api", "command": "启动本地环境并验证 /actuator/health 与 /api/auth/login"},
+    {"name": "permission", "command": "验证固定 admin 登录后仍由现有服务端 RBAC 控制受保护接口"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260904-063-dev-environment-runner/codex-task-scope.yaml --base origin/main --head HEAD"},
+    {"name": "diff", "command": "git diff --check"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "根 AGENTS.md 属于治理入口，需 Owner 复核",
+      "Spring Boot DevTools 修改平台启动依赖，仅允许在开发运行时生效",
+      "启动器会写入本地 Docker 数据库中的 admin 密码哈希",
+      "跨平台进程终止和文件监听行为需要 Windows 实测及 macOS/Linux 人工复核"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260904-063-dev-environment-runner",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T1.json",
+      ".ai-control/requirements/req-20260904-063-dev-environment-runner/observation-T1.json",
+      ".ai-control/requirements/req-20260904-063-dev-environment-runner/convergence.json"
+    ],
+    "release_verification": [
+      "Windows 本地启动、热重载、Flyway、登录和退出清理验证",
+      "macOS/Linux Shell 入口静态检查与人工运行复核"
+    ],
+    "rollback": "回退本需求提交并恢复原手工启动命令；不删除本地 Docker 数据卷，不需要数据库结构回退。"
+  }
+}

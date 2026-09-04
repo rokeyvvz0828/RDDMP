@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "topic": "dev-environment-runner",
+  "handoff_status": "approved",
+  "created_at": "2026-09-04T14:53:42+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "dev-environment-runner",
+    "design_revision": 2,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-04-dev-environment-runner-design.md",
+    "objective": "通过跨平台薄入口和无第三方依赖的 Node.js 编排器，一键启动固定、可热重载且自动执行 Flyway 的 RDDMP 本地开发环境。",
+    "users": ["Windows PowerShell 研发人员", "macOS/Linux Bash 研发人员"],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "Windows 与 macOS/Linux 入口复用同一 Node.js 标准库编排器并保持行为一致。",
+        "acceptance": ["wrapper 透传参数和退出码", "编排器无第三方 npm 依赖", "工具缺失时启动前失败"],
+        "priority": "must",
+        "source": "用户确认跨平台和 Node 编排方案",
+        "counterexample": ["两套完整且漂移的脚本实现"]
+      },
+      {
+        "id": "R2",
+        "statement": "启动器固定且隔离本地开发环境，并提供 admin/admin123。",
+        "acceptance": ["固定 local profile", "不覆盖用户 .env", "空库和已有库均可登录", "不接受远程地址"],
+        "priority": "must",
+        "source": "用户确认固定账号和确定环境",
+        "counterexample": ["依赖手工 .env", "密码只在首次建库有效"]
+      },
+      {
+        "id": "R3",
+        "statement": "编排本地基础设施并由 Spring Boot 自动执行 Flyway。",
+        "acceptance": ["基础设施就绪后启动后端", "Flyway 成功", "健康检查 UP", "不修改历史迁移"],
+        "priority": "must",
+        "source": "用户要求支持 Flyway",
+        "counterexample": ["执行 Flyway clean 或修改历史迁移"]
+      },
+      {
+        "id": "R4",
+        "statement": "支持 Vite HMR 和后端源码自动编译重启。",
+        "acceptance": ["Vite HMR", "后端防抖串行编译", "DevTools 重启", "编译失败可恢复"],
+        "priority": "must",
+        "source": "用户要求前后端热重载",
+        "counterexample": ["后端必须手工重启"]
+      },
+      {
+        "id": "R5",
+        "statement": "可预测地管理日志、退出、容器停止和研发提示。",
+        "acceptance": ["日志分组", "Ctrl+C 清理应用", "默认保留基础设施", "--down 不删卷", "AGENTS 提示"],
+        "priority": "must",
+        "source": "用户批准设计",
+        "counterexample": ["遗留进程或默认删除卷"]
+      }
+    ],
+    "invariants": ["不连接生产或共享环境", "不修改历史迁移", "不删除卷", "不覆盖用户 .env", "不越过任务范围"],
+    "constraints": ["JDK 17", "Maven 3.9", "Node.js 20 标准库", "Docker Compose V2", "Spring local profile", "Owner 复核高风险文件"],
+    "non_goals": ["应用容器化", "自动安装工具", "Flyway clean/repair", "业务代码变更"],
+    "selected_approach": {
+      "name": "PowerShell/Bash 薄入口加 Node.js 标准库编排器",
+      "reason": "集中跨平台复杂度且不增加项目前置条件。",
+      "alternatives": [
+        {"name": "两套完整脚本", "rejected_because": "重复维护和行为漂移。"},
+        {"name": "Compose Watch", "rejected_because": "改动和资源开销过大。"}
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": ["scripts/dev.ps1", "scripts/dev.sh", "scripts/dev.mjs", "docker-compose.yml host-gateway", "ccb-boot DevTools", "AGENTS.md"],
+        "outside": ["生产配置", "业务模块", "历史迁移", "应用容器镜像"]
+      },
+      "components": [
+        {"name": "wrapper", "responsibility": "定位并调用 Node 编排器", "depends_on": ["Node.js"]},
+        {"name": "Node 编排器", "responsibility": "环境、基础设施、应用进程、监听和退出", "depends_on": ["Docker", "Maven", "npm"]},
+        {"name": "DevTools", "responsibility": "编译产物变化后重启后端", "depends_on": ["Maven compile"]},
+        {"name": "Flyway", "responsibility": "后端启动时迁移本地数据库", "depends_on": ["MySQL"]}
+      ],
+      "interfaces": [
+        {"name": "开发 CLI", "producer": "wrapper", "consumers": ["研发人员"], "contract": "默认启动；--down 只停容器不删卷。"},
+        {"name": "固定环境", "producer": "Node 编排器", "consumers": ["Compose", "Spring", "Vite"], "contract": "公开本地夹具和 local profile。"},
+        {"name": "编译触发", "producer": "文件监听器", "consumers": ["Maven", "DevTools"], "contract": "防抖、串行、失败可重试。"}
+      ],
+      "data_flows": [
+        {"input": "启动命令", "transitions": ["预检", "Docker", "MySQL 等待", "admin 恢复", "后端/Flyway", "前端", "健康检查"], "output": "可登录热重载环境"},
+        {"input": "后端文件变化", "transitions": ["过滤", "防抖", "Maven compile", "DevTools restart"], "output": "更新后端"}
+      ]
+    },
+    "error_handling": [
+      {"condition": "工具、端口、Docker 或 MySQL 不可用", "behavior": "启动应用前失败", "recovery": "修复环境后重试"},
+      {"condition": "增量编译失败", "behavior": "保留当前后端并报告", "recovery": "修复后由下一次变化重试"},
+      {"condition": "应用初始启动或健康检查失败", "behavior": "清理应用进程并失败退出", "recovery": "依据日志修复"}
+    ],
+    "quality_attributes": {
+      "security": ["仅限 local 和本地地址", "不打印 JWT 或 BCrypt 哈希"],
+      "performance": ["监听防抖和单编译队列"],
+      "compatibility": ["PowerShell", "Bash", "Node.js 20"],
+      "operations": ["日志分组", "应用进程清理", "卷保留"]
+    },
+    "verification_strategy": [
+      {"requirement_ids": ["R1", "R5"], "signal": "语法和退出行为", "method": "Node、PowerShell、Bash 检查和生命周期验收"},
+      {"requirement_ids": ["R2", "R3"], "signal": "Flyway、健康和登录", "method": "空库/已有库 HTTP 与数据库断言"},
+      {"requirement_ids": ["R4"], "signal": "HMR 和 restart 日志", "method": "受控变更触发"}
+    ],
+    "assumptions": [
+      {"text": "Docker Compose V2 可用", "basis": "README 既有命令", "falsifier": "docker compose version 失败"}
+    ],
+    "unknowns": [
+      {"question": "macOS/Linux 真实进程树行为", "impact": "对应平台运行验收等级", "owner": "跨平台复核人", "blocking": false}
+    ],
+    "decisions": [
+      {"id": "D1", "decision": "admin/admin123", "reason": "用户指定", "source": "2026-09-04 用户确认"},
+      {"id": "D2", "decision": "Node 标准库编排器", "reason": "单一跨平台实现", "source": "2026-09-04 用户批准"},
+      {"id": "D3", "decision": "Spring Boot 管理 Flyway", "reason": "复用现有 local 配置", "source": "工程事实"},
+      {"id": "D4", "decision": "kkFileView 使用 host-gateway", "reason": "Linux 跨平台访问", "source": "计划复核"}
+    ],
+    "risks": [
+      {"risk": "平台进程终止差异", "impact": "遗留进程", "mitigation": "进程树/组终止和分别验收"},
+      {"risk": "频繁编译", "impact": "资源占用", "mitigation": "路径过滤、防抖、串行"},
+      {"risk": "开发密码误用", "impact": "弱凭据", "mitigation": "强制 local 并明确警告"}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户于 2026-09-04 确认落盘设计可以继续。",
+      "confirmed_at": "2026-09-04T14:53:42+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-04-dev-environment-runner-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["仅本地 local profile", "无第三方 Node 依赖", "不修改历史迁移", "不删除卷", "只写授权路径"],
+    "file_map": [
+      {"path": "scripts/dev.ps1", "status": "candidate-new", "responsibility": "Windows wrapper", "evidence": "设计 R1"},
+      {"path": "scripts/dev.sh", "status": "candidate-new", "responsibility": "Unix wrapper", "evidence": "设计 R1"},
+      {"path": "scripts/dev.mjs", "status": "candidate-new", "responsibility": "公共编排器", "evidence": "设计 D2"},
+      {"path": "docker-compose.yml", "status": "existing", "responsibility": "kkFileView host-gateway", "evidence": "现有 Compose"},
+      {"path": "server/src/platform/boot/pom.xml", "status": "existing", "responsibility": "DevTools runtime 依赖", "evidence": "现有 boot POM"},
+      {"path": "AGENTS.md", "status": "existing", "responsibility": "研发启动提示", "evidence": "用户要求"}
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "实现跨平台入口、固定环境、基础设施、Flyway 启动链和进程生命周期。",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+        "prerequisites": [],
+        "input_facts": ["Node.js 20 是项目前置条件", "application-local.yml 已启用 Flyway", "Vite 已提供 HMR"],
+        "files": {"create": ["scripts/dev.ps1", "scripts/dev.sh", "scripts/dev.mjs"], "modify": ["docker-compose.yml"], "test": []},
+        "interfaces": {"consumes": ["docker compose 服务名", "local 环境变量", "Maven 和 npm CLI"], "produces": ["scripts/dev.mjs [--down]", "托管子进程", "Maven compile 触发"]},
+        "steps": [
+          {"id": "T1-S1", "action": "建立脚本和 Compose 基线", "command": "docker compose config", "expected": "Compose 当前配置可解析", "evidence": "退出码和配置摘要"},
+          {"id": "T1-S2", "action": "实现薄 wrapper 和 Node 编排器", "command": null, "expected": "固定环境、工具预检、Docker、MySQL、admin、应用、监听和清理职责完整", "evidence": "代码 diff"},
+          {"id": "T1-S3", "action": "接入 kkFileView host-gateway", "command": "docker compose config", "expected": "extra_hosts 解析成功", "evidence": "Compose 输出摘要"},
+          {"id": "T1-S4", "action": "执行脚本语法和未知参数检查", "command": "node --check scripts/dev.mjs; PowerShell AST; bash -n scripts/dev.sh", "expected": "语法通过，未知参数无副作用失败", "evidence": "退出码"}
+        ],
+        "acceptance_checks": ["空库和已有库 admin 行为", "健康和登录", "Ctrl+C 清理", "--down 保留卷"],
+        "risks": ["跨平台进程树", "host-gateway 差异", "端口冲突"],
+        "rollback": "删除新脚本并回退 Compose extra_hosts。",
+        "stop_conditions": ["需要远程地址或真实凭据", "需要删除卷或修改历史迁移"],
+        "escalation_conditions": ["host-gateway 无法满足 Linux MinIO 访问", "无法可靠识别端口占用"]
+      },
+      {
+        "id": "T2",
+        "goal": "让 Maven 增量编译产物触发 Spring Boot 后端自动重启。",
+        "requirement_ids": ["R4"],
+        "prerequisites": ["T1"],
+        "input_facts": ["T1 产出串行 Maven compile 触发", "boot 当前无 DevTools"],
+        "files": {"create": [], "modify": ["server/src/platform/boot/pom.xml"], "test": []},
+        "interfaces": {"consumes": ["Maven compile 产物"], "produces": ["DevTools restart"]},
+        "steps": [
+          {"id": "T2-S1", "action": "记录 DevTools 依赖基线", "command": "mvn -pl :ccb-boot dependency:tree -Dincludes=org.springframework.boot:spring-boot-devtools", "expected": "当前不包含 DevTools", "evidence": "依赖树"},
+          {"id": "T2-S2", "action": "增加 optional runtime DevTools", "command": null, "expected": "依赖只存在于 ccb-boot", "evidence": "POM diff"},
+          {"id": "T2-S3", "action": "编译并验证重启", "command": "mvn -pl :ccb-boot -am -DskipTests compile", "expected": "编译成功并出现 DevTools restart，健康恢复", "evidence": "Maven、重启和健康日志"}
+        ],
+        "acceptance_checks": ["DevTools 不传递到业务模块", "编译失败可恢复", "Flyway 重启无异常"],
+        "risks": ["运行 classpath 不刷新", "开发依赖进入产物"],
+        "rollback": "回退 ccb-boot DevTools 依赖。",
+        "stop_conditions": ["DevTools 进入非开发产物", "Flyway 重启异常"],
+        "escalation_conditions": ["需要修改 Spring Boot Maven 插件配置"]
+      },
+      {
+        "id": "T3",
+        "goal": "补充 AGENTS 提示并完成治理、构建、运行和范围验收。",
+        "requirement_ids": ["R3", "R4", "R5"],
+        "prerequisites": ["T1", "T2"],
+        "input_facts": ["T1/T2 最终命令和运行行为已稳定"],
+        "files": {"create": [], "modify": ["AGENTS.md"], "test": ["当前前缀 execution/observation/convergence JSON"]},
+        "interfaces": {"consumes": ["最终 CLI 和验证证据"], "produces": ["研发提示", "收敛证据"]},
+        "steps": [
+          {"id": "T3-S1", "action": "增加 AGENTS 本地启动提示", "command": null, "expected": "命令、账号和安全边界准确", "evidence": "AGENTS diff"},
+          {"id": "T3-S2", "action": "执行静态、治理和构建检查", "command": "node scripts/check-all-governance.mjs; mvn -pl :ccb-boot -am test; npm --prefix web run build", "expected": "全部退出码 0", "evidence": "命令结果"},
+          {"id": "T3-S3", "action": "执行 Windows 全链路和范围验收", "command": "scripts/dev.ps1 与 check-codex-scope", "expected": "Flyway、登录、热重载、清理和范围通过", "evidence": "HTTP、Docker、进程和范围摘要"},
+          {"id": "T3-S4", "action": "写入当前前缀闭环证据", "command": null, "expected": "无未关闭 must 反馈后才收敛", "evidence": "当前前缀 JSON"}
+        ],
+        "acceptance_checks": ["AGENTS 提示准确", "Windows 运行证据", "未验收平台如实列风险", "无范围越界"],
+        "risks": ["治理入口误导", "工作区无关未跟踪文件干扰范围检查"],
+        "rollback": "回退 AGENTS 和实现提交，保留历史证据。",
+        "stop_conditions": ["治理、范围、构建、登录、Flyway 或清理失败"],
+        "escalation_conditions": ["需要写任务范围外文件或修改业务模块"]
+      }
+    ],
+    "dependency_edges": [{"from": "T1", "to": "T2"}, {"from": "T2", "to": "T3"}],
+    "parallel_groups": [["T1"], ["T2"], ["T3"]],
+    "integration_checks": [
+      {"after_tasks": ["T1"], "command": "脚本语法和 docker compose config", "expected": "全部通过"},
+      {"after_tasks": ["T1", "T2"], "command": "mvn -pl :ccb-boot -am test 与 Windows 运行验收", "expected": "构建、健康、登录和重启通过"},
+      {"after_tasks": ["T1", "T2", "T3"], "command": "governance、frontend build、scope、diff", "expected": "全部退出码 0"}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T1"]},
+      {"requirement_id": "R2", "task_ids": ["T1"]},
+      {"requirement_id": "R3", "task_ids": ["T1", "T3"]},
+      {"requirement_id": "R4", "task_ids": ["T1", "T2", "T3"]},
+      {"requirement_id": "R5", "task_ids": ["T1", "T3"]}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户于 2026-09-04 确认实施计划，并确认代表模块 Owner 批准本次公共能力变更。",
+      "confirmed_at": "2026-09-04T14:58:58+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["wrapper", "Node 编排器", "Docker 基础设施", "Spring/Flyway", "Vite", "DevTools"],
+    "state_variable_candidates": ["工具状态", "端口状态", "容器状态", "MySQL 状态", "迁移状态", "健康状态", "编译队列", "清理状态"],
+    "interface_candidates": ["CLI", "子进程环境", "Compose 服务", "MySQL SQL", "健康 HTTP", "文件事件"],
+    "sensor_candidates": ["退出码", "版本", "Docker 状态", "Flyway 日志", "HTTP", "登录", "restart 日志", "端口"],
+    "actuator_candidates": ["容器启停", "进程启停", "SQL 更新", "Maven compile", "AGENTS 修改"],
+    "disturbance_candidates": ["端口冲突", "Docker 未运行", "缓存缺失", "平台信号差异", "文件事件风暴", "已有数据"],
+    "delay_candidates": ["镜像拉取", "MySQL 初始化", "Maven 首编译", "Flyway", "DevTools restart", "Vite 启动"],
+    "assumptions": [
+      {"text": "Docker Compose V2 和固定端口可用", "basis": "README 与设计", "falsifier": "预检失败"}
+    ]
+  }
+}
