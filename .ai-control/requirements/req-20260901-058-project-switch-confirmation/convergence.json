@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260901-058-project-switch-confirmation",
+  "definition_revision": "requirement-ready-1",
+  "requirement_results": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": ["桌面和移动端选择其他项目时均展示包含目标项目名称和刷新提示的确认弹窗"]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": ["取消后项目名称保持不变，弹窗关闭且选择器恢复可用"]
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": ["确认后浏览器发生整页导航，刷新后目标项目仍选中且页面数据项目标识同步"]
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": ["三个用户选择器行为一致，Store 公共行为和程序化项目同步未修改"]
+    }
+  ],
+  "task_results": [
+    {
+      "task_id": "T1",
+      "result": "verified",
+      "evidence": ["生产构建、差异检查、桌面和 390x844 浏览器旅程通过"]
+    }
+  ],
+  "open_feedback": [],
+  "invariant_results": [
+    {
+      "invariant": "不修改项目权限、数据范围和公共 Store 行为",
+      "result": "pass",
+      "evidence": ["产品差异仅包含 AppLayout.vue"]
+    },
+    {
+      "invariant": "不修改接口、数据库、路由和业务状态",
+      "result": "pass",
+      "evidence": ["范围差异审计未发现相关文件变化"]
+    },
+    {
+      "invariant": "不覆盖工作区既有改动",
+      "result": "pass",
+      "evidence": ["现有 release、architecture、security、theme 和迁移等改动均保留"]
+    }
+  ],
+  "residual_risks": [
+    "全仓治理总检仍被多个既有历史需求的账本命名、topic 和 JSON 编码问题阻塞，与本需求产品修改无关。",
+    "Vite 仍报告既有大 chunk 体积警告，与本次交互修改无关。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "四条验收标准均由生产构建、差异检查和桌面/移动端真实交互证据覆盖，浏览器无控制台错误且无开放反馈。"
+}

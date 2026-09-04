@@ -105,9 +105,15 @@ public final class BpmnModelCompiler {
         task.setCategory("CC".equals(node.type()) ? "CCB_CC" : "CCB_APPROVAL");
         JsonNode config = node.config();
         String assigneeType = config.path("assigneeType").asText("").toUpperCase(Locale.ROOT);
+        if ("TEMPLATE_PLACEHOLDER".equals(assigneeType) || config.path("templatePlaceholder").asBoolean(false)) {
+            throw new IllegalArgumentException("全局模板人员占位不能编译，请先创建项目流程并配置人员");
+        }
         List<String> ids = ids(config.path("assigneeIds"));
         if ("USER".equals(assigneeType)) task.setCandidateUsers(ids);
         else if ("ROLE".equals(assigneeType)) task.setCandidateGroups(ids);
+        else if (Set.of("PROJECT_MEMBER", "PROJECT_ROLE").contains(assigneeType)) {
+            // Application tasks are assigned from the persisted project context in syncTasks.
+        }
         else if ("STARTER".equals(assigneeType)) task.setAssignee("${starterId}");
         else if ("ORG_OWNER".equals(assigneeType)) task.setAssignee("${orgOwnerUserId_" + node.id() + "}");
         else if ("FORM_FIELD".equals(assigneeType)) task.setAssignee("${" + config.path("fieldName").asText() + "}");

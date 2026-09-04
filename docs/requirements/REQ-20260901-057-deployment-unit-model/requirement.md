@@ -52,7 +52,7 @@ module: business/architecture
 - 新增分页搜索选项接口，接受 `keyword,page,size,excludeId`，只返回当前租户 ACTIVE 记录；关键字匹配名称、编号和物理子系统名称/编号。
 - 数据 Owner 为 `business/architecture`。关系表和关系历史表只由架构模块服务写入，其他能力通过公开部署单元投影读取。
 - 资源申请的 AP/DB/WB 分流由 `kind` 映射，不再读取 `deploymentUnitType`；自定义后缀不改变业务类型语义。
-- 候选迁移版本为 `V124__refine_deployment_unit_model.sql`，实施前必须重新扫描全仓迁移版本占用；发生冲突时先更新需求和 scope，不覆盖他人迁移。
+- 合并 `main` 后迁移版本顺延为 `V148__refine_deployment_unit_model.sql`；实施和再次合并前必须重新扫描全仓迁移版本占用，发生冲突时先更新需求和 scope，不覆盖他人迁移。
 - 脱敏示例：`SMSLJ_AP`（应用）、`YGQL1_DB`（数据库）、`PORTAL_WB`（Web）、`BATCH_JOB1`（自定义后缀、应用类型）。
 
 ## 验收标准

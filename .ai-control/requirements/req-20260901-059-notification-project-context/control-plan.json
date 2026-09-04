@@ -1,0 +1,58 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "通知发布、存储、查询和工作流桥接完整传递项目上下文，并由 V133 迁移兼容存量数据。",
+      "requirement_ids": ["R1", "R2", "R3"],
+      "prerequisites": [],
+      "input_facts": ["通知由 platform/system 统一持久化", "工作流实例与生命周期事件已有项目上下文", "现有架构通知发布方使用 13 参数构造器"],
+      "write_scope": ["NotificationPublishCommand.java", "SystemNotificationItem.java", "SystemNotificationService.java", "SystemNotificationServiceTest.java", "WorkflowSystemNotificationBridge.java", "WorkflowSystemNotificationBridgeTest.java", "V133__add_notification_project_context.sql", "system-notification-contract.md"],
+      "invariants": ["旧发布调用源码兼容", "幂等键、接收人和租户隔离不变", "历史回填不使用文本推断"],
+      "interface_contracts": ["projectRef/projectName both present or both null", "重复事件保留首次项目快照"],
+      "non_goals": ["修改工作流上下文生产逻辑", "修改架构业务通知归属"],
+      "action_bounds": ["仅追加项目快照字段和精确数据传递", "迁移只新增可空列并更新可可靠关联记录"],
+      "acceptance_checks": ["ccb-system 与 ccb-boot 聚焦测试通过", "旧构造器调用编译通过", "本地 Flyway V133 执行及回填检查通过"],
+      "evidence_required": ["实际差异", "测试退出码", "Flyway 版本与 SQL 结果"],
+      "rollback": "回退 T1 Java、测试、契约；已应用的可空数据库列保留",
+      "stop_conditions": ["发现工作流项目字段不是可靠归属", "发现 V133 版本已被其他迁移占用"],
+      "escalation_conditions": ["需要改变通知幂等规则", "需要修改 workflow 公共上下文契约"]
+    },
+    {
+      "id": "T2",
+      "goal": "通知抽屉在桌面和移动端清晰展示项目或平台全局归属。",
+      "requirement_ids": ["R4"],
+      "prerequisites": ["T1"],
+      "input_facts": ["通知项已有板块/来源、标题和正文层级", "前端公共类型由 SystemNotification 映射接口字段"],
+      "write_scope": ["web/src/types/notification.ts", "web/src/components/ui/UiNotificationCenter.vue", "web/src/styles.css"],
+      "invariants": ["点击、已读、归档和路由行为不变", "不新增项目筛选", "使用语义主题变量"],
+      "interface_contracts": ["有 projectName 显示所属项目，否则显示平台全局"],
+      "non_goals": ["通知卡片重构", "改变轮询和筛选逻辑"],
+      "action_bounds": ["只增加一行紧凑归属信息和必要响应式样式"],
+      "acceptance_checks": ["前端生产构建通过", "桌面和 390x844 显示正确文案", "无页面级横向溢出和控制台错误"],
+      "evidence_required": ["实际差异", "构建退出码", "浏览器 DOM/截图/宽度检查"],
+      "rollback": "回退 T2 类型、模板与样式",
+      "stop_conditions": ["接口无法保证项目字段成对", "新增行导致通知操作不可达"],
+      "escalation_conditions": ["需要改变通知筛选或当前项目行为"]
+    }
+  ],
+  "dependency_edges": [{"from": "T1", "to": "T2", "reason": "前端展示依赖稳定响应字段"}],
+  "parallel_groups": [["T1"], ["T2"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["通知契约、桥接和迁移一致性检查"]},
+    {"after_tasks": ["T1", "T2"], "checks": ["运行服务并验证真实通知抽屉"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 后端采样", "trigger": "T1 执行报告完成", "observer": "独立测试与数据库检查", "sensors": ["S1", "S2", "S3", "S5"], "requirement_ids": ["R1", "R2", "R3"]},
+    {"label": "T2 前端采样", "trigger": "T2 执行报告完成", "observer": "生产构建与真实浏览器", "sensors": ["S4", "S5"], "requirement_ids": ["R4"]},
+    {"label": "最终回归", "trigger": "全部任务已验证", "observer": "主控制器", "sensors": ["S1", "S2", "S3", "S4", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S5"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S2", "S5"]},
+    {"requirement_id": "R3", "task_ids": ["T1"], "sensor_ids": ["S3"]},
+    {"requirement_id": "R4", "task_ids": ["T2"], "sensor_ids": ["S4", "S5"]}
+  ],
+  "plan_status": "ready"
+}

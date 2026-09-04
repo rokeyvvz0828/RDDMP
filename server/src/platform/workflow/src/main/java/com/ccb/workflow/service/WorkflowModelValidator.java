@@ -26,7 +26,7 @@ public final class WorkflowModelValidator {
             "START", "APPROVAL", "CC", "CONDITION", "PARALLEL_SPLIT", "PARALLEL_JOIN", "END"
     );
     private static final Set<String> ASSIGNEE_TYPES = Set.of(
-            "USER", "ROLE", "ORG_OWNER", "STARTER", "FORM_FIELD", "EXPRESSION"
+            "USER", "ROLE", "PROJECT_MEMBER", "PROJECT_ROLE", "TEMPLATE_PLACEHOLDER", "ORG_OWNER", "STARTER", "FORM_FIELD", "EXPRESSION"
     );
     private static final Set<String> APPROVAL_MODES = Set.of("ANY", "ALL", "PERCENT");
     private static final Set<String> VARIABLE_TYPES = Set.of(
@@ -172,13 +172,16 @@ public final class WorkflowModelValidator {
     private void validateTask(WorkflowNodeModel node, WorkflowDefinitionModel model, List<ValidationError> errors) {
         JsonNode config = node.config();
         if ("CC".equals(node.type())) {
-            if (!positiveIds(config.path("userIds"))) errors.add(error(node.id(), null, "userIds", "CC_RECIPIENT_MISSING", "抄送节点必须配置抄送人员"));
+            if (!config.path("templatePlaceholder").asBoolean(false) && !positiveIds(config.path("userIds"))) {
+                errors.add(error(node.id(), null, "userIds", "CC_RECIPIENT_MISSING", "抄送节点必须配置抄送人员"));
+            }
             return;
         }
         String assigneeType = config.path("assigneeType").asText("").toUpperCase(Locale.ROOT);
         if (!ASSIGNEE_TYPES.contains(assigneeType)) {
             errors.add(error(node.id(), null, "assigneeType", "ASSIGNEE_TYPE_INVALID", "审批人类型无效: " + assigneeType));
-        } else if (Set.of("USER", "ROLE").contains(assigneeType) && !positiveIds(config.path("assigneeIds"))) {
+        } else if (Set.of("USER", "ROLE", "PROJECT_MEMBER", "PROJECT_ROLE").contains(assigneeType)
+                && !positiveIds(config.path("assigneeIds"))) {
             errors.add(error(node.id(), null, "assigneeIds", "ASSIGNEE_MISSING", "审批节点必须配置审批人或角色"));
         } else if ("FORM_FIELD".equals(assigneeType) && config.path("fieldName").asText("").isBlank()) {
             errors.add(error(node.id(), null, "fieldName", "ASSIGNEE_FIELD_MISSING", "表单字段审批人必须配置字段名"));

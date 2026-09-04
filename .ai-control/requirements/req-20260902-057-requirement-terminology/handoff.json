@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260902-057-requirement-terminology",
+  "revision": 1,
+  "design_revision": 1,
+  "plan_revision": 1,
+  "handoff_status": "approved",
+  "created_at": "2026-09-02T10:05:00+08:00",
+  "design": {
+    "schema_version": "1.0",
+    "topic": "req-20260902-057-requirement-terminology",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-02-requirement-terminology-design.md",
+    "objective": "需求管理模块用户可见「蒙商/金科」替换为「同业/我方」，存量数据与注释同步更新，接口与字段标识符不变",
+    "approval": {
+      "status": "approved",
+      "evidence": "用户 2026-09-02 选择方案 A",
+      "confirmed_at": "2026-09-02T10:00:00+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-02-requirement-terminology-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "只修改 codex-task-scope.yaml writable_paths 覆盖文件",
+      "不修改已发布 Flyway 脚本；新增 V132 追加式迁移",
+      "不重命名 monshang_*/jinke_* 标识符、列名与 API 键",
+      "不修改历史文档",
+      "保持 Java 包名与业务逻辑"
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "需求管理运行面与存量数据术语全部替换为「同业/我方」，新旧表头导入兼容",
+        "requirement_ids": ["R1", "R2", "R3", "R4"],
+        "prerequisites": [],
+        "input_facts": [
+          "rg 扫描确认运行面旧词分布：RequirementsView.vue 18、RequirementEnums.java 19、RequirementImportService.java 15、测试 3、mock 6（2026-09-02 勘察）",
+          "V132 为当前最大迁移号后一位（V131 已存在）",
+          "用户确认方案 A：不改字段标识符"
+        ],
+        "files": {
+          "create": ["server/src/platform/infrastructure/src/main/resources/db/migration/V132__requirement_terminology_rename.sql"],
+          "modify": [
+            "web/src/views/RequirementsView.vue",
+            "server/src/modules/requirement/src/main/java/com/ccb/requirement/support/RequirementEnums.java",
+            "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementImportService.java",
+            "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementImportServiceTest.java",
+            "mock/mock-data.json"
+          ],
+          "test": ["server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementImportServiceTest.java"]
+        },
+        "interfaces": {
+          "consumes": ["Excel 表头字符串 → 字段名映射（新旧并存）"],
+          "produces": ["新术语表头模板、兼容旧表头的解析逻辑、V132 迁移"]
+        },
+        "steps": [
+          {"id": "T1-S1", "action": "基线采样运行面旧词命中数", "command": "rg -c '蒙商|金科' 运行面文件", "expected": "记录当前命中数", "evidence": "命令输出"},
+          {"id": "T1-S2", "action": "修改 RequirementEnums.java 枚举与标签", "command": null, "expected": "无旧词", "evidence": "rg 0 命中"},
+          {"id": "T1-S3", "action": "修改 RequirementImportService.java 表头/示例/alias", "command": null, "expected": "无旧词且旧表头可解析", "evidence": "测试通过"},
+          {"id": "T1-S4", "action": "修改 RequirementImportServiceTest.java", "command": null, "expected": "新旧表头用例通过", "evidence": "mvn 测试"},
+          {"id": "T1-S5", "action": "修改 RequirementsView.vue 文案", "command": null, "expected": "无旧词", "evidence": "rg 0 命中"},
+          {"id": "T1-S6", "action": "修改 mock/mock-data.json", "command": null, "expected": "无旧词", "evidence": "rg 0 命中"},
+          {"id": "T1-S7", "action": "新建 V132 迁移", "command": null, "expected": "追加式且包含 UPDATE/ALTER", "evidence": "文件存在"},
+          {"id": "T1-S8", "action": "运行局部与回归验证", "command": "mvn -pl :ccb-requirement -am test && npm --prefix web run build && node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs", "expected": "全部退出码 0", "evidence": "命令输出"}
+        ],
+        "acceptance_checks": [
+          "运行面 rg '蒙商|金科' 0 命中且 rg 'monshang|jinke' 标识符仍存在",
+          "新旧表头导入用例通过",
+          "前端构建、治理检查、范围检查通过",
+          "V132 存在且未修改历史脚本"
+        ],
+        "risks": ["本地 MySQL 未启动，迁移执行待补验", "表头 alias 遗漏"],
+        "rollback": "回退本需求提交；V132 为追加式迁移可单独停用",
+        "stop_conditions": ["发现需重命名标识符或修改历史脚本", "新旧表头解析冲突"],
+        "escalation_conditions": ["超出任务范围文件需修改", "本地 MySQL 无法启动导致迁移执行待补验"]
+      }
+    ],
+    "dependency_edges": [],
+    "parallel_groups": [["T1"]],
+    "integration_checks": [
+      {"after_tasks": ["T1"], "command": "mvn -pl :ccb-requirement -am test", "expected": "exit 0"},
+      {"after_tasks": ["T1"], "command": "npm --prefix web run build", "expected": "exit 0"},
+      {"after_tasks": ["T1"], "command": "node scripts/check-all-governance.mjs", "expected": "exit 0"},
+      {"after_tasks": ["T1"], "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260902-057-requirement-terminology/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "expected": "exit 0"}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T1"]},
+      {"requirement_id": "R2", "task_ids": ["T1"]},
+      {"requirement_id": "R3", "task_ids": ["T1"]},
+      {"requirement_id": "R4", "task_ids": ["T1"]}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户 2026-09-02 选择方案 A 并授权实施",
+      "confirmed_at": "2026-09-02T10:00:00+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["需求模块前端视图", "枚举", "导入服务", "mock 数据", "req_* 数据与注释"],
+    "state_variable_candidates": ["用户可见文案集合", "枚举值集合", "存量数据值", "列注释"],
+    "interface_candidates": ["Excel 表头字符串到字段映射"],
+    "sensor_candidates": ["rg 扫描", "模块测试", "前端构建", "治理检查", "范围检查"],
+    "actuator_candidates": ["文件编辑", "新增 V132 迁移"],
+    "disturbance_candidates": ["本地 MySQL 未启动", "并行分支修改"],
+    "delay_candidates": ["迁移执行依赖运行环境"],
+    "assumptions": [
+      {"text": "机械替换满足业务口径", "basis": "术语为专有名词，语义一一对应", "falsifier": "替换后语义错误"},
+      {"text": "旧表头兼容成本低", "basis": "解析为 map 查找，可加 alias", "falsifier": "alias 与校验逻辑冲突"}
+    ]
+  }
+}

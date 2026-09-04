@@ -1,0 +1,55 @@
+{
+  "task_id": "TP-T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestPlanController.java",
+      "purpose": "提供方案树、方案/当前方案、版本、专项节点、上传和整方案删除 API，并按 plans 细粒度权限保护写入。"
+    },
+    {
+      "path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanAttachmentPolicy.java",
+      "purpose": "仅允许具有对应测试大类 plans 阅读权限的启用用户访问未删除方案版本附件。"
+    },
+    {
+      "path_or_resource": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/plan/TestPlanAttachmentPolicyTest.java",
+      "purpose": "验证非法版本键在查询前拒绝，以及匹配 plans 权限时允许预览。"
+    }
+  ],
+  "requirements_addressed": ["TP1", "TP2", "TP3", "TP4"],
+  "commands": [
+    {
+      "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am test -Dtest=TestPlanServiceTest,TestPlanAttachmentPolicyTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "4 tests, 0 failures；ccb-test-management 编译成功。"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "版本附件访问边界",
+      "result": "pass",
+      "evidence": "非法版本键零数据库交互；有效版本仅在 SecurityContext 含 test-management:application-assembly:plans 时通过预览授权。",
+      "limitations": ["真实 MySQL 的已删除方案版本和 HTTP 403 仍待本地运行时采样"]
+    },
+    {
+      "check": "读写接口权限表达式",
+      "result": "pass",
+      "evidence": "控制器查询使用 plans，专项/上传/删除分别使用 create/update/delete。",
+      "limitations": ["表达式需在本地登录会话中做 HTTP 探针"]
+    }
+  ],
+  "diff_summary": [
+    "方案查询与管理操作通过 REST API 暴露，并保留服务端的 project/domain 范围校验。",
+    "附件访问策略同时校验租户、方案/版本软删除状态和当前大类的 plans 阅读权限。"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "附件平台只经公开 AttachmentGateway 与 AttachmentAccessPolicy 集成",
+      "result": "pass",
+      "evidence": "无平台附件表直写或附件平台改动。"
+    }
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["前端页面、真实数据库迁移及浏览器端预览/下载联调尚未实施。"],
+  "recommended_next": "implement TP-T3"
+}

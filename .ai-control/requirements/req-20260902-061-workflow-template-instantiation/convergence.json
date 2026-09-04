@@ -1,0 +1,32 @@
+{
+  "definition_revision": "baseline-1",
+  "requirement_results": [
+    {"requirement_id": "R1", "result": "pass", "evidence": ["V135 将 GLOBAL 迁移为 PLATFORM", "三范围后端查询和前端分区可用"]},
+    {"requirement_id": "R2", "result": "pass", "evidence": ["模板编辑器无用户/角色选择", "后端拒绝具体用户或角色绕过提交"]},
+    {"requirement_id": "R3", "result": "pass", "evidence": ["TEMPLATE 不可发布、恢复、归档或启动", "运行目录和编译器排除模板"]},
+    {"requirement_id": "R4", "result": "pass", "evidence": ["PROJECT 节点仅提供项目成员/项目角色", "后端项目成员校验保留"]},
+    {"requirement_id": "R5", "result": "pass", "evidence": ["模板保留结构并可创建当前项目流程", "具体人员和角色在实例化时被清空"]},
+    {"requirement_id": "R6", "result": "pass", "evidence": ["运行时优先 PROJECT 并回退 PLATFORM", "TEMPLATE 永不进入运行候选"]},
+    {"requirement_id": "R7", "result": "pass", "evidence": ["页面显示本项目流程、全局模板、平台流程", "项目切换会重新加载"]},
+    {"requirement_id": "R8", "result": "pass", "evidence": ["TypeScript 与生产构建通过", "桌面交互无溢出，移动样式采用既有单列响应式规则"]}
+  ],
+  "task_results": [
+    {"task_id": "T1", "result": "verified", "evidence": ["52 项工作流测试通过", "V135 和数据库范围查询通过"]},
+    {"task_id": "T2", "result": "verified", "evidence": ["vue-tsc 和 Vite 构建通过", "浏览器验证模板不能选人/角色"]}
+  ],
+  "open_feedback": [],
+  "invariant_results": [
+    {"invariant": "模板不可执行", "result": "pass", "evidence": ["生命周期、目录、启动和编译四层拦截"]},
+    {"invariant": "项目授权由后端执行", "result": "pass", "evidence": ["requireAccessible/requireManageable/requireMembers 仍为最终边界"]},
+    {"invariant": "存量平台流程可执行", "result": "pass", "evidence": ["GLOBAL 平滑迁移为 PLATFORM，业务解析保留平台回退"]},
+    {"invariant": "历史 Flyway 不修改", "result": "pass", "evidence": ["仅新增 V135"]},
+    {"invariant": "前端显隐不代替后端校验", "result": "pass", "evidence": ["WorkflowTemplateScopeTest 验证后端绕过拒绝"]}
+  ],
+  "residual_risks": [
+    "全仓 Maven 在 architecture 模块仍有 3 failures + 14 errors；对未修改 rokey b0b3038 重现同样结果，属历史基线失败。",
+    "全仓治理检查被既有 .ai-control 格式和缺失记录阻断；REQ-061 范围检查通过。",
+    "内置浏览器不提供手机视口切换，本次真实交互验收为 1280x720；手机布局依据现有响应式 CSS 与生产构建复核。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R8 均有自动化、数据库或运行时证据，无未关闭负反馈，本次范围内不变量保持。"
+}

@@ -1,6 +1,7 @@
 package com.ccb.system.project;
 
 import com.ccb.attachment.model.AttachmentItem;
+import com.ccb.attachment.model.AttachmentCategory;
 import com.ccb.attachment.model.AttachmentLink;
 import com.ccb.attachment.model.AttachmentPort;
 import com.ccb.common.api.PageQuery;
@@ -9,6 +10,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectMemberRemovalGuard;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -41,11 +43,20 @@ public class ProjectService {
     private static final String DEFAULT_PLAN_NUMBER_RULE = "{PROJECT_CODE}-P{SEQ:3}";
     private static final String DEFAULT_CHILD_PLAN_NUMBER_RULE = "{PARENT_CODE}-S{SEQ:3}";
     private static final String DEFAULT_RISK_NUMBER_RULE = "{PROJECT_CODE}-R{SEQ:3}";
+    private static final List<String[]> DEFAULT_PROJECT_STAGES = List.of(
+            new String[]{"PLAN_INITIATION", "立项"},
+            new String[]{"PLAN_REQUIREMENT", "需求"},
+            new String[]{"PLAN_DESIGN_DEVELOPMENT", "设计开发"},
+            new String[]{"PLAN_DATA_MIGRATION", "数据迁移"},
+            new String[]{"PLAN_TEST_ACCEPTANCE", "测试与验收"},
+            new String[]{"PLAN_TRAINING_PRODUCTION_REHEARSAL", "培训及投产演练"},
+            new String[]{"PLAN_PRODUCTION_LAUNCH", "投产上线"});
     private static final Pattern PLAN_RULE_TOKEN = Pattern.compile("\\{([A-Z_]+)(?::(\\d+))?}");
 
     private final JdbcTemplate jdbc;
     private final MinioStorageService storage;
     private final AttachmentPort attachmentPort;
+    private ProjectMemberRemovalGuard memberRemovalGuard = (tenantId, projectId, userId) -> { };
 
     public ProjectService(JdbcTemplate jdbc, MinioStorageService storage) {
         this(jdbc, storage, null);
@@ -56,6 +67,11 @@ public class ProjectService {
         this.jdbc = jdbc;
         this.storage = storage;
         this.attachmentPort = attachmentPort;
+    }
+
+    @Autowired(required = false)
+    void setMemberRemovalGuard(ProjectMemberRemovalGuard memberRemovalGuard) {
+        if (memberRemovalGuard != null) this.memberRemovalGuard = memberRemovalGuard;
     }
 
     public List<Map<String, Object>> workbench(AuthUser user) {
@@ -71,6 +87,7 @@ public class ProjectService {
         requireProjectAccess(projectId, user, false);
         Map<String, Object> project = project(projectId, user.tenantId());
         decorateProject(project, user.tenantId());
+        project.put("plan_stages", projectStages(projectId, user.tenantId()));
         project.put("plans", plans(projectId, user));
         project.put("plan_groups", planGroups(projectId, user));
         project.put("risks", risks(projectId, user));
@@ -80,22 +97,52 @@ public class ProjectService {
         return project;
     }
 
-    public PageResult<AttachmentItem> attachments(long projectId, long page, long size, String keyword, AuthUser user) {
+    public PageResult<AttachmentItem> attachments(long projectId, long page, long size, String keyword,
+                                                  Long categoryId, AuthUser user) {
         requireAction("project", "read", user);
         requireProjectAccess(projectId, user, false);
-        PageResult<AttachmentItem> result = attachmentService().list("PROJECT", projectId, user.tenantId(), new PageQuery(page, size), keyword);
+        PageResult<AttachmentItem> result = attachmentService().list("PROJECT", projectId, user.tenantId(),
+                new PageQuery(page, size), keyword, categoryId);
         List<AttachmentItem> records = result.records().stream()
                 .map(item -> withUploaderName(item, user.tenantId()))
                 .toList();
         return new PageResult<>(records, result.total(), result.page(), result.size());
     }
 
+    public List<AttachmentCategory> attachmentCategories(long projectId, AuthUser user) {
+        requireAction("project", "read", user);
+        requireProjectAccess(projectId, user, false);
+        return attachmentService().listCategories("PROJECT", projectId, user.tenantId());
+    }
+
     @Transactional
-    public AttachmentItem uploadAttachment(long projectId, MultipartFile file, AuthUser user) {
+    public AttachmentCategory createAttachmentCategory(long projectId, Map<String, Object> input, AuthUser user) {
         requireAction("project", "update", user);
         requireProjectAccess(projectId, user, false);
-        AttachmentItem item = attachmentService().uploadAndBind("PROJECT", projectId, file, user.tenantId(), user.id());
+        String name = required(input == null ? Map.of() : input, "name", "分类名称", 128);
+        AttachmentCategory category = attachmentService().createCategory("PROJECT", projectId, name,
+                user.tenantId(), user.id());
+        audit(user, "project:attachment-category:create", category.id());
+        return category;
+    }
+
+    @Transactional
+    public AttachmentItem uploadAttachment(long projectId, MultipartFile file, Long categoryId, AuthUser user) {
+        requireAction("project", "update", user);
+        requireProjectAccess(projectId, user, false);
+        AttachmentItem item = attachmentService().uploadAndBind("PROJECT", projectId, file, categoryId,
+                user.tenantId(), user.id());
         audit(user, "project:attachment:upload", item.id());
+        return withUploaderName(item, user.tenantId());
+    }
+
+    @Transactional
+    public AttachmentItem updateAttachmentCategory(long projectId, long attachmentId, Long categoryId, AuthUser user) {
+        requireAction("project", "update", user);
+        requireProjectAccess(projectId, user, false);
+        AttachmentItem item = attachmentService().updateCategory(attachmentId, "PROJECT", projectId, categoryId,
+                user.tenantId());
+        audit(user, "project:attachment-category:update", attachmentId);
         return withUploaderName(item, user.tenantId());
     }
 
@@ -150,6 +197,7 @@ public class ProjectService {
         validateDateRange(projectStart, actualEnd, "项目实际");
         long id = nextId();
         jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, description, status, owner_id, planned_start_date, planned_end_date, actual_end_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), code, name, optional(input, "description", null), status, ownerId, projectStart, projectEnd, actualEnd, user.id());
+        initializeDefaultStages(id, user.tenantId());
         long roleId = nextId();
         jdbc.update("INSERT INTO pm_project_role (id, tenant_id, project_id, role_code, role_name, description) VALUES (?, ?, ?, 'PM', '项目负责人', '项目创建时自动初始化的项目负责人角色')", roleId, user.tenantId(), id);
         addMember(id, user.id(), user.tenantId(), List.of(roleId), nextId());
@@ -192,7 +240,8 @@ public class ProjectService {
         if (attachmentPort != null) {
             PageResult<AttachmentItem> attachmentPage;
             do {
-                attachmentPage = attachmentService().list("PROJECT", projectId, user.tenantId(), new PageQuery(1, 100), null);
+                attachmentPage = attachmentService().list("PROJECT", projectId, user.tenantId(),
+                        new PageQuery(1, 100), null, null);
                 attachmentPage.records().forEach(item -> attachmentService().delete(item.id(), "PROJECT", projectId, user.tenantId()));
             } while (!attachmentPage.records().isEmpty());
         }
@@ -206,13 +255,67 @@ public class ProjectService {
         jdbc.update("UPDATE pm_project_member SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
         jdbc.update("UPDATE pm_project_role SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
         jdbc.update("UPDATE pm_project_org SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
+        jdbc.update("UPDATE pm_project_stage SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
         audit(user, "project:delete", projectId);
+    }
+
+    public List<Map<String, Object>> stages(long projectId, AuthUser user) {
+        requireAction("project", "read", user);
+        requireProjectAccess(projectId, user, false);
+        return projectStages(projectId, user.tenantId());
+    }
+
+    @Transactional
+    public Map<String, Object> createStage(long projectId, Map<String, Object> input, AuthUser user) {
+        requireAction("project", "update", user);
+        requireProjectAccess(projectId, user, true);
+        String name = required(input == null ? Map.of() : input, "stage_name", "阶段名称", 128);
+        projectForUpdate(projectId, user.tenantId());
+        Integer nextSort = jdbc.queryForObject("SELECT COALESCE(MAX(sort_no), -1) + 1 FROM pm_project_stage WHERE project_id = ? AND tenant_id = ? AND deleted = 0", Integer.class, projectId, user.tenantId());
+        int sortNo = (int) optionalLong(input == null ? null : input.get("sort_no"), nextSort == null ? 0 : nextSort);
+        long id = nextId();
+        String code = "PROJECT_STAGE_" + id;
+        jdbc.update("INSERT INTO pm_project_stage (id, tenant_id, project_id, stage_code, stage_name, sort_no) VALUES (?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, code, name, sortNo);
+        audit(user, "project:stage:create", id);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", id); result.put("project_id", projectId); result.put("stage_code", code); result.put("phase", code);
+        result.put("stage_name", name); result.put("phase_name", name); result.put("sort_no", sortNo); result.put("status", 1);
+        result.put("has_master_plans", 0); result.put("locked", false); result.put("locked_reason", null);
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> updateStage(long projectId, long stageId, Map<String, Object> input, AuthUser user) {
+        requireAction("project", "update", user);
+        requireProjectAccess(projectId, user, true);
+        Map<String, Object> current = projectStageForUpdate(projectId, stageId, user.tenantId());
+        ensureStageHasNoMasterPlans(projectId, stageId, user.tenantId());
+        List<String> assignments = new ArrayList<>();
+        List<Object> args = new ArrayList<>();
+        if (input.containsKey("stage_name")) { assignments.add("stage_name = ?"); args.add(required(input, "stage_name", "阶段名称", 128)); }
+        if (input.containsKey("sort_no")) { assignments.add("sort_no = ?"); args.add((int) optionalLong(input.get("sort_no"), 0)); }
+        if (assignments.isEmpty()) throw badRequest("没有可修改的项目阶段字段");
+        args.add(stageId); args.add(projectId); args.add(user.tenantId());
+        jdbc.update("UPDATE pm_project_stage SET " + String.join(", ", assignments) + " WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", args.toArray());
+        audit(user, "project:stage:update", stageId);
+        return projectStage(stageId, projectId, user.tenantId());
+    }
+
+    @Transactional
+    public void deleteStage(long projectId, long stageId, AuthUser user) {
+        requireAction("project", "delete", user);
+        requireProjectAccess(projectId, user, true);
+        projectStageForUpdate(projectId, stageId, user.tenantId());
+        ensureStageHasNoMasterPlans(projectId, stageId, user.tenantId());
+        int changed = jdbc.update("UPDATE pm_project_stage SET deleted = 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", stageId, projectId, user.tenantId());
+        if (changed == 0) throw badRequest("项目阶段不存在或已删除");
+        audit(user, "project:stage:delete", stageId);
     }
 
     public List<Map<String, Object>> plans(long projectId, AuthUser user) {
         requireAction("plan", "read", user);
         requireProjectAccess(projectId, user, false);
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT p.id, p.project_id, p.group_id, g.group_name, p.parent_id, p.plan_name, p.plan_code, p.description, p.owner_id, u.display_name AS owner_name, p.planned_start_date, p.planned_end_date, p.progress, p.status, p.phase, p.sort_no, p.created_at, p.updated_at FROM pm_project_plan p LEFT JOIN pm_project_plan_group g ON g.id = p.group_id AND g.project_id = p.project_id AND g.tenant_id = p.tenant_id AND g.deleted = 0 LEFT JOIN sys_user u ON u.id = p.owner_id AND u.tenant_id = p.tenant_id AND u.deleted = 0 WHERE p.project_id = ? AND p.tenant_id = ? AND p.deleted = 0 ORDER BY COALESCE(p.group_id, 0), p.parent_id, p.sort_no, p.id", projectId, user.tenantId());
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT p.id, p.project_id, p.group_id, g.group_name, p.parent_id, p.plan_name, p.plan_code, p.description, p.owner_id, u.display_name AS owner_name, p.planned_start_date, p.planned_end_date, p.progress, p.status, p.phase, s.stage_name AS phase_name, p.sort_no, p.created_at, p.updated_at FROM pm_project_plan p LEFT JOIN pm_project_plan_group g ON g.id = p.group_id AND g.project_id = p.project_id AND g.tenant_id = p.tenant_id AND g.deleted = 0 LEFT JOIN pm_project_stage s ON s.project_id = p.project_id AND s.tenant_id = p.tenant_id AND s.stage_code = p.phase LEFT JOIN sys_user u ON u.id = p.owner_id AND u.tenant_id = p.tenant_id AND u.deleted = 0 WHERE p.project_id = ? AND p.tenant_id = ? AND p.deleted = 0 ORDER BY COALESCE(p.group_id, 0), p.parent_id, p.sort_no, p.id", projectId, user.tenantId());
         rows.forEach(row -> decoratePlanOrganizations(row, user.tenantId()));
         return rows;
     }
@@ -220,10 +323,10 @@ public class ProjectService {
     public List<Map<String, Object>> planGroups(long projectId, AuthUser user) {
         requireAction("plan", "read", user);
         requireProjectAccess(projectId, user, false);
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, project_id, phase, group_name, CASE WHEN color_key IN ('brand', 'accent', 'success', 'warning', 'danger', 'muted') THEN color_key ELSE 'brand' END AS color_key, description, sort_no, created_at, updated_at FROM pm_project_plan_group WHERE project_id = ? AND tenant_id = ? AND deleted = 0 ORDER BY phase, sort_no, id", projectId, user.tenantId());
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT g.id, g.project_id, g.phase, g.group_name, s.stage_name AS phase_name, CASE WHEN g.color_key IN ('brand', 'accent', 'success', 'warning', 'danger', 'muted') THEN g.color_key ELSE 'brand' END AS color_key, g.description, g.sort_no, g.created_at, g.updated_at FROM pm_project_plan_group g LEFT JOIN pm_project_stage s ON s.project_id = g.project_id AND s.tenant_id = g.tenant_id AND s.stage_code = g.phase WHERE g.project_id = ? AND g.tenant_id = ? AND g.deleted = 0 ORDER BY COALESCE(s.sort_no, 2147483647), g.sort_no, g.id", projectId, user.tenantId());
         rows.forEach(row -> {
             row.put("stage_plan_code", row.get("group_name"));
-            row.put("phase_name", parameterLabel("PLAN_PHASE", "计划阶段", row.get("phase"), user.tenantId()));
+            row.put("phase_name", row.get("phase_name") == null ? row.get("phase") : row.get("phase_name"));
         });
         return rows;
     }
@@ -233,7 +336,7 @@ public class ProjectService {
         requireAction("plan", "create", user);
         requireProjectAccess(projectId, user, false);
         String phase = input.containsKey("phase") ? optional(input, "phase", null) : null;
-        validatePhase(phase, "PLAN_PHASE", user.tenantId(), true);
+        validateProjectStage(projectId, phase, user.tenantId(), true);
         // 锁定项目行，避免并发创建时生成相同的阶段计划编号。
         projectForUpdate(projectId, user.tenantId());
         String name = nextStagePlanCode(projectId, phase, user.tenantId());
@@ -261,7 +364,7 @@ public class ProjectService {
         }
         if (input.containsKey("phase")) {
             nextPhase = optional(input, "phase", null);
-            validatePhase(nextPhase, "PLAN_PHASE", user.tenantId(), true);
+            validateProjectStage(projectId, nextPhase, user.tenantId(), true);
             if (!nextPhase.equals(optional(currentGroup, "phase", null)) && !input.containsKey("group_name")) {
                 projectForUpdate(projectId, user.tenantId());
                 assignments.add("group_name = ?");
@@ -341,12 +444,12 @@ public class ProjectService {
             if (requestedGroupId != null && !requestedGroupId.equals(parentGroupId)) throw badRequest("子计划阶段计划必须与主计划一致");
             requestedGroupId = parentGroupId;
         } else if (phase == null) {
-            phase = requestedGroupId == null ? "PLAN_INITIATION" : optional(planGroup(requestedGroupId, projectId, user.tenantId()), "phase", null);
+            phase = requestedGroupId == null ? defaultProjectStageCode(projectId, user.tenantId()) : optional(planGroup(requestedGroupId, projectId, user.tenantId()), "phase", null);
         } else if (requestedGroupId != null) {
             String groupPhase = optional(planGroup(requestedGroupId, projectId, user.tenantId()), "phase", null);
             if (!phase.equals(groupPhase)) throw badRequest("主计划阶段必须与阶段计划一致");
         }
-        validatePhase(phase, "PLAN_PHASE", user.tenantId(), false);
+        validateProjectStage(projectId, phase, user.tenantId(), false);
         validateMainPlanSequence(projectId, requestedGroupId, 0, parentId, planStart, planEnd, user.tenantId());
         String projectCode = String.valueOf(projectRow.get("project_code"));
         String mainRule = projectRow.get("plan_number_rule") == null ? DEFAULT_PLAN_NUMBER_RULE : String.valueOf(projectRow.get("plan_number_rule"));
@@ -398,13 +501,18 @@ public class ProjectService {
         validateDateRange(nextStart, nextEnd, "计划"); validateWithinParent(projectId, nextParent, nextStart, nextEnd, user.tenantId());
         validateMainPlanSequence(projectId, nullableLong(current.get("group_id")), planId, nextParent, nextStart, nextEnd, user.tenantId());
         String nextPhase = input.containsKey("phase") ? optional(input, "phase", null) : optional(current, "phase", null);
+        Long nextGroupId = input.containsKey("group_id") ? nullableLong(input.get("group_id")) : nullableLong(current.get("group_id"));
         if (nextParent != 0) {
             Map<String, Object> parent = parentPlanForUpdate(nextParent, projectId, user.tenantId());
             String parentPhase = optional(parent, "phase", null);
             if (nextPhase == null) nextPhase = parentPhase;
             if (parentPhase != null && !parentPhase.equals(nextPhase)) throw badRequest("子计划阶段必须与主计划一致");
+        } else if (nextGroupId != null && nextGroupId > 0) {
+            String groupPhase = optional(planGroup(nextGroupId, projectId, user.tenantId()), "phase", null);
+            if (nextPhase == null) nextPhase = groupPhase;
+            if (groupPhase != null && !groupPhase.equals(nextPhase)) throw badRequest("主计划阶段必须与阶段计划一致");
         }
-        validatePhase(nextPhase, "PLAN_PHASE", user.tenantId(), false);
+        validateProjectStage(projectId, nextPhase, user.tenantId(), false);
         if (input.containsKey("phase") || !String.valueOf(optional(current, "phase", "")).equals(String.valueOf(nextPhase))) { assignments.add("phase = ?"); args.add(nextPhase); }
         if (input.containsKey("planned_start_date")) { assignments.add("planned_start_date = ?"); args.add(nextStart); }
         if (input.containsKey("planned_end_date")) { assignments.add("planned_end_date = ?"); args.add(nextEnd); }
@@ -718,7 +826,11 @@ public class ProjectService {
     @Transactional
     public Map<String, Object> updateMember(long projectId, long memberId, Map<String, Object> input, AuthUser user) {
         requireAction("member", "update", user); requireProjectAccess(projectId, user, true); ensureMember(projectId, memberId, user.tenantId());
-        if (input.containsKey("status")) jdbc.update("UPDATE pm_project_member SET status = ? WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", optionalLong(input.get("status"), 1), memberId, projectId, user.tenantId());
+        if (input.containsKey("status")) {
+            long status = optionalLong(input.get("status"), 1);
+            if (status == 0) memberRemovalGuard.requireNoPendingTasks(user.tenantId(), projectId, memberUserId(memberId, projectId, user.tenantId()));
+            jdbc.update("UPDATE pm_project_member SET status = ? WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", status, memberId, projectId, user.tenantId());
+        }
         if (input.containsKey("org_id")) { Long orgId = nullableLong(input.get("org_id")); validateProjectOrganization(orgId, projectId, user.tenantId()); jdbc.update("UPDATE pm_project_member SET org_id = ? WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", orgId, memberId, projectId, user.tenantId()); }
         if (input.containsKey("role_ids")) saveMemberRoles(memberId, projectId, ids(input.get("role_ids")), user.tenantId());
         audit(user, "project:member:update", memberId); return member(memberId, user.tenantId());
@@ -730,8 +842,15 @@ public class ProjectService {
         Long memberUserId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Long.class, memberId, projectId, user.tenantId());
         Long ownerId = jdbc.queryForObject("SELECT owner_id FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Long.class, projectId, user.tenantId());
         if (memberUserId != null && memberUserId.equals(ownerId)) throw badRequest("项目负责人不能移出项目");
+        if (memberUserId != null) memberRemovalGuard.requireNoPendingTasks(user.tenantId(), projectId, memberUserId);
         jdbc.update("UPDATE pm_project_member SET deleted = 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", memberId, projectId, user.tenantId());
         audit(user, "project:member:delete", memberId);
+    }
+
+    private long memberUserId(long memberId, long projectId, long tenantId) {
+        Long userId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Long.class, memberId, projectId, tenantId);
+        if (userId == null || userId <= 0) throw badRequest("项目成员不存在");
+        return userId;
     }
 
     public List<Map<String, Object>> roles(long projectId, AuthUser user) {
@@ -775,17 +894,69 @@ public class ProjectService {
 
      private Map<String, Object> project(long id, long tenantId) { try { return jdbc.queryForMap("SELECT id, project_code, project_name, description, status, plan_number_rule, child_plan_number_rule, risk_number_rule, next_plan_sequence, next_risk_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("项目不存在"); } }
      private Map<String, Object> projectForUpdate(long id, long tenantId) { try { return jdbc.queryForMap("SELECT id, project_code, plan_number_rule, child_plan_number_rule, risk_number_rule, next_plan_sequence, next_risk_sequence FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0 FOR UPDATE", id, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("项目不存在"); } }
+    private List<Map<String, Object>> projectStages(long projectId, long tenantId) {
+        ensureDefaultStages(projectId, tenantId);
+        return jdbc.queryForList("SELECT s.id, s.project_id, s.stage_code, s.stage_code AS phase, s.stage_name, s.stage_name AS phase_name, s.sort_no, s.status, s.created_at, s.updated_at, CASE WHEN EXISTS (SELECT 1 FROM pm_project_plan p WHERE p.project_id = s.project_id AND p.tenant_id = s.tenant_id AND p.phase = s.stage_code AND p.parent_id = 0 AND p.deleted = 0) THEN 1 ELSE 0 END AS has_master_plans FROM pm_project_stage s WHERE s.project_id = ? AND s.tenant_id = ? AND s.status = 1 AND s.deleted = 0 ORDER BY s.sort_no, s.id", projectId, tenantId).stream().map(row -> {
+            Map<String, Object> copy = new LinkedHashMap<>(row);
+            boolean locked = optionalLong(copy.get("has_master_plans"), 0) > 0;
+            copy.put("locked", locked);
+            copy.put("locked_reason", locked ? "该阶段已有主计划，不能编辑或删除" : null);
+            return copy;
+        }).toList();
+    }
+    private Map<String, Object> projectStage(long stageId, long projectId, long tenantId) {
+        List<Map<String, Object>> rows = projectStages(projectId, tenantId).stream().filter(row -> optionalLong(row.get("id"), 0) == stageId).toList();
+        if (rows.isEmpty()) throw badRequest("项目阶段不存在");
+        return rows.get(0);
+    }
+    private Map<String, Object> projectStageForUpdate(long projectId, long stageId, long tenantId) {
+        try {
+            return jdbc.queryForMap("SELECT id, project_id, stage_code, stage_name, sort_no FROM pm_project_stage WHERE id = ? AND project_id = ? AND tenant_id = ? AND status = 1 AND deleted = 0 FOR UPDATE", stageId, projectId, tenantId);
+        } catch (EmptyResultDataAccessException exception) {
+            throw badRequest("项目阶段不存在");
+        }
+    }
+    private void ensureStageHasNoMasterPlans(long projectId, long stageId, long tenantId) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project_plan p JOIN pm_project_stage s ON s.project_id = p.project_id AND s.tenant_id = p.tenant_id AND s.stage_code = p.phase WHERE s.id = ? AND s.project_id = ? AND s.tenant_id = ? AND p.parent_id = 0 AND p.deleted = 0", Integer.class, stageId, projectId, tenantId);
+        if (count != null && count > 0) throw badRequest("该阶段已有主计划，不能编辑或删除");
+    }
+    private void initializeDefaultStages(long projectId, long tenantId) {
+        for (int index = 0; index < DEFAULT_PROJECT_STAGES.size(); index++) {
+            String[] stage = DEFAULT_PROJECT_STAGES.get(index);
+            jdbc.update("INSERT INTO pm_project_stage (id, tenant_id, project_id, stage_code, stage_name, sort_no) VALUES (?, ?, ?, ?, ?, ?)", nextId(), tenantId, projectId, stage[0], stage[1], index);
+        }
+    }
+    private void ensureDefaultStages(long projectId, long tenantId) {
+        for (int index = 0; index < DEFAULT_PROJECT_STAGES.size(); index++) {
+            String[] stage = DEFAULT_PROJECT_STAGES.get(index);
+            jdbc.update("INSERT IGNORE INTO pm_project_stage (id, tenant_id, project_id, stage_code, stage_name, sort_no) VALUES (?, ?, ?, ?, ?, ?)", nextId(), tenantId, projectId, stage[0], stage[1], index);
+        }
+    }
+    private String defaultProjectStageCode(long projectId, long tenantId) {
+        List<Map<String, Object>> stages = projectStages(projectId, tenantId);
+        // 兼容 V83 尚未应用的旧实例；后续的阶段有效性校验仍会拒绝无效编码。
+        if (stages.isEmpty()) return "PLAN_INITIATION";
+        return String.valueOf(stages.get(0).get("stage_code"));
+    }
+    private void validateProjectStage(long projectId, String value, long tenantId, boolean required) {
+        if (value == null || value.isBlank()) {
+            if (required) throw badRequest("阶段不能为空");
+            return;
+        }
+        Integer valid = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project_stage WHERE project_id = ? AND tenant_id = ? AND stage_code = ? AND status = 1 AND deleted = 0", Integer.class, projectId, tenantId, value);
+        if (valid == null || valid == 0) throw badRequest("项目阶段无效或已删除");
+    }
     private Map<String, Object> parentPlanForUpdate(long planId, long projectId, long tenantId) { try { return jdbc.queryForMap("SELECT id, group_id, plan_code, phase, next_child_plan_sequence FROM pm_project_plan WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0 FOR UPDATE", planId, projectId, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("父计划不存在"); } }
-    private Map<String, Object> plan(long id, long projectId, long tenantId) { Map<String, Object> row = jdbc.queryForMap("SELECT p.id, p.project_id, p.group_id, g.group_name, p.parent_id, p.plan_name, p.plan_code, p.description, p.owner_id, u.display_name AS owner_name, p.planned_start_date, p.planned_end_date, p.progress, p.status, p.phase, p.sort_no, p.created_at, p.updated_at FROM pm_project_plan p LEFT JOIN pm_project_plan_group g ON g.id = p.group_id AND g.project_id = p.project_id AND g.tenant_id = p.tenant_id AND g.deleted = 0 LEFT JOIN sys_user u ON u.id = p.owner_id AND u.tenant_id = p.tenant_id WHERE p.id = ? AND p.project_id = ? AND p.tenant_id = ? AND p.deleted = 0", id, projectId, tenantId); row.put("stage_plan_code", row.get("group_name")); decoratePlanOrganizations(row, tenantId); return row; }
+     private Map<String, Object> plan(long id, long projectId, long tenantId) { Map<String, Object> row = jdbc.queryForMap("SELECT p.id, p.project_id, p.group_id, g.group_name, p.parent_id, p.plan_name, p.plan_code, p.description, p.owner_id, u.display_name AS owner_name, p.planned_start_date, p.planned_end_date, p.progress, p.status, p.phase, s.stage_name AS phase_name, p.sort_no, p.created_at, p.updated_at FROM pm_project_plan p LEFT JOIN pm_project_plan_group g ON g.id = p.group_id AND g.project_id = p.project_id AND g.tenant_id = p.tenant_id AND g.deleted = 0 LEFT JOIN pm_project_stage s ON s.project_id = p.project_id AND s.tenant_id = p.tenant_id AND s.stage_code = p.phase LEFT JOIN sys_user u ON u.id = p.owner_id AND u.tenant_id = p.tenant_id WHERE p.id = ? AND p.project_id = ? AND p.tenant_id = ? AND p.deleted = 0", id, projectId, tenantId); row.put("stage_plan_code", row.get("group_name")); decoratePlanOrganizations(row, tenantId); return row; }
     private Map<String, Object> planForUpdate(long id, long projectId, long tenantId) { try { return jdbc.queryForMap("SELECT id, parent_id, group_id FROM pm_project_plan WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0 FOR UPDATE", id, projectId, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("计划不存在"); } }
-    private Map<String, Object> planGroup(long id, long projectId, long tenantId) { try { Map<String, Object> row = jdbc.queryForMap("SELECT id, project_id, phase, group_name, CASE WHEN color_key IN ('brand', 'accent', 'success', 'warning', 'danger', 'muted') THEN color_key ELSE 'brand' END AS color_key, description, sort_no, created_at, updated_at FROM pm_project_plan_group WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", id, projectId, tenantId); row.put("stage_plan_code", row.get("group_name")); row.put("phase_name", parameterLabel("PLAN_PHASE", "计划阶段", row.get("phase"), tenantId)); return row; } catch (EmptyResultDataAccessException exception) { throw badRequest("阶段计划不存在"); } }
+    private Map<String, Object> planGroup(long id, long projectId, long tenantId) { try { Map<String, Object> row = jdbc.queryForMap("SELECT g.id, g.project_id, g.phase, g.group_name, s.stage_name AS phase_name, CASE WHEN g.color_key IN ('brand', 'accent', 'success', 'warning', 'danger', 'muted') THEN g.color_key ELSE 'brand' END AS color_key, g.description, g.sort_no, g.created_at, g.updated_at FROM pm_project_plan_group g LEFT JOIN pm_project_stage s ON s.project_id = g.project_id AND s.tenant_id = g.tenant_id AND s.stage_code = g.phase WHERE g.id = ? AND g.project_id = ? AND g.tenant_id = ? AND g.deleted = 0", id, projectId, tenantId); row.put("stage_plan_code", row.get("group_name")); row.put("phase_name", row.get("phase_name") == null ? row.get("phase") : row.get("phase_name")); return row; } catch (EmptyResultDataAccessException exception) { throw badRequest("阶段计划不存在"); } }
     private void ensureGroup(long projectId, long groupId, long tenantId) { Integer valid = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project_plan_group WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Integer.class, groupId, projectId, tenantId); if (valid == null || valid == 0) throw badRequest("阶段计划不存在"); }
     private void ensureGroupNameAvailable(long projectId, String phase, String groupName, long excludedId, long tenantId) { Integer duplicate = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project_plan_group WHERE project_id = ? AND tenant_id = ? AND phase = ? AND group_name = ? AND id <> ? AND deleted = 0", Integer.class, projectId, tenantId, phase, groupName, excludedId); if (duplicate != null && duplicate > 0) throw badRequest("该阶段下已存在重复阶段计划编号"); }
     private String nextStagePlanCode(long projectId, String phase, long tenantId) {
-        List<Map<String, Object>> stages = phaseOptions("PLAN_PHASE", "计划阶段", tenantId);
+        List<Map<String, Object>> stages = projectStages(projectId, tenantId);
         int stageSequence = 0;
         for (int index = 0; index < stages.size(); index++) {
-            if (phase.equals(String.valueOf(stages.get(index).get("value")))) {
+            if (phase.equals(String.valueOf(stages.get(index).get("stage_code")))) {
                 stageSequence = index + 1;
                 break;
             }
@@ -825,7 +996,8 @@ public class ProjectService {
     private AttachmentItem withUploaderName(AttachmentItem item, long tenantId) {
         String name = jdbc.query("SELECT display_name FROM sys_user WHERE id = ? AND tenant_id = ? AND deleted = 0",
                 rs -> rs.next() ? rs.getString(1) : null, item.uploaderId(), tenantId);
-        return new AttachmentItem(item.id(), item.fileName(), item.contentType(), item.size(), item.uploaderId(), name, item.createdAt());
+        return new AttachmentItem(item.id(), item.fileName(), item.contentType(), item.size(), item.uploaderId(), name,
+                item.createdAt(), item.categoryId(), item.categoryName());
     }
 
     public Map<String, Object> options(AuthUser user) {
@@ -890,7 +1062,7 @@ public class ProjectService {
     private String phaseCategoryName(String categoryCode) { return "PLAN_PHASE".equals(categoryCode) ? "计划阶段" : "项目阶段"; }
     private Date dateValue(Object value) { if (value == null) return null; if (value instanceof Date date) return date; return date(value); }
     private void savePlanOrganizations(long planId, Map<String, Object> input, long tenantId) { jdbc.update("DELETE FROM pm_project_plan_org WHERE plan_id = ? AND tenant_id = ?", planId, tenantId); long leadId = optionalLong(input.get("lead_org_id"), 0); if (leadId > 0) { validateOrganization(leadId, tenantId); jdbc.update("INSERT INTO pm_project_plan_org (plan_id, org_id, party_type, tenant_id) VALUES (?, ?, 'LEAD', ?)", planId, leadId, tenantId); } for (Long orgId : ids(input.get("cooperating_org_ids"))) { validateOrganization(orgId, tenantId); jdbc.update("INSERT INTO pm_project_plan_org (plan_id, org_id, party_type, tenant_id) VALUES (?, ?, 'COOPERATING', ?)", planId, orgId, tenantId); } }
-    private void decoratePlanOrganizations(Map<String, Object> row, long tenantId) { long planId = ((Number) row.get("id")).longValue(); List<Map<String, Object>> parties = jdbc.queryForList("SELECT po.org_id, po.party_type, o.org_name FROM pm_project_plan_org po JOIN sys_org o ON o.id = po.org_id AND o.tenant_id = po.tenant_id AND o.deleted = 0 WHERE po.plan_id = ? AND po.tenant_id = ? ORDER BY po.party_type, po.org_id", planId, tenantId); row.put("lead_org_id", parties.stream().filter(item -> "LEAD".equals(item.get("party_type"))).map(item -> item.get("org_id")).findFirst().orElse(null)); row.put("lead_org_name", parties.stream().filter(item -> "LEAD".equals(item.get("party_type"))).map(item -> item.get("org_name")).findFirst().orElse(null)); row.put("cooperating_org_ids", parties.stream().filter(item -> "COOPERATING".equals(item.get("party_type"))).map(item -> item.get("org_id")).toList()); row.put("cooperating_org_names", parties.stream().filter(item -> "COOPERATING".equals(item.get("party_type"))).map(item -> item.get("org_name")).toList()); row.put("phase_name", parameterLabel("PLAN_PHASE", "计划阶段", row.get("phase"), tenantId)); }
+    private void decoratePlanOrganizations(Map<String, Object> row, long tenantId) { long planId = ((Number) row.get("id")).longValue(); List<Map<String, Object>> parties = jdbc.queryForList("SELECT po.org_id, po.party_type, o.org_name FROM pm_project_plan_org po JOIN sys_org o ON o.id = po.org_id AND o.tenant_id = po.tenant_id AND o.deleted = 0 WHERE po.plan_id = ? AND po.tenant_id = ? ORDER BY po.party_type, po.org_id", planId, tenantId); row.put("lead_org_id", parties.stream().filter(item -> "LEAD".equals(item.get("party_type"))).map(item -> item.get("org_id")).findFirst().orElse(null)); row.put("lead_org_name", parties.stream().filter(item -> "LEAD".equals(item.get("party_type"))).map(item -> item.get("org_name")).findFirst().orElse(null)); row.put("cooperating_org_ids", parties.stream().filter(item -> "COOPERATING".equals(item.get("party_type"))).map(item -> item.get("org_id")).toList()); row.put("cooperating_org_names", parties.stream().filter(item -> "COOPERATING".equals(item.get("party_type"))).map(item -> item.get("org_name")).toList()); if (row.get("phase_name") == null) row.put("phase_name", row.get("phase")); }
     private void validateOrganization(long orgId, long tenantId) { Integer valid = jdbc.queryForObject("SELECT COUNT(*) FROM sys_org WHERE id = ? AND tenant_id = ? AND status = 1 AND deleted = 0", Integer.class, orgId, tenantId); if (valid == null || valid == 0) throw badRequest("组织不存在或已停用"); }
     private void ensurePlan(long projectId, long planId, long tenantId) { validatePlanParent(projectId, planId, tenantId); }
     private void deletePlanTree(long projectId, long planId, long tenantId) {

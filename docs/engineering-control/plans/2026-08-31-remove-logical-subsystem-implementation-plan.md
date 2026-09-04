@@ -16,7 +16,7 @@
 全局约束：
 
 - 仅修改 `REQ-20260831-001-remove-logical-subsystem/codex-task-scope.yaml` 的 `writable_paths` 覆盖文件。
-- Flyway 只追加 `V123__remove_logical_subsystem_model.sql`，不修改历史迁移。
+- Flyway 只追加 `V147__remove_logical_subsystem_model.sql`，不修改历史迁移。
 - 不触碰生产系统、真实数据、密钥、平台字典管理页面、动态表单元数据或其他业务模块私有表。
 - 逻辑接口删除是有意破坏性变更；部署单元、资源申请、环境实例、网络访问和搭建计划必须继续以 ACTIVE 物理子系统作为引用根。
 - 直接物理 CRUD 仍保持需要工单，不恢复绕过审批的主数据写入。
@@ -25,7 +25,7 @@
 
 | 路径 | 状态 | 职责 |
 | --- | --- | --- |
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V123__remove_logical_subsystem_model.sql` | candidate-new | 迁移物理主表和工单草稿表，删除逻辑结构，种子业务组件字典分类。 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V147__remove_logical_subsystem_model.sql` | candidate-new | 迁移物理主表和工单草稿表，删除逻辑结构，种子业务组件字典分类。 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/model/*Physical*` | existing | 承载物理主模型、查询、命令和选项 DTO。 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java` | existing | 物理主表分页、详情、唯一性和写入 SQL。 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java` | existing | 物理查询视图、权限、租户、字典校验和工单入口提示。 |
@@ -72,7 +72,7 @@ T1 数据迁移和数据契约 -> T2 后端物理主模型 -> T3 变更工单发
 
 #### 文件边界与接口
 
-允许写入 `V123__remove_logical_subsystem_model.sql`、迁移测试和 mock 数据。迁移必须先回填物理逻辑文本，再删除逻辑外键、逻辑草稿和编号保留结构。
+允许写入 `V147__remove_logical_subsystem_model.sql`、迁移测试和 mock 数据。迁移必须先回填物理逻辑文本，再删除逻辑外键、逻辑草稿和编号保留结构。
 
 #### 操作步骤、命令和预期信号
 

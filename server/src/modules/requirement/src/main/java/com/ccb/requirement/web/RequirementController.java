@@ -145,21 +145,21 @@ public class RequirementController {
     }
 
     @PutMapping("/differences/{id}")
-    @PreAuthorize("hasAuthority('requirement:project:update')")
+    @PreAuthorize("hasAuthority('requirement:access')")
     public ApiResponse<Map<String, Object>> updateDifference(@PathVariable long id, @RequestBody Map<String, Object> body,
                                                              @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(differenceService.update(id, body, user), TraceId.getOrCreate());
     }
 
     @DeleteMapping("/differences/{id}")
-    @PreAuthorize("hasAuthority('requirement:project:update')")
+    @PreAuthorize("hasAuthority('requirement:access')")
     public ApiResponse<Void> deleteDifference(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         differenceService.delete(id, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
     @PostMapping("/differences/{id}/submit-review")
-    @PreAuthorize("hasAuthority('requirement:project:update')")
+    @PreAuthorize("hasAuthority('requirement:access')")
     public ApiResponse<Map<String, Object>> submitReview(@PathVariable long id,
                                                          @RequestBody Map<String, Object> body,
                                                          @AuthenticationPrincipal AuthUser user) {
@@ -167,13 +167,42 @@ public class RequirementController {
         List<Number> raw = (List<Number>) body.get("approverIds");
         List<Long> approverIds = raw == null ? List.of()
                 : raw.stream().map(Number::longValue).toList();
-        return ApiResponse.success(differenceService.submitReview(id, approverIds, user), TraceId.getOrCreate());
+        String reportDocName = body.get("reportDocName") == null ? null : String.valueOf(body.get("reportDocName"));
+        return ApiResponse.success(differenceService.submitReview(id, approverIds, reportDocName, user),
+                TraceId.getOrCreate());
+    }
+
+    @PostMapping("/differences/{id}/cancel-review")
+    @PreAuthorize("hasAuthority('requirement:access')")
+    public ApiResponse<Map<String, Object>> cancelReview(@PathVariable long id,
+                                                         @RequestBody(required = false) Map<String, Object> body,
+                                                         @AuthenticationPrincipal AuthUser user) {
+        String reason = body == null ? null : (String) body.get("reason");
+        return ApiResponse.success(differenceService.cancelReview(id, reason, user), TraceId.getOrCreate());
+    }
+
+    @PostMapping("/differences/{id}/transfer")
+    @PreAuthorize("hasAuthority('requirement:access')")
+    public ApiResponse<Map<String, Object>> transferDifference(@PathVariable long id,
+                                                               @RequestBody Map<String, Object> body,
+                                                               @AuthenticationPrincipal AuthUser user) {
+        Object raw = body.get("userId");
+        long userId = raw instanceof Number number ? number.longValue() : 0L;
+        String comment = body.get("comment") == null ? null : String.valueOf(body.get("comment"));
+        return ApiResponse.success(differenceService.transfer(id, userId, comment, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/reviewers")
     @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:update')")
     public ApiResponse<List<Map<String, Object>>> reviewers(@AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(differenceService.reviewers(user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/users")
+    @PreAuthorize("hasAuthority('requirement:access')")
+    public ApiResponse<List<Map<String, Object>>> users(@RequestParam(required = false) String keyword,
+                                                        @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(differenceService.userOptions(keyword, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/differences/{id}/changes")

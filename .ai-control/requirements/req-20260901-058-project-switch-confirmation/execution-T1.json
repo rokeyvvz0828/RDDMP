@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260901-058-project-switch-confirmation",
+  "task_id": "T1",
+  "phase": "controlling",
+  "recorded_at": "2026-09-01T10:05:00+08:00",
+  "status": "implemented",
+  "actual_changes": [
+    "在 AppLayout.vue 增加统一的 confirmProjectSwitch 处理器",
+    "桌面顶部、侧边布局头部和移动端抽屉三个项目选择器统一使用确认处理器",
+    "确认切换时先调用 projectContext.select 持久化项目，再执行 window.location.reload",
+    "取消或目标无效时重建选择器以恢复当前项目显示，确认期间禁用选择器避免重复操作"
+  ],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "result": "passed; vue-tsc and Vite production build succeeded"
+    },
+    {
+      "command": "git diff --check -- web/src/views/AppLayout.vue docs/requirements/REQ-20260901-058-project-switch-confirmation",
+      "result": "passed; no whitespace errors"
+    },
+    {
+      "command": "desktop and 390x844 browser verification",
+      "result": "passed; cancel preserved current project, confirm reloaded and retained target project"
+    }
+  ],
+  "constraints_checked": [
+    "仅修改 web/src/views/AppLayout.vue 和本需求元数据/证据",
+    "未修改 project-context Store、API、路由、权限、数据库或业务状态",
+    "复用现有 Element Plus ElMessageBox 和项目 Store select 能力",
+    "未覆盖工作区中已有的其他未提交改动"
+  ],
+  "disturbances": [
+    "首次前端构建受工作区沙箱写入限制失败，授权写入临时构建目录后成功",
+    "全仓 AI control layout 检查被既有历史需求账本格式问题阻塞"
+  ],
+  "open_items": []
+}

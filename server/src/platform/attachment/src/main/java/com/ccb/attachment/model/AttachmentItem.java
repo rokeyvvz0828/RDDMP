@@ -8,6 +8,12 @@ public record AttachmentItem(
         long size,
         long uploaderId,
         String uploaderName,
-        String createdAt
+        String createdAt,
+        Long categoryId,
+        String categoryName
 ) {
+    public AttachmentItem(long id, String fileName, String contentType, long size,
+                           long uploaderId, String uploaderName, String createdAt) {
+        this(id, fileName, contentType, size, uploaderId, uploaderName, createdAt, null, null);
+    }
 }

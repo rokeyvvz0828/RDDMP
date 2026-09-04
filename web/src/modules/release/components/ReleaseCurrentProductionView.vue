@@ -21,6 +21,8 @@ const loading = ref(false)
 const historyLoading = ref(false)
 const error = ref('')
 const historyOpen = ref(false)
+let loadRequestId = 0
+let historyRequestId = 0
 const artifactLabels = { IMAGE: '镜像', BINARY: '二进制', FILE: '文件介质' } as const
 const versionLabels = { REGULAR: '常规版本', URGENT: '紧急版本', EMERGENCY: '应急版本' } as const
 const searchOptions = computed<ReleaseSearchOption[]>(() => entries.value.map(item => ({
@@ -38,28 +40,50 @@ function artifactLabel(value: ProductionEntryDto['artifactType']) { return artif
 function versionLabel(value: ProductionEntryDto['versionType']) { return versionLabels[value] }
 function versionTone(value: ProductionEntryDto['versionType']) { return value === 'EMERGENCY' ? 'danger' : value === 'URGENT' ? 'warning' : 'info' }
 async function load() {
+  const requestId = ++loadRequestId
   loading.value = true
   error.value = ''
   try {
     await projectStore.initialize()
-    entries.value = (await getCurrentProductionVersions(projectStore.current?.ref)).data.data
+    const projectRef = projectStore.current?.ref
+    if (!projectRef) throw new Error('请选择项目后重试')
+    const response = await getCurrentProductionVersions(projectRef)
+    if (requestId !== loadRequestId || projectStore.currentRef !== projectRef) return
+    entries.value = response.data.data
     if (selectedSearchId.value !== undefined && !entries.value.some(item => item.id === selectedSearchId.value)) selectedSearchId.value = undefined
   } catch (requestError) {
+    if (requestId !== loadRequestId) return
     entries.value = []
     error.value = apiErrorMessage(requestError, '生产版本加载失败，请稍后重试')
-  } finally { loading.value = false }
+  } finally { if (requestId === loadRequestId) loading.value = false }
 }
 async function openHistory(item: ProductionEntryDto) {
+  const projectRef = projectStore.currentRef
+  const requestId = ++historyRequestId
   selected.value = item
   history.value = []
   historyOpen.value = true
   historyLoading.value = true
-  try { history.value = (await getProductionVersionHistoryByEntry(item.id)).data.data }
-  catch (requestError) { error.value = apiErrorMessage(requestError, '版本历史加载失败') }
-  finally { historyLoading.value = false }
+  try {
+    const response = await getProductionVersionHistoryByEntry(item.id)
+    if (requestId !== historyRequestId || projectStore.currentRef !== projectRef) return
+    history.value = response.data.data
+  } catch (requestError) {
+    if (requestId !== historyRequestId || projectStore.currentRef !== projectRef) return
+    error.value = apiErrorMessage(requestError, '版本历史加载失败')
+  } finally {
+    if (requestId === historyRequestId) historyLoading.value = false
+  }
 }
 onMounted(load)
 watch(() => projectStore.currentRef, () => {
+  loadRequestId += 1
+  historyRequestId += 1
+  entries.value = []
+  history.value = []
+  selected.value = null
+  historyOpen.value = false
+  error.value = ''
   selectedSearchId.value = undefined
   void load()
 })

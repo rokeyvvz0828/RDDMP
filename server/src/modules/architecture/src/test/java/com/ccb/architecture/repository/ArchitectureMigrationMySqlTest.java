@@ -88,8 +88,8 @@ class ArchitectureMigrationMySqlTest {
     }
 
     @Test
-    void migratesLegacyMqDeploymentUnitsFromV123ToV124() throws Exception {
-        assertTrue(flyway("123").migrate().success);
+    void migratesLegacyMqDeploymentUnitsFromV147ToV148() throws Exception {
+        assertTrue(flyway("147").migrate().success);
         try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
             execute(connection, "INSERT INTO arch_physical_subsystem "
                     + "(id,tenant_id,code,short_name,name,logical_subsystem_name,responsible_team_org_id,responsible_team_name_snapshot,status,row_version,created_by,updated_by) "
@@ -102,7 +102,7 @@ class ArchitectureMigrationMySqlTest {
                     + "VALUES (701,1,601,1,'消息服务','消息服务','MQ','AP',1)");
         }
 
-        var result = flyway("124").migrate();
+        var result = flyway("148").migrate();
         assertTrue(result.success);
         assertEquals(1, result.migrationsExecuted);
         try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {

@@ -28,8 +28,10 @@ public class WorkflowController {
     public ApiResponse<PageResult<Map<String, Object>>> definitions(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String projectRef,
+            @RequestParam(required = false) String scopeType,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.definitions(new PageQuery(page, size), user), TraceId.getOrCreate());
+        return ApiResponse.success(service.definitions(new PageQuery(page, size), projectRef, scopeType, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/definitions/{id}")
@@ -80,7 +82,15 @@ public class WorkflowController {
 
     @PostMapping("/definitions")
     public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, String> body, @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.createDefinition(body.get("code"), body.get("name"), body.getOrDefault("definitionJson", "{}"), user), TraceId.getOrCreate());
+        return ApiResponse.success(service.createDefinition(body.get("code"), body.get("name"),
+                body.getOrDefault("definitionJson", "{}"), body.getOrDefault("scopeType", "TEMPLATE"),
+                body.get("projectRef"), user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/project-options")
+    public ApiResponse<Map<String, Object>> projectOptions(@RequestParam String projectRef,
+                                                            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.projectOptions(projectRef, user), TraceId.getOrCreate());
     }
 
     @PutMapping("/definitions/{id}")
@@ -116,9 +126,10 @@ public class WorkflowController {
             @RequestParam(required = false) String starterKeyword,
             @RequestParam(required = false) String createdFrom,
             @RequestParam(required = false) String createdTo,
+            @RequestParam(required = false) String projectRef,
             @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.instances(new PageQuery(page, size), businessKey, definitionKeyword, status,
-                starterKeyword, createdFrom, createdTo, user), TraceId.getOrCreate());
+                starterKeyword, createdFrom, createdTo, projectRef, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/instances/{id}/timeline")
@@ -159,6 +170,14 @@ public class WorkflowController {
             @RequestParam(defaultValue = "20") long size,
             @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.done(new PageQuery(page, size), user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/submitted")
+    public ApiResponse<PageResult<Map<String, Object>>> submitted(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.submitted(new PageQuery(page, size), user), TraceId.getOrCreate());
     }
 
     @GetMapping("/tasks/{id}/context")

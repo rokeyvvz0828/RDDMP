@@ -79,7 +79,7 @@ class ArchitectureWorkflowIntegrationMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("123"))
+                .target(MigrationVersion.fromVersion("147"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
@@ -129,12 +129,15 @@ class ArchitectureWorkflowIntegrationMySqlTest {
         assertThat(jdbc.queryForList("SELECT menu_id FROM sys_role_menu "
                         + "WHERE tenant_id = 1 AND role_id = 110 AND menu_id IN (200, 201, 202, 203, 204) "
                         + "ORDER BY menu_id", Long.class))
-                .containsExactly(200L, 202L);
+                .isEmpty();
         assertThat(count("SELECT COUNT(*) FROM sys_role_menu role_menu "
                 + "JOIN sys_menu menu ON menu.id = role_menu.menu_id AND menu.tenant_id = role_menu.tenant_id "
                 + "WHERE role_menu.tenant_id = 1 AND role_menu.role_id = 110 "
                 + "AND role_menu.menu_id IN (200, 202) AND menu.permission_code = 'workflow:access'"))
-                .isEqualTo(2L);
+                .isZero();
+        assertThat(count("SELECT COUNT(*) FROM sys_role_permission "
+                + "WHERE tenant_id = 1 AND role_id = 110 AND permission_id = 2001"))
+                .isEqualTo(1L);
         assertThat(count("SELECT COUNT(*) FROM sys_user_role WHERE tenant_id = 1 AND user_id = 1 AND role_id = 110"))
                 .isEqualTo(1L);
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission "

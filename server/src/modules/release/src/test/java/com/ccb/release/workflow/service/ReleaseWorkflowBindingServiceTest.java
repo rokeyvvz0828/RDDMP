@@ -7,6 +7,8 @@ import com.ccb.release.workflow.model.ReleaseWorkflowBindingModels.Scene;
 import com.ccb.release.workflow.model.ReleaseWorkflowBindingModels.UpdateBindingRequest;
 import com.ccb.release.workflow.persistence.ReleaseWorkflowBindingStore;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowDefinitionCatalog;
 import com.ccb.workflow.integration.WorkflowDefinitionSummary;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,13 +34,17 @@ class ReleaseWorkflowBindingServiceTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "admin", "", "管理员", 1L, true);
     private ReleaseWorkflowBindingStore store;
     private WorkflowDefinitionCatalog catalog;
+    private ProjectAccessService projectAccessService;
     private ReleaseWorkflowBindingService service;
 
     @BeforeEach
     void setUp() {
         store = mock(ReleaseWorkflowBindingStore.class);
         catalog = mock(WorkflowDefinitionCatalog.class);
-        service = new ReleaseWorkflowBindingService(store, catalog);
+        projectAccessService = mock(ProjectAccessService.class);
+        when(projectAccessService.requireAccessible(any(), eq(USER))).thenAnswer(invocation ->
+                new ProjectAccess(1L, invocation.getArgument(0), "项目一"));
+        service = new ReleaseWorkflowBindingService(store, catalog, projectAccessService);
     }
 
     @Test
@@ -90,5 +96,15 @@ class ReleaseWorkflowBindingServiceTest {
                 () -> service.resolve("P-001", Scene.REGULAR, USER));
         assertFalse(invalid.getMessage().isBlank());
         assertEquals(ErrorCode.CONFLICT, invalid.code());
+    }
+
+    @Test
+    void rejectsForgedProjectNameBeforeWritingBinding() {
+        BusinessException error = assertThrows(BusinessException.class, () -> service.update(Scene.REGULAR,
+                new UpdateBindingRequest("P-001", "伪造项目名", null, 0L, "解绑"), USER));
+
+        assertEquals(ErrorCode.BAD_REQUEST, error.code());
+        verify(store, never()).insert(any());
+        verify(store, never()).update(any(), anyLong());
     }
 }

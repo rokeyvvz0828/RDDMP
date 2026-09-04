@@ -69,13 +69,46 @@ class RequirementImportServiceTest {
         assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_import_batch`")));
     }
 
-    private byte[] workbookBytes() throws Exception {
-        String[] headers = {
+    @Test
+    void previewAcceptsLegacyTerminologyHeaders() throws Exception {
+        String[] legacyHeaders = {
                 "序号", "事业群", "业务板块", "业务组", "需求编号", "分类", "名称", "涉及系统编号",
                 "金科做法", "差异类型", "蒙商作法", "差异描述", "蒙商分析部门", "蒙商分析人",
                 "金科分析人", "适配方式", "处理状态", "协同组", "解决方案", "是否专题",
                 "上升决策层级", "决策结论", "蒙商确认部门", "金科确认人"
         };
+        byte[] content = workbookBytes(legacyHeaders);
+        StubJdbcTemplate jdbc = adminJdbc();
+        RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
+        RequirementSecurityService security = new RequirementSecurityService(jdbc);
+        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
+            @Override
+            public long resolveSystemId(String systemCode, AuthUser user) {
+                return "W01812".equals(systemCode) ? 10L : 0L;
+            }
+        };
+        RequirementImportService service = new RequirementImportService(jdbc, security, systemService, changeLog, new ObjectMapper());
+        MockMultipartFile file = new MockMultipartFile("file", "diff-legacy.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", content);
+
+        Map<String, Object> report = service.preview("DIFF", 1L, file, ADMIN);
+
+        assertEquals(2, report.get("totalRows"));
+        assertEquals(1, report.get("successRows"));
+        assertEquals(1, report.get("errorRows"));
+    }
+
+    private byte[] workbookBytes() throws Exception {
+        String[] headers = {
+                "序号", "事业群", "业务板块", "业务组", "需求编号", "分类", "名称", "涉及系统编号",
+                "我方做法", "差异类型", "同业作法", "差异描述", "同业分析部门", "同业分析人",
+                "我方分析人", "适配方式", "处理状态", "协同组", "解决方案", "是否专题",
+                "上升决策层级", "决策结论", "同业确认部门", "我方确认人"
+        };
+        return workbookBytes(headers);
+    }
+
+    private byte[] workbookBytes(String[] headers) throws Exception {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("差异清单");
             Row header = sheet.createRow(0);

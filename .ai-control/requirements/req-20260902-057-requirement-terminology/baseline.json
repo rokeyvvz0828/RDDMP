@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260902-057-requirement-terminology",
+  "requirement_id": "REQ-20260902-057",
+  "revision": 1,
+  "objective": "需求管理模块所有用户可见「蒙商」替换为「同业」、「金科」替换为「我方」（含组合词），存量数据与列注释同步更新，字段标识符/列名/API 键保持不变",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "需求管理模块所有用户可见文案（前端标签/占位/表单、后端枚举、导入模板表头）必须使用「同业/我方」术语，不再出现「蒙商/金科」",
+      "acceptance": [
+        "rg 扫描 web/src/views/RequirementsView.vue、RequirementEnums.java、RequirementImportService.java 用户可见字符串中「蒙商|金科」为 0 命中",
+        "npm --prefix web run build 通过"
+      ],
+      "priority": "must",
+      "source": "用户 2026-09-02 直接指令",
+      "counterexample": ["页面仍显示「金科做法」或「蒙商作法」", "模板表头仍为「蒙商确认部门」"]
+    },
+    {
+      "id": "R2",
+      "statement": "差异类型与变更结论枚举值必须使用新术语，且与存量数据一致",
+      "acceptance": [
+        "DIFFERENCE_TYPES 为 无差异/我方有-同业无/我方有-同业手工/同业有-我方无/双方作法有差异",
+        "CHANGE_CONCLUSION_STATUSES 含 同业立项完成",
+        "新增迁移后存量行无旧枚举值"
+      ],
+      "priority": "must",
+      "source": "用户指令 + 需求基线",
+      "counterexample": ["下拉仍出现「金科有-蒙商无」", "数据库仍存「蒙商立项完成」"]
+    },
+    {
+      "id": "R3",
+      "statement": "演示数据与存量数据库数据/列注释必须使用新术语（含 req_system 归属「蒙商银行」→「同业银行」），通过追加式 V132 迁移实现",
+      "acceptance": [
+        "mock/mock-data.json 无旧词",
+        "V132 迁移包含 req_* 数据 UPDATE 与列注释 ALTER，且未修改历史脚本",
+        "迁移执行后查询无旧词（本地 MySQL 可用时验证）"
+      ],
+      "priority": "must",
+      "source": "用户指令 + 追加式迁移规约",
+      "counterexample": ["系统清单仍显示「蒙商银行」", "差异数据仍含「蒙商无分期入口」"]
+    },
+    {
+      "id": "R4",
+      "statement": "Excel 导入必须兼容新旧表头：新模板使用新表头，旧表头文件仍可导入",
+      "acceptance": [
+        "RequirementImportServiceTest 新表头用例通过",
+        "RequirementImportServiceTest 旧表头用例通过且成功解析字段"
+      ],
+      "priority": "must",
+      "source": "设计决策（兼容性）",
+      "counterexample": ["旧表头文件导入报「未识别到模板字段标题」"]
+    }
+  ],
+  "invariants": [
+    "字段标识符 monshang_*/jinke_*、数据库列名、接口 JSON 键不变",
+    "已发布 Flyway 脚本内容不变",
+    "历史文档（docs/original、原需求与设计文档）内容不变",
+    "Java 包名、模块边界与业务逻辑不变"
+  ],
+  "constraints": [
+    "只修改 codex-task-scope.yaml writable_paths 覆盖文件",
+    "新增迁移版本号 V132，追加式",
+    "机械替换：蒙商→同业、蒙商银行→同业银行、金科→我方"
+  ],
+  "non_goals": [
+    "不重命名字段标识符/列名/API 键",
+    "不修改历史文档",
+    "不新增业务功能或流程"
+  ],
+  "assumptions": [
+    {
+      "text": "机械替换满足业务口径（含组合词）",
+      "falsifier": "发现某处「蒙商/金科」替换后语义错误或影响业务判断"
+    },
+    {
+      "text": "旧 Excel 表头文件仍需支持导入",
+      "falsifier": "用户明确要求仅支持新表头"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "本地 MySQL 未启动，V132 迁移的实际执行验证能否在本次任务内完成",
+      "impact": "数据迁移运行证据缺失，需记录为待补验",
+      "owner": "zbx"
+    }
+  ],
+  "decisions": [
+    {
+      "question": "内部字段标识符（monshang_*/jinke_*）是否同步重命名",
+      "options": ["A. 不改标识符（推荐）", "B. 重命名为 peer_*/our_*（破坏性）"],
+      "blocking": false,
+      "decision": "A",
+      "source": "用户 2026-09-02 确认"
+    }
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "运行面文件旧词命中数=0", "candidate_sensor": "rg 扫描"},
+    {"requirement_id": "R2", "observable": "枚举列表与迁移后数据无旧枚举值", "candidate_sensor": "rg 扫描 + 模块测试"},
+    {"requirement_id": "R3", "observable": "mock 无旧词、V132 存在且追加式", "candidate_sensor": "rg 扫描 + SQL 检查 + Flyway 校验"},
+    {"requirement_id": "R4", "observable": "新旧表头导入均成功", "candidate_sensor": "RequirementImportServiceTest"}
+  ],
+  "baseline_status": "ready"
+}

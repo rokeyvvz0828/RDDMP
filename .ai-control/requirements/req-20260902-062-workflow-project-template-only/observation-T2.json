@@ -1,0 +1,42 @@
+{
+  "sample_label": "T2 工作流管理与运行时契约采样",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "WorkflowPlatformRetirementTest 与 WorkflowTemplateScopeTest 管理范围断言",
+      "result": "pass",
+      "raw_evidence": "PLATFORM 列表、创建、详情和生命周期管理请求均被隐藏或拒绝，PROJECT/TEMPLATE 管理契约保持可用。",
+      "limitation": ["页面表达由 T3 浏览器传感器独立覆盖"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "WorkflowPlatformRetirementTest 的占位草稿和发布保护测试",
+      "result": "pass",
+      "raw_evidence": "项目占位草稿可创建和更新；含占位或失效成员/角色时发布失败；有效项目成员和项目角色配置可通过发布校验。",
+      "limitation": ["未连接外部组织目录；测试使用项目能力接口替身验证边界"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "WorkflowBusinessIntegrationServiceTest 的编码入口和显式定义 ID 入口断言",
+      "result": "pass",
+      "raw_evidence": "startByCode 与 startByDefinitionId 均优先选择当前项目同编码已发布 PROJECT；无项目发布版本时回退 PLATFORM；TEMPLATE 不参与运行选择。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "ccb-workflow 完整模块回归",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-workflow -am test：工作流 reactor 共 58 个测试，Failures 0、Errors 0、Skipped 0，BUILD SUCCESS。",
+      "limitation": ["全仓后端测试在 architecture 模块复现与本需求无关的既有迁移夹具失败；architecture 文件未在本需求中修改"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "全仓 mvn test 在 architecture 模块复现既有 MySQL 测试夹具失败，主要表现为测试架构缺少 default_network_zone_id 及旧工作流收件箱迁移断言不匹配；工作流模块测试独立全绿。"
+  ],
+  "coverage_gaps": ["未对范围外 architecture 测试夹具进行修复或重新解释"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,35 @@
+{
+  "topic": "req-20260831-057-test-management-configuration",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-01-test-management-announcement-design.md",
+  "objective": "使测试公告板的标题、页签与内容面板符合管理配置和交付示范中心的公共视觉语言。",
+  "requirements": [
+    {
+      "id": "AV1",
+      "statement": "公告板必须使用管理配置同款页面标题层级，且标题区不出现右侧操作。",
+      "acceptance": ["显示测试管理眉标和测试大类标题", "不显示标题说明、发布或刷新按钮"],
+      "source": "用户确认"
+    },
+    {
+      "id": "AV2",
+      "statement": "当前公告与公告管理必须使用交付示范中心式紧凑导航页签。",
+      "acceptance": ["主题色选中态", "桌面紧凑展示、手机局部横向滚动"],
+      "source": "用户确认"
+    },
+    {
+      "id": "AV3",
+      "statement": "两个公告视图必须使用平台语义主题变量和面板容器，不改变既有数据、权限和操作。",
+      "acceptance": ["浅色和深色主题均可读", "公告读写接口和按钮行为不变"],
+      "source": "用户确认"
+    }
+  ],
+  "selected_approach": "复用 UiPageHeader 与 delivery-module-nav 的结构和语义变量，在公告模块内保留专属类名完成最小样式适配。",
+  "alternatives": [
+    {"name": "保留默认 Element Plus 页签", "rejected_because": "无法满足用户指定的交付示范中心导航风格。"},
+    {"name": "修改平台全局页签组件", "rejected_because": "影响面超出公告板局部视觉改造。"}
+  ],
+  "non_goals": ["修改公告接口、权限、数据表或读写行为", "新增页面级项目选择器"],
+  "verification": ["前端构建", "桌面与 375px/390px/430px 视口检查", "浅色和深色主题检查", "当前公告与公告管理切换检查", "通用列表排序与列宽拖拽检查"],
+  "approval": {"status": "approved", "evidence": "用户回复：右侧不用放“发布公告/刷新”。其它没问题。", "confirmed_at": "2026-09-01T10:45:00+08:00"}
+}

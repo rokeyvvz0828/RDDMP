@@ -12,6 +12,8 @@ export interface SystemNotification {
   businessType: string
   businessKey: string
   actionPath: string | null
+  projectRef: string | null
+  projectName: string | null
   read: boolean
   readAt: string | null
   archivedAt: string | null

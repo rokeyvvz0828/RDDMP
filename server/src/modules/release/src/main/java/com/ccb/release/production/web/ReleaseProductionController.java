@@ -48,7 +48,7 @@ public class ReleaseProductionController {
 
     @GetMapping("/production-versions")
     @PreAuthorize("hasAnyAuthority('release:production-version:view','release:application:view','system:admin')")
-    public ApiResponse<List<Entry>> currentVersions(@RequestParam(required = false) String projectId,
+    public ApiResponse<List<Entry>> currentVersions(@RequestParam String projectId,
                                                     @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.currentVersions(projectId, user), TraceId.getOrCreate());
     }
@@ -56,8 +56,9 @@ public class ReleaseProductionController {
     @GetMapping("/production-versions/{subsystemCode}/{deliveryUnitCode}/history")
     @PreAuthorize("hasAnyAuthority('release:production-version:view','system:admin')")
     public ApiResponse<List<Entry>> history(@PathVariable String subsystemCode, @PathVariable String deliveryUnitCode,
+                                            @RequestParam String projectId,
                                             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.history(subsystemCode, deliveryUnitCode, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.history(projectId, subsystemCode, deliveryUnitCode, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/production-versions/entries/{entryId}/history")

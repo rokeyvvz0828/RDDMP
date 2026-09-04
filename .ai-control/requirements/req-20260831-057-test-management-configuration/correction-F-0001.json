@@ -1,0 +1,24 @@
+{
+  "feedback_id": "F-0001",
+  "status": "closed",
+  "source": "用户在本地配置页面报告 systems API 500",
+  "severity": "P1",
+  "requirement_ids": ["R2"],
+  "observed": {
+    "request": "GET /api/test-management/configuration/application-assembly/systems?projectId=910000000003001&page=1&size=100",
+    "actual": "500 Internal server error; JDBC Parameter index out of range (6 > number of parameters, which is 5)",
+    "expected": "返回当前租户物理子系统候选分页结果"
+  },
+  "root_cause": "systems() 为总数查询保留了重复 tenant 参数，分页 SQL 只包含一个候选表租户占位符，导致最终参数数多一位。",
+  "correction": {
+    "path": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java",
+    "change": "基础参数由 domain/project/tenant/tenant 改为 domain/project/tenant；总数查询从索引 2 取候选表条件参数。",
+    "scope_impact": "仅修正测试管理系统候选分页请求参数绑定。"
+  },
+  "verification": [
+    {"check": "管理员直连 API", "result": "pass", "evidence": "响应 code=0，total=3"},
+    {"check": "Vite 代理 API", "result": "pass", "evidence": "响应 code=0，total=3"},
+    {"check": "git diff --check", "result": "pass", "evidence": "exit code 0"}
+  ],
+  "recorded_at": "2026-08-31T14:13:00+00:00"
+}

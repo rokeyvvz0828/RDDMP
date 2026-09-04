@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Bell, CircleCheck, CircleCheckFilled, CircleCloseFilled, FolderAdd, InfoFilled, Refresh, RefreshLeft, Right, WarningFilled } from '@element-plus/icons-vue'
+import { Bell, CircleCheck, CircleCheckFilled, CircleCloseFilled, Delete, FolderAdd, InfoFilled, Refresh, RefreshLeft, Right, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { archiveNotification, archiveReadNotifications, getNotificationModules, getNotifications, getNotificationUnreadCount, markAllNotificationsRead, markNotificationRead, restoreNotification } from '../../api/notifications'
 import { apiErrorMessage } from '../../api/error'
@@ -44,6 +44,9 @@ interface UnreadRefreshResult {
 
 const hasMore = computed(() => items.value.length < total.value)
 const badgeValue = computed(() => unreadCount.value > 99 ? '99+' : unreadCount.value)
+const visibleItems = computed(() => activeView.value === 'ALL'
+  ? [...items.value].sort((left, right) => Number(left.read) - Number(right.read))
+  : items.value)
 const scopedUnreadCount = computed(() => {
   if (activeView.value === 'ARCHIVED' || !selectedModuleCode.value) return unreadCount.value
   return moduleOptions.value.find(item => item.moduleCode === selectedModuleCode.value)?.unreadCount ?? 0
@@ -234,14 +237,23 @@ async function readAll() {
 
 async function archiveOne(item: SystemNotification) {
   if (!item.read || archivingRead.value || pendingNotificationId.value !== null) return
+  try {
+    await ElMessageBox.confirm(
+      '删除后消息将移至“已归档”，仍可恢复。',
+      '删除消息',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
   pendingNotificationId.value = item.id
   suppressPollingDrawerRefresh++
   try {
     await archiveNotification(item.id)
     await Promise.all([loadNotifications(), loadModules(false), refreshUnreadCount()])
-    ElMessage.success('消息已归档')
+    ElMessage.success('消息已删除')
   } catch (error) {
-    ElMessage.error(apiErrorMessage(error, '消息归档失败'))
+    ElMessage.error(apiErrorMessage(error, '消息删除失败'))
   } finally {
     suppressPollingDrawerRefresh--
     pendingNotificationId.value = null
@@ -398,14 +410,22 @@ onBeforeUnmount(() => {
           :title="activeView === 'UNREAD' ? '没有未读消息' : activeView === 'ARCHIVED' ? '暂无已归档消息' : '暂无消息'"
           :description="activeView === 'UNREAD' ? '当前消息都已处理。' : activeView === 'ARCHIVED' ? '归档后的已读消息会显示在这里。' : '业务通知将在这里集中展示。'"
         />
-        <article v-for="item in items" v-else :key="item.id" class="notification-item" :class="[`is-${item.level.toLowerCase()}`, { 'is-unread': !item.read }]">
+        <article v-for="item in visibleItems" v-else :key="item.id" class="notification-item" :class="[`is-${item.level.toLowerCase()}`, { 'is-unread': !item.read }]">
           <button type="button" class="notification-item__main" @click="readNotification(item)">
             <span class="notification-item__icon"><el-icon :size="18"><component :is="levelMeta[item.level].icon" /></el-icon></span>
             <span class="notification-item__body">
-              <span class="notification-item__meta"><b>{{ item.moduleName }} · {{ item.sourceName }}</b><time>{{ formatTime(item.createdAt) }}</time></span>
+              <span class="notification-item__header">
+                <b>{{ item.moduleName }} · {{ item.sourceName }}</b>
+                <span class="notification-item__scope-tag" :class="{ 'is-global': !item.projectName }">
+                  {{ item.projectName ? `所属项目：${item.projectName}` : '所属范围：平台全局' }}
+                </span>
+              </span>
               <strong>{{ item.title }}</strong>
               <span class="notification-item__content">{{ item.content }}</span>
-              <small>{{ levelMeta[item.level].label }} · {{ item.businessKey }}<template v-if="item.archivedAt"> · 归档于 {{ formatTime(item.archivedAt) }}</template></small>
+              <span class="notification-item__footer">
+                <small>{{ levelMeta[item.level].label }} · {{ item.businessKey }}<template v-if="item.archivedAt"> · 归档于 {{ formatTime(item.archivedAt) }}</template></small>
+                <time>{{ formatTime(item.createdAt) }}</time>
+              </span>
             </span>
             <span v-if="item.actionPath" class="notification-item__action"><el-icon><Right /></el-icon></span>
           </button>
@@ -413,8 +433,8 @@ onBeforeUnmount(() => {
             <el-tooltip v-if="activeView === 'ARCHIVED'" content="恢复到全部消息" placement="left">
               <el-button text circle :icon="RefreshLeft" :loading="pendingNotificationId === item.id" :disabled="pendingNotificationId !== null && pendingNotificationId !== item.id" aria-label="恢复到全部消息" @click.stop="restoreOne(item)" />
             </el-tooltip>
-            <el-tooltip v-else-if="item.read" content="归档消息" placement="left">
-              <el-button text circle :icon="FolderAdd" :loading="pendingNotificationId === item.id" :disabled="pendingNotificationId !== null && pendingNotificationId !== item.id" aria-label="归档消息" @click.stop="archiveOne(item)" />
+            <el-tooltip v-else-if="item.read" content="删除消息" placement="left">
+              <el-button class="notification-item__delete" text circle :icon="Delete" :loading="pendingNotificationId === item.id" :disabled="pendingNotificationId !== null && pendingNotificationId !== item.id" aria-label="删除消息" @click.stop="archiveOne(item)" />
             </el-tooltip>
           </span>
         </article>

@@ -138,12 +138,12 @@ DELETE FROM sys_role_menu
 WHERE tenant_id = 1
   AND menu_id = 801;
 
-CREATE TEMPORARY TABLE tmp_arch_v123_remove_logical_guard (
+CREATE TEMPORARY TABLE tmp_arch_v147_remove_logical_guard (
     marker TINYINT NOT NULL,
-    CONSTRAINT chk_tmp_arch_v123_remove_logical_guard CHECK (marker = 0)
+    CONSTRAINT chk_tmp_arch_v147_remove_logical_guard CHECK (marker = 0)
 ) ENGINE=InnoDB;
 
-INSERT INTO tmp_arch_v123_remove_logical_guard (marker)
+INSERT INTO tmp_arch_v147_remove_logical_guard (marker)
 SELECT 1
 WHERE EXISTS (
           SELECT 1
@@ -212,4 +212,4 @@ WHERE EXISTS (
             AND deleted = 0
       );
 
-DROP TEMPORARY TABLE tmp_arch_v123_remove_logical_guard;
+DROP TEMPORARY TABLE tmp_arch_v147_remove_logical_guard;

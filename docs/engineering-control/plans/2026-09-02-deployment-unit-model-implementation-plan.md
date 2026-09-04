@@ -20,8 +20,8 @@
 ## 全局约束
 
 - 只修改 `codex-task-scope.yaml` 的 `writable_paths`；保护现有未跟踪的 T11 账本文件。
-- 开发前重新执行 `node scripts/check-development-entry.mjs --require-plugin`，并扫描 V124 是否仍为空闲；冲突时停止并修订 scope。
-- 只追加 `V124__refine_deployment_unit_model.sql`，不得修改 V1—V123。
+- 开发前重新执行 `node scripts/check-development-entry.mjs --require-plugin`，并扫描 V148 是否仍为空闲；冲突时停止并修订 scope。
+- 只追加 `V148__refine_deployment_unit_model.sql`，不得修改 V1—V147。
 - 不保留 MQ、PL、`shortName`、`relatedDeploymentUnitName`、`deploymentUnitType` 的新契约兼容入口。
 - 名称服务端统一大写并满足 `^[A-Z0-9]+_[A-Z0-9]{1,8}$`；标准后缀 AP/DB/WB 必须与 APPLICATION/DATABASE/WEB 一致。
 - 双向关系按 `(tenant_id, min(unitA,unitB), max(unitA,unitB))` 单行保存；拒绝自身、跨租户、非 ACTIVE 和不存在目标。
@@ -36,7 +36,7 @@
 
 | 路径 | 状态 | 职责与证据 |
 | --- | --- | --- |
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql` | candidate-new | 追加模型切换、开发数据规范化、约束、关系和关系历史结构；当前最高迁移为 V123。 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V148__refine_deployment_unit_model.sql` | candidate-new | 追加模型切换、开发数据规范化、约束、关系和关系历史结构；当前最高迁移为 V147。 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java` | existing | 部署单元枚举、主记录、版本、命令和查询类型。 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java` | existing | 主记录、版本和新关系/历史的 JdbcTemplate 读写。 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java` | existing | 名称规则、类型映射、关系事务、版本、生命周期和视图投影。 |
@@ -94,7 +94,7 @@ T1 后端/迁移原子切换
 
 **文件：**
 
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V148__refine_deployment_unit_model.sql`
 - 新建：`server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeploymentUnitControllerTest.java`
 - 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java`
 - 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java`
@@ -213,7 +213,7 @@ node scripts/check-flyway-migrations.mjs
 - [ ] **步骤 6：建立提交检查点**
 
 ```powershell
-git add server/src/modules/architecture server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql
+git add server/src/modules/architecture server/src/platform/infrastructure/src/main/resources/db/migration/V148__refine_deployment_unit_model.sql
 git commit -m "feat(architecture): refine deployment unit model"
 ```
 

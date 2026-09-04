@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ArrowDown, Brush, Camera, DataBoard, Expand, Fold, Lock, Menu, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, Brush, Camera, DataBoard, Expand, Fold, Lock, Menu, Refresh, SwitchButton } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import UiRouteMenuNode from '../components/ui/UiRouteMenuNode.vue'
@@ -36,6 +36,8 @@ const avatarSaving = ref(false)
 const avatarFile = ref<File | null>(null)
 const avatarPreview = ref<string | null>(null)
 const passwordFormRef = ref<FormInstance>()
+const projectSelectVersion = ref(0)
+const projectSwitching = ref(false)
 const passwordForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const passwordRules: FormRules = {
   oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
@@ -123,6 +125,38 @@ async function logout() {
   await auth.logout()
   router.push('/login')
 }
+async function confirmProjectSwitch(projectRef: string) {
+  if (!projectRef || projectRef === projectContext.currentRef || projectSwitching.value) return
+
+  const project = projectContext.projects.find(item => item.ref === projectRef)
+  if (!project) {
+    projectSelectVersion.value += 1
+    return
+  }
+
+  projectSwitching.value = true
+  try {
+    await ElMessageBox.confirm(
+      `切换到“${project.name}”后，当前页面将重新加载。是否继续？`,
+      '切换项目',
+      {
+        type: 'warning',
+        confirmButtonText: '确认切换',
+        cancelButtonText: '取消'
+      }
+    )
+
+    if (!projectContext.select(projectRef)) {
+      projectSelectVersion.value += 1
+      return
+    }
+    window.location.reload()
+  } catch {
+    projectSelectVersion.value += 1
+  } finally {
+    projectSwitching.value = false
+  }
+}
 function resetPasswordForm() {
   passwordForm.oldPassword = ''
   passwordForm.newPassword = ''
@@ -207,7 +241,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
         <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" />
       </el-menu>
       <el-button v-if="sideNavigationVisible && !mobileView" class="desktop-sidebar-trigger" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button>
-      <el-select class="project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" placeholder="选择项目" @change="projectContext.select"><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref" /></el-select>
+      <el-select :key="projectSelectVersion" class="project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" :disabled="projectSwitching" placeholder="选择项目" :no-data-text="projectContext.error || '暂无可用项目'" @change="confirmProjectSwitch"><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref" /><template #empty><div class="project-context-select__empty"><span>{{ projectContext.error || '暂无可用项目' }}</span><el-button v-if="projectContext.error" link type="primary" :loading="projectContext.loading" @click.stop="projectContext.retry"><el-icon><Refresh /></el-icon>重试</el-button></div></template></el-select>
       <div class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
     </header>
 
@@ -225,7 +259,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
       <el-container>
         <el-header v-if="!topNavigationVisible || mobileView" class="app-header">
           <div v-if="mobileNavigationVisible || sideNavigationVisible" class="header-left"><el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button><el-button v-else-if="sideNavigationVisible" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button><div v-if="mobileView" class="breadcrumb"><strong>{{ title }}</strong></div></div>
-          <el-select v-if="!topNavigationVisible" class="project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" placeholder="选择项目" @change="projectContext.select"><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref" /></el-select>
+          <el-select v-if="!topNavigationVisible" :key="projectSelectVersion" class="project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" :disabled="projectSwitching" placeholder="选择项目" :no-data-text="projectContext.error || '暂无可用项目'" @change="confirmProjectSwitch"><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref" /><template #empty><div class="project-context-select__empty"><span>{{ projectContext.error || '暂无可用项目' }}</span><el-button v-if="projectContext.error" link type="primary" :loading="projectContext.loading" @click.stop="projectContext.retry"><el-icon><Refresh /></el-icon>重试</el-button></div></template></el-select>
           <div v-if="!topNavigationVisible" class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
         </el-header>
         <UiTabs v-if="theme.tabsEnabled" class="app-route-tabs" :current-path="appTabPath" />
@@ -234,7 +268,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
     </el-container>
     <el-drawer v-if="mobileNavigationVisible" v-model="mobileMenuOpen" direction="ltr" size="280px" :with-header="false" class="mobile-menu-drawer">
       <div class="mobile-menu-drawer__header"><router-link to="/dashboard" class="app-logo" aria-label="工程交付平台工作台"><span class="brand-mark" aria-hidden="true">EP</span><span class="app-logo__text"><strong>工程交付平台</strong><small>ENGINEERING DELIVERY</small></span></router-link></div>
-      <el-select class="project-context-select mobile-project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" placeholder="选择项目" @change="projectContext.select"><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref" /></el-select>
+      <el-select :key="projectSelectVersion" class="project-context-select mobile-project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" :disabled="projectSwitching" placeholder="选择项目" :no-data-text="projectContext.error || '暂无可用项目'" @change="confirmProjectSwitch"><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref" /><template #empty><div class="project-context-select__empty"><span>{{ projectContext.error || '暂无可用项目' }}</span><el-button v-if="projectContext.error" link type="primary" :loading="projectContext.loading" @click.stop="projectContext.retry"><el-icon><Refresh /></el-icon>重试</el-button></div></template></el-select>
       <el-menu :default-active="route.path" router class="app-menu mobile-menu-drawer__menu" @select="mobileMenuOpen = false"><el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item><UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" /></el-menu>
     </el-drawer>
     <ThemeSettingsDrawer v-model="settingsOpen" />

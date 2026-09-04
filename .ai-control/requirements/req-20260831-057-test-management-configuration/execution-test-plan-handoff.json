@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-test-management-configuration",
+  "handoff_status": "approved",
+  "created_at": "2026-09-01T00:00:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "test-management-plan",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-01-test-management-plan-design.md",
+    "objective": "交付按项目、参测系统和专项节点归类的版本化测试方案管理。",
+    "users": ["测试经理及以上", "测试人员", "开发人员"],
+    "requirements": [
+      {"id":"TP1","statement":"方案按大类、项目与节点隔离并只展示参测系统。","acceptance":["三类节点树可读","未选项目不请求"],"priority":"must","source":"V1.6 模块3","counterexample":["未参测系统出现在系统级树"]},
+      {"id":"TP2","statement":"方案支持同名版本递增、当前方案、历史版本与整方案软删除。","acceptance":["V1 到 Vn","历史版本不可单删","删除后列表不可见"],"priority":"must","source":"V1.6 模块3","counterexample":["同名上传覆盖历史版本"]},
+      {"id":"TP3","statement":"方案只接受 docx/xlsx，支持公共预览与下载。","acceptance":["50MB/格式校验","xlsx 首 Sheet 多 Sheet 提示"],"priority":"must","source":"V1.6 模块3","counterexample":["doc/xls 被接受"]},
+      {"id":"TP4","statement":"写操作由服务端细粒度权限和审计保护。","acceptance":["无权限写入 403","审计可写"],"priority":"must","source":"V1.6 权限矩阵","counterexample":["仅前端隐藏维护按钮"]}
+    ],
+    "invariants":["不写项目、用户、物理子系统和平台附件表","平台附件与公共 UI 只读","所有写入绑定认证用户 tenant/domain/project"],
+    "constraints":["V125 仅追加","JDK17","Vue3/Element Plus","仅 docx/xlsx 且 50MB"],
+    "non_goals":["独立回收站页面","范围、案例、执行、缺陷、报告、统计模块"],
+    "selected_approach":{"name":"逻辑方案与版本分离","reason":"保证版本递增及整方案删除","alternatives":["每次上传独立记录","修改平台附件模块"]},
+    "architecture":{"boundary":{"inside":["测试管理方案数据、API、页面、附件策略"],"outside":["平台附件存储、公共 UI、项目与物理子系统主数据"]},"components":["TestPlanService","TestPlanController","TestPlanAttachmentPolicy","TestPlanPage"],"interfaces":["AttachmentGateway","AttachmentAccessPolicy","全局项目上下文"],"data_flows":["上传临时附件→服务端校验→绑定版本→列表/当前方案→预览下载"]},
+    "error_handling":["格式/大小拒绝","同名版本确认","无权限拒绝","xlsx 预览失败保留下载"],
+    "quality_attributes":{"security":["服务端 RBAC 与附件访问策略"],"performance":["服务端分页与索引"],"compatibility":["不改平台附件契约"],"operations":["审计与软删除"]},
+    "verification_strategy":["服务测试","迁移/治理","API 权限探针","前端构建","桌面/手机浏览器"],
+    "assumptions":[{"text":"已绑定附件的受控下载 URL 可供浏览器 xlsx 解析","basis":"现有附件下载接口","falsifier":"浏览器 fetch 被 CORS 或预签名策略拒绝"}],
+    "unknowns":[],"decisions":[],"risks":["预览服务可用性","迁移与权限种子"],
+    "approval":{"status":"approved","evidence":"用户回复：确认。开始实施。","confirmed_at":"2026-09-01T00:00:00+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision":1,
+    "human_document":"docs/engineering-control/plans/2026-09-01-test-management-plan-implementation-plan.md",
+    "plan_status":"ready",
+    "global_constraints":["仅当前 writable_paths","V125 追加","不改公共 UI/平台附件"],
+    "file_map":[
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V125__test_management_plan.sql","status":"candidate-new","responsibility":"方案数据和权限种子","evidence":"设计"},
+      {"path":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanService.java","status":"candidate-new","responsibility":"方案规则","evidence":"设计"},
+      {"path":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestPlanController.java","status":"candidate-new","responsibility":"HTTP 接口","evidence":"设计"},
+      {"path":"web/src/modules/test-management/plan/TestPlanPage.vue","status":"candidate-new","responsibility":"方案页面","evidence":"设计"}
+    ],
+    "tasks":[
+      {"id":"TP-T1","goal":"建立方案数据与版本规则","requirement_ids":["TP1","TP2","TP4"],"prerequisites":[],"input_facts":["tm_test_participating_system 保存参测状态","AttachmentGateway 公开可绑定附件"],"files":{"create":["server/src/platform/infrastructure/src/main/resources/db/migration/V125__test_management_plan.sql","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanService.java"],"modify":[],"test":["server/src/modules/test-management/src/test/java/com/ccb/testmanagement/plan/TestPlanServiceTest.java"]},"interfaces":{"consumes":["tm_test_participating_system","AttachmentGateway"],"produces":["方案树、版本、专项节点服务"]},"steps":[{"id":"TP-T1-S1","action":"编写版本和节点失败测试","command":"mvn -pl :ccb-test-management -am test -Dtest=TestPlanServiceTest","expected":"实现前失败","evidence":"测试输出"},{"id":"TP-T1-S2","action":"追加 V125 与服务","command":"node scripts/check-flyway-migrations.mjs","expected":"迁移规则通过","evidence":"命令退出码"},{"id":"TP-T1-S3","action":"运行目标测试","command":"JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am test -Dtest=TestPlanServiceTest","expected":"通过","evidence":"Surefire 输出"}],"acceptance_checks":["同名确认后递增","专项有方案不可删","跨项目拒绝"],"risks":["迁移顺序"],"rollback":"回退服务代码，保留 V125","stop_conditions":["需写平台表"],"escalation_conditions":["菜单权限冲突"]},
+      {"id":"TP-T2","goal":"提供受保护 API 与附件策略","requirement_ids":["TP1","TP2","TP3","TP4"],"prerequisites":["TP-T1"],"input_facts":["方案服务稳定","AttachmentAccessPolicy 是公开接口"],"files":{"create":["server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestPlanController.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanAttachmentPolicy.java"],"modify":["server/src/modules/test-management/src/test/java/com/ccb/testmanagement/plan/TestPlanServiceTest.java"],"test":[]},"interfaces":{"consumes":["TestPlanService","AttachmentAccessPolicy"],"produces":["/api/test-management/plans/{domain}","TEST_PLAN_VERSION 策略"]},"steps":[{"id":"TP-T2-S1","action":"补充权限与附件访问失败测试","command":"JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am test -Dtest=TestPlanServiceTest","expected":"实现前失败","evidence":"测试输出"},{"id":"TP-T2-S2","action":"实现控制器和策略","command":null,"expected":"接口受保护","evidence":"代码 diff"},{"id":"TP-T2-S3","action":"执行认证 API 冒烟","command":"curl authenticated local plan endpoints","expected":"管理员成功、无权写入403","evidence":"HTTP 状态"}],"acceptance_checks":["格式大小拒绝","删除后附件拒绝"],"risks":["策略注册"],"rollback":"回退 API 与策略","stop_conditions":["需改 attachment 公共契约"],"escalation_conditions":["策略冲突"]},
+      {"id":"TP-T3","goal":"交付方案页面与路由","requirement_ids":["TP1","TP2","TP3"],"prerequisites":["TP-T2"],"input_facts":["UiDataTable/UiFilePreview 可复用","xlsx 已安装"],"files":{"create":["web/src/modules/test-management/plan/TestPlanPage.vue","web/src/modules/test-management/plan/test-plan.css"],"modify":["web/src/modules/test-management/api.ts","web/src/router/index.ts"],"test":[]},"interfaces":{"consumes":["TP-T2 REST API","project context","attachment APIs"],"produces":["plans 专属页面"]},"steps":[{"id":"TP-T3-S1","action":"写 API DTO 和页面骨架","command":null,"expected":"方案树双 TAB 可渲染","evidence":"代码 diff"},{"id":"TP-T3-S2","action":"实现上传、历史与预览","command":null,"expected":"docx/xlsx 行为符合设计","evidence":"页面状态"},{"id":"TP-T3-S3","action":"构建前端","command":"npm --prefix web run build","expected":"通过","evidence":"退出码"}],"acceptance_checks":["无项目/空节点","同名确认","xlsx多Sheet提示"],"risks":["下载 URL 可读性"],"rollback":"回退专属路由","stop_conditions":["需改公共 UI"],"escalation_conditions":["浏览器不能读取受控下载 URL"]},
+      {"id":"TP-T4","goal":"进行端到端验收并记录证据","requirement_ids":["TP1","TP2","TP3","TP4"],"prerequisites":["TP-T1","TP-T2","TP-T3"],"input_facts":["前后端已启动","本地数据库可用"],"files":{"create":[],"modify":[".ai-control/requirements/req-20260831-057-test-management-configuration/execution-TP*.json",".ai-control/requirements/req-20260831-057-test-management-configuration/observation-TP*.json"],"test":[]},"interfaces":{"consumes":["完整方案模块"],"produces":["验收证据"]},"steps":[{"id":"TP-T4-S1","action":"运行测试和治理检查","command":"mvn -pl :ccb-test-management -am test; npm --prefix web run build; node scripts/check-flyway-migrations.mjs; node scripts/check-all-governance.mjs","expected":"实际结果记录","evidence":"退出码"},{"id":"TP-T4-S2","action":"运行浏览器和 API 路径","command":"本地管理员与无权限用户路径","expected":"正确隔离与权限拒绝","evidence":"截图、HTTP状态"}],"acceptance_checks":["桌面/手机","权限/隔离/预览"],"risks":["本地预览服务"],"rollback":"回退应用代码，保留数据","stop_conditions":["越权或跨项目读取"],"escalation_conditions":["环境阻塞预览"]}
+    ],
+    "dependency_edges":[{"from":"TP-T1","to":"TP-T2","reason":"API 依赖服务"},{"from":"TP-T2","to":"TP-T3","reason":"页面依赖稳定契约"},{"from":"TP-T3","to":"TP-T4","reason":"验收依赖完整路径"}],
+    "parallel_groups":[["TP-T1"],["TP-T2"],["TP-T3"],["TP-T4"]],
+    "integration_checks":[{"after_tasks":["TP-T4"],"command":"JDK17 Maven、Vite、Flyway、治理、API 与浏览器","expected":"实际证据完整"}],
+    "coverage":[{"requirement_id":"TP1","task_ids":["TP-T1","TP-T2","TP-T3","TP-T4"]},{"requirement_id":"TP2","task_ids":["TP-T1","TP-T2","TP-T3","TP-T4"]},{"requirement_id":"TP3","task_ids":["TP-T2","TP-T3","TP-T4"]},{"requirement_id":"TP4","task_ids":["TP-T1","TP-T2","TP-T4"]}],
+    "approval":{"status":"approved","evidence":"用户确认并要求开始实施；计划仅细化已确认设计。","confirmed_at":"2026-09-01T00:00:00+08:00"}
+  },
+  "control_seed":{"seed_status":"hypotheses-only","plant_boundary_candidates":["方案数据、服务、API、附件策略、页面"],"state_variable_candidates":["domain","project","node","plan","version","attachment","deleted"],"interface_candidates":["AttachmentGateway","AttachmentAccessPolicy","计划 REST API","project context"],"sensor_candidates":["JUnit","Flyway","Vite","HTTP","浏览器"],"actuator_candidates":["V125","TestPlanService","Controller","Vue 页面"],"disturbance_candidates":["参测系统为空","预览服务不可达","并行改动"],"delay_candidates":["Flyway 启动","预签名 URL","HMR"],"assumptions":[{"text":"xlsx 下载 URL 在浏览器可读取","basis":"现有附件下载接口","falsifier":"浏览器 fetch 失败"}]}
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260816-001-requirement-management-platform",
+  "task_id": "T2",
+  "status": "implemented-checks-passed",
+  "coverage": [
+    "存量需求（req_legacy_requirement）阶段字段按用户校正口径重组",
+    "需求状态及备注固定为每条数据最后两列",
+    "需求变更信息移出阶段字段，改为独立『需求变更』按钮 + 弹窗维护"
+  ],
+  "requirement_source": "用户 2026-08-25 指令：参考此前误差，按 6 阶段校正字段；需求状态及备注放最后两列；需求变更独立按钮弹窗",
+  "actual_changes": [
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/support/RequirementEnums.java：LEGACY_STAGE_REQUIRED_FIELDS 按新分组调整（PROPOSE 6 字段、DOCKING 增加 business_group、PROJECT 仅 finance_project_date、SOFT 承接软需文档/主责/协同/软需提交评审字段）",
+    "web/src/views/RequirementsView.vue：STAGE_FIELD_GROUPS 按用户口径重组（需求提出13字段/需求对接9字段/工作量评估1字段/立项1字段/软需9字段/投产3字段）",
+    "web/src/views/RequirementsView.vue：COMMON_FIELDS 收敛为需求状态+备注；列表列重排为『需求状态、备注』最后两列；新增独立『需求变更』按钮与弹窗（change_involved/change_info/change_review_conclusion/change_conclusion_status/change_remark），change_involved≠是时其余字段禁用",
+    "web/src/views/RequirementsView.vue：预览增加『需求变更』独立 tab；表单通用区标题改为『需求状态及备注』；移除不再展示的 seq_no/not_project_developed/unified_managed 残留默认值"
+  ],
+  "commands": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "result": "exit 0：Development entry check passed"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "result": "exit 0：vue-tsc --noEmit 与 vite build 成功，仅有既有 chunk 体积警告"
+    },
+    {
+      "command": "JAVA_HOME=.../temurin-17 mvn -pl :ccb-requirement -am test -Dtest='Requirement*Test' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false",
+      "result": "exit 0：RequirementBaselineServiceTest 2、RequirementDifferenceServiceTest 5、RequirementImportServiceTest 2、RequirementLegacyServiceTest 5，共 14 个测试全部通过"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "result": "Governance 16 模块、Skill、Development entry 通过；AI control layout 检查因其他历史任务账本问题失败（req-20260813-030/032、req-20260817-031、req-20260818-032、req-20260819-033/034/035 的 topic mismatch / 非法 JSON，与本任务无关的存量问题）"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260816-001-requirement-management-platform/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "result": "失败项均为本任务开始前已存在的未提交改动（server/src/platform/workflow/**、web/src/api/workflow.ts、DashboardView.vue、TaskCenterView.vue、V82/V83 迁移、public_capability_change.owner_approved=false）；本次修改的两个文件均在 writable_paths 内"
+    },
+    {
+      "command": "git diff --check",
+      "result": "exit 0"
+    }
+  ],
+  "not_executed": [
+    "mvn -pl :ccb-requirement -am test 全量：ccb-infrastructure 的 MockDataInitializerTest 因本机 Mockito inline mock maker 无法 self-attach（JDK26 与 JDK17 均复现）环境问题失败，与本次改动无关；已用 Requirement*Test 聚焦运行覆盖需求模块",
+    "mvn test 全量：同上环境问题",
+    "本地 MySQL/后端/前端启动与真实浏览器验收（桌面/375/390/430 视口）：未执行，待运行环境可用后补做"
+  ],
+  "unresolved_issues": [
+    "浏览器验收未执行，阶段字段展示、需求变更弹窗、最后两列布局需在真实页面复核",
+    "check-all-governance 的 AI control layout 失败来自其他历史任务账本，建议另立治理任务修复",
+    "check-codex-scope 的越界文件与 Owner 审批为既有任务遗留，不属于本项修改"
+  ]
+}

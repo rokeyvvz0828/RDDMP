@@ -61,7 +61,7 @@
 ## 架构边界与组件职责
 
 - `server/src/modules/architecture`：删除逻辑 CRUD 和逻辑选项服务路径，改造物理模型、工单草稿、发布事务、引用检查和下游查询。
-- `server/src/platform/infrastructure/.../db/migration/V123__remove_logical_subsystem_model.sql`：执行字段新增、数据回填、约束删除、逻辑结构删除和字典种子。
+- `server/src/platform/infrastructure/.../db/migration/V147__remove_logical_subsystem_model.sql`：执行字段新增、数据回填、约束删除、逻辑结构删除和字典种子。
 - `web/src/modules/architecture`：删除逻辑页面入口，改造物理页面、物理工单卡片、类型、API 和下游展示。
 - `mock/mock-data.json` 与 Mock 初始化测试：去除逻辑主数据，补充物理逻辑文本和业务组件编号。
 - `docs/integration/architecture-module-contract.md`：冻结新的物理主模型和被删除接口清单。

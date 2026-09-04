@@ -1,0 +1,9 @@
+{
+  "plan_status": "ready",
+  "tasks": [
+    {"id":"T1","goal":"迁移和后端三范围控制","requirement_ids":["R1","R2","R3","R4","R6"],"files":["V135","WorkflowService","WorkflowBusinessIntegrationService","validators","controller","tests"],"sensors":["S1","S2","S4"],"rollback":"回退 Java 并保留 V135"},
+    {"id":"T2","goal":"前端分区和模板实例化","requirement_ids":["R2","R4","R5","R7","R8"],"files":["workflow.ts","WorkflowView.vue","WorkflowNode.vue","WorkflowNodeInspector.vue"],"sensors":["S3","S4"],"rollback":"回退前端文件"}
+  ],
+  "dependency_edges": [{"from":"T1","to":"T2","reason":"后端范围契约先固定"}],
+  "stop_conditions": ["需要修改历史迁移", "模板必须参与运行时编译", "必须破坏现有业务启动 API"]
+}

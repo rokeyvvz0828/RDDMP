@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-release-project-scope",
+  "task_id": "T2",
+  "phase": "controlling",
+  "recorded_at": "2026-08-31T19:23:00+08:00",
+  "status": "implemented",
+  "actual_changes": [
+    "版本申请、提交、窗口、生产版本、统计和流程配置服务统一接入 ProjectAccessService",
+    "窗口、申请、生产版本和统计列表项目参数改为必填",
+    "实体读取和写入从数据库记录反查项目，创建请求使用项目服务返回的规范编码和名称",
+    "窗口关联、生产明细申请与窗口关联执行项目一致性校验",
+    "生产基线和历史过滤跨项目异常记录"
+  ],
+  "commands": [
+    {"command": "JAVA_HOME=OpenJDK17 mvn -pl :ccb-release -am test", "result": "passed; ccb-release 86 tests, 0 failures, 0 errors"},
+    {"command": "git diff --check -- server/src/modules/release server/src/platform/system governance/modules.yaml", "result": "passed"}
+  ],
+  "constraints_checked": [
+    "未修改数据库、审批状态机、工作流内部协议或附件平台",
+    "租户和用户身份只来自 AuthUser",
+    "实体项目只来自服务端记录，创建项目快照来自 ProjectAccess",
+    "未修改任务范围外的架构、安全、主题和迁移文件"
+  ],
+  "disturbances": [
+    "本机 Maven 默认 JDK 26 不兼容当前 Mockito，继续使用项目要求的 JDK 17"
+  ],
+  "open_items": []
+}

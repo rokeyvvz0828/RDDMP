@@ -1,0 +1,17 @@
+{
+  "sample_label": "T1 schema source and packaging sample",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id":"SC1","sensor":"S1 Flyway filename checker and infrastructure resource build","result":"pass","raw_evidence":"node scripts/check-flyway-migrations.mjs returned 0 for 119 migrations; Maven copied 120 infrastructure resources and completed successfully.","limitation":["local Flyway startup could not be sampled because an unrelated architecture module has a pre-existing AttachmentPort compile incompatibility when building ccb-boot."]},
+    {"requirement_id":"SC2","sensor":"S1 migration source and whitespace check","result":"pass","raw_evidence":"V126 contains separate tm_test_scope_directory and tm_test_case_directory tables, soft-delete fields and uniqueness/index definitions; git diff --check returned 0.","limitation":["DDL application has not yet been observed against local MySQL."]},
+    {"requirement_id":"SC5","sensor":"S1 migration source check","result":"pass","raw_evidence":"V126 inserts import/export actions for the eight existing scope/cases menu IDs and grants them to local administrator role 1.","limitation":["runtime Spring authorization probe awaits endpoint implementation."]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event":"Full ccb-boot package stopped in ccb-architecture before ccb-test-management/boot.","impact":"Cannot apply V126 through the standard local boot path in this sample.","classification":"disturbance","evidence":"ArchitectureDecisionService.java:458 and ArchitectureStandardService.java:146 call AttachmentPort.list with five arguments while the current interface requires six; Maven exit code 1."}
+  ],
+  "coverage_gaps": ["S2 local Flyway/schema application is deferred to final runtime sampling or an isolated boot artifact, because the full boot build has an unrelated upstream compile blocker."],
+  "error_counts": {"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status": "complete"
+}

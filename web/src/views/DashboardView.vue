@@ -23,8 +23,18 @@ let unsubscribePageActivation: (() => void) | undefined
 let taskRequestId = 0
 const currentHour = new Date().getHours()
 const greeting = computed(() => currentHour < 12 ? '早上好' : currentHour < 18 ? '下午好' : '晚上好')
-const projectInbox = computed(() => inbox.value.filter(item => !item.project_ref || item.project_ref === projectContext.currentRef))
-const projectDone = computed(() => done.value.filter(item => !item.project_ref || item.project_ref === projectContext.currentRef))
+// 项目关联过滤：需求模块(req_project)和系统模块(pm_project)是两套独立项目体系，project_ref 格式可能不兼容。
+// 兜底策略：currentRef 为空 OR task 无项目关联 OR project_ref 精确相等 OR project_name 匹配当前项目名，均保留显示。
+function matchesProject(item: { project_ref?: string | null; project_name?: string | null }): boolean {
+  if (!projectContext.currentRef) return true
+  if (!item.project_ref) return true
+  if (item.project_ref === projectContext.currentRef) return true
+  const currentName = projectContext.current?.name?.trim()
+  const itemName = item.project_name?.trim()
+  return !!currentName && !!itemName && currentName === itemName
+}
+const projectInbox = computed(() => inbox.value.filter(item => matchesProject(item)))
+const projectDone = computed(() => done.value.filter(item => matchesProject(item)))
 
 async function loadTasks() {
   const requestId = ++taskRequestId
@@ -119,7 +129,7 @@ onBeforeUnmount(() => {
     </section>
 
     <section class="dashboard-grid">
-      <el-card shadow="never" class="surface-card activity-card"><template #header><div class="card-heading"><div><span class="panel-kicker">系统状态</span><h3>平台状态</h3></div><span class="muted">实时</span></div></template><div class="signal-row"><span class="signal-icon blue"><Connection /></span><div><strong>认证服务</strong><p>当前登录会话有效</p></div><span class="signal-ok">在线</span></div><div class="signal-row"><span class="signal-icon green"><Calendar /></span><div><strong>项目上下文</strong><p>{{ projectContext.current?.shortName || '加载中' }}</p></div><span class="signal-ok">Mock</span></div></el-card>
+      <el-card shadow="never" class="surface-card activity-card"><template #header><div class="card-heading"><div><span class="panel-kicker">系统状态</span><h3>平台状态</h3></div><span class="muted">实时</span></div></template><div class="signal-row"><span class="signal-icon blue"><Connection /></span><div><strong>认证服务</strong><p>当前登录会话有效</p></div><span class="signal-ok">在线</span></div><div class="signal-row"><span class="signal-icon green"><Calendar /></span><div><strong>项目上下文</strong><p>{{ projectContext.current?.shortName || '加载中' }}</p></div><span class="signal-ok">已接入</span></div></el-card>
     </section>
   </div>
 </template>

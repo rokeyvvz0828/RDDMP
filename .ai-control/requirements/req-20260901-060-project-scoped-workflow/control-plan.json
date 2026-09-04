@@ -1,0 +1,83 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id":"T1",
+      "goal":"提供兼容迁移、项目目录桥接和成员待办守卫",
+      "requirement_ids":["R1","R2","R5","R6"],
+      "prerequisites":[],
+      "input_facts":["当前最新 Flyway 为 V133","项目表由 system 拥有","boot 已作为跨平台组合根","ProjectService 是成员停用和删除唯一写入口"],
+      "write_scope":["V134__project_scope_workflow.sql","workflow integration 项目契约","system capability 项目目录与移除守卫","boot 双向桥接","ProjectService 成员更新删除守卫","T1 测试"],
+      "invariants":["历史迁移不修改","workflow 与 system 无 Maven 循环","项目目录只读且租户隔离","存量定义为 GLOBAL"],
+      "interface_contracts":["WorkflowProjectAccessGateway 返回真实项目、有效成员角色和管理权限","WorkflowPendingTaskQuery 只统计项目 PENDING 任务","ProjectMemberRemovalGuard 在有待办时抛冲突"],
+      "non_goals":["改变项目成员角色模型","写入 Flowable 表","改业务模块"],
+      "action_bounds":["只新增 V134 和明确契约/桥接","ProjectService 仅在停用及删除前增加守卫","不扩大 modules.yaml 依赖"],
+      "acceptance_checks":["V134 定义 GLOBAL 回填及可靠实例项目回填 SQL 可判别","项目目录按租户项目过滤有效成员角色","有待办成员停用和删除被阻断，无待办保持原行为","ccb-system 与 ccb-boot 聚焦测试通过"],
+      "evidence_required":["实际 diff","聚焦测试命令退出码","迁移 SQL 结构与回填审查","依赖树无循环"],
+      "rollback":"回退新增 Java 和 ProjectService 守卫；数据库 V134 结构保留",
+      "stop_conditions":["需要修改 V133 或更早迁移","需要 workflow 直接依赖 system","项目编号存在无法解释的重复有效记录"],
+      "escalation_conditions":["需要改变项目数据所有权","需要新增独立项目工作流管理员数据模型"]
+    },
+    {
+      "id":"T2",
+      "goal":"工作流定义、实例、人员和审批形成一致项目授权",
+      "requirement_ids":["R1","R2","R3","R4","R5","R6"],
+      "prerequisites":["T1"],
+      "input_facts":["WorkflowBusinessIntegrationService 当前在 start 后更新项目快照","WorkflowService 与 WorkflowAssigneeResolver 是两套人员解析路径","WorkflowController 当前仅执行 RBAC"],
+      "write_scope":["WorkflowService","WorkflowBusinessIntegrationService","WorkflowMonitorService","WorkflowAssigneeResolver","FlowableWorkflowService","工作流模型校验和 BPMN 编译","WorkflowController","workflow tests","workflow contract doc"],
+      "invariants":["原有 startByCode/startByDefinitionId 公开签名兼容","GLOBAL USER/ROLE 语义保持","实例和任务状态机保持","定义引用归档保护保持"],
+      "interface_contracts":["PROJECT 定义必须绑定且匹配项目","PROJECT_MEMBER 保存用户 ID 并验证有效成员","PROJECT_ROLE 保存项目角色 ID 并解析有效成员","task context 和 decide 每次重验项目访问"],
+      "non_goals":["修改业务场景判定","自动改写历史 JSON","改变审批动作集合"],
+      "action_bounds":["重排项目业务启动内部顺序但不改调用方签名","查询增加项目过滤和实体授权","两套解析器共享同一项目契约语义"],
+      "acceptance_checks":["项目定义 CRUD 生命周期跨项目拒绝","项目业务启动在首任务前写 project_id","两套解析器 PROJECT_MEMBER/PROJECT_ROLE 结果一致","失权任务办理人不能查看或审批","ccb-workflow 聚焦测试通过"],
+      "evidence_required":["实际 diff","SQL 调用顺序测试","人员解析测试","越权失败测试","聚焦测试退出码"],
+      "rollback":"回退 workflow 代码，V134 可空字段保持兼容",
+      "stop_conditions":["现有公共启动签名必须破坏性修改","Flowable 不能获得实例 project_id","发现未建模业务消费者依赖定义租户全局唯一编码"],
+      "escalation_conditions":["需要重写运行中实例或历史定义","需要改变业务场景绑定所有权"]
+    },
+    {
+      "id":"T3",
+      "goal":"工作流页面使用当前项目并完成全量与多视口验收",
+      "requirement_ids":["R1","R2","R7","R8"],
+      "prerequisites":["T2"],
+      "input_facts":["project-context store 提供 currentRef/current","WorkflowView 当前加载租户全局用户角色","项目切换由应用壳层确认后刷新"],
+      "write_scope":["web/src/api/workflow.ts","WorkflowView.vue","WorkflowNodeInspector.vue","WorkflowNode.vue"],
+      "invariants":["使用现有项目 store","加载空失败提交中状态保留","后端权限不依赖前端显隐","桌面流程设计能力不退化"],
+      "interface_contracts":["定义和监控请求携带 projectRef","项目候选 API 返回当前项目有效成员角色","scope_type/project_id/project_name 字段一致"],
+      "non_goals":["修改 AppLayout 项目切换","修改公共 UI 组件","重做流程设计器"],
+      "action_bounds":["仅在工作流页面和节点属性中增加范围、标签和候选项","移动端使用现有响应式结构局部调整"],
+      "acceptance_checks":["项目切换后定义与候选项重载","项目流程仅显示项目人员来源","GLOBAL 流程保留全局人员来源","前端构建和全量后端测试通过","四视口无横向溢出且核心操作可达"],
+      "evidence_required":["实际 diff","前端构建退出码","全量 Maven 退出码","治理和范围检查","浏览器截图、scrollWidth、网络与控制台结果"],
+      "rollback":"回退四个前端文件，后端授权继续生效",
+      "stop_conditions":["必须修改应用壳层或公共组件","当前项目上下文无法提供稳定 projectRef","移动端必须删除核心业务能力才能适配"],
+      "escalation_conditions":["需要新的全局/项目导航模型","需要公共流程设计器架构改造"]
+    }
+  ],
+  "dependency_edges":[
+    {"from":"T1","to":"T2","reason":"T2 必须消费已固定的项目目录和待办契约以及 V134 字段"},
+    {"from":"T2","to":"T3","reason":"前端必须消费稳定的范围、候选项和错误契约"}
+  ],
+  "parallel_groups":[["T1"],["T2"],["T3"]],
+  "integration_points":[
+    {"after_tasks":["T1"],"checks":["mvn -pl :ccb-system,:ccb-boot -am test","检查 boot 组合无循环"]},
+    {"after_tasks":["T1","T2"],"checks":["mvn -pl :ccb-workflow,:ccb-system,:ccb-boot -am test","核对启动 SQL 顺序与权限失败路径"]},
+    {"after_tasks":["T1","T2","T3"],"checks":["mvn test","npm --prefix web run build","治理和范围检查","浏览器四视口验收"]}
+  ],
+  "sampling_plan":[
+    {"label":"T1 契约与迁移采样","trigger":"T1 实现及聚焦测试完成","observer":"主控制器独立复验","sensors":["S2","S3","S6"],"requirement_ids":["R1","R2","R5","R6"]},
+    {"label":"T2 运行授权采样","trigger":"T2 workflow 聚焦测试完成","observer":"主控制器独立复验","sensors":["S1","S2","S6"],"requirement_ids":["R1","R2","R3","R4","R5","R6"]},
+    {"label":"T3 收敛采样","trigger":"前端和全量门禁完成","observer":"浏览器与自动门禁组合观察","sensors":["S3","S4","S5","S6"],"requirement_ids":["R1","R2","R3","R4","R5","R6","R7","R8"]}
+  ],
+  "coverage":[
+    {"requirement_id":"R1","task_ids":["T1","T2","T3"],"sensor_ids":["S1","S3","S5"]},
+    {"requirement_id":"R2","task_ids":["T1","T2","T3"],"sensor_ids":["S1","S2","S5"]},
+    {"requirement_id":"R3","task_ids":["T2"],"sensor_ids":["S1","S3"]},
+    {"requirement_id":"R4","task_ids":["T2"],"sensor_ids":["S1","S5"]},
+    {"requirement_id":"R5","task_ids":["T1","T2"],"sensor_ids":["S2","S6"]},
+    {"requirement_id":"R6","task_ids":["T1","T2"],"sensor_ids":["S3","S6"]},
+    {"requirement_id":"R7","task_ids":["T3"],"sensor_ids":["S4","S5"]},
+    {"requirement_id":"R8","task_ids":["T3"],"sensor_ids":["S4","S5"]}
+  ],
+  "plan_status":"ready"
+}

@@ -1,5 +1,5 @@
 -- REQ-20260822-048：架构子系统生命周期、工单和全局编号基座。
--- 容量校验必须先于任何永久 DDL，避免 Flyway 失败后出现半创建的 V82 结构。
+-- 容量校验必须先于任何永久 DDL，避免 Flyway 失败后出现半创建的 V93 结构。
 CREATE TEMPORARY TABLE tmp_arch_v82_capacity_guard (
     marker TINYINT NOT NULL,
     CONSTRAINT chk_tmp_arch_v82_capacity_guard CHECK (marker = 0)
