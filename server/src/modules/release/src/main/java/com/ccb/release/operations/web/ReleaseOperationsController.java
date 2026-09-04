@@ -7,12 +7,25 @@ import com.ccb.release.operations.model.ReleaseOperationsModels.DrillPlan;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillPlanRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillRound;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillRoundRequest;
+import com.ccb.release.operations.model.ReleaseOperationsModels.DrillEnvironment;
+import com.ccb.release.operations.model.ReleaseOperationsModels.DrillEnvironmentRequest;
+import com.ccb.release.operations.model.ReleaseOperationsModels.DrillStep;
+import com.ccb.release.operations.model.ReleaseOperationsModels.DrillStepRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.Group;
 import com.ccb.release.operations.model.ReleaseOperationsModels.GroupMember;
 import com.ccb.release.operations.model.ReleaseOperationsModels.GroupRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.Issue;
 import com.ccb.release.operations.model.ReleaseOperationsModels.IssueRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.MemberOption;
+import com.ccb.release.operations.model.ReleaseOperationsModels.PlanItem;
+import com.ccb.release.operations.model.ReleaseOperationsModels.PlanItemRequest;
+import com.ccb.release.operations.model.ReleaseOperationsModels.PlanItemType;
+import com.ccb.release.operations.model.ReleaseOperationsModels.PlanTimeline;
+import com.ccb.release.operations.model.ReleaseOperationsModels.PlanTimelineRequest;
+import com.ccb.release.operations.model.ReleaseOperationsModels.ReleaseDrillRound;
+import com.ccb.release.operations.model.ReleaseOperationsModels.ReleaseDrillRoundRequest;
+import com.ccb.release.operations.model.ReleaseOperationsModels.ReleasePlan;
+import com.ccb.release.operations.model.ReleaseOperationsModels.ReleasePlanRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.Timeline;
 import com.ccb.release.operations.model.ReleaseOperationsModels.TimelineItem;
 import com.ccb.release.operations.model.ReleaseOperationsModels.TimelineItemRequest;
@@ -43,6 +56,90 @@ public class ReleaseOperationsController {
     public ReleaseOperationsController(ReleaseOperationsService service) {
         this.service = service;
     }
+
+    @GetMapping("/release-plans")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:view','system:admin')")
+    public ApiResponse<List<ReleasePlan>> releasePlans(@RequestParam long projectId, @AuthenticationPrincipal AuthUser actor) { return ok(service.releasePlans(projectId, actor)); }
+
+    @PostMapping("/release-plans")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<ReleasePlan> createReleasePlan(@RequestParam long projectId, @RequestBody ReleasePlanRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveReleasePlan(projectId, null, request, actor)); }
+
+    @PutMapping("/release-plans/{planId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<ReleasePlan> updateReleasePlan(@RequestParam long projectId, @PathVariable long planId, @RequestBody ReleasePlanRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveReleasePlan(projectId, planId, request, actor)); }
+
+    @DeleteMapping("/release-plans/{planId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<Void> deleteReleasePlan(@RequestParam long projectId, @PathVariable long planId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser actor) { service.deleteReleasePlan(projectId, planId, rowVersion, actor); return ok(null); }
+
+    @PostMapping("/release-plans/{planId}/timelines/{itemType}")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<PlanTimeline> createPlanTimeline(@RequestParam long projectId, @PathVariable long planId, @PathVariable String itemType, @RequestBody PlanTimelineRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.savePlanTimeline(projectId, planId, planItemType(itemType), null, request, actor)); }
+
+    @PutMapping("/release-plans/{planId}/timelines/{itemType}/{timelineId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<PlanTimeline> updatePlanTimeline(@RequestParam long projectId, @PathVariable long planId, @PathVariable String itemType, @PathVariable long timelineId, @RequestBody PlanTimelineRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.savePlanTimeline(projectId, planId, planItemType(itemType), timelineId, request, actor)); }
+
+    @DeleteMapping("/release-plans/{planId}/timelines/{itemType}/{timelineId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<Void> deletePlanTimeline(@RequestParam long projectId, @PathVariable long planId, @PathVariable String itemType, @PathVariable long timelineId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser actor) { service.deletePlanTimeline(projectId, planId, planItemType(itemType), timelineId, rowVersion, actor); return ok(null); }
+
+    @PostMapping("/release-plans/{planId}/timelines/{itemType}/{timelineId}/items")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<PlanItem> createPlanItem(@RequestParam long projectId, @PathVariable long planId, @PathVariable String itemType, @PathVariable long timelineId, @RequestBody PlanItemRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.savePlanItem(projectId, planId, planItemType(itemType), timelineId, null, request, actor)); }
+
+    @PutMapping("/release-plans/{planId}/timelines/{itemType}/{timelineId}/items/{itemId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<PlanItem> updatePlanItem(@RequestParam long projectId, @PathVariable long planId, @PathVariable String itemType, @PathVariable long timelineId, @PathVariable long itemId, @RequestBody PlanItemRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.savePlanItem(projectId, planId, planItemType(itemType), timelineId, itemId, request, actor)); }
+
+    @DeleteMapping("/release-plans/{planId}/timelines/{itemType}/{timelineId}/items/{itemId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
+    public ApiResponse<Void> deletePlanItem(@RequestParam long projectId, @PathVariable long planId, @PathVariable String itemType, @PathVariable long timelineId, @PathVariable long itemId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser actor) { service.deletePlanItem(projectId, planId, planItemType(itemType), timelineId, itemId, rowVersion, actor); return ok(null); }
+
+    @GetMapping("/environments")
+    @PreAuthorize("hasAnyAuthority('release-operations:environment:view','system:admin')")
+    public ApiResponse<List<DrillEnvironment>> drillEnvironments(@RequestParam long projectId, @AuthenticationPrincipal AuthUser actor) { return ok(service.drillEnvironments(projectId, actor)); }
+
+    @PostMapping("/environments")
+    @PreAuthorize("hasAnyAuthority('release-operations:environment:manage','system:admin')")
+    public ApiResponse<DrillEnvironment> createDrillEnvironment(@RequestParam long projectId, @RequestBody DrillEnvironmentRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveDrillEnvironment(projectId, null, request, actor)); }
+
+    @PutMapping("/environments/{environmentId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:environment:manage','system:admin')")
+    public ApiResponse<DrillEnvironment> updateDrillEnvironment(@RequestParam long projectId, @PathVariable long environmentId, @RequestBody DrillEnvironmentRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveDrillEnvironment(projectId, environmentId, request, actor)); }
+
+    @DeleteMapping("/environments/{environmentId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:environment:manage','system:admin')")
+    public ApiResponse<Void> deleteDrillEnvironment(@RequestParam long projectId, @PathVariable long environmentId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser actor) { service.deleteDrillEnvironment(projectId, environmentId, rowVersion, actor); return ok(null); }
+
+    @GetMapping("/drills")
+    @PreAuthorize("hasAnyAuthority('release-operations:drill:view','system:admin')")
+    public ApiResponse<List<ReleaseDrillRound>> releaseDrills(@RequestParam long projectId, @AuthenticationPrincipal AuthUser actor) { return ok(service.releaseDrills(projectId, actor)); }
+
+    @PostMapping("/drills")
+    @PreAuthorize("hasAnyAuthority('release-operations:drill:manage','system:admin')")
+    public ApiResponse<ReleaseDrillRound> createReleaseDrill(@RequestParam long projectId, @RequestBody ReleaseDrillRoundRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveReleaseDrill(projectId, null, request, actor)); }
+
+    @PutMapping("/drills/{roundId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:drill:manage','system:admin')")
+    public ApiResponse<ReleaseDrillRound> updateReleaseDrill(@RequestParam long projectId, @PathVariable long roundId, @RequestBody ReleaseDrillRoundRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveReleaseDrill(projectId, roundId, request, actor)); }
+
+    @DeleteMapping("/drills/{roundId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:drill:manage','system:admin')")
+    public ApiResponse<Void> deleteReleaseDrill(@RequestParam long projectId, @PathVariable long roundId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser actor) { service.deleteReleaseDrill(projectId, roundId, rowVersion, actor); return ok(null); }
+
+    @PostMapping("/drills/{roundId}/steps")
+    @PreAuthorize("hasAnyAuthority('release-operations:drill:manage','system:admin')")
+    public ApiResponse<DrillStep> createDrillStep(@RequestParam long projectId, @PathVariable long roundId, @RequestBody DrillStepRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveDrillStep(projectId, roundId, null, request, actor)); }
+
+    @PutMapping("/drills/{roundId}/steps/{stepId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:drill:manage','system:admin')")
+    public ApiResponse<DrillStep> updateDrillStep(@RequestParam long projectId, @PathVariable long roundId, @PathVariable long stepId, @RequestBody DrillStepRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveDrillStep(projectId, roundId, stepId, request, actor)); }
+
+    @DeleteMapping("/drills/{roundId}/steps/{stepId}")
+    @PreAuthorize("hasAnyAuthority('release-operations:drill:manage','system:admin')")
+    public ApiResponse<Void> deleteDrillStep(@RequestParam long projectId, @PathVariable long roundId, @PathVariable long stepId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser actor) { service.deleteDrillStep(projectId, roundId, stepId, rowVersion, actor); return ok(null); }
 
     @GetMapping("/drill-plan")
     @PreAuthorize("hasAnyAuthority('release-operations:drill:view','system:admin')")
@@ -184,6 +281,11 @@ public class ReleaseOperationsController {
     private static TimelineType type(String value) {
         try { return TimelineType.valueOf(value == null ? "" : value.trim().toUpperCase()); }
         catch (IllegalArgumentException exception) { throw new com.ccb.common.exception.BusinessException(com.ccb.common.exception.ErrorCode.BAD_REQUEST, "时序类型无效"); }
+    }
+
+    private static PlanItemType planItemType(String value) {
+        try { return PlanItemType.valueOf(value == null ? "" : value.trim().toUpperCase()); }
+        catch (IllegalArgumentException exception) { throw new com.ccb.common.exception.BusinessException(com.ccb.common.exception.ErrorCode.BAD_REQUEST, "投产时序类型无效"); }
     }
 
     private static <T> ApiResponse<T> ok(T value) { return ApiResponse.success(value, TraceId.getOrCreate()); }

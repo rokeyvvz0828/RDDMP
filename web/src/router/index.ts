@@ -232,19 +232,19 @@ const router = createRouter({
           path: 'release-operations/drill-plans',
           name: 'release-operations-drill-plans',
           component: ReleaseOperationsManagement,
-          meta: { title: '投产演练计划', permission: 'release-operations:drill:view', menuPath: '/release-operations/drill-plans' }
+          meta: { title: '投产演练计划', permission: 'release-operations:plan:view', menuPath: '/release-operations/drill-plans' }
         },
         {
-          path: 'release-operations/timelines',
-          name: 'release-operations-timelines',
+          path: 'release-operations/environments',
+          name: 'release-operations-environments',
           component: ReleaseOperationsManagement,
-          meta: { title: '投产时序', permission: 'release-operations:timeline:view', menuPath: '/release-operations/timelines' }
+          meta: { title: '投产演练环境', permission: 'release-operations:environment:view', menuPath: '/release-operations/environments' }
         },
         {
-          path: 'release-operations/rollback-timelines',
-          name: 'release-operations-rollback-timelines',
+          path: 'release-operations/drills',
+          name: 'release-operations-drills',
           component: ReleaseOperationsManagement,
-          meta: { title: '投产回退时序', permission: 'release-operations:rollback-timeline:view', menuPath: '/release-operations/rollback-timelines' }
+          meta: { title: '投产演练', permission: 'release-operations:drill:view', menuPath: '/release-operations/drills' }
         },
         {
           path: 'release-operations/issues',

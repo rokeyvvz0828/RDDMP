@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260903-059", "status": "ready", "document": "docs/requirements/REQ-20260903-059-release-drill-management-restructure/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "Codex", "module": "business/release", "module_owner": "rokeyvvz0828", "branch": "feat/REQ-20260903-059-release-drill-management-restructure", "worktree": "D:/ai_project/ccb_rd"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/release/src/main/java/com/ccb/release/operations/**",
+      "server/src/modules/release/src/test/java/com/ccb/release/operations/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V127__release_drill_management_restructure.sql",
+      "web/src/api/release.ts",
+      "web/src/modules/release/**",
+      "web/src/router/index.ts",
+      "docs/requirements/REQ-20260903-059-release-drill-management-restructure/**",
+      "docs/engineering-control/designs/2026-09-03-release-drill-management-restructure-design.md",
+      "docs/engineering-control/plans/2026-09-03-release-drill-management-restructure-implementation-plan.md",
+      ".ai-control/requirements/req-20260903-059-release-drill-management-restructure/*.json"
+    ],
+    "read_only_paths": ["server/src/platform/infrastructure/src/main/java/**", "server/src/platform/infrastructure/src/test/**", "server/src/platform/system/**", "server/src/platform/security/**", "server/src/platform/workflow/**", "server/src/shared/**", "web/src/components/ui/**", "web/src/modules/delivery-showcase/**", "web/src/stores/**", "design-h5.md", ".env", ".env.*", "**/target/**", "**/node_modules/**"],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/ai/**", "server/src/modules/architecture/**", "server/src/modules/data-migration/**", "server/src/modules/requirement/**", "server/src/modules/test-management/**"]
+  },
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V127__release_drill_management_restructure.sql"], "compatibility_and_rollback": "只追加 V127；旧表和旧接口保留，V127 仅新增表、字段、菜单状态和条件回填；应用代码可按本任务边界回退。"},
+  "public_capability_change": {"required": true, "issue": "REQ-20260903-059", "owner_approved": true, "approval_evidence": "用户明确要求全部实施并仅参与最终验收；新增迁移保持旧表和旧接口兼容。", "old_behavior_preserved": true, "regression_tests": ["现有 release operations service/controller security tests", "新增方案、环境、轮次和跨项目引用拒绝测试"]},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "api", "command": "mvn -pl :ccb-release -am test -Dnet.bytebuddy.experimental=true", "expected": "投产模块 API 和服务测试通过。"},
+    {"name": "permission", "command": "mvn -pl :ccb-release -am test -Dnet.bytebuddy.experimental=true", "expected": "投产模块权限测试通过。"},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "TypeScript/Vite 构建通过。"},
+    {"name": "migration-check", "command": "node scripts/check-flyway-migrations.mjs", "expected": "V127 唯一且迁移结构通过。"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "治理检查通过或记录环境限制。"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-release-drill-management-restructure/codex-task-scope.yaml --working-tree", "expected": "工作区修改均在本任务范围。"},
+    {"name": "diff-check", "command": "git diff --check", "expected": "无空白错误。"},
+    {"name": "browser", "command": "真实浏览器验证菜单、项目切换、多方案、多环境、多轮次、问题关联和四视口", "expected": "功能可达、数据隔离、无新增控制台错误和页面级横向溢出。"}
+  ],
+  "risk": {"level": "high", "items": ["追加迁移兼容旧数据", "跨实体项目归属校验", "新增菜单动态缓存", "前后端共享新契约", "手机视口复杂表单" ]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260903-059-release-drill-management-restructure", "control_justification": "跨菜单、数据库、后端权限和前端业务流程的投产管理模型重构。", "acceptance_evidence": [".ai-control/requirements/req-20260903-059-release-drill-management-restructure/execution-T1.json", ".ai-control/requirements/req-20260903-059-release-drill-management-restructure/observation-T1.json"], "rollback": "按任务边界回退应用代码，保留 V127 迁移和数据，必要时关闭新菜单权限。"}
+}

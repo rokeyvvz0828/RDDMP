@@ -1,0 +1,26 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    "web/src/modules/release/ReleaseOperationsManagement.vue",
+    "web/src/modules/release/release-operations.css"
+  ],
+  "requirements_addressed": ["R4", "R5"],
+  "commands": [
+    "mvn -pl :ccb-release -am test \"-Dnet.bytebuddy.experimental=true\"",
+    "npm --prefix web run build",
+    "git diff --check",
+    "browser routes and console checks"
+  ],
+  "local_checks": [
+    "移除页面标题右侧当前项目标识块",
+    "顶部项目切换栏和 projectId 解析逻辑保留",
+    "方案、环境、演练、问题、组织页面均可加载"
+  ],
+  "diff_summary": ["删除当前项目块及其样式", "完成前后端回归和页面运行检查"],
+  "invariants_checked": ["不改 API、数据库和权限", "项目数据仍按当前项目加载", "页面无新增控制台错误"],
+  "disturbances": ["当前工作区存在上一任务遗留改动，范围脚本会纳入这些文件"],
+  "assumptions_falsified": [],
+  "unresolved_items": ["范围脚本需要区分本任务与既有未提交改动"],
+  "recommended_next": "进入独立观测并完成最终收敛检查。"
+}
