@@ -1,6 +1,6 @@
 ---
 id: REQ-20260904-063
-status: ready
+status: "ready"
 owner: rokeyvvz0828
 module: governance
 ---
@@ -19,7 +19,7 @@ module: governance
 - 编排器检查 JDK、Maven、Node.js、npm 和 Docker Compose，启动并等待 MySQL、MinIO、kkFileView。
 - 仅对子进程注入固定的本地开发配置，显式使用 Spring `local` profile，不读取或覆盖用户 `.env`。
 - 固定本地管理员账号为 `admin/admin123`；新库由 Flyway 占位符写入 BCrypt 哈希，已有本地库在后端启动前幂等恢复该哈希。
-- 后端通过 Spring Boot DevTools 配合源码监听和 Maven 增量编译实现自动重启；前端使用 Vite HMR。
+- 后端通过源码监听、Maven reactor 增量安装和 Node 进程重启实现自动重载；前端使用 Vite HMR。
 - Flyway 随后端启动自动执行待应用迁移；启动器等待后端健康检查并输出访问地址。
 - 在根 `AGENTS.md` 增加本地研发启动提示和安全边界。
 
@@ -36,7 +36,7 @@ module: governance
 - 当前本地启动需要分别执行 Docker Compose、Maven 和 npm 命令，环境变量依赖人工准备。
 - `application.yml` 默认 profile 为 `dev`，但仓库仅存在 `application-local.yml`；启动器必须显式指定 `local`。
 - `application-local.yml` 已启用 Flyway，管理员 BCrypt 哈希通过 `bootstrap_admin_password_hash` 占位符传入。
-- 前端 `npm run dev` 已提供 Vite HMR；后端尚未配置 DevTools 和脚本级源码编译监听。
+- 前端 `npm run dev` 已提供 Vite HMR；后端 reactor 不能直接在聚合根执行 `spring-boot:run`，需先安装模块产物，再从 boot POM 启动并由脚本重启。
 - 固定凭据属于公开、虚构且仅限本地的数据，不得复用于任何共享或生产环境。
 
 ## 接口与数据
@@ -56,7 +56,7 @@ module: governance
 3. 启动器只使用固定本地配置并显式激活 `local` profile，不读取、创建或覆盖 `.env`。
 4. 空数据库首次启动后 Flyway 成功完成迁移，可使用 `admin/admin123` 登录。
 5. 已有本地数据库启动后 `admin` 密码恢复为 `admin123`，且不修改其他用户密码。
-6. 修改前端源码后由 Vite HMR 更新；修改后端 Java 或资源文件后触发防抖 Maven 编译并由 DevTools 重启。
+6. 修改前端源码后由 Vite HMR 更新；修改后端 Java 或资源文件后触发防抖 Maven reactor 安装并自动重启后端进程。
 7. `Ctrl+C` 能结束编排器及其前后端子进程；默认保留基础设施容器和数据卷。
 8. `--down` 停止本项目开发容器但不删除卷。
 9. 根 `AGENTS.md` 明确推荐启动命令、固定开发账号、仅限本地和禁止复用于其他环境的边界。
@@ -66,5 +66,5 @@ module: governance
 - 必须执行：Node 语法检查、PowerShell 语法检查、Shell 语法检查、治理检查、任务范围检查、后端聚焦测试、前端构建和 `git diff --check`。
 - 运行验证：至少在当前 Windows 环境完成基础设施启动、Flyway、健康检查、管理员登录、前端入口、后端源码重启和退出清理；macOS/Linux 由 Shell 静态检查及人工跨平台复核补充。
 - 上线验证：本能力不发布到生产；合并后由研发人员在本地执行对应平台入口。
-- 回退：回退本需求提交；若 DevTools 引起开发期问题，可先移除其依赖并恢复原手工启动方式。数据库无结构回退，管理员密码恢复仅影响本地 Docker 数据。
+- 回退：回退本需求提交并恢复原手工启动方式。数据库无结构回退，管理员密码恢复仅影响本地 Docker 数据。
 - 风险与人工复核人：治理入口、平台启动依赖和本地数据库写入由 Owner `rokeyvvz0828` 专项复核。

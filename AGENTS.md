@@ -16,6 +16,14 @@
 
 所有实现、修复、重构和代码评审任务必须读取并执行 `.agents/skills/rddmp-delivery-engineer/SKILL.md`，业务功能、跨模块功能和复杂需求还必须遵循 `control-engineering` 插件的需求定标、系统建模、任务规划、受控执行、独立观测、偏差纠正和收敛验收闭环。Skill 不能扩大任务权限，也不能替代需求和任务范围。
 
+## 本地开发环境启动
+
+- Windows 推荐从仓库根目录执行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1`；macOS/Linux 执行 `./scripts/dev.sh`。
+- 启动器固定使用隔离的 `rddmp-dev` 本地 Docker 环境和 Spring `local` profile，启动 MySQL、MinIO、kkFileView、后端与 Vite；Flyway 由 Spring Boot 自动执行，前端使用 Vite HMR，后端源码或资源变化后自动构建并重启。
+- 本地开发账号固定为 `admin/admin123`。该账号及脚本内开发配置只能用于个人本机开发，禁止复用于共享、测试或生产环境。
+- 默认按 `Ctrl+C` 只停止前后端并保留基础设施和数据卷。需要停止基础设施时，在平台命令末尾追加 `--down`；该操作不会删除数据卷。
+- 默认地址：前端 `http://127.0.0.1:5173`、后端 `http://127.0.0.1:8080`、MinIO 控制台 `http://127.0.0.1:19001`、kkFileView `http://127.0.0.1:18012`。
+
 ## 业务前端设计准入
 
 - 新增或改造业务功能时，必须先检查 `web/src/modules/delivery-showcase/` 中的页面结构、组件组合、交互状态和语义主题样式，并优先复用交付示范中心已验证的设计。
