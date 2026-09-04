@@ -484,8 +484,8 @@ public class EnvironmentResourceController {
 
     private DeploymentUnitOptionResponse toDeploymentUnit(DeploymentUnitRef unit) {
         return new DeploymentUnitOptionResponse(unit.id(), unit.code(), unit.name(), unit.kind(),
-                unit.physicalSubsystemId(), unit.relatedDeploymentUnitName(), unit.deploymentUnitType(),
-                unit.description(), unit.defaultNetworkZoneId(), unit.defaultNetworkZoneName());
+                unit.physicalSubsystemId(), unit.description(),
+                unit.defaultNetworkZoneId(), unit.defaultNetworkZoneName());
     }
 
     private ResourceRequestSummaryResponse toRequestSummary(ResourceRequest request) {
@@ -511,8 +511,7 @@ public class EnvironmentResourceController {
     private ResourceRequestItemResponse toRequestItem(ResourceRequestItem item) {
         return new ResourceRequestItemResponse(item.id(), item.itemSeq(), item.deploymentUnitId(),
                 item.deploymentUnitCode(), item.deploymentUnitName(), item.deploymentUnitKind(),
-                item.relatedDeploymentUnitName(), item.deploymentUnitDescription(),
-                item.deploymentUnitType(), item.databaseStorageGb(),
+                item.deploymentUnitDescription(), item.databaseStorageGb(),
                 item.fileStorageGb(), item.networkZoneId(), item.networkZoneName(), item.networkZone(),
                 item.serverType(), item.cpuCores(), item.memoryGb(),
                 item.appWebGroupCount(), item.plannedNodeCount(), item.totalCpuCores(), item.totalMemoryGb(),
@@ -569,8 +568,7 @@ public class EnvironmentResourceController {
     }
 
     public record DeploymentUnitOptionResponse(long id, String code, String name, String kind,
-                                               long physicalSubsystemId, String relatedDeploymentUnitName,
-                                               String deploymentUnitType, String description,
+                                               long physicalSubsystemId, String description,
                                                Long defaultNetworkZoneId, String defaultNetworkZoneName) {
     }
 
@@ -602,8 +600,7 @@ public class EnvironmentResourceController {
 
     public record ResourceRequestItemResponse(long id, int itemSeq, long deploymentUnitId,
                                               String deploymentUnitCode, String deploymentUnitName,
-                                              String deploymentUnitKind, String relatedDeploymentUnitName,
-                                              String deploymentUnitDescription, String deploymentUnitType,
+                                              String deploymentUnitKind, String deploymentUnitDescription,
                                               BigDecimal databaseStorageGb, BigDecimal fileStorageGb,
                                               Long networkZoneId, String networkZoneName,
                                               String networkZone, String serverType, BigDecimal cpuCores,

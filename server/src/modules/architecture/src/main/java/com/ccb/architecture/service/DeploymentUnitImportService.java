@@ -56,13 +56,13 @@ public class DeploymentUnitImportService {
     private static final Logger log = LoggerFactory.getLogger(DeploymentUnitImportService.class);
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
     private static final String[] EXPECTED_HEADERS = {
-            "物理子系统编号", "部署单元简称", "部署单元名称", "部署单元类型", "描述", "备注"
+            "物理子系统编号", "部署单元名称", "部署单元类型", "描述", "备注"
     };
     private static final Map<String, String> KIND_LABELS = Map.of(
             "应用", "APPLICATION",
             "数据库", "DATABASE",
-            "消息队列", "MQ");
-    private static final String[] KIND_VALUES = {"APPLICATION", "DATABASE", "MQ"};
+            "Web", "WEB");
+    private static final String[] KIND_VALUES = {"APPLICATION", "DATABASE", "WEB"};
 
     private final DeploymentUnitStore store;
     private final DeploymentUnitService unitService;
@@ -200,8 +200,7 @@ public class DeploymentUnitImportService {
             if (!"ACTIVE".equals(physical.status())) {
                 throw badRequest("物理子系统状态不允许创建部署单元（状态 " + physical.status() + "）");
             }
-            Optional<DeploymentUnit> existing = store.findUnitByPhysicalAndName(actor.tenantId(),
-                    physical.id(), row.name());
+            Optional<DeploymentUnit> existing = store.findUnitByName(actor.tenantId(), row.name());
             if (existing.isPresent()) {
                 if (existing.get().status().equals("ACTIVE")) {
                     store.updateItemResult(actor.tenantId(), item.id(), ImportItemStatus.SKIPPED.name(), null,
@@ -212,10 +211,10 @@ public class DeploymentUnitImportService {
             }
             String kind = normalizeKind(row.kindLabel());
             if (kind == null) {
-                throw badRequest("部署单元类型仅支持 应用、数据库、消息队列");
+                throw badRequest("部署单元类型仅支持 应用、数据库、Web");
             }
-            long unitId = unitService.publishInitial(actor, physical.id(), row.shortName(), row.name(),
-                    kind, row.description(), null, defaultDeploymentUnitType(kind), row.remark());
+            long unitId = unitService.publishInitial(actor, physical.id(), row.name().toUpperCase(Locale.ROOT),
+                    kind, row.description(), row.remark());
             store.updateItemResult(actor.tenantId(), item.id(), ImportItemStatus.SUCCESS.name(), null, null, unitId);
             return ImportItemStatus.SUCCESS;
         } catch (BusinessException exception) {
@@ -260,7 +259,7 @@ public class DeploymentUnitImportService {
         requireActor(actor);
         ImportBatchSummary batch = findBatchSummary(actor, batchId);
         StringBuilder csv = new StringBuilder();
-        csv.append("行号,物理子系统编号,部署单元简称,部署单元名称,部署单元类型,描述,备注,状态,说明\n");
+        csv.append("行号,物理子系统编号,部署单元名称,部署单元类型,描述,备注,状态,说明\n");
         for (DeploymentUnitImportItem item : store.findItems(actor.tenantId(), batchId,
                 DeploymentUnitStore.MAX_IMPORT_ROWS + 1)) {
             if (!item.rowStatus().equals(ImportItemStatus.INVALID.name())
@@ -270,7 +269,6 @@ public class DeploymentUnitImportService {
             RawRow row = parseRawRow(item.rawJson());
             csv.append(item.lineNo()).append(',')
                     .append(csvCell(row.physicalCode())).append(',')
-                    .append(csvCell(row.shortName())).append(',')
                     .append(csvCell(row.name())).append(',')
                     .append(csvCell(row.kindLabel())).append(',')
                     .append(csvCell(row.description())).append(',')
@@ -298,11 +296,10 @@ public class DeploymentUnitImportService {
             }
             Row sample = sheet.createRow(1);
             sample.createCell(0).setCellValue("W0001A");
-            sample.createCell(1).setCellValue("ECIP-AP");
-            sample.createCell(2).setCellValue("电子渠道接入应用");
-            sample.createCell(3).setCellValue("应用");
-            sample.createCell(4).setCellValue("渠道接入服务（示例数据）");
-            sample.createCell(5).setCellValue("演示用，可删除");
+            sample.createCell(1).setCellValue("ECIP_AP");
+            sample.createCell(2).setCellValue("应用");
+            sample.createCell(3).setCellValue("渠道接入服务（示例数据）");
+            sample.createCell(4).setCellValue("演示用，可删除");
             for (int i = 0; i < EXPECTED_HEADERS.length; i++) {
                 sheet.setColumnWidth(i, 24 * 256);
             }
@@ -344,9 +341,9 @@ public class DeploymentUnitImportService {
                 if (row == null) {
                     continue;
                 }
-                String[] cells = new String[6];
+                String[] cells = new String[5];
                 boolean anyValue = false;
-                for (int c = 0; c < 6; c++) {
+                for (int c = 0; c < 5; c++) {
                     cells[c] = normalizeCell(formatter.formatCellValue(row.getCell(c)));
                     if (cells[c] != null) {
                         anyValue = true;
@@ -355,7 +352,7 @@ public class DeploymentUnitImportService {
                 if (!anyValue) {
                     continue;
                 }
-                rows.add(new RawRow(i + 1, cells[0], cells[1], cells[2], cells[3], cells[4], cells[5]));
+                rows.add(new RawRow(i + 1, cells[0], cells[1], cells[2], cells[3], cells[4]));
             }
             return rows;
         } catch (IOException exception) {
@@ -378,15 +375,19 @@ public class DeploymentUnitImportService {
                 errors.add("物理子系统状态不允许创建部署单元（" + physical.status() + "）");
             }
         }
-        if (row.shortName() == null || row.shortName().length() < 2 || row.shortName().length() > 100) {
-            errors.add("部署单元简称长度必须为 2—100 个字符");
-        }
-        if (row.name() == null || row.name().length() < 2 || row.name().length() > 200) {
-            errors.add("部署单元名称长度必须为 2—200 个字符");
+        if (row.name() == null || !row.name().toUpperCase(Locale.ROOT).matches("^[A-Z0-9]+_[A-Z0-9]{1,8}$")) {
+            errors.add("部署单元名称必须为主名称_后缀，主名称只允许字母和数字，后缀为1—8位字母或数字");
         }
         String kind = normalizeKind(row.kindLabel());
         if (kind == null) {
-            errors.add("部署单元类型仅支持 应用、数据库、消息队列");
+            errors.add("部署单元类型仅支持 应用、数据库、Web");
+        } else if (row.name() != null) {
+            String upperName = row.name().toUpperCase(Locale.ROOT);
+            String suffix = upperName.substring(upperName.lastIndexOf('_') + 1);
+            Map<String, String> standards = Map.of("AP", "APPLICATION", "DB", "DATABASE", "WB", "WEB");
+            if (standards.containsKey(suffix) && !standards.get(suffix).equals(kind)) {
+                errors.add("标准后缀_" + suffix + "与部署单元类型不一致");
+            }
         }
         if (row.description() != null && row.description().length() > 2000) {
             errors.add("描述最长 2000 个字符");
@@ -394,7 +395,7 @@ public class DeploymentUnitImportService {
         if (row.remark() != null && row.remark().length() > 1000) {
             errors.add("备注最长 1000 个字符");
         }
-        String duplicateKey = row.physicalCode() + "|" + (row.name() == null ? "" : row.name());
+        String duplicateKey = row.name() == null ? "" : row.name().toUpperCase(Locale.ROOT);
         if (errors.isEmpty()) {
             Integer previousLine = fileKeys.putIfAbsent(duplicateKey, row.lineNo());
             if (previousLine != null) {
@@ -405,7 +406,7 @@ public class DeploymentUnitImportService {
         if (errors.isEmpty() && row.physicalCode() != null && row.name() != null) {
             PhysicalSubsystemRef physical = physicalCache.get(row.physicalCode());
             Optional<DeploymentUnit> existing = physical == null ? Optional.empty()
-                    : store.findUnitByPhysicalAndName(actor.tenantId(), physical.id(), row.name());
+                    : store.findUnitByName(actor.tenantId(), row.name().toUpperCase(Locale.ROOT));
             if (existing.isPresent()) {
                 if (existing.get().status().equals("ACTIVE")) {
                     existingNote = "已存在同名 ACTIVE 部署单元，确认时将跳过";
@@ -417,7 +418,7 @@ public class DeploymentUnitImportService {
         ImportItemStatus status = errors.isEmpty() ? ImportItemStatus.VALID : ImportItemStatus.INVALID;
         return new PreparedRow(row, status,
                 errors.isEmpty() ? null : String.join("；", errors), existingNote,
-                toJson(new String[]{row.physicalCode(), row.shortName(), row.name(), row.kindLabel(),
+                toJson(new String[]{row.physicalCode(), row.name(), row.kindLabel(),
                         row.description(), row.remark()}));
     }
 
@@ -443,10 +444,6 @@ public class DeploymentUnitImportService {
         return null;
     }
 
-    private String defaultDeploymentUnitType(String kind) {
-        return "DATABASE".equalsIgnoreCase(kind) ? "DB" : "AP";
-    }
-
     private RawRow parseRawRow(String rawJson) {
         String[] values;
         try {
@@ -455,7 +452,7 @@ public class DeploymentUnitImportService {
         } catch (IOException exception) {
             throw new IllegalStateException("导入行快照解析失败", exception);
         }
-        return new RawRow(0, values[0], values[1], values[2], values[3], values[4], values[5]);
+        return new RawRow(0, values[0], values[1], values[2], values[3], values[4]);
     }
 
     private String toJson(String[] values) {
@@ -481,7 +478,7 @@ public class DeploymentUnitImportService {
     }
 
     private ImportRowView toRowView(RawRow row) {
-        return new ImportRowView(row.physicalCode(), row.shortName(), row.name(), row.kindLabel(),
+        return new ImportRowView(row.physicalCode(), row.name(), row.kindLabel(),
                 row.description(), row.remark());
     }
 
@@ -579,7 +576,7 @@ public class DeploymentUnitImportService {
         return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000);
     }
 
-    private record RawRow(int lineNo, String physicalCode, String shortName, String name, String kindLabel,
+    private record RawRow(int lineNo, String physicalCode, String name, String kindLabel,
                           String description, String remark) {
     }
     private record PreparedRow(RawRow row, ImportItemStatus status, String errorMessage, String note,
@@ -608,7 +605,6 @@ public class DeploymentUnitImportService {
 
     public record ImportRowView(
             String physicalCode,
-            String shortName,
             String name,
             String kindLabel,
             String description,

@@ -1,0 +1,11 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [{"id": "T9", "goal": "实现并验证资源申请一屏字段布局", "requirement_ids": ["R14"], "prerequisites": [], "input_facts": ["现有容量容器为 Flex", "编辑器技术栈当前两列", "产品文件位于授权范围"], "write_scope": ["web/src/modules/architecture/ResourceRequestPage.vue", "web/src/modules/architecture/architecture.css", ".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/*.json"], "invariants": ["字段绑定、业务逻辑和请求不变", "数据库布局不变", "手机单列"], "interface_contracts": ["resource_request_payload 不变"], "non_goals": ["不修改公共 UI 或后端"], "action_bounds": ["仅重排 DOM、增加局部类和 CSS"], "acceptance_checks": ["1920 容量 3/4/3", "摘要与标题同行", "技术栈三列", "手机无根溢出", "构建和 scope 通过"], "evidence_required": ["实际 diff", "命令退出码", "DOM 几何和截图", "边车联动与计算结果"], "rollback": "回退 T9 提交", "stop_conditions": ["需要范围外修改", "请求变化", "页面根溢出或 footer 不可达"], "escalation_conditions": ["需要公共断点或后端契约"]}],
+  "dependency_edges": [],
+  "parallel_groups": [["T9"]],
+  "integration_points": [{"after_tasks": ["T9"], "checks": ["build、diff、scope、五视口浏览器 UAT"]}],
+  "sampling_plan": [{"label": "T9 完成采样", "trigger": "T9 返回执行报告", "observer": "主 Agent 的独立浏览器传感器", "sensors": ["S1", "S2"], "requirement_ids": ["R14"]}],
+  "coverage": [{"requirement_id": "R14", "task_ids": ["T9"], "sensor_ids": ["S1", "S2"]}],
+  "plan_status": "ready"
+}

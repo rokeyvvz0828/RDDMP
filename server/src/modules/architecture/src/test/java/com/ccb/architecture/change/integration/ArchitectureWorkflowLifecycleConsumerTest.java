@@ -102,7 +102,7 @@ class ArchitectureWorkflowLifecycleConsumerTest {
         WorkflowRound round = round(DIGEST);
         stubActive(event, application, round);
         when(publication.approve(any(ApprovalCommand.class), any()))
-                .thenReturn(new ApprovalResult(101L, 201L, List.of()));
+                .thenReturn(new ApprovalResult(101L, List.of(201L)));
         when(store.completeStartedWorkflowRound(7L, 101L, 2, WorkflowRoundStatus.APPROVED, TIME))
                 .thenReturn(true);
         when(store.completeReceipt(7L, "event-3", consumer.subscriberKey(),
@@ -201,7 +201,7 @@ class ArchitectureWorkflowLifecycleConsumerTest {
     }
 
     private ChangeApplication application(boolean cancellationRequested) {
-        return new ChangeApplication(101L, 7L, TargetKind.LOGICAL, ActionType.CREATE, null, 9L,
+        return new ChangeApplication(101L, 7L, TargetKind.PHYSICAL, ActionType.CREATE, null, 9L,
                 "新建渠道系统", ApplicationStatus.IN_REVIEW, 2, 80L, 1L, 90L, DIGEST,
                 cancellationRequested, 6L, 9L, 9L, TIME.minusHours(1), TIME.minusMinutes(1));
     }

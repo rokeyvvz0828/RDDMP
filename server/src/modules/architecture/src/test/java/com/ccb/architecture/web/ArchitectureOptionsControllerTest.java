@@ -1,7 +1,5 @@
 package com.ccb.architecture.web;
 
-import com.ccb.architecture.model.LogicalSubsystem;
-import com.ccb.architecture.model.LogicalSubsystemQuery;
 import com.ccb.architecture.model.OrganizationOption;
 import com.ccb.architecture.repository.ArchitectureSubsystemRepository;
 import com.ccb.architecture.service.ArchitectureOptionsService;
@@ -20,7 +18,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,7 +29,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -44,7 +40,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -55,7 +50,6 @@ class ArchitectureOptionsControllerTest {
 
     private OrganizationService organizationService;
     private SystemReferenceQuery referenceQuery;
-    private ArchitectureSubsystemRepository repository;
     private ArchitectureOptionsService service;
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -64,7 +58,7 @@ class ArchitectureOptionsControllerTest {
     void setUp() {
         organizationService = mock(OrganizationService.class);
         referenceQuery = mock(SystemReferenceQuery.class);
-        repository = mock(ArchitectureSubsystemRepository.class);
+        ArchitectureSubsystemRepository repository = mock(ArchitectureSubsystemRepository.class);
         service = new ArchitectureOptionsService(organizationService, referenceQuery, repository);
         mockMvc = MockMvcBuilders.standaloneSetup(new ArchitectureOptionsController(service))
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
@@ -79,7 +73,7 @@ class ArchitectureOptionsControllerTest {
     }
 
     @Test
-    void organizationsAreActiveTenantTreeOptionsWithExactKeysAndPath() throws Exception {
+    void physicalOrganizationsAreActiveTenantTreeOptionsWithExactKeysAndPath() throws Exception {
         when(organizationService.tree(ACTOR)).thenReturn(organizationTree());
 
         PageResult<OrganizationOption> filtered = service.organizations(ACTOR, new PageQuery(1, 1), " 研发 ");
@@ -90,7 +84,7 @@ class ArchitectureOptionsControllerTest {
             assertThat(option.pathLabel()).isEqualTo("数字事业群 / 平台研发团队");
         });
 
-        MvcResult result = mockMvc.perform(get("/api/architecture/options/logical-subsystem/organizations")
+        MvcResult result = mockMvc.perform(get("/api/architecture/options/physical-subsystem/organizations")
                         .param("page", "1").param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(2))
@@ -101,7 +95,7 @@ class ArchitectureOptionsControllerTest {
     }
 
     @Test
-    void usersReturnOnlySafeExactKeysAndExplicitNullPhone() throws Exception {
+    void physicalUsersReturnOnlySafeExactKeysAndExplicitNullPhone() throws Exception {
         when(referenceQuery.searchActiveUsers(eq(ACTOR), any(PageQuery.class), eq("张")))
                 .thenReturn(new PageResult<>(List.of(new SystemUserReference(21, "张三", "zhangsan", null, true)),
                         1, 1, 20));
@@ -118,63 +112,42 @@ class ArchitectureOptionsControllerTest {
     }
 
     @Test
-    void parametersAreResourceWhitelistedAndReturnExactKeys() throws Exception {
-        when(referenceQuery.activeParameters(ACTOR, "ARCH_SYSTEM_TYPE"))
-                .thenReturn(List.of(new SystemParameterReference("APPLICATION", "应用平台类")));
+    void physicalParametersAndBusinessComponentsUseDictionaryWhitelist() throws Exception {
+        when(referenceQuery.activeParameters(ACTOR, "ARCH_RUNTIME"))
+                .thenReturn(List.of(new SystemParameterReference("architecture.runtime.7x24", "7x24")));
+        when(referenceQuery.activeParameters(ACTOR, "ARCH_BUSINESS_COMPONENT"))
+                .thenReturn(List.of(new SystemParameterReference("architecture.business-component.employee-portal", "员工门户")));
 
-        MvcResult result = mockMvc.perform(get(
-                        "/api/architecture/options/logical-subsystem/parameters/ARCH_SYSTEM_TYPE"))
+        MvcResult runtime = mockMvc.perform(get(
+                        "/api/architecture/options/physical-subsystem/parameters/ARCH_RUNTIME"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].label").value("应用平台类"))
+                .andExpect(jsonPath("$.data[0].label").value("7x24"))
                 .andReturn();
-        assertExactKeys(result, "/data/0", "code", "label");
+        assertExactKeys(runtime, "/data/0", "code", "label");
 
-        assertThatThrownBy(() -> service.parameters(ACTOR, ArchitectureOptionsService.LOGICAL_RESOURCE, "ARCH_RUNTIME"))
+        mockMvc.perform(get("/api/architecture/options/physical-subsystem/business-components"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].code").value("architecture.business-component.employee-portal"))
+                .andExpect(jsonPath("$.data[0].label").value("员工门户"));
+
+        assertThatThrownBy(() -> service.parameters(ACTOR, ArchitectureOptionsService.PHYSICAL_RESOURCE, "ARCH_SYSTEM_TYPE"))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.code()).isEqualTo(ErrorCode.BAD_REQUEST));
     }
 
     @Test
-    void physicalContextReturnsLogicalSubsystemExactOptions() throws Exception {
-        when(repository.pageLogical(eq(7L), any(PageQuery.class), any(LogicalSubsystemQuery.class)))
-                .thenReturn(new PageResult<>(List.of(logical()), 1, 1, 20));
-
-        MvcResult result = mockMvc.perform(get(
-                        "/api/architecture/options/physical-subsystem/logical-subsystems")
-                        .param("code", "AP").param("name", "员工"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.records[0].code").value("AP_201"))
-                .andReturn();
-
-        assertExactKeys(result, "/data/records/0", "id", "code", "name");
-        ArgumentCaptor<LogicalSubsystemQuery> query = ArgumentCaptor.forClass(LogicalSubsystemQuery.class);
-        verify(repository).pageLogical(eq(7L), any(PageQuery.class), query.capture());
-        assertThat(query.getValue().code()).isEqualTo("AP");
-        assertThat(query.getValue().name()).isEqualTo("员工");
-    }
-
-    @Test
-    void unknownOrUnsupportedResourceContextReturns40400() throws Exception {
+    void unknownOrRetiredResourceContextReturns40400() throws Exception {
         mockMvc.perform(get("/api/architecture/options/unknown/users"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(ArchitectureExceptionAdvice.NOT_FOUND_CODE));
 
-        mockMvc.perform(get("/api/architecture/options/logical-subsystem/logical-subsystems"))
+        mockMvc.perform(get("/api/architecture/options/logical-subsystem/organizations"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(ArchitectureExceptionAdvice.NOT_FOUND_CODE));
     }
 
     @Test
     void eachKnownContext兼容旧读取权限并纳入新三级权限() throws Exception {
-        assertPermission("logicalOrganizations", "architecture:logical:list",
-                "hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                long.class, long.class, String.class, AuthUser.class);
-        assertPermission("logicalUsers", "architecture:logical:list",
-                "hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                long.class, long.class, String.class, AuthUser.class);
-        assertPermission("logicalParameters", "architecture:logical:list",
-                "hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                String.class, AuthUser.class);
         assertPermission("physicalOrganizations", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class, AuthUser.class);
@@ -184,8 +157,11 @@ class ArchitectureOptionsControllerTest {
         assertPermission("physicalParameters", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 String.class, AuthUser.class);
-        assertPermission("physicalLogicalSubsystems", "architecture:physical:list",
+        assertPermission("businessComponents", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
+                AuthUser.class);
+        assertPermission("deploymentUnitPhysicalSubsystems", "architecture:deployment-unit:view",
+                "hasAnyAuthority('architecture:deployment-unit:view', 'architecture:deployment-unit:manage', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class, String.class, AuthUser.class);
     }
 
@@ -214,12 +190,6 @@ class ArchitectureOptionsControllerTest {
         root.children().add(new OrgTreeNode(13, 11, "OLD", "停用团队", 2, 0,
                 new ArrayList<>(), new ArrayList<>()));
         return List.of(root);
-    }
-
-    private LogicalSubsystem logical() {
-        return new LogicalSubsystem(101, "AP_201", "员工渠道", "员工渠道整合平台", 11,
-                null, null, null, 21, null, null, 9, 9,
-                LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0));
     }
 
     private record AuthenticationPrincipalResolver(AuthUser actor) implements HandlerMethodArgumentResolver {

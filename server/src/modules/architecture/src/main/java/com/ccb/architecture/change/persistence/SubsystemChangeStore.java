@@ -40,41 +40,19 @@ public class SubsystemChangeStore {
                     localDateTime(rs.getTimestamp("created_at")),
                     localDateTime(rs.getTimestamp("updated_at")));
 
-    private static final RowMapper<LogicalDraft> LOGICAL_DRAFT_MAPPER = (rs, rowNum) ->
-            new LogicalDraft(
-                    rs.getLong("application_id"),
-                    rs.getLong("tenant_id"),
-                    nullableLong(rs, "source_logical_subsystem_id"),
-                    rs.getString("short_name"),
-                    rs.getString("name"),
-                    rs.getLong("business_org_id"),
-                    rs.getString("deployment_platform_code"),
-                    rs.getString("system_type_code"),
-                    rs.getString("system_ownership_code"),
-                    rs.getLong("contact_user_id"),
-                    rs.getString("description"),
-                    rs.getString("remark"),
-                    rs.getInt("sort_no"),
-                    nullableInteger(rs.getObject("reserved_number_sequence")),
-                    nullableLong(rs, "source_row_version"),
-                    rs.getInt("draft_revision"),
-                    rs.getString("submitted_snapshot_json"),
-                    localDateTime(rs.getTimestamp("created_at")),
-                    localDateTime(rs.getTimestamp("updated_at")));
-
     private static final RowMapper<PhysicalDraft> PHYSICAL_DRAFT_MAPPER = (rs, rowNum) ->
             new PhysicalDraft(
                     rs.getLong("application_id"),
                     rs.getInt("line_no"),
                     rs.getLong("tenant_id"),
                     nullableLong(rs, "source_physical_subsystem_id"),
-                    nullableLong(rs, "target_logical_subsystem_id"),
+                    rs.getString("code"),
                     rs.getString("short_name"),
                     rs.getString("name"),
+                    rs.getString("logical_subsystem_name"),
+                    rs.getString("business_component_code"),
                     rs.getString("english_name"),
                     rs.getString("business_group_name"),
-                    rs.getString("business_continuity_level"),
-                    rs.getString("collected_system_level"),
                     rs.getString("deployment_platform"),
                     rs.getString("disaster_recovery_mode"),
                     rs.getLong("responsible_team_org_id"),
@@ -85,7 +63,6 @@ public class SubsystemChangeStore {
                     nullableLong(rs, "owner_user_id"),
                     rs.getString("description"),
                     rs.getString("remark"),
-                    rs.getString("reserved_number_slot"),
                     nullableLong(rs, "source_row_version"),
                     rs.getInt("draft_revision"),
                     rs.getString("submitted_snapshot_json"),
@@ -164,34 +141,20 @@ public class SubsystemChangeStore {
                     rs.getLong("application_id"),
                     localDateTime(rs.getTimestamp("approved_at")));
 
-    private static final RowMapper<LogicalPublishedState> LOGICAL_MAPPER = (rs, rowNum) ->
-            new LogicalPublishedState(
-                    rs.getLong("id"),
-                    rs.getLong("tenant_id"),
-                    rs.getString("code"),
-                    nullableInteger(rs.getObject("number_sequence")),
-                    PublishedStatus.fromDatabase(rs.getString("status")),
-                    rs.getInt("sort_no"),
-                    rs.getLong("row_version"),
-                    rs.getBoolean("deleted"));
-
     private static final RowMapper<PhysicalPublishedState> PHYSICAL_MAPPER = (rs, rowNum) ->
             new PhysicalPublishedState(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
                     rs.getString("code"),
-                    rs.getString("number_slot"),
-                    rs.getLong("logical_subsystem_id"),
+                    rs.getString("logical_subsystem_name"),
+                    rs.getString("business_component_code"),
                     rs.getString("english_name"),
                     PublishedStatus.fromDatabase(rs.getString("status")),
                     rs.getLong("row_version"),
                     rs.getBoolean("deleted"));
 
-    private static final String LOGICAL_COLUMNS = """
-            id, tenant_id, code, number_sequence, status, sort_no, row_version, deleted
-            """;
     private static final String PHYSICAL_COLUMNS = """
-            id, tenant_id, code, number_slot, logical_subsystem_id, english_name,
+            id, tenant_id, code, logical_subsystem_name, business_component_code, english_name,
             status, row_version, deleted
             """;
     private static final String APPLICATION_COLUMNS = """
@@ -208,18 +171,13 @@ public class SubsystemChangeStore {
             id, tenant_id, event_id, subscriber_key, application_id, round_no, workflow_instance_id,
             event_type, processing_status, detail, received_at, processed_at
             """;
-    private static final String LOGICAL_DRAFT_COLUMNS = """
-            application_id, tenant_id, source_logical_subsystem_id, short_name, name, business_org_id,
-            deployment_platform_code, system_type_code, system_ownership_code, contact_user_id,
-            description, remark, sort_no, reserved_number_sequence, source_row_version, draft_revision,
-            submitted_snapshot_json, created_at, updated_at
-            """;
     private static final String PHYSICAL_DRAFT_COLUMNS = """
-            application_id, line_no, tenant_id, source_physical_subsystem_id, target_logical_subsystem_id,
-            short_name, name, english_name, business_group_name, responsible_team_org_id,
-            business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
+            application_id, line_no, tenant_id, source_physical_subsystem_id, code,
+            short_name, name, logical_subsystem_name, business_component_code, english_name,
+            business_group_name, responsible_team_org_id,
+            deployment_platform, disaster_recovery_mode,
             responsible_team_name_snapshot, runtime_code, system_level_code, development_framework_code,
-            owner_user_id, description, remark, reserved_number_slot, source_row_version, draft_revision,
+            owner_user_id, description, remark, source_row_version, draft_revision,
             submitted_snapshot_json, created_at, updated_at
             """;
 
@@ -373,45 +331,7 @@ public class SubsystemChangeStore {
                         """, actorId, tenantId, applicationId, expectedInstanceId, expectedRowVersion) == 1;
     }
 
-    /** 以整行替换逻辑草稿，提交快照和草稿版本由调用方维护。 */
-    public void replaceLogicalDraft(LogicalDraft draft) {
-        requireTransaction();
-        Objects.requireNonNull(draft, "draft 不能为空");
-        jdbc.update("""
-                        INSERT INTO arch_subsystem_logical_draft
-                            (application_id, tenant_id, source_logical_subsystem_id, short_name, name, business_org_id,
-                             deployment_platform_code, system_type_code, system_ownership_code, contact_user_id,
-                             description, remark, sort_no, reserved_number_sequence, source_row_version,
-                             draft_revision, submitted_snapshot_json)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE
-                            source_logical_subsystem_id = VALUES(source_logical_subsystem_id),
-                            short_name = VALUES(short_name), name = VALUES(name),
-                            business_org_id = VALUES(business_org_id),
-                            deployment_platform_code = VALUES(deployment_platform_code),
-                            system_type_code = VALUES(system_type_code),
-                            system_ownership_code = VALUES(system_ownership_code),
-                            contact_user_id = VALUES(contact_user_id), description = VALUES(description),
-                            remark = VALUES(remark), sort_no = VALUES(sort_no),
-                            reserved_number_sequence = VALUES(reserved_number_sequence),
-                            source_row_version = VALUES(source_row_version),
-                            draft_revision = VALUES(draft_revision),
-                            submitted_snapshot_json = VALUES(submitted_snapshot_json)
-                        """,
-                draft.applicationId(), draft.tenantId(), draft.sourceLogicalSubsystemId(), draft.shortName(),
-                draft.name(), draft.businessOrgId(), draft.deploymentPlatformCode(), draft.systemTypeCode(),
-                draft.systemOwnershipCode(), draft.contactUserId(), draft.description(), draft.remark(),
-                draft.sortNo(), draft.reservedNumberSequence(), draft.sourceRowVersion(), draft.draftRevision(),
-                draft.submittedSnapshotJson());
-    }
-
-    public Optional<LogicalDraft> findLogicalDraft(long tenantId, long applicationId) {
-        return jdbc.query("SELECT " + LOGICAL_DRAFT_COLUMNS + " FROM arch_subsystem_logical_draft "
-                        + "WHERE tenant_id = ? AND application_id = ?",
-                LOGICAL_DRAFT_MAPPER, tenantId, applicationId).stream().findFirst();
-    }
-
-    /** 整批替换物理草稿；空集合表示该逻辑新增申请没有物理草稿。 */
+    /** 整批替换物理草稿；子系统变更申请退役逻辑草稿后始终以物理草稿为业务明细。 */
     public void replacePhysicalDrafts(long tenantId, long applicationId, List<PhysicalDraft> drafts) {
         requireTransaction();
         Objects.requireNonNull(drafts, "drafts 不能为空");
@@ -701,13 +621,16 @@ public class SubsystemChangeStore {
                         """, REPLACEMENT_MAPPER, tenantId, applicationId).stream().findFirst();
     }
 
-    public Optional<LogicalPublishedState> findLogical(long tenantId, long id) {
-        return logical(tenantId, id, false);
+    public boolean physicalCodeExists(long tenantId, String code, Long excludeId) {
+        return exists("arch_physical_subsystem", "code", tenantId, code, excludeId);
     }
 
-    public Optional<LogicalPublishedState> lockLogical(long tenantId, long id) {
-        requireTransaction();
-        return logical(tenantId, id, true);
+    public boolean physicalNameExists(long tenantId, String name, Long excludeId) {
+        return exists("arch_physical_subsystem", "name", tenantId, name, excludeId);
+    }
+
+    public boolean physicalEnglishNameExists(long tenantId, String englishName, Long excludeId) {
+        return exists("arch_physical_subsystem", "english_name", tenantId, englishName, excludeId);
     }
 
     public Optional<PhysicalPublishedState> findPhysical(long tenantId, long id) {
@@ -719,94 +642,48 @@ public class SubsystemChangeStore {
         return physical(tenantId, id, true);
     }
 
-    /** 从逻辑草稿发布新主记录；编号与状态是否合法由调用方在同一事务中决定。 */
-    public void insertLogicalPublished(long id, long tenantId, String code, Integer numberSequence,
-                                       LogicalDraft draft, PublishedStatus status, long rowVersion, long actorId) {
-        requireTransaction();
-        Objects.requireNonNull(draft, "draft 不能为空");
-        Objects.requireNonNull(status, "status 不能为空");
-        jdbc.update("""
-                        INSERT INTO arch_logical_subsystem
-                            (id, tenant_id, code, number_sequence, short_name, name, business_org_id,
-                             deployment_platform_code, system_type_code, system_ownership_code, contact_user_id,
-                             description, remark, status, sort_no, row_version, created_by, updated_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, id, tenantId, code, numberSequence, draft.shortName(), draft.name(),
-                draft.businessOrgId(), draft.deploymentPlatformCode(), draft.systemTypeCode(),
-                draft.systemOwnershipCode(), draft.contactUserId(), draft.description(), draft.remark(),
-                status.name(), draft.sortNo(), rowVersion, actorId, actorId);
-    }
-
-    /** 不修改逻辑编号、发布状态或行版本以外的字段，CAS 只由 rowVersion 保护。 */
-    public boolean updateLogicalPublishedFields(long tenantId, long id, LogicalDraft draft,
-                                                long expectedRowVersion, long actorId) {
-        requireTransaction();
-        Objects.requireNonNull(draft, "draft 不能为空");
-        return jdbc.update("""
-                        UPDATE arch_logical_subsystem
-                        SET short_name = ?, name = ?, business_org_id = ?, deployment_platform_code = ?,
-                            system_type_code = ?, system_ownership_code = ?, contact_user_id = ?,
-                            description = ?, remark = ?, sort_no = ?, updated_by = ?,
-                            row_version = row_version + 1
-                        WHERE tenant_id = ? AND id = ? AND row_version = ?
-                        """, draft.shortName(), draft.name(), draft.businessOrgId(), draft.deploymentPlatformCode(),
-                draft.systemTypeCode(), draft.systemOwnershipCode(), draft.contactUserId(), draft.description(),
-                draft.remark(), draft.sortNo(), actorId, tenantId, id, expectedRowVersion) == 1;
-    }
-
-    public boolean updateLogicalPublishedStatus(long tenantId, long id, PublishedStatus status,
-                                                long expectedRowVersion, long actorId) {
-        requireTransaction();
-        Objects.requireNonNull(status, "status 不能为空");
-        return jdbc.update("""
-                        UPDATE arch_logical_subsystem
-                        SET status = ?, updated_by = ?, row_version = row_version + 1
-                        WHERE tenant_id = ? AND id = ? AND row_version = ?
-                        """, status.name(), actorId, tenantId, id, expectedRowVersion) == 1;
-    }
-
-    /** 从物理草稿发布新主记录；所属逻辑与槽位由调用方显式给出。 */
-    public void insertPhysicalPublished(long id, long tenantId, String code, String numberSlot,
-                                        long logicalSubsystemId, PhysicalDraft draft, PublishedStatus status,
+    /** 从物理草稿发布新主记录；编号由申请人填写并写入草稿。 */
+    public void insertPhysicalPublished(long id, long tenantId, PhysicalDraft draft, PublishedStatus status,
                                         long rowVersion, long actorId) {
         requireTransaction();
         Objects.requireNonNull(draft, "draft 不能为空");
         Objects.requireNonNull(status, "status 不能为空");
         jdbc.update("""
                         INSERT INTO arch_physical_subsystem
-                            (id, tenant_id, code, number_slot, short_name, name, logical_subsystem_id,
-                             english_name, business_group_name, business_continuity_level, collected_system_level,
-                             deployment_platform, disaster_recovery_mode, responsible_team_org_id,
+                            (id, tenant_id, code, short_name, name, logical_subsystem_name, business_component_code,
+                             english_name, business_group_name, deployment_platform, disaster_recovery_mode,
+                             responsible_team_org_id,
                              responsible_team_name_snapshot, runtime_code, system_level_code,
                              development_framework_code, owner_user_id, description, remark, status, row_version,
                              created_by, updated_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, id, tenantId, code, numberSlot, draft.shortName(), draft.name(), logicalSubsystemId,
-                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
-                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, id, tenantId, draft.code(), draft.shortName(), draft.name(), draft.logicalSubsystemName(),
+                draft.businessComponentCode(),
+                draft.englishName(), draft.businessGroupName(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
                 draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
                 status.name(), rowVersion, actorId, actorId);
     }
 
-    /** 普通字段更新不触及物理记录所属逻辑、编号、状态和行版本。 */
+    /** 普通字段更新不触及物理记录编号、状态和行版本。 */
     public boolean updatePhysicalPublishedFields(long tenantId, long id, PhysicalDraft draft,
                                                  long expectedRowVersion, long actorId) {
         requireTransaction();
         Objects.requireNonNull(draft, "draft 不能为空");
         return jdbc.update("""
                         UPDATE arch_physical_subsystem
-                        SET short_name = ?, name = ?, english_name = ?, business_group_name = ?,
-                            business_continuity_level = ?, collected_system_level = ?, deployment_platform = ?,
-                            disaster_recovery_mode = ?, responsible_team_org_id = ?,
+                        SET short_name = ?, name = ?, logical_subsystem_name = ?, business_component_code = ?,
+                            english_name = ?, business_group_name = ?,
+                            deployment_platform = ?, disaster_recovery_mode = ?, responsible_team_org_id = ?,
                             responsible_team_name_snapshot = ?, runtime_code = ?, system_level_code = ?,
                             development_framework_code = ?, owner_user_id = ?, description = ?, remark = ?,
                             updated_by = ?, row_version = row_version + 1
                         WHERE tenant_id = ? AND id = ? AND row_version = ?
-                        """, draft.shortName(), draft.name(), draft.englishName(), draft.businessGroupName(),
-                draft.businessContinuityLevel(), draft.collectedSystemLevel(), draft.deploymentPlatform(),
-                draft.disasterRecoveryMode(), draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(),
+                        """, draft.shortName(), draft.name(), draft.logicalSubsystemName(),
+                draft.businessComponentCode(), draft.englishName(), draft.businessGroupName(),
+                draft.deploymentPlatform(), draft.disasterRecoveryMode(), draft.responsibleTeamOrgId(),
+                draft.responsibleTeamNameSnapshot(),
                 draft.runtimeCode(), draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
                 draft.description(), draft.remark(), actorId, tenantId, id, expectedRowVersion) == 1;
     }
@@ -822,14 +699,6 @@ public class SubsystemChangeStore {
                         """, status.name(), actorId, tenantId, id, expectedRowVersion) == 1;
     }
 
-    private Optional<LogicalPublishedState> logical(long tenantId, long id, boolean forUpdate) {
-        List<LogicalPublishedState> rows = jdbc.query(
-                "SELECT " + LOGICAL_COLUMNS + " FROM arch_logical_subsystem WHERE tenant_id = ? AND id = ?"
-                        + (forUpdate ? " FOR UPDATE" : ""),
-                LOGICAL_MAPPER, tenantId, id);
-        return rows.stream().findFirst();
-    }
-
     private Optional<PhysicalPublishedState> physical(long tenantId, long id, boolean forUpdate) {
         List<PhysicalPublishedState> rows = jdbc.query(
                 "SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem WHERE tenant_id = ? AND id = ?"
@@ -842,25 +711,41 @@ public class SubsystemChangeStore {
         jdbc.update("""
                         INSERT INTO arch_subsystem_physical_draft
                             (application_id, line_no, tenant_id, source_physical_subsystem_id,
-                             target_logical_subsystem_id, short_name, name, english_name, business_group_name,
-                             business_continuity_level, collected_system_level, deployment_platform,
-                             disaster_recovery_mode, responsible_team_org_id, responsible_team_name_snapshot,
+                             code, short_name, name, logical_subsystem_name, business_component_code,
+                             english_name, business_group_name, deployment_platform, disaster_recovery_mode,
+                             responsible_team_org_id, responsible_team_name_snapshot,
                              runtime_code, system_level_code, development_framework_code, owner_user_id, description, remark,
-                             reserved_number_slot, source_row_version, draft_revision, submitted_snapshot_json)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             source_row_version, draft_revision, submitted_snapshot_json)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, draft.applicationId(), draft.lineNo(), draft.tenantId(),
-                draft.sourcePhysicalSubsystemId(), draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(),
-                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
-                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                draft.sourcePhysicalSubsystemId(), draft.code(), draft.shortName(), draft.name(),
+                draft.logicalSubsystemName(), draft.businessComponentCode(), draft.englishName(),
+                draft.businessGroupName(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
                 draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
-                draft.reservedNumberSlot(), draft.sourceRowVersion(), draft.draftRevision(),
+                draft.sourceRowVersion(), draft.draftRevision(),
                 draft.submittedSnapshotJson());
     }
 
     private static Integer nullableInteger(Object value) {
         return value == null ? null : ((Number) value).intValue();
+    }
+
+    private boolean exists(String table, String column, long tenantId, String value, Long excludeId) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        String exclude = excludeId == null ? "" : " AND id <> ?";
+        List<Object> arguments = new ArrayList<>(List.of(tenantId, value));
+        if (excludeId != null) {
+            arguments.add(excludeId);
+        }
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM " + table + " WHERE tenant_id = ? AND " + column + " = ?" + exclude,
+                Long.class,
+                arguments.toArray());
+        return count != null && count > 0;
     }
 
     private static Long nullableLong(ResultSet resultSet, String column) throws SQLException {

@@ -4,24 +4,20 @@ import com.ccb.architecture.change.model.SubsystemChangeModels.ActionType;
 import com.ccb.architecture.change.model.SubsystemChangeModels.ApplicationStatus;
 import com.ccb.architecture.change.model.SubsystemChangeModels.ChangeApplication;
 import com.ccb.architecture.change.model.SubsystemChangeModels.ChangeHistoryEvent;
-import com.ccb.architecture.change.model.SubsystemChangeModels.LogicalDraft;
-import com.ccb.architecture.change.model.SubsystemChangeModels.LogicalPublishedState;
 import com.ccb.architecture.change.model.SubsystemChangeModels.PhysicalDraft;
 import com.ccb.architecture.change.model.SubsystemChangeModels.PhysicalPublishedState;
 import com.ccb.architecture.change.model.SubsystemChangeModels.PublishedStatus;
 import com.ccb.architecture.change.model.SubsystemChangeModels.TargetKind;
 import com.ccb.architecture.change.model.SubsystemChangeModels.TargetLock;
 import com.ccb.architecture.change.model.SubsystemChangeModels.ValueReservation;
-import com.ccb.architecture.change.model.SubsystemNumberKind;
-import com.ccb.architecture.change.model.SubsystemNumberReleaseReason;
-import com.ccb.architecture.change.model.SubsystemNumberRequest;
-import com.ccb.architecture.change.model.SubsystemNumberReservation;
-import com.ccb.architecture.change.number.SubsystemNumberStrategy;
 import com.ccb.architecture.change.persistence.SubsystemChangeStore;
+import com.ccb.architecture.service.ArchitectureOptionsService;
 import com.ccb.architecture.web.ArchitectureNotFoundException;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.SystemParameterReference;
+import com.ccb.system.capability.SystemReferenceQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -31,26 +27,22 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.text.Normalizer;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
+import java.util.regex.Pattern;
 
 /**
  * 架构子系统变更工单的草稿与提交准备边界。
  *
- * <p>本类不依赖 workflow 模块。提交准备通过同事务回调交给 T3；回调失败时，状态、编号和锁
- * 与 workflow start 一起回滚，不能留下无流程实例的 IN_REVIEW 工单。</p>
+ * <p>B 方案后逻辑子系统模型已退役；新申请只允许维护物理子系统。历史 LOGICAL 工单可被读取和取消，
+ * 但不能继续编辑、提交或发布。</p>
  */
 @Service
 public class SubsystemChangeService {
@@ -63,71 +55,53 @@ public class SubsystemChangeService {
     private static final String EVENT_REJECTED = "WORKFLOW_REJECTED";
     private static final String EVENT_CANCELLATION_REQUESTED = "WORKFLOW_CANCELLATION_REQUESTED";
     private static final String EVENT_CANCELLED_BY_WORKFLOW = "WORKFLOW_CANCELLED";
-    private static final String SCOPE_LOGICAL_NAME = "LOGICAL_NAME";
+    private static final String SCOPE_PHYSICAL_CODE = "PHYSICAL_CODE";
     private static final String SCOPE_PHYSICAL_NAME = "PHYSICAL_NAME";
     private static final String SCOPE_PHYSICAL_ENGLISH_NAME = "PHYSICAL_ENGLISH_NAME";
-    private static final String PHYSICAL_SLOTS = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final Pattern CODE_PATTERN = Pattern.compile("[A-Z0-9_-]{2,32}");
 
     private final SubsystemChangeStore store;
-    private final SubsystemNumberStrategy numberStrategy;
+    private final SystemReferenceQuery referenceQuery;
     private final TransactionTemplate transactions;
     private final LongSupplier idSupplier;
     private final Clock clock;
 
     @Autowired
-    public SubsystemChangeService(SubsystemChangeStore store, SubsystemNumberStrategy numberStrategy,
+    public SubsystemChangeService(SubsystemChangeStore store,
+                                  SystemReferenceQuery referenceQuery,
                                   TransactionTemplate transactions) {
-        this(store, numberStrategy, transactions,
+        this(store, referenceQuery, transactions,
                 () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000),
                 Clock.systemUTC());
     }
 
-    SubsystemChangeService(SubsystemChangeStore store, SubsystemNumberStrategy numberStrategy,
+    SubsystemChangeService(SubsystemChangeStore store,
+                           SystemReferenceQuery referenceQuery,
                            TransactionTemplate transactions,
-                           LongSupplier idSupplier, Clock clock) {
+                           LongSupplier idSupplier,
+                           Clock clock) {
         this.store = Objects.requireNonNull(store, "store 不能为空");
-        this.numberStrategy = Objects.requireNonNull(numberStrategy, "numberStrategy 不能为空");
+        this.referenceQuery = Objects.requireNonNull(referenceQuery, "referenceQuery 不能为空");
         this.transactions = Objects.requireNonNull(transactions, "transactions 不能为空");
         this.idSupplier = Objects.requireNonNull(idSupplier, "idSupplier 不能为空");
         this.clock = Objects.requireNonNull(clock, "clock 不能为空");
     }
 
-    /** 创建逻辑子系统工单草稿；仅逻辑 CREATE 可以携带 0..N 个物理草稿。 */
-    public ApplicationDetail createLogical(AuthUser actor, LogicalApplicationCommand command) {
-        requireActor(actor);
-        LogicalApplicationCommand normalized = normalizeLogicalCommand(command);
-        return inTransaction(() -> {
-            ChangeApplication application = newApplication(actor, TargetKind.LOGICAL, normalized.actionType(),
-                    normalized.targetId(), normalized.reason());
-            LogicalDraft logicalDraft = newLogicalDraft(application, normalized.logicalDraft(), null, null, null, 0);
-            List<PhysicalDraft> physicalDrafts = newLogicalPhysicalDrafts(application, normalized.physicalDrafts(),
-                    Map.of(), false);
-            ChangeHistoryEvent history = history(application, actor.id(), EVENT_CREATED, null, ApplicationStatus.DRAFT,
-                    "已创建逻辑子系统变更草稿");
-
-            store.insertApplication(application);
-            store.replaceLogicalDraft(logicalDraft);
-            store.replacePhysicalDrafts(application.tenantId(), application.id(), physicalDrafts);
-            store.insertHistory(history);
-            return new ApplicationDetail(application, logicalDraft, physicalDrafts, List.of(history));
-        });
-    }
-
     /** 创建物理子系统工单草稿；一个物理工单始终只有一行物理草稿。 */
     public ApplicationDetail createPhysical(AuthUser actor, PhysicalApplicationCommand command) {
         requireActor(actor);
-        PhysicalApplicationCommand normalized = normalizePhysicalCommand(command);
+        PhysicalApplicationCommand normalized = normalizePhysicalCommand(actor, command);
         return inTransaction(() -> {
             ChangeApplication application = newApplication(actor, TargetKind.PHYSICAL, normalized.actionType(),
                     normalized.targetId(), normalized.reason());
-            PhysicalDraft physicalDraft = newPhysicalDraft(application, normalized.physicalDraft(), null, null, null, 0);
+            PhysicalDraft physicalDraft = newPhysicalDraft(application, normalized.physicalDraft(), null, null, 0);
             ChangeHistoryEvent history = history(application, actor.id(), EVENT_CREATED, null, ApplicationStatus.DRAFT,
                     "已创建物理子系统变更草稿");
 
             store.insertApplication(application);
             store.replacePhysicalDrafts(application.tenantId(), application.id(), List.of(physicalDraft));
             store.insertHistory(history);
-            return new ApplicationDetail(application, null, List.of(physicalDraft), List.of(history));
+            return new ApplicationDetail(application, List.of(physicalDraft), List.of(history));
         });
     }
 
@@ -148,25 +122,25 @@ public class SubsystemChangeService {
         return detailFor(application);
     }
 
-    /**
-     * 仅申请人本人或管理范围可更新 DRAFT/RETURNED 草稿。
-     *
-     * <p>申请级原因使用 Store 的状态/版本 CAS；该 CAS 成功后版本已加一，后续草稿与历史写入
-     * 只在同一事务内继续，不再使用旧版本做第二次 CAS。</p>
-     */
+    /** 仅申请人本人可更新 DRAFT/RETURNED 物理草稿。 */
     public ApplicationDetail update(AuthUser actor, AccessScope accessScope, long applicationId,
                                     long expectedRowVersion, DraftUpdateCommand command) {
         requireActor(actor);
         requirePositive(applicationId, "工单编号");
         requireNonNegative(expectedRowVersion, "工单行版本");
         requireScope(accessScope);
-        DraftUpdateCommand normalized = normalizeUpdateCommand(command);
+        DraftUpdateCommand normalized = normalizeUpdateCommand(actor, command);
 
         return inTransaction(() -> {
             ChangeApplication application = lockOwned(actor, applicationId);
+            requirePhysicalApplication(application, "逻辑子系统工单已退役，不能继续编辑");
             requireEditable(application);
             requireVersion(application, expectedRowVersion);
-            DraftState updatedDrafts = updateDraftState(application, normalized);
+            PhysicalDraft existing = store.findPhysicalDrafts(application.tenantId(), application.id()).stream()
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("物理工单缺少物理草稿"));
+            PhysicalDraft physicalDraft = newPhysicalDraft(application, onlyPhysicalDraft(normalized),
+                    existing, null, existing.draftRevision() + 1);
 
             if (!store.compareAndSetApplicationReason(application.tenantId(), application.id(), application.status(),
                     application.rowVersion(), normalized.reason(), actor.id())) {
@@ -174,26 +148,22 @@ public class SubsystemChangeService {
             }
             long updatedRowVersion = application.rowVersion() + 1;
             if (application.status() == ApplicationStatus.RETURNED) {
-                // 退回后编辑可能改变名称/英文名，旧值保留不能继续阻塞后续提交。
+                // 退回后编辑可能改变编号、名称或英文名，旧保留值不能继续阻塞本工单重提。
                 store.deleteValueReservations(application.tenantId(), application.id());
             }
-            if (updatedDrafts.logicalDraft() != null) {
-                store.replaceLogicalDraft(updatedDrafts.logicalDraft());
-            }
-            store.replacePhysicalDrafts(application.tenantId(), application.id(), updatedDrafts.physicalDrafts());
-            ChangeHistoryEvent history = history(application, actor.id(), EVENT_UPDATED, application.status(), application.status(),
-                    "已更新工单草稿");
+            store.replacePhysicalDrafts(application.tenantId(), application.id(), List.of(physicalDraft));
+            ChangeHistoryEvent history = history(application, actor.id(), EVENT_UPDATED,
+                    application.status(), application.status(), "已更新物理子系统工单草稿");
             store.insertHistory(history);
 
             ChangeApplication updatedApplication = withReasonAndRowVersion(application, normalized.reason(),
                     updatedRowVersion, actor.id());
-            return new ApplicationDetail(updatedApplication, updatedDrafts.logicalDraft(),
-                    updatedDrafts.physicalDrafts(), List.of(history));
+            return new ApplicationDetail(updatedApplication, List.of(physicalDraft), List.of(history));
         });
     }
 
     /**
-     * DRAFT/RETURNED 可立即取消。IN_REVIEW 不伪造取消完成，必须由 T3 调用工作流终止并等待确认事件。
+     * DRAFT/RETURNED 可立即取消。IN_REVIEW 不伪造取消完成，必须由工作流终止确认事件终态化。
      */
     public ApplicationDetail cancel(AuthUser actor, AccessScope accessScope, long applicationId,
                                     long expectedRowVersion) {
@@ -206,7 +176,7 @@ public class SubsystemChangeService {
             ChangeApplication application = lockOwned(actor, applicationId);
             requireVersion(application, expectedRowVersion);
             if (application.status() == ApplicationStatus.IN_REVIEW) {
-                throw conflict("工单正在审批中，需 T3 工作流终止确认后才能取消");
+                throw conflict("工单正在审批中，需工作流终止确认后才能取消");
             }
             requireEditable(application);
             if (!store.compareAndSetApplicationStatus(application.tenantId(), application.id(), application.status(),
@@ -214,9 +184,7 @@ public class SubsystemChangeService {
                 throw conflict("工单已被其他操作更新，请刷新后重试");
             }
 
-            LogicalDraft logicalDraft = store.findLogicalDraft(application.tenantId(), application.id()).orElse(null);
             List<PhysicalDraft> physicalDrafts = store.findPhysicalDrafts(application.tenantId(), application.id());
-            releaseReservedNumbers(application, logicalDraft, physicalDrafts, SubsystemNumberReleaseReason.CANCELLED);
             store.deleteValueReservations(application.tenantId(), application.id());
             if (application.targetId() != null) {
                 store.deleteTargetLock(application.tenantId(), application.targetKind(), application.targetId(),
@@ -227,13 +195,12 @@ public class SubsystemChangeService {
             store.insertHistory(history);
             ChangeApplication cancelled = withStatusAndRowVersion(application, ApplicationStatus.CANCELLED,
                     application.rowVersion() + 1, actor.id());
-            return new ApplicationDetail(cancelled, logicalDraft, physicalDrafts, List.of(history));
+            return new ApplicationDetail(cancelled, physicalDrafts, List.of(history));
         });
     }
 
     /**
-     * 在一个本地事务内准备提交并调用 T3 协调器。协调器抛出异常时整个事务回滚。
-     * 协调器负责调用 WorkflowBusinessGateway，但本服务不直接依赖 workflow 模块。
+     * 在一个本地事务内准备提交并调用协调器。协调器抛出异常时整个事务回滚。
      */
     public SubmissionPreparation coordinateSubmission(AuthUser actor, AccessScope accessScope,
                                                        long applicationId, long expectedRowVersion,
@@ -260,27 +227,19 @@ public class SubsystemChangeService {
         requireActor(actor);
         requireScope(accessScope);
         ChangeApplication application = lockOwned(actor, applicationId);
+        requirePhysicalApplication(application, "逻辑子系统工单已退役，不能提交");
         requireEditable(application);
         requireVersion(application, expectedRowVersion);
 
-        LogicalDraft logicalDraft = store.findLogicalDraft(application.tenantId(), application.id()).orElse(null);
-        List<PhysicalDraft> physicalDrafts = sortedPhysicalDrafts(
-                store.findPhysicalDrafts(application.tenantId(), application.id()));
-        SubmissionTarget target = validateAndLockSubmissionTarget(application, logicalDraft, physicalDrafts);
+        PhysicalDraft physicalDraft = singlePhysicalDraft(application);
+        PhysicalPublishedState target = validateAndLockSubmissionTarget(application, physicalDraft);
         acquireTargetLock(application);
-        reserveValues(application, logicalDraft, physicalDrafts);
+        reserveValues(application, physicalDraft, target);
 
-        NumberedDrafts numbered = reserveNumbers(application, target, logicalDraft, physicalDrafts);
-        String snapshot = submittedSnapshot(application, numbered.logicalDraft(), numbered.physicalDrafts());
+        String snapshot = submittedSnapshot(application, physicalDraft);
         String digest = sha256(snapshot);
-        LogicalDraft submittedLogical = withSubmittedSnapshot(numbered.logicalDraft(), snapshot);
-        List<PhysicalDraft> submittedPhysicals = numbered.physicalDrafts().stream()
-                .map(draft -> withSubmittedSnapshot(draft, snapshot))
-                .toList();
-        if (submittedLogical != null) {
-            store.replaceLogicalDraft(submittedLogical);
-        }
-        store.replacePhysicalDrafts(application.tenantId(), application.id(), submittedPhysicals);
+        PhysicalDraft submittedPhysical = withSubmittedSnapshot(physicalDraft, snapshot);
+        store.replacePhysicalDrafts(application.tenantId(), application.id(), List.of(submittedPhysical));
 
         if (!store.compareAndSetApplicationStatus(application.tenantId(), application.id(), application.status(),
                 application.rowVersion(), ApplicationStatus.IN_REVIEW, actor.id())) {
@@ -289,11 +248,12 @@ public class SubsystemChangeService {
         int nextRound = Math.addExact(application.currentBusinessRound(), 1);
         store.insertHistory(history(application, actor.id(), EVENT_SUBMITTED, application.status(),
                 ApplicationStatus.IN_REVIEW, nextRound, "已完成提交准备", snapshot));
-        return new SubmissionPreparation(application.id(), nextRound, snapshot, digest, numbered.reservedNumbers());
+        return new SubmissionPreparation(application.id(), nextRound, snapshot, digest,
+                List.of(physicalDraft.code()));
     }
 
     /**
-     * T3 工作流事件的同事务协作入口。RETURNED 保留全部资源；REJECTED 释放编号、目标锁和值保留。
+     * 工作流事件的同事务协作入口。RETURNED 保留字段值保留；REJECTED 释放目标锁和值保留。
      */
     public void applyReviewOutcomeInCurrentTransaction(long tenantId, long applicationId,
                                                        long expectedRowVersion, long operatorId,
@@ -317,9 +277,6 @@ public class SubsystemChangeService {
             throw conflict("工单已被其他操作更新，请刷新后重试");
         }
         if (outcome == ReviewOutcome.REJECTED) {
-            LogicalDraft logicalDraft = store.findLogicalDraft(tenantId, applicationId).orElse(null);
-            List<PhysicalDraft> physicalDrafts = store.findPhysicalDrafts(tenantId, applicationId);
-            releaseReservedNumbers(application, logicalDraft, physicalDrafts, SubsystemNumberReleaseReason.REJECTED);
             store.deleteValueReservations(tenantId, applicationId);
             if (application.targetId() != null) {
                 store.deleteTargetLock(tenantId, application.targetKind(), application.targetId(), applicationId);
@@ -333,7 +290,6 @@ public class SubsystemChangeService {
 
     /**
      * 审批中取消必须先登记取消请求，再在同一事务回调中调用 workflow terminate。
-     * 回调失败时取消标记和历史一起回滚，不能伪造已经取消。
      */
     public CancellationPreparation coordinateCancellation(AuthUser actor, long applicationId,
                                                            long expectedRowVersion,
@@ -394,9 +350,6 @@ public class SubsystemChangeService {
                 application.rowVersion(), ApplicationStatus.CANCELLED, operatorId)) {
             throw conflict("工单已被其他操作更新，请刷新后重试");
         }
-        LogicalDraft logicalDraft = store.findLogicalDraft(tenantId, applicationId).orElse(null);
-        List<PhysicalDraft> physicalDrafts = store.findPhysicalDrafts(tenantId, applicationId);
-        releaseReservedNumbers(application, logicalDraft, physicalDrafts, SubsystemNumberReleaseReason.CANCELLED);
         store.deleteValueReservations(tenantId, applicationId);
         if (application.targetId() != null) {
             store.deleteTargetLock(tenantId, application.targetKind(), application.targetId(), applicationId);
@@ -417,16 +370,12 @@ public class SubsystemChangeService {
     }
 
     public record SubmissionPreparation(long applicationId, int nextRound, String snapshot, String digest,
-                                        List<ReservedNumber> reservedNumbers) {
+                                        List<String> physicalSubsystemCodes) {
         public SubmissionPreparation {
             snapshot = Objects.requireNonNull(snapshot, "snapshot 不能为空");
             digest = Objects.requireNonNull(digest, "digest 不能为空");
-            reservedNumbers = List.copyOf(reservedNumbers == null ? List.of() : reservedNumbers);
+            physicalSubsystemCodes = List.copyOf(physicalSubsystemCodes == null ? List.of() : physicalSubsystemCodes);
         }
-    }
-
-    public record ReservedNumber(SubsystemNumberKind kind, int lineNo, Integer logicalSequence,
-                                 int ordinal, String code) {
     }
 
     public record CancellationPreparation(long applicationId, int businessRound,
@@ -451,55 +400,40 @@ public class SubsystemChangeService {
         MANAGE
     }
 
-    public record LogicalApplicationCommand(ActionType actionType, Long targetId, String reason,
-                                            LogicalDraftInput logicalDraft,
-                                            List<PhysicalDraftInput> physicalDrafts) {
-        public LogicalApplicationCommand {
-            physicalDrafts = List.copyOf(physicalDrafts == null ? List.of() : physicalDrafts);
-        }
-    }
-
     public record PhysicalApplicationCommand(ActionType actionType, Long targetId, String reason,
                                              PhysicalDraftInput physicalDraft) {
     }
 
-    public record DraftUpdateCommand(String reason, LogicalDraftInput logicalDraft,
-                                     List<PhysicalDraftInput> physicalDrafts) {
+    public record DraftUpdateCommand(String reason, List<PhysicalDraftInput> physicalDrafts) {
         public DraftUpdateCommand {
             physicalDrafts = List.copyOf(physicalDrafts == null ? List.of() : physicalDrafts);
         }
     }
 
-    public record LogicalDraftInput(String shortName, String name, Long businessOrgId,
-                                    String deploymentPlatformCode, String systemTypeCode,
-                                    String systemOwnershipCode, Long contactUserId,
-                                    String description, String remark, Integer sortNo,
-                                    Long sourceRowVersion) {
-    }
-
-    public record PhysicalDraftInput(int lineNo, Long targetLogicalSubsystemId, String shortName,
-                                     String name, String englishName, String businessGroupName,
-                                     String businessContinuityLevel, String collectedSystemLevel,
+    public record PhysicalDraftInput(int lineNo, String code, String shortName,
+                                     String name, String logicalSubsystemName, String businessComponentCode,
+                                     String englishName, String businessGroupName,
                                      String deploymentPlatform, String disasterRecoveryMode,
                                      Long responsibleTeamOrgId, String responsibleTeamNameSnapshot,
                                      String runtimeCode, String systemLevelCode,
                                      String developmentFrameworkCode, Long ownerUserId,
                                      String description, String remark, Long sourceRowVersion) {
 
-        public PhysicalDraftInput(int lineNo, Long targetLogicalSubsystemId, String shortName,
-                                  String name, String englishName, String businessGroupName,
+        public PhysicalDraftInput(int lineNo, String code, String shortName, String name,
+                                  String logicalSubsystemName, String businessComponentCode,
+                                  String englishName, String businessGroupName,
                                   Long responsibleTeamOrgId, String responsibleTeamNameSnapshot,
                                   String runtimeCode, String systemLevelCode,
                                   String developmentFrameworkCode, Long ownerUserId,
                                   String description, String remark, Long sourceRowVersion) {
-            this(lineNo, targetLogicalSubsystemId, shortName, name, englishName, businessGroupName,
-                    null, null, null, null, responsibleTeamOrgId, responsibleTeamNameSnapshot,
-                    runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId,
-                    description, remark, sourceRowVersion);
+            this(lineNo, code, shortName, name, logicalSubsystemName, businessComponentCode,
+                    englishName, businessGroupName, null, null,
+                    responsibleTeamOrgId, responsibleTeamNameSnapshot, runtimeCode, systemLevelCode,
+                    developmentFrameworkCode, ownerUserId, description, remark, sourceRowVersion);
         }
     }
 
-    public record ApplicationDetail(ChangeApplication application, LogicalDraft logicalDraft,
+    public record ApplicationDetail(ChangeApplication application,
                                     List<PhysicalDraft> physicalDrafts,
                                     List<ChangeHistoryEvent> history) {
         public ApplicationDetail {
@@ -509,190 +443,85 @@ public class SubsystemChangeService {
         }
     }
 
-    private LogicalApplicationCommand normalizeLogicalCommand(LogicalApplicationCommand command) {
-        if (command == null) {
-            throw badRequest("逻辑工单请求不能为空");
-        }
-        ActionType action = requireAction(command.actionType());
-        if (action == ActionType.REPLACE) {
-            throw badRequest("逻辑子系统不支持 REPLACE 工单");
-        }
-        validateTargetForAction(action, command.targetId());
-        LogicalDraftInput logical = normalizeLogicalInput(command.logicalDraft(), action != ActionType.CREATE);
-        List<PhysicalDraftInput> physicals = normalizePhysicalInputs(command.physicalDrafts());
-        if (action != ActionType.CREATE && !physicals.isEmpty()) {
-            throw badRequest("只有逻辑 CREATE 工单可以级联物理子系统草稿");
-        }
-        for (PhysicalDraftInput physical : physicals) {
-            if (physical.targetLogicalSubsystemId() != null) {
-                throw badRequest("逻辑 CREATE 的级联物理草稿不得指定已发布逻辑子系统");
-            }
-        }
-        return new LogicalApplicationCommand(action, command.targetId(), normalizeReason(command.reason()), logical, physicals);
-    }
-
-    private PhysicalApplicationCommand normalizePhysicalCommand(PhysicalApplicationCommand command) {
+    private PhysicalApplicationCommand normalizePhysicalCommand(AuthUser actor, PhysicalApplicationCommand command) {
         if (command == null) {
             throw badRequest("物理工单请求不能为空");
         }
         ActionType action = requireAction(command.actionType());
         validateTargetForAction(action, command.targetId());
-        PhysicalDraftInput physical = normalizePhysicalInput(command.physicalDraft(), action != ActionType.CREATE);
-        if (physical.targetLogicalSubsystemId() == null || physical.targetLogicalSubsystemId() <= 0) {
-            throw badRequest("物理工单必须指定所属或替换目标逻辑子系统");
-        }
+        PhysicalDraftInput physical = normalizePhysicalInput(actor, command.physicalDraft(), action != ActionType.CREATE);
         return new PhysicalApplicationCommand(action, command.targetId(), normalizeReason(command.reason()), physical);
     }
 
-    private DraftUpdateCommand normalizeUpdateCommand(DraftUpdateCommand command) {
+    private DraftUpdateCommand normalizeUpdateCommand(AuthUser actor, DraftUpdateCommand command) {
         if (command == null) {
             throw badRequest("草稿更新请求不能为空");
         }
-        LogicalDraftInput logical = command.logicalDraft() == null ? null : normalizeLogicalInput(command.logicalDraft(), false);
-        return new DraftUpdateCommand(normalizeReason(command.reason()), logical,
-                normalizePhysicalInputs(command.physicalDrafts()));
-    }
-
-    private LogicalDraftInput normalizeLogicalInput(LogicalDraftInput input, boolean requireSourceRowVersion) {
-        if (input == null) {
-            throw badRequest("逻辑草稿不能为空");
+        if (command.physicalDrafts().size() != 1) {
+            throw badRequest("物理工单更新必须且只能包含一行物理草稿");
         }
-        Long sourceRowVersion = normalizeSourceRowVersion(input.sourceRowVersion(), requireSourceRowVersion);
-        return new LogicalDraftInput(required(input.shortName(), "逻辑子系统简称", 100),
-                required(input.name(), "逻辑子系统名称", 200), requiredId(input.businessOrgId(), "事业群"),
-                optional(input.deploymentPlatformCode(), "部署平台", 64),
-                optional(input.systemTypeCode(), "系统类型", 64),
-                optional(input.systemOwnershipCode(), "系统归属", 64), requiredId(input.contactUserId(), "联系人"),
-                optional(input.description(), "描述", 2_000), optional(input.remark(), "备注", 1_000),
-                input.sortNo() == null ? 0 : input.sortNo(), sourceRowVersion);
+        return new DraftUpdateCommand(normalizeReason(command.reason()),
+                List.of(normalizePhysicalInput(actor, command.physicalDrafts().get(0), false)));
     }
 
-    private List<PhysicalDraftInput> normalizePhysicalInputs(List<PhysicalDraftInput> inputs) {
-        List<PhysicalDraftInput> normalized = new ArrayList<>();
-        Set<Integer> lineNumbers = new HashSet<>();
-        for (PhysicalDraftInput input : inputs == null ? List.<PhysicalDraftInput>of() : inputs) {
-            PhysicalDraftInput result = normalizePhysicalInput(input, false);
-            if (!lineNumbers.add(result.lineNo())) {
-                throw badRequest("物理草稿行号不能重复");
-            }
-            normalized.add(result);
+    private PhysicalDraftInput onlyPhysicalDraft(DraftUpdateCommand command) {
+        if (command.physicalDrafts().size() != 1) {
+            throw badRequest("物理工单更新必须且只能包含一行物理草稿");
         }
-        return List.copyOf(normalized);
+        return command.physicalDrafts().get(0);
     }
 
-    private PhysicalDraftInput normalizePhysicalInput(PhysicalDraftInput input, boolean requireSourceRowVersion) {
+    private PhysicalDraftInput normalizePhysicalInput(AuthUser actor, PhysicalDraftInput input,
+                                                       boolean requireSourceRowVersion) {
         if (input == null) {
             throw badRequest("物理草稿不能为空");
         }
         if (input.lineNo() <= 0) {
             throw badRequest("物理草稿行号必须为正数");
         }
-        Long targetLogicalSubsystemId = input.targetLogicalSubsystemId();
-        if (targetLogicalSubsystemId != null && targetLogicalSubsystemId <= 0) {
-            throw badRequest("所属逻辑子系统编号无效");
-        }
         Long ownerUserId = input.ownerUserId();
         if (ownerUserId != null && ownerUserId <= 0) {
             throw badRequest("负责人编号无效");
         }
         Long sourceRowVersion = normalizeSourceRowVersion(input.sourceRowVersion(), requireSourceRowVersion);
-        return new PhysicalDraftInput(input.lineNo(), targetLogicalSubsystemId,
-                required(input.shortName(), "物理子系统简称", 100), required(input.name(), "物理子系统名称", 200),
-                optional(input.englishName(), "英文名称", 200), optional(input.businessGroupName(), "业务群组", 100),
-                optional(input.businessContinuityLevel(), "农信业务连续性等级", 32),
-                optional(input.collectedSystemLevel(), "项目组收集系统等级", 32),
+        String code = required(input.code(), "物理子系统编号", 32).toUpperCase(Locale.ROOT);
+        if (!CODE_PATTERN.matcher(code).matches()) {
+            throw badRequest("物理子系统编号只能包含字母、数字、连字符和下划线，长度为 2-32 位");
+        }
+        return new PhysicalDraftInput(input.lineNo(), code,
+                required(input.shortName(), "物理子系统简称", 100),
+                required(input.name(), "物理子系统名称", 200),
+                optional(input.logicalSubsystemName(), "逻辑子系统", 200),
+                validateParameter(actor, ArchitectureOptionsService.BUSINESS_COMPONENT_CATEGORY,
+                        input.businessComponentCode(), "业务组件编号"),
+                optional(input.englishName(), "英文名称", 200),
+                optional(input.businessGroupName(), "业务群组", 100),
                 optional(input.deploymentPlatform(), "部署平台", 64),
                 optional(input.disasterRecoveryMode(), "灾备模式", 128),
                 requiredId(input.responsibleTeamOrgId(), "负责团队"),
                 required(input.responsibleTeamNameSnapshot(), "负责团队名称", 200),
-                optional(input.runtimeCode(), "运行环境", 64), optional(input.systemLevelCode(), "系统级别", 64),
-                optional(input.developmentFrameworkCode(), "开发框架", 64), ownerUserId,
-                optional(input.description(), "描述", 2_000), optional(input.remark(), "备注", 1_000), sourceRowVersion);
-    }
-
-    private DraftState updateDraftState(ChangeApplication application, DraftUpdateCommand update) {
-        if (application.targetKind() == TargetKind.LOGICAL) {
-            if (update.logicalDraft() == null) {
-                throw badRequest("逻辑工单更新必须包含逻辑草稿");
-            }
-            if (application.actionType() != ActionType.CREATE && !update.physicalDrafts().isEmpty()) {
-                throw badRequest("非 CREATE 逻辑工单不能级联物理草稿");
-            }
-            LogicalDraft existing = store.findLogicalDraft(application.tenantId(), application.id())
-                    .orElseThrow(() -> new IllegalStateException("逻辑工单缺少逻辑草稿"));
-            List<PhysicalDraft> currentPhysicals = store.findPhysicalDrafts(application.tenantId(), application.id());
-            LogicalDraft logical = newLogicalDraft(application, update.logicalDraft(), existing,
-                    existing.reservedNumberSequence(), null, existing.draftRevision() + 1);
-            List<PhysicalDraft> physicals = newLogicalPhysicalDrafts(application, update.physicalDrafts(),
-                    indexByLine(currentPhysicals), application.status() == ApplicationStatus.RETURNED);
-            return new DraftState(logical, physicals);
-        }
-
-        if (update.logicalDraft() != null || update.physicalDrafts().size() != 1) {
-            throw badRequest("物理工单更新必须且只能包含一行物理草稿");
-        }
-        PhysicalDraft existing = store.findPhysicalDrafts(application.tenantId(), application.id()).stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("物理工单缺少物理草稿"));
-        PhysicalDraftInput input = update.physicalDrafts().get(0);
-        if (application.actionType() != ActionType.REPLACE
-                && !Objects.equals(existing.targetLogicalSubsystemId(), input.targetLogicalSubsystemId())) {
-            throw conflict("普通物理工单不得修改所属逻辑子系统，请使用 REPLACE");
-        }
-        PhysicalDraft physical = newPhysicalDraft(application, input, existing, existing.reservedNumberSlot(), null,
-                existing.draftRevision() + 1);
-        return new DraftState(null, List.of(physical));
-    }
-
-    private List<PhysicalDraft> newLogicalPhysicalDrafts(ChangeApplication application,
-                                                          List<PhysicalDraftInput> inputs,
-                                                          Map<Integer, PhysicalDraft> existingByLine,
-                                                          boolean rejectReservedRemoval) {
-        Set<Integer> requestedLines = new HashSet<>();
-        List<PhysicalDraft> result = new ArrayList<>();
-        for (PhysicalDraftInput input : inputs) {
-            requestedLines.add(input.lineNo());
-            PhysicalDraft existing = existingByLine.get(input.lineNo());
-            result.add(newPhysicalDraft(application, input, existing,
-                    existing == null ? null : existing.reservedNumberSlot(), null,
-                    existing == null ? 0 : existing.draftRevision() + 1));
-        }
-        if (rejectReservedRemoval) {
-            existingByLine.values().stream()
-                    .filter(existing -> !requestedLines.contains(existing.lineNo()) && existing.reservedNumberSlot() != null)
-                    .findFirst()
-                    .ifPresent(existing -> {
-                        throw conflict("退回后已保留编号的物理草稿不能删除，请取消后重新创建工单");
-                    });
-        }
-        return List.copyOf(result);
-    }
-
-    private LogicalDraft newLogicalDraft(ChangeApplication application, LogicalDraftInput input,
-                                         LogicalDraft existing, Integer reservedNumberSequence,
-                                         String submittedSnapshotJson, int draftRevision) {
-        Long sourceId = application.actionType() == ActionType.CREATE ? null : application.targetId();
-        Long sourceVersion = existing == null ? input.sourceRowVersion() : existing.sourceRowVersion();
-        return new LogicalDraft(application.id(), application.tenantId(), sourceId,
-                input.shortName(), input.name(), input.businessOrgId(), input.deploymentPlatformCode(),
-                input.systemTypeCode(), input.systemOwnershipCode(), input.contactUserId(), input.description(),
-                input.remark(), input.sortNo(), reservedNumberSequence, sourceVersion, draftRevision,
-                submittedSnapshotJson, existing == null ? now() : existing.createdAt(), now());
+                optional(input.runtimeCode(), "运行环境", 64),
+                optional(input.systemLevelCode(), "系统级别", 64),
+                optional(input.developmentFrameworkCode(), "开发框架", 64),
+                ownerUserId,
+                optional(input.description(), "描述", 2_000),
+                optional(input.remark(), "备注", 1_000),
+                sourceRowVersion);
     }
 
     private PhysicalDraft newPhysicalDraft(ChangeApplication application, PhysicalDraftInput input,
-                                           PhysicalDraft existing, String reservedNumberSlot,
-                                           String submittedSnapshotJson, int draftRevision) {
-        Long sourceId = application.targetKind() == TargetKind.PHYSICAL && application.actionType() != ActionType.CREATE
-                ? application.targetId() : null;
+                                           PhysicalDraft existing, String submittedSnapshotJson,
+                                           int draftRevision) {
+        Long sourceId = application.actionType() == ActionType.CREATE ? null : application.targetId();
         Long sourceVersion = existing == null ? input.sourceRowVersion() : existing.sourceRowVersion();
         return new PhysicalDraft(application.id(), input.lineNo(), application.tenantId(), sourceId,
-                input.targetLogicalSubsystemId(), input.shortName(), input.name(), input.englishName(),
-                input.businessGroupName(), input.businessContinuityLevel(), input.collectedSystemLevel(),
+                input.code(), input.shortName(), input.name(), input.logicalSubsystemName(),
+                input.businessComponentCode(), input.englishName(), input.businessGroupName(),
                 input.deploymentPlatform(), input.disasterRecoveryMode(),
                 input.responsibleTeamOrgId(), input.responsibleTeamNameSnapshot(),
                 input.runtimeCode(), input.systemLevelCode(), input.developmentFrameworkCode(), input.ownerUserId(),
-                input.description(), input.remark(), reservedNumberSlot, sourceVersion, draftRevision,
-                submittedSnapshotJson, existing == null ? now() : existing.createdAt(), now());
+                input.description(), input.remark(), sourceVersion, draftRevision, submittedSnapshotJson,
+                existing == null ? now() : existing.createdAt(), now());
     }
 
     private ChangeApplication newApplication(AuthUser actor, TargetKind targetKind, ActionType actionType,
@@ -703,49 +532,23 @@ public class SubsystemChangeService {
                 actor.id(), actor.id(), now, now);
     }
 
-    private SubmissionTarget validateAndLockSubmissionTarget(ChangeApplication application,
-                                                             LogicalDraft logicalDraft,
-                                                             List<PhysicalDraft> physicalDrafts) {
-        validateTargetForAction(application.actionType(), application.targetId());
-        if (application.targetKind() == TargetKind.LOGICAL) {
-            if (logicalDraft == null) {
-                throw new IllegalStateException("逻辑工单缺少逻辑草稿");
-            }
-            if (application.actionType() == ActionType.REPLACE) {
-                throw badRequest("逻辑子系统不支持 REPLACE 工单");
-            }
-            if (application.actionType() == ActionType.CREATE) {
-                requireCreateSourceEmpty(logicalDraft.sourceLogicalSubsystemId(), logicalDraft.sourceRowVersion(),
-                        "逻辑 CREATE 草稿");
-                for (PhysicalDraft physicalDraft : physicalDrafts) {
-                    requireCreateSourceEmpty(physicalDraft.sourcePhysicalSubsystemId(), physicalDraft.sourceRowVersion(),
-                            "级联物理 CREATE 草稿");
-                    if (physicalDraft.targetLogicalSubsystemId() != null) {
-                        throw conflict("级联物理 CREATE 草稿不得指向已发布逻辑子系统");
-                    }
-                }
-                return new SubmissionTarget(null);
-            }
-            if (!physicalDrafts.isEmpty()) {
-                throw conflict("非 CREATE 逻辑工单不能级联物理草稿");
-            }
-            LogicalPublishedState target = store.lockLogical(application.tenantId(), application.targetId())
-                    .orElseThrow(() -> conflict("逻辑子系统目标不存在或不属于当前租户"));
-            requireLogicalSource(application, logicalDraft, target);
-            validatePublishedAction(application.actionType(), target.status(), target.deleted());
-            return new SubmissionTarget(null);
-        }
-
-        if (logicalDraft != null || physicalDrafts.size() != 1) {
+    private PhysicalDraft singlePhysicalDraft(ChangeApplication application) {
+        List<PhysicalDraft> physicalDrafts = sortedPhysicalDrafts(
+                store.findPhysicalDrafts(application.tenantId(), application.id()));
+        if (physicalDrafts.size() != 1) {
             throw new IllegalStateException("物理工单必须且只能包含一行物理草稿");
         }
-        PhysicalDraft physicalDraft = physicalDrafts.get(0);
+        return physicalDrafts.get(0);
+    }
+
+    private PhysicalPublishedState validateAndLockSubmissionTarget(ChangeApplication application,
+                                                                   PhysicalDraft physicalDraft) {
+        validateTargetForAction(application.actionType(), application.targetId());
         if (application.actionType() == ActionType.CREATE) {
             requireCreateSourceEmpty(physicalDraft.sourcePhysicalSubsystemId(), physicalDraft.sourceRowVersion(),
                     "物理 CREATE 草稿");
-            LogicalPublishedState parent = lockActiveNumberedLogical(application.tenantId(),
-                    physicalDraft.targetLogicalSubsystemId(), "物理 CREATE 的所属逻辑子系统");
-            return new SubmissionTarget(parent.numberSequence());
+            ensurePermanentUnique(application, physicalDraft, null);
+            return null;
         }
 
         PhysicalPublishedState source = store.lockPhysical(application.tenantId(), application.targetId())
@@ -753,25 +556,12 @@ public class SubsystemChangeService {
         requirePhysicalSource(application, physicalDraft, source);
         validatePublishedAction(application.actionType(), source.status(), source.deleted());
         if (application.actionType() == ActionType.REPLACE) {
-            if (Objects.equals(physicalDraft.targetLogicalSubsystemId(), source.logicalSubsystemId())) {
-                throw conflict("REPLACE 必须指定不同的新目标逻辑子系统");
-            }
-            LogicalPublishedState replacementParent = lockActiveNumberedLogical(application.tenantId(),
-                    physicalDraft.targetLogicalSubsystemId(), "REPLACE 的新目标逻辑子系统");
-            return new SubmissionTarget(replacementParent.numberSequence());
+            ensurePermanentUnique(application, physicalDraft, null);
+        } else {
+            requireSameCode(physicalDraft, source);
+            ensurePermanentUnique(application, physicalDraft, source.id());
         }
-        if (!Objects.equals(physicalDraft.targetLogicalSubsystemId(), source.logicalSubsystemId())) {
-            throw conflict("普通物理工单不得修改所属逻辑子系统，请使用 REPLACE");
-        }
-        return new SubmissionTarget(null);
-    }
-
-    private void requireLogicalSource(ChangeApplication application, LogicalDraft draft,
-                                      LogicalPublishedState target) {
-        if (!Objects.equals(draft.sourceLogicalSubsystemId(), application.targetId())
-                || draft.sourceRowVersion() == null || draft.sourceRowVersion() != target.rowVersion()) {
-            throw conflict("逻辑子系统来源版本已变化，请重新创建或刷新草稿");
-        }
+        return source;
     }
 
     private void requirePhysicalSource(ChangeApplication application, PhysicalDraft draft,
@@ -790,38 +580,36 @@ public class SubsystemChangeService {
 
     private void validatePublishedAction(ActionType action, PublishedStatus status, boolean deleted) {
         if (deleted || status == PublishedStatus.VOIDED) {
-            throw conflict("已作废或删除的子系统不能执行该动作");
+            throw conflict("已作废或删除的物理子系统不能执行该动作");
         }
         if (action == ActionType.OFFLINE && status != PublishedStatus.ACTIVE) {
-            throw conflict("只有 ACTIVE 子系统可以下线");
+            throw conflict("只有 ACTIVE 物理子系统可以下线");
         }
         if (action == ActionType.REACTIVATE && status != PublishedStatus.OFFLINE) {
-            throw conflict("只有 OFFLINE 子系统可以重新上线");
+            throw conflict("只有 OFFLINE 物理子系统可以重新上线");
+        }
+        if (action == ActionType.REPLACE && status != PublishedStatus.ACTIVE) {
+            throw conflict("只有 ACTIVE 物理子系统可以替换");
         }
     }
 
-    private LogicalPublishedState lockActiveNumberedLogical(long tenantId, Long logicalId, String label) {
-        if (logicalId == null || logicalId <= 0) {
-            throw conflict(label + "不能为空");
+    private void requireSameCode(PhysicalDraft draft, PhysicalPublishedState target) {
+        if (!Objects.equals(draft.code(), target.code())) {
+            throw conflict("普通物理子系统工单不得修改系统编号；如需替换编号请使用 REPLACE");
         }
-        LogicalPublishedState logical = store.lockLogical(tenantId, logicalId)
-                .orElseThrow(() -> conflict(label + "不存在或不属于当前租户"));
-        if (logical.deleted() || logical.status() != PublishedStatus.ACTIVE || logical.numberSequence() == null) {
-            throw conflict(label + "必须是已编号的 ACTIVE 逻辑子系统");
-        }
-        return logical;
     }
 
-    private LogicalPublishedState lockNumberedLogicalForRelease(long tenantId, Long logicalId) {
-        if (logicalId == null || logicalId <= 0) {
-            throw new IllegalStateException("编号所属逻辑子系统不能为空");
+    private void ensurePermanentUnique(ChangeApplication application, PhysicalDraft draft, Long excludeId) {
+        if (store.physicalCodeExists(application.tenantId(), draft.code(), excludeId)) {
+            throw conflict("物理子系统编号已存在，删除后的编号也不能复用");
         }
-        LogicalPublishedState logical = store.lockLogical(tenantId, logicalId)
-                .orElseThrow(() -> new IllegalStateException("编号所属逻辑子系统不存在，无法释放物理编号"));
-        if (logical.numberSequence() == null) {
-            throw new IllegalStateException("编号所属逻辑子系统缺少编号序号，无法释放物理编号");
+        if (store.physicalNameExists(application.tenantId(), draft.name(), excludeId)) {
+            throw conflict("物理子系统名称已存在，删除后的名称也不能复用");
         }
-        return logical;
+        if (draft.englishName() != null
+                && store.physicalEnglishNameExists(application.tenantId(), draft.englishName(), excludeId)) {
+            throw conflict("物理子系统英文名称已存在，删除后的英文名称也不能复用");
+        }
     }
 
     private void acquireTargetLock(ChangeApplication application) {
@@ -832,7 +620,7 @@ public class SubsystemChangeService {
                 application.targetId()).orElse(null);
         if (current != null) {
             if (current.applicationId() != application.id()) {
-                throw conflict("目标子系统已被其他工单锁定");
+                throw conflict("目标物理子系统已被其他工单锁定");
             }
             return;
         }
@@ -840,20 +628,17 @@ public class SubsystemChangeService {
             store.insertTargetLock(new TargetLock(application.tenantId(), application.targetKind(),
                     application.targetId(), application.id(), now()));
         } catch (DuplicateKeyException exception) {
-            throw conflict("目标子系统已被其他工单锁定");
+            throw conflict("目标物理子系统已被其他工单锁定");
         }
     }
 
-    private void reserveValues(ChangeApplication application, LogicalDraft logicalDraft,
-                               List<PhysicalDraft> physicalDrafts) {
-        if (logicalDraft != null) {
-            reserveValue(application, SCOPE_LOGICAL_NAME, logicalDraft.name(), 0);
-        }
-        for (PhysicalDraft physicalDraft : physicalDrafts) {
-            reserveValue(application, SCOPE_PHYSICAL_NAME, physicalDraft.name(), physicalDraft.lineNo());
-            reserveValue(application, SCOPE_PHYSICAL_ENGLISH_NAME, physicalDraft.englishName(),
-                    physicalDraft.lineNo());
-        }
+    private void reserveValues(ChangeApplication application, PhysicalDraft physicalDraft,
+                               PhysicalPublishedState target) {
+        Long excludeId = target == null || application.actionType() == ActionType.REPLACE ? null : target.id();
+        reserveValue(application, SCOPE_PHYSICAL_CODE, physicalDraft.code(), physicalDraft.lineNo());
+        reserveValue(application, SCOPE_PHYSICAL_NAME, physicalDraft.name(), physicalDraft.lineNo());
+        reserveValue(application, SCOPE_PHYSICAL_ENGLISH_NAME, physicalDraft.englishName(), physicalDraft.lineNo());
+        ensurePermanentUnique(application, physicalDraft, excludeId);
     }
 
     private void reserveValue(ChangeApplication application, String scope, String value, int lineNo) {
@@ -882,175 +667,22 @@ public class SubsystemChangeService {
                 : Normalizer.normalize(normalized, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
     }
 
-    private NumberedDrafts reserveNumbers(ChangeApplication application, SubmissionTarget target,
-                                          LogicalDraft logicalDraft, List<PhysicalDraft> physicalDrafts) {
-        List<ReservedNumber> reservations = new ArrayList<>();
-        LogicalDraft numberedLogical = logicalDraft;
-        List<PhysicalDraft> numberedPhysicals = new ArrayList<>(physicalDrafts);
-        if (application.targetKind() == TargetKind.LOGICAL && application.actionType() == ActionType.CREATE) {
-            SubsystemNumberReservation logicalReservation = reserveNumber(
-                    SubsystemNumberRequest.logical(application.tenantId(), application.id()),
-                    logicalDraft.reservedNumberSequence());
-            numberedLogical = withReservedNumber(logicalDraft, logicalReservation.ordinal());
-            reservations.add(project(logicalReservation));
-            numberedPhysicals.clear();
-            for (PhysicalDraft physicalDraft : physicalDrafts) {
-                SubsystemNumberReservation physicalReservation = reserveNumber(
-                        SubsystemNumberRequest.physical(application.tenantId(), application.id(),
-                                physicalDraft.lineNo(), logicalReservation.ordinal()),
-                        physicalDraft.reservedNumberSlot() == null
-                                ? null : slotOrdinal(physicalDraft.reservedNumberSlot()));
-                numberedPhysicals.add(withReservedNumber(physicalDraft,
-                        slotForOrdinal(physicalReservation.ordinal())));
-                reservations.add(project(physicalReservation));
-            }
-        } else if (application.targetKind() == TargetKind.PHYSICAL
-                && (application.actionType() == ActionType.CREATE || application.actionType() == ActionType.REPLACE)) {
-            PhysicalDraft physicalDraft = physicalDrafts.get(0);
-            SubsystemNumberReservation reservation = reserveNumber(
-                    SubsystemNumberRequest.physical(application.tenantId(), application.id(), physicalDraft.lineNo(),
-                            Objects.requireNonNull(target.numberingLogicalSequence())),
-                    physicalDraft.reservedNumberSlot() == null
-                            ? null : slotOrdinal(physicalDraft.reservedNumberSlot()));
-            numberedPhysicals = List.of(withReservedNumber(physicalDraft, slotForOrdinal(reservation.ordinal())));
-            reservations.add(project(reservation));
-        }
-        return new NumberedDrafts(numberedLogical, sortedPhysicalDrafts(numberedPhysicals), reservations);
-    }
-
-    private SubsystemNumberReservation reserveNumber(SubsystemNumberRequest request, Integer retainedOrdinal) {
-        SubsystemNumberReservation reservation = numberStrategy.reserve(request);
-        if (reservation.tenantId() != request.tenantId()
-                || reservation.applicationId() != request.applicationId()
-                || reservation.lineNo() != request.lineNo()
-                || reservation.kind() != request.kind()
-                || !Objects.equals(reservation.logicalSequence(), request.logicalSequence())
-                || reservation.code() == null || reservation.code().isBlank()) {
-            throw new IllegalStateException("编号策略返回了不匹配的保留记录");
-        }
-        if (retainedOrdinal != null && retainedOrdinal != reservation.ordinal()) {
-            throw conflict("退回工单的保留编号发生变化，禁止重提");
-        }
-        return reservation;
-    }
-
-    private ReservedNumber project(SubsystemNumberReservation reservation) {
-        return new ReservedNumber(reservation.kind(), reservation.lineNo(), reservation.logicalSequence(),
-                reservation.ordinal(), reservation.code());
-    }
-
-    private LogicalDraft withReservedNumber(LogicalDraft draft, int sequence) {
-        return new LogicalDraft(draft.applicationId(), draft.tenantId(), draft.sourceLogicalSubsystemId(),
-                draft.shortName(), draft.name(), draft.businessOrgId(), draft.deploymentPlatformCode(),
-                draft.systemTypeCode(), draft.systemOwnershipCode(), draft.contactUserId(), draft.description(),
-                draft.remark(), draft.sortNo(), sequence, draft.sourceRowVersion(), draft.draftRevision(),
-                draft.submittedSnapshotJson(), draft.createdAt(), now());
-    }
-
-    private PhysicalDraft withReservedNumber(PhysicalDraft draft, String slot) {
-        return new PhysicalDraft(draft.applicationId(), draft.lineNo(), draft.tenantId(),
-                draft.sourcePhysicalSubsystemId(), draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(),
-                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
-                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
-                draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
-                draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(), slot,
-                draft.sourceRowVersion(), draft.draftRevision(), draft.submittedSnapshotJson(), draft.createdAt(), now());
-    }
-
-    private LogicalDraft withSubmittedSnapshot(LogicalDraft draft, String snapshot) {
-        if (draft == null) {
-            return null;
-        }
-        return new LogicalDraft(draft.applicationId(), draft.tenantId(), draft.sourceLogicalSubsystemId(),
-                draft.shortName(), draft.name(), draft.businessOrgId(), draft.deploymentPlatformCode(),
-                draft.systemTypeCode(), draft.systemOwnershipCode(), draft.contactUserId(), draft.description(),
-                draft.remark(), draft.sortNo(), draft.reservedNumberSequence(), draft.sourceRowVersion(),
-                draft.draftRevision(), snapshot, draft.createdAt(), now());
-    }
-
     private PhysicalDraft withSubmittedSnapshot(PhysicalDraft draft, String snapshot) {
         return new PhysicalDraft(draft.applicationId(), draft.lineNo(), draft.tenantId(),
-                draft.sourcePhysicalSubsystemId(), draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(),
-                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
-                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
-                draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
+                draft.sourcePhysicalSubsystemId(), draft.code(), draft.shortName(), draft.name(),
+                draft.logicalSubsystemName(), draft.businessComponentCode(), draft.englishName(),
+                draft.businessGroupName(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                draft.responsibleTeamOrgId(),
+                draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
-                draft.reservedNumberSlot(), draft.sourceRowVersion(), draft.draftRevision(), snapshot,
-                draft.createdAt(), now());
-    }
-
-    private void releaseReservedNumbers(ChangeApplication application, LogicalDraft logicalDraft,
-                                        List<PhysicalDraft> physicalDrafts, SubsystemNumberReleaseReason reason) {
-        if (application.targetKind() == TargetKind.LOGICAL && application.actionType() == ActionType.CREATE) {
-            Integer logicalSequence = logicalDraft == null ? null : logicalDraft.reservedNumberSequence();
-            if (logicalSequence != null) {
-                releaseNumber(SubsystemNumberRequest.logical(application.tenantId(), application.id()),
-                        logicalSequence, reason);
-            }
-            for (PhysicalDraft physicalDraft : physicalDrafts) {
-                if (physicalDraft.reservedNumberSlot() == null) {
-                    continue;
-                }
-                if (logicalSequence == null) {
-                    throw new IllegalStateException("级联物理编号缺少父逻辑保留序号");
-                }
-                releaseNumber(SubsystemNumberRequest.physical(application.tenantId(), application.id(),
-                                physicalDraft.lineNo(), logicalSequence),
-                        slotOrdinal(physicalDraft.reservedNumberSlot()), reason);
-            }
-            return;
-        }
-        if (application.targetKind() == TargetKind.PHYSICAL
-                && (application.actionType() == ActionType.CREATE || application.actionType() == ActionType.REPLACE)
-                && !physicalDrafts.isEmpty() && physicalDrafts.get(0).reservedNumberSlot() != null) {
-            PhysicalDraft physicalDraft = physicalDrafts.get(0);
-            LogicalPublishedState parent = lockNumberedLogicalForRelease(application.tenantId(),
-                    physicalDraft.targetLogicalSubsystemId());
-            releaseNumber(SubsystemNumberRequest.physical(application.tenantId(), application.id(),
-                            physicalDraft.lineNo(), parent.numberSequence()),
-                    slotOrdinal(physicalDraft.reservedNumberSlot()), reason);
-        }
-    }
-
-    private void releaseNumber(SubsystemNumberRequest request, int ordinal,
-                               SubsystemNumberReleaseReason reason) {
-        SubsystemNumberReservation reservation = SubsystemNumberReservation.unformatted(request, ordinal)
-                .withCode(formatCode(request.kind(), request.logicalSequence(), ordinal));
-        numberStrategy.release(reservation, reason);
-    }
-
-    private String formatCode(SubsystemNumberKind kind, Integer logicalSequence, int ordinal) {
-        if (kind == SubsystemNumberKind.LOGICAL) {
-            return String.format(Locale.ROOT, "A%04d", ordinal);
-        }
-        return String.format(Locale.ROOT, "W%04d%s", Objects.requireNonNull(logicalSequence),
-                slotForOrdinal(ordinal));
-    }
-
-    private String slotForOrdinal(int ordinal) {
-        if (ordinal < 1 || ordinal > PHYSICAL_SLOTS.length()) {
-            throw new IllegalArgumentException("物理编号槽位必须在 1..35 范围内");
-        }
-        return String.valueOf(PHYSICAL_SLOTS.charAt(ordinal - 1));
-    }
-
-    private int slotOrdinal(String slot) {
-        if (slot == null || slot.length() != 1) {
-            throw new IllegalStateException("物理保留编号槽位无效");
-        }
-        int index = PHYSICAL_SLOTS.indexOf(slot.toUpperCase(Locale.ROOT));
-        if (index < 0) {
-            throw new IllegalStateException("物理保留编号槽位无效");
-        }
-        return index + 1;
+                draft.sourceRowVersion(), draft.draftRevision(), snapshot, draft.createdAt(), now());
     }
 
     private List<PhysicalDraft> sortedPhysicalDrafts(List<PhysicalDraft> drafts) {
         return drafts.stream().sorted(Comparator.comparingInt(PhysicalDraft::lineNo)).toList();
     }
 
-    private String submittedSnapshot(ChangeApplication application, LogicalDraft logicalDraft,
-                                     List<PhysicalDraft> physicalDrafts) {
+    private String submittedSnapshot(ChangeApplication application, PhysicalDraft physicalDraft) {
         StringBuilder canonical = new StringBuilder();
         appendCanonical(canonical, "applicationId", application.id());
         appendCanonical(canonical, "tenantId", application.tenantId());
@@ -1059,43 +691,26 @@ public class SubsystemChangeService {
         appendCanonical(canonical, "targetId", application.targetId());
         appendCanonical(canonical, "applicantId", application.applicantId());
         appendCanonical(canonical, "reason", application.reason());
-        if (logicalDraft != null) {
-            appendCanonical(canonical, "logical.shortName", logicalDraft.shortName());
-            appendCanonical(canonical, "logical.name", logicalDraft.name());
-            appendCanonical(canonical, "logical.businessOrgId", logicalDraft.businessOrgId());
-            appendCanonical(canonical, "logical.deploymentPlatformCode", logicalDraft.deploymentPlatformCode());
-            appendCanonical(canonical, "logical.systemTypeCode", logicalDraft.systemTypeCode());
-            appendCanonical(canonical, "logical.systemOwnershipCode", logicalDraft.systemOwnershipCode());
-            appendCanonical(canonical, "logical.contactUserId", logicalDraft.contactUserId());
-            appendCanonical(canonical, "logical.description", logicalDraft.description());
-            appendCanonical(canonical, "logical.remark", logicalDraft.remark());
-            appendCanonical(canonical, "logical.sortNo", logicalDraft.sortNo());
-            appendCanonical(canonical, "logical.reservedNumberSequence", logicalDraft.reservedNumberSequence());
-            appendCanonical(canonical, "logical.sourceRowVersion", logicalDraft.sourceRowVersion());
-        }
-        for (PhysicalDraft physicalDraft : sortedPhysicalDrafts(physicalDrafts)) {
-            String prefix = "physical[" + physicalDraft.lineNo() + "].";
-            appendCanonical(canonical, prefix + "targetLogicalSubsystemId", physicalDraft.targetLogicalSubsystemId());
-            appendCanonical(canonical, prefix + "shortName", physicalDraft.shortName());
-            appendCanonical(canonical, prefix + "name", physicalDraft.name());
-            appendCanonical(canonical, prefix + "englishName", physicalDraft.englishName());
-            appendCanonical(canonical, prefix + "businessGroupName", physicalDraft.businessGroupName());
-            appendCanonical(canonical, prefix + "businessContinuityLevel", physicalDraft.businessContinuityLevel());
-            appendCanonical(canonical, prefix + "collectedSystemLevel", physicalDraft.collectedSystemLevel());
-            appendCanonical(canonical, prefix + "deploymentPlatform", physicalDraft.deploymentPlatform());
-            appendCanonical(canonical, prefix + "disasterRecoveryMode", physicalDraft.disasterRecoveryMode());
-            appendCanonical(canonical, prefix + "responsibleTeamOrgId", physicalDraft.responsibleTeamOrgId());
-            appendCanonical(canonical, prefix + "responsibleTeamNameSnapshot",
-                    physicalDraft.responsibleTeamNameSnapshot());
-            appendCanonical(canonical, prefix + "runtimeCode", physicalDraft.runtimeCode());
-            appendCanonical(canonical, prefix + "systemLevelCode", physicalDraft.systemLevelCode());
-            appendCanonical(canonical, prefix + "developmentFrameworkCode", physicalDraft.developmentFrameworkCode());
-            appendCanonical(canonical, prefix + "ownerUserId", physicalDraft.ownerUserId());
-            appendCanonical(canonical, prefix + "description", physicalDraft.description());
-            appendCanonical(canonical, prefix + "remark", physicalDraft.remark());
-            appendCanonical(canonical, prefix + "reservedNumberSlot", physicalDraft.reservedNumberSlot());
-            appendCanonical(canonical, prefix + "sourceRowVersion", physicalDraft.sourceRowVersion());
-        }
+        String prefix = "physical[" + physicalDraft.lineNo() + "].";
+        appendCanonical(canonical, prefix + "code", physicalDraft.code());
+        appendCanonical(canonical, prefix + "shortName", physicalDraft.shortName());
+        appendCanonical(canonical, prefix + "name", physicalDraft.name());
+        appendCanonical(canonical, prefix + "logicalSubsystemName", physicalDraft.logicalSubsystemName());
+        appendCanonical(canonical, prefix + "businessComponentCode", physicalDraft.businessComponentCode());
+        appendCanonical(canonical, prefix + "englishName", physicalDraft.englishName());
+        appendCanonical(canonical, prefix + "businessGroupName", physicalDraft.businessGroupName());
+        appendCanonical(canonical, prefix + "deploymentPlatform", physicalDraft.deploymentPlatform());
+        appendCanonical(canonical, prefix + "disasterRecoveryMode", physicalDraft.disasterRecoveryMode());
+        appendCanonical(canonical, prefix + "responsibleTeamOrgId", physicalDraft.responsibleTeamOrgId());
+        appendCanonical(canonical, prefix + "responsibleTeamNameSnapshot",
+                physicalDraft.responsibleTeamNameSnapshot());
+        appendCanonical(canonical, prefix + "runtimeCode", physicalDraft.runtimeCode());
+        appendCanonical(canonical, prefix + "systemLevelCode", physicalDraft.systemLevelCode());
+        appendCanonical(canonical, prefix + "developmentFrameworkCode", physicalDraft.developmentFrameworkCode());
+        appendCanonical(canonical, prefix + "ownerUserId", physicalDraft.ownerUserId());
+        appendCanonical(canonical, prefix + "description", physicalDraft.description());
+        appendCanonical(canonical, prefix + "remark", physicalDraft.remark());
+        appendCanonical(canonical, prefix + "sourceRowVersion", physicalDraft.sourceRowVersion());
         return "{\"canonical\":\"" + jsonEscape(canonical.toString()) + "\"}";
     }
 
@@ -1143,20 +758,12 @@ public class SubsystemChangeService {
 
     private ApplicationDetail detailFor(ChangeApplication application) {
         return new ApplicationDetail(application,
-                store.findLogicalDraft(application.tenantId(), application.id()).orElse(null),
                 store.findPhysicalDrafts(application.tenantId(), application.id()),
                 store.listHistory(application.tenantId(), application.id()));
     }
 
     private ChangeApplication loadAccessible(AuthUser actor, AccessScope scope, long applicationId) {
         ChangeApplication application = store.findApplication(actor.tenantId(), applicationId)
-                .orElseThrow(() -> notFound(applicationId));
-        requireAccess(actor, scope, application);
-        return application;
-    }
-
-    private ChangeApplication lockAccessible(AuthUser actor, AccessScope scope, long applicationId) {
-        ChangeApplication application = store.lockApplication(actor.tenantId(), applicationId)
                 .orElseThrow(() -> notFound(applicationId));
         requireAccess(actor, scope, application);
         return application;
@@ -1175,6 +782,12 @@ public class SubsystemChangeService {
     private void requireAccess(AuthUser actor, AccessScope scope, ChangeApplication application) {
         if (scope == AccessScope.OWN && application.applicantId() != actor.id()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "只能查看和维护本人发起的工单");
+        }
+    }
+
+    private void requirePhysicalApplication(ChangeApplication application, String message) {
+        if (application.targetKind() != TargetKind.PHYSICAL) {
+            throw conflict(message);
         }
     }
 
@@ -1224,14 +837,6 @@ public class SubsystemChangeService {
                 application.createdBy(), updatedBy, application.createdAt(), now());
     }
 
-    private Map<Integer, PhysicalDraft> indexByLine(List<PhysicalDraft> drafts) {
-        Map<Integer, PhysicalDraft> indexed = new HashMap<>();
-        for (PhysicalDraft draft : drafts) {
-            indexed.put(draft.lineNo(), draft);
-        }
-        return indexed;
-    }
-
     private ActionType requireAction(ActionType actionType) {
         return Objects.requireNonNull(actionType, "actionType 不能为空");
     }
@@ -1259,6 +864,21 @@ public class SubsystemChangeService {
             throw badRequest("来源行版本不能为负数");
         }
         return sourceRowVersion;
+    }
+
+    private String validateParameter(AuthUser actor, String categoryCode, String input, String label) {
+        String normalized = normalizeOptional(input);
+        if (normalized == null) {
+            return null;
+        }
+        List<SystemParameterReference> parameters = referenceQuery.activeParameters(actor, categoryCode);
+        String expected = normalized;
+        return (parameters == null ? List.<SystemParameterReference>of() : parameters).stream()
+                .map(SystemParameterReference::code)
+                .filter(code -> code != null && code.trim().equalsIgnoreCase(expected))
+                .map(String::trim)
+                .findFirst()
+                .orElseThrow(() -> badRequest(label + "参数无效或已停用"));
     }
 
     private String normalizeReason(String value) {
@@ -1354,22 +974,5 @@ public class SubsystemChangeService {
 
     private BusinessException conflict(String message) {
         return new BusinessException(ErrorCode.CONFLICT, message);
-    }
-
-    private record DraftState(LogicalDraft logicalDraft, List<PhysicalDraft> physicalDrafts) {
-        private DraftState {
-            physicalDrafts = List.copyOf(physicalDrafts);
-        }
-    }
-
-    private record SubmissionTarget(Integer numberingLogicalSequence) {
-    }
-
-    private record NumberedDrafts(LogicalDraft logicalDraft, List<PhysicalDraft> physicalDrafts,
-                                  List<ReservedNumber> reservedNumbers) {
-        private NumberedDrafts {
-            physicalDrafts = List.copyOf(physicalDrafts);
-            reservedNumbers = List.copyOf(reservedNumbers);
-        }
     }
 }

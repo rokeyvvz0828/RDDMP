@@ -15,10 +15,9 @@ import {
 import { useAuthStore } from '../../stores/auth'
 import {
   cancelSubsystemChangeApplication,
-  getLogicalSubsystem,
   getPhysicalSubsystem,
   getSubsystemChangeApplication,
-  loadLogicalSubsystemOptions,
+  loadBusinessComponentOptions,
   loadOrganizationOptions,
   loadParameterOptions,
   loadUserOptions
@@ -26,8 +25,6 @@ import {
 import SubsystemChangePhysicalCard from './components/SubsystemChangePhysicalCard.vue'
 import SubsystemChangeTimeline from './components/SubsystemChangeTimeline.vue'
 import type {
-  LogicalSubsystem,
-  LogicalSubsystemOption,
   OrganizationOption,
   ParameterOption,
   PhysicalDraftInput,
@@ -43,7 +40,6 @@ import {
   canEditApplication,
   cancelled,
   formatDateTime,
-  formatLogicalNumber,
   httpStatus,
   optionLabel,
   targetKindLabels
@@ -55,20 +51,17 @@ const router = useRouter()
 const auth = useAuthStore()
 const id = Number(route.params.id)
 const detail = ref<SubsystemChangeApplicationDetail | null>(null)
-const currentLogical = ref<LogicalSubsystem | null>(null)
 const currentPhysical = ref<PhysicalSubsystem | null>(null)
 const workflowTask = ref<WorkflowTaskContext | null>(null)
 const physicalDrafts = ref<PhysicalDraftInput[]>([])
 const organizations = ref<OrganizationOption[]>([])
 const users = ref<UserOption[]>([])
-const logicalSubsystems = ref<LogicalSubsystemOption[]>([])
+const businessComponents = ref<ParameterOption[]>([])
 const runtimes = ref<ParameterOption[]>([])
 const levels = ref<ParameterOption[]>([])
 const frameworks = ref<ParameterOption[]>([])
 const deploymentPlatforms = ref<ParameterOption[]>([])
 const disasterRecoveryModes = ref<ParameterOption[]>([])
-const systemTypes = ref<ParameterOption[]>([])
-const ownerships = ref<ParameterOption[]>([])
 const loading = ref(true)
 const loadError = ref('')
 const forbidden = ref(false)
@@ -89,46 +82,30 @@ const title = computed(() => application.value ? `工单 #${application.value.id
 
 const comparison = computed(() => {
   if (!detail.value || detail.value.application.actionType === 'CREATE') return []
-  if (detail.value.application.targetKind === 'LOGICAL' && detail.value.logicalDraft && currentLogical.value) {
-    const draft = detail.value.logicalDraft
-    const current = currentLogical.value
-    return [
-      { label: '系统简称', current: current.shortName, draft: draft.shortName },
-      { label: '系统名称', current: current.name, draft: draft.name },
-      { label: '所属事业群', current: orgLabel(current.businessOrgId), draft: orgLabel(draft.businessOrgId) },
-      { label: '联系人', current: userLabel(current.contactUserId), draft: userLabel(draft.contactUserId) },
-      { label: '状态', current: current.status, draft: actionTypeLabels[detail.value.application.actionType] }
-    ]
-  }
-  if (detail.value.application.targetKind === 'PHYSICAL' && detail.value.physicalDrafts[0] && currentPhysical.value) {
-    const draft = detail.value.physicalDrafts[0]
-    const current = currentPhysical.value
-    return [
-      { label: '系统简称', current: current.shortName, draft: draft.shortName },
-      { label: '系统名称', current: current.name, draft: draft.name },
-      { label: '所属逻辑子系统', current: `${current.logicalSubsystemName}（${current.logicalSubsystemCode}）`, draft: logicalLabel(draft.targetLogicalSubsystemId) },
-      { label: '负责团队', current: current.responsibleTeamDisplayName, draft: draft.responsibleTeamNameSnapshot },
-      { label: '状态', current: current.status, draft: actionTypeLabels[detail.value.application.actionType] }
-    ]
-  }
-  return []
+  const draft = detail.value.physicalDrafts[0]
+  const current = currentPhysical.value
+  if (!draft || !current) return []
+  return [
+    { label: '系统编号', current: current.code, draft: draft.code },
+    { label: '系统简称', current: current.shortName, draft: draft.shortName },
+    { label: '系统名称', current: current.name, draft: draft.name },
+    { label: '所属逻辑子系统', current: current.logicalSubsystemName || '—', draft: draft.logicalSubsystemName || '—' },
+    { label: '业务组件编号', current: optionLabel(businessComponents.value, current.businessComponentCode), draft: optionLabel(businessComponents.value, draft.businessComponentCode) },
+    { label: '负责团队', current: current.responsibleTeamDisplayName, draft: draft.responsibleTeamNameSnapshot },
+    { label: '状态', current: current.status, draft: actionTypeLabels[detail.value.application.actionType] }
+  ]
 })
-
-function logicalLabel(logicalId: number | null) {
-  const option = logicalSubsystems.value.find(item => item.id === logicalId)
-  return option ? `${option.name}（${option.code}）` : logicalId ? `逻辑子系统 #${logicalId}` : '随本工单新建'
-}
 
 function toInput(source: SubsystemChangeApplicationDetail['physicalDrafts'][number]): PhysicalDraftInput {
   return {
     lineNo: source.lineNo,
-    targetLogicalSubsystemId: source.targetLogicalSubsystemId,
+    code: source.code,
     shortName: source.shortName,
     name: source.name,
+    logicalSubsystemName: source.logicalSubsystemName,
+    businessComponentCode: source.businessComponentCode,
     englishName: source.englishName,
     businessGroupName: source.businessGroupName,
-    businessContinuityLevel: source.businessContinuityLevel,
-    collectedSystemLevel: source.collectedSystemLevel,
     deploymentPlatform: source.deploymentPlatform,
     disasterRecoveryMode: source.disasterRecoveryMode,
     responsibleTeamOrgId: source.responsibleTeamOrgId,
@@ -145,31 +122,23 @@ function toInput(source: SubsystemChangeApplicationDetail['physicalDrafts'][numb
 
 async function loadReferences() {
   const results = await Promise.allSettled([
-    loadOrganizationOptions('logical-subsystem', '', 100),
-    loadUserOptions('logical-subsystem', '', 100),
-    loadLogicalSubsystemOptions('', 100),
+    loadOrganizationOptions('physical-subsystem', '', 100),
+    loadUserOptions('physical-subsystem', '', 100),
+    loadBusinessComponentOptions(),
     loadParameterOptions('physical-subsystem', 'ARCH_RUNTIME'),
     loadParameterOptions('physical-subsystem', 'ARCH_SYSTEM_LEVEL'),
     loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK'),
-    loadParameterOptions('logical-subsystem', 'ARCH_DEPLOYMENT_PLATFORM'),
-    loadParameterOptions('logical-subsystem', 'ARCH_SYSTEM_TYPE'),
-    loadParameterOptions('logical-subsystem', 'ARCH_SYSTEM_OWNERSHIP'),
+    loadParameterOptions('physical-subsystem', 'ARCH_DEPLOYMENT_PLATFORM'),
     loadParameterOptions('physical-subsystem', 'ARCH_DISASTER_RECOVERY_MODE')
   ])
   if (results[0].status === 'fulfilled') organizations.value = results[0].value
   if (results[1].status === 'fulfilled') users.value = results[1].value
-  if (results[2].status === 'fulfilled') logicalSubsystems.value = results[2].value
+  if (results[2].status === 'fulfilled') businessComponents.value = results[2].value
   if (results[3].status === 'fulfilled') runtimes.value = results[3].value
   if (results[4].status === 'fulfilled') levels.value = results[4].value
   if (results[5].status === 'fulfilled') frameworks.value = results[5].value
   if (results[6].status === 'fulfilled') deploymentPlatforms.value = results[6].value
-  if (results[7].status === 'fulfilled') systemTypes.value = results[7].value
-  if (results[8].status === 'fulfilled') ownerships.value = results[8].value
-  if (results[9].status === 'fulfilled') disasterRecoveryModes.value = results[9].value
-}
-
-function orgLabel(id: number) {
-  return organizations.value.find(item => item.id === id)?.pathLabel || `组织 #${id}`
+  if (results[7].status === 'fulfilled') disasterRecoveryModes.value = results[7].value
 }
 
 function userLabel(id: number) {
@@ -178,13 +147,12 @@ function userLabel(id: number) {
 }
 
 async function loadPublished(applicationDetail: SubsystemChangeApplicationDetail) {
-  currentLogical.value = null
   currentPhysical.value = null
   const targetId = applicationDetail.application.targetId
   if (!targetId || applicationDetail.application.actionType === 'CREATE') return
+  if (applicationDetail.application.targetKind !== 'PHYSICAL') return
   try {
-    if (applicationDetail.application.targetKind === 'LOGICAL') currentLogical.value = await getLogicalSubsystem(targetId)
-    else currentPhysical.value = await getPhysicalSubsystem(targetId)
+    currentPhysical.value = await getPhysicalSubsystem(targetId)
   } catch {
     ElMessage.warning('当前发布数据已变化或不可访问，仍可查看本工单提交快照')
   }
@@ -277,15 +245,6 @@ function edit() {
   void router.push({ name: 'architecture-subsystem-change-application-edit', params: { id } })
 }
 
-function physicalNumber(index: number) {
-  const draft = detail.value?.physicalDrafts[index]
-  if (!draft?.reservedNumberSlot) return '待生成'
-  const sequence = detail.value?.logicalDraft?.reservedNumberSequence
-  if (sequence) return `W${String(sequence).padStart(4, '0')}${draft.reservedNumberSlot}`
-  const logicalCode = logicalSubsystems.value.find(item => item.id === draft.targetLogicalSubsystemId)?.code
-  return logicalCode?.startsWith('A') ? `W${logicalCode.slice(1)}${draft.reservedNumberSlot}` : `已保留槽位 ${draft.reservedNumberSlot}`
-}
-
 onMounted(() => { void load() })
 </script>
 
@@ -322,24 +281,6 @@ onMounted(() => { void load() })
         </dl>
       </section>
 
-      <section v-if="detail?.logicalDraft" class="architecture-change-section">
-        <div class="architecture-change-section__heading">
-          <div><span>LOGICAL SUBSYSTEM SNAPSHOT</span><h2>逻辑子系统草稿</h2><small>系统编号：{{ formatLogicalNumber(detail.logicalDraft.reservedNumberSequence) }}</small></div>
-        </div>
-        <dl class="architecture-detail-grid">
-          <div><dt>系统简称</dt><dd>{{ detail.logicalDraft.shortName }}</dd></div>
-          <div><dt>系统名称</dt><dd>{{ detail.logicalDraft.name }}</dd></div>
-          <div><dt>所属事业群</dt><dd>{{ orgLabel(detail.logicalDraft.businessOrgId) }}</dd></div>
-          <div><dt>联系人</dt><dd>{{ userLabel(detail.logicalDraft.contactUserId) }}</dd></div>
-          <div><dt>部署平台</dt><dd>{{ optionLabel(deploymentPlatforms, detail.logicalDraft.deploymentPlatformCode) }}</dd></div>
-          <div><dt>系统类型</dt><dd>{{ optionLabel(systemTypes, detail.logicalDraft.systemTypeCode) }}</dd></div>
-          <div><dt>系统归属</dt><dd>{{ optionLabel(ownerships, detail.logicalDraft.systemOwnershipCode) }}</dd></div>
-          <div><dt>草稿修订</dt><dd>第 {{ detail.logicalDraft.draftRevision }} 版</dd></div>
-          <div class="is-wide"><dt>系统描述</dt><dd>{{ detail.logicalDraft.description || '—' }}</dd></div>
-          <div class="is-wide"><dt>备注</dt><dd>{{ detail.logicalDraft.remark || '—' }}</dd></div>
-        </dl>
-      </section>
-
       <section v-if="physicalDrafts.length" class="architecture-change-section">
         <div class="architecture-change-section__heading"><div><span>PHYSICAL SUBSYSTEM SNAPSHOT</span><h2>物理子系统草稿</h2></div></div>
         <div class="architecture-change-card-list">
@@ -349,15 +290,13 @@ onMounted(() => { void load() })
             v-model="physicalDrafts[index]"
             :organizations="organizations"
             :users="users"
-            :logical-subsystems="logicalSubsystems"
+            :business-components="businessComponents"
             :runtimes="runtimes"
             :levels="levels"
             :frameworks="frameworks"
             :deployment-platforms="deploymentPlatforms"
             :disaster-recovery-modes="disasterRecoveryModes"
             :title="`物理子系统 ${index + 1}`"
-            :number-label="physicalNumber(index)"
-            :show-logical-target="application?.targetKind === 'PHYSICAL'"
             readonly
           />
         </div>

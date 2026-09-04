@@ -1,6 +1,5 @@
 package com.ccb.architecture.service;
 
-import com.ccb.architecture.model.LogicalSubsystem;
 import com.ccb.architecture.model.PhysicalSubsystem;
 import com.ccb.architecture.model.PhysicalSubsystemQuery;
 import com.ccb.architecture.repository.ArchitectureSubsystemRepository;
@@ -11,6 +10,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationAudit;
+import com.ccb.system.capability.SystemParameterReference;
 import com.ccb.system.capability.SystemReferenceQuery;
 import com.ccb.system.capability.SystemUserReference;
 import com.ccb.system.org.OrgTreeNode;
@@ -59,46 +59,47 @@ class PhysicalSubsystemServiceTest {
     }
 
     @Test
-    void 列表使用认证租户并返回V82状态和逻辑摘要() {
+    void 列表使用认证租户并返回状态和物理扩展字段() {
         when(repository.pagePhysical(eq(7L), any(PageQuery.class), any(PhysicalSubsystemQuery.class)))
                 .thenReturn(new PageResult<>(List.of(physical("VOIDED")), 1, 1, 20));
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12L, "平台研发团队", 1)));
-        when(repository.findLogical(7L, 101L)).thenReturn(Optional.of(logical()));
+        when(referenceQuery.activeParameters(ACTOR, "ARCH_BUSINESS_COMPONENT"))
+                .thenReturn(List.of(new SystemParameterReference("architecture.business-component.employee-portal", "员工门户")));
         when(referenceQuery.findUser(ACTOR, 30L, false))
                 .thenReturn(Optional.of(new SystemUserReference(30L, "系统负责人", "owner", null, true)));
         when(referenceQuery.findUser(ACTOR, 9L, false))
                 .thenReturn(Optional.of(new SystemUserReference(9L, "架构管理员", "architect", null, true)));
 
         PageResult<PhysicalSubsystemView> result = service.list(ACTOR, new PageQuery(1, 20),
-                new PhysicalSubsystemQuery(" W0001 ", null, null, " 渠道 ", 12L, 101L, " voided "));
+                new PhysicalSubsystemQuery(" W0001 ", null, null, " 商城 ", "architecture.business-component.employee-portal",
+                        " 渠道 ", 12L, " voided "));
 
         assertThat(result.records()).singleElement().satisfies(view -> {
             assertThat(view.code()).isEqualTo("W00011");
-            assertThat(view.numberSlot()).isEqualTo("1");
+            assertThat(view.logicalSubsystemName()).isEqualTo("商城系统");
+            assertThat(view.businessComponentCode()).isEqualTo("architecture.business-component.employee-portal");
             assertThat(view.englishName()).isEqualTo("Mall Platform");
             assertThat(view.status()).isEqualTo("VOIDED");
             assertThat(view.rowVersion()).isEqualTo(4L);
-            assertThat(view.logicalSubsystemCode()).isEqualTo("A0001");
-            assertThat(view.logicalSubsystemNumberSequence()).isEqualTo(1);
-            assertThat(view.logicalSubsystemStatus()).isEqualTo("OFFLINE");
         });
         ArgumentCaptor<PhysicalSubsystemQuery> query = ArgumentCaptor.forClass(PhysicalSubsystemQuery.class);
         verify(repository).pagePhysical(eq(7L), any(PageQuery.class), query.capture());
         assertThat(query.getValue()).isEqualTo(
-                new PhysicalSubsystemQuery("W0001", null, null, "渠道", 12L, 101L, "VOIDED"));
+                new PhysicalSubsystemQuery("W0001", null, null, "商城",
+                        "architecture.business-component.employee-portal", "渠道", 12L, "VOIDED"));
     }
 
     @Test
     void 详情保留状态字段并在团队停用时使用快照名称() {
         when(repository.findPhysical(7L, 201L)).thenReturn(Optional.of(physical("OFFLINE")));
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12L, "已停用团队", 0)));
-        when(repository.findLogical(7L, 101L)).thenReturn(Optional.of(logical()));
 
         PhysicalSubsystemView view = service.detail(ACTOR, 201L);
 
         assertThat(view.status()).isEqualTo("OFFLINE");
-        assertThat(view.numberSlot()).isEqualTo("1");
         assertThat(view.englishName()).isEqualTo("Mall Platform");
+        assertThat(view.logicalSubsystemName()).isEqualTo("商城系统");
+        assertThat(view.businessComponentCode()).isEqualTo("architecture.business-component.employee-portal");
         assertThat(view.responsibleTeamValid()).isFalse();
         assertThat(view.responsibleTeamDisplayName()).isEqualTo("平台研发团队快照");
     }
@@ -143,19 +144,14 @@ class PhysicalSubsystemServiceTest {
                 });
     }
 
-    private LogicalSubsystem logical() {
-        return new LogicalSubsystem(101L, "A0001", "商城", "商城系统", 11L,
-                "P2", "APPLICATION", "CHANNEL", 21L, "系统描述", null,
-                9L, 9L, LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0),
-                1, "OFFLINE", 8, 3L, List.of());
-    }
-
     private PhysicalSubsystem physical(String status) {
-        return new PhysicalSubsystem(201L, "W00011", "商城物理", "商城物理平台", 101L,
-                "渠道", 12L, "平台研发团队快照", "architecture.runtime.7x24", "A", "Spring", 30L,
+        return new PhysicalSubsystem(201L, "W00011", "商城物理", "商城物理平台",
+                "商城系统", "architecture.business-component.employee-portal", "渠道",
+                "architecture.deployment-platform.p2", "architecture.disaster-recovery.active-active",
+                12L, "平台研发团队快照", "architecture.runtime.7x24", "A", "Spring", 30L,
                 "描述", null, 9L, 9L,
                 LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0),
-                "1", "Mall Platform", status, 4L);
+                "Mall Platform", status, 4L);
     }
 
     private OrgTreeNode organization(long id, String name, int status) {

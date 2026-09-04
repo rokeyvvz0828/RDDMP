@@ -1,0 +1,110 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["Java/TypeScript/公开契约和数据库当前模型不再包含三个旧字段", "非容器测试、前端 build 和最终 diff 审计通过"],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": ["服务端名称格式和唯一性测试通过", "单输入框、自动大写和四视口输入旅程通过"],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": ["APPLICATION/DATABASE/WEB 与标准后缀校验测试通过", "自定义后缀和前端双向联动验收通过"],
+      "limitations": []
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["真实 options 搜索、多选关联和回显通过", "Controller 参数测试及服务端非法租户/状态目标拒绝测试通过"],
+      "limitations": ["跨租户拒绝采用服务层自动化而非第二租户真实账号 HTTP 采样。"]
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": ["真实 API/SQL 完成 LINK、UNLINK、重关联且双方一致、当前表单行规范化", "DeploymentUnitLifecycleMySqlTest 12/12 覆盖双向、幂等、对向并发、事务回滚、自关联 CHECK、跨租户 FK 和关系历史"],
+      "limitations": ["未执行长时间持续压力测试。"]
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["V124、导入、生命周期、资源申请分流和版本回归通过", "真实版本、LINK/UNLINK 历史和创建/更新审计落库"],
+      "limitations": []
+    },
+    {
+      "id": "R7",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": ["Controller 精确 PreAuthorize 契约、平台 Method Security、真实 401 和 admin 成功", "DTO 无 tenantId、服务层跨租户/非 ACTIVE 拒绝、审计和授权路径审计通过"],
+      "limitations": ["未直接取得真实普通用户 HTTP 403；不声称该场景已真实运行验证。"]
+    },
+    {
+      "id": "R8",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": ["npm --prefix web run build 退出码 0", "1280x800、375x812、390x844、430x932 明暗主题、控制台和横向溢出验收通过"],
+      "limitations": ["四视口交互使用临时 Mock，真实后端主路径由独立 API/SQL 传感器覆盖。"]
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["MySQL、服务、迁移、关系并发回滚约束与真实 UAT 通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["前端正式 build 和四视口明暗主题验收通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["真实 API/SQL/审计、契约、Flyway、diff 和基准对照完成"]}
+  ],
+  "feedback_summary": {
+    "total": 2,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 2, "P2": 0, "P3": 0, "score": 40},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0004", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0005", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0006", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "部署单元非容器测试", "result": "pass", "evidence": "DeploymentUnitServiceTest 18/18，Controller 和资源申请聚焦测试通过"},
+    {"check": "部署单元 MySQL/Flyway", "result": "pass", "evidence": "迁移 3/3、空库 2/2、导入 8/8、生命周期及关系 12/12"},
+    {"check": "前端正式构建", "result": "pass", "evidence": "vue-tsc 与 Vite build 退出码 0"},
+    {"check": "完整 Maven 回归无新增失败", "result": "pass", "evidence": "功能分支 1 failure/10 errors；基准分支复跑相同三个失败类得到完全相同 1 failure/10 errors，确认为既有基线故障"},
+    {"check": "Flyway 和差异检查", "result": "pass", "evidence": "check-flyway-migrations 通过；git diff --check 通过"}
+  ],
+  "invariant_results": [
+    {"invariant": "只追加 V124，不修改历史迁移", "result": "pass", "evidence": "Flyway 检查 115 migrations 通过"},
+    {"invariant": "权限、租户、实体和审计职责保持", "result": "pass", "evidence": "权限注解、真实 401/admin、服务端非法目标拒绝和审计记录"},
+    {"invariant": "不修改 platform/shared 公共实现", "result": "pass", "evidence": "实际源码修改限于 architecture 模块及获批 V124"},
+    {"invariant": "不依赖动态表单元数据", "result": "pass", "evidence": "最终 diff 无 biz_form 或表单元数据依赖"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "Docker Desktop 初始不可用", "result": "pass", "evidence": "Docker 恢复后 MySQL 迁移、导入、生命周期和关系专项全部通过"},
+    {"disturbance": "完整套件既有失败", "result": "pass", "evidence": "在 dev-ivanh 基准分支等价复现，未发现本需求新增回归"},
+    {"disturbance": "全仓治理历史账本噪声", "result": "controlled", "evidence": "模块治理、开发入口、Flyway 和本任务实际路径审计通过；未修改其他需求账本"}
+  ],
+  "residual_risks": [
+    "未直接取得真实普通用户 HTTP 403 和第二租户账号矩阵；权限表达式、Method Security、服务层租户校验和真实 401/admin 构成替代证据。",
+    "未执行长时间持续关系压力测试；两线程对向并发、复合主键、CHECK/FK 和事务回滚已验证。",
+    "全仓 mvn test 与 check-all-governance 仍有本需求外既有失败；已提供基准对照，不在本需求范围内修复。",
+    "check-codex-scope 强制公开契约 old_behavior_preserved=true，无法表达用户已批准的破坏性字段删除；scope 文件如实保留 false。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R8 均由 verified 任务和至少两类独立传感器覆盖；F-0001/F-0002 已关闭；六次采样最终 P0/P1 为零；新增失败已与基准分支对照排除。"
+}

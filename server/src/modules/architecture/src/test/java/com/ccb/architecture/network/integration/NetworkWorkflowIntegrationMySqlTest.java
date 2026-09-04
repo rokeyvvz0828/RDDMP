@@ -49,7 +49,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     private static final String PAYLOAD_DIGEST = "e".repeat(64);
     private static final LocalDateTime STARTED_AT = LocalDateTime.of(2026, 8, 23, 12, 30);
     private static final String DATABASE = "network_workflow_integration";
-    private static final String CONFLICT_DATABASE = "network_v90_conflict";
+    private static final String CONFLICT_DATABASE = "network_v101_conflict";
 
     @Container
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
@@ -100,7 +100,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90预置工单菜单三级权限与办理角色() {
+    void v101预置工单菜单三级权限与办理角色() {
         assertThat(jdbc.queryForObject("SELECT CONCAT(route_name, '|', route_path, '|', permission_code) "
                         + "FROM sys_menu WHERE id = 808 AND tenant_id = 1 AND deleted = 0", String.class))
                 .isEqualTo("ArchitectureNetworkWorkOrders|/architecture/network-work-orders"
@@ -132,7 +132,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90存量角色兼容映射() {
+    void v101存量角色兼容映射() {
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission role_permission "
                 + "JOIN sys_role_permission inherited ON inherited.role_id = role_permission.role_id "
                 + "AND inherited.tenant_id = role_permission.tenant_id AND inherited.permission_id = 8081 "
@@ -146,7 +146,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90遇到稳定菜单Id身份冲突时失败关闭() {
+    void v101遇到稳定菜单Id身份冲突时失败关闭() {
         try (MySQLContainer<?> conflictMysql = new MySQLContainer<>("mysql:8.4")
                 .withDatabaseName(CONFLICT_DATABASE)
                 .withUsername("test")
@@ -173,7 +173,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90只预置未发布的固定角色审批模型() throws Exception {
+    void v101只预置未发布的固定角色审批模型() throws Exception {
         assertThat(jdbc.queryForObject("SELECT code FROM wf_definition WHERE id = ? AND tenant_id = ?",
                 String.class, DEFINITION_ID, TENANT_ID)).isEqualTo("architecture.network.work-order");
         assertThat(jdbc.queryForObject("SELECT status FROM wf_definition WHERE id = ? AND tenant_id = ?",
@@ -210,7 +210,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v89Store持久化工作流上下文轮次与幂等回执() {
+    void v100Store持久化工作流上下文轮次与幂等回执() {
         inTransaction(() -> {
             store.insertWorkOrder(workOrder());
             store.insertPendingWorkflowRound(pendingRound());

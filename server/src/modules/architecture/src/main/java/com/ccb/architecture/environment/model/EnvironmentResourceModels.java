@@ -164,9 +164,7 @@ public final class EnvironmentResourceModels {
             String deploymentUnitCode,
             String deploymentUnitName,
             String deploymentUnitKind,
-            String relatedDeploymentUnitName,
             String deploymentUnitDescription,
-            String deploymentUnitType,
             BigDecimal databaseStorageGb,
             BigDecimal fileStorageGb,
             Long networkZoneId,
@@ -196,8 +194,7 @@ public final class EnvironmentResourceModels {
 
         public ResourceRequestItem(long id, long tenantId, long requestId, int itemSeq, long deploymentUnitId,
                                    String deploymentUnitCode, String deploymentUnitName,
-                                   String deploymentUnitKind, String relatedDeploymentUnitName,
-                                   String deploymentUnitDescription, String deploymentUnitType,
+                                   String deploymentUnitKind, String deploymentUnitDescription,
                                    BigDecimal databaseStorageGb, BigDecimal fileStorageGb,
                                    String networkZone, String serverType, BigDecimal cpuCores,
                                    BigDecimal memoryGb, int appWebGroupCount, int plannedNodeCount,
@@ -208,7 +205,7 @@ public final class EnvironmentResourceModels {
                                    boolean needsJobexecutor, String remark,
                                    LocalDateTime createdAt, LocalDateTime updatedAt) {
             this(id, tenantId, requestId, itemSeq, deploymentUnitId, deploymentUnitCode, deploymentUnitName,
-                    deploymentUnitKind, relatedDeploymentUnitName, deploymentUnitDescription, deploymentUnitType,
+                    deploymentUnitKind, deploymentUnitDescription,
                     databaseStorageGb, fileStorageGb, null, null, networkZone, serverType, cpuCores, memoryGb,
                     appWebGroupCount, plannedNodeCount, sidecarCpuCores, sidecarMemoryGb, hasSidecar,
                     databaseName, databaseVersion, jdkVersion, middleware, operatingSystem, extraCbsGb,
@@ -330,7 +327,7 @@ public final class EnvironmentResourceModels {
     @JsonIgnoreProperties(value = {
             "tenantId", "requestId", "businessContinuityLevel", "collectedSystemLevel",
             "businessGroupName", "deploymentPlatform", "systemLevelCode", "disasterRecoveryMode",
-            "relatedDeploymentUnitName", "deploymentUnitDescription", "deploymentUnitType"
+            "deploymentUnitDescription"
     }, ignoreUnknown = true)
     public record ResourceItemCommand(
             Long deploymentUnitId,
@@ -559,7 +556,6 @@ public final class EnvironmentResourceModels {
             long deploymentUnitId,
             String deploymentUnitCode,
             String deploymentUnitName,
-            String deploymentUnitType,
             String deploymentUnitKind,
             BigDecimal cpuCores,
             BigDecimal memoryGb,
@@ -586,7 +582,7 @@ public final class EnvironmentResourceModels {
             String remark) {
         public ProvisionItemRequest(long sourceItemId, int itemSeq, long deploymentUnitId,
                                     String deploymentUnitCode, String deploymentUnitName,
-                                    String deploymentUnitType, String deploymentUnitKind,
+                                    String deploymentUnitKind,
                                     BigDecimal cpuCores, BigDecimal memoryGb, BigDecimal databaseStorageGb,
                                     BigDecimal fileStorageGb, BigDecimal extraCbsGb, BigDecimal localDiskGb,
                                     int plannedNodeCount, int nextSequenceStart, String networkZone,
@@ -595,7 +591,7 @@ public final class EnvironmentResourceModels {
                                     String operatingSystem, boolean needsNft, boolean needsFserver,
                                     boolean needsJobexecutor, String remark) {
             this(sourceItemId, itemSeq, deploymentUnitId, deploymentUnitCode, deploymentUnitName,
-                    deploymentUnitType, deploymentUnitKind, cpuCores, memoryGb, databaseStorageGb,
+                    deploymentUnitKind, cpuCores, memoryGb, databaseStorageGb,
                     fileStorageGb, extraCbsGb, localDiskGb, plannedNodeCount, nextSequenceStart,
                     null, null, networkZone, null, serverType, deploymentPlatform, databaseName, databaseVersion,
                     jdkVersion, middleware, operatingSystem, needsNft, needsFserver, needsJobexecutor, remark);

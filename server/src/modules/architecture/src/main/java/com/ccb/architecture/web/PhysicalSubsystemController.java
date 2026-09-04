@@ -38,13 +38,14 @@ public class PhysicalSubsystemController {
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String shortName,
             @RequestParam(required = false) String name,
+            @RequestParam(required = false) String logicalSubsystemName,
+            @RequestParam(required = false) String businessComponentCode,
             @RequestParam(required = false) String businessGroupName,
             @RequestParam(required = false) Long responsibleTeamOrgId,
-            @RequestParam(required = false) Long logicalSubsystemId,
             @RequestParam(required = false) String status,
             @AuthenticationPrincipal AuthUser actor) {
-        PhysicalSubsystemQuery query = new PhysicalSubsystemQuery(code, shortName, name, businessGroupName,
-                responsibleTeamOrgId, logicalSubsystemId, status);
+        PhysicalSubsystemQuery query = new PhysicalSubsystemQuery(code, shortName, name, logicalSubsystemName,
+                businessComponentCode, businessGroupName, responsibleTeamOrgId, status);
         return ApiResponse.success(service.list(actor, new PageQuery(page, size), query), TraceId.getOrCreate());
     }
 

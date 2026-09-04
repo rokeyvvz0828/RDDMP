@@ -1,0 +1,477 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "server/src/modules/architecture 物理子系统模型、仓储、服务、控制器",
+      "server/src/modules/architecture/change 子系统变更工单",
+      "server/src/platform/infrastructure Flyway 迁移 V123",
+      "web/src/modules/architecture 架构前端页面、API 和类型",
+      "mock/mock-data.json",
+      "docs/integration/architecture-module-contract.md"
+    ],
+    "environment": [
+      "platform/system 系统参数字典只读查询",
+      "platform/workflow 工作流审批事件",
+      "部署单元、资源申请、环境实例、网络访问和搭建计划对物理子系统的引用",
+      "MySQL/Flyway/Testcontainers 运行环境",
+      "用户已有未跟踪旧需求账本文件"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "physical_schema",
+      "owner": "Flyway V123",
+      "valid_values": [
+        "旧逻辑外键结构",
+        "独立物理主模型结构"
+      ]
+    },
+    {
+      "name": "physical_subsystem_record",
+      "owner": "ArchitectureSubsystemRepository",
+      "valid_values": [
+        "ACTIVE",
+        "OFFLINE",
+        "VOIDED",
+        "deleted"
+      ]
+    },
+    {
+      "name": "physical_draft_payload",
+      "owner": "SubsystemChangeStore",
+      "valid_values": [
+        "CREATE",
+        "UPDATE",
+        "REPLACE",
+        "RETIRE",
+        "VOID"
+      ]
+    },
+    {
+      "name": "business_component_option",
+      "owner": "SystemReferenceQuery",
+      "valid_values": [
+        "enabled",
+        "disabled",
+        "missing"
+      ]
+    },
+    {
+      "name": "frontend_architecture_routes",
+      "owner": "web/src/router/index.ts 和架构模块页面",
+      "valid_values": [
+        "logical route present",
+        "physical only"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "用户或旧客户端尝试访问逻辑子系统入口",
+      "transitions": [
+        "Spring Controller mapping 注册",
+        "前端路由和菜单注册",
+        "工单 targetKind 可选项"
+      ],
+      "outputs": [
+        "逻辑入口不可调用且不可从前端进入"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "Flyway 在旧库或空库执行到 V123",
+      "transitions": [
+        "回填物理逻辑文本",
+        "删除逻辑 FK、逻辑表、逻辑草稿和编号保留结构",
+        "保留物理主记录"
+      ],
+      "outputs": [
+        "数据库结构只剩物理主模型"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "物理子系统查询或工单提交携带逻辑文本",
+      "transitions": [
+        "服务端 trim 和长度校验",
+        "仓储读写 logical_subsystem_name",
+        "前端展示和提交"
+      ],
+      "outputs": [
+        "逻辑子系统作为物理记录可选文本字段存在"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "物理记录或草稿提交业务组件编号",
+      "transitions": [
+        "ArchitectureOptionsService 从 ARCH_BUSINESS_COMPONENT 读取选项",
+        "PhysicalSubsystemService/SubsystemChangeService 校验启用字典项",
+        "仓储保存 business_component_code"
+      ],
+      "outputs": [
+        "业务组件编号受系统字典管理"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "申请人填写物理子系统 code",
+      "transitions": [
+        "服务端转大写并校验格式",
+        "工单草稿保存 code",
+        "发布时用草稿 code 写入物理主表",
+        "历史 code 冲突检查"
+      ],
+      "outputs": [
+        "物理编号由用户填写且永久唯一"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "input": "下游能力请求 ACTIVE 物理子系统选项或物理详情",
+      "transitions": [
+        "ArchitectureOptionsService.physicalSubsystems",
+        "PhysicalSubsystemOption 投影",
+        "下游页面/API 消费物理 id/code/name"
+      ],
+      "outputs": [
+        "下游继续以物理子系统为引用根"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "input": "认证用户执行物理查询或工单操作",
+      "transitions": [
+        "RBAC 注解/服务校验",
+        "租户条件过滤",
+        "审计写入",
+        "固定 DTO 表单校验"
+      ],
+      "outputs": [
+        "权限、租户、审计和固定表单边界保持"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "input": "用户在桌面或手机视口使用架构物理页面和工单",
+      "transitions": [
+        "API 加载状态",
+        "表格和移动卡片渲染",
+        "Element Plus 表单校验",
+        "构建打包"
+      ],
+      "outputs": [
+        "桌面和移动端可用且构建通过"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "physical_subsystem_http",
+      "producers": [
+        "PhysicalSubsystemController",
+        "PhysicalSubsystemService"
+      ],
+      "consumers": [
+        "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+        "部署单元、资源申请、环境实例、网络访问和搭建计划"
+      ],
+      "invariant": "保留物理 id/code/name/status/rowVersion，新增 logicalSubsystemName 和 businessComponentCode，不再返回逻辑外键"
+    },
+    {
+      "name": "subsystem_change_http",
+      "producers": [
+        "SubsystemChangeApplicationController",
+        "SubsystemChangeService"
+      ],
+      "consumers": [
+        "SubsystemChangeApplicationFormPage.vue",
+        "SubsystemChangeApplicationDetailPage.vue"
+      ],
+      "invariant": "新提交仅允许 PHYSICAL 目标，物理草稿携带 code、logicalSubsystemName、businessComponentCode"
+    },
+    {
+      "name": "business_component_dictionary",
+      "producers": [
+        "SystemReferenceQuery"
+      ],
+      "consumers": [
+        "ArchitectureOptionsService",
+        "前端业务组件选择器"
+      ],
+      "invariant": "只使用 ARCH_BUSINESS_COMPONENT 启用参数项作为可选业务组件编号"
+    },
+    {
+      "name": "flyway_schema",
+      "producers": [
+        "V123__remove_logical_subsystem_model.sql"
+      ],
+      "consumers": [
+        "Repository SQL",
+        "MySQL 迁移测试",
+        "MockDataInitializer"
+      ],
+      "invariant": "历史迁移不修改，V123 负责从旧结构演进到新结构"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "逻辑模型和入口残留",
+      "method": "rg 扫描 LogicalSubsystem、logical_subsystem_id、number_slot、逻辑路由和逻辑 API",
+      "blind_spots": [
+        "历史迁移文件中允许保留旧建表语句",
+        "旧工单历史枚举值可能作为兼容显示残留"
+      ],
+      "independence": "直接扫描最终源码和路由"
+    },
+    {
+      "id": "S2",
+      "target": "数据库结构和迁移",
+      "method": "Flyway/Testcontainers 或结构测试断言表、列、索引和字典种子",
+      "blind_spots": [
+        "本机 Docker 不可用时只能得到编译或 SQL 静态证据"
+      ],
+      "independence": "真实迁移后数据库结构采样"
+    },
+    {
+      "id": "S3",
+      "target": "后端物理接口和工单行为",
+      "method": "Maven 聚焦单元/控制器/服务测试",
+      "blind_spots": [
+        "真实审批流和真实用户权限组合需要 UAT 补充"
+      ],
+      "independence": "服务和控制器断言来自测试执行"
+    },
+    {
+      "id": "S4",
+      "target": "前端构建和类型契约",
+      "method": "npm --prefix web run build",
+      "blind_spots": [
+        "构建不等于真实点击 UAT"
+      ],
+      "independence": "Vite/TypeScript 对最终源码编译"
+    },
+    {
+      "id": "S5",
+      "target": "scope 和格式边界",
+      "method": "node scripts/check-codex-scope.mjs 与 git diff --check",
+      "blind_spots": [
+        "scope 检查不判断业务正确性"
+      ],
+      "independence": "基于 git diff 和需求 scope 的机械检查"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "数据库结构",
+      "action": "追加 V123 迁移并更新迁移测试",
+      "authority": "当前需求 scope 允许",
+      "impact_radius": "架构相关表和系统参数字典种子",
+      "rollback": "恢复 diff；已发布数据库依赖备份或补偿迁移"
+    },
+    {
+      "id": "A2",
+      "target": "后端物理主模型和选项接口",
+      "action": "修改 DTO、仓储、服务、控制器和测试",
+      "authority": "当前需求 scope 允许",
+      "impact_radius": "business/architecture 模块",
+      "rollback": "恢复本任务 diff"
+    },
+    {
+      "id": "A3",
+      "target": "子系统变更工单",
+      "action": "修改草稿 DTO、校验、发布、历史和测试",
+      "authority": "当前需求 scope 允许",
+      "impact_radius": "architecture/change 包和工作流消费接口",
+      "rollback": "恢复本任务 diff"
+    },
+    {
+      "id": "A4",
+      "target": "前端架构模块",
+      "action": "删除逻辑页面入口并改造物理页面/工单表单",
+      "authority": "当前需求 scope 允许",
+      "impact_radius": "web/src/modules/architecture 和路由",
+      "rollback": "恢复本任务 diff"
+    },
+    {
+      "id": "A5",
+      "target": "Mock、契约和账本",
+      "action": "更新示例数据、集成文档、验证产物",
+      "authority": "当前需求 scope 允许",
+      "impact_radius": "文档、Mock 和本需求 .ai-control",
+      "rollback": "恢复本任务 diff"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S3",
+        "S4"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S2",
+        "S5"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor_ids": [
+        "S1",
+        "S3",
+        "S4"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R6",
+      "sensor_ids": [
+        "S3",
+        "S4"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R7",
+      "sensor_ids": [
+        "S3",
+        "S5"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R8",
+      "sensor_ids": [
+        "S4"
+      ],
+      "observable": "partial"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "Docker/Testcontainers 本地环境",
+      "effect": "迁移集成测试可能因容器不可用失败",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "并行未跟踪旧需求账本文件",
+      "effect": "git status 存在非本任务未跟踪文件",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "迁移版本号竞争",
+      "effect": "V123 文件名可能与并行需求冲突",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "delays": [
+    {
+      "source": "工作流发布",
+      "consequence": "工单提交后需发布事件才能观察物理主表变化",
+      "sampling_rule": "服务测试直接调用发布服务或模拟工作流回调后采样"
+    },
+    {
+      "source": "前端编译",
+      "consequence": "前端契约错误在后端字段稳定后才能准确判别",
+      "sampling_rule": "T2/T3 后再运行 npm build"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "业务组件编号只需保存字典 code，显示名称由字典选项投影。",
+      "evidence": "用户要求新增业务组件编号字段并使用字典管理选项。",
+      "falsifier": "用户或契约要求保存业务组件名称快照"
+    },
+    {
+      "text": "旧逻辑目标工单可以保留应用和事件历史，但不再提供逻辑草稿在线模型。",
+      "evidence": "用户选择硬删除逻辑模型，同时仓库要求保留审计链。",
+      "falsifier": "验收要求历史逻辑草稿详情完整可查"
+    },
+    {
+      "text": "下游引用依赖物理子系统 id/code/name，不依赖逻辑父级字段。",
+      "evidence": "当前下游选项接口以 physicalSubsystems 为根，旧逻辑字段主要出现在物理展示和工单迁移路径。",
+      "falsifier": "测试或源码扫描发现下游运行路径读取 logical_subsystem_id"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "进入 planning，删除逻辑入口并扫描残留"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "进入 planning，追加 V123 并运行迁移传感器"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "进入 planning，贯通主表/草稿/前端字段"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "进入 planning，复用系统字典查询并添加选项接口"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "进入 planning，移除自动编号并校验人工 code"
+    },
+    {
+      "requirement_id": "R6",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "进入 planning，保持物理选项契约并做下游聚焦回归"
+    },
+    {
+      "requirement_id": "R7",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "进入 planning，保持 RBAC、租户、审计和固定 DTO"
+    },
+    {
+      "requirement_id": "R8",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "进入 planning，先以构建和静态视口规则验收，真实浏览器 UAT 如未执行则披露"
+    }
+  ],
+  "model_status": "ready"
+}

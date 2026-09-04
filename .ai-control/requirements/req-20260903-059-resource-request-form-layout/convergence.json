@@ -1,0 +1,100 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": ["694fc19 重组弹窗 DOM 与专用 CSS", "最终 build 退出 0", "1280x800 明暗主题外层两栏且页面 scrollWidth=innerWidth"],
+      "limitations": []
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["f620bb1 建立稳定 clientId/currentItem", "新建与编辑均为申请项列表/当前项表单", "增删切换和输入保持浏览器旅程通过"],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": ["POST 与 PUT 均捕获 deploymentUnitId 7001、7001、7002", "两条 7001 规格分别保持 2/4 与 3/6，编辑后第一条独立变为 5/4"],
+      "limitations": ["接口运行证据来自本地虚构 Mock，真实后端需在上线验证复核"]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["三状态复用 itemValidationError", "状态文字、首错自动选择、删除相邻迁移和最后一项禁删均由浏览器验证"],
+      "limitations": ["未执行完整屏幕阅读器审计"]
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": ["物理子系统切换取消恢复旧选择和全部申请项", "确认后重建一个空项并刷新候选", "候选失败保留输入且可重试"],
+      "limitations": ["精确乱序响应以 optionSequence 静态保护和构建证据覆盖"]
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": ["最终 vue-tsc/Vite 构建通过", "POST/PUT 中无 clientId，items[] 顺序和 DB/非 DB 分流不变", "api.ts、types.ts、后端和数据库无修改"],
+      "limitations": ["服务端最终校验未在真实后端运行"]
+    },
+    {
+      "id": "R7",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": ["375x812、390x844、430x932 和 1280x800 明暗主题无页面级横向溢出", "候选/保存失败、脏关闭、只读和无权限状态可恢复", "最终 Console 无 error"],
+      "limitations": ["未覆盖所有浏览器内核和设备字体"]
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["提交 f620bb1", "观察 S-0001 无误差", "最终运行采样再次覆盖状态、切换和请求映射"]},
+    {"id": "T2", "status": "verified", "evidence": ["提交 694fc19", "观察 S-0002 无误差", "最终四视口明暗主题和主从旅程通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["最终 build、HTTP、失败、权限、scope、diff 与浏览器采样 S-0003 无误差"]}
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "开发入口", "result": "pass", "evidence": "node scripts/check-development-entry.mjs --require-plugin 退出 0"},
+    {"check": "前端类型与生产构建", "result": "pass", "evidence": "npm --prefix web run build 退出 0，2513 modules transformed"},
+    {"check": "任务完整范围", "result": "pass", "evidence": "scope 以 HEAD~2..HEAD 加 working-tree 检查 12 个变更文件通过"},
+    {"check": "差异空白", "result": "pass", "evidence": "git diff --check HEAD~2 退出 0"},
+    {"check": "全仓治理", "result": "baseline-failure", "evidence": "模块治理、Skill、开发入口通过；AI control layout 仅报告其他历史需求账本问题，本需求前缀无错误"}
+  ],
+  "invariant_results": [
+    {"invariant": "产品修改仅两个授权前端文件", "result": "pass", "evidence": "f620bb1 仅 ResourceRequestPage.vue；694fc19 仅 ResourceRequestPage.vue 和 architecture.css"},
+    {"invariant": "API、DTO、数据库、后端、权限、审计和工作流不变", "result": "pass", "evidence": "范围审计无相关文件，现有 POST/PUT 契约保持"},
+    {"invariant": "重复 deploymentUnitId 合法且 items[] 顺序保持", "result": "pass", "evidence": "新建与编辑捕获顺序均为 7001、7001、7002"},
+    {"invariant": "用户已有和其他需求改动未覆盖", "result": "pass", "evidence": "隔离工作树开发，未修改主工作区 T11 或其他需求账本"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "部署单元候选 500", "result": "pass", "evidence": "错误入口可见，原因和申请项保留，恢复服务后重试加载成功"},
+    {"disturbance": "保存 POST 500", "result": "pass", "evidence": "表单和输入保留，保存按钮恢复可用，服务恢复后单次重试成功"},
+    {"disturbance": "权限降低", "result": "pass", "evidence": "view-only 隐藏新建；无 view/apply/manage 显示权限提示"},
+    {"disturbance": "Windows CRLF scope 传感器", "result": "pass", "evidence": "仅机械规范本需求 requirement.md 为 LF 后，完整范围检查通过"}
+  ],
+  "residual_risks": [
+    "全仓 check-all-governance 仍被范围外历史需求账本问题阻塞，需由对应 Owner 单独治理",
+    "真实后端、生产 RBAC 和服务端重复 deploymentUnitId 校验未连接；上线前需按本需求 release_verification 使用脱敏测试环境复核",
+    "本次观察与收敛由同一主任务上下文执行，不具备人员或独立 Agent 隔离"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R7 均由 verified 任务和有效构建、HTTP、浏览器及范围传感器覆盖；三次采样 P0-P3 全为 0，无反馈，范围和不变量通过，剩余风险均为已披露的非本需求阻塞项"
+}

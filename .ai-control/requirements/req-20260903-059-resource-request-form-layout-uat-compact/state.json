@@ -1,0 +1,2739 @@
+{
+  "schema_version": 4,
+  "revision": 24,
+  "created_at": "2026-09-03T06:10:14+00:00",
+  "updated_at": "2026-09-03T06:38:33+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=2；设计确认=用户于 2026-09-03 回复‘可以’，批准资源申请表单 UAT 紧凑布局设计修订 2。；计划确认=用户于 2026-09-03 回复‘可以’，批准资源申请表单 UAT 紧凑布局实施计划修订 2。",
+      "recorded_at": "2026-09-03T06:10:14+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "已复核设计修订2、实施计划修订2、R8-R12验收与反例；无阻塞未知项，旧收敛账本保持只读",
+      "recorded_at": "2026-09-03T06:10:39+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "模型门禁通过：R8-R12 均有静态与运行传感器，偏差可由两个授权前端文件内的局部执行器控制",
+      "recorded_at": "2026-09-03T06:18:24+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "受控任务计划 ready，产品动作限于两个授权前端文件，采样和回滚条件完整",
+      "recorded_at": "2026-09-03T06:19:10+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T5 实现边界和最低检查满足 observing 入口",
+      "recorded_at": "2026-09-03T06:31:25+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T5 已验证且无反馈，继续执行 T6 最终请求、权限、五视口和收敛回归",
+      "recorded_at": "2026-09-03T06:31:26+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T6 已形成可测的最终工程状态",
+      "recorded_at": "2026-09-03T06:37:38+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T5-T6 均 verified，两次采样误差为0，无待裁决反馈，进入收敛验收",
+      "recorded_at": "2026-09-03T06:37:39+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁PASS：R8-R12有效覆盖，T5-T6 verified，两次采样误差为0，范围与不变量通过",
+      "recorded_at": "2026-09-03T06:38:33+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=2；设计确认=用户于 2026-09-03 回复‘可以’，批准资源申请表单 UAT 紧凑布局设计修订 2。；计划确认=用户于 2026-09-03 回复‘可以’，批准资源申请表单 UAT 紧凑布局实施计划修订 2。",
+        "recorded_at": "2026-09-03T06:10:14+00:00",
+        "data": {
+          "objective": "在不改变资源申请接口、业务规则和主从交互的前提下，压缩非必要高度，让登记表占满弹窗可用空间并内部滚动，使桌面端尽量在一屏完成填写。",
+          "requirements": [
+            {
+              "id": "R8",
+              "statement": "基础信息区必须减少非必要纵向占用。",
+              "acceptance": [
+                "申请原因桌面端默认 2 行",
+                "基础字段和物理摘要保持可读",
+                "不隐藏必填信息"
+              ],
+              "priority": "must",
+              "source": "用户 2026-09-03 UAT 反馈第 1 项",
+              "counterexample": [
+                "申请原因仍以 4 行或更高高度撑高页面",
+                "通过隐藏字段减少高度"
+              ]
+            },
+            {
+              "id": "R9",
+              "statement": "登记表必须占满弹窗可用高度并在内部滚动。",
+              "acceptance": [
+                "主从容器拉伸到 body 剩余高度",
+                "申请项列表和当前项编辑器独立滚动",
+                "标题和 footer 保持可见"
+              ],
+              "priority": "must",
+              "source": "用户 2026-09-03 UAT 反馈第 2 项",
+              "counterexample": [
+                "登记内容继续撑高整个弹窗",
+                "页面根滚动导致 footer 不可达"
+              ]
+            },
+            {
+              "id": "R10",
+              "statement": "数值字段必须使用短输入框。",
+              "acceptance": [
+                "桌面端数值输入宽约 140 至 180px",
+                "步进按钮和长数值可用",
+                "手机端恢复满宽"
+              ],
+              "priority": "must",
+              "source": "用户 2026-09-03 UAT 反馈第 3 项",
+              "counterexample": [
+                "数值输入继续拉伸到整列宽度",
+                "手机端固定短宽导致不可用"
+              ]
+            },
+            {
+              "id": "R11",
+              "statement": "申请项列表和编辑器顶部必须以部署单元名称作为主标题。",
+              "acceptance": [
+                "已选择时两处显示部署单元名称",
+                "未选择时显示未选择部署单元",
+                "序号继续用于错误和删除定位"
+              ],
+              "priority": "must",
+              "source": "用户 2026-09-03 UAT 反馈第 4 项及后续选择 1",
+              "counterexample": [
+                "主标题继续显示申请项 1/2/3",
+                "空项没有可理解标题",
+                "错误提示不再包含序号"
+              ]
+            },
+            {
+              "id": "R12",
+              "statement": "桌面布局必须优先提高一屏可见信息量。",
+              "acceptance": [
+                "1920x1080 下标题、主要基础信息、登记区和 footer 同时可见",
+                "1280x800 下无页面级横向溢出",
+                "超高内容通过登记区内部滚动访问"
+              ],
+              "priority": "must",
+              "source": "用户 2026-09-03 UAT 反馈第 5 项",
+              "counterexample": [
+                "必须滚动整个弹窗才能访问保存按钮",
+                "通过缩小正文字号换取单屏"
+              ]
+            }
+          ],
+          "invariants": [
+            "修订 1 的 R1-R7、主从状态和失败恢复行为保持",
+            "ResourceRequestPayload、items[] 顺序、重复 deploymentUnitId 和 DB/非 DB 分流保持",
+            "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+            "不修改公共 UI、API、DTO、后端、数据库、权限、审计或工作流",
+            "修订 1 converged 账本保持只读"
+          ],
+          "constraints": [
+            "使用现有 Vue 3、Element Plus 和架构模块语义主题变量",
+            "桌面紧凑样式不得降低正文字号",
+            "手机端数字输入恢复满宽且不得产生页面级横向滚动",
+            "实施前建立独立 UAT 修订控制前缀"
+          ],
+          "non_goals": [
+            "基础信息自动折叠或隐藏字段",
+            "应用级高密度模式",
+            "自动保存、拖拽排序、复制或批量填写",
+            "后端或数据契约调整"
+          ],
+          "assumptions": [
+            {
+              "text": "1920x1080 是本轮一屏优化的主要桌面验收视口。",
+              "basis": "用户提供的 UAT 截图接近宽桌面场景",
+              "falsifier": "用户指定其他主桌面分辨率"
+            },
+            {
+              "text": "错误定位仍需要申请项序号。",
+              "basis": "重复部署单元合法且名称可能相同",
+              "falsifier": "产品决定使用其他唯一可见标识"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D5",
+              "decision": "申请原因桌面端缩为 2 行，不折叠基础信息。",
+              "reason": "减少高度且保留上下文",
+              "source": "用户 UAT 反馈确认"
+            },
+            {
+              "id": "D6",
+              "decision": "登记表占满剩余高度，列表和编辑器独立滚动。",
+              "reason": "防止内容撑高弹窗并保持 footer 可见",
+              "source": "用户 UAT 反馈确认"
+            },
+            {
+              "id": "D7",
+              "decision": "部署单元名称作为主标题，空项显示未选择部署单元。",
+              "reason": "直接表达当前编辑对象，序号保留给错误定位",
+              "source": "用户选择方案 1"
+            },
+            {
+              "id": "D8",
+              "decision": "数字输入桌面短宽、手机满宽。",
+              "reason": "提高桌面密度且保持手机可用",
+              "source": "用户 UAT 反馈确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R8"
+              ],
+              "signal": "基础信息高度降低且内容完整",
+              "method": "桌面检查申请原因行数、基础字段和物理摘要"
+            },
+            {
+              "requirement_ids": [
+                "R9",
+                "R12"
+              ],
+              "signal": "弹窗单屏密度和内部滚动正确",
+              "method": "1920x1080、1280x800 明暗主题检查尺寸、overflow、footer 和页面根宽度"
+            },
+            {
+              "requirement_ids": [
+                "R10"
+              ],
+              "signal": "数字输入桌面短宽且手机满宽",
+              "method": "检查全部 el-input-number 计算宽度、步进按钮和三个手机视口"
+            },
+            {
+              "requirement_ids": [
+                "R11"
+              ],
+              "signal": "标题按部署单元名称同步",
+              "method": "空项、选择、重复选择和切换时检查两处标题，保存首错仍包含序号"
+            },
+            {
+              "requirement_ids": [
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12"
+              ],
+              "signal": "修订 1 行为无回归",
+              "method": "前端构建、scope、diff、新建/编辑请求和明暗主题回归"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已由现有模板、局部 CSS、修订1 UAT 环境和可重复传感器验证 R8-R12 因果链、执行器与可观测性",
+        "recorded_at": "2026-09-03T06:18:24+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ResourceRequestPage.vue 资源申请 Dialog 模板",
+              "architecture.css 资源申请局部高度、滚动和输入宽度规则"
+            ],
+            "environment": [
+              "Element Plus Dialog/Form/InputNumber",
+              "现有资源申请状态、API、权限和 Mock",
+              "Vite 与浏览器视口主题"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "reason_rows",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "2"
+              ]
+            },
+            {
+              "name": "item_title",
+              "owner": "ResourceRequestPage.vue",
+              "valid_values": [
+                "deploymentUnitName",
+                "未选择部署单元"
+              ]
+            },
+            {
+              "name": "dialog_height_chain",
+              "owner": "architecture.css",
+              "valid_values": [
+                "桌面视口内固定",
+                "移动自然高度"
+              ]
+            },
+            {
+              "name": "scroll_ownership",
+              "owner": "architecture.css",
+              "valid_values": [
+                "桌面列表和编辑器独立纵向滚动",
+                "移动列表局部横向"
+              ]
+            },
+            {
+              "name": "number_width",
+              "owner": "architecture.css",
+              "valid_values": [
+                "桌面 140-180px",
+                "移动 100%"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R8",
+              "input": "打开表单",
+              "transitions": [
+                "渲染基础字段",
+                "原因 rows=2"
+              ],
+              "outputs": [
+                "基础区高度下降且字段完整"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "input": "内容超过可用高度",
+              "transitions": [
+                "高度链分配剩余空间",
+                "列表与编辑器接管 overflow"
+              ],
+              "outputs": [
+                "登记区填满且 footer 可见"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "input": "不同视口渲染数值字段",
+              "transitions": [
+                "桌面限制宽度",
+                "移动覆盖满宽"
+              ],
+              "outputs": [
+                "桌面短输入且手机可用"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "input": "部署单元选择变化",
+              "transitions": [
+                "deploymentUnitName 更新",
+                "两处标题读取同一回退表达式"
+              ],
+              "outputs": [
+                "标题同步且序号仍用于错误定位"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "input": "1920x1080 或 1280x800 长表单",
+              "transitions": [
+                "压缩原因",
+                "固定 Dialog 高度",
+                "登记区内部滚动"
+              ],
+              "outputs": [
+                "主要区域和 footer 可见且页面根不溢出"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "deploymentUnitName",
+              "producers": [
+                "syncDeploymentUnit 和编辑回显"
+              ],
+              "consumers": [
+                "列表标题",
+                "编辑器标题"
+              ],
+              "invariant": "只改变呈现，不增加请求字段"
+            },
+            {
+              "name": "ResourceRequestPayload.items[]",
+              "producers": [
+                "requestItemPayload"
+              ],
+              "consumers": [
+                "create/update API"
+              ],
+              "invariant": "数量、顺序、字段和重复 deploymentUnitId 不变"
+            },
+            {
+              "name": "Dialog body/footer",
+              "producers": [
+                "Element Plus 和局部 CSS"
+              ],
+              "consumers": [
+                "资源申请表单"
+              ],
+              "invariant": "footer 不进入内容滚动区"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "模板和样式静态契约",
+              "method": "rg 扫描并运行 npm build",
+              "blind_spots": [
+                "实际浏览器高度"
+              ],
+              "independence": "编译器和源码直接检查"
+            },
+            {
+              "id": "S2",
+              "target": "运行布局",
+              "method": "浏览器采集 clientHeight、scrollHeight、overflow、输入宽度和页面根 scrollWidth",
+              "blind_spots": [
+                "其他浏览器内核和字体"
+              ],
+              "independence": "直接读取运行 DOM"
+            },
+            {
+              "id": "S3",
+              "target": "标题和交互",
+              "method": "浏览器操作空项、选择、重复、切换、错误和删除",
+              "blind_spots": [
+                "完整屏幕阅读器"
+              ],
+              "independence": "用户路径输出"
+            },
+            {
+              "id": "S4",
+              "target": "请求和权限不变量",
+              "method": "捕获脱敏 POST/PUT、Console 和权限状态",
+              "blind_spots": [
+                "生产后端和生产 RBAC"
+              ],
+              "independence": "运行请求观察"
+            },
+            {
+              "id": "S5",
+              "target": "范围和旧账本",
+              "method": "diff、scope、governance 和旧账本哈希",
+              "blind_spots": [
+                "外部未提交状态"
+              ],
+              "independence": "仓库级传感器"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "原因和标题",
+              "action": "修改 Vue 三处模板绑定",
+              "authority": "scope writable_paths",
+              "impact_radius": "资源申请局部模板",
+              "rollback": "revert T5"
+            },
+            {
+              "id": "A2",
+              "target": "高度链和滚动",
+              "action": "修改资源申请局部 CSS",
+              "authority": "scope writable_paths",
+              "impact_radius": "资源申请 Dialog",
+              "rollback": "revert T5"
+            },
+            {
+              "id": "A3",
+              "target": "数值输入宽度",
+              "action": "增加桌面宽度和移动覆盖",
+              "authority": "scope writable_paths",
+              "impact_radius": "当前项数字输入",
+              "rollback": "revert T5"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R8",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R9",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R10",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R11",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R12",
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "长或重复部署单元名称",
+              "effect": "标题换行或难区分",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "DB/非 DB 高度和附加需求",
+              "effect": "编辑器高度变化",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Vite HMR 与 Dialog 初次布局",
+              "effect": "过早采样旧尺寸",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "历史治理账本问题",
+              "effect": "全仓治理非零",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Mock 与真实后端差异",
+              "effect": "请求证据仅代表本地",
+              "detectable": false,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite HMR",
+              "consequence": "短时间保留旧计算值",
+              "sampling_rule": "重开 Dialog 并等待稳定"
+            },
+            {
+              "source": "部署单元候选请求",
+              "consequence": "标题暂为回退文案",
+              "sampling_rule": "等待响应和 Vue 更新"
+            },
+            {
+              "source": "主题和视口切换",
+              "consequence": "布局重算",
+              "sampling_rule": "等待尺寸稳定后采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "局部 Dialog 类可建立稳定高度链",
+              "evidence": "修订1已约束 body/footer",
+              "falsifier": "S2 发现 footer 或内容不可达"
+            },
+            {
+              "text": "160px 可显示数值和步进按钮",
+              "evidence": "字段为非负整数且 controls-position=right",
+              "falsifier": "S2 长值出现遮挡"
+            },
+            {
+              "text": "修订1 Mock 可回归请求契约",
+              "evidence": "上一轮已捕获 POST/PUT items[]",
+              "falsifier": "真实后端 UAT 结论不同"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R8",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 后 S1/S2"
+            },
+            {
+              "requirement_id": "R9",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 后 S1/S2"
+            },
+            {
+              "requirement_id": "R10",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3 后 S1/S2"
+            },
+            {
+              "requirement_id": "R11",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 后 S1/S3/S4"
+            },
+            {
+              "requirement_id": "R12",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A2/A3 后 S2/S4/S5"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "计划门禁通过：T5-T6 串行、写入边界明确、R8-R12 全覆盖且安排两次异质采样",
+        "recorded_at": "2026-09-03T06:19:10+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T5",
+              "goal": "实现申请原因压缩、部署单元业务标题、桌面高度链和短数值输入",
+              "requirement_ids": [
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "原因当前 rows=4",
+                "两处主标题当前使用申请项序号",
+                "列表面板当前 max-height=680px",
+                "当前编辑器数字输入继承 100% 宽度",
+                "修订1状态与请求逻辑已收敛且本轮不修改"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/architecture.css",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/execution-T5.json"
+              ],
+              "invariants": [
+                "ResourceRequestPayload 和 items[] 不变",
+                "重复 deploymentUnitId 合法",
+                "错误和删除提示保留申请项序号",
+                "手机页面根无横向滚动",
+                "旧修订1账本不变"
+              ],
+              "interface_contracts": [
+                "deploymentUnitName 仅作为两处主标题呈现",
+                "Dialog footer 位于滚动区之外",
+                "桌面数字输入 140-180px 且 760px 以下满宽"
+              ],
+              "non_goals": [
+                "不修改状态逻辑、API、后端、公共 UI 或应用壳",
+                "不折叠或隐藏基础字段"
+              ],
+              "action_bounds": [
+                "Vue 仅修改申请原因行数和两处标题文案绑定",
+                "CSS 仅修改 architecture-resource-request-* 局部高度、滚动、间距和数字宽度规则",
+                "发现需修改公共 Dialog 或状态函数时停止"
+              ],
+              "acceptance_checks": [
+                "npm build 和 diff 通过",
+                "申请原因 2 行且字段完整",
+                "列表与编辑器主标题同步",
+                "1920/1280 footer 可见且局部滚动",
+                "桌面数字输入 140-180px，手机满宽"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "构建和静态扫描退出码",
+                "浏览器 DOM 尺寸和计算样式",
+                "旧账本哈希"
+              ],
+              "rollback": "revert T5 产品提交恢复修订1",
+              "stop_conditions": [
+                "必须修改 scope 外产品文件",
+                "footer 或字段不可达",
+                "手机页面根溢出",
+                "请求或状态逻辑需改变"
+              ],
+              "escalation_conditions": [
+                "要求折叠基础信息",
+                "数值框需小于 140px",
+                "需要公共 Dialog 或应用壳改造"
+              ]
+            },
+            {
+              "id": "T6",
+              "goal": "完成五视口浏览器回归、请求兼容和 UAT 修订收敛",
+              "requirement_ids": [
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12"
+              ],
+              "prerequisites": [
+                "T5"
+              ],
+              "input_facts": [
+                "Vite 运行于 127.0.0.1:5173",
+                "Mock API 运行于 127.0.0.1:8080",
+                "修订1基线提交为 fad0585",
+                "旧账本哈希已记录"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/execution-T6.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T5.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T6.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/convergence.json"
+              ],
+              "invariants": [
+                "不连接生产系统或记录敏感信息",
+                "请求字段、顺序、权限和修订1行为不变",
+                "旧账本 revision 和哈希不变"
+              ],
+              "interface_contracts": [
+                "Network 中 create/update 继续使用现有 ResourceRequestPayload",
+                "页面根 scrollWidth 不超过 innerWidth",
+                "列表和编辑器滚动节点内容可达"
+              ],
+              "non_goals": [
+                "不修复范围外治理噪声",
+                "不自行发布或合并"
+              ],
+              "action_bounds": [
+                "运行 build、scope、diff、governance 和真实浏览器传感器",
+                "观察发现偏差时只允许回到 T5 两个产品文件纠偏"
+              ],
+              "acceptance_checks": [
+                "1920x1080、1280x800、375x812、390x844、430x932 明暗主题通过",
+                "空项、选择、重复和切换标题正确",
+                "POST/PUT items[] 兼容且无 clientId",
+                "无开放 P0/P1，standard 至少两次采样"
+              ],
+              "evidence_required": [
+                "命令与退出码",
+                "DOM 尺寸和 overflow",
+                "输入宽度",
+                "脱敏 Network 和 Console",
+                "scope、旧账本哈希和残余风险"
+              ],
+              "rollback": "回退证据提交；产品 revert T5",
+              "stop_conditions": [
+                "UAT 服务无法恢复",
+                "请求或权限变化",
+                "需 scope 外产品修改",
+                "页面白屏或保存不可达"
+              ],
+              "escalation_conditions": [
+                "真实后端与 Mock 结论冲突",
+                "公共组件修改不可避免",
+                "历史治理成为硬门禁"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T5",
+              "to": "T6",
+              "reason": "完整实现后才能采集运行与回归证据"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T5"
+            ],
+            [
+              "T6"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "npm build",
+                "1280 和 1920 高度/滚动/标题/输入宽度采样"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5",
+                "T6"
+              ],
+              "checks": [
+                "build、scope、Network、Console、五视口明暗主题和旧账本哈希"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T5 完成采样",
+              "trigger": "T5 执行报告记录后",
+              "observer": "独立观察上下文",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12"
+              ]
+            },
+            {
+              "label": "最终集成采样",
+              "trigger": "T6 全部回归传感器完成后",
+              "observer": "独立观察上下文",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T5 产品提交 813ad56 已完成，build、diff、桌面与手机局部传感器通过",
+        "recorded_at": "2026-09-03T06:31:25+00:00",
+        "data": {
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue",
+              "purpose": "申请原因改为2行、两处主标题改用部署单元名称并删除无用 currentItemIndex"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "建立桌面高度链、独立滚动、紧凑间距、160px 数值输入和移动满宽覆盖"
+            }
+          ],
+          "requirements_addressed": [
+            "R8",
+            "R9",
+            "R10",
+            "R11",
+            "R12"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build（修改前）",
+              "exit_code": 0,
+              "salient_output": "2513 modules transformed，构建通过"
+            },
+            {
+              "command": "npm --prefix web run build（修改后两次）",
+              "exit_code": 0,
+              "salient_output": "2513 modules transformed，最终构建通过"
+            },
+            {
+              "command": "git diff --check -- 两个产品文件",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            },
+            {
+              "command": "git commit -m style(architecture-web): compact resource request form",
+              "exit_code": 0,
+              "salient_output": "提交 813ad56，2 files changed, 29 insertions, 22 deletions"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "1920x1080 深色 DOM 尺寸",
+              "result": "pass",
+              "evidence": "footer bottom 1031.59 <= 1080；editor clientHeight 831、scrollHeight 1012、overflowY auto；root 1920=viewport",
+              "limitations": [
+                "本地 Chromium"
+              ]
+            },
+            {
+              "check": "1280x800 深色 DOM 尺寸",
+              "result": "pass",
+              "evidence": "footer bottom 760 <= 800；editor clientHeight 568、scrollHeight 1012；root 1280=viewport",
+              "limitations": [
+                "本地 Mock 数据"
+              ]
+            },
+            {
+              "check": "浅色与手机响应式",
+              "result": "pass",
+              "evidence": "浅色 1280 footer 可见且数字输入160px；375/390/430 根宽等于视口，数字输入分别约255/269/309px",
+              "limitations": [
+                "未覆盖其他浏览器内核"
+              ]
+            },
+            {
+              "check": "标题与错误定位",
+              "result": "pass",
+              "evidence": "空项两处显示未选择部署单元；选择及重复选择后两处显示 PORTAL_CHANNEL_APPLICATION_WITH_LONG_NAME；错误仍为申请项 1，删除 aria-label 保留申请项序号",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "申请原因 rows 4 改为 2",
+            "列表与编辑器主标题改用 deploymentUnitName，空项回退未选择部署单元",
+            "Dialog/body/form/layout/registration/master 建立 min-height:0 高度链",
+            "列表与编辑器桌面独立滚动，900px 以下恢复 body 滚动",
+            "数字输入桌面160px，760px以下100%"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "请求和状态逻辑不变",
+              "result": "pass",
+              "evidence": "提交仅模板和 CSS，requestItemPayload、校验、权限函数无差异"
+            },
+            {
+              "invariant": "错误与删除提示保留序号",
+              "result": "pass",
+              "evidence": "浏览器错误申请项1，aria-label 删除申请项1/2"
+            },
+            {
+              "invariant": "手机页面根无横向滚动",
+              "result": "pass",
+              "evidence": "375/390/430 的 documentElement.scrollWidth 等于 innerWidth"
+            },
+            {
+              "invariant": "旧收敛账本不变",
+              "result": "pass",
+              "evidence": "phase=converged、revision=31、SHA256=3A36B04732B9964E051B1110B080F2DC4656F8B65BBA48ACE351B25686C24D5F"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "PowerShell 通过批处理调用 apply_patch 无法传递 UTF-8 多行参数",
+              "impact": "改为直接调用 Codex apply-patch 可执行入口，未改变产品内容"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实后端和非 Chromium 内核由上线验证覆盖"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T6 完成最终 build、scope、diff、保存、错误、主题、五视口和旧账本检查",
+        "recorded_at": "2026-09-03T06:37:38+00:00",
+        "data": {
+          "task_id": "T6",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "本地浏览器 UAT",
+              "purpose": "验证五视口、明暗主题、保存、错误、标题、滚动和控制台"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml",
+              "purpose": "将当前控制前缀规范化为独立 UAT 目录并声明 1920x1080 验收"
+            },
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact",
+              "purpose": "保存修订2独立闭环证据"
+            }
+          ],
+          "requirements_addressed": [
+            "R8",
+            "R9",
+            "R10",
+            "R11",
+            "R12"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "2513 modules transformed，built in 22.81s"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope ... --base fad0585 --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "Codex scope check passed；12 changed files"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "模块、Skill、开发入口通过；仅范围外历史 AI control layout 问题，本 UAT 前缀无新增错误"
+            },
+            {
+              "command": "git diff --check fad0585",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "保存成功路径",
+              "result": "pass",
+              "evidence": "浅色 1280 选择部署单元并填写 CPU=2 后出现‘资源申请草稿已创建’",
+              "limitations": [
+                "本地 Mock，未连接真实后端"
+              ]
+            },
+            {
+              "check": "校验失败和首错定位",
+              "result": "pass",
+              "evidence": "重复部署单元的未完整表单保存显示‘申请项 1：非 DB 明细至少填写一项资源容量或附加需求’，首项保持激活",
+              "limitations": []
+            },
+            {
+              "check": "明暗主题与五视口",
+              "result": "pass",
+              "evidence": "深色 1920/1280/375/390/430 与浅色 1280/375/390/430 已采样；footer 可见，根宽等于视口，Console error 均为空",
+              "limitations": [
+                "浅色1920由相同桌面高度规则和浅色1280计算样式覆盖"
+              ]
+            },
+            {
+              "check": "权限和请求不变量",
+              "result": "pass",
+              "evidence": "产品提交只改模板/CSS，权限判断、submitForm 和 requestItemPayload 零差异；修订1已验证 apply/manage/无权限及 POST/PUT items[]",
+              "limitations": [
+                "本轮未重新切换 Mock 权限角色，复用修订1收敛证据"
+              ]
+            },
+            {
+              "check": "旧账本保护",
+              "result": "pass",
+              "evidence": "旧 state 仍为 converged revision31，SHA256 3A36B04732B9964E051B1110B080F2DC4656F8B65BBA48ACE351B25686C24D5F",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "产品提交813ad56保持不变",
+            "UAT 控制文件归入标准独立前缀",
+            "scope 当前 control_prefix 切换到 UAT 前缀且产品写入面不变"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "API、DTO、权限和状态逻辑不变",
+              "result": "pass",
+              "evidence": "813ad56 仅模板文案/行数和局部 CSS"
+            },
+            {
+              "invariant": "重复部署单元和错误序号保留",
+              "result": "pass",
+              "evidence": "浏览器两条同名申请项独立存在，错误/删除仍含1和2"
+            },
+            {
+              "invariant": "页面根不横向滚动",
+              "result": "pass",
+              "evidence": "五视口 documentElement.scrollWidth 等于 innerWidth"
+            },
+            {
+              "invariant": "旧账本只读",
+              "result": "pass",
+              "evidence": "终态、revision、哈希均不变"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "初次 scope 设计把新证据列在旧 control_prefix 下",
+              "impact": "scope 传感器明确失败；已将 design/handoff 和全部证据归入标准 UAT 前缀，复验通过"
+            },
+            {
+              "event": "全仓历史 AI control layout 错误",
+              "impact": "governance 仍非零，已确认当前 UAT 前缀无新增错误"
+            }
+          ],
+          "assumptions_falsified": [
+            "同一 requirement 的 acceptance_evidence 可跨 control_prefix；scope 脚本证明必须统一到当前前缀"
+          ],
+          "unresolved_items": [
+            "真实后端、生产 RBAC 和其他浏览器内核需上线前复核",
+            "全仓历史治理问题由对应 Owner 处理"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T5 完成采样覆盖 R8-R12，未观察到 P0-P3 偏差",
+        "recorded_at": "2026-09-03T06:31:25+00:00",
+        "data": {
+          "sample_label": "T5 完成采样",
+          "task_ids": [
+            "T5"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R8",
+              "sensor": "S1+S2 源码与 DOM",
+              "result": "pass",
+              "raw_evidence": "textarea rows=2；1920 基础区完整，1280 基础区可独立滚动且摘要可达",
+              "limitation": [
+                "本地 Chromium"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "S1+S2 高度与 overflow",
+              "result": "pass",
+              "raw_evidence": "1920/1280 body overflow hidden，master 填满剩余高度；panel/editor overflowY auto；footer 均位于视口内",
+              "limitation": [
+                "内容样本为本地 Mock"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "S1+S2 计算宽度",
+              "result": "pass",
+              "raw_evidence": "桌面可见 input-number=160px；375/390/430 分别填满约255/269/309px 内容列",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R11",
+              "sensor": "S1+S3 可见文本",
+              "result": "pass",
+              "raw_evidence": "空项两处未选择部署单元；选择与重复选择后列表及编辑器均显示部署单元名称；错误和删除保留申请项序号",
+              "limitation": [
+                "未执行完整屏幕阅读器审计"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "sensor": "S2+S5 多视口与范围",
+              "result": "pass",
+              "raw_evidence": "1920/1280 footer 可见且页面根无溢出；三个手机视口根宽等于视口；提交813ad56仅两个授权产品文件",
+              "limitation": [
+                "真实后端未连接"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "应用主题按钮需先展开扇形菜单再选择浅色模式",
+              "impact": "校准交互后浅色传感器有效"
+            }
+          ],
+          "coverage_gaps": [
+            "最终请求兼容、权限和保存成功路径在 T6 采样"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "最终集成采样覆盖 R8-R12，未观察到 P0-P3 偏差",
+        "recorded_at": "2026-09-03T06:37:38+00:00",
+        "data": {
+          "sample_label": "最终集成采样",
+          "task_ids": [
+            "T5",
+            "T6"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R8",
+              "sensor": "S1+S2 最终源码和浏览器",
+              "result": "pass",
+              "raw_evidence": "最终提交 textarea rows=2；桌面基础字段及物理摘要完整，1280 超高时左栏独立滚动",
+              "limitation": [
+                "本地 Chromium"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "S2 多视口 DOM",
+              "result": "pass",
+              "raw_evidence": "1920 editor 831/1012、1280 editor 568/1012 且 overflowY=auto；panel 独立 overflowY=auto；footer bottom 分别1031/760，小于视口高度",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "S1+S2 计算样式",
+              "result": "pass",
+              "raw_evidence": "桌面可见数字输入160px；375/390/430 下约255/269/309px，均填满内容列",
+              "limitation": [
+                "极端超长手工输入值未超过业务整数范围"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "sensor": "S3 用户路径",
+              "result": "pass",
+              "raw_evidence": "空项两处显示未选择部署单元；选择和重复选择后两处同步显示 PORTAL_CHANNEL_APPLICATION_WITH_LONG_NAME；错误申请项1和删除申请项1/2保留",
+              "limitation": [
+                "未执行完整屏幕阅读器审计"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "sensor": "S2+S4+S5 集成",
+              "result": "pass",
+              "raw_evidence": "五视口根宽等于视口；明暗主题无 Console error；浅色保存成功；scope 与 diff 通过；产品仅提交813ad56两个文件",
+              "limitation": [
+                "全仓治理存在范围外历史错误"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "scope 对跨 control_prefix 证据拒绝",
+              "impact": "控制文件布局已纠正且复验通过"
+            },
+            {
+              "event": "历史治理噪声",
+              "impact": "不影响本需求 scope/build/browser 结论"
+            }
+          ],
+          "coverage_gaps": [
+            "真实后端和生产角色未连接；权限和请求实现零差异并复用修订1运行证据"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "收敛审计覆盖 R8-R12、T5-T6、两次零误差采样、范围、不变量和残余风险",
+        "recorded_at": "2026-09-03T06:38:33+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R8",
+              "result": "pass",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "evidence": [
+                "813ad56 将申请原因 rows 改为2",
+                "1920/1280 浏览器确认基础字段和物理摘要完整可达"
+              ],
+              "limitations": [
+                "本地 Chromium"
+              ]
+            },
+            {
+              "id": "R9",
+              "result": "pass",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "evidence": [
+                "Dialog 到 master-detail 建立 min-height:0 高度链",
+                "1920 editor 831/1012、1280 editor 568/1012 且 overflowY auto",
+                "两个桌面视口 footer 位于视口内"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R10",
+              "result": "pass",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "evidence": [
+                "桌面可见 el-input-number 计算宽度160px",
+                "375/390/430 手机视口恢复内容列满宽"
+              ],
+              "limitations": [
+                "未覆盖其他浏览器内核"
+              ]
+            },
+            {
+              "id": "R11",
+              "result": "pass",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "evidence": [
+                "空项列表与编辑器均显示未选择部署单元",
+                "选择和重复选择后两处同步显示部署单元名称",
+                "错误和删除提示继续显示申请项序号"
+              ],
+              "limitations": [
+                "未执行完整屏幕阅读器审计"
+              ]
+            },
+            {
+              "id": "R12",
+              "result": "pass",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "evidence": [
+                "1920x1080 和1280x800 footer、主要基础信息与登记区同时可见",
+                "五视口 documentElement.scrollWidth 等于 innerWidth",
+                "明暗主题 Console 无 error，浅色保存成功"
+              ],
+              "limitations": [
+                "真实后端和生产 RBAC 未连接"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T5",
+              "status": "verified",
+              "evidence": [
+                "提交813ad56",
+                "build和diff通过",
+                "采样S-0001无P0-P3"
+              ]
+            },
+            {
+              "id": "T6",
+              "status": "verified",
+              "evidence": [
+                "最终build/scope/diff通过",
+                "浏览器保存、错误、标题、五视口和主题回归",
+                "采样S-0002无P0-P3"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "开发入口",
+              "result": "pass",
+              "evidence": "check-development-entry --require-plugin 退出0"
+            },
+            {
+              "check": "前端构建",
+              "result": "pass",
+              "evidence": "最终 npm build 退出0，2513 modules transformed"
+            },
+            {
+              "check": "scope",
+              "result": "pass",
+              "evidence": "以 fad0585 为基线，12个变更文件检查通过"
+            },
+            {
+              "check": "diff",
+              "result": "pass",
+              "evidence": "git diff --check fad0585 退出0"
+            },
+            {
+              "check": "真实浏览器",
+              "result": "pass",
+              "evidence": "保存成功、校验首错、重复部署单元、五视口、明暗主题和Console通过"
+            },
+            {
+              "check": "全仓治理",
+              "result": "baseline-failure",
+              "evidence": "模块、Skill、开发入口通过；AI control layout 仅报告其他历史需求问题，当前UAT前缀无错误"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "产品只修改两个授权前端文件",
+              "result": "pass",
+              "evidence": "813ad56 仅 ResourceRequestPage.vue 和 architecture.css"
+            },
+            {
+              "invariant": "API、DTO、后端、数据库、权限、审计和工作流不变",
+              "result": "pass",
+              "evidence": "产品提交无相关文件或逻辑差异，浅色保存成功"
+            },
+            {
+              "invariant": "items[] 顺序、重复 deploymentUnitId 和错误序号保持",
+              "result": "pass",
+              "evidence": "提交未改 requestItemPayload/校验，浏览器重复同名项与申请项1错误定位通过"
+            },
+            {
+              "invariant": "修订1账本只读",
+              "result": "pass",
+              "evidence": "旧 state converged revision31，SHA256保持3A36B04732B9964E051B1110B080F2DC4656F8B65BBA48ACE351B25686C24D5F"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "长部署单元名称和重复名称",
+              "result": "pass",
+              "evidence": "列表换行且两处标题同步，编码和序号继续辅助定位"
+            },
+            {
+              "disturbance": "DB/非DB长表单与1280低高度",
+              "result": "pass",
+              "evidence": "编辑器 scrollHeight 大于 clientHeight 且 overflowY auto，footer仍可见"
+            },
+            {
+              "disturbance": "手机窄视口",
+              "result": "pass",
+              "evidence": "375/390/430 页面根无横向溢出，数字输入满宽"
+            },
+            {
+              "disturbance": "控制前缀布局不符合scope规则",
+              "result": "pass",
+              "evidence": "scope 首次失败后规范化到独立UAT前缀，复验退出0"
+            }
+          ],
+          "residual_risks": [
+            "全仓治理仍被范围外历史需求账本问题阻塞，由对应Owner治理",
+            "真实后端、生产RBAC和非Chromium内核需在上线前使用脱敏环境复核",
+            "本轮独立观察由同一主任务上下文执行，不具备人员或独立Agent隔离"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R8-R12 均由 verified 任务、最终产品提交、构建、DOM尺寸、交互、主题、scope与请求成功证据覆盖；两次standard采样P0-P3均为0，无反馈，范围和不变量通过"
+        }
+      }
+    ]
+  },
+  "objective": "在不改变资源申请接口、业务规则和主从交互的前提下，压缩非必要高度，让登记表占满弹窗可用空间并内部滚动，使桌面端尽量在一屏完成填写。",
+  "requirements": [
+    {
+      "id": "R8",
+      "statement": "基础信息区必须减少非必要纵向占用。",
+      "acceptance": [
+        "申请原因桌面端默认 2 行",
+        "基础字段和物理摘要保持可读",
+        "不隐藏必填信息"
+      ],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 1 项",
+      "counterexample": [
+        "申请原因仍以 4 行或更高高度撑高页面",
+        "通过隐藏字段减少高度"
+      ]
+    },
+    {
+      "id": "R9",
+      "statement": "登记表必须占满弹窗可用高度并在内部滚动。",
+      "acceptance": [
+        "主从容器拉伸到 body 剩余高度",
+        "申请项列表和当前项编辑器独立滚动",
+        "标题和 footer 保持可见"
+      ],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 2 项",
+      "counterexample": [
+        "登记内容继续撑高整个弹窗",
+        "页面根滚动导致 footer 不可达"
+      ]
+    },
+    {
+      "id": "R10",
+      "statement": "数值字段必须使用短输入框。",
+      "acceptance": [
+        "桌面端数值输入宽约 140 至 180px",
+        "步进按钮和长数值可用",
+        "手机端恢复满宽"
+      ],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 3 项",
+      "counterexample": [
+        "数值输入继续拉伸到整列宽度",
+        "手机端固定短宽导致不可用"
+      ]
+    },
+    {
+      "id": "R11",
+      "statement": "申请项列表和编辑器顶部必须以部署单元名称作为主标题。",
+      "acceptance": [
+        "已选择时两处显示部署单元名称",
+        "未选择时显示未选择部署单元",
+        "序号继续用于错误和删除定位"
+      ],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 4 项及后续选择 1",
+      "counterexample": [
+        "主标题继续显示申请项 1/2/3",
+        "空项没有可理解标题",
+        "错误提示不再包含序号"
+      ]
+    },
+    {
+      "id": "R12",
+      "statement": "桌面布局必须优先提高一屏可见信息量。",
+      "acceptance": [
+        "1920x1080 下标题、主要基础信息、登记区和 footer 同时可见",
+        "1280x800 下无页面级横向溢出",
+        "超高内容通过登记区内部滚动访问"
+      ],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 5 项",
+      "counterexample": [
+        "必须滚动整个弹窗才能访问保存按钮",
+        "通过缩小正文字号换取单屏"
+      ]
+    }
+  ],
+  "invariants": [
+    "修订 1 的 R1-R7、主从状态和失败恢复行为保持",
+    "ResourceRequestPayload、items[] 顺序、重复 deploymentUnitId 和 DB/非 DB 分流保持",
+    "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+    "不修改公共 UI、API、DTO、后端、数据库、权限、审计或工作流",
+    "修订 1 converged 账本保持只读"
+  ],
+  "constraints": [
+    "使用现有 Vue 3、Element Plus 和架构模块语义主题变量",
+    "桌面紧凑样式不得降低正文字号",
+    "手机端数字输入恢复满宽且不得产生页面级横向滚动",
+    "实施前建立独立 UAT 修订控制前缀"
+  ],
+  "non_goals": [
+    "基础信息自动折叠或隐藏字段",
+    "应用级高密度模式",
+    "自动保存、拖拽排序、复制或批量填写",
+    "后端或数据契约调整"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260903-059-resource-request-form-layout\\handoff-uat-compact.json",
+    "imported_at": "2026-09-03T06:10:14+00:00",
+    "topic": "req-20260903-059-resource-request-form-layout-uat-compact",
+    "design_revision": 2,
+    "plan_revision": 2,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260903-059-resource-request-form-layout-uat-compact",
+      "handoff_status": "approved",
+      "created_at": "2026-09-03T13:41:34+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260903-059-resource-request-form-layout-uat-compact",
+        "design_revision": 2,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+        "objective": "在不改变资源申请接口、业务规则和主从交互的前提下，压缩非必要高度，让登记表占满弹窗可用空间并内部滚动，使桌面端尽量在一屏完成填写。",
+        "users": [
+          "资源申请人在桌面端新建或编辑资源申请时快速查看主要字段并填写当前部署单元规格",
+          "资源申请人在手机端继续使用原有单列和局部横向申请项列表"
+        ],
+        "requirements": [
+          {
+            "id": "R8",
+            "statement": "基础信息区必须减少非必要纵向占用。",
+            "acceptance": [
+              "申请原因桌面端默认 2 行",
+              "基础字段和物理摘要保持可读",
+              "不隐藏必填信息"
+            ],
+            "priority": "must",
+            "source": "用户 2026-09-03 UAT 反馈第 1 项",
+            "counterexample": [
+              "申请原因仍以 4 行或更高高度撑高页面",
+              "通过隐藏字段减少高度"
+            ]
+          },
+          {
+            "id": "R9",
+            "statement": "登记表必须占满弹窗可用高度并在内部滚动。",
+            "acceptance": [
+              "主从容器拉伸到 body 剩余高度",
+              "申请项列表和当前项编辑器独立滚动",
+              "标题和 footer 保持可见"
+            ],
+            "priority": "must",
+            "source": "用户 2026-09-03 UAT 反馈第 2 项",
+            "counterexample": [
+              "登记内容继续撑高整个弹窗",
+              "页面根滚动导致 footer 不可达"
+            ]
+          },
+          {
+            "id": "R10",
+            "statement": "数值字段必须使用短输入框。",
+            "acceptance": [
+              "桌面端数值输入宽约 140 至 180px",
+              "步进按钮和长数值可用",
+              "手机端恢复满宽"
+            ],
+            "priority": "must",
+            "source": "用户 2026-09-03 UAT 反馈第 3 项",
+            "counterexample": [
+              "数值输入继续拉伸到整列宽度",
+              "手机端固定短宽导致不可用"
+            ]
+          },
+          {
+            "id": "R11",
+            "statement": "申请项列表和编辑器顶部必须以部署单元名称作为主标题。",
+            "acceptance": [
+              "已选择时两处显示部署单元名称",
+              "未选择时显示未选择部署单元",
+              "序号继续用于错误和删除定位"
+            ],
+            "priority": "must",
+            "source": "用户 2026-09-03 UAT 反馈第 4 项及后续选择 1",
+            "counterexample": [
+              "主标题继续显示申请项 1/2/3",
+              "空项没有可理解标题",
+              "错误提示不再包含序号"
+            ]
+          },
+          {
+            "id": "R12",
+            "statement": "桌面布局必须优先提高一屏可见信息量。",
+            "acceptance": [
+              "1920x1080 下标题、主要基础信息、登记区和 footer 同时可见",
+              "1280x800 下无页面级横向溢出",
+              "超高内容通过登记区内部滚动访问"
+            ],
+            "priority": "must",
+            "source": "用户 2026-09-03 UAT 反馈第 5 项",
+            "counterexample": [
+              "必须滚动整个弹窗才能访问保存按钮",
+              "通过缩小正文字号换取单屏"
+            ]
+          }
+        ],
+        "invariants": [
+          "修订 1 的 R1-R7、主从状态和失败恢复行为保持",
+          "ResourceRequestPayload、items[] 顺序、重复 deploymentUnitId 和 DB/非 DB 分流保持",
+          "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+          "不修改公共 UI、API、DTO、后端、数据库、权限、审计或工作流",
+          "修订 1 converged 账本保持只读"
+        ],
+        "constraints": [
+          "使用现有 Vue 3、Element Plus 和架构模块语义主题变量",
+          "桌面紧凑样式不得降低正文字号",
+          "手机端数字输入恢复满宽且不得产生页面级横向滚动",
+          "实施前建立独立 UAT 修订控制前缀"
+        ],
+        "non_goals": [
+          "基础信息自动折叠或隐藏字段",
+          "应用级高密度模式",
+          "自动保存、拖拽排序、复制或批量填写",
+          "后端或数据契约调整"
+        ],
+        "selected_approach": {
+          "name": "固定登记区高度与内部滚动",
+          "reason": "保留已验证主从交互，通过局部高度链、独立滚动、短数值框和部署单元标题提高一屏信息密度。",
+          "alternatives": [
+            {
+              "name": "基础信息自动折叠",
+              "rejected_because": "隐藏申请范围上下文并增加展开状态"
+            },
+            {
+              "name": "全局高密度控件",
+              "rejected_because": "影响可读性和触控体验并扩大影响范围"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "ResourceRequestPage.vue 资源申请弹窗模板",
+              "architecture.css 资源申请局部高度、滚动和数值输入样式",
+              "修订 2 设计与控制证据"
+            ],
+            "outside": [
+              "资源申请 API、DTO、后端和数据库",
+              "公共 UI 和应用壳",
+              "其他业务页面"
+            ]
+          },
+          "components": [
+            {
+              "name": "弹窗高度链",
+              "responsibility": "让 body、外层布局、登记表和主从容器使用可收缩剩余高度",
+              "depends_on": [
+                "Element Plus Dialog"
+              ]
+            },
+            {
+              "name": "独立滚动区域",
+              "responsibility": "桌面端列表和编辑器各自滚动，移动端保留原重排",
+              "depends_on": [
+                "现有主从 DOM"
+              ]
+            },
+            {
+              "name": "紧凑基础信息",
+              "responsibility": "申请原因缩为 2 行，不隐藏摘要",
+              "depends_on": [
+                "现有申请级字段"
+              ]
+            },
+            {
+              "name": "标题与短数值适配",
+              "responsibility": "用部署单元名称作为标题并限制桌面数字输入宽度",
+              "depends_on": [
+                "deploymentUnitName",
+                "el-input-number"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "申请项显示标题",
+              "producer": "ResourceFormItem.deploymentUnitName",
+              "consumers": [
+                "申请项列表",
+                "当前项编辑器"
+              ],
+              "contract": "有名称时显示名称，否则显示未选择部署单元；序号不进入主标题"
+            },
+            {
+              "name": "资源申请提交载荷",
+              "producer": "ResourceRequestPage.vue",
+              "consumers": [
+                "现有 create/update API"
+              ],
+              "contract": "修订 2 不改变任何请求字段、顺序或数值"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "部署单元选择变化",
+              "transitions": [
+                "同步已有 deploymentUnitName",
+                "更新列表和编辑器标题"
+              ],
+              "output": "两处一致的业务标题"
+            },
+            {
+              "input": "视口高度和表单内容变化",
+              "transitions": [
+                "分配弹窗 body 剩余高度",
+                "列表和编辑器分别计算滚动"
+              ],
+              "output": "footer 可见且内容可达"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "登记内容超过可用高度",
+            "behavior": "只在列表或编辑器内部滚动，不撑高弹窗",
+            "recovery": "用户在对应区域滚动继续填写"
+          },
+          {
+            "condition": "部署单元尚未选择",
+            "behavior": "两处主标题显示未选择部署单元",
+            "recovery": "选择后立即显示部署单元名称"
+          },
+          {
+            "condition": "手机视口不足以容纳短宽布局",
+            "behavior": "数字输入恢复满宽单列",
+            "recovery": "沿用修订 1 手机滚动边界"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "认证、RBAC、租户和实体授权不变"
+          ],
+          "performance": [
+            "不增加数据请求和完整申请项 DOM",
+            "固定高度避免页面布局持续增长"
+          ],
+          "compatibility": [
+            "请求、字段和校验不变",
+            "手机断点沿用修订 1"
+          ],
+          "operations": [
+            "无迁移和配置变化",
+            "回退修订 2 前端提交即可"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R8"
+            ],
+            "signal": "基础信息高度降低且内容完整",
+            "method": "桌面检查申请原因行数、基础字段和物理摘要"
+          },
+          {
+            "requirement_ids": [
+              "R9",
+              "R12"
+            ],
+            "signal": "弹窗单屏密度和内部滚动正确",
+            "method": "1920x1080、1280x800 明暗主题检查尺寸、overflow、footer 和页面根宽度"
+          },
+          {
+            "requirement_ids": [
+              "R10"
+            ],
+            "signal": "数字输入桌面短宽且手机满宽",
+            "method": "检查全部 el-input-number 计算宽度、步进按钮和三个手机视口"
+          },
+          {
+            "requirement_ids": [
+              "R11"
+            ],
+            "signal": "标题按部署单元名称同步",
+            "method": "空项、选择、重复选择和切换时检查两处标题，保存首错仍包含序号"
+          },
+          {
+            "requirement_ids": [
+              "R8",
+              "R9",
+              "R10",
+              "R11",
+              "R12"
+            ],
+            "signal": "修订 1 行为无回归",
+            "method": "前端构建、scope、diff、新建/编辑请求和明暗主题回归"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "1920x1080 是本轮一屏优化的主要桌面验收视口。",
+            "basis": "用户提供的 UAT 截图接近宽桌面场景",
+            "falsifier": "用户指定其他主桌面分辨率"
+          },
+          {
+            "text": "错误定位仍需要申请项序号。",
+            "basis": "重复部署单元合法且名称可能相同",
+            "falsifier": "产品决定使用其他唯一可见标识"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D5",
+            "decision": "申请原因桌面端缩为 2 行，不折叠基础信息。",
+            "reason": "减少高度且保留上下文",
+            "source": "用户 UAT 反馈确认"
+          },
+          {
+            "id": "D6",
+            "decision": "登记表占满剩余高度，列表和编辑器独立滚动。",
+            "reason": "防止内容撑高弹窗并保持 footer 可见",
+            "source": "用户 UAT 反馈确认"
+          },
+          {
+            "id": "D7",
+            "decision": "部署单元名称作为主标题，空项显示未选择部署单元。",
+            "reason": "直接表达当前编辑对象，序号保留给错误定位",
+            "source": "用户选择方案 1"
+          },
+          {
+            "id": "D8",
+            "decision": "数字输入桌面短宽、手机满宽。",
+            "reason": "提高桌面密度且保持手机可用",
+            "source": "用户 UAT 反馈确认"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "多层高度和 overflow 形成错误滚动容器",
+            "impact": "footer 遮挡或内容不可达",
+            "mitigation": "使用 min-height:0 高度链并通过真实浏览器尺寸验证"
+          },
+          {
+            "risk": "短数值输入无法显示极端长值",
+            "impact": "数值或步进按钮被遮挡",
+            "mitigation": "使用 160px 并在手机端恢复满宽"
+          },
+          {
+            "risk": "重复部署单元名称使标题相同",
+            "impact": "用户难以区分错误项",
+            "mitigation": "状态和编码继续显示，错误和删除提示保留序号"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于 2026-09-03 回复‘可以’，批准资源申请表单 UAT 紧凑布局设计修订 2。",
+          "confirmed_at": "2026-09-03T13:41:34+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 2,
+        "human_document": "docs/engineering-control/plans/2026-09-03-resource-request-form-layout-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+          "修订 1 状态与请求契约不变",
+          "桌面数字输入 140 至 180px，手机满宽",
+          "页面根无横向滚动，footer 保持可见",
+          "旧 converged 账本只读，使用独立 UAT 控制前缀"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/architecture/ResourceRequestPage.vue",
+            "status": "existing",
+            "responsibility": "申请原因行数和两处业务标题",
+            "evidence": "现有模板行 1447、1495、1519 附近"
+          },
+          {
+            "path": "web/src/modules/architecture/architecture.css",
+            "status": "existing",
+            "responsibility": "高度链、滚动边界、短数值输入和移动覆盖",
+            "evidence": "现有资源申请专用样式从行 405 附近开始"
+          },
+          {
+            "path": "docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml",
+            "status": "existing",
+            "responsibility": "声明 UAT 控制前缀和新增验收视口",
+            "evidence": "当前 scope 仅声明修订 1 前缀"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/state.json",
+            "status": "candidate-new",
+            "responsibility": "修订 2 独立控制账本",
+            "evidence": "修订 1 state 已 converged"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T4",
+            "goal": "建立独立 UAT 修订控制入口且保留旧收敛账本",
+            "requirement_ids": [
+              "R8",
+              "R9",
+              "R10",
+              "R11",
+              "R12"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "修订 1 state.json.phase 为 converged",
+              "当前 scope 产品写入只包含两个前端文件",
+              "设计修订 2 已批准"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/state.json"
+              ],
+              "modify": [
+                "docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "批准交接包",
+                "control_loop.py import-handoff"
+              ],
+              "produces": [
+                "UAT state phase=baseline",
+                "新控制证据写入范围"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "确认旧账本终态和开发入口",
+                "command": "读取旧 state phase；node scripts/check-development-entry.mjs --require-plugin",
+                "expected": "旧账本 converged 且入口检查退出 0",
+                "evidence": "phase、退出码和工作树状态"
+              },
+              {
+                "id": "T4-S2",
+                "action": "在 scope 增加独立 UAT 控制前缀和 1920x1080 验收",
+                "command": null,
+                "expected": "产品写入路径不变",
+                "evidence": "scope diff"
+              },
+              {
+                "id": "T4-S3",
+                "action": "导入批准交接包到新 state",
+                "command": "python .agents/skills/control-engineering/scripts/control_loop.py import-handoff --state .ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/state.json --input .ai-control/requirements/req-20260903-059-resource-request-form-layout/handoff-uat-compact.json --mode standard",
+                "expected": "账本阶段=baseline；下一阶段=modeling",
+                "evidence": "命令输出和新 state"
+              },
+              {
+                "id": "T4-S4",
+                "action": "执行 JSON、scope 和 diff 检查",
+                "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml --base HEAD --head HEAD --working-tree; git diff --check",
+                "expected": "检查退出 0 且旧 state 无差异",
+                "evidence": "退出码和文件清单"
+              }
+            ],
+            "acceptance_checks": [
+              "新账本位于 baseline",
+              "旧账本保持 converged 和原 revision",
+              "产品写入边界未扩大"
+            ],
+            "risks": [
+              "治理不接受同一需求的独立后续前缀"
+            ],
+            "rollback": "产品修改前回退 scope 并删除新前缀，旧证据不动",
+            "stop_conditions": [
+              "导入要求 force 覆盖",
+              "必须修改旧 state",
+              "新前缀无法通过治理"
+            ],
+            "escalation_conditions": [
+              "Owner 要求新需求编号",
+              "需要扩大产品写入范围"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "实现申请原因压缩、部署单元标题、桌面高度链和短数值输入",
+            "requirement_ids": [
+              "R8",
+              "R9",
+              "R10",
+              "R11",
+              "R12"
+            ],
+            "prerequisites": [
+              "T4"
+            ],
+            "input_facts": [
+              "申请原因当前 rows=4",
+              "两处主标题当前使用申请项序号",
+              "列表面板当前 max-height=680px",
+              "编辑器数字输入继承 100% 宽度"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/architecture.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "deploymentUnitName",
+                "现有主从 DOM",
+                "Element Plus Dialog 和 el-input-number"
+              ],
+              "produces": [
+                "2 行原因",
+                "业务标题",
+                "可收缩高度链",
+                "独立滚动",
+                "160px 数值输入和手机满宽覆盖"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "记录源码与构建基线",
+                "command": "rg 定位 rows、标题、max-height 和 input-number；npm --prefix web run build",
+                "expected": "构建退出 0 且基线位置明确",
+                "evidence": "行号和构建摘要"
+              },
+              {
+                "id": "T5-S2",
+                "action": "调整申请原因和两处主标题",
+                "command": null,
+                "expected": "空项显示未选择部署单元，选择后显示名称，序号仍用于错误和删除",
+                "evidence": "Vue diff 和浏览器标题状态"
+              },
+              {
+                "id": "T5-S3",
+                "action": "建立 Dialog 到主从容器的 min-height:0 高度链和双滚动",
+                "command": null,
+                "expected": "footer 固定可见，列表与编辑器独立滚动",
+                "evidence": "CSS diff 和 DOM 尺寸"
+              },
+              {
+                "id": "T5-S4",
+                "action": "设置桌面 160px 数值输入和手机满宽覆盖",
+                "command": null,
+                "expected": "桌面 140-180px，手机填满容器",
+                "evidence": "计算样式"
+              },
+              {
+                "id": "T5-S5",
+                "action": "构建、静态检查并提交产品切片",
+                "command": "npm --prefix web run build; git diff --check -- web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/architecture.css; git commit -m 'style(architecture-web): compact resource request form'",
+                "expected": "检查退出 0 且提交仅含两个产品文件",
+                "evidence": "退出码和提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "申请原因 2 行",
+              "两处业务标题同步",
+              "列表和编辑器独立滚动",
+              "footer 可见",
+              "数字输入桌面短宽手机满宽",
+              "请求和状态逻辑不变"
+            ],
+            "risks": [
+              "错误高度链导致字段不可达",
+              "短输入遮挡步进按钮"
+            ],
+            "rollback": "revert T5 产品提交恢复修订 1",
+            "stop_conditions": [
+              "必须修改公共 Dialog 或应用壳",
+              "手机页面根溢出",
+              "标题变更需要修改 payload 或状态"
+            ],
+            "escalation_conditions": [
+              "要求折叠字段",
+              "数值输入要求小于 140px",
+              "取消错误序号"
+            ]
+          },
+          {
+            "id": "T6",
+            "goal": "完成多视口浏览器验收、修订 1 回归和独立 UAT 收敛",
+            "requirement_ids": [
+              "R8",
+              "R9",
+              "R10",
+              "R11",
+              "R12"
+            ],
+            "prerequisites": [
+              "T5"
+            ],
+            "input_facts": [
+              "本地 Vite 与 Mock API 已可用于资源申请 UAT",
+              "fad0585 是修订 1 证据提交",
+              "真实浏览器可采集 DOM 尺寸和 Network"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/execution-T6.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T5.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T6.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/convergence.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T5 提交",
+                "本地 Mock API",
+                "浏览器尺寸和请求传感器"
+              ],
+              "produces": [
+                "R8-R12 证据",
+                "修订 1 回归证据",
+                "UAT state converged"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T6-S1",
+                "action": "运行 diff、build、governance 和 scope",
+                "command": "git diff --check; npm --prefix web run build; node scripts/check-all-governance.mjs; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml --base fad0585 --head HEAD --working-tree",
+                "expected": "diff/build/scope 退出 0，治理噪声独立记录",
+                "evidence": "退出码和文件清单"
+              },
+              {
+                "id": "T6-S2",
+                "action": "验收 1920x1080 与 1280x800 明暗主题高度和滚动",
+                "command": "真实浏览器采集 Dialog、body、layout、registration、master-detail、item-panel、editor、footer 尺寸与 overflow",
+                "expected": "footer 可见，超高内容局部可达，页面根无横向滚动",
+                "evidence": "DOM 值、主题和截图"
+              },
+              {
+                "id": "T6-S3",
+                "action": "验收标题、数字输入和三个手机视口",
+                "command": "真实浏览器验证空项、选择、重复项、375x812、390x844、430x932",
+                "expected": "标题同步，序号错误保留，数字输入宽度符合断点",
+                "evidence": "计算样式、页面状态和截图"
+              },
+              {
+                "id": "T6-S4",
+                "action": "回归修订 1 行为和请求",
+                "command": "浏览器复验增删切换、物理切换、失败恢复、权限、POST 和 PUT",
+                "expected": "items[] 顺序和重复部署单元不变，无 clientId，Console 无新增 error",
+                "evidence": "脱敏 Network 和 Console 摘要"
+              },
+              {
+                "id": "T6-S5",
+                "action": "记录观察并执行收敛门禁",
+                "command": "按 control-engineering record-artifact、sample、gate 和 transition",
+                "expected": "R8-R12 pass，新 state converged，旧 state 不变",
+                "evidence": "execution、observation、convergence 和 state"
+              }
+            ],
+            "acceptance_checks": [
+              "R8-R12 全覆盖",
+              "修订 1 行为和请求回归",
+              "五视口明暗主题",
+              "无页面级横向滚动",
+              "无开放 P0/P1"
+            ],
+            "risks": [
+              "Mock 与真实后端行为差异",
+              "历史治理噪声"
+            ],
+            "rollback": "回退证据提交，产品 revert T5",
+            "stop_conditions": [
+              "footer 或字段不可达",
+              "请求或权限变化",
+              "需要 scope 外产品修改",
+              "UAT 服务无法恢复"
+            ],
+            "escalation_conditions": [
+              "必须修改公共 Dialog 或应用壳",
+              "真实后端与 Mock 结论冲突",
+              "历史治理成为硬门禁"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "产品实施前必须建立独立控制入口"
+          },
+          {
+            "from": "T5",
+            "to": "T6",
+            "reason": "浏览器验收依赖完整布局实现"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T4"
+          ],
+          [
+            "T5"
+          ],
+          [
+            "T6"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "control_loop.py status --state 新 UAT state",
+            "expected": "phase=baseline 且旧 state 无变化"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "npm --prefix web run build; git diff --check",
+            "expected": "模板与样式构建通过"
+          },
+          {
+            "after_tasks": [
+              "T5",
+              "T6"
+            ],
+            "command": "build、scope、Browser DOM、Network 和 Console",
+            "expected": "R8-R12 与修订 1 回归通过"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T5",
+              "T6"
+            ]
+          },
+          {
+            "requirement_id": "R9",
+            "task_ids": [
+              "T5",
+              "T6"
+            ]
+          },
+          {
+            "requirement_id": "R10",
+            "task_ids": [
+              "T5",
+              "T6"
+            ]
+          },
+          {
+            "requirement_id": "R11",
+            "task_ids": [
+              "T5",
+              "T6"
+            ]
+          },
+          {
+            "requirement_id": "R12",
+            "task_ids": [
+              "T5",
+              "T6"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于 2026-09-03 回复‘可以’，批准资源申请表单 UAT 紧凑布局实施计划修订 2。",
+          "confirmed_at": "2026-09-03T14:09:13+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "资源申请 Dialog 高度链",
+          "基础信息列",
+          "登记表标题区",
+          "申请项列表",
+          "当前项编辑器",
+          "局部数字输入"
+        ],
+        "state_variable_candidates": [
+          "视口宽高",
+          "Dialog/body 可用高度",
+          "申请项数量",
+          "当前项类型",
+          "附加需求展开状态",
+          "滚动节点 clientHeight/scrollHeight"
+        ],
+        "interface_candidates": [
+          "deploymentUnitName 到两处标题的呈现",
+          "Element Plus Dialog body/footer 布局",
+          "el-input-number 尺寸规则"
+        ],
+        "sensor_candidates": [
+          "Vue/Vite build",
+          "源码扫描",
+          "计算样式",
+          "DOM 尺寸",
+          "页面根 scrollWidth",
+          "Network payload",
+          "Console",
+          "多视口截图"
+        ],
+        "actuator_candidates": [
+          "textarea rows",
+          "flex/grid 高度规则",
+          "min-height:0",
+          "局部 overflow-y",
+          "数值输入宽度",
+          "移动覆盖"
+        ],
+        "disturbance_candidates": [
+          "长部署单元名称",
+          "三个以上申请项",
+          "DB/非 DB 字段高度差",
+          "错误提示",
+          "附加需求展开",
+          "字体渲染"
+        ],
+        "delay_candidates": [
+          "Vite 热更新",
+          "Dialog 初次布局",
+          "选项请求",
+          "主题切换",
+          "截图稳定时间"
+        ],
+        "assumptions": [
+          {
+            "text": "Element Plus 当前版本允许业务 Dialog 通过局部类建立稳定高度链。",
+            "basis": "修订 1 已使用业务 Dialog 类和 body 高度约束",
+            "falsifier": "浏览器计算样式证明 footer 或内容不可达"
+          },
+          {
+            "text": "160px 能完整显示当前资源数值和步进按钮。",
+            "basis": "字段为非负整数且现有输入使用右侧步进按钮",
+            "falsifier": "浏览器长值测试出现遮挡"
+          },
+          {
+            "text": "修订 1 Mock API 足以回归请求兼容。",
+            "basis": "修订 1 已用同一 Mock 验证 POST/PUT items[]",
+            "falsifier": "真实后端 UAT 与 Mock 产生契约差异"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Element Plus Dialog/Form/InputNumber\", \"现有资源申请状态、API、权限和 Mock\", \"Vite 与浏览器视口主题\"], \"inside\": [\"ResourceRequestPage.vue 资源申请 Dialog 模板\", \"architecture.css 资源申请局部高度、滚动和输入宽度规则\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"实际浏览器高度\"], \"id\": \"S1\", \"independence\": \"编译器和源码直接检查\", \"method\": \"rg 扫描并运行 npm build\", \"target\": \"模板和样式静态契约\"}",
+      "{\"blind_spots\": [\"其他浏览器内核和字体\"], \"id\": \"S2\", \"independence\": \"直接读取运行 DOM\", \"method\": \"浏览器采集 clientHeight、scrollHeight、overflow、输入宽度和页面根 scrollWidth\", \"target\": \"运行布局\"}",
+      "{\"blind_spots\": [\"完整屏幕阅读器\"], \"id\": \"S3\", \"independence\": \"用户路径输出\", \"method\": \"浏览器操作空项、选择、重复、切换、错误和删除\", \"target\": \"标题和交互\"}",
+      "{\"blind_spots\": [\"生产后端和生产 RBAC\"], \"id\": \"S4\", \"independence\": \"运行请求观察\", \"method\": \"捕获脱敏 POST/PUT、Console 和权限状态\", \"target\": \"请求和权限不变量\"}",
+      "{\"blind_spots\": [\"外部未提交状态\"], \"id\": \"S5\", \"independence\": \"仓库级传感器\", \"method\": \"diff、scope、governance 和旧账本哈希\", \"target\": \"范围和旧账本\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"修改 Vue 三处模板绑定\", \"authority\": \"scope writable_paths\", \"id\": \"A1\", \"impact_radius\": \"资源申请局部模板\", \"rollback\": \"revert T5\", \"target\": \"原因和标题\"}",
+      "{\"action\": \"修改资源申请局部 CSS\", \"authority\": \"scope writable_paths\", \"id\": \"A2\", \"impact_radius\": \"资源申请 Dialog\", \"rollback\": \"revert T5\", \"target\": \"高度链和滚动\"}",
+      "{\"action\": \"增加桌面宽度和移动覆盖\", \"authority\": \"scope writable_paths\", \"id\": \"A3\", \"impact_radius\": \"当前项数字输入\", \"rollback\": \"revert T5\", \"target\": \"数值输入宽度\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"标题换行或难区分\", \"source\": \"长或重复部署单元名称\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"编辑器高度变化\", \"source\": \"DB/非 DB 高度和附加需求\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"过早采样旧尺寸\", \"source\": \"Vite HMR 与 Dialog 初次布局\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"全仓治理非零\", \"source\": \"历史治理账本问题\"}",
+      "{\"controllable\": false, \"detectable\": false, \"effect\": \"请求证据仅代表本地\", \"source\": \"Mock 与真实后端差异\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"修订1已约束 body/footer\", \"falsifier\": \"S2 发现 footer 或内容不可达\", \"text\": \"局部 Dialog 类可建立稳定高度链\"}",
+      "{\"evidence\": \"字段为非负整数且 controls-position=right\", \"falsifier\": \"S2 长值出现遮挡\", \"text\": \"160px 可显示数值和步进按钮\"}",
+      "{\"evidence\": \"上一轮已捕获 POST/PUT items[]\", \"falsifier\": \"真实后端 UAT 结论不同\", \"text\": \"修订1 Mock 可回归请求契约\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R8",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R9",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R10",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R11",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R12",
+        "sensor": "[\"S2\", \"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T5",
+      "goal": "实现申请原因压缩、部署单元业务标题、桌面高度链和短数值输入",
+      "requirements": [
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "原因当前 rows=4",
+        "两处主标题当前使用申请项序号",
+        "列表面板当前 max-height=680px",
+        "当前编辑器数字输入继承 100% 宽度",
+        "修订1状态与请求逻辑已收敛且本轮不修改"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/architecture.css",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/execution-T5.json"
+      ],
+      "invariants": [
+        "ResourceRequestPayload 和 items[] 不变",
+        "重复 deploymentUnitId 合法",
+        "错误和删除提示保留申请项序号",
+        "手机页面根无横向滚动",
+        "旧修订1账本不变"
+      ],
+      "interface_contracts": [
+        "deploymentUnitName 仅作为两处主标题呈现",
+        "Dialog footer 位于滚动区之外",
+        "桌面数字输入 140-180px 且 760px 以下满宽"
+      ],
+      "non_goals": [
+        "不修改状态逻辑、API、后端、公共 UI 或应用壳",
+        "不折叠或隐藏基础字段"
+      ],
+      "action_bounds": [
+        "Vue 仅修改申请原因行数和两处标题文案绑定",
+        "CSS 仅修改 architecture-resource-request-* 局部高度、滚动、间距和数字宽度规则",
+        "发现需修改公共 Dialog 或状态函数时停止"
+      ],
+      "acceptance": [
+        "npm build 和 diff 通过",
+        "申请原因 2 行且字段完整",
+        "列表与编辑器主标题同步",
+        "1920/1280 footer 可见且局部滚动",
+        "桌面数字输入 140-180px，手机满宽"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "构建和静态扫描退出码",
+        "浏览器 DOM 尺寸和计算样式",
+        "旧账本哈希"
+      ],
+      "rollback": "revert T5 产品提交恢复修订1",
+      "stop_conditions": [
+        "必须修改 scope 外产品文件",
+        "footer 或字段不可达",
+        "手机页面根溢出",
+        "请求或状态逻辑需改变"
+      ],
+      "escalation_conditions": [
+        "要求折叠基础信息",
+        "数值框需小于 140px",
+        "需要公共 Dialog 或应用壳改造"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T06:20:35+00:00",
+          "text": "执行前 build 退出0；旧标题、rows=4、max-height=680px 和数字输入宽度基线已定位"
+        },
+        {
+          "recorded_at": "2026-09-03T06:31:25+00:00",
+          "text": "T5 execution 已记录，可由浏览器尺寸、标题和范围传感器独立复测"
+        },
+        {
+          "recorded_at": "2026-09-03T06:31:26+00:00",
+          "text": "S-0001 无 P0-P3，R8-R12 首轮布局与交互传感器通过"
+        }
+      ],
+      "updated_at": "2026-09-03T06:31:26+00:00"
+    },
+    {
+      "id": "T6",
+      "goal": "完成五视口浏览器回归、请求兼容和 UAT 修订收敛",
+      "requirements": [
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12"
+      ],
+      "prerequisites": [
+        "T5"
+      ],
+      "input_facts": [
+        "Vite 运行于 127.0.0.1:5173",
+        "Mock API 运行于 127.0.0.1:8080",
+        "修订1基线提交为 fad0585",
+        "旧账本哈希已记录"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/execution-T6.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T5.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/observation-T6.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-uat-compact/convergence.json"
+      ],
+      "invariants": [
+        "不连接生产系统或记录敏感信息",
+        "请求字段、顺序、权限和修订1行为不变",
+        "旧账本 revision 和哈希不变"
+      ],
+      "interface_contracts": [
+        "Network 中 create/update 继续使用现有 ResourceRequestPayload",
+        "页面根 scrollWidth 不超过 innerWidth",
+        "列表和编辑器滚动节点内容可达"
+      ],
+      "non_goals": [
+        "不修复范围外治理噪声",
+        "不自行发布或合并"
+      ],
+      "action_bounds": [
+        "运行 build、scope、diff、governance 和真实浏览器传感器",
+        "观察发现偏差时只允许回到 T5 两个产品文件纠偏"
+      ],
+      "acceptance": [
+        "1920x1080、1280x800、375x812、390x844、430x932 明暗主题通过",
+        "空项、选择、重复和切换标题正确",
+        "POST/PUT items[] 兼容且无 clientId",
+        "无开放 P0/P1，standard 至少两次采样"
+      ],
+      "evidence_required": [
+        "命令与退出码",
+        "DOM 尺寸和 overflow",
+        "输入宽度",
+        "脱敏 Network 和 Console",
+        "scope、旧账本哈希和残余风险"
+      ],
+      "rollback": "回退证据提交；产品 revert T5",
+      "stop_conditions": [
+        "UAT 服务无法恢复",
+        "请求或权限变化",
+        "需 scope 外产品修改",
+        "页面白屏或保存不可达"
+      ],
+      "escalation_conditions": [
+        "真实后端与 Mock 结论冲突",
+        "公共组件修改不可避免",
+        "历史治理成为硬门禁"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T06:33:22+00:00",
+          "text": "T5 已验证；开始最终构建、治理、scope、请求、权限和五视口回归"
+        },
+        {
+          "recorded_at": "2026-09-03T06:37:38+00:00",
+          "text": "T6 execution 已记录，最终运行输出可独立复测"
+        },
+        {
+          "recorded_at": "2026-09-03T06:37:39+00:00",
+          "text": "S-0002 无 P0-P3；R8-R12 最终布局、保存、回归和范围传感器通过"
+        }
+      ],
+      "updated_at": "2026-09-03T06:37:39+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T5 完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "813ad56；build退出0；1920/1280 footer可见且editor内部滚动；桌面数值160px；375/390/430根宽等于视口；标题同步且错误序号保留",
+      "recorded_at": "2026-09-03T06:31:25+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "最终集成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "最终build退出0；scope/diff通过；五视口根宽等于视口；桌面footer可见且内部滚动；浅色保存成功；明暗Console无error；旧账本不变",
+      "recorded_at": "2026-09-03T06:37:38+00:00"
+    }
+  ]
+}
