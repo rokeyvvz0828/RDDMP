@@ -1,0 +1,2125 @@
+{
+  "schema_version": 4,
+  "revision": 25,
+  "created_at": "2026-09-03T07:05:00+00:00",
+  "updated_at": "2026-09-03T07:39:18+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=3, plan_revision=3；设计确认=用户于 2026-09-03 回复‘可以’，批准资源申请表单容量与部署 Flex 布局设计修订 3。；计划确认=用户于 2026-09-03 回复‘批准’，批准资源申请表单容量与部署 Flex 布局实施计划修订 3。",
+      "recorded_at": "2026-09-03T07:05:00+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "需求基准门禁通过：唯一目标、R13可判别验收和测量意图完整",
+      "recorded_at": "2026-09-03T07:07:54+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "模型门禁通过：R13因果链、传感器、执行器和测量绑定完整",
+      "recorded_at": "2026-09-03T07:08:06+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "受控计划门禁通过：R13由T7/T8及S1-S4覆盖，任务串行且动作位于授权范围",
+      "recorded_at": "2026-09-03T07:08:19+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T7实现报告完整且输出可由S1-S4独立测量",
+      "recorded_at": "2026-09-03T07:24:31+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T7已验证且无反馈，继续执行T8最终集成和五视口回归",
+      "recorded_at": "2026-09-03T07:28:38+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T8执行报告完整且最终工程状态可独立复测",
+      "recorded_at": "2026-09-03T07:36:30+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T7-T8均verified，两次采样误差0，无待裁决反馈，进入收敛验收",
+      "recorded_at": "2026-09-03T07:37:57+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "最终门禁通过：R13有效覆盖，两次采样P0-P3均0，无反馈，build/scope/diff和五视口运行证据满足",
+      "recorded_at": "2026-09-03T07:39:18+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=3, plan_revision=3；设计确认=用户于 2026-09-03 回复‘可以’，批准资源申请表单容量与部署 Flex 布局设计修订 3。；计划确认=用户于 2026-09-03 回复‘批准’，批准资源申请表单容量与部署 Flex 布局实施计划修订 3。",
+        "recorded_at": "2026-09-03T07:05:00+00:00",
+        "data": {
+          "objective": "在不改变资源申请业务行为和紧凑滚动布局的前提下，将容量与部署字段区改为 Flex 自适应换行，使桌面端每行尽量展示 3 至 4 个字段并保持手机端单列可用。",
+          "requirements": [
+            {
+              "id": "R13",
+              "statement": "容量与部署字段区必须使用 Flex 自适应换行。",
+              "acceptance": [
+                "1920x1080 桌面端按可用宽度排列且每行尽量展示 3 至 4 个字段",
+                "选择类字段宽于数值字段且中等宽度自然换行",
+                "计算摘要独占整行",
+                "三个手机验收视口下字段单列满宽且页面根无横向溢出"
+              ],
+              "priority": "must",
+              "source": "用户于 2026-09-03 确认采用字段项 Flex 自适应换行方案",
+              "counterexample": [
+                "容量区继续固定为每行两列并产生大面积空白",
+                "通过固定行拆分导致条件字段出现空洞",
+                "手机端保留桌面短宽并产生横向溢出"
+              ]
+            }
+          ],
+          "invariants": [
+            "修订 1 的 R1-R7 和修订 2 的 R8-R12 保持成立",
+            "字段顺序、显示条件、计算、校验、状态和提交映射不变",
+            "ResourceRequestPayload、items[] 顺序、重复 deploymentUnitId 和 DB/非 DB 分流不变",
+            "修订 2 的短数值输入、独立滚动和 footer 可见性不变",
+            "已收敛的旧控制账本保持只读"
+          ],
+          "constraints": [
+            "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+            "使用现有 Vue 3、Element Plus 和架构模块语义主题变量",
+            "只为容量与部署区域增加局部 Flex 规则",
+            "不得缩小正文字号或引入页面级横向滚动"
+          ],
+          "non_goals": [
+            "修改字段、计算、校验或请求契约",
+            "修改部署单元区或其他表单网格",
+            "新增公共布局组件或断点体系",
+            "固定拆分每一行字段"
+          ],
+          "assumptions": [
+            {
+              "text": "当前编辑器在宽桌面下可容纳 3 至 4 个按类型设置首选宽度的字段。",
+              "basis": "用户 UAT 截图显示容量区宽度充足且固定两列存在明显空白",
+              "falsifier": "真实浏览器计算宽度只能稳定容纳两项"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D9",
+              "decision": "容量与部署区域采用字段项 Flex 自适应换行，桌面每行尽量展示 3 至 4 项。",
+              "reason": "减少固定两列空白并适应不同编辑器宽度",
+              "source": "用户于 2026-09-03 回复‘是的’"
+            },
+            {
+              "id": "D10",
+              "decision": "选择、数值、布尔和摘要字段使用不同的首选宽度。",
+              "reason": "字段内容密度不同，需要在可读性和单屏信息量之间平衡",
+              "source": "用户确认推荐方案"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R13"
+              ],
+              "signal": "桌面容量字段按类型紧凑排列并自然换行",
+              "method": "1920x1080、1280x800 明暗主题检查计算样式、每行数量、摘要整行、内部滚动和 footer"
+            },
+            {
+              "requirement_ids": [
+                "R13"
+              ],
+              "signal": "手机容量字段单列满宽且无页面级溢出",
+              "method": "375x812、390x844、430x932 检查根宽、字段宽度、数字输入和内容可达性"
+            },
+            {
+              "requirement_ids": [
+                "R13"
+              ],
+              "signal": "前两轮业务和布局行为无回归",
+              "method": "执行构建、scope、diff、治理和真实浏览器 DB/非 DB、有边车、计算、校验、新建/编辑请求回归"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "已复核批准设计修订3；R13验收、反例、不变量和测量意图完整，无阻塞未知项",
+        "recorded_at": "2026-09-03T07:07:54+00:00",
+        "data": {
+          "objective": "资源申请人在不同视口填写非数据库容量信息时，字段能充分利用可用宽度并保持全部内容可达。",
+          "requirements": [
+            {
+              "id": "R13",
+              "statement": "容量与部署字段区必须使用 Flex 自适应换行。",
+              "acceptance": [
+                "1920x1080 桌面端按可用宽度排列且每行尽量展示 3 至 4 个字段",
+                "选择类字段宽于数值字段且 1280x800 下自然换行",
+                "计算摘要独占整行",
+                "375x812、390x844、430x932 下字段单列满宽且页面根无横向溢出"
+              ],
+              "priority": "must",
+              "source": "用户批准的设计修订 3",
+              "counterexample": [
+                "容量区继续固定两列并产生大面积空白",
+                "字段被固定行或最小宽度挤出容器",
+                "手机端产生页面级横向滚动"
+              ]
+            }
+          ],
+          "invariants": [
+            "R1-R12 和前两轮已收敛行为保持",
+            "字段顺序、绑定、条件显示、计算、校验、权限和请求契约不变",
+            "数据库资源区继续使用原有 Grid",
+            "桌面数字输入保持 140 至 180px，手机端恢复满宽",
+            "Dialog 内部滚动和 footer 可见性保持"
+          ],
+          "constraints": [
+            "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+            "只在资源申请容量区局部作用域使用 Flex",
+            "不得修改公共组件、后端、API、DTO、数据库、权限、审计或工作流",
+            "不得缩小字号或引入页面级横向滚动"
+          ],
+          "non_goals": [
+            "固定每行字段数量",
+            "重排字段业务顺序",
+            "修改数据库申请项布局",
+            "新增公共布局组件或断点"
+          ],
+          "assumptions": [
+            {
+              "text": "宽桌面可容纳 3 至 4 个按类型设置首选宽度的字段",
+              "basis": "用户 UAT 截图显示容量区固定两列存在明显空白",
+              "falsifier": "真实浏览器在 1920x1080 下只能稳定容纳两项"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "容量字段采用何种布局模型",
+              "options": [
+                "字段项 Flex 自适应换行",
+                "统一宽度 Flex",
+                "固定 Flex 行"
+              ],
+              "selected": "字段项 Flex 自适应换行",
+              "blocking": false,
+              "source": "用户于 2026-09-03 批准设计修订 3"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R13",
+              "observable": "容量容器 display/flex-wrap、字段 offsetTop/offsetWidth、摘要宽度、数字输入宽度、根 scrollWidth 和业务请求",
+              "candidate_sensor": "真实浏览器五视口明暗主题探针，辅以构建、源码和 Network 检查"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "代码和运行入口取证完成；R13由S1-S4可观测，A1-A2在scope内可控，扰动和时延已记录",
+        "recorded_at": "2026-09-03T07:08:06+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "ResourceRequestPage.vue 非数据库容量与部署 DOM",
+              "architecture.css 资源申请编辑器局部布局规则",
+              "760px 手机响应式覆盖",
+              "当前项编辑器内部滚动容器"
+            ],
+            "environment": [
+              "Element Plus el-form-item、el-select、el-input-number 默认样式",
+              "Vite 浏览器运行时",
+              "本地 Mock API",
+              "视口、主题和字体渲染"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "capacity_layout_mode",
+              "owner": "architecture.css",
+              "valid_values": [
+                "grid",
+                "flex"
+              ]
+            },
+            {
+              "name": "capacity_field_geometry",
+              "owner": "browser layout engine",
+              "valid_values": [
+                "desktop-3-4-per-row",
+                "wrapped",
+                "mobile-single-column",
+                "overflow"
+              ]
+            },
+            {
+              "name": "request_contract",
+              "owner": "ResourceRequestPage.vue existing submit logic",
+              "valid_values": [
+                "unchanged",
+                "regressed"
+              ]
+            },
+            {
+              "name": "scroll_boundary",
+              "owner": "resource request dialog",
+              "valid_values": [
+                "internal-reachable",
+                "root-overflow",
+                "footer-hidden"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R13",
+              "input": "非数据库当前项和可用编辑器宽度",
+              "transitions": [
+                "Vue 为容量容器和字段提供局部语义类",
+                "architecture.css 以 Flex basis 和 min-width 计算字段宽度",
+                "空间不足时 flex-wrap 换行",
+                "760px 以下覆盖为单列满宽"
+              ],
+              "outputs": [
+                "宽桌面每行尽量 3 至 4 项",
+                "中桌面自然换行",
+                "摘要独占整行",
+                "手机无页面级横向溢出"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "capacity-layout-classes",
+              "producers": [
+                "ResourceRequestPage.vue"
+              ],
+              "consumers": [
+                "architecture.css"
+              ],
+              "invariant": "类名只标注布局类型，不改变字段绑定、顺序和事件"
+            },
+            {
+              "name": "resource-request-payload",
+              "producers": [
+                "ResourceRequestPage.vue existing submit logic"
+              ],
+              "consumers": [
+                "create/update resource request API"
+              ],
+              "invariant": "布局修订不改变 items[] 数量、顺序、字段值或 clientId 剥离"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "桌面 Flex 布局和字段几何",
+              "method": "1920x1080、1280x800 浏览器读取 display、flexWrap、offsetTop、offsetWidth、摘要和数字输入宽度",
+              "blind_spots": [
+                "未覆盖的系统字体差异"
+              ],
+              "independence": "直接观察浏览器布局引擎输出"
+            },
+            {
+              "id": "S2",
+              "target": "手机响应式和滚动边界",
+              "method": "375x812、390x844、430x932 读取字段宽度、documentElement.scrollWidth、footer 和编辑器滚动尺寸",
+              "blind_spots": [
+                "真实移动浏览器地址栏动态高度"
+              ],
+              "independence": "不同视口的运行时尺寸探针"
+            },
+            {
+              "id": "S3",
+              "target": "代码边界和构建兼容",
+              "method": "Vite build、源码选择器扫描、git diff 和 scope 检查",
+              "blind_spots": [
+                "构建不能证明实际排版"
+              ],
+              "independence": "仓库级静态和编译传感器"
+            },
+            {
+              "id": "S4",
+              "target": "业务与请求不变量",
+              "method": "真实浏览器回归 DB/非 DB、计算、校验、申请项切换并检查 POST/PUT 与 Console",
+              "blind_spots": [
+                "Mock 与真实后端环境差异"
+              ],
+              "independence": "运行时交互和网络输出"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "容量区布局语义",
+              "action": "仅为非数据库容量容器和字段增加专用类",
+              "authority": "codex-task-scope.yaml writable_paths",
+              "impact_radius": "ResourceRequestPage.vue 容量与部署模板",
+              "rollback": "revert T7 产品提交"
+            },
+            {
+              "id": "A2",
+              "target": "容量字段宽度、换行和手机覆盖",
+              "action": "在 architecture-resource-request-editor 局部作用域增加 Flex 规则",
+              "authority": "codex-task-scope.yaml writable_paths",
+              "impact_radius": "architecture.css 资源申请容量区",
+              "rollback": "revert T7 产品提交"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R13",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Element Plus 默认 form-item 宽度",
+              "effect": "basis 被覆盖或字段异常拉伸",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "长标签、长选项和字体渲染",
+              "effect": "每行字段数量波动",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Vite HMR 与 Dialog 初次布局",
+              "effect": "过早采样旧样式或零尺寸",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Mock 与真实后端差异",
+              "effect": "请求回归证据仅代表本地环境",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite HMR",
+              "consequence": "刷新前计算样式可能仍是旧规则",
+              "sampling_rule": "等待模块刷新和 Dialog 稳定后采样"
+            },
+            {
+              "source": "主题和视口切换",
+              "consequence": "布局在下一帧重排",
+              "sampling_rule": "切换后等待两帧并重新读取字段几何"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "局部类可覆盖资源申请编辑器固定两列规则",
+              "evidence": "现有 CSS 已使用同级业务作用域覆盖通用网格",
+              "falsifier": "S1 显示计算 display 仍为 grid"
+            },
+            {
+              "text": "现有 Mock 环境可回归请求结构",
+              "evidence": "修订 1、2 已在相同环境完成请求回归",
+              "falsifier": "真实后端 UAT 与 S4 结论冲突"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R13",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用 A1/A2 实施，并由 S1-S4 在任务完成和集成阶段采样"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "开发前T7/T8与已验证模型对账；写入边界、依赖、采样、回滚和升级条件完整",
+        "recorded_at": "2026-09-03T07:08:19+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T7",
+              "goal": "实现非数据库容量与部署区域的局部 Flex 自适应换行",
+              "requirement_ids": [
+                "R13"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "容量区当前使用通用数字网格且被资源申请编辑器覆盖为两列",
+                "数据库资源区共享通用数字网格但不属于本轮目标",
+                "桌面数字输入 160px 和 760px 以下满宽规则已存在"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/architecture.css",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T7.json"
+              ],
+              "invariants": [
+                "字段绑定、顺序、事件、计算、校验和请求不变",
+                "数据库资源区保持 Grid",
+                "桌面短数字输入和手机满宽不变",
+                "旧账本只读"
+              ],
+              "interface_contracts": [
+                "容量布局类只被 architecture.css 消费",
+                "选择字段首选宽度大于数值字段",
+                "摘要占满整行",
+                "760px 以下字段项满宽"
+              ],
+              "non_goals": [
+                "不修改状态逻辑、API、后端、公共 UI 或通用网格",
+                "不固定拆分字段行"
+              ],
+              "action_bounds": [
+                "Vue 仅增加容量容器和字段分类类",
+                "CSS 仅增加 architecture-resource-request-capacity-* 局部规则和手机覆盖",
+                "发现需修改共享 Grid 或业务逻辑时停止"
+              ],
+              "acceptance_checks": [
+                "构建退出 0",
+                "容量容器计算 display 为 flex 且 flex-wrap 为 wrap",
+                "1920 下每行尽量 3 至 4 项，选择字段宽于数值字段",
+                "摘要独占整行且数字输入仍为 140 至 180px",
+                "数据库资源区未命中容量 Flex"
+              ],
+              "evidence_required": [
+                "实际 diff 和提交哈希",
+                "构建、diff、样式扫描退出码",
+                "浏览器计算样式和字段位置数组",
+                "数据库区选择器命中证据"
+              ],
+              "rollback": "revert T7 产品提交",
+              "stop_conditions": [
+                "必须修改 scope 外产品文件",
+                "字段绑定或顺序需要改变",
+                "footer 或内容不可达",
+                "手机页面根溢出"
+              ],
+              "escalation_conditions": [
+                "用户要求固定每行数量",
+                "需要公共布局 token 或应用级断点",
+                "Element Plus 默认样式无法局部覆盖"
+              ]
+            },
+            {
+              "id": "T8",
+              "goal": "完成五视口明暗主题、业务请求回归和独立收敛",
+              "requirement_ids": [
+                "R13"
+              ],
+              "prerequisites": [
+                "T7"
+              ],
+              "input_facts": [
+                "T7 提供稳定 DOM、CSS 和产品提交",
+                "本地 Vite 与 Mock API 可运行资源申请 UAT",
+                "R1-R12 已有历史收敛证据"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T8.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T7.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T8.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/convergence.json"
+              ],
+              "invariants": [
+                "不连接生产或记录敏感信息",
+                "请求、权限、计算、校验和前两轮布局行为不变",
+                "旧账本哈希和 phase 不变"
+              ],
+              "interface_contracts": [
+                "页面根 scrollWidth 不超过 innerWidth",
+                "POST/PUT items[] 数量、顺序和字段值不变",
+                "footer 保持可见，超高内容在编辑器内部可达"
+              ],
+              "non_goals": [
+                "不修复范围外治理噪声",
+                "不自行合并、推送或发布"
+              ],
+              "action_bounds": [
+                "运行 S1-S4、构建、治理、scope、Network 和 Console 传感器",
+                "观察偏差时只允许回到 T7 两个产品文件纠偏"
+              ],
+              "acceptance_checks": [
+                "1920x1080、1280x800、375x812、390x844、430x932 明暗主题通过",
+                "Flex、字段宽度、摘要整行、手机满宽和滚动边界通过",
+                "DB/非 DB、计算、校验、申请项切换和 POST/PUT 无回归",
+                "scope 通过且 Console 无新增错误"
+              ],
+              "evidence_required": [
+                "五视口 DOM 指标和截图",
+                "脱敏 Network 与 Console",
+                "build、governance、scope 和 diff 退出码",
+                "两次独立采样和旧账本哈希"
+              ],
+              "rollback": "回退证据提交；产品 revert T7",
+              "stop_conditions": [
+                "UAT 服务无法恢复",
+                "请求、权限或计算变化",
+                "页面白屏、footer 不可达或页面根溢出",
+                "需要 scope 外修改"
+              ],
+              "escalation_conditions": [
+                "真实后端与 Mock 结论冲突",
+                "历史治理成为硬门禁",
+                "公共组件修改不可避免"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T7",
+              "to": "T8",
+              "reason": "T8 的运行验收依赖 T7 已提交的稳定 DOM 和 CSS"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T7"
+            ],
+            [
+              "T8"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T7"
+              ],
+              "checks": [
+                "S1 桌面计算样式和字段位置",
+                "S3 构建与代码边界"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T7",
+                "T8"
+              ],
+              "checks": [
+                "S1-S4 五视口、业务、请求、scope 和旧账本不变"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T7 完成采样",
+              "trigger": "T7 返回产品提交和局部浏览器结果",
+              "observer": "主 Agent 独立观察上下文",
+              "sensors": [
+                "S1",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R13"
+              ]
+            },
+            {
+              "label": "最终集成采样",
+              "trigger": "T8 完成五视口与业务回归",
+              "observer": "主 Agent 独立观察上下文",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R13"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R13",
+              "task_ids": [
+                "T7",
+                "T8"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T7提交d29ff40；最终build退出0；桌面3/4/3与手机单列可独立复测",
+        "recorded_at": "2026-09-03T07:24:31+00:00",
+        "data": {
+          "task_id": "T7",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue",
+              "purpose": "仅为非数据库容量容器和选择、数值、布尔字段增加局部布局类"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "增加容量区 Flex 换行、字段首选宽度、摘要整行和手机满宽覆盖"
+            }
+          ],
+          "requirements_addressed": [
+            "R13"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build（最终实现）",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 与 vite build 完成，2513 modules transformed，built in 25.59s"
+            },
+            {
+              "command": "git diff --check -- ResourceRequestPage.vue architecture.css",
+              "exit_code": 0,
+              "salient_output": "无空白错误，仅有仓库既有 LF/CRLF 提示"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope ... --working-tree",
+              "exit_code": 0,
+              "salient_output": "Codex scope check passed for REQ-20260903-059"
+            },
+            {
+              "command": "git commit -m style(architecture-web): flex resource capacity fields",
+              "exit_code": 0,
+              "salient_output": "d29ff40，2 files changed，30 insertions，11 deletions"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "1920x1080 Flex 计算样式与字段位置",
+              "result": "pass",
+              "evidence": "容器 display=flex、flexWrap=wrap、宽777；字段行数量为3/4/3；选择字段270px、数值字段180px、数字输入160px、摘要777px",
+              "limitations": [
+                "字段数量基于当前测试数据和字体"
+              ]
+            },
+            {
+              "check": "1280x800 自然换行与滚动边界",
+              "result": "pass",
+              "evidence": "容器宽604并自然形成2/2/3/3；根宽1280=视口；editor clientHeight568/scrollHeight926/overflowY=auto；footer visible=true",
+              "limitations": []
+            },
+            {
+              "check": "375x812、390x844、430x932 手机布局",
+              "result": "pass",
+              "evidence": "三视口全部单列，字段和数字输入分别为255/269/309px，根 scrollWidth 等于视口宽，footer 可见",
+              "limitations": [
+                "浏览器视口模拟不覆盖真实移动地址栏动态高度"
+              ]
+            },
+            {
+              "check": "数据库资源区隔离",
+              "result": "pass",
+              "evidence": "选择 PORTAL_CHANNEL_DB 后 capacityCount=0、databaseLabel=true、numberGridCount=1",
+              "limitations": []
+            },
+            {
+              "check": "容量计算与 Console",
+              "result": "pass",
+              "evidence": "CPU=2、内存=4、组数=3、节点数=2 时显示总CPU4、总内存8G；Console error=0",
+              "limitations": [
+                "边车开关的自动化点击未形成可靠 Vue 状态信号，留给 T8 采用更稳定传感器复验"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "非数据库容量区从通用数字 Grid 标识切换为专用 Flex 容器标识",
+            "两个选择字段首选270px，七个数值字段和布尔字段首选180px",
+            "计算摘要使用100% flex basis，760px以下所有字段单列满宽",
+            "未修改任何 v-model、事件、计算、校验或提交逻辑"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "数据库资源区继续使用原有 Grid",
+              "result": "pass",
+              "evidence": "运行时数据库申请项不存在容量 Flex 容器且保留数字网格"
+            },
+            {
+              "invariant": "桌面短数字输入和手机满宽保持",
+              "result": "pass",
+              "evidence": "桌面160px；手机分别与容器同宽"
+            },
+            {
+              "invariant": "页面根无横向溢出且 footer 可见",
+              "result": "pass",
+              "evidence": "五视口根宽等于视口宽，footer visible=true"
+            },
+            {
+              "invariant": "字段绑定、计算和请求代码不变",
+              "result": "pass",
+              "evidence": "产品 diff 仅增加 class 和 CSS；容量计算运行输出保持"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "初始选择字段使用可增长 basis，1920 首行只容纳两项",
+              "impact": "不满足每行尽量3至4项；在T7边界内将选择项限幅270px、数值项180px后复测通过"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "T8 需使用稳定浏览器动作或静态/运行组合传感器复验有边车联动",
+            "T8 需执行最终治理、请求和权限不变量检查"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T8最终build/scope/diff通过；两主题五视口通过；创建成功提示和请求代码不变量已记录",
+        "recorded_at": "2026-09-03T07:36:30+00:00",
+        "data": {
+          "task_id": "T8",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex",
+              "purpose": "记录最终构建、治理、范围、浏览器、请求和收敛前证据"
+            }
+          ],
+          "requirements_addressed": [
+            "R13"
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-development-entry.mjs --require-plugin",
+              "exit_code": 0,
+              "salient_output": "Development entry check passed"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 完成，2513 modules transformed，built in 21.01s"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope ... --base 813ad56 --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "Codex scope check passed for REQ-20260903-059"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误，仅有仓库既有 LF/CRLF 提示"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "模块、仓库 Skill 和开发入口通过；AI control layout 仍报告其他历史需求的 topic/旧账本问题，本前缀未出现在错误列表"
+            },
+            {
+              "command": "Invoke-RestMethod GET /api/architecture/resource-requests?page=1&size=20",
+              "exit_code": 0,
+              "salient_output": "Mock 返回 code=0、data=[]，表明创建响应未持久化到列表"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "浅色五视口布局",
+              "result": "pass",
+              "evidence": "1920容器777px且3/4/3；1280容器604px自然2/2/3/3；375/390/430字段单列255/269/309px；全部根宽等于视口且footer可见",
+              "limitations": []
+            },
+            {
+              "check": "深色五视口布局",
+              "result": "pass",
+              "evidence": "data-theme=dark；五视口布局几何与浅色一致；桌面数字输入160px、手机满宽；Console error=0",
+              "limitations": []
+            },
+            {
+              "check": "数据库与非数据库字段分流",
+              "result": "pass",
+              "evidence": "DB选择后capacityCount=0、databaseLabel=true、numberGridCount=1；应用选择后容量Flex存在",
+              "limitations": []
+            },
+            {
+              "check": "容量计算与边车联动",
+              "result": "pass",
+              "evidence": "CPU2、内存4、组数3、节点2显示总CPU4、总内存8G；点击边车开关核心后input checked=true、is-checked且两个边车输入原生disabled=false",
+              "limitations": [
+                "未填写边车数值，因 Element Plus input-number 的 fill 自动化动作不稳定"
+              ]
+            },
+            {
+              "check": "创建草稿与请求映射不变量",
+              "result": "pass",
+              "evidence": "选择应用部署单元、开放区并填写容量后点击保存，页面提示资源申请草稿已创建；d29ff40 未修改 submitForm、requestItemPayload、v-model、事件或校验表达式",
+              "limitations": [
+                "Mock 创建结果不写入列表，无法通过列表回显复核持久化；浏览器工具未暴露 POST body"
+              ]
+            },
+            {
+              "check": "旧账本完整性",
+              "result": "pass",
+              "evidence": "修订1 state SHA256=3A36B04732B9964E051B1110B080F2DC4656F8B65BBA48ACE351B25686C24D5F；修订2 state SHA256=A7ECF2DEAC7E97D7CE55B64EF5797FC3CBC9BB87C5BC3B56AD616A6906E4AF6A",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "T8 未修改产品代码",
+            "最终运行证据覆盖浅色/深色五视口、DB/非 DB、计算、边车启用、创建成功提示、Console、scope 和旧账本",
+            "全仓治理失败被识别为既有其他需求账本噪声，本前缀无新增错误"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "页面根无横向溢出且footer可见",
+              "result": "pass",
+              "evidence": "五视口两主题根宽等于视口且footer visible=true"
+            },
+            {
+              "invariant": "数据库资源区保持Grid",
+              "result": "pass",
+              "evidence": "运行时DB区不存在容量Flex并保留数字Grid"
+            },
+            {
+              "invariant": "计算、边车启用和创建入口保持",
+              "result": "pass",
+              "evidence": "计算值、边车原生disabled和创建成功提示"
+            },
+            {
+              "invariant": "请求映射和权限代码不变",
+              "result": "pass",
+              "evidence": "产品提交仅含class和CSS；submitForm/requestItemPayload无diff"
+            },
+            {
+              "invariant": "旧账本只读",
+              "result": "pass",
+              "evidence": "两个历史state哈希已记录且未修改"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "全仓治理包含其他历史需求账本错误",
+              "impact": "治理命令退出1，但错误列表不包含本控制前缀，作为基线噪声隔离"
+            },
+            {
+              "event": "Mock创建响应不持久化到列表",
+              "impact": "只能确认创建成功提示和请求映射代码不变，不能用列表回显证明持久化"
+            },
+            {
+              "event": "Element Plus input-number 对语义fill/isEnabled自动化判定不稳定",
+              "impact": "改用原生disabled属性和计算输出判别控件状态"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实后端环境的持久化与请求 body 仍需上线前集成环境复核",
+            "全仓历史 AI control layout 问题不在本需求范围内"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "独立提交态复测无P0-P3；1920为3/4/3，390单列，根宽与Console通过",
+        "recorded_at": "2026-09-03T07:28:12+00:00",
+        "data": {
+          "sample_label": "T7 完成采样",
+          "task_ids": [
+            "T7"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R13",
+              "sensor": "S1 提交态桌面计算样式和字段几何",
+              "result": "pass",
+              "raw_evidence": "刷新后深色1920x1080：display=flex、flexWrap=wrap、容器777px；行3/4/3；选择270px、数值180px、输入160px、摘要777px；footer visible=true",
+              "limitation": [
+                "只覆盖本地 Chromium 字体渲染"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "S2 提交态手机宽度和滚动边界",
+              "result": "pass",
+              "raw_evidence": "刷新后深色390x844：全部字段单列269px、数字输入269px、根scrollWidth=390=innerWidth、footer visible=true",
+              "limitation": [
+                "不覆盖真实移动浏览器地址栏动态高度"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "S3 提交边界和静态检查",
+              "result": "pass",
+              "raw_evidence": "d29ff40 仅修改 ResourceRequestPage.vue 与 architecture.css；diff --check退出0；局部类只出现在容量模板和资源申请CSS作用域",
+              "limitation": [
+                "静态检查本身不能证明运行排版"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "S4 浏览器控制台",
+              "result": "pass",
+              "raw_evidence": "提交态刷新、打开弹窗、切换视口后 Console error=0",
+              "limitation": [
+                "完整请求回归由T8采样"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "T8 尚需完成浅色/深色全部五视口、最终治理和请求不变量回归"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "最终独立采样无P0-P3；五视口两主题、build/scope/diff、业务边界和旧账本通过",
+        "recorded_at": "2026-09-03T07:37:57+00:00",
+        "data": {
+          "sample_label": "最终集成采样",
+          "task_ids": [
+            "T7",
+            "T8"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R13",
+              "sensor": "S1 最终浅色桌面计算样式和字段几何",
+              "result": "pass",
+              "raw_evidence": "1920x1080：flex/wrap、容器777px、行3/4/3、选择270px、数值180px、输入160px、摘要777px；1280x800：容器604px且自然2/2/3/3，内部滚动和footer可见",
+              "limitation": [
+                "字段行数量会随字体和编辑器实际宽度自然变化"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "S2 最终手机和根宽探针",
+              "result": "pass",
+              "raw_evidence": "430x932提交态全部字段单列309px、输入309px、根scrollWidth=430=innerWidth、footer visible=true；执行报告另含375/390相同结论",
+              "limitation": [
+                "使用浏览器视口模拟"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "S3 最终构建、范围和提交边界",
+              "result": "pass",
+              "raw_evidence": "最终build退出0；scope退出0；diff --check退出0；产品HEAD=d29ff407d8e132dfaa5861bf40c6c2b5e431f8b6且只修改两个授权前端文件",
+              "limitation": [
+                "全仓治理因其他历史需求账本问题退出1，但本前缀未出现在错误列表"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "S4 业务、请求边界和Console",
+              "result": "pass",
+              "raw_evidence": "DB区保持原Grid；应用区计算总CPU4/总内存8G；边车开关后输入disabled=false；创建提示成功；submitForm/requestItemPayload无diff；Console error=0",
+              "limitation": [
+                "Mock不持久化创建结果且浏览器工具未暴露POST body，真实后端持久化留作上线前验证"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "旧账本哈希传感器",
+              "result": "pass",
+              "raw_evidence": "修订1哈希3A36B04732B9964E051B1110B080F2DC4656F8B65BBA48ACE351B25686C24D5F；修订2哈希A7ECF2DEAC7E97D7CE55B64EF5797FC3CBC9BB87C5BC3B56AD616A6906E4AF6A",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "全仓治理仍包含其他历史需求账本错误，本控制前缀无新增错误",
+            "Mock创建响应不持久化到列表，不能用列表回显作为请求持久化传感器"
+          ],
+          "coverage_gaps": [
+            "真实后端环境的请求body与持久化需上线前集成验证"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "收敛审计PASS：R13链路完整，T7/T8 verified，两次采样误差0，范围和不变量通过，残余风险已披露",
+        "recorded_at": "2026-09-03T07:39:18+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R13",
+              "result": "pass",
+              "task_ids": [
+                "T7",
+                "T8"
+              ],
+              "evidence": [
+                "d29ff40 仅为非数据库容量区增加局部 Flex 类和 CSS",
+                "最终浅色1920x1080为3/4/3字段行，选择270px、数值180px、摘要整行777px",
+                "1280x800自然换行且内部滚动、footer可见",
+                "375x812、390x844、430x932 浅深主题均单列满宽且根宽等于视口",
+                "数据库资源区保持原Grid，容量计算、边车启用和创建成功提示通过"
+              ],
+              "limitations": [
+                "Mock 创建结果不持久化到列表，真实后端持久化和POST body需上线前集成验证"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T7",
+              "status": "verified",
+              "evidence": [
+                "产品提交d29ff40",
+                "最终构建退出0",
+                "S-0001误差0"
+              ]
+            },
+            {
+              "id": "T8",
+              "status": "verified",
+              "evidence": [
+                "五视口明暗主题和业务回归完成",
+                "build/scope/diff通过",
+                "S-0002误差0"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "前端构建",
+              "result": "pass",
+              "evidence": "vue-tsc和Vite退出0，2513 modules transformed"
+            },
+            {
+              "check": "任务范围与diff",
+              "result": "pass",
+              "evidence": "scope检查和git diff --check退出0"
+            },
+            {
+              "check": "五视口明暗主题",
+              "result": "pass",
+              "evidence": "两桌面三手机的布局、根宽、数字输入和footer均通过"
+            },
+            {
+              "check": "DB/非DB、计算、边车和创建入口",
+              "result": "pass",
+              "evidence": "DB保留Grid；计算总CPU4/总内存8G；边车输入启用；创建提示成功"
+            },
+            {
+              "check": "全仓治理",
+              "result": "known-baseline-failure",
+              "evidence": "模块、Skill和开发入口通过；AI control layout仅报告其他历史需求账本问题，本前缀无错误"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "R1-R12和前两轮主从行为保持",
+              "result": "pass",
+              "evidence": "产品diff不含状态、滚动、标题或业务函数修改；旧账本哈希不变"
+            },
+            {
+              "invariant": "字段绑定、顺序、计算、校验和请求映射不变",
+              "result": "pass",
+              "evidence": "Vue diff仅增加class，submitForm和requestItemPayload无diff"
+            },
+            {
+              "invariant": "数据库资源区保持Grid",
+              "result": "pass",
+              "evidence": "运行时DB区capacityCount=0且numberGridCount=1"
+            },
+            {
+              "invariant": "桌面数字输入短宽、手机满宽",
+              "result": "pass",
+              "evidence": "桌面160px；手机255/269/309px"
+            },
+            {
+              "invariant": "内部滚动、footer和页面根边界保持",
+              "result": "pass",
+              "evidence": "桌面editor overflowY=auto、footer visible；五视口根宽等于视口"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Element Plus默认表单宽度",
+              "result": "pass",
+              "evidence": "运行时Flex basis计算为选择270px、数值180px"
+            },
+            {
+              "disturbance": "视口与主题变化",
+              "result": "pass",
+              "evidence": "两主题五视口均无根溢出且自然换行"
+            },
+            {
+              "disturbance": "全仓历史治理噪声",
+              "result": "isolated",
+              "evidence": "错误列表不含本控制前缀，scope和本前缀JSON可解析"
+            },
+            {
+              "disturbance": "Mock不持久化创建结果",
+              "result": "disclosed",
+              "evidence": "创建提示成功但GET列表为空；未把持久化标记为通过"
+            }
+          ],
+          "residual_risks": [
+            "真实后端环境需复核POST/PUT请求body与持久化，因为本地Mock不保存创建结果",
+            "不同系统字体可能改变自然换行边界，但Flex、min-width和移动覆盖可保持内容可达",
+            "全仓其他历史AI control layout问题仍需由对应需求单独治理"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R13由T7/T8和S1-S4完整覆盖；两次standard采样P0-P3均为0；任务verified、反馈为0、范围和不变量通过，已披露非阻塞环境限制。"
+        }
+      }
+    ]
+  },
+  "objective": "资源申请人在不同视口填写非数据库容量信息时，字段能充分利用可用宽度并保持全部内容可达。",
+  "requirements": [
+    {
+      "id": "R13",
+      "statement": "容量与部署字段区必须使用 Flex 自适应换行。",
+      "acceptance": [
+        "1920x1080 桌面端按可用宽度排列且每行尽量展示 3 至 4 个字段",
+        "选择类字段宽于数值字段且 1280x800 下自然换行",
+        "计算摘要独占整行",
+        "375x812、390x844、430x932 下字段单列满宽且页面根无横向溢出"
+      ],
+      "priority": "must",
+      "source": "用户批准的设计修订 3",
+      "counterexample": [
+        "容量区继续固定两列并产生大面积空白",
+        "字段被固定行或最小宽度挤出容器",
+        "手机端产生页面级横向滚动"
+      ]
+    }
+  ],
+  "invariants": [
+    "R1-R12 和前两轮已收敛行为保持",
+    "字段顺序、绑定、条件显示、计算、校验、权限和请求契约不变",
+    "数据库资源区继续使用原有 Grid",
+    "桌面数字输入保持 140 至 180px，手机端恢复满宽",
+    "Dialog 内部滚动和 footer 可见性保持"
+  ],
+  "constraints": [
+    "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+    "只在资源申请容量区局部作用域使用 Flex",
+    "不得修改公共组件、后端、API、DTO、数据库、权限、审计或工作流",
+    "不得缩小字号或引入页面级横向滚动"
+  ],
+  "non_goals": [
+    "固定每行字段数量",
+    "重排字段业务顺序",
+    "修改数据库申请项布局",
+    "新增公共布局组件或断点"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260903-059-resource-request-form-layout-capacity-flex\\handoff.json",
+    "imported_at": "2026-09-03T07:05:00+00:00",
+    "topic": "req-20260903-059-resource-request-form-layout-capacity-flex",
+    "design_revision": 3,
+    "plan_revision": 3,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260903-059-resource-request-form-layout-capacity-flex",
+      "handoff_status": "approved",
+      "created_at": "2026-09-03T14:54:55+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260903-059-resource-request-form-layout-capacity-flex",
+        "design_revision": 3,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+        "objective": "在不改变资源申请业务行为和紧凑滚动布局的前提下，将容量与部署字段区改为 Flex 自适应换行，使桌面端每行尽量展示 3 至 4 个字段并保持手机端单列可用。",
+        "users": [
+          "资源申请人在桌面端填写当前部署单元的容量与部署规格",
+          "资源申请人在手机端以单列方式填写相同字段"
+        ],
+        "requirements": [
+          {
+            "id": "R13",
+            "statement": "容量与部署字段区必须使用 Flex 自适应换行。",
+            "acceptance": [
+              "1920x1080 桌面端按可用宽度排列且每行尽量展示 3 至 4 个字段",
+              "选择类字段宽于数值字段且中等宽度自然换行",
+              "计算摘要独占整行",
+              "三个手机验收视口下字段单列满宽且页面根无横向溢出"
+            ],
+            "priority": "must",
+            "source": "用户于 2026-09-03 确认采用字段项 Flex 自适应换行方案",
+            "counterexample": [
+              "容量区继续固定为每行两列并产生大面积空白",
+              "通过固定行拆分导致条件字段出现空洞",
+              "手机端保留桌面短宽并产生横向溢出"
+            ]
+          }
+        ],
+        "invariants": [
+          "修订 1 的 R1-R7 和修订 2 的 R8-R12 保持成立",
+          "字段顺序、显示条件、计算、校验、状态和提交映射不变",
+          "ResourceRequestPayload、items[] 顺序、重复 deploymentUnitId 和 DB/非 DB 分流不变",
+          "修订 2 的短数值输入、独立滚动和 footer 可见性不变",
+          "已收敛的旧控制账本保持只读"
+        ],
+        "constraints": [
+          "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+          "使用现有 Vue 3、Element Plus 和架构模块语义主题变量",
+          "只为容量与部署区域增加局部 Flex 规则",
+          "不得缩小正文字号或引入页面级横向滚动"
+        ],
+        "non_goals": [
+          "修改字段、计算、校验或请求契约",
+          "修改部署单元区或其他表单网格",
+          "新增公共布局组件或断点体系",
+          "固定拆分每一行字段"
+        ],
+        "selected_approach": {
+          "name": "字段项 Flex 自适应换行",
+          "reason": "直接满足用户指定的 Flex 布局，并根据字段类型设置不同首选宽度，以更充分利用当前编辑器的可用空间。",
+          "alternatives": [
+            {
+              "name": "所有字段统一 Flex 宽度",
+              "rejected_because": "选择器和数值框的信息密度不同，统一宽度仍会浪费空间"
+            },
+            {
+              "name": "模板拆成固定 Flex 行",
+              "rejected_because": "条件字段和不同视口容易形成空洞，响应式维护成本更高"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "ResourceRequestPage.vue 容量与部署容器专用类",
+              "architecture.css 容量字段 Flex 和响应式规则",
+              "修订 3 设计、计划和控制证据"
+            ],
+            "outside": [
+              "资源申请状态与请求逻辑",
+              "部署单元区和其他表单网格",
+              "公共 UI、后端、数据库、权限和工作流"
+            ]
+          },
+          "components": [
+            {
+              "name": "容量字段 Flex 容器",
+              "responsibility": "根据可用宽度排列并换行容量字段",
+              "depends_on": [
+                "现有容量与部署 DOM"
+              ]
+            },
+            {
+              "name": "字段宽度分类",
+              "responsibility": "为选择、数值、布尔和摘要字段设置不同的 flex basis",
+              "depends_on": [
+                "Element Plus el-form-item",
+                "修订 2 短数值输入"
+              ]
+            },
+            {
+              "name": "移动端覆盖",
+              "responsibility": "在手机视口把容量字段恢复为单列满宽",
+              "depends_on": [
+                "现有手机断点"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "容量字段布局契约",
+              "producer": "architecture.css",
+              "consumers": [
+                "ResourceRequestPage.vue 容量与部署区域"
+              ],
+              "contract": "选择字段约 280 至 320px，数值字段项约 180 至 220px，布尔项按内容占位，摘要占满整行，空间不足自动换行"
+            },
+            {
+              "name": "资源申请提交载荷",
+              "producer": "ResourceRequestPage.vue",
+              "consumers": [
+                "现有 create/update API"
+              ],
+              "contract": "修订 3 不改变任何请求字段、顺序或数值"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "编辑器可用宽度或条件字段变化",
+              "transitions": [
+                "Flex 计算字段首选宽度",
+                "空间不足时自动换行"
+              ],
+              "output": "桌面 3 至 4 项优先排列或窄屏单列排列"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "可用宽度不足以容纳当前行字段",
+            "behavior": "字段自动换到下一行且不裁剪内容",
+            "recovery": "用户继续在内部滚动区域填写"
+          },
+          {
+            "condition": "长标签或长选择值占用额外宽度",
+            "behavior": "字段保持最小可读宽度并允许容器换行",
+            "recovery": "不缩小字号或产生页面级横向滚动"
+          },
+          {
+            "condition": "手机视口触发响应式断点",
+            "behavior": "字段项和输入控件恢复满宽单列",
+            "recovery": "沿用修订 2 的内部滚动边界"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "认证、RBAC、租户和实体授权不变"
+          ],
+          "performance": [
+            "不增加数据请求、监听器或渲染字段数量"
+          ],
+          "compatibility": [
+            "请求、字段、计算和校验不变",
+            "沿用现有桌面与手机断点"
+          ],
+          "operations": [
+            "无迁移和配置变化",
+            "回退修订 3 的两个局部前端改动即可"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R13"
+            ],
+            "signal": "桌面容量字段按类型紧凑排列并自然换行",
+            "method": "1920x1080、1280x800 明暗主题检查计算样式、每行数量、摘要整行、内部滚动和 footer"
+          },
+          {
+            "requirement_ids": [
+              "R13"
+            ],
+            "signal": "手机容量字段单列满宽且无页面级溢出",
+            "method": "375x812、390x844、430x932 检查根宽、字段宽度、数字输入和内容可达性"
+          },
+          {
+            "requirement_ids": [
+              "R13"
+            ],
+            "signal": "前两轮业务和布局行为无回归",
+            "method": "执行构建、scope、diff、治理和真实浏览器 DB/非 DB、有边车、计算、校验、新建/编辑请求回归"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "当前编辑器在宽桌面下可容纳 3 至 4 个按类型设置首选宽度的字段。",
+            "basis": "用户 UAT 截图显示容量区宽度充足且固定两列存在明显空白",
+            "falsifier": "真实浏览器计算宽度只能稳定容纳两项"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D9",
+            "decision": "容量与部署区域采用字段项 Flex 自适应换行，桌面每行尽量展示 3 至 4 项。",
+            "reason": "减少固定两列空白并适应不同编辑器宽度",
+            "source": "用户于 2026-09-03 回复‘是的’"
+          },
+          {
+            "id": "D10",
+            "decision": "选择、数值、布尔和摘要字段使用不同的首选宽度。",
+            "reason": "字段内容密度不同，需要在可读性和单屏信息量之间平衡",
+            "source": "用户确认推荐方案"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Element Plus 表单项默认宽度覆盖 flex basis",
+            "impact": "字段仍表现为固定两列或异常换行",
+            "mitigation": "使用容量区专用选择器并在真实浏览器中检查计算宽度"
+          },
+          {
+            "risk": "条件字段或长标签使每行数量波动",
+            "impact": "局部出现空白或标签拥挤",
+            "mitigation": "允许自然换行并设置按字段类型区分的最小宽度"
+          },
+          {
+            "risk": "移动端继承桌面 basis",
+            "impact": "出现横向溢出或输入过窄",
+            "mitigation": "在既有手机断点显式覆盖字段项和控件为满宽"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于 2026-09-03 回复‘可以’，批准资源申请表单容量与部署 Flex 布局设计修订 3。",
+          "confirmed_at": "2026-09-03T14:54:55+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 3,
+        "human_document": "docs/engineering-control/plans/2026-09-03-resource-request-form-layout-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+          "保留 R1-R12、字段顺序、条件显示、状态、计算、校验、请求和紧凑滚动布局",
+          "不修改 API、DTO、后端、数据库、权限、审计、工作流、公共 UI、应用壳或通用断点",
+          "容量区使用局部 Flex 自适应换行，手机端单列满宽且页面根无横向溢出",
+          "两个已收敛旧账本保持只读"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/architecture/ResourceRequestPage.vue",
+            "status": "existing",
+            "responsibility": "为非数据库容量区及字段增加局部语义类",
+            "evidence": "容量区位于约 1549-1576 行"
+          },
+          {
+            "path": "web/src/modules/architecture/architecture.css",
+            "status": "existing",
+            "responsibility": "定义容量区 Flex、字段 basis 和手机覆盖",
+            "evidence": "资源申请编辑器两列覆盖位于约 503 行"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T7.json",
+            "status": "candidate-new",
+            "responsibility": "记录 Flex 实现证据",
+            "evidence": "计划 T7"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T8.json",
+            "status": "candidate-new",
+            "responsibility": "记录集成回归证据",
+            "evidence": "计划 T8"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T7.json",
+            "status": "candidate-new",
+            "responsibility": "记录 T7 独立观察",
+            "evidence": "计划 T8"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T8.json",
+            "status": "candidate-new",
+            "responsibility": "记录 T8 独立观察",
+            "evidence": "计划 T8"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/convergence.json",
+            "status": "candidate-new",
+            "responsibility": "记录 R13 收敛结论",
+            "evidence": "计划 T8"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T7",
+            "goal": "实现非数据库容量与部署区域的局部 Flex 自适应换行",
+            "requirement_ids": [
+              "R13"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "ResourceRequestPage.vue 非数据库容量区当前使用 architecture-registration-grid--numbers",
+              "architecture.css 在资源申请编辑器作用域将数字网格覆盖为固定两列",
+              "桌面数字输入 160px 和 760px 以下满宽规则已存在",
+              "数据库资源区继续依赖现有 Grid，不属于本轮修改目标"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T7.json"
+              ],
+              "modify": [
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/architecture.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "现有容量字段 DOM",
+                "architecture-resource-request-editor 局部作用域",
+                "修订 2 数字输入和手机规则"
+              ],
+              "produces": [
+                "容量区专用 Flex 容器类",
+                "选择/数值/布尔/摘要字段分类类",
+                "手机端 100% basis 覆盖"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T7-S1",
+                "action": "建立源码、构建和 1920 布局基线",
+                "command": "rg 容量网格并执行 npm --prefix web run build；浏览器读取 display、offsetTop、offsetWidth 和根 scrollWidth",
+                "expected": "构建退出0且基线显示资源申请容量区固定两列",
+                "evidence": "扫描行号、退出码和字段位置数组"
+              },
+              {
+                "id": "T7-S2",
+                "action": "为非数据库容量容器和字段增加局部语义分类",
+                "command": null,
+                "expected": "数据库区仍使用原数字网格，字段绑定、顺序和事件不变",
+                "evidence": "模板 diff 和绑定扫描"
+              },
+              {
+                "id": "T7-S3",
+                "action": "增加容量区 Flex、分类 basis、摘要整行和手机覆盖",
+                "command": null,
+                "expected": "Flex 只作用于容量区，桌面数字输入仍160px，手机字段满宽",
+                "evidence": "CSS diff、选择器命中数和计算样式"
+              },
+              {
+                "id": "T7-S4",
+                "action": "执行构建、diff、样式扫描并提交产品检查点",
+                "command": "npm --prefix web run build；git diff --check；样式禁用模式扫描；git commit -m 'style(architecture-web): flex resource capacity fields'",
+                "expected": "检查退出0且提交只含两个产品文件",
+                "evidence": "命令退出码、提交哈希和实际文件列表"
+              }
+            ],
+            "acceptance_checks": [
+              "容量容器 display:flex 且 flex-wrap:wrap",
+              "1920 下每行尽量 3-4 项",
+              "选择字段宽于数值字段",
+              "摘要独占整行",
+              "数据库区和字段绑定不变",
+              "桌面数字输入仍为 140-180px"
+            ],
+            "risks": [
+              "Element Plus 默认宽度覆盖 basis",
+              "长标签使换行数量波动",
+              "手机继承桌面最小宽度"
+            ],
+            "rollback": "revert T7 产品提交，恢复修订 2 固定两列布局",
+            "stop_conditions": [
+              "必须修改公共组件、通用 Grid、API 或状态逻辑",
+              "字段顺序或绑定必须改变",
+              "footer 或字段不可达",
+              "手机页面根溢出"
+            ],
+            "escalation_conditions": [
+              "用户要求固定每行数量",
+              "选择字段必须小于240px",
+              "需要公共布局 token 或应用级断点"
+            ]
+          },
+          {
+            "id": "T8",
+            "goal": "完成五视口明暗主题、业务请求回归和独立收敛",
+            "requirement_ids": [
+              "R13"
+            ],
+            "prerequisites": [
+              "T7"
+            ],
+            "input_facts": [
+              "T7 产出可运行 DOM 和 CSS",
+              "Vite 与 Mock API 可用于本地 UAT",
+              "既有 R1-R12 已在两个历史账本收敛"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T8.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T7.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T8.json",
+                ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/convergence.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T7 提交",
+                "本地 Vite/Mock API",
+                "现有新建与编辑资源申请流程"
+              ],
+              "produces": [
+                "R13 计算样式与字段位置证据",
+                "五视口明暗主题证据",
+                "业务与请求不变量证据",
+                "收敛结论"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T8-S1",
+                "action": "运行开发入口、diff、build、治理和 scope 传感器",
+                "command": "node scripts/check-development-entry.mjs --require-plugin；git diff --check；npm --prefix web run build；node scripts/check-all-governance.mjs；scope 检查",
+                "expected": "入口、diff、build、scope 退出0；治理噪声与本需求分离",
+                "evidence": "命令和退出码"
+              },
+              {
+                "id": "T8-S2",
+                "action": "验收 1920x1080 和 1280x800 明暗主题 Flex 与滚动",
+                "command": "浏览器采集 display、flexWrap、字段 offsetTop/offsetWidth、摘要/数字输入宽度、编辑器滚动和 footer",
+                "expected": "1920 每行尽量3-4项，1280自然换行，摘要整行，footer可见",
+                "evidence": "DOM 指标、截图和 Console"
+              },
+              {
+                "id": "T8-S3",
+                "action": "验收三个手机视口、条件状态和长内容",
+                "command": "375x812、390x844、430x932 明暗主题并检查 documentElement.scrollWidth <= innerWidth",
+                "expected": "字段单列满宽、数字输入可操作、无页面级横向溢出",
+                "evidence": "根宽、计算样式、截图和 Console"
+              },
+              {
+                "id": "T8-S4",
+                "action": "回归 DB/非 DB、计算、校验、申请项切换与 POST/PUT",
+                "command": "真实浏览器执行新建和编辑流程并检查 Network",
+                "expected": "只有视觉排列变化，请求 items[] 和权限不变",
+                "evidence": "脱敏 Network、页面状态和计算值"
+              },
+              {
+                "id": "T8-S5",
+                "action": "记录 execution、observation、convergence 并提交证据检查点",
+                "command": "按 control-engineering 写入新前缀证据并 git commit -m 'docs(architecture): close resource capacity flex UAT'",
+                "expected": "R13 pass，新账本 converged，旧账本不变",
+                "evidence": "样本、账本 phase、提交哈希和旧账本哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "两桌面三手机视口明暗主题通过",
+              "Flex 计算样式和字段位置符合 R13",
+              "摘要整行且短数字框不变",
+              "DB/非 DB、计算、校验、请求和权限无回归",
+              "Console 无新增错误",
+              "scope 通过且旧账本不变"
+            ],
+            "risks": [
+              "真实字体与截图宽度影响换行",
+              "HMR 或 Dialog 初次布局导致过早采样",
+              "历史治理噪声干扰结果判断"
+            ],
+            "rollback": "revert T8 证据提交；产品仅需 revert T7 提交",
+            "stop_conditions": [
+              "页面白屏、footer 或字段不可达",
+              "页面根溢出",
+              "请求、权限或计算变化",
+              "需要 scope 外修改",
+              "UAT 服务无法恢复"
+            ],
+            "escalation_conditions": [
+              "真实后端与 Mock 结论冲突",
+              "历史治理成为硬门禁",
+              "Element Plus 默认样式无法局部覆盖"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T7",
+            "to": "T8",
+            "reason": "T8 的计算样式、字段位置和业务回归必须基于 T7 已提交的稳定 DOM 与 CSS 输出"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T7"
+          ],
+          [
+            "T8"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T7"
+            ],
+            "command": "npm --prefix web run build；git diff --check；浏览器计算样式",
+            "expected": "容量区局部 Flex 生效且数据库区、短数字输入不变"
+          },
+          {
+            "after_tasks": [
+              "T7",
+              "T8"
+            ],
+            "command": "五视口明暗主题、Network、Console、scope 和旧账本哈希",
+            "expected": "R13 有运行证据，R1-R12 无回归，无开放 P0/P1"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R13",
+            "task_ids": [
+              "T7",
+              "T8"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于 2026-09-03 回复‘批准’，批准资源申请表单容量与部署 Flex 布局实施计划修订 3。",
+          "confirmed_at": "2026-09-03T15:01:39+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "非数据库容量字段 DOM",
+          "资源申请编辑器局部 CSS",
+          "移动端断点",
+          "内部滚动容器"
+        ],
+        "state_variable_candidates": [
+          "视口宽高",
+          "编辑器可用宽度",
+          "字段类型",
+          "字段位置和宽度",
+          "容器 display/flexWrap",
+          "数字输入宽度",
+          "根页面宽度",
+          "滚动尺寸"
+        ],
+        "interface_candidates": [
+          "容量区专用类",
+          "字段分类类",
+          "architecture-registration-computed",
+          "修订 2 数字输入规则",
+          "760px 手机断点"
+        ],
+        "sensor_candidates": [
+          "Vite build",
+          "源码扫描",
+          "计算样式",
+          "字段位置数组",
+          "DOM scrollWidth",
+          "Network",
+          "Console",
+          "五视口截图",
+          "scope",
+          "diff"
+        ],
+        "actuator_candidates": [
+          "容量容器类",
+          "字段分类类",
+          "Flex basis/min-width",
+          "摘要 100% basis",
+          "手机覆盖"
+        ],
+        "disturbance_candidates": [
+          "Element Plus 默认宽度",
+          "长标签和选项",
+          "条件禁用状态",
+          "不同视口",
+          "字体渲染",
+          "历史治理噪声"
+        ],
+        "delay_candidates": [
+          "Vite HMR",
+          "Dialog 初次布局",
+          "候选 API 响应",
+          "主题切换重排"
+        ],
+        "assumptions": [
+          {
+            "text": "1920 宽桌面可稳定容纳 3 至 4 项",
+            "basis": "用户 UAT 截图显示固定两列有明显空白",
+            "falsifier": "真实浏览器只能稳定容纳两项"
+          },
+          {
+            "text": "局部选择器可覆盖现有 Grid",
+            "basis": "资源申请编辑器已有局部覆盖规则",
+            "falsifier": "计算样式仍为 grid 或字段 basis 不生效"
+          },
+          {
+            "text": "现有 Mock 足以回归请求结构",
+            "basis": "修订 1 和修订 2 已用同一环境验证 POST/PUT",
+            "falsifier": "真实后端 UAT 与 Mock 结论冲突"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Element Plus el-form-item、el-select、el-input-number 默认样式\", \"Vite 浏览器运行时\", \"本地 Mock API\", \"视口、主题和字体渲染\"], \"inside\": [\"ResourceRequestPage.vue 非数据库容量与部署 DOM\", \"architecture.css 资源申请编辑器局部布局规则\", \"760px 手机响应式覆盖\", \"当前项编辑器内部滚动容器\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"未覆盖的系统字体差异\"], \"id\": \"S1\", \"independence\": \"直接观察浏览器布局引擎输出\", \"method\": \"1920x1080、1280x800 浏览器读取 display、flexWrap、offsetTop、offsetWidth、摘要和数字输入宽度\", \"target\": \"桌面 Flex 布局和字段几何\"}",
+      "{\"blind_spots\": [\"真实移动浏览器地址栏动态高度\"], \"id\": \"S2\", \"independence\": \"不同视口的运行时尺寸探针\", \"method\": \"375x812、390x844、430x932 读取字段宽度、documentElement.scrollWidth、footer 和编辑器滚动尺寸\", \"target\": \"手机响应式和滚动边界\"}",
+      "{\"blind_spots\": [\"构建不能证明实际排版\"], \"id\": \"S3\", \"independence\": \"仓库级静态和编译传感器\", \"method\": \"Vite build、源码选择器扫描、git diff 和 scope 检查\", \"target\": \"代码边界和构建兼容\"}",
+      "{\"blind_spots\": [\"Mock 与真实后端环境差异\"], \"id\": \"S4\", \"independence\": \"运行时交互和网络输出\", \"method\": \"真实浏览器回归 DB/非 DB、计算、校验、申请项切换并检查 POST/PUT 与 Console\", \"target\": \"业务与请求不变量\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"仅为非数据库容量容器和字段增加专用类\", \"authority\": \"codex-task-scope.yaml writable_paths\", \"id\": \"A1\", \"impact_radius\": \"ResourceRequestPage.vue 容量与部署模板\", \"rollback\": \"revert T7 产品提交\", \"target\": \"容量区布局语义\"}",
+      "{\"action\": \"在 architecture-resource-request-editor 局部作用域增加 Flex 规则\", \"authority\": \"codex-task-scope.yaml writable_paths\", \"id\": \"A2\", \"impact_radius\": \"architecture.css 资源申请容量区\", \"rollback\": \"revert T7 产品提交\", \"target\": \"容量字段宽度、换行和手机覆盖\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"basis 被覆盖或字段异常拉伸\", \"source\": \"Element Plus 默认 form-item 宽度\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"每行字段数量波动\", \"source\": \"长标签、长选项和字体渲染\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"过早采样旧样式或零尺寸\", \"source\": \"Vite HMR 与 Dialog 初次布局\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"请求回归证据仅代表本地环境\", \"source\": \"Mock 与真实后端差异\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"现有 CSS 已使用同级业务作用域覆盖通用网格\", \"falsifier\": \"S1 显示计算 display 仍为 grid\", \"text\": \"局部类可覆盖资源申请编辑器固定两列规则\"}",
+      "{\"evidence\": \"修订 1、2 已在相同环境完成请求回归\", \"falsifier\": \"真实后端 UAT 与 S4 结论冲突\", \"text\": \"现有 Mock 环境可回归请求结构\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R13",
+        "sensor": "[\"S1\", \"S2\", \"S3\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T7",
+      "goal": "实现非数据库容量与部署区域的局部 Flex 自适应换行",
+      "requirements": [
+        "R13"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "容量区当前使用通用数字网格且被资源申请编辑器覆盖为两列",
+        "数据库资源区共享通用数字网格但不属于本轮目标",
+        "桌面数字输入 160px 和 760px 以下满宽规则已存在"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/architecture.css",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T7.json"
+      ],
+      "invariants": [
+        "字段绑定、顺序、事件、计算、校验和请求不变",
+        "数据库资源区保持 Grid",
+        "桌面短数字输入和手机满宽不变",
+        "旧账本只读"
+      ],
+      "interface_contracts": [
+        "容量布局类只被 architecture.css 消费",
+        "选择字段首选宽度大于数值字段",
+        "摘要占满整行",
+        "760px 以下字段项满宽"
+      ],
+      "non_goals": [
+        "不修改状态逻辑、API、后端、公共 UI 或通用网格",
+        "不固定拆分字段行"
+      ],
+      "action_bounds": [
+        "Vue 仅增加容量容器和字段分类类",
+        "CSS 仅增加 architecture-resource-request-capacity-* 局部规则和手机覆盖",
+        "发现需修改共享 Grid 或业务逻辑时停止"
+      ],
+      "acceptance": [
+        "构建退出 0",
+        "容量容器计算 display 为 flex 且 flex-wrap 为 wrap",
+        "1920 下每行尽量 3 至 4 项，选择字段宽于数值字段",
+        "摘要独占整行且数字输入仍为 140 至 180px",
+        "数据库资源区未命中容量 Flex"
+      ],
+      "evidence_required": [
+        "实际 diff 和提交哈希",
+        "构建、diff、样式扫描退出码",
+        "浏览器计算样式和字段位置数组",
+        "数据库区选择器命中证据"
+      ],
+      "rollback": "revert T7 产品提交",
+      "stop_conditions": [
+        "必须修改 scope 外产品文件",
+        "字段绑定或顺序需要改变",
+        "footer 或内容不可达",
+        "手机页面根溢出"
+      ],
+      "escalation_conditions": [
+        "用户要求固定每行数量",
+        "需要公共布局 token 或应用级断点",
+        "Element Plus 默认样式无法局部覆盖"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T07:23:29+00:00",
+          "text": "执行已在授权边界完成，补记 active 后写入正式 execution report"
+        },
+        {
+          "recorded_at": "2026-09-03T07:24:31+00:00",
+          "text": "T7产生稳定产品提交、计算样式和五视口局部证据"
+        },
+        {
+          "recorded_at": "2026-09-03T07:28:38+00:00",
+          "text": "S-0001无偏差；构建、桌面Flex、手机单列和范围通过"
+        }
+      ],
+      "updated_at": "2026-09-03T07:28:38+00:00"
+    },
+    {
+      "id": "T8",
+      "goal": "完成五视口明暗主题、业务请求回归和独立收敛",
+      "requirements": [
+        "R13"
+      ],
+      "prerequisites": [
+        "T7"
+      ],
+      "input_facts": [
+        "T7 提供稳定 DOM、CSS 和产品提交",
+        "本地 Vite 与 Mock API 可运行资源申请 UAT",
+        "R1-R12 已有历史收敛证据"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T8.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T7.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T8.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/convergence.json"
+      ],
+      "invariants": [
+        "不连接生产或记录敏感信息",
+        "请求、权限、计算、校验和前两轮布局行为不变",
+        "旧账本哈希和 phase 不变"
+      ],
+      "interface_contracts": [
+        "页面根 scrollWidth 不超过 innerWidth",
+        "POST/PUT items[] 数量、顺序和字段值不变",
+        "footer 保持可见，超高内容在编辑器内部可达"
+      ],
+      "non_goals": [
+        "不修复范围外治理噪声",
+        "不自行合并、推送或发布"
+      ],
+      "action_bounds": [
+        "运行 S1-S4、构建、治理、scope、Network 和 Console 传感器",
+        "观察偏差时只允许回到 T7 两个产品文件纠偏"
+      ],
+      "acceptance": [
+        "1920x1080、1280x800、375x812、390x844、430x932 明暗主题通过",
+        "Flex、字段宽度、摘要整行、手机满宽和滚动边界通过",
+        "DB/非 DB、计算、校验、申请项切换和 POST/PUT 无回归",
+        "scope 通过且 Console 无新增错误"
+      ],
+      "evidence_required": [
+        "五视口 DOM 指标和截图",
+        "脱敏 Network 与 Console",
+        "build、governance、scope 和 diff 退出码",
+        "两次独立采样和旧账本哈希"
+      ],
+      "rollback": "回退证据提交；产品 revert T7",
+      "stop_conditions": [
+        "UAT 服务无法恢复",
+        "请求、权限或计算变化",
+        "页面白屏、footer 不可达或页面根溢出",
+        "需要 scope 外修改"
+      ],
+      "escalation_conditions": [
+        "真实后端与 Mock 结论冲突",
+        "历史治理成为硬门禁",
+        "公共组件修改不可避免"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T07:29:33+00:00",
+          "text": "开始最终构建、治理、五视口、业务请求和旧账本完整性回归"
+        },
+        {
+          "recorded_at": "2026-09-03T07:36:30+00:00",
+          "text": "T8产生完整五视口、业务、请求边界和治理扰动证据"
+        },
+        {
+          "recorded_at": "2026-09-03T07:37:57+00:00",
+          "text": "S-0002无偏差；R13最终布局、业务边界和工程检查通过"
+        }
+      ],
+      "updated_at": "2026-09-03T07:37:57+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T7 完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "d29ff40；深色1920提交态3/4/3；390单列；数字输入160/269；根宽等于视口；Console error=0",
+      "recorded_at": "2026-09-03T07:28:37+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "最终集成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "d29ff40；浅深五视口根宽无溢出；1920为3/4/3；1280自然换行；手机单列；build/scope/diff通过；Console error=0；治理仅历史噪声",
+      "recorded_at": "2026-09-03T07:37:57+00:00"
+    }
+  ]
+}

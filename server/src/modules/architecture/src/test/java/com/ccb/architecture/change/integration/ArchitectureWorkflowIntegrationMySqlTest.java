@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 验证 V82--V84 的跨模块持久化契约；不启动或模拟 Flowable 流程实例。
+ * 验证当前子系统变更工作流的跨模块持久化契约；不启动或模拟 Flowable 流程实例。
  */
 @Testcontainers
 class ArchitectureWorkflowIntegrationMySqlTest {
@@ -79,7 +79,7 @@ class ArchitectureWorkflowIntegrationMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("84"))
+                .target(MigrationVersion.fromVersion("147"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
@@ -102,9 +102,7 @@ class ArchitectureWorkflowIntegrationMySqlTest {
         jdbc.update("DELETE FROM arch_subsystem_value_reservation");
         jdbc.update("DELETE FROM arch_subsystem_change_lock");
         jdbc.update("DELETE FROM arch_subsystem_change_history");
-        jdbc.update("DELETE FROM arch_subsystem_number_reservation");
         jdbc.update("DELETE FROM arch_subsystem_physical_draft");
-        jdbc.update("DELETE FROM arch_subsystem_logical_draft");
         jdbc.update("DELETE FROM arch_subsystem_change_application");
         store = new SubsystemChangeStore(jdbc);
     }
@@ -124,18 +122,22 @@ class ArchitectureWorkflowIntegrationMySqlTest {
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission "
                 + "WHERE tenant_id = 1 AND role_id = 110 AND permission_id IN (8031, 8032, 8033)"))
                 .isEqualTo(3L);
-        assertThat(count("SELECT COUNT(*) FROM sys_role_menu "
-                + "WHERE tenant_id = 1 AND role_id = 110 AND menu_id IN (800, 801, 802, 803)"))
-                .isEqualTo(4L);
+        assertThat(jdbc.queryForList("SELECT menu_id FROM sys_role_menu "
+                        + "WHERE tenant_id = 1 AND role_id = 110 AND menu_id IN (800, 801, 802, 803) "
+                        + "ORDER BY menu_id", Long.class))
+                .containsExactly(800L, 802L, 803L);
         assertThat(jdbc.queryForList("SELECT menu_id FROM sys_role_menu "
                         + "WHERE tenant_id = 1 AND role_id = 110 AND menu_id IN (200, 201, 202, 203, 204) "
                         + "ORDER BY menu_id", Long.class))
-                .containsExactly(200L, 202L);
+                .isEmpty();
         assertThat(count("SELECT COUNT(*) FROM sys_role_menu role_menu "
                 + "JOIN sys_menu menu ON menu.id = role_menu.menu_id AND menu.tenant_id = role_menu.tenant_id "
                 + "WHERE role_menu.tenant_id = 1 AND role_menu.role_id = 110 "
                 + "AND role_menu.menu_id IN (200, 202) AND menu.permission_code = 'workflow:access'"))
-                .isEqualTo(2L);
+                .isZero();
+        assertThat(count("SELECT COUNT(*) FROM sys_role_permission "
+                + "WHERE tenant_id = 1 AND role_id = 110 AND permission_id = 2001"))
+                .isEqualTo(1L);
         assertThat(count("SELECT COUNT(*) FROM sys_user_role WHERE tenant_id = 1 AND user_id = 1 AND role_id = 110"))
                 .isEqualTo(1L);
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission "
@@ -155,8 +157,8 @@ class ArchitectureWorkflowIntegrationMySqlTest {
             JdbcTemplate conflictJdbc = new JdbcTemplate(conflictDataSource);
             conflictJdbc.execute("ALTER DATABASE `" + CONFLICT_DATABASE
                     + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            Flyway v82 = flyway(conflictDataSource, "82");
-            assertThat(v82.migrate().success).isTrue();
+            Flyway v93 = flyway(conflictDataSource, "93");
+            assertThat(v93.migrate().success).isTrue();
 
             conflictJdbc.update("INSERT INTO sys_menu "
                     + "(id, tenant_id, parent_id, menu_type, menu_name, route_name, route_path, component_path, "
@@ -164,8 +166,8 @@ class ArchitectureWorkflowIntegrationMySqlTest {
                     + "(803, 1, 800, 'menu', '冲突菜单', 'ConflictingArchitectureMenu', '/conflict', "
                     + "'architecture/conflict', 'architecture:view', 'warning', 99)");
 
-            Flyway v84 = flyway(conflictDataSource, "84");
-            assertThatThrownBy(v84::migrate)
+            Flyway v94 = flyway(conflictDataSource, "94");
+            assertThatThrownBy(v94::migrate)
                     .isInstanceOf(FlywayException.class);
         }
     }
@@ -256,7 +258,7 @@ class ArchitectureWorkflowIntegrationMySqlTest {
     }
 
     private ChangeApplication application() {
-        return new ChangeApplication(APPLICATION_ID, TENANT_ID, TargetKind.LOGICAL, ActionType.CREATE,
+        return new ChangeApplication(APPLICATION_ID, TENANT_ID, TargetKind.PHYSICAL, ActionType.CREATE,
                 null, 1L, "验证工作流持久化", ApplicationStatus.IN_REVIEW, 0,
                 null, null, null, null, false, 0, 1L, 1L, null, null);
     }

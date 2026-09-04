@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
-import type { DetailItem, PhysicalSubsystemSummary } from '../types'
-import { publishedStatusLabels, publishedStatusTone } from '../utils'
+import type { DetailItem } from '../types'
 
 withDefaults(defineProps<{
   modelValue: boolean
@@ -9,8 +7,7 @@ withDefaults(defineProps<{
   title: string
   code?: string
   items: DetailItem[]
-  physicalSubsystems?: PhysicalSubsystemSummary[]
-}>(), { loading: false, code: '', physicalSubsystems: () => [] })
+}>(), { loading: false, code: '' })
 
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 </script>
@@ -28,17 +25,6 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
           <dd :class="item.tone ? `is-${item.tone}` : ''">{{ item.value || '—' }}</dd>
         </div>
       </dl>
-      <section v-if="physicalSubsystems.length" class="architecture-drawer-children">
-        <div class="architecture-section-heading">
-          <div><h3>已发布物理子系统</h3><p>共 {{ physicalSubsystems.length }} 个，只读展示当前发布事实。</p></div>
-        </div>
-        <ul>
-          <li v-for="item in physicalSubsystems" :key="item.id">
-            <div><strong>{{ item.name }}</strong><span>{{ item.code }} · {{ item.shortName }}<template v-if="item.englishName"> · {{ item.englishName }}</template></span></div>
-            <UiStatusTag :value="item.status" :labels="publishedStatusLabels" :tone="publishedStatusTone(item.status)" />
-          </li>
-        </ul>
-      </section>
     </div>
   </el-drawer>
 </template>

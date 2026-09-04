@@ -10,6 +10,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectMemberRemovalGuard;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -55,6 +56,7 @@ public class ProjectService {
     private final JdbcTemplate jdbc;
     private final MinioStorageService storage;
     private final AttachmentPort attachmentPort;
+    private ProjectMemberRemovalGuard memberRemovalGuard = (tenantId, projectId, userId) -> { };
 
     public ProjectService(JdbcTemplate jdbc, MinioStorageService storage) {
         this(jdbc, storage, null);
@@ -65,6 +67,11 @@ public class ProjectService {
         this.jdbc = jdbc;
         this.storage = storage;
         this.attachmentPort = attachmentPort;
+    }
+
+    @Autowired(required = false)
+    void setMemberRemovalGuard(ProjectMemberRemovalGuard memberRemovalGuard) {
+        if (memberRemovalGuard != null) this.memberRemovalGuard = memberRemovalGuard;
     }
 
     public List<Map<String, Object>> workbench(AuthUser user) {
@@ -819,7 +826,11 @@ public class ProjectService {
     @Transactional
     public Map<String, Object> updateMember(long projectId, long memberId, Map<String, Object> input, AuthUser user) {
         requireAction("member", "update", user); requireProjectAccess(projectId, user, true); ensureMember(projectId, memberId, user.tenantId());
-        if (input.containsKey("status")) jdbc.update("UPDATE pm_project_member SET status = ? WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", optionalLong(input.get("status"), 1), memberId, projectId, user.tenantId());
+        if (input.containsKey("status")) {
+            long status = optionalLong(input.get("status"), 1);
+            if (status == 0) memberRemovalGuard.requireNoPendingTasks(user.tenantId(), projectId, memberUserId(memberId, projectId, user.tenantId()));
+            jdbc.update("UPDATE pm_project_member SET status = ? WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", status, memberId, projectId, user.tenantId());
+        }
         if (input.containsKey("org_id")) { Long orgId = nullableLong(input.get("org_id")); validateProjectOrganization(orgId, projectId, user.tenantId()); jdbc.update("UPDATE pm_project_member SET org_id = ? WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", orgId, memberId, projectId, user.tenantId()); }
         if (input.containsKey("role_ids")) saveMemberRoles(memberId, projectId, ids(input.get("role_ids")), user.tenantId());
         audit(user, "project:member:update", memberId); return member(memberId, user.tenantId());
@@ -831,8 +842,15 @@ public class ProjectService {
         Long memberUserId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Long.class, memberId, projectId, user.tenantId());
         Long ownerId = jdbc.queryForObject("SELECT owner_id FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Long.class, projectId, user.tenantId());
         if (memberUserId != null && memberUserId.equals(ownerId)) throw badRequest("项目负责人不能移出项目");
+        if (memberUserId != null) memberRemovalGuard.requireNoPendingTasks(user.tenantId(), projectId, memberUserId);
         jdbc.update("UPDATE pm_project_member SET deleted = 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", memberId, projectId, user.tenantId());
         audit(user, "project:member:delete", memberId);
+    }
+
+    private long memberUserId(long memberId, long projectId, long tenantId) {
+        Long userId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Long.class, memberId, projectId, tenantId);
+        if (userId == null || userId <= 0) throw badRequest("项目成员不存在");
+        return userId;
     }
 
     public List<Map<String, Object>> roles(long projectId, AuthUser user) {

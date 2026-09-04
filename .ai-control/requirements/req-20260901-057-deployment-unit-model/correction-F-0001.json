@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "五列表头、五列解析器与旧六列示例的列位置冲突可由源码稳定复现，直接违反 R6 导入契约。",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "模板示例数据未随导入契约从六列迁移为五列。",
+    "supporting_evidence": ["模板表头为五列", "示例仍写入六个单元格", "解析器只读取前五列"],
+    "falsifier": "按当前模板回读时示例行能够通过名称与类型校验"
+  },
+  "control_action": {
+    "gain": "high",
+    "target": "部署单元导入模板示例及 round-trip 测试",
+    "write_scope": ["DeploymentUnitImportService.java", "DeploymentUnitServiceTest.java 或现有导入测试"],
+    "invariants": ["保持五列公开导入契约", "不恢复已删除旧字段"],
+    "impact_limit": "架构模块部署单元导入模板",
+    "rollback": "恢复本纠偏前模板示例与新增测试差异",
+    "correction_check": ["模板示例按五列读取为 VALID", "聚焦导入测试通过"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["真实 HTTP 上传旅程仍依赖可运行后端环境"]
+}

@@ -103,7 +103,7 @@ source_issue: 02-deployment-unit-version-and-import
   - 选项接口复用 `GET /api/architecture/options/{resource}/...` 模式补充
     `deployment-unit` 资源与物理子系统级联选项。
 - 数据 Owner：`business/architecture`（`arch_` 前缀表）。
-- 数据库迁移与存量兼容：仅追加 `V96__create_architecture_deployment_units.sql` 与
+- 数据库迁移与存量兼容：集成后追加 `V96__create_architecture_deployment_units.sql` 与
   `V97__seed_architecture_deployment_units.sql`；不修改 V1-V95；存量数据无需改写，
   空迁移对新库和既有库均幂等可重复执行。
 - 脱敏输入输出示例：导入模板列
@@ -136,7 +136,7 @@ source_issue: 02-deployment-unit-version-and-import
   - `mvn -pl :ccb-architecture -am test`、`mvn test`、`npm --prefix web run build`。
   - `node scripts/check-all-governance.mjs`、`check-module-boundaries.mjs`、
     `check-flyway-migrations.mjs`、`check-codex-scope.mjs`、`git diff --check`。
-- 上线验证：空库与既有库迁移至 V86；以技术架构师角色完成创建、改版本、停用、
+- 上线验证：空库与既有库迁移至 V97；以技术架构师角色完成创建、改版本、停用、
   作废、导入全旅程；普通查看角色验证 403；真实浏览器桌面/移动视口 UAT。
 - 回退或补偿：按前端、服务、迁移登记逆序回退应用代码；保留 V96-V97 与数据；
   通过后续补偿迁移隐藏入口，不执行生产逆向删除。

@@ -1,0 +1,65 @@
+{
+  "task_id": "TP-T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/test-management/api.ts",
+      "purpose": "补齐方案树、节点方案、版本、专项节点及上传 API 类型与请求。"
+    },
+    {
+      "path_or_resource": "web/src/modules/test-management/plan/TestPlanPage.vue",
+      "purpose": "交付全局项目上下文下的目录树、双 TAB、上传/版本/专项维护与 docx/xlsx 预览。"
+    },
+    {
+      "path_or_resource": "web/src/modules/test-management/plan/test-plan.css",
+      "purpose": "实现公告板同源的紧凑主题、桌面双栏和移动端无主体横向溢出布局。"
+    },
+    {
+      "path_or_resource": "web/src/router/index.ts",
+      "purpose": "将 plans 路由在通用占位路由之前绑定为懒加载专属页面。"
+    }
+  ],
+  "requirements_addressed": ["TP1", "TP2", "TP3"],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc 与 Vite 构建均通过；仅保留既有 Rollup 纯注释和大 chunk 警告。"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "专属路由与编译",
+      "result": "pass",
+      "evidence": "TestPlanPage 产物由 Vite 输出，路由顺序在 :section 通配前。",
+      "limitations": ["现有浏览器会话在后端重启后落到登录页，未持有可用于浏览器验收的非敏感登录会话。"]
+    },
+    {
+      "check": "全局项目选择器复用",
+      "result": "pass",
+      "evidence": "页面只读取 useProjectContextStore.currentRef，不渲染项目下拉选择器。",
+      "limitations": ["登录后仍需由最终用户路径验证实际项目列表。"]
+    }
+  ],
+  "diff_summary": [
+    "左侧固定分组目录仅列已启用参测系统，专项节点有重命名和无方案时删除保护。",
+    "当前方案仅显示下载操作；管理表使用 UiDataTable、排序、可调列宽和紧凑图标操作。",
+    "docx 使用平台预览，xlsx 读取受控下载地址并展示首 Sheet 与多 Sheet 提示。"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "不重复实现全局项目选择器或修改公共 UI",
+      "result": "pass",
+      "evidence": "只消费 project-context、UiPageHeader、UiDataTable、UiFilePreview 和公共附件 API。"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "本地后端重启使浏览器既有登录会话失效",
+      "impact": "浏览器只能确认登录态拦截，完整已认证视觉路径待有会话时复验。"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["需以具有 plans 权限的本地登录会话完成 docx/xlsx 端到端预览和移动视口截图采样。"],
+  "recommended_next": "TP-T4 runtime observation"
+}

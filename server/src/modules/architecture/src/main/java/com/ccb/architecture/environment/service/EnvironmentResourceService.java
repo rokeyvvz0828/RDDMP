@@ -666,11 +666,7 @@ public class EnvironmentResourceService {
             }
             String databaseName = optional(command.databaseName(), "数据库", 100);
             String databaseVersion = optional(command.databaseVersion(), "数据库版本", 100);
-            String deploymentUnitType = trimToNull(unit.deploymentUnitType());
-            if (deploymentUnitType == null) {
-                deploymentUnitType = defaultDeploymentUnitType(unit.kind());
-            }
-            boolean databaseUnit = isDatabaseDeploymentUnit(unit, deploymentUnitType);
+            boolean databaseUnit = isDatabaseDeploymentUnit(unit);
             String serverType = null;
             Long networkZoneId = null;
             String networkZoneName = null;
@@ -718,10 +714,7 @@ public class EnvironmentResourceService {
                     throw badRequest("非 DB 明细至少填写一项资源容量或附加需求");
                 }
             }
-            items.add(new ItemInput(unit,
-                    trimToNull(unit.relatedDeploymentUnitName()),
-                    trimToNull(unit.description()),
-                    deploymentUnitType,
+            items.add(new ItemInput(unit, trimToNull(unit.description()),
                     databaseStorage, fileStorage,
                     networkZoneId, networkZoneName, networkZone, serverType,
                     cpu, memory, appWebGroups, nodes, sidecarCpu, sidecarMemory, hasSidecar,
@@ -779,8 +772,7 @@ public class EnvironmentResourceService {
         for (ItemInput input : inputs) {
             items.add(new ResourceRequestItem(nextId(), tenantId, requestId, seq++,
                     input.unit().id(), input.unit().code(), input.unit().name(), input.unit().kind(),
-                    input.relatedDeploymentUnitName(), input.deploymentUnitDescription(),
-                    input.deploymentUnitType(), input.databaseStorageGb(), input.fileStorageGb(),
+                    input.deploymentUnitDescription(), input.databaseStorageGb(), input.fileStorageGb(),
                     input.networkZoneId(), input.networkZoneName(), input.networkZone(),
                     input.serverType(), input.cpuCores(), input.memoryGb(),
                     input.appWebGroupCount(), input.plannedNodeCount(), input.sidecarCpuCores(),
@@ -846,8 +838,7 @@ public class EnvironmentResourceService {
         itemSnapshot.put("deploymentUnitId", item.deploymentUnitId());
         itemSnapshot.put("deploymentUnitCode", item.deploymentUnitCode());
         itemSnapshot.put("deploymentUnitName", item.deploymentUnitName());
-        itemSnapshot.put("deploymentUnitType", item.deploymentUnitType());
-        itemSnapshot.put("relatedDeploymentUnitName", item.relatedDeploymentUnitName());
+        itemSnapshot.put("deploymentUnitKind", item.deploymentUnitKind());
         itemSnapshot.put("deploymentUnitDescription", item.deploymentUnitDescription());
         itemSnapshot.put("databaseStorageGb", item.databaseStorageGb());
         itemSnapshot.put("fileStorageGb", item.fileStorageGb());
@@ -969,15 +960,8 @@ public class EnvironmentResourceService {
         return normalized;
     }
 
-    private static String defaultDeploymentUnitType(String kind) {
-        return switch (kind == null ? "" : kind.toUpperCase(Locale.ROOT)) {
-            case "DATABASE" -> "DB";
-            default -> "AP";
-        };
-    }
-
-    private static boolean isDatabaseDeploymentUnit(DeploymentUnitRef unit, String deploymentUnitType) {
-        return "DATABASE".equalsIgnoreCase(unit.kind()) || "DB".equalsIgnoreCase(deploymentUnitType);
+    private static boolean isDatabaseDeploymentUnit(DeploymentUnitRef unit) {
+        return "DATABASE".equalsIgnoreCase(unit.kind());
     }
 
     private static String trimToNull(String value) {
@@ -1038,7 +1022,6 @@ public class EnvironmentResourceService {
                     item.deploymentUnitId(),
                     item.deploymentUnitCode(),
                     item.deploymentUnitName(),
-                    item.deploymentUnitType(),
                     item.deploymentUnitKind(),
                     item.cpuCores(),
                     item.memoryGb(),
@@ -1456,8 +1439,8 @@ public class EnvironmentResourceService {
                                 List<ItemInput> items) {
     }
 
-    private record ItemInput(DeploymentUnitRef unit, String relatedDeploymentUnitName, String deploymentUnitDescription,
-                             String deploymentUnitType, BigDecimal databaseStorageGb,
+    private record ItemInput(DeploymentUnitRef unit, String deploymentUnitDescription,
+                             BigDecimal databaseStorageGb,
                              BigDecimal fileStorageGb, Long networkZoneId, String networkZoneName,
                              String networkZone, String serverType,
                              BigDecimal cpuCores, BigDecimal memoryGb, int appWebGroupCount,

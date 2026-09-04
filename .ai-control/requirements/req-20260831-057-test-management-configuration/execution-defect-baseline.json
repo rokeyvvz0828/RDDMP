@@ -1,0 +1,30 @@
+{
+  "objective": "让测试角色在四个测试大类中完成案例执行和缺陷生命周期，并保留可查询、可审计的关联与结果。",
+  "requirements": [
+    {"id":"R1","statement":"系统必须提供独立执行菜单与只读轮次周期执行树。","acceptance":["四大类执行路由可达","执行页不能修改轮次周期"],"priority":"must","source":"用户确认模块6","counterexample":["执行页仍是占位列表或可新建轮次"]},
+    {"id":"R2","statement":"系统必须支持三种预览导入并阻断无效和同目录重复案例。","acceptance":["预览不写数据","确认仅导入有效不重复案例"],"priority":"must","source":"用户确认模块6.2","counterexample":["无效案例被导入"]},
+    {"id":"R3","statement":"执行记录必须引用案例最新内容并保存结果、附件、轨迹和筛选导出。","acceptance":["案例改名后执行读取新名称","结果保存写入执行人和轨迹"],"priority":"must","source":"用户确认模块6.1/6.3","counterexample":["案例副本覆盖最新内容或无轨迹"]},
+    {"id":"R4","statement":"失败必须有缺陷关联，批量、移动和移除必须遵循未解决缺陷保护及快照规则。","acceptance":["失败无关联返回错误","移除后已关联缺陷保留快照"],"priority":"must","source":"用户确认模块6","counterexample":["失败可直接保存或移除删除缺陷"]},
+    {"id":"R5","statement":"缺陷必须支持列表、新建、筛选、导出、详情和恒定编号。","acceptance":["默认列表排除已解决","编号生成后更新系统不变"],"priority":"must","source":"用户确认模块7.1/7.3","counterexample":["编号随系统/案例变化"]},
+    {"id":"R6","statement":"缺陷状态机、处理人和执行关联必须按角色服务端控制。","acceptance":["无权状态变化拒绝","解除关联后不保留动态链接"],"priority":"must","source":"用户确认模块7.2","counterexample":["前端隐藏后仍可越权流转"]},
+    {"id":"R7","statement":"所有写操作必须执行隔离、RBAC、审计、删除保护及恢复。","acceptance":["跨范围请求被拒绝","删除后在30天内可恢复"],"priority":"must","source":"用户确认和项目规则","counterexample":["仅前端权限保护"]},
+    {"id":"R8","statement":"页面必须复用全局项目、紧凑树和通用表格，并使用居中弹窗。","acceptance":["无重复项目下拉或抽屉","移动端无页面横滚"],"priority":"must","source":"用户确认与既有模块","counterexample":["新增第二项目选择器"]}
+  ],
+  "invariants": ["执行与缺陷按tenant/domain/project/system隔离", "缺陷编号恒定", "关联是平级1:N且快照防死链", "不修改公共UI或平台附件", "只追加V127"],
+  "constraints": ["Java17/Spring Boot3/Vue3/Element Plus", "仅授权路径", "使用现有全局项目和附件网关", "居中弹窗而非抽屉"],
+  "non_goals": ["报告", "统计", "通知平台改造", "项目或系统主数据维护"],
+  "assumptions": [{"text":"tm_test_environment可作为缺陷测试环境只读候选。","basis":"既有TestManagement BusinessDayService维护该表。","falsifier":"运行时不存在或不允许当前用户读取。"},{"text":"TEST_MANAGER、TESTER、DEVELOPER及菜单权限可表达角色规则。","basis":"TestConfigurationService已维护三种系统角色。","falsifier":"服务端无法判定用户对目标系统的角色。"}],
+  "unknowns": [{"question":"外部通知未在当前范围实施。","impact":"状态保存不发送站内通知。","owner":"需求负责人","blocking":false}],
+  "decisions": [{"question":"执行与缺陷如何持久化","options":["独立归一化表","复用案例表","JSON关联"],"selected":"独立归一化表和快照关联","blocking":false,"source":"用户需求对多关联、轨迹、移除快照的明确规则"}],
+  "measurement_intents": [
+    {"requirement_id":"R1","observable":"菜单、树和只读配置节点","candidate_sensor":"路由/API/浏览器"},
+    {"requirement_id":"R2","observable":"预览及确认导入结果","candidate_sensor":"服务测试/API"},
+    {"requirement_id":"R3","observable":"引用、轨迹、导出和附件绑定","candidate_sensor":"服务测试/API/浏览器"},
+    {"requirement_id":"R4","observable":"失败关联、移除阻断和快照","candidate_sensor":"服务测试/API/SQL"},
+    {"requirement_id":"R5","observable":"缺陷编号、筛选、导出","candidate_sensor":"服务测试/API"},
+    {"requirement_id":"R6","observable":"状态权限和关联快照","candidate_sensor":"权限测试/API"},
+    {"requirement_id":"R7","observable":"隔离、审计、回收","candidate_sensor":"API/SQL"},
+    {"requirement_id":"R8","observable":"紧凑UI、可调列、弹窗与移动布局","candidate_sensor":"Vite/浏览器"}
+  ],
+  "baseline_status":"ready"
+}

@@ -1,6 +1,5 @@
 package com.ccb.architecture.web;
 
-import com.ccb.architecture.model.LogicalSubsystemOption;
 import com.ccb.architecture.model.OrganizationOption;
 import com.ccb.architecture.model.ParameterOption;
 import com.ccb.architecture.model.PhysicalSubsystemOption;
@@ -30,28 +29,12 @@ public class ArchitectureOptionsController {
         this.service = service;
     }
 
-    @GetMapping("/logical-subsystem/organizations")
-    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
-    public ApiResponse<PageResult<OrganizationOption>> logicalOrganizations(
-            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
-        return success(service.organizations(actor, new PageQuery(page, size), keyword));
-    }
-
     @GetMapping("/physical-subsystem/organizations")
     @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<OrganizationOption>> physicalOrganizations(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
         return success(service.organizations(actor, new PageQuery(page, size), keyword));
-    }
-
-    @GetMapping("/logical-subsystem/users")
-    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
-    public ApiResponse<PageResult<UserOption>> logicalUsers(
-            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
-        return success(service.users(actor, new PageQuery(page, size), keyword));
     }
 
     @GetMapping("/physical-subsystem/users")
@@ -62,13 +45,6 @@ public class ArchitectureOptionsController {
         return success(service.users(actor, new PageQuery(page, size), keyword));
     }
 
-    @GetMapping("/logical-subsystem/parameters/{categoryCode}")
-    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
-    public ApiResponse<List<ParameterOption>> logicalParameters(
-            @PathVariable String categoryCode, @AuthenticationPrincipal AuthUser actor) {
-        return success(service.parameters(actor, ArchitectureOptionsService.LOGICAL_RESOURCE, categoryCode));
-    }
-
     @GetMapping("/physical-subsystem/parameters/{categoryCode}")
     @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<List<ParameterOption>> physicalParameters(
@@ -76,13 +52,10 @@ public class ArchitectureOptionsController {
         return success(service.parameters(actor, ArchitectureOptionsService.PHYSICAL_RESOURCE, categoryCode));
     }
 
-    @GetMapping("/physical-subsystem/logical-subsystems")
+    @GetMapping("/physical-subsystem/business-components")
     @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
-    public ApiResponse<PageResult<LogicalSubsystemOption>> physicalLogicalSubsystems(
-            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String code, @RequestParam(required = false) String name,
-            @AuthenticationPrincipal AuthUser actor) {
-        return success(service.logicalSubsystems(actor, new PageQuery(page, size), code, name));
+    public ApiResponse<List<ParameterOption>> businessComponents(@AuthenticationPrincipal AuthUser actor) {
+        return success(service.businessComponents(actor));
     }
 
     @GetMapping("/deployment-unit/physical-subsystems")
@@ -112,9 +85,9 @@ public class ArchitectureOptionsController {
         throw unknownResource(resource);
     }
 
-    @GetMapping("/{resource}/logical-subsystems")
+    @GetMapping("/{resource}/business-components")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<Void> unknownLogicalSubsystems(@PathVariable String resource) {
+    public ApiResponse<Void> unknownBusinessComponents(@PathVariable String resource) {
         throw unknownResource(resource);
     }
 

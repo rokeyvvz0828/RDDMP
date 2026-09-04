@@ -1,0 +1,31 @@
+{
+  "feedback_id": "F-0003",
+  "status": "closed",
+  "source": "用户反馈公告管理摘要为空、查看富文本格式不一致、编辑公告正文为空",
+  "severity": "P1",
+  "requirement_ids": ["A1", "A2", "A3"],
+  "observed": {
+    "actual": "编辑动作将分页列表行直接交给编辑器；列表契约只提供 summary，不提供 content_html，导致富文本编辑器没有可回填正文。查看抽屉未完整复用公告正文与附件的阅读结构，摘要列没有针对服务端摘要做显式两行渲染。",
+    "expected": "摘要展示公告正文的纯文本并限制为两行；查看抽屉按富文本显示标题、元信息、正文、表格、图片和附件；编辑前读取详情并在 wangEditor 创建后回填原始 HTML。"
+  },
+  "correction": {
+    "paths": [
+      "web/src/modules/test-management/announcement/TestAnnouncementPage.vue",
+      "web/src/modules/test-management/announcement/announcement.css",
+      "web/src/modules/test-management/announcement/announcement-editor.css"
+    ],
+    "change": [
+      "列表正文摘要优先使用服务端 summary，兜底从 HTML 提取纯文本，并以双行截断显示。",
+      "编辑操作先调用公告详情接口，再以 destroy-on-close 的 wangEditor 实例显式 setHtml 回填正文。",
+      "查看抽屉与当前公告统一使用富文本阅读样式，并增加附件名称、大小、时间和下载入口。",
+      "保留正文 360px 高度与全宽输入区，补充附件移除、重置筛选和提交中状态。"
+    ]
+  },
+  "verification": [
+    {"check": "npm --prefix web run build", "result": "pass", "evidence": "vue-tsc --noEmit 与 Vite production build 成功。"},
+    {"check": "浏览器公告管理结构", "result": "pass", "evidence": "本地页面含“正文摘要”列及“重置”动作，未见请求失败提示。"},
+    {"check": "浏览器富文本输入区", "result": "pass", "evidence": "发布弹窗显示 wangEditor 工具栏；正文区实测 688px 宽、360px 高。"},
+    {"check": "既有公告编辑回填", "result": "code-path-verified", "evidence": "编辑按钮固定先请求 announcementDetail，再在 on-created 中调用 setHtml(form.content_html)；当前本地项目无可写的既有公告，未通过浏览器提交测试数据。"}
+  ],
+  "recorded_at": "2026-09-01T09:15:00+08:00"
+}

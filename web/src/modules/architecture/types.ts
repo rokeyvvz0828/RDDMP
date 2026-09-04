@@ -10,51 +10,14 @@ export type SubsystemTargetKind = 'LOGICAL' | 'PHYSICAL'
 export type SubsystemActionType = 'CREATE' | 'UPDATE' | 'OFFLINE' | 'REACTIVATE' | 'VOID' | 'REPLACE'
 export type SubsystemApplicationStatus = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 
-export interface PhysicalSubsystemSummary {
-  id: number
-  code: string
-  shortName: string
-  name: string
-  numberSlot: string | null
-  englishName: string | null
-  status: PublishedSubsystemStatus
-  rowVersion: number
-}
-
-export interface LogicalSubsystem {
-  id: number
-  code: string
-  shortName: string
-  name: string
-  businessOrgId: number
-  deploymentPlatformCode: string | null
-  systemTypeCode: string | null
-  systemOwnershipCode: string | null
-  contactUserId: number
-  description: string | null
-  remark: string | null
-  createdBy: number
-  updatedBy: number
-  createdAt: string
-  updatedAt: string
-  numberSequence: number | null
-  status: PublishedSubsystemStatus
-  sortNo: number
-  rowVersion: number
-  physicalSubsystems: PhysicalSubsystemSummary[]
-}
-
 export interface PhysicalSubsystem {
   id: number
   code: string
   shortName: string
   name: string
-  logicalSubsystemId: number
-  logicalSubsystemCode: string
-  logicalSubsystemName: string
+  logicalSubsystemName: string | null
+  businessComponentCode: string | null
   businessGroupName: string | null
-  businessContinuityLevel: string | null
-  collectedSystemLevel: string | null
   deploymentPlatform: string | null
   disasterRecoveryMode: string | null
   responsibleTeamOrgId: number
@@ -72,37 +35,20 @@ export interface PhysicalSubsystem {
   updatedBy: number
   createdAt: string
   updatedAt: string
-  numberSlot: string | null
   englishName: string | null
   status: PublishedSubsystemStatus
   rowVersion: number
-  logicalSubsystemNumberSequence: number | null
-  logicalSubsystemStatus: PublishedSubsystemStatus | null
-}
-
-export interface LogicalDraftInput {
-  shortName: string
-  name: string
-  businessOrgId: number | null
-  deploymentPlatformCode: string | null
-  systemTypeCode: string | null
-  systemOwnershipCode: string | null
-  contactUserId: number | null
-  description: string | null
-  remark: string | null
-  sortNo: number
-  sourceRowVersion: number | null
 }
 
 export interface PhysicalDraftInput {
   lineNo: number
-  targetLogicalSubsystemId: number | null
+  code: string
   shortName: string
   name: string
+  logicalSubsystemName: string | null
+  businessComponentCode: string | null
   englishName: string | null
   businessGroupName: string | null
-  businessContinuityLevel: string | null
-  collectedSystemLevel: string | null
   deploymentPlatform: string | null
   disasterRecoveryMode: string | null
   responsibleTeamOrgId: number | null
@@ -116,21 +62,9 @@ export interface PhysicalDraftInput {
   sourceRowVersion: number | null
 }
 
-export interface LogicalDraft extends Omit<LogicalDraftInput, 'businessOrgId' | 'contactUserId'> {
-  sourceLogicalSubsystemId: number | null
-  businessOrgId: number
-  contactUserId: number
-  reservedNumberSequence: number | null
-  draftRevision: number
-  submittedSnapshotJson: string | null
-  createdAt: string
-  updatedAt: string
-}
-
 export interface PhysicalDraft extends Omit<PhysicalDraftInput, 'responsibleTeamOrgId'> {
   sourcePhysicalSubsystemId: number | null
   responsibleTeamOrgId: number
-  reservedNumberSlot: string | null
   draftRevision: number
   submittedSnapshotJson: string | null
   createdAt: string
@@ -173,25 +107,21 @@ export interface SubsystemChangeHistory {
 
 export interface SubsystemChangeApplicationDetail {
   application: SubsystemChangeApplicationSummary
-  logicalDraft: LogicalDraft | null
   physicalDrafts: PhysicalDraft[]
   history: SubsystemChangeHistory[]
 }
 
 export interface CreateSubsystemChangeApplicationPayload {
-  targetKind: SubsystemTargetKind
+  targetKind: 'PHYSICAL'
   actionType: SubsystemActionType
   targetId: number | null
   reason: string
-  logicalDraft?: LogicalDraftInput | null
-  physicalDrafts?: PhysicalDraftInput[]
-  physicalDraft?: PhysicalDraftInput | null
+  physicalDraft: PhysicalDraftInput
 }
 
 export interface UpdateSubsystemChangeApplicationPayload {
   rowVersion: number
   reason: string
-  logicalDraft: LogicalDraftInput | null
   physicalDrafts: PhysicalDraftInput[]
 }
 
@@ -205,9 +135,8 @@ export interface SubsystemSuggestion {
 export interface OrganizationOption { id: number; name: string; parentId: number | null; pathLabel: string }
 export interface UserOption { id: number; displayName: string; username: string; phone: string | null }
 export interface ParameterOption { code: string; label: string }
-export interface LogicalSubsystemOption { id: number; code: string; name: string }
 
-export type ArchitectureResource = 'logical-subsystem' | 'physical-subsystem'
+export type ArchitectureResource = 'physical-subsystem'
 export type DetailItem = { label: string; value: string; wide?: boolean; tone?: 'warning' | 'danger' }
 
 // ---------- 架构规范 ----------
@@ -390,7 +319,7 @@ export interface PublicationIntentView {
 export interface DecisionUserReference { id: number; displayName: string; username: string }
 // ---------- 部署单元 ----------
 
-export type DeploymentUnitKind = 'APPLICATION' | 'DATABASE' | 'MQ'
+export type DeploymentUnitKind = 'APPLICATION' | 'DATABASE' | 'WEB'
 export type DeploymentUnitStatus = 'ACTIVE' | 'INACTIVE' | 'VOIDED'
 export type DeploymentUnitImportBatchStatus = 'PREVIEW' | 'SUCCESS' | 'PARTIAL' | 'FAILED'
 export type DeploymentUnitImportItemStatus = 'VALID' | 'INVALID' | 'SUCCESS' | 'FAILED' | 'SKIPPED'
@@ -402,11 +331,9 @@ export interface DeploymentUnit {
   physicalSubsystemCode: string | null
   physicalSubsystemName: string | null
   physicalSubsystemStatus: string | null
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string
   kind: DeploymentUnitKind
+  relatedDeploymentUnits: RelatedDeploymentUnit[]
   status: DeploymentUnitStatus
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -424,10 +351,7 @@ export interface DeploymentUnit {
 
 export interface DeploymentUnitVersion {
   versionNo: number
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string
   kind: DeploymentUnitKind
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -440,11 +364,9 @@ export interface DeploymentUnitVersion {
 
 export interface DeploymentUnitPayload {
   physicalSubsystemId: number | null
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string | null
   kind: DeploymentUnitKind | ''
+  relatedDeploymentUnitIds: number[]
   defaultNetworkZoneId: number | null
   description: string | null
   remark: string | null
@@ -470,11 +392,20 @@ export interface DeploymentUnitImportBatch {
 
 export interface DeploymentUnitImportRow {
   physicalCode: string | null
-  shortName: string | null
   name: string | null
   kindLabel: string | null
   description: string | null
   remark: string | null
+}
+
+export interface RelatedDeploymentUnit {
+  id: number
+  code: string
+  name: string
+  kind: DeploymentUnitKind
+  physicalSubsystemId: number
+  physicalSubsystemName: string | null
+  status: DeploymentUnitStatus
 }
 
 export interface DeploymentUnitImportItem {
@@ -498,8 +429,6 @@ export interface PhysicalSubsystemOption {
   shortName: string | null
   name: string
   businessGroupName: string | null
-  businessContinuityLevel: string | null
-  collectedSystemLevel: string | null
   deploymentPlatform: string | null
   disasterRecoveryMode: string | null
   systemLevelCode: string | null
@@ -849,8 +778,6 @@ export interface DeploymentUnitOption {
   name: string
   kind: DeploymentUnitKind
   physicalSubsystemId: number
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string | null
   description: string | null
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -892,9 +819,7 @@ export interface ResourceRequestItem {
   deploymentUnitCode: string
   deploymentUnitName: string
   deploymentUnitKind: DeploymentUnitKind
-  relatedDeploymentUnitName: string | null
   deploymentUnitDescription: string | null
-  deploymentUnitType: string | null
   databaseStorageGb: number
   fileStorageGb: number
   networkZoneId: number | null

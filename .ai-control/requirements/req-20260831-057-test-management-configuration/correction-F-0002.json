@@ -1,0 +1,31 @@
+{
+  "feedback_id": "F-0002",
+  "status": "closed",
+  "source": "用户在轮次与周期配置页反馈新建轮次位置错误且新建周期无效",
+  "severity": "P1",
+  "requirement_ids": ["R3"],
+  "observed": {
+    "actual": "新建轮次操作位于右侧周期区域；未先点选轮次时新建周期入口不可达，周期新增流程没有明确的前置校验和默认选择。",
+    "expected": "左侧轮次树负责选择和新建轮次；右侧只展示当前轮次及其周期，并能立即进入新建周期表单。"
+  },
+  "correction": {
+    "paths": [
+      "web/src/modules/test-management/configuration/TestConfigurationPage.vue",
+      "web/src/modules/test-management/configuration/test-configuration.css"
+    ],
+    "change": [
+      "将新建轮次移入左侧轮次树标题栏，移除右侧的新建轮次入口。",
+      "进入页面时默认选中首个轮次；周期区域仅在有当前轮次时出现。",
+      "新建周期增加前置校验、明确错误提示与末尾排序号；新增轮次后自动成为当前轮次。",
+      "补齐轮次摘要、周期空状态和移动端周期卡片。",
+      "在当前轮次摘要中补充删除轮次操作；周期表格和移动端卡片保留编辑、删除与排序操作。"
+    ]
+  },
+  "verification": [
+    {"check": "npm --prefix web run build", "result": "pass", "evidence": "vue-tsc --noEmit 和 Vite production build 均成功。"},
+    {"check": "本地浏览器桌面路径", "result": "pass", "evidence": "轮次与周期页左侧显示新建轮次；默认选中 R001；右侧新建周期打开“新增测试周期”表单，并在 R002 下成功保存本地演示周期“主体测试补充周期”。"},
+    {"check": "本地浏览器移动视口 390×844", "result": "pass", "evidence": "新建轮次、新建周期和周期移动端卡片均可见。"},
+    {"check": "浏览器控制台", "result": "pass", "evidence": "本次轮次选择和新建周期入口验证未出现 error 日志。"}
+  ],
+  "recorded_at": "2026-08-31T23:45:00+08:00"
+}

@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260901-058",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260901-058-project-switch-confirmation/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "rokeyvvz0828",
+    "module": "frontend/application",
+    "module_owner": "rokeyvvz0828",
+    "branch": "rokey",
+    "worktree": "/Users/zhangwei/project/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/views/AppLayout.vue",
+      "docs/requirements/REQ-20260901-058-project-switch-confirmation/requirement.md",
+      "docs/requirements/REQ-20260901-058-project-switch-confirmation/codex-task-scope.yaml",
+      ".ai-control/requirements/req-20260901-058-project-switch-confirmation/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/stores/project-context.ts",
+      "web/src/modules/delivery-showcase/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "server/**",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": []
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "not-applicable"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "diff-check", "command": "git diff --check -- web/src/views/AppLayout.vue"},
+    {"name": "browser", "command": "desktop and 390x844 project switch cancel/confirm verification"},
+    {"name": "api", "command": "scope review: no API file or contract changed"},
+    {"name": "permission", "command": "scope review: no permission behavior or configuration changed"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": ["Element Plus 选择器在取消后可能保留内部显示值", "刷新前项目选择必须已同步持久化"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260901-058-project-switch-confirmation",
+    "control_justification": "用户流程源码变更按仓库规则记录任务前缀执行、独立观测和收敛证据。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260901-058-project-switch-confirmation/execution-T1.json",
+      ".ai-control/requirements/req-20260901-058-project-switch-confirmation/observation-T1.json",
+      ".ai-control/requirements/req-20260901-058-project-switch-confirmation/convergence.json"
+    ],
+    "release_verification": ["桌面和移动端确认弹窗、取消恢复及确认刷新"],
+    "rollback": "回退本需求的 AppLayout.vue 修改以及对应需求和控制证据。"
+  }
+}

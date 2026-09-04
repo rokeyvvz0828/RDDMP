@@ -1,0 +1,61 @@
+{
+  "sample_label": "T1 完成采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R2",
+      "sensor": "S1 提交态 Vue/TypeScript 构建与 f620bb1 diff",
+      "result": "pass",
+      "raw_evidence": "npm build 退出 0；提交仅修改 ResourceRequestPage.vue；clientId 用于 key、新增、删除和当前项定位",
+      "limitation": ["主从列表尚未由 T2 模板呈现，切换旅程待集成采样"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1/S6 请求生产路径和范围扫描",
+      "result": "pass",
+      "raw_evidence": "未出现部署单元去重逻辑；form.items.map(requestItemPayload) 仍存在两处；requestItemPayload 函数体不读取 clientId",
+      "limitation": ["重复 deploymentUnitId 的真实 API 接受和编辑回显待 T3 Network 传感器"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S1 编译器与提交 diff",
+      "result": "pass",
+      "raw_evidence": "itemCompletionState 和 validateForm 共同调用 itemValidationError；首错时 selectedItemId 指向 item.clientId；构建退出 0",
+      "limitation": ["状态文字和自动切换的可见行为待 T2/T3 浏览器采样"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S1/S6 物理子系统状态转换扫描",
+      "result": "pass",
+      "raw_evidence": "旧 watch(() => form.physicalSubsystemId) 已不存在；handlePhysicalSubsystemChange 仅在确认后调用 resetItemsForPhysicalSubsystem，取消恢复 acceptedPhysicalSubsystemId",
+      "limitation": ["MessageBox 确认/取消和候选失败需真实浏览器采样"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S1 构建和 S6 提交范围",
+      "result": "pass",
+      "raw_evidence": "vue-tsc/Vite 构建退出 0；f620bb1 只有 ResourceRequestPage.vue；api.ts/types.ts/后端未修改；DB/非 DB requestItemPayload 分支保持",
+      "limitation": ["真实 HTTP 请求字段和值待 T3 Network 检查"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S1 提交态构建和关闭/提交状态 diff",
+      "result": "pass",
+      "raw_evidence": "formSubmitting 防重复并禁用 el-form；before-close 和底部取消均比较初始快照；候选空数组 watch 不再清空申请项；构建退出 0",
+      "limitation": ["失败恢复、ESC/遮罩关闭和响应式布局待 T2/T3 运行采样"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "观察阶段两个辅助源码扫描命令因 PowerShell/Node 引号转义失败；改用 rg 固定模式后获得有效结果，分类为传感器命令故障而非产品偏差",
+    "本次观察由同一主任务上下文执行，使用提交态构建与 diff 复测实现结果，不具备人员或独立 Agent 隔离；最终浏览器验收仍需明确保留此限制"
+  ],
+  "coverage_gaps": [
+    "申请项列表和 currentItem 尚未完成 T2 模板接入，不能在本采样点击切换",
+    "重复部署单元真实保存、物理切换确认/取消、候选失败和脏关闭待集成浏览器采样",
+    "四视口明暗主题不属于 T1 完成采样范围"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

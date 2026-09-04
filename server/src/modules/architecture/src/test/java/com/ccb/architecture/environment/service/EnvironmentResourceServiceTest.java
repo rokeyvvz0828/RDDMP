@@ -203,7 +203,7 @@ class EnvironmentResourceServiceTest {
         assertThat(persisted.sidecarMemoryRatio()).isNull();
 
         ResourceRequestItem zeroNodeSidecar = new ResourceRequestItem(900003L, 7L, 900001L, 1, 300L,
-                "DW0001A001", "接入应用", "APPLICATION", null, "接入应用节点", "AP",
+                "DW0001A001", "接入应用", "APPLICATION", "接入应用节点",
                 BigDecimal.ZERO, BigDecimal.ZERO, "开放区", "architecture.server-type.container",
                 BigDecimal.ZERO, BigDecimal.valueOf(8), 0, 0, BigDecimal.ZERO, BigDecimal.ONE,
                 true, null, null, "architecture.jdk.jdk17", "architecture.middleware.tomcat9",
@@ -303,12 +303,12 @@ class EnvironmentResourceServiceTest {
 
     private DeploymentUnitRef activeUnit(long id, long physicalId, long currentVersionId, int currentVersion) {
         return new DeploymentUnitRef(id, "DW0001A001", "接入应用", "APPLICATION", "ACTIVE",
-                physicalId, null, "AP", "接入应用节点", currentVersionId, currentVersion);
+                physicalId, "接入应用节点", currentVersionId, currentVersion);
     }
 
     private DeploymentUnitRef databaseUnit(long id, long physicalId) {
         return new DeploymentUnitRef(id, "DW0001D001", "接入数据库", "DATABASE", "ACTIVE",
-                physicalId, null, "DB", "接入数据库", 1_002L, 1);
+                physicalId, "接入数据库", 1_002L, 1);
     }
 
     private EnvironmentResourceService serviceWithNetworkAccess() {
@@ -330,7 +330,7 @@ class EnvironmentResourceServiceTest {
 
     private ResourceRequestItem item(long id, long requestId, long unitId) {
         return new ResourceRequestItem(id, 7L, requestId, 1, unitId, "DW0001A001",
-                "接入应用", "APPLICATION", null, "接入应用节点", "AP",
+                "接入应用", "APPLICATION", "接入应用节点",
                 BigDecimal.ZERO, BigDecimal.valueOf(100),
                 "开放区", "architecture.server-type.container", BigDecimal.valueOf(2), BigDecimal.valueOf(4),
                 1, 2, BigDecimal.ZERO, BigDecimal.ZERO, false, null, null,
@@ -341,7 +341,7 @@ class EnvironmentResourceServiceTest {
 
     private ResourceRequestItem itemWithZone(long id, long requestId, long unitId) {
         return new ResourceRequestItem(id, 7L, requestId, 1, unitId, "DW0001A001",
-                "接入应用", "APPLICATION", null, "接入应用节点", "AP",
+                "接入应用", "APPLICATION", "接入应用节点",
                 BigDecimal.ZERO, BigDecimal.valueOf(100),
                 800L, "P8开放AP", "P8开放AP", "architecture.server-type.container",
                 BigDecimal.valueOf(2), BigDecimal.valueOf(4),
@@ -353,7 +353,7 @@ class EnvironmentResourceServiceTest {
 
     private ResourceRequestItem databaseItem(long id, long requestId, long unitId) {
         return new ResourceRequestItem(id, 7L, requestId, 1, unitId, "DW0001D001",
-                "接入数据库", "DATABASE", null, "接入数据库", "DB",
+                "接入数据库", "DATABASE", "接入数据库",
                 BigDecimal.valueOf(500), BigDecimal.ZERO,
                 null, null, BigDecimal.ZERO, BigDecimal.ZERO, 0, 0, BigDecimal.ZERO,
                 BigDecimal.ZERO, false, "GoldenDB", "6.1", null, null, null,

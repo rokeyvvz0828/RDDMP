@@ -1,0 +1,36 @@
+{
+  "sample_label": "T3 前端构建、桌面与 H5 运行态采样",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "生产构建与 4 个浏览器视口的范围、文案和布局检查",
+      "result": "pass",
+      "raw_evidence": "vue-tsc 与 Vite 构建退出码 0；桌面、375x812、390x844、430x932 仅显示本项目流程和全局模板，页面无平台流程文案、重复项目标签、横向溢出或卡片裁切。",
+      "limitation": ["浏览器验收使用本地临时服务和测试数据"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "浏览器中的待配置状态、发布保护和节点人员来源交互",
+      "result": "pass",
+      "raw_evidence": "11 条项目草稿均展示待配置人员；桌面发布按钮全部禁用，移动菜单待配置人员项可见且禁用；占位草稿可打开并保存，审批节点可切换为项目成员或项目角色。",
+      "limitation": ["未在浏览器中实际发布流程；严格发布成功和失败路径由 T2 后端测试覆盖"]
+    },
+    {
+      "requirement_id": "R1",
+      "sensor": "浏览器控制台与布局像素/滚动探针",
+      "result": "pass",
+      "raw_evidence": "四个视口无页面级水平溢出、无元素遮挡、无控制台 error。打开设计器后仅出现两条 Vue Flow viewport 尚未初始化的 warning。",
+      "limitation": ["Vue Flow warning 为现有组件初始化时序提示，不影响本次交互和渲染"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "工作树 web/node_modules 不可写，生产构建在 /private/tmp 的临时前端副本中使用同版本依赖完成。",
+    "打开设计器后控制台出现两条非阻塞 [Vue Flow]: Viewport not initialized yet. 警告。"
+  ],
+  "coverage_gaps": ["未执行真实用户并发或性能采样；该项不属于本需求验收范围"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

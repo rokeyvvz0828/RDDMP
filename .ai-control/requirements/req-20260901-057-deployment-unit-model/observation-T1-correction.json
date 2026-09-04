@@ -1,0 +1,33 @@
+{
+  "sample_label":"T1 纠正复验（F-0001/F-0002）",
+  "task_ids":["T1"],
+  "baseline_revision":"baseline-1",
+  "measurements":[
+    {
+      "requirement_id":"R6",
+      "sensor":"S6 + 导入测试源码检查",
+      "result":"partial-pass",
+      "raw_evidence":"模板实现只写五个当前契约单元格；测试断言五列表头、五列示例、第六列为空以及回传后 VALID。",
+      "limitation":["round-trip 位于 Testcontainers MySQL 测试，Docker 不可用时未实际执行"]
+    },
+    {
+      "requirement_id":"R6",
+      "sensor":"S6 + 迁移测试源码检查",
+      "result":"partial-pass",
+      "raw_evidence":"V124 已先删除旧 kind CHECK 再执行 MQ→WEB；新增 V123→V124 含 MQ 测试。观察时测试种子遗漏 V106 设为 NOT NULL 的 deployment_unit_type。",
+      "limitation":["Docker 不可用，迁移未实际执行", "观察时新增迁移测试传感器种子不完整"]
+    },
+    {
+      "requirement_id":"R1/R2/R3/R4/R7",
+      "sensor":"S1/S6 执行报告与静态复核",
+      "result":"partial-pass",
+      "raw_evidence":"38 个非容器测试通过，Flyway 静态检查通过，未发现 DTO、名称规则、类型、options 查询和权限契约新增回归。",
+      "limitation":["不等价于 MySQL 8.4 迁移、约束、关系事务或并发通过"]
+    }
+  ],
+  "feedback":[],
+  "disturbances":["Docker Desktop Linux 引擎命名管道不可达，Testcontainers MySQL 测试未执行。"],
+  "coverage_gaps":["F-0001/F-0002 最终关闭仍需 MySQL 运行证据。","新增 V123→V124 测试种子需补齐 deployment_unit_type 后复验。","关系唯一键、外键、事务回滚和并发锁仍未观测。"],
+  "error_counts":{"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status":"complete"
+}

@@ -62,6 +62,6 @@ source_issue: 04-resource-fulfillment-and-environment-instance
 - 关闭时间：2026-08-26T17:13:41+08:00。
 - 用户验收授权：用户于 2026-08-26 明确要求“完成此需求，提交，合并回dev-ivanh，并推送”。
 - 收敛结论：资源工单下发、手动输入、自动部署 Mock、环境部署实例、实际资源聚合、实例下线、同部署单元灾备关系、部署单元版本快照和确认下发后的“已下发/已差异下发”状态流转已完成；自动部署 Mock 已改为随机私网 IP 和按环境/部署单元自增主机名。
-- 已通过验证：`EnvironmentResourceServiceTest` 聚焦测试 16 条通过；`npm --prefix web run build` 通过；`node scripts/check-flyway-migrations.mjs` 通过；`git diff --check` 未发现空白错误；本地后端 8080 健康接口返回 `UP`，前端 5173 资源申请页和环境部署实例页返回 HTTP 200；本地既有 MySQL 已随后端启动迁移到 V99。
+- 已通过验证：`EnvironmentResourceServiceTest` 聚焦测试 16 条通过；`npm --prefix web run build` 通过；`node scripts/check-flyway-migrations.mjs` 通过；`git diff --check` 未发现空白错误；本地后端 8080 健康接口返回 `UP`，前端 5173 资源申请页和环境部署实例页返回 HTTP 200；集成后的 Flyway 版本为 V110。
 - 已接受残余风险：`node scripts/check-all-governance.mjs` 失败项来自历史 `.ai-control` 旧账本；带 `--working-tree` 的范围检查受 04 外既有未跟踪 `.dsh/` 与 `req-20260812-021` 文件影响；真实自动部署平台未对接；真实浏览器桌面/移动 UAT 仍需人工确认；空库迁移与完整后端全量测试需在干净 CI 或测试环境补跑。
 - 集成边界：本需求提交落在临时分支 `codex/req-20260825-053-resource-fulfillment-instance`，按用户授权合并回 `dev-ivanh` 并推送；不直接推送 `main`。

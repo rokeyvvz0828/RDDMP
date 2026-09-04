@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "topic": "req-20260816-001-requirement-management-platform",
+  "task_id": "T3",
+  "status": "implemented-checks-passed",
+  "coverage": [
+    "存量需求阶段推进改造：保存与阶段推进彻底分离",
+    "核心标识字段强校验，阶段业务字段不强卡流转，缺失时弹窗提醒并由用户确认继续",
+    "回退（BACK）不清空表单数据，仅修改状态 + 写日志，支持后续回头补填",
+    "阶段流转不做审批节点，全部痕迹由 req_stage_log 状态变更日志留痕"
+  ],
+  "requirement_source": "用户 2026-08-25 指令：1.保存≠阶段推进；2.只强校验核心标识字段，阶段业务字段缺失弹窗确认；3.回退不清空数据仅改状态+写日志；4.流转痕迹靠状态变更日志，不做审批节点",
+  "actual_changes": [
+    "server/src/modules/requirement/.../service/RequirementLegacyService.java：stageTransition 去掉 legacy.stage.transition 审批流与审批人，改为直接流转（START/COMPLETE/BACK）；核心标识字段（需求编号/需求名称/业务组）强校验；阶段业务字段缺失返回 confirmed=false + missingFields 提醒，确认后 ignoreMissingStageFields=true 继续；回退仅改状态+写日志不清数据；日志 approval_result=MANUAL、workflow_instance_id=NULL；保存（update）同步做强校验核心字段",
+    "server/src/modules/requirement/.../service/RequirementWorkflowListener.java：移除存量阶段推进审批回写分支，仅保留差异评审（req-diff）审批回写",
+    "server/src/modules/requirement/.../support/RequirementEnums.java：新增 LEGACY_CORE_REQUIRED_FIELDS 与 LEGACY_STAGE_FIELDS；STAGE_STATUSES 移除审批中",
+    "server/src/modules/requirement/.../web/RequirementLegacyController.java：阶段推进接口改为接收 ignoreMissingStageFields；移除已无用的 reviewers 接口",
+    "server/src/modules/requirement/src/test/...：RequirementLegacyServiceTest 重写（直接流转、缺失提醒、回退不清数据、核心字段强校验），StubJdbcTemplate 记录参数",
+    "web/src/api/requirements.ts：stageTransition 移除 approverIds、支持 ignoreMissingStageFields；移除 listLegacyReviewers",
+    "web/src/views/RequirementsView.vue：阶段推进弹窗去掉审批人/审批实例/发起审批，改为确认推进；缺失字段弹窗确认后继续；阶段记录表去掉审批结果/审批实例列；表单仅核心字段标必填"
+  ],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "result": "exit 0：vue-tsc --noEmit 与 vite build 成功，仅有既有 chunk 体积警告"
+    },
+    {
+      "command": "JAVA_HOME=.../temurin-17 mvn -pl :ccb-requirement -am test -Dtest='Requirement*Test' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false",
+      "result": "exit 0：RequirementBaselineServiceTest 2、RequirementDifferenceServiceTest 5、RequirementImportServiceTest 2、RequirementLegacyServiceTest 7，共 16 个测试全部通过"
+    },
+    {
+      "command": "git diff --check",
+      "result": "exit 0"
+    }
+  ],
+  "not_executed": [
+    "mvn -pl :ccb-requirement -am test 全量 / mvn test：ccb-infrastructure 的 MockDataInitializerTest 因本机 Mockito inline mock maker 无法 self-attach 的环境问题失败（与本次改动无关）",
+    "本地 MySQL/后端/前端启动与真实浏览器验收：未执行，待运行环境可用后补做"
+  ],
+  "unresolved_issues": [
+    "浏览器验收未执行，阶段推进确认弹窗、缺失字段提醒与阶段日志展示需在真实页面复核",
+    "既有开发库中若存在旧审批流遗留的‘审批中’存量行与 workflow_instance_id，需人工核对清理（本次不再产生新审批实例）",
+    "V82/V83 等既有未提交迁移文件未改动，是否随审批流下线一并回收需单独确认"
+  ]
+}

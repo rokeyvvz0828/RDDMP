@@ -7,6 +7,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    out-of-order: true                     # 分支合并后允许按版本顺序补跑未应用的迁移（如架构 V93-V122）
     locations: classpath:db/migration
     placeholders:
       bootstrap_admin_password_hash: ${BOOTSTRAP_ADMIN_PASSWORD_HASH}
@@ -36,3 +37,9 @@ ccb:
   mock-data:
     enabled: ${MOCK_DATA_ENABLED:true}
     resource: ${MOCK_DATA_RESOURCE:classpath:mock/mock-data.json}
+  workflow:
+    seeded-definition-publisher:
+      enabled: ${WORKFLOW_SEEDED_DEFINITION_PUBLISHER_ENABLED:true}
+      tenant-id: ${WORKFLOW_SEEDED_DEFINITION_TENANT_ID:1}
+      operator-user-id: ${WORKFLOW_SEEDED_DEFINITION_OPERATOR_USER_ID:1}
+      definition-codes: ${WORKFLOW_SEEDED_DEFINITION_CODES:architecture.subsystem.change,architecture.resource-request}

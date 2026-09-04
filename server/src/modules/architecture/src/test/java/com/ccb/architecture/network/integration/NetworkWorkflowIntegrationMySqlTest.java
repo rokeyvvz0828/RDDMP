@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 验证 V90 的菜单/权限/角色/流程种子、身份冲突失败关闭与工作流轮次持久化契约
+ * 验证 V101 的菜单/权限/角色/流程种子、身份冲突失败关闭与工作流轮次持久化契约
  * （REQ-20260823-051）；不启动或模拟 Flowable 流程实例。
  */
 @Testcontainers
@@ -49,7 +49,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     private static final String PAYLOAD_DIGEST = "e".repeat(64);
     private static final LocalDateTime STARTED_AT = LocalDateTime.of(2026, 8, 23, 12, 30);
     private static final String DATABASE = "network_workflow_integration";
-    private static final String CONFLICT_DATABASE = "network_v90_conflict";
+    private static final String CONFLICT_DATABASE = "network_v101_conflict";
 
     @Container
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
@@ -75,7 +75,7 @@ class NetworkWorkflowIntegrationMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("90"))
+                .target(MigrationVersion.fromVersion("101"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
@@ -100,7 +100,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90预置工单菜单三级权限与办理角色() {
+    void v101预置工单菜单三级权限与办理角色() {
         assertThat(jdbc.queryForObject("SELECT CONCAT(route_name, '|', route_path, '|', permission_code) "
                         + "FROM sys_menu WHERE id = 808 AND tenant_id = 1 AND deleted = 0", String.class))
                 .isEqualTo("ArchitectureNetworkWorkOrders|/architecture/network-work-orders"
@@ -132,7 +132,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90存量角色兼容映射() {
+    void v101存量角色兼容映射() {
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission role_permission "
                 + "JOIN sys_role_permission inherited ON inherited.role_id = role_permission.role_id "
                 + "AND inherited.tenant_id = role_permission.tenant_id AND inherited.permission_id = 8081 "
@@ -146,7 +146,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90遇到稳定菜单Id身份冲突时失败关闭() {
+    void v101遇到稳定菜单Id身份冲突时失败关闭() {
         try (MySQLContainer<?> conflictMysql = new MySQLContainer<>("mysql:8.4")
                 .withDatabaseName(CONFLICT_DATABASE)
                 .withUsername("test")
@@ -157,8 +157,8 @@ class NetworkWorkflowIntegrationMySqlTest {
             JdbcTemplate conflictJdbc = new JdbcTemplate(conflictDataSource);
             conflictJdbc.execute("ALTER DATABASE `" + CONFLICT_DATABASE
                     + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            Flyway v89 = flyway(conflictDataSource, "89");
-            assertThat(v89.migrate().success).isTrue();
+            Flyway v100 = flyway(conflictDataSource, "100");
+            assertThat(v100.migrate().success).isTrue();
 
             conflictJdbc.update("INSERT INTO sys_menu "
                     + "(id, tenant_id, parent_id, menu_type, menu_name, route_name, route_path, component_path, "
@@ -166,14 +166,14 @@ class NetworkWorkflowIntegrationMySqlTest {
                     + "(808, 1, 800, 'menu', '冲突菜单', 'ConflictingNetworkMenu', '/conflict', "
                     + "'architecture/conflict', 'architecture:network-work-order:view', 'warning', 99)");
 
-            Flyway v90 = flyway(conflictDataSource, "90");
-            assertThatThrownBy(v90::migrate)
+            Flyway v101 = flyway(conflictDataSource, "101");
+            assertThatThrownBy(v101::migrate)
                     .isInstanceOf(FlywayException.class);
         }
     }
 
     @Test
-    void v90只预置未发布的固定角色审批模型() throws Exception {
+    void v101只预置未发布的固定角色审批模型() throws Exception {
         assertThat(jdbc.queryForObject("SELECT code FROM wf_definition WHERE id = ? AND tenant_id = ?",
                 String.class, DEFINITION_ID, TENANT_ID)).isEqualTo("architecture.network.work-order");
         assertThat(jdbc.queryForObject("SELECT status FROM wf_definition WHERE id = ? AND tenant_id = ?",
@@ -210,7 +210,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v89Store持久化工作流上下文轮次与幂等回执() {
+    void v100Store持久化工作流上下文轮次与幂等回执() {
         inTransaction(() -> {
             store.insertWorkOrder(workOrder());
             store.insertPendingWorkflowRound(pendingRound());

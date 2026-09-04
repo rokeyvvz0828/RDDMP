@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-test-management-configuration",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-08-31-test-management-configuration-design.md",
+  "objective": "交付四大测试大类隔离的测试管理配置后端与前端。",
+  "users": ["测试管理", "机构负责人"],
+  "requirements": [
+    {"id": "R1", "statement": "提供四大测试大类的管理配置入口和受保护 API", "acceptance": ["有权限用户可访问", "无权限请求被拒绝"], "priority": "must", "source": "用户确认与 V1.6", "counterexample": ["仅隐藏按钮而接口仍成功"]},
+    {"id": "R2", "statement": "维护参测系统和系统级角色", "acceptance": ["配置可持久化读取", "角色不能分配给未参测系统"], "priority": "must", "source": "V1.6", "counterexample": ["跨大类或跨项目读取配置"]},
+    {"id": "R3", "statement": "维护轮次、周期和字典", "acceptance": ["日期、排序和引用约束可验证", "派生和只读字典不可编辑"], "priority": "must", "source": "V1.6", "counterexample": ["结束轮次自动生成报告"]},
+    {"id": "R4", "statement": "支持配置导入预校验和原子写入", "acceptance": ["任意错误行导致零写入", "成功返回汇总"], "priority": "must", "source": "V1.6", "counterexample": ["导入半成功"]}
+  ],
+  "invariants": ["测试管理不维护项目、用户或物理子系统主数据", "所有写入受租户、实体范围、RBAC 和审计保护", "V106 只追加不修改历史迁移"],
+  "constraints": ["JDK 17", "Vue 3/TypeScript/Element Plus", "MySQL 8.4", "临时每项目全量物理子系统候选规则"],
+  "non_goals": ["其他八个业务页面", "项目—子系统主数据关系", "营业日管理改造"],
+  "selected_approach": {"name": "测试管理参测映射 + 全量物理子系统候选", "reason": "满足当前可用需求并保持架构数据 Owner", "alternatives": [{"name": "先改架构关系", "rejected_because": "超出当前模块"}, {"name": "复制系统主数据", "rejected_because": "会产生双数据 Owner"}]},
+  "architecture": {"boundary": {"inside": ["测试管理配置", "菜单迁移", "专属前端页面"], "outside": ["项目、用户、物理子系统主数据", "后续测试业务页面"]}, "components": [{"name": "配置服务", "responsibility": "规则、事务、审计", "depends_on": ["平台项目/用户", "物理子系统只读数据"]}], "interfaces": [{"name": "/api/test-management/configuration/**", "producer": "TestConfigurationController", "consumers": ["TestConfigurationPage"], "contract": "认证、权限、范围校验后的统一 API 响应"}], "data_flows": [{"input": "大类、项目和配置表单", "transitions": ["服务端认证和范围校验", "事务写入和审计"], "output": "隔离的测试配置"}]},
+  "error_handling": [{"condition": "导入校验失败", "behavior": "返回逐行错误并不写入", "recovery": "用户修正后重试"}],
+  "quality_attributes": {"security": ["服务端 RBAC、租户和实体范围校验"], "performance": ["分页读取和数据库唯一索引"], "compatibility": ["保留营业日功能"], "operations": ["审计写操作"]},
+  "verification_strategy": [{"requirement_ids": ["R1", "R2", "R3", "R4"], "signal": "后端、构建、迁移和浏览器证据", "method": "自动化检查和真实用户路径"}],
+  "assumptions": [{"text": "每个项目暂时展示全部启用物理子系统", "basis": "用户确认", "falsifier": "架构模块提供项目—子系统关系"}],
+  "unknowns": [{"question": "架构关系字段和可见范围", "impact": "未来替换候选查询", "owner": "架构模块", "blocking": false}],
+  "decisions": [{"id": "D1", "decision": "采用全量候选的参测映射", "reason": "不等待后续架构关系", "source": "用户确认"}],
+  "risks": [{"risk": "配置将成为后续模块依赖", "impact": "接口稳定性要求高", "mitigation": "使用范围键、唯一约束与测试"}],
+  "approval": {"status": "approved", "evidence": "用户回复“确认”并已确认临时物理子系统规则", "confirmed_at": "2026-08-31T17:53:00+08:00"}
+}

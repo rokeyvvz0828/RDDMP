@@ -33,7 +33,7 @@ class RequirementDifferenceServiceTest {
     @Test
     void submitReviewTransitionsPendingToReviewingAndRecordsChange() {
         Fixture fixture = fixture(count -> 1L, row("待评审"));
-        fixture.service().submitReview(1L, List.of(2L, 3L), ADMIN);
+        fixture.service().submitReview(1L, List.of(2L, 3L), null, ADMIN);
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("review_status = '评审中'")));
         // changeLog.record 将 changeType 作为参数，断言 INSERT INTO req_change_log 被执行即可
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_change_log")));
@@ -45,7 +45,7 @@ class RequirementDifferenceServiceTest {
     void submitReviewOnReviewedThrowsConflict() {
         Fixture fixture = fixture(count -> 1L, row("已评审"));
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> fixture.service().submitReview(1L, List.of(2L), ADMIN));
+                () -> fixture.service().submitReview(1L, List.of(2L), null, ADMIN));
         assertEquals(ErrorCode.CONFLICT, exception.code());
     }
 
@@ -53,7 +53,7 @@ class RequirementDifferenceServiceTest {
     void submitReviewWithoutApproversThrowsBadRequest() {
         Fixture fixture = fixture(count -> 1L, row("待评审"));
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> fixture.service().submitReview(1L, List.of(), ADMIN));
+                () -> fixture.service().submitReview(1L, List.of(), null, ADMIN));
         assertEquals(ErrorCode.BAD_REQUEST, exception.code());
     }
 

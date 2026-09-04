@@ -65,23 +65,22 @@ class PhysicalSubsystemControllerTest {
     }
 
     @Test
-    void 列表保持路径分页并返回状态筛选和逻辑摘要() throws Exception {
+    void 列表保持路径分页并返回状态筛选和可选逻辑名称及业务组件() throws Exception {
         when(service.list(eq(ACTOR), any(PageQuery.class), any(PhysicalSubsystemQuery.class)))
                 .thenReturn(new PageResult<>(List.of(view()), 1L, 1L, 20L));
 
         mockMvc.perform(get("/api/architecture/physical-subsystems")
                         .param("code", "W0001").param("businessGroupName", "渠道")
-                        .param("responsibleTeamOrgId", "12").param("logicalSubsystemId", "101")
+                        .param("responsibleTeamOrgId", "12").param("logicalSubsystemName", "商城")
+                        .param("businessComponentCode", "architecture.business-component.employee-portal")
                         .param("status", "ACTIVE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.records[0].code").value("W00011"))
-                .andExpect(jsonPath("$.data.records[0].numberSlot").value("1"))
+                .andExpect(jsonPath("$.data.records[0].logicalSubsystemName").value("商城系统"))
+                .andExpect(jsonPath("$.data.records[0].businessComponentCode").value("architecture.business-component.employee-portal"))
                 .andExpect(jsonPath("$.data.records[0].englishName").value("Mall Platform"))
                 .andExpect(jsonPath("$.data.records[0].status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.records[0].rowVersion").value(4))
-                .andExpect(jsonPath("$.data.records[0].logicalSubsystemCode").value("A0001"))
-                .andExpect(jsonPath("$.data.records[0].logicalSubsystemNumberSequence").value(1))
-                .andExpect(jsonPath("$.data.records[0].logicalSubsystemStatus").value("OFFLINE"))
                 .andExpect(jsonPath("$.data.records[0].tenantId").doesNotExist());
     }
 
@@ -124,7 +123,8 @@ class PhysicalSubsystemControllerTest {
         assertPermission("list", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class,
-                String.class, String.class, String.class, Long.class, Long.class, String.class, AuthUser.class);
+                String.class, String.class, String.class, String.class, String.class, Long.class, String.class,
+                AuthUser.class);
         assertPermission("detail", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, AuthUser.class);
@@ -150,11 +150,13 @@ class PhysicalSubsystemControllerTest {
 
     private PhysicalSubsystemView view() {
         return new PhysicalSubsystemView(201L, "W00011", "商城物理", "商城物理平台",
-                101L, "A0001", "商城系统", "渠道", 12L, "平台研发团队", true,
+                "商城系统", "architecture.business-component.employee-portal", "渠道",
+                "architecture.deployment-platform.p2", "architecture.disaster-recovery.active-active",
+                12L, "平台研发团队", true,
                 "architecture.runtime.7x24", "A", "Spring", 30L, "系统负责人",
                 "描述", null, 9L, "架构管理员", 9L,
                 LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0),
-                "1", "Mall Platform", "ACTIVE", 4L, 1, "OFFLINE");
+                "Mall Platform", "ACTIVE", 4L);
     }
 
     private record AuthenticationPrincipalResolver(AuthUser actor) implements HandlerMethodArgumentResolver {

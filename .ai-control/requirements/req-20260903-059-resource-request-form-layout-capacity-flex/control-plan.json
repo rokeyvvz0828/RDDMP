@@ -1,0 +1,143 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T7",
+      "goal": "实现非数据库容量与部署区域的局部 Flex 自适应换行",
+      "requirement_ids": ["R13"],
+      "prerequisites": [],
+      "input_facts": [
+        "容量区当前使用通用数字网格且被资源申请编辑器覆盖为两列",
+        "数据库资源区共享通用数字网格但不属于本轮目标",
+        "桌面数字输入 160px 和 760px 以下满宽规则已存在"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/architecture.css",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T7.json"
+      ],
+      "invariants": [
+        "字段绑定、顺序、事件、计算、校验和请求不变",
+        "数据库资源区保持 Grid",
+        "桌面短数字输入和手机满宽不变",
+        "旧账本只读"
+      ],
+      "interface_contracts": [
+        "容量布局类只被 architecture.css 消费",
+        "选择字段首选宽度大于数值字段",
+        "摘要占满整行",
+        "760px 以下字段项满宽"
+      ],
+      "non_goals": [
+        "不修改状态逻辑、API、后端、公共 UI 或通用网格",
+        "不固定拆分字段行"
+      ],
+      "action_bounds": [
+        "Vue 仅增加容量容器和字段分类类",
+        "CSS 仅增加 architecture-resource-request-capacity-* 局部规则和手机覆盖",
+        "发现需修改共享 Grid 或业务逻辑时停止"
+      ],
+      "acceptance_checks": [
+        "构建退出 0",
+        "容量容器计算 display 为 flex 且 flex-wrap 为 wrap",
+        "1920 下每行尽量 3 至 4 项，选择字段宽于数值字段",
+        "摘要独占整行且数字输入仍为 140 至 180px",
+        "数据库资源区未命中容量 Flex"
+      ],
+      "evidence_required": [
+        "实际 diff 和提交哈希",
+        "构建、diff、样式扫描退出码",
+        "浏览器计算样式和字段位置数组",
+        "数据库区选择器命中证据"
+      ],
+      "rollback": "revert T7 产品提交",
+      "stop_conditions": [
+        "必须修改 scope 外产品文件",
+        "字段绑定或顺序需要改变",
+        "footer 或内容不可达",
+        "手机页面根溢出"
+      ],
+      "escalation_conditions": [
+        "用户要求固定每行数量",
+        "需要公共布局 token 或应用级断点",
+        "Element Plus 默认样式无法局部覆盖"
+      ]
+    },
+    {
+      "id": "T8",
+      "goal": "完成五视口明暗主题、业务请求回归和独立收敛",
+      "requirement_ids": ["R13"],
+      "prerequisites": ["T7"],
+      "input_facts": [
+        "T7 提供稳定 DOM、CSS 和产品提交",
+        "本地 Vite 与 Mock API 可运行资源申请 UAT",
+        "R1-R12 已有历史收敛证据"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/execution-T8.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T7.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/observation-T8.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout-capacity-flex/convergence.json"
+      ],
+      "invariants": [
+        "不连接生产或记录敏感信息",
+        "请求、权限、计算、校验和前两轮布局行为不变",
+        "旧账本哈希和 phase 不变"
+      ],
+      "interface_contracts": [
+        "页面根 scrollWidth 不超过 innerWidth",
+        "POST/PUT items[] 数量、顺序和字段值不变",
+        "footer 保持可见，超高内容在编辑器内部可达"
+      ],
+      "non_goals": [
+        "不修复范围外治理噪声",
+        "不自行合并、推送或发布"
+      ],
+      "action_bounds": [
+        "运行 S1-S4、构建、治理、scope、Network 和 Console 传感器",
+        "观察偏差时只允许回到 T7 两个产品文件纠偏"
+      ],
+      "acceptance_checks": [
+        "1920x1080、1280x800、375x812、390x844、430x932 明暗主题通过",
+        "Flex、字段宽度、摘要整行、手机满宽和滚动边界通过",
+        "DB/非 DB、计算、校验、申请项切换和 POST/PUT 无回归",
+        "scope 通过且 Console 无新增错误"
+      ],
+      "evidence_required": [
+        "五视口 DOM 指标和截图",
+        "脱敏 Network 与 Console",
+        "build、governance、scope 和 diff 退出码",
+        "两次独立采样和旧账本哈希"
+      ],
+      "rollback": "回退证据提交；产品 revert T7",
+      "stop_conditions": [
+        "UAT 服务无法恢复",
+        "请求、权限或计算变化",
+        "页面白屏、footer 不可达或页面根溢出",
+        "需要 scope 外修改"
+      ],
+      "escalation_conditions": [
+        "真实后端与 Mock 结论冲突",
+        "历史治理成为硬门禁",
+        "公共组件修改不可避免"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {"from":"T7","to":"T8","reason":"T8 的运行验收依赖 T7 已提交的稳定 DOM 和 CSS"}
+  ],
+  "parallel_groups": [["T7"],["T8"]],
+  "integration_points": [
+    {"after_tasks":["T7"],"checks":["S1 桌面计算样式和字段位置","S3 构建与代码边界"]},
+    {"after_tasks":["T7","T8"],"checks":["S1-S4 五视口、业务、请求、scope 和旧账本不变"]}
+  ],
+  "sampling_plan": [
+    {"label":"T7 完成采样","trigger":"T7 返回产品提交和局部浏览器结果","observer":"主 Agent 独立观察上下文","sensors":["S1","S3"],"requirement_ids":["R13"]},
+    {"label":"最终集成采样","trigger":"T8 完成五视口与业务回归","observer":"主 Agent 独立观察上下文","sensors":["S1","S2","S3","S4"],"requirement_ids":["R13"]}
+  ],
+  "coverage": [
+    {"requirement_id":"R13","task_ids":["T7","T8"],"sensor_ids":["S1","S2","S3","S4"]}
+  ],
+  "plan_status": "ready"
+}

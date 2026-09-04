@@ -13,6 +13,8 @@ import com.ccb.release.window.model.UpdateReleaseWindowRequest;
 import com.ccb.release.window.model.WindowFieldChange;
 import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,28 +33,38 @@ public class ReleaseWindowService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("yyyyMM");
     private final ReleaseWindowStore store;
+    private final ProjectAccessService projectAccessService;
     private final Clock clock;
 
     @Autowired
-    public ReleaseWindowService(ReleaseWindowStore store) { this(store, Clock.system(BUSINESS_ZONE)); }
-    ReleaseWindowService(ReleaseWindowStore store, Clock clock) { this.store = store; this.clock = clock; }
+    public ReleaseWindowService(ReleaseWindowStore store, ProjectAccessService projectAccessService) {
+        this(store, projectAccessService, Clock.system(BUSINESS_ZONE));
+    }
+    ReleaseWindowService(ReleaseWindowStore store, ProjectAccessService projectAccessService, Clock clock) {
+        this.store = store;
+        this.projectAccessService = projectAccessService;
+        this.clock = clock;
+    }
 
     public PageResult<ReleaseWindowResponse> list(long page, long size, String projectId, String keyword, AuthUser user) {
-        PageResult<ReleaseWindow> result = store.findPage(user.tenantId(), projectId, keyword, new PageQuery(page, size));
+        ProjectAccess project = projectAccessService.requireAccessible(projectId, user);
+        PageResult<ReleaseWindow> result = store.findPage(user.tenantId(), project.projectRef(), keyword, new PageQuery(page, size));
         return new PageResult<>(result.records().stream().map(this::response).toList(), result.total(), result.page(), result.size());
     }
 
     public ReleaseWindowResponse detail(long id, AuthUser user) {
-        return response(requireWindow(id, user.tenantId(), false));
+        return response(requireWindow(id, user, false));
     }
 
     @Transactional
     public ReleaseWindowResponse create(CreateReleaseWindowRequest request, AuthUser user) {
         if (request == null) throw badRequest("投产窗口信息不能为空");
         String name = required(request.windowName(), "窗口名称", 128);
-        String projectId = required(request.projectId(), "项目标识", 64);
-        String projectCode = required(request.projectCode(), "项目编码", 64);
-        String projectName = required(request.projectName(), "项目名称", 128);
+        ProjectAccess project = projectAccessService.requireAccessible(request.projectId(), user);
+        requireProjectSnapshot(project, request.projectCode(), request.projectName());
+        String projectId = project.projectRef();
+        String projectCode = project.projectRef();
+        String projectName = project.projectName();
         validateTimes(request.declarationStart(), request.declarationEnd(), request.productionStart(), request.productionEnd());
         store.lockProjectWindows(user.tenantId(), projectId);
         ensureNoOverlap(user.tenantId(), projectId, request.declarationStart(), request.productionEnd(), null);
@@ -70,7 +82,7 @@ public class ReleaseWindowService {
     @Transactional
     public ReleaseWindowResponse update(long id, UpdateReleaseWindowRequest request, AuthUser user) {
         if (request == null) throw badRequest("投产窗口信息不能为空");
-        ReleaseWindow snapshot = requireWindow(id, user.tenantId(), false);
+        ReleaseWindow snapshot = requireWindow(id, user, false);
         requireExpectedVersion(request.rowVersion(), snapshot.rowVersion());
         ensureImmutable(snapshot, request.windowCode(), request.projectId(), request.projectCode(), request.projectName());
         String reason = required(request.changeReason(), "修改原因", 500);
@@ -78,7 +90,7 @@ public class ReleaseWindowService {
         if (request.regularEnabled() == null) throw badRequest("常规版本申请开关不能为空");
         validateTimes(request.declarationStart(), request.declarationEnd(), request.productionStart(), request.productionEnd());
         store.lockProjectWindows(user.tenantId(), snapshot.projectId());
-        ReleaseWindow current = requireWindow(id, user.tenantId(), true);
+        ReleaseWindow current = requireWindow(id, user, true);
         requireExpectedVersion(request.rowVersion(), current.rowVersion());
         ensureImmutable(current, request.windowCode(), request.projectId(), request.projectCode(), request.projectName());
         ensureNoOverlap(user.tenantId(), snapshot.projectId(), request.declarationStart(), request.productionEnd(), id);
@@ -96,7 +108,7 @@ public class ReleaseWindowService {
     @Transactional
     public ReleaseWindowResponse changeRegularEnabled(long id, ChangeRegularEnabledRequest request, AuthUser user) {
         if (request == null || request.regularEnabled() == null) throw badRequest("常规版本申请开关不能为空");
-        ReleaseWindow current = requireWindow(id, user.tenantId(), true);
+        ReleaseWindow current = requireWindow(id, user, true);
         requireExpectedVersion(request.rowVersion(), current.rowVersion());
         String reason = required(request.changeReason(), "修改原因", 500);
         if (current.regularEnabled() == request.regularEnabled()) return response(current);
@@ -110,12 +122,22 @@ public class ReleaseWindowService {
         return response(store.findById(id, user.tenantId()).orElse(updated));
     }
 
-    private ReleaseWindow requireWindow(long id, long tenantId, boolean forUpdate) {
-        var window = forUpdate ? store.findByIdForUpdate(id, tenantId) : store.findById(id, tenantId);
-        if (window.isPresent()) return window.get();
+    private ReleaseWindow requireWindow(long id, AuthUser user, boolean forUpdate) {
+        var window = forUpdate ? store.findByIdForUpdate(id, user.tenantId()) : store.findById(id, user.tenantId());
+        if (window.isPresent()) {
+            projectAccessService.requireAccessible(window.get().projectId(), user);
+            return window.get();
+        }
         var owner = store.findTenantId(id);
-        if (owner.isPresent() && owner.getAsLong() != tenantId) throw new BusinessException(ErrorCode.FORBIDDEN, "无权访问该投产窗口");
+        if (owner.isPresent() && owner.getAsLong() != user.tenantId()) throw new BusinessException(ErrorCode.FORBIDDEN, "无权访问该投产窗口");
         throw badRequest("投产窗口不存在");
+    }
+
+    private void requireProjectSnapshot(ProjectAccess project, String projectCode, String projectName) {
+        if (!Objects.equals(project.projectRef(), normalized(projectCode))
+                || !Objects.equals(project.projectName(), normalized(projectName))) {
+            throw badRequest("项目信息与当前项目不一致，请刷新后重试");
+        }
     }
 
     private void ensureImmutable(ReleaseWindow current, String code, String projectId, String projectCode, String projectName) {
@@ -196,6 +218,10 @@ public class ReleaseWindowService {
         if (normalized.isEmpty()) throw badRequest(label + "不能为空");
         if (normalized.length() > max) throw badRequest(label + "长度不能超过 " + max);
         return normalized;
+    }
+
+    private String normalized(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private String optional(String value, int max) {

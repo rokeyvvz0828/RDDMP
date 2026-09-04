@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-release-project-scope",
+  "task_id": "T1",
+  "phase": "controlling",
+  "recorded_at": "2026-08-31T18:54:19+08:00",
+  "status": "implemented",
+  "actual_changes": [
+    "新增 ProjectAccess 与 ProjectAccessService 公开只读契约",
+    "新增 JdbcProjectAccessService internal 实现，按租户和项目编码解析未删除项目，并校验超级管理员或有效项目成员",
+    "新增 5 个项目访问单元测试",
+    "声明 business/release 对 platform/system 的治理和 Maven 依赖"
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am -Dtest=JdbcProjectAccessServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "result": "默认 Maven 使用 JDK 26，Mockito/Byte Buddy 不支持，属于环境扰动"},
+    {"command": "JAVA_HOME=OpenJDK17 mvn -pl :ccb-system -am -Dtest=JdbcProjectAccessServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "result": "passed; 5 tests, 0 failures, 0 errors"},
+    {"command": "node scripts/check-all-governance.mjs", "result": "module governance、repository skill 和 development entry 通过；全仓被历史账本问题阻断"},
+    {"command": "git diff --check -- <T1 files>", "result": "passed"}
+  ],
+  "constraints_checked": [
+    "公开 capability 包只包含接口和只读模型，JDBC 实现在 internal",
+    "项目生命周期状态与顶部项目列表一致，不额外过滤 COMPLETED 或 SUSPENDED",
+    "租户和用户来自 AuthUser",
+    "未修改数据库、既有 ProjectService 或用户未关联改动"
+  ],
+  "disturbances": [
+    "本机 Maven 默认 JDK 26 与当前 Mockito/Byte Buddy 不兼容；使用项目要求的 JDK 17 后测试通过",
+    "全仓 AI control 检查存在多个历史任务账本问题；本任务自身未新增布局错误"
+  ],
+  "open_items": []
+}

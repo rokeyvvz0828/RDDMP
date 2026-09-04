@@ -24,20 +24,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @Testcontainers
 class NetworkAccessMigrationMySqlTest {
+    private static final String DATABASE = "network_access_lifecycle";
+
     @Container
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
-            .withDatabaseName("network_access_lifecycle")
+            .withDatabaseName(DATABASE)
             .withUsername("test")
             .withPassword("test");
 
     @BeforeEach
-    void cleanDatabase() {
-        flyway("105").clean();
+    void cleanDatabase() throws Exception {
+        configureProjectCollation();
+        flyway("116").clean();
+        configureProjectCollation();
     }
 
     @Test
-    void migratesToV105WithDecisionLifecycleTablesAndSeedData() throws Exception {
-        assertTrue(flyway("105").migrate().success);
+    void migratesToV116WithDecisionLifecycleTablesAndSeedData() throws Exception {
+        assertTrue(flyway("116").migrate().success);
 
         try (Connection connection = DriverManager.getConnection(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
@@ -82,8 +86,8 @@ class NetworkAccessMigrationMySqlTest {
     }
 
     @Test
-    void migratesLegacyAccessRowsWithMissingValidFromToV105() throws Exception {
-        assertTrue(flyway("103").migrate().success);
+    void migratesLegacyAccessRowsWithMissingValidFromToV116() throws Exception {
+        assertTrue(flyway("114").migrate().success);
 
         try (Connection connection = DriverManager.getConnection(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
@@ -109,7 +113,7 @@ class NetworkAccessMigrationMySqlTest {
                     + "'历史长期缺开始', NULL, NULL, 'ACTIVE', 1, 1)");
         }
 
-        assertTrue(flyway("105").migrate().success);
+        assertTrue(flyway("116").migrate().success);
 
         try (Connection connection = DriverManager.getConnection(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
@@ -148,6 +152,15 @@ class NetworkAccessMigrationMySqlTest {
             cursor = cursor.getParent();
         }
         throw new IllegalStateException("找不到 Flyway 迁移目录");
+    }
+
+    private void configureProjectCollation() throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             Statement statement = connection.createStatement()) {
+            statement.execute("ALTER DATABASE `" + DATABASE
+                    + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        }
     }
 
     private long count(Connection connection, String sql) throws Exception {

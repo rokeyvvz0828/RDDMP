@@ -99,8 +99,7 @@ public class EnvironmentResourceStore {
     private static final String ITEM_COLUMNS = """
             item.id, item.tenant_id, item.request_id, item.item_seq, item.deployment_unit_id,
             unit.code AS deployment_unit_code, unit.name AS deployment_unit_name,
-            unit.kind AS deployment_unit_kind, item.related_deployment_unit_name,
-            item.deployment_unit_description, item.deployment_unit_type,
+            unit.kind AS deployment_unit_kind, item.deployment_unit_description,
             item.database_storage_gb, item.storage_gb AS file_storage_gb,
             item.network_zone_id, COALESCE(item.network_zone_name, item.network_zone) AS network_zone_name,
             item.network_zone, item.server_type, item.cpu_cores, item.memory_gb,
@@ -169,9 +168,7 @@ public class EnvironmentResourceStore {
             rs.getString("deployment_unit_code"),
             rs.getString("deployment_unit_name"),
             rs.getString("deployment_unit_kind"),
-            rs.getString("related_deployment_unit_name"),
             rs.getString("deployment_unit_description"),
-            rs.getString("deployment_unit_type"),
             decimal(rs, "database_storage_gb"),
             decimal(rs, "file_storage_gb"),
             nullableLong(rs, "network_zone_id"),
@@ -331,16 +328,14 @@ public class EnvironmentResourceStore {
     }
 
     public record DeploymentUnitRef(long id, String code, String name, String kind, String status,
-                                    long physicalSubsystemId, String relatedDeploymentUnitName,
-                                    String deploymentUnitType, String description,
+                                    long physicalSubsystemId, String description,
                                     Long defaultNetworkZoneId, String defaultNetworkZoneName,
                                     Long currentVersionId, int currentVersion) {
         public DeploymentUnitRef(long id, String code, String name, String kind, String status,
-                                 long physicalSubsystemId, String relatedDeploymentUnitName,
-                                 String deploymentUnitType, String description,
+                                 long physicalSubsystemId, String description,
                                  Long currentVersionId, int currentVersion) {
-            this(id, code, name, kind, status, physicalSubsystemId, relatedDeploymentUnitName,
-                    deploymentUnitType, description, null, null, currentVersionId, currentVersion);
+            this(id, code, name, kind, status, physicalSubsystemId,
+                    description, null, null, currentVersionId, currentVersion);
         }
     }
 
@@ -543,7 +538,7 @@ public class EnvironmentResourceStore {
     public Optional<DeploymentUnitRef> findDeploymentUnit(long tenantId, long deploymentUnitId) {
         return jdbc.query("""
                 SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id,
-                       unit.related_deployment_unit_name, unit.deployment_unit_type, unit.description,
+                       unit.description,
                        unit.default_network_zone_id, unit.default_network_zone_name,
                        version.id AS current_version_id, unit.current_version
                 FROM arch_deployment_unit unit
@@ -554,8 +549,7 @@ public class EnvironmentResourceStore {
                 WHERE unit.tenant_id = ? AND unit.id = ?
                 """, (rs, rowNum) -> new DeploymentUnitRef(rs.getLong("id"), rs.getString("code"),
                 rs.getString("name"), rs.getString("kind"), rs.getString("status"),
-                rs.getLong("physical_subsystem_id"), rs.getString("related_deployment_unit_name"),
-                rs.getString("deployment_unit_type"), rs.getString("description"),
+                rs.getLong("physical_subsystem_id"), rs.getString("description"),
                 nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
                 nullableLong(rs, "current_version_id"), rs.getInt("current_version")),
                 tenantId, deploymentUnitId).stream().findFirst();
@@ -564,7 +558,7 @@ public class EnvironmentResourceStore {
     public List<DeploymentUnitRef> listDeploymentUnits(long tenantId, long physicalSubsystemId, int limit) {
         return jdbc.query("""
                 SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id,
-                       unit.related_deployment_unit_name, unit.deployment_unit_type, unit.description,
+                       unit.description,
                        unit.default_network_zone_id, unit.default_network_zone_name,
                        version.id AS current_version_id, unit.current_version
                 FROM arch_deployment_unit unit
@@ -577,8 +571,7 @@ public class EnvironmentResourceStore {
                 LIMIT ?
                 """, (rs, rowNum) -> new DeploymentUnitRef(rs.getLong("id"), rs.getString("code"),
                 rs.getString("name"), rs.getString("kind"), rs.getString("status"),
-                rs.getLong("physical_subsystem_id"), rs.getString("related_deployment_unit_name"),
-                rs.getString("deployment_unit_type"), rs.getString("description"),
+                rs.getLong("physical_subsystem_id"), rs.getString("description"),
                 nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
                 nullableLong(rs, "current_version_id"), rs.getInt("current_version")),
                 tenantId, physicalSubsystemId, limit);
@@ -670,18 +663,16 @@ public class EnvironmentResourceStore {
             jdbc.update("""
                     INSERT INTO arch_resource_request_item
                         (id, tenant_id, request_id, item_seq, deployment_unit_id,
-                         related_deployment_unit_name, deployment_unit_description,
-                         deployment_unit_type, database_storage_gb,
+                         deployment_unit_description, database_storage_gb,
                          storage_gb, network_zone_id, network_zone_name, network_zone,
                          server_type, cpu_cores, memory_gb,
                          app_web_group_count, planned_node_count, sidecar_cpu_cores,
                          sidecar_memory_gb, has_sidecar, database_name, database_version,
                          jdk_version, middleware, operating_system, extra_cbs_gb, local_disk_gb,
                          needs_nft, needs_fserver, needs_jobexecutor, remark)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, item.id(), item.tenantId(), item.requestId(), item.itemSeq(),
-                    item.deploymentUnitId(), item.relatedDeploymentUnitName(),
-                    item.deploymentUnitDescription(), item.deploymentUnitType(),
+                    item.deploymentUnitId(), item.deploymentUnitDescription(),
                     item.databaseStorageGb(), item.fileStorageGb(),
                     item.networkZoneId(), item.networkZoneName(), item.networkZone(),
                     item.serverType(), item.cpuCores(), item.memoryGb(),

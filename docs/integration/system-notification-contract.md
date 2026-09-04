@@ -37,7 +37,9 @@ public class DeliveryService {
                 NotificationLevel.INFO,
                 "测试流转",
                 "/delivery-showcase/projects",
-                operatorId));
+                operatorId,
+                projectCode,
+                "平台能力升级项目"));
     }
 }
 ```
@@ -58,15 +60,21 @@ public class DeliveryService {
 | `sourceName` | 消息触发来源，最长 128 字符，例如 `审批中心`；不得代替业务板块 |
 | `actionPath` | 可空；非空时必须为 `/` 开头的站内路由 |
 | `actorUserId` | 可空；非空时必须是同租户有效用户，用于发布审计 |
+| `projectRef` / `projectName` | 可空但必须同时提供或同时为空；长度上限分别为 64 / 128。非空时是通知产生时的项目展示快照，为空表示平台全局消息 |
+
+为保持既有发布方源码兼容，`NotificationPublishCommand` 保留原 13 参数构造器，并将两个项目字段初始化为空。业务明确属于项目时应使用完整构造器传入可靠项目上下文；不得根据标题、路由或业务主键推断项目。
 
 ## 幂等与事务
 
 - 幂等范围是 `(tenantId, businessType, eventId)`。业务重试必须复用同一 `eventId`；新事件不得复用旧标识。
 - 首次发布时固化消息内容和接收人。重复发布返回原通知编号，不追加或替换接收人。
+- 项目上下文同样在首次发布时固化；重复事件不会覆盖首次项目快照。
 - 发布方法参与调用方事务；业务事务回滚时通知写入一并回滚。异步消费方应使用自己的稳定事件标识重试。
 - 发布成功写入 `sys_operation_log`，日志只记录业务类型和通知编号，不记录通知正文。
 
 `moduleCode/moduleName`、`sourceName` 和 `businessType` 含义独立。以配置管理审批通知为例，三者分别为 `release / 配置管理`、`审批中心`、`release_application`，前端展示为 `配置管理 · 审批中心`。业务模块必须在发布或启动工作流时显式提供板块信息，不得由前端根据路由或标题推导。
+
+消息中心保持租户内、用户维度的全局通知视图，不按顶部当前项目过滤。每条项目消息显示 `所属项目：<projectName>`；没有项目上下文的通知显示 `所属范围：平台全局`。项目字段只用于归属展示，不替代项目访问权限或业务数据范围校验。
 
 ## 用户接口
 

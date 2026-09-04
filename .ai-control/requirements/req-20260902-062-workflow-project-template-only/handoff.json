@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260902-062-workflow-project-template-only",
+  "handoff_status": "approved",
+  "created_at": "2026-09-02T14:15:06+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260902-062-workflow-project-template-only",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-02-workflow-project-template-only-design.md",
+    "objective": "用户可见的工作流只保留全局模板和项目流程，并为平台能力升级项目安全生成存量流程的项目草稿。",
+    "users": ["工作流管理员", "项目流程管理员", "审批发起人", "历史实例审批人"],
+    "requirements": [
+      {"id":"R1","statement":"流程定义页和管理 API 仅暴露本项目流程与全局模板，不显示重复项目标签。","acceptance":["双分区页面","PLATFORM 管理请求被拒绝"],"priority":"must","source":"用户批准设计","counterexample":["仍可切换或新建平台流程"]},
+      {"id":"R2","statement":"11 条 PLATFORM 均复制为不含具体人员的 TEMPLATE 草稿。","acceptance":["模板基数为 11","JSON 不含具体办理人配置"],"priority":"must","source":"用户批准设计","counterexample":["模板保留 USER/ROLE/VARIABLE 目标"]},
+      {"id":"R3","statement":"仅 RDDMP-PLATFORM 生成对应 PROJECT 草稿。","acceptance":["目标项目 11 条","其他项目 0 条迁移草稿"],"priority":"must","source":"用户批准设计","counterexample":["为其他项目批量生成"]},
+      {"id":"R4","statement":"项目草稿占位可保存，但必须解析为有效项目成员或角色后才能发布。","acceptance":["占位保存成功","占位发布失败","有效配置发布成功"],"priority":"must","source":"用户批准设计","counterexample":["占位流程发布或运行"]},
+      {"id":"R5","statement":"新请求优先项目流程，项目流程发布后不再启动同编码旧平台流程。","acceptance":["按编码入口选择项目定义","显式旧平台 ID 入口重选项目定义","未发布时兼容回退"],"priority":"must","source":"用户批准设计","counterexample":["发布项目流程后仍产生平台实例"]},
+      {"id":"R6","statement":"已有运行中和历史实例保留原定义与版本，可继续查看和审批。","acceptance":["迁移前后实例引用快照一致","旧实例监控和审批回归通过"],"priority":"must","source":"用户批准设计","counterexample":["重写实例定义或版本"]},
+      {"id":"R7","statement":"仅追加 V136，迁移防重且不修改历史迁移。","acceptance":["V134/V135 无 diff","第二次 migrate 无新增数据"],"priority":"must","source":"用户批准设计","counterexample":["修改历史迁移或手工改库"]}
+    ],
+    "invariants": ["模板不可发布或启动", "项目人员权限由后端最终校验", "不改写 Flowable ACT 表或历史实例外键", "兼容 PLATFORM 不向工作流管理用户暴露"],
+    "constraints": ["Java 17", "Spring Boot 3.4.4", "MySQL 8.4", "Flyway 只追加", "Vue 3 + TypeScript", "仅修改任务范围授权文件"],
+    "non_goals": ["为其他项目批量生成流程", "自动推断审批人或角色映射", "迁移已运行实例到新定义", "立即物理删除 PLATFORM 记录"],
+    "selected_approach": {"name":"复制迁移并隐藏兼容记录","reason":"保护历史和运行实例引用，同时把新管理模型收敛为模板与项目流程。","alternatives":[{"name":"原地改写","reason":"破坏实例和版本语义"},{"name":"自动人员映射","reason":"系统角色与项目角色不等价"}]},
+    "architecture": {
+      "boundary": {"inside":["V136 数据复制","workflow 管理与启动服务","工作流定义页"],"outside":["业务模块流程编码","Flowable ACT 表","项目成员数据所有权"]},
+      "components": ["Flyway migration", "WorkflowService", "WorkflowBusinessIntegrationService", "WorkflowView"],
+      "interfaces": ["/api/workflows/definitions", "WorkflowGateway", "WorkflowProjectAccessGateway"],
+      "data_flows": ["PLATFORM 最新版本 -> 无人员 TEMPLATE/PROJECT 草稿", "业务项目+流程编码 -> PROJECT 优先、PLATFORM 回退"]
+    },
+    "error_handling": ["PLATFORM 管理请求返回业务错误", "项目占位发布返回待配置错误", "无可运行流程时错误包含项目名称与流程编码"],
+    "quality_attributes": {"security":["服务端项目人员校验"],"performance":["列表一次查询投影待配置状态"],"compatibility":["旧实例和平台回退"],"operations":["MySQL 8.4 迁移基数检查和补偿迁移回退"]},
+    "verification_strategy": ["MySQL 8.4 Flyway 迁移", "工作流聚焦和全量测试", "Vue 构建", "桌面与手机浏览器验收"],
+    "assumptions": [{"text":"V135 基准有 11 条平台定义且目标项目唯一","basis":"当前数据库勘察","falsifier":"迁移测试基数或唯一性查询不符"}],
+    "unknowns": [],
+    "decisions": [{"id":"D1","decision":"旧平台定义只隐藏不删除","reason":"运行实例兼容","source":"用户批准"},{"id":"D2","decision":"只为 RDDMP-PLATFORM 生成项目草稿","reason":"用户明确指定","source":"用户批准"}],
+    "risks": ["显式平台定义 ID 启动绕过项目优先", "迁移 JSON 清理不完整", "项目成员在保存与发布之间失效"],
+    "approval": {"status":"approved","evidence":"用户于 2026-09-02 回复‘可以’，批准只为平台能力升级项目生成并采用隐藏兼容方案。","confirmed_at":"2026-09-02T14:15:06+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-02-workflow-project-template-only-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["只追加 V136", "不改旧定义/版本/实例", "只生成 RDDMP-PLATFORM 项目草稿", "模板不可执行", "后端最终校验项目人员", "PROJECT 优先且 PLATFORM 仅回退"],
+    "file_map": [
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V136__retire_platform_workflow_management.sql","status":"candidate-new","responsibility":"复制并清理存量平台流程","evidence":"V135 为当前最新迁移"},
+      {"path":"server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java","status":"existing","responsibility":"定义管理与发布校验","evidence":"当前定义 CRUD 和范围校验实现"},
+      {"path":"server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java","status":"existing","responsibility":"业务启动定义选择","evidence":"当前 PROJECT 优先 PLATFORM 回退查询"},
+      {"path":"web/src/views/WorkflowView.vue","status":"existing","responsibility":"定义管理页面","evidence":"当前三范围页签和重复项目标签"}
+    ],
+    "tasks": [
+      {
+        "id":"T1","goal":"V136 安全生成模板和目标项目草稿且旧引用不变","requirement_ids":["R2","R3","R6","R7"],"prerequisites":[],
+        "input_facts":["V135 引入 PLATFORM/TEMPLATE/PROJECT","当前有 11 条 PLATFORM","目标项目 ID 为 910000000003001"],
+        "files":{"create":["server/src/platform/infrastructure/src/main/resources/db/migration/V136__retire_platform_workflow_management.sql","server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementMigrationMySqlTest.java"],"modify":["server/src/platform/workflow/pom.xml"],"test":["server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementMigrationMySqlTest.java"]},
+        "interfaces":{"consumes":["wf_definition/wf_version/wf_instance at V135"],"produces":["11 TEMPLATE drafts","11 RDDMP-PLATFORM PROJECT drafts","unchanged legacy references"]},
+        "steps":[{"id":"T1-S1","action":"建立 V135 到 V136 失败迁移测试","command":"mvn -pl :ccb-workflow -am -Dtest=WorkflowPlatformRetirementMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test","expected":"因 V136 缺失或数据断言失败","evidence":"失败断言"},{"id":"T1-S2","action":"追加 V136 数据复制和 JSON 清理","command":null,"expected":"只插入防重草稿，不更新旧数据","evidence":"SQL diff"},{"id":"T1-S3","action":"复验迁移与历史引用","command":"mvn -pl :ccb-workflow -am -Dtest=WorkflowPlatformRetirementMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test","expected":"零失败且基数/JSON/引用断言通过","evidence":"Surefire 摘要"}],
+        "acceptance_checks":["11 模板","仅目标项目 11 草稿","无具体办理人","旧实例引用一致","再次 migrate 无新增"],
+        "risks":["确定性 ID 冲突","JSON 节点顺序变化"],"rollback":"保留 V136 数据并回退代码；清理使用后续补偿迁移。","stop_conditions":["平台基数不是 11","目标项目不唯一","预留 ID 已占用","JSON 无法无损重建"],"escalation_conditions":["需要修改历史迁移或 Flowable 表","需要自动人员映射"]
+      },
+      {
+        "id":"T2","goal":"平台定义退出管理面且所有新启动入口项目优先","requirement_ids":["R1","R4","R5","R6"],"prerequisites":["T1"],
+        "input_facts":["WorkflowService 当前允许三类管理范围","startByCode 当前项目优先但显式 ID 不重选"],
+        "files":{"create":["server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementTest.java"],"modify":["server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java","server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowBusinessIntegrationService.java","server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java","server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTemplateScopeTest.java","server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java"],"test":["server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementTest.java","server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTemplateScopeTest.java","server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowBusinessIntegrationServiceTest.java"]},
+        "interfaces":{"consumes":["T1 migrated drafts","WorkflowProjectAccessGateway"],"produces":["PROJECT/TEMPLATE-only management","requires_configuration","PROJECT-first runtime selection"]},
+        "steps":[{"id":"T2-S1","action":"建立管理、发布和选路失败测试","command":"mvn -pl :ccb-workflow -am -Dtest=WorkflowPlatformRetirementTest,WorkflowTemplateScopeTest,WorkflowBusinessIntegrationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test","expected":"新增行为断言失败","evidence":"失败测试名"},{"id":"T2-S2","action":"实现管理隐藏和草稿/发布两阶段校验","command":null,"expected":"占位可保存但不可发布，PLATFORM 不可管理","evidence":"服务 diff 与错误断言"},{"id":"T2-S3","action":"实现按编码与显式 ID 的项目优先选择","command":null,"expected":"同编码 PROJECT 发布后不启动 PLATFORM","evidence":"定义 ID 断言"},{"id":"T2-S4","action":"运行工作流模块回归","command":"mvn -pl :ccb-workflow -am test","expected":"零失败","evidence":"Surefire 汇总"}],
+        "acceptance_checks":["管理面无 PLATFORM","占位发布失败","成员失效发布失败","两个启动入口项目优先","旧平台可回退"],
+        "risks":["业务绑定显式 ID 语义变化"],"rollback":"回退 Java 文件，保留迁移草稿和旧平台数据。","stop_conditions":["新启动入口无法提供项目上下文","显式 ID 重选破坏确认的业务语义"],"escalation_conditions":["需要修改业务模块 API 或项目权限契约"]
+      },
+      {
+        "id":"T3","goal":"交付双范围页面、待配置体验和完整回归","requirement_ids":["R1","R4"],"prerequisites":["T2"],
+        "input_facts":["WorkflowView 当前展示三范围和重复项目标签","T2 提供 requires_configuration"],
+        "files":{"create":[],"modify":["web/src/api/workflow.ts","web/src/components/workflow/WorkflowNodeInspector.vue","web/src/views/WorkflowView.vue","docs/integration/workflow-module-contract.md"],"test":[]},
+        "interfaces":{"consumes":["PROJECT/TEMPLATE list API","requires_configuration"],"produces":["双范围桌面/移动页面","待配置草稿编辑体验"]},
+        "steps":[{"id":"T3-S1","action":"记录前端构建基准并更新类型","command":"npm --prefix web run build","expected":"基准通过","evidence":"构建退出码"},{"id":"T3-S2","action":"移除平台入口和重复项目标签并增加待配置交互","command":null,"expected":"用户可见页面仅两个范围","evidence":"Vue diff 与文案搜索"},{"id":"T3-S3","action":"执行全量静态与回归检查","command":"npm --prefix web run build && mvn test && node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260902-062-workflow-project-template-only/codex-task-scope.yaml --base HEAD --head HEAD --working-tree","expected":"全部退出码 0","evidence":"命令摘要"},{"id":"T3-S4","action":"执行桌面和三个手机视口浏览器验收","command":"browser verification at 127.0.0.1:5173","expected":"双分区、待配置和发布路径可达且无溢出/控制台错误","evidence":"截图和控制台结果"}],
+        "acceptance_checks":["无平台流程入口/文案","无重复项目标签","待配置状态清楚","移动端无横向溢出"],
+        "risks":["移动端设计器操作空间不足"],"rollback":"回退前端和契约文档，保留后端保护。","stop_conditions":["后端无待配置投影","目标项目无成员/角色可供验收","移动端无法完成配置"],"escalation_conditions":["需要修改公共 UI 或顶层项目选择器"]
+      }
+    ],
+    "dependency_edges": [{"from":"T1","to":"T2","reason":"后端约束和运行选路必须以 V136 生成的数据形态为基准。"},{"from":"T2","to":"T3","reason":"前端待配置状态和错误交互依赖后端字段与发布契约。"}],
+    "parallel_groups": [["T1"],["T2"],["T3"]],
+    "integration_checks": [{"after_tasks":["T1"],"command":"mvn -pl :ccb-workflow -am -Dtest=WorkflowPlatformRetirementMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test","expected":"V136 数据和兼容断言通过"},{"after_tasks":["T2"],"command":"mvn -pl :ccb-workflow -am test","expected":"工作流模块零失败"},{"after_tasks":["T3"],"command":"mvn test && npm --prefix web run build && node scripts/check-all-governance.mjs","expected":"全量测试、构建和治理通过"}],
+    "coverage": [{"requirement_id":"R1","task_ids":["T2","T3"]},{"requirement_id":"R2","task_ids":["T1"]},{"requirement_id":"R3","task_ids":["T1"]},{"requirement_id":"R4","task_ids":["T2","T3"]},{"requirement_id":"R5","task_ids":["T2"]},{"requirement_id":"R6","task_ids":["T1","T2"]},{"requirement_id":"R7","task_ids":["T1"]}],
+    "approval": {"status":"approved","evidence":"用户于 2026-09-02 回复‘批注实施计划’，结合上一轮明确请求，确认批准实施计划及其中的高风险迁移与启动选路。","confirmed_at":"2026-09-02T14:31:01+08:00"}
+  },
+  "control_seed": {
+    "seed_status":"hypotheses-only",
+    "plant_boundary_candidates":["定义管理与迁移复制","新实例定义选择","旧实例兼容"],
+    "state_variable_candidates":["scope_type","project_id","status","definition_json assigneeType","instance definition_id/version_no"],
+    "interface_candidates":["workflow REST API","WorkflowGateway","WorkflowProjectAccessGateway","Flyway"],
+    "sensor_candidates":["MySQL 8.4 migration test","workflow unit tests","full Maven regression","Vue build","browser viewports"],
+    "actuator_candidates":["V136 inserts","scope validation","publish validation","runtime selector","Vue segmented control"],
+    "disturbance_candidates":["legacy platform status","existing same-code drafts","member deactivation","explicit platform binding","concurrent publish"],
+    "delay_candidates":["Flyway startup","Flowable deployment","member changes between save and publish"],
+    "assumptions":[{"text":"V135 contains 11 active PLATFORM definitions and one target project","basis":"current database inspection","falsifier":"migration test reports a different count or duplicate target project"}]
+  }
+}

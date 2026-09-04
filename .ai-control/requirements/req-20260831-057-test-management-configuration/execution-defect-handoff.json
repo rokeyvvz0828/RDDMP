@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260831-057-test-management-configuration",
+  "handoff_status": "approved",
+  "created_at": "2026-09-01T09:00:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260831-057-test-management-configuration",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-01-test-management-execution-defect-design.md",
+    "objective": "在四个测试大类中交付可追溯的执行与缺陷闭环。",
+    "users": ["测试人员、测试经理、测试管理、机构负责人、开发人员"],
+    "requirements": [
+      {"id":"R1","statement":"四大类提供独立执行菜单和只读轮次周期执行树。","acceptance":["菜单、路由和只读树可达"],"priority":"must","source":"用户确认的模块6","counterexample":["执行页可新增轮次或周期"]},
+      {"id":"R2","statement":"执行支持三种预览导入并拒绝无效或同目录重复案例。","acceptance":["预览与确认导入行为可测"],"priority":"must","source":"用户确认的模块6.2","counterexample":["预览直接写入或导入无效案例"]},
+      {"id":"R3","statement":"执行记录实时引用案例，支持结果、附件、轨迹、筛选和导出。","acceptance":["保存后执行人、时间和轨迹更新"],"priority":"must","source":"用户确认的模块6.1/6.3","counterexample":["无效或阻塞状态无需备注"]},
+      {"id":"R4","statement":"失败必须关联缺陷，批量、移动和移除按关联规则执行。","acceptance":["失败无缺陷被拒绝，未解决关联阻断移除"],"priority":"must","source":"用户确认的模块6","counterexample":["移除记录级联删除缺陷"]},
+      {"id":"R5","statement":"缺陷提供新建、筛选、导出、详情和编号恒定行为。","acceptance":["BUG编号生成后系统变更仍恒定"],"priority":"must","source":"用户确认的模块7.1/7.3","counterexample":["列表默认包含已解决缺陷"]},
+      {"id":"R6","statement":"缺陷状态机和执行关联快照在服务端按角色控制。","acceptance":["无权流转拒绝，解除关系转快照"],"priority":"must","source":"用户确认的模块7.2","counterexample":["快照仍可跳转已移除执行记录"]},
+      {"id":"R7","statement":"写入具备隔离、RBAC、审计、删除保护和恢复。","acceptance":["跨边界请求和受保护删除被拒绝"],"priority":"must","source":"用户确认及项目规则","counterexample":["仅以前端隐藏保护写操作"]},
+      {"id":"R8","statement":"前端复用全局项目、紧凑树和通用表格，并使用居中弹窗。","acceptance":["无第二项目选择器、无抽屉、移动无横向页面滚动"],"priority":"must","source":"用户确认及既有模块风格","counterexample":["新增独立项目下拉或抽屉"]}
+    ],
+    "invariants": ["缺陷与执行记录为平级1:N关联", "缺陷编号恒定", "不修改公共UI和平台附件", "V127只追加"],
+    "constraints": ["仅当前任务授权路径", "Java17/Spring Boot/Vue3/Element Plus", "全局项目上下文", "全部弹窗居中"],
+    "non_goals": ["测试报告", "统计分析", "修改平台附件能力", "新增全局项目选择器"],
+    "selected_approach": {"name":"独立执行/缺陷表与关联快照表","reason":"保证多关联、软删、轨迹与实时案例引用可查询且可审计。","alternatives":[{"name":"执行结果写回案例表","rejected_because":"无法表达多目录执行和轨迹"},{"name":"缺陷关联JSON","rejected_because":"无法安全筛选、快照和删除保护"}]},
+    "architecture": {"boundary":{"inside":["test-management module","V127","test-management web pages"],"outside":["项目、用户、物理系统、附件平台、公共UI"]},"components":[{"name":"TestExecutionService","responsibility":"执行树、记录与轨迹","depends_on":["案例、配置、附件契约"]},{"name":"TestDefectService","responsibility":"缺陷状态机和关联快照","depends_on":["执行服务、配置、附件契约"]}],"interfaces":[{"name":"execution/defect REST APIs","producer":"test-management","consumers":["Vue workbenches"],"contract":"tenant/domain/project/system scoped ApiResponse"}],"data_flows":[{"input":"案例导入或执行结果","transitions":["执行记录","缺陷关联","审计轨迹"],"output":"可筛选的执行和缺陷状态"}]},
+    "error_handling":[{"condition":"失败无缺陷或阻塞无备注","behavior":"服务端拒绝","recovery":"关联缺陷或填写备注"},{"condition":"无权或跨范围","behavior":"拒绝请求","recovery":"返回可访问范围"}],
+    "quality_attributes":{"security":["服务端RBAC与实体边界"],"performance":["列表分页及索引"],"compatibility":["不改公共组件"],"operations":["本地Flyway和附件网关验证"]},
+    "verification_strategy":[{"requirement_ids":["R1","R2","R3","R4","R5","R6","R7","R8"],"signal":"模块测试、构建、API、浏览器与数据库断言","method":"T6多传感器验收"}],
+    "assumptions":[{"text":"既有测试角色TEST_MANAGER/TESTER/DEVELOPER可满足模块6/7角色规则，测试管理和机构负责人由菜单权限兜底。","basis":"现有配置服务及管理员权限。","falsifier":"角色读取无法辨别系统分配或菜单权限。"}],
+    "unknowns":[{"question":"通知平台未在当前需求范围中实现。","impact":"仅不产生外部通知，不影响状态机与审计。","owner":"需求负责人","blocking":false}],
+    "decisions":[{"id":"D1","decision":"测试环境只读使用tm_test_environment。","reason":"现有测试管理已拥有该数据源。","source":"需求指定外部数据源及工程勘察"}],
+    "risks":[{"risk":"本地附件服务不可达","impact":"附件运行验收受限","mitigation":"保留服务端绑定测试和明确运行风险"}],
+    "approval":{"status":"approved","evidence":"用户于2026-09-01确认严格按需求实施执行、缺陷及新增页面。","confirmed_at":"2026-09-01T09:00:00+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision":1,
+    "human_document":"docs/engineering-control/plans/2026-09-01-test-management-execution-defect-implementation-plan.md",
+    "plan_status":"ready",
+    "global_constraints":["V127 append-only","不改平台附件或公共UI","服务端权限和审计","居中弹窗"],
+    "file_map":[{"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V127__test_management_execution_defect.sql","status":"candidate-new","responsibility":"持久化和菜单动作","evidence":"V123-V126模式"},{"path":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/execution","status":"candidate-new","responsibility":"执行服务","evidence":"scope/casework包"},{"path":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/defect","status":"candidate-new","responsibility":"缺陷服务","evidence":"scope/casework包"},{"path":"web/src/modules/test-management/execution","status":"candidate-new","responsibility":"执行UI","evidence":"scope/casework页面"},{"path":"web/src/modules/test-management/defect","status":"candidate-new","responsibility":"缺陷UI","evidence":"scope/casework页面"}],
+    "tasks":[
+      {"id":"T1","goal":"追加执行缺陷表、索引及权限。","requirement_ids":["R1","R4","R5","R7"],"prerequisites":[],"input_facts":["V126是当前最后测试管理迁移"],"files":{"create":["V127__test_management_execution_defect.sql"],"modify":[],"test":["ExecutionDefectSchemaTest.java"]},"interfaces":{"consumes":["tm_test_case","tm_test_round","tm_test_cycle"],"produces":["执行和缺陷表契约"]},"steps":[{"id":"T1-S1","action":"追加迁移和SQL断言","command":"node scripts/check-flyway-migrations.mjs","expected":"版本连续","evidence":"退出码"}],"acceptance_checks":["表隔离和关联快照字段存在"],"risks":["FK关系"],"rollback":"回退未应用V127","stop_conditions":["必须修改历史迁移"],"escalation_conditions":["需要平台表改动"]},
+      {"id":"T2","goal":"交付执行服务和API。","requirement_ids":["R1","R2","R3","R4","R7"],"prerequisites":["T1"],"input_facts":["配置、案例和附件策略已存在"],"files":{"create":["execution/**","TestExecutionController.java","ExecutionDefectWorkbookService.java"],"modify":[],"test":["execution/**"]},"interfaces":{"consumes":["配置、案例、附件网关"],"produces":["execution REST API"]},"steps":[{"id":"T2-S1","action":"实现树、导入、状态、批量、附件和轨迹","command":"mvn -pl :ccb-test-management -am test","expected":"聚焦测试通过","evidence":"退出码"}],"acceptance_checks":["失败关联、移除阻断和跨域拒绝"],"risks":["引用回算"],"rollback":"回退execution包","stop_conditions":["附件策略不可注册"],"escalation_conditions":["需改平台附件"]},
+      {"id":"T3","goal":"交付缺陷服务和API。","requirement_ids":["R4","R5","R6","R7"],"prerequisites":["T1","T2"],"input_facts":["系统角色与环境数据可读"],"files":{"create":["defect/**","TestDefectController.java"],"modify":["ExecutionDefectWorkbookService.java"],"test":["defect/**"]},"interfaces":{"consumes":["execution REST/domain contract"],"produces":["defect REST API"]},"steps":[{"id":"T3-S1","action":"实现编号、状态机、关联快照、回收","command":"mvn -pl :ccb-test-management -am test","expected":"聚焦测试通过","evidence":"退出码"}],"acceptance_checks":["编号恒定和角色拒绝"],"risks":["多角色判定"],"rollback":"回退defect包","stop_conditions":["需变更通知平台"],"escalation_conditions":["系统角色定义不足"]},
+      {"id":"T4","goal":"交付执行工作台。","requirement_ids":["R1","R2","R3","R4","R8"],"prerequisites":["T2"],"input_facts":["scope/casework是UI基线"],"files":{"create":["web/src/modules/test-management/execution/**"],"modify":["web/src/modules/test-management/api.ts","web/src/router/index.ts"],"test":[]},"interfaces":{"consumes":["execution REST API"],"produces":["执行页面"]},"steps":[{"id":"T4-S1","action":"实现紧凑树、表格与居中弹窗","command":"npm --prefix web run build","expected":"构建通过","evidence":"退出码"}],"acceptance_checks":["无重复项目选择器、可拖列"],"risks":["移动布局"],"rollback":"回退execution UI","stop_conditions":["需修改公共UI"],"escalation_conditions":["通用表格不满足"]},
+      {"id":"T5","goal":"交付缺陷列表、新增和详情。","requirement_ids":["R5","R6","R8"],"prerequisites":["T3"],"input_facts":["WangEditor已安装"],"files":{"create":["web/src/modules/test-management/defect/**"],"modify":["web/src/modules/test-management/api.ts","web/src/router/index.ts"],"test":[]},"interfaces":{"consumes":["defect REST API"],"produces":["缺陷页面"]},"steps":[{"id":"T5-S1","action":"实现列表、创建、详情、状态和附件","command":"npm --prefix web run build","expected":"构建通过","evidence":"退出码"}],"acceptance_checks":["默认筛选和状态动作正确"],"risks":["详情复杂度"],"rollback":"回退defect UI","stop_conditions":["需新公共依赖"],"escalation_conditions":["预览能力需平台改动"]},
+      {"id":"T6","goal":"完成集成验收。","requirement_ids":["R1","R2","R3","R4","R5","R6","R7","R8"],"prerequisites":["T1","T2","T3","T4","T5"],"input_facts":["本地MySQL和Vite可用"],"files":{"create":[],"modify":[".ai-control/requirements/req-20260831-057-test-management-configuration/*.json"],"test":[]},"interfaces":{"consumes":["全模块"],"produces":["验收证据"]},"steps":[{"id":"T6-S1","action":"运行测试、构建、API和浏览器采样","command":"mvn -pl :ccb-test-management -am test && npm --prefix web run build","expected":"通过","evidence":"命令和运行记录"}],"acceptance_checks":["管理员、无权、失败关联、流转、小屏路径"],"risks":["附件服务"],"rollback":"回退应用代码","stop_conditions":["跨租户泄露或迁移失败"],"escalation_conditions":["需要生产或外部授权"]}
+    ],
+    "dependency_edges":[{"from":"T1","to":"T2","reason":"执行服务依赖表结构"},{"from":"T1","to":"T3","reason":"缺陷服务依赖表结构"},{"from":"T2","to":"T3","reason":"缺陷关联执行契约"},{"from":"T2","to":"T4","reason":"执行UI消费执行API"},{"from":"T3","to":"T5","reason":"缺陷UI消费缺陷API"},{"from":"T4","to":"T6","reason":"执行UI需要集成验收"},{"from":"T5","to":"T6","reason":"缺陷UI需要集成验收"}],
+    "parallel_groups":[["T1"],["T2"],["T3"],["T4"],["T5"],["T6"]],
+    "integration_checks":[{"after_tasks":["T1","T2","T3","T4","T5"],"command":"mvn -pl :ccb-test-management -am test; node scripts/check-flyway-migrations.mjs; npm --prefix web run build","expected":"全部通过"}],
+    "coverage":[{"requirement_id":"R1","task_ids":["T1","T2","T4"]},{"requirement_id":"R2","task_ids":["T2","T4"]},{"requirement_id":"R3","task_ids":["T2","T4"]},{"requirement_id":"R4","task_ids":["T2","T3","T4"]},{"requirement_id":"R5","task_ids":["T1","T3","T5"]},{"requirement_id":"R6","task_ids":["T3","T5"]},{"requirement_id":"R7","task_ids":["T1","T2","T3","T6"]},{"requirement_id":"R8","task_ids":["T4","T5","T6"]}],
+    "approval":{"status":"approved","evidence":"用户于2026-09-01确认实施。","confirmed_at":"2026-09-01T09:00:00+08:00"}
+  },
+  "control_seed":{"seed_status":"hypotheses-only","plant_boundary_candidates":["test-management module","V127","Vue workbenches"],"state_variable_candidates":["execution status","defect status","active/snapshot relation","recycle status"],"interface_candidates":["execution API","defect API","attachment policy"],"sensor_candidates":["Maven tests","Flyway check","authenticated API probes","browser"],"actuator_candidates":["V127","module services","Vue pages"],"disturbance_candidates":["local attachment service","uncommitted unrelated changes","empty environment data"],"delay_candidates":["browser HMR","Flyway restart"],"assumptions":[{"text":"现有系统角色可用于权限裁决。","basis":"配置服务。","falsifier":"服务端查询无法形成角色集。"}]}
+}

@@ -8,18 +8,23 @@ import com.ccb.system.notification.NotificationArchiveResult;
 import com.ccb.system.notification.NotificationLevel;
 import com.ccb.system.notification.NotificationPublishCommand;
 import com.ccb.system.notification.NotificationView;
+import com.ccb.system.notification.SystemNotificationItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.time.LocalDateTime;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -28,6 +33,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -55,6 +61,85 @@ class SystemNotificationServiceTest {
     void rejectsExternalActionPath() {
         BusinessException exception = assertThrows(BusinessException.class, () -> service.publish(command(List.of(7L), "https://example.com")));
         assertEquals("通知只允许使用以 / 开头的站内路由", exception.getMessage());
+    }
+
+    @Test
+    void rejectsIncompleteProjectContext() {
+        NotificationPublishCommand command = projectCommand("P1", null);
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> service.publish(command));
+
+        assertEquals("项目标识和项目名称必须同时提供", exception.getMessage());
+        verify(jdbc, never()).update(startsWith("INSERT INTO sys_notification"), any(Object[].class));
+    }
+
+    @Test
+    void rejectsOversizedProjectContext() {
+        NotificationPublishCommand command = projectCommand("P".repeat(65), "项目一");
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> service.publish(command));
+
+        assertEquals("项目标识不能超过 64 个字符", exception.getMessage());
+        verify(jdbc, never()).update(startsWith("INSERT INTO sys_notification"), any(Object[].class));
+    }
+
+    @Test
+    void persistsProjectContextWithNotification() {
+        when(jdbc.queryForList(anyString(), eq(Long.class), any(Object[].class))).thenReturn(List.of(7L));
+        when(jdbc.update(startsWith("INSERT INTO sys_notification"), any(Object[].class))).thenReturn(0);
+        when(jdbc.queryForObject(contains("FROM sys_notification"), eq(Long.class), any(Object[].class))).thenReturn(99L);
+
+        service.publish(projectCommand("P1", "项目一"));
+
+        ArgumentCaptor<Object[]> parameters = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).update(startsWith("INSERT INTO sys_notification"), parameters.capture());
+        assertEquals("P1", parameters.getValue()[12]);
+        assertEquals("项目一", parameters.getValue()[13]);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void listsProjectContextFromPersistedNotification() throws Exception {
+        ResultSet resultSet = mock(ResultSet.class);
+        when(resultSet.getString(anyString())).thenAnswer(invocation -> switch (invocation.getArgument(0, String.class)) {
+            case "notification_level" -> "INFO";
+            case "project_ref" -> "P1";
+            case "project_name" -> "项目一";
+            default -> null;
+        });
+        when(resultSet.getTimestamp(anyString())).thenAnswer(invocation ->
+                "created_at".equals(invocation.getArgument(0, String.class))
+                        ? Timestamp.valueOf("2026-09-01 10:00:00")
+                        : null);
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(invocation -> {
+            RowMapper<SystemNotificationItem> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(resultSet, 0));
+        });
+
+        SystemNotificationItem item = service.list(new PageQuery(1, 20), NotificationView.ALL, null, user).records().get(0);
+
+        assertEquals("P1", item.projectRef());
+        assertEquals("项目一", item.projectName());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void listsUnreadNotificationsBeforeReadNotifications() {
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+
+        service.list(new PageQuery(1, 20), NotificationView.ALL, null, user);
+
+        verify(jdbc).query(contains("ORDER BY un.is_read ASC, n.created_at DESC"), any(RowMapper.class), any(Object[].class));
+    }
+
+    @Test
+    void legacyConstructorDefaultsToPlatformScope() {
+        NotificationPublishCommand command = command(List.of(7L), "/dashboard");
+
+        assertNull(command.projectRef());
+        assertNull(command.projectName());
     }
 
     @Test
@@ -187,5 +272,24 @@ class SystemNotificationServiceTest {
                 "交付管理",
                 actionPath,
                 7L);
+    }
+
+    private NotificationPublishCommand projectCommand(String projectRef, String projectName) {
+        return new NotificationPublishCommand(
+                1L,
+                "event-project-001",
+                "delivery",
+                "交付管理",
+                "DELIVERY",
+                "PRJ-001",
+                List.of(7L),
+                "交付状态已更新",
+                "项目已进入测试阶段",
+                NotificationLevel.INFO,
+                "交付管理",
+                "/dashboard",
+                7L,
+                projectRef,
+                projectName);
     }
 }

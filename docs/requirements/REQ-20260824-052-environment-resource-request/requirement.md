@@ -72,12 +72,12 @@ source_issue: 03-environment-and-resource-request
   - `PUT /api/architecture/resource-requests/{id}`
   - `POST /api/architecture/resource-requests/{id}/submit|cancel`
 - 数据 Owner：`business/architecture` 拥有具体环境和资源申请数据；环境类型由 `platform/system` 字典拥有，架构模块通过 `SystemReferenceQuery` 读取。
-- 数据库迁移：追加 `V102__create_architecture_environment_resource_requests.sql` 与
+- 数据库迁移：集成后追加 `V102__create_architecture_environment_resource_requests.sql` 与
   `V103__seed_architecture_environment_resource_requests.sql`；用户于 2026-08-25 确认环境类型改由系统字典维护后追加
   `V104__move_environment_type_to_system_dictionary.sql`；用户于 2026-08-25 要求按现有登记表重写资源申请后追加
   `V105__expand_resource_request_registration_items.sql` 扩展资源申请明细；
   `V106__refine_resource_request_registration_ownership.sql` 将服务器类型、灾备模式迁入字典，补齐物理子系统和部署单元模型字段，资源申请改为联系人选择并移除来源任务号和明细确认人；
-  `V107__refine_resource_request_resource_catalogs.sql` 将技术栈字段迁入系统字典、资源容量字段改为整数，并移除资源申请明细层旧等级与物理字段，不修改 V1-V101。
+  `V107__refine_resource_request_resource_catalogs.sql` 将技术栈字段迁入系统字典、资源容量字段改为整数，并移除资源申请明细层旧等级与物理字段，不修改 V1-V106。
 - 权限：
   - `architecture:environment:view/manage`
   - `architecture:resource-request:view/apply/manage`
@@ -102,14 +102,14 @@ source_issue: 03-environment-and-resource-request
   - `node scripts/check-flyway-migrations.mjs`
   - `node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260824-052-environment-resource-request/codex-task-scope.yaml --base HEAD --head HEAD --working-tree`
   - `git diff --check`
-- 上线验证：空库和既有库迁移到 V96；在系统字典维护 `ARCH_ENVIRONMENT_TYPE`、`ARCH_SERVER_TYPE`、`ARCH_DISASTER_RECOVERY_MODE`、`ARCH_JDK_VERSION`、`ARCH_MIDDLEWARE`、`ARCH_OPERATING_SYSTEM` 后，以环境管理/资源申请/资源办理角色完成具体环境维护、登记表明细资源申请创建、提交、退回、批准、拒绝、取消；普通查看角色验证 403；桌面和移动视口检查页面无横向溢出。
+- 上线验证：空库和既有库迁移到 V107；在系统字典维护 `ARCH_ENVIRONMENT_TYPE`、`ARCH_SERVER_TYPE`、`ARCH_DISASTER_RECOVERY_MODE`、`ARCH_JDK_VERSION`、`ARCH_MIDDLEWARE`、`ARCH_OPERATING_SYSTEM` 后，以环境管理/资源申请/资源办理角色完成具体环境维护、登记表明细资源申请创建、提交、退回、批准、拒绝、取消；普通查看角色验证 403；桌面和移动视口检查页面无横向溢出。
 - 回退或补偿：应用代码按前端、服务、迁移登记逆序回退；已执行迁移保留数据，通过后续补偿迁移隐藏菜单、撤销权限或恢复兼容结构，不在生产手工删除表或数据。
 
 ## 关闭记录
 
 - 关闭时间：2026-08-25T15:43:34+08:00。
 - 用户验收授权：用户于 2026-08-25 明确要求“可以，关闭此需求并提交、合并、推送”。
-- 收敛结论：具体环境、资源申请、登记表字段、字典归属、工作流提交/审批入口、系统等级带出、整数容量字段和边车占比修正已完成；本地 Flyway 已迁移到 V96，后端和前端运行可达。
+- 收敛结论：具体环境、资源申请、登记表字段、字典归属、工作流提交/审批入口、系统等级带出、整数容量字段和边车占比修正已完成；集成后的 Flyway 版本为 V107，后端和前端运行可达。
 - 已通过验证：`EnvironmentResourceServiceTest` 聚焦测试、`npm --prefix web run build`、`node scripts/check-flyway-migrations.mjs`、已提交范围的 `node scripts/check-codex-scope.mjs --base HEAD~1 --head HEAD`、`git diff --check`；8080 健康接口与 5173 前端入口可达。
 - 已接受残余风险：完整架构模块测试受本地 Testcontainers/Docker 识别问题影响未形成通过结论；全仓治理检查失败项来自历史 `.ai-control` 旧账本；带 `--working-tree` 的范围检查受本工作区既有未跟踪 `.dsh/` 与 `req-20260812-021` 文件影响；真实浏览器桌面/移动 UAT 尚未执行。
 - 集成边界：提交落在需求分支 `feat/REQ-20260824-052-environment-resource-request`，按本任务范围合并回任务分支 `dev-ivanh` 并推送；不直接推送 `main`。

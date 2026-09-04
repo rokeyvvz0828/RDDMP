@@ -224,12 +224,12 @@ class ArchitectureSubsystemSubmissionServiceTest {
     }
 
     private ApplicationDetail detail(ChangeApplication application) {
-        return new ApplicationDetail(application, null, List.of(), List.of());
+        return new ApplicationDetail(application, List.of(), List.of());
     }
 
     private ChangeApplication application(ApplicationStatus status, int round, Long instanceId,
                                           boolean cancellationRequested, long rowVersion) {
-        return new ChangeApplication(101L, 7L, TargetKind.LOGICAL, ActionType.CREATE, null, ACTOR.id(),
+        return new ChangeApplication(101L, 7L, TargetKind.PHYSICAL, ActionType.CREATE, null, ACTOR.id(),
                 "新建渠道系统", status, round, instanceId == null ? null : 80L,
                 instanceId == null ? null : 1L, instanceId,
                 instanceId == null ? null : DIGEST, cancellationRequested, rowVersion,

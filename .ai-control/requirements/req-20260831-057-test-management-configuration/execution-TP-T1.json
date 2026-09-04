@@ -1,0 +1,29 @@
+{
+  "task_id":"TP-T1",
+  "status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"server/src/platform/infrastructure/src/main/resources/db/migration/V125__test_management_plan.sql","purpose":"新增专项节点、逻辑方案、版本、审计表及四个 plans 菜单的细粒度权限种子"},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanService.java","purpose":"实现树、专项节点、版本归并、软删除、附件校验与审计规则"},
+    {"path_or_resource":"server/src/modules/test-management/src/test/java/com/ccb/testmanagement/plan/TestPlanServiceTest.java","purpose":"验证未知大类不访问主数据和专项名称重复拒绝"}
+  ],
+  "requirements_addressed":["TP1","TP2","TP4"],
+  "commands":[
+    {"command":"JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn -pl :ccb-test-management -am test -Dtest=TestPlanServiceTest -Dsurefire.failIfNoSpecifiedTests=false","exit_code":0,"salient_output":"TestPlanServiceTest 2 tests, 0 failures；ccb-test-management 编译成功。"},
+    {"command":"node scripts/check-flyway-migrations.mjs","exit_code":0,"salient_output":"Flyway migration check passed for 118 migration(s) and 1 approved callback(s)."},
+    {"command":"git diff --check","exit_code":0,"salient_output":"未发现空白错误。"}
+  ],
+  "local_checks":[
+    {"check":"未知测试大类","result":"pass","evidence":"TestPlanServiceTest 断言 tree(unsafe-domain) 抛出 BusinessException 且 JdbcTemplate/AttachmentGateway 零交互。","limitations":["尚未执行真实数据库 API 路径"]},
+    {"check":"专项名称重复","result":"pass","evidence":"TestPlanServiceTest 模拟同项目已有专项时断言 createSpecial 拒绝。","limitations":["专项节点的真实数据库约束将在本地迁移后观察"]},
+    {"check":"迁移追加性","result":"pass","evidence":"Flyway 静态检查通过。","limitations":["尚未重启本地后端应用 V125"]}
+  ],
+  "diff_summary":["方案级别由项目/系统/专项节点服务端锁定","同节点同名上传返回版本确认后追加新版本","整方案删除仅软删除，不物理删除附件"],
+  "invariants_checked":[
+    {"invariant":"不写项目、物理子系统或附件私有表","result":"pass","evidence":"服务仅读 pm_project、tm_test_participating_system 和 AttachmentGateway。"},
+    {"invariant":"不修改 V123/V124","result":"pass","evidence":"仅新增 V125。"}
+  ],
+  "disturbances":[{"event":"执行前发现参测系统实际表名为 tm_test_participating_system","impact":"已回到建模/计划阶段修订后实施；无用户可见行为变化。"}],
+  "assumptions_falsified":["原计划中的 tm_test_system 表名不存在，已以 tm_test_participating_system 替换。"],
+  "unresolved_items":["控制器、附件访问策略、前端与真实数据库迁移/预览路径尚未实施。"],
+  "recommended_next":"observe"
+}

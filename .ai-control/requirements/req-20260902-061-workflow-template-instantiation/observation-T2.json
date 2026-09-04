@@ -1,0 +1,24 @@
+{
+  "iteration_id": "I-T2-1",
+  "task_id": "T2",
+  "status": "verified",
+  "changed_surfaces": [
+    {"path_or_resource": "WorkflowView.vue", "purpose": "三范围分区、模板创建和项目实例化"},
+    {"path_or_resource": "WorkflowNodeInspector.vue", "purpose": "按范围限制审批人和抄送人配置"},
+    {"path_or_resource": "workflow.ts", "purpose": "三范围 API 类型与查询参数"}
+  ],
+  "checks": [
+    {"requirement_id": "R2", "result": "pass", "evidence": "浏览器中全局模板审批节点仅有项目配置时指定、发起人；抄送节点仅显示项目配置时指定。"},
+    {"requirement_id": "R5", "result": "pass", "evidence": "createFromTemplate 保留节点和连线，清理 assigneeIds/userIds，转为 PROJECT 范围并加载项目成员。"},
+    {"requirement_id": "R7", "result": "pass", "evidence": "三个范围页签可独立加载，有当前项目时默认本项目流程。"},
+    {"requirement_id": "R8", "result": "pass", "evidence": "现有 760px 响应式分支使用单列卡片、可换行操作和 100% 宽度对话框；生产构建通过。", "limitations": ["当前内置浏览器不暴露视口缩放接口，实际交互采样为 1280x720，手机宽度依据响应式 CSS 和构建结果复核"]}
+  ],
+  "commands": [
+    {"command": "vue-tsc --noEmit", "exit_code": 0, "salient_output": "no type errors"},
+    {"command": "vite build", "exit_code": 0, "salient_output": "production build completed"},
+    {"command": "browser DOM and layout check", "exit_code": 0, "salient_output": "no concrete template assignee controls; desktop overflowX=false"}
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "verifying"
+}
