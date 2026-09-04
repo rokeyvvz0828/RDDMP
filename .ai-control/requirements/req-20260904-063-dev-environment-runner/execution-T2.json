@@ -1,0 +1,72 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "scripts/dev.mjs",
+      "purpose": "监听后端源码和资源变化，串行执行 reactor install，并在成功后重启 boot 后端进程。"
+    }
+  ],
+  "requirements_addressed": ["R4"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-boot -am -DskipTests install",
+      "exit_code": 0,
+      "salient_output": "完整 reactor 安装成功，boot 依赖产物可供独立 POM 启动。"
+    },
+    {
+      "command": "mvn -f server/src/platform/boot/pom.xml spring-boot:run -Dspring-boot.run.profiles=local",
+      "exit_code": 0,
+      "salient_output": "后端从实际 boot POM 启动，Flyway 校验版本 148，健康接口恢复 UP。"
+    },
+    {
+      "command": "$env:RDDMP_DEV_VERIFY_BACKEND_RESTART=1; .\\scripts\\dev.ps1",
+      "exit_code": 0,
+      "salient_output": "测试探针触发源码变化；reactor install 成功，Java PID 从 21820 变为 55476，新后端健康恢复且前端持续可访问。"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "后端自动重启状态机",
+      "result": "pass",
+      "evidence": "变化事件防抖并串行构建；构建完成后旧 PID 终止、新 PID 启动，健康连续稳定 3 秒后报告恢复。",
+      "limitations": ["真实运行验证在 Windows 完成。"]
+    },
+    {
+      "check": "重启期间 Flyway 与前端连续性",
+      "result": "pass",
+      "evidence": "新后端成功 validate 143 个迁移并保持 schema 148；Vite 前端进程未重启且 HTTP 入口可访问。",
+      "limitations": ["未注入故意的 Maven 编译失败；失败保留旧后端由状态机分支和进程退出处理静态复核。"]
+    }
+  ],
+  "diff_summary": [
+    "以 fs.watch、防抖和构建队列监听后端 Java、资源和 POM 变化。",
+    "初始及变更构建均使用 reactor install，运行使用 boot POM。",
+    "只有 install 成功才切换后端；主动终止不升级为全局失败。"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Maven 构建串行且只在成功后重启。",
+      "result": "pass",
+      "evidence": "状态机以 building/buildAgain 限制并发，实际探针仅出现一次成功切换。"
+    },
+    {
+      "invariant": "不修改 POM 或 Spring 配置。",
+      "result": "pass",
+      "evidence": "工作区差异不包含任何 POM 或 application 配置。"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "聚合根直接执行 spring-boot:run 无法定位主类。",
+      "impact": "修正为先 reactor install，再从 server/src/platform/boot/pom.xml 启动。"
+    }
+  ],
+  "assumptions_falsified": [
+    "聚合根可直接作为 Spring Boot 启动模块。"
+  ],
+  "unresolved_items": [
+    "macOS/Linux 的 fs.watch 事件形态和进程组清理需对应平台人工复核。"
+  ],
+  "recommended_next": "observe"
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "topic": "dev-environment-runner",
-  "design_revision": 2,
+  "topic": "req-20260904-063-dev-environment-runner",
+  "design_revision": 5,
   "design_status": "approved",
   "human_document": "docs/engineering-control/designs/2026-09-04-dev-environment-runner-design.md",
   "objective": "通过跨平台薄入口和无第三方依赖的 Node.js 编排器，一键启动固定、可热重载且自动执行 Flyway 的 RDDMP 本地开发环境。",
@@ -37,7 +37,7 @@
     {
       "id": "R4",
       "statement": "启动器必须支持 Vite HMR 和后端源码自动编译重启。",
-      "acceptance": ["前端通过现有 npm run dev 启动", "后端变更防抖串行编译", "DevTools 在编译产物变化后重启", "编译失败后下一次变化可恢复"],
+      "acceptance": ["前端通过现有 npm run dev 启动", "后端变更防抖串行执行 reactor install", "Node 在构建成功后重启后端并恢复健康", "构建失败后下一次变化可恢复"],
       "priority": "must",
       "source": "用户要求前后端热重载",
       "counterexample": ["后端变更必须手工重启", "多个 Maven 编译并发运行"]
@@ -55,6 +55,7 @@
     "不修改已发布 Flyway 迁移和数据库结构",
     "不连接生产或共享环境",
     "不读取、创建或覆盖用户 .env",
+    "不复用或修改手工启动的 ccb-platform-* 容器和卷",
     "默认退出和 --down 均不删除 Docker 数据卷",
     "只修改 codex-task-scope.yaml 授权路径"
   ],
@@ -82,30 +83,31 @@
   },
   "architecture": {
     "boundary": {
-      "inside": ["scripts/dev.ps1", "scripts/dev.sh", "scripts/dev.mjs", "docker-compose.yml 的 kkFileView host-gateway", "ccb-boot DevTools 依赖", "AGENTS.md 启动提示"],
+      "inside": ["scripts/dev.ps1", "scripts/dev.sh", "scripts/dev.mjs", "docker-compose.yml 的本地参数和 kkFileView host-gateway", "AGENTS.md 启动提示"],
       "outside": ["生产配置", "业务模块", "历史 Flyway 文件", "前后端容器镜像"]
     },
     "components": [
       {"name": "平台 wrapper", "responsibility": "定位仓库、调用 Node 编排器并返回退出码", "depends_on": ["Node.js 20"]},
       {"name": "Node 编排器", "responsibility": "环境、基础设施、管理员密码、应用进程、监听和退出编排", "depends_on": ["Docker Compose", "Maven", "npm"]},
+      {"name": "专用 Docker 资源", "responsibility": "通过 rddmp-dev 项目、容器和命名卷隔离固定开发凭据与历史手工环境", "depends_on": ["docker-compose.yml 可选变量"]},
       {"name": "kkFileView host-gateway", "responsibility": "让 Linux 容器通过固定别名访问宿主机 MinIO", "depends_on": ["Docker Compose V2"]},
-      {"name": "Spring Boot DevTools", "responsibility": "检测编译产物变化并重启后端应用上下文", "depends_on": ["Maven 增量编译"]},
+      {"name": "后端进程重启器", "responsibility": "reactor 安装成功后终止旧 boot 进程、启动新进程并等待健康恢复", "depends_on": ["Maven reactor", "Node 子进程管理"]},
       {"name": "Spring Boot Flyway", "responsibility": "在 local profile 后端启动期间应用待执行迁移", "depends_on": ["本地 MySQL"]}
     ],
     "interfaces": [
       {"name": "开发启动 CLI", "producer": "scripts/dev.ps1 与 scripts/dev.sh", "consumers": ["研发人员"], "contract": "默认启动完整环境；--down 只停止容器且不删除卷。"},
       {"name": "固定子进程环境", "producer": "scripts/dev.mjs", "consumers": ["docker compose", "Maven Spring Boot", "Vite"], "contract": "只包含公开本地夹具、local profile 和本地地址。"},
-      {"name": "后端编译触发", "producer": "Node 文件监听器", "consumers": ["Maven", "Spring Boot DevTools"], "contract": "防抖、串行、失败可重试。"}
+      {"name": "后端构建重启触发", "producer": "Node 文件监听器", "consumers": ["Maven reactor", "boot Spring 进程"], "contract": "防抖、串行、安装成功才重启、失败保留当前后端。"}
     ],
     "data_flows": [
-      {"input": "平台启动命令", "transitions": ["工具检查", "固定环境构造", "Docker 启动", "MySQL 等待", "本地管理员哈希恢复", "Maven 与 Vite 启动", "健康检查"], "output": "可登录且支持热重载的本地环境"},
-      {"input": "后端源码变化", "transitions": ["路径过滤", "防抖", "Maven compile", "classpath 变化", "DevTools 重启"], "output": "更新后的后端运行实例"}
+      {"input": "平台启动命令", "transitions": ["工具检查", "固定环境构造", "rddmp-dev 专用 Docker 资源启动", "MySQL 等待", "本地管理员哈希恢复", "Maven 与 Vite 启动", "健康检查"], "output": "可登录且支持热重载的本地环境"},
+      {"input": "后端源码变化", "transitions": ["路径过滤", "防抖", "Maven reactor install", "终止旧后端", "从 boot POM 启动", "健康稳定检查"], "output": "更新后的后端运行实例"}
     ]
   },
   "error_handling": [
     {"condition": "必需工具或版本缺失", "behavior": "启动服务前输出明确错误并非零退出", "recovery": "安装满足最低版本的工具后重试"},
     {"condition": "Docker 或 MySQL 未就绪", "behavior": "不启动应用进程并失败退出", "recovery": "依据 Docker 日志修复后重试"},
-    {"condition": "后端增量编译失败", "behavior": "保留当前后端并报告编译错误", "recovery": "修复源码，下一次变化重新编译"},
+    {"condition": "后端 reactor 安装失败", "behavior": "保留当前后端并报告构建错误", "recovery": "修复源码，下一次变化重新构建"},
     {"condition": "Maven、Vite 或健康检查初始失败", "behavior": "清理已启动的应用子进程并返回失败", "recovery": "修复日志所示问题后重新启动"}
   ],
   "quality_attributes": {
@@ -117,7 +119,7 @@
   "verification_strategy": [
     {"requirement_ids": ["R1", "R5"], "signal": "wrapper 与编排器语法、参数和退出行为", "method": "Node、PowerShell、Bash 静态检查及生命周期运行验证"},
     {"requirement_ids": ["R2", "R3"], "signal": "Flyway、健康检查和 admin 登录结果", "method": "空库与已有本地库启动后执行 HTTP 和数据库断言"},
-    {"requirement_ids": ["R4"], "signal": "Vite HMR 与后端 DevTools 重启日志", "method": "受控修改并恢复前后端文件，观察更新和端口持续可用"},
+    {"requirement_ids": ["R4"], "signal": "Vite HMR、reactor install、后端 PID 变化与健康恢复", "method": "Windows 自动重启验收探针及后续业务分支文件事件复核"},
     {"requirement_ids": ["R5"], "signal": "退出后进程、容器和卷状态", "method": "Ctrl+C 与 --down 两条路径的进程和 Docker 状态检查"}
   ],
   "assumptions": [
@@ -130,8 +132,11 @@
   "decisions": [
     {"id": "D1", "decision": "管理员固定为 admin/admin123", "reason": "用户明确指定", "source": "2026-09-04 用户确认"},
     {"id": "D2", "decision": "使用薄 wrapper 和 Node.js 标准库编排器", "reason": "集中跨平台复杂度且不新增依赖", "source": "2026-09-04 用户批准方案"},
-    {"id": "D3", "decision": "Flyway 继续由 Spring Boot 管理", "reason": "复用现有 application-local.yml，避免引入 Flyway CLI", "source": "现有工程事实与用户目标"}
-    ,{"id": "D4", "decision": "Compose 使用 KK_FILE_VIEW_HOST_ALIAS 映射 host-gateway", "reason": "保证 Linux 与 Docker Desktop 的 kkFileView 预签名地址访问行为一致", "source": "实施计划阶段跨平台复核"}
+    {"id": "D3", "decision": "Flyway 继续由 Spring Boot 管理", "reason": "复用现有 application-local.yml，避免引入 Flyway CLI", "source": "现有工程事实与用户目标"},
+    {"id": "D4", "decision": "Compose 使用 KK_FILE_VIEW_HOST_ALIAS 映射 host-gateway", "reason": "保证 Linux 与 Docker Desktop 的 kkFileView 预签名地址访问行为一致", "source": "实施计划阶段跨平台复核"},
+    {"id": "D5", "decision": "启动器使用 rddmp-dev 专用 Compose 项目、容器和命名卷", "reason": "历史卷初始化密码不可由环境变量覆盖，专用资源才能保证固定凭据且不破坏用户数据", "source": "执行前工程采样"},
+    {"id": "D6", "decision": "关闭本地固定工作流发布器", "reason": "空库 Mock 数据同步后的自动发布会因业务前置条件失败并终止通用开发环境，Flyway 和 Mock 初始化仍保持启用", "source": "2026-09-04 Windows 空库启动证据"},
+    {"id": "D7", "decision": "使用经 BCrypt 实现校验的新 admin123 固定哈希", "reason": "仓库旧演示哈希无法通过当前 PasswordEncoder 校验", "source": "2026-09-04 登录与 BCrypt 探针"}
   ],
   "risks": [
     {"risk": "跨平台进程终止存在差异", "impact": "退出后可能遗留应用子进程", "mitigation": "按平台使用进程树或进程组终止并设置超时，分别验收"},

@@ -1,0 +1,74 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": ["PowerShell/Bash wrapper", "Node 编排器", "RDDMP Docker Compose", "Maven reactor 与 boot POM", "Spring Boot local/Flyway", "Vite dev server", "AGENTS 研发提示"],
+    "environment": ["Windows/macOS/Linux", "JDK 17", "Maven 3.9", "Node.js 20+", "npm", "Docker Engine/Compose", "本地端口和依赖缓存"]
+  },
+  "state_variables": [
+    {"name": "toolchain_state", "owner": "Node 编排器", "valid_values": ["unchecked", "ready", "blocked"]},
+    {"name": "infrastructure_state", "owner": "Docker Compose", "valid_values": ["stopped", "starting", "ready", "failed"]},
+    {"name": "migration_state", "owner": "Spring Boot Flyway", "valid_values": ["pending", "applied", "failed"]},
+    {"name": "application_state", "owner": "Node 编排器", "valid_values": ["stopped", "starting", "healthy", "failed", "stopping"]},
+    {"name": "compile_state", "owner": "后端监听器", "valid_values": ["idle", "debouncing", "compiling", "pending-retry", "failed"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "平台 wrapper 命令", "transitions": ["定位脚本目录", "调用同一 dev.mjs", "透传参数和退出码"], "outputs": ["一致 CLI 行为"]},
+    {"requirement_id": "R2", "input": "默认启动", "transitions": ["构造固定本地环境", "启动 MySQL", "判断 sys_user 是否存在", "精确恢复 admin 哈希", "调用登录接口"], "outputs": ["local profile 和 admin/admin123 登录"]},
+    {"requirement_id": "R3", "input": "基础设施启动", "transitions": ["Compose up", "MySQL ping", "Spring Boot 启动", "Flyway migrate", "Actuator health"], "outputs": ["迁移完成且后端 UP"]},
+    {"requirement_id": "R4", "input": "前端或后端文件变化", "transitions": ["Vite HMR 或路径过滤", "防抖串行 reactor install", "成功后终止旧后端", "从 boot POM 启动新后端", "健康恢复"], "outputs": ["更新后的前后端"]},
+    {"requirement_id": "R5", "input": "日志、Ctrl+C 或 --down", "transitions": ["输出加前缀", "终止应用进程树/组", "保留容器或 Compose down", "检查卷"], "outputs": ["可判别日志和预期资源状态"]}
+  ],
+  "interfaces": [
+    {"name": "dev CLI", "producers": ["dev.ps1", "dev.sh"], "consumers": ["研发人员", "dev.mjs"], "invariant": "只允许默认启动和 --down，退出码原样返回"},
+    {"name": "fixed child environment", "producers": ["dev.mjs"], "consumers": ["Docker Compose", "Spring Boot", "Vite"], "invariant": "local-only 且覆盖所有必需配置"},
+    {"name": "local database", "producers": ["ccb-platform-mysql"], "consumers": ["Flyway", "admin reset"], "invariant": "只访问 ccb_platform 和 tenant 1 admin 精确行"},
+    {"name": "backend reload", "producers": ["Node 文件监听器"], "consumers": ["Maven reactor", "boot Spring 进程"], "invariant": "500ms 防抖、单并发、安装成功才重启、失败保留旧进程"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "wrapper 与 Node CLI", "method": "node --check、PowerShell AST、bash -n、未知参数运行", "blind_spots": ["未实测平台的进程信号差异"], "independence": "语言解析器和真实 CLI 退出码"},
+    {"id": "S2", "target": "工具和固定配置", "method": "版本命令、子进程参数和环境白名单审查", "blind_spots": ["未来工具输出格式变化"], "independence": "工具自身版本输出"},
+    {"id": "S3", "target": "Compose 与基础设施", "method": "docker compose config、container inspect、mysqladmin ping", "blind_spots": ["镜像仓库临时不可用"], "independence": "Docker Engine 和 MySQL 原生探针"},
+    {"id": "S4", "target": "Flyway、健康与 admin 登录", "method": "Flyway 日志/历史表、Actuator HTTP、登录 HTTP、SQL 行断言", "blind_spots": ["未覆盖全部业务接口"], "independence": "数据库和 HTTP 两类运行输出"},
+    {"id": "S5", "target": "热重载", "method": "Maven install 退出码、Node/Vite 日志、后端 PID 和重启后健康", "blind_spots": ["macOS/Linux 尚需人工实测"], "independence": "构建输出、OS 进程与运行 HTTP"},
+    {"id": "S6", "target": "退出和资源状态", "method": "端口探测、子进程状态、Docker 容器与卷列表", "blind_spots": ["异常断电"], "independence": "OS 网络和 Docker 状态"},
+    {"id": "S7", "target": "治理和范围", "method": "check-all-governance、check-codex-scope、git diff --check", "blind_spots": ["人工 Owner 复核质量"], "independence": "仓库治理脚本"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "跨平台入口与编排", "action": "创建三个 scripts/dev 文件", "authority": "任务 writable_paths", "impact_radius": "本地开发入口", "rollback": "删除新脚本"},
+    {"id": "A2", "target": "kkFileView 宿主访问", "action": "增加 Compose host-gateway", "authority": "任务 writable_paths", "impact_radius": "本地 kkFileView 容器", "rollback": "回退 extra_hosts"},
+    {"id": "A3", "target": "后端重启", "action": "Node 在 reactor install 成功后重启 boot Maven 进程", "authority": "scripts/dev.mjs writable_paths 和本地进程权限", "impact_radius": "本地后端开发进程", "rollback": "回退自动重启逻辑"},
+    {"id": "A4", "target": "研发提示", "action": "更新根 AGENTS.md", "authority": "Owner 批准的 writable_paths", "impact_radius": "仓库研发入口", "rollback": "回退提示段落"},
+    {"id": "A5", "target": "运行状态", "action": "启动/停止本地容器和应用进程、精确更新 admin 哈希", "authority": "本地 Docker 与进程权限", "impact_radius": "本机 RDDMP 开发环境", "rollback": "停止应用；保留卷；再次设置开发哈希"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "partial"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3", "S4"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S5", "S4"], "observable": "partial"},
+    {"requirement_id": "R5", "sensor_ids": ["S6", "S7"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "端口冲突", "effect": "启动失败或连接到错误服务", "detectable": true, "controllable": false},
+    {"source": "Docker Engine 权限或未启动", "effect": "基础设施不可用", "detectable": true, "controllable": false},
+    {"source": "依赖或镜像缓存缺失", "effect": "首次启动延迟或网络失败", "detectable": true, "controllable": false},
+    {"source": "文件事件风暴", "effect": "重复 Maven 编译", "detectable": true, "controllable": true},
+    {"source": "操作系统进程语义差异", "effect": "退出后遗留进程", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "MySQL 首次初始化", "consequence": "容器 running 不等于可连接", "sampling_rule": "mysqladmin ping 成功后继续"},
+    {"source": "Flyway 和 Spring 启动", "consequence": "端口开放前健康不可用", "sampling_rule": "轮询 Actuator 至 UP 或超时"},
+    {"source": "文件防抖和 Maven install", "consequence": "源码变化到重启存在秒级延迟", "sampling_rule": "安装完成并健康恢复后采样"}
+  ],
+  "assumptions": [
+    {"text": "Node.js 20+ 的递归 fs.watch 支持目标平台", "evidence": "本机 Node v24，项目最低 Node 20", "falsifier": "目标平台监听测试无法接收嵌套目录变化"},
+    {"text": "host-gateway 可供 kkFileView 访问宿主机 MinIO", "evidence": "Docker Engine 29 和 Compose v5 支持 host-gateway", "falsifier": "运行文件预览探针无法连接"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "partial", "controllable": "yes", "action": "Windows 运行验证加 PowerShell/Bash 静态验证；保留 macOS/Linux 人工 UAT 风险"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "实施固定环境和精确 SQL 后运行登录断言"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "复用 Compose 和 Spring Flyway 并运行 Docker/HTTP/SQL 传感器"},
+    {"requirement_id": "R4", "observable": "partial", "controllable": "yes", "action": "Windows 实测 reactor install/Node restart，其他平台保留人工 UAT"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "进程、端口、Docker、治理联合检查"}
+  ],
+  "model_status": "ready"
+}

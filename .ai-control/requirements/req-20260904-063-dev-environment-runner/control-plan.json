@@ -1,0 +1,80 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "提供可静态验证并可运行的跨平台启动入口、固定环境、基础设施和生命周期编排。",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": [],
+      "input_facts": ["Node v24.19.0、Java 17.0.2、Maven 3.9.16、npm 11.17.0、Docker 29.7.2、Compose v5.4.0 已探测", "application-local.yml 已启用 Flyway", "Vite dev script 已存在", "现有固定容器名和历史卷的初始化密码不能由新环境变量覆盖"],
+      "write_scope": ["scripts/dev.ps1", "scripts/dev.sh", "scripts/dev.mjs", "docker-compose.yml", ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T1.json"],
+      "invariants": ["local-only", "不覆盖 .env", "不删除卷", "不修改历史迁移", "不打印 JWT 或 BCrypt 哈希"],
+      "interface_contracts": ["wrapper 透传参数和退出码", "dev.mjs 只接受默认或 --down", "固定 COMPOSE_PROJECT_NAME=rddmp-dev、rddmp-dev-* 容器和项目卷", "Compose 未传变量时保持 ccb-platform-* 默认值", "admin SQL 精确限定 tenant_id=1、id=1、username=admin", "初始 reactor install 后从 boot POM 启动"],
+      "non_goals": ["应用容器化", "自动安装工具", "业务代码修改"],
+      "action_bounds": ["仅创建三个启动文件并参数化 Compose 容器名/卷及 kkFileView extra_hosts", "只启动 rddmp-dev 专用 Compose 服务和应用进程", "只更新专用本地库 admin 精确行"],
+      "acceptance_checks": ["三种脚本语法通过", "未知参数无副作用失败", "Compose 默认值与 rddmp-dev 覆盖配置均通过", "不接触 ccb-platform-* 历史资源", "reactor install 后 boot POM 启动达到健康和登录", "Ctrl+C 与 --down 符合资源状态"],
+      "evidence_required": ["实际 diff", "语法和版本退出码", "Docker/MySQL/HTTP/登录/端口摘要", "扰动和未决项"],
+      "rollback": "删除三个脚本并回退 docker-compose.yml extra_hosts。",
+      "stop_conditions": ["需要远程地址、真实凭据、删除卷或修改历史迁移", "发现任务范围外必需修改"],
+      "escalation_conditions": ["host-gateway 无法支持目标平台", "无法可靠清理应用进程树"]
+    },
+    {
+      "id": "T2",
+      "goal": "使后端变更触发 reactor 安装并由 Node 自动重启 boot 后端进程。",
+      "requirement_ids": ["R4"],
+      "prerequisites": ["T1"],
+      "input_facts": ["聚合根 spring-boot:run 实测找不到主类", "reactor install 可生成 boot 依赖产物", "boot POM 是实际 Spring Boot 启动模块"],
+      "write_scope": ["scripts/dev.mjs", ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T2.json"],
+      "invariants": ["只在 install 成功后重启", "install 失败保留当前后端", "不修改任何 POM", "Flyway 重启无失败"],
+      "interface_contracts": ["mvn -pl :ccb-boot -am -DskipTests install", "mvn -f server/src/platform/boot/pom.xml spring-boot:run", "主动重启不触发全局失败"],
+      "non_goals": ["DevTools", "JRebel", "POM 或 application 配置变更"],
+      "action_bounds": ["只修改 dev.mjs 的初始构建、健康取消和后端重启状态机"],
+      "acceptance_checks": ["reactor install 和 boot POM 启动通过", "install 后后端 PID 变化且健康恢复", "install 失败不终止旧后端", "后续变化可重试"],
+      "evidence_required": ["dev.mjs diff", "Maven 退出码", "重启前后 PID、日志和健康摘要"],
+      "rollback": "回退 dev.mjs 的自动重启逻辑。",
+      "stop_conditions": ["boot POM 仍找不到主类", "重启导致 Flyway 异常"],
+      "escalation_conditions": ["必须修改只读 POM 或 application 配置才能启动"]
+    },
+    {
+      "id": "T3",
+      "goal": "补充 AGENTS 研发提示并完成治理、构建、范围和运行验收。",
+      "requirement_ids": ["R3", "R4", "R5"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["T1/T2 的最终 CLI 和运行行为已经形成证据"],
+      "write_scope": ["AGENTS.md", ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T3.json"],
+      "invariants": ["提示仅描述真实已实现行为", "固定密码明确仅限本地", "不声称未实测平台已通过"],
+      "interface_contracts": ["Windows .\\scripts\\dev.ps1", "macOS/Linux ./scripts/dev.sh", "--down 不删卷"],
+      "non_goals": ["修改 README 或正式治理规则", "跨平台虚假运行结论"],
+      "action_bounds": ["只在根 AGENTS 增加本地启动提示并运行授权检查"],
+      "acceptance_checks": ["AGENTS 命令和边界准确", "治理、范围、后端测试、前端构建通过", "Windows 全链路通过或形成可行动反馈"],
+      "evidence_required": ["AGENTS diff", "全部命令退出码", "运行验收摘要", "范围审计和残余风险"],
+      "rollback": "回退 AGENTS 提示，保留历史执行证据。",
+      "stop_conditions": ["治理、范围、构建、Flyway、登录或清理失败"],
+      "escalation_conditions": ["需要修改任务范围外文档或运行配置"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "T2 依赖 T1 的长期后端进程和 compile 触发。"},
+    {"from": "T2", "to": "T3", "reason": "T3 依赖稳定的最终启动与重启行为。"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["脚本语法", "Compose config", "CLI 失败路径"]},
+    {"after_tasks": ["T1", "T2"], "checks": ["boot 测试", "Windows 启动、Flyway、登录和 restart"]},
+    {"after_tasks": ["T1", "T2", "T3"], "checks": ["治理", "前端构建", "范围", "diff", "生命周期"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 完成采样", "trigger": "T1 执行报告完成", "observer": "主 Agent 使用 Docker/HTTP/语言解析器复核（非独立上下文）", "sensors": ["S1", "S2", "S3", "S4", "S6"], "requirement_ids": ["R1", "R2", "R3", "R5"]},
+    {"label": "T2 集成采样", "trigger": "T2 执行报告完成", "observer": "主 Agent 使用 Maven/HTTP 复核（非独立上下文）", "sensors": ["S4", "S5"], "requirement_ids": ["R4"]},
+    {"label": "最终收敛采样", "trigger": "T3 和全部回归完成", "observer": "治理脚本、构建工具和运行探针联合复核", "sensors": ["S1", "S3", "S4", "S5", "S6", "S7"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S2", "S4"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T3"], "sensor_ids": ["S3", "S4"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S5", "S4"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T3"], "sensor_ids": ["S6", "S7"]}
+  ],
+  "plan_status": "ready"
+}

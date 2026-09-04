@@ -1,0 +1,106 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "scripts/dev.ps1、scripts/dev.sh、scripts/dev.mjs",
+      "purpose": "提供跨平台薄入口和不依赖第三方 npm 包的统一 Node.js 开发环境编排器。"
+    },
+    {
+      "path_or_resource": "docker-compose.yml",
+      "purpose": "允许启动器隔离容器名、端口、卷和 host-gateway，同时保留原 ccb-platform 默认值。"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "node --check scripts/dev.mjs",
+      "exit_code": 0,
+      "salient_output": "Node.js 语法检查通过。"
+    },
+    {
+      "command": "PowerShell AST 解析 scripts/dev.ps1",
+      "exit_code": 0,
+      "salient_output": "PowerShell 入口无语法错误。"
+    },
+    {
+      "command": "bash -n scripts/dev.sh",
+      "exit_code": 0,
+      "salient_output": "Bash 入口无语法错误。"
+    },
+    {
+      "command": "node scripts/dev.mjs --unknown",
+      "exit_code": 2,
+      "salient_output": "未知参数在启动 Docker、Maven 或 npm 前失败。"
+    },
+    {
+      "command": "docker compose config --quiet",
+      "exit_code": 0,
+      "salient_output": "Compose 默认配置和 rddmp-dev 覆盖配置均可解析。"
+    },
+    {
+      "command": ".\\scripts\\dev.ps1",
+      "exit_code": 0,
+      "salient_output": "Windows 空库执行 143 个 Flyway 迁移至版本 148；已有库验证 143 个迁移并保持版本 148；后端健康 UP、前端 HTTP 200、admin/admin123 登录成功。"
+    },
+    {
+      "command": ".\\scripts\\dev.ps1 --down",
+      "exit_code": 0,
+      "salient_output": "rddmp-dev 三个基础设施容器移除，两个命名数据卷保留。"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "固定且隔离的本地环境",
+      "result": "pass",
+      "evidence": "使用 rddmp-dev 项目、rddmp-dev-* 容器、独立端口和命名卷；应用只注入 local profile 和固定本地连接参数。",
+      "limitations": ["只在 Windows Docker Desktop 上完成真实运行。"]
+    },
+    {
+      "check": "Flyway、健康、登录与权限",
+      "result": "pass",
+      "evidence": "空库迁移、已有库 validate、Actuator UP、前端 200 和 admin/admin123 登录均通过；受保护 permission-check 仍返回 403。",
+      "limitations": ["未连接任何共享或生产环境。"]
+    },
+    {
+      "check": "退出与资源保留",
+      "result": "pass",
+      "evidence": "Ctrl+C 后 8080/5173 释放且基础设施保留；--down 后容器移除且卷保留。",
+      "limitations": ["PTY 注入 Ctrl+C 时外层 PowerShell 返回 1，但脚本进入正常清理分支且进程树和端口均已释放。"]
+    }
+  ],
+  "diff_summary": [
+    "新增 PowerShell、Bash 薄入口和统一 Node.js 编排器。",
+    "固定本地 admin/admin123、local profile、基础设施端口和 rddmp-dev 资源命名。",
+    "编排基础设施就绪、管理员密码恢复、Maven 后端、Vite 前端、健康等待和退出清理。",
+    "Compose 参数化时保持原默认项目行为。"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "不连接生产或共享环境，也不覆盖 .env。",
+      "result": "pass",
+      "evidence": "启动器仅使用硬编码 loopback 地址和 local profile，未读取或写入 .env。"
+    },
+    {
+      "invariant": "不修改历史 Flyway 迁移或数据库结构。",
+      "result": "pass",
+      "evidence": "真实启动仅由 Spring Boot 执行现有 143 个迁移，代码差异不包含 migration 文件。"
+    },
+    {
+      "invariant": "不删除 Docker 数据卷。",
+      "result": "pass",
+      "evidence": "Ctrl+C 和 --down 后 rddmp-dev 两个命名卷均保留。"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "已有固定容器名和历史卷的初始化密码可能与新固定密码冲突。",
+      "impact": "通过独立 rddmp-dev Compose 项目、容器和卷隔离，未接触历史 ccb-platform 资源。"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "macOS/Linux 仅完成 Bash 静态检查，真实进程组终止和文件监听仍需对应平台人工复核。"
+  ],
+  "recommended_next": "observe"
+}

@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "topic": "dev-environment-runner",
+  "topic": "req-20260904-063-dev-environment-runner",
   "handoff_status": "approved",
   "created_at": "2026-09-04T14:53:42+08:00",
   "design": {
     "schema_version": 1,
-    "topic": "dev-environment-runner",
+    "topic": "req-20260904-063-dev-environment-runner",
     "design_revision": 2,
     "design_status": "approved",
     "human_document": "docs/engineering-control/designs/2026-09-04-dev-environment-runner-design.md",
@@ -198,7 +198,10 @@
         "escalation_conditions": ["需要写任务范围外文件或修改业务模块"]
       }
     ],
-    "dependency_edges": [{"from": "T1", "to": "T2"}, {"from": "T2", "to": "T3"}],
+    "dependency_edges": [
+      {"from": "T1", "to": "T2", "reason": "T2 依赖 T1 产出的长期运行后端进程和串行 Maven compile 触发接口。"},
+      {"from": "T2", "to": "T3", "reason": "T3 只能基于已稳定的启动命令和后端重启行为编写准确提示并执行集成验收。"}
+    ],
     "parallel_groups": [["T1"], ["T2"], ["T3"]],
     "integration_checks": [
       {"after_tasks": ["T1"], "command": "脚本语法和 docker compose config", "expected": "全部通过"},
