@@ -1,0 +1,31 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V124__release_operations_demo_data.sql", "purpose": "追加两个虚构项目及五项投产管理测试数据"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V125__release_operations_demo_admin_members.sql", "purpose": "将本地 admin 账号加入两个测试项目，修复项目范围 403"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V126__release_operations_demo_issue_status.sql", "purpose": "将问题状态修正为后端合法枚举 ANALYZING，修复接口 500"}
+  ],
+  "requirements_addressed": ["R2", "R3", "R4", "R5", "R6", "R7"],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 119 migration(s) and 1 approved callback(s)."},
+    {"command": "local Flyway migrate using filesystem migration location", "exit_code": 0, "salient_output": "Local ccb_platform_licon schema advanced to version v126."}
+  ],
+  "local_checks": [
+    {"check": "migration chain", "result": "pass", "evidence": "V124/V125/V126 are append-only and migration structure check passed"},
+    {"check": "project data", "result": "pass", "evidence": "REL-DEMO-ALPHA id 940001 and REL-DEMO-BETA id 940002 are present"},
+    {"check": "project members", "result": "pass", "evidence": "Each project has four synthetic demo members plus admin project membership"},
+    {"check": "release data", "result": "pass", "evidence": "Each project has drill plan 1/rounds 3, normal timeline items 4, rollback timeline items 3, issues 3 and groups 2"}
+  ],
+  "invariants_checked": [
+    {"invariant": "V123 remains unchanged", "result": "pass", "evidence": "Only V124/V125/V126 were added for this data set"},
+    {"invariant": "tenant/project scope is explicit", "result": "pass", "evidence": "Seed rows use tenant 1 and fixed project IDs with existence guards"},
+    {"invariant": "group members belong to current project", "result": "pass", "evidence": "Organization API and browser data show only current-project members"}
+  ],
+  "disturbances": [
+    {"event": "Initial seed used unsupported issue status IN_PROGRESS", "impact": "Issue endpoint returned 500", "correction": "Append-only V126 changed the demo status to ANALYZING"},
+    {"event": "admin was not initially a project member", "impact": "Project-scoped endpoint returned 403", "correction": "Append-only V125 added admin membership for both fixed projects"}
+  ],
+  "unresolved_items": ["Scope/governance scripts still report pre-existing task metadata and historical ledger issues; recorded in T3 evidence."],
+  "recommended_next": "observe"
+}

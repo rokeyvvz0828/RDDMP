@@ -1,0 +1,84 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["V123 投产管理表和菜单种子", "ccb-release operations Controller/Service/Store", "release operations typed API 和五个页面", "project-context 驱动的当前项目状态"],
+    "environment": ["MySQL/Flyway", "现有项目成员 HTTP API", "动态菜单和 RBAC", "本地后端/前端运行时", "真实浏览器和测试账号"]
+  },
+  "state_variables": [
+    {"name":"current_project_id","owner":"project-context store","valid_values":["当前可用项目 ID","空"]},
+    {"name":"drill_plan_and_rounds","owner":"ReleaseOperationsService","valid_values":["不存在","一套计划及多轮","加载失败"]},
+    {"name":"timeline_type_and_items","owner":"ReleaseOperationsService","valid_values":["NORMAL/ROLLBACK + 有序明细","空","冲突"]},
+    {"name":"issues","owner":"ReleaseOperationsService","valid_values":["分页结果","空","筛选结果","加载失败"]},
+    {"name":"groups_and_members","owner":"ReleaseOperationsService","valid_values":["无层级组及当前项目成员关联","空","越权拒绝"]},
+    {"name":"row_version","owner":"业务表","valid_values":["当前版本","过期版本"]},
+    {"name":"page_state","owner":"Vue page components","valid_values":["loading","ready","empty","error","forbidden","saving"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"角色拥有投产管理 view 权限并访问路由","transitions":["动态菜单读取 V123 父子关系","router meta 校验权限","Controller @PreAuthorize 校验"],"outputs":["五个子菜单可见且接口受保护"]},
+    {"requirement_id":"R2","input":"当前项目提交方案/环境/轮次","transitions":["Controller 解析 DTO","Service 校验项目范围","Store 写计划和轮次"],"outputs":["刷新后读取一套当前项目演练计划及多轮"]},
+    {"requirement_id":"R3","input":"当前项目选择普通或回退时序并提交明细","transitions":["type 白名单校验","timeline/item 持久化","按 seq_no 查询"],"outputs":["对应类型横向时序图和可维护明细"]},
+    {"requirement_id":"R4","input":"关键词/优先级/状态和问题表单","transitions":["分页筛选","字段和状态校验","问题更新并保存分析跟踪"],"outputs":["当前项目问题列表和详情状态一致"]},
+    {"requirement_id":"R5","input":"组表单和当前项目成员选择","transitions":["成员选项来自项目 API","Service 校验 member_id/project_id/status","组成员关联增删"],"outputs":["无层级组展示正确成员，跨项目请求拒绝"]},
+    {"requirement_id":"R6","input":"顶部 projectContext.currentRef 改变或伪造 projectId","transitions":["watch 清理旧页面状态","新请求携带 projectId","Service tenant/project/entity 校验"],"outputs":["新项目数据替换旧数据，越权返回 403/业务错误"]},
+    {"requirement_id":"R7","input":"合法/非法写请求或过期 rowVersion","transitions":["DTO 白名单和字段校验","事务写入/软删除","条件更新比较 rowVersion","操作审计字段写入"],"outputs":["成功保存、明确错误、409 冲突或可重试失败"]},
+    {"requirement_id":"R8","input":"桌面/手机浏览器和加载失败/空数据状态","transitions":["响应式布局和局部滚动","loading/error/empty/forbidden 分支","保存期间按钮锁定"],"outputs":["操作可达且页面 document 宽度不超过视口"]}
+  ],
+  "interfaces": [
+    {"name":"release_operations_rest","producers":["ReleaseOperationsController"],"consumers":["web/src/api/release.ts"],"invariant":"所有业务写入包含当前项目、租户上下文和服务端权限校验"},
+    {"name":"project_context","producers":["useProjectContextStore"],"consumers":["ReleaseOperationsManagement.vue"],"invariant":"请求和页面 key 使用 currentRef，切换时旧状态不可复用"},
+    {"name":"project_member_options","producers":["现有项目成员 API"],"consumers":["投产组织成员选择器"],"invariant":"选项限定当前项目有效成员，不允许自由 userId"},
+    {"name":"release_operations_schema","producers":["V123 Flyway"],"consumers":["ReleaseOperationsStore"],"invariant":"表名、project_id、tenant_id、deleted 和 row_version 与 SQL 一致"},
+    {"name":"menu_permission_tree","producers":["V123 sys_menu seed"],"consumers":["动态菜单和 router meta"],"invariant":"父目录和五个子菜单路径/权限码一一对应"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"数据库和菜单结构","method":"node scripts/check-flyway-migrations.mjs + SQL 静态检查","blind_spots":["真实数据库实例未应用迁移时的运行态"],"independence":"迁移检查独立于 Vue 页面"},
+    {"id":"S2","target":"后端 CRUD、安全和并发规则","method":"ReleaseOperationsServiceTest/ControllerSecurityTest + Maven","blind_spots":["未登录浏览器的动态菜单展示"],"independence":"直接执行服务和安全断言"},
+    {"id":"S3","target":"前端类型、路由和模板","method":"npm --prefix web run build","blind_spots":["实际项目数据和视觉遮挡"],"independence":"构建链路不依赖浏览器交互"},
+    {"id":"S4","target":"运行态项目切换和接口响应","method":"本地健康接口、API 请求和数据库迁移版本","blind_spots":["未授权用户完整菜单树"],"independence":"接近运行环境的 HTTP/DB 传感器"},
+    {"id":"S5","target":"五个页面用户路径和视口","method":"真实浏览器点击、DOM、console、scrollWidth，1280x800/390x844","blind_spots":["生产负载和不同角色未覆盖的组合"],"independence":"与后端单元测试不同的交互传感器"},
+    {"id":"S6","target":"范围和治理约束","method":"node scripts/check-all-governance.mjs + git diff --check","blind_spots":["业务语义运行态"],"independence":"仓库结构与差异传感器"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"schema/menu cause","action":"追加 V123 表、索引和幂等菜单权限种子","authority":"任务 scope 的迁移写权限","impact_radius":"infrastructure migration 和动态菜单","rollback":"保留 V123，关闭新菜单入口"},
+    {"id":"A2","target":"backend cause","action":"新增 operations model/store/service/controller 和测试","authority":"ccb-release 模块写权限","impact_radius":"release operations API","rollback":"回退 operations 包，保留数据库数据"},
+    {"id":"A3","target":"frontend cause","action":"新增 typed API、路由、页面组件和局部样式","authority":"release 前端和 router 写权限","impact_radius":"五个新路由，不改变既有 release 页面","rollback":"移除新路由和组件，保留配置管理"},
+    {"id":"A4","target":"verification cause","action":"执行 Maven/Vite/Flyway/治理和浏览器检查","authority":"本地测试和浏览器工具","impact_radius":"验证证据，不改变业务数据以外的生产系统","rollback":"停止新服务入口并保留测试数据"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S2","S5"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S2","S4","S5"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S2","S4","S5"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S2","S5"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S2","S4","S5"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S2","S4","S5"],"observable":"yes"},
+    {"requirement_id":"R7","sensor_ids":["S2","S6"],"observable":"yes"},
+    {"requirement_id":"R8","sensor_ids":["S3","S5","S6"],"observable":"yes"}
+  ],
+  "disturbances":[
+    {"source":"项目切换时旧请求晚返回","effect":"旧项目数据覆盖新项目","detectable":true,"controllable":true},
+    {"source":"本地数据库历史 failed migration","effect":"后端无法应用 V123","detectable":true,"controllable":false},
+    {"source":"动态菜单缓存","effect":"迁移后菜单短暂不显示","detectable":true,"controllable":true},
+    {"source":"无项目成员/长文本/窄屏","effect":"空状态、布局和选择器边界异常","detectable":true,"controllable":true}
+  ],
+  "delays":[
+    {"source":"项目切换 watcher 到多个 API 返回","consequence":"旧响应可能晚于新项目","sampling_rule":"请求代次或 projectId 校验后再写入状态"},
+    {"source":"Flyway 应用到应用重启","consequence":"菜单和 API 运行态存在版本时延","sampling_rule":"健康接口和 schema version 确认后验收"},
+    {"source":"浏览器 HMR/异步保存","consequence":"短时间重复提交或旧弹框残留","sampling_rule":"保存态锁定并在切换项目时关闭弹层"}
+  ],
+  "assumptions":[
+    {"text":"现有项目成员 API 可返回当前项目有效成员并可被前端复用","evidence":"web/src/api/project.ts 已提供项目相关成员入口，ProjectView 已使用","falsifier":"运行态返回全租户或无法识别 member_id"},
+    {"text":"V123 是当前迁移链下一个可用版本","evidence":"只读扫描发现最高迁移版本为 V122","falsifier":"Flyway 检查发现冲突"},
+    {"text":"动态菜单从 sys_menu/sys_menu_permission 读取迁移种子","evidence":"V38/V45 现有 release 菜单迁移模式","falsifier":"运行态角色菜单不出现新目录"}
+  ],
+  "control_assessment":[
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"T1 菜单迁移 + T2 安全测试 + T3 路由"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"T1/T2 演练模型和 CRUD"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"T1/T2 时序类型和明细 CRUD"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"T2 问题 API + T4 页面"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"T2 成员校验 + T4 组织页面"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"T2 范围校验 + T3/T4 切换刷新"},
+    {"requirement_id":"R7","observable":"yes","controllable":"yes","action":"T2 版本/审计 + T4 防重复"},
+    {"requirement_id":"R8","observable":"yes","controllable":"yes","action":"T3/T4 全状态响应式实现 + T5 浏览器测量"}
+  ],
+  "model_status":"ready"
+}

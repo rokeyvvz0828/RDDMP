@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260902-058-release-operations-menu-demo-data",
+  "status": "ready_for_owner_review",
+  "gate": "conditional_pass",
+  "objective_result": "投产管理五项功能已改为独立子菜单，并为两个测试项目补齐可切换验证的投产数据。",
+  "requirements": [
+    {"id": "R1", "result": "pass", "evidence": "五条独立路由均可达，浏览器页面 release-operations-nav=0"},
+    {"id": "R2", "result": "pass", "evidence": "A/B each drill plan 1 and rounds 3"},
+    {"id": "R3", "result": "pass", "evidence": "A/B each normal items 4 and rollback items 3"},
+    {"id": "R4", "result": "pass", "evidence": "A/B each 3 issue rows; issue API total=3"},
+    {"id": "R5", "result": "pass", "evidence": "A/B each 2 groups; each project member API returned 5 members"},
+    {"id": "R6", "result": "pass", "evidence": "A/B switch and reload preserved current project; opposite project code absent from each page"},
+    {"id": "R7", "result": "pass", "evidence": "ccb-release reactor tests 84 passed and Flyway advanced to v126"},
+    {"id": "R8", "result": "pass", "evidence": "20 route/viewport samples at 375/390/430/1280 had no page-level overflow; fresh tab console errors=0"}
+  ],
+  "checks": [
+    {"name": "release backend tests", "result": "pass", "evidence": "84 tests passed"},
+    {"name": "frontend build", "result": "pass", "evidence": "Vite built 2526 modules"},
+    {"name": "Flyway migration check", "result": "pass", "evidence": "119 migrations passed"},
+    {"name": "git diff check", "result": "pass", "evidence": "No whitespace errors"},
+    {"name": "governance", "result": "pre-existing-blocked", "evidence": "17 modules passed, but unrelated historical ledgers and REQ-20260901-057 ledger errors remain"},
+    {"name": "scope", "result": "metadata-blocked", "evidence": "Checker rejects current task's combined assignment module and factual licon branch format; no source path violation was introduced by the final page fix"}
+  ],
+  "scope_audit": {
+    "result": "manual-review-required",
+    "changed_for_this_task": [
+      "web/src/modules/release/ReleaseOperationsManagement.vue",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V124__release_operations_demo_data.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V125__release_operations_demo_admin_members.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V126__release_operations_demo_issue_status.sql",
+      ".ai-control/requirements/req-20260902-058-release-operations-menu-demo-data/*.json"
+    ],
+    "pre_existing_dirty_worktree": true
+  },
+  "residual_risks": [
+    "Owner must review/fix task metadata or explicitly accept the licon integration branch exception before marking the control ledger converged.",
+    "Repository-wide governance has unrelated historical ledger failures; they were not modified.",
+    "Exact duplicate-run SQL count comparison was not repeated in the final sampling turn; NOT EXISTS guards remain in migrations."
+  ],
+  "rollback": "按任务边界恢复 ReleaseOperationsManagement.vue 页面壳改动；保留已执行 V124/V125/V126 数据迁移，不删除业务数据。",
+  "evidence_files": [
+    "execution-T2.json",
+    "observation-T2.json",
+    "execution-T3.json",
+    "observation-T3.json"
+  ],
+  "owner_action": "复核治理/范围元数据阻断后，将账本从 verifying 转为 converged 或提出纠正任务。"
+}

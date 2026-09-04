@@ -31,6 +31,7 @@ import DataMigrationTargetTables from '../modules/data-migration/views/base/Targ
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
+import ReleaseOperationsManagement from '../modules/release/ReleaseOperationsManagement.vue'
 import TestManagementList from '../modules/test-management/TestManagementList.vue'
 import BusinessDayManagement from '../modules/test-management/business-day/BusinessDayManagement.vue'
 import TestConfigurationPage from '../modules/test-management/configuration/TestConfigurationPage.vue'
@@ -221,6 +222,42 @@ const router = createRouter({
             permission: 'release:application:view',
             menuPath: '/release/applications'
           }
+        },
+        {
+          path: 'release-operations',
+          name: 'release-operations-root',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产管理' }
+        },
+        {
+          path: 'release-operations/drill-plans',
+          name: 'release-operations-drill-plans',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产演练计划', permission: 'release-operations:plan:view', menuPath: '/release-operations/drill-plans' }
+        },
+        {
+          path: 'release-operations/environments',
+          name: 'release-operations-environments',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产演练环境', permission: 'release-operations:environment:view', menuPath: '/release-operations/environments' }
+        },
+        {
+          path: 'release-operations/drills',
+          name: 'release-operations-drills',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产演练', permission: 'release-operations:drill:view', menuPath: '/release-operations/drills' }
+        },
+        {
+          path: 'release-operations/issues',
+          name: 'release-operations-issues',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产问题分析及跟踪', permission: 'release-operations:issue:view', menuPath: '/release-operations/issues' }
+        },
+        {
+          path: 'release-operations/organization',
+          name: 'release-operations-organization',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产组织', permission: 'release-operations:organization:view', menuPath: '/release-operations/organization' }
         },
         {
           path: 'data-migration',

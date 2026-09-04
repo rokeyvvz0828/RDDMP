@@ -1,0 +1,29 @@
+{
+  "task_id":"T1",
+  "status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"web/src/modules/release/ReleaseOperationsManagement.vue","purpose":"删除页面内 release-operations nav 状态和 DOM，按 route.path 只渲染当前业务组件"}
+  ],
+  "requirements_addressed":["R1","R6","R8"],
+  "commands":[
+    {"command":"git status --short --branch; rg -n \"release-operations-nav|visibleNavItems|activeKey|ReleaseDrillPlanView|ReleaseTimelineView\" web/src/modules/release/ReleaseOperationsManagement.vue web/src/router/index.ts","exit_code":0,"salient_output":"五条路由和页面壳导航位置已确认；上一轮未提交改动仍在工作区"},
+    {"command":"npm --prefix web run build","exit_code":1,"salient_output":"首次沙箱执行在 Vite 启动 esbuild 时 spawn EPERM，未进入代码构建结论"},
+    {"command":"npm --prefix web run build","exit_code":0,"salient_output":"vue-tsc 和 Vite 构建成功；2526 modules transformed；built in 56.43s；仅有既存 @vueuse Rollup 注释警告"},
+    {"command":"git diff --check -- web/src/modules/release/ReleaseOperationsManagement.vue","exit_code":0,"salient_output":"无差异空白错误"}
+  ],
+  "local_checks":[
+    {"check":"页面壳导航实现","result":"pass","evidence":"rg 未找到 release-operations-nav、visibleNavItems 和 navigate；只保留 route.path -> activeKey 与单一 v-if 链","limitations":["动态左侧菜单需运行态浏览器验证"]},
+    {"check":"前端类型和构建","result":"pass","evidence":"第二次构建退出码 0","limitations":["首轮失败是沙箱子进程限制，已在受控本地权限下重试"]},
+    {"check":"路由兼容","result":"pass","evidence":"router/index.ts 五条 route/meta 未修改，仍保留父级入口和权限路径","limitations":["未在本任务 T1 单独启动浏览器"]}
+  ],
+  "diff_summary":["ReleaseOperationsManagement.vue 将 navItems/visibleNavItems 替换为无图标路由映射和 firstAccessibleRoute","删除内部 nav DOM","保留项目初始化、请求代次、组件 key 和五个既有业务组件"],
+  "invariants_checked":[
+    {"invariant":"五条 URL 和权限编码保持不变","result":"pass","evidence":"router/index.ts 未被修改，源码扫描确认五个业务组件仍按原路径映射"},
+    {"invariant":"当前项目切换 key/请求代次保护保留","result":"pass","evidence":"projectLookupGeneration、currentProjectId 清空和 projectStore.currentRef key 未删除"},
+    {"invariant":"页面壳同一时刻只渲染一个业务组件","result":"pass","evidence":"五个组件使用 v-if/v-else-if 单链"}
+  ],
+  "disturbances":[{"event":"sandbox denied esbuild child process","impact":"首轮构建退出码 1；使用已批准的本地构建权限重试后通过"}],
+  "assumptions_falsified":[],
+  "unresolved_items":["动态菜单实际显示和项目切换运行态留给 T3 浏览器验收"],
+  "recommended_next":"observe"
+}
