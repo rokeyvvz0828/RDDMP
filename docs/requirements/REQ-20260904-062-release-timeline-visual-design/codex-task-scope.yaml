@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260904-062",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260904-062-release-timeline-visual-design/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/release + frontend/application",
+    "module_owner": "rokeyvvz0828",
+    "branch": "licon",
+    "worktree": "D:/ai_project/ccb_rd"
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+      "web/src/modules/release/release-operations.css",
+      "docs/requirements/REQ-20260904-062-release-timeline-visual-design/**",
+      "docs/engineering-control/designs/2026-09-04-release-timeline-visual-design.md",
+      "docs/engineering-control/plans/2026-09-04-release-timeline-visual-design-implementation-plan.md",
+      ".ai-control/requirements/req-20260904-062-release-timeline-visual-design/*.json"
+    ],
+    "read_only_paths": ["web/src/components/ui/**", "web/src/modules/delivery-showcase/**", "web/src/stores/**", "design-h5.md", ".env", ".env.*", "**/target/**", "**/node_modules/**"],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/architecture/**"]
+  },
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "仅调整前端展示结构，后端契约和存量数据不变"},
+  "public_capability_change": {"required": false, "issue": "REQ-20260904-062", "owner_approved": true},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "TypeScript/Vite 构建通过"},
+    {"name": "diff-check", "command": "git diff --check", "expected": "无空白错误"},
+    {"name": "browser", "command": "真实浏览器验证正向/回退时序抽屉和四种视口", "expected": "阶段列、时间轴、维护入口可用且无新增控制台错误和页面级横向溢出"}
+  ],
+  "risk": {"level": "medium", "items": ["没有独立阶段实体时，阶段标题只能从阶段首条指令兼容推导", "阶段列在窄视口下需要局部横向滚动"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260904-062-release-timeline-visual-design", "rollback": "回退本任务前端文件和证据文件"}
+}

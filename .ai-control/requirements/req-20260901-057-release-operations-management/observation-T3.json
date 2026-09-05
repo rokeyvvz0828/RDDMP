@@ -1,0 +1,15 @@
+{
+  "sample_label": "T3-route-and-shell-observation",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S3 router build + S5 browser route probe", "result": "passed", "raw_evidence": "五个 release-operations 路由均在浏览器中保持目标 pathname，页面标题为投产管理；路由 meta 含对应查看权限。", "limitation": ["当前账号后端实体授权返回无权，未进入业务内容页面"]},
+    {"requirement_id": "R6", "sensor": "S5 browser project selector", "result": "passed", "raw_evidence": "从数据治理专项切换到平台能力升级项目后，投产管理页头部项目名称和引用随 currentRef 更新。", "limitation": ["当前两个测试项目均未将当前账号配置为有效项目成员"]},
+    {"requirement_id": "R8", "sensor": "S5 browser DOM probe", "result": "passed", "raw_evidence": "1280x800 页面根节点无新增页面级横向布局；页面壳具备 error、empty、forbidden、saving 相关分支。", "limitation": ["完整业务组件移动端测量转入 T4"]}
+  ],
+  "feedback": [],
+  "disturbances": [{"event": "当前会话不是测试项目有效成员", "impact": "投产业务 API 按实体授权返回 403，无法用该会话执行 CRUD 浏览器操作"}],
+  "coverage_gaps": ["五个业务组件的 CRUD 和手机视口测量由 T4/T5 覆盖"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

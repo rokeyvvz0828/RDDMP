@@ -1,0 +1,41 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectMemberReference.java", "purpose": "公开最小项目成员引用模型"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectMemberReferenceQuery.java", "purpose": "提供租户/项目范围的只读成员查询契约"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectMemberReferenceQuery.java", "purpose": "通过平台内部 JDBC 实现有效成员查询"},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/operations", "purpose": "实现投产演练、普通/回退时序、问题跟踪和投产组织 API"},
+    {"path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/operations", "purpose": "覆盖项目范围、日期校验、成员校验、版本冲突和权限注解"},
+    {"path_or_resource": "server/src/modules/release/pom.xml", "purpose": "登记 ccb-system 公共契约依赖"},
+    {"path_or_resource": "governance/modules.yaml", "purpose": "登记 release 到 platform/system 的公开能力依赖"},
+    {"path_or_resource": "docs/integration/system-project-members-contract.md", "purpose": "记录公共项目成员引用契约"}
+  ],
+  "requirements_addressed": ["R2", "R3", "R4", "R5", "R6", "R7"],
+  "commands": [
+    {"command": "mvn -pl :ccb-release -am -DskipTests compile '-Dnet.bytebuddy.experimental=true'", "exit_code": 0, "salient_output": "Reactor build success; ccb-system and ccb-release compiled."},
+    {"command": "mvn -pl :ccb-system -am -Dtest=ProjectMemberReferenceQueryTest '-Dsurefire.failIfNoSpecifiedTests=false' test '-Dnet.bytebuddy.experimental=true'", "exit_code": 0, "salient_output": "Tests run: 1, Failures: 0, Errors: 0, Skipped: 0."},
+    {"command": "mvn -pl :ccb-release -am '-Dtest=ReleaseOperationsServiceTest,ReleaseOperationsControllerSecurityTest' '-Dsurefire.failIfNoSpecifiedTests=false' test '-Dnet.bytebuddy.experimental=true'", "exit_code": 0, "salient_output": "Tests run: 5, Failures: 0, Errors: 0, Skipped: 0."},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 116 migration(s) and 1 approved callback(s)."},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "Governance module checks passed; AI control layout reported pre-existing historical ledger naming/encoding/evidence issues."},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors reported."}
+  ],
+  "local_checks": [
+    {"check": "system public member reference test", "result": "passed", "evidence": "JDBC query includes tenant, project, active and non-deleted member/user predicates", "limitations": ["No live database query in this task"]},
+    {"check": "release operations service/security tests", "result": "passed", "evidence": "Five focused tests passed", "limitations": ["Does not cover full HTTP/database integration"]},
+    {"check": "Java compilation", "result": "passed", "evidence": "ccb-system and ccb-release reactor compile succeeded", "limitations": ["Frontend is deferred to T3/T4"]}
+  ],
+  "diff_summary": ["Added the approved read-only system project-member capability", "Added project-isolated release operations models/store/service/controller", "Added focused behavior and permission tests", "Registered the cross-module dependency and contract documentation"],
+  "invariants_checked": [
+    {"invariant": "Release does not query system private tables", "result": "passed", "evidence": "Release service depends on ProjectMemberReferenceQuery; SQL is confined to JdbcProjectMemberReferenceQuery"},
+    {"invariant": "All operations require active membership and project/tenant-scoped store predicates", "result": "passed", "evidence": "requireProjectMember and store WHERE clauses present; focused rejection test passed"},
+    {"invariant": "Writes use soft delete and optimistic rowVersion conditions", "result": "passed", "evidence": "Store update/delete statements include deleted = 0 and row_version predicate"}
+  ],
+  "disturbances": [
+    {"event": "PowerShell parsed an unquoted Maven -D property incorrectly on the first attempt", "impact": "Initial command exited 1 before build; quoted rerun passed."},
+    {"event": "Repository AI control layout check reports historical ledger issues outside this task", "impact": "Full governance command remains exit 1; no unrelated ledger files were changed."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Live database authorization and HTTP integration remain for T5", "Admin-role runtime behavior needs browser/API observation because service project access intentionally requires a current project member"],
+  "recommended_next": "observe"
+}

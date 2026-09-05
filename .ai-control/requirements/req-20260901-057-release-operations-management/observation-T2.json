@@ -1,0 +1,22 @@
+{
+  "sample_label": "T2-backend-and-public-capability-observation",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R2", "sensor": "S2 release service tests", "result": "passed", "raw_evidence": "ReleaseOperationsServiceTest passed 4/4; drill plan/round persistence paths, project membership rejection and rowVersion path are covered.", "limitation": ["No live database CRUD yet"]},
+    {"requirement_id": "R3", "sensor": "S2 service and schema tests", "result": "passed", "raw_evidence": "Timeline item inverted-date validation passed; NORMAL/ROLLBACK enum and timeline item project/type routing are implemented.", "limitation": ["Full timeline rendering deferred to frontend tasks"]},
+    {"requirement_id": "R4", "sensor": "S2 release module regression", "result": "passed", "raw_evidence": "ccb-release reactor test suite passed 84/84 with no failures or errors; issue CRUD/filter code compiled and is included in the module build.", "limitation": ["No live HTTP issue filtering yet"]},
+    {"requirement_id": "R5", "sensor": "S2 service and S1 system capability tests", "result": "passed", "raw_evidence": "ProjectMemberReferenceQueryTest passed 1/1; group member invalid-reference rejection passed; system full suite passed 51/51.", "limitation": ["No browser member selection yet"]},
+    {"requirement_id": "R6", "sensor": "S1 static SQL and S2 service tests", "result": "passed", "raw_evidence": "Operations service requires active project membership and store statements carry tenant/project/deleted predicates; no pm_project_member/sys_* references in release operations source.", "limitation": ["Runtime cross-project HTTP test deferred to T5"]},
+    {"requirement_id": "R7", "sensor": "S2 service and full release regression", "result": "passed", "raw_evidence": "Focused stale group update test passed and all 84 ccb-release tests passed; update/delete SQL uses row_version conditional writes and soft deletion.", "limitation": ["Audit event runtime verification deferred to T5"]},
+    {"requirement_id": "R1", "sensor": "S2 controller security test", "result": "passed", "raw_evidence": "ReleaseOperationsControllerSecurityTest passed 1/1; page view/manage annotations include system:admin fallback.", "limitation": ["Dynamic menu rendering deferred to T3/T5"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Direct non-reactor release test used stale local ccb-system artifact", "impact": "Produced NoClassDefFoundError; reactor rerun with -am passed and is the valid measurement."},
+    {"event": "Repository governance check has historical ledger failures outside this task", "impact": "Governance remains a T5 coverage limitation; no unrelated ledger files changed."}
+  ],
+  "coverage_gaps": ["Live Flyway application, HTTP authorization and browser UI are deferred to T5", "Frontend project switching and mobile layout are not covered by T2"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

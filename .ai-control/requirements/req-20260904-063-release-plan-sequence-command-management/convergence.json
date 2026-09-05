@@ -1,0 +1,19 @@
+{
+  "task_id": "REQ-20260904-063",
+  "phase": "verifying",
+  "status": "verified_with_residual_risk",
+  "gate_result": "verified",
+  "objective": "将投产方案时序和指令恢复为两层可维护结构并移除底部时间线",
+  "requirements": [
+    {"item":"P 节点独立 CRUD","result":"implemented_and_backend_tested"},
+    {"item":"一个 P 节点下多指令 CRUD","result":"implemented_and_backend_tested"},
+    {"item":"移除底部时间线并保持横向节点布局","result":"implemented_and_build_tested"},
+    {"item":"历史数据迁移","result":"migration_reviewed_and_backend_tested"},
+    {"item":"真实浏览器和运行数据库验收","result":"not_completed_due_to_backend_environment_limit"}
+  ],
+  "verification": ["mvn -pl :ccb-release -am test \"-Dnet.bytebuddy.experimental=true\" (88 tests passed)", "mvn -pl :ccb-infrastructure -am -DskipTests resources:resources (passed)", "Flyway repair and V129 migration to v129 (passed)", "GET /actuator/health returned 200", "POST /api/release/operations/release-plans/1/timelines/NORMAL returned 401 (protected route reached)", "git diff --check (passed)", "browser DOM observation before backend shutdown"],
+  "scope_audit": "当前新增修改位于 REQ-20260904-063 writable_paths；工作区内其他历史需求改动未回退",
+  "known_risk": "运行数据库存在与本次无关的历史 wf_lifecycle_delivery、att_file 和 wf_instance.business_module_code 缺失，导致后台定时任务报错；本次未通过认证后的真实浏览器创建多个 P 节点和多条指令",
+  "rollback": "回退当前任务授权源码、V129 追加迁移和 req-20260904-063 证据文件；不修改已发布迁移",
+  "updated_at": "2026-09-04T15:34:00+08:00"
+}

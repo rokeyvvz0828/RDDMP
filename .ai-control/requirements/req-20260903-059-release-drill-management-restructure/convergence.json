@@ -1,0 +1,50 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T3", "T4"], "evidence": ["V127 applied", "browser plan page showed multiple plans with separate forward and rollback sections", "legacy time-sequence menu labels absent"], "limitations": ["date-range picker footer is below the constrained 1280x720 viewport in the tested modal"]},
+    {"id": "R2", "result": "pass", "task_ids": ["T1", "T2", "T3", "T4"], "evidence": ["V127 applied", "environment page exposed all seven requested check fields", "temporary environment create/delete workflow passed"], "limitations": ["local sanitized database only"]},
+    {"id": "R3", "result": "pass", "task_ids": ["T2", "T3", "T4"], "evidence": ["87 backend tests passed", "temporary round required and retained plan/environment association", "temporary drill step create/delete workflow passed"], "limitations": ["high-volume concurrency not sampled"]},
+    {"id": "R4", "result": "pass", "task_ids": ["T2", "T3", "T4"], "evidence": ["cross-project issue round rejection test passed", "issue list displayed 演练轮次 association"], "limitations": []},
+    {"id": "R5", "result": "pass", "task_ids": ["T1", "T2", "T3", "T4"], "evidence": ["legacy default plan/environment and three rounds rendered", "prior A/B project switch sample showed isolated release data"], "limitations": ["no production data access by policy"]},
+    {"id": "R6", "result": "pass", "task_ids": ["T2", "T3", "T4"], "evidence": ["Maven tests, Vite build, Flyway, scope and diff checks passed", "all five release operation routes rendered at 1280x720 without page horizontal overflow", "console contained only Vite debug messages"], "limitations": ["in-app browser could not emulate 375/390/430 mobile viewports", "full governance checker has unrelated historical ledger/YAML failures"]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["V127 applied and Flyway check passed", "T1 observation recorded"]},
+    {"id": "T2", "status": "verified", "evidence": ["87 backend tests passed", "T2 observation recorded"]},
+    {"id": "T3", "status": "verified", "evidence": ["frontend build passed", "plan/environment/drill/issue/organization browser workflows passed", "T3 observation recorded"]},
+    {"id": "T4", "status": "verified", "evidence": ["two zero-error samples and final integration observation recorded"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "mvn -pl :ccb-release -am test -Dnet.bytebuddy.experimental=true", "result": "pass", "evidence": "BUILD SUCCESS; 87 tests, 0 failures, 0 errors"},
+    {"check": "npm --prefix web run build", "result": "pass", "evidence": "2528 modules transformed; production build completed"},
+    {"check": "node scripts/check-flyway-migrations.mjs", "result": "pass", "evidence": "120 migrations and 1 approved callback checked"},
+    {"check": "node scripts/check-codex-scope.mjs ... --working-tree", "result": "pass", "evidence": "Codex scope check passed for REQ-20260903-059; 31 changed files"},
+    {"check": "git diff --check", "result": "pass", "evidence": "no whitespace errors"},
+    {"check": "browser release operation routes", "result": "pass", "evidence": "five routes rendered; no page horizontal overflow or new console errors"}
+  ],
+  "invariant_results": [
+    {"invariant": "append-only migration and legacy compatibility", "result": "pass", "evidence": "V127 and migration checker"},
+    {"invariant": "server-side project/member authorization", "result": "pass", "evidence": "focused service and security tests"},
+    {"invariant": "temporary acceptance data does not remain", "result": "pass", "evidence": "temporary plan, environment, round and step deleted through UI confirmation"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": ["pre-existing unrelated dirty files remain untouched"]},
+  "disturbance_resilience": [
+    {"disturbance": "stale menu/runtime state", "result": "pass", "evidence": "refreshed local runtime showed new menus and removed old menus"},
+    {"disturbance": "sandbox child-process EPERM", "result": "pass", "evidence": "frontend build and scope check passed with approved elevated execution"},
+    {"disturbance": "constrained browser viewport", "result": "partial", "evidence": "page layouts did not overflow; date popper and mobile emulation remain limited"}
+  ],
+  "residual_risks": [
+    "in-app browser could not provide independent 375/390/430 mobile viewport evidence",
+    "date-range picker confirmation footer can extend below a 1280x720 modal viewport",
+    "full governance checker reports unrelated historical task-ledger/YAML defects",
+    "running backend logs contain an existing wf_lifecycle_delivery missing-table scheduler error outside this task",
+    "high-volume concurrent CRUD was not load tested"
+  ],
+  "gate_result": "pass",
+  "route_reason": "all must behaviors have implementation, automated/runtime evidence, verified tasks and two zero-error samples; non-blocking environment and historical-repository limitations are disclosed"
+}

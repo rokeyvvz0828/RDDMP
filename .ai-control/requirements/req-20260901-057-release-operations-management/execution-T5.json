@@ -1,0 +1,33 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"],
+  "commands": [
+    {"command": "mvn -pl :ccb-release -am test '-Dnet.bytebuddy.experimental=true'", "exit_code": 0, "salient_output": "Reactor BUILD SUCCESS；ccb-release 及依赖共 84 项测试通过。"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc 和 Vite production build 成功；2526 modules transformed。"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 116 migration(s) and 1 approved callback(s)。"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "module、skill 和 development entry checks passed；历史其他任务账本格式/命名问题导致 AI control layout failed。"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误。"},
+    {"command": "本地 HTTP health/API probe", "exit_code": 0, "salient_output": "后端 /actuator/health=200，前端入口=200，五个投产 API 未授权请求均=401。"}
+  ],
+  "local_checks": [
+    {"check": "最终前后端运行可达", "result": "passed", "evidence": "后端 8080 健康接口和前端 5173 入口均返回 200"},
+    {"check": "服务端未授权边界", "result": "passed", "evidence": "drill-plan、NORMAL、ROLLBACK、issues、groups 五个 API 未携带认证均返回 401"},
+    {"check": "迁移和代码范围", "result": "passed", "evidence": "V123 追加迁移静态检查通过，git diff --check 通过，实际代码变更均位于任务授权路径"}
+  ],
+  "diff_summary": ["完成投产管理全量自动化和运行态验收采样"],
+  "invariants_checked": [
+    {"invariant": "后端接口必须认证", "result": "passed", "evidence": "五个核心投产 API 未授权请求均为 401"},
+    {"invariant": "前端页面不产生页面级横向溢出", "result": "passed", "evidence": "T4 S5 四视口复测通过"},
+    {"invariant": "不修复无关历史账本", "result": "passed", "evidence": "治理失败只记录既有问题，未修改其他任务账本"}
+  ],
+  "disturbances": [
+    {"event": "治理检查发现其他历史任务账本存在命名、编码和证据格式问题", "impact": "治理命令退出码 1；本任务文件和模块检查不受影响"},
+    {"event": "后端日志存在历史 wf_lifecycle_delivery 表缺失错误", "impact": "属于当前本地数据库历史迁移重排遗留，与投产管理 V123 无关；健康接口仍为 200"},
+    {"event": "浏览器会话当前用户不是两个测试项目有效成员", "impact": "业务 API 实体授权返回 403，未执行页面 CRUD 写入，避免制造未经批准测试数据"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["授权项目成员会话下的浏览器 CRUD 和刷新回读仍需单独运行验收", "历史工作流表缺失需另立数据库修复任务"],
+  "recommended_next": "observe"
+}

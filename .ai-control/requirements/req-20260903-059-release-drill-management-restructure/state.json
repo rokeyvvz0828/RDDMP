@@ -1,0 +1,2204 @@
+{
+  "schema_version": 4,
+  "revision": 33,
+  "created_at": "2026-09-03T09:55:44+00:00",
+  "updated_at": "2026-09-03T11:07:00+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化需求基准阶段",
+      "recorded_at": "2026-09-03T09:55:44+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "已核对新旧表、菜单、路由、项目权限和前端设计边界",
+      "recorded_at": "2026-09-03T09:57:29+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "模型 ready，所有 must 需求均有传感器和可控执行器",
+      "recorded_at": "2026-09-03T09:57:32+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "计划 ready，依赖无环且覆盖全部 must 需求",
+      "recorded_at": "2026-09-03T09:59:04+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T4 execution reports recorded; independent browser and command observations ready",
+      "recorded_at": "2026-09-03T11:01:14+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "all task observations complete, two zero-error samples recorded, no open feedback",
+      "recorded_at": "2026-09-03T11:03:06+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "final gate passed: all six requirements covered, four tasks verified, two zero-error samples, scope and regression checks passed",
+      "recorded_at": "2026-09-03T11:07:00+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "REQ-20260903-059 ready，用户已批准全部实施范围",
+        "recorded_at": "2026-09-03T09:57:25+00:00",
+        "data": {
+          "objective": "将投产演练重构为多方案、多环境、多轮次且问题可追溯的项目级管理能力",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "旧投产时序菜单移除，投产方案可维护正向和回退步骤",
+              "acceptance": [
+                "菜单和路由不再暴露旧时序入口；方案可分别保存两类步骤"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "页面仍显示投产时序菜单"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "当前项目可维护多个投产演练环境及全部环境检查字段",
+              "acceptance": [
+                "同一项目可新增两个环境并刷新后读取字段"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "环境只能配置一条或字段缺失"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "每轮演练必须关联同项目方案和环境，并可维护演练步骤",
+              "acceptance": [
+                "缺少或跨项目引用被拒绝；合法轮次可增删改步骤"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "轮次可以无方案无环境保存"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "投产问题可关联当前项目演练轮次",
+              "acceptance": [
+                "问题编辑可选择当前项目轮次，列表展示轮次"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "问题不能关联轮次或展示其他项目轮次"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "旧投产数据回填且项目切换后数据隔离",
+              "acceptance": [
+                "旧数据可读；A/B 项目不会互相显示方案、环境、轮次和问题"
+              ],
+              "priority": "must",
+              "source": "兼容性约束",
+              "counterexample": [
+                "迁移后旧时序数据丢失"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "后端权限、迁移、构建和响应式路径可验证",
+              "acceptance": [
+                "后端测试、前端构建、迁移/治理/范围检查及四视口通过"
+              ],
+              "priority": "must",
+              "source": "仓库规约",
+              "counterexample": [
+                "未授权写入成功或手机页面溢出"
+              ]
+            }
+          ],
+          "invariants": [
+            "只追加 V127",
+            "租户和项目归属由服务端校验",
+            "写操作有审计和乐观锁",
+            "旧接口保留",
+            "不访问生产数据"
+          ],
+          "constraints": [
+            "只修改本任务 writable_paths",
+            "复用现有投产模块和 delivery-showcase 页面能力",
+            "不依赖 biz_form_*"
+          ],
+          "non_goals": [
+            "不删除历史表和接口",
+            "不改投产窗口/版本申请/附件/投产组织职责",
+            "不修改已发布迁移"
+          ],
+          "assumptions": [
+            {
+              "text": "V126 是当前最高迁移版本",
+              "basis": "migration 目录只读检查",
+              "falsifier": "发现更高版本"
+            },
+            {
+              "text": "旧表字段与现有 store 契约一致",
+              "basis": "V123 和现有测试",
+              "falsifier": "Maven 或迁移报列错误"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "本地数据库是否可执行 V127",
+              "impact": "只能退化为静态迁移检查",
+              "owner": "运行环境",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "新增规范化表并保留旧接口",
+              "reason": "支持多对多业务关系且不破坏历史调用",
+              "source": "用户批准的实现方向"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "菜单/路由和方案步骤",
+              "candidate_sensor": "源码检查+浏览器"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "环境 CRUD 字段",
+              "candidate_sensor": "API/浏览器"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "引用校验和步骤 CRUD",
+              "candidate_sensor": "Maven+API/浏览器"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "问题轮次选择和列表",
+              "candidate_sensor": "API/浏览器"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "回填计数和 A/B 切换",
+              "candidate_sensor": "数据库+浏览器"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "构建、权限、治理、四视口",
+              "candidate_sensor": "命令+浏览器"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "新模型覆盖方案、环境、轮次步骤、问题关联、项目隔离和可观测信号",
+        "recorded_at": "2026-09-03T09:57:30+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ccb-release operations model/store/service/controller",
+              "V127 release migration",
+              "release API types and Vue pages/router"
+            ],
+            "environment": [
+              "MySQL/Flyway",
+              "Vue Router and project context store",
+              "sys_menu permission tree",
+              "current project member capability"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "current_project_id",
+              "owner": "ReleaseOperationsManagement.vue"
+            },
+            {
+              "name": "release_plan_id",
+              "owner": "release plan store/service"
+            },
+            {
+              "name": "environment_id",
+              "owner": "environment store/service"
+            },
+            {
+              "name": "drill_round_id",
+              "owner": "drill service and issue form"
+            },
+            {
+              "name": "row_version",
+              "owner": "all mutable records"
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "方案和步骤表单",
+              "transitions": [
+                "service validates project",
+                "store writes plan/item",
+                "page refreshes selected plan"
+              ],
+              "outputs": [
+                "normal/rollback steps shown in order"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "environment form",
+              "transitions": [
+                "project authorization",
+                "environment insert/update",
+                "list query by project"
+              ],
+              "outputs": [
+                "multiple environments and checks"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "round form with plan/environment",
+              "transitions": [
+                "entity ownership validation",
+                "round insert",
+                "round step CRUD"
+              ],
+              "outputs": [
+                "traceable round"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "issue form round selection",
+              "transitions": [
+                "current project round query",
+                "issue FK nullable update",
+                "list join name"
+              ],
+              "outputs": [
+                "issue traceability"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "old V123 rows",
+              "transitions": [
+                "V127 default plan/environment",
+                "copy legacy items",
+                "legacy round linkage"
+              ],
+              "outputs": [
+                "history readable"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "auth/build/browser checks",
+              "transitions": [
+                "RBAC + member checks",
+                "automated tests",
+                "viewport checks"
+              ],
+              "outputs": [
+                "verifiable delivery"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "release_plan_api",
+              "producers": [
+                "ReleaseOperationsController"
+              ],
+              "consumers": [
+                "ReleaseDrillPlanView"
+              ],
+              "invariant": "tenant/project scoped"
+            },
+            {
+              "name": "release_environment_api",
+              "producers": [
+                "ReleaseOperationsController"
+              ],
+              "consumers": [
+                "ReleaseDrillEnvironmentView"
+              ],
+              "invariant": "environment fields bounded"
+            },
+            {
+              "name": "release_drill_api",
+              "producers": [
+                "ReleaseOperationsController"
+              ],
+              "consumers": [
+                "ReleaseDrillExecutionView",
+                "ReleaseIssueTrackingView"
+              ],
+              "invariant": "plan/environment/round all same project"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "menus/routes",
+              "method": "rg + browser DOM",
+              "blind_spots": [
+                "dynamic menu cache"
+              ],
+              "independence": "static/runtime"
+            },
+            {
+              "id": "S2",
+              "target": "database schema and backfill",
+              "method": "Flyway + read-only SQL",
+              "blind_spots": [
+                "no DB availability"
+              ],
+              "independence": "migration/runtime"
+            },
+            {
+              "id": "S3",
+              "target": "authorization and references",
+              "method": "Maven security/service tests",
+              "blind_spots": [
+                "not full concurrency"
+              ],
+              "independence": "automated"
+            },
+            {
+              "id": "S4",
+              "target": "user workflows",
+              "method": "browser API/DOM/console/scrollWidth",
+              "blind_spots": [
+                "real device rendering"
+              ],
+              "independence": "runtime"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "schema/menu",
+              "action": "append V127",
+              "authority": "task scope",
+              "impact_radius": "migration and dynamic menu",
+              "rollback": "hide menus/revert app code"
+            },
+            {
+              "id": "A2",
+              "target": "backend",
+              "action": "add bounded CRUD contract",
+              "authority": "release module",
+              "impact_radius": "operations APIs",
+              "rollback": "revert code"
+            },
+            {
+              "id": "A3",
+              "target": "frontend",
+              "action": "replace old route consumers with new pages",
+              "authority": "release web scope",
+              "impact_radius": "five menus",
+              "rollback": "revert page/router"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "dynamic menu cache",
+              "effect": "stale menu",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "legacy data duplicates",
+              "effect": "backfill conflict",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "project switch latency",
+              "effect": "stale page data",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "menu cache",
+              "consequence": "new menus delayed",
+              "sampling_rule": "refresh auth or restart before browser sample"
+            },
+            {
+              "source": "async project lookup",
+              "consequence": "old content may flash",
+              "sampling_rule": "inspect key and clear state before render"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "V127 is available",
+              "evidence": "V126 is highest migration",
+              "falsifier": "Flyway version conflict"
+            },
+            {
+              "text": "project member capability is reusable",
+              "evidence": "current operations service",
+              "falsifier": "security test failure"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A3"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2+A3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2+A3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2+A3"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "A1+A2"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2+A3"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T4 串行计划已补齐完整任务契约，覆盖全部 must 需求",
+        "recorded_at": "2026-09-03T09:59:03+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "plan_status": "ready",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "追加 V127 新模型、菜单和旧数据回填",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V126 is current migration head",
+                "V123 legacy operations tables and menus exist"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V127__release_drill_management_restructure.sql"
+              ],
+              "invariants": [
+                "append-only",
+                "tenant/project scoped",
+                "idempotent"
+              ],
+              "interface_contracts": [
+                "new tables and menu permissions"
+              ],
+              "non_goals": [
+                "no history migration edits"
+              ],
+              "action_bounds": [
+                "new tables/columns/menu state/conditional seed"
+              ],
+              "acceptance_checks": [
+                "flyway check and SQL shape"
+              ],
+              "evidence_required": [
+                "diff and command output"
+              ],
+              "rollback": "hide new menu and revert app; retain migration",
+              "stop_conditions": [
+                "version conflict",
+                "destructive SQL"
+              ],
+              "escalation_conditions": [
+                "schema mismatch"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "实现后端方案、环境、轮次步骤和问题轮次契约",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "V127 contract is fixed",
+                "ProjectMemberReferenceQuery is the existing authorization capability"
+              ],
+              "write_scope": [
+                "server/src/modules/release/src/main/java/com/ccb/release/operations/**",
+                "server/src/modules/release/src/test/java/com/ccb/release/operations/**"
+              ],
+              "invariants": [
+                "auth/member/entity checks",
+                "optimistic lock",
+                "audit"
+              ],
+              "interface_contracts": [
+                "controller DTOs and API paths"
+              ],
+              "non_goals": [
+                "no other release domains"
+              ],
+              "action_bounds": [
+                "bounded CRUD and legacy compatibility"
+              ],
+              "acceptance_checks": [
+                "Maven tests including cross-project reference rejection"
+              ],
+              "evidence_required": [
+                "test output and diff"
+              ],
+              "rollback": "revert release operations code",
+              "stop_conditions": [
+                "permission bypass",
+                "cross-project read/write"
+              ],
+              "escalation_conditions": [
+                "public capability needed"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "实现前端新菜单和四项业务页面",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "T2 controller DTOs and routes are stable",
+                "existing project context shell supplies current project"
+              ],
+              "write_scope": [
+                "web/src/api/release.ts",
+                "web/src/modules/release/**",
+                "web/src/router/index.ts"
+              ],
+              "invariants": [
+                "current project key",
+                "all states",
+                "mobile layout"
+              ],
+              "interface_contracts": [
+                "T2 API contract"
+              ],
+              "non_goals": [
+                "no public shell rewrite"
+              ],
+              "action_bounds": [
+                "remove old menu consumers and add pages"
+              ],
+              "acceptance_checks": [
+                "Vite build and browser workflows"
+              ],
+              "evidence_required": [
+                "build/browser output"
+              ],
+              "rollback": "revert frontend task files",
+              "stop_conditions": [
+                "white screen",
+                "new console errors",
+                "overflow"
+              ],
+              "escalation_conditions": [
+                "shared UI change required"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "独立集成观测并收敛",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "input_facts": [
+                "T1-T3 execution reports and command outputs"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260903-059-release-drill-management-restructure/*.json"
+              ],
+              "invariants": [
+                "all must evidence",
+                "P0/P1 zero"
+              ],
+              "interface_contracts": [
+                "migration/backend/frontend"
+              ],
+              "non_goals": [
+                "no requirement change"
+              ],
+              "action_bounds": [
+                "checks and evidence only, bounded fixes return to T1-T3"
+              ],
+              "acceptance_checks": [
+                "full governance, scope, build, tests, browser"
+              ],
+              "evidence_required": [
+                "observation and convergence"
+              ],
+              "rollback": "preserve evidence and revert by task",
+              "stop_conditions": [
+                "unresolved critical failure"
+              ],
+              "escalation_conditions": [
+                "environment prevents runtime evidence"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "backend depends on schema"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "frontend consumes backend contract"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "integration observes combined output"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "node scripts/check-flyway-migrations.mjs"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "mvn -pl :ccb-release -am test -Dnet.bytebuddy.experimental=true"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "npm --prefix web run build",
+                "git diff --check"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "node scripts/check-all-governance.mjs",
+                "scope and browser"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "schema",
+              "trigger": "T1 complete",
+              "observer": "main agent",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ]
+            },
+            {
+              "label": "backend",
+              "trigger": "T2 complete",
+              "observer": "independent test run",
+              "sensors": [
+                "S3"
+              ],
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R6"
+              ]
+            },
+            {
+              "label": "runtime",
+              "trigger": "T3 complete",
+              "observer": "browser run",
+              "sensors": [
+                "S1",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 execution report recorded",
+        "recorded_at": "2026-09-03T11:00:51+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V127__release_drill_management_restructure.sql",
+              "purpose": "append normalized plans, environments, drill rounds, steps, issue linkage, menus and legacy backfill"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "Flyway migration check passed"
+            },
+            {
+              "command": "Flyway application startup against ccb_platform_licon",
+              "exit_code": 0,
+              "salient_output": "Successfully applied 1 migration; schema now at version v127"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "migration shape and append-only rule",
+              "result": "passed",
+              "evidence": "static migration check passed and V127 applied",
+              "limitations": [
+                "backfill was read through the running application rather than exporting production data"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "added V127 normalized release drill schema",
+            "disabled legacy time-sequence menus",
+            "backfilled default plan/environment and preserved legacy compatibility"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Flyway migrations are append-only",
+              "result": "passed",
+              "evidence": "migration checker exit code 0"
+            },
+            {
+              "invariant": "tenant and project scope is preserved",
+              "result": "passed",
+              "evidence": "schema and service tests use project-scoped records"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 execution report recorded",
+        "recorded_at": "2026-09-03T11:00:55+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/operations",
+              "purpose": "implement plan, environment, round, drill-step and issue-round service contracts"
+            },
+            {
+              "path_or_resource": "server/src/modules/release/src/test/java/com/ccb/release/operations",
+              "purpose": "cover required references, authorization and endpoint security"
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-release -am test \"-Dnet.bytebuddy.experimental=true\"",
+              "exit_code": 0,
+              "salient_output": "BUILD SUCCESS; Tests run: 87, Failures: 0, Errors: 0"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "same-project reference validation",
+              "result": "passed",
+              "evidence": "cross-project drill-round reference test passed",
+              "limitations": [
+                "not a high-volume concurrency test"
+              ]
+            },
+            {
+              "check": "authorization annotations and protected writes",
+              "result": "passed",
+              "evidence": "controller security tests passed"
+            }
+          ],
+          "diff_summary": [
+            "added multi-plan and multi-environment CRUD",
+            "added drill round and step CRUD with required plan/environment association",
+            "added issue round association and reference protection"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "server-side project/member authorization",
+              "result": "passed",
+              "evidence": "focused release test suite passed"
+            },
+            {
+              "invariant": "optimistic locking and audit path retained",
+              "result": "passed",
+              "evidence": "service contract and existing operation tests passed"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "legacy drill_plan_id was initially incompatible with new plan references",
+              "impact": "new round could target the wrong legacy column",
+              "resolution": "V127 makes the legacy field nullable and the service writes release_plan_id"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 execution report recorded",
+        "recorded_at": "2026-09-03T11:00:59+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/release.ts",
+              "purpose": "client contracts for plans, environments, drills and issue round references"
+            },
+            {
+              "path_or_resource": "web/src/modules/release",
+              "purpose": "new plan, environment and drill pages plus issue linkage and responsive styles"
+            },
+            {
+              "path_or_resource": "web/src/router/index.ts",
+              "purpose": "remove old time-sequence routes and register new menus"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "2528 modules transformed; build completed successfully"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --base HEAD --head HEAD --scope docs/requirements/REQ-20260903-059-release-drill-management-restructure/codex-task-scope.yaml --working-tree",
+              "exit_code": 0,
+              "salient_output": "Codex scope check passed"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "no whitespace errors"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "new menu and route rendering",
+              "result": "passed",
+              "evidence": "browser DOM showed plan, environment, drill, issue and organization menus; old time-sequence labels absent",
+              "limitations": [
+                "browser session was authenticated as local admin"
+              ]
+            },
+            {
+              "check": "project context isolation",
+              "result": "passed",
+              "evidence": "browser project switch showed A/B-specific release data",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "added environment and drill execution views",
+            "plan view now supports multiple plans and forward/rollback steps",
+            "issue form/list exposes drill round"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "page data follows current project",
+              "result": "passed",
+              "evidence": "A/B browser switch and route reload checks"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Element Plus date-range popper extends below the 1280x720 browser viewport",
+              "impact": "footer confirmation is difficult to reach in that constrained viewport",
+              "resolution": "recorded as an observation limitation; no product data was left behind"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "real-device mobile viewport screenshot was unavailable in the in-app browser runtime"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T4 execution report recorded",
+        "recorded_at": "2026-09-03T11:01:04+00:00",
+        "data": {
+          "task_id": "T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260903-059-release-drill-management-restructure",
+              "purpose": "record independent integration observations and convergence evidence"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6"
+          ],
+          "commands": [],
+          "local_checks": [
+            {
+              "check": "integration evidence collection",
+              "result": "passed",
+              "evidence": "runtime browser samples and prior backend/build/migration evidence collected",
+              "limitations": [
+                "final governance checker includes unrelated historical repository failures"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "prepared bounded observation and convergence records"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "evidence remains within task scope",
+              "result": "passed",
+              "evidence": "scope checker passed"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "full governance checker has pre-existing unrelated ledger/YAML failures"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1 schema and menu observation complete",
+        "recorded_at": "2026-09-03T11:02:38+00:00",
+        "data": {
+          "sample_label": "T1 schema and menu observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 migration and browser DOM",
+              "result": "pass",
+              "raw_evidence": "V127 applied; old 投产时序 and 投产回退时序 labels absent; new plan/environment/drill menus present",
+              "limitation": [
+                "dynamic menu cache was refreshed through the running local session"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 Flyway and runtime data",
+              "result": "pass",
+              "raw_evidence": "V127 applied successfully and environment page returned all seven required check columns",
+              "limitation": [
+                "local sanitized database only"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2/S4 migration backfill and project switch",
+              "result": "pass",
+              "raw_evidence": "legacy default plan/environment and three rounds were readable in project A; prior A/B switch sample showed project-scoped data",
+              "limitation": [
+                "no production database access by policy"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 backend observation complete",
+        "recorded_at": "2026-09-03T11:02:41+00:00",
+        "data": {
+          "sample_label": "T2 backend contract observation",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "sensor": "S3 focused Maven service tests",
+              "result": "pass",
+              "raw_evidence": "87 tests run, 0 failures, 0 errors",
+              "limitation": [
+                "not a load test"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 service/security tests",
+              "result": "pass",
+              "raw_evidence": "missing plan/environment and cross-project reference rejection tests passed; round step contract covered",
+              "limitation": [
+                "concurrency coverage is limited"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S3 issue association tests",
+              "result": "pass",
+              "raw_evidence": "cross-project issue round association rejection and endpoint security tests passed",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S3 controller security tests",
+              "result": "pass",
+              "raw_evidence": "new endpoint permission annotation checks passed",
+              "limitation": [
+                "local admin test identity"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "high-volume concurrency and production-like latency were not sampled"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 frontend and browser observation complete",
+        "recorded_at": "2026-09-03T11:02:42+00:00",
+        "data": {
+          "sample_label": "T3 frontend runtime and workflow observation",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S4 browser DOM and screenshot",
+              "result": "pass",
+              "raw_evidence": "plan page showed multiple plan records and separate 正向投产步骤/回退步骤 sections; old menus absent",
+              "limitation": [
+                "date picker confirmation footer extends below the 1280x720 browser viewport"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S4 browser interaction",
+              "result": "pass",
+              "raw_evidence": "created a temporary environment with all check fields, observed it in the table, then deleted it through the confirmation dialog",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S4 browser interaction",
+              "result": "pass",
+              "raw_evidence": "created a temporary round associated with a plan and environment, added a temporary step, then deleted the round",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S4 browser DOM",
+              "result": "pass",
+              "raw_evidence": "issue page showed 演练轮次 column and project A issues linked to 第一轮：发布前检查",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S4 project context",
+              "result": "pass",
+              "raw_evidence": "current project A rendered A-specific release data; prior project B sample rendered B-specific plan/environment/round data",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S4 page measurement and console logs",
+              "result": "pass",
+              "raw_evidence": "plan, environment, drill, issue and organization routes rendered with document/body width 1280 and viewport width 1280; console contained only Vite connection debug messages",
+              "limitation": [
+                "in-app browser could not emulate the requested 375/390/430 mobile viewport sizes"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "constrained browser viewport exposed date-range popper placement limitation",
+              "impact": "date-range picker footer is below the visible screen in the tested 1280x720 modal",
+              "classification": "disturbance"
+            }
+          ],
+          "coverage_gaps": [
+            "real-device/mobile viewport visual sample unavailable in current in-app browser runtime"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T4 final integration observation complete",
+        "recorded_at": "2026-09-03T11:02:44+00:00",
+        "data": {
+          "sample_label": "T4 final integration observation",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S4 route and menu inspection",
+              "result": "pass",
+              "raw_evidence": "all five current release operation routes rendered and both legacy time-sequence labels were absent",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2/S4 migration, API and UI",
+              "result": "pass",
+              "raw_evidence": "V127 applied; environment CRUD interaction completed and cleaned",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3/S4 test and UI",
+              "result": "pass",
+              "raw_evidence": "backend reference tests passed; round and step create/delete workflow completed",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S3/S4 test and UI",
+              "result": "pass",
+              "raw_evidence": "issue round association tests passed and issue list displayed linked round",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2/S4 data and project context",
+              "result": "pass",
+              "raw_evidence": "legacy backfill data rendered and A/B project isolation sample passed",
+              "limitation": [
+                "sanitized local data only"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S3/S4 build, scope, runtime and browser",
+              "result": "pass",
+              "raw_evidence": "Maven, Vite, Flyway, scope and diff checks passed; routes rendered without horizontal overflow or new console errors",
+              "limitation": [
+                "full governance checker has unrelated historical ledger/YAML failures",
+                "mobile viewport emulation unavailable"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "real-device mobile rendering and high-volume concurrency remain outside this local sample"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "final convergence report recorded from final command and browser evidence",
+        "recorded_at": "2026-09-03T11:06:50+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "V127 applied",
+                "browser plan page showed multiple plans with separate forward and rollback sections",
+                "legacy time-sequence menu labels absent"
+              ],
+              "limitations": [
+                "date-range picker footer is below the constrained 1280x720 viewport in the tested modal"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "V127 applied",
+                "environment page exposed all seven requested check fields",
+                "temporary environment create/delete workflow passed"
+              ],
+              "limitations": [
+                "local sanitized database only"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "87 backend tests passed",
+                "temporary round required and retained plan/environment association",
+                "temporary drill step create/delete workflow passed"
+              ],
+              "limitations": [
+                "high-volume concurrency not sampled"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "cross-project issue round rejection test passed",
+                "issue list displayed 演练轮次 association"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "legacy default plan/environment and three rounds rendered",
+                "prior A/B project switch sample showed isolated release data"
+              ],
+              "limitations": [
+                "no production data access by policy"
+              ]
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "Maven tests, Vite build, Flyway, scope and diff checks passed",
+                "all five release operation routes rendered at 1280x720 without page horizontal overflow",
+                "console contained only Vite debug messages"
+              ],
+              "limitations": [
+                "in-app browser could not emulate 375/390/430 mobile viewports",
+                "full governance checker has unrelated historical ledger/YAML failures"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "V127 applied and Flyway check passed",
+                "T1 observation recorded"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "87 backend tests passed",
+                "T2 observation recorded"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "frontend build passed",
+                "plan/environment/drill/issue/organization browser workflows passed",
+                "T3 observation recorded"
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "two zero-error samples and final integration observation recorded"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "mvn -pl :ccb-release -am test -Dnet.bytebuddy.experimental=true",
+              "result": "pass",
+              "evidence": "BUILD SUCCESS; 87 tests, 0 failures, 0 errors"
+            },
+            {
+              "check": "npm --prefix web run build",
+              "result": "pass",
+              "evidence": "2528 modules transformed; production build completed"
+            },
+            {
+              "check": "node scripts/check-flyway-migrations.mjs",
+              "result": "pass",
+              "evidence": "120 migrations and 1 approved callback checked"
+            },
+            {
+              "check": "node scripts/check-codex-scope.mjs ... --working-tree",
+              "result": "pass",
+              "evidence": "Codex scope check passed for REQ-20260903-059; 31 changed files"
+            },
+            {
+              "check": "git diff --check",
+              "result": "pass",
+              "evidence": "no whitespace errors"
+            },
+            {
+              "check": "browser release operation routes",
+              "result": "pass",
+              "evidence": "five routes rendered; no page horizontal overflow or new console errors"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "append-only migration and legacy compatibility",
+              "result": "pass",
+              "evidence": "V127 and migration checker"
+            },
+            {
+              "invariant": "server-side project/member authorization",
+              "result": "pass",
+              "evidence": "focused service and security tests"
+            },
+            {
+              "invariant": "temporary acceptance data does not remain",
+              "result": "pass",
+              "evidence": "temporary plan, environment, round and step deleted through UI confirmation"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": [
+              "pre-existing unrelated dirty files remain untouched"
+            ]
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "stale menu/runtime state",
+              "result": "pass",
+              "evidence": "refreshed local runtime showed new menus and removed old menus"
+            },
+            {
+              "disturbance": "sandbox child-process EPERM",
+              "result": "pass",
+              "evidence": "frontend build and scope check passed with approved elevated execution"
+            },
+            {
+              "disturbance": "constrained browser viewport",
+              "result": "partial",
+              "evidence": "page layouts did not overflow; date popper and mobile emulation remain limited"
+            }
+          ],
+          "residual_risks": [
+            "in-app browser could not provide independent 375/390/430 mobile viewport evidence",
+            "date-range picker confirmation footer can extend below a 1280x720 modal viewport",
+            "full governance checker reports unrelated historical task-ledger/YAML defects",
+            "running backend logs contain an existing wf_lifecycle_delivery missing-table scheduler error outside this task",
+            "high-volume concurrent CRUD was not load tested"
+          ],
+          "gate_result": "pass",
+          "route_reason": "all must behaviors have implementation, automated/runtime evidence, verified tasks and two zero-error samples; non-blocking environment and historical-repository limitations are disclosed"
+        }
+      }
+    ]
+  },
+  "objective": "将投产演练重构为多方案、多环境、多轮次且问题可追溯的项目级管理能力",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "旧投产时序菜单移除，投产方案可维护正向和回退步骤",
+      "acceptance": [
+        "菜单和路由不再暴露旧时序入口；方案可分别保存两类步骤"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "页面仍显示投产时序菜单"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "当前项目可维护多个投产演练环境及全部环境检查字段",
+      "acceptance": [
+        "同一项目可新增两个环境并刷新后读取字段"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "环境只能配置一条或字段缺失"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "每轮演练必须关联同项目方案和环境，并可维护演练步骤",
+      "acceptance": [
+        "缺少或跨项目引用被拒绝；合法轮次可增删改步骤"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "轮次可以无方案无环境保存"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "投产问题可关联当前项目演练轮次",
+      "acceptance": [
+        "问题编辑可选择当前项目轮次，列表展示轮次"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "问题不能关联轮次或展示其他项目轮次"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "旧投产数据回填且项目切换后数据隔离",
+      "acceptance": [
+        "旧数据可读；A/B 项目不会互相显示方案、环境、轮次和问题"
+      ],
+      "priority": "must",
+      "source": "兼容性约束",
+      "counterexample": [
+        "迁移后旧时序数据丢失"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "后端权限、迁移、构建和响应式路径可验证",
+      "acceptance": [
+        "后端测试、前端构建、迁移/治理/范围检查及四视口通过"
+      ],
+      "priority": "must",
+      "source": "仓库规约",
+      "counterexample": [
+        "未授权写入成功或手机页面溢出"
+      ]
+    }
+  ],
+  "invariants": [
+    "只追加 V127",
+    "租户和项目归属由服务端校验",
+    "写操作有审计和乐观锁",
+    "旧接口保留",
+    "不访问生产数据"
+  ],
+  "constraints": [
+    "只修改本任务 writable_paths",
+    "复用现有投产模块和 delivery-showcase 页面能力",
+    "不依赖 biz_form_*"
+  ],
+  "non_goals": [
+    "不删除历史表和接口",
+    "不改投产窗口/版本申请/附件/投产组织职责",
+    "不修改已发布迁移"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL/Flyway\", \"Vue Router and project context store\", \"sys_menu permission tree\", \"current project member capability\"], \"inside\": [\"ccb-release operations model/store/service/controller\", \"V127 release migration\", \"release API types and Vue pages/router\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"dynamic menu cache\"], \"id\": \"S1\", \"independence\": \"static/runtime\", \"method\": \"rg + browser DOM\", \"target\": \"menus/routes\"}",
+      "{\"blind_spots\": [\"no DB availability\"], \"id\": \"S2\", \"independence\": \"migration/runtime\", \"method\": \"Flyway + read-only SQL\", \"target\": \"database schema and backfill\"}",
+      "{\"blind_spots\": [\"not full concurrency\"], \"id\": \"S3\", \"independence\": \"automated\", \"method\": \"Maven security/service tests\", \"target\": \"authorization and references\"}",
+      "{\"blind_spots\": [\"real device rendering\"], \"id\": \"S4\", \"independence\": \"runtime\", \"method\": \"browser API/DOM/console/scrollWidth\", \"target\": \"user workflows\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"append V127\", \"authority\": \"task scope\", \"id\": \"A1\", \"impact_radius\": \"migration and dynamic menu\", \"rollback\": \"hide menus/revert app code\", \"target\": \"schema/menu\"}",
+      "{\"action\": \"add bounded CRUD contract\", \"authority\": \"release module\", \"id\": \"A2\", \"impact_radius\": \"operations APIs\", \"rollback\": \"revert code\", \"target\": \"backend\"}",
+      "{\"action\": \"replace old route consumers with new pages\", \"authority\": \"release web scope\", \"id\": \"A3\", \"impact_radius\": \"five menus\", \"rollback\": \"revert page/router\", \"target\": \"frontend\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"stale menu\", \"source\": \"dynamic menu cache\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"backfill conflict\", \"source\": \"legacy data duplicates\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"stale page data\", \"source\": \"project switch latency\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"V126 is highest migration\", \"falsifier\": \"Flyway version conflict\", \"text\": \"V127 is available\"}",
+      "{\"evidence\": \"current operations service\", \"falsifier\": \"security test failure\", \"text\": \"project member capability is reusable\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "追加 V127 新模型、菜单和旧数据回填",
+      "requirements": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V126 is current migration head",
+        "V123 legacy operations tables and menus exist"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V127__release_drill_management_restructure.sql"
+      ],
+      "invariants": [
+        "append-only",
+        "tenant/project scoped",
+        "idempotent"
+      ],
+      "interface_contracts": [
+        "new tables and menu permissions"
+      ],
+      "non_goals": [
+        "no history migration edits"
+      ],
+      "action_bounds": [
+        "new tables/columns/menu state/conditional seed"
+      ],
+      "acceptance": [
+        "flyway check and SQL shape"
+      ],
+      "evidence_required": [
+        "diff and command output"
+      ],
+      "rollback": "hide new menu and revert app; retain migration",
+      "stop_conditions": [
+        "version conflict",
+        "destructive SQL"
+      ],
+      "escalation_conditions": [
+        "schema mismatch"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T11:00:49+00:00",
+          "text": "T1 execution report prepared from V127 and Flyway evidence"
+        },
+        {
+          "recorded_at": "2026-09-03T11:00:52+00:00",
+          "text": "T1 implementation is ready for independent observation"
+        },
+        {
+          "recorded_at": "2026-09-03T11:03:01+00:00",
+          "text": "V127 applied and T1 observation passed"
+        }
+      ],
+      "updated_at": "2026-09-03T11:03:01+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "实现后端方案、环境、轮次步骤和问题轮次契约",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "V127 contract is fixed",
+        "ProjectMemberReferenceQuery is the existing authorization capability"
+      ],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/operations/**",
+        "server/src/modules/release/src/test/java/com/ccb/release/operations/**"
+      ],
+      "invariants": [
+        "auth/member/entity checks",
+        "optimistic lock",
+        "audit"
+      ],
+      "interface_contracts": [
+        "controller DTOs and API paths"
+      ],
+      "non_goals": [
+        "no other release domains"
+      ],
+      "action_bounds": [
+        "bounded CRUD and legacy compatibility"
+      ],
+      "acceptance": [
+        "Maven tests including cross-project reference rejection"
+      ],
+      "evidence_required": [
+        "test output and diff"
+      ],
+      "rollback": "revert release operations code",
+      "stop_conditions": [
+        "permission bypass",
+        "cross-project read/write"
+      ],
+      "escalation_conditions": [
+        "public capability needed"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T11:00:53+00:00",
+          "text": "T2 execution report prepared from focused Maven evidence"
+        },
+        {
+          "recorded_at": "2026-09-03T11:00:56+00:00",
+          "text": "T2 implementation is ready for independent observation"
+        },
+        {
+          "recorded_at": "2026-09-03T11:03:02+00:00",
+          "text": "87 backend tests passed and T2 observation passed"
+        }
+      ],
+      "updated_at": "2026-09-03T11:03:02+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "实现前端新菜单和四项业务页面",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "T2 controller DTOs and routes are stable",
+        "existing project context shell supplies current project"
+      ],
+      "write_scope": [
+        "web/src/api/release.ts",
+        "web/src/modules/release/**",
+        "web/src/router/index.ts"
+      ],
+      "invariants": [
+        "current project key",
+        "all states",
+        "mobile layout"
+      ],
+      "interface_contracts": [
+        "T2 API contract"
+      ],
+      "non_goals": [
+        "no public shell rewrite"
+      ],
+      "action_bounds": [
+        "remove old menu consumers and add pages"
+      ],
+      "acceptance": [
+        "Vite build and browser workflows"
+      ],
+      "evidence_required": [
+        "build/browser output"
+      ],
+      "rollback": "revert frontend task files",
+      "stop_conditions": [
+        "white screen",
+        "new console errors",
+        "overflow"
+      ],
+      "escalation_conditions": [
+        "shared UI change required"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T11:00:58+00:00",
+          "text": "T3 execution report prepared from frontend build and browser evidence"
+        },
+        {
+          "recorded_at": "2026-09-03T11:01:01+00:00",
+          "text": "T3 implementation is ready for independent observation"
+        },
+        {
+          "recorded_at": "2026-09-03T11:03:04+00:00",
+          "text": "frontend build and browser workflow observation passed"
+        }
+      ],
+      "updated_at": "2026-09-03T11:03:04+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "独立集成观测并收敛",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "T1-T3 execution reports and command outputs"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260903-059-release-drill-management-restructure/*.json"
+      ],
+      "invariants": [
+        "all must evidence",
+        "P0/P1 zero"
+      ],
+      "interface_contracts": [
+        "migration/backend/frontend"
+      ],
+      "non_goals": [
+        "no requirement change"
+      ],
+      "action_bounds": [
+        "checks and evidence only, bounded fixes return to T1-T3"
+      ],
+      "acceptance": [
+        "full governance, scope, build, tests, browser"
+      ],
+      "evidence_required": [
+        "observation and convergence"
+      ],
+      "rollback": "preserve evidence and revert by task",
+      "stop_conditions": [
+        "unresolved critical failure"
+      ],
+      "escalation_conditions": [
+        "environment prevents runtime evidence"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T11:01:02+00:00",
+          "text": "T4 integration observation report prepared"
+        },
+        {
+          "recorded_at": "2026-09-03T11:01:05+00:00",
+          "text": "T4 evidence collection is ready for independent observation"
+        },
+        {
+          "recorded_at": "2026-09-03T11:03:05+00:00",
+          "text": "final integration observation recorded with no P0/P1 feedback"
+        }
+      ],
+      "updated_at": "2026-09-03T11:03:05+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1-T4 browser and integration sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "V127 applied; Maven 87 tests passed; Vite build passed; release plan/environment/drill/issue/organization routes rendered at 1280x720 without page horizontal overflow; temporary environment/round/step/plan records were removed; console logs contained only Vite debug messages",
+      "recorded_at": "2026-09-03T11:02:45+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "final regression sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Independent final command and browser sample: old menus absent, new menus present, project A issue round linkage visible, no P0/P1 observations",
+      "recorded_at": "2026-09-03T11:02:46+00:00"
+    }
+  ]
+}

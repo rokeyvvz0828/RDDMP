@@ -1,0 +1,24 @@
+{
+  "objective": "将投产方案和演练步骤改为时序图与抽屉维护，并移除投产管理重复项目标识",
+  "requirements": [
+    {"id": "R1", "statement": "方案详情的正向和回退步骤以横向时序图展示", "acceptance": ["两个时序区按序号连接并显示步骤关键信息"], "priority": "must", "source": "用户指令", "counterexample": ["仍只有纵向卡片列表"]},
+    {"id": "R2", "statement": "方案步骤新增和编辑使用抽屉维护", "acceptance": ["对应操作打开抽屉，保存后时序区更新"], "priority": "must", "source": "用户指令", "counterexample": ["操作仍打开对话框或保存不更新"]},
+    {"id": "R3", "statement": "演练步骤新增和编辑使用抽屉维护", "acceptance": ["当前轮次操作打开抽屉，保存后步骤区更新"], "priority": "must", "source": "用户指令", "counterexample": ["步骤仍使用对话框"]},
+    {"id": "R4", "statement": "投产管理页面移除右侧当前项目标识块", "acceptance": ["五个投产页面标题区域不再显示当前项目块，顶部项目切换仍可用"], "priority": "must", "source": "用户指令", "counterexample": ["标题右侧仍显示当前项目卡片"]},
+    {"id": "R5", "statement": "本次交互调整不破坏既有契约和页面运行", "acceptance": ["前端构建、后端回归、路由加载、页面溢出和控制台检查通过"], "priority": "must", "source": "工程约束", "counterexample": ["已有数据无法展示或出现新增控制台错误"]}
+  ],
+  "invariants": ["不改API和数据库", "保留权限、项目切换和乐观锁行为", "删除操作保留确认", "时序内容只在容器内横向滚动"],
+  "constraints": ["只修改新任务范围文件", "复用现有Release DTO、保存函数和Element Plus", "不依赖biz_form_*"],
+  "non_goals": ["不新增后端接口", "不调整投产数据模型", "不恢复旧时序菜单"],
+  "assumptions": ["现有步骤DTO字段足够绘制时序图", "UiFormDrawer或el-drawer在当前应用可用"],
+  "unknowns": [{"question": "窄视口下时序轨道的实际滚动表现", "impact": "需要浏览器运行检查", "blocking": false}],
+  "decisions": [{"id": "D1", "decision": "使用项目现有el-drawer承载方案和演练步骤表单", "reason": "保持交互一致并复用已有抽屉能力"}],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "方案页正向/回退轨道和节点顺序", "candidate_sensor": "浏览器DOM/截图"},
+    {"requirement_id": "R2", "observable": "方案步骤抽屉打开、保存和关闭", "candidate_sensor": "浏览器交互"},
+    {"requirement_id": "R3", "observable": "演练步骤抽屉打开、保存和关闭", "candidate_sensor": "浏览器交互"},
+    {"requirement_id": "R4", "observable": "投产管理头部无项目标识", "candidate_sensor": "浏览器DOM"},
+    {"requirement_id": "R5", "observable": "构建、测试、路由、溢出和控制台", "candidate_sensor": "命令和浏览器"}
+  ],
+  "baseline_status": "ready"
+}

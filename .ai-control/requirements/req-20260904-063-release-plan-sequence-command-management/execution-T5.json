@@ -1,0 +1,43 @@
+{
+  "task_id": "T5",
+  "goal": "修复合并 origin/main 后的前端本地依赖缺失和 Flyway V123 重复版本",
+  "status": "executed",
+  "actual_changes": [
+    "将 licon 未发布的投产迁移 V123-V129 顺延为 V149-V155",
+    "更新投产迁移中的依赖注释",
+    "更新当前需求范围、设计和实施计划中的迁移兼容说明"
+  ],
+  "commands": [
+    {
+      "command": "npm ci --prefix <temporary-web-deps> --cache <temporary-npm-cache> --ignore-scripts --no-audit --no-fund",
+      "result": "passed; added 195 packages"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "result": "blocked; existing web/node_modules lacks @wangeditor/editor and npm cannot replace a locked Rollup native file"
+    },
+    {
+      "command": "npm --prefix <temporary-web-source-copy> run build",
+      "result": "TypeScript check passed; Vite config loading blocked by environment esbuild spawn EPERM"
+    },
+    {
+      "command": "mvn -pl :ccb-release -am test -Dtest=com.ccb.release.** -Dsurefire.failIfNoSpecifiedTests=false -Dnet.bytebuddy.experimental=true",
+      "result": "passed; 95 tests, 0 failures, 0 errors"
+    },
+    {
+      "command": "custom Flyway version uniqueness scan",
+      "result": "passed; 149 migrations, 0 duplicate versions; V149-V155 present"
+    }
+  ],
+  "constraints": {
+    "production_access": false,
+    "secrets_or_env_values_logged": false,
+    "published_main_migrations_modified": false,
+    "sql_content_changed": false
+  },
+  "open_risks": [
+    "Full Maven reactor test remains blocked because Docker is unavailable for the existing workflow migration test.",
+    "Repository Flyway checker still reports the pre-existing V84_1 filename format violation.",
+    "Git index writes are denied by the current environment, so changes remain unstaged in the working tree."
+  ]
+}
