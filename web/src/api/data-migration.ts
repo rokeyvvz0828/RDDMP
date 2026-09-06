@@ -295,7 +295,7 @@ export function downloadRuleTemplate() {
   return http.get('/data-migration/rules/template', { responseType: 'blob' })
 }
 
-export function importMigrationCheckRules(params: { projectId: number; checkTargetType: string; ruleCategory: string; systemCode: string }, file: File) {
+export function importMigrationCheckRules(params: { projectId: number }, file: File) {
   const form = new FormData()
   form.append('file', file)
   return http.post<ApiResponse<RuleImportResult>>('/data-migration/rules/import', form, { params, headers: { 'Content-Type': 'multipart/form-data' } })

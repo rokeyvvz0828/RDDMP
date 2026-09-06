@@ -93,12 +93,9 @@ public class RuleController {
     @PreAuthorize("hasAnyAuthority('data-migration:content:validation-rules:create','data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Map<String, Object>> importRules(
             @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) String checkTargetType,
-            @RequestParam(required = false) String ruleCategory,
-            @RequestParam(required = false) String systemCode,
             @RequestPart MultipartFile file,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.importRules(projectId, checkTargetType, ruleCategory, systemCode, file, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.importRules(projectId, file, user), TraceId.getOrCreate());
     }
 
     @PutMapping("/{id:\\d+}")

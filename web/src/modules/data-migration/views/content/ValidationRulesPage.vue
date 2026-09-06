@@ -89,7 +89,7 @@ const importInput = ref<HTMLInputElement | null>(null)
 const pendingImportFile = ref<File | null>(null)
 const importResult = ref<RuleImportResult | null>(null)
 
-const importReady = computed(() => Boolean(scopeProjectId.value && checkTargetType.value && ruleCategory.value && systemCode.value))
+const importReady = computed(() => Boolean(scopeProjectId.value))
 const canImport = computed(() => hasCreate.value && importReady.value)
 const hasFilters = computed(() => Boolean(checkTargetType.value || ruleCategory.value || systemCode.value || ruleKeyword.value.trim() || keyword.value.trim()))
 
@@ -262,7 +262,7 @@ function onImportFileChange(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0] ?? null
   pendingImportFile.value = file
   importResult.value = null
-  if (file) ElMessage.info(`已选择 ${file.name}，请完善上传维度后点击“提交导入”`)
+  if (file) ElMessage.info(`已选择 ${file.name}，点击“提交导入”按文件内容逐行导入`)
   if (importInput.value) importInput.value.value = ''
 }
 
@@ -270,19 +270,11 @@ async function submitImport() {
   const projectId = scopeProjectId.value
   const file = pendingImportFile.value
   if (!projectId) return void ElMessage.warning('当前项目不可用，请重新选择项目')
-  if (!checkTargetType.value || !ruleCategory.value || !systemCode.value) {
-    return void ElMessage.warning('请先选择检核目标类型、检核规则大类与关联系统')
-  }
   if (!file) return void ElMessage.warning('请先选择 Excel 文件')
   actionBusy.value = true
   importResult.value = null
   try {
-    const response = await importMigrationCheckRules({
-      projectId,
-      checkTargetType: checkTargetType.value,
-      ruleCategory: ruleCategory.value,
-      systemCode: systemCode.value,
-    }, file)
+    const response = await importMigrationCheckRules({ projectId }, file)
     const data = response.data.data
     importResult.value = data ?? { rows: 0, accepted: 0, failed: 0, errors: [] }
     const text = `导入完成：共 ${data?.rows ?? 0} 行，成功 ${data?.accepted ?? 0} 行，失败 ${data?.failed ?? 0} 行`
@@ -435,7 +427,7 @@ function systemLabel(value?: string) {
       </UiToolbar>
 
       <el-alert v-if="optionError" class="dm-state-alert" type="error" :closable="false" show-icon :title="optionError" />
-      <el-alert v-if="pendingImportFile && !canImport" class="dm-state-alert" type="warning" :closable="false" show-icon :title="`已选择 ${pendingImportFile.name}；请先选定所属项目、检核目标类型、检核规则大类与关联系统后再提交`" />
+      <el-alert v-if="pendingImportFile && !canImport" class="dm-state-alert" type="warning" :closable="false" show-icon :title="`已选择 ${pendingImportFile.name}；请先选定所属项目后再提交`" />
       <el-alert v-if="importResult" class="dm-state-alert" type="success" :closable="true" show-icon
         :title="`导入完成：共 ${importResult.rows} 行，成功 ${importResult.accepted} 行，失败 ${importResult.failed} 行`">
         <template v-if="importResult.errors?.length" #default>

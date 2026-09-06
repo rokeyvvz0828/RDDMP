@@ -34,7 +34,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * <p>存储于 {@code dm_rule}（V194：删除 doc_code/doc_name，重建 check_target_type/rule_category/rule_code
  * 及表/字段与说明列）。一条规则即一行业务记录；规则编码由用户录入且全局唯一；检核目标类型与检核规则大类
  * 由“系统管理/参数管理”维护；关联系统为当前项目启用 dm_component。支持多维组合筛选、分页、单条新增/编辑、
- * Excel 批量导入（逐行校验、失败跳过）、模板下载、条件化批量导出、逻辑删除与统一回收站。
+ * Excel 批量导入（维度逐行填写，逐行校验、失败跳过）、模板下载、条件化批量导出、逻辑删除与统一回收站。
  */
 @Service
 public class RuleService {
@@ -51,6 +51,7 @@ public class RuleService {
             "规则编码", "规则编码说明", "检核规则说明"
     };
     private static final String[] TEMPLATE_COLUMNS = {
+            "检核目标类型", "检核规则大类", "系统编号",
             "表英文名", "表中文名", "字段英文名称", "字段中文名称",
             "规则编码", "规则编码说明", "检核规则说明"
     };
@@ -269,20 +270,17 @@ public class RuleService {
     }
 
     /**
-     * Excel 批量导入：前置维度由请求参数固定（所属项目/检核目标类型/检核规则大类/关联系统）；
-     * 逐行解析模板列，规则编码必填且全局唯一，校验失败的行跳过并逐行报错，不影响其余行入库。
+     * Excel 批量导入：前置条件仅为选定所属项目（请求参数 projectId）。模板维度逐行填写，
+     * 检核目标类型/检核规则大类按系统参数管理展示名（标签）填写并映射为码值，
+     * 系统编号必须属于当前项目；规则编码必填且全局唯一。失败行跳过并逐行报错，不影响其余行入库。
      */
-    public Map<String, Object> importRules(Long projectId, String checkTargetType, String ruleCategory,
-                                           String systemCode, MultipartFile file, AuthUser user) {
+    public Map<String, Object> importRules(Long projectId, MultipartFile file, AuthUser user) {
         long scope = permissions.requireProject(projectId, user);
-        String targetType = requireText(checkTargetType, "检核目标类型不能为空");
-        String category = requireText(ruleCategory, "检核规则大类不能为空");
-        String sysCode = requireText(systemCode, "关联系统不能为空");
-        codeValues.requireActive(DataMigrationCodeValueService.DM_RULE_TARGET_TYPE, "检核目标类型", targetType, user);
-        codeValues.requireActive(DataMigrationCodeValueService.DM_RULE_CATEGORY, "检核规则大类", category, user);
-        ensureSystemBelongsToProject(sysCode, scope, user);
         if (file == null || file.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "Excel 文件不能为空");
         if (file.getSize() > MAX_FILE_SIZE) throw new BusinessException(ErrorCode.BAD_REQUEST, "Excel 文件不能超过 50 MB");
+
+        Map<String, String> targetLabelToCode = optionLabelToCode(DataMigrationCodeValueService.DM_RULE_TARGET_TYPE, user);
+        Map<String, String> categoryLabelToCode = optionLabelToCode(DataMigrationCodeValueService.DM_RULE_CATEGORY, user);
 
         int rows = 0;
         int accepted = 0;
@@ -290,28 +288,42 @@ public class RuleService {
         Set<String> seenCodes = new LinkedHashSet<>();
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "Excel 缺少工作表");
             if (sheet.getLastRowNum() > MAX_ROWS) throw new BusinessException(ErrorCode.BAD_REQUEST, "Excel 超过 5000 行");
             DataFormatter formatter = new DataFormatter();
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 rows++;
                 try {
                     Row row = sheet.getRow(i);
-                    String tableNameEn = cell(row, 0, formatter);
-                    String tableNameCn = cell(row, 1, formatter);
-                    String fieldNameEn = cell(row, 2, formatter);
-                    String fieldNameCn = cell(row, 3, formatter);
-                    String ruleCode = cell(row, 4, formatter);
-                    String ruleCodeDesc = cell(row, 5, formatter);
-                    String ruleDescription = cell(row, 6, formatter);
+                    String targetLabel = cell(row, 0, formatter);
+                    String categoryLabel = cell(row, 1, formatter);
+                    String sysCode = cell(row, 2, formatter);
+                    String tableNameEn = cell(row, 3, formatter);
+                    String tableNameCn = cell(row, 4, formatter);
+                    String fieldNameEn = cell(row, 5, formatter);
+                    String fieldNameCn = cell(row, 6, formatter);
+                    String ruleCode = cell(row, 7, formatter);
+                    String ruleCodeDesc = cell(row, 8, formatter);
+                    String ruleDescription = cell(row, 9, formatter);
+                    String targetType = requireOptionCode(targetLabelToCode, targetLabel, "检核目标类型");
+                    String category = requireOptionCode(categoryLabelToCode, categoryLabel, "检核规则大类");
+                    if (sysCode.isBlank()) throw new IllegalArgumentException("系统编号为空");
                     if (ruleCode.isBlank()) throw new IllegalArgumentException("规则编码为空");
                     if (ruleCode.length() > MAX_RULE_CODE_LENGTH) throw new IllegalArgumentException("规则编码超过 96 字符");
                     if (!seenCodes.add(ruleCode)) throw new IllegalArgumentException("文件内规则编码重复");
                     if (ruleCodeExists(ruleCode, user.tenantId(), null)) throw new IllegalArgumentException("规则编码已存在");
+                    ensureSystemBelongsToProject(sysCode, scope, user);
+                    validateOptionalLength(ruleCodeDesc, MAX_OPTIONAL_FIELD_LENGTH, "规则编码说明");
+                    validateOptionalLength(ruleDescription, MAX_DESC_LENGTH, "检核规则说明");
+                    validateOptionalLength(tableNameEn, MAX_OPTIONAL_FIELD_LENGTH, "表英文名");
+                    validateOptionalLength(tableNameCn, MAX_OPTIONAL_FIELD_LENGTH, "表中文名");
+                    validateOptionalLength(fieldNameEn, MAX_OPTIONAL_FIELD_LENGTH, "字段英文名称");
+                    validateOptionalLength(fieldNameCn, MAX_OPTIONAL_FIELD_LENGTH, "字段中文名称");
                     long id = nextId();
                     jdbc.update("INSERT INTO dm_rule (id, tenant_id, project_id, system_code, check_target_type, rule_category, " +
                                     "rule_code, rule_code_desc, rule_description, table_name_en, table_name_cn, field_name_en, field_name_cn, " +
                                     "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                            id, user.tenantId(), scope, sysCode, targetType, category,
+                            id, user.tenantId(), scope, sysCode.trim(), targetType, category,
                             ruleCode, blankAsNull(ruleCodeDesc), blankAsNull(ruleDescription),
                             tableNameEn, tableNameCn, fieldNameEn, fieldNameCn,
                             user.id(), user.id(), user.id());
@@ -562,8 +574,31 @@ public class RuleService {
         if (code.codePointCount(0, code.length()) > MAX_RULE_CODE_LENGTH) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "规则编码不能超过 96 字符");
         }
+
         return code;
     }
+    private Map<String, String> optionLabelToCode(String category, AuthUser user) {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (Map<String, Object> option : codeValues.options(category, user)) {
+            Object label = option.get("label");
+            if (label != null) map.put(String.valueOf(label).trim(), String.valueOf(option.get("value")));
+        }
+        return map;
+    }
+
+    private static String requireOptionCode(Map<String, String> labelToCode, String label, String field) {
+        if (label == null || label.isBlank()) throw new IllegalArgumentException(field + "为空");
+        String code = labelToCode.get(label.trim());
+        if (code == null) throw new IllegalArgumentException(field + "值无效或已停用，请从系统管理/参数管理启用后重试");
+        return code;
+    }
+
+    private static void validateOptionalLength(String value, int max, String field) {
+        if (value != null && !value.isBlank() && value.codePointCount(0, value.length()) > max) {
+            throw new IllegalArgumentException(field + "超过 " + max + " 字符");
+        }
+    }
+
 
     private String optionalText(Object value) {
         return optionalText(value, null);

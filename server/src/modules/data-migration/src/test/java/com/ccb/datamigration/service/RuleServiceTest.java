@@ -16,13 +16,18 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemParameterReference;
 import com.ccb.system.capability.SystemReferenceQuery;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 /** 迁移检核规则专属服务行为测试：必填校验、规则编码全局唯一、系统归属、单条编辑、删除权限与回收站审计。 */
@@ -106,12 +111,45 @@ class RuleServiceTest {
     }
 
     @Test
-    void templateDownloadIsNotEmptyAndImportAssertsDimensionsAndFile() {
+    void templateDownloadAndImportReadDimensionsPerRowAndSkipInvalidRows() throws Exception {
         assertTrue(service.downloadTemplate().length > 0);
-        assertRejected(() -> service.importRules(PROJECT, "", "BASIC_CHECK", "SYS_A", mock(MultipartFile.class), USER), "检核目标类型不能为空");
+
         MultipartFile empty = mock(MultipartFile.class);
         when(empty.isEmpty()).thenReturn(true);
-        assertRejected(() -> service.importRules(PROJECT, "MIGRATE_OUT_CHECK", "BASIC_CHECK", "SYS_A", empty, USER), "Excel 文件不能为空");
+        assertRejected(() -> service.importRules(PROJECT, empty, USER), "Excel 文件不能为空");
+
+        byte[] bytes;
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("迁移检核规则");
+            Row header = sheet.createRow(0);
+            String[] columns = {"检核目标类型", "检核规则大类", "系统编号", "表英文名", "表中文名", "字段英文名称", "字段中文名称", "规则编码", "规则编码说明", "检核规则说明"};
+            for (int i = 0; i < columns.length; i++) header.createCell(i).setCellValue(columns[i]);
+            Row valid = sheet.createRow(1);
+            valid.createCell(0).setCellValue("迁出检核规则");
+            valid.createCell(1).setCellValue("基础检核");
+            valid.createCell(2).setCellValue("SYS_A");
+            valid.createCell(3).setCellValue("ACCOUNT");
+            valid.createCell(4).setCellValue("账户表");
+            valid.createCell(5).setCellValue("BALANCE");
+            valid.createCell(6).setCellValue("余额");
+            valid.createCell(7).setCellValue("RULE-IMP-001");
+            valid.createCell(8).setCellValue("编码说明");
+            valid.createCell(9).setCellValue("检核说明");
+            Row invalid = sheet.createRow(2);
+            invalid.createCell(0).setCellValue("不存在的类型");
+            invalid.createCell(1).setCellValue("基础检核");
+            invalid.createCell(2).setCellValue("SYS_A");
+            invalid.createCell(7).setCellValue("RULE-IMP-002");
+            workbook.write(out);
+            bytes = out.toByteArray();
+        }
+
+        Map<String, Object> result = service.importRules(PROJECT, new MockMultipartFile(
+                "file", "rules.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes), USER);
+        assertEquals(2, result.get("rows"));
+        assertEquals(1, result.get("accepted"));
+        assertEquals(1, result.get("failed"));
     }
 
     // ============ 辅助 ============
