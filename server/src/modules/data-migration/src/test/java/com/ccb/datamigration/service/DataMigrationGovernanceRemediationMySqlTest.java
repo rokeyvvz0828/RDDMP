@@ -494,7 +494,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     CREATE TABLE arch_physical_subsystem (
                         id BIGINT PRIMARY KEY,
                         tenant_id BIGINT NOT NULL,
-                        code VARCHAR(32) NOT NULL,
+                        code VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
                         name VARCHAR(200) NOT NULL,
                         short_name VARCHAR(100) NOT NULL,
                         deleted TINYINT NOT NULL DEFAULT 0,
@@ -507,7 +507,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
                         issue_code VARCHAR(96) NOT NULL,
-                        system_code VARCHAR(96) NULL,
+                        system_code VARCHAR(96) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
                         deleted TINYINT NOT NULL DEFAULT 0
                     )
                     """);
@@ -517,7 +517,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
                         table_code VARCHAR(64) NOT NULL,
-                        system_code VARCHAR(64) NOT NULL,
+                        system_code VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                         table_name_en VARCHAR(128) NOT NULL,
                         table_name_cn VARCHAR(128) NOT NULL,
                         table_category VARCHAR(32) NOT NULL,
@@ -529,7 +529,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                         id BIGINT PRIMARY KEY AUTO_INCREMENT,
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
-                        physical_subsystem_code VARCHAR(64) NULL,
+                        physical_subsystem_code VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
                         deleted TINYINT NOT NULL DEFAULT 0
                     )
                     """);
