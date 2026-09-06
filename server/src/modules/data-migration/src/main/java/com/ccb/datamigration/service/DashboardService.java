@@ -39,7 +39,7 @@ public class DashboardService {
                 + "COUNT(a.id) AS asset_count "
                 + "FROM dm_component c "
                 + "LEFT JOIN dm_asset a ON a.component_id = c.id AND a.tenant_id = c.tenant_id AND a.deleted = 0 "
-                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
+                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
                 + "WHERE c.tenant_id = ? AND c.deleted = 0";
         String group = " GROUP BY c.id, c.physical_subsystem_code, s.short_name, s.name ORDER BY system_name";
         if (projectId == null) return jdbc.queryForList(base + group, user.tenantId());

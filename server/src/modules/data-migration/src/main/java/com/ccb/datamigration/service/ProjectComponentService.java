@@ -49,7 +49,7 @@ public class ProjectComponentService {
                         + "c.updated_at, u2.display_name AS updated_by_name "
                         + "FROM dm_component c "
                         + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
+                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
                         + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
                         + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
                         + "WHERE c.tenant_id = ? AND c.deleted = 0");
@@ -60,7 +60,7 @@ public class ProjectComponentService {
                         // 筛选条件可能引用 arch_physical_subsystem（s.*），COUNT 必须保持相同 JOIN 结构。
                         String countSql = "SELECT COUNT(*) FROM dm_component c "
                         + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
+                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
                         + "WHERE c.tenant_id = ? AND c.deleted = 0";
         StringBuilder countWhere = new StringBuilder(countSql);
         List<Object> countArgs = new ArrayList<>();
@@ -88,7 +88,7 @@ public class ProjectComponentService {
                         + "c.updated_at, u2.display_name AS updated_by_name "
                         + "FROM dm_component c "
                         + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
+                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
                         + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
                         + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
                         + "WHERE c.tenant_id = ? AND c.deleted = 0");
@@ -189,7 +189,7 @@ public class ProjectComponentService {
                 + "c.updated_at, u2.display_name AS updated_by_name "
                 + "FROM dm_component c "
                 + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
+                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
                 + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
                 + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
                 + "WHERE c.id = ? AND c.tenant_id = ? AND c.deleted = 0", id, tenantId);

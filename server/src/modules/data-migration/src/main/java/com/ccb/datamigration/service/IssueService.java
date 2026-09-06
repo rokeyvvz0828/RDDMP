@@ -294,7 +294,7 @@ public class IssueService {
         return jdbc.queryForList(
                 "SELECT c.physical_subsystem_code AS value, CONCAT(c.physical_subsystem_code, ' - ', COALESCE(s.short_name, s.name, '')) AS label "
                         + "FROM dm_component c "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
+                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
                         + "WHERE c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0 ORDER BY c.physical_subsystem_code",
                 user.tenantId(), projectId);
     }
@@ -305,9 +305,11 @@ public class IssueService {
     public String getSystemName(String systemCode, AuthUser user) {
         if (systemCode == null || systemCode.isBlank()) return null;
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT COALESCE(short_name, name, '') AS system_name FROM arch_physical_subsystem WHERE tenant_id = ? AND code = ? AND deleted = 0",
+                "SELECT COALESCE(short_name, name, '') AS system_name FROM arch_physical_subsystem "
+                        + "WHERE tenant_id = ? AND code = ? AND deleted = 0 ORDER BY project_id",
                 user.tenantId(), systemCode.trim());
-        if (rows.isEmpty()) return null;
+        // 旧接口没有项目参数；项目内允许编号重复时必须失败关闭，不能猜测当前项目。
+        if (rows.size() != 1) return null;
         return String.valueOf(rows.get(0).get("system_name"));
     }
 
