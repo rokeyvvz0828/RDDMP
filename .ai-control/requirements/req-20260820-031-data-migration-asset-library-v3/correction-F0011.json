@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0011",
+  "decision": "accept",
+  "decision_reason": "The original review found no dedicated issue XLSX backend. The final IssueExcelService and controller contract must be tested for size, row bounds, partial failures and valid export output.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "A dedicated IssueExcelService was added after the feedback and now owns the bounded import/export contract.",
+    "supporting_evidence": ["IssueExcelService exists in the data-migration module", "IssueExcelServiceTest covers workbook import and export"],
+    "falsifier": "Focused tests show missing 50 MB/5000-row enforcement, first-error abort, or invalid XLSX output."
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "Issue XLSX import/export contract",
+    "write_scope": ["server/src/modules/data-migration/**", ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"],
+    "invariants": ["50 MB and 5000-row bounds", "per-row result preservation", "dm_issue remains the issue source", "export is a valid XLSX"],
+    "impact_limit": "data-migration issue Excel service and tests",
+    "rollback": "No product edit is planned; revert only new control evidence if the sensor is invalid.",
+    "correction_check": ["IssueExcelServiceTest", "Issue controller registration assertions", "focused module regression"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": []
+}

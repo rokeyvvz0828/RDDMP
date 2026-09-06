@@ -1,0 +1,82 @@
+schema_version: "1.0"
+requirement_id: "REQ-20260906-065"
+requirement_title: "数据迁移模块权限硬编码修复"
+status: "ready"
+created_at: "2026-09-06T10:00:00+08:00"
+
+# 开发环境
+# 注：本需求为 REQ-20260820-031 的子需求，统一在 REQ-031 分支交付。
+developer: "codex"
+branch: "feat/REQ-20260820-031-data-migration"
+owner: "rokeyvvz0828"
+risk_level: "important"
+
+# 目标模块
+target_modules:
+  - business/data-migration
+  - platform/infrastructure
+  - frontend/application
+
+# 路径授权
+writable_paths:
+  - "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java"
+  - "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java"
+  - "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java"
+  - "server/src/platform/infrastructure/src/main/resources/db/migration/V191__data_migration_permission_hardcode_fix.sql"
+  - "web/src/router/index.ts"
+  - "web/src/modules/data-migration/views/content/MappingsPage.vue"
+  - "web/src/modules/data-migration/components/AssetListView.vue"
+
+read_only_paths:
+  - "server/src/modules/data-migration/src/test/java/**"
+  - "web/src/modules/data-migration/**"
+  - "governance/modules.yaml"
+  - "docs/governance/**"
+
+forbidden_paths:
+  - "server/src/platform/security/**"
+  - ".ai-control/original/**"
+  - ".ai-control/requirements/req-20260806-001*/**"
+
+# 复用能力
+reuse_capabilities:
+  - "platform/security: RBAC 权限查询"
+  - "platform/system: ProjectWorkflowDirectoryService"
+  - "shared/common: 统一响应、异常处理"
+  - "web/src/components/ui: UiDataTable、UiFormDrawer、UiPageHeader 等"
+  - "web/src/stores/auth: hasPermission 方法"
+
+# 数据库影响
+database_impact:
+  type: "flyway_append_only"
+  new_migration: "V191__data_migration_permission_hardcode_fix.sql"
+  tables_affected:
+    - "sys_menu: 修复 permission_code 格式、新增 3 条菜单记录"
+    - "sys_menu_permission: 修复 permission_code 格式、新增 11 条权限节点"
+    - "sys_role_menu: 新增菜单-角色关联"
+    - "sys_role_permission: 新增权限-角色关联"
+  no_schema_change: true
+
+# 权限影响
+permission_impact:
+  - "sys_menu.permission_code: 格式修复（斜杠→冒号）"
+  - "新增权限码: data-migration:content:dependencies, data-migration:content:validation-rules, data-migration:content:parameters 及其 create/update/delete 变体"
+  - "DataMigrationPermissionService.isAdmin(): 查询逻辑变更"
+
+# 测试计划
+test_plan:
+  - "静态检查: grep 验证无残留角色硬编码"
+  - "后端测试: DataMigrationPermissionServiceTest"
+  - "构建验证: mvn test -pl :ccb-data-migration"
+  - "前端构建: npm --prefix web run build"
+  - "路由守卫: 验证 data-migration 路由均有 permission + menuPath"
+
+# 完成标准
+completion:
+  control_mode: "full"
+  control_prefix: "req-20260906-065-dm-perm"
+  verification_steps:
+    - "grep 确认无角色硬编码残留"
+    - "Maven 构建通过"
+    - "Vue 构建通过"
+    - "路由 meta 验证 17 条路由均有 permission + menuPath"

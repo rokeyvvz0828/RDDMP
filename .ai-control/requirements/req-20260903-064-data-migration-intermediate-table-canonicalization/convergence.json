@@ -1,0 +1,247 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "evidence": [
+        "DataMigrationModuleRegistrationTest 14/14 断言生产源无旧表引用",
+        "全仓库生产 rg 扫描 0 命中 dm_intermediate_table/INTERMEDIATE_TABLE",
+        "TargetTablesPage/接口固定 tableCategory=INTERMEDIATE，router 无 IntermediateTablesPage 残留"
+      ],
+      "limitations": [
+        "中间表 CRUD 运行路径以模块测试与服务测试覆盖，未在浏览器手动点测"
+      ]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": [
+        "T1",
+        "T4"
+      ],
+      "evidence": [
+        "ContentAssetMigrationMySqlTest 7/7：空表 fixture DROP 成功且旧表从 information_schema 消失",
+        "非空 fixture 在 DROP 前被存储过程 SIGNAL 45000 阻断且表保留",
+        "目标表/字段未受影响"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "evidence": [
+        "StructuredAssetService/ContentAssetTables/ExcelService 无 INTERMEDIATE_TABLE 业务分支（模块注册测试 14/14 + rg 扫描）",
+        "中间表菜单保留路径/标题并指向 TargetTablesPage（category=INTERMEDIATE）",
+        "前端构建 ✓ 18.56s，权限码与路由检查通过"
+      ],
+      "limitations": [
+        "移动视口验收依赖既有 UI 验收流程"
+      ]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": [
+        "T1",
+        "T4"
+      ],
+      "evidence": [
+        "V160 实读：存储过程断言 COUNT(*)=0，非空 SIGNAL，断言后 DROP TABLE dm_intermediate_table",
+        "空表 fixture 复验旧表不存在；非空 fixture 复验阻断且数据保留"
+      ],
+      "limitations": [
+        "V160 为不可逆 DROP，回退仅限测试库重建；生产按发布顺序执行"
+      ]
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": [
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "evidence": [
+        "DataMigrationPermissionServiceTest 8/8、ContentRecycleBinRegistryTest 7/7、system 模块项目/审计测试 62/62 通过",
+        "治理检查：17 模块、模块边界 14 Maven 模块、99 需求目录 1123 JSON 全部通过",
+        "数据范围/RBAC/审计代码路径复用未改动"
+      ],
+      "limitations": [
+        "真实生产 IAM 与租户数据未在本机验证"
+      ]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": [
+        "V160 空表断言 fixture 成功/非空 fixture DROP 前阻断；ContentAssetMigrationMySqlTest 7/7；Flyway 只追加检查通过"
+      ]
+    },
+    {
+      "id": "T2",
+      "status": "verified",
+      "evidence": [
+        "data-migration 64/64 测试通过；生产代码旧表引用 0；回收站/统计/关联收敛到目标表；权限测试 8/8"
+      ]
+    },
+    {
+      "id": "T3",
+      "status": "verified",
+      "evidence": [
+        "前端构建 ✓ 18.56s；router 无旧页面残留；菜单组件=TargetTablesPage category=INTERMEDIATE；StructuredListView 无旧类型分支"
+      ]
+    },
+    {
+      "id": "T4",
+      "status": "verified",
+      "evidence": [
+        "maven 8/8 模块 BUILD SUCCESS；前端构建通过；check-all-governance 全通过；git diff --check 通过；残留扫描 0 生产命中"
+      ]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {
+      "P2": 0,
+      "P3": 0
+    }
+  },
+  "sample_trend": [
+    {
+      "sample_id": "S-0001",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0,
+      "label": "S1 迁移断言采样"
+    },
+    {
+      "sample_id": "S-0002",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0,
+      "label": "S2 后端契约与残留采样"
+    },
+    {
+      "sample_id": "S-0003",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0,
+      "label": "S3 前端收敛采样"
+    },
+    {
+      "sample_id": "S-0004",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0,
+      "label": "S4 治理与范围采样"
+    }
+  ],
+  "regression_checks": [
+    {
+      "check": "mvn -pl :ccb-data-migration -am test",
+      "result": "pass",
+      "evidence": "8/8 模块 BUILD SUCCESS；data-migration 64/64，0 失败 0 错误 0 跳过"
+    },
+    {
+      "check": "npm --prefix web run build",
+      "result": "pass",
+      "evidence": "✓ built in 18.56s，退出码 0"
+    },
+    {
+      "check": "node scripts/check-all-governance.mjs",
+      "result": "pass",
+      "evidence": "17 模块、仓库 skill、development entry、99 需求目录 1123 JSON、14 Maven 模块、Flyway 154 迁移+2 回调全部通过"
+    },
+    {
+      "check": "残留扫描 rg dm_intermediate_table|INTERMEDIATE_TABLE（生产范围）",
+      "result": "pass",
+      "evidence": "生产代码 0 命中；命中仅限测试文件与受控迁移（含 V160 受控 DROP）"
+    },
+    {
+      "check": "git diff --check",
+      "result": "pass",
+      "evidence": "退出码 0，无空白错误"
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "Flyway 只追加",
+      "result": "pass",
+      "evidence": "V88/V151/V153/V154/V155 未修改；V160 为新增追加迁移；Flyway 检查通过"
+    },
+    {
+      "invariant": "DROP 前旧表行数必须为 0",
+      "result": "pass",
+      "evidence": "V160 存储过程断言 COUNT(*)=0，非空 SIGNAL 45000 fail-closed"
+    },
+    {
+      "invariant": "不修改 platform/system 与 pm_project_member",
+      "result": "pass",
+      "evidence": "模块边界检查 14 模块通过；REQ-064 无 platform 或项目成员表改动"
+    },
+    {
+      "invariant": "中间表菜单权限码保持",
+      "result": "pass",
+      "evidence": "路由路径/标题保留，组件切换为 TargetTablesPage；权限码未变更"
+    },
+    {
+      "invariant": "租户/项目/RBAC/审计语义保持",
+      "result": "pass",
+      "evidence": "权限/项目测试 8/8+62/62；服务契约复用现有校验路径"
+    }
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": [
+      "工作树同时存在其他需求/工具链的既有未提交改动（REQ-031 T31/T32 记录、REQ-063 治理整改文档与 governance 例外清单、控制脚本与开发工具、LoginView/verify_ui 等），均可归属既有任务且 REQ-064 未触碰；合入时需与其他任务一并评审"
+    ]
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "非空旧表 fixture（数据存在）",
+      "result": "pass",
+      "evidence": "V160 阻断且数据保留，无静默丢失"
+    },
+    {
+      "disturbance": "前端构建存量 chunk 警告",
+      "result": "pass",
+      "evidence": "构建退出码 0，警告与本次改动无关"
+    },
+    {
+      "disturbance": "特征分支既有未提交改动",
+      "result": "pass",
+      "evidence": "REQ-064 可归属改动均在 writable_paths；其他需求改动未受影响"
+    }
+  ],
+  "residual_risks": [
+    "V160 为不可逆 DROP：仅测试节点空表前提下执行；应用先收敛再发迁移；回退=应用版本回退+测试库重建",
+    "JSON 到规范化字段不可逆映射风险已通过空表断言消除（无存量迁移）",
+    "生产拓扑与真实 IAM 未在本机验证，发布时按顺序执行并在生产空表前提下放行",
+    "前端移动视口验收依赖既有 UI 验收流程，本门禁以构建与路由静态证据覆盖",
+    "scope_audit 披露：特征分支包含其他需求未提交改动，合入前需单独评审"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R5 全部 must 需求均有任务覆盖与异质传感器证据；4 次采样 P0/P1/P2/P3 全零；任务 T1-T4 全部 verified；无未裁决反馈；回归（maven/前端/治理/Flyway/diff/残留）全部通过；范围与不变量审计通过"
+}

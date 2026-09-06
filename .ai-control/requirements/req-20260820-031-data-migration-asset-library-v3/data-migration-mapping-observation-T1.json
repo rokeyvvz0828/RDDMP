@@ -1,0 +1,37 @@
+{
+  "sample_label": "T1 完成采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 MySQL 8.4 information_schema",
+      "result": "pass",
+      "raw_evidence": "独立复跑 DataMigrationMappingMigrationMySqlTest 退出码 0；mapping_type IS_NULLABLE=NO、COLUMN_DEFAULT=NULL",
+      "limitation": ["未检查共享环境的 Flyway 历史"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S1 MySQL 参数种子与幂等断言",
+      "result": "pass",
+      "raw_evidence": "独立复跑测试确认 DM_MAPPING_TYPE 启用配置数为 2，重复执行后仍为 2",
+      "limitation": ["参数服务运行时筛选由 T2 验证"]
+    },
+    {
+      "requirement_id": "R10",
+      "sensor": "S1 独立 awk 源码扫描和迁移测试源码断言",
+      "result": "pass",
+      "raw_evidence": "awk 对历史 UPDATE 和空默认值无输出、退出码 0；JUnit 迁移语句反例断言通过",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "目标迁移和测试均为任务前已存在的未跟踪文件，无法用 HEAD diff 区分所有者增量"
+  ],
+  "coverage_gaps": [
+    "共享环境是否已执行 V186 需在上线前由人工核验；本任务未访问共享环境"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

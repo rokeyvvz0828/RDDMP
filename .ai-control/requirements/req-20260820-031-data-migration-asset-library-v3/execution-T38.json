@@ -1,0 +1,25 @@
+{
+  "task_id": "T38",
+  "parent_task": "T37",
+  "trigger": "用户指令「不应使用 system_id，应替换为 project_id + system_code 关联系统，避免系统删除新增时 system_id 变化；关联系统信息从 dm_component 表获取」：修订数据库关系文档与方案需求口径。",
+  "status": "implemented_doc_only",
+  "scope_kind": "data_migration_system_association_by_code_doc",
+  "decision_recorded": "V159 的 dm_plan.system_id 与 V162 追加的 dm_issue.system_id/dm_target_table.system_id/dm_component.physical_subsystem_id/dm_meeting_system.subsystem_id 属已下线旧口径；业务关联统一为 (project_id, system_code)，system_code 指向当前项目 dm_component 活动清单（physical_subsystem_code），不保存、不依赖 arch_physical_subsystem.id；系统名称展示经 dm_component 按编号投影 arch_physical_subsystem。项目级方案使用空串哨兵；已发布脚本遗留的 id 列以补偿迁移下线（9.2 P2 新增）。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "系统关联口径改为 (project_id, system_code)：dm_plan.system_id→system_code（空串哨兵）并调整活动维度键与 idx_dm_plan_system；dm_meeting_system 增加 project_id、subsystem_id→system_code（7 列）；dm_issue/dm_target_table 删除 system_id 行与 id 引用索引；dm_component 删除 physical_subsystem_id 行；表清单列数同步（dm_plan 20、dm_issue 27、dm_component 12、dm_target_table 19、dm_meeting_system 7）；2.2 arch 表使用方式与字段、第 4 章关系图/规则、5.2 菜单映射、6.2 索引口径、7.3 关联校验、9.1 设计合理性同步；9.2 新增 P2 遗留 id 列补偿迁移项。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
+      "purpose": "方案字段规则同步：关联系统键 (project_id, system_code)、数据源为当前项目 dm_component 活动清单、项目级 system_code 空串哨兵、唯一约束 (tenant, project, granularity, plan_type, system_code)；V159 迁移说明标注 system_id 为已下线旧口径。"
+    }
+  ],
+  "verification": [
+    "列数脚本核对：dm_plan 20/20、dm_meeting_system 7/7、dm_issue 27/27、dm_component 12/12、dm_target_table 19/19 声明与实际一致",
+    "rg 复查：全文档仅保留头部口径说明与 9.2 治理项的 history 提及 system_id/subsystem_id/physical_subsystem_id，无活动表结构定义残留",
+    "变更文件均在 codex-task-scope.yaml writable_paths 覆盖内（docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/** 与 .ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json）"
+  ],
+  "not_done": "补偿迁移（移除遗留 id 列）与应用层双写下线需另行任务授权；独立 observation 记录待后续验证者补充；未修改其他设计记录文档（2026-09-02 plan-domain-design 等保留历史决策）。",
+  "noted_risk": "迁移脚本 V159/V162 与应用层代码仍按 id 列运行，代码与本文档口径存在时间差；正式落库前需补补偿迁移并回归测试。"
+}

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "handoff_status": "approved",
+  "design": {
+    "source": "docs/engineering-control/designs/2026-09-05-data-migration-topic-material-design.md",
+    "status": "approved",
+    "objective": "将数迁资产内容下的专题材料升级为支持颗粒度、系统参数类型、多系统、多附件、查看、编辑、下载、逻辑删除和统一回收站的专属域功能。",
+    "requirements": [
+      {"id":"R1","statement":"dm_topic保存颗粒度、参数类型编码、名称、简述和附件集合，新增/编辑强制必填。","acceptance":["缺少必填项返回400","系统级至少一个有效系统","详情和列表返回完整元数据"]},
+      {"id":"R2","statement":"专题类型统一由系统管理/参数管理提供，按颗粒度动态过滤。","acceptance":["DM_TOPIC_PROJECT_TYPE和DM_TOPIC_SYSTEM_TYPE可读取","V180幂等初始化23项","停用/未知编码不能写入"]},
+      {"id":"R3","statement":"专题支持多个涉及系统和多个源文件，附件与关系生命周期一致。","acceptance":["dm_topic_system唯一约束","TOPIC多附件绑定","软删/恢复/purge无悬挂关系"]},
+      {"id":"R4","statement":"列表提供组合筛选、分页、查看、下载、编辑和逻辑删除，覆盖桌面/移动状态。","acceptance":["服务端分页组合查询","详情不丢列表上下文","375/390/430视口无页面横向滚动"]},
+      {"id":"R5","statement":"专题写操作执行认证、RBAC、项目/实体授权和审计。","acceptance":["普通用户仅本人维护","跨租户/跨项目被拒绝","TOPIC写操作写入项目维度审计"]},
+      {"id":"R6","statement":"专题外邻接修改限于摘除通用TOPIC注册和切换契约，不扩大到平台业务。","acceptance":["TOPIC只有一个回收站来源","通用链路不再认领TOPIC","范围检查通过"]}
+    ],
+    "decisions": [
+      "不新建dm_topic_type，使用SystemReferenceQuery读取系统管理参数",
+      "V180幂等初始化DM_TOPIC_PROJECT_TYPE、DM_TOPIC_SYSTEM_TYPE及23项参数",
+      "新增dm_topic_system表达多系统关系",
+      "TopicService/TopicController/TopicRecycleBinSource替代通用TOPIC链路",
+      "不修改平台Java、全局项目切换器、公共附件表和审计表结构"
+    ],
+    "constraints": ["Java17/Spring Boot3.4.4/MySQL8.4/Vue3","Flyway只追加","单租户和项目隔离","单文件不超过50MB","遵守T31-r1项目上下文规则"]
+  },
+  "implementation_plan": {
+    "path": "docs/engineering-control/plans/2026-09-05-data-migration-topic-material-implementation-plan.md",
+    "plan_status": "ready",
+    "tasks": [
+      {"id":"T1","goal":"追加V180专题字段、dm_topic_system及系统参数初始化","requirements":["R1","R2","R3"],"prerequisites":[],"write_scope":["server/src/platform/infrastructure/src/main/resources/db/migration/V181__data_migration_topic_domain.sql","server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicDomainMigrationMySqlTest.java","server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"],"acceptance_checks":["V179→V180成功","重复执行幂等","23个参数项和关系唯一键断言通过"],"rollback":"应用回退，保留追加迁移，不执行反向Flyway"},
+      {"id":"T2","goal":"实现TopicService和TopicController专属HTTP契约","requirements":["R1","R2","R3","R5"],"prerequisites":["T1"],"write_scope":["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicService.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TopicController.java","server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java"],"acceptance_checks":["必填/类型/系统/附件校验","项目/实体授权","多附件和审计","400/403/409语义"],"rollback":"删除本任务新增服务/控制器并整体回退应用"},
+      {"id":"T3","goal":"摘除通用TOPIC链路并接入统一回收站唯一来源","requirements":["R3","R5","R6"],"prerequisites":["T2"],"write_scope":["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicRecycleBinSource.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java"],"acceptance_checks":["TOPIC无通用来源重复认领","其他类型注册和看板无回归"],"rollback":"同步恢复通用映射或整体回退T2/T3"},
+      {"id":"T4","goal":"将TopicsPage和前端API切换为专题专属交互","requirements":["R1","R2","R3","R4","R5"],"prerequisites":["T2","T3"],"write_scope":["web/src/api/data-migration.ts","web/src/modules/data-migration/views/content/TopicsPage.vue","web/src/modules/data-migration/data-migration.css"],"acceptance_checks":["vue-tsc/Vite构建","筛选/详情/多附件/编辑/删除","桌面和三种手机视口无横向溢出"],"rollback":"恢复前端通用TOPIC契约并与后端整体回退"},
+      {"id":"T5","goal":"完成局部测试、运行验证、浏览器验收和独立收敛判断","requirements":["R1","R2","R3","R4","R5","R6"],"prerequisites":["T1","T2","T3","T4"],"write_scope":["当前需求前缀execution/observation/convergence证据"],"acceptance_checks":["Maven/前端/范围检查","401/403/400/409","新增→编辑→下载→软删→恢复/purge","管理员/普通用户桌面和移动浏览器路径"],"rollback":"应用整体回退，测试库重建，不执行反向Flyway"}
+    ],
+    "dependency_edges":[{"from":"T1","to":"T2","reason":"后端依赖V180字段和关系表"},{"from":"T2","to":"T3","reason":"回收站来源委托TopicService"},{"from":"T3","to":"T4","reason":"前端依赖稳定的TOPIC专属路由"},{"from":"T4","to":"T5","reason":"集成验收依赖前端完成"}],
+    "parallel_groups": [],
+    "sampling_plan":["S0计划批准前设计/范围审计","S1 T1后MySQL迁移和参数计数","S2 T2/T3后后端权限/回收站测试","S3 T4后前端构建和视口检查","S4 T5后独立运行和浏览器验收"]
+  },
+  "control_seed": {
+    "boundary": "business/data-migration专题材料及其必要邻接注册代码",
+    "state_variables":["dm_topic字段","dm_topic_system关系","TOPIC附件集合","参数启用状态","逻辑删除状态","项目和用户授权状态"],
+    "inputs":["当前项目","系统管理参数","dm_component活动系统","临时附件ID","AuthUser"],
+    "outputs":["分页专题列表","详情/附件","受控下载","回收站状态","审计记录"],
+    "sensors":["MySQL8.4迁移断言","Maven测试","API权限响应","前端构建","真实浏览器桌面/移动视口","范围检查"],
+    "actuators":["V180追加迁移","TopicService/Controller","TopicRecycleBinSource注册","TopicsPage/API契约"],
+    "disturbances":["其他需求目录既有治理格式错误","参数被管理员停用","项目切换/不可达","临时附件失效","并发编辑"],
+    "latency_assumptions":["参数和系统选项在表单打开时异步加载","附件上传先于专题事务保存","回收站聚合按来源分页"],
+    "status":"hypotheses-only"
+  },
+  "approval": {"status":"approved","evidence":"用户明确指令：开始实施；批准当前专题材料实施计划及已确认的参数初始化动作。","confirmed_at":"2026-09-05T08:58:20+08:00"}
+}

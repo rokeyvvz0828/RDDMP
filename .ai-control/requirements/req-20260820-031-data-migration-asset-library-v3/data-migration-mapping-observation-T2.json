@@ -1,0 +1,74 @@
+{
+  "sample_label": "T2 完成采样",
+  "task_ids": ["T2"],
+  "baseline_revision": "2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S2 MappingServiceTest 与服务源扫描",
+      "result": "pass",
+      "raw_evidence": "200 字符创建成功，201 字符创建和编辑返回 BAD_REQUEST；文件编号仍由 ContentDocCodeGenerator 生成",
+      "limitation": ["未以真实 HTTP 发送超长请求"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 码值服务测试路径",
+      "result": "pass",
+      "raw_evidence": "类型选项来自 DataMigrationCodeValueService；UNKNOWN 写入和筛选均被拒绝",
+      "limitation": ["真实参数表读取在 T4 验证"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S2 项目系统与 requireStoredProject 源扫描",
+      "result": "pass",
+      "raw_evidence": "项目外系统测试拒绝；详情、附件、下载、回收站路径均存在 requireStoredProject/requireAccessible",
+      "limitation": ["真实跨项目身份由 T4 HTTP 传感器覆盖"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S2 多附件和边界单元测试",
+      "result": "pass",
+      "raw_evidence": "多附件创建、50MB+1、创建无附件、编辑空附件和重复 attachmentId 断言通过",
+      "limitation": ["附件元数据来自测试桩"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S2 列表 SQL 与筛选测试",
+      "result": "pass",
+      "raw_evidence": "列表强制项目、校验 mappingType，并仅对 a.doc_name 使用 LIKE；查询投影含系统、类型、编号和名称",
+      "limitation": ["组合 SQL 结果未在真实 MySQL 数据集测量"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S2 附件集合与下载归属测试",
+      "result": "pass",
+      "raw_evidence": "编辑 files 完整集合调用 replaceAll；指定 101/102 成功，999 被拒绝；空集合被拒绝",
+      "limitation": ["真实 ZIP 字节和中途读取失败由 T4 覆盖"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S2 回收站测试加 S7 唯一来源扫描",
+      "result": "pass",
+      "raw_evidence": "恢复/清理委托测试通过；并发 purge 不解绑不审计；源码仅 MappingRecycleBinSource 返回 MAPPING_DOC",
+      "limitation": ["运行时 Bean 集合由模块启动验证补充"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S3 Controller 权限测试与服务授权扫描",
+      "result": "pass",
+      "raw_evidence": "类级查看权限覆盖 7 个读/下载方法；create/update/delete 有对应动作码；非所有者与失败审计用例通过",
+      "limitation": ["匿名和无权限 HTTP 状态尚未运行"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "工作区中 Mapping 初版和同一 REQ 其他菜单改动无法按 Git 作者边界拆分",
+    "执行阶段一次失败来自测试桩固定详情值，修正传感器后未复现产品偏差"
+  ],
+  "coverage_gaps": [
+    "真实 MySQL/MinIO 附件生命周期、ZIP 字节完整性和 HTTP 401/403 延后至 T4",
+    "普通用户跨项目和非所有者真实请求延后至 T4"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

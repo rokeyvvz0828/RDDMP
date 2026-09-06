@@ -1,0 +1,101 @@
+{
+  "task_id": "T32-r1",
+  "observer": "independent verification pass（Git/grep 改动面复算 + 契约与模块边界核对 + 聚焦 Maven 复算 + 直连 HTTP 判别性探针，与 execution-T32-r1 记录分离）",
+  "observed_at": "2026-09-03T12:10:00+08:00",
+  "environment": "本地：MySQL(:3306，库 ccb_platform)/MinIO(:9000)/kkfileview 容器；后端 ./backend-dev.sh restart 于 12:03:30 完成启动（:8080，含本轮改动的 install 产物）；取证账号 admin(id=1，角色含 SUPER_ADMIN)；演示用户 retail1_pm/coordinator 等为 REQUIREMENT_* 角色且口令与 admin 不同；项目 3001/P2026-001、3002/P2026-002、3003/P2026-003；pm_project_member 仅 2 行且均 deleted=1（无活动成员行）",
+  "closes": [
+    "observation-T32.required_before_release[0]「Owner 复核：只读 pm_project_member 的口径重复让步，决定是否补平台 Port」→ 本判定不再需要：重复口径已删除，改为调用既有平台公开契约，且未新增平台方法",
+    "requirement.md T32 执行期细化 7 登记的「有边界让步（需 Owner 复核）」→ 已改写为「口径来源改为平台契约（T32-r1 撤销让步）」",
+    "T32 收敛后的一度回退状态（成员判定被整体删除，仅剩租户级判定）→ 本轮恢复项目级成员授权，且授权判定改由平台单点提供"
+  ],
+  "supersedes_baseline": "本观测覆盖 T32 收敛之后的 4 个 main/test Java 改动文件与 1 个新增测试替身，并取代 execution-T32 / observation-T32 中关于「项目可达性口径落点」与「D1 让步需 Owner 复核」的结论；AC1/AC3/AC4/AC5/AC7 既有取证不重做（本轮零前端改动、零 SQL 过滤条件改动，仅归属判定的判定者发生变化）",
+  "findings": [
+    {
+      "id": "F-T32r1-01",
+      "statement": "用户负反馈闭合：数据迁移模块内不再存在 pm_project_member 成员判定 SQL",
+      "requirement": "用户指令「pm_project_member 冗余设计了，调用平台侧成员口径」",
+      "method": "grep -rn pm_project_member server/src/modules/data-migration/src 全量复算 + 守卫文件 jdbc.* 调用点逐条阅读",
+      "observed": "4 处命中全部为注释/Javadoc/断言消息文本（ReportService:398、DashboardService:35、DataMigrationPermissionServiceTest:18/94），0 处 SQL；守卫仅剩 2 处 jdbc 调用，均为 RBAC（sys_user_role/sys_role、sys_menu_permission），无任何 pm_project/pm_project_member 判定 SQL；DashboardService.accessibleProjectCount 与 ReportService.getProjectOptions 也改走契约",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32r1-02",
+      "statement": "确实调用平台侧成员口径，而不是仅删掉判定（这是上一轮否证的假设）",
+      "requirement": "T32-r1 D1 修订",
+      "method": "契约注入点枚举 + 运行时判别性探针：利用「新旧实现对未知项目的文案不同」证明判定发生在平台侧",
+      "observed": "ProjectWorkflowDirectoryService 仅出现在 DataMigrationPermissionService（main）与 StubProjectAccess（test）；GET /api/data-migration/reports?projectId=999999 → 400/40000「项目不存在或已删除」= JdbcProjectWorkflowDirectoryService.requireProject 的原文（旧实现为「Project not found」）；GET /api/data-migration/dashboard/overall?projectId=3001 → projects=3，与平台 accessibleProjectIds 对超管返回全租户 3 个未删项目一致；GET /api/data-migration/reports/project-options → 3001/3002/3003",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32r1-03",
+      "statement": "模块边界与授权合法：未改平台、未越 writable_paths",
+      "requirement": "不变量「不改 server/src/platform/**」+ 任务范围",
+      "method": "modules.yaml 与 pom 核对 + git diff --name-only origin/main -- server/src/platform server/src/shared 过滤迁移目录 + 范围检查",
+      "observed": "ccb-system 的 public_packages 含 com.ccb.system.capability；data-migration 的 allowed_dependencies 含 platform/system；pom 早已依赖 ccb-system（无新增依赖）；platform/shared 非迁移文件改动为空；check-codex-scope EXIT=0，141 changed file(s)；check-all-governance EXIT=1 但 data-migration 相关命中为 0（失败项属 req-20260819-034/035、20260827-049、20260901-059、20260813-030、20260822-048）",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32r1-04",
+      "statement": "测试从「证明模块会查成员表」反转为「证明模块把判定交给契约」，且带反向传感器",
+      "requirement": "T32 AC2/AC6 的单元测试层",
+      "method": "复算 surefire 报告 + 阅读改写后的断言",
+      "observed": "mvn -pl :ccb-data-migration -am test EXIT=0，ccb-data-migration Tests=61 Failures=0 Errors=0 Skipped=0；DataMigrationPermissionServiceTest 8 用例覆盖必填先于委托、未知项目 400、非成员 403、ADMIN 角色不豁免项目范围、accessibleProjectIds 直通、维护恒取库中归属、requireWrite owner 规则，并断言守卫 SQL 不含 pm_project；上游 ccb-system 同批 62/0（平台代码零改动，其 JdbcProjectAccessServiceTest 仍断言 403 文案「无该项目数据访问权限」）",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32r1-05",
+      "statement": "口径收紧的真实影响面：非平台超级管理员在本地将全量 403",
+      "requirement": "安全语义不得弱化（本项为强化）+ 上线可用性风险",
+      "method": "本地库事实核查（sys_user 角色聚合、pm_project_member 行）",
+      "observed": "admin(id=1) 含 SUPER_ADMIN → 豁免路径行为不变；除 admin 外 10 个演示用户均为 REQUIREMENT_COORDINATOR/REQUIREMENT_MEMBER，且 pm_project_member 两条均 deleted=1 → 这些账号命中平台 403。原实现下 ADMIN/DATA_MIGRATION_ADMIN 可绕过成员判定，现不可。属预期的隔离增强，但对「仅有数迁管理员角色、又不是项目成员、又需跨项目运维」的部署账号是破坏性变更",
+      "verdict": "risk_registered"
+    },
+    {
+      "id": "F-T32r1-06",
+      "statement": "AC2 的 403 分支仍无运行时取证（不得记为已取证）",
+      "requirement": "T32 AC2",
+      "method": "尝试以非超管演示账号复现 403；失败后停止（不猜口令、不造成员数据、不改角色种子）",
+      "observed": "retail1_pm + admin123 → 「Invalid username or password」；DB 侧确认其 password_hash 与 admin 不同（V71 注释与实际种子不一致），无法在不改动数据的前提下构造真实非成员请求。403 证据链仅为：守卫委托单测（NOT_MEMBER→403）+ 平台契约自身测试通过 + 运行时 400 反例。AC2 判 partial_pass（授权替代），与 observation-T32 同口径",
+      "verdict": "not_verified"
+    },
+    {
+      "id": "F-T32r1-07",
+      "statement": "观测者纠偏：项目选项端点真实路由为 /reports/project-options，上一轮记录的 /reports/projects 是探测 URL 错误",
+      "requirement": "契约矩阵中的项目选项端点",
+      "method": "以错误 URL 探针复现 50000，回查后端日志异常类型与控制器映射",
+      "observed": "GET /api/data-migration/reports/projects → 50000，日志为 NoResourceFoundException: No static resource ...（GlobalExceptionHandler 把未知路径按未处理失败上报，属平台既有行为，本任务只读不改）；ReportController:153 的 @GetMapping(\"/project-options\") 才是真实路由，实测 200 且返回平台可访问的 3 个项目。该项不是本轮引入的回归，但会误导后续取证，故登记",
+      "verdict": "observation_correction"
+    },
+    {
+      "id": "F-T32r1-08",
+      "statement": "同批未收敛的相邻口径：RBAC 仍直读平台表",
+      "requirement": "「模块只能依赖公开包，不得绕过服务契约读写其他模块数据」的严格解读",
+      "method": "守卫与模块内 SQL 复算",
+      "observed": "requireCategoryPermission/isAdmin 仍 SELECT sys_user_role/sys_role/sys_menu_permission；另有 20+ 处 pm_project 只读 JOIN（取项目名/存在性展示）与 DashboardSnapshotScheduler 的租户级 COUNT。本轮按用户指令只处理成员/项目可达性口径，未顺手扩大改动面；是否把 RBAC 也接平台契约需单独决策",
+      "verdict": "residual_out_of_scope"
+    }
+  ],
+  "regression_checks": [
+    "mvn -pl :ccb-data-migration -am test：EXIT=0，61/0/0/0（上一收敛轮为 59 项，本轮 +2 为委托/直通新增用例），含 MySQL 容器类用例 IssueMigrationMySqlTest 3、ContentAssetMigrationMySqlTest 5、PlanDomainMigrationMySqlTest 1 全通过",
+    "上游 ccb-system 同批 Tests=62 Failures=0（平台代码零改动的对照）",
+    "应用重启成功（Started CcbApplication in 4.521s）：守卫新增构造参数由 Spring 成功注入，平台契约 Bean 在本模块可解析，未出现 UnsatisfiedDependencyException/NoSuchBeanDefinitionException",
+    "既有隔离行为未退化：projectId=3001 列表 200、projectId=abc → 400「参数 projectId 非法，必须为数字」（模块 advice 仍生效）",
+    "范围检查 141 文件通过；治理与布局检查的失败集合与本轮改动无交集",
+    "npm --prefix web run build 与全仓 mvn test 本轮未复跑（零前端改动；全仓基线红已归因 architecture，本轮不触及），不得按通过引用"
+  ],
+  "blind_spots": [
+    "无真实非成员账号可登录，403 的端到端呈现（HTTP + 前端提示）仍未取证；本轮甚至新增了一条「必须保留」的依赖：判定完全发生在平台，模块内无法独立复现",
+    "平台契约语义变更会静默传导到本模块（文案、豁免角色、错误码），本任务范围内没有跨模块契约测试来监控这种漂移，只有平台自身单测覆盖",
+    "accessibleProjectIds(...).size() 作为看板计数在大项目量租户下是 O(可访问项目数) 的列表加载，未做规模测试",
+    "getProjectOptions 先全租户读 pm_project 再按可访问集合过滤，若租户项目数很大则读取浪费（当前端点无调用方，无实际影响）",
+    "IssueMigrationMySqlTest 使用放行替身后，其回滚用例不再覆盖「归属不存在」路径；该路径仅由直连 API 400 与单测覆盖",
+    "明暗主题、极端视口、MinIO 对象层隔离、dm_operation_log 审计项目字段等 observation-T32 既有盲区本轮未新增覆盖"
+  ],
+  "verdict": "T32-r1 的目标（撤销 pm_project_member 重复口径、改调平台侧成员口径）已实现并通过静态、单测、同批平台测试、运行时判别性探针四重验证：模块内成员/项目可达性判定 SQL 为 0，判定唯一落在 platform/system 公开契约，错误语义随平台统一，聚焦 Maven 61/0 与 ccb-system 62/0、应用可启动、已验证端点行为符合预期。同时如实登记三点：AC2 的 403 仍无运行时/浏览器取证（本地无可用非超管账号，故 AC2 维持 partial_pass）；豁免角色由「ADMIN/SUPER_ADMIN/DATA_MIGRATION_ADMIN」收敛为平台超级管理员，属预期增强但对特定部署账号是破坏性变更，上线前需按真实角色分布确认；RBAC 与展示型 pm_project 读取仍直连平台表，属本指令范围外的相邻重复，未顺手改。",
+  "phase_recommendation": "converged_with_registered_residuals",
+  "required_before_release": [
+    "在存在真实 pm_project_member 活动成员数据的预发环境复测：非成员 403（列表/详情/下载/删除/恢复/彻底清理一致拒绝）与成员放行，取得运行时证据后才能把 AC2 提升为 pass",
+    "Owner 确认豁免口径：项目数据范围仅平台超级管理员豁免；若确有「DATA_MIGRATION_ADMIN 需跨项目运维」的账号，须显式决定是否为其补平台侧成员或改由项目成员授权，而不是回退到业务模块复制口径",
+    "上线验证包含一次 GET /api/data-migration/dashboard/overall 与 GET /api/data-migration/reports/project-options 的真实账号抽查，确认平台契约 Bean 在目标部署的组件扫描范围内（本地已验证，生产未验证）"
+  ]
+}

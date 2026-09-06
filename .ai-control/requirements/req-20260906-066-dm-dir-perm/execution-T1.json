@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "revision": 2,
+  "created_at": "2026-09-06T14:30:00+08:00",
+  "updated_at": "2026-09-06T15:00:00+08:00",
+  "task_id": "T1",
+  "task_goal": "清理数据迁移目录冗余权限节点与斜杠权限码",
+  "summary": "新增 V193 追加迁移，幂等删除数据迁移目录（/data-migration、/data-migration/content、/data-migration/base、/data-migration/dashboard）的权限节点及角色授权，并修复 V190 遗漏的 data-migration:content/ 斜杠权限码。仅保留数据迁移/基础设施迁移范围内的变更，平台系统目录接口与权限管理页已回退。",
+  "actual_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V194__data_migration_remove_directory_permission_nodes.sql",
+    "docs/requirements/REQ-20260906-066-data-migration-directory-permission-cleanup/requirement.md",
+    "docs/requirements/REQ-20260906-066-data-migration-directory-permission-cleanup/codex-task-scope.yaml"
+  ],
+  "commands_executed": [
+    {
+      "command": "docker exec mysql SELECT sys_menu_permission for directory /data-migration*",
+      "result": "目录 720/740 各有 1 个 delete 权限节点（7204/7404）",
+      "exit_code": 0
+    },
+    {
+      "command": "mysql 执行 V193 等价 SQL",
+      "result": "数据迁移目录权限节点已清空，无 data-migration:content/ 斜杠权限码残留",
+      "exit_code": 0
+    },
+    {
+      "command": "git checkout -- SystemService.java RolePermissionView.vue",
+      "result": "平台代码已回退，无改动",
+      "exit_code": 0
+    }
+  ],
+  "scope_consistency": "所有修改均在本需求 codex-task-scope.yaml 的 writable_paths 范围内；平台 system/权限管理页未改动",
+  "risks": [
+    {
+      "description": "权限管理页对目录不渲染动作依赖平台目录过滤；本需求只做数据清理，目录节点残留清理后页面不再出现删除选项",
+      "residual_risk": "低 - 已通过数据库验证目录权限节点清零"
+    }
+  ],
+  "status": "completed"
+}

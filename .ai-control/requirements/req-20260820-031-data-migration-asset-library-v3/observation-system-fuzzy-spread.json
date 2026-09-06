@@ -1,0 +1,62 @@
+{
+  "sample_label": "数迁系统模糊搜索推广 + 汇报材料关键字 + 投产及演练 systemCode 过滤浏览器验收",
+  "task_ids": ["system-fuzzy-spread"],
+  "baseline_revision": "REQ-20260820-031 收敛态基础上按用户最新菜单优化清单新增的前端交互增量；无数据库迁移。",
+  "observed_at": "2026-09-05T23:40:00+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R8",
+      "sensor": "S1 浏览器桌面系统下拉模糊搜索",
+      "result": "pass",
+      "raw_evidence": "Playwright 桌面 1440x900 登录 admin 后逐页验证：投产及演练/会议纪要/迁移方案/问题清单/迁移程序/系统组件清单/目标表/中间表系统下拉均存在且可输入编号或名称模糊过滤，候选 label 形如「SYS-DEP-001 - 存款系统」。",
+      "limitation": ["候选基于本地临时 enabled=1 fixture；验收后已恢复 enabled=0。"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S2 投产及演练 systemCode 筛选",
+      "result": "pass",
+      "raw_evidence": "临时新增组件级投产及演练资料并选择 SYS-ACCT-001，页面筛选该编号后仅剩该记录；后端 GET /release-drills?systemCode=SYS-ACCT-001 返回 1，SYS-DEP-001 返回 0。",
+      "limitation": ["测试记录已删除并 purge。"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S3 汇报材料关键字索引",
+      "result": "pass",
+      "raw_evidence": "打开单条上传抽屉，关键字输入 placeholder=输入关键字后回车添加，输入「验收关键字」回车后生成对应 tag。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S4 移动端回归",
+      "result": "pass",
+      "raw_evidence": "390x844 视口逐页检查 release-drills/topics/meetings/components/target-tables：document.scrollWidth<=clientWidth，无横向溢出；修复手段为 480px 以下隐藏 dm-page 分页 jumper。",
+      "limitation": ["未覆盖全部十余个数据迁移页面的移动端，代表页覆盖筛选/列表/分页主路径。"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S5 自动化与构建",
+      "result": "pass",
+      "raw_evidence": "data-migration Reactor 130/0；npm run build EXIT=0；check-codex-scope EXIT=0。",
+      "limitation": []
+    }
+  ],
+  "samples": [
+    {"id": "system-fuzzy-spread-S1", "kind": "browser/e2e", "result": "pass", "evidence": "27/27 browser assertions passed; console clean; no 4xx/5xx."},
+    {"id": "system-fuzzy-spread-S2", "kind": "backend api", "result": "pass", "evidence": "release-drills systemCode filter returns expected counts."},
+    {"id": "system-fuzzy-spread-S3", "kind": "frontend build", "result": "pass", "evidence": "npm build exit 0, module tests 130/0, scope check exit 0."}
+  ],
+  "feedback": [],
+  "resolved_feedback": [
+    {"id": "P2-mobile-release-drill-overflow", "statement": "投产及演练页移动端分页 jumper 导致文档横向溢出", "severity": "P2", "resolution": "data-migration.css 在 <=480px 隐藏 dm-page .el-pagination__jump（含 total/sizes），复测 scrollWidth=clientWidth。"}
+  ],
+  "disturbances": [
+    "本地开发库临时启用组件与新增测试资料仅用于验收，已在提交前清理。"
+  ],
+  "coverage_gaps": [
+    "角色权限组合的浏览器场景未在本轮全部重跑（前端权限守卫沿用既有服务端授权证据，本轮未新增后端权限变更）。"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "verdict": "browser_verified",
+  "phase_recommendation": "作为 REQ-20260820-031 的增量交互证据归档；后续部署测试环境时按标准流程做迁移演练和浏览器回归。"
+}

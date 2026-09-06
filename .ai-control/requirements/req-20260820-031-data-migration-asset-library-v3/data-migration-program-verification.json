@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "baseline_revision": "2",
+  "requirement_results": [
+    {"id": "R1", "status": "pass", "evidence": "必填校验与50MB限制单测、浏览器新增保存成功"},
+    {"id": "R2", "status": "pass", "evidence": "DM_PROGRAM_TYPE参数管理种子与选项接口测试通过"},
+    {"id": "R3", "status": "pass", "evidence": "系统选项仅含项目3002启用组件，浏览器下拉验证通过"},
+    {"id": "R4", "status": "pass", "evidence": "程序类型/系统编号/关键字组合筛选与分页单测通过"},
+    {"id": "R5", "status": "pass", "evidence": "多文件新增、编辑保留既有附件、单附件与打包下载浏览器验收通过"},
+    {"id": "R6", "status": "pass", "evidence": "ProgramRecycleBinSource唯一认领SCRIPT，浏览器删除/恢复通过"},
+    {"id": "R7", "status": "pass", "evidence": "ControllerSecurityTest与项目隔离测试通过"},
+    {"id": "R8", "status": "pass", "evidence": "375/390/430及桌面视口无横向溢出、无console错误"},
+    {"id": "R9", "status": "pass", "evidence": "V185迁移容器测试通过，本地库应用成功"},
+    {"id": "R10", "status": "pass", "evidence": "程序包名称关键字模糊检索在ProgramService测试通过"}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": "V185迁移测试"},
+    {"id": "T2", "status": "verified", "evidence": "ProgramService单测"},
+    {"id": "T3", "status": "verified", "evidence": "Controller/RecycleBinSource单测"},
+    {"id": "T4", "status": "verified", "evidence": "前端构建与ProgramsPage交互"},
+    {"id": "T5", "status": "verified", "evidence": "全量回归与浏览器验收"}
+  ],
+  "feedback_summary": [],
+  "sample_trend": [
+    {"label": "desktop-full-flow", "score": 0},
+    {"label": "mobile-three-viewports", "score": 0},
+    {"label": "backend-module-regression", "score": 0}
+  ],
+  "regression_checks": [
+    {"name": "backend-module-tests", "result": "pass", "evidence": "28 reports / 129 cases / 0 failures"},
+    {"name": "frontend-build", "result": "pass", "evidence": "npm --prefix web run build exit 0"},
+    {"name": "governance-scope", "result": "pass", "evidence": "scripts/check-governance.mjs通过；全量脚本因无关需求REQ-20260904-061格式不兼容失败，与本任务无冲突"}
+  ],
+  "invariant_results": [
+    {"name": "no-published-flyway-change", "result": "pass", "evidence": "仅新增未发布V185"},
+    {"name": "shared-ui-not-modified", "result": "pass", "evidence": "移动端修复限定ProgramsPage局部样式"},
+    {"name": "program-type-parameter-driven", "result": "pass", "evidence": "前端与后端均从DM_PROGRAM_TYPE读取"}
+  ],
+  "scope_audit": {
+    "result": "pass",
+    "evidence": "改动均落在codex-task-scope writable_paths内"
+  },
+  "disturbance_resilience": [
+    {"source": "无关仓库需求校验失败", "result": "isolated", "evidence": "不影响本任务范围与验收结论"}
+  ],
+  "residual_risks": [
+    "生产部署前应在干净测试库重跑Flyway并做一次端到端浏览器验收",
+    "开发库浏览器测试产生的程序包测试数据不进入代码交付"
+  ],
+  "gate_result": "pass",
+  "route_reason": "T1-T5均已verified，3个采样零误差，需求覆盖完整，浏览器验收通过"
+}

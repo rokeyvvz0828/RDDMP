@@ -1,0 +1,73 @@
+{
+  "sample_label": "T24 authenticated runtime + multi-viewport browser acceptance",
+  "task_ids": ["T24"],
+  "purpose": "在 T24 运行可达验收（rev 197）之后，Owner 提供 dev 环境测试凭据 admin/admin123，用于把证据等级从「运行可达」提升到「浏览器已验收」。凭据仅用于本会话验证，不落盘到源码或账本（本文件只记录使用与结果，不重复明文），依据 UpdateMemory 安全规则不写入长期记忆。",
+  "login_probe": {
+    "endpoint": "POST /api/auth/login",
+    "http_status": 200,
+    "token_kind": "JWT HS512 accessToken + refreshToken",
+    "token_len": 276,
+    "note": "响应体不落盘；token 存于 /tmp/dm-token.txt（本会话内使用）"
+  },
+  "authenticated_api_probes": [
+    {"method": "GET", "path": "/api/data-migration/recycle-bin", "query": "(none)", "http": 200, "expectation": "全量跨类型聚合", "actual": "rows=3 uniqueTypes=[MEETING] sortedByDeletedAtDesc=true sampleRow(id=20003 asset_type=MEETING asset_name='迁移性能优化专题会' deleted_at=2026-09-01T02:31:39)", "envelope_verified": "id/asset_type/asset_name 存在；meeting_id/meeting_title/project_name/granularity/meeting_source/system_names/related_issue_names/keywords/attachment_id/file_name/deleted_by_name 等原列均保留", "result": "pass"},
+    {"method": "GET", "path": "/api/data-migration/recycle-bin", "query": "contentTypes=MEETING", "http": 200, "actual": "rows=3 uniqueTypes=[MEETING] (20003/20002/20005)", "result": "pass"},
+    {"method": "GET", "path": "/api/data-migration/recycle-bin", "query": "contentTypes=REPORT", "http": 200, "actual": "rows=0（dm_report 无软删记录，符合预期）；证明请求正确路由到 ReportRecycleBinSource → ReportService.recycleBinList", "result": "pass"},
+    {"method": "GET", "path": "/api/data-migration/recycle-bin", "query": "contentTypes=MEETING&contentTypes=REPORT (multi)", "http": 200, "actual": "rows=3 uniqueTypes=[MEETING]（两来源均调用；REPORT=0、MEETING=3）", "result": "pass"},
+    {"method": "GET", "path": "/api/data-migration/recycle-bin", "query": "contentTypes=GHOST", "http": 400, "actual": "{\"code\":40000,\"message\":\"不支持的内容类型：GHOST\"}", "result": "pass", "note": "ContentRecycleBinService.resolve 对未注册类型正确拒绝"},
+    {"method": "GET", "path": "/api/data-migration/recycle-bin", "query": "contentTypes=MEETING&keyword=客户表", "http": 200, "actual": "rows=1 (MEETING 20002 '客户表迁移方案评审会')；证明 keyword 参数通过 MeetingRecycleBinSource 透传到 MeetingService.recycleBinList", "result": "pass"},
+    {"method": "GET", "path": "/api/data-migration/reports/recycle-bin", "query": "page=1&size=5 (向后兼容)", "http": 200, "actual": "code=0 records=0 total=0", "result": "pass", "note": "旧 REPORT 端点保留且行为不变"},
+    {"method": "GET", "path": "/api/data-migration/meetings/recycle-bin", "query": "page=1&size=5 (向后兼容)", "http": 200, "actual": "code=0 records=3 total=3", "result": "pass", "note": "旧 MEETING 端点保留且行为不变"}
+  ],
+  "browser_verification": {
+    "harness": "Playwright chromium via /home/song/.cache/ms-playwright/chromium-1140/chrome-linux/chrome",
+    "target": "http://localhost:5173 (Vite dev)",
+    "viewport_matrix": [
+      {"name": "desktop", "size": "1280x800", "isMobile": false},
+      {"name": "mobileSmall", "size": "375x812", "isMobile": true, "deviceScaleFactor": 2},
+      {"name": "mobile", "size": "390x844", "isMobile": true, "deviceScaleFactor": 2},
+      {"name": "mobileLarge", "size": "430x932", "isMobile": true, "deviceScaleFactor": 2}
+    ],
+    "checks_total": 21,
+    "checks_pass": 21,
+    "checks_fail": 0,
+    "assertions": [
+      {"name": "desktop: 登录成功 → 跳转 /dashboard", "result": "pass", "evidence": "url=http://localhost:5173/dashboard"},
+      {"name": "desktop: 统一回收站页加载，页头描述包含'汇报材料与会议纪要文档级'", "result": "pass", "evidence": "header text 命中"},
+      {"name": "desktop: 内容类型筛选下拉同时含 '会议纪要' 与 '汇报材料' 标签（以及 PLAN/MAPPING_DOC/DEPENDENCY/SCRIPT/TOPIC/RELEASE_DRILL/RULE/PARAMETER/INTERMEDIATE_TABLE）", "result": "pass", "evidence": "options: '迁移方案 迁移映射 迁移过程依赖文件 迁移程序 专题材料 投产及演练 汇报材料 会议纪要 迁移检核规则 迁移参数 中间表结构'"},
+      {"name": "desktop: 表格渲染 3 条 MEETING 行，asset_type 列显示'会议纪要'", "result": "pass", "evidence": "rowCount=3, text 命中"},
+      {"name": "desktop: ReportsPage 顶层 tabs 无 '回收站'（旧入口已移除）", "result": "pass", "evidence": "tabs=[工作台|汇报材料]"},
+      {"name": "desktop: MeetingsPage 顶层无独立 '回收站' tab；仅 '附件回收站'", "result": "pass", "evidence": "scoped tabs=[会议纪要|附件回收站]（排除 app-shell 的工作台/侧栏）"},
+      {"name": "desktop: 无 JS 页面异常 (PAGEERROR)", "result": "pass"},
+      {"name": "desktop: 无业务 JS 控制台错误（过滤 'Failed to load resource' 类噪声）", "result": "pass", "evidence": "剩余 1 条 CONSOLE.ERR 为 404 资源加载（networkFailures 空数组，非本任务 API，疑为 favicon 或静态资源），非 T24 引入"},
+      {"name": "mobileSmall 375x812: 无横向溢出 (scrollWidth=375 vs viewport=375)", "result": "pass"},
+      {"name": "mobileSmall: 统一回收站页加载", "result": "pass"},
+      {"name": "mobileSmall: 无 JS 控制台错误", "result": "pass"},
+      {"name": "mobile 390x844: 无横向溢出 (390 vs 390)", "result": "pass"},
+      {"name": "mobile: 统一回收站页加载 / 无 JS 错误", "result": "pass"},
+      {"name": "mobileLarge 430x932: 无横向溢出 (430 vs 430)", "result": "pass"},
+      {"name": "mobileLarge: 统一回收站页加载 / 无 JS 错误", "result": "pass"}
+    ],
+    "browser_exit_code": 0
+  },
+  "evidence_level_advance": {
+    "from": "运行可达（Spring 上下文 + 后端 health + 路由鉴权 + 前端代理）",
+    "to": "浏览器已验收（真实 admin 登录后，桌面 1280x800 与三个移动视口 375x812/390x844/430x932 均完成端到端 UI 检查）"
+  },
+  "cleanup": {
+    "temporary_verify_script": "web/verify-t24-ui.mjs 已在验证完成后删除；不落入仓库",
+    "backend_state": "已重启，包含 T23 REPORT + T24 MEETING 变更，健康检查 UP",
+    "vite_dev_state": "仍在 :5173 运行",
+    "credentials_handling": "admin/admin123 仅在本会话内使用；不落盘到源码或 .ai-control 账本；不写入长期记忆（遵循 UpdateMemory 安全规则）"
+  },
+  "unresolved_items": [
+    "明暗主题双视觉验收未做（本轮仅默认主题）",
+    "跨类型的 restore/purge 未做真实数据回归（避免污染 dev 环境；MeetingService.restore/purge 与 ReportService 等价行为已在既有单测覆盖）",
+    "未跑全量 mvn test；未跑 npm --prefix web 端 Playwright 主验收（历史 verify_ui.mjs 与本任务不重叠，属另一范围）",
+    "统一列表分页与 per-type 筛选为后续演进；ISSUE 文档级接入未启动"
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "T24 已达浏览器已验收：真实 admin 登录后，8 个授权 HTTP GET 探针全通过（含无 filter=3行 MEETING、contentTypes=MEETING/REPORT/多值、keyword 检索、GHOST 拒绝、两个旧端点向后兼容）；Playwright 4 视口 21/21 全绿（登录、统一回收站页头与筛选含 MEETING+REPORT、3 行 MEETING 数据、ReportsPage 无 '回收站' tab、MeetingsPage 无独立 '回收站' 外层 tab 且 '附件回收站' 存在、无横向溢出、无 PAGEERROR）。桌面 404 资源加载噪声非本任务引入。账本纯追加 observation-T24-authenticated.json，state rev 197→198。临时验收脚本已删除。凭据不落盘、不写记忆。仅本地，未提交。"
+}

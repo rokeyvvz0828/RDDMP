@@ -1,1 +1,32 @@
-{"task_id":"T4","status":"implemented","changed_surfaces":[{"path_or_resource":"StructuredAssetService.java and StructuredAssetController.java","purpose":"typed structured asset CRUD, dashboard summary/detail and XLSX endpoints"},{"path_or_resource":"DashboardService.java","purpose":"tenant-scoped overall and component counts"},{"path_or_resource":"ExcelService.java","purpose":"50 MB/5000-row bounded XLSX inspection and export"}],"requirements_addressed":["R1","R5","R6","R7"],"commands":[{"command":"mvn -pl :ccb-data-migration -am test -DskipTests","exit_code":0,"salient_output":"9 module sources compile successfully"}],"local_checks":[{"check":"structured/dashboard/excel compilation","result":"pass","evidence":"Maven reactor exit code 0","limitations":["XLSX round-trip and scheduler runtime deferred"]}],"diff_summary":["dedicated structured asset types","tenant-scoped dashboard aggregation","POI XLSX export and bounded import inspection"],"invariants_checked":[{"invariant":"no biz_form dependency","result":"pass","evidence":"all structured operations use dm_asset structured_data"},{"invariant":"bounded workbook","result":"pass","evidence":"50 MB and 5000-row checks in ExcelService"}],"disturbances":[],"assumptions_falsified":[],"unresolved_items":["daily scheduled snapshot job and real XLSX round trip remain"],"recommended_next":"observe"}
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "phase": "executing",
+  "task": "T4",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "新增TopicRecord/TopicQuery/TopicFormData/TopicUpdateData类型和listTopics/getTopic/createTopic/updateTopic/deleteTopics/getTopicTypeOptions/getTopicSystemOptions/getTopicDownloadPath/getTopicAttachments函数"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/TopicsPage.vue",
+      "purpose": "从AssetListView薄页面升级为专属页面：颗粒度/类型/系统/关键字多维筛选、多文件上传、编辑、详情弹窗、下载、预览、批量删除、桌面/移动端响应式"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    "cd web && npm run build -> built in 18.50s, exit code 0"
+  ],
+  "observations": [
+    "TopicsPage.vue遵循PlansPage.vue模式：useProjectScope项目上下文、UiDataTable/UiFormDrawer/UiToolbar/UiPagination/UIPageHeader/UiEmptyState/UiFilePreview组件复用",
+    "颗粒度切换时自动清空类型和系统选择并重新加载选项",
+    "文件预览遵循PlansPage模式：getAttachmentDownload取下载URL、fetch取blob、uploadFilePreview上传预览",
+    "UiPagination使用pageSize和update:page/update:page-size事件"
+  ],
+  "unresolved_issues": [],
+  "risks": [
+    "手机视口验收留待T5集成验证"
+  ],
+  "recorded_at": "2026-09-05T02:15:00Z"
+}

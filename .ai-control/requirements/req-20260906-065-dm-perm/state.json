@@ -1,0 +1,393 @@
+{
+  "schema_version": 4,
+  "revision": 9,
+  "created_at": "2026-09-06T10:00:00+08:00",
+  "updated_at": "2026-09-06T12:50:00+08:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "需求已确认：数据迁移模块权限硬编码修复，8 处问题清单已列出",
+      "recorded_at": "2026-09-06T10:00:00+08:00"
+    },
+    {
+      "from": "baseline",
+      "to": "executing",
+      "evidence": "代码已全部实现，进入执行验证阶段",
+      "recorded_at": "2026-09-06T10:05:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "converged",
+      "evidence": "T7 构建验证通过：后端安全测试 11/11 通过、Vue 构建通过、grep 确认无角色硬编码残留。所有 8 处权限硬编码问题已修复。",
+      "recorded_at": "2026-09-06T11:05:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "converged",
+      "evidence": "目录级权限独立化完成：V191迁移创建3个目录级权限节点，14个Controller更新，构建验证通过",
+      "recorded_at": "2026-09-06T11:30:00+08:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "需求文档和任务范围已创建",
+        "recorded_at": "2026-09-06T10:00:00+08:00",
+        "data": {
+          "objective": "修复数据迁移模块 8 处权限硬编码问题，完全使用 RBAC 权限管理控制权限",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "路由守卫：所有 data-migration 路由有 permission + menuPath meta",
+              "acceptance": [
+                "router.beforeEach 拦截无权限访问"
+              ],
+              "priority": "must"
+            },
+            {
+              "id": "R2",
+              "statement": "后端权限服务：isAdmin() 使用权限码而非角色名",
+              "acceptance": [
+                "不再硬编码 ADMIN/SUPER_ADMIN/DATA_MIGRATION_ADMIN"
+              ],
+              "priority": "must"
+            },
+            {
+              "id": "R3",
+              "statement": "前端权限判断：MappingsPage 使用权限码而非角色码",
+              "acceptance": [
+                "mappingAdminRoles Set 已移除"
+              ],
+              "priority": "must"
+            },
+            {
+              "id": "R4",
+              "statement": "Controller 注解：所有 @PreAuthorize 包含 data-migration:manage",
+              "acceptance": [
+                "MappingController 类级别和方法级别一致"
+              ],
+              "priority": "must"
+            },
+            {
+              "id": "R5",
+              "statement": "数据库菜单：permission_code 使用冒号格式",
+              "acceptance": [
+                "无斜杠格式残留"
+              ],
+              "priority": "must"
+            },
+            {
+              "id": "R6",
+              "statement": "缺失菜单补齐：Dependencies/ValidationRules/Parameters 有菜单和权限",
+              "acceptance": [
+                "sys_menu 有记录、sys_menu_permission 有节点、角色已授权"
+              ],
+              "priority": "must"
+            },
+            {
+              "id": "R7",
+              "statement": "AssetListView 无权限状态处理",
+              "acceptance": [
+                "403 时显示 forbidden 状态"
+              ],
+              "priority": "must"
+            },
+            {
+              "id": "R8",
+              "statement": "权限链一致性：所有内容页面的 create/update/delete 包含 data-migration:manage",
+              "acceptance": [
+                "MappingsPage 与其他页面一致"
+              ],
+              "priority": "must"
+            }
+          ],
+          "non_goals": [
+            "不修改已发布 Flyway 迁移",
+            "不改变业务逻辑",
+            "不引入新依赖"
+          ]
+        }
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "创建 V190 Flyway 迁移脚本",
+      "requirements": [
+        "R5",
+        "R6"
+      ],
+      "acceptance": [
+        "V190 文件存在、SQL 语法正确、幂等安全"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T10:05:00+08:00",
+          "text": "V191__data_migration_permission_hardcode_fix.sql 已创建，包含 permission_code 格式修复、3 个新菜单、11 个权限节点、角色授权"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "修复前端路由 meta",
+      "requirements": [
+        "R1"
+      ],
+      "acceptance": [
+        "17 条路由均有 permission + menuPath"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T10:06:00+08:00",
+          "text": "router/index.ts 已更新，grep 确认 29 处 permission: 包含所有 data-migration 路由"
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "修复 DataMigrationPermissionService.isAdmin()",
+      "requirements": [
+        "R2"
+      ],
+      "acceptance": [
+        "使用 sys_menu_permission 查询而非硬编码角色名"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T10:07:00+08:00",
+          "text": "isAdmin() 改为查询 system:admin / data-migration:bypass / data-migration:manage 权限码"
+        }
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "修复 MappingsPage.vue 权限判断",
+      "requirements": [
+        "R3",
+        "R8"
+      ],
+      "acceptance": [
+        "无角色硬编码、权限链包含 data-migration:manage"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T10:08:00+08:00",
+          "text": "mappingAdminRoles Set 已移除，canManage 改为 hasPermission('data-migration:manage')，create/update/delete 权限链补齐 data-migration:manage"
+        }
+      ]
+    },
+    {
+      "id": "T5",
+      "goal": "修复 MappingController.java @PreAuthorize",
+      "requirements": [
+        "R4"
+      ],
+      "acceptance": [
+        "类级别和方法级别均包含 data-migration:manage"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T10:09:00+08:00",
+          "text": "MappingController 4 处 @PreAuthorize 均包含 data-migration:manage"
+        }
+      ]
+    },
+    {
+      "id": "T6",
+      "goal": "修复 AssetListView.vue 无权限状态",
+      "requirements": [
+        "R7"
+      ],
+      "acceptance": [
+        "403 检测和 forbidden 状态 UI"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T10:10:00+08:00",
+          "text": "AssetListView 添加 forbidden ref、403 检测、forbidden UI 显示"
+        }
+      ]
+    },
+    {
+      "id": "T7",
+      "goal": "验证构建通过",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "acceptance": [
+        "Maven 构建通过、Vue 构建通过、无角色硬编码残留"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T11:05:00+08:00",
+          "text": "构建验证通过：后端安全测试 11/11 通过，Vue 构建通过，无角色硬编码残留"
+        }
+      ]
+    },
+    {
+      "id": "T8",
+      "goal": "二次权限对齐检查",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "acceptance": [
+        "前后端权限码完全对齐，无遗漏或多余"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T11:15:00+08:00",
+          "text": "发现并修复 3 处前端权限检查缺失：ReportsPage update/delete、TargetTablesPage manage/admin fallback、ComponentsPage system:admin fallback"
+        }
+      ]
+    },
+    {
+      "id": "T9",
+      "goal": "目录级权限独立化",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "acceptance": [
+        "每个目录使用独立权限码，Controller 接受目录级权限"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T11:27:00+08:00",
+          "text": "V191 迁移创建 3 个目录级权限节点，14 个 Controller 更新 @PreAuthorize"
+        }
+      ]
+    },
+    {
+      "id": "T10",
+      "goal": "前端增删改操作权限控制检查",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "acceptance": [
+        "所有前端增删改操作都有权限控制"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T11:35:00+08:00",
+          "text": "AssetListView新增upload/delete/replace权限控制，StructuredListView新增import/delete/edit权限控制"
+        }
+      ]
+    },
+    {
+      "id": "T11",
+      "goal": "移除目录菜单的增删改权限",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "acceptance": [
+        "目录菜单只有 read 权限，叶子菜单有完整权限"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T11:40:00+08:00",
+          "text": "V192迁移删除目录700/720/740的create/update/delete权限节点，保留read权限"
+        }
+      ]
+    },
+    {
+      "id": "T12",
+      "goal": "移除多余目录权限",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "acceptance": [
+        "目录无权限节点，Controller 无目录级权限码"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T11:45:00+08:00",
+          "text": "V191移除目录权限创建，V192删除目录权限节点，14个Controller移除目录级权限码"
+        }
+      ]
+    },
+    {
+      "id": "T13",
+      "goal": "移除目录菜单删除按钮",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "acceptance": [
+        "目录菜单不显示删除按钮"
+      ],
+      "status": "completed",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T12:50:00+08:00",
+          "text": "ModuleView.vue添加v-if条件隐藏目录菜单删除按钮，V192迁移已执行删除目录权限节点"
+        }
+      ]
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

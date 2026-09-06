@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "sample_label": "投产及演练增量独立观测-2026-09-05",
+  "task_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5"
+  ],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "domain-schema-service",
+      "result": "pass",
+      "raw_evidence": "V184加列/参数和ReleaseDrillService必填+组件级系统校验通过；服务测试覆盖",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "parameter-source-audit",
+      "result": "pass",
+      "raw_evidence": "DM_RELEASE_DRILL_GRANULARITY/DM_RELEASE_DRILL_TYPE 经DataMigrationCodeValueService与参数管理读取；未知/停用被拒",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "list-projection",
+      "result": "pass",
+      "raw_evidence": "列表返回system_code/system_name/drill_round，ReleaseDrillsPage展示资料编号/类型/轮次/系统列",
+      "limitation": [
+        "真实浏览器交互待干净环境验收"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "controller-rbac",
+      "result": "pass",
+      "raw_evidence": "ReleaseDrillControllerSecurityTest验证类级+写操作权限码",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "single-file-lifecycle",
+      "result": "pass",
+      "raw_evidence": "单文件新增/编辑替换/逻辑删除/审计经ReleaseDrillServiceTest覆盖",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "recycle-source",
+      "result": "pass",
+      "raw_evidence": "ReleaseDrillRecycleBinSource唯一认领；MANAGED_TYPES与通用控制器摘除",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "recycle-bin-registration",
+      "result": "pass",
+      "raw_evidence": "ReleaseDrillRecycleBinSourceTest与DataMigrationModuleRegistrationTest通过",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "scope-and-build",
+      "result": "pass",
+      "raw_evidence": "数据迁移模块全量测试、治理模块检查、前端构建通过",
+      "limitation": [
+        "check-all-governance因既有REQ-20260904-061 YAML错误不能跑完"
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "source": "check-all-governance 范围外 REQ-20260904-061 YAML 格式错误",
+      "effect": "全量治理命令提前退出非零；模块/技能/开发入口检查均通过；非本次改动引入",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "真实浏览器后端运行环境",
+      "effect": "无法在当前环境完成浏览器端到端验收；静态构建与服务端集成测试已覆盖",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "coverage_gaps": [
+    "真实浏览器/多视口路径未验收",
+    "本地上线后端健康与文件下载端到端未验收"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 1,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

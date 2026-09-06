@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "phase": "executing",
+  "task": "T3",
+  "status": "verified",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProgramController.java", "purpose": "/api/data-migration/programs 列表/选项/新增/编辑/删除/下载/打包下载/附件接口"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramRecycleBinSource.java", "purpose": "统一回收站唯一认领 SCRIPT"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/AttachmentStreamService.java", "purpose": "新增多附件 ZIP 流式下载"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java", "purpose": "MANAGED_TYPES 摘除 SCRIPT"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java", "purpose": "通用资源端点摘除 programs/SCRIPT"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java", "purpose": "Controller 权限声明断言"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java", "purpose": "回收站来源认领 SCRIPT 且委托 ProgramService"}
+  ],
+  "requirements_addressed": ["R5", "R6", "R7"],
+  "commands": ["mvn -q -pl :ccb-data-migration -am -Dtest=ProgramServiceTest,ProgramRecycleBinSourceTest,ProgramControllerSecurityTest,DataMigrationModuleRegistrationTest,ContentFileAssetDocCodeGovernanceTest -Dsurefire.failIfNoSpecifiedTests=false test -> 退出码 0"],
+  "local_checks": ["控制器权限与回收站来源测试通过", "通用 SCRIPT 不再重复认领"],
+  "diff_summary": ["专属路由与回收站建立，通用类型摘除", "打包下载由服务端 ZIP 流提供"],
+  "invariants_checked": ["ContentRecycleBinService 无重复认领", "附件解绑/审计保持"],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "进入 T4 前端 API 与页面"
+}

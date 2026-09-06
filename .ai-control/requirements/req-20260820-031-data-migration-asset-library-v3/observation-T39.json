@@ -1,0 +1,90 @@
+{
+  "sample_label": "T39 (project_id, system_code) association migration final observation",
+  "task_ids": ["T39"],
+  "baseline_revision": "T38 approved database-schema-and-relations.md (project_id, system_code) association口径; user confirmed dev stage no-backup for implementation",
+  "observed_at": "2026-09-04T19:25:00+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 MySQL 8.4 Flyway V166 migration tests",
+      "result": "pass",
+      "raw_evidence": "v166MigratesPlanAndMeetingSystemToSystemCode verified dm_plan rebuilt with system_code dimension key (project-level empty-string sentinel unique, system-level same-code conflict rejected), dm_meeting_system project_id/system_code backfill and rebuilt uk/idx, and all five id-reference columns and id indexes dropped (information_schema assertions).",
+      "limitation": ["Fixture-based schema replica scoped to migrations under test (V165->V166); full-chain V1..V166 execution verified only in service-layer test baseline 161."]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 service-layer end-to-end and module regression",
+      "result": "pass",
+      "raw_evidence": "v166ServiceLayerWritesSystemCodeOnlyAndDropsIdColumns passed: IssueService/TargetTableService/ProjectComponentService write code only, GHOST-CODE with no dm_component active record is rejected via BusinessException and not persisted; full mvn -pl :ccb-data-migration -am test = 79 tests, 0 errors, 0 failures.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 frontend build and contract scan",
+      "result": "pass",
+      "raw_evidence": "npm --prefix web run build passed (vue-tsc + Vite, built in 19.53s); rg scan of data-migration module found no systemId/systemIds/system_ids contracts; Plan/Meeting pages and api contract use systemCode/systemCodes.",
+      "limitation": ["No live browser lifecycle probe for plan/meeting system picker; covered by build and static contract scan only."]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S4 scope and ledger consistency",
+      "result": "pass",
+      "raw_evidence": "check-codex-scope.mjs reports only pre-existing REQ-20260903-064 out-of-scope files, none from this task; V166 registered in writable_paths/migration_files; execution-T39 verification backfilled.",
+      "limitation": []
+    }
+  ],
+  "samples": [
+    {
+      "id": "T39-S1",
+      "kind": "database migration",
+      "result": "pass",
+      "evidence": "Isolated MySQL 8.4 V166 migration assertions passed (system_code dimension key, meeting_system backfill, id columns dropped)."
+    },
+    {
+      "id": "T39-S2",
+      "kind": "automated backend",
+      "result": "pass",
+      "evidence": "Full ccb-data-migration reactor test: 79/79 passed, including service-layer dual-write removal E2E."
+    },
+    {
+      "id": "T39-S3",
+      "kind": "frontend build and static contract",
+      "result": "pass",
+      "evidence": "Web build passed; no systemId/systemIds/system_ids residual in data-migration module."
+    }
+  ],
+  "feedback": [],
+  "resolved_feedback": [
+    {
+      "id": "F-T39-DB-01",
+      "classification": "deviation",
+      "severity": "P1",
+      "observed": "V166 section 5 executed UPDATEs on dm_meeting_system unconditionally; on schemas without the table (low-baseline test/service fixture) Flyway failed with 'Table dm_meeting_system doesn't exist'.",
+      "resolution": "Added information_schema table-existence guard; sections 5.1-5.4 skip entirely when the table is absent; verified on MySQL 8.4."
+    },
+    {
+      "id": "F-T39-DB-02",
+      "classification": "deviation",
+      "severity": "P1",
+      "observed": "V166 section 1 re-added KEY idx_dm_plan_system after DROP COLUMN system_id; MySQL keeps the old index name when the dropped column is part of a composite index, producing 'Duplicate key name idx_dm_plan_system' (also would fail in production).",
+      "resolution": "DROP INDEX idx_dm_plan_system is now executed before dropping system_id, matching section 5.4 pattern; verified on MySQL 8.4."
+    },
+    {
+      "id": "F-T39-TEST-01",
+      "classification": "deviation",
+      "severity": "P2",
+      "observed": "DataMigrationGovernanceRemediationMySqlTest cross-test residue: dashboard test creates dm_plan/dm_mapping_doc/... and cleanFixtureTables did not drop dm_plan/dm_meeting_system/sys_role/sys_user_role, so v166MigratesPlanAndMeetingSystemToSystemCode failed with 'Table dm_plan already exists'.",
+      "resolution": "cleanFixtureTables now drops all tables created by tests in the class (dm_plan, dm_meeting_system, content tables, sys_role, sys_user_role); dm_plan fixture also gained active_doc_code to mirror the real V153/V159-era column V166 places the rebuilt generated column after."
+    }
+  ],
+  "disturbances": [
+    "Unrelated REQ-20260903-064 worktree scope violations remain outside the T39 writable surface (pre-existing)."
+  ],
+  "coverage_gaps": [
+    "No live browser probe for plan/meeting system picker interactions in this task; plan/meeting system options depend on dm_component active rows and arch_physical_subsystem name projection which are covered by service-level tests and frontend build."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "verdict": "converged_for_T39",
+  "phase_recommendation": "Keep canonical requirement state converged; retain T39 incremental evidence and do not rewrite historical convergence.json; applying V166 to dev databases requires only running the migration chain (no backup per user decision)."
+}

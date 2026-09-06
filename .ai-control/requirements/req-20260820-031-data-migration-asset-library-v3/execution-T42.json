@@ -1,0 +1,59 @@
+{
+  "task_id": "T42",
+  "parent_task": "T41",
+  "trigger": "用户指令「采用方案3，并治理其他同款模式」：方案3 = 全模块下线 active_* 活动生成列，唯一键直接建在原始业务列上，软删行同样占用唯一名额，删除后需先从回收站彻底删除（purge）才能重建同名/同编号记录，恢复只与存量活动行冲突；开发阶段数据库不需要备份（用户此前确认）。",
+  "status": "implemented_and_verified",
+  "scope_kind": "data_migration_active_uniqueness_columns_removal",
+  "decision_recorded": "全模块下线 active_* 活动生成列（dm_issue/dm_meeting/dm_plan/dm_component/dm_target_table/dm_target_table_field/8 张内容表/dm_content_attachment），唯一键直接建在原始业务列上；软删行同样占用唯一名额，删除后 purge 才能重建同名/同编号记录，恢复只与存量活动行冲突由数据库唯一键拒绝；服务层创建/更新预校验由 deleted=0 过滤改为含软删行的全量检查（报错文案标注「含已删除记录」），数据库唯一键并发兜底；V169 条件式迁移（information_schema 守卫、存储过程、幂等）只追加不改历史脚本；开发阶段免备份、不追溯历史数据。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V169__data_migration_active_uniqueness_columns_removal.sql（新增）",
+      "purpose": "存储过程 + information_schema 条件式幂等：dm_issue 删 active_issue_code 改 uk_dm_issue_code (tenant_id, project_id, issue_code)；dm_meeting 删 active_meeting_code 改 uk_dm_meeting_code (tenant_id, project_id, meeting_code)；dm_plan 删 active_doc_code/active_dimension_key 改 uk_dm_plan_code (tenant_id, project_id, doc_code) 与 uk_dm_plan_dimension (tenant_id, project_id, granularity, plan_type, system_code)；dm_component 删 active_physical_subsystem_code 改 uk_dm_component_subsystem (tenant_id, project_id, physical_subsystem_code)；dm_target_table 删 4 个 active 列改 uk_target_table_en/cn (tenant_id, project_id, system_code, table_name_en/cn)；dm_target_table_field 删 3 个 active 列改 uk_target_field_en/cn (tenant_id, table_code, field_name_en/cn)；8 张内容表经游标 BLOCK_CONTENT 删 active_doc_code 改 uk_dm_*_code (tenant_id, project_id, doc_code)；dm_content_attachment 删 active_attachment_key 改 uk_dm_content_att (tenant_id, business_type, business_id, attachment_id)。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java",
+      "purpose": "ensureTableUnique/ensureFieldUnique 预校验去掉 AND deleted = 0 改为含软删行全量唯一检查，报错文案追加「（含已删除记录）」；创建/恢复冲突由数据库唯一键并发兜底。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+      "purpose": "createComponent 唯一检查去掉 deleted = 0 过滤，改为含软删行全量检查。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/PlanService.java",
+      "purpose": "assertDimensionUnique 去掉 AND deleted = 0，维度唯一约束（granularity + plan_type + system_code 空串哨兵）改为含软删行全量检查。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java",
+      "purpose": "ensureCodeAvailable 摘除 deleted = 0 过滤，报错文案追加「（含已删除记录）」。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationGovernanceRemediationMySqlTest.java",
+      "purpose": "v166ServiceLayerWritesSystemCodeOnlyAndDropsIdColumns 夹具改为 V169 收敛后干净结构（无活动生成列、朴素唯一键）；新增 v169RemovesActiveUniquenessColumnsAndUsesPlainKeys 专项：V167 旧结构基线 → migrate 167→169 → 断言全模块 active 列归零、朴素唯一键列序、数据库层软删行占用唯一名额冲突、目标表服务层创建冲突翻译 CONFLICT；夹具补 arch_physical_subsystem.business_group_name 与字段表 is_key_field 列。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+      "purpose": "v98 段后补充 V169 断言：包含 DROP COLUMN active_table_code、朴素唯一键语句，且服务源码不再含 deleted = 0 AND table_code <> / issue_code = ? AND deleted = 0 片段。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "DDL 基线上移至 V169；各表列数（dm_report 19→18、dm_plan 20→18、7 张内容表 16→15、dm_content_attachment 13→12、dm_meeting 19→18、dm_issue 27→26、dm_component 12→11、dm_target_table 18→14、dm_target_table_field 22→19）；删除 active_* 生成列说明；6.1 改为「唯一性约束（全行唯一）」最终态表述；9.1 设计表述统一为朴素唯一键与业务编号主键；9.2 治理项收敛为最终态（仅保留待处置风险表 + 已收敛治理项，不含历史版本号与旧结构叙述）；编号口径与字段说明按最终态重写，全文不再包含历史迁移叙述。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml",
+      "purpose": "writable_paths 与 migration_files 登记 V169；public_capability_change.note 与 database.compatibility_and_rollback 追加 T42 说明。"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/execution-T42.json / observation-T42.json（新增）",
+      "purpose": "任务执行与独立观测账本。"
+    }
+  ],
+  "verification": [
+    "后端整体回归：mvn -pl :ccb-data-migration -am test 通过，Tests run: 82, Failures: 0, Errors: 0。",
+    "V169 迁移专项（MySQL 8.4）：v169RemovesActiveUniquenessColumnsAndUsesPlainKeys V167→V169 迁移断言通过——全模块 active_* 生成列归零、朴素唯一键列序正确；数据库层软删行占用唯一名额（同编号活动+软删记录插入冲突）；目标表服务层冲突翻译 CONFLICT；DataMigrationGovernanceRemediationMySqlTest 9/9 通过。",
+    "前端构建：npm --prefix web run build 成功。",
+    "范围检查：check-codex-scope.mjs 仅报告他人任务 REQ-20260903-064 的越界项（本任务未触碰）；V169 已登记 writable_paths/migration_files。",
+    "文档最终态复核：全文清除历史迁移版本号（V16x）、生成列、沿用原 id、历史数据回填等历史叙述；doc_code/meeting_code/system_code 唯一口径统一为「项目内唯一（含软删记录）」；唯一键、主键编号、审计项目维度均为最终态正向描述。"
+  ],
+  "not_done": "未运行真实浏览器验收与本地运行时健康检查（纯唯一性/生成列收敛 + 迁移 + 服务层预校验 + 测试验证，未按需启动全套运行时）；未修改任何历史迁移脚本（V169 仅追加）；不提交、不推送、不合并。",
+  "noted_risk": "删除同名/同编号记录后需先 purge 才能重建（软删行占用唯一名额），回收站页需提供同名记录感知与 purge 路径；V168 保留的 uk_target_table_tenant_code 组合引用键仍可用作目标表外键引用；REQ-20260903-064 工作区越界改动未触碰；开发阶段免备份，上生产前需按常规备份演练。"
+}

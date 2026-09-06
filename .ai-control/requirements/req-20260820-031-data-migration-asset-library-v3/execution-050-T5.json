@@ -1,0 +1,25 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "trigger": "继续 REQ-20260831-050 执行：后端前端已切换且停止向旧表写入，本任务追加 V101 在无损断言通过后物理删除 dm_asset/dm_asset_relation/dm_meeting_attachment，并补迁移用例",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V101__data_migration_drop_legacy_asset_tables.sql", "purpose": "断言保护先行：dm_asset 每行按原 id 命中内容表、文件资产主附件命中 dm_content_attachment、dm_meeting_attachment 每行命中 dm_content_attachment、dm_asset_relation 每行命中 dm_issue_relation/dm_meeting_system；任一非 0 用 SIGNAL 失败且不删表；通过后 DROP 三张旧表并清理断言过程"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java", "purpose": "新增两例：v101DropsLegacyTablesAfterCompletenessAssertions（V99→V100→V101 后旧表消失、内容/关系表数据完整、过程清理）、v101BlocksDropWhenAssetRowUnmigrated（V100 后向 dm_asset 补写未搬迁行，V101 SIGNAL 失败且旧表保留）"}
+  ],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 92 migration(s) and 1 approved callback(s)"},
+    {"command": "mvn -pl :ccb-data-migration test -Dtest=ContentAssetMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "Tests run: 5, Failures: 0, Errors: 0（含 V101 正/负用例；ERROR 日志为 V100×2、V101×1 预期负向断言）"},
+    {"command": "mvn -pl :ccb-data-migration test -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "全模块 Tests run: 37, Failures: 0, Errors: 0, BUILD SUCCESS"}
+  ],
+  "invariants_checked": [
+    {"invariant": "V101 仅在旧表每行都能在新表按业务键定位时才删表", "result": "pass", "evidence": "四项 NOT EXISTS / NOT IN 断言以 SIGNAL 保护；负向用例（残留 dm_asset 行）触发 V101 失败且 dm_asset/dm_meeting_attachment 仍存在"},
+    {"invariant": "删表后内容与关系表数据无损", "result": "pass", "evidence": "正向用例断言 dm_plan 2、dm_report id=10002 存在、dm_content_attachment 6、dm_issue_relation 4、dm_meeting_system 2 全保留"},
+    {"invariant": "迁移脚本只追加、不改历史", "result": "pass", "evidence": "V101 为新增脚本；check-flyway-migrations 通过，历史 V1-V100 未改动"},
+    {"invariant": "无生产访问", "result": "pass", "evidence": "仅 Testcontainers 一次性 mysql:8.4，全部虚构数据"}
+  ],
+  "unresolved_items": [
+    "V100 与 V101 分发布版本执行、V101 前强制全量数据库备份的上线约束由发布流程（T6/上线 B）承接，本地不连接生产库",
+    "全量 mvn test（所有模块）与浏览器验收由 T6 承接"
+  ],
+  "recommended_next": "observe"
+}

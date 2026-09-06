@@ -1,0 +1,43 @@
+{
+  "sample_label": "T20 frontend detail-gated editing",
+  "task_ids": ["T20"],
+  "baseline_revision": "design-8-governance-increment",
+  "measurements": [
+    {
+      "requirement_id": "R5",
+      "sensor": "S3 Playwright network and interaction probe plus S5 source contract inspection",
+      "result": "pass",
+      "raw_evidence": "Real non-Mock browser GET loaded complete issue detail and reflected existing target table/field; clearing and saving emitted relatedMeetingMinutes=[], relatedTables=[] and relatedFields=[] with HTTP 200; aborted detail GET left the drawer closed and showed error feedback",
+      "limitation": ["Browser role was the development administrator; normal-user HTTP authorization is measured in T21"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S3 production build and four-viewport Playwright geometry probe",
+      "result": "pass",
+      "raw_evidence": "Independent npm build succeeded; 1280x800, 375x812, 390x844 and 430x932 each had document scrollWidth equal to viewport width, drawer right edge inside viewport and drawer scrollWidth equal to clientWidth; no unexpected network, page or script console errors",
+      "limitation": ["Screenshots are local temporary artifacts under /tmp and are not release assets"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "Repository verify_ui.mjs imports Playwright but web/node_modules does not contain that package",
+      "classification": "tooling disturbance",
+      "effect": "Used the bundled Codex Playwright runtime with local Chromium without changing package manifests"
+    },
+    {
+      "event": "Initial geometry sample occurred during the Element Plus drawer transition and used an incomplete boundary predicate",
+      "classification": "sensor-fault",
+      "effect": "Discarded the sample and reran after 600 ms with x + width <= viewport; final 22/22 sample passed"
+    },
+    {
+      "event": "Vite emits existing large-chunk and third-party PURE annotation warnings",
+      "classification": "external build warning",
+      "effect": "Type checking and bundle generation remain successful"
+    }
+  ],
+  "coverage_gaps": ["Final audit counts, normal-user authorization and cleaned development database state remain for T21"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "observer_independence": "Separate observing phase in the same Codex context; the production build, real HTTP network capture, failure injection, DOM geometry and console probes are independent sensors but not an independent human review."
+}

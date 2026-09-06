@@ -1,0 +1,73 @@
+{
+  "sample_label": "T3 完成采样",
+  "task_ids": ["T3"],
+  "baseline_revision": "2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S4 Vue TypeScript 编译和源码契约探针",
+      "result": "pass",
+      "raw_evidence": "文件名称必填、maxlength=200 且保存前按 Array.from 长度校验；web build 退出码 0",
+      "limitation": ["服务端边界由 T2 覆盖，真实表单提交由 T4 覆盖"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S4 API 和页面选项来源扫描",
+      "result": "pass",
+      "raw_evidence": "筛选和表单共用 getMappingTypeOptions 返回值，无 MIGRATE_OUT/MIGRATE_IN 页面硬编码",
+      "limitation": ["真实参数响应由 T4 覆盖"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S4 项目状态流探针",
+      "result": "pass",
+      "raw_evidence": "projectReset=true；watch(scopeProjectId) 清空旧状态，异步响应和业务提交前校验当前 projectId",
+      "limitation": ["浏览器切换交互尚未触发"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S4 上传队列契约探针",
+      "result": "pass",
+      "raw_evidence": "uploadStates=true、retry=true、preserveUploaded=true；file input multiple 且每个 File 独立校验 0/50MB",
+      "limitation": ["真实上传失败注入由 T4 覆盖"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S4 模板和 API 查询扫描",
+      "result": "pass",
+      "raw_evidence": "三个筛选项映射 mappingType/systemCode/keyword；桌面和移动均展示系统、类型、编号、名称；分页 20/50/100",
+      "limitation": ["服务端组合结果和浏览器呈现由 T4 覆盖"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S4 下载契约探针",
+      "result": "pass",
+      "raw_evidence": "individualDownload=true、zipDownload=true；编辑保留 existingAttachments 并追加 uploaded attachmentId",
+      "limitation": ["真实下载字节由 T4 覆盖"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S4 权限可见性和 API 调用扫描",
+      "result": "pass",
+      "raw_evidence": "新增、编辑、删除入口按对应权限和所有者显示；查看/下载继续调用服务端受保护 API",
+      "limitation": ["前端不作为服务端授权证据；HTTP 401/403 由 T4 覆盖"]
+    },
+    {
+      "requirement_id": "R9",
+      "sensor": "S4 完整构建和九项独立状态探针",
+      "result": "pass",
+      "raw_evidence": "web build 退出码 0，2571 modules transformed，built in 16.94s；uploadStates/retry/preserveUploaded/individualDownload/zipDownload/responsive/projectReset/persistentErrors/noHeaderDescription 全为 true",
+      "limitation": ["四视口像素、交互、console 和 network 留待 S6"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "构建存在既有第三方 PURE 注释及大 chunk 警告，但退出码为 0 且与本页面无直接因果关系"
+  ],
+  "coverage_gaps": [
+    "真实浏览器的多文件部分失败、项目切换、单附件/ZIP 下载和持久错误交互由 T4 覆盖",
+    "1280x800、375x812、390x844、430x932 的布局、遮挡和 scrollWidth 由 T4 覆盖"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

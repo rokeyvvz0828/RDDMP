@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0012",
+  "decision": "accept",
+  "decision_reason": "The original review found deterministic permission and dependent-selection defects in IssuesPage. The final page and production build must be rechecked.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "Later T31/T32 page changes centralized project scope and corrected permission-aware actions and dependent option reloads.",
+    "supporting_evidence": ["IssuesPage consumes the global project scope", "system/table/field option endpoints are project or table scoped", "prior browser observations cover the revised page"],
+    "falsifier": "Static contract checks or the production build show missing permission guards, unloaded system options, or stale table/field selections."
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "IssuesPage permission and dependent-selection behavior",
+    "write_scope": ["web/src/modules/data-migration/**", "web/src/api/data-migration.ts", ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"],
+    "invariants": ["backend remains the authorization authority", "project scope comes from the global context", "field choices belong to selected tables"],
+    "impact_limit": "data-migration issue page and API typing",
+    "rollback": "No product edit is planned; revert only new control evidence if the sensor is invalid.",
+    "correction_check": ["IssuesPage source contract scan", "frontend production build", "existing issue service and permission tests"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["This pass does not recreate the former browser role fixture; service-side authorization remains covered by focused tests."]
+}

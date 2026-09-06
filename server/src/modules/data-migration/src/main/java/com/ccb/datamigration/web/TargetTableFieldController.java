@@ -21,20 +21,20 @@ public class TargetTableFieldController {
 
     private String cat(String category) { return category == null ? "TARGET" : category; }
 
-    @PutMapping("/{fieldId}") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin','data-migration:base:table-fields-target:update','data-migration:base:table-fields-intermediate:update')")
-    public ApiResponse<Map<String, Object>> update(@PathVariable long fieldId, @RequestParam(required = false) String category, @RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.updateField(fieldId, cat(category), body, user), TraceId.getOrCreate());
+    @PutMapping("/{fieldCode}") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin','data-migration:base:table-fields-target:update','data-migration:base:table-fields-intermediate:update')")
+    public ApiResponse<Map<String, Object>> update(@PathVariable long fieldCode, @RequestParam(required = false) String category, @RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.updateField(fieldCode, cat(category), body, user), TraceId.getOrCreate());
     }
 
-    @DeleteMapping("/{fieldId}") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin','data-migration:base:table-fields-target:delete','data-migration:base:table-fields-intermediate:delete')")
-    public ApiResponse<Void> delete(@PathVariable long fieldId, @RequestParam(required = false) String category, @AuthenticationPrincipal AuthUser user) {
-        service.deleteField(fieldId, cat(category), user);
+    @DeleteMapping("/{fieldCode}") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin','data-migration:base:table-fields-target:delete','data-migration:base:table-fields-intermediate:delete')")
+    public ApiResponse<Void> delete(@PathVariable long fieldCode, @RequestParam(required = false) String category, @AuthenticationPrincipal AuthUser user) {
+        service.deleteField(fieldCode, cat(category), user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
     @PostMapping("/batch-delete") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin','data-migration:base:table-fields-target:delete','data-migration:base:table-fields-intermediate:delete')")
-    public ApiResponse<Void> batchDelete(@RequestParam(required = false) String category, @RequestBody List<Long> ids, @AuthenticationPrincipal AuthUser user) {
-        service.deleteFields(ids, cat(category), user);
+    public ApiResponse<Void> batchDelete(@RequestParam(required = false) String category, @RequestBody List<Long> fieldCodes, @AuthenticationPrincipal AuthUser user) {
+        service.deleteFields(fieldCodes, cat(category), user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 }
