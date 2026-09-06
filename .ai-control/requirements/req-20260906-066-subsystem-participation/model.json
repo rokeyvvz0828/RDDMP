@@ -1,0 +1,332 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "architecture物理系统及arch_plan任务/检查项/阻塞",
+      "资源申请与关联对象、业务附件策略",
+      "现有PhysicalSubsystemPage与PlanDetailPage dashboard页签"
+    ],
+    "environment": [
+      "ProjectMemberReferenceQuery/SystemReferenceQuery公开能力",
+      "MySQL8.4与Flyway",
+      "Vue和Maven测试运行器"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "系统有效参与集合",
+      "owner": "SubsystemParticipationService",
+      "valid_values": [
+        "负责人和显式成员与有效项目成员交集"
+      ]
+    },
+    {
+      "name": "任务状态",
+      "owner": "PlanEngine",
+      "valid_values": [
+        "NOT_STARTED",
+        "WAITING_PRECEDING",
+        "IN_PROGRESS",
+        "BLOCKED",
+        "COMPLETED",
+        "CANCELLED"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "系统人员更新",
+      "transitions": [
+        "项目成员与系统负责人校验",
+        "父行锁",
+        "名单写入"
+      ],
+      "outputs": [
+        "有效名单含负责人"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "展开计划任务",
+      "transitions": [
+        "解析目标系统",
+        "复制默认分工",
+        "逐任务调整"
+      ],
+      "outputs": [
+        "任务负责人及参与人快照"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "成员撤销后执行",
+      "transitions": [
+        "实时项目/系统资格校验及未完责任检查"
+      ],
+      "outputs": [
+        "撤销后旧名单不再授权"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "查询或执行任务",
+      "transitions": [
+        "区分管理范围与执行资格"
+      ],
+      "outputs": [
+        "个人过滤、管理员无执行豁免"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "当前计划看板请求",
+      "transitions": [
+        "服务端按可见任务过滤并分类"
+      ],
+      "outputs": [
+        "四列和授权计数"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "input": "申请部署单元资源",
+      "transitions": [
+        "逐明细解析系统并校验参与资格"
+      ],
+      "outputs": [
+        "非参与系统申请拒绝"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "input": "关联对象/附件请求",
+      "transitions": [
+        "复用业务实体授权策略"
+      ],
+      "outputs": [
+        "旁路读取及执行拒绝"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "input": "迁移或不同视口访问",
+      "transitions": [
+        "保留存量任务",
+        "收紧授权",
+        "响应式重排"
+      ],
+      "outputs": [
+        "无名单扩张、操作可达"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "ProjectMemberReferenceQuery",
+      "producers": [
+        "platform/system"
+      ],
+      "consumers": [
+        "architecture资格服务"
+      ],
+      "invariant": "使用公开契约，成员ID与userId不可混淆"
+    },
+    {
+      "name": "任务执行入口",
+      "producers": [
+        "PlanController"
+      ],
+      "consumers": [
+        "PlanEngine"
+      ],
+      "invariant": "当前代码存在管理员执行豁免，必须移除且实时检查系统资格"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "资格和状态规则",
+      "method": "JUnit/Mockito正常、跨项目、撤销、版本冲突测试",
+      "blind_spots": [
+        "Mock不证明SQL锁与数据库约束"
+      ],
+      "independence": "直接执行服务与端点断言"
+    },
+    {
+      "id": "S2",
+      "target": "数据库归属和撤销并发",
+      "method": "真实MySQL/Flyway集成测试",
+      "blind_spots": [
+        "本地数据量不代表生产"
+      ],
+      "independence": "真实持久化独立于Mock"
+    },
+    {
+      "id": "S3",
+      "target": "浏览器入口与布局",
+      "method": "四视口明暗主题真实浏览器与网络响应检查",
+      "blind_spots": [
+        "按钮隐藏不证明服务端授权"
+      ],
+      "independence": "用户路径与接口响应交叉验证"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "architecture模块及精确V159迁移",
+      "action": "追加成员存储并接入已有服务和页面",
+      "authority": "用户2026-09-06开发确认及本需求scope精确路径",
+      "impact_radius": "架构业务，不修改平台公开实现",
+      "rollback": "任务提交回退，保留新增关系和审计，权限失败先停写"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R6",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R7",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R8",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "项目成员撤销与旧页面",
+      "effect": "旧默认名单不得继续授权",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "本地依赖与Docker",
+      "effect": "集成测试可能不可用",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "delays": [
+    {
+      "source": "旧页面及并发写",
+      "consequence": "资格和版本可能过时",
+      "sampling_rule": "每次服务端写操作重新校验并锁定系统行"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "可复用项目成员公开查询，不必扩展公共能力",
+      "evidence": "ProjectMemberReferenceQuery.findActiveMembers返回userId；PlanModels已有ownerUserId与参与表",
+      "falsifier": "后续真实撤销竞态无法在业务事务边界解决，应停止并重新建模"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "按独立任务运行对应传感器，未执行不计通过"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "按独立任务运行对应传感器，未执行不计通过"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "按独立任务运行对应传感器，未执行不计通过"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "按独立任务运行对应传感器，未执行不计通过"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "按独立任务运行对应传感器，未执行不计通过"
+    },
+    {
+      "requirement_id": "R6",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "按独立任务运行对应传感器，未执行不计通过"
+    },
+    {
+      "requirement_id": "R7",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "按独立任务运行对应传感器，未执行不计通过"
+    },
+    {
+      "requirement_id": "R8",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "按独立任务运行对应传感器，未执行不计通过"
+    }
+  ],
+  "model_status": "ready"
+}
