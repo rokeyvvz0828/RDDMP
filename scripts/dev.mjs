@@ -177,7 +177,7 @@ function buildDevEnvironment() {
     FILE_PREVIEW_ALLOWED_EXTENSIONS: 'pdf,doc,docx,xls,xlsx,ppt,pptx,txt,md,csv,jpg,jpeg,png,gif,bmp,webp',
     MOCK_DATA_ENABLED: 'true',
     MOCK_DATA_RESOURCE: 'classpath:mock/mock-data.json',
-    WORKFLOW_SEEDED_DEFINITION_PUBLISHER_ENABLED: 'false',
+    WORKFLOW_SEEDED_DEFINITION_PUBLISHER_ENABLED: 'true',
     KK_FILE_VIEW_IMAGE: KKFILEVIEW_IMAGE,
     KK_FILE_VIEW_BASE_URL: `http://127.0.0.1:${KKFILEVIEW_PORT}`,
     KK_FILE_VIEW_PORT: String(KKFILEVIEW_PORT),
