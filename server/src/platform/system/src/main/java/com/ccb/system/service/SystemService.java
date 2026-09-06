@@ -5,6 +5,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
+import com.ccb.common.audit.OperationAuditContext;
 import com.ccb.system.model.SystemPage;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -392,7 +393,13 @@ public class SystemService {
     }
 
     private void audit(AuthUser user, String operation) {
+        if (OperationAuditContext.capture(operation, targetType(operation), null, null)) return;
         jdbc.update("INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, success) VALUES (?, ?, ?, ?, 'SYSTEM', 1)", nextId(), user.tenantId(), user.id(), operation);
+    }
+
+    private String targetType(String operation) {
+        String[] segments = operation.split(":", 4);
+        return segments.length > 1 ? segments[1] : null;
     }
 
     public void auditOperation(AuthUser user, String operation) {

@@ -5,6 +5,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.common.audit.OperationAuditContext;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
 import com.ccb.workflow.integration.WorkflowPendingTaskQuery;
 import com.ccb.workflow.integration.WorkflowProjectAccessGateway;
@@ -910,6 +911,9 @@ public class WorkflowService implements WorkflowPendingTaskQuery {
     }
 
     private void audit(AuthUser user, String code) {
+        String[] segments = code.split("\\.", 4);
+        String targetType = segments.length > 1 ? segments[1] : "workflow";
+        if (OperationAuditContext.capture(code, targetType, null, null)) return;
         jdbc.update("INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, request_path, success) VALUES (?, ?, ?, ?, 'SERVICE', ?, 1)", nextId(), user.tenantId(), user.id(), code, "/api/workflows");
     }
 

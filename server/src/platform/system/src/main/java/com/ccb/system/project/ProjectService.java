@@ -11,6 +11,7 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.ProjectMemberRemovalGuard;
+import com.ccb.common.audit.OperationAuditContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -1100,6 +1101,11 @@ public class ProjectService {
     private String actionLabel(String action) { return switch (action) { case "read" -> "查看"; case "create" -> "新增"; case "delete" -> "删除"; default -> "编辑"; }; }
     private String resourceLabel(String resource) { return switch (resource) { case "risk" -> "项目风险"; case "plan" -> "项目计划"; case "member" -> "项目成员"; case "role" -> "项目角色"; default -> "项目"; }; }
     private BusinessException badRequest(String message) { return new BusinessException(ErrorCode.BAD_REQUEST, message); }
-    private void audit(AuthUser user, String operation, long targetId) { jdbc.update("INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, request_path, success) VALUES (?, ?, ?, ?, 'PROJECT', ?, 1)", nextId(), user.tenantId(), user.id(), operation, String.valueOf(targetId)); }
+    private void audit(AuthUser user, String operation, long targetId) {
+        String[] segments = operation.split(":", 4);
+        String targetType = segments.length > 1 ? segments[1] : "project";
+        if (OperationAuditContext.capture(operation, targetType, String.valueOf(targetId), null)) return;
+        jdbc.update("INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, request_path, success) VALUES (?, ?, ?, ?, 'PROJECT', ?, 1)", nextId(), user.tenantId(), user.id(), operation, String.valueOf(targetId));
+    }
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }
 }

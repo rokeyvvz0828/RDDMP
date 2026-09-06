@@ -94,6 +94,12 @@ const router = createRouter({
           meta: { title: '角色权限配置' }
         },
         {
+          path: 'system/audit',
+          name: 'system-audit',
+          component: () => import('../views/AuditLogView.vue'),
+          meta: { title: '审计日志', permission: 'system:audit:list', menuPath: '/system/audit' }
+        },
+        {
           path: 'system/:section',
           name: 'module',
           component: ModuleView,

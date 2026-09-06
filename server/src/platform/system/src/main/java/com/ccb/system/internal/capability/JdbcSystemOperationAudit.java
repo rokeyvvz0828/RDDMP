@@ -2,6 +2,7 @@ package com.ccb.system.internal.capability;
 
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
+import com.ccb.common.audit.OperationAuditContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -30,6 +31,12 @@ public class JdbcSystemOperationAudit implements SystemOperationAudit {
     }
 
     private void insert(SystemOperationAuditCommand command, int success, String errorMessage) {
+        String safeError = success == 1 || errorMessage == null || errorMessage.isBlank()
+                ? null : "Business operation failed";
+        if (OperationAuditContext.capture(command.operationCode(), targetType(command.operationCode()), null,
+                safeError)) {
+            return;
+        }
         jdbc.update("""
                         INSERT INTO sys_operation_log
                             (id, tenant_id, operator_id, operation_code, request_method, request_path, success, error_message, trace_id)
@@ -42,8 +49,13 @@ public class JdbcSystemOperationAudit implements SystemOperationAudit {
                 command.requestMethod(),
                 command.requestPath(),
                 success,
-                errorMessage,
+                safeError,
                 command.traceId());
+    }
+
+    private String targetType(String operationCode) {
+        String[] segments = operationCode.split("[:.]", 4);
+        return segments.length > 1 ? segments[1] : null;
     }
 
     private long nextId() {
